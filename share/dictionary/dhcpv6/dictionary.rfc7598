@@ -11,11 +11,39 @@
 #
 ##############################################################################
 
-ATTRIBUTE	S46-Rule				89	octets		# Complex struct see RFC 7598
+ATTRIBUTE	S46-Rule				89	struct
+MEMBER		Flags						uint8		# low bit is forward or not
+MEMBER		IPv4-Prefix					ipv4prefix	# fixed 5 octets
+MEMBER		IPv6-Prefix					ipv6prefix	# variable length 2..18
+MEMBER		Options						group
+
 ATTRIBUTE	S46-Border-Relay			90	ipv6addr
-ATTRIBUTE	S46-Default-Mapping-Rule		91	ipv6prefix
-ATTRIBUTE	S46-Address-Binding			92	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-Port-Parameters			93	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-MAP-Cont-E				94	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-MAP-Cont-T				95	octets		# Complex struct see RFC 7598
-ATTRIBUTE	S46-Cont-LW				96	octets		# Complex struct see RFC 7598
+ATTRIBUTE	S46-Default-Mapping-Rule		91	ipv6prefix	# variable length 2..18
+
+ATTRIBUTE	S46-Address-Binding			92	struct
+MEMBER		IPv4-Address					ipv4addr
+MEMBER		Bind-IPv6-Prefix				ipv6prefix	# variable length 2..18
+MEMBER		Options						group
+
+ATTRIBUTE	S46-Port-Parameters			93	struct
+MEMBER		Port-Set-Identifier-Offset			uint8		# allowed values 0..15
+MEMBER		PSID-Len					uint8		# number of significant bits in PSID
+MEMBER		PSID						uint16
+
+#
+#  Encapsulates S46-Rule and S46-Border-Relay only
+#
+ATTRIBUTE	S46-MAP-Cont-E				94	struct
+MEMBER		Options						group
+
+#
+#  Encapsulates S46-Rule and S46-Default-Mapping-Rule only
+#
+ATTRIBUTE	S46-MAP-Cont-T				95	struct
+MEMBER		Options						group
+
+#
+#  Encapsulates S46-Border-Relay and S46-Address-Binding only
+#
+ATTRIBUTE	S46-Cont-LW				96	struct
+MEMBER		Options						group
