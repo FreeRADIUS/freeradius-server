@@ -194,6 +194,8 @@ void *fr_ext_copy(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX const 
 			ext_dst_ptr = fr_ext_alloc_size(def, chunk_dst, ext,
 							fr_ext_len(def, chunk_src, ext));
 		}
+	} else {
+		ext_dst_ptr = fr_ext_ptr(*chunk_dst, ext_dst_offsets[ext], info->has_hdr);
 	}
 
 	if (info->copy) {
