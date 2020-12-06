@@ -71,6 +71,13 @@ do {\
 	}\
 } while (0)
 
+/*
+ *␉·····We have to use this as curl uses lots of enums
+ */
+#ifndef CURL_AT_LEAST_VERSION
+#  define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | (z))
+#  define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
+#endif
 
 /** Uctx data for timer and I/O functions
  *
