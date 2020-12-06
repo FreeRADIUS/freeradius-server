@@ -60,13 +60,13 @@ static int fr_dict_attr_ext_name_fixup(UNUSED int ext,
  */
 static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 				       TALLOC_CTX *chunk_dst,
-				       void *dst_ext_ptr, UNUSED size_t dst_ext_len,
+				       UNUSED void *dst_ext_ptr, UNUSED size_t dst_ext_len,
 				       TALLOC_CTX const *chunk_src,
 				       void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
 	fr_dict_attr_t const		*da_src = talloc_get_type_abort_const(chunk_src, fr_dict_attr_t);
 	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
-	fr_dict_attr_ext_enumv_t	*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
+	fr_dict_attr_ext_enumv_t	*src_ext = src_ext_ptr;
 	fr_hash_iter_t			iter;
 	fr_dict_enum_t			*enumv;
 	bool				has_child = fr_dict_attr_is_key_field(da_src);
