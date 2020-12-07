@@ -40,6 +40,8 @@ if test x$with_[]modname != xno; then
 	fi
 
 	targetname=modname
+	version="$libcurl_cv_lib_curl_version"
+
 else
 	targetname=
 	echo \*\*\* module modname is disabled.
@@ -62,6 +64,7 @@ mod_cflags="$LIBCURL_CPPFLAGS"
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
+AC_SUBST(version)
 
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

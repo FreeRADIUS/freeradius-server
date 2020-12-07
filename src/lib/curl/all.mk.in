@@ -1,4 +1,5 @@
 TARGETNAME	:= @targetname@
+VERSION		:= @version@
 
 ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a

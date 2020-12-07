@@ -586,6 +586,7 @@ ac_unique_file="base.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
+version
 mod_ldflags
 mod_cflags
 LIBCURL
@@ -3272,6 +3273,8 @@ $as_echo "$as_me: Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-
 	fi
 
 	targetname=libfreeradius-curl
+	version="$libcurl_cv_lib_curl_version"
+
 else
 	targetname=
 	echo \*\*\* module libfreeradius-curl is disabled.
