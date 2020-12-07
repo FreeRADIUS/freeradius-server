@@ -3392,9 +3392,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 
 	new_ctx = talloc_zero(ctx, fr_dict_gctx_t);
 	if (!new_ctx) {
-	oom:
 		fr_strerror_printf("Out of Memory");
-		talloc_free(new_ctx);
 		return NULL;
 	}
 
@@ -3413,7 +3411,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	}
 
 	new_ctx->dict_dir_default = talloc_strdup(new_ctx, dict_dir);
-	if (!new_ctx->dict_dir_default) goto oom;
+	if (!new_ctx->dict_dir_default) goto error;
 
 	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, false, false);
 	if (!new_ctx->dict_loader) goto error;
