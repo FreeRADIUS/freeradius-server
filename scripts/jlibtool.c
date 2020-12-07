@@ -611,6 +611,10 @@ static int external_spawn(command_t *cmd, char const *file, char const **argv)
 		if (spawn_pid == 0) {
 			return execvp(argv[0], (char**)argv);
 		}
+		else if (spawn_pid < 0) {
+			fprintf(stderr, "Failed fork: %s\n", strerror(errno));
+			return -1;
+		}
 		else {
 			int status;
 
