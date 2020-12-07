@@ -2082,72 +2082,6 @@ fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 	return talloc_get_type_abort(da->dict, fr_dict_t);
 }
 
-/** Dictionary/attribute ctx struct
- *
- */
-typedef struct {
-	fr_dict_t 		*found_dict;	//!< Dictionary attribute found in.
-	fr_dict_attr_t const	*found_da;	//!< Resolved attribute.
-	fr_dict_attr_t const	*find;		//!< Attribute to find.
-} dict_attr_search_t;
-
-/** Search for an attribute name in all dictionaries
- *
- * @param[in] data	Dictionary to search in.
- * @param[in] uctx	Attribute to search for.
- * @return
- *	- 0 if attribute not found in dictionary.
- *	- 1 if attribute found in dictionary.
- */
-static int _dict_attr_find_in_dicts(void *data, void *uctx)
-{
-	dict_attr_search_t	*search = uctx;
-	fr_dict_t		*dict;
-	fr_hash_table_t 	*namespace;
-
-	if (!data) return 0;	/* We get called with NULL data */
-
-	dict = talloc_get_type_abort(data, fr_dict_t);
-
-	namespace = dict_attr_namespace(dict->root);
-	if (!namespace) return 0;
-
-	search->found_da = fr_hash_table_find_by_data(namespace, search->find);
-	if (!search->found_da) return 0;
-
-	search->found_dict = data;
-
-	return 1;
-}
-
-/** Internal version of #fr_dict_by_attr_name
- *
- * @note For internal use by the dictionary API only.
- *
- * @copybrief fr_dict_by_attr_name
- */
-fr_dict_t *dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
-{
-	fr_dict_attr_t		find = {
-					.name = name
-				};
-	dict_attr_search_t	search = {
-					.find = &find
-				};
-	int			ret;
-
-	if (found) *found = NULL;
-
-	if (!name || !*name) return NULL;
-
-	ret = fr_hash_table_walk(dict_gctx->protocol_by_name, _dict_attr_find_in_dicts, &search);
-	if (ret == 0) return NULL;
-
-	if (found) *found = search.found_da;
-
-	return search.found_dict;
-}
-
 /** Lookup a protocol by its name
  *
  * @note For internal use by the dictionary API only.
@@ -2189,21 +2123,6 @@ fr_dict_t const *fr_dict_by_protocol_num(unsigned int num)
 fr_dict_t const *fr_dict_by_da(fr_dict_attr_t const *da)
 {
 	return dict_by_da(da);
-}
-
-/** Attempt to locate the protocol dictionary containing an attribute
- *
- * @note This is O(n) and will only return the first instance of the dictionary.
- *
- * @param[out] found	the attribute that was resolved from the name. May be NULL.
- * @param[in] name	the name of the attribute.
- * @return
- *	- the dictionary the attribute was found in.
- *	- NULL if an attribute with the specified name wasn't found in any dictionary.
- */
-fr_dict_t const *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
-{
-	return dict_by_attr_name(found, name);
 }
 
 /** Look up a vendor by one of its child attributes
@@ -2558,6 +2477,36 @@ ssize_t fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_
 	return dict_attr_search_qualified(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
 }
 
+/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] name		Dictionary/Attribute name.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return an #fr_dict_attr_err_t value.
+ */
+fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *err, fr_dict_t const *dict_def,
+							   char const *name, bool fallback)
+{
+	ssize_t			slen;
+	fr_sbuff_t		our_name;
+	fr_dict_attr_t const	*da;
+
+	fr_sbuff_init(&our_name, name, strlen(name) + 1);
+
+	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, fallback);
+	if (slen <= 0) return NULL;
+
+	if ((size_t)slen != fr_sbuff_len(&our_name)) {
+		fr_strerror_printf("Trailing garbage after attr string \"%s\"", name);
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return NULL;
+	}
+
+	return da;
+}
+
 /** Look up a dictionary attribute by a name embedded in another string
  *
  * Find the first invalid attribute name char in the string pointed
@@ -2674,35 +2623,6 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 	return dict_attr_by_name(err, parent, name);
 }
 
-/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
- *
- * @param[out] err		Why parsing failed. May be NULL.
- *				@see fr_dict_attr_err_t.
- * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
- * @param[in] name		Dictionary/Attribute name.
- * @param[in] fallback		If true, fallback to the internal dictionary.
- * @return an #fr_dict_attr_err_t value.
- */
-fr_dict_attr_t const *fr_dict_attr_by_qualified_oid(fr_dict_attr_err_t *err, fr_dict_t const *dict_def,
-						    char const *name, bool fallback)
-{
-	ssize_t			slen;
-	fr_sbuff_t		our_name;
-	fr_dict_attr_t const	*da;
-
-	fr_sbuff_init(&our_name, name, strlen(name) + 1);
-
-	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, fallback);
-	if (slen <= 0) return NULL;
-
-	if ((size_t)slen != fr_sbuff_len(&our_name)) {
-		fr_strerror_printf("Trailing garbage after attr string \"%s\"", name);
-		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-		return NULL;
-	}
-
-	return da;
-}
 
 /** Lookup a attribute by its its vendor and attribute numbers and data type
  *

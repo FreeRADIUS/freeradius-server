@@ -428,7 +428,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	inst->allocated_address_da = fr_dict_attr_by_qualified_oid(NULL, dict_freeradius,
+	inst->allocated_address_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius,
 								   inst->allocated_address_attr, false);
 	if (!inst->allocated_address_da) {
 		cf_log_perr(conf, "Failed resolving attribute");

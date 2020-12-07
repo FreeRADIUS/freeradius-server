@@ -479,7 +479,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	da = fr_dict_attr_by_qualified_oid(NULL, dict_freeradius,
+	da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius,
 					   inst->pwd_fmt->field[key_field], true);
 	if (!da) {
 		PERROR("Unable to resolve attribute");

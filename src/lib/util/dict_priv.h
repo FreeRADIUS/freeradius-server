@@ -178,8 +178,6 @@ fr_dict_t		*dict_by_protocol_num(unsigned int num);
 
 fr_dict_t		*dict_by_da(fr_dict_attr_t const *da);
 
-fr_dict_t		*dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
-
 bool			dict_attr_can_have_children(fr_dict_attr_t const *da);
 
 int			dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name, fr_value_box_t const *value,
