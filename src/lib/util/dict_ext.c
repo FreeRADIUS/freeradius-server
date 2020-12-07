@@ -116,7 +116,7 @@ static int fr_dict_attr_ext_vendor_copy(UNUSED int ext,
 					UNUSED TALLOC_CTX const *chunk_src,
 					void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
-	fr_dict_attr_t			*da_dst = talloc_get_type_abort_const(chunk_dst, fr_dict_attr_t);
+	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
 	fr_dict_attr_ext_vendor_t	*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
 	fr_dict_attr_t const		**da_stack;
 	fr_dict_attr_t const		*old_vendor = src_ext->vendor;
