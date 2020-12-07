@@ -6,23 +6,34 @@ on:
       - coverity_scan
   pull_request:
 
-env:
-  CI: 1
-  GH_ACTIONS: 1
-
 jobs:
   rpm-build:
+
+    strategy:
+      matrix:
+        env:
+          - { NAME: "centos-7", OS: "centos:7" }
+          - { NAME: "centos-8", OS: "centos:8" }
+      fail-fast: false
 
     runs-on: ubuntu-latest
 
     container:
-      image: centos:8
+      image: ${{ matrix.env.OS }}
 
     name: "RPM build"
 
     steps:
 
-    - name: Install recent git
+    # Required so that the checkout action uses git protocol rather than the GitHub REST API.
+    # make rpm requires the FR directory to be a git repository.
+    - name: Install recent git for CentOS 7
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        yum install -y https://packages.endpoint.com/rhel/7/os/x86_64/git-core-2.24.1-1.ep7.x86_64.rpm
+
+    - name: Install distro git for CentOS > 7
+      if: ${{ matrix.env.NAME != 'centos-7' }}
       run: |
         yum install -y git-core
 
@@ -31,12 +42,24 @@ jobs:
         repository: mheily/libkqueue
         path: libkqueue
 
-    - name: Install build tools
+    - name: Install common tools
       run: |
-        yum install -y cmake make gcc rpm-build
+        yum install -y yum-utils rpm-build openssl make gcc perl
+
+    - name: Install SCL compiler on CentOS 7
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        yum install -y centos-release-scl
+        yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
+        rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+        rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
     - name: Build libkqueue
       run: |
+        curl -f -o cmake.sh https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
+        [ "$(cat cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
+        sh cmake.sh --skip-license --prefix=/usr/local
+        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
         cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./
         make
         cpack -G RPM
@@ -47,7 +70,8 @@ jobs:
       with:
         path: freeradius
 
-    - name: Extra repos
+    - name: Extra repos for CentOS
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
       run: |
         echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
@@ -56,18 +80,20 @@ jobs:
         echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
         echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
-        yum install -y epel-release yum-utils
+        yum install -y epel-release
+
+    - name: Enable PowerTools on CentOS 8
+      if: ${{ matrix.env.NAME == 'centos-8' }}
+      run: |
         yum config-manager --enable PowerTools
 
     - name: Install build dependencies
       run: |
-        yum install -y \
-          libcurl-devel \
-          perl
         yum-builddep -y freeradius/redhat/freeradius.spec
 
     - name: Build RPMs
       run: |
+        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
         make rpm
       working-directory: freeradius
 
@@ -80,7 +106,7 @@ jobs:
     - name: Store RPMs
       uses: actions/upload-artifact@v2
       with:
-        name: rpms
+        name: rpms-${{ matrix.env.NAME }}
         path: rpms
 
   rpm-test:
@@ -88,10 +114,17 @@ jobs:
     needs:
       - rpm-build
 
+    strategy:
+      matrix:
+        env:
+          - { NAME: "centos-7", OS: "centos:7" }
+          - { NAME: "centos-8", OS: "centos:8" }
+      fail-fast: false
+
     runs-on: ubuntu-latest
 
     container:
-      image: centos:8
+      image: ${{ matrix.env.OS }}
 
     name: "RPM install test"
 
@@ -107,18 +140,22 @@ jobs:
         echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
         yum install -y epel-release yum-utils
+
+    - name: Enable PowerTools on CentOS 8
+      if: ${{ matrix.env.NAME == 'centos-8' }}
+      run: |
         yum config-manager --enable PowerTools
 
     - name: Load RPMs
       uses: actions/download-artifact@v2
       with:
-        name: rpms
+        name: rpms-${{ matrix.env.NAME }}
 
     - name: Install RPMs
       run: |
         yum install -y *.rpm
 
-    - name: Startup test
+    - name: Config check
       run: |
         radiusd -XC
 
