@@ -1115,6 +1115,13 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	Most VALUEs are bunched together by ATTRIBUTE.  We can
 	 *	save a lot of lookups on dictionary initialization by
 	 *	caching the last attribute for a VALUE.
+	 *
+	 *	If it's not the same, we look up the attribute in the
+	 *	current context, which is generally:
+	 *
+	 *	* the current attribute of type `struct`
+	 *	* if no `struct`, then the VENDOR for VSAs
+	 *	* if no VENDOR, then the dictionary root
 	 */
 	if (!ctx->value_attr || (strcasecmp(argv[0], ctx->value_attr->name) != 0)) {
 		fr_dict_attr_t const *tmp;
