@@ -211,11 +211,11 @@ This plugin provides LDAP support for the FreeRADIUS server project.
 Summary: curl wrapper library for FreeRADIUS
 Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freeradius-libfreeradius-util = %{version}-%{release}
+Requires: libcurl >= 7.24.0
+BuildRequires: libcurl-devel >= 7.24.0
 
 %description libfreeradius-curl
 Integrates libcurl with FreeRADIUS' internal event loop.
-Requires: libcurl >= 7.24.0
-BuildRequires: libcurl-devel >= 7.24.0
 
 %package libfreeradius-util
 Summary: Utility library used by all other FreeRADIUS libraries
