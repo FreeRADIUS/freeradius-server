@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <ctype.h>
 
-ssize_t fr_dict_snprint_flags(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags)
+ssize_t fr_dict_print_flags(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
 
@@ -133,7 +133,7 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 	fr_dict_enum_t const		*enumv;
 	fr_dict_attr_ext_enumv_t 	*ext;
 
-	fr_dict_snprint_flags(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
+	fr_dict_print_flags(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
 			      our_uctx->dict, da->type, &da->flags);
 
 	snprintf(our_uctx->prefix, sizeof(our_uctx->prefix),

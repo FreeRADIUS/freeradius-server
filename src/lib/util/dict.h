@@ -408,7 +408,7 @@ fr_dict_attr_t const	*fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dic
 
 int			fr_dict_oid_component_legacy(unsigned int *out, char const **oid);
 
-ssize_t			fr_dict_snprint_flags(fr_sbuff_t *out, fr_dict_t const *dict,
+ssize_t			fr_dict_print_flags(fr_sbuff_t *out, fr_dict_t const *dict,
 					      fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 ssize_t			fr_dict_attr_oid_print(fr_sbuff_t *out,

@@ -144,7 +144,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 
 	(void)fr_dict_attr_oid_print(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da);
 
-	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
+	fr_dict_print_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	/* Protocol Name Type */
 	printf("%s\t%s\t%s\t%s\t%s\n",
@@ -187,7 +187,7 @@ static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 	char			flags[256];
 	fr_dict_attr_t const	**children;
 
-	fr_dict_snprint_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
+	fr_dict_print_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	/*
 	 *	Root attributes are allocated outside of the pool
