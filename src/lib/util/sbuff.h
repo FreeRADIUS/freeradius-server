@@ -366,6 +366,7 @@ do { \
 	.p		= (_sbuff)->p, \
 	.is_const	= (_sbuff)->is_const, \
 	.extend		= (_sbuff)->extend, \
+	.shifted	= (_sbuff)->shifted, \
 	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
 })
@@ -383,6 +384,7 @@ do { \
 	.is_const	= (_sbuff)->is_const, \
 	.adv_parent	= 1, \
 	.extend		= (_sbuff)->extend, \
+	.shifted	= (_sbuff)->shifted, \
 	.uctx		= (_sbuff)->uctx, \
 	.parent		= (_sbuff) \
 })
