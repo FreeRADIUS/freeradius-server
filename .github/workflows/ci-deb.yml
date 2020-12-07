@@ -2,9 +2,10 @@ name: CI DEB
 
 on:
   push:
-    branches-ignore:
-      - coverity_scan
-  pull_request:
+    branches:
+      - packaging_test
+  schedule:
+    - cron: '0 20 * * *'
 
 env:
   DEBIAN_FRONTEND: noninteractive
