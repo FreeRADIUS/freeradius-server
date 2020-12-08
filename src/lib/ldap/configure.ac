@@ -2,12 +2,13 @@ AC_PREREQ([2.53])
 AC_INIT(base.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-ldap])
+AC_DEFUN(modname_useropt,[libfreeradius_ldap])
 
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
-if test x$with_[]modname != xno; then
+if test x$with_[]modname_useropt != xno; then
 
 	dnl ############################################################
 	dnl # Check for compiler
