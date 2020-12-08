@@ -1901,7 +1901,7 @@ fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
-if test x$with_libfreeradius-ldap != xno; then
+if test x$with_libfreeradius_ldap != xno; then
 
 				ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
