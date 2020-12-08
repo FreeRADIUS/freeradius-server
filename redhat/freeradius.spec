@@ -2,6 +2,7 @@
 %bcond_with experimental_modules
 %bcond_with rlm_sigtran
 %bcond_with wbclient
+%bcond_without ldap
 
 # Many distributions have extremely old versions of OpenSSL
 # if you'd like to build with the FreeRADIUS openssl packages
@@ -15,6 +16,7 @@
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
 %{!?_with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
+%{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
 
 # experimental modules
 %bcond_with rlm_idn
@@ -197,6 +199,7 @@ BuildRequires: krb5-devel
 %description krb5
 This plugin provides Kerberos 5 support for the FreeRADIUS server project.
 
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
 %package ldap
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -206,6 +209,7 @@ BuildRequires: openldap-ltb
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
+%endif
 
 %package libfreeradius-curl
 Summary: curl wrapper library for FreeRADIUS
@@ -479,8 +483,10 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
 	--with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
 	--with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
+%endif
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -526,6 +532,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         %{?_without_rlm_mruby} \
         %{?_with_rlm_cache_memcached} \
         %{?_without_rlm_cache_memcached} \
+        %{?_without_libfreeradius_ldap} \
 #        --with-modules="rlm_wimax" \
 
 make %{?_smp_mflags}
@@ -921,9 +928,11 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
 %files ldap
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_ldap.so
+%endif
 
 %files unixODBC
 %defattr(-,root,root)
