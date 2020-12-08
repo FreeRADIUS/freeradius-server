@@ -511,7 +511,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			*ref = talloc_strdup(ctx->dict->pool, value);
+			*ref = talloc_strdup(ctx->fixup_pool, value);
 			flags->extra = true;
 			flags->subtype = FLAG_HAS_REF;
 
@@ -521,13 +521,14 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT)) {
+			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT) &&
+			    !(flags->extra && (flags->subtype == FLAG_KEY_FIELD))) {
 				fr_strerror_printf("The 'clone' flag cannot be used for type '%s'",
 						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 				return -1;
 			}
 
-			*ref = talloc_strdup(ctx->dict->pool, value);
+			*ref = talloc_strdup(ctx->fixup_pool, value);
 
 		} else if (ctx->dict->subtype_table) {
 			int subtype;
@@ -941,6 +942,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 {
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
+	char			*ref = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf("Invalid MEMBER syntax");
@@ -968,7 +970,13 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Parse options.
 	 */
 	if (argc >= 3) {
-		if (dict_process_flag_field(ctx, argv[2], type, &flags, NULL) < 0) return -1;
+		if (dict_process_flag_field(ctx, argv[2], type, &flags, &ref) < 0) return -1;
+
+		if (ref && (type != FR_TYPE_TLV) && !(flags.extra && (flags.subtype == FLAG_KEY_FIELD))) {
+			fr_strerror_printf("Only MEMBERs of type 'tlv' or with 'key' flags can have references");\
+			return -1;
+		}
+
 	} else {
 		if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth].da, argv[2], NULL, type, &flags)) return -1;
 	}
@@ -1091,6 +1099,21 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 					   argv[0]);
 			return -1;
 		}
+	}
+
+	if (ref) {
+		dict_fixup_t *fixup;
+
+		fixup = dict_fixup_alloc(ctx, DICT_FIXUP_CLONE);
+		if (!fixup) {
+			talloc_free(ref);
+			return -1;
+		}
+
+		fixup->parent = ctx->stack[ctx->stack_depth].da;
+		fixup->da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
+						   ctx->stack[ctx->stack_depth].member_num);
+		fixup->ref = ref;
 	}
 
 	return 0;

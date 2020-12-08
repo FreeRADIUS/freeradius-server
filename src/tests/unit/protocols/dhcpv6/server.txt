@@ -8,6 +8,9 @@
 proto dhcpv6
 proto-dictionary dhcpv6
 
+#
+#  Sub-structures are children of the "key" field.  Sorry.  :(
+#
 encode-pair Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000100012750f52702420a0000090000
 match 00 01 00 12 00 04 00 01 00 01 27 50 f5 27 02 42 0a 00 00 09 00 00
 
@@ -20,5 +23,29 @@ match 00 02 00 12 00 04 00 01 00 01 27 50 f5 27 02 42 0a 00 00 09 00 00
 decode-pair -
 match Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000100012750f52702420a0000090000
 
+#
+#  We SHOULD be adding a sub-struct with Client-ID.DUID.LLT.Hardware-Type.Ethernet.Address,
+#  but for some reason we don't.  @todo - fixme!
+#
+encode-pair Client-ID.DUID = LLT, Client-ID.DUID.LLT.Hardware-Type = Ethernet, Client-ID.DUID.LLT.Time = "Jan  1 2000 00:00:00 UTC"
+match 00 01 00 08 00 01 00 01 00 00 00 00
+
+encode-pair Client-ID.DUID = LLT, Client-ID.DUID.LLT.Hardware-Type = Ethernet, Client-ID.DUID.LLT.Time = "Jan  1 2000 00:00:02 UTC", Client-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+match 00 01 00 0e 00 01 00 01 00 00 00 02 00 01 02 03 04 05
+
+decode-pair -
+match Client-ID.DUID = LLT, Client-ID.DUID.LLT.Hardware-Type = Ethernet, Client-ID.DUID.LLT.Time = "Jan  1 2000 00:00:02 UTC", Client-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+
+#
+#  sub-struct LL is LLT, but without the T
+#
+#  Note that the "Hardware-Type" sub-structure is cloned from Client-ID.DUID.LLT.Hardware-Type
+#
+encode-pair Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+match 00 01 00 0a 00 03 00 01 00 01 02 03 04 05
+
+decode-pair -
+match Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+
 count
-match 10
+match 20
