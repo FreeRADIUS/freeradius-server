@@ -81,7 +81,6 @@ static int make_version_cmp(bool *err,
 
 	while ((a < a_end) && (b < b_end)) {
 		unsigned long	a_num, b_num;
-		char		buff[20];
 		size_t		a_len, b_len;
 		int		ret;
 		bool		a_str = false;
@@ -89,35 +88,24 @@ static int make_version_cmp(bool *err,
 		a_num = strtoul(a, &a_q, 10);
 		if (a == a_q) {
 			FIND_SEP(a_q, a);
-
 			a_len = a_q - a;
-			if (a_len >= sizeof(buff)) {
-				ERROR("Version component too long \"%s\"", a);
+			a_str = true;
+		}
+
+		b_num = strtoul(a, &b_q, 10);
+		/*
+		 *	A and B are both strings
+		 */
+		if (b == b_q) {
+			if (!a_str) {
+				ERROR("Can't compare string component to numeric component");
 			error:
 				*err = true;
 				return 0;
 			}
 
-			strncpy(buff, a_q, a_len);
-
-			a_str = true;
-		}
-
-		b_num = strtoul(a, &b_q, 10);
-		if (b == b_q) {
-			if (!a_str) {
-			str_v_num:
-				ERROR("Can't compare string version component to numeric component");
-				goto error;
-			}
-
 			FIND_SEP(b_q, b);
-
 			b_len = b_q - b;
-			if (b_len >= sizeof(buff)) {
-				ERROR("Version component too long \"%s\"", b);
-				goto error;
-			}
 
 			if (a_len != b_len) {
 				ERROR("Version component length doesn't match "
@@ -135,21 +123,33 @@ static int make_version_cmp(bool *err,
 
 			a = a_q;
 			b = b_q;
-
-			if (IS_SEP(*a)) a++;
-			if (IS_SEP(*b)) b++;
-
-			continue;
-		} else if (a_str) goto str_v_num;
+		/*
+		 *	A was a number but B was a string.
+		 */
+		} else if (a_str) {
+			ERROR("Can't compare numeric component to string component");
+			goto error;
 
 		/*
-		 *	Compare the numeric version component
+		 *	A and B are both numbers.
 		 */
-		ret = (a_num > b_num) - (a_num < b_num);
-		if (ret != 0) return ret;
+		} else {
+			ret = (a_num > b_num) - (a_num < b_num);
+			if (ret != 0) return ret;
+		}
 
-		if (IS_SEP(*a)) a++;
-		if (IS_SEP(*b)) b++;
+		if (!IS_SEP(*a)) {
+			ERROR("Missing version component separator \"%s\"", a);
+			goto error;
+		}
+
+		if (!IS_SEP(*b)) {
+			ERROR("Missing version component separator \"%s\"", b);
+			goto error;
+		}
+
+		a++;
+		b++;
 	}
 
 	if ((a < a_end) || (b < b_end)) {
