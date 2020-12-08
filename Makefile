@@ -195,6 +195,14 @@ distclean: clean
 #  these rules enabled by default, then they're run too often.
 #
 ifeq "$(MAKECMDGOALS)" "reconfig"
+CONFIGURE_FILES=1
+endif
+
+ifneq "$(filter %configure,$(MAKECMDGOALS))" ""
+CONFIGURE_FILES=1
+endif
+
+ifeq "$(CONFIGURE_FILES)" "1"
 
 CONFIGURE_AC_FILES := $(shell find . -name configure.ac -print)
 CONFIGURE_FILES	   := $(patsubst %.ac,%,$(CONFIGURE_AC_FILES))
@@ -219,6 +227,7 @@ src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4
 		echo AUTOHEADER $@ \
 		cd $(dir $@) && $(AUTOHEADER); \
 	 fi
+	@touch $@
 
 # "%configure" doesn't match "configure"
 configure: configure.ac $(wildcard ac*.m4) $(wildcard m4/*.m4)
