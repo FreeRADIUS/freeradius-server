@@ -12,17 +12,17 @@
 ##############################################################################
 
 ATTRIBUTE	ARP-Packet				1	struct
-MEMBER		Hardware-Format				short
+MEMBER		Hardware-Format				uint16
 
 VALUE	Hardware-Format			Ethernet		1
 
-MEMBER		Protocol-Format				short
+MEMBER		Protocol-Format				uint16
 
 VALUE	Protocol-Format			IPv4			0x0800
 
-MEMBER		Hardware-Address-Length			byte
-MEMBER		Protocol-Address-Length			byte
-MEMBER		Packet-Type				short
+MEMBER		Hardware-Address-Length			uint8
+MEMBER		Protocol-Address-Length			uint8
+MEMBER		Packet-Type				uint16
 
 VALUE	Packet-Type			Request			1
 VALUE	Packet-Type			Reply			2
