@@ -22,6 +22,6 @@ jobs:
         uses: github/super-linter@v3
         env:
           DEFAULT_BRANCH: master
-          FILTER_REGEX_EXCLUDE: .*/(configure|config\.sub|config\.guess|missing|install-sh|freeradius\.css|toc_focus\.js|asciidoc/sass/.*\.scss)
+          FILTER_REGEX_EXCLUDE: (.*/)?(configure|config\.sub|config\.guess|missing|install-sh|freeradius\.css|toc_focus\.js|asciidoc/sass/.*\.scss)
           VALIDATE_ALL_CODEBASE: ${{ github.ref == 'refs/heads/linter' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
