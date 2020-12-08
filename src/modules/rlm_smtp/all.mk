@@ -23,6 +23,8 @@ TARGET		:=
 
 ifneq "$(TARGETNAME)" ""
 
+#load ${BUILD_DIR}/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}
+
 #  Require cURL >= 7.56.0
 CURL_TOO_OLD := $(call ver.lt,$(VERSION),7.56.0)
 

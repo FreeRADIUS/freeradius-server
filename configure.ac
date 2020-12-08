@@ -216,6 +216,18 @@ dnl #
 AC_CANONICAL_SYSTEM
 AC_SUBST(TARGET_SYSTEM, "$target")
 
+case "$target" in
+  *-darwin*)
+    library_ext="dylib"
+    ;;
+
+  *)
+    library_ext="so"
+    ;;
+esac
+
+AC_SUBST(LIBRARY_EXT, "$library_ext")
+
 dnl #  Check for GNU cc
 dnl #
 AC_PROG_CC

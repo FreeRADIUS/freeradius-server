@@ -24,7 +24,7 @@ endif
 #  don't use it (.FEATURES variable was added in 3.81)
 #
 ifndef .FEATURES
-$(error The build system requires GNU Make 3.81 or later.)
+$(error This build system requires GNU Make 4.0 or higher)
 endif
 
 #

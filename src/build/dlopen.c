@@ -22,7 +22,7 @@
  *
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
-RCSIDH(time_h, "$Id$")
+RCSID("$Id$")
 
 #include <string.h>
 #include <stdlib.h>
@@ -33,6 +33,8 @@ RCSIDH(time_h, "$Id$")
 #include <dlfcn.h>
 #include <unistd.h>
 #include <gnumake.h>
+
+#include "log.h"
 
 #ifdef __linux__
 #include <link.h>
@@ -271,7 +273,7 @@ static char *get_filename(void *handle)
  * @note argv[0] is really the first argument--if this followed C conventions
  *       for main(), argv[0] would be what's passed here in nm.
  */
-static char *make_dlopen(UNUSED char const *nm, unsigned int argc, char **argv)
+static char *make_dlopen(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
 {
 	void *handle;
 	int mode = RTLD_NOW;
@@ -441,7 +443,7 @@ no_file:
  * @note argv[0] is really the first argument--if this followed C conventions
  *       for main(), argv[0] would be what's passed here in nm.
  */
-static char *make_dlclose(UNUSED char const *nm, UNUSED unsigned int argc, char **argv)
+static char *make_dlclose(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, char **argv)
 {
 	char *p, *name, *libname;
 	fr_lib_t *lib, **last;
@@ -500,7 +502,7 @@ static char *make_dlclose(UNUSED char const *nm, UNUSED unsigned int argc, char 
  * @note argv[0] is really the first argument--if this followed C conventions
  *       for main(), argv[0] would be what's passed here in nm.
  */
-static char *make_dlsym(UNUSED char const *nm, UNUSED unsigned int argc, char **argv)
+static char *make_dlsym(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, char **argv)
 {
 	char *p, *name, *libname;
 	fr_lib_t *lib;
@@ -541,7 +543,7 @@ static char *make_dlsym(UNUSED char const *nm, UNUSED unsigned int argc, char **
  * @note argv[0] is really the first argument--if this followed C conventions
  *       for main(), argv[0] would be what's passed here in nm.
  */
-static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSED char **argv)
+static char *make_dlerror(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, __attribute__((unused)) char **argv)
 {
 	char *p;
 	size_t len;
@@ -555,13 +557,6 @@ static char *make_dlerror(UNUSED char const *nm, UNUSED unsigned int argc, UNUSE
 	memcpy(p, my_dlerror, len + 1);
 	return p;
 }
-
-
-#if 0
-#define DEBUG(...) fprintf(stderr, ## __VA_ARGS__ )
-#else
-#define DEBUG(...)
-#endif
 
 typedef struct ad_define_s {
 	struct ad_define_s *next;
@@ -626,7 +621,7 @@ static void ad_update_variable(char const *name, char *value)
 	size_t name_len, value_len;
 	char *old, *p, *expand;
 
-	DEBUG("Update %s with %s\n", name, value);
+	DEBUG("Update %s with %s", name, value);
 
 	if (!value || !*value || (*value == ' ')) return;
 
@@ -686,7 +681,7 @@ static void ad_update_variable(char const *name, char *value)
 	*p++ = ' ';
 	strcpy(p, value);
 
-	DEBUG("RESULT ASKED TO EVAL - %s\n", expand);
+	DEBUG("RESULT ASKED TO EVAL - %s", expand);
 	gmk_eval(expand, NULL);
 	gmk_free(expand);
 }
@@ -718,7 +713,7 @@ static void *ad_try_dlopen(char const *name, char const *dir, void **handle)
 	 */
 	path = argv2lib(dir, &libname);
 	if (!path) {
-		DEBUG("\tfailed getting path from %s\n", dir);
+		ERROR("\tfailed getting path from %s", dir);
 		return NULL;
 	}
 
@@ -728,7 +723,7 @@ static void *ad_try_dlopen(char const *name, char const *dir, void **handle)
 	 */
 	*handle = dlopen(path, RTLD_NOW);
 	if (!*handle) {
-		DEBUG("\tdlopen failed for %s\n", path);
+		ERROR("\tdlopen failed for %s", path);
 		FREE(path);
 		return NULL;
 	}
@@ -745,7 +740,7 @@ static void *ad_try_dlopen(char const *name, char const *dir, void **handle)
 		return NULL;
 	}
 
-	DEBUG("\tfound in %s\n", dir);
+	DEBUG("\tfound in %s", dir);
 	return symbol;
 }
 
@@ -776,7 +771,7 @@ static void *ad_try_dlopen(char const *name, char const *dir, void **handle)
  * @note argv[0] is really the first argument--if this followed C conventions
  *       for main(), argv[0] would be what's passed here in nm.
  */
-static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char **argv)
+static char *make_ad_search_libs(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
 {
 	char *p, *q, *r;
 	char const *name;
@@ -789,13 +784,13 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 	name = argv[0];
 	while (isspace((int) *name)) name++;
 
-	DEBUG("Searching for symbol %s\n", name);
+	DEBUG("Searching for symbol %s", name);
 
 	if (argc == 1 ) {
 		symbol = dlsym(RTLD_DEFAULT, name);
 		handle = NULL;
 
-		DEBUG("\tSearching in application\n");
+		DEBUG("\tSearching in application");
 
 	} else {
 		unsigned int i;
@@ -872,7 +867,7 @@ static char *make_ad_search_libs(UNUSED char const *nm, unsigned int argc, char 
 	}
 
 	if (!symbol) {
-		DEBUG("\tnot found\n");
+		DEBUG("\tnot found");
 		return NULL;
 	}
 
@@ -894,7 +889,7 @@ found:
 		return p;
 	}
 
-	DEBUG("\tfound symbol '%s' in '%s'\n", argv[0], name);
+	DEBUG("\tfound symbol '%s' in '%s'", argv[0], name);
 
 	/*
 	 *	Convert "libfoo" to "-lfoo"
@@ -992,7 +987,7 @@ found:
  *
  *	@todo - allow multiple filenames?
  */
-static char *make_ad_dump_defines(UNUSED char const *nm, unsigned int argc, char **argv)
+static char *make_ad_dump_defines(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
 {
 	ad_define_t *def;
 	FILE *fp;
@@ -1148,7 +1143,7 @@ static char const *ad_includes_default = \
 "# include <unistd.h>\n"
 "#endif\n";
 
-static char *make_ad_fn_c_try_cpp(UNUSED char const *nm, UNUSED unsigned int argc, char **argv)
+static char *make_ad_fn_c_try_cpp(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, char **argv)
 {
 	char *result;
 
@@ -1161,7 +1156,7 @@ static char *make_ad_fn_c_try_cpp(UNUSED char const *nm, UNUSED unsigned int arg
 /*
  *	filename, include [, includes ]
  */
-static char *make_ad_fn_c_check_header_compile(UNUSED char const *nm, unsigned int argc, char **argv)
+static char *make_ad_fn_c_check_header_compile(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
 {
 	unsigned int i;
 	char *result;

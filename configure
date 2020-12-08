@@ -679,6 +679,7 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+LIBRARY_EXT
 TARGET_SYSTEM
 target_os
 target_vendor
@@ -3178,6 +3179,19 @@ test -n "$target_alias" &&
   program_prefix=${target_alias}-
 
 TARGET_SYSTEM="$target"
+
+
+case "$target" in
+  *-darwin*)
+    library_ext="dylib"
+    ;;
+
+  *)
+    library_ext="so"
+    ;;
+esac
+
+LIBRARY_EXT="$library_ext"
 
 
 ac_ext=c
