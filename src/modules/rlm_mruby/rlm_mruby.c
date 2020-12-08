@@ -397,7 +397,8 @@ static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mr
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) do_mruby(request_t *request, rlm_mruby_t const *inst, char const *function_name)
+static unlang_action_t CC_HINT(nonnull) do_mruby(rlm_rcode_t *p_result, request_t *request, rlm_mruby_t const *inst,
+						 char const *function_name)
 {
 	mrb_state *mrb = inst->mrb;
 	mrb_value mruby_request, mruby_result;
@@ -424,7 +425,7 @@ DIAG_ON(class-varargs)
 	switch (mrb_type(mruby_result)) {
 		/* If it is a Fixnum: return that value */
 		case MRB_TT_FIXNUM:
-			return (rlm_rcode_t)mrb_int(mrb, mruby_result);
+			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
 
 		case MRB_TT_ARRAY:
 			/* Must have exactly three items */
@@ -450,7 +451,7 @@ DIAG_ON(class-varargs)
 
 			add_vp_tuple(request->reply, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), function_name);
 			add_vp_tuple(request, request, &request->control_pairs, mrb, mrb_ary_entry(mruby_result, 2), function_name);
-			return (rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0));
+			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0)));
 
 		default:
 			/* Invalid return type */
@@ -462,7 +463,8 @@ DIAG_ON(class-varargs)
 
 #define RLM_MRUBY_FUNC(foo) static unlang_action_t CC_HINT(nonnull) mod_##foo(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
-		return do_mruby(request,	\
+		return do_mruby(p_result, \
+			       request,	\
 			       (rlm_mruby_t const *)mctx->instance, \
 			       #foo); \
 	}
