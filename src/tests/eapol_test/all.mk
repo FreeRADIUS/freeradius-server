@@ -57,7 +57,16 @@ EAP_TARGETS      := $(filter rlm_eap_%,$(ALL_TGTS))
 EAP_TYPES_LIST   := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 EAP_TYPES        := $(filter-out $(IGNORED_EAP_TYPES),$(EAP_TYPES_LIST))
 EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
-EAPOL_OK_FILES  := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
+EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
+
+#
+#  Add rules so that we can run individual tests for each EAP method.
+#
+define ADD_TEST_EAP
+test.eap.${1}: $(OUTPUT)/${1}.ok
+endef
+$(foreach x,$(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)),$(eval $(call ADD_TEST_EAP,$x)))
+
 
 #
 #  Generic rules to start / stop the radius service.
