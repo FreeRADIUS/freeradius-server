@@ -237,6 +237,8 @@ typedef struct {
 
 	int			tls_require_cert;	//!< OpenLDAP constant representing the require cert string.
 
+	char const		*tls_min_version_str;		//!< Minimum TLS version
+	int			tls_min_version;
 
 	/*
 	 *	For keep-alives.

@@ -742,10 +742,16 @@ ldap {
 		#  | 'demand' | fail if the certificate does not verify.
 		#  | 'hard'   | similar to 'demand' but fails if TLS cannot negotiate.
 		#  |===
- 		#
+		#
 		#  NOTE: The default is libldap's default, which varies based on the contents of `ldap.conf`.
 		#
 #		require_cert = 'demand'
+
+		#
+		#  Minimum TLS version to accept. We STRONGLY recommend
+		#  setting this to "1.2"
+		#
+#		tls_min_version = "1.2"
 	}
 
 	#
