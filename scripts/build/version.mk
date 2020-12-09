@@ -1,6 +1,9 @@
 TARGET 		:= libfreeradius-make-version.a
 SOURCES		:= version.c log.c
 
+TGT_POSTMAKE	:= echo "load ${BUILD_DIR}/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}(version_gmk_setup)" > ${BUILD_DIR}/make/$(notdir $(lastword $(MAKEFILE_LIST)))
+TGT_POSTCLEAN	:= rm -f ${BUILD_DIR}/make/$(notdir $(lastword $(MAKEFILE_LIST)))
+
 #
 #  If we're building this target, then don't try to use it until we know
 #  that building the target succeeds.
