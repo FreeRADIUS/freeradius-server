@@ -38,7 +38,8 @@ jobs:
         echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
         yum install -y epel-release yum-utils
-        yum config-manager --enable PowerTools
+        yum config-manager --enable PowerTools || :
+        yum config-manager --enable powertools || :
 
     - name: Install build dependencies
       run: |
@@ -85,7 +86,8 @@ jobs:
         echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
         yum install -y epel-release yum-utils
-        yum config-manager --enable PowerTools
+        yum config-manager --enable PowerTools || :
+        yum config-manager --enable powertools || :
 
     - name: Load RPMs
       uses: actions/download-artifact@v2
