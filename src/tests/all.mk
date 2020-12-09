@@ -114,7 +114,7 @@ $$(OUTPUT.$(TEST)):
 #
 #  All of the output files depend on the input files
 #
-FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(FILES))
+FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(sort $(FILES)))
 
 #
 #  The output files also depend on the directory
