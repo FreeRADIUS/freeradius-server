@@ -38,6 +38,10 @@ jobs:
         echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
 
+    #
+    #  Required so that the checkout action uses git protocol rather than the GitHub REST API.
+    #  make rpm requires the FR directory to be a git repository.
+    #
     - name: Install recent git
       run: |
         apt-get update
@@ -85,6 +89,14 @@ jobs:
         mv libkqueue/*.deb debs
         mv *.deb debs
 
+    - name: Build eapol_test
+      run: |
+        apt-get install -y libnl-3-dev libnl-genl-3-dev
+        ./configure
+        make -j `nproc` eapol_test
+        mv scripts/ci/eapol_test/eapol_test ../debs
+      working-directory: freeradius
+
     - name: Store DEBs
       uses: actions/upload-artifact@v2
       with:
@@ -116,6 +128,12 @@ jobs:
 
     steps:
 
+    # For pkill
+    - name: Install procps
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends procps
+
     - name: Load DEBs
       uses: actions/download-artifact@v2
       with:
@@ -128,10 +146,67 @@ jobs:
 
     - name: Install DEBs
       run: |
-        apt-get update
         find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y --no-install-recommends
 
-    - name: Startup test
+    - name: Install pre-built eapol_test
+      run: |
+        apt-get install -y libssl1.? libdbus-1-? libnl-3-200 libnl-genl-3-200
+        mv eapol_test /usr/local/bin
+        chmod +x /usr/local/bin/eapol_test
+
+    - name: Config test
       run: |
         freeradius -XC
+        echo 'bill Password.Cleartext := asdf1234' > /etc/freeradius/mods-config/files/authorize
 
+    - name: Start FreeRADIUS
+      run: |
+        freeradius -xx
+
+    - name: PAP auth with package config
+      run: |
+        echo "User-Name=bill, User-Password=asdf1234" | radclient 127.0.0.1 auth testing123
+
+    - name: EAP-TLS auth with package config and certs built on package install
+      run: |
+        echo 'network={'                                           > /eapol_test-eap-tls.conf
+        echo 'key_mgmt=WPA-EAP'                                   >> /eapol_test-eap-tls.conf
+        echo 'eap=TLS'                                            >> /eapol_test-eap-tls.conf
+        echo 'identity="bill"'                                    >> /eapol_test-eap-tls.conf
+        echo 'ca_cert="/etc/freeradius/certs/rsa/ca.pem"'         >> /eapol_test-eap-tls.conf
+        echo 'client_cert="/etc/freeradius/certs/rsa/client.pem"' >> /eapol_test-eap-tls.conf
+        echo 'private_key="/etc/freeradius/certs/rsa/client.key"' >> /eapol_test-eap-tls.conf
+        echo 'private_key_passwd="whatever"'                      >> /eapol_test-eap-tls.conf
+        echo 'eapol_flags=3'                                      >> /eapol_test-eap-tls.conf
+        echo '}'                                                  >> /eapol_test-eap-tls.conf
+        eapol_test -a 127.0.0.1 -s testing123 -c /eapol_test-eap-tls.conf -r 1
+
+    - name: Stop FreeRADIUS
+      run: |
+        pkill freeradius
+
+    #
+    #  We now perform some post-install tests that depend on the availability
+    #  of the source tree
+    #
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Run the post-install test target
+      run: |
+        make -C raddb/certs
+        touch Make.inc
+        mkdir -p build/tests/eapol_test
+        echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
+        make -f scripts/ci/package-test.mk package-test
+      working-directory: freeradius
+
+    - name: Upload radius logs on failure
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: radius-logs-${{ matrix.env.NAME }}.tgz
+        path: |
+          /var/log/freeradius
+          freeradius/build/tests/eapol_test
