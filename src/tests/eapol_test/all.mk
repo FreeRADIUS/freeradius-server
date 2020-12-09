@@ -1,8 +1,29 @@
 #
-#   Only run EAP tests if we have a "test" target
+#  The "build eapol_test" makefile contains only a definition of
+#  EAPOL_TEST, which is where the binary is located.
 #
-ifneq (,$(findstring test,$(MAKECMDGOALS)))
-EAPOL_TEST = $(shell test -e "$(BUILD_DIR)/tests/eapol_test/eapol_test.skip" || $(top_builddir)/scripts/ci/eapol_test-build.sh)
+#  But, we only try to build eapol_test if we're building _any_ tests.
+#
+#  If we're not running tests, OR if EAPOL_TEST isn't defined, then we
+#  skip the rest of these tests.
+#
+ifneq "$(findstring test,$(MAKECMDGOALS))" ""
+$(BUILD_DIR)/tests/eapol_test:
+	@mkdir -p $@
+
+# define where the EAPOL_TEST is located.  If necessary, build it.
+$(BUILD_DIR)/tests/eapol_test/eapol_test.mk: | $(BUILD_DIR)/tests/eapol_test
+	${Q}echo "EAPOL_TEST=" $(shell $(top_srcdir)/scripts/ci/eapol_test-build.sh) > $@
+
+# include the above definition.  If the "mk" file doesn't exist, then the preceding
+# rule will cause it to be build.
+-include $(BUILD_DIR)/tests/eapol_test/eapol_test.mk
+
+#  A helpful target which causes eapol_test to be built, BUT does not run the
+#  "test.eap" targets.
+.PHONY:
+eapol_test:
+	@echo EAPOL_TEST=$(EAPOL_TEST)
 endif
 
 #
@@ -88,20 +109,10 @@ $(TEST): $(EAPOL_OK_FILES)
 	@touch $(BUILD_DIR)/tests/$@
 
 else
-#
-#  Build rules and the make file get evaluated at different times
-#  if we don't touch the test skipped file immediately, users can
-#  cntrl-c out of the build process, and the skip file never gets
-#  created as the test.eap target is evaluated much later in the
-#  build process.
-#
-ifneq (,$(findstring test,$(MAKECMDGOALS)))
-$(shell mkdir -p "$(BUILD_DIR)/tests/eapol_test/" && touch "$(BUILD_DIR)/tests/eapol_test/eapol_test.skip")
-endif
-
 $(TEST):
 	@echo "eapol_test build previously failed, skipping... retry with: $(MAKE) clean.$@ && $(MAKE) $@"
 
-test.eap.clean:
-	${Q}rm -f "$(BUILD_DIR)/tests/eapol_test"
+.PHONY: clean.test.eap
+clean.test.eap:
+	${Q}rm -f $(BUILD_DIR)/tests/eapol_test
 endif
