@@ -106,6 +106,10 @@ static CONF_PARSER tls_config[] = {
 	{ "randfile", FR_CONF_OFFSET(PW_TYPE_FILE_EXISTS | PW_TYPE_DEPRECATED, rlm_ldap_t, tls_random_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_FILE_EXISTS, rlm_ldap_t, tls_random_file), NULL },
 
+#ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
+	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, tls_min_version_str), NULL },
+#endif
+
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
@@ -1185,6 +1189,30 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			      "rebuild this module");
 
 		goto error;
+#endif
+	}
+
+	if (inst->tls_min_version_str) {
+#ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
+		if (strcmp(inst->tls_min_version_str, "1.2") == 0) {
+			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_2;
+
+		} else if (strcmp(inst->tls_min_version_str, "1.1") == 0) {
+			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_1;
+
+		} else if (strcmp(inst->tls_min_version_str, "1.0") == 0) {
+			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_0;
+
+		} else {
+			cf_log_err_cs(conf, "Invalid 'tls.tls_min_version' value \"%s\"", inst->tls_min_version_str);
+			goto error;
+		}
+#else
+		cf_log_err_cs(conf, "This version of libldap does not support tls.tls_min_version."
+			      " Please upgrade or substitute current libldap and "
+			      "rebuild this module");
+		goto error;
+
 #endif
 	}
 
