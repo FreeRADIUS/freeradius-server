@@ -32,16 +32,14 @@ MEMBER		Enterprise-Number			uint32
 MEMBER		Identifier				octets
 
 STRUCT	LL				DUID			3
-MEMBER		Hardware-Type				uint16 key,clone=Client-ID.DUID.LLT.Hardware-Type
+MEMBER		Hardware-Type				uint16 key
+
+#  Sub-struct of Client-ID.LL.Hardware-Type
+STRUCT	Ethernet			Hardware-Type		1
+MEMBER		Address					ether
 
 #
 #  Server-ID is a clone of Client-ID
-#
-#  Note that the cloning happens after all of the DHCPv6 dictionaries
-#  have been loaded.  This delay allows multiple dictionaries to
-#  define sub-structures for Client-ID.  Once all of the
-#  sub-structures have been defined, the Server-ID option can clone
-#  all of those sub-structures.
 #
 ATTRIBUTE	Server-ID				2	struct clone=Client-ID
 
