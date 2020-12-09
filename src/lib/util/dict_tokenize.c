@@ -49,7 +49,7 @@ typedef enum {
 struct dict_fixup_s {
 	char			*filename;		//!< where the "enum" was defined
 	int			line;			//!< ditto
-	dict_fixup_t		*next;			//!< Next in the linked list of fixups.
+	fr_dlist_t		entry;			//!< linked list of fixups
 	dict_fixup_type_t	type;			//!< type of the fixup
 
 	fr_dict_attr_t const   	*parent;		//!< Parent namespace.
@@ -96,7 +96,7 @@ typedef struct {
 
 	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
 
-	dict_fixup_t		*fixups;		//! various fixups
+	fr_dlist_head_t		fixups;			//! various fixups
 
 	fr_dict_attr_t		*ext_fixup;		//!< Head of a list of attributes to apply fixups to.
 } dict_tokenize_ctx_t;
@@ -200,8 +200,15 @@ static dict_fixup_t *dict_fixup_alloc(dict_tokenize_ctx_t *ctx, dict_fixup_type_
 	}
 	fixup->line = ctx->stack[ctx->stack_depth].line;
 
-	fixup->next = ctx->fixups;
-	ctx->fixups = fixup;
+	/*
+	 *	Do ENUMs before CLONE.
+	 */
+	if (type == DICT_FIXUP_ENUM) {
+		fr_dlist_insert_head(&ctx->fixups, fixup);
+	} else {
+		fr_dlist_insert_tail(&ctx->fixups, fixup);
+	}
+
 
 	return fixup;
 }
@@ -1696,11 +1703,11 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 
 static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 {
-	dict_fixup_t *fixup, *next;
+	dict_fixup_t *fixup;
 
-	for (fixup = ctx->fixups; fixup != NULL; fixup = next) {
-		next = fixup->next;
-
+	for (fixup = fr_dlist_head(&ctx->fixups);
+	     fixup != NULL;
+	     fixup = fr_dlist_next(&ctx->fixups, fixup)) {
 		switch (fixup->type) {
 		case DICT_FIXUP_ENUM: {
 			fr_dict_attr_t *da;
@@ -1853,7 +1860,7 @@ static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
 
 		} /* switch over fixup type */
 	}	  /* loop over fixups */
-	ctx->fixups = NULL;
+	fr_dlist_init(&ctx->fixups, dict_fixup_t, entry);
 
 	if (ctx->ext_fixup) {
 		fr_dict_attr_t *da;
@@ -2271,7 +2278,10 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *
 			 *	@todo - make a nested ctx?
 			 */
-			if (!ctx->fixup_pool) ctx->fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
+			if (!ctx->fixup_pool) {
+				ctx->fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
+				fr_dlist_init(&ctx->fixups, dict_fixup_t, entry);
+			}
 
 
 			// check if there's a linked library for the
@@ -2621,6 +2631,7 @@ static int dict_from_file(fr_dict_t *dict,
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
 	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
+	fr_dlist_init(&ctx.fixups, dict_fixup_t, entry);
 	ctx.stack[0].dict = dict;
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
