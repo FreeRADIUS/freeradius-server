@@ -32,7 +32,7 @@
 /*
  *	The only exported symbol
  */
-int libfreeradius_gmk_setup(void);
+int version_gmk_setup(void);
 
 /*
  * GNU make insists on this in a loadable object.
@@ -192,7 +192,7 @@ static char *make_version_eq(char const *nm, unsigned int argc, char **argv)
 
 	return bool_to_str(res);
 }
-int libfreeradius_gmk_setup(void)
+int version_gmk_setup(void)
 {
 	gmk_add_function("version_gt", &make_version_gt, 2, 2, 0); /* min 1, max 1, please expand the input string */
 	gmk_add_function("version_lt", &make_version_lt, 2, 2, 0); /* min 1, max 1, please expand the input string */
