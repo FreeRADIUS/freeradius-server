@@ -692,6 +692,8 @@ ifneq "${CPPCHECK}" ""
 CHECKFLAGS := -DCPPCHECK $(filter -isystem%,$(CPPFLAGS) $(CFLAGS)) $(filter -I%,$(CPPFLAGS) $(CFLAGS)) $(filter -D%,$(CPPFLAGS) $(CFLAGS))
 endif
 
+$(eval $(call INCLUDE_SUBMAKEFILE,${top_builddir}/scripts/build/all.mk))
+
 # Include the main user-supplied submakefile. This also recursively includes
 # all other user-supplied submakefiles.
 $(eval $(call INCLUDE_SUBMAKEFILE,${top_builddir}/main.mk))
