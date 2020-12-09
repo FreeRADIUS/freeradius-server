@@ -255,7 +255,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
 	 */
-	if (p_value == Py_None) return;
+	if (!p_value || p_value == Py_None) return;
 
 	if (!PyTuple_CheckExact(p_value)) {
 		ERROR("%s - non-tuple passed to %s", funcname, list_name);
