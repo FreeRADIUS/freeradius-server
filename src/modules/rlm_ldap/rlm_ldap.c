@@ -73,6 +73,10 @@ static CONF_PARSER tls_config[] = {
 
 	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_config_t, tls_require_cert_str) },
 
+#ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
+	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_STRING, fr_ldap_config_t, tls_min_version_str) },
+#endif
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1978,6 +1982,30 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			      "rebuild this module");
 
 		goto error;
+#endif
+	}
+
+if (inst->handle_config.tls_min_version_str) {
+#ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
+		if (strcmp(inst->handle_config.tls_min_version_str, "1.2") == 0) {
+			inst->handle_config.tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_2;
+
+		} else if (strcmp(inst->handle_config.tls_min_version_str, "1.1") == 0) {
+			inst->handle_config.tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_1;
+
+		} else if (strcmp(inst->handle_config.tls_min_version_str, "1.0") == 0) {
+			inst->handle_config.tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_0;
+
+		} else {
+			cf_log_err(conf, "Invalid 'tls.tls_min_version' value \"%s\"", inst->handle_config.tls_min_version_str);
+			goto error;
+		}
+#else
+		cf_log_err(conf, "This version of libldap does not support tls.tls_min_version."
+			      " Please upgrade or substitute current libldap and "
+			      "rebuild this module");
+		goto error;
+
 #endif
 	}
 
