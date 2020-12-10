@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+User-Name = "bob"
+User-Password = "hello"
+NAS-Identifier = "from-client"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+NAS-Identifier == "Farofa"
+Reply-Message == "Handled by rlm_python"
