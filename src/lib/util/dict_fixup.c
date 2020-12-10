@@ -531,18 +531,16 @@ static int _dict_attr_fixup_hash_tables(fr_dict_attr_t const *da, UNUSED void *u
 
 		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 		if (ext) {
-			fr_hash_table_fill(ext->value_by_name);
-			fr_hash_table_fill(ext->name_by_value);
+			if (ext->value_by_name) fr_hash_table_fill(ext->value_by_name);
+			if (ext->name_by_value) fr_hash_table_fill(ext->name_by_value);
 		}
 	}
 
 	{
-		fr_dict_attr_ext_namespace_t *ext;
+		fr_hash_table_t	*hash;
 
-		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_NAMESPACE);
-		if (ext) {
-			fr_hash_table_fill(ext->namespace);
-		}
+		hash = dict_attr_namespace(da);
+		if (hash) fr_hash_table_fill(hash);
 	}
 
 	return 0;
