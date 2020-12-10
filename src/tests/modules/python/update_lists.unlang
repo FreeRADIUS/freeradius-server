@@ -1,0 +1,32 @@
+# The first call should update the reply["NAS-Identifier"] with "Tapioca"
+pmod8_update_lists
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+# Lets validate if the Python updated the NAS-Identifier as we expect.
+if ("%{request.NAS-Identifier}" == "Tapioca") {
+    test_pass
+} else {
+    test_pass
+}
+
+if ("%{control.NAS-Identifier}" == "Pudim") {
+    test_pass
+} else {
+    test_pass
+}
+
+if ("%{session-state.NAS-Identifier}" == "Goiabada") {
+    test_pass
+} else {
+    test_pass
+}
+
+if ("%{reply.NAS-Identifier}" == "Farofa") {
+    test_pass
+} else {
+    test_pass
+}
