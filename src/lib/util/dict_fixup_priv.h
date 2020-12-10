@@ -34,12 +34,7 @@ typedef struct {
 	fr_dlist_head_t		enumv;		//!< Raw enumeration values to add.
 	fr_dlist_head_t		group;		//!< Group references to resolve.
 	fr_dlist_head_t		clone;		//!< Clone operation to apply.
-	fr_dlist_head_t		hash;		//!< Hash tables to finalise.
 } dict_fixup_ctx_t;
-
-int	dict_fixup_enumv_hash(dict_fixup_ctx_t *fctx, char const *filename, int line, fr_dict_attr_t *da);
-
-int	dict_fixup_namespace_hash(dict_fixup_ctx_t *fctx, char const *filename, int line, fr_dict_attr_t *da);
 
 int	dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
 			 char const *attr, size_t attr_len,
@@ -57,3 +52,5 @@ int	dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 int	dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx);
 
 int	dict_fixup_apply(dict_fixup_ctx_t *fctx);
+
+void	dict_hash_tables_finalise(fr_dict_t *dict);

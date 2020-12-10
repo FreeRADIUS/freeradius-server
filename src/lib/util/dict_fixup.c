@@ -106,89 +106,6 @@ static CC_HINT(always_inline) int dict_fixup_common(char const *filename, int li
 	return 0;
 }
 
-/** Fixup the hash table associated with an attribute
- *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] filename		this fixup relates to.
- * @param[in] line		this fixup relates to.
- * @param[in] hash		The hash table to fixup
- *				either a namespace or enumv.
- * @return
- *	- 0 on success.
- *	- -1 on out of memory.
- */
-static int dict_fixup_hash(dict_fixup_ctx_t *fctx, char const *filename, int line, fr_hash_table_t *hash)
-{
-	dict_fixup_hash_t *fixup;
-
-	fixup = talloc(fctx->pool, dict_fixup_hash_t);
-	if (!fixup) {
-		fr_strerror_printf("Out of memory");
-		return -1;
-	}
-	*fixup = (dict_fixup_hash_t) {
-		.hash = hash
-	};
-
-	return dict_fixup_common(filename, line, &fctx->hash, &fixup->common);
-}
-
-/** Fixup the enumv hash tables associated with an attribute
- *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] filename		this fixup relates to.
- * @param[in] line		this fixup relates to.
- * @param[in] da		Containing the enumv to fix.
- * @return
- *	- 0 on success.
- *	- -1 on out of memory.
- */
-int dict_fixup_enumv_hash(dict_fixup_ctx_t *fctx, char const *filename, int line, fr_dict_attr_t *da)
-{
-	fr_dict_attr_ext_enumv_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
-	if (ext) {
-		if (dict_fixup_hash(fctx, filename, line, ext->value_by_name) < 0) return -1;
-		if (dict_fixup_hash(fctx, filename, line, ext->name_by_value) < 0) return -1;
-	}
-
-	return 0;
-}
-
-/** Fixup the namespace hash table associated
- *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] filename		this fixup relates to.
- * @param[in] line		this fixup relates to.
- * @param[in] da		Containing the namespace to fix.
- * @return
- *	- 0 on success.
- *	- -1 on out of memory.
- */
-int dict_fixup_namespace_hash(dict_fixup_ctx_t *fctx, char const *filename, int line, fr_dict_attr_t *da)
-{
-	fr_dict_attr_ext_namespace_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_NAMESPACE);
-	if (ext && (dict_fixup_hash(fctx, filename, line, ext->namespace) < 0)) return -1;
-
-	return 0;
-}
-
-/** Fill all buckets in a hash table to make it suitable for threaded access
- *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] fixup		Hash table to fill.
- * @return 0
- */
-static CC_HINT(always_inline) int dict_fixup_hash_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_hash_t *fixup)
-{
-	fr_hash_table_fill(fixup->hash);
-
-	return 0;
-}
-
 /** Add an enumeration value to an attribute which has not yet been defined
  *
  * @param[in] fctx		Holds current dictionary parsing information.
@@ -239,7 +156,7 @@ int dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static CC_HINT(always_inline) int dict_fixup_enumv_apply(dict_fixup_ctx_t *fctx, dict_fixup_enumv_t *fixup)
+static CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_enumv_t *fixup)
 {
 	fr_dict_attr_t 		*da;
 	fr_value_box_t		value;
@@ -268,8 +185,6 @@ static CC_HINT(always_inline) int dict_fixup_enumv_apply(dict_fixup_ctx_t *fctx,
 	fr_value_box_clear(&value);
 
 	if (ret < 0) return -1;
-
-	if (dict_fixup_enumv_hash(fctx, fixup->common.filename, fixup->common.line, da) < 0) return -1;
 
 	return 0;
 }
@@ -475,29 +390,6 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 	return dict_fixup_common(filename, line, &fctx->clone, &fixup->common);
 }
 
-typedef struct {
-	dict_fixup_ctx_t	*fctx;
-	dict_fixup_clone_t	*fixup;
-} dict_attr_fixup_uctx_t;
-
-/** Add the child attributes to the namespace list to fixup
- *
- */
-static int _dict_attr_fixup_namespace(fr_dict_attr_t const *da, void *uctx)
-{
-	dict_attr_fixup_uctx_t	*fixup_uctx = uctx;
-
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		return dict_fixup_namespace_hash(fixup_uctx->fctx,
-					  	 fixup_uctx->fixup->common.filename,
-					  	 fixup_uctx->fixup->common.line,
-					  	 fr_dict_attr_unconst(fixup_uctx->fixup->da));
-	default:
-		return 0;
-	}
-}
-
 /** Clone one are of a tree into another
  *
  * @param[in] fctx		Holds current dictionary parsing information.
@@ -506,7 +398,7 @@ static int _dict_attr_fixup_namespace(fr_dict_attr_t const *da, void *uctx)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static CC_HINT(always_inline) int dict_fixup_clone_apply(dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
+static CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
 {
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t		*cloned;
@@ -543,7 +435,6 @@ static CC_HINT(always_inline) int dict_fixup_clone_apply(dict_fixup_ctx_t *fctx,
 
 	cloned->attr = fixup->da->attr;
 	cloned->parent = fixup->parent; /* we need to re-parent this attribute */
-	dict_fixup_namespace_hash(fctx, fixup->common.filename, fixup->common.line, cloned);
 
 	/*
 	 *	Copy any pre-existing children over.
@@ -571,12 +462,7 @@ static CC_HINT(always_inline) int dict_fixup_clone_apply(dict_fixup_ctx_t *fctx,
 
 	if (dict_attr_add_to_namespace(dict, fixup->parent, cloned) < 0) return -1;
 
-	/*
-	 *	Add all the structural children to the
-	 *	namespace fixup table.
-	 */
-	return fr_dict_walk(cloned, _dict_attr_fixup_namespace,
-			    &(dict_attr_fixup_uctx_t){ .fctx = fctx, .fixup = fixup });
+	return 0;
 }
 
 /** Initialise a fixup ctx
@@ -594,7 +480,6 @@ int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
 	fr_dlist_talloc_init(&fctx->enumv, dict_fixup_enumv_t, common.entry);
 	fr_dlist_talloc_init(&fctx->group, dict_fixup_group_t, common.entry);
 	fr_dlist_talloc_init(&fctx->clone, dict_fixup_clone_t, common.entry);
-	fr_dlist_talloc_init(&fctx->hash, dict_fixup_hash_t, common.entry);
 
 	fctx->pool = talloc_pool(ctx, DICT_FIXUP_POOL_SIZE);
 	if (!fctx->pool) return -1;
@@ -630,9 +515,57 @@ do { \
 	APPLY_FIXUP(fctx, enumv, dict_fixup_enumv_apply, dict_fixup_enumv_t);
 	APPLY_FIXUP(fctx, group, dict_fixup_group_apply, dict_fixup_group_t);
 	APPLY_FIXUP(fctx, clone, dict_fixup_clone_apply, dict_fixup_clone_t);
-	APPLY_FIXUP(fctx, hash, dict_fixup_hash_apply, dict_fixup_hash_t);
 
 	TALLOC_FREE(fctx->pool);
 
 	return 0;
+}
+
+/** Fixup all hash tables in the dictionary so they're suitable for threaded access
+ *
+ */
+static int _dict_attr_fixup_hash_tables(fr_dict_attr_t const *da, UNUSED void *uctx)
+{
+	{
+		fr_dict_attr_ext_enumv_t *ext;
+
+		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+		if (ext) {
+			fr_hash_table_fill(ext->value_by_name);
+			fr_hash_table_fill(ext->name_by_value);
+		}
+	}
+
+	{
+		fr_dict_attr_ext_namespace_t *ext;
+
+		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_NAMESPACE);
+		if (ext) {
+			fr_hash_table_fill(ext->namespace);
+		}
+	}
+
+	return 0;
+}
+
+/** Walk a dictionary finalising the hash tables in all attributes with a distinct namespace
+ *
+ * @param[in] dict	to finalise namespaces for.
+ */
+void dict_hash_tables_finalise(fr_dict_t *dict)
+{
+	fr_dict_attr_t *root = fr_dict_attr_unconst(fr_dict_root(dict));
+
+	(void)_dict_attr_fixup_hash_tables(root, NULL);
+
+	fr_dict_walk(root, _dict_attr_fixup_hash_tables, NULL);
+
+	/*
+	 *	Walk over all of the hash tables to ensure they're
+	 *	initialized.  We do this because the threads may perform
+	 *	lookups, and we don't want multi-threaded re-ordering
+	 *	of the table entries.  That would be bad.
+	 */
+	fr_hash_table_fill(dict->vendors_by_name);
+	fr_hash_table_fill(dict->vendors_by_num);
 }

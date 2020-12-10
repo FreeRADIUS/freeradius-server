@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/hash.h>
@@ -3408,9 +3409,15 @@ void fr_dict_global_read_only(void)
 	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
+	     	dict_hash_tables_finalise(dict);
 		talloc_set_memlimit(dict, talloc_get_size(dict));
 		dict->read_only = true;
 	}
+
+	dict = dict_gctx->internal;
+	dict_hash_tables_finalise(dict);
+	talloc_set_memlimit(dict, talloc_get_size(dict));
+	dict->read_only = true;
 
 	talloc_set_memlimit(dict_gctx, talloc_get_size(dict_gctx));
 	dict_gctx->read_only = true;

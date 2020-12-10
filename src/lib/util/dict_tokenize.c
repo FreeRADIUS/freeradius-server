@@ -1123,9 +1123,6 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	}
 	fr_value_box_clear(&value);
 
-	if (dict_fixup_enumv_hash(&ctx->fixup,
-				  CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line, da) < 0) return -1;
-
 	return 0;
 }
 
@@ -1272,10 +1269,6 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 		return -1;
 	}
 	fr_value_box_clear(&value);
-
-	if (dict_fixup_enumv_hash(&ctx->fixup,
-				  CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
-				  fr_dict_attr_unconst(da)) < 0) return -1;
 
 	return 0;
 }
@@ -1537,15 +1530,6 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 static int dict_finalise(dict_tokenize_ctx_t *ctx)
 {
 	if (dict_fixup_apply(&ctx->fixup) < 0) return -1;
-
-	/*
-	 *	Walk over all of the hash tables to ensure they're
-	 *	initialized.  We do this because the threads may perform
-	 *	lookups, and we don't want multi-threaded re-ordering
-	 *	of the table entries.  That would be bad.
-	 */
-	fr_hash_table_fill(ctx->dict->vendors_by_name);
-	fr_hash_table_fill(ctx->dict->vendors_by_num);
 
 	ctx->value_attr = NULL;
 	ctx->relative_attr = NULL;
