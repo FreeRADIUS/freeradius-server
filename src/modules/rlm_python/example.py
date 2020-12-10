@@ -7,6 +7,18 @@
 
 import radiusd
 
+#
+# Print out the p["request"], p["control"], p["reply"] and p["session-state"]
+#
+def radius_dump_list(p):
+  print("# Dump lists")
+  for _l in p:
+    list_keys = p[_l]
+    print("  list: '{}'".format(_l))
+    if not list_keys is None:
+      for k, v in list_keys:
+        print("     attr='{}', value='{}'".format(k, v))
+
 def instantiate(p):
   print("*** instantiate ***")
   print(p)
@@ -16,48 +28,59 @@ def authorize(p):
   print("*** authorize ***")
   print("")
   radiusd.log(radiusd.L_INFO, '*** log call in authorize ***')
-  print("")
-  print(p)
-  print("")
+  radius_dump_list(p)
+  print("# Print radiusd.config")
   print(radiusd.config)
   print("")
+  #
+  # Dictionary representing changes we want to make to the different VPS
+  #
+#  update_dict = {
+#    "request": (
+#      ("NAS-Identifier", "python-script"),
+#    ),
+#    "reply": (
+#     ("Reply-Message", "Handled by rlm_python"),
+#    ),
+#  }
+#  return radiusd.RLM_MODULE_OK, update_dict
   return radiusd.RLM_MODULE_OK
 
 def preacct(p):
   print("*** preacct ***")
-  print(p)
+  radius_dump_list(p)
   return radiusd.RLM_MODULE_OK
 
 def accounting(p):
   print("*** accounting ***")
   radiusd.log(radiusd.L_INFO, '*** log call in accounting (0) ***')
   print("")
-  print(p)
+  radius_dump_list(p)
   return radiusd.RLM_MODULE_OK
 
 def pre_proxy(p):
   print("*** pre_proxy ***")
-  print(p)
+  radius_dump_list(p)
   return radiusd.RLM_MODULE_OK
 
 def post_proxy(p):
   print("*** post_proxy ***")
-  print(p)
+  radius_dump_list(p)
   return radiusd.RLM_MODULE_OK
 
 def post_auth(p):
   print("*** post_auth ***")
-  print(p)
+  radius_dump_list(p)
   return radiusd.RLM_MODULE_OK
 
 def recv_coa(p):
   print("*** recv_coa ***")
-  print(p)
+  radius_dump_list(p)
   return radiusd.RLM_MODULE_OK
 
 def send_coa(p):
   print("*** send_coa ***")
-  print(p)
+  radius_dump_list(p)
   return radiusd.RLM_MODULE_OK
 
 def detach():
