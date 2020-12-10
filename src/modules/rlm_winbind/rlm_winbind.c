@@ -76,7 +76,7 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *
  * @param instance	Instance of this module
  * @param request	The current request
- * @param req		The request list
+ * @param request_list	The request list
  * @param check		Value pair containing group to be searched
  * @param check_list	Unknown
  *
@@ -84,8 +84,8 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_t *req, fr_pair_t *check,
-			     UNUSED fr_pair_t *check_list)
+static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t *check,
+			     UNUSED fr_pair_list_t *check_list)
 {
 	rlm_winbind_t		*inst = instance;
 	int			ret = 1;

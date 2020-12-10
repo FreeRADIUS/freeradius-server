@@ -174,6 +174,16 @@ void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected
 				fr_pair_list_t *  : NULL, \
 				default		  : (fr_pair_list_t *) NULL))
 
+/*
+ *  Temporary macro to point the head of a pair_list to a specific vp
+ */
+#define fr_pair_list_set_head(_list, _vp) (_list = &_vp)
+
+/*
+ *  Temporary macro to point a pair_list to a single vp
+ */
+#define	fr_pair_list_single_value(_list, _vp) (_list = &_vp)
+
 /* Allocation and management */
 fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx);
 
@@ -234,7 +244,7 @@ static inline fr_pair_t *fr_cursor_iter_by_ancestor_init(fr_cursor_t *cursor,
 /**
  * @hidecallergraph
  */
-fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
+fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t const *head, fr_dict_attr_t const *da);
 
 fr_pair_t	*fr_pair_find_by_num(fr_pair_list_t *head, unsigned int vendor, unsigned int attr);
 

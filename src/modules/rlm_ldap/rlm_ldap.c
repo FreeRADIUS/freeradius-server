@@ -586,15 +586,15 @@ free_urldesc:
  *
  * @param instance of the rlm_ldap module.
  * @param request Current request.
- * @param thing Unknown.
+ * @param request_list Unknown.
  * @param check Which group to check for user membership.
  * @param check_list Unknown.
  * @return
  *	- 1 on failure (or if the user is not a member).
  *	- 0 on success.
  */
-static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_t *thing, fr_pair_t *check,
-			     UNUSED fr_pair_t *check_list)
+static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t *check,
+			     UNUSED fr_pair_list_t *check_list)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
 	rlm_rcode_t		rcode;

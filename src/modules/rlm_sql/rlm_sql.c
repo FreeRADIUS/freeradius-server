@@ -145,10 +145,10 @@ static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t out
 /*
  *	Fall-Through checking function from rlm_files.c
  */
-static sql_fall_through_t fall_through(fr_pair_t *vp)
+static sql_fall_through_t fall_through(fr_pair_list_t *vps)
 {
 	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(&vp, attr_fall_through);
+	tmp = fr_pair_find_by_da(vps, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
 }
@@ -275,12 +275,15 @@ finish:
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
+static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				   request_t *request, map_t const *map, void *uctx)
 {
 	fr_pair_t	*vp;
 	char const	*value = uctx;
+	fr_cursor_t	cursor;
 
+	fr_pair_list_init(out);
+	fr_cursor_init(&cursor, out);
 	vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs));
 	if (!vp) return -1;
 
@@ -297,7 +300,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_t **out,
 	}
 
 	vp->op = map->op;
-	*out = vp;
+	fr_cursor_append(&cursor, vp);
 
 	return 0;
 }
@@ -728,11 +731,11 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
  * The group membership query should only return one element which is the username. The returned
  * username will then be checked with the passed check string.
  */
-static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_t *request_vp,
-			fr_pair_t *check, UNUSED fr_pair_t *check_list) CC_HINT(nonnull (1, 2, 4));
+static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list,
+			fr_pair_t *check, UNUSED fr_pair_list_t *check_list) CC_HINT(nonnull (1, 2, 4));
 
-static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_t *request_vp,
-			fr_pair_t *check, UNUSED fr_pair_t *check_list)
+static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list,
+			fr_pair_t *check, UNUSED fr_pair_list_t *check_list)
 {
 	rlm_sql_handle_t	*handle;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
@@ -881,7 +884,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			 *	process the reply rows
 			 */
 			if ((rows > 0) &&
-			    (paircmp(request, request->request_pairs, check_tmp) != 0)) {
+			    (paircmp(request, &request->request_pairs, &check_tmp) != 0)) {
 				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
@@ -904,7 +907,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			 	RDEBUG2("&%pP", vp);
 			}
 			REXDENT();
-			radius_pairmove(request, &request->control_pairs, check_tmp, true);
+			radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
 			fr_pair_list_init(&check_tmp);
 		}
@@ -937,14 +940,14 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			}
 
 			fr_assert(reply_tmp != NULL); /* coverity, among others */
-			*do_fall_through = fall_through(reply_tmp);
+			*do_fall_through = fall_through(&reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
 			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_UPDATED;
 
-			log_request_pair_list(L_DBG_LVL_2, request, NULL, reply_tmp, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
-			radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
+			radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
 			fr_pair_list_init(&reply_tmp);
 		/*
 		 *	If there's no reply query configured, then we assume
@@ -1266,7 +1269,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (paircmp(request, request->request_pairs, check_tmp) != 0) {
+		if (paircmp(request, &request->request_pairs, &check_tmp) != 0) {
 			fr_pair_list_free(&check_tmp);
 			check_tmp = NULL;
 			goto skip_reply;
@@ -1281,7 +1284,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			RDEBUG2("&%pP", vp);
 		}
 		REXDENT();
-		radius_pairmove(request, &request->control_pairs, check_tmp, true);
+		radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
 		rcode = RLM_MODULE_OK;
 		check_tmp = NULL;
@@ -1311,14 +1314,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 		if (rows == 0) goto skip_reply;
 
-		do_fall_through = fall_through(reply_tmp);
+		do_fall_through = fall_through(&reply_tmp);
 
 		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
 
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, reply_tmp, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
-		radius_pairmove(request, &request->reply_pairs, reply_tmp, true);
+		radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
 
 		rcode = RLM_MODULE_OK;
 		reply_tmp = NULL;

@@ -470,7 +470,7 @@ char const	*fr_ldap_edir_errstr(int code);
 /*
  *	map.c - Attribute mapping code.
  */
-int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
+int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 				     map_t const *map, void *uctx);
 
 int		fr_ldap_map_verify(map_t *map, void *instance);

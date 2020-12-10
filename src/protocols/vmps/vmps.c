@@ -569,11 +569,11 @@ fr_test_point_proto_decode_t vmps_tp_decode_proto = {
 /*
  *	Test points for protocol encode
  */
-static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	fr_cursor_t cursor;
 
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_vmps, fr_pair_t);
+	fr_cursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_vmps, fr_pair_t);
 
 	return fr_vmps_encode(&FR_DBUFF_TMP(data, data_len), NULL, -1, -1, &cursor);
 }

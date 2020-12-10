@@ -349,12 +349,12 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 					       mod_value_pair_to_json_object(request, vp));
 		}
 		/* check start timestamp and adjust if needed */
-		mod_ensure_start_timestamp(cookie->jobj, request->request_pairs);
+		mod_ensure_start_timestamp(cookie->jobj, &request->request_pairs);
 		break;
 
 	case FR_STATUS_ALIVE:
 		/* check start timestamp and adjust if needed */
-		mod_ensure_start_timestamp(cookie->jobj, request->request_pairs);
+		mod_ensure_start_timestamp(cookie->jobj, &request->request_pairs);
 		break;
 
 	default:

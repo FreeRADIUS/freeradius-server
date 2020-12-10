@@ -42,7 +42,7 @@ RCSID("$Id$")
  *	only fr_pair_list_copy() those attributes that we're really going to
  *	use.
  */
-void radius_pairmove(request_t *request, fr_pair_t **to, fr_pair_t *from, bool do_xlat)
+void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *from, bool do_xlat)
 {
 	int		i, j, count, from_count, to_count, tailto;
 	fr_cursor_t	cursor;
@@ -75,7 +75,7 @@ void radius_pairmove(request_t *request, fr_pair_t **to, fr_pair_t *from, bool d
 	 *	the matching attributes are deleted.
 	 */
 	count = 0;
-	for (vp = fr_cursor_init(&cursor, &from); vp; vp = fr_cursor_next(&cursor)) count++;
+	for (vp = fr_cursor_init(&cursor, from); vp; vp = fr_cursor_next(&cursor)) count++;
 	from_list = talloc_array(request, fr_pair_t *, count);
 
 	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
@@ -89,7 +89,7 @@ void radius_pairmove(request_t *request, fr_pair_t **to, fr_pair_t *from, bool d
 	 *	chains.
 	 */
 	from_count = 0;
-	for (vp = from; vp != NULL; vp = next) {
+	for (vp = *from; vp != NULL; vp = next) {
 		next = vp->next;
 		from_list[from_count++] = vp;
 		vp->next = NULL;

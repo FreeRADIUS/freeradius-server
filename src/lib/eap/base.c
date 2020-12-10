@@ -279,7 +279,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
  * NOTE: Sometimes Framed-MTU might contain the length of EAP-Message,
  *      refer fragmentation in rfc2869.
  */
-eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_t *vps)
+eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 {
 	fr_pair_t		*vp;
 	eap_packet_raw_t	*eap_packet;
@@ -291,7 +291,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_t *vps)
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	vp = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_message);
+	vp = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_message);
 	if (!vp) {
 		fr_strerror_printf("EAP-Message not found");
 		return NULL;

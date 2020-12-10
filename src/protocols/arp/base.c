@@ -141,7 +141,7 @@ int fr_arp_entry_add(UNUSED int fd, UNUSED char const *interface,
 /** Encode VPS into a raw ARP packet.
  *
  */
-ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_t *vps)
+ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t *vps)
 {
 	ssize_t			slen;
 	fr_pair_t		*vp;
@@ -150,7 +150,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_t *vps
 	fr_da_stack_t		da_stack;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	if (!vps) {
+	if (!*vps) {
 		fr_strerror_printf("Cannot encode empty packet");
 		return -1;
 	}
@@ -158,7 +158,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_t *vps
 	/*
 	 *	Find the first attribute which is parented by ARP-Packet.
 	 */
-	for (vp = fr_cursor_init(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da->parent == attr_arp_packet) break;
@@ -330,7 +330,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
  *	Because ARP has no TLVs, we don't have test points for pair
  *	encode / decode.
  */
-static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_arp_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	return fr_arp_encode(&FR_DBUFF_TMP(data, data_len), NULL, vps);
 }

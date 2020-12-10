@@ -58,7 +58,7 @@ typedef void (*fr_unlang_tmpl_signal_t)(request_t *request, void *rctx, fr_state
 typedef rlm_rcode_t (*fr_unlang_tmpl_resume_t)(request_t *request, void *rctx);
 
 int		unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out,
-				 request_t *request, tmpl_t const *tmpl, fr_pair_t *vps, int *status)
+				 request_t *request, tmpl_t const *tmpl, fr_pair_list_t *vps, int *status)
 		CC_HINT(warn_unused_result);
 
 #ifdef __cplusplus

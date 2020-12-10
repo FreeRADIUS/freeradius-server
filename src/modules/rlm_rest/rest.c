@@ -546,7 +546,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	fr_assert(freespace > 0);
 
 	if (ctx->state == READ_STATE_INIT) {
-		encoded = fr_json_afrom_pair_list(data, request->request_pairs, NULL);
+		encoded = fr_json_afrom_pair_list(data, &request->request_pairs, NULL);
 		if (!encoded) return -1;
 
 		data->start = data->p = encoded;
@@ -1158,7 +1158,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			RINDENT();
 			RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, tmpl_list(dst), ""), vp);
 			REXDENT();
-			radius_pairmove(current, vps, vp, false);
+			radius_pairmove(current, vps, &vp, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array
 		 *  the behaviour appears to be to occasionally segfault.

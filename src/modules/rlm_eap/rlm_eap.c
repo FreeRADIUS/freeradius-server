@@ -686,7 +686,7 @@ static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t cons
 	 *	attribute.  The relevant decoder should have already
 	 *	concatenated the fragments into a single buffer.
 	 */
-	eap_packet = eap_packet_from_vp(request, request->request_pairs);
+	eap_packet = eap_packet_from_vp(request, &request->request_pairs);
 	if (!eap_packet) {
 		RPERROR("Malformed EAP Message");
 		RETURN_MODULE_FAIL;

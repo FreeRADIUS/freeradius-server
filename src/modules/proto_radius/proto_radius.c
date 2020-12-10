@@ -289,7 +289,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		       request->packet->data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 	}
 
 	if (!inst->io.app_io->decode) return 0;
@@ -388,7 +388,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 	data_len = fr_radius_encode(buffer, buffer_len, request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
-				    request->reply->code, request->reply->id, request->reply_pairs);
+				    request->reply->code, request->reply->id, &request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding RADIUS reply");
 		return -1;
@@ -411,7 +411,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	return data_len;

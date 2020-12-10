@@ -513,7 +513,7 @@ static int mod_detach (void *instance) {
 }
 
 static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *request,
-		       fr_pair_t **vps, struct mypasswd * pw, char when, char const *listname)
+		       fr_pair_list_t *vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
 	fr_pair_t *vp;

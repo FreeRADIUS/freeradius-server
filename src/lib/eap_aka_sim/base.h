@@ -256,7 +256,7 @@ int		fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const
  */
 ssize_t		fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
 
-ssize_t		fr_aka_sim_encode(request_t *request, fr_pair_t *to_encode, void *encode_ctx);
+ssize_t		fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *encode_ctx);
 
 /*
  *	base.c
@@ -307,19 +307,19 @@ void		fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys);
 /*
  *	vector.c
  */
-int		fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_list_t *vps,
 						 int idx,
 						 fr_aka_sim_keys_t *keys,
 						 fr_aka_sim_vector_src_t *src);
 
-int		fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 						  fr_aka_sim_keys_t *keys,
 						  fr_aka_sim_vector_src_t *src);
 
-int		fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pair_list_t *vps,
 								   fr_aka_sim_keys_t *keys);
 
-int		fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_t *vps,
+int		fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_list_t *vps,
 							       fr_aka_sim_keys_t *keys);
 
 void		fr_aka_sim_vector_umts_reauth_clear(fr_aka_sim_keys_t *keys);

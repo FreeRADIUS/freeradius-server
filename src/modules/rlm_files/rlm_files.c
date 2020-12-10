@@ -78,10 +78,10 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 /*
  *     See if a fr_pair_t list contains Fall-Through = Yes
  */
-static int fall_through(fr_pair_t *vp)
+static int fall_through(fr_pair_list_t const *vps)
 {
 	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(&vp, attr_fall_through);
+	tmp = fr_pair_find_by_da(vps, attr_fall_through);
 
 	return tmp ? tmp->vp_uint32 : 0;
 }
@@ -359,14 +359,14 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			}
 		}
 
-		if (paircmp(request, packet->vps, check_tmp) == 0) {
+		if (paircmp(request, &packet->vps, &check_tmp) == 0) {
 			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
 			found = true;
 
 			/* ctx may be reply */
 			if (pl->reply) {
 				MEM(fr_pair_list_copy(reply, &reply_tmp, &pl->reply) >= 0);
-				radius_pairmove(request, &reply->vps, reply_tmp, true);
+				radius_pairmove(request, &reply->vps, &reply_tmp, true);
 			}
 			fr_pair_list_move(&request->control_pairs, &check_tmp);
 
@@ -376,7 +376,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			/*
 			 *	Fallthrough?
 			 */
-			if (!fall_through(pl->reply)) break;
+			if (!fall_through(&pl->reply)) break;
 		}
 
 		/* Ensure temporary check list is clear before next match */

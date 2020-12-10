@@ -418,7 +418,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 */
 	packet_len = fr_radius_encode(inst->packet, inst->max_packet_size, NULL,
 				      client->secret, talloc_array_length(client->secret),
-				      code, 0, vps);
+				      code, 0, &vps);
 	if (packet_len <= 0) {
 		cf_log_perr(cs, "Failed encoding packet from %s",
 			    inst->filename);

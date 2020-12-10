@@ -268,7 +268,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
-int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_t *args)
+int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_SECTION const	*subcs;
 

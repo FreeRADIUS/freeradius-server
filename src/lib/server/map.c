@@ -886,7 +886,7 @@ void map_sort(map_t **maps, fr_cmp_t cmp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map)
+static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
@@ -916,7 +916,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, 
 	 */
 	result = radius_exec_program(ctx, answer, sizeof(answer),
 				     tmpl_is_list(map->lhs) ? &output_pairs : NULL,
-				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
+				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
 	talloc_free(expanded);
 	if (result != 0) {
@@ -937,7 +937,9 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, 
 	case TMPL_TYPE_ATTR:
 	{
 		fr_pair_t *vp;
+		fr_pair_list_t vps;
 
+		fr_pair_list_init(&vps);
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
 		if (fr_pair_value_from_str(vp, answer, -1, '"', false) < 0) {
@@ -945,7 +947,8 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, 
 			fr_pair_list_free(&vp);
 			return -2;
 		}
-		*out = vp;
+		fr_pair_add(&vps, vp);
+		*out = vps;
 
 		return 0;
 	}
@@ -967,17 +970,19 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, 
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const *map, UNUSED void *uctx)
+int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map, UNUSED void *uctx)
 {
 	int		rcode = 0;
 	fr_pair_t	*vp = NULL, *n;
 	fr_pair_list_t	found;
+	fr_pair_list_t	vps;
 	request_t	*context = request;
 	fr_cursor_t	cursor;
 	ssize_t		slen;
 	char		*str;
 
 	fr_pair_list_init(&found);
+	fr_pair_list_init(&vps);
 	*out = NULL;
 
 	MAP_VERIFY(map);
@@ -1059,7 +1064,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const 
 			goto error;
 		}
 		n->op = map->op;
-		*out = n;
+		fr_pair_add(&vps, n);
+		*out = vps;
 		break;
 
 	case TMPL_TYPE_UNRESOLVED:
@@ -1074,7 +1080,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const 
 			goto error;
 		}
 		n->op = map->op;
-		*out = n;
+		fr_pair_add(&vps, n);
+		*out = vps;
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -1155,7 +1162,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, map_t const 
 			}
 		}
 		n->op = map->op;
-		*out = n;
+		fr_pair_add(&vps, n);
+		*out = vps;
 
 		MAP_VERIFY(map);
 		break;

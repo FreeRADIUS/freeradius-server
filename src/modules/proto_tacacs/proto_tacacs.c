@@ -291,7 +291,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		       request->packet->data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 		/*
 		 *	Maybe the shared secret is wrong?
@@ -384,7 +384,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 
 	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
-				    request->reply_pairs);
+				    &request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding TACACS+ reply");
 		return -1;
@@ -401,7 +401,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	RHEXDUMP3(buffer, data_len, "proto_tacacs encode packet");

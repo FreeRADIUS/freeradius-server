@@ -77,7 +77,7 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_radius_packet_t c
 	memcpy(data + 4, packet->vector, sizeof(packet->vector));
 
 	slen = fr_radius_encode(data, sizeof(data), original_data, secret, talloc_array_length(secret) - 1,
-				packet->code, packet->id, packet->vps);
+				packet->code, packet->id, &packet->vps);
 	if (slen < 0) return slen;
 
 	/*

@@ -63,7 +63,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	case REQUEST_INIT:
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-			log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
+			log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 		}
 
 		request->component = "radius";
@@ -230,7 +230,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
-			log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+			log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 		}
 		break;
 

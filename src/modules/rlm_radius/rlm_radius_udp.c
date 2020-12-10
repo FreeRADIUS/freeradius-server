@@ -265,7 +265,7 @@ static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int f
 
 static int 		encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_t *u, uint8_t id);
 
-static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
+static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			       udp_handle_t *h, request_t *request, udp_request_t *u,
 			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			       uint8_t *data, size_t data_len);
@@ -426,7 +426,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	request->packet->code = u->code;
 
 	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_packet_codes[u->code]);
-	log_request_pair_list(L_DBG_LVL_3, request, NULL, request->request_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
 
 	MEM(h->status_r = talloc_zero(request, udp_result_t));
 	h->status_u = u;
@@ -1176,7 +1176,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- DECODE_FAIL_NONE on success.
  *	- DECODE_FAIL_* on failure.
  */
-static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *response_code,
+static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			    udp_handle_t *h, request_t *request, udp_request_t *u,
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
@@ -1251,7 +1251,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_t **reply, uint8_t *respons
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
 	       fr_packet_codes[code], code, packet_len, h->name);
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, *reply, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	*response_code = code;
 
@@ -1355,7 +1355,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 */
 	packet_len = fr_radius_encode(u->packet, u->packet_len - (proxy_state + message_authenticator), NULL,
 				      inst->secret, talloc_array_length(inst->secret) - 1,
-				      u->code, id, request->request_pairs);
+				      u->code, id, &request->request_pairs);
 	if (fr_pair_encode_is_error(packet_len)) {
 		RPERROR("Failed encoding packet");
 
@@ -1840,8 +1840,8 @@ static void request_mux(fr_event_list_t *el,
 			       fr_packet_codes[u->code], u->id, u->packet_len, h->name);
 		}
 
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, request->request_pairs, NULL);
-		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, NULL, u->extra, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
+		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
 
 		/*
 		 *	Record pointers to the buffer we'll be writing

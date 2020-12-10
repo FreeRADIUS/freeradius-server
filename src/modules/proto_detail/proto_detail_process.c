@@ -61,7 +61,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		RDEBUG("Received %s ID %i",
 		       fr_dict_enum_name_by_value(inst->attr_packet_type, fr_box_uint32(request->packet->code)),
 		       request->packet->id);
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 		request->component = "radius";
 
@@ -190,7 +190,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			       request->reply->id);
 		}
 
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 		break;
 
 	default:

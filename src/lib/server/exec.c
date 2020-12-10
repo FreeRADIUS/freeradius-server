@@ -54,7 +54,7 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
-static void fr_exec_pair_to_env(request_t *request, fr_pair_t *input_pairs, char **envp, size_t envlen, bool shell_escape)
+static void fr_exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs, char **envp, size_t envlen, bool shell_escape)
 {
 	char			*p;
 	size_t			i;
@@ -69,7 +69,7 @@ static void fr_exec_pair_to_env(request_t *request, fr_pair_t *input_pairs, char
 	 *	hold mutexes.  They might be locked when we fork,
 	 *	and will remain locked in the child.
 	 */
-	for (vp = fr_cursor_init(&cursor, &input_pairs), i = 0;
+	for (vp = fr_cursor_init(&cursor, input_pairs), i = 0;
 	     vp && (i < envlen - 1);
 	     vp = fr_cursor_next(&cursor)) {
 		size_t n;
@@ -225,7 +225,7 @@ static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **
  */
 pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
-			   fr_pair_t *input_pairs, bool shell_escape)
+			   fr_pair_list_t *input_pairs, bool shell_escape)
 {
 	int		to_child[2] = {-1, -1};
 	int		from_child[2] = {-1, -1};
@@ -463,8 +463,8 @@ int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
  *	- exit code if exec_wait!=0.
  *	- -1 on failure.
  */
-int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_t **output_pairs,
-			request_t *request, char const *cmd, fr_pair_t *input_pairs,
+int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
+			request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
 			bool exec_wait, bool shell_escape, fr_time_delta_t timeout)
 
 {
@@ -607,7 +607,7 @@ wait:
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs)
+int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_pairs)
 {
 	int		argc;
 	char		**envp;
@@ -628,7 +628,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs)
 	/*
 	 *	Get the environment variables.
 	 */
-	if (env_pairs) {
+	if (*env_pairs) {
 		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
 		fr_exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
 	} else {
@@ -700,7 +700,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs)
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd)
+int fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd)
 {
 	int		argc;
 	char		**envp;

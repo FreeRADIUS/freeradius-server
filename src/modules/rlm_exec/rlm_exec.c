@@ -124,7 +124,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? *input_pairs : NULL,
+	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? input_pairs : NULL,
 				     inst->wait, inst->shell_escape, inst->timeout);
 	if (result != 0) return -1;
 
@@ -278,7 +278,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 		env_pairs = *input_pairs;
 	}
 
-	if (fr_exec_nowait(request, box, env_pairs) < 0) {
+	if (fr_exec_nowait(request, box, &env_pairs) < 0) {
 		RPEDEBUG("Failed executing program");
 		RETURN_MODULE_FAIL;
 	}
@@ -439,7 +439,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 
 	m = talloc_zero(ctx, rlm_exec_ctx_t);
 
-	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, env_pairs, mod_exec_wait_resume, NULL, m);
+	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, &env_pairs, mod_exec_wait_resume, NULL, m);
 }
 
 

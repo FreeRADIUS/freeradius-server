@@ -573,7 +573,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 */
 	if (tunnel_vps) {
 		RDEBUG2("Sending tunneled reply attributes");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, tunnel_vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tunnel_vps, NULL);
 
 		vp2diameter(request, tls_session, tunnel_vps);
 		fr_pair_list_free(&tunnel_vps);
@@ -693,7 +693,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	/*
 	 *	Process channel binding.
 	 */
-	chbind = eap_chbind_vp2packet(request, request->request_pairs);
+	chbind = eap_chbind_vp2packet(request, &request->request_pairs);
 	if (chbind) {
 		FR_CODE chbind_code;
 		CHBIND_REQ *req = talloc_zero(request, CHBIND_REQ);

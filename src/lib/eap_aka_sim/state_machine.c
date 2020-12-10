@@ -270,11 +270,11 @@ static void identity_hint_pairs_add(fr_aka_sim_id_type_t *type_p, fr_aka_sim_met
 /** Print out the error the client returned
  *
  */
-static inline void client_error_debug(request_t *request, fr_pair_t *from_peer)
+static inline void client_error_debug(request_t *request, fr_pair_list_t *from_peer)
 {
 	fr_pair_t *vp;
 
-	vp = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_client_error_code);
+	vp = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_client_error_code);
 	if (!vp) {
 		REDEBUG("Peer has not supplied a AT_ERROR_CODE");
 	} else {
@@ -880,13 +880,13 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 
 
 	RDEBUG2("Encoding attributes");
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, head, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &head, NULL);
 
 	eap_session->this_round->request->type.num = eap_aka_sim_session->type;
 	eap_session->this_round->request->id = eap_aka_sim_session->id++ & 0xff;
 	eap_session->this_round->set_request_id = true;
 
-	ret = fr_aka_sim_encode(request, head, &encoder_ctx);
+	ret = fr_aka_sim_encode(request, &head, &encoder_ctx);
 	fr_cursor_head(&to_encode);
 	fr_cursor_free_list(&to_encode);
 
@@ -1160,7 +1160,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	 */
 	case FR_EAP_METHOD_SIM:
 	case FR_EAP_METHOD_AKA:
-		if (fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request, request->state,
+		if (fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request, &request->state,
 								       &eap_aka_sim_session->keys) != 0) {
 		request_new_id:
 			switch (eap_aka_sim_session->last_id_req) {
@@ -1192,7 +1192,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	case FR_EAP_METHOD_AKA_PRIME:
 		switch (eap_aka_sim_session->kdf) {
 		case FR_KDF_VALUE_PRIME_WITH_CK_PRIME_IK_PRIME:
-			if (fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request, request->state,
+			if (fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request, &request->state,
 									   &eap_aka_sim_session->keys) != 0) {
 				goto request_new_id;
 			}
@@ -1371,7 +1371,7 @@ static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, modu
 	 *	Get vectors from attribute or generate
 	 *	them using COMP128-* or Milenage.
 	 */
-	if (fr_aka_sim_vector_umts_from_attrs(request, request->control_pairs, &eap_aka_sim_session->keys, &src) != 0) {
+	if (fr_aka_sim_vector_umts_from_attrs(request, &request->control_pairs, &eap_aka_sim_session->keys, &src) != 0) {
 	    	REDEBUG("Failed retrieving UMTS vectors");
 		goto failure;
 	}
@@ -1544,11 +1544,11 @@ static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, modu
 	}
 
 	RDEBUG2("Acquiring GSM vector(s)");
-	if ((fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 0,
+	if ((fr_aka_sim_vector_gsm_from_attrs(request, &request->control_pairs, 0,
 					      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 1,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, &request->control_pairs, 1,
 	    				      &eap_aka_sim_session->keys, &src) != 0) ||
-	    (fr_aka_sim_vector_gsm_from_attrs(request, request->control_pairs, 2,
+	    (fr_aka_sim_vector_gsm_from_attrs(request, &request->control_pairs, 2,
 	    				      &eap_aka_sim_session->keys, &src) != 0)) {
 	    	REDEBUG("Failed retrieving SIM vectors");
 		RETURN_MODULE_FAIL;
@@ -2927,7 +2927,7 @@ static unlang_action_t aka_identity_response_process(rlm_rcode_t *p_result, modu
  * Also checks the version matches one of the ones we advertised in our version list,
  * which is a bit redundant seeing as there's only one version of EAP-SIM.
  */
-static int sim_start_selected_version_check(request_t *request, fr_pair_t *from_peer,
+static int sim_start_selected_version_check(request_t *request, fr_pair_list_t *from_peer,
 					    eap_aka_sim_session_t *eap_aka_sim_session)
 {
 	fr_pair_t		*selected_version_vp;
@@ -2935,7 +2935,7 @@ static int sim_start_selected_version_check(request_t *request, fr_pair_t *from_
 	/*
 	 *	Check that we got an AT_SELECTED_VERSION
 	 */
-	selected_version_vp = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_selected_version);
+	selected_version_vp = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_selected_version);
 	if (!selected_version_vp) {
 		REDEBUG("EAP-Response/SIM/Start does not contain AT_SELECTED_VERSION");
 		return -1;
@@ -2981,7 +2981,7 @@ static int sim_start_selected_version_check(request_t *request, fr_pair_t *from_
  *
  * Does not actually perform cryptographic validation of AT_NONCE_MT, this is done later.
  */
-static int sim_start_nonce_mt_check(request_t *request, fr_pair_t *from_peer,
+static int sim_start_nonce_mt_check(request_t *request, fr_pair_list_t *from_peer,
 				    eap_aka_sim_session_t *eap_aka_sim_session)
 {
 	fr_pair_t	*nonce_mt_vp;
@@ -2989,7 +2989,7 @@ static int sim_start_nonce_mt_check(request_t *request, fr_pair_t *from_peer,
 	/*
 	 *	Copy nonce_mt to the keying material
 	 */
-	nonce_mt_vp = fr_pair_find_by_da(&from_peer, attr_eap_aka_sim_nonce_mt);
+	nonce_mt_vp = fr_pair_find_by_da(from_peer, attr_eap_aka_sim_nonce_mt);
 	if (!nonce_mt_vp) {
 		REDEBUG("EAP-Response/SIM/Start does not contain AT_NONCE_MT");
 		return -1;
@@ -3103,8 +3103,8 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	 *	if pseudonym resolution went ok.
 	 */
 	case FR_IDENTITY_TYPE_VALUE_PSEUDONYM:
-		if (sim_start_selected_version_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
-		if (sim_start_nonce_mt_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_selected_version_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_nonce_mt_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
 
 		return unlang_module_yield_to_section(p_result,
 						      request,
@@ -3121,8 +3121,8 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 	 *	later.
 	 */
 	case FR_IDENTITY_TYPE_VALUE_PERMANENT:
-		if (sim_start_selected_version_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
-		if (sim_start_nonce_mt_check(request, *from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_selected_version_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
+		if (sim_start_nonce_mt_check(request, from_peer, eap_aka_sim_session) < 0) goto failure;
 
 		FALL_THROUGH;
 	default:
@@ -3344,7 +3344,7 @@ static unlang_action_t common_reauthentication_response_recv_resume(rlm_rcode_t 
  *
  * This is called by the state_* functions to decode the peer's response.
  */
-static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_t **vps,
+static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps,
 				     rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -3383,7 +3383,7 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_t **vps,
 	aka_vps = fr_cursor_next(&cursor);
 	if (aka_vps && RDEBUG_ENABLED2) {
 		RDEBUG2("Decoded attributes");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, aka_vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &aka_vps, NULL);
 	}
 
 	*subtype_vp = fr_pair_find_by_da(&aka_vps, attr_eap_aka_sim_subtype);
@@ -3532,7 +3532,7 @@ static unlang_action_t common_reauthentication(rlm_rcode_t *p_result, module_ctx
 	 *	Case 1 where we're allowed to send an EAP-Failure
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		eap_aka_sim_session->allow_encrypted = false;
 
@@ -3663,7 +3663,7 @@ static unlang_action_t aka_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Case 1 where we're allowed to send an EAP-Failure
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		eap_aka_sim_session->allow_encrypted = false;
 
@@ -3728,7 +3728,7 @@ static unlang_action_t sim_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Case 1 where we're allowed to send an EAP-Failure
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		eap_aka_sim_session->allow_encrypted = false;
 
@@ -3844,7 +3844,7 @@ static unlang_action_t aka_identity(rlm_rcode_t *p_result, module_ctx_t const *m
 	 *	identity.
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		return unlang_module_yield_to_section(p_result,
 						      request,
@@ -3953,7 +3953,7 @@ static unlang_action_t sim_start(rlm_rcode_t *p_result, module_ctx_t const *mctx
 	 *	identity.
 	 */
 	case FR_SUBTYPE_VALUE_AKA_SIM_CLIENT_ERROR:
-		client_error_debug(request, from_peer);
+		client_error_debug(request, &from_peer);
 
 		return unlang_module_yield_to_section(p_result,
 						      request,

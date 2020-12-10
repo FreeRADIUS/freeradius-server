@@ -49,7 +49,7 @@ typedef struct {
 	fr_event_timer_t const		*ev;		//!< for timing out the child
 	fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
 
-	fr_pair_list_t			vps;		//!< input VPs
+	fr_pair_list_t			*vps;		//!< input VPs
 	char				*buffer;	//!< for reading the answer
 	char				*ptr;		//!< where in the buffer we are writing to
 	int				status;		//!< return code of the program

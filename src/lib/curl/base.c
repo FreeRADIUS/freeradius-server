@@ -228,7 +228,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 			/*
 			 *	Print out all the pairs we have so far
 			 */
-			log_request_pair_list(L_DBG_LVL_2, request, NULL, cert_vps, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &cert_vps, NULL);
 			fr_cursor_merge(&list, &cursor);
 			fr_pair_list_init(&cert_vps);
 		}

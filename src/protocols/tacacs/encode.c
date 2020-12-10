@@ -40,14 +40,14 @@
 /**
  *	Encode a TACACS+ 'arg_N' fields.
  */
-static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_attr_t const *da)
+static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dict_attr_t const *da)
 {
 	uint8_t     arg_cnt = 0;
 	fr_pair_t   *vp;
 	fr_cursor_t cursor;
 	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	for (vp = fr_cursor_init(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (arg_cnt == 255) break;
@@ -65,14 +65,14 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_t *vps, f
 	return arg_cnt;
 }
 
-static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_attr_t const *da)
+static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dict_attr_t const *da)
 {
 	fr_pair_t   *vp;
 	fr_cursor_t cursor;
 	uint8_t     arg_cnt = 0;
 	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	for (vp = fr_cursor_init(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor), arg_cnt++) {
 		if (arg_cnt == 255) break;
@@ -89,12 +89,12 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_di
 /*
  *	Encode a TACACS+ field.
  */
-static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_attr_t const *da, size_t max_len)
+static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dict_attr_t const *da, size_t max_len)
 {
 	fr_pair_t  *vp;
 	fr_dbuff_t work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	vp = fr_pair_find_by_da(&vps, da);
+	vp = fr_pair_find_by_da(vps, da);
 	if (!vp || !vp->vp_length || (vp->vp_length > max_len)) return 0;
 
 	if (da->type == FR_TYPE_STRING) {
@@ -113,7 +113,7 @@ static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_at
  *	doesn't specify them, then they don't get encoded.
  */
 #define ENCODE_FIELD_UINT8(_field, _da) do { \
-	vp = fr_pair_find_by_da(&vps, _da); \
+	vp = fr_pair_find_by_da(vps, _da); \
 	_field = (vp) ? vp->vp_uint8 : 0; \
 } while (0)
 
@@ -123,7 +123,7 @@ static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_t *vps, fr_dict_at
 /**
  *	Encode VPS into a raw TACACS packet.
  */
-ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char const *secret, size_t secret_len, fr_pair_t *vps)
+ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char const *secret, size_t secret_len, fr_pair_list_t *vps)
 {
 	fr_pair_t		*vp;
 	fr_tacacs_packet_t 	*packet;
@@ -196,7 +196,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	/*
 	 *	Find the first attribute which is parented by TACACS-Packet.
 	 */
-	for (vp = fr_cursor_init(&cursor, &vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da->parent == attr_tacacs_packet) break;
@@ -569,7 +569,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	If the caller didn't set a session ID, use a random one.
 			 */
-			if (!fr_pair_find_by_da(&vps, attr_tacacs_session_id)) {
+			if (!fr_pair_find_by_da(vps, attr_tacacs_session_id)) {
 				packet->hdr.session_id = fr_rand();
 			}
 
@@ -697,7 +697,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 /*
  *	Test points for protocol encode
  */
-static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_tacacs_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
 

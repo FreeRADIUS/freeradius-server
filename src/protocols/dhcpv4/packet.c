@@ -411,7 +411,7 @@ int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet)
 		packet->id = fr_rand();
 	}
 
-	len = fr_dhcpv4_encode(packet->data, packet->data_len, NULL, packet->code, packet->id, packet->vps);
+	len = fr_dhcpv4_encode(packet->data, packet->data_len, NULL, packet->code, packet->id, &packet->vps);
 	if (len < 0) return -1;
 
 	packet->data_len = len;

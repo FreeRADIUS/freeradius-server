@@ -714,7 +714,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	FR_DBUFF_ADVANCE_RETURN(dbuff, 2);		/* Advanced past the length field */
 
 	vp = fr_cursor_current(cursor);
-	slen = fr_dhcpv6_encode(dbuff, NULL, 0, 0, vp->vp_group);
+	slen = fr_dhcpv6_encode(dbuff, NULL, 0, 0, &vp->vp_group);
 	if (slen <= 0) {
 		fr_dbuff_marker_release(&start_m);
 		return slen;
@@ -818,7 +818,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_dhcpv6_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	ssize_t slen;
 

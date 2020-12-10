@@ -269,7 +269,7 @@ failed:
 }
 
 static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *request,
-			fr_pair_t **vps, PyObject *p_value, char const *funcname, char const *list_name)
+			fr_pair_list_t *vps, PyObject *p_value, char const *funcname, char const *list_name)
 {
 	int		i;
 	Py_ssize_t	tuple_len;
@@ -376,7 +376,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		}
 
-		radius_pairmove(current, vps, vp, false);
+		radius_pairmove(current, vps, &vp, false);
 	}
 }
 

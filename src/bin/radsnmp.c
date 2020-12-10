@@ -386,7 +386,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
  */
 static int radsnmp_get_response(int fd,
 				fr_dict_attr_t const *root, fr_dict_attr_t const *type,
-				fr_pair_t *head)
+				fr_pair_list_t *head)
 {
 	fr_cursor_t		cursor;
 	fr_pair_t		*vp, *type_vp;
@@ -426,7 +426,7 @@ static int radsnmp_get_response(int fd,
 	 *	attribute grouping to coalesce all related index
 	 *	attributes under a single request OID.
 	 */
-	 for (vp = fr_cursor_init(&cursor, &head);
+	 for (vp = fr_cursor_init(&cursor, head);
 	      vp;
 	      vp = fr_cursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
@@ -582,7 +582,7 @@ static int radsnmp_get_response(int fd,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, fr_pair_t *head)
+static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, fr_pair_list_t *head)
 {
 	fr_pair_t	*vp;
 	char		buffer[64];
@@ -590,7 +590,7 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, fr_pair_t *
 	struct iovec	io_vector[2];
 	char		newline[] = "\n";
 
-	vp = fr_pair_find_by_da(&head, error);
+	vp = fr_pair_find_by_da(head, error);
 	if (!vp) {
 		if (write(fd, "DONE\n", 5) < 0) {
 			fr_strerror_printf("Failed writing set response: %s", fr_syserror(errno));
@@ -850,7 +850,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			case RADSNMP_GET:
 			case RADSNMP_GETNEXT:
 				ret = radsnmp_get_response(STDOUT_FILENO, conf->snmp_oid_root,
-							   attr_freeradius_snmp_type, reply->vps);
+							   attr_freeradius_snmp_type, &reply->vps);
 				switch (ret) {
 				case -1:
 					fr_perror("Failed converting pairs to varbind response");
@@ -867,7 +867,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				break;
 
 			case RADSNMP_SET:
-				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, reply->vps) < 0) {
+				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, &reply->vps) < 0) {
 					fr_perror("Failed writing SET response");
 					return EXIT_FAILURE;
 				}

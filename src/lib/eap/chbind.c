@@ -83,7 +83,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	ptr[3] = CHBIND_NSID_RADIUS;
 
 	RDEBUG2("Sending chbind response: code %i", (int )(ptr[0]));
-	log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 
 	/* Encode the chbind attributes into the response */
 	ptr += 4;
@@ -258,7 +258,7 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
  *	Handles multiple EAP-channel-binding Message attrs
  *	ie concatenates all to get the complete EAP-channel-binding packet.
  */
-chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_t *vps)
+chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 {
 	size_t			length;
 	uint8_t 		*ptr;
@@ -266,7 +266,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_t *vps)
 	chbind_packet_t		*packet;
 	fr_cursor_t		cursor;
 
-	if (!fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_channel_binding_message)) return NULL;
+	if (!fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_channel_binding_message)) return NULL;
 
 	/*
 	 *	Compute the total length of the channel binding data.

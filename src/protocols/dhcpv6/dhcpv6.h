@@ -152,7 +152,7 @@ bool		fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decod
 				 bool from_server);
 
 ssize_t		fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t length,
-				 int msg_type, fr_pair_t *vps);
+				 int msg_type, fr_pair_list_t *vps);
 
 ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 				 fr_cursor_t *cursor);

@@ -73,6 +73,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 	fr_dict_attr_t const	*da;
 	fr_cursor_t		cursor;
 
+	fr_pair_list_init(&args);
 	fr_assert(ef != NULL);
 	fr_assert(name_suffix != NULL);
 
@@ -84,7 +85,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 		return;
 	}
 
-	args = ef->trigger_args;
+	fr_pair_list_copy(request, &args, &ef->trigger_args);
 	fr_cursor_init(&cursor, &args);
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));
@@ -93,9 +94,9 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 	fr_cursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(request, ef->conf, name, false, args);
+	trigger_exec(request, ef->conf, name, false, &args);
 
-	talloc_free(vp);
+	fr_pair_list_free(&args);
 }
 
 
@@ -194,7 +195,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  * @param[in] trigger_args to make available in any triggers executed by the exfile api.
  *	Exfile-File is automatically added to this list.
  */
-void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_t *trigger_args)
+void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_list_t *trigger_args)
 {
 	talloc_const_free(ef->trigger_prefix);
 	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");
@@ -205,7 +206,7 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 
 	if (!trigger_args) return;
 
-	(void) fr_pair_list_copy(ef, &ef->trigger_args, &trigger_args);
+	(void) fr_pair_list_copy(ef, &ef->trigger_args, trigger_args);
 }
 
 

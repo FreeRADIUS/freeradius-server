@@ -95,7 +95,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 		       fr_arp_packet_codes[request->packet->code],
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 	}
 
 	return 0;
@@ -127,7 +127,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		return 1;
 	}
 
-	slen = fr_arp_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data, request->reply_pairs);
+	slen = fr_arp_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data, &request->reply_pairs);
 	if (slen <= 0) {
 		RPEDEBUG("Failed encoding reply");
 		return -1;
@@ -146,7 +146,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		       request->reply->code,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, request->reply_pairs, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	return slen;

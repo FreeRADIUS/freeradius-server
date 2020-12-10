@@ -319,7 +319,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_t *vps, void *encoder_ctx)
+static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *encoder_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
@@ -328,7 +328,7 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_t *vps, void *encoder_ctx)
 	/*
 	 *	Note that we skip tags inside of tags!
 	 */
-	fr_cursor_talloc_iter_init(&cursor, &vps, fr_proto_next_encodable, dict_radius, fr_pair_t);
+	fr_cursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_cursor_current(&cursor))) {
 		VP_VERIFY(vp);
 
@@ -1282,7 +1282,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 		fr_assert(packet_ctx->tag < 0x20);
 
 		// recurse to encode the children of this attribute
-		len = encode_tags(&work_dbuff, vp->vp_group, encoder_ctx);
+		len = encode_tags(&work_dbuff, &vp->vp_group, encoder_ctx);
 		packet_ctx->tag = 0;
 		if (len < 0) return len;
 
@@ -1441,18 +1441,18 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
 	int packet_type = FR_CODE_ACCESS_REQUEST;
 	fr_pair_t *vp;
 	ssize_t slen;
 
-	vp = fr_pair_find_by_da(&vps, attr_packet_type);
+	vp = fr_pair_find_by_da(vps, attr_packet_type);
 	if (vp) packet_type = vp->vp_uint32;
 
 	if ((packet_type == FR_CODE_ACCESS_REQUEST) || (packet_type == FR_CODE_STATUS_SERVER)) {
-		vp = fr_pair_find_by_da(&vps, attr_packet_authentication_vector);
+		vp = fr_pair_find_by_da(vps, attr_packet_authentication_vector);
 		if (vp && (vp->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
 			memcpy(data + 4, vp->vp_octets, RADIUS_AUTH_VECTOR_LENGTH);
 		} else {

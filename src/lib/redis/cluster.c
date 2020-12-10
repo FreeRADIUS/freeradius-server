@@ -328,6 +328,7 @@ static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 	fr_pair_list_t	args;
 	fr_redis_cluster_node_t	*node = opaque;
 
+	fr_pair_list_init(&args);
 	node->addr = node->pending_addr;
 
 	if (node->cluster->triggers_enabled) {
@@ -337,7 +338,7 @@ static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 		if (node->cluster->trigger_args) MEM(fr_pair_list_copy(node->cluster, &args,
 								      &node->cluster->trigger_args) >= 0);
 
-		fr_pool_enable_triggers(pool, node->cluster->trigger_prefix, args);
+		fr_pool_enable_triggers(pool, node->cluster->trigger_prefix, &args);
 
 		fr_pair_list_free(&args);
 	}
@@ -375,6 +376,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 		fr_pair_list_t	args;
 		CONF_SECTION	*pool;
 
+		fr_pair_list_init(&args);
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
 
 		pool = cf_section_find(cluster->module, "pool", NULL);
@@ -399,7 +401,7 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 
 			if (cluster->trigger_args) MEM(fr_pair_list_copy(cluster, &args, &cluster->trigger_args) >= 0);
 
-			fr_pool_enable_triggers(node->pool, node->cluster->trigger_prefix, args);
+			fr_pool_enable_triggers(node->pool, node->cluster->trigger_prefix, &args);
 
 			fr_pair_list_free(&args);
 		}
@@ -2252,7 +2254,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   bool triggers_enabled,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
-					   fr_pair_t *trigger_args)
+					   fr_pair_list_t *trigger_args)
 {
 	uint8_t			i;
 	uint16_t		s;
@@ -2266,7 +2268,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	fr_redis_cluster_t	*cluster;
 
 	fr_assert(triggers_enabled || !trigger_prefix);
-	fr_assert(triggers_enabled || !trigger_args);
+	fr_assert(triggers_enabled || !*trigger_args);
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {
@@ -2292,7 +2294,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		/*
 		 *	Duplicate the trigger arguments.
 		 */
-		 if (trigger_args) MEM(fr_pair_list_copy(cluster, &cluster->trigger_args, &trigger_args) >= 0);
+		 if (trigger_args) MEM(fr_pair_list_copy(cluster, &cluster->trigger_args, trigger_args) >= 0);
 	}
 
 	/*

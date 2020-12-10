@@ -39,7 +39,7 @@ typedef struct {
 	char const	*field;		//!< Field name.
 } client_get_vp_ctx_t;
 
-static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request,
+static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 				   map_t const *map, void *uctx)
 {
 	client_get_vp_ctx_t	*client = uctx;
