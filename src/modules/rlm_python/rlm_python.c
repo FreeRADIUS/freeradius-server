@@ -242,98 +242,72 @@ failed:
 	Py_XDECREF(p_traceback);
 }
 
-static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *request,
-			fr_pair_list_t *vps, PyObject *p_value, char const *funcname, char const *list_name)
+static int tuple_to_list(TALLOC_CTX *ctx, request_t *request, const char *list_name, fr_pair_list_t *list, PyObject *tuple)
 {
-	int		i;
-	Py_ssize_t	tuple_len;
-	tmpl_t	*dst;
-	fr_pair_t	*vp;
-	request_t		*current = request;
+	int         i;
+	Py_ssize_t  tuple_len;
+	tmpl_t      *dst;
+	fr_pair_t   *vp;
+	request_t   *current = request;
 
 	/*
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
 	 */
-	if (!p_value || p_value == Py_None) return;
+	if (!tuple || tuple == Py_None) return 0;
 
-	if (!PyTuple_CheckExact(p_value)) {
-		ERROR("%s - non-tuple passed to %s", funcname, list_name);
-		return;
+	if (!PyTuple_CheckExact(tuple)) {
+		RERROR("non-tuple passed to %s", list_name);
+		return -1;
 	}
+
 	/* Get the tuple tuple_len. */
-	tuple_len = PyTuple_GET_SIZE(p_value);
+	tuple_len = PyTuple_GET_SIZE(tuple);
 	for (i = 0; i < tuple_len; i++) {
-		PyObject 	*p_tuple_element = PyTuple_GET_ITEM(p_value, i);
+		PyObject 	*p_tuple_element = PyTuple_GET_ITEM(tuple, i);
 		PyObject 	*p_str_1;
 		PyObject 	*p_str_2;
-		PyObject 	*p_op;
 		Py_ssize_t	pair_len;
 		char const	*s1;
 		char const	*s2;
-		fr_token_t	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(p_tuple_element)) {
-			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
-			continue;
+			RERROR("Tuple element %d of %s is not a tuple", i, list_name);
+			return -1;
 		}
-		/* Check if it's a pair */
 
+		/* Check if it's a pair like (Attr, Value) */
 		pair_len = PyTuple_GET_SIZE(p_tuple_element);
-		if ((pair_len < 2) || (pair_len > 3)) {
-			ERROR("%s - Tuple element %d of %s is a tuple of size %zu. Must be 2 or 3",
-			      funcname, i, list_name, pair_len);
-			continue;
+		if (pair_len != 2) {
+			RERROR("Tuple element %d of %s is a tuple of size %zu. Must be 2",
+					i, list_name, pair_len);
+			return -1;
 		}
 
 		p_str_1 = PyTuple_GET_ITEM(p_tuple_element, 0);
 		p_str_2 = PyTuple_GET_ITEM(p_tuple_element, pair_len - 1);
-
 		if ((!PyUnicode_CheckExact(p_str_1)) || (!PyUnicode_CheckExact(p_str_2))) {
-			ERROR("%s - Tuple element %d of %s must be as (str, str)",
-			      funcname, i, list_name);
-			continue;
+			RERROR("Tuple element %d of %s must be as (str, str)",
+					i, list_name);
+			return -1;
 		}
+
 		s1 = PyUnicode_AsUTF8(p_str_1);
 		s2 = PyUnicode_AsUTF8(p_str_2);
 
-		if (pair_len == 3) {
-			p_op = PyTuple_GET_ITEM(p_tuple_element, 1);
-			if (PyUnicode_CheckExact(p_op)) {
-				if (!(op = fr_table_value_by_str(fr_tokens_table, PyUnicode_AsUTF8(p_op), 0))) {
-					ERROR("%s - Invalid operator %s.%s %s %s, falling back to '='",
-					      funcname, list_name, s1, PyUnicode_AsUTF8(p_op), s2);
-					op = T_OP_EQ;
-				}
-			} else if (PyNumber_Check(p_op)) {
-				long py_op;
-
-				py_op = PyLong_AsLong(p_op);
-				if (!fr_table_str_by_value(fr_tokens_table, py_op, NULL)) {
-					ERROR("%s - Invalid operator %s.%s %i %s, falling back to '='",
-					      funcname, list_name, s1, op, s2);
-					op = T_OP_EQ;
-				} else {
-					op = (fr_token_t)py_op;
-				}
-			} else {
-				ERROR("%s - Invalid operator type for %s.%s ? %s, using default '='",
-				      funcname, list_name, s1, s2);
-			}
-		}
-
 		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
 					&(tmpl_rules_t){
+						.prefix = TMPL_ATTR_REF_PREFIX_NO,
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {
-			ERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);
-			continue;
+			RERROR("Failed to find attribute %s.%s", list_name, s1);
+			return -1;
 		}
 
 		if (radius_request(&current, tmpl_request(dst)) < 0) {
-			ERROR("%s - Attribute name %s.%s refers to outer request but not in a tunnel, skipping...",
-			      funcname, list_name, s1);
+			RDEBUG2("Attribute name %s.%s refers to outer request but not in a tunnel, skipping...",
+					list_name, s1);
 			talloc_free(dst);
 			continue;
 		}
@@ -341,25 +315,46 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
 		talloc_free(dst);
 
-		vp->op = op;
+		vp->op = T_OP_EQ;
 		if (fr_pair_value_from_str(vp, s2, -1, '\0', false) < 0) {
-			DEBUG("%s - Failed: '%s.%s' %s '%s'", funcname, list_name, s1,
-			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
-		} else {
-			DEBUG("%s - '%s.%s' %s '%s'", funcname, list_name, s1,
-			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
+			RERROR("Failed: '%s.%s' = '%s'", list_name, s1, s2);
+			return -1;
 		}
 
-		radius_pairmove(current, vps, &vp, false);
+		RDEBUG2("Update '%s.%s' = '%s'", list_name, s1, s2);
+
+		radius_pairmove(current, list, &vp, false);
 	}
+
+	return 0;
 }
 
+static void mod_update_tuple_to_list(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *list,
+                                    PyObject *update_dict, const char *funcname, char const *list_name)
+{
+	PyObject *p_tuple;
+
+	if (!PyDict_CheckExact(update_dict)) {
+		RERROR("%s - Expected '%s' as a dict with tuples. e.g: foo['%s']=((attr,val), (attrN,valN))",
+			funcname, list_name, list_name);
+		return;
+	}
+
+	p_tuple = PyDict_GetItemString(update_dict, list_name);
+	if (p_tuple == Py_None) return;
+
+	RDEBUG3("%s - Calling tuple_to_list()", funcname);
+
+	if (tuple_to_list(ctx, request, list_name, list, p_tuple) < 0) {
+		RERROR("%s - Failed tuple_to_list() %s", funcname, list_name);
+	}
+}
 
 /*
  *	This is the core Python function that the others wrap around.
  *	Pass the value-pair print strings in a tuple.
  */
-static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, PyObject *pp, fr_pair_t *vp)
+static int pair_to_tuple(rlm_python_t const *inst, request_t *request, PyObject *p_pair, fr_pair_t *vp)
 {
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
@@ -440,7 +435,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 		slen = fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &vp->data, NULL);
 		if (slen < 0) {
 		error:
-			ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
+			RERROR("Failed marshalling %pP to Python value", vp);
 			python_error_log(inst, request);
 			Py_XDECREF(attribute);
 			return -1;
@@ -456,71 +451,119 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 
 	if (value == NULL) goto error;
 
-	PyTuple_SET_ITEM(pp, 0, attribute);
-	PyTuple_SET_ITEM(pp, 1, value);
+	PyTuple_SET_ITEM(p_pair, 0, attribute);
+	PyTuple_SET_ITEM(p_pair, 1, value);
 
 	return 0;
 }
 
-static unlang_action_t do_python_single(rlm_rcode_t *p_result,
-					rlm_python_t const *inst, request_t *request, PyObject *p_func, char const *funcname)
+static int list_to_tuple(rlm_python_t const *inst, request_t *request, PyObject **p_tuple, fr_pair_list_t *list)
 {
-	fr_cursor_t	cursor;
-	fr_pair_t	*vp;
-	PyObject	*p_ret = NULL;
-	PyObject	*p_arg = NULL;
-	int		tuple_len;
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	PyObject    *p_our_tuple = NULL;
+	int         tuplelen = 0;
+	int         i = 0;
+	fr_cursor_t cursor;
+	fr_pair_t   *vp;
+
+	if (!list) return -1;
 
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
 	 *	We can safely use the Python function to build up a
 	 *	tuple, since the tuple is not used elsewhere.
 	 *
-	 *	Determine the size of our tuple by walking through the packet.
-	 *	If request is NULL, pass None.
+	 *	Determine the size of our tuple by walking through the list.
 	 */
-	tuple_len = 0;
-	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) tuple_len++;
+	for (vp = fr_cursor_init(&cursor, list); vp; vp = fr_cursor_next(&cursor)) tuplelen++;
+
+	if ((p_our_tuple = PyTuple_New(tuplelen)) == NULL) goto error;
+
+	for (vp = fr_cursor_init(&cursor, list); vp; vp = fr_cursor_next(&cursor), i++) {
+		PyObject *p_pair = NULL;
+
+		/* The inside tuple has two only: */
+		if ((p_pair = PyTuple_New(2)) == NULL) goto error;
+
+		if (pair_to_tuple(inst, request, p_pair, vp) == 0) {
+			/* Put the tuple inside the container */
+			PyTuple_SET_ITEM(p_our_tuple, i, p_pair);
+		} else {
+			Py_DECREF(p_pair);
+			goto error;
+		}
 	}
 
-	if (tuple_len == 0) {
+	*p_tuple = p_our_tuple;
+
+	return 0;
+
+error:
+	Py_XDECREF(p_our_tuple);
+	return -1;
+}
+
+/*
+ * This function generates a tuple representing a given VPS and inserts it into
+ * the indicated dict position in the p_dict.
+ * Returns false on error.
+ */
+static bool mod_load_list_to_tuple(rlm_python_t const *inst, request_t *request, PyObject *p_dict,
+                                   fr_pair_list_t *list, char const *list_name)
+{
+	PyObject *p_tuple = NULL;
+
+	if (list_to_tuple(inst, request, &p_tuple, list) < 0) {
+		/* If vps is NULL, return None */
 		Py_INCREF(Py_None);
-		p_arg = Py_None;
-	} else {
-		int i = 0;
-		if ((p_arg = PyTuple_New(tuple_len)) == NULL) {
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
-		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
-			PyObject *pp;
-
-			/* The inside tuple has two only: */
-			if ((pp = PyTuple_New(2)) == NULL) {
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
-
-			if (mod_populate_vptuple(inst, request, pp, vp) == 0) {
-				/* Put the tuple inside the container */
-				PyTuple_SET_ITEM(p_arg, i, pp);
-			} else {
-				Py_INCREF(Py_None);
-				PyTuple_SET_ITEM(p_arg, i, Py_None);
-				Py_DECREF(pp);
-			}
-		}
+		PyDict_SetItemString(p_dict, list_name, Py_None);
+		return false;
 	}
 
-	/* Call Python function. */
-	p_ret = PyObject_CallFunctionObjArgs(p_func, p_arg, NULL);
+	/* Add into p["list_name"] dict */
+	PyDict_SetItemString(p_dict, list_name, p_tuple);
+
+	return true;
+}
+
+static unlang_action_t do_python_single(rlm_rcode_t *p_result,
+					rlm_python_t const *inst, request_t *request, PyObject *p_func, char const *funcname)
+{
+	PyObject    *p_ret = NULL;
+	PyObject    *p_dict = NULL;
+	PyObject    *p_tuple_int = NULL;
+	PyObject    *p_update_dict = NULL;
+	rlm_rcode_t rcode = RLM_MODULE_OK; /* Default return value is "OK, continue" */
+
+	/*
+	 * p_dict is a 4-dict indexed by (Request, Reply, Control and State) names within tuples.
+	 *
+	 * e.g:
+	 *
+	 * p = dict()
+	 * p["foo"] = ((attr1,val1), (attrN, valN))
+	 * p["bar"] = ((attr1,val1), (attrN, valN))
+	 *
+	 * If some list is not available, NONE is used instead
+	 */
+	p_dict = PyDict_New();
+	if (!p_dict) {
+		ERROR("%s - Memory cannot be allocated for PyDict_New()", funcname);
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	/*
+	 * Fill in the first 4 attribute lists, or set all the elements to None.
+	 */
+#define LOAD_LIST_TO_TUPLE(_list_name, _vps)\
+	mod_load_list_to_tuple(inst, request, p_dict, (request ? _vps : NULL), _list_name)
+
+	LOAD_LIST_TO_TUPLE("request", &request->request_pairs);
+	LOAD_LIST_TO_TUPLE("reply", &request->reply_pairs);
+	LOAD_LIST_TO_TUPLE("control", &request->control_pairs);
+	LOAD_LIST_TO_TUPLE("session-state", &request->state_pairs);
+
+	p_ret = PyObject_CallFunctionObjArgs(p_func, p_dict, NULL);
 	if (!p_ret) {
 		python_error_log(inst, request); /* Needs valid thread with GIL */
 		rcode = RLM_MODULE_FAIL;
@@ -528,29 +571,30 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result,
 	}
 
 	if (!request) {
-		// check return code at module instantiation time
+		/* check return code at module instantiation time */
 		if (PyNumber_Check(p_ret)) rcode = PyLong_AsLong(p_ret);
 		goto finish;
 	}
 
 	/*
 	 *	The function returns either:
-	 *  1. (returnvalue, replyTuple, configTuple), where
+	 *
+	 *  1. (returnvalue, updateDict), where
+	 *
 	 *   - returnvalue is one of the constants RLM_*
-	 *   - replyTuple and configTuple are tuples of string
-	 *      tuples of size 2
+	 *   - updateDict are dicts of tuples indexed by the name (e.g: "request", "reply", "control" or "session-state")
+	 *     with tuple of string tuples of size 2
 	 *
 	 *  2. the function return value alone
 	 *
 	 *  3. None - default return value is set
-	 *
-	 * xxx This code is messy!
 	 */
 	if (PyTuple_CheckExact(p_ret)) {
-		PyObject *p_tuple_int;
+		int tuple_size;
 
-		if (PyTuple_GET_SIZE(p_ret) != 3) {
-			ERROR("%s - Tuple must be (return, replyTuple, configTuple)", funcname);
+		tuple_size = PyTuple_GET_SIZE(p_ret);
+		if (tuple_size != 2) {
+			ERROR("%s - Tuple must be (return, updateDict)", funcname);
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -561,19 +605,29 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result,
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
+
 		/* Now have the return value */
 		rcode = PyLong_AsLong(p_tuple_int);
-		/* Reply item tuple */
-		mod_vptuple(request->reply, inst, request, &request->reply_pairs,
-			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
-		/* Config item tuple */
-		mod_vptuple(request, inst, request, &request->control_pairs,
-			    PyTuple_GET_ITEM(p_ret, 2), funcname, "config");
+
+		/* process updateDict */
+		p_update_dict = PyTuple_GET_ITEM(p_ret, 1);
+		if (!PyDict_CheckExact(p_update_dict)) {
+			ERROR("%s - updateDict is not dictionary", funcname);
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+
+#define UPDATE_TUPLE_TO_LIST(_ctx, _list_name, _vps) \
+		mod_update_tuple_to_list(_ctx, request, _vps, p_update_dict, funcname, _list_name)
+
+		UPDATE_TUPLE_TO_LIST(request->packet, "request", &request->request_pairs);
+		UPDATE_TUPLE_TO_LIST(request->reply, "reply", &request->reply_pairs);
+		UPDATE_TUPLE_TO_LIST(request, "control", &request->control_pairs);
+		UPDATE_TUPLE_TO_LIST(request->state_ctx, "session-state", &request->state_pairs);
 
 	} else if (PyNumber_Check(p_ret)) {
 		/* Just an integer */
 		rcode = PyLong_AsLong(p_ret);
-
 	} else if (p_ret == Py_None) {
 		/* returned 'None', return value defaults to "OK, continue." */
 		rcode = RLM_MODULE_OK;
@@ -586,8 +640,11 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result,
 
 finish:
 	if (rcode == RLM_MODULE_FAIL) python_error_log(inst, request);
-	Py_XDECREF(p_arg);
+
 	Py_XDECREF(p_ret);
+	Py_XDECREF(p_dict);
+	Py_XDECREF(p_tuple_int);
+	Py_XDECREF(p_update_dict);
 
 	RETURN_MODULE_RCODE(rcode);
 }
