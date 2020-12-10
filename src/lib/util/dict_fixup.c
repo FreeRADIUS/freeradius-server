@@ -91,8 +91,8 @@ typedef struct {
  *	- 0 on success.
  *	- -1 on out of memory.
  */
-static CC_HINT(always_inline) int dict_fixup_common(char const *filename, int line,
-						    fr_dlist_head_t *fixup_list, dict_fixup_common_t *common)
+static inline CC_HINT(always_inline) int dict_fixup_common(char const *filename, int line,
+							   fr_dlist_head_t *fixup_list, dict_fixup_common_t *common)
 {
 	common->filename = talloc_strdup(common, filename);
 	if (!common->filename) {
@@ -156,7 +156,7 @@ int dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_enumv_t *fixup)
+static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_enumv_t *fixup)
 {
 	fr_dict_attr_t 		*da;
 	fr_value_box_t		value;
@@ -305,7 +305,7 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
  *	- 0 on success.
  *	- -1 on failure.
  */
-static CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_group_t *fixup)
+static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_group_t *fixup)
 {
 	fr_dict_attr_t const *da;
 	fr_dict_t *dict = fr_dict_unconst(fr_dict_by_da(fixup->da));
@@ -398,7 +398,7 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
+static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
 {
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t		*cloned;
