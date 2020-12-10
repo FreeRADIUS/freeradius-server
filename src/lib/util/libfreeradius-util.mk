@@ -12,6 +12,7 @@ SOURCES		:= \
 		   dbuff.c \
 		   debug.c \
 		   dict_ext.c \
+		   dict_fixup.c \
 		   dict_print.c \
 		   dict_tokenize.c \
 		   dict_unknown.c \

@@ -764,8 +764,6 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	return 0;
 }
 
-
-
 /** Add a protocol to the global protocol table
  *
  * Inserts a protocol into the global protocol table.  Uses the root attributes

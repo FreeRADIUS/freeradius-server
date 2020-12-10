@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/rand.h>
@@ -33,40 +34,7 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #include <ctype.h>
 
-typedef struct dict_fixup_s dict_fixup_t;
-
 #define MAX_ARGV (16)
-typedef enum {
-	DICT_FIXUP_ENUM,
-	DICT_FIXUP_GROUP,
-	DICT_FIXUP_CLONE,
-} dict_fixup_type_t;
-
-
-/** A temporary enum value, which we'll resolve later
- *
- */
-struct dict_fixup_s {
-	char			*filename;		//!< where the "enum" was defined
-	int			line;			//!< ditto
-	fr_dlist_t		entry;			//!< linked list of fixups
-	dict_fixup_type_t	type;			//!< type of the fixup
-
-	fr_dict_attr_t const   	*parent;		//!< Parent namespace.
-
-	union {
-		struct {
-			char			*attribute;		//!< we couldn't find (and will need to resolve later).
-			char			*name;			//!< Raw enum name.
-			char			*value;			//!< Raw enum value.  We can't do anything with this until
-									//!< we know the attribute type, which we only find out later.
-		};
-		struct {
-			fr_dict_attr_t		*da;			//!< FR_TYPE_GROUP to fix
-			char 			*ref;			//!< the reference name
-		};
-	};
-};
 
 /** Parser context for dict_from_file
  *
@@ -93,13 +61,10 @@ typedef struct {
 							///< value processing.
 	fr_dict_attr_t const   	*relative_attr;		//!< for ".82" instead of "1.2.3.82".
 							///< only for parents of type "tlv"
-
-	TALLOC_CTX		*fixup_pool;		//!< Temporary pool for fixups, reduces holes
-
-	fr_dlist_head_t		fixups;			//! various fixups
-
-	fr_dict_attr_t		*ext_fixup;		//!< Head of a list of attributes to apply fixups to.
+	dict_fixup_ctx_t	fixup;
 } dict_tokenize_ctx_t;
+
+#define CURRENT_FRAME(_dctx)	(&(_dctx)->stack[(_dctx)->stack_depth])
 
 /*
  *	String split routine.  Splits an input string IN PLACE
@@ -171,46 +136,6 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 
 	*pvalue = ret;
 	return 1;
-}
-
-/** Link a da into the fixup list
- *
- */
-static inline CC_HINT(always_inline) void dict_attr_fixup_mark(dict_tokenize_ctx_t *ctx, fr_dict_attr_t *da)
-{
-	if (da->fixup) return;
-
-	da->fixup = ctx->ext_fixup;
-	ctx->ext_fixup = da;
-}
-
-static dict_fixup_t *dict_fixup_alloc(dict_tokenize_ctx_t *ctx, dict_fixup_type_t type)
-{
-	dict_fixup_t *fixup;
-
-	fixup = talloc_zero(ctx->fixup_pool, dict_fixup_t);
-	if (!fixup) return NULL;
-
-	fixup->type = type;
-
-	fixup->filename = talloc_strdup(fixup, ctx->stack[ctx->stack_depth].filename);
-	if (!fixup->filename) {
-		talloc_free(fixup);
-		return NULL;
-	}
-	fixup->line = ctx->stack[ctx->stack_depth].line;
-
-	/*
-	 *	Do ENUMs before CLONE.
-	 */
-	if (type == DICT_FIXUP_ENUM) {
-		fr_dlist_insert_head(&ctx->fixups, fixup);
-	} else {
-		fr_dlist_insert_tail(&ctx->fixups, fixup);
-	}
-
-
-	return fixup;
 }
 
 /** Set a new root dictionary attribute
@@ -346,7 +271,6 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 	*type_p = type;
 	return 0;
 }
-
 
 static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags,
 				   char **ref)
@@ -518,7 +442,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			*ref = talloc_strdup(ctx->fixup_pool, value);
+			*ref = talloc_strdup(ctx->fixup.pool, value);
 			flags->extra = true;
 			flags->subtype = FLAG_HAS_REF;
 
@@ -535,7 +459,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			*ref = talloc_strdup(ctx->fixup_pool, value);
+			*ref = talloc_strdup(ctx->fixup.pool, value);
 
 		} else if (ctx->dict->subtype_table) {
 			int subtype;
@@ -865,18 +789,15 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		 *	dictionary which doesn't exist.
 		 */
 		if (slen == 0) {
-			dict_fixup_t *fixup;
-
 		save:
-			fixup = dict_fixup_alloc(ctx, DICT_FIXUP_GROUP);
-			if (!fixup) {
+			if (dict_fixup_group(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+					     self, ref, talloc_array_length(ref) - 1) < 0) {
 			oom:
 				talloc_free(ref);
 				return -1;
 			}
+			talloc_free(ref);
 
-			fixup->da = self;
-			fixup->ref = ref;
 			return 0;
 
 		} else if (ref[slen] == '\0') {
@@ -912,17 +833,10 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 *	It's a "clone" thing.
 	 */
 	if (ref) {
-		dict_fixup_t	*fixup;
-		fr_dict_attr_t	*self;
-
-		memcpy(&self, &da, sizeof(self)); /* const issues */
-
-		fixup = dict_fixup_alloc(ctx, DICT_FIXUP_CLONE);
-		if (!fixup) goto oom;
-
-		fixup->parent = parent;
-		fixup->da = self;
-		fixup->ref = ref;
+		if (dict_fixup_clone(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+				     fr_dict_attr_unconst(parent), fr_dict_attr_unconst(da),
+				     ref, talloc_array_length(ref) - 1) < 0) goto oom;
+		talloc_free(ref);
 		return 0;
 	}
 
@@ -1109,18 +1023,15 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	}
 
 	if (ref) {
-		dict_fixup_t *fixup;
+		int ret;
 
-		fixup = dict_fixup_alloc(ctx, DICT_FIXUP_CLONE);
-		if (!fixup) {
-			talloc_free(ref);
-			return -1;
-		}
+		ret = dict_fixup_clone(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+				       fr_dict_attr_unconst(CURRENT_FRAME(ctx)->da),
+				       dict_attr_child_by_num(CURRENT_FRAME(ctx)->da, CURRENT_FRAME(ctx)->member_num),
+				       ref, talloc_array_length(ref) - 1);
+		talloc_free(ref);
 
-		fixup->parent = ctx->stack[ctx->stack_depth].da;
-		fixup->da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
-						   ctx->stack[ctx->stack_depth].member_num);
-		fixup->ref = ref;
+		if (ret < 0) return -1;
 	}
 
 	return 0;
@@ -1168,25 +1079,17 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	up later.
 	 */
 	if (!da) {
-		dict_fixup_t *fixup;
-
 	fixup:
+		if (!fr_cond_assert_msg(ctx->fixup.pool, "fixup pool context invalid")) return -1;
 
-		if (!fr_cond_assert_msg(ctx->fixup_pool, "fixup pool context invalid")) return -1;
-
-		fixup = dict_fixup_alloc(ctx, DICT_FIXUP_ENUM);
-		if (!fixup) {
-		oom:
+		if (dict_fixup_enumv(&ctx->fixup,
+				     CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+				     argv[0], strlen(argv[0]),
+				     argv[1], strlen(argv[1]),
+				     argv[2], strlen(argv[2]), parent) < 0) {
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
-		fixup->attribute = talloc_strdup(fixup, argv[0]);
-		if (!fixup->attribute) goto oom;
-		fixup->name = talloc_strdup(fixup, argv[1]);
-		if (!fixup->name) goto oom;
-		fixup->value = talloc_strdup(fixup, argv[2]);
-		if (!fixup->value) goto oom;
-		fixup->parent = parent;
 		return 0;
 	}
 
@@ -1218,8 +1121,10 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		fr_value_box_clear(&value);
 		return -1;
 	}
-	dict_attr_fixup_mark(ctx, da);
 	fr_value_box_clear(&value);
+
+	if (dict_fixup_enumv_hash(&ctx->fixup,
+				  CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line, da) < 0) return -1;
 
 	return 0;
 }
@@ -1366,8 +1271,11 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 		fr_value_box_clear(&value);
 		return -1;
 	}
-	dict_attr_fixup_mark(ctx, fr_dict_attr_unconst(da));
 	fr_value_box_clear(&value);
+
+	if (dict_fixup_enumv_hash(&ctx->fixup,
+				  CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+				  fr_dict_attr_unconst(da)) < 0) return -1;
 
 	return 0;
 }
@@ -1626,260 +1534,9 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	return 0;
 }
 
-static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, char const *ref, char const *filename, int line)
+static int dict_finalise(dict_tokenize_ctx_t *ctx)
 {
-	fr_dict_t		*dict;
-	fr_dict_attr_t const	*da;
-	char			*p;
-	ssize_t			slen;
-
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref);
-	if (da) return da;
-
-	/*
-	 *	The attribute doesn't exist, and the reference
-	 *	isn't in a "PROTO.ATTR" format, die.
-	 */
-	p = strchr(ref, '.');
-
-	/*
-	 *	Get / skip protocol name.
-	 */
-	slen = dict_by_protocol_substr(NULL,
-				       &dict, &FR_SBUFF_IN(ref, strlen(ref)),
-				       *dict_def);
-	if (slen <= 0) {
-		fr_dict_t *other;
-
-		if (p) *p = '\0';
-
-		if (fr_dict_protocol_afrom_file(&other, ref, NULL) < 0) {
-			return NULL;
-		}
-
-		if (p) *p = '.';
-
-		/*
-		 *	Grab the protocol name again
-		 */
-		dict = other;
-		if (!p) {
-			*dict_def = other;
-			return other->root;
-		}
-
-		slen = p - ref;
-	}
-
-	if (slen < 0) {
-	invalid_reference:
-		fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]",
-				   ref,
-				   fr_cwd_strip(filename), line);
-		return NULL;
-	}
-
-	/*
-	 *	No known dictionary, so we're asked to just
-	 *	use the whole string.  Which we did above.  So
-	 *	either it's a bad ref, OR it's a ref to a
-	 *	dictionary which doesn't exist.
-	 */
-	if (slen == 0) goto invalid_reference;
-
-	/*
-	 *	Look up the attribute.
-	 */
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref + slen + 1);
-	if (!da) {
-		fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
-				   ref + slen + 1, fr_cwd_strip(filename), line);
-		return NULL;
-	}
-
-	*dict_def = dict;
-	return da;
-}
-
-static int fr_dict_finalise(dict_tokenize_ctx_t *ctx)
-{
-	dict_fixup_t *fixup;
-
-	for (fixup = fr_dlist_head(&ctx->fixups);
-	     fixup != NULL;
-	     fixup = fr_dlist_next(&ctx->fixups, fixup)) {
-		switch (fixup->type) {
-		case DICT_FIXUP_ENUM: {
-			fr_dict_attr_t *da;
-			fr_value_box_t		value;
-			fr_type_t		type;
-			int			ret;
-			fr_dict_attr_t const	*da_const;
-
-			da_const = fr_dict_attr_by_oid(NULL, fixup->parent, fixup->attribute);
-			if (!da_const) {
-				fr_strerror_printf_push("Failed resolving ATTRIBUTE referenced by VALUE '%s' at %s[%d]",
-							fixup->name, fr_cwd_strip(fixup->filename), fixup->line);
-				return -1;
-			}
-			da = fr_dict_attr_unconst(da_const);
-			type = da->type;
-
-			if (fr_value_box_from_str(fixup, &value, &type, NULL,
-						  fixup->value, talloc_array_length(fixup->value) - 1, '\0', false) < 0) {
-				fr_strerror_printf_push("Invalid VALUE for Attribute '%s' at %s[%d]",
-							da->name,
-							fr_cwd_strip(fixup->filename), fixup->line);
-				return -1;
-			}
-
-			ret = fr_dict_attr_enum_add_name(da, fixup->name, &value, false, false);
-			fr_value_box_clear(&value);
-
-			if (ret < 0) return -1;
-
-			dict_attr_fixup_mark(ctx, da);
-		}
-			break;
-
-		case DICT_FIXUP_GROUP: {
-			fr_dict_attr_t const *da;
-			fr_dict_t *dict = ctx->dict;
-
-			/*
-			 *
-			 *	We avoid refcount loops by using the "autoref"
-			 *	table.  If a "group" attribute refers to a
-			 *	dictionary which does not exist, we load it,
-			 *	increment its reference count, and add it to
-			 *	the autoref table.
-			 *
-			 *	If a group attribute refers to a dictionary
-			 *	which does exist, we check that dictionaries
-			 *	"autoref" table.  If OUR dictionary is there,
-			 *	then we do nothing else.  That dictionary
-			 *	points to us via refcounts, so we can safely
-			 *	point to it.  The refcounts ensure that we
-			 *	won't be free'd before the other one is
-			 *	free'd.
-			 *
-			 *	If our dictionary is NOT in the other
-			 *	dictionaries autoref table, then it was loaded
-			 *	via some other method.  We increment its
-			 *	refcount, and add it to our autoref table.
-			 *
-			 *	Then when this dictionary is being free'd, we
-			 *	also free the dictionaries in our autoref
-			 *	table.
-			 */
-
-			da = dict_find_or_load_reference(&dict, fixup->ref, fixup->filename, fixup->line);
-			if (!da) return -1;
-
-			if (da->type != FR_TYPE_TLV) {
-				fr_strerror_printf("References MUST be to attributes of type 'tlv' at %s[%d]",
-						   fr_cwd_strip(fixup->filename), fixup->line);
-				return -1;
-			}
-
-			if (fr_dict_attr_ref(da)) {
-				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...' at %s[%d]",
-						   fr_cwd_strip(fixup->filename), fixup->line);
-				return -1;
-			}
-			dict_attr_ref_set(fixup->da, da);
-			talloc_free(fixup->ref); /* talloc'd from ctx->dict->pool */
-		}
-			break;
-
-		case DICT_FIXUP_CLONE: {
-			fr_dict_attr_t const *da;
-			fr_dict_attr_t *cloned;
-			fr_dict_t *dict = ctx->dict;
-
-			da = dict_find_or_load_reference(&dict, fixup->ref, fixup->filename, fixup->line);
-			if (!da) return -1;
-
-			/*
-			 *	We can only clone attributes of the same data type.
-			 */
-			if (da->type != fixup->da->type) {
-				fr_strerror_printf("Clone references MUST be to attributes of type '%s' at %s[%d]",
-						   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
-						   fr_cwd_strip(fixup->filename), fixup->line);
-				return -1;
-			}
-
-			if (fr_dict_attr_ref(da)) {
-				fr_strerror_printf("Clone references MUST NOT refer to an ATTRIBUTE which has 'ref=...' at %s[%d]",
-						   fr_cwd_strip(fixup->filename), fixup->line);
-				return -1;
-			}
-
-			/*
-			 *	Copy the source attribute, but with a
-			 *	new name and a new attribute number.
-			 */
-			cloned = dict_attr_acopy(dict->pool, da, fixup->da->name);
-			if (!cloned) {
-				fr_strerror_printf("Failed cloning attribute '%s' to %s", da->name, fixup->ref);
-				return -1;
-			}
-
-			cloned->attr = fixup->da->attr;
-			cloned->parent = fixup->parent; /* we need to re-parent this attribute */
-
-			/*
-			 *	Copy any pre-existing children over.
-			 */
-			if (dict_attr_children(fixup->da)) {
-				if (dict_attr_acopy_children(dict, cloned, fixup->da) < 0) {
-					fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
-					return -1;
-				}
-			}
-
-			/*
-			 *	Copy children of the DA we're cloning.
-			 */
-			if (dict_attr_acopy_children(dict, cloned, da) < 0) {
-				fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
-				return -1;
-			}
-
-			if (dict_attr_child_add(fr_dict_attr_unconst(fixup->parent), cloned) < 0) {
-				fr_strerror_printf("Failed adding cloned attribute %s", da->name);
-				talloc_free(cloned);
-				return -1;
-			}
-
-			if (dict_attr_add_to_namespace(dict, fixup->parent, cloned) < 0) return -1;
-			talloc_free(fixup->ref); /* talloc'd from ctx->dict->pool */
-		}
-			break;
-
-		} /* switch over fixup type */
-	}	  /* loop over fixups */
-	fr_dlist_init(&ctx->fixups, dict_fixup_t, entry);
-
-	if (ctx->ext_fixup) {
-		fr_dict_attr_t *da;
-
-		while ((da = ctx->ext_fixup) != NULL) {
-			fr_dict_attr_ext_enumv_t *ext;
-
-			ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
-			if (ext) {
-				fr_hash_table_fill(ext->value_by_name);
-				fr_hash_table_fill(ext->name_by_value);
-			}
-
-			ctx->ext_fixup = da->fixup;
-			da->fixup = NULL;
-		}
-	}
-
-	TALLOC_FREE(ctx->fixup_pool);
+	if (dict_fixup_apply(&ctx->fixup) < 0) return -1;
 
 	/*
 	 *	Walk over all of the hash tables to ensure they're
@@ -2278,11 +1935,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *
 			 *	@todo - make a nested ctx?
 			 */
-			if (!ctx->fixup_pool) {
-				ctx->fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
-				fr_dlist_init(&ctx->fixups, dict_fixup_t, entry);
-			}
-
+			dict_fixup_init(NULL, &ctx->fixup);
 
 			// check if there's a linked library for the
 			// protocol.  The values can be unknown (we
@@ -2352,7 +2005,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	error. So we don't need to do that
 			 *	here.
 			 */
-			if (fr_dict_finalise(ctx) < 0) {
+			if (dict_finalise(ctx) < 0) {
 				fclose(fp);
 				return -1;
 			}
@@ -2630,16 +2283,14 @@ static int dict_from_file(fr_dict_t *dict,
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.dict = dict;
-	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
-	fr_dlist_init(&ctx.fixups, dict_fixup_t, entry);
+	dict_fixup_init(NULL, &ctx.fixup);
 	ctx.stack[0].dict = dict;
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
 
-	ret = _dict_from_file(&ctx,
-				dir_name, filename, src_file, src_line);
+	ret = _dict_from_file(&ctx, dir_name, filename, src_file, src_line);
 	if (ret < 0) {
-		talloc_free(ctx.fixup_pool);
+		talloc_free(ctx.fixup.pool);
 		return ret;
 	}
 
@@ -2650,7 +2301,7 @@ static int dict_from_file(fr_dict_t *dict,
 	 *	Fixups should have been applied already to any protocol
 	 *	dictionaries.
 	 */
-	return fr_dict_finalise(&ctx);
+	return dict_finalise(&ctx);
 }
 
 /** (Re-)Initialize the special internal dictionary
@@ -2888,14 +2539,13 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 	ctx.stack[0].da = dict->root;
 	ctx.stack[0].nest = FR_TYPE_MAX;
 
-	ctx.fixup_pool = talloc_pool(NULL, DICT_FIXUP_POOL_SIZE);
-	if (!ctx.fixup_pool) return -1;
+	if (dict_fixup_init(NULL, &ctx.fixup) < 0) return -1;
 
 	if (strcasecmp(argv[0], "VALUE") == 0) {
 		if (argc < 4) {
 			fr_strerror_printf("VALUE needs at least 4 arguments, got %i", argc);
 		error:
-			TALLOC_FREE(ctx.fixup_pool);
+			TALLOC_FREE(ctx.fixup.pool);
 			return -1;
 		}
 
@@ -2923,7 +2573,5 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 		goto error;
 	}
 
-	fr_dict_finalise(&ctx);
-
-	return 0;
+	return dict_finalise(&ctx);
 }
