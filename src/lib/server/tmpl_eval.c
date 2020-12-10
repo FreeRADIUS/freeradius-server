@@ -990,7 +990,7 @@ static fr_pair_t *_tmpl_cursor_list_eval(UNUSED fr_pair_t **prev, fr_pair_t *cur
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, fr_pair_t **list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
