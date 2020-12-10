@@ -844,7 +844,7 @@ typedef enum {
 
 void			tmpl_debug(tmpl_t const *vpt);
 
-fr_pair_t		**radius_list(request_t *request, pair_list_t list);
+fr_pair_list_t		*radius_list(request_t *request, pair_list_t list);
 
 fr_radius_packet_t	*radius_packet(request_t *request, pair_list_t list_name);
 
@@ -989,10 +989,10 @@ fr_pair_t		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 
 void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
 
-int			tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_t **out,
+int			tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					request_t *request, tmpl_t const *vpt);
 
-int			tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_t **out,
+int			tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out,
 						request_t *request, tmpl_t const *vpt);
 
 int			tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt);
