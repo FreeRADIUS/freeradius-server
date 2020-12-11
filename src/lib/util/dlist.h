@@ -145,6 +145,16 @@ static inline void _fr_dlist_init(fr_dlist_head_t *list_head, size_t offset, cha
 	list_head->num_elements = 0;
 }
 
+/** Efficiently remove all elements in a dlist
+ *
+ * @param[in] list_head	to clear.
+ */
+static inline void fr_dlist_clear(fr_dlist_head_t *list_head)
+{
+	fr_dlist_entry_init(&list_head->entry);
+	list_head->num_elements = 0;
+}
+
 /** Insert an item into the head of a list
  *
  * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
