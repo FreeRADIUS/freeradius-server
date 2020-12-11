@@ -22,6 +22,7 @@
  */
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
+#include <freeradius-devel/util/time.h>
 
 #include "strerror.c"
 
@@ -178,6 +179,52 @@ static void strerror_printf_push_append2(void)
 	TEST_CHECK(error && (error[0] == '\0'));
 }
 
+static void strerror_printf_benchmark(void)
+{
+	int		i;
+	fr_time_t	start, stop;
+	uint64_t	rate;
+
+	fr_strerror_const("pre-allocate buffers");
+	fr_strerror();
+
+	start = fr_time();
+	for (i = 0; i < 100000; i++) {
+		fr_strerror_printf("I am a test %u string %u %s", i, i, "benchmark");
+		fr_strerror();	/* Clear */
+	}
+	stop = fr_time();
+
+	rate = (uint64_t)((float)NSEC / ((stop - start) / 100000));
+	printf("printf pop rate %" PRIu64 "\n", rate);
+
+	TEST_CHECK(rate > 400000);
+}
+
+
+static void strerror_const_benchmark(void)
+{
+	int		i;
+	fr_time_t	start, stop;
+	uint64_t	rate;
+
+	fr_strerror_const("pre-allocate buffers");
+	fr_strerror();
+
+	start = fr_time();
+	for (i = 0; i < 100000; i++) {
+		fr_strerror_const("I am a test string");
+		fr_strerror();	/* Clear */
+	}
+	stop = fr_time();
+
+	rate = (uint64_t)((float)NSEC / ((stop - start) / 100000));
+	printf("const pop rate %" PRIu64 "\n", rate);
+
+	TEST_CHECK(rate > 10000000);
+}
+
+
 TEST_LIST = {
 	{ "strerror_uninit",			strerror_uninit },
 	{ "strerror_pop_uninit",		strerror_pop_uninit },
@@ -191,6 +238,9 @@ TEST_LIST = {
 	{ "strerror_printf_strerror_append",	strerror_printf_strerror_append },
 	{ "strerror_printf_push_append",	strerror_printf_push_append },
 	{ "strerror_printf_push_append2",	strerror_printf_push_append2 },
+
+	{ "strerror_printf_benchmark",		strerror_printf_benchmark },
+	{ "strerror_const_benchmark",		strerror_const_benchmark },
 
 	{ 0 }
 };

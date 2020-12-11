@@ -81,20 +81,17 @@ static void _fr_logging_free(void *arg)
  *
  * @param[in] buffer	to clear cursor of.
  */
-static inline CC_HINT(always_inline) void fr_strerror_clear(fr_log_buffer_t *buffer, bool clear_pools)
+static inline CC_HINT(always_inline) void fr_strerror_clear(fr_log_buffer_t *buffer)
 {
-	if (clear_pools) {
-		talloc_free_children(buffer->pool_a);
-		talloc_free_children(buffer->pool_b);
-	}
-	fr_dlist_talloc_init(&buffer->entries, fr_log_entry_t, list);
+	fr_dlist_clear(&buffer->entries);
+
 }
 
 /** Initialise thread local storage
  *
  * @return fr_buffer_t containing log messages.
  */
-static inline fr_log_buffer_t *fr_strerror_init(void)
+static fr_log_buffer_t *fr_strerror_init(void)
 {
 	fr_log_buffer_t *buffer;
 
@@ -118,7 +115,7 @@ static inline fr_log_buffer_t *fr_strerror_init(void)
 
 		fr_thread_local_set_destructor(fr_strerror_buffer, _fr_logging_free, buffer);
 
-		fr_strerror_clear(buffer, false);
+		fr_dlist_talloc_init(&buffer->entries, fr_log_entry_t, list);
 	}
 
 	return buffer;
@@ -131,17 +128,16 @@ static inline fr_log_buffer_t *fr_strerror_init(void)
  *	when we're using fr_strerror as an argument
  *	for another message.
  */
-static inline CC_HINT(always_inline) TALLOC_CTX *pool_alternate(fr_log_buffer_t	*buffer)
+static inline CC_HINT(always_inline) TALLOC_CTX *pool_alt(fr_log_buffer_t *buffer)
 {
 	if (buffer->pool == buffer->pool_a) {
 		buffer->pool = buffer->pool_b;
 		return buffer->pool;
 	}
-
 	return buffer->pool = buffer->pool_a;
 }
 
-static inline CC_HINT(always_inline) void pool_free_alt(fr_log_buffer_t *buffer)
+static inline CC_HINT(always_inline) void pool_alt_free_children(fr_log_buffer_t *buffer)
 {
 	if (buffer->pool == buffer->pool_a) {
 		talloc_free_children(buffer->pool_b);
@@ -154,7 +150,7 @@ static inline CC_HINT(always_inline) void pool_free_alt(fr_log_buffer_t *buffer)
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
+static inline CC_HINT(always_inline) fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
@@ -167,12 +163,14 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 	 *	Clear any existing log messages
 	 */
 	if (!fmt) {
-		fr_strerror_clear(buffer, true);
+		talloc_free_children(buffer->pool_a);
+		talloc_free_children(buffer->pool_b);
+		fr_strerror_clear(buffer);
 		return NULL;
 	}
 
-	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
-	if (!entry) {
+	entry = talloc(pool_alt(buffer), fr_log_entry_t);
+	if (unlikely(!entry)) {
 	oom:
 		fr_perror("Failed allocating memory for libradius error buffer");
 		return NULL;
@@ -181,10 +179,12 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 	va_copy(ap_p, ap);
 	entry->msg = fr_vasprintf(entry, fmt, ap_p);
 	va_end(ap_p);
-	if (!entry->msg) goto oom;
+	if (unlikely(!entry->msg)) goto oom;
+	entry->subject = NULL;
+	entry->offset = 0;
 
-	pool_free_alt(buffer);
-	fr_strerror_clear(buffer, false);
+	pool_alt_free_children(buffer);
+	fr_strerror_clear(buffer);
 	fr_dlist_insert_tail(&buffer->entries, entry);
 
 	return entry;
@@ -197,7 +197,8 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const *fmt, va_list ap)
+static inline CC_HINT(always_inline)
+fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
@@ -211,8 +212,8 @@ static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const
 	 */
 	if (!fr_dlist_num_elements(&buffer->entries)) talloc_free_children(buffer->pool);
 
-	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
-	if (!entry) {
+	entry = talloc(pool_alt(buffer), fr_log_entry_t);
+	if (unlikely(!entry)) {
 	oom:
 		fr_perror("Failed allocating memory for libradius error buffer");
 		return NULL;
@@ -221,7 +222,9 @@ static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const
 	va_copy(ap_p, ap);
 	entry->msg = fr_vasprintf(entry, fmt, ap_p);
 	va_end(ap_p);
-	if (!entry->msg) goto oom;
+	if (unlikely(!entry->msg)) goto oom;
+	entry->subject = NULL;
+	entry->offset = 0;
 
 	return entry;
 }
@@ -258,13 +261,13 @@ void fr_strerror_printf_push(char const *fmt, ...)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (unlikely(!buffer)) return;
 
 	va_start(ap, fmt);
 	entry = strerror_vprintf_push(buffer, fmt, ap);
 	va_end(ap);
 
-	if (!entry) return;
+	if (unlikely(!entry)) return;
 
 	fr_dlist_insert_tail(&buffer->entries, entry);
 }
@@ -284,13 +287,13 @@ void fr_strerror_printf_push_head(char const *fmt, ...)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (unlikely(!buffer)) return;
 
 	va_start(ap, fmt);
 	entry = strerror_vprintf_push(buffer, fmt, ap);
 	va_end(ap);
 
-	if (!entry) return;
+	if (unlikely(!entry)) return;
 
 	fr_dlist_insert_head(&buffer->entries, entry);
 }
@@ -314,7 +317,7 @@ void fr_strerror_marker_printf(char const *subject, size_t offset, char const *f
 	entry = strerror_vprintf(fmt, ap);
 	va_end(ap);
 
-	if (!entry) return;
+	if (unlikely(!entry)) return;
 
 	entry->subject = talloc_strdup(entry, subject);
 	entry->offset = offset;
@@ -337,13 +340,13 @@ void fr_strerror_marker_printf_push(char const *subject, size_t offset, char con
 	fr_log_buffer_t		*buffer;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (unlikely(!buffer)) return;
 
 	va_start(ap, fmt);
 	entry = strerror_vprintf_push(buffer, fmt, ap);
 	va_end(ap);
 
-	if (!entry) return;
+	if (unlikely(!entry)) return;
 
 	entry->subject = talloc_strdup(entry, subject);
 	entry->offset = offset;
@@ -368,13 +371,13 @@ void fr_strerror_marker_printf_push_head(char const *subject, size_t offset, cha
 	fr_log_buffer_t		*buffer;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return;
+	if (unlikely(!buffer)) return;
 
 	va_start(ap, fmt);
 	entry = strerror_vprintf_push(buffer, fmt, ap);
 	va_end(ap);
 
-	if (!entry) return;
+	if (unlikely(!entry)) return;
 
 	entry->subject = talloc_strdup(entry, subject);
 	entry->offset = offset;
@@ -392,27 +395,37 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *
 	fr_log_buffer_t	*buffer;
 
 	buffer = fr_strerror_init();
-	if (!buffer) return NULL;
+	if (unlikely(!buffer)) return NULL;
 
 	/*
 	 *	Clear any existing log messages
 	 */
 	if (!msg) {
-		fr_strerror_clear(buffer, true);
+		fr_strerror_clear(buffer);
+		talloc_free_children(buffer->pool_a);
+		talloc_free_children(buffer->pool_b);
 		return NULL;
 	}
 
-	entry = talloc(pool_alternate(buffer), fr_log_entry_t);
-	if (!entry) {
+	entry = talloc(pool_alt(buffer), fr_log_entry_t);
+	if (unlikely(!entry)) {
 		fr_perror("Failed allocating memory for libradius error buffer");
 		return NULL;
 	}
-	*entry = (fr_log_entry_t) {
-		.msg = msg
-	};
+	/*
+	 *	For some reason this is significantly
+	 *	more efficient than a compound literal
+	 *	even though in the majority of cases
+	 *	compound literals and individual field
+	 *	assignments result in the same byte
+	 *	code.
+	 */
+	entry->msg = msg;
+	entry->subject = NULL;
+	entry->offset = 0;
 
-	pool_free_alt(buffer);
-	fr_strerror_clear(buffer, false);
+	pool_alt_free_children(buffer);
+	fr_strerror_clear(buffer);
 	fr_dlist_insert_tail(&buffer->entries, entry);
 
 	return entry;
@@ -449,12 +462,22 @@ static fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *
 	 */
 	if (!fr_dlist_num_elements(&buffer->entries)) talloc_free_children(buffer->pool);
 
-	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
-	if (!entry) {
+	entry = talloc(pool_alt(buffer), fr_log_entry_t);
+	if (unlikely(!entry)) {
 		fr_perror("Failed allocating memory for libradius error buffer");
 		return NULL;
 	}
+	/*
+	 *	For some reason this is significantly
+	 *	more efficient than a compound literal
+	 *	even though in the majority of cases
+	 *	compound literals and individual field
+	 *	assignments result in the same byte
+	 *	code.
+	 */
 	entry->msg = msg;
+	entry->subject = NULL;
+	entry->offset = 0;
 
 	return entry;
 }
@@ -475,8 +498,7 @@ void fr_strerror_const_push(char const *msg)
 	if (!buffer) return;
 
 	entry = strerror_const_push(buffer, msg);
-
-	if (!entry) return;
+	if (unlikely(!entry)) return;
 
 	fr_dlist_insert_tail(&buffer->entries, entry);
 }
@@ -497,8 +519,7 @@ void fr_strerror_const_push_head(char const *msg)
 	if (!buffer) return;
 
 	entry = strerror_const_push(buffer, msg);
-
-	if (!entry) return;
+	if (unlikely(!entry)) return;
 
 	fr_dlist_insert_head(&buffer->entries, entry);
 }
@@ -527,7 +548,7 @@ char const *fr_strerror(void)
 	 *	Memory gets freed on next call to
 	 *	fr_strerror_printf or fr_strerror_printf_push.
 	 */
-	fr_strerror_clear(buffer, false);
+	fr_strerror_clear(buffer);
 
 	return entry->msg;
 }
@@ -557,7 +578,7 @@ char const *fr_strerror_marker(char const **subject, size_t *offset)
 	 *	Memory gets freed on next call to
 	 *	fr_strerror_printf or fr_strerror_printf_push.
 	 */
-	fr_strerror_clear(buffer, false);
+	fr_strerror_clear(buffer);
 
 	*subject = entry->subject;
 	*offset = entry->offset;
