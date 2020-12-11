@@ -23,7 +23,7 @@
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
 
-#include "sbuff.c"
+#include "sbuff.h"
 
 //#include <gperftools/profiler.h>
 
@@ -909,6 +909,7 @@ static void test_file_extend(void)
 	FILE		*fp;
 	char		buff[16];
 	char		fbuff[] = "                        xyzzy";
+	char		*post_ws;
 
 	TEST_CASE("Initialization");
 	fp = fmemopen(fbuff, sizeof(fbuff) - 1, "r");
@@ -918,7 +919,9 @@ static void test_file_extend(void)
 	TEST_CASE("Advance past whitespace, which will require shift/extend");
 	TEST_CHECK_LEN(sizeof(fbuff) - 6, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
 	TEST_CASE("Verify that we passed all and only whitespace");
-	TEST_CHECK_STRCMP(sbuff.p, "xyzzy");
+	(void) fr_sbuff_out_abstrncpy(NULL, &post_ws, &sbuff, 24);
+	TEST_CHECK_STRCMP(post_ws, "xyzzy");
+	talloc_free(post_ws);
 	fclose(fp);
 }
 
