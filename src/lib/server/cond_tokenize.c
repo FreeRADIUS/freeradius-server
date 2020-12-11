@@ -237,16 +237,6 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 	return false;
 }
 
-
-/*
- *	Less code means less bugs
- */
-#define return_P(_x) *error = _x;goto return_p
-#define return_0(_x) *error = _x;goto return_0
-#define return_lhs(_x) *error = _x;goto return_lhs
-#define return_rhs(_x) *error = _x;goto return_rhs
-#define return_SLEN goto return_slen
-
 static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 			       char const *lhs, char const *rhs)
 {

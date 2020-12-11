@@ -1010,9 +1010,9 @@ void			tmpl_extents_debug(fr_dlist_head_t *head);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
-				      fr_token_t *type, char const **error,
+				      fr_token_t *type,
 				      fr_dict_attr_t const **castda, bool require_regex,
-				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5,6));
+				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5));
 
 bool			tmpl_async_required(tmpl_t const *vpt);
 

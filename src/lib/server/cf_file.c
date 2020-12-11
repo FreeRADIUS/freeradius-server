@@ -796,7 +796,6 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 {
 	char const *ptr = *ptr_p;
 	ssize_t slen;
-	char const *error;
 	char const *out;
 	size_t outlen;
 
@@ -807,14 +806,14 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 	 *	Don't allow casts or regexes.  But do allow bare
 	 *	%{...} expansions.
 	 */
-	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token, &error, NULL, false, true);
+	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token, NULL, false, true);
 	if (slen <= 0) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(parent, &spaces, &text, slen, ptr);
 
 		ERROR("%s[%d]: %s", filename, lineno, text);
-		ERROR("%s[%d]: %s^ - %s", filename, lineno, spaces, error);
+		ERROR("%s[%d]: %s^ - %s", filename, lineno, spaces, fr_strerror());
 
 		talloc_free(spaces);
 		talloc_free(text);

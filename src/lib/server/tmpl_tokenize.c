@@ -4227,7 +4227,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 }
 #endif
 
-#define return_P(_x) *error = _x;goto return_p
+#define return_P(_x) fr_strerror_const(_x);goto return_p
 
 /** Preparse a string in preparation for passing it to tmpl_afrom_substr()
  *
@@ -4243,7 +4243,6 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
  * @param      in	where we start looking for the string
  * @param      inlen	length of the input string
  * @param[out] type	token type of the string.
- * @param[out] error	string describing the error
  * @param[out] castda	NULL if casting is not allowed, otherwise the cast
  * @param   require_regex whether or not to require regular expressions
  * @param   allow_xlat  whether or not "bare" xlat's are allowed
@@ -4252,7 +4251,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
  *	- <=0, -offset in 'start' where the parse error was located
  */
 ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
-		      fr_token_t *type, char const **error,
+		      fr_token_t *type,
 		      fr_dict_attr_t const **castda, bool require_regex, bool allow_xlat)
 {
 	char const *p = in, *end = in + inlen;
@@ -4270,7 +4269,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		char const *q;
 
 		if (!castda) {
-			*error = "Unexpected cast";
+			fr_strerror_const("Unexpected cast");
 		return_p:
 			return -(p - in);
 		}
