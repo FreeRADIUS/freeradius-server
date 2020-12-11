@@ -7,17 +7,26 @@ on:
   pull_request:
 
 env:
-  CI: 1
-  GH_ACTIONS: 1
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
   deb-build:
 
+    strategy:
+      matrix:
+        env:
+          - { NAME: "ubuntu-16.04", OS: "ubuntu:16.04" }
+          - { NAME: "ubuntu-18.04", OS: "ubuntu:18.04" }
+          - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
+          - { NAME: "debian-9",     OS: "debian:stretch" }
+          - { NAME: "debian-10",    OS: "debian:buster" }
+          - { NAME: "debian-sid",   OS: "debian:sid" }
+      fail-fast: false
+
     runs-on: ubuntu-latest
 
     container:
-      image: debian:buster
+      image: ${{ matrix.env.OS }}
 
     name: "DEB build"
 
@@ -31,26 +40,33 @@ jobs:
     - name: Install recent git
       run: |
         apt-get update
-        apt-get install -y git
+        apt-get install -y --no-install-recommends git-core ca-certificates
 
     - uses: actions/checkout@v2
+      with:
+        path: freeradius
 
     - name: Install build dependencies
       run: |
-        apt-get install -y build-essential devscripts quilt
+        apt-get install -y --no-install-recommends build-essential devscripts quilt equivs
         debian/rules debian/control
-        mk-build-deps -irt"apt-get -y" debian/control ;
+        mk-build-deps -irt"apt-get -y" debian/control
+      working-directory: freeradius
 
     - name: Build DEBs
       run: |
         make deb
+      working-directory: freeradius
+
+    - name: Collect DEBs
+      run: |
         mkdir debs
-        mv ../*.deb debs
+        mv *.deb debs
 
     - name: Store DEBs
       uses: actions/upload-artifact@v2
       with:
-        name: debs
+        name: debs-${{ matrix.env.NAME }}
         path: debs
 
   deb-test:
@@ -58,10 +74,21 @@ jobs:
     needs:
       - deb-build
 
+    strategy:
+      matrix:
+        env:
+          - { NAME: "ubuntu-16.04", OS: "ubuntu:16.04" }
+          - { NAME: "ubuntu-18.04", OS: "ubuntu:18.04" }
+          - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
+          - { NAME: "debian-9", OS: "debian:stretch" }
+          - { NAME: "debian-10", OS: "debian:buster" }
+          - { NAME: "debian-sid", OS: "debian:sid" }
+      fail-fast: false
+
     runs-on: ubuntu-latest
 
     container:
-      image: debian:buster
+      image: ${{ matrix.env.OS }}
 
     name: "DEB install test"
 
@@ -70,14 +97,19 @@ jobs:
     - name: Load DEBs
       uses: actions/download-artifact@v2
       with:
-        name: debs
+        name: debs-${{ matrix.env.NAME }}
+
+    - name: Package manager performance improvements
+      run: |
+        echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
+        echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
 
     - name: Install DEBs
       run: |
         apt-get update
-        find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y
+        find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y --no-install-recommends
 
-    - name: Startup test
+    - name: Config test
       run: |
         freeradius -XC
 
