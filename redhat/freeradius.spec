@@ -1,10 +1,12 @@
 %bcond_with rlm_yubikey
+%bcond_without ldap
 # %%bcond_with experimental_modules
 
 %{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
+%{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
 
 # experimental modules
 %bcond_with rlm_idn
@@ -156,6 +158,7 @@ Requires: perl-Net-IP
 This package provides Perl utilities for managing IP pools stored in
 SQL databases.
 
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
 %package ldap
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -165,6 +168,7 @@ BuildRequires: openldap-ltb
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
+%endif
 
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
@@ -351,8 +355,10 @@ export LDFLAGS="-Wl,--build-id"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
         --with-rlm-ldap-include-dir=/usr/local/openldap/include \
         --with-rlm-ldap-lib-dir=/usr/local/openldap/lib64 \
+%endif
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -391,6 +397,7 @@ export LDFLAGS="-Wl,--build-id"
         %{?_with_rlm_cache_memcached} \
         %{?_without_rlm_cache_memcached} \
         %{?_without_libwbclient} \
+        %{?_without_libfreeradius_ldap} \
 #        --with-modules="rlm_wimax" \
 
 make %_smp_mflags
@@ -845,9 +852,11 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
 %files ldap
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_ldap.so
+%endif
 
 %files unixODBC
 %defattr(-,root,root)
