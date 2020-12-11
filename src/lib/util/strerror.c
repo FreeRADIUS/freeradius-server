@@ -148,9 +148,11 @@ static inline CC_HINT(always_inline) void pool_alt_free_children(fr_log_buffer_t
 
 /** Create an entry in the thread local logging stack, clearing all other entries
  *
+ * @note Can't be inlined.
+ *
  * @hidecallergraph
  */
-static inline CC_HINT(always_inline) fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
+static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
@@ -195,10 +197,11 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_vprintf(char const
  * @param[in] fmt	printf style format string.
  * @param[in] ap	Arguments for the error string.
  *
+ * @note Can't be inline.
+ *
  * @hidecallergraph
  */
-static inline CC_HINT(always_inline)
-fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const *fmt, va_list ap)
+static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
