@@ -169,11 +169,10 @@ size_t fr_dhcpv6_option_len(fr_pair_t const *vp)
 	}
 }
 
-static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth,
-				     char const **error);
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
 
 static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, size_t max_attributes,
-				    bool allow_relay, int depth, char const **error)
+				    bool allow_relay, int depth)
 {
 	size_t attributes;
 	uint8_t const *p;
@@ -185,19 +184,19 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 		uint16_t len;
 
 		if ((size_t)(end - p) < DHCPV6_OPT_HDR_LEN) {
-			*error = "Not enough room for option header";
+			fr_strerror_const("Not enough room for option header");
 			return -(p - packet);
 		}
 
 		len = DHCPV6_GET_OPTION_LEN(p);
 		if ((size_t)(end - p) < (DHCPV6_OPT_HDR_LEN + len)) {
-			*error = "Option length overflows the packet";
+			fr_strerror_const("Option length overflows the packet");
 			return -(p - packet);
 		}
 
 		attributes++;
 		if (attributes > (size_t) max_attributes) {
-			*error = "Too many attributes";
+			fr_strerror_const("Too many attributes");
 			return -(p - packet);
 		}
 
@@ -211,7 +210,7 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 			/*
 			 *	Recurse to check the encapsulated packet.
 			 */
-			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes, depth + 1, error);
+			child = fr_dhcpv6_ok_internal(p + 4, p + 4 + len, max_attributes - attributes, depth + 1);
 			if (child <= 0) return -((p + 4) - packet) + child;
 
 			attributes += child;
@@ -223,8 +222,7 @@ static ssize_t fr_dhcpv6_options_ok(uint8_t const *packet, uint8_t const *end, s
 	return attributes;
 }
 
-static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth,
-				     char const **error)
+static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth)
 {
 	uint8_t const	*p;
 	ssize_t		attributes;
@@ -232,7 +230,7 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 	size_t		packet_len = end - packet;
 
 	if (depth > DHCPV6_MAX_RELAY_NESTING) {
-		*error = "Too many layers forwarded packets";
+		fr_strerror_const("Too many layers forwarded packets");
 		return 0;
 	}
 
@@ -240,7 +238,7 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 	case FR_DHCPV6_RELAY_FORWARD:
 	case FR_DHCPV6_RELAY_REPLY:
 		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
-			*error = "Packet is too small for relay header";
+			fr_strerror_const("Packet is too small for relay header");
 			return 0;
 		}
 
@@ -253,7 +251,7 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 		 *	8 bit code + 24 bits of transaction ID
 		 */
 		if (packet_len < DHCPV6_HDR_LEN) {
-			*error = "Packet is too small for DHCPv6 header";
+			fr_strerror_const("Packet is too small for DHCPv6 header");
 			return 0;
 		}
 
@@ -262,7 +260,7 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 		break;
 	}
 
-	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay, depth, error);
+	attributes = fr_dhcpv6_options_ok(p, end, max_attributes, allow_relay, depth);
 	if (attributes < 0) return -(p - packet) + attributes;
 
 	return attributes;
@@ -278,15 +276,13 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
  *	- True on success.
  *	- False on failure.
  */
-bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
-		  uint32_t max_attributes)
+bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len, uint32_t max_attributes)
 {
 	ssize_t slen;
-	char const *error = NULL;
 
-	slen = fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes, 0, &error);
+	slen = fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes, 0);
 	if (slen <= 0) {
-		fr_strerror_printf("Invalid DHCPv6 packet starting at offset %zd - %s", -slen, error);
+		fr_strerror_printf_push("Invalid DHCPv6 packet starting at offset %zd", -slen);
 		return false;
 	}
 
