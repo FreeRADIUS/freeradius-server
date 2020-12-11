@@ -81,8 +81,12 @@ static void _fr_logging_free(void *arg)
  *
  * @param[in] buffer	to clear cursor of.
  */
-static inline void fr_strerror_clear(fr_log_buffer_t *buffer)
+static inline CC_HINT(always_inline) void fr_strerror_clear(fr_log_buffer_t *buffer, bool clear_pools)
 {
+	if (clear_pools) {
+		talloc_free_children(buffer->pool_a);
+		talloc_free_children(buffer->pool_b);
+	}
 	fr_dlist_talloc_init(&buffer->entries, fr_log_entry_t, list);
 }
 
@@ -114,17 +118,43 @@ static inline fr_log_buffer_t *fr_strerror_init(void)
 
 		fr_thread_local_set_destructor(fr_strerror_buffer, _fr_logging_free, buffer);
 
-		fr_strerror_clear(buffer);
+		fr_strerror_clear(buffer, false);
 	}
 
 	return buffer;
 }
 
-/**
+/*
+ *	If last pool was pool_a, allocate from pool_b
+ *	...and vice versa.  This prevents the pools
+ *	from leaking due to non-contiguous allocations
+ *	when we're using fr_strerror as an argument
+ *	for another message.
+ */
+static inline CC_HINT(always_inline) TALLOC_CTX *pool_alternate(fr_log_buffer_t	*buffer)
+{
+	if (buffer->pool == buffer->pool_a) {
+		buffer->pool = buffer->pool_b;
+		return buffer->pool;
+	}
+
+	return buffer->pool = buffer->pool_a;
+}
+
+static inline CC_HINT(always_inline) void pool_free_alt(fr_log_buffer_t *buffer)
+{
+	if (buffer->pool == buffer->pool_a) {
+		talloc_free_children(buffer->pool_b);
+		return;
+	}
+	talloc_free_children(buffer->pool_a);
+}
+
+/** Create an entry in the thread local logging stack, clearing all other entries
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *fr_strerror_vprintf(char const *fmt, va_list ap)
+static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 {
 	va_list		ap_p;
 	fr_log_entry_t	*entry;
@@ -137,51 +167,61 @@ static fr_log_entry_t *fr_strerror_vprintf(char const *fmt, va_list ap)
 	 *	Clear any existing log messages
 	 */
 	if (!fmt) {
-		talloc_free_children(buffer->pool);
-		fr_strerror_clear(buffer);
-
+		fr_strerror_clear(buffer, true);
 		return NULL;
 	}
 
-	/*
-	 *	If last pool was pool_a, allocate from pool_b
-	 */
-	if (buffer->pool == buffer->pool_a) {
-		entry = talloc_zero(buffer->pool_b, fr_log_entry_t);
-		if (!entry) {
-		oom:
-			fr_perror("Failed allocating memory for libradius error buffer");
-			return NULL;
-		}
-
-		va_copy(ap_p, ap);
-		entry->msg = fr_vasprintf(entry, fmt, ap_p);
-		va_end(ap_p);
-		if (!entry->msg) goto oom;
-
-		talloc_free_children(buffer->pool);
-		buffer->pool = buffer->pool_b;
-	/*
-	 *	...and vice versa.  This prevents the pools
-	 *	from leaking due to non-contiguous allocations
-	 *	when we're using fr_strerror as an argument
-	 *	for another message.
-	 */
-	} else {
-		entry = talloc_zero(buffer->pool_a, fr_log_entry_t);
-		if (!entry) goto oom;
-
-		va_copy(ap_p, ap);
-		entry->msg = fr_vasprintf(entry, fmt, ap_p);
-		va_end(ap_p);
-		if (!entry->msg) goto oom;
-
-		talloc_free_children(buffer->pool);
-		buffer->pool = buffer->pool_a;
+	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
+	if (!entry) {
+	oom:
+		fr_perror("Failed allocating memory for libradius error buffer");
+		return NULL;
 	}
 
-	fr_strerror_clear(buffer);
+	va_copy(ap_p, ap);
+	entry->msg = fr_vasprintf(entry, fmt, ap_p);
+	va_end(ap_p);
+	if (!entry->msg) goto oom;
+
+	pool_free_alt(buffer);
+	fr_strerror_clear(buffer, false);
 	fr_dlist_insert_tail(&buffer->entries, entry);
+
+	return entry;
+}
+
+/** Add a message to an existing stack of messages
+ *
+ * @param[in] fmt	printf style format string.
+ * @param[in] ap	Arguments for the error string.
+ *
+ * @hidecallergraph
+ */
+static fr_log_entry_t *strerror_vprintf_push(fr_log_buffer_t *buffer, char const *fmt, va_list ap)
+{
+	va_list		ap_p;
+	fr_log_entry_t	*entry;
+
+	if (!fmt) return NULL;
+
+	/*
+	 *	Address pathological case where we could leak memory
+	 *	if only a combination of fr_strerror and
+	 *	fr_strerror_printf_push are used.
+	 */
+	if (!fr_dlist_num_elements(&buffer->entries)) talloc_free_children(buffer->pool);
+
+	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
+	if (!entry) {
+	oom:
+		fr_perror("Failed allocating memory for libradius error buffer");
+		return NULL;
+	}
+
+	va_copy(ap_p, ap);
+	entry->msg = fr_vasprintf(entry, fmt, ap_p);
+	va_end(ap_p);
+	if (!entry->msg) goto oom;
 
 	return entry;
 }
@@ -199,8 +239,60 @@ void fr_strerror_printf(char const *fmt, ...)
 	va_list		ap;
 
 	va_start(ap, fmt);
-	fr_strerror_vprintf(fmt, ap);
+	strerror_vprintf(fmt, ap);
 	va_end(ap);
+}
+
+/** Add a message to an existing stack of messages at the tail
+ *
+ * @param[in] fmt	printf style format string.
+ *			If NULL clears any existing messages.
+ * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
+ */
+void fr_strerror_printf_push(char const *fmt, ...)
+{
+	va_list			ap;
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
+
+	va_start(ap, fmt);
+	entry = strerror_vprintf_push(buffer, fmt, ap);
+	va_end(ap);
+
+	if (!entry) return;
+
+	fr_dlist_insert_tail(&buffer->entries, entry);
+}
+
+/** Add a message to an existing stack of messages at the head
+ *
+ * @param[in] fmt	printf style format string.
+ *			If NULL clears any existing messages.
+ * @param[in] ...	Arguments for the format string.
+ *
+ * @hidecallergraph
+ */
+void fr_strerror_printf_push_head(char const *fmt, ...)
+{
+	va_list			ap;
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
+
+	va_start(ap, fmt);
+	entry = strerror_vprintf_push(buffer, fmt, ap);
+	va_end(ap);
+
+	if (!entry) return;
+
+	fr_dlist_insert_head(&buffer->entries, entry);
 }
 
 /** Add an error marker to an existing stack of messages
@@ -219,7 +311,7 @@ void fr_strerror_marker_printf(char const *subject, size_t offset, char const *f
 	fr_log_entry_t	*entry;
 
 	va_start(ap, fmt);
-	entry = fr_strerror_vprintf(fmt, ap);
+	entry = strerror_vprintf(fmt, ap);
 	va_end(ap);
 
 	if (!entry) return;
@@ -228,99 +320,7 @@ void fr_strerror_marker_printf(char const *subject, size_t offset, char const *f
 	entry->offset = offset;
 }
 
-/** Add a message to an existing stack of messages
- *
- * @param[in] fmt	printf style format string.
- * @param[in] ap	Arguments for the error string.
- *
- * @hidecallergraph
- */
-static fr_log_entry_t *strerror_vprintf_push(char const *fmt, va_list ap)
-{
-	va_list		ap_p;
-	fr_log_entry_t	*entry;
-	fr_log_buffer_t	*buffer;
-
-	if (!fmt) return NULL;
-
-	buffer = fr_strerror_init();
-	if (!buffer) return NULL;
-
-	/*
-	 *	Address pathological case where we could leak memory
-	 *	if only a combination of fr_strerror and
-	 *	fr_strerror_printf_push are used.
-	 */
-	if (!fr_dlist_num_elements(&buffer->entries)) talloc_free_children(buffer->pool);
-
-	entry = talloc_zero(buffer->pool_b, fr_log_entry_t);
-	if (!entry) {
-	oom:
-		fr_perror("Failed allocating memory for libradius error buffer");
-		return NULL;
-	}
-
-	va_copy(ap_p, ap);
-	entry->msg = fr_vasprintf(entry, fmt, ap_p);
-	va_end(ap_p);
-	if (!entry->msg) goto oom;
-
-	return entry;
-}
-
-/** Add a message to an existing stack of messages
- *
- * @param[in] fmt	printf style format string.
- *			If NULL clears any existing messages.
- * @param[in] ...	Arguments for the format string.
- *
- * @hidecallergraph
- */
-void fr_strerror_printf_push(char const *fmt, ...)
-{
-	va_list			ap;
-	fr_log_buffer_t		*buffer;
-	fr_log_entry_t		*entry;
-
-	buffer = fr_strerror_init();
-	if (!buffer) return;
-
-	va_start(ap, fmt);
-	entry = strerror_vprintf_push(fmt, ap);
-	va_end(ap);
-
-	if (!entry) return;
-
-	fr_dlist_insert_tail(&buffer->entries, entry);
-}
-
-/** Add a message to an existing stack of messages
- *
- * @param[in] fmt	printf style format string.
- *			If NULL clears any existing messages.
- * @param[in] ...	Arguments for the format string.
- *
- * @hidecallergraph
- */
-void fr_strerror_printf_push_head(char const *fmt, ...)
-{
-	va_list			ap;
-	fr_log_buffer_t		*buffer;
-	fr_log_entry_t		*entry;
-
-	buffer = fr_strerror_init();
-	if (!buffer) return;
-
-	va_start(ap, fmt);
-	entry = strerror_vprintf_push(fmt, ap);
-	va_end(ap);
-
-	if (!entry) return;
-
-	fr_dlist_insert_head(&buffer->entries, entry);
-}
-
-/** Add an error marker to an existing stack of messages
+/** Add an error marker to an existing stack of messages at the tail
  *
  * @param[in] subject	to mark up.
  * @param[in] offset	Positive offset to show where the error
@@ -340,7 +340,7 @@ void fr_strerror_marker_printf_push(char const *subject, size_t offset, char con
 	if (!buffer) return;
 
 	va_start(ap, fmt);
-	entry = strerror_vprintf_push(fmt, ap);
+	entry = strerror_vprintf_push(buffer, fmt, ap);
 	va_end(ap);
 
 	if (!entry) return;
@@ -351,8 +351,7 @@ void fr_strerror_marker_printf_push(char const *subject, size_t offset, char con
 	fr_dlist_insert_tail(&buffer->entries, entry);
 }
 
-
-/** Add an error marker to an existing stack of messages
+/** Add an error marker to an existing stack of messages at the head
  *
  * @param[in] subject	to mark up.
  * @param[in] offset	Positive offset to show where the error
@@ -372,13 +371,132 @@ void fr_strerror_marker_printf_push_head(char const *subject, size_t offset, cha
 	if (!buffer) return;
 
 	va_start(ap, fmt);
-	entry = strerror_vprintf_push(fmt, ap);
+	entry = strerror_vprintf_push(buffer, fmt, ap);
 	va_end(ap);
 
 	if (!entry) return;
 
 	entry->subject = talloc_strdup(entry, subject);
 	entry->offset = offset;
+
+	fr_dlist_insert_head(&buffer->entries, entry);
+}
+
+/** Create an entry in the thread local logging stack using a const string, clearing all other entries
+ *
+ * @hidecallergraph
+ */
+static fr_log_entry_t *strerror_const(char const *msg)
+{
+	fr_log_entry_t	*entry;
+	fr_log_buffer_t	*buffer;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return NULL;
+
+	/*
+	 *	Clear any existing log messages
+	 */
+	if (!msg) {
+		fr_strerror_clear(buffer, true);
+		return NULL;
+	}
+
+	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
+	if (!entry) {
+		fr_perror("Failed allocating memory for libradius error buffer");
+		return NULL;
+	}
+	memcpy(&entry->msg, &msg, sizeof(entry->msg));
+
+	pool_free_alt(buffer);
+	fr_strerror_clear(buffer, false);
+	fr_dlist_insert_tail(&buffer->entries, entry);
+
+	return entry;
+}
+
+/** Log to thread local error buffer
+ *
+ * @param[in] msg	To add to error stack. Must have a
+ *			lifetime equal to that of the program.
+ * @hidecallergraph
+ */
+void fr_strerror_const(char const *msg)
+{
+	(void)strerror_const(msg);
+}
+
+/** Add a message to an existing stack of messages
+ *
+ * @param[in] msg	To add to error stack. Must have a
+ *			lifetime equal to that of the program.
+ *
+ * @hidecallergraph
+ */
+static fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
+{
+	fr_log_entry_t	*entry;
+
+	if (!msg) return NULL;
+
+	/*
+	 *	Address pathological case where we could leak memory
+	 *	if only a combination of fr_strerror and
+	 *	fr_strerror_printf_push are used.
+	 */
+	if (!fr_dlist_num_elements(&buffer->entries)) talloc_free_children(buffer->pool);
+
+	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
+	if (!entry) {
+		fr_perror("Failed allocating memory for libradius error buffer");
+		return NULL;
+	}
+	memcpy(&entry->msg, &msg, sizeof(entry->msg));
+
+	return entry;
+}
+
+/** Add a message to an existing stack of messages at the tail
+ *
+ * @param[in] msg	To add to error stack. Must have a
+ *			lifetime equal to that of the program.
+ *
+ * @hidecallergraph
+ */
+void fr_strerror_const_push(char const *msg)
+{
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
+
+	entry = strerror_const_push(buffer, msg);
+
+	if (!entry) return;
+
+	fr_dlist_insert_tail(&buffer->entries, entry);
+}
+
+/** Add a message to an existing stack of messages at the head
+ *
+ * @param[in] msg	To add to error stack. Must have a
+ *			lifetime equal to that of the program.
+ *
+ * @hidecallergraph
+ */
+void fr_strerror_const_push_head(char const *msg)
+{
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_init();
+	if (!buffer) return;
+
+	entry = strerror_const_push(buffer, msg);
+
+	if (!entry) return;
 
 	fr_dlist_insert_head(&buffer->entries, entry);
 }
@@ -407,7 +525,7 @@ char const *fr_strerror(void)
 	 *	Memory gets freed on next call to
 	 *	fr_strerror_printf or fr_strerror_printf_push.
 	 */
-	fr_strerror_clear(buffer);
+	fr_strerror_clear(buffer, false);
 
 	return entry->msg;
 }
@@ -437,7 +555,7 @@ char const *fr_strerror_marker(char const **subject, size_t *offset)
 	 *	Memory gets freed on next call to
 	 *	fr_strerror_printf or fr_strerror_printf_push.
 	 */
-	fr_strerror_clear(buffer);
+	fr_strerror_clear(buffer, false);
 
 	*subject = entry->subject;
 	*offset = entry->offset;

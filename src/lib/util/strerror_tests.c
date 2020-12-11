@@ -25,7 +25,7 @@
 
 #include "strerror.c"
 
-static void test_strerror_uninit(void)
+static void strerror_uninit(void)
 {
 	char const *error;
 
@@ -35,7 +35,7 @@ static void test_strerror_uninit(void)
 	TEST_CHECK(error && (error[0] == '\0'));
 }
 
-static void test_strerror_pop_uninit(void)
+static void strerror_pop_uninit(void)
 {
 	char const *error;
 
@@ -44,7 +44,7 @@ static void test_strerror_pop_uninit(void)
 	TEST_CHECK(error == NULL);
 }
 
-static void test_strerror_printf(void)
+static void strerror_printf(void)
 {
 	char const *error;
 
@@ -60,7 +60,7 @@ static void test_strerror_printf(void)
 	TEST_CHECK(error && (error[0] == '\0'));
 }
 
-static void test_strerror_printf_push_pop(void)
+static void strerror_printf_push_pop(void)
 {
 	char const *error;
 
@@ -78,7 +78,7 @@ static void test_strerror_printf_push_pop(void)
 	TEST_CHECK(error && (error[0] == '\0'));
 }
 
-static void test_strerror_printf_push_strerror(void)
+static void strerror_printf_push_strerror(void)
 {
 	char const *error;
 
@@ -92,7 +92,7 @@ static void test_strerror_printf_push_strerror(void)
 	TEST_CHECK(error == NULL);
 }
 
-static void test_strerror_printf_push_pop_multi(void)
+static void strerror_printf_push_pop_multi(void)
 {
 	char const *error;
 
@@ -115,7 +115,7 @@ static void test_strerror_printf_push_pop_multi(void)
 	TEST_CHECK(error && (error[0] == '\0'));
 }
 
-static void test_strerror_printf_push_strerror_multi(void)
+static void strerror_printf_push_strerror_multi(void)
 {
 	char const *error;
 
@@ -130,7 +130,7 @@ static void test_strerror_printf_push_strerror_multi(void)
 	TEST_CHECK(error == NULL);
 }
 
-static void test_strerror_printf_strerror_append(void)
+static void strerror_printf_strerror_append(void)
 {
 	char const *error;
 
@@ -146,7 +146,7 @@ static void test_strerror_printf_strerror_append(void)
 	TEST_CHECK(error && (error[0] == '\0'));
 }
 
-static void test_strerror_printf_push_append(void)
+static void strerror_printf_push_append(void)
 {
 	char const *error;
 
@@ -162,7 +162,7 @@ static void test_strerror_printf_push_append(void)
 	TEST_CHECK(error && (error[0] == '\0'));
 }
 
-static void test_strerror_printf_push_append2(void)
+static void strerror_printf_push_append2(void)
 {
 	char const *error;
 
@@ -179,18 +179,18 @@ static void test_strerror_printf_push_append2(void)
 }
 
 TEST_LIST = {
-	{ "test_strerror_uninit",			test_strerror_uninit },
-	{ "test_strerror_pop_uninit",			test_strerror_pop_uninit },
+	{ "strerror_uninit",			strerror_uninit },
+	{ "strerror_pop_uninit",		strerror_pop_uninit },
 
-	{ "test_strerror_printf",			test_strerror_printf },
-	{ "test_strerror_printf_push_pop", 		test_strerror_printf_push_pop },
+	{ "strerror_printf",			strerror_printf },
+	{ "strerror_printf_push_pop", 		strerror_printf_push_pop },
 
-	{ "test_strerror_printf_push_strerror",		test_strerror_printf_push_strerror },
-	{ "test_strerror_printf_push_pop_multi",	test_strerror_printf_push_pop_multi },
-	{ "test_strerror_printf_push_strerror_multi",	test_strerror_printf_push_strerror_multi },
-	{ "test_strerror_printf_strerror_append",	test_strerror_printf_strerror_append },
-	{ "test_strerror_printf_push_append",		test_strerror_printf_push_append },
-	{ "test_strerror_printf_push_append2",		test_strerror_printf_push_append2 },
+	{ "strerror_printf_push_strerror",	strerror_printf_push_strerror },
+	{ "strerror_printf_push_pop_multi",	strerror_printf_push_pop_multi },
+	{ "strerror_printf_push_strerror_multi",strerror_printf_push_strerror_multi },
+	{ "strerror_printf_strerror_append",	strerror_printf_strerror_append },
+	{ "strerror_printf_push_append",	strerror_printf_push_append },
+	{ "strerror_printf_push_append2",	strerror_printf_push_append2 },
 
 	{ 0 }
 };
