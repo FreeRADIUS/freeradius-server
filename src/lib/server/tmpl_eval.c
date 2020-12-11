@@ -306,7 +306,7 @@ ssize_t _tmpl_to_type(void *out,
 	{
 		RDEBUG4("EXPAND TMPL EXEC");
 		if (!buff) {
-			fr_strerror_printf("Missing expansion buffer for EXEC");
+			fr_strerror_const("Missing expansion buffer for EXEC");
 			return -1;
 		}
 
@@ -324,7 +324,7 @@ ssize_t _tmpl_to_type(void *out,
 		RDEBUG4("EXPAND TMPL XLAT PARSED");
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
 		if (!buff) {
-			fr_strerror_printf("Missing expansion buffer for XLAT_STRUCT");
+			fr_strerror_const("Missing expansion buffer for XLAT_STRUCT");
 			return -1;
 		}
 		/* Error in expansion, this is distinct from zero length expansion */
@@ -408,7 +408,7 @@ ssize_t _tmpl_to_type(void *out,
 		 */
 		case FR_TYPE_STRING:
 			if (!buff) {
-				fr_strerror_printf("Missing expansion buffer for octet->string cast");
+				fr_strerror_const("Missing expansion buffer for octet->string cast");
 				return -1;
 			}
 			if (bufflen <= to_cast->vb_length) {
@@ -468,7 +468,7 @@ ssize_t _tmpl_to_type(void *out,
 		switch (dst_type) {
 		case FR_TYPE_STRING:
 			if (!buff) {
-				fr_strerror_printf("Missing expansion buffer to store cast output");
+				fr_strerror_const("Missing expansion buffer to store cast output");
 			error:
 				talloc_free(ctx);
 				return -1;
@@ -488,7 +488,7 @@ ssize_t _tmpl_to_type(void *out,
 
 		case FR_TYPE_OCTETS:
 			if (!buff) {
-				fr_strerror_printf("Missing expansion buffer to store cast output");
+				fr_strerror_const("Missing expansion buffer to store cast output");
 				goto error;
 			}
 			if (from_cast->vb_length > bufflen) {
@@ -1340,7 +1340,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
 			fr_pair_list_free(out);
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			err = -4;
 			break;
 		}

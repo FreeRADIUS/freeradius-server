@@ -181,7 +181,7 @@ ssize_t fr_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode, fr_mkd
 	 */
 	our_path = talloc_bstrndup(NULL, path, (size_t)len);
 	if (!our_path) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
@@ -237,7 +237,7 @@ char *fr_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len)
 	talloc_abs_path = talloc_strdup(ctx, abs_path);
 	free(abs_path);
 	if (!talloc_abs_path) {
-		fr_strerror_printf("Out of Memory");
+		fr_strerror_const("Out of Memory");
 		return NULL;
 	}
 

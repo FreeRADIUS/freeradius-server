@@ -703,7 +703,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 					talloc_free(sub_fmt);
 					if (!out_tmp) {
 					oom:
-						fr_strerror_printf("Out of memory");
+						fr_strerror_const("Out of memory");
 						talloc_free(out);
 						talloc_free(subst);
 						va_end(ap_p);
@@ -880,7 +880,7 @@ ssize_t fr_fprintf(FILE *fp, char const *fmt, ...)
 	int ret;
 
 	if (!fp) {
-		fr_strerror_printf("Invalid 'fp'");
+		fr_strerror_const("Invalid 'fp'");
 		return -1;
 	}
 

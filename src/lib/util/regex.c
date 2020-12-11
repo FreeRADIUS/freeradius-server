@@ -131,13 +131,13 @@ static int fr_pcre2_tls_init(void)
 
 	tls->gcontext = pcre2_general_context_create(_pcre2_talloc, _pcre2_talloc_free, NULL);
 	if (!tls->gcontext) {
-		fr_strerror_printf("Failed allocating general context");
+		fr_strerror_const("Failed allocating general context");
 		return -1;
 	}
 
 	tls->ccontext = pcre2_compile_context_create(tls->gcontext);
 	if (!tls->ccontext) {
-		fr_strerror_printf("Failed allocating compile context");
+		fr_strerror_const("Failed allocating compile context");
 	error:
 		fr_pcre2_tls = NULL;
 		_pcre2_tls_free(tls);
@@ -146,7 +146,7 @@ static int fr_pcre2_tls_init(void)
 
 	tls->mcontext = pcre2_match_context_create(tls->gcontext);
 	if (!tls->mcontext) {
-		fr_strerror_printf("Failed allocating match context");
+		fr_strerror_const("Failed allocating match context");
 		goto error;
 	}
 
@@ -155,7 +155,7 @@ static int fr_pcre2_tls_init(void)
 	if (tls->do_jit) {
 		tls->jit_stack = pcre2_jit_stack_create(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX, tls->gcontext);
 		if (!tls->jit_stack) {
-			fr_strerror_printf("Failed allocating JIT stack");
+			fr_strerror_const("Failed allocating JIT stack");
 			goto error;
 		}
 		pcre2_jit_stack_assign(tls->mcontext, NULL, tls->jit_stack);
@@ -223,7 +223,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (len == 0) {
-		fr_strerror_printf("Empty expression");
+		fr_strerror_const("Empty expression");
 		return 0;
 	}
 
@@ -348,7 +348,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 			 */
 			subject = our_subject = talloc_bstrndup(regmatch, subject, len);
 			if (!subject) {
-				fr_strerror_printf("Out of memory");
+				fr_strerror_const("Out of memory");
 				return -1;
 			}
 #ifndef NDEBUG
@@ -365,7 +365,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	if (!regmatch) {
 		match_data = pcre2_match_data_create_from_pattern(preg->compiled, fr_pcre2_tls->gcontext);
 		if (!match_data) {
-			fr_strerror_printf("Failed allocating temporary match data");
+			fr_strerror_const("Failed allocating temporary match data");
 			return -1;
 		}
 	} else {
@@ -456,7 +456,7 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 		 */
 		subject = our_subject = talloc_bstrndup(regmatch, subject, subject_len);
 		if (!subject) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 #else
@@ -485,7 +485,7 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 #ifndef PCRE2_COPY_MATCHED_SUBJECT
 		talloc_free(our_subject);
 #endif
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
@@ -527,7 +527,7 @@ again:
 			 *	an actual error.
 			 */
 			if (actual_len == buff_len) {
-				fr_strerror_printf("libpcre2 out of memory");
+				fr_strerror_const("libpcre2 out of memory");
 				return -1;
 			}
 
@@ -556,7 +556,7 @@ again:
 	if (actual_len < (buff_len - 1)) {
 		buff = talloc_bstr_realloc(ctx, buff, actual_len);
 		if (!buff) {
-			fr_strerror_printf("reallocing pcre2_substitute result buffer failed");
+			fr_strerror_const("reallocing pcre2_substitute result buffer failed");
 			return -1;
 		}
 	}
@@ -579,7 +579,7 @@ uint32_t regex_subcapture_count(regex_t const *preg)
 	uint32_t count;
 
 	if (pcre2_pattern_info(preg->compiled, PCRE2_INFO_CAPTURECOUNT, &count) != 0) {
-		fr_strerror_printf("Error determining subcapture group count");
+		fr_strerror_const("Error determining subcapture group count");
 		return 0;
 	}
 
@@ -616,7 +616,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 	regmatch = talloc(ctx, fr_regmatch_t);
 	if (!regmatch) {
 	oom:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
@@ -740,7 +740,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	*out = NULL;
 
 	if (len == 0) {
-		fr_strerror_printf("Empty expression");
+		fr_strerror_const("Empty expression");
 		return 0;
 	}
 
@@ -749,7 +749,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	 */
 	if (flags) {
 		if (flags->global) {
-			fr_strerror_printf("g - Global matching/substitution not supported with libpcre");
+			fr_strerror_const("g - Global matching/substitution not supported with libpcre");
 			return 0;
 		}
 		if (flags->ignore_case) cflags |= PCRE_CASELESS;
@@ -881,7 +881,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		fr_thread_local_set_destructor(fr_pcre_jit_stack, _pcre_jit_stack_free,
 					       pcre_jit_stack_alloc(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX));
 		if (!fr_pcre_jit_stack) {
-			fr_strerror_printf("Allocating JIT stack failed");
+			fr_strerror_const("Allocating JIT stack failed");
 			return -1;
 		}
 	}
@@ -930,7 +930,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		if (regmatch->subject) talloc_const_free(regmatch->subject);
 		regmatch->subject = talloc_bstrndup(regmatch, subject, len);
 		if (!regmatch->subject) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 	}
@@ -949,7 +949,7 @@ uint32_t regex_subcapture_count(regex_t const *preg)
 	int count;
 
 	if (pcre_fullinfo(preg->compiled, preg->extra, PCRE_INFO_CAPTURECOUNT, &count) != 0) {
-		fr_strerror_printf("Error determining subcapture group count");
+		fr_strerror_const("Error determining subcapture group count");
 		return 0;
 	}
 
@@ -1012,7 +1012,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	regex_t *preg;
 
 	if (len == 0) {
-		fr_strerror_printf("Empty expression");
+		fr_strerror_const("Empty expression");
 		return 0;
 	}
 
@@ -1021,19 +1021,19 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	 */
 	if (flags) {
 		if (flags->global) {
-			fr_strerror_printf("g - Global matching/substitution not supported with posix-regex");
+			fr_strerror_const("g - Global matching/substitution not supported with posix-regex");
 			return 0;
 		}
 		if (flags->dot_all) {
-			fr_strerror_printf("s - Single line matching is not supported with posix-regex");
+			fr_strerror_const("s - Single line matching is not supported with posix-regex");
 			return 0;
 		}
 		if (flags->unicode) {
-			fr_strerror_printf("u - Unicode matching not supported with posix-regex");
+			fr_strerror_const("u - Unicode matching not supported with posix-regex");
 			return 0;
 		}
 		if (flags->extended) {
-			fr_strerror_printf("x - Whitespace and comments not supported with posix-regex");
+			fr_strerror_const("x - Whitespace and comments not supported with posix-regex");
 			return 0;
 		}
 
@@ -1161,7 +1161,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		if (regmatch->subject) talloc_const_free(regmatch->subject);
 		regmatch->subject = talloc_bstrndup(regmatch, subject, len);
 		if (!regmatch->subject) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 	}
@@ -1199,7 +1199,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 	regmatch = talloc_zero_pooled_object(ctx, fr_regmatch_t, 2, (sizeof(regmatch_t) * count) + 128);
 	if (unlikely(!regmatch)) {
 	error:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		talloc_free(regmatch);
 		return NULL;
 	}

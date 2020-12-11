@@ -46,7 +46,7 @@ extern "C" {
 		if (!(_dict)) { \
 			_dict = dict_gctx ? dict_gctx->internal : NULL; \
 			if (unlikely(!(_dict))) { \
-				fr_strerror_printf("No dictionaries available for attribute resolution"); \
+				fr_strerror_const("No dictionaries available for attribute resolution"); \
 				return (_ret); \
 			} \
 		} \

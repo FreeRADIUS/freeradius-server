@@ -119,7 +119,7 @@ int fr_cap_enable(cap_value_t cap, cap_flag_t set)
 	pthread_mutex_lock(&cap_mutex);
 
 	if (set == CAP_PERMITTED) {
-		fr_strerror_printf("Can't modify permitted capabilities");
+		fr_strerror_const("Can't modify permitted capabilities");
 		goto done;
 	}
 

@@ -386,7 +386,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 		len = decode_value_internal(ctx, cursor, parent, p, value_len);
 		if (len <= 0) return len;
 		if (len != (ssize_t)value_len) {
-			fr_strerror_printf("Failed decoding complete option value");
+			fr_strerror_const("Failed decoding complete option value");
 			return -1;
 		}
 		p += len;

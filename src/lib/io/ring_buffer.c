@@ -68,14 +68,14 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 	rb = talloc_zero(ctx, fr_ring_buffer_t);
 	if (!rb) {
 	fail:
-		fr_strerror_printf("Failed allocating memory.");
+		fr_strerror_const("Failed allocating memory.");
 		return NULL;
 	}
 
 	if (size < 1024) size = 1024;
 
 	if (size > (1 << 30)) {
-		fr_strerror_printf("Ring buffer size must be no more than (1 << 30)");
+		fr_strerror_const("Ring buffer size must be no more than (1 << 30)");
 		talloc_free(rb);
 		return NULL;
 	}
@@ -121,7 +121,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
 
 	if (rb->closed) {
-		fr_strerror_printf("Allocation request after ring buffer is closed");
+		fr_strerror_const("Allocation request after ring buffer is closed");
 		return NULL;
 	}
 
@@ -137,7 +137,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 			return rb->buffer + rb->write_offset;
 		}
 
-		fr_strerror_printf("No memory available in ring buffer");
+		fr_strerror_const("No memory available in ring buffer");
 		return NULL;
 	}
 
@@ -171,7 +171,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	 *
 	 *	|....S****WE....|
 	 */
-	fr_strerror_printf("No memory available in ring buffer");
+	fr_strerror_const("No memory available in ring buffer");
 	return NULL;
 }
 
@@ -201,7 +201,7 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 
 	if (rb->closed) {
 #ifndef NDEBUG
-		fr_strerror_printf("Allocation request after ring buffer is closed");
+		fr_strerror_const("Allocation request after ring buffer is closed");
 #endif
 		return NULL;
 	}
@@ -230,7 +230,7 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 		}
 
 #ifndef NDEBUG
-		fr_strerror_printf("No memory available in ring buffer");
+		fr_strerror_const("No memory available in ring buffer");
 #endif
 		return NULL;
 	}
@@ -280,7 +280,7 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 	 *	|....S****WE....|
 	 */
 #ifndef NDEBUG
-	fr_strerror_printf("No memory available in ring buffer");
+	fr_strerror_const("No memory available in ring buffer");
 #endif
 	return NULL;
 }
@@ -332,7 +332,7 @@ uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size
 	(void) talloc_get_type_abort(dst, fr_ring_buffer_t);
 
 	if (dst->closed) {
-		fr_strerror_printf("Allocation request after ring buffer is closed");
+		fr_strerror_const("Allocation request after ring buffer is closed");
 		return NULL;
 	}
 
@@ -341,7 +341,7 @@ uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size
 	 *	split the reservation.
 	 */
 	if (src->reserved < move_size) {
-		fr_strerror_printf("Cannot move more data than was reserved.");
+		fr_strerror_const("Cannot move more data than was reserved.");
 		return NULL;
 	}
 
@@ -450,7 +450,7 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size_to_free)
 	 *	Freeing too much, return an error.
 	 */
 	if (size_to_free > block_size) {
-		fr_strerror_printf("Cannot free more memory than exists.");
+		fr_strerror_const("Cannot free more memory than exists.");
 		return -1;
 	}
 

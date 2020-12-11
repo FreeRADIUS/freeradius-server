@@ -537,7 +537,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		attr_name = attr_name_with_prefix(buf, sizeof(buf), vp->da->name, format);
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_printf("Failed to convert attribute value to JSON object");
+			fr_strerror_const("Failed to convert attribute value to JSON object");
 		error:
 			json_object_put(obj);
 			return NULL;
@@ -581,7 +581,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 			 *	Find the 'values' array to add the current value to.
 			 */
 			if (!fr_cond_assert(json_object_object_get_ex(vp_object, "value", &values))) {
-				fr_strerror_printf("Inconsistent JSON tree");
+				fr_strerror_const("Inconsistent JSON tree");
 				goto error;
 			}
 
@@ -659,7 +659,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		attr_name = attr_name_with_prefix(buf, sizeof(buf), vp->da->name, format);
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_printf("Failed to convert attribute value to JSON object");
+			fr_strerror_const("Failed to convert attribute value to JSON object");
 			json_object_put(obj);
 			return NULL;
 		}
@@ -772,7 +772,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		attr_name = attr_name_with_prefix(buf, sizeof(buf), vp->da->name, format);
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_printf("Failed to convert attribute value to JSON object");
+			fr_strerror_const("Failed to convert attribute value to JSON object");
 			json_object_put(obj);
 			return NULL;
 		}
@@ -888,7 +888,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 		struct json_object	*value;
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_printf("Failed to convert attribute value to JSON object");
+			fr_strerror_const("Failed to convert attribute value to JSON object");
 			json_object_put(obj);
 			return NULL;
 		}

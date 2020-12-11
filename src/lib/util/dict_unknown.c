@@ -267,7 +267,7 @@ fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 
 	case FR_TYPE_VENDOR:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return NULL;
-		fr_strerror_printf("Unknown vendor cannot be parented by another vendor");
+		fr_strerror_const("Unknown vendor cannot be parented by another vendor");
 		return NULL;
 
 	default:

@@ -155,13 +155,13 @@ bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
 	fr_packet_socket_t *ps;
 
 	if (!pl) {
-		fr_strerror_printf("Invalid argument");
+		fr_strerror_const("Invalid argument");
 		return false;
 	}
 
 	ps = fr_socket_find(pl, sockfd);
 	if (!ps) {
-		fr_strerror_printf("No such socket");
+		fr_strerror_const("No such socket");
 		return false;
 	}
 
@@ -211,12 +211,12 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	fr_packet_socket_t	*ps;
 
 	if (!pl || !dst_ipaddr || (dst_ipaddr->af == AF_UNSPEC)) {
-		fr_strerror_printf("Invalid argument");
+		fr_strerror_const("Invalid argument");
 		return false;
 	}
 
 	if (pl->num_sockets >= MAX_SOCKETS) {
-		fr_strerror_printf("Too many open sockets");
+		fr_strerror_const("Too many open sockets");
 		return false;
 	}
 
@@ -233,7 +233,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	} while (i != start);
 
 	if (!ps) {
-		fr_strerror_printf("All socket entries are full");
+		fr_strerror_const("All socket entries are full");
 		return false;
 	}
 
@@ -256,7 +256,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	}
 
 	if (fr_ipaddr_from_sockaddr(&ps->socket.inet.src_ipaddr, &ps->socket.inet.src_port, &src, sizeof_src) < 0) {
-		fr_strerror_printf("Failed to get IP");
+		fr_strerror_const("Failed to get IP");
 		return false;
 	}
 
@@ -433,7 +433,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 
 	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->socket.inet.dst_port == 0)) {
-		fr_strerror_printf("No destination address/port specified");
+		fr_strerror_const("No destination address/port specified");
 		return false;
 	}
 
@@ -447,7 +447,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 
 	src_any = fr_ipaddr_is_inaddr_any(&request->socket.inet.src_ipaddr);
 	if (src_any < 0) {
-		fr_strerror_printf("Can't check src_ipaddr");
+		fr_strerror_const("Can't check src_ipaddr");
 		return false;
 	}
 
@@ -455,7 +455,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 *	MUST specify a destination address.
 	 */
 	if (fr_ipaddr_is_inaddr_any(&request->socket.inet.dst_ipaddr) != 0) {
-		fr_strerror_printf("Must specify a dst_ipaddr");
+		fr_strerror_const("Must specify a dst_ipaddr");
 		return false;
 	}
 
@@ -606,7 +606,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 *	Ask the caller to allocate a new ID.
 	 */
 	if (fd < 0) {
-		fr_strerror_printf("Failed finding socket, caller must allocate a new one");
+		fr_strerror_const("Failed finding socket, caller must allocate a new one");
 		return false;
 	}
 

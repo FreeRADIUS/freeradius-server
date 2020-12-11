@@ -58,7 +58,7 @@ static int socket_port_from_service(int proto, char const *port_name)
 	char const	*proto_name;
 
 	if (!port_name) {
-		fr_strerror_printf("No port specified");
+		fr_strerror_const("No port specified");
 		return -1;
 	}
 
@@ -604,7 +604,7 @@ int fr_socket_wait_for_connect(int sockfd, fr_time_delta_t timeout)
 		}
 
 		if (FD_ISSET(sockfd, &error_set)) {
-			fr_strerror_printf("Failed connecting socket: Unknown error");
+			fr_strerror_const("Failed connecting socket: Unknown error");
 			return -1;
 		}
 	}
@@ -650,7 +650,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	 *	Check IP looks OK
 	 */
 	if (!src_ipaddr || ((src_ipaddr->af != AF_INET) && (src_ipaddr->af != AF_INET6))) {
-		fr_strerror_printf("No address specified");
+		fr_strerror_const("No address specified");
 		return -1;
 	}
 
@@ -752,7 +752,7 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	 *	Check IP looks OK
 	 */
 	if (!src_ipaddr || ((src_ipaddr->af != AF_INET) && (src_ipaddr->af != AF_INET6))) {
-		fr_strerror_printf("No address specified");
+		fr_strerror_const("No address specified");
 		return -1;
 	}
 

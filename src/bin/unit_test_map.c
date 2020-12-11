@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
 	 *	Load the custom dictionary
 	 */
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_strerror_printf_push("Failed to initialize the dictionaries");
+		fr_strerror_const_push("Failed to initialize the dictionaries");
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}

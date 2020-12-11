@@ -107,7 +107,7 @@ int fr_arp_entry_add(int fd, char const *interface, uint8_t ipaddr[static 4], ui
 	struct arpreq req;
 
 	if (!interface) {
-		fr_strerror_printf("No interface specified.  Cannot update ARP table");
+		fr_strerror_const("No interface specified.  Cannot update ARP table");
 		return -1;
 	}
 
@@ -132,7 +132,7 @@ int fr_arp_entry_add(int fd, char const *interface, uint8_t ipaddr[static 4], ui
 int fr_arp_entry_add(UNUSED int fd, UNUSED char const *interface,
 		     UNUSED uint8_t ipaddr[static 4], UNUSED uint8_t macaddr[static 6])
 {
-	fr_strerror_printf("Adding ARP entry is unsupported on this system");
+	fr_strerror_const("Adding ARP entry is unsupported on this system");
 	return -1;
 }
 #endif
@@ -151,7 +151,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	if (!*vps) {
-		fr_strerror_printf("Cannot encode empty packet");
+		fr_strerror_const("Cannot encode empty packet");
 		return -1;
 	}
 
@@ -169,7 +169,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 	 *	that they don't care about.
 	 */
 	if (!vp) {
-		fr_strerror_printf("No ARP attributes in the attribute list");
+		fr_strerror_const("No ARP attributes in the attribute list");
 		return -1;
 	}
 	     
@@ -235,22 +235,22 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	 */
 	arp = (fr_arp_packet_t const *) packet;
 	if ((arp->htype[0] != 0) || (arp->htype[1] != 1)) {
-		fr_strerror_printf("Hardware-Format != Ethernet");
+		fr_strerror_const("Hardware-Format != Ethernet");
 		return -1;
 	}
 
 	if ((arp->ptype[0] != 8) || (arp->ptype[1] != 0)) {
-		fr_strerror_printf("Protocol-Format != IPv4");
+		fr_strerror_const("Protocol-Format != IPv4");
 		return -1;
 	}
 
 	if (arp->hlen != 6) {
-		fr_strerror_printf("Hardware-Length != 6");
+		fr_strerror_const("Hardware-Length != 6");
 		return -1;
 	}
 
 	if (arp->plen != 4) {
-		fr_strerror_printf("Protocol-Length != 4");
+		fr_strerror_const("Protocol-Length != 4");
 		return -1;
 	}
 

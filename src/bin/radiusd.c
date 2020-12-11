@@ -118,7 +118,7 @@ static int talloc_config_set(main_config_t *config)
 		talloc_free(null_child);
 
 		if (talloc_set_memlimit(null_ctx, config->talloc_memory_limit) < 0) {
-			fr_strerror_printf("Failed applying memory limit");
+			fr_strerror_const("Failed applying memory limit");
 			return -1;
 		}
 	}

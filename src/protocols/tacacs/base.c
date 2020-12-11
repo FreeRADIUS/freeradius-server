@@ -139,13 +139,13 @@ int fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body
 		if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG)
 			return 0;
 		else {
-			fr_strerror_printf("Packet is encrypted but no secret for the client is set");
+			fr_strerror_const("Packet is encrypted but no secret for the client is set");
 			return -1;
 		}
 	}
 
 	if (pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) {
-		fr_strerror_printf("Packet is unencrypted but a secret has been set for the client");
+		fr_strerror_const("Packet is unencrypted but a secret has been set for the client");
 		return -1;
 	}
 
@@ -218,7 +218,7 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 	 *	There's no reason to accept 64K TACACS+ packets.
 	 */
 	if ((buffer[8] != 0) || (buffer[9] != 0)) {
-		fr_strerror_printf("Packet is too large.  Our limit is 64K");
+		fr_strerror_const("Packet is too large.  Our limit is 64K");
 		return -1;
 	}
 

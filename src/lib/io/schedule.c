@@ -416,7 +416,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	sc = talloc_zero(ctx, fr_schedule_t);
 	if (!sc) {
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 
@@ -487,7 +487,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		DEBUG("Scheduler created in single-threaded mode");
 
 		if (fr_event_pre_insert(el, fr_worker_pre_event, sc->single_worker) < 0) {
-			fr_strerror_printf("Failed adding pre-check to event list");
+			fr_strerror_const("Failed adding pre-check to event list");
 			goto st_fail;
 		}
 
@@ -495,7 +495,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		 *	Add the event which processes request_t packets.
 		 */
 		if (fr_event_post_insert(el, fr_worker_post_event, sc->single_worker) < 0) {
-			fr_strerror_printf("Failed inserting post-processing event");
+			fr_strerror_const("Failed inserting post-processing event");
 			goto st_fail;
 		}
 

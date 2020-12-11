@@ -1337,7 +1337,7 @@ static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
 	if (!scratch) {
 		scratch = talloc_pool(NULL, 4096);
 		if (unlikely(!scratch)) {
-			fr_strerror_printf("Out of Memory");
+			fr_strerror_const("Out of Memory");
 			return -1;
 		}
 		fr_thread_local_set_destructor(sbuff_scratch, _sbuff_scratch_free, scratch);

@@ -247,7 +247,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	 *	"0" is uniformly the "bad packet" type.
 	 */
 	if (!request->packet->code) {
-		fr_strerror_printf("No 'Packet-Type' was found in the request list.  Cannot send unknown packet");
+		fr_strerror_const("No 'Packet-Type' was found in the request list.  Cannot send unknown packet");
 		return NULL;
 	}
 

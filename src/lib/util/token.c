@@ -366,7 +366,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	There's nothing after the backslash, it's an error.
 		 */
 		if (!p[1]) {
-			fr_strerror_printf("Unterminated string");
+			fr_strerror_const("Unterminated string");
 			return T_INVALID;
 		}
 
@@ -404,7 +404,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 				p++;
 			} else {
 				if (buflen < 2) {
-					fr_strerror_printf("Truncated input");
+					fr_strerror_const("Truncated input");
 					return T_INVALID;
 				}
 
@@ -417,7 +417,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 	*s++ = 0;
 
 	if (quote) {
-		fr_strerror_printf("Unterminated string");
+		fr_strerror_const("Unterminated string");
 		return T_INVALID;
 	}
 
@@ -458,7 +458,7 @@ fr_token_t getop(char const **ptr)
 
 	token = getthing(ptr, op, sizeof(op), true, fr_tokens_table, fr_tokens_table_len, false);
 	if (!fr_assignment_op[token] && !fr_equality_op[token]) {
-		fr_strerror_printf("Expected operator");
+		fr_strerror_const("Expected operator");
 		return T_INVALID;
 	}
 	return token;
@@ -520,6 +520,6 @@ ssize_t fr_skip_string(char const *start, char const *end)
 	/*
 	 *	Unexpected end of string.
 	 */
-	fr_strerror_printf("Unexpected end of string");
+	fr_strerror_const("Unexpected end of string");
 	return -(p - start);
 }

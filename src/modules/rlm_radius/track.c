@@ -143,7 +143,7 @@ retry:
 	 *	Request Authenticator.  Oh well...
 	 */
 	if (!tt->use_authenticator) {
-		fr_strerror_printf("No free entries");
+		fr_strerror_const("No free entries");
 		return -1;
 	}
 

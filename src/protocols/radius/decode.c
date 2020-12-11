@@ -74,7 +74,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 	 *	We need at least a salt.
 	 */
 	if (encrypted_len < 2) {
-		fr_strerror_printf("Tunnel password is too short");
+		fr_strerror_const("Tunnel password is too short");
 		return -1;
 	}
 
@@ -270,7 +270,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 		size_t attrlen;
 
 		if ((data + dv_type + dv_length) > end) {
-			fr_strerror_printf("Attribute header overflow");
+			fr_strerror_const("Attribute header overflow");
 			return -1;
 		}
 
@@ -279,12 +279,12 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 			if ((data[0] == 0) && (data[1] == 0) &&
 			    (data[2] == 0) && (data[3] == 0)) {
 			zero:
-				fr_strerror_printf("Invalid attribute 0");
+				fr_strerror_const("Invalid attribute 0");
 				return -1;
 			}
 
 			if (data[0] != 0) {
-				fr_strerror_printf("Invalid attribute > 2^24");
+				fr_strerror_const("Invalid attribute > 2^24");
 				return -1;
 			}
 			break;
@@ -301,7 +301,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 			break;
 
 		default:
-			fr_strerror_printf("Internal sanity check failed");
+			fr_strerror_const("Internal sanity check failed");
 			return -1;
 		}
 
@@ -311,7 +311,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 
 		case 2:
 			if (data[dv_type] != 0) {
-				fr_strerror_printf("Attribute is longer than 256 octets");
+				fr_strerror_const("Attribute is longer than 256 octets");
 				return -1;
 			}
 			FALL_THROUGH;
@@ -321,17 +321,17 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 
 
 		default:
-			fr_strerror_printf("Internal sanity check failed");
+			fr_strerror_const("Internal sanity check failed");
 			return -1;
 		}
 
 		if (attrlen < (dv_type + dv_length)) {
-			fr_strerror_printf("Attribute header has invalid length");
+			fr_strerror_const("Attribute header has invalid length");
 			return -1;
 		}
 
 		if (attrlen > length) {
-			fr_strerror_printf("Attribute overflows container");
+			fr_strerror_const("Attribute overflows container");
 			return -1;
 		}
 
@@ -1725,7 +1725,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uin
 	 */
 	vp = fr_pair_afrom_da(ctx, attr_packet_type);
 	if (!vp) {
-		fr_strerror_printf("Failed creating Packet-Type");
+		fr_strerror_const("Failed creating Packet-Type");
 		return -1;
 	}
 	vp->vp_uint32 = data[0];
@@ -1733,7 +1733,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uin
 
 	vp = fr_pair_afrom_da(ctx, attr_packet_authentication_vector);
 	if (!vp) {
-		fr_strerror_printf("Failed creating Packet-Authentication-Vector");
+		fr_strerror_const("Failed creating Packet-Authentication-Vector");
 		return -1;
 	}
 	(void) fr_pair_value_memdup(vp, data + 4, 16, true);

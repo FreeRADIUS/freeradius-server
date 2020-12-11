@@ -341,7 +341,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	 */
 	if (token != T_BARE_WORD) {
 		if (!fr_sbuff_is_char(&sbuff, fr_token_quote[token])) {
-			fr_strerror_printf("Unexpected end of quoted string");
+			fr_strerror_const("Unexpected end of quoted string");
 			return -1;
 		}
 
@@ -357,7 +357,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 
 	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
 	if (slen < 0) {
-		fr_strerror_printf("Unexpected end of string after parsing left side");
+		fr_strerror_const("Unexpected end of string after parsing left side");
 		goto error;
 	}
 
@@ -366,13 +366,13 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	 */
 	fr_sbuff_out_by_longest_prefix(&slen, &map->op, op_table, &sbuff, 0);
 	if (slen <= 0) {
-		fr_strerror_printf("Invalid operator");
+		fr_strerror_const("Invalid operator");
 		goto error;
 	}
 
 	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
 	if (slen < 0) {
-		fr_strerror_printf("Unexpected end of string after operator");
+		fr_strerror_const("Unexpected end of string after operator");
 		goto error;
 	}
 
@@ -404,7 +404,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	if (slen < 0) goto error;
 
 	if (slen == 0) {
-		fr_strerror_printf("Unexpected end of input after operator");
+		fr_strerror_const("Unexpected end of input after operator");
 		goto error;
 	}
 	fr_assert(map->rhs != NULL);
@@ -414,7 +414,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	 */
 	if (token != T_BARE_WORD) {
 		if (!fr_sbuff_is_char(&sbuff, fr_token_quote[token])) {
-			fr_strerror_printf("Unexpected end of quoted string");
+			fr_strerror_const("Unexpected end of quoted string");
 			return -1;
 		}
 
@@ -720,7 +720,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 
 	if (!tmpl_is_attr((*out)->lhs)) {
 		TALLOC_FREE(*out);
-		fr_strerror_printf("Left operand must be an attribute");
+		fr_strerror_const("Left operand must be an attribute");
 		return -1;
 	}
 
@@ -746,7 +746,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	map = map_alloc(ctx);
 	if (!map) {
 	oom:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 

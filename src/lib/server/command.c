@@ -177,7 +177,7 @@ static bool fr_command_valid_name(char const *name)
 
 	for (p = (uint8_t const *) name; *p != '\0'; p++) {
 		if (*p < ' ') {
-			fr_strerror_printf("Invalid control character in name");
+			fr_strerror_const("Invalid control character in name");
 			return false;
 		}
 
@@ -186,7 +186,7 @@ static bool fr_command_valid_name(char const *name)
 		    ((*p >= '[') && (*p <= '^')) ||
 		    ((*p > 'z') && (*p <= 0xf7)) ||
 		    (*p == '`')) {
-			fr_strerror_printf("Invalid special character");
+			fr_strerror_const("Invalid special character");
 			return false;
 		}
 
@@ -195,7 +195,7 @@ static bool fr_command_valid_name(char const *name)
 		 */
 		if (fr_utf8_char(p, -1)) continue;
 
-		fr_strerror_printf("Invalid non-UTF8 character in name");
+		fr_strerror_const("Invalid non-UTF8 character in name");
 	}
 
 	return true;
@@ -311,7 +311,7 @@ static int split_alternation(char **input, char **output)
 		 */
 		while ((*str != end) || (count > 0)) {
 			if (!*str) {
-				fr_strerror_printf("String ends before closing brace.");
+				fr_strerror_const("String ends before closing brace.");
 				return -1;
 			}
 
@@ -333,7 +333,7 @@ static int split_alternation(char **input, char **output)
 		    (*str != ' ') &&
 		    (*str != '|') &&
 		    (*str != '\t')) {
-			fr_strerror_printf("Invalid text after quoted string.");
+			fr_strerror_const("Invalid text after quoted string.");
 			return -1;
 		}
 	} else {
@@ -427,7 +427,7 @@ static int split(char **input, char **output, bool syntax_string)
 
 		while (*str != quote) {
 			if (!*str) {
-				fr_strerror_printf("String is not terminated with a quotation character.");
+				fr_strerror_const("String is not terminated with a quotation character.");
 				return -1;
 			}
 
@@ -437,7 +437,7 @@ static int split(char **input, char **output, bool syntax_string)
 			if (*str == '\\') {
 				str++;
 				if (!*str) {
-					fr_strerror_printf("Invalid backslash at end of string.");
+					fr_strerror_const("Invalid backslash at end of string.");
 					return -1;
 				}
 				str++;
@@ -461,7 +461,7 @@ static int split(char **input, char **output, bool syntax_string)
 		    (*str != '\t') &&
 		    (*str != '\r') &&
 		    (*str != '\n')) {
-			fr_strerror_printf("Invalid text after quoted string.");
+			fr_strerror_const("Invalid text after quoted string.");
 			return -1;
 		}
 
@@ -483,7 +483,7 @@ static int split(char **input, char **output, bool syntax_string)
 		 */
 		while ((*str != end) || (count > 0)) {
 			if (!*str) {
-				fr_strerror_printf("String ends before closing brace.");
+				fr_strerror_const("String ends before closing brace.");
 				return -1;
 			}
 
@@ -507,7 +507,7 @@ static int split(char **input, char **output, bool syntax_string)
 		    (*str != '\t') &&
 		    (*str != '\r') &&
 		    (*str != '\n')) {
-			fr_strerror_printf("Invalid text after quoted string.");
+			fr_strerror_const("Invalid text after quoted string.");
 			return -1;
 		}
 	} else {
@@ -573,12 +573,12 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 		 */
 		if (strcmp(name, "...") == 0) {
 			if (!allow_varargs) {
-				fr_strerror_printf("Varargs MUST NOT be in an [...] or (...) syntax.");
+				fr_strerror_const("Varargs MUST NOT be in an [...] or (...) syntax.");
 				return -1;
 			}
 
 			if (!prev || *p) {
-				fr_strerror_printf("Varargs MUST be the last argument in the syntax list.");
+				fr_strerror_const("Varargs MUST be the last argument in the syntax list.");
 				return -1;
 			}
 
@@ -587,7 +587,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 			 *	MUST be a known data type.
 			 */
 			if (prev->type >= FR_TYPE_FIXED) {
-				fr_strerror_printf("Varargs MUST be preceded by a data type.");
+				fr_strerror_const("Varargs MUST be preceded by a data type.");
 				return -1;
 			}
 			argv = talloc_zero(ctx, fr_cmd_argv_t);
@@ -605,7 +605,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 
 			q = option + strlen(option) - 1;
 			if (*q != ']') {
-				fr_strerror_printf("Optional syntax is not properly terminated");
+				fr_strerror_const("Optional syntax is not properly terminated");
 				return -1;
 			}
 
@@ -633,7 +633,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 
 			q = option + strlen(option) - 1;
 			if (*q != ')') {
-				fr_strerror_printf("Alternate syntax is not properly terminated");
+				fr_strerror_const("Alternate syntax is not properly terminated");
 				return -1;
 			}
 
@@ -696,7 +696,7 @@ static int fr_command_add_syntax(TALLOC_CTX *ctx, char *syntax, fr_cmd_argv_t **
 	}
 
 	if (*p) {
-		fr_strerror_printf("Too many arguments passed in syntax string");
+		fr_strerror_const("Too many arguments passed in syntax string");
 		return -1;
 	}
 
@@ -729,12 +729,12 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 	 *	This is a place-holder for tab expansion.
 	 */
 	if (!table->name) {
-		fr_strerror_printf("A name MUST be specified.");
+		fr_strerror_const("A name MUST be specified.");
 		return -1;
 	}
 
 	if (!name && table->add_name) {
-		fr_strerror_printf("An additional name must be specified");
+		fr_strerror_const("An additional name must be specified");
 		return -1;
 	}
 
@@ -783,7 +783,7 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 			}
 
 			if (!cmd->intermediate) {
-				fr_strerror_printf("Cannot add a subcommand to a pre-existing command.");
+				fr_strerror_const("Cannot add a subcommand to a pre-existing command.");
 				return -1;
 			}
 
@@ -873,13 +873,13 @@ int fr_command_add(TALLOC_CTX *talloc_ctx, fr_cmd_t **head, char const *name, vo
 		 */
 		if (argc == 0) {
 			talloc_free(syntax);
-			fr_strerror_printf("Invalid empty string was supplied for syntax");
+			fr_strerror_const("Invalid empty string was supplied for syntax");
 			return  -1;
 		}
 
 		if ((depth + argc) >= CMD_MAX_ARGV) {
 			talloc_free(syntax);
-			fr_strerror_printf("Too many arguments were supplied to the command.");
+			fr_strerror_const("Too many arguments were supplied to the command.");
 			return  -1;
 		}
 	}
@@ -1020,7 +1020,7 @@ int fr_command_walk(fr_cmd_t *head, void **walk_ctx, void *ctx, fr_cmd_walk_t ca
 	fr_cmd_walk_info_t info;
 
 	if (!walk_ctx || !callback) {
-		fr_strerror_printf("No walk_ctx or callback specified");
+		fr_strerror_const("No walk_ctx or callback specified");
 		return -1;
 	}
 
@@ -1923,7 +1923,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 
 			p = skip_word(word);
 			if (!p) {
-				fr_strerror_printf("Invalid string");
+				fr_strerror_const("Invalid string");
 				return -1;
 			}
 
@@ -1957,7 +1957,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 
 			type = argv->type;
 			if (!info->box) {
-				fr_strerror_printf("No array defined for values");
+				fr_strerror_const("No array defined for values");
 				return -1;
 			}
 
@@ -2092,7 +2092,7 @@ static int syntax_str_to_argv(int start_argc, fr_cmd_argv_t *start, fr_cmd_info_
 		/*
 		 *	Not done yet!
 		 */
-		fr_strerror_printf("Internal sanity check failed");
+		fr_strerror_const("Internal sanity check failed");
 		return -1;
 
 	next:
@@ -2138,12 +2138,12 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 	fr_cmd_t *cmd;
 
 	if ((info->argc < 0) || (info->max_argc <= 0)) {
-		fr_strerror_printf("argc / max_argc must be greater than zero");
+		fr_strerror_const("argc / max_argc must be greater than zero");
 		return -1;
 	}
 
 	if (!text) {
-		fr_strerror_printf("No string to split.");
+		fr_strerror_const("No string to split.");
 		return -1;
 	}
 
@@ -2151,7 +2151,7 @@ int fr_command_str_to_argv(fr_cmd_t *head, fr_cmd_info_t *info, char const *text
 	 *	Must have something to check.
 	 */
 	if (!head) {
-		fr_strerror_printf("No commands to parse.");
+		fr_strerror_const("No commands to parse.");
 		return -1;
 	}
 
@@ -2258,7 +2258,7 @@ skip_matched:
 		if (!MATCHED_NAME) {
 			if (argc < info->argc) {
 			invalid:
-				fr_strerror_printf("Invalid internal state");
+				fr_strerror_const("Invalid internal state");
 				return -1;
 			}
 
@@ -2301,7 +2301,7 @@ skip_matched:
 
 	if (argc == info->max_argc) {
 	too_many:
-		fr_strerror_printf("Too many arguments for command.");
+		fr_strerror_const("Too many arguments for command.");
 		return -1;
 	}
 
@@ -2365,7 +2365,7 @@ int fr_command_clear(int new_argc, fr_cmd_info_t *info)
 
 	if ((new_argc < 0) || (new_argc >= CMD_MAX_ARGV) ||
 	    (new_argc > info->argc)) {
-		fr_strerror_printf("Invalid argument");
+		fr_strerror_const("Invalid argument");
 		return -1;
 	}
 

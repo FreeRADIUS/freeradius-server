@@ -101,7 +101,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) {
-			fr_strerror_printf("Out of Memory");
+			fr_strerror_const("Out of Memory");
 			return -1;
 		}
 
@@ -131,7 +131,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-		fr_strerror_printf("Out of Memory");
+		fr_strerror_const("Out of Memory");
 		return -1;
 	}
 
@@ -205,7 +205,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	 *	which is a bit under 2^18.
 	 */
 	if ((buffer[8] != 0) || (buffer[9] != 0)) {
-		fr_strerror_printf("Packet is too large.  Our limit is 64K");
+		fr_strerror_const("Packet is too large.  Our limit is 64K");
 		return -1;
 	}
 
@@ -214,7 +214,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	 *	exactly into however many bytes we read.
 	 */
 	if ((buffer + sizeof(pkt->hdr) + ntohl(pkt->hdr.length)) != end) {
-		fr_strerror_printf("Packet does not exactly fill buffer");
+		fr_strerror_const("Packet does not exactly fill buffer");
 		return -1;
 	}
 
@@ -245,7 +245,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 		size_t length;
 
 		if (!secret || secret_len < 1) {
-			fr_strerror_printf("Packet is encrypted, but no secret is set.");
+			fr_strerror_const("Packet is encrypted, but no secret is set.");
 			return -1;
 		}
 
@@ -256,7 +256,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 		 */
 		decrypted = talloc_memdup(ctx, buffer, buffer_len);
 		if (!decrypted) {
-			fr_strerror_printf("Out of Memory");
+			fr_strerror_const("Out of Memory");
 			return -1;
 		}
 
@@ -298,7 +298,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 			if ((pkt->hdr.ver.minor == 0) &&
 			    (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
-				fr_strerror_printf("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
+				fr_strerror_const("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
 				goto fail;
 			}
 
@@ -384,7 +384,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 */
 			if (pkt->hdr.ver.minor != 0) {
 			invalid_version:
-				fr_strerror_printf("Invalid TACACS+ version");
+				fr_strerror_const("Invalid TACACS+ version");
 				goto fail;
 			}
 
@@ -392,7 +392,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			PACKET_HEADER_CHECK("Authentication Continue");
 
 			if (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII) {
-				fr_strerror_printf("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
+				fr_strerror_const("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
 				goto fail;
 			}
 
@@ -443,7 +443,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 		} else {
 		unknown_packet:
-			fr_strerror_printf("Unknown packet type");
+			fr_strerror_const("Unknown packet type");
 			goto fail;
 		}
 		break;

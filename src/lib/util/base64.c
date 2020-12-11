@@ -310,7 +310,7 @@ ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inl
 		break;
 
 	default:
-		fr_strerror_printf("Invalid base64 padding data");
+		fr_strerror_const("Invalid base64 padding data");
 		return p - end;
 	}
 

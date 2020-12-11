@@ -308,7 +308,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		}
 		pcap->handle = pcap_open_dead(pcap->link_layer, SNAPLEN);
 		if (!pcap->handle) {
-			fr_strerror_printf("Unknown error occurred opening dead PCAP handle");
+			fr_strerror_const("Unknown error occurred opening dead PCAP handle");
 
 			return -1;
 		}
@@ -333,7 +333,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		break;
 #else
 	case PCAP_STDIO_IN:
-		fr_strerror_printf("This version of libpcap does not support reading pcap data from streams");
+		fr_strerror_const("This version of libpcap does not support reading pcap data from streams");
 
 		return -1;
 #endif
@@ -349,7 +349,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		break;
 #else
 	case PCAP_STDIO_OUT:
-		fr_strerror_printf("This version of libpcap does not support writing pcap data to streams");
+		fr_strerror_const("This version of libpcap does not support writing pcap data to streams");
 
 		return -1;
 #endif
@@ -388,7 +388,7 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 	 */
 #ifdef DLT_NFLOG
 	if (pcap->link_layer == DLT_NFLOG) {
-		fr_strerror_printf("NFLOG link-layer type filtering not implemented");
+		fr_strerror_const("NFLOG link-layer type filtering not implemented");
 
 		return 1;
 	}
@@ -569,7 +569,7 @@ ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_laye
 				goto done;
 			}
 		}
-		fr_strerror_printf("Exceeded maximum level of VLAN tag nesting (2)");
+		fr_strerror_const("Exceeded maximum level of VLAN tag nesting (2)");
 		return -1;
 	}
 

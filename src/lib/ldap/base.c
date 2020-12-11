@@ -205,7 +205,7 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t c
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
 		if (lib_errno != LDAP_SUCCESS) goto process_error;
 
-		fr_strerror_printf("No result available");
+		fr_strerror_const("No result available");
 		return LDAP_PROC_NO_RESULT;
 	}
 
@@ -261,16 +261,16 @@ process_error:
 
 	switch (lib_errno) {
 	case LDAP_SUCCESS:
-		fr_strerror_printf("Success");
+		fr_strerror_const("Success");
 		break;
 
 	case LDAP_SASL_BIND_IN_PROGRESS:
-		fr_strerror_printf("Continuing");
+		fr_strerror_const("Continuing");
 		status = LDAP_PROC_CONTINUE;
 		break;
 
 	case LDAP_NO_SUCH_OBJECT:
-		fr_strerror_printf("The specified DN wasn't found");
+		fr_strerror_const("The specified DN wasn't found");
 		status = LDAP_PROC_BAD_DN;
 
 		/*
@@ -293,27 +293,27 @@ process_error:
 		goto error_string;
 
 	case LDAP_INSUFFICIENT_ACCESS:
-		fr_strerror_printf("Insufficient access. Check the identity and password configuration directives");
+		fr_strerror_const("Insufficient access. Check the identity and password configuration directives");
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
 	case LDAP_UNWILLING_TO_PERFORM:
-		fr_strerror_printf("Server was unwilling to perform");
+		fr_strerror_const("Server was unwilling to perform");
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
 	case LDAP_FILTER_ERROR:
-		fr_strerror_printf("Bad search filter");
+		fr_strerror_const("Bad search filter");
 		status = LDAP_PROC_ERROR;
 		break;
 
 	case LDAP_TIMEOUT:
-		fr_strerror_printf("Timed out while waiting for server to respond");
+		fr_strerror_const("Timed out while waiting for server to respond");
 		status = LDAP_PROC_TIMEOUT;
 		break;
 
 	case LDAP_TIMELIMIT_EXCEEDED:
-		fr_strerror_printf("Time limit exceeded");
+		fr_strerror_const("Time limit exceeded");
 		status = LDAP_PROC_TIMEOUT;
 		break;
 
@@ -422,7 +422,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	switch (lib_errno) {
 	case 0:
 		lib_errno = LDAP_TIMEOUT;
-		fr_strerror_printf("timeout waiting for result");
+		fr_strerror_const("timeout waiting for result");
 		return LDAP_PROC_TIMEOUT;
 
 	case -1:

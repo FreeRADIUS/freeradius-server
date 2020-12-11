@@ -243,13 +243,13 @@ bool fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, 
 	memcpy(&magic, data + 236, 4);
 	magic = ntohl(magic);
 	if (magic != DHCP_OPTION_MAGIC_NUMBER) {
-		fr_strerror_printf("BOOTP not supported");
+		fr_strerror_const("BOOTP not supported");
 		return false;
 	}
 
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, attr_dhcp_message_type);
 	if (!code || (code[1] == 0)) {
-		fr_strerror_printf("No message-type option was found in the packet");
+		fr_strerror_const("No message-type option was found in the packet");
 		return false;
 	}
 
@@ -667,7 +667,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 	if (flags->extra || !flags->subtype) return true;
 
 	if (type != FR_TYPE_STRING) {
-		fr_strerror_printf("The 'dns_label' flag can only be used with attributes of type 'string'");
+		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
 

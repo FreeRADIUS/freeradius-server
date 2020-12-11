@@ -138,7 +138,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 
 	if (!vps) {
 	error:
-		fr_strerror_printf("Cannot encode empty packet");
+		fr_strerror_const("Cannot encode empty packet");
 		return -1;
 	}
 
@@ -352,7 +352,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 
 		} else {
 		unknown_packet:
-			fr_strerror_printf("decode: Unknown packet type");
+			fr_strerror_const("decode: Unknown packet type");
 			return -1;
 		}
 
@@ -680,7 +680,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		fr_assert(secret_len > 0);
 
 		if (!secret || secret_len < 1) {
-			fr_strerror_printf("decode: Packet is supposed to be encrypted, but no secret is set.");
+			fr_strerror_const("decode: Packet is supposed to be encrypted, but no secret is set.");
 			return -1;
 		}
 

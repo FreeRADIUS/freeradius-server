@@ -42,7 +42,7 @@ static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
 
 	switch (*p) {
 	default:
-		fr_strerror_printf("Invalid text. Expected comparison operator");
+		fr_strerror_const("Invalid text. Expected comparison operator");
 		return -(p - op);
 
 	case '!':
@@ -64,7 +64,7 @@ static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
 
 		} else {
 		invalid_operator:
-			fr_strerror_printf("Invalid operator");
+			fr_strerror_const("Invalid operator");
 			return -(p - op);
 		}
 		break;
@@ -202,14 +202,14 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 
 	p = in + slen;
 	if (p >= end) {
-		fr_strerror_printf("Attribute name overflows the input buffer");
+		fr_strerror_const("Attribute name overflows the input buffer");
 		return -(in - start);
 	}
 
 	while ((isspace((int) *p)) && (p < end)) p++;
 
 	if (p >= end) {
-		fr_strerror_printf("No operator found in the input buffer");
+		fr_strerror_const("No operator found in the input buffer");
 		return -(p - start);
 	}
 
@@ -218,7 +218,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	 */
 	slen = op_to_token(&op, p, (end - p));
 	if (slen <= 0) {
-		fr_strerror_printf("Syntax error: expected '='");
+		fr_strerror_const("Syntax error: expected '='");
 		return slen - -(p - start);
 	}
 	p += slen;
@@ -226,12 +226,12 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	while ((isspace((int) *p)) && (p < end)) p++;
 
 	if (p >= end) {
-		fr_strerror_printf("No value found in the input buffer");
+		fr_strerror_const("No value found in the input buffer");
 		return -(p - start);
 	}
 
 	if (*p == '`') {
-		fr_strerror_printf("Invalid string quotation");
+		fr_strerror_const("Invalid string quotation");
 		return -(p - start);
 	}
 
@@ -257,7 +257,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 	}
 
 	if (p > end) {
-		fr_strerror_printf("Value overflows the input buffer");
+		fr_strerror_const("Value overflows the input buffer");
 		return -(p - start);
 	}
 
@@ -315,7 +315,7 @@ static ssize_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t i
 		}
 
 		if ((p + slen) > end) {
-			fr_strerror_printf("Attribute name overflows the input buffer");
+			fr_strerror_const("Attribute name overflows the input buffer");
 			return -(p - in);
 		}
 
@@ -333,7 +333,7 @@ static ssize_t fr_pair_ctx_set(fr_pair_ctx_t *pair_ctx, char const *in, size_t i
 		 *	We now MUST have FOO.BAR
 		 */
 		if (*p != '.') {
-			fr_strerror_printf("Unexpected text after attribute");
+			fr_strerror_const("Unexpected text after attribute");
 			return -(p - in);
 		}
 		p++;
@@ -458,7 +458,7 @@ ssize_t fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t in
 			if ((p >= end) || (*p == ',')) return p - in;
 
 			if (*p != '.') {
-				fr_strerror_printf("Unexpected text");
+				fr_strerror_const("Unexpected text");
 				return - (p - in);
 			}
 

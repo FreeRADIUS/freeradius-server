@@ -191,13 +191,13 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 
 	packet = fr_radius_alloc(NULL, false);
 	if (!packet) {
-		fr_strerror_printf("Failed allocating packet");
+		fr_strerror_const("Failed allocating packet");
 		return NULL;
 	}
 
 	raw_packet = talloc_zero_array(packet, uint8_t, MAX_PACKET_SIZE);
 	if (!raw_packet) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		fr_radius_packet_free(&packet);
 		return NULL;
 	}
@@ -297,13 +297,13 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data,
 					   packet->data_len, attr_dhcp_message_type);
 	if (!code) {
-		fr_strerror_printf("No message-type option was found in the packet");
+		fr_strerror_const("No message-type option was found in the packet");
 		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
 	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
-		fr_strerror_printf("Unknown value for message-type option");
+		fr_strerror_const("Unknown value for message-type option");
 		fr_radius_packet_free(&packet);
 		return NULL;
 	}

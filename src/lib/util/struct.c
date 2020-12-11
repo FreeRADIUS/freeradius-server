@@ -183,7 +183,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			fr_assert(!key_vp);
 
 			if (!decode_tlv) {
-				fr_strerror_printf("Decoding TLVs requires a decode_tlv() function to be passed");
+				fr_strerror_const("Decoding TLVs requires a decode_tlv() function to be passed");
 				return -(p - data);
 			}
 
@@ -563,7 +563,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 					break;
 
 				default:
-					fr_strerror_printf("Invalid bit field");
+					fr_strerror_const("Invalid bit field");
 					return -1;
 			}
 
@@ -584,7 +584,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		/* Not a bit field; insist that no buffered bits remain. */
 		if (offset != 0) {
 		leftover_bits:
-			fr_strerror_printf("leftover bits");
+			fr_strerror_const("leftover bits");
 			return -1;
 		}
 
@@ -692,7 +692,7 @@ done:
 	if (do_length) {
 		uint32_t len = fr_dbuff_used(&work_dbuff) - 2;
 		if (len > 65535) {
-			fr_strerror_printf("Structure size is too large for 16-bit length field.");
+			fr_strerror_const("Structure size is too large for 16-bit length field.");
 			return -1;
 		}
 		fr_dbuff_in(&hdr_dbuff, (uint16_t)len);

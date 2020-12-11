@@ -539,7 +539,7 @@ static ssize_t snmp_process_index(fr_cursor_t *out, request_t *request,
 
 		tmp_ctx = talloc_new(request);
 		if (!tmp_ctx) {
-			fr_strerror_printf("Out Of Memory");
+			fr_strerror_const("Out Of Memory");
 			return -(depth);
 		}
 
@@ -553,7 +553,7 @@ static ssize_t snmp_process_index(fr_cursor_t *out, request_t *request,
 
 			if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
 			invalid:
-				fr_strerror_printf("Invalid OID: Match stopped here");
+				fr_strerror_const("Invalid OID: Match stopped here");
 				return -(depth);
 			}
 
@@ -603,7 +603,7 @@ static ssize_t snmp_process_index(fr_cursor_t *out, request_t *request,
 		return 0;			/* done */
 	}
 
-	fr_strerror_printf("Invalid OID: Hit max index");
+	fr_strerror_const("Invalid OID: Hit max index");
 
 	return -(depth);
 }
@@ -620,13 +620,13 @@ static ssize_t snmp_process_index_attr(fr_cursor_t *out, request_t *request,
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	if (map[0].last < &map[1]) {
-		fr_strerror_printf("Invalid OID: Empty map");
+		fr_strerror_const("Invalid OID: Empty map");
 	error:
 		return -(ssize_t)depth;
 	}
 
 	if (map[1].type != FR_FREERADIUS_SNMP_TYPE_OBJECT) {
-		fr_strerror_printf("Invalid OID: Cannot traverse leaf");
+		fr_strerror_const("Invalid OID: Cannot traverse leaf");
 		goto error;
 	}
 
@@ -684,13 +684,13 @@ static ssize_t snmp_process_tlv(fr_cursor_t *out, request_t *request,
 	map_p = snmp_map_search(map, da_stack->da[depth]);
 	if (!map_p) {
 	invalid:
-		fr_strerror_printf("Invalid OID: Match stopped here");
+		fr_strerror_const("Invalid OID: Match stopped here");
 	error:
 		return -(ssize_t)depth;
 	}
 
 	if (!map_p->child) {
-		fr_strerror_printf("Internal error: Dictionary and SNMP map structure mismatch");
+		fr_strerror_const("Internal error: Dictionary and SNMP map structure mismatch");
 		goto error;
 	}
 
@@ -747,7 +747,7 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, request_t *request,
 	 */
 	map_p = snmp_map_search(map, da_stack->da[depth]);
 	if (!map_p) {
-		fr_strerror_printf("Invalid OID: Match stopped here");
+		fr_strerror_const("Invalid OID: Match stopped here");
 	error:
 		return -(ssize_t)depth;
 	}
@@ -786,12 +786,12 @@ static ssize_t snmp_process_leaf(fr_cursor_t *out, request_t *request,
 		 *	Verify map is a leaf
 		 */
 		if (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT) {
-			fr_strerror_printf("Invalid OID: Is not a leaf node");
+			fr_strerror_const("Invalid OID: Is not a leaf node");
 			goto error;
 		}
 
 		if (!map_p->get) {
-			fr_strerror_printf("Invalid operation: Node does not support GET operations");
+			fr_strerror_const("Invalid operation: Node does not support GET operations");
 			goto error;
 		}
 
@@ -883,7 +883,7 @@ static ssize_t snmp_process(fr_cursor_t *out, request_t *request,
 	 */
 	if (!da_stack->da[depth]) {
 		if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
-			fr_strerror_printf("Invalid OID: Not a leaf");
+			fr_strerror_const("Invalid OID: Not a leaf");
 			return -(ssize_t)(depth - 1);
 		}
 		snmp_next_leaf(da_stack, depth, &map[1]);

@@ -237,7 +237,7 @@ do_value:
 			 *	is malformed. Fail.
 			 */
 			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
-				fr_strerror_printf("Mandatory bit is set and attribute is malformed");
+				fr_strerror_const("Mandatory bit is set and attribute is malformed");
 				talloc_free(vp);
 				goto error;
 			}
@@ -276,7 +276,7 @@ do_value:
 			char	label[] = "ttls challenge";
 
 			if ((vp->vp_length < 8) || (vp->vp_length > 16)) {
-				fr_strerror_printf("Tunneled challenge has invalid length");
+				fr_strerror_const("Tunneled challenge has invalid length");
 				goto error;
 			}
 
@@ -287,7 +287,7 @@ do_value:
 			}
 
 			if (memcmp(challenge, vp->vp_octets, vp->vp_length) != 0) {
-				fr_strerror_printf("Tunneled challenge is incorrect");
+				fr_strerror_const("Tunneled challenge is incorrect");
 				goto error;
 			}
 		}

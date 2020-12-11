@@ -1583,7 +1583,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 
 	nr = talloc_zero(ctx, fr_network_t);
 	if (!nr) {
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 	talloc_set_destructor(nr, _fr_network_free);
@@ -1606,7 +1606,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 
 	nr->control = fr_control_create(nr, el, nr->aq_control);
 	if (!nr->control) {
-		fr_strerror_printf_push("Failed creating control queue");
+		fr_strerror_const_push("Failed creating control queue");
 	fail:
 		talloc_free(nr);
 		return NULL;
@@ -1620,34 +1620,34 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	 */
 	nr->rb = fr_ring_buffer_create(nr, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!nr->rb) {
-		fr_strerror_printf_push("Failed creating ring buffer");
+		fr_strerror_const_push("Failed creating ring buffer");
 	fail2:
 		talloc_free(nr->control);
 		goto fail;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_CHANNEL, nr, fr_network_channel_callback) < 0) {
-		fr_strerror_printf_push("Failed adding channel callback");
+		fr_strerror_const_push("Failed adding channel callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_LISTEN, nr, fr_network_listen_callback) < 0) {
-		fr_strerror_printf_push("Failed adding socket callback");
+		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_DIRECTORY, nr, fr_network_directory_callback) < 0) {
-		fr_strerror_printf_push("Failed adding socket callback");
+		fr_strerror_const_push("Failed adding socket callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_started_callback) < 0) {
-		fr_strerror_printf_push("Failed adding worker callback");
+		fr_strerror_const_push("Failed adding worker callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_INJECT, nr, fr_network_inject_callback) < 0) {
-		fr_strerror_printf_push("Failed adding packet injection callback");
+		fr_strerror_const_push("Failed adding packet injection callback");
 		goto fail2;
 	}
 
@@ -1656,29 +1656,29 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	 */
 	nr->sockets = rbtree_talloc_alloc(nr, socket_listen_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
-		fr_strerror_printf_push("Failed creating listen tree for sockets");
+		fr_strerror_const_push("Failed creating listen tree for sockets");
 		goto fail2;
 	}
 
 	nr->sockets_by_num = rbtree_talloc_alloc(nr, socket_num_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets_by_num) {
-		fr_strerror_printf_push("Failed creating number tree for sockets");
+		fr_strerror_const_push("Failed creating number tree for sockets");
 		goto fail2;
 	}
 
 	nr->replies = fr_heap_alloc(nr, reply_cmp, fr_channel_data_t, channel.heap_id);
 	if (!nr->replies) {
-		fr_strerror_printf_push("Failed creating heap for replies");
+		fr_strerror_const_push("Failed creating heap for replies");
 		goto fail2;
 	}
 
 	if (fr_event_pre_insert(nr->el, fr_network_pre_event, nr) < 0) {
-		fr_strerror_printf("Failed adding pre-check to event list");
+		fr_strerror_const("Failed adding pre-check to event list");
 		goto fail2;
 	}
 
 	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
-		fr_strerror_printf("Failed inserting post-processing event");
+		fr_strerror_const("Failed inserting post-processing event");
 		goto fail2;
 	}
 
@@ -1690,7 +1690,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	if (fr_nonblock(nr->signal_pipe[1]) < 0) goto fail2;
 
 	if (fr_event_fd_insert(nr, nr->el, nr->signal_pipe[0], _signal_pipe_read, NULL, NULL, nr) < 0) {
-		fr_strerror_printf("Failed inserting event for signal pipe");
+		fr_strerror_const("Failed inserting event for signal pipe");
 		goto fail2;
 	}
 

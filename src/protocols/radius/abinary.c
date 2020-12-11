@@ -408,7 +408,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	char const	*p;
 
 	if (argc < 3) {
-		fr_strerror_printf("Insufficient arguments to parse 'abinary' IPX network type");
+		fr_strerror_const("Insufficient arguments to parse 'abinary' IPX network type");
 		return -1;
 	}
 
@@ -458,7 +458,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	 *	Can't be too little or too much.
 	 */
 	if (argc != 6) {
-		fr_strerror_printf("Insufficient arguments to parse 'abinary' IPX network type");
+		fr_strerror_const("Insufficient arguments to parse 'abinary' IPX network type");
 		return -1;
 	}
 
@@ -565,7 +565,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 	 *	Must have "net N node M"
 	 */
 	if (argc < 4) {
-		fr_strerror_printf("Insufficient arguments to parse 'abinary' IPX type");
+		fr_strerror_const("Insufficient arguments to parse 'abinary' IPX type");
 		return -1;
 	}
 
@@ -575,7 +575,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 		case FILTER_IPX_SRC_IPXNET:
 			if (flags & 0x01) {
 duplicate:
-				fr_strerror_printf("Duplicate field when parsing 'abinary' IPX type");
+				fr_strerror_const("Duplicate field when parsing 'abinary' IPX type");
 				return -1;
 			}
 			slen = ascend_parse_ipx_net(argc - 1, argv + 1,
@@ -609,7 +609,7 @@ duplicate:
 	 *	Arguments left over: die.
 	 */
 	if (argc != 0) {
-		fr_strerror_printf("Too many arguments to 'abinary' IPX filter");
+		fr_strerror_const("Too many arguments to 'abinary' IPX filter");
 		return -1;
 	}
 
@@ -680,7 +680,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				goto finalize;
 
 			default:
-				fr_strerror_printf("Invalid character in IP address");
+				fr_strerror_const("Invalid character in IP address");
 				return -1;
 			}
 		} /* loop over one character */
@@ -1098,7 +1098,7 @@ static int ascend_parse_generic(int argc, char **argv,
 	 *	We need at least "offset mask value"
 	 */
 	if (argc < 3) {
-		fr_strerror_printf("Insufficient arguments to parse 'abinary' generic type");
+		fr_strerror_const("Insufficient arguments to parse 'abinary' generic type");
 		return -1;
 	}
 
@@ -1106,7 +1106,7 @@ static int ascend_parse_generic(int argc, char **argv,
 	 *	No more than optional comparison and "more"
 	 */
 	if (argc > 5) {
-		fr_strerror_printf("Too many arguments to parse 'abinary' generic type");
+		fr_strerror_const("Too many arguments to parse 'abinary' generic type");
 		return -1;
 	}
 
@@ -1223,7 +1223,7 @@ ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outle
 
 	argc = fr_dict_str_to_argv(p, argv, 32);
 	if (argc < 3) {
-		fr_strerror_printf("Insufficient arguments to parse 'abinary' type");
+		fr_strerror_const("Insufficient arguments to parse 'abinary' type");
 	fail:
 		talloc_free(p);
 		return 0;

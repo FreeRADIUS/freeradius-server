@@ -82,7 +82,7 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 	chunk_len = talloc_get_size(chunk);
 	offset = ROUND_UP_DIV(chunk_len, FR_EXT_ALIGNMENT);
 	if (unlikely(offset > UINT8_MAX)) {
-		fr_strerror_printf("Insufficient space remaining for extensions");
+		fr_strerror_const("Insufficient space remaining for extensions");
 		return NULL;
 	}
 
@@ -168,7 +168,7 @@ void *fr_ext_copy(fr_ext_t const *def, TALLOC_CTX **chunk_dst, TALLOC_CTX const 
 	fr_ext_info_t const	*info = &def->info[ext];
 
 	if (!info->can_copy) {
-		fr_strerror_printf("Extension cannot be copied");
+		fr_strerror_const("Extension cannot be copied");
 		return NULL;
 	}
 

@@ -75,7 +75,7 @@ int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 #endif
 
 	} else {
-		fr_strerror_printf("Unknown address family");
+		fr_strerror_const("Unknown address family");
 		return -1;
 	}
 
@@ -105,7 +105,7 @@ int fr_ipaddr_is_multicast(fr_ipaddr_t const *ipaddr)
 #endif
 
 	} else {
-		fr_strerror_printf("Unknown address family");
+		fr_strerror_const("Unknown address family");
 		return -1;
 	}
 
@@ -130,7 +130,7 @@ int fr_ipaddr_is_prefix(fr_ipaddr_t const *ipaddr)
 		return (ipaddr->prefix < 128);
 
 	default:
-		fr_strerror_printf("Unknown address family");
+		fr_strerror_const("Unknown address family");
 		return -1;
 	}
 }
@@ -321,7 +321,7 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	ret = fr_ipaddr_from_sockaddr(out, NULL, (struct sockaddr_storage *)ai->ai_addr, ai->ai_addrlen);
 	freeaddrinfo(res);
 	if (ret < 0) {
-		fr_strerror_printf("Failed converting sockaddr to ipaddr");
+		fr_strerror_const("Failed converting sockaddr to ipaddr");
 		return -1;
 	}
 
@@ -479,7 +479,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	end = value + inlen;
 	while (isspace((int) *value) && (value < end)) value++;
 	if (value == end) {
-		fr_strerror_printf("Empty IPv4 address string is invalid");
+		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
 	}
 	inlen = end - value;
@@ -616,7 +616,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	end = value + inlen;
 	while (isspace((int) *value) && (value < end)) value++;
 	if (value == end) {
-		fr_strerror_printf("Empty IPv4 address string is invalid");
+		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
 	}
 	inlen = end - value;
@@ -732,7 +732,7 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	end = value + inlen;
 	while (isspace((int) *value) && (value < end)) value++;
 	if (value == end) {
-		fr_strerror_printf("Empty IPv4 address string is invalid");
+		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
 	}
 	inlen = end - value;
@@ -808,7 +808,7 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 		 *	asked to do DNS resolution, we can't do it.
 		 */
 		if (!resolve) {
-			fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
+			fr_strerror_const("Not IPv4/6 address, and asked not to resolve");
 			return -1;
 		}
 
@@ -817,7 +817,7 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 		 *	early.
 		 */
 		if (!hostname) {
-			fr_strerror_printf("Invalid address");
+			fr_strerror_const("Invalid address");
 			return -1;
 		}
 	}
@@ -829,7 +829,7 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	 */
 	if (ipv6 && !hostname) {
 		if (af == AF_INET) {
-			fr_strerror_printf("Invalid address");
+			fr_strerror_const("Invalid address");
 			return -1;
 		}
 
@@ -895,7 +895,7 @@ int fr_inet_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
 
 	if (*p == '[') {
 		if (!(q = memchr(p + 1, ']', len - 1))) {
-			fr_strerror_printf("Missing closing ']' for IPv6 address");
+			fr_strerror_const("Missing closing ']' for IPv6 address");
 			return -1;
 		}
 
@@ -930,7 +930,7 @@ do_port:
 	 */
 	if (len > (size_t) ((q + sizeof(buffer)) - value)) {
 	error:
-		fr_strerror_printf("IP string contains trailing garbage after port delimiter");
+		fr_strerror_const("IP string contains trailing garbage after port delimiter");
 		return -1;
 	}
 
@@ -1377,7 +1377,7 @@ int fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
 		struct sockaddr_in s4;
 
 		if (salen < sizeof(s4)) {
-			fr_strerror_printf("IPv4 address is too small");
+			fr_strerror_const("IPv4 address is too small");
 			return 0;
 		}
 
@@ -1393,7 +1393,7 @@ int fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
 		struct sockaddr_in6 s6;
 
 		if (salen < sizeof(s6)) {
-			fr_strerror_printf("IPv6 address is too small");
+			fr_strerror_const("IPv6 address is too small");
 			return 0;
 		}
 

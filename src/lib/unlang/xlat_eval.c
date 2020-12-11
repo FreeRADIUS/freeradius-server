@@ -593,7 +593,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 			value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 			if (!value) {
 			oom:
-				fr_strerror_printf("Out of memory");
+				fr_strerror_const("Out of memory");
 				ret = XLAT_ACTION_FAIL;
 				goto done;
 			}

@@ -132,7 +132,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	if (num_messages < 8) num_messages = 8;
 
 	if ((num_messages & (num_messages - 1)) != 0) {
-		fr_strerror_printf("Number of messages must be a power of 2");
+		fr_strerror_const("Number of messages must be a power of 2");
 		return NULL;
 	}
 
@@ -142,13 +142,13 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	}
 
 	if (message_size > 1024) {
-		fr_strerror_printf("Message size must be no larger than 1024");
+		fr_strerror_const("Message size must be no larger than 1024");
 		return NULL;
 	}
 
 	ms = talloc_zero(ctx, fr_message_set_t);
 	if (!ms) {
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 
@@ -214,7 +214,7 @@ int fr_message_done(fr_message_t *m)
 	 */
 	fr_assert(0 == 1);
 
-	fr_strerror_printf("Failed marking message as done");
+	fr_strerror_const("Failed marking message as done");
 	return -1;
 }
 
@@ -243,19 +243,19 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
 	fr_message_t *l;
 
 	if (m->status != FR_MESSAGE_USED) {
-		fr_strerror_printf("Cannot localize message unless it is in use");
+		fr_strerror_const("Cannot localize message unless it is in use");
 		return NULL;
 	}
 
 	if (message_size <= sizeof(fr_message_t)) {
-		fr_strerror_printf("Message size is too small");
+		fr_strerror_const("Message size is too small");
 		return NULL;
 	}
 
 	l = talloc_memdup(ctx, m, message_size);
 	if (!l) {
 	nomem:
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 
@@ -640,7 +640,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_ring_buffer_
 	 */
 	if (clean) {
 		if (fr_message_ring_gc(ms, mr, 4) == 0) {
-			fr_strerror_printf("No free memory after GC attempt");
+			fr_strerror_const("No free memory after GC attempt");
 			return NULL;
 		}
 
@@ -744,7 +744,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 	 *	room to allocate another array, we're dead.
 	 */
 	if ((ms->mr_max + 1) >= MSG_ARRAY_SIZE) {
-		fr_strerror_printf("All message arrays are full");
+		fr_strerror_const("All message arrays are full");
 		return NULL;
 	}
 
@@ -754,7 +754,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 	 */
 	mr = fr_ring_buffer_create(ms, fr_ring_buffer_size(ms->mr_array[ms->mr_max]) * 2);
 	if (!mr) {
-		fr_strerror_printf_push("Failed allocating ring buffer");
+		fr_strerror_const_push("Failed allocating ring buffer");
 		return NULL;
 	}
 
@@ -866,7 +866,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 	 *	room to allocate another array, we're dead.
 	 */
 	if ((ms->rb_max + 1) >= MSG_ARRAY_SIZE) {
-		fr_strerror_printf("Message arrays are full");
+		fr_strerror_const("Message arrays are full");
 		goto cleanup;
 	}
 
@@ -877,7 +877,7 @@ alloc_rb:
 	 */
 	rb = fr_ring_buffer_create(ms, fr_ring_buffer_size(ms->rb_array[ms->rb_max]) * 2);
 	if (!rb) {
-		fr_strerror_printf_push("Failed allocating ring buffer");
+		fr_strerror_const_push("Failed allocating ring buffer");
 		goto cleanup;
 	}
 
@@ -1006,7 +1006,7 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
 	fr_assert(p != NULL);
 	if (!p) {
-		fr_strerror_printf_push("Failed allocating from ring buffer");
+		fr_strerror_const_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 
@@ -1083,7 +1083,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
 	fr_assert(p != NULL);
 	if (!p) {
-		fr_strerror_printf_push("Failed allocating from ring buffer");
+		fr_strerror_const_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 
@@ -1219,7 +1219,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	aligned_size = MS_ALIGN(actual_packet_size);
 
 	if ((aligned_p + aligned_size) > (m->data + m->rb_size)) {
-		fr_strerror_printf("Aligned message size overflows reserved size");
+		fr_strerror_const("Aligned message size overflows reserved size");
 		return NULL;
 	}
 
@@ -1234,7 +1234,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	p = fr_ring_buffer_alloc(m->rb, aligned_size);
 	fr_assert(p != NULL);
 	if (!p) {
-		fr_strerror_printf_push("Failed allocating from ring buffer");
+		fr_strerror_const_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 

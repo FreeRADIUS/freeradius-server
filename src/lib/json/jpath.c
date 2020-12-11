@@ -512,7 +512,7 @@ static ssize_t jpath_filter_expr_parse(UNUSED jpath_selector_t *selector, UNUSED
 {
 	/* selector->type = JPATH_SELECTOR_FILTER_EXPRESSION; */
 
-	fr_strerror_printf("Filter expressions not yet implemented");
+	fr_strerror_const("Filter expressions not yet implemented");
 	return 0;
 }
 
@@ -525,7 +525,7 @@ static ssize_t jpath_expr_parse(UNUSED jpath_selector_t *selector, UNUSED char c
 {
 	/* selector->type = JPATH_SELECTOR_EXPRESSION; */
 
-	fr_strerror_printf("Expressions not yet implemented");
+	fr_strerror_const("Expressions not yet implemented");
 	return 0;
 }
 
@@ -566,18 +566,18 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 	 */
 	for (p = in; p < end; p++) if ((p[0] == ',') || (p[0] == ']')) break;
 	if (p == end) {
-		fr_strerror_printf("Missing selector delimiter ',' or terminator ']'");
+		fr_strerror_const("Missing selector delimiter ',' or terminator ']'");
 		return -inlen;
 	}
 
 	ret = (p - in);
 	if (ret == 0) {
-		fr_strerror_printf("Empty selector");
+		fr_strerror_const("Empty selector");
 		return 0;
 	}
 
 	if (inlen > sizeof(buffer)) {	/* - 1 for ] */
-		fr_strerror_printf("Selector too long");
+		fr_strerror_const("Selector too long");
 		return -inlen;
 	}
 
@@ -596,7 +596,7 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 	if (q > p) switch (q[0]) {
 	default:
 	no_term:
-		fr_strerror_printf("Expected num, ':' or ']'");
+		fr_strerror_const("Expected num, ':' or ']'");
 		return buffer - q;
 
 	case ':':			/* More integers to parse */
@@ -638,12 +638,12 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 	 */
 	num = (int32_t)strtol(p, &q, 10);
 	if (q[0] != '\0') {
-		fr_strerror_printf("Expected num or ']'");
+		fr_strerror_const("Expected num or ']'");
 		return buffer - q;
 	}
 	if (q > p) {
 		if (num == 0) {
-			fr_strerror_printf("Step cannot be 0");
+			fr_strerror_const("Step cannot be 0");
 			return buffer - p;
 		}
 		selector->slice[idx] = num;
@@ -669,13 +669,13 @@ static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t in
 
 		if (buff_p == buff_end) {
 		name_too_big:
-			fr_strerror_printf("Exceeded maximum field name length");
+			fr_strerror_const("Exceeded maximum field name length");
 			return in - p;
 		}
 
 		clen = fr_utf8_char((uint8_t const *)p, end - p);
 		if (clen == 0) {
-			fr_strerror_printf("Bad UTF8 char");
+			fr_strerror_const("Bad UTF8 char");
 			return in - p;
 		}
 
@@ -720,7 +720,7 @@ static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t in
 	}
 
 	if (buff_p == buffer) {
-		fr_strerror_printf("Empty field specifier");
+		fr_strerror_const("Empty field specifier");
 		return 0;
 	}
 	node->selector->field = talloc_bstrndup(node, buffer, buff_p - buffer);
@@ -745,7 +745,7 @@ static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t
 
 	if (++p == end) {	/* Skip past [ */
 	missing_terminator:
-		fr_strerror_printf("Missing selector terminator ']'");
+		fr_strerror_const("Missing selector terminator ']'");
 		return in - p;
 	}
 
@@ -793,7 +793,7 @@ static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t
 		 */
 		*stail = selector = talloc_zero(node, jpath_selector_t);
 		if (!selector) {
-			fr_strerror_printf("Failed allocating selector");
+			fr_strerror_const("Failed allocating selector");
 			return in - p;
 		}
 		stail = &selector->next;
@@ -835,7 +835,7 @@ do { \
 
 	if (inlen < 1) {
 	bad_start:
-		fr_strerror_printf("Expected root specifier '$', or current node specifier '@'");
+		fr_strerror_const("Expected root specifier '$', or current node specifier '@'");
 		return 0;
 	}
 
@@ -901,7 +901,7 @@ do { \
 				node->selector->type = JPATH_SELECTOR_RECURSIVE_DESCENT;
 
 				if ((p + 1) == end) {
-					fr_strerror_printf("Path may not end in recursive descent");
+					fr_strerror_const("Path may not end in recursive descent");
 					goto error;
 				}
 
@@ -947,7 +947,7 @@ do { \
 			break;
 
 		default:
-			fr_strerror_printf("Expected field specifier '.' or selector '['");
+			fr_strerror_const("Expected field specifier '.' or selector '['");
 			goto error;
 		}
 	}

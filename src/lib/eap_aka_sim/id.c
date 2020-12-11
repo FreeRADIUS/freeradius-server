@@ -103,37 +103,37 @@ ssize_t fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 	p += 8;
 
 	if (((p + 3) < end)) {
-		fr_strerror_printf("Missing MNC component");
+		fr_strerror_const("Missing MNC component");
 		return (domain - p);
 	}
 	num = strtoul(p, &q, 10);
 	if (*q != '.') {
-		fr_strerror_printf("Invalid MCN component");
+		fr_strerror_const("Invalid MCN component");
 		return (domain - q);
 	}
 	*mnc = (uint16_t)num;
 	p = q + 1;
 
 	if (((p + 3) < end) || (CRYPTO_memcmp(p, "mcc", 3) != 0)) {
-		fr_strerror_printf("Missing MCC component");
+		fr_strerror_const("Missing MCC component");
 		return (domain - p);
 	}
 	num = strtoul(p, &q, 10);
 	if (*q != '.') {
-		fr_strerror_printf("Invalid MCC component");
+		fr_strerror_const("Invalid MCC component");
 		return (domain - q);
 	}
 	*mcc = (uint16_t)num;
 
 	p = q + 1;
 	if (((p + 15) < end) || (CRYPTO_memcmp(p, "3gppnetwork.org", 15) != 0)) {
-		fr_strerror_printf("Missing 3gppnetwork.org suffix");
+		fr_strerror_const("Missing 3gppnetwork.org suffix");
 		return (domain - p);
 	}
 	p += 15;
 
 	if (p != end) {
-		fr_strerror_printf("Trailing garbage");
+		fr_strerror_const("Trailing garbage");
 		return (domain - p);
 	}
 
@@ -169,7 +169,7 @@ int fr_aka_sim_id_type(fr_aka_sim_id_type_t *type, fr_aka_sim_method_hint_t *hin
 	if (id_len < 1) {
 		*hint = AKA_SIM_METHOD_HINT_UNKNOWN;
 		*type = AKA_SIM_ID_TYPE_UNKNOWN;
-		fr_strerror_printf("ID length too short");
+		fr_strerror_const("ID length too short");
 		return -1;
 	}
 
@@ -268,13 +268,13 @@ bad_format:
 	case ID_TAG_SIM_PERMANENT:
 		*hint = AKA_SIM_METHOD_HINT_UNKNOWN;
 		*type = AKA_SIM_ID_TYPE_UNKNOWN;
-		fr_strerror_printf_push("Got SIM-Permanent-ID tag, but identity is not a permanent ID");
+		fr_strerror_const_push("Got SIM-Permanent-ID tag, but identity is not a permanent ID");
 		return -1;
 
 	case ID_TAG_AKA_PERMANENT:
 		*hint = AKA_SIM_METHOD_HINT_UNKNOWN;
 		*type = AKA_SIM_ID_TYPE_UNKNOWN;
-		fr_strerror_printf_push("Got AKA-Permanent-ID tag, but identity is not a permanent ID");
+		fr_strerror_const_push("Got AKA-Permanent-ID tag, but identity is not a permanent ID");
 		return -1;
 
 	default:
@@ -374,7 +374,7 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 		return -1;
 	}
 	if (unlikely(!key)) {
-		fr_strerror_printf("Provided key was NULL");
+		fr_strerror_const("Provided key was NULL");
 		return -1;
 	}
 
@@ -392,7 +392,7 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 	 */
 	while (p < end) {
 		if (unlikely(!isdigit((char)p[0]) || !isdigit((char)p[1]))) {
-			fr_strerror_printf("IMSI contains invalid character");
+			fr_strerror_const("IMSI contains invalid character");
 			return -1;
 		}
 

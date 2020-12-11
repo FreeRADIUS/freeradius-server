@@ -44,7 +44,7 @@ fr_radius_packet_t *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
 
 	rp = talloc_zero(ctx, fr_radius_packet_t);
 	if (!rp) {
-		fr_strerror_printf("out of memory");
+		fr_strerror_const("out of memory");
 		return NULL;
 	}
 	rp->id = -1;

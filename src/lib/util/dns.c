@@ -537,7 +537,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	uint8_t *data;
 
 	if (!buf || !buf_len || !where || !value) {
-		fr_strerror_printf("Invalid input");
+		fr_strerror_const("Invalid input");
 		return -1;
 	}
 
@@ -545,7 +545,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	Don't allow stupidities
 	 */
 	if (!((where >= buf) && (where < (buf + buf_len)))) {
-		fr_strerror_printf("Label to write is outside of buffer");
+		fr_strerror_const("Label to write is outside of buffer");
 		return -1;
 	}
 
@@ -553,7 +553,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	We can only encode strings.
 	 */
 	if (value->type != FR_TYPE_STRING) {
-		fr_strerror_printf("Asked to encode non-string type");
+		fr_strerror_const("Asked to encode non-string type");
 		return -1;
 	}
 
@@ -582,7 +582,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	last = q;
 
 	if (*q == '.') {
-		fr_strerror_printf("Empty labels are invalid");
+		fr_strerror_const("Empty labels are invalid");
 		return -1;
 	}
 
@@ -599,7 +599,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 			}
 
 			if (q[1] == '.') {
-				fr_strerror_printf("Double dots '..' are forbidden");
+				fr_strerror_const("Double dots '..' are forbidden");
 				return -1;
 			}
 			last = q;
@@ -613,7 +613,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 		q++;
 
 		if ((q - last) > 63) {
-			fr_strerror_printf("Label is larger than 63 characters");
+			fr_strerror_const("Label is larger than 63 characters");
 			return -1;
 		}
 	}
@@ -756,7 +756,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 		 *	0b10 and 0b10 are forbidden
 		 */
 		if ((*p > 63) && (*p < 0xc0)) {
-			fr_strerror_printf("Data with invalid high bits");
+			fr_strerror_const("Data with invalid high bits");
 			return -(p - buf);
 		}
 
@@ -768,7 +768,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 
 			if ((p + 2) > end) {
 			overflow:
-				fr_strerror_printf("Label overflows buffer");
+				fr_strerror_const("Label overflows buffer");
 				return -(p - buf);
 			}
 
@@ -845,7 +845,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 		 *	DNS names can be no more than 255 octets.
 		 */
 		if (length > 255) {
-			fr_strerror_printf("Total length of labels is > 255");
+			fr_strerror_const("Total length of labels is > 255");
 			return -(p - buf);
 		}
 

@@ -485,7 +485,7 @@ static ssize_t hex_to_bin(uint8_t *out, size_t outlen, char *in, size_t inlen)
 		char *c1, *c2;
 
 		if (out_p >= out_end) {
-			fr_strerror_printf("Would overflow output buffer");
+			fr_strerror_const("Would overflow output buffer");
 			return -(p - in);
 		}
 
@@ -557,7 +557,7 @@ static ssize_t encode_data(char *p, uint8_t *output, size_t outlen)
 
 	slen = hex_to_bin(output, outlen, p, strlen(p));
 	if (slen <= 0) {
-		fr_strerror_printf_push("Empty hex string");
+		fr_strerror_const_push("Empty hex string");
 		return slen;
 	}
 
@@ -902,7 +902,7 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	fr_dict_t	*dict;
 
 	if (in[0] == '\0') {
-		fr_strerror_printf("Missing dictionary name");
+		fr_strerror_const("Missing dictionary name");
 		RETURN_PARSE_ERROR(0);
 	}
 
@@ -1045,7 +1045,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 	talloc_list_free(&head);
 
 	if (slen < 0) {
-		fr_strerror_printf("Encoder output would overflow output buffer");
+		fr_strerror_const("Encoder output would overflow output buffer");
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1092,7 +1092,7 @@ static size_t command_radmin_add(command_result_t *result, command_file_ctx_t *c
 
 	p = strchr(in, ':');
 	if (!p) {
-		fr_strerror_printf("no ':name' specified");
+		fr_strerror_const("no ':name' specified");
 		RETURN_PARSE_ERROR(0);
 	}
 
@@ -1125,7 +1125,7 @@ static size_t command_radmin_add(command_result_t *result, command_file_ctx_t *c
 	table->read_only = true;
 
 	if (fr_command_add(table, &command_head, NULL, NULL, table) < 0) {
-		fr_strerror_printf_push("ERROR: Failed adding command");
+		fr_strerror_const_push("ERROR: Failed adding command");
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1155,7 +1155,7 @@ static size_t command_radmin_tab(command_result_t *result, command_file_ctx_t *c
 	memcpy(&argv, &info.argv, sizeof(argv)); /* const issues */
 	info.argc = fr_dict_str_to_argv(in, argv, CMD_MAX_ARGV);
 	if (info.argc <= 0) {
-		fr_strerror_printf("Failed splitting input");
+		fr_strerror_const("Failed splitting input");
 		RETURN_PARSE_ERROR(-(info.argc));
 	}
 
@@ -1164,7 +1164,7 @@ static size_t command_radmin_tab(command_result_t *result, command_file_ctx_t *c
 	len = snprintf(p, end - p, "%d - ", num_expansions);
 	if (is_truncated(len, end - p)) {
 	oob:
-		fr_strerror_printf("Out of output buffer space");
+		fr_strerror_const("Out of output buffer space");
 		RETURN_COMMAND_ERROR();
 	}
 	p += len;
@@ -1199,7 +1199,7 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 
 	cs = cf_section_alloc(NULL, NULL, "if", "condition");
 	if (!cs) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		RETURN_COMMAND_ERROR();
 	}
 	cf_filename_set(cs, cc->filename);
@@ -1240,7 +1240,7 @@ static size_t command_count(command_result_t *result, command_file_ctx_t *cc,
 
 	len = snprintf(data, COMMAND_OUTPUT_MAX, "%u", cc->test_count);
 	if (is_truncated(len, COMMAND_OUTPUT_MAX)) {
-		fr_strerror_printf("Command count would overflow data buffer (shouldn't happen)");
+		fr_strerror_const("Command count would overflow data buffer (shouldn't happen)");
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -1265,7 +1265,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 
 	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_pair");
 	if (!tp) {
-		fr_strerror_printf_push("Failed locating decoder testpoint");
+		fr_strerror_const_push("Failed locating decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -1273,7 +1273,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	fr_skip_whitespace(p);
 
 	if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, cc->tmp_ctx) < 0)) {
-		fr_strerror_printf_push("Failed initialising decoder testpoint");
+		fr_strerror_const_push("Failed initialising decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -1348,7 +1348,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		     vp = fr_cursor_next(&cursor)) {
 			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
 			oob:
-				fr_strerror_printf("Out of output buffer space");
+				fr_strerror_const("Out of output buffer space");
 				CLEAR_TEST_POINT(cc);
 				RETURN_COMMAND_ERROR();
 			}
@@ -1388,7 +1388,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 
 	slen = load_test_point_by_command((void **)&tp, in, "tp_decode_proto");
 	if (!tp) {
-		fr_strerror_printf_push("Failed locating decoder testpoint");
+		fr_strerror_const_push("Failed locating decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -1396,7 +1396,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	fr_skip_whitespace(p);
 
 	if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, cc->tmp_ctx) < 0)) {
-		fr_strerror_printf_push("Failed initialising decoder testpoint");
+		fr_strerror_const_push("Failed initialising decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
 
@@ -1605,7 +1605,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	fr_pair_list_init(&head);
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_pair");
 	if (!tp) {
-		fr_strerror_printf_push("Failed locating encode testpoint");
+		fr_strerror_const_push("Failed locating encode testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
 	}
@@ -1630,7 +1630,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	}
 
 	if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, cc->tmp_ctx) < 0)) {
-		fr_strerror_printf_push("Failed initialising encoder testpoint");
+		fr_strerror_const_push("Failed initialising encoder testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
 	}
@@ -1750,7 +1750,7 @@ static size_t command_encode_raw(command_result_t *result, command_file_ctx_t *c
 	if (len <= 0) RETURN_PARSE_ERROR(0);
 
 	if (len >= (size_t)(cc->buffer_end - cc->buffer_start)) {
-		fr_strerror_printf("Encoder output would overflow output buffer");
+		fr_strerror_const("Encoder output would overflow output buffer");
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1777,7 +1777,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_proto");
 	if (!tp) {
-		fr_strerror_printf_push("Failed locating encode testpoint");
+		fr_strerror_const_push("Failed locating encode testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
 	}
@@ -1785,7 +1785,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	p += ((size_t)slen);
 	fr_skip_whitespace(p);
 	if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, cc->tmp_ctx) < 0)) {
-		fr_strerror_printf_push("Failed initialising encoder testpoint");
+		fr_strerror_const_push("Failed initialising encoder testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
 	}
@@ -1899,7 +1899,7 @@ static size_t command_max_buffer_size(command_result_t *result, command_file_ctx
 	if (*in != '\0') {
 		size = strtoul(in, &end, 10);
 		if ((size == ULONG_MAX) || *end || (size >= 65536)) {
-			fr_strerror_printf_push("Invalid integer");
+			fr_strerror_const_push("Invalid integer");
 			RETURN_COMMAND_ERROR();
 		}
 	} else {
@@ -2243,7 +2243,7 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	 *	They MUST be identical
 	 */
 	if (fr_value_box_cmp(box, box2) != 0) {
-		fr_strerror_printf("ERROR value box reparsing failed.  Results not identical");
+		fr_strerror_const("ERROR value box reparsing failed.  Results not identical");
 		fr_strerror_printf_push("out: %pV", box2);
 		fr_strerror_printf_push("in: %pV", box);
 		talloc_free(box2);

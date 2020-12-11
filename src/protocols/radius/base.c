@@ -357,7 +357,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	}
 
 	if (packet_len < RADIUS_HEADER_LENGTH) {
-		fr_strerror_printf("Packet must be encoded before calling fr_radius_sign()");
+		fr_strerror_const("Packet must be encoded before calling fr_radius_sign()");
 		return -1;
 	}
 
@@ -385,7 +385,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		}
 
 		if (msg[1] < 18) {
-			fr_strerror_printf("Message-Authenticator is too small");
+			fr_strerror_const("Message-Authenticator is too small");
 			return -1;
 		}
 
@@ -453,7 +453,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 		need_original:
-			fr_strerror_printf("Cannot sign response packet without a request packet");
+			fr_strerror_const("Cannot sign response packet without a request packet");
 			return -1;
 		}
 		memcpy(packet + 4, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
@@ -810,7 +810,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		}
 
 		if (msg[1] < 18) {
-			fr_strerror_printf("too small Message-Authenticator");
+			fr_strerror_const("too small Message-Authenticator");
 			return -1;
 		}
 
@@ -829,7 +829,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 */
 	rcode = fr_radius_sign(packet, original, secret, secret_len);
 	if (rcode < 0) {
-		fr_strerror_printf_push("Failed calculating correct authenticator");
+		fr_strerror_const_push("Failed calculating correct authenticator");
 		return -1;
 	}
 
@@ -845,7 +845,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		memcpy(msg + 2, message_authenticator, sizeof(message_authenticator));
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
 
-		fr_strerror_printf("invalid Message-Authenticator (shared secret is incorrect)");
+		fr_strerror_const("invalid Message-Authenticator (shared secret is incorrect)");
 		return -1;
 	}
 
@@ -863,9 +863,9 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	if (fr_digest_cmp(request_authenticator, packet + 4, sizeof(request_authenticator)) != 0) {
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
 		if (original) {
-			fr_strerror_printf("invalid Response Authenticator (shared secret is incorrect)");
+			fr_strerror_const("invalid Response Authenticator (shared secret is incorrect)");
 		} else {
-			fr_strerror_printf("invalid Request Authenticator (shared secret is incorrect)");
+			fr_strerror_const("invalid Request Authenticator (shared secret is incorrect)");
 		}
 		return -1;
 	}
@@ -946,7 +946,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	case FR_CODE_DISCONNECT_NAK:
 	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
-			fr_strerror_printf("Cannot encode response without request");
+			fr_strerror_const("Cannot encode response without request");
 			return -1;
 		}
 		memcpy(packet_ctx.vector, original + 4, sizeof(packet_ctx.vector));
@@ -1133,13 +1133,13 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
 	if (flags->array) {
-		fr_strerror_printf("RADIUS does not support the 'array' flag.");
+		fr_strerror_const("RADIUS does not support the 'array' flag.");
 		return false;
 	}
 
 	if (parent->type == FR_TYPE_STRUCT) {
 		if (flag_extended(flags)) {
-			fr_strerror_printf("Attributes of type 'extended' cannot be used inside of a 'struct'");
+			fr_strerror_const("Attributes of type 'extended' cannot be used inside of a 'struct'");
 			return false;
 		}
 
@@ -1154,7 +1154,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 *	All other flags are invalid inside of a struct.
 		 */
 		if (flags->subtype) {
-			fr_strerror_printf("Attributes inside of a 'struct' MUST NOT have flags set");
+			fr_strerror_const("Attributes inside of a 'struct' MUST NOT have flags set");
 			return false;
 		}
 
@@ -1167,7 +1167,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (flags->extra) {
 		if (flags->subtype != FLAG_HAS_REF) {
-			fr_strerror_printf("Unsupported extension.");
+			fr_strerror_const("Unsupported extension.");
 			return false;
 		}
 
@@ -1188,12 +1188,12 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	if (flag_concat(flags)) {
 		if (!parent->flags.is_root) {
-			fr_strerror_printf("Attributes with the 'concat' flag MUST be at the root of the dictionary");
+			fr_strerror_const("Attributes with the 'concat' flag MUST be at the root of the dictionary");
 			return false;
 		}
 
 		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("Attributes with the 'concat' flag MUST be of data type 'octets'");
+			fr_strerror_const("Attributes with the 'concat' flag MUST be of data type 'octets'");
 			return false;
 		}
 
@@ -1214,7 +1214,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (!(parent->flags.is_root ||
 		      ((parent->type == FR_TYPE_VENDOR) &&
 		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
-			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
+			fr_strerror_const("The 'has_tag' flag can only be used with RFC and VSA attributes");
 			return false;
 		}
 
@@ -1223,12 +1223,12 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	if (flag_extended(flags)) {
 		if (type != FR_TYPE_TLV) {
-			fr_strerror_printf("The 'long' or 'extended' flag can only be used for attributes of type 'tlv'");
+			fr_strerror_const("The 'long' or 'extended' flag can only be used for attributes of type 'tlv'");
 			return false;
 		}
 
 		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'long' flag can only be used for top-level RFC attributes");
+			fr_strerror_const("The 'long' flag can only be used for top-level RFC attributes");
 			return false;
 		}
 

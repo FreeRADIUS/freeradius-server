@@ -100,7 +100,7 @@ static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
 		md_ctx = EVP_MD_CTX_new();
 		if (unlikely(!md_ctx)) {
 		oom:
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return NULL;
 		}
 		EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);

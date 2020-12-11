@@ -693,7 +693,7 @@ int dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir)
 
 	dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
 	if (!dl_loader->lib_dir) {
-		fr_strerror_printf("Failed allocating memory for dl search path");
+		fr_strerror_const("Failed allocating memory for dl search path");
 		return -1;
 	}
 
@@ -718,7 +718,7 @@ int dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir)
 		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
 		if (!dl_loader->lib_dir) {
 		oom:
-			fr_strerror_printf("Failed allocating memory for dl search path");
+			fr_strerror_const("Failed allocating memory for dl search path");
 			return -1;
 		}
 		return 0;
@@ -748,7 +748,7 @@ int dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir)
 		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
 		if (!dl_loader->lib_dir) {
 		oom:
-			fr_strerror_printf("Failed allocating memory for dl search path");
+			fr_strerror_const("Failed allocating memory for dl search path");
 			return -1;
 		}
 		return 0;
@@ -788,13 +788,13 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool de
 
 	dl_loader = talloc_zero(NULL, dl_loader_t);
 	if (!dl_loader) {
-		fr_strerror_printf("Failed allocating dl_loader");
+		fr_strerror_const("Failed allocating dl_loader");
 		return NULL;
 	}
 
 	dl_loader->tree = rbtree_talloc_alloc(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
 	if (!dl_loader->tree) {
-		fr_strerror_printf("Failed initialising dl->tree");
+		fr_strerror_const("Failed initialising dl->tree");
 	error:
 		TALLOC_FREE(dl_loader);
 		return NULL;
@@ -804,7 +804,7 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool de
 
 	dl_loader->lib_dir = talloc_strdup(dl_loader, fr_path_default_lib_dir());
 	if (!dl_loader->lib_dir) {
-		fr_strerror_printf("Failed allocating memory for dl search path");
+		fr_strerror_const("Failed allocating memory for dl search path");
 		goto error;
 	}
 

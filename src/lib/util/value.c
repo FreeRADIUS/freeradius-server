@@ -791,7 +791,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			fr_strerror_const("Cannot compare IPv4 with IPv6 address");
 			return -1;
 		}
 
@@ -808,7 +808,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			fr_strerror_const("Cannot compare IPv4 with IPv6 address");
 			return -1;
 		}
 
@@ -822,7 +822,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			fr_strerror_const("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
 
@@ -839,7 +839,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			fr_strerror_const("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
 
@@ -3180,7 +3180,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		 */
 		str = talloc_bstrndup(ctx, src->vb_strvalue, src->vb_length);
 		if (!str) {
-			fr_strerror_printf("Failed allocating string buffer");
+			fr_strerror_const("Failed allocating string buffer");
 			return -1;
 		}
 		dst->vb_strvalue = str;
@@ -3194,7 +3194,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		if (src->vb_length) {
 			bin = talloc_memdup(ctx, src->vb_octets, src->vb_length);
 			if (!bin) {
-				fr_strerror_printf("Failed allocating octets buffer");
+				fr_strerror_const("Failed allocating octets buffer");
 				return -1;
 			}
 			talloc_set_type(bin, uint8_t);
@@ -3258,7 +3258,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		str = talloc_steal(ctx, src->vb_strvalue);
 		if (!str) {
-			fr_strerror_printf("Failed stealing string buffer");
+			fr_strerror_const("Failed stealing string buffer");
 			return -1;
 		}
 		talloc_set_type(str, char);
@@ -3273,7 +3273,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
  		bin = talloc_steal(ctx, src->vb_octets);
 		if (!bin) {
-			fr_strerror_printf("Failed stealing octets buffer");
+			fr_strerror_const("Failed stealing octets buffer");
 			return -1;
 		}
 		talloc_set_type(bin, uint8_t);
@@ -3303,7 +3303,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 	str = talloc_typed_strdup(ctx, src);
 	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
+		fr_strerror_const("Failed allocating string buffer");
 		return -1;
 	}
 
@@ -3335,7 +3335,7 @@ int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
 	memcpy(&mutable, &vb->vb_strvalue, sizeof(mutable));
 	str = talloc_realloc(ctx, mutable, char, len + 1);
 	if (!str) {
-		fr_strerror_printf("Failed re-allocing string buffer");
+		fr_strerror_const("Failed re-allocing string buffer");
 		return -1;
 	}
 	vb->vb_length = len;
@@ -3433,7 +3433,7 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
 
 	str = talloc_zero_array(ctx, char, len + 1);
 	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
+		fr_strerror_const("Failed allocating string buffer");
 		return -1;
 	}
 	str[len] = '\0';
@@ -3510,7 +3510,7 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 
 	str = talloc_bstrndup(ctx, src, len);
 	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
+		fr_strerror_const("Failed allocating string buffer");
 		return -1;
 	}
 
@@ -3545,7 +3545,7 @@ int fr_value_box_bstrdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_at
 
 	len = talloc_array_length(src);
 	if ((len == 0) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
+		fr_strerror_const("Input buffer not \\0 terminated");
 		return -1;
 	}
 
@@ -3590,7 +3590,7 @@ int fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 
 	len = talloc_array_length(src);
 	if ((len == 0) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
+		fr_strerror_const("Input buffer not \\0 terminated");
 		return -1;
 	}
 
@@ -3673,7 +3673,7 @@ int fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char c
 
 	len = talloc_array_length(src);
 	if ((len == 0) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
+		fr_strerror_const("Input buffer not \\0 terminated");
 		return -1;
 	}
 
@@ -3706,7 +3706,7 @@ int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, 
 
 	bin = talloc_array(ctx, uint8_t, len);
 	if (!bin) {
-		fr_strerror_printf("Failed allocating octets buffer");
+		fr_strerror_const("Failed allocating octets buffer");
 		return -1;
 	}
 	talloc_set_type(bin, uint8_t);
@@ -3788,7 +3788,7 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 	bin = talloc_memdup(ctx, src, len);
 	if (!bin) {
-		fr_strerror_printf("Failed allocating octets buffer");
+		fr_strerror_const("Failed allocating octets buffer");
 		return -1;
 	}
 	talloc_set_type(bin, uint8_t);
@@ -4220,7 +4220,7 @@ parse:
 		p = talloc_array(ctx, uint8_t, ret);
 		if (fr_hex2bin(NULL, &FR_DBUFF_TMP(p, ret), &FR_SBUFF_IN(in + 2, len), false) != (ssize_t)ret) {
 			talloc_free(p);
-			fr_strerror_printf("Invalid hex data");
+			fr_strerror_const("Invalid hex data");
 			return -1;
 		}
 
@@ -4295,7 +4295,7 @@ parse:
 	 */
 	if (inlen > 0) {
 		if (len >= sizeof(buffer)) {
-			fr_strerror_printf("Temporary buffer too small");
+			fr_strerror_const("Temporary buffer too small");
 			return -1;
 		}
 
@@ -4809,7 +4809,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 	fr_value_box_t const	*vb;
 
 	if (!list || !*list) {
-		fr_strerror_printf("Invalid arguments.  List was NULL");
+		fr_strerror_const("Invalid arguments.  List was NULL");
 		return -1;
 	}
 

@@ -108,7 +108,7 @@ fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
 
 	vp = talloc_zero(ctx, fr_pair_t);
 	if (!vp) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
@@ -137,7 +137,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 
 	vp = fr_pair_alloc_null(ctx);
 	if (!vp) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
@@ -1316,7 +1316,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	if (count == 0) count = UINT_MAX;
 
 	if (unlikely(!da)) {
-		fr_strerror_printf("No search attribute provided");
+		fr_strerror_const("No search attribute provided");
 		return -1;
 	}
 
@@ -1373,7 +1373,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	if (count == 0) count = UINT_MAX;
 
 	if (unlikely(!parent_da)) {
-		fr_strerror_printf("No search attribute provided");
+		fr_strerror_const("No search attribute provided");
 		return -1;
 	}
 

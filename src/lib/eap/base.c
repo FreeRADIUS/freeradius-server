@@ -206,21 +206,21 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 			uint8_t *p, *q;
 
 			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
-				fr_strerror_printf("Expanded EAP type is too short: ignoring the packet");
+				fr_strerror_const("Expanded EAP type is too short: ignoring the packet");
 				return false;
 			}
 
 			if ((eap_packet->data[1] != 0) ||
 			    (eap_packet->data[2] != 0) ||
 			    (eap_packet->data[3] != 0)) {
-				fr_strerror_printf("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
+				fr_strerror_const("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
 				return false;
 			}
 
 			if ((eap_packet->data[4] != 0) ||
 			    (eap_packet->data[5] != 0) ||
 			    (eap_packet->data[6] != 0)) {
-				fr_strerror_printf("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
+				fr_strerror_const("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
 				return false;
 			}
 
@@ -232,7 +232,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 			}
 
 			if (eap_packet->data[7] == FR_EAP_METHOD_NAK) {
-				fr_strerror_printf("Unsupported Expanded EAP-NAK: ignoring the packet");
+				fr_strerror_const("Unsupported Expanded EAP-NAK: ignoring the packet");
 				return false;
 			}
 
@@ -265,7 +265,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == FR_EAP_METHOD_NOTIFICATION) {
-		fr_strerror_printf("Got NOTIFICATION, Ignoring the packet");
+		fr_strerror_const("Got NOTIFICATION, Ignoring the packet");
 		return false;
 	}
 
@@ -293,7 +293,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	 */
 	vp = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_message);
 	if (!vp) {
-		fr_strerror_printf("EAP-Message not found");
+		fr_strerror_const("EAP-Message not found");
 		return NULL;
 	}
 
@@ -301,7 +301,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	 *	Sanity check the length before doing anything.
 	 */
 	if (vp->vp_length < 4) {
-		fr_strerror_printf("EAP packet is too short");
+		fr_strerror_const("EAP packet is too short");
 		return NULL;
 	}
 
@@ -316,7 +316,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	 *	Take out even more weird things.
 	 */
 	if (len < 4) {
-		fr_strerror_printf("EAP packet has invalid length (less than 4 bytes)");
+		fr_strerror_const("EAP packet has invalid length (less than 4 bytes)");
 		return NULL;
 	}
 

@@ -832,7 +832,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 			parent = fr_dlist_prev(&vpt->data.attribute.ar, ref);
 
 			if (!fr_dict_attr_common_parent(parent->ar_da, da, true)) {
-				fr_strerror_printf("New leaf da and old leaf da do not share the same ancestor");
+				fr_strerror_const("New leaf da and old leaf da do not share the same ancestor");
 				return -1;
 			}
 		} else {
@@ -1203,13 +1203,13 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 
 		if (fr_sbuff_out(&sberr, &ar->num, &tmp) == 0) {
 			if (sberr == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
-				fr_strerror_printf("Invalid array index");
+				fr_strerror_const("Invalid array index");
 				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			error:
 				return TMPL_ATTR_REF_BAD_FILTER;
 			}
 
-			fr_strerror_printf("Invalid array index");
+			fr_strerror_const("Invalid array index");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 			goto error;
 		}
@@ -1230,7 +1230,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 	 *	marker points to the bad char.
 	 */
 	if (!fr_sbuff_next_if_char(name, ']')) {
-		fr_strerror_printf("No closing ']' for array index");
+		fr_strerror_const("No closing ']' for array index");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 		goto error;
 	}
@@ -1269,7 +1269,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	size_t			len;
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
-		fr_strerror_printf("Attribute nesting too deep");
+		fr_strerror_const("Attribute nesting too deep");
 		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 		return -1;
 	}
@@ -1278,7 +1278,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	 *	Input too short
 	 */
 	if (!fr_sbuff_extend(name)) {
-		fr_strerror_printf("Missing attribute reference");
+		fr_strerror_const("Missing attribute reference");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		return -1;
 	}
@@ -1300,14 +1300,14 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 					     name, FR_DICT_ATTR_MAX_NAME_LEN + 1,
 					     fr_dict_attr_allowed_chars);
 	if (len == 0) {
-		fr_strerror_printf("Invalid attribute name");
+		fr_strerror_const("Invalid attribute name");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 	error:
 		talloc_free(ar);
 		return -1;
 	}
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name is too long");
+		fr_strerror_const("Attribute name is too long");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		goto error;
 	}
@@ -1389,7 +1389,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	fr_sbuff_marker(&m_s, name);
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
-		fr_strerror_printf("Attribute nesting too deep");
+		fr_strerror_const("Attribute nesting too deep");
 		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 	error:
 		fr_sbuff_marker_release(&m_s);
@@ -1400,7 +1400,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Input too short
 	 */
 	if (!fr_sbuff_extend(name)) {
-		fr_strerror_printf("Missing attribute reference");
+		fr_strerror_const("Missing attribute reference");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_NAME;
 		goto error;
 	}
@@ -1500,7 +1500,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	if (!namespace && t_rules->dict_def) parent = namespace = fr_dict_root(t_rules->dict_def);
 	if (!namespace && !t_rules->disallow_internal) parent = namespace = fr_dict_root(fr_dict_internal());
 	if (!namespace) {
-		fr_strerror_printf("Attribute references must be qualified with a protocol when used here");
+		fr_strerror_const("Attribute references must be qualified with a protocol when used here");
 		if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
 		fr_sbuff_set(name, &m_s);
 		goto error;
@@ -1542,7 +1542,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		}
 
 		if (!t_rules->allow_unknown) {
-			fr_strerror_printf("Unknown attributes not allowed here");
+			fr_strerror_const("Unknown attributes not allowed here");
 			if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
@@ -1589,7 +1589,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	errors from the dictionary code.
 	 */
 	if (!t_rules->allow_unresolved) {
-		fr_strerror_printf_push("Unresolved attributes not allowed here");
+		fr_strerror_const_push("Unresolved attributes not allowed here");
 		if (err) *err = TMPL_ATTR_ERROR_UNRESOLVED_NOT_ALLOWED;
 		fr_sbuff_set(name, &m_s);
 		goto error;
@@ -1622,7 +1622,7 @@ check_attr:
 		 *	true, we still allow the resolution.
 		 */
 		if (t_rules->disallow_internal && (found_in == fr_dict_internal())) {
-			fr_strerror_printf("Internal attributes not allowed here");
+			fr_strerror_const("Internal attributes not allowed here");
 			if (err) *err = TMPL_ATTR_ERROR_INTERNAL_NOT_ALLOWED;
 			fr_sbuff_set(name, &m_s);
 			goto error;
@@ -1806,13 +1806,13 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 	 *	Nesting level too deep
 	 */
 	if (depth > TMPL_MAX_REQUEST_REF_NESTING) {
-		fr_strerror_printf("Request ref nesting too deep");
+		fr_strerror_const("Request ref nesting too deep");
 		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
 		return -1;
 	}
 
 	if (t_rules->attr_parent || t_rules->disallow_qualifiers) {
-		fr_strerror_printf("It is not permitted to specify a request reference here");
+		fr_strerror_const("It is not permitted to specify a request reference here");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 		return -1;
 	}
@@ -1900,7 +1900,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
 	if (!fr_sbuff_extend(&our_name)) {
-		fr_strerror_printf("Empty attribute reference");
+		fr_strerror_const("Empty attribute reference");
 		if (err) *err = TMPL_ATTR_ERROR_EMPTY;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
@@ -1911,7 +1911,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	switch (t_rules->prefix) {
 	case TMPL_ATTR_REF_PREFIX_YES:
 		if (!fr_sbuff_next_if_char(&our_name, '&')) {
-			fr_strerror_printf("Invalid attribute reference, missing '&' prefix");
+			fr_strerror_const("Invalid attribute reference, missing '&' prefix");
 			if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
 			FR_SBUFF_ERROR_RETURN(&our_name);
 		}
@@ -1920,7 +1920,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	case TMPL_ATTR_REF_PREFIX_NO:
 		if (fr_sbuff_is_char(&our_name, '&')) {
-			fr_strerror_printf("Attribute references used here must not have a '&' prefix");
+			fr_strerror_const("Attribute references used here must not have a '&' prefix");
 			if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
 			FR_SBUFF_ERROR_RETURN(&our_name);
 		}
@@ -1962,7 +1962,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 				       &our_name, t_rules->list_def);
 
 	if ((t_rules->attr_parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
-		fr_strerror_printf("It is not permitted to specify a pair list here");
+		fr_strerror_const("It is not permitted to specify a pair list here");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_name);
@@ -2025,7 +2025,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	vpt->rules = *t_rules;	/* Record the rules */
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
-		fr_strerror_printf("Unexpected text after attribute reference");
+		fr_strerror_const("Unexpected text after attribute reference");
 		if (err) *err = TMPL_ATTR_ERROR_MISSING_TERMINATOR;
 		talloc_free(vpt);
 		*out = NULL;
@@ -2095,12 +2095,12 @@ static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	tmpl_t		*vpt;
 
 	if (!fr_sbuff_out(NULL, &a_bool, &our_in)) {
-		fr_strerror_printf("Not a boolean value");
+		fr_strerror_const("Not a boolean value");
 		return 0;
 	}
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
-		fr_strerror_printf("Unexpected text after bool");
+		fr_strerror_const("Unexpected text after bool");
 		return -fr_sbuff_used(in);
 	}
 
@@ -2145,18 +2145,18 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	 */
 	len = fr_sbuff_out_abstrncpy_allowed(vpt, &hex, &our_in, SIZE_MAX, sbuff_char_class_hex);
 	if (len & 0x01) {
-		fr_strerror_printf("Hex string not even length");
+		fr_strerror_const("Hex string not even length");
 	error:
 		talloc_free(vpt);
 		return -fr_sbuff_used(&our_in);
 	}
 	if (len == 0) {
-		fr_strerror_printf("Zero length hex string is invalid");
+		fr_strerror_const("Zero length hex string is invalid");
 		goto error;
 	}
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
-		fr_strerror_printf("Unexpected text after hex string");
+		fr_strerror_const("Unexpected text after hex string");
 		goto error;
 	}
 
@@ -2211,12 +2211,12 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '/')) {
 		if (!fr_sbuff_out(NULL, &octet, &our_in)) {
-			fr_strerror_printf("IPv4 CIDR mask malformed");
+			fr_strerror_const("IPv4 CIDR mask malformed");
 			goto error;
 		}
 
 		if (octet > 32) {
-			fr_strerror_printf("IPv4 CIDR mask too high");
+			fr_strerror_const("IPv4 CIDR mask too high");
 			goto error;
 		}
 
@@ -2226,7 +2226,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	}
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
-		fr_strerror_printf("Unexpected text after IPv4 string or prefix");
+		fr_strerror_const("Unexpected text after IPv4 string or prefix");
 		goto error;
 	}
 
@@ -2296,7 +2296,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	 */
 	sep_a = memchr(fr_sbuff_current(&m), '.', len);
 	if (sep_a && (!(sep_b = memchr(fr_sbuff_current(&m), ':', len)) || (sep_b > sep_a))) {
-		fr_strerror_printf("First IPv6 component separator was a '.'");
+		fr_strerror_const("First IPv6 component separator was a '.'");
 		goto error;
 	}
 
@@ -2306,7 +2306,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	 */
 	sep_a = memchr(fr_sbuff_current(&m), ':', len);
 	if (!sep_a) {
-		fr_strerror_printf("No IPv6 component separator");
+		fr_strerror_const("No IPv6 component separator");
 		goto error;
 	}
 
@@ -2316,7 +2316,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	if (fr_sbuff_next_if_char(&our_in, '%')) {
 		len = fr_sbuff_adv_until(&our_in, IFNAMSIZ + 1, p_rules->terminals, '\0');
 		if ((len < 1) || (len > IFNAMSIZ)) {
-			fr_strerror_printf("IPv6 scope too long");
+			fr_strerror_const("IPv6 scope too long");
 			goto error;
 		}
 	}
@@ -2328,11 +2328,11 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 		uint8_t		mask;
 
 		if (!fr_sbuff_out(NULL, &mask, &our_in)) {
-			fr_strerror_printf("IPv6 CIDR mask malformed");
+			fr_strerror_const("IPv6 CIDR mask malformed");
 			goto error;
 		}
 		if (mask > 128) {
-			fr_strerror_printf("IPv6 CIDR mask too high");
+			fr_strerror_const("IPv6 CIDR mask too high");
 			goto error;
 		}
 
@@ -2342,7 +2342,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	}
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
-		fr_strerror_printf("Unexpected text after IPv6 string or prefix");
+		fr_strerror_const("Unexpected text after IPv6 string or prefix");
 		goto error;
 	}
 
@@ -2385,7 +2385,7 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 		if (slen <= 0) return 0;
 
 		if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
-			fr_strerror_printf("Unexpected text after signed integer");
+			fr_strerror_const("Unexpected text after signed integer");
 		error:
 			return -fr_sbuff_used(&our_in);
 		}
@@ -2416,7 +2416,7 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 		if (slen <= 0) return slen;
 
 		if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
-			fr_strerror_printf("Unexpected text after unsigned integer");
+			fr_strerror_const("Unexpected text after unsigned integer");
 			goto error;
 		}
 
@@ -2591,7 +2591,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 						    p_rules ? p_rules->terminals : NULL,
 						    p_rules ? p_rules->escapes : NULL);
 		if (slen == 0) {
-			fr_strerror_printf("Empty bareword is invalid");
+			fr_strerror_const("Empty bareword is invalid");
 			talloc_free(vpt);
 			return 0;
 		}
@@ -2756,15 +2756,15 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 		fr_sbuff_marker(&m, &our_in);
 		fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_value_box_type_table, &our_in, FR_TYPE_INVALID);
 		if (cast == FR_TYPE_INVALID) {
-			fr_strerror_printf("Unknown data type");
+			fr_strerror_const("Unknown data type");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 		if (fr_dict_non_data_types[cast]) {
-			fr_strerror_printf("Forbidden data type in cast");
+			fr_strerror_const("Forbidden data type in cast");
 			FR_SBUFF_MARKER_ERROR_RETURN(&m);
 		}
 		if (!fr_sbuff_next_if_char(&our_in, '>')) {
-			fr_strerror_printf("Unterminated cast");
+			fr_strerror_const("Unterminated cast");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
@@ -2785,7 +2785,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 int tmpl_cast_set(tmpl_t *vpt, fr_type_t type)
 {
 	if (fr_dict_non_data_types[type]) {
-		fr_strerror_printf("Forbidden data type in cast");
+		fr_strerror_const("Forbidden data type in cast");
 		return -1;
 	}
 
@@ -3338,7 +3338,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 			continue;
 
 		case TMPL_ATTR_TYPE_UNRESOLVED:		/* Shouldn't have been called */
-			fr_strerror_printf("Remaining attributes are unresolved");
+			fr_strerror_const("Remaining attributes are unresolved");
 			return -1;
 
 		case TMPL_ATTR_TYPE_UNKNOWN:
@@ -3385,7 +3385,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 			fr_dict_unknown_free(&ar->ar_da);
 			ar->ar_da = known;
 		} else if (!fr_cond_assert(!next)) {
-			fr_strerror_printf("Only the leaf may be raw");
+			fr_strerror_const("Only the leaf may be raw");
 			return -1;
 		}
 	}

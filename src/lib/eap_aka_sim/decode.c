@@ -1017,7 +1017,7 @@ int fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const 
 
 		vp = fr_pair_afrom_child_num(request->packet, fr_dict_root(dict), FR_SUBTYPE);
 		if (!vp) {
-			fr_strerror_printf("Failed allocating subtype attribute");
+			fr_strerror_const("Failed allocating subtype attribute");
 			goto error;
 		}
 		vp->vp_uint32 = data[0];

@@ -257,7 +257,7 @@ int fr_get_lsan_state(void)
 #else
 int fr_get_lsan_state(void)
 {
-	fr_strerror_printf("Not built with support for LSAN interface");
+	fr_strerror_const("Not built with support for LSAN interface");
 	return -2;
 }
 #endif
@@ -431,7 +431,7 @@ static int fr_get_debug_state(void)
 #else
 static int fr_get_debug_state(void)
 {
-	fr_strerror_printf("PTRACE not available");
+	fr_strerror_const("PTRACE not available");
 
 	return DEBUGGER_STATE_UNKNOWN_NO_PTRACE;
 }
@@ -671,7 +671,7 @@ static int fr_set_pr_dumpable_flag(bool dumpable)
 #else
 static int fr_set_pr_dumpable_flag(UNUSED bool dumpable)
 {
-	fr_strerror_printf("Changing value of PR_DUMPABLE not supported on this system");
+	fr_strerror_const("Changing value of PR_DUMPABLE not supported on this system");
 	return -2;
 }
 #endif
@@ -717,7 +717,7 @@ static int fr_get_pr_dumpable_flag(void)
 #else
 static int fr_get_pr_dumpable_flag(void)
 {
-	fr_strerror_printf("Getting value of PR_DUMPABLE not supported on this system");
+	fr_strerror_const("Getting value of PR_DUMPABLE not supported on this system");
 	return -2;
 }
 #endif
@@ -839,7 +839,7 @@ static int fr_fault_check_permissions(void)
 		 */
 		len = snprintf(filename, sizeof(filename), "%.*s", (int)(q - panic_action), panic_action);
 		if (is_truncated(len, sizeof(filename))) {
-			fr_strerror_printf("Failed writing panic_action to temporary buffer (truncated)");
+			fr_strerror_const("Failed writing panic_action to temporary buffer (truncated)");
 			return -1;
 		}
 		p = filename;
@@ -1167,7 +1167,7 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 			out += ret = snprintf(out, left, "%.*s%s", (int) (q - p), p, program ? program : "");
 			if (left <= ret) {
 			oob:
-				fr_strerror_printf("Panic action too long");
+				fr_strerror_const("Panic action too long");
 				return -1;
 			}
 			left -= ret;

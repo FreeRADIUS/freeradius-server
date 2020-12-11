@@ -553,6 +553,6 @@ int exfile_close(exfile_t *ef, request_t *request, int fd)
 
 	pthread_mutex_unlock(&(ef->mutex));
 
-	fr_strerror_printf("Attempt to unlock file which is not tracked");
+	fr_strerror_const("Attempt to unlock file which is not tracked");
 	return -1;
 }

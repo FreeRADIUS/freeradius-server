@@ -133,7 +133,7 @@ fr_radius_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 
 	ret = pcap_next_ex(pcap->handle, &header, &data);
 	if (ret == 0) {
-		fr_strerror_printf("No packet received from libpcap");
+		fr_strerror_const("No packet received from libpcap");
 		return NULL; /* no packet */
 	}
 	if (ret < 0) {
@@ -143,7 +143,7 @@ fr_radius_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 
 	link_len = fr_pcap_link_layer_offset(data, header->caplen, pcap->link_layer);
 	if (link_len < 0) {
-		fr_strerror_printf_push("Failed determining link layer header offset");
+		fr_strerror_const_push("Failed determining link layer header offset");
 		return NULL;
 	}
 
@@ -161,7 +161,7 @@ fr_radius_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 		break;
 
 	case 6:
-		fr_strerror_printf("IPv6 packets not supported by DHCPv4");
+		fr_strerror_const("IPv6 packets not supported by DHCPv4");
 		return NULL;
 
 	default:

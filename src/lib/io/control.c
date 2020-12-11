@@ -152,7 +152,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 
 	c = talloc_zero(ctx, fr_control_t);
 	if (!c) {
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 	c->el = el;
@@ -173,7 +173,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 
 	if (fr_event_fd_insert(c, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
 		talloc_free(c);
-		fr_strerror_printf_push("Failed adding FD to event list control socket");
+		fr_strerror_const_push("Failed adding FD to event list control socket");
 		return NULL;
 	}
 
@@ -229,7 +229,7 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 	 *	Maybe we failed to garbage collect everything?
 	 */
 	if (fr_ring_buffer_used(rb) > 0) {
-		fr_strerror_printf("Data still in control buffers");
+		fr_strerror_const("Data still in control buffers");
 		return -1;
 	}
 
@@ -264,7 +264,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 		(void) fr_control_gc(c, rb);
 		m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
 		if (!m) {
-			fr_strerror_printf_push("Failed allocating from ring buffer");
+			fr_strerror_const_push("Failed allocating from ring buffer");
 			return NULL;
 		}
 	}
@@ -313,14 +313,14 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 		(void) fr_control_gc(c, rb);
 		m = fr_control_message_alloc(c, rb, id, data, data_size);
 		if (!m) {
-			fr_strerror_printf("Failed allocationg after GC");
+			fr_strerror_const("Failed allocationg after GC");
 			return -2;
 		}
 	}
 
 	if (!fr_atomic_queue_push(c->aq, m)) {
 		m->status = FR_CONTROL_MESSAGE_DONE;
-		fr_strerror_printf("Failed pushing message to atomic queue.");
+		fr_strerror_const("Failed pushing message to atomic queue.");
 		return -1;
 	}
 
@@ -431,7 +431,7 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
 	}
 
 	if (c->type[id].callback != NULL) {
-		fr_strerror_printf("Callback is already set");
+		fr_strerror_const("Callback is already set");
 		return -1;
 	}
 

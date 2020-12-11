@@ -254,7 +254,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 
 #ifdef HAVE_REGEX
 	if (tmpl_contains_regex(c->data.map->rhs)) {
-		fr_strerror_printf("Cannot use cast with regex comparison");
+		fr_strerror_const("Cannot use cast with regex comparison");
 		return -(rhs - start);
 	}
 #endif
@@ -265,7 +265,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	 */
 	if (tmpl_is_unresolved(c->data.map->lhs) &&
 	    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
-		fr_strerror_printf("Failed to parse field");
+		fr_strerror_const("Failed to parse field");
 		return -(lhs - start);
 	}
 
@@ -276,7 +276,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	if ((tmpl_is_data(c->data.map->lhs)) &&
 	    (tmpl_is_unresolved(c->data.map->rhs)) &&
 	    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
-		fr_strerror_printf("Failed to parse field");
+		fr_strerror_const("Failed to parse field");
 		return -(rhs - start);
 	}
 
@@ -342,7 +342,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		 */
 		if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][0]) ||
 		    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][1])) {
-			fr_strerror_printf("Cannot cast to attribute of incompatible size");
+			fr_strerror_const("Cannot cast to attribute of incompatible size");
 			return 0;
 		}
 	}
@@ -414,7 +414,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 		}
 
 		if (tmpl_cast_in_place(data, type, tmpl_da(attr)) < 0) {
-			fr_strerror_printf_push("Failed casting data to match attribute");
+			fr_strerror_const_push("Failed casting data to match attribute");
 			return -(data == lhs ? fr_sbuff_used(m_lhs) : fr_sbuff_used(m_rhs));
 		}
 	}
@@ -439,7 +439,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 	 */
 	if (c->cast && tmpl_is_unresolved(rhs) &&
 	    (tmpl_cast_in_place(rhs, c->cast->type, c->cast) < 0)) {
-	    	fr_strerror_printf("Failed to parse field");
+	    	fr_strerror_const("Failed to parse field");
 		return -fr_sbuff_used(m_rhs);
 	}
 
@@ -471,7 +471,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 		    (op != T_OP_CMP_TRUE) &&
 		    (op != T_OP_CMP_FALSE) &&
 		    (vpt->quote == T_BARE_WORD)) {
-			fr_strerror_printf("Comparison value must be a quoted string");
+			fr_strerror_const("Comparison value must be a quoted string");
 			TMPL_RETURN(vpt);
 		}
 
@@ -515,7 +515,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 
 			default:
 				if (!attr->data.attribute.was_oid) {
-					fr_strerror_printf("Failed to parse value for attribute");
+					fr_strerror_const("Failed to parse value for attribute");
 					TMPL_RETURN(vpt);
 				}
 				/*
@@ -525,7 +525,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 				tmpl_attr_to_raw(attr);
 				if (tmpl_cast_in_place(vpt, tmpl_da(attr)->type,
 						       c->cast ? NULL : tmpl_da(attr)) < 0) {
-					fr_strerror_printf("Failed to parse value for attribute");
+					fr_strerror_const("Failed to parse value for attribute");
 					TMPL_RETURN(vpt);
 				}
 				break;
@@ -539,7 +539,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 		 */
 		if (tmpl_da(attr)->type == FR_TYPE_COMBO_IP_ADDR) {
 			if (tmpl_attr_abstract_to_concrete(attr, tmpl_value_type(vpt)) < 0) {
-				fr_strerror_printf("Cannot find type for attribute");
+				fr_strerror_const("Cannot find type for attribute");
 				TMPL_RETURN(attr);
 			}
 		}
@@ -846,7 +846,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 				break;
 
 			default:
-				fr_strerror_printf("Internal sanity check failed 1");
+				fr_strerror_const("Internal sanity check failed 1");
 				return -1;
 			}
 
@@ -945,7 +945,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 
 				rcode = fr_table_value_by_str(allowed_return_codes, c->data.vpt->name, 0);
 				if (!rcode) {
-					fr_strerror_printf("Expected a module return code");
+					fr_strerror_const("Expected a module return code");
 					return -1;
 				}
 			}
@@ -1051,7 +1051,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs)
 {
 	if (tmpl_is_list(vpt)) {
-		fr_strerror_printf("Cannot use list references in condition");
+		fr_strerror_const("Cannot use list references in condition");
 		fr_sbuff_set(in, m_lhs);
 		return -1;
 	}
@@ -1143,7 +1143,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 		break;
 #ifndef HAVE_REGEX
 	case T_SOLIDUS_QUOTED_STRING:
-		fr_strerror_printf("Compiled without support for regexes");
+		fr_strerror_const("Compiled without support for regexes");
 		fr_sbuff_set(&our_in, &m);
 		fr_sbuff_advance(&our_in, 1);
 		goto error;
@@ -1160,7 +1160,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 	}
 
 	if ((type != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[type])) { /* Quoting */
-		fr_strerror_printf("Unterminated string");
+		fr_strerror_const("Unterminated string");
 		fr_sbuff_set(&our_in, &m);
 		fr_sbuff_advance(&our_in, 1);
 		goto error;
@@ -1176,7 +1176,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 	 */
 	if (type == T_SOLIDUS_QUOTED_STRING) {
 		if (!tmpl_contains_regex(vpt)) {
-			fr_strerror_printf("Expected regex");
+			fr_strerror_const("Expected regex");
 			fr_sbuff_set(&our_in, &m);
 			goto error;
 		}
@@ -1255,7 +1255,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
 	if (!fr_sbuff_extend(&our_in)) {
-		fr_strerror_printf("Empty condition is invalid");
+		fr_strerror_const("Empty condition is invalid");
 	error:
 		talloc_free(c);
 		return -(fr_sbuff_used_total(&our_in));
@@ -1272,7 +1272,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *  Just for stupidity
 		 */
 		if (fr_sbuff_is_char(&our_in, '!')) {
-			fr_strerror_printf("Double negation is invalid");
+			fr_strerror_const("Double negation is invalid");
 			goto error;
 		}
 	}
@@ -1296,7 +1296,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		}
 
 		if (!c->data.child) {
-			fr_strerror_printf("Empty condition is invalid");
+			fr_strerror_const("Empty condition is invalid");
 			goto error;
 		}
 
@@ -1344,7 +1344,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 */
 	if (fr_sbuff_is_char(&our_in, ')')) {
 		if (fr_sbuff_used_total(&our_in) == 0) {
-			fr_strerror_printf("Empty string is invalid");
+			fr_strerror_const("Empty string is invalid");
 			goto error;
 		}
 
@@ -1358,7 +1358,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 */
 	} else if (!fr_sbuff_extend(&our_in)) {
 		if (brace) {
-			fr_strerror_printf("Missing closing brace");
+			fr_strerror_const("Missing closing brace");
 			goto error;
 		}
 
@@ -1372,13 +1372,13 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	if ((cond_op == COND_AND) || (cond_op == COND_OR)) {
 	unary:
 		if (c->cast) {
-			fr_strerror_printf("Cannot do cast for existence check");
+			fr_strerror_const("Cannot do cast for existence check");
 			fr_sbuff_set(&our_in, &m_lhs_cast);
 			goto error;
 		}
 
 		if (tmpl_contains_regex(lhs)) {
-			fr_strerror_printf("Unexpected regular expression");
+			fr_strerror_const("Unexpected regular expression");
 			fr_sbuff_set(&our_in, &m_lhs);
 			goto error;
 		}
@@ -1398,7 +1398,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 
 			rcode = fr_table_value_by_str(rcode_table, lhs->data.unescaped, RLM_MODULE_UNKNOWN);
 			if (rcode == RLM_MODULE_UNKNOWN) {
-				fr_strerror_printf("Expected a module return code");
+				fr_strerror_const("Expected a module return code");
 				fr_sbuff_set(&our_in, &m_lhs);
 				goto error;
 			}
@@ -1430,7 +1430,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	fr_sbuff_marker(&m_op, &our_in);
 	fr_sbuff_out_by_longest_prefix(&slen, &op, cond_cmp_op_table, &our_in, 0);
 	if (slen == 0) {
-		fr_strerror_printf("Invalid operator");
+		fr_strerror_const("Invalid operator");
 		goto error;
 	}
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
@@ -1466,7 +1466,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		}
 
 		if (!fr_sbuff_extend(&our_in)) {
-			fr_strerror_printf("Expected text after operator");
+			fr_strerror_const("Expected text after operator");
 			goto error;
 		}
 
@@ -1496,21 +1496,21 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		};
 
 		if (rhs->cast != FR_TYPE_INVALID) {
-			fr_strerror_printf("Unexpected cast");
+			fr_strerror_const("Unexpected cast");
 			fr_sbuff_set(&our_in, &m_rhs_cast);
 			goto error;
 		}
 
 		if (((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) &&
 		    (!tmpl_contains_regex(lhs) && !tmpl_contains_regex(rhs))) {
-			fr_strerror_printf("Expected regular expression");
+			fr_strerror_const("Expected regular expression");
 			fr_sbuff_set(&our_in, &m_rhs);
 			goto error;
 		}
 
 		if (((op != T_OP_REG_EQ) && (op != T_OP_REG_NE)) &&
 		    (tmpl_contains_regex(lhs) || tmpl_contains_regex(rhs))) {
-		     	fr_strerror_printf("Unexpected regular expression");	/* Fixme should point to correct operand */
+		     	fr_strerror_const("Unexpected regular expression");	/* Fixme should point to correct operand */
 			fr_sbuff_set(&our_in, &m_rhs);
 			goto error;
 		}
@@ -1544,7 +1544,7 @@ closing_brace:
 	 */
 	if (fr_sbuff_is_char(&our_in, ')')) {
 		if (!brace) {
-			fr_strerror_printf("Unexpected closing brace");
+			fr_strerror_const("Unexpected closing brace");
 			goto error;
 		}
 		fr_sbuff_advance(&our_in, 1);
@@ -1558,7 +1558,7 @@ closing_brace:
 	 */
 	if (!fr_sbuff_extend(&our_in)) {
 		if (brace) {
-			fr_strerror_printf("Missing closing brace");
+			fr_strerror_const("Missing closing brace");
 			goto error;
 		}
 		goto done;
@@ -1582,7 +1582,7 @@ closing_brace:
 	fr_sbuff_out_by_longest_prefix(&slen, &cond_op, cond_logical_op_table,
 				       &our_in, COND_NONE);
 	if (slen == 0) {
-		fr_strerror_printf("Unexpected text after condition");
+		fr_strerror_const("Unexpected text after condition");
 		goto error;
 	}
 
@@ -1629,7 +1629,7 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 	if (!cf_expand_variables(cf_filename(cs), cf_lineno(cs), cf_item_to_section(cf_parent(cs)),
 				 buffer, sizeof(buffer),
 				 fr_sbuff_current(in), fr_sbuff_remaining(in), NULL)) {
-		fr_strerror_printf("Failed expanding configuration variable");
+		fr_strerror_const("Failed expanding configuration variable");
 		return 0;
 	}
 

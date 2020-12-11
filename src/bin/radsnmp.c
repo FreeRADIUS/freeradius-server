@@ -248,7 +248,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		 */
 		index_attr = fr_dict_attr_child_by_num(parent, 0);
 		if (!index_attr) {
-			fr_strerror_printf("Unknown OID component: No index attribute at this level");
+			fr_strerror_const("Unknown OID component: No index attribute at this level");
 			break;
 		}
 
@@ -262,7 +262,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		 */
 		parent = fr_dict_attr_child_by_num(parent, 1);
 		if (!parent) {
-			fr_strerror_printf("Unknown OID component: No entry attribute at this level");
+			fr_strerror_const("Unknown OID component: No entry attribute at this level");
 			break;
 		}
 
@@ -346,7 +346,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	}
 
 	if (da->type == FR_TYPE_TLV) {
-		fr_strerror_printf("TLVs cannot hold values");
+		fr_strerror_const("TLVs cannot hold values");
 		return -(slen);
 	}
 
@@ -414,7 +414,7 @@ static int radsnmp_get_response(int fd,
 	slen = snprintf(oid_buff, sizeof(oid_buff), "%u.", parent->attr);
 	if (is_truncated((size_t)slen, sizeof(oid_buff))) {
 	oob:
-		fr_strerror_printf("OID Buffer too small");
+		fr_strerror_const("OID Buffer too small");
 		return -1;
 	}
 	p += slen;
@@ -534,7 +534,7 @@ static int radsnmp_get_response(int fd,
 			 */
 			slen = fr_value_box_print(&FR_SBUFF_OUT(value_buff, sizeof(value_buff)), &vp->data, NULL);
 			if (slen < 0) {
-				fr_strerror_printf("Insufficient fixed value buffer");
+				fr_strerror_const("Insufficient fixed value buffer");
 				return -1;
 			}
 			io_vector[4].iov_base = value_buff;

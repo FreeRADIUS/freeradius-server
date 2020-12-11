@@ -380,7 +380,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Catch errors early on.
 	 */
 	if (flag_encrypted(&vp->da->flags) && !packet_ctx) {
-		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
+		fr_strerror_const("Asked to encrypt attribute, but no packet context provided");
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -605,7 +605,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Only 24bit integers are allowed here
 		 */
 		if (fr_dbuff_current(&value_start)[0] != 0) {
-			fr_strerror_printf("Integer overflow for tagged uint32 attribute");
+			fr_strerror_const("Integer overflow for tagged uint32 attribute");
 			return PAIR_ENCODE_SKIPPED;
 		}
 		fr_dbuff_current(&value_start)[0] = packet_ctx->tag;
@@ -954,7 +954,7 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 	dv = da_stack->da[depth++];
 
 	if (dv->type != FR_TYPE_VENDOR) {
-		fr_strerror_printf("Expected Vendor");
+		fr_strerror_const("Expected Vendor");
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -1315,7 +1315,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
 			fr_cursor_next(cursor);
-			fr_strerror_printf("Zero length string attributes not allowed");
+			fr_strerror_const("Zero length string attributes not allowed");
 			return PAIR_ENCODE_SKIPPED;
 		}
 		break;

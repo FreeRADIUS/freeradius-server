@@ -189,11 +189,11 @@ ssize_t udp_recv(int sockfd, int flags,
 	if (slen <= 0) goto done;
 
 	if (fr_ipaddr_from_sockaddr(&socket_out->inet.src_ipaddr, &socket_out->inet.src_port, &src, sizeof_src) < 0) {
-		fr_strerror_printf_push("Failed converting src sockaddr to ipaddr");
+		fr_strerror_const_push("Failed converting src sockaddr to ipaddr");
 		return -1;
 	}
 	if (fr_ipaddr_from_sockaddr(&socket_out->inet.dst_ipaddr, &socket_out->inet.dst_port, &dst, sizeof_dst) < 0) {
-		fr_strerror_printf_push("Failed converting dst sockaddr to ipaddr");
+		fr_strerror_const_push("Failed converting dst sockaddr to ipaddr");
 		return -1;
 	}
 

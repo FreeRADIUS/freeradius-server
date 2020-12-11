@@ -60,12 +60,12 @@ int fr_vmps_init(void)
 	}
 
 	if (fr_dict_autoload(libfreeradius_vmps) < 0) {
-		fr_strerror_printf_push("Failed loading the 'vmps' dictionary");
+		fr_strerror_const_push("Failed loading the 'vmps' dictionary");
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(libfreeradius_vmps_dict_attr) < 0) {
-		fr_strerror_printf("Failed loading the 'vmps' attributes");
+		fr_strerror_const("Failed loading the 'vmps' attributes");
 		fr_dict_autofree(libfreeradius_vmps);
 		return -1;
 	}

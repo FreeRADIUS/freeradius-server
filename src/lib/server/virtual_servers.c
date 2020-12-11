@@ -1533,7 +1533,7 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 #endif
 
 	if (!rbtree_insert(server_section_name_tree, entry)) {
-		fr_strerror_printf("Failed inserting entry into internal tree");
+		fr_strerror_const("Failed inserting entry into internal tree");
 		return -1;
 	}
 

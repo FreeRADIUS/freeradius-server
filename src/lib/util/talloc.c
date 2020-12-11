@@ -92,14 +92,14 @@ fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *
 	fr_talloc_destructor_t *d;
 
 	if (!fire_ctx) {
-		fr_strerror_printf("No firing ctx provided when setting destructor");
+		fr_strerror_const("No firing ctx provided when setting destructor");
 		return NULL;
 	}
 
 	d = talloc(fire_ctx, fr_talloc_destructor_t);
 	if (!d) {
 	oom:
-		fr_strerror_printf("Out of Memory");
+		fr_strerror_const("Out of Memory");
 		return NULL;
 	}
 
@@ -199,7 +199,7 @@ TALLOC_CTX *talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment
 	array_size = rounded + alignment;
 	array = talloc_array(ctx, uint8_t, array_size);		/* Over allocate */
 	if (!array) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
@@ -242,13 +242,13 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 	pool_size = rounded + page_size;
 	pool = talloc_pool(ctx, pool_size);			/* Over allocate */
 	if (!pool) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
 	chunk = talloc_size(pool, 1);				/* Get the starting address */
 	if (!fr_cond_assert((chunk > pool) && ((uintptr_t)chunk < ((uintptr_t)pool + rounded)))) {
-		fr_strerror_printf("Initial allocation outside of pool memory");
+		fr_strerror_const("Initial allocation outside of pool memory");
 	error:
 		talloc_free(pool);
 		return NULL;
@@ -276,7 +276,7 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 
 		padding = talloc_size(pool, pad_size);
 		if (!fr_cond_assert(((uintptr_t)padding + (uintptr_t)pad_size) >= (uintptr_t)next)) {
-			fr_strerror_printf("Failed padding pool memory");
+			fr_strerror_const("Failed padding pool memory");
 			goto error;
 		}
 	}

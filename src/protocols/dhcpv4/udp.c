@@ -62,7 +62,7 @@ int fr_dhcpv4_udp_packet_send(fr_radius_packet_t *packet)
 	fr_ipaddr_to_sockaddr(&src, &sizeof_src, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port);
 	fr_ipaddr_to_sockaddr(&dst, &sizeof_dst, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port);
 	if (packet->data_len == 0) {
-		fr_strerror_printf("No data to send");
+		fr_strerror_const("No data to send");
 		return -1;
 	}
 
@@ -100,7 +100,7 @@ fr_radius_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 
 	data = talloc_zero_array(NULL, uint8_t, MAX_PACKET_SIZE);
 	if (!data) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 

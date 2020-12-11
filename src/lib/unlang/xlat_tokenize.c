@@ -232,7 +232,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	}
 
 	if (!fr_sbuff_adv_past_str_literal(in, ":-")) {
-		fr_strerror_printf("Expected ':-' after first expansion");
+		fr_strerror_const("Expected ':-' after first expansion");
 		goto error;
 	}
 
@@ -254,12 +254,12 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 
 	if (!node->alternate) {
 		talloc_free(node);
-		fr_strerror_printf("Empty expansion is invalid");
+		fr_strerror_const("Empty expansion is invalid");
 		goto error;
 	}
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
-		fr_strerror_printf("Missing closing brace");
+		fr_strerror_const("Missing closing brace");
 		goto error;
 	}
 
@@ -302,7 +302,7 @@ static inline int xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_f
 
 	if (!fr_sbuff_is_char(in, '}')) {
 		if (!fr_sbuff_remaining(in)) {
-			fr_strerror_printf("Missing closing brace");
+			fr_strerror_const("Missing closing brace");
 			fr_sbuff_marker_release(&m_s);
 			return -1;
 		}
@@ -360,7 +360,7 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars);
 
 	if (!fr_sbuff_is_char(in, ':')) {
-		fr_strerror_printf("Can't find function/argument separator");
+		fr_strerror_const("Can't find function/argument separator");
 	bad_function:
 		*head = NULL;
 		fr_sbuff_set(in, &m_s);		/* backtrack */
@@ -376,7 +376,7 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 	node = xlat_exp_alloc(ctx, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	if (!func) {
 		if (!rules || !rules->allow_unresolved) {
-			fr_strerror_printf("Unresolved expansion functions are not allowed here");
+			fr_strerror_const("Unresolved expansion functions are not allowed here");
 			goto bad_function;
 		}
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
@@ -404,7 +404,7 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 	}
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
-		fr_strerror_printf("Missing closing brace");
+		fr_strerror_const("Missing closing brace");
 		goto error;
 	}
 
@@ -449,7 +449,7 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars);
 
 	if (!fr_sbuff_is_char(in, ':')) {
-		fr_strerror_printf("Can't find function/argument separator");
+		fr_strerror_const("Can't find function/argument separator");
 	bad_function:
 		*head = NULL;
 		fr_sbuff_set(in, &m_s);		/* backtrack */
@@ -465,7 +465,7 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 	node = xlat_exp_alloc(ctx, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	if (!func) {
 		if (!rules || !rules->allow_unresolved) {
-			fr_strerror_printf("Unresolved expansion functions are not allowed here");
+			fr_strerror_const("Unresolved expansion functions are not allowed here");
 			goto bad_function;
 		}
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
@@ -493,7 +493,7 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 	}
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
-		fr_strerror_printf("Missing closing brace");
+		fr_strerror_const("Missing closing brace");
 		goto error;
 	}
 
@@ -585,7 +585,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 			node->flags.needs_async = func->needs_async;
 
 			if (!fr_sbuff_next_if_char(in, '}')) {
-				fr_strerror_printf("Missing closing brace");
+				fr_strerror_const("Missing closing brace");
 				goto error;
 			}
 
@@ -612,7 +612,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		if (!t_rules || !t_rules->allow_unresolved) {
 			talloc_free(vpt);
 
-			fr_strerror_printf("Unresolved attributes not allowed in expansions here");
+			fr_strerror_const("Unresolved attributes not allowed in expansions here");
 			fr_sbuff_set(in, &m_s);		/* Error at the start of the attribute */
 			goto error;
 		}
@@ -637,7 +637,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	}
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
-		fr_strerror_printf("Missing closing brace");
+		fr_strerror_const("Missing closing brace");
 		goto error;
 	}
 
@@ -680,7 +680,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	 *	:-bar}
 	 */
 	if (fr_sbuff_is_str_literal(in, ":-")) {
-		fr_strerror_printf("First item in alternation cannot be empty");
+		fr_strerror_const("First item in alternation cannot be empty");
 		return -2;
 	}
 
@@ -714,7 +714,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	 *	e.g. '%{myfirstxlat'
 	 */
 	if (!fr_sbuff_remaining(in)) {
-		fr_strerror_printf("Missing closing brace");
+		fr_strerror_const("Missing closing brace");
 		fr_sbuff_marker_release(&s_m);
 		return -1;
 	}
@@ -725,15 +725,15 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	if (len == 0) {
 		switch (hint) {
 		case '}':
-			fr_strerror_printf("Empty expression is invalid");
+			fr_strerror_const("Empty expression is invalid");
 			return -1;
 
 		case ':':
-			fr_strerror_printf("Missing expansion function");
+			fr_strerror_const("Missing expansion function");
 			return -1;
 
 		case '[':
-			fr_strerror_printf("Missing attribute name");
+			fr_strerror_const("Missing attribute name");
 			return -1;
 
 		default:
@@ -942,7 +942,7 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 			if (len == 0) TALLOC_FREE(node); /* Free the empty node */
 
 			if (!fr_sbuff_is_char(in, '}')) {
-				fr_strerror_printf("Missing closing brace");
+				fr_strerror_const("Missing closing brace");
 				goto error;
 			}
 		/*
@@ -1232,7 +1232,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 	 *	Create ephemeral instance data for the xlat
 	 */
 	if (xlat_instantiate_ephemeral(*head) < 0) {
-		fr_strerror_printf("Failed performing ephemeral instantiation for xlat");
+		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
 		TALLOC_FREE(*head);
 		return 0;
 	}
@@ -1363,7 +1363,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 *	`back quoted strings aren't supported`
 		 */
 		case T_BACK_QUOTED_STRING:
-			fr_strerror_printf("Unexpected `...` string");
+			fr_strerror_const("Unexpected `...` string");
 			goto error;
 
 		default:
@@ -1372,7 +1372,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		}
 
 		if ((quote != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[quote])) { /* Quoting */
-			fr_strerror_printf("Unterminated string");
+			fr_strerror_const("Unterminated string");
 			fr_sbuff_set(&our_in, &m);
 			goto error;
 		}
@@ -1403,7 +1403,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 *	arguments were smushed together.
 		 */
 		if (fr_sbuff_extend(&our_in) && (len == 0)) {
-			fr_strerror_printf("Unexpected text after argument");
+			fr_strerror_const("Unexpected text after argument");
 			goto error;
 		}
 	}

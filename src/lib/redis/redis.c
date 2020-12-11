@@ -447,7 +447,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 
 		*pipelined = 0;			/* all outstanding responses should be cleared */
 
-		fr_strerror_printf("Too many pipelined commands");
+		fr_strerror_const("Too many pipelined commands");
 		out[0] = NULL;
 		return REDIS_RCODE_ERROR;
 	}
@@ -552,7 +552,7 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 
 	p = strstr(reply->str, "redis_version:");
 	if (!p) {
-		fr_strerror_printf("Response did not contain version string");
+		fr_strerror_const("Response did not contain version string");
 		goto error;
 	}
 

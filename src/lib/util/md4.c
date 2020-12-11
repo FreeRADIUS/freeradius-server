@@ -76,7 +76,7 @@ static fr_md4_ctx_t *fr_md4_openssl_ctx_alloc(bool thread_local)
 			md_ctx = EVP_MD_CTX_new();
 			if (unlikely(!md_ctx)) {
 			oom:
-				fr_strerror_printf("Out of memory");
+				fr_strerror_const("Out of memory");
 				return NULL;
 			}
 			fr_thread_local_set_destructor(md4_ctx, _md4_ctx_openssl_free_on_exit, md_ctx);

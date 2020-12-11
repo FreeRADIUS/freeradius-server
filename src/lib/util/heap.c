@@ -129,7 +129,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	 */
 	child = index_get(hp, data);
 	if ((child > 0) || ((child == 0) && (hp->num_elements > 0) && (data == hp->p[0]))) {
-		fr_strerror_printf("Node is already in the heap");
+		fr_strerror_const("Node is already in the heap");
 		return -1;
 	}
 
@@ -154,7 +154,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		 */
 		if (n_size > INT32_MAX) {
 			if (hp->size == INT32_MAX) {
-				fr_strerror_printf("Heap is full");
+				fr_strerror_const("Heap is full");
 				return -1;
 			} else {
 				n_size = INT32_MAX;
@@ -220,7 +220,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	 */
 	if (!data) {
 		if (unlikely((hp->num_elements == 0) || !hp->p[0])) {
-			fr_strerror_printf("Tried to extract element from empty heap");
+			fr_strerror_const("Tried to extract element from empty heap");
 			return -1;
 		}
 		parent = 0;

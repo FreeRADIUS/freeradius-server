@@ -541,7 +541,7 @@ static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, int bits)
 
 	node = (fr_trie_node_t *) talloc_zero_array(ctx, uint8_t, sizeof(fr_trie_node_t) + sizeof(node->trie[0]) * size);
 	if (!node) {
-		fr_strerror_printf("failed allocating node trie");
+		fr_strerror_const("failed allocating node trie");
 		return NULL;
 	}
 
@@ -620,7 +620,7 @@ static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, void const *data)
 
 	user = talloc_zero(ctx, fr_trie_user_t);
 	if (!user) {
-		fr_strerror_printf("failed allocating user trie");
+		fr_strerror_const("failed allocating user trie");
 		return NULL;
 	}
 
@@ -671,7 +671,7 @@ static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint8_t const *key, i
 
 	path = talloc_zero(ctx, fr_trie_path_t);
 	if (!path) {
-		fr_strerror_printf("failed allocating path trie");
+		fr_strerror_const("failed allocating path trie");
 		return NULL;
 	}
 
@@ -714,7 +714,7 @@ static fr_trie_comp_t *fr_trie_comp_alloc(TALLOC_CTX *ctx, int bits)
 
 	comp = talloc_zero(ctx, fr_trie_comp_t);
 	if (!comp) {
-		fr_strerror_printf("failed allocating comp trie");
+		fr_strerror_const("failed allocating comp trie");
 		return NULL;
 	}
 
@@ -1496,7 +1496,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	 *	This should have been caught above.
 	 */
 	if (lcp == path->bits) {
-		fr_strerror_printf("found lcp which should have been previously found");
+		fr_strerror_const("found lcp which should have been previously found");
 		return -1;
 	}
 
@@ -1893,7 +1893,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	 *	place without worry.
 	 */
 	if (fr_trie_key_match(user->trie, key, 0, keylen, true) != NULL) {
-		fr_strerror_printf("Cannot insert due to pre-existing key");
+		fr_strerror_const("Cannot insert due to pre-existing key");
 		return -1;
 	}
 
@@ -2294,7 +2294,7 @@ static int fr_trie_user_verify(fr_trie_t *trie)
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
 
 	if (!user->data) {
-		fr_strerror_printf("user node has no user data");
+		fr_strerror_const("user node has no user data");
 		return -1;
 	}
 
@@ -2350,7 +2350,7 @@ static int fr_trie_path_verify(fr_trie_t *trie)
 	}
 
 	if (!path->trie) {
-		fr_strerror_printf("path node has no child trie");
+		fr_strerror_const("path node has no child trie");
 		return -1;
 	}
 

@@ -113,7 +113,7 @@ static int load_dicts(char const *dict_dir)
 			 */
 			if (ret == 0) {
 				if (dict_end >= (dicts + (NUM_ELEMENTS(dicts)))) {
-					fr_strerror_printf("Reached maximum number of dictionaries");
+					fr_strerror_const("Reached maximum number of dictionaries");
 					goto error;
 				}
 

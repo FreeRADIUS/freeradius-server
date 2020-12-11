@@ -341,20 +341,20 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		transaction_id = fr_net_to_uint24(&packet[1]);
 		if (transaction_id != packet_ctx->transaction_id) {
 		fail_tid:
-			fr_strerror_printf("Transaction ID does not match");
+			fr_strerror_const("Transaction ID does not match");
 			return false;
 		}
 
 		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
 		fail_sid:
-			fr_strerror_printf("Packet does not contain a Server-Id option");
+			fr_strerror_const("Packet does not contain a Server-Id option");
 			return false;
 		}
 
 		option = fr_dhcpv6_option_find(options, end, FR_CLIENT_ID);
 		if (!option) {
 		fail_cid:
-			fr_strerror_printf("Packet does not contain a Client-Id option");
+			fr_strerror_const("Packet does not contain a Client-Id option");
 			return false;
 		}
 
@@ -363,14 +363,14 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		 */
 		if (!packet_ctx->duid) {
 		fail_duid:
-			fr_strerror_printf("Packet context does not contain a DUID");
+			fr_strerror_const("Packet context does not contain a DUID");
 			return false;
 		}
 
 	check_duid:
 		if (!duid_match(option, packet_ctx)) {
 		fail_match:
-			fr_strerror_printf("DUID in packet does not match our DUID");
+			fr_strerror_const("DUID in packet does not match our DUID");
 			return false;
 		}
 		return true;
@@ -405,7 +405,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 
 		option = fr_dhcpv6_option_find(options, end, FR_RECONF_MSG);
 		if (!option) {
-			fr_strerror_printf("Packet does not contain a Reconf-Msg option");
+			fr_strerror_const("Packet does not contain a Reconf-Msg option");
 			return false;
 		}
 
@@ -422,14 +422,14 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 
 	case FR_DHCPV6_RELAY_REPLY:
 		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
-			fr_strerror_printf("Relay-Reply message is too small");
+			fr_strerror_const("Relay-Reply message is too small");
 			return false;
 		}
 
 		options += (DHCPV6_RELAY_HDR_LEN - 4); /* we assumed it was a normal packet above  */
 		option = fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE);
 		if (!option) {
-			fr_strerror_printf("Packet does not contain a Relay-Message option");
+			fr_strerror_const("Packet does not contain a Relay-Message option");
 			return false;
 		}
 		return verify_to_client(option + 4, DHCPV6_GET_OPTION_LEN(option), packet_ctx);
@@ -458,7 +458,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 	case FR_PACKET_TYPE_VALUE_DECLINE:
 	case FR_PACKET_TYPE_VALUE_INFORMATION_REQUEST:
 	default:
-		fr_strerror_printf("Invalid message type sent to client");
+		fr_strerror_const("Invalid message type sent to client");
 		return false;
 	}
 
@@ -479,7 +479,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 	 *	Servers MUST have a DUID
 	 */
 	if (!packet_ctx->duid) {
-		fr_strerror_printf("Packet context does not contain a DUID");
+		fr_strerror_const("Packet context does not contain a DUID");
 		return false;
 	}
 
@@ -489,13 +489,13 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 	case FR_PACKET_TYPE_VALUE_REBIND:
 		if (!fr_dhcpv6_option_find(options, end, FR_CLIENT_ID)) {
 		fail_cid:
-			fr_strerror_printf("Packet does not contain a Client-Id option");
+			fr_strerror_const("Packet does not contain a Client-Id option");
 			return false;
 		}
 
 		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) {
 		fail_sid:
-			fr_strerror_printf("Packet does not contain a Server-Id option");
+			fr_strerror_const("Packet does not contain a Server-Id option");
 			return false;
 		}
 		break;
@@ -511,7 +511,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 
 		if (!duid_match(option, packet_ctx)) {
 		fail_match:
-			fr_strerror_printf("DUID in packet does not match our DUID");
+			fr_strerror_const("DUID in packet does not match our DUID");
 			return false;
 		}
 		break;
@@ -526,29 +526,29 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 		 *	IA options are forbidden.
 		 */
 		if (fr_dhcpv6_option_find(options, end, FR_IA_NA)) {
-			fr_strerror_printf("Packet contains an IA-NA option");
+			fr_strerror_const("Packet contains an IA-NA option");
 			return false;
 		}
 		if (fr_dhcpv6_option_find(options, end, FR_IA_TA)) {
-			fr_strerror_printf("Packet contains an IA-TA option");
+			fr_strerror_const("Packet contains an IA-TA option");
 			return false;
 		}
 		if (fr_dhcpv6_option_find(options, end, FR_IA_ADDR)) {
-			fr_strerror_printf("Packet contains an IA-Addr option");
+			fr_strerror_const("Packet contains an IA-Addr option");
 			return false;
 		}
 		break;
 
 	case FR_DHCPV6_RELAY_FORWARD:
 		if (packet_len < DHCPV6_RELAY_HDR_LEN) {
-			fr_strerror_printf("Relay-Forward message is too small");
+			fr_strerror_const("Relay-Forward message is too small");
 			return false;
 		}
 
 		options += (DHCPV6_RELAY_HDR_LEN - 4); /* we assumed it was a normal packet above  */
 		option = fr_dhcpv6_option_find(options, end, FR_RELAY_MESSAGE);
 		if (!option) {
-			fr_strerror_printf("Packet does not contain a Relay-Message option");
+			fr_strerror_const("Packet does not contain a Relay-Message option");
 			return false;
 		}
 
@@ -566,7 +566,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 
 		option = fr_dhcpv6_option_find(options, end, FR_LEASE_QUERY);
 		if (!option) {
-			fr_strerror_printf("Packet does not contain a Lease-Query option");
+			fr_strerror_const("Packet does not contain a Lease-Query option");
 			return false;
 		}
 		break;
@@ -575,7 +575,7 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 	case FR_PACKET_TYPE_VALUE_REPLY:
 	case FR_PACKET_TYPE_VALUE_RECONFIGURE:
 	default:
-		fr_strerror_printf("Invalid message type sent to server");
+		fr_strerror_const("Invalid message type sent to server");
 		return false;
 	}
 	return true;
@@ -1012,7 +1012,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 	if (flags->extra || !flags->subtype) return true;
 
 	if (type != FR_TYPE_STRING) {
-		fr_strerror_printf("The 'dns_label' flag can only be used with attributes of type 'string'");
+		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
 

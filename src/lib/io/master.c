@@ -2745,7 +2745,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 					 &allow[i].addr, allow[i].prefix);
 		if (network && (network->prefix <= allow[i].prefix)) {
 			fr_strerror_printf("Cannot add overlapping entry 'allow = %pV'", fr_box_ipaddr(allow[i]));
-			fr_strerror_printf("Entry is completely enclosed inside of a previously defined network.");
+			fr_strerror_const("Entry is completely enclosed inside of a previously defined network.");
 			talloc_free(trie);
 			return NULL;
 		}
@@ -2889,7 +2889,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	}
 
 	if (!inst->app_io->thread_inst_size) {
-		fr_strerror_printf("IO modules MUST set 'thread_inst_size' when using the master IO handler.");
+		fr_strerror_const("IO modules MUST set 'thread_inst_size' when using the master IO handler.");
 		return -1;
 	}
 

@@ -103,7 +103,7 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 
 	while (data_len > 0) {
 		if (data_len < 7) {
-			fr_strerror_printf("Packet contains malformed attribute");
+			fr_strerror_const("Packet contains malformed attribute");
 			return false;
 		}
 
@@ -113,7 +113,7 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 		 */
 		if ((ptr[0] != 0) || (ptr[1] != 0) ||
 		    (ptr[2] != 0x0c) || (ptr[3] < 1) || (ptr[3] > 8)) {
-			fr_strerror_printf("Packet contains invalid attribute");
+			fr_strerror_const("Packet contains invalid attribute");
 			return false;
 		}
 
@@ -158,7 +158,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cur
 	vp = fr_pair_afrom_da(ctx, attr_packet_type);
 	if (!vp) {
 	oom:
-		fr_strerror_printf("Out of Memory");
+		fr_strerror_const("Out of Memory");
 		return -1;
 	}
 	vp->vp_uint32 = data[1];
@@ -206,7 +206,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cur
 		 *	but it doesn't hurt to do it again.
 		 */
 		if (attr_len > (size_t) (end - ptr)) {
-			fr_strerror_printf("Attribute length exceeds received data");
+			fr_strerror_const("Attribute length exceeds received data");
 			return -1;
 		}
 
@@ -215,7 +215,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cur
 		 */
 		vp = fr_pair_afrom_child_num(ctx, fr_dict_root(dict_vmps), attr);
 		if (!vp) {
-			fr_strerror_printf("No memory");
+			fr_strerror_const("No memory");
 			return -1;
 		}
 

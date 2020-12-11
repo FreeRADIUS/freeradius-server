@@ -91,7 +91,7 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_radius_packet_t c
 	packet->data_len = (size_t) slen;
 	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	if (!packet->data) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
@@ -374,7 +374,7 @@ fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, ui
 	 */
 	packet = fr_radius_alloc(ctx, false);
 	if (!packet) {
-		fr_strerror_printf("out of memory");
+		fr_strerror_const("out of memory");
 		return NULL;
 	}
 

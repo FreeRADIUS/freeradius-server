@@ -300,7 +300,7 @@ static int read_string(rlm_isc_dhcp_tokenizer_t *state)
 
 	while (true) {
 		if (!*p) {
-			fr_strerror_printf("unterminated string");
+			fr_strerror_const("unterminated string");
 			return -1;
 		}
 
@@ -313,7 +313,7 @@ static int read_string(rlm_isc_dhcp_tokenizer_t *state)
 		}
 
 		if ((size_t) (q - state->string) >= sizeof(state->string)) {
-			fr_strerror_printf("string is too long");
+			fr_strerror_const("string is too long");
 			return -1;
 		}
 
@@ -355,7 +355,7 @@ redo:
 
 		if (ret == 0) {
 			if (!state->allow_eof) {
-				fr_strerror_printf("Unexpected EOF");
+				fr_strerror_const("Unexpected EOF");
 				return -1;
 			}
 
@@ -398,7 +398,7 @@ redo:
 		 */
 		if (*p == ';') {
 			if (semicolon == NO_SEMICOLON) {
-				fr_strerror_printf("unexpected ';'");
+				fr_strerror_const("unexpected ';'");
 				return -1;
 			}
 
@@ -458,12 +458,12 @@ redo:
 	state->token_len = p - state->token;
 
 	if (state->token_len == 0) {
-		fr_strerror_printf("FUCK");
+		fr_strerror_const("FUCK");
 		return -1;
 	}
 
 	if (state->token_len >= 256) {
-		fr_strerror_printf("token too large");
+		fr_strerror_const("token too large");
 		return -1;
 	}
 
@@ -473,12 +473,12 @@ redo:
 	 */
 	if (hint == T_LCBRACE) {
 		if (*state->token != '{') {
-			fr_strerror_printf("missing '{'");
+			fr_strerror_const("missing '{'");
 			return -1;
 		}
 
 		if ((size_t) state->braces >= (sizeof(spaces) - 1)) {
-			fr_strerror_printf("sections are nested too deep");
+			fr_strerror_const("sections are nested too deep");
 			return -1;
 		}
 
@@ -488,7 +488,7 @@ redo:
 
 	if (hint == T_RCBRACE) {
 		if (*state->token != '}') {
-			fr_strerror_printf("missing '}'");
+			fr_strerror_const("missing '}'");
 			return -1;
 		}
 
@@ -503,7 +503,7 @@ redo:
 	 */
 	if (*state->token == '}') {
 		if (!allow_rcbrace) {
-			fr_strerror_printf("unexpected '}'");
+			fr_strerror_const("unexpected '}'");
 			return -1;
 		}
 
@@ -517,7 +517,7 @@ redo:
 	 */
 	if ((hint == T_BARE_WORD) || (hint == T_DOUBLE_QUOTED_STRING)) {
 		if (*state->token == '{') {
-			fr_strerror_printf("unexpected '{'");
+			fr_strerror_const("unexpected '{'");
 			return -1;
 		}
 	}
@@ -809,7 +809,7 @@ static int parse_option_space(UNUSED rlm_isc_dhcp_info_t *parent, UNUSED rlm_isc
 {
 	// @todo - register the named option space with inst->option_space
 	//	   and create inst->option_space
-	fr_strerror_printf("please implement 'option space name [ [ code width number ] [ length width number ] [ hash size number ] ]'");
+	fr_strerror_const("please implement 'option space name [ [ code width number ] [ length width number ] [ hash size number ] ]'");
 	return -1;
 }
 
@@ -860,14 +860,14 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 
 	p = strchr(name, '.');
 	if (p) {
-		fr_strerror_printf("cannot (yet) define options in spaces");
+		fr_strerror_const("cannot (yet) define options in spaces");
 	error:
 		talloc_free(name);
 		return -1;
 	}
 
 	if (parent != state->inst->head) {
-		fr_strerror_printf("option definitions cannot be scoped");
+		fr_strerror_const("option definitions cannot be scoped");
 		goto error;
 	}
 
@@ -934,7 +934,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	}
 
 	if ((state->token_len == 1) && (state->token[0] == '{')) {
-		fr_strerror_printf("records are not supported in option definition");
+		fr_strerror_const("records are not supported in option definition");
 		goto error;
 	}
 
@@ -945,7 +945,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	 *	not a *semicolon* error.
 	 */
 	if (!state->saw_semicolon) {
-		fr_strerror_printf("expected ';'");
+		fr_strerror_const("expected ';'");
 		goto error;
 	}
 
@@ -1097,7 +1097,7 @@ static int parse_options(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 *	Must have at least two arguments.
 	 */
 	if (argc < 2) {
-		fr_strerror_printf("unexpected ';'");
+		fr_strerror_const("unexpected ';'");
 		return -1;
 	}
 
@@ -1317,13 +1317,13 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 */
 	if ((semicolon == NO_SEMICOLON) && state->saw_semicolon) {
 	unexpected:
-		fr_strerror_printf("unexpected ';'");
+		fr_strerror_const("unexpected ';'");
 		talloc_free(info);
 		return -1;
 	}
 
 	if ((semicolon == YES_SEMICOLON) && !state->saw_semicolon) {
-		fr_strerror_printf("missing ';'");
+		fr_strerror_const("missing ';'");
 		talloc_free(info);
 		return -1;
 	}
@@ -1395,7 +1395,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	for (child = info->child; child != NULL; child = child->next) {
 		if (child->cmd->type == ISC_HARDWARE_ETHERNET) {
 			if (ether) {
-				fr_strerror_printf("cannot have two 'hardware ethernet' entries in a 'host'");
+				fr_strerror_const("cannot have two 'hardware ethernet' entries in a 'host'");
 				return -1;
 			}
 
@@ -1687,7 +1687,7 @@ static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 static int parse_filename(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, file)) {
-		fr_strerror_printf("filename is too long");
+		fr_strerror_const("filename is too long");
 		return -1;
 	}
 
@@ -1700,7 +1700,7 @@ static int parse_filename(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_i
 static int parse_server_name(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info)
 {
 	if (info->argv[0]->vb_length > member_size(dhcp_packet_t, sname)) {
-		fr_strerror_printf("filename is too long");
+		fr_strerror_const("filename is too long");
 		return -1;
 	}
 

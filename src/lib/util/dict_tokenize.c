@@ -161,7 +161,7 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	};
 
 	if (!fr_cond_assert(!dict->root)) {
-		fr_strerror_printf("Dictionary root already set");
+		fr_strerror_const("Dictionary root already set");
 		return -1;
 	}
 
@@ -222,7 +222,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 
 		} else if (strcmp(name, "bit") == 0) {
 			if (ctx->stack[ctx->stack_depth].da->type != FR_TYPE_STRUCT) {
-				fr_strerror_printf("Bit fields can only be used inside of a STRUCT");
+				fr_strerror_const("Bit fields can only be used inside of a STRUCT");
 				return -1;
 			}
 
@@ -240,7 +240,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 			} else if (length < 56) { /* for laziness in encode / decode */
 				type = FR_TYPE_UINT64;
 			} else {
-				fr_strerror_printf("Invalid length for bit field");
+				fr_strerror_const("Invalid length for bit field");
 				return -1;
 			}
 
@@ -250,7 +250,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 			flags->type_size = length;
 
 		} else {
-			fr_strerror_printf("Only 'octets' types can have a 'length' parameter");
+			fr_strerror_const("Only 'octets' types can have a 'length' parameter");
 			return -1;
 		}
 
@@ -348,12 +348,12 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 		} else if (strcmp(key, "key") == 0) {
 			if ((type != FR_TYPE_UINT8) && (type != FR_TYPE_UINT16) && (type != FR_TYPE_UINT32)) {
-				fr_strerror_printf("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");
+				fr_strerror_const("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");
 				return -1;
 			}
 
 			if (flags->extra) {
-				fr_strerror_printf("Bit fields cannot be key fields");
+				fr_strerror_const("Bit fields cannot be key fields");
 				return -1;
 			}
 
@@ -362,7 +362,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 		} else if (strcmp(key, "length") == 0) {
 			if (!value || (strcmp(value, "uint16") != 0)) {
-				fr_strerror_printf("The 'length' flag can only be used with value 'uint16'");
+				fr_strerror_const("The 'length' flag can only be used with value 'uint16'");
 			}
 
 			flags->extra = 1;
@@ -427,12 +427,12 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 		} else if (strcmp(key, "ref") == 0) {
 			if (!value) {
-				fr_strerror_printf("Missing attribute name for 'ref=...'");
+				fr_strerror_const("Missing attribute name for 'ref=...'");
 				return -1;
 			}
 
 			if (flags->extra) {
-				fr_strerror_printf("Cannot use 'ref' with other flags");
+				fr_strerror_const("Cannot use 'ref' with other flags");
 				return -1;
 			}
 
@@ -448,7 +448,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 		} else if (strcmp(key, "clone") == 0) {
 			if (!value) {
-				fr_strerror_printf("Missing attribute name for 'clone=...'");
+				fr_strerror_const("Missing attribute name for 'clone=...'");
 				return -1;
 			}
 
@@ -501,7 +501,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 static int dict_gctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 {
 	if ((ctx->stack_depth + 1) >= MAX_STACK) {
-		fr_strerror_printf_push("Attribute definitions are nested too deep.");
+		fr_strerror_const_push("Attribute definitions are nested too deep.");
 		return -1;
 	}
 
@@ -537,7 +537,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	fr_hash_table_t		*namespace;
 
 	if (argc != 2) {
-		fr_strerror_printf("Invalid ALIAS syntax");
+		fr_strerror_const("Invalid ALIAS syntax");
 		return -1;
 	}
 
@@ -545,7 +545,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	Dictionaries need to have real names, not shitty ones.
 	 */
 	if (strncmp(argv[0], "Attr-", 5) == 0) {
-		fr_strerror_printf("Invalid ALIAS name");
+		fr_strerror_const("Invalid ALIAS name");
 		return -1;
 	}
 
@@ -584,7 +584,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	}
 
 	if (!fr_hash_table_insert(namespace, new)) {
-		fr_strerror_printf("Internal error storing attribute");
+		fr_strerror_const("Internal error storing attribute");
 		goto error;
 	}
 
@@ -608,7 +608,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	char			*ref = NULL;
 
 	if ((argc < 3) || (argc > 4)) {
-		fr_strerror_printf("Invalid ATTRIBUTE syntax");
+		fr_strerror_const("Invalid ATTRIBUTE syntax");
 		return -1;
 	}
 
@@ -616,7 +616,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 *	Dictionaries need to have real names, not shitty ones.
 	 */
 	if (strncmp(argv[0], "Attr-", 5) == 0) {
-		fr_strerror_printf("Invalid ATTRIBUTE name");
+		fr_strerror_const("Invalid ATTRIBUTE name");
 		return -1;
 	}
 
@@ -625,7 +625,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (dict_process_type_field(ctx, argv[2], &type, &flags) < 0) return -1;
 
 	if (flags.extra && (flags.subtype == FLAG_BIT_FIELD)) {
-		fr_strerror_printf("Bit fields can only be defined as a MEMBER of a STRUCT");
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
 		return -1;
 	}
 
@@ -648,7 +648,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		 */
 		if (strchr(argv[1], '.') == 0) {
 			if (!dict_read_sscanf_i(&attr, argv[1])) {
-				fr_strerror_printf("Invalid ATTRIBUTE number");
+				fr_strerror_const("Invalid ATTRIBUTE number");
 				return -1;
 			}
 
@@ -659,7 +659,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 
 	} else {
 		if (!ctx->relative_attr) {
-			fr_strerror_printf("Unknown parent for partial OID");
+			fr_strerror_const("Unknown parent for partial OID");
 			return -1;
 		}
 
@@ -817,7 +817,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 
 		check:
 			if (fr_dict_attr_ref(da)) {
-				fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
+				fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
 				talloc_free(ref);
 				return -1;
 			}
@@ -866,12 +866,12 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	char			*ref = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
-		fr_strerror_printf("Invalid MEMBER syntax");
+		fr_strerror_const("Invalid MEMBER syntax");
 		return -1;
 	}
 
 	if (ctx->stack[ctx->stack_depth].da->type != FR_TYPE_STRUCT) {
-		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct'");
+		fr_strerror_const("MEMBER can only be used for ATTRIBUTEs of type 'struct'");
 		return -1;
 	}
 
@@ -879,7 +879,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Dictionaries need to have real names, not shitty ones.
 	 */
 	if (strncmp(argv[0], "Attr-", 5) == 0) {
-		fr_strerror_printf("Invalid MEMBER name");
+		fr_strerror_const("Invalid MEMBER name");
 		return -1;
 	}
 
@@ -894,7 +894,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		if (dict_process_flag_field(ctx, argv[2], type, &flags, &ref) < 0) return -1;
 
 		if (ref && (type != FR_TYPE_TLV) && !(flags.extra && (flags.subtype == FLAG_KEY_FIELD))) {
-			fr_strerror_printf("Only MEMBERs of type 'tlv' or with 'key' flags can have references");\
+			fr_strerror_const("Only MEMBERs of type 'tlv' or with 'key' flags can have references");\
 			return -1;
 		}
 
@@ -915,7 +915,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		previous = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
 						  ctx->stack[ctx->stack_depth].member_num);
 		if (!previous) {
-			fr_strerror_printf("Failed to find previous MEMBER");
+			fr_strerror_const("Failed to find previous MEMBER");
 			return -1;
 		}
 
@@ -1048,7 +1048,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	fr_dict_attr_t const 	*parent = ctx->stack[ctx->stack_depth].da;
 
 	if (argc != 3) {
-		fr_strerror_printf("Invalid VALUE syntax");
+		fr_strerror_const("Invalid VALUE syntax");
 		return -1;
 	}
 
@@ -1087,7 +1087,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 				     argv[0], strlen(argv[0]),
 				     argv[1], strlen(argv[1]),
 				     argv[2], strlen(argv[2]), parent) < 0) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 		return 0;
@@ -1149,7 +1149,7 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 		}
 	}
 
-	fr_strerror_printf("Invalid FLAGS syntax");
+	fr_strerror_const("Invalid FLAGS syntax");
 	return -1;
 }
 
@@ -1173,7 +1173,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	char			        *name = argv[0];
 
 	if (argc != 3) {
-		fr_strerror_printf("Invalid STRUCT syntax");
+		fr_strerror_const("Invalid STRUCT syntax");
 		return -1;
 	}
 
@@ -1327,7 +1327,7 @@ static int dict_read_parse_format(char const *format, unsigned int *pvalue, int 
 
 		if ((*pvalue != VENDORPEC_WIMAX) ||
 		    (type != 1) || (length != 1)) {
-			fr_strerror_printf("Only WiMAX VSAs can have continuations");
+			fr_strerror_const("Only WiMAX VSAs can have continuations");
 			return -1;
 		}
 	}
@@ -1351,7 +1351,7 @@ static int dict_read_process_protocol(char **argv, int argc)
 	bool		require_dl = false;
 
 	if ((argc < 2) || (argc > 3)) {
-		fr_strerror_printf("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
+		fr_strerror_const("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
 		return -1;
 	}
 
@@ -1487,7 +1487,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	fr_dict_vendor_t		*mutable;
 
 	if ((argc < 2) || (argc > 3)) {
-		fr_strerror_printf("Invalid VENDOR syntax");
+		fr_strerror_const("Invalid VENDOR syntax");
 		return -1;
 	}
 
@@ -1495,7 +1495,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	 *	 Validate all entries
 	 */
 	if (!dict_read_sscanf_i(&value, argv[1])) {
-		fr_strerror_printf("Invalid number in VENDOR");
+		fr_strerror_const("Invalid number in VENDOR");
 		return -1;
 	}
 
@@ -1514,7 +1514,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 
 	dv = fr_dict_vendor_by_num(dict, value);
 	if (!dv) {
-		fr_strerror_printf("Failed adding format for VENDOR");
+		fr_strerror_const("Failed adding format for VENDOR");
 		return -1;
 	}
 
@@ -1689,7 +1689,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		if (argc == 0) continue;
 
 		if (argc == 1) {
-			fr_strerror_printf("Invalid entry");
+			fr_strerror_const("Invalid entry");
 
 		error:
 			fr_strerror_printf_push("Failed parsing dictionary at %s[%d]", fr_cwd_strip(fn), line);
@@ -1880,7 +1880,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "PROTOCOL") == 0) {
 			if (argc < 2) {
-				fr_strerror_printf_push("Invalid PROTOCOL entry");
+				fr_strerror_const_push("Invalid PROTOCOL entry");
 				goto error;
 			}
 			if (dict_read_process_protocol(argv + 1, argc - 1) == -1) goto error;
@@ -1894,7 +1894,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			fr_dict_t *found;
 
 			if (argc != 2) {
-				fr_strerror_printf_push("Invalid BEGIN-PROTOCOL entry");
+				fr_strerror_const_push("Invalid BEGIN-PROTOCOL entry");
 				goto error;
 			}
 
@@ -1904,7 +1904,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	statements.
 			 */
 			if (ctx->dict != dict_gctx->internal) {
-				fr_strerror_printf_push("Nested BEGIN-PROTOCOL statements are not allowed");
+				fr_strerror_const_push("Nested BEGIN-PROTOCOL statements are not allowed");
 				goto error;
 			}
 
@@ -1941,7 +1941,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			fr_dict_t const *found;
 
 			if (argc != 2) {
-				fr_strerror_printf("Invalid END-PROTOCOL entry");
+				fr_strerror_const("Invalid END-PROTOCOL entry");
 				goto error;
 			}
 
@@ -2006,13 +2006,13 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			fr_dict_attr_t const *common;
 
 			if (argc != 2) {
-				fr_strerror_printf_push("Invalid BEGIN-TLV entry");
+				fr_strerror_const_push("Invalid BEGIN-TLV entry");
 				goto error;
 			}
 
 			da = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth].da, argv[1]);
 			if (!da) {
-				fr_strerror_printf_push("Failed resolving attribute in BEGIN-TLV entry");
+				fr_strerror_const_push("Failed resolving attribute in BEGIN-TLV entry");
 				goto error;
 			}
 
@@ -2041,7 +2041,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
 			if (argc != 2) {
-				fr_strerror_printf_push("Invalid END-TLV entry");
+				fr_strerror_const_push("Invalid END-TLV entry");
 				goto error;
 			}
 
@@ -2049,7 +2049,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 
 			da = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth - 1].da, argv[1]);
 			if (!da) {
-				fr_strerror_printf_push("Failed resolving attribute in END-TLV entry");
+				fr_strerror_const_push("Failed resolving attribute in END-TLV entry");
 				goto error;
 			}
 
@@ -2091,7 +2091,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			fr_dict_attr_t		*mutable;
 
 			if (argc < 2) {
-				fr_strerror_printf_push("Invalid BEGIN-VENDOR entry");
+				fr_strerror_const_push("Invalid BEGIN-VENDOR entry");
 				goto error;
 			}
 
@@ -2201,7 +2201,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			fr_dict_vendor_t const *vendor;
 
 			if (argc != 2) {
-				fr_strerror_printf_push("Invalid END-VENDOR entry");
+				fr_strerror_const_push("Invalid END-VENDOR entry");
 				goto error;
 			}
 
@@ -2311,7 +2311,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	char			*type_name;
 
 	if (unlikely(!dict_gctx)) {
-		fr_strerror_printf("fr_dict_global_ctx_init() must be called before loading dictionary files");
+		fr_strerror_const("fr_dict_global_ctx_init() must be called before loading dictionary files");
 		return -1;
 	}
 
@@ -2408,12 +2408,12 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	*out = NULL;
 
 	if (unlikely(!dict_gctx)) {
-		fr_strerror_printf("fr_dict_global_ctx_init() must be called before loading dictionary files");
+		fr_strerror_const("fr_dict_global_ctx_init() must be called before loading dictionary files");
 		return -1;
 	}
 
 	if (unlikely(!dict_gctx->internal)) {
-		fr_strerror_printf("Internal dictionary must be initialised before loading protocol dictionaries");
+		fr_strerror_const("Internal dictionary must be initialised before loading protocol dictionaries");
 		return -1;
 	}
 

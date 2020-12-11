@@ -401,7 +401,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 */
 		while ((*p >= '0') && (*p <= '9')) {
 			if (len > 9) {
-				fr_strerror_printf("Too much precision for time_delta");
+				fr_strerror_const("Too much precision for time_delta");
 			}
 
 			sec *= 10;

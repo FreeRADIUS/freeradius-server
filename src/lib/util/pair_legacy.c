@@ -76,13 +76,13 @@ int fr_pair_mark_xlat(fr_pair_t *vp, char const *value)
 	 *	valuepair should not already have a value.
 	 */
 	if (vp->type != VT_NONE) {
-		fr_strerror_printf("Pair already has a value");
+		fr_strerror_const("Pair already has a value");
 		return -1;
 	}
 
 	raw = talloc_typed_strdup(vp, value);
 	if (!raw) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
@@ -185,7 +185,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 	}
 
 	if (da->type == FR_TYPE_GROUP) {
-		fr_strerror_printf("Attributes of type 'group' are not supported");
+		fr_strerror_const("Attributes of type 'group' are not supported");
 		return NULL;
 	}
 
@@ -209,7 +209,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 	case T_OP_REG_NE:	/* !~ */
 	{
 #ifndef HAVE_REGEX
-		fr_strerror_printf("Regular expressions are not supported");
+		fr_strerror_const("Regular expressions are not supported");
 		return NULL;
 #else
 		ssize_t slen;
@@ -350,7 +350,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 		if ((size_t) (next - p) >= sizeof(raw.l_opand)) {
 			fr_dict_unknown_free(&da);
-			fr_strerror_printf("Attribute name too long");
+			fr_strerror_const("Attribute name too long");
 			goto error;
 		}
 
@@ -367,7 +367,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		raw.op = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
 		if ((raw.op  < T_EQSTART) || (raw.op  > T_EQEND)) {
 			fr_dict_unknown_free(&da);
-			fr_strerror_printf("Expecting operator");
+			fr_strerror_const("Expecting operator");
 			goto error;
 		}
 
@@ -400,7 +400,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 
 			if (last_token != T_RCBRACE) {
 			failed_group:
-				fr_strerror_printf("Failed to end group list with '}'");
+				fr_strerror_const("Failed to end group list with '}'");
 				talloc_free(vp);
 				goto error;
 			}
@@ -419,7 +419,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 */
 			quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
 			if (quote == T_EOL) {
-				fr_strerror_printf("Failed to get value");
+				fr_strerror_const("Failed to get value");
 				goto error;
 			}
 

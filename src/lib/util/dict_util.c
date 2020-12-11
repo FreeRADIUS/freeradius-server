@@ -836,7 +836,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	vendor = talloc_zero(dict, fr_dict_vendor_t);
 	if (!vendor) {
 	oom:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
@@ -976,7 +976,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	if (!children) {
 		children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
 		if (!children) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 		if (dict_attr_children_set(parent, children) < 0) return -1;
@@ -1102,7 +1102,7 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 		 *	updated to point to the new definition.
 		 */
 		if (!fr_hash_table_replace(namespace, da)) {
-			fr_strerror_printf("Internal error storing attribute");
+			fr_strerror_const("Internal error storing attribute");
 			goto error;
 		}
 	}
@@ -1131,12 +1131,12 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 		v6->type = FR_TYPE_IPV6_ADDR;
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
-			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv4 version of combo attribute");
 			goto error;
 		}
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v6)) {
-			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv6 version of combo attribute");
 			goto error;
 		}
 		break;
@@ -1157,12 +1157,12 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 		v6->type = FR_TYPE_IPV6_PREFIX;
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
-			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv4 version of combo attribute");
 			goto error;
 		}
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v6)) {
-			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv6 version of combo attribute");
 			goto error;
 		}
 		break;
@@ -1306,7 +1306,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	If the parent isn't a key field, then we CANNOT add a child struct.
 	 */
 	if (!fr_dict_attr_is_key_field(da) && child_struct) {
-		fr_strerror_printf("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
+		fr_strerror_const("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
 		return -1;
 	}
 
@@ -1536,7 +1536,7 @@ int fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 		fr_value_box_increment(&v);
 
 		if (fr_value_box_cmp_op(T_OP_CMP_EQ, &v, &s) == 0) {
-			fr_strerror_printf("No free integer values for enumeration");
+			fr_strerror_const("No free integer values for enumeration");
 			return -1;
 		}
 
@@ -1620,7 +1620,7 @@ int fr_dict_oid_component_legacy(unsigned int *out, char const **oid)
 		return 0;
 
 	default:
-		fr_strerror_printf("Unexpected text after OID component");
+		fr_strerror_const("Unexpected text after OID component");
 		*out = 0;
 		return -1;
 	}
@@ -1686,7 +1686,7 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 	 */
 	if (((*parent)->type != FR_TYPE_VENDOR) && ((*parent)->type != FR_TYPE_VSA) && !(*parent)->flags.is_root &&
 	    (num > UINT8_MAX)) {
-		fr_strerror_printf("TLV attributes must be between 0..255 inclusive");
+		fr_strerror_const("TLV attributes must be between 0..255 inclusive");
 		return 0;
 	}
 
@@ -1954,12 +1954,12 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 					    &our_name, SIZE_MAX,
 					    fr_dict_attr_allowed_chars);
 	if (len == 0) {
-		fr_strerror_printf("Zero length attribute name");
+		fr_strerror_const("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return 0;
 	}
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name too long");
+		fr_strerror_const("Attribute name too long");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
@@ -2547,12 +2547,12 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 					    &our_name, SIZE_MAX,
 					    fr_dict_attr_allowed_chars);
 	if (len == 0) {
-		fr_strerror_printf("Zero length attribute name");
+		fr_strerror_const("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return 0;
 	}
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name too long");
+		fr_strerror_const("Attribute name too long");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
@@ -2907,13 +2907,13 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	fr_dict_t *dict;
 
 	if (!dict_gctx) {
-		fr_strerror_printf("Initialise global dictionary ctx with fr_dict_global_ctx_init()");
+		fr_strerror_const("Initialise global dictionary ctx with fr_dict_global_ctx_init()");
 		return NULL;
 	}
 
 	dict = talloc_zero(ctx, fr_dict_t);
 	if (!dict) {
-		fr_strerror_printf("Failed allocating memory for dictionary");
+		fr_strerror_const("Failed allocating memory for dictionary");
 	error:
 		talloc_free(dict);
 		return NULL;
@@ -2928,7 +2928,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 */
 	dict->pool = talloc_pool(dict, DICT_POOL_SIZE);
 	if (!dict->pool) {
-		fr_strerror_printf("Failed allocating talloc pool for dictionary");
+		fr_strerror_const("Failed allocating talloc pool for dictionary");
 		goto error;
 	}
 
@@ -3042,7 +3042,7 @@ int fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load)
 
 	for (p = to_load; p->out; p++) {
 		if (unlikely(!p->attr)) {
-			fr_strerror_printf("Invalid autoload entry, missing attribute pointer");
+			fr_strerror_const("Invalid autoload entry, missing attribute pointer");
 			return -1;
 		}
 
@@ -3081,7 +3081,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 
 	for (p = to_load; p->out; p++) {
 		if (!p->dict) {
-			fr_strerror_printf("Invalid autoload entry, missing dictionary pointer");
+			fr_strerror_const("Invalid autoload entry, missing dictionary pointer");
 			return -1;
 		}
 
@@ -3128,7 +3128,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 		fr_dict_t *dict = NULL;
 
 		if (unlikely(!p->proto)) {
-			fr_strerror_printf("autoload missing parameter proto");
+			fr_strerror_const("autoload missing parameter proto");
 			return -1;
 		}
 
@@ -3266,7 +3266,7 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	bool		still_loaded = false;
 
 	if (gctx->internal) {
-		fr_strerror_printf("Refusing to free dict gctx.  Internal dictionary is still loaded");
+		fr_strerror_const("Refusing to free dict gctx.  Internal dictionary is still loaded");
 		still_loaded = true;
 	}
 
@@ -3305,19 +3305,19 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	fr_dict_gctx_t *new_ctx;
 
 	if (!dict_dir) {
-		fr_strerror_printf("No dictionary location provided");
+		fr_strerror_const("No dictionary location provided");
 		return NULL;
 	}
 
 	new_ctx = talloc_zero(ctx, fr_dict_gctx_t);
 	if (!new_ctx) {
-		fr_strerror_printf("Out of Memory");
+		fr_strerror_const("Out of Memory");
 		return NULL;
 	}
 
 	new_ctx->protocol_by_name = fr_hash_table_create(new_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
 	if (!new_ctx->protocol_by_name) {
-		fr_strerror_printf("Failed initializing protocol_by_name hash");
+		fr_strerror_const("Failed initializing protocol_by_name hash");
 	error:
 		talloc_free(new_ctx);
 		return NULL;
@@ -3325,7 +3325,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 
 	new_ctx->protocol_by_num = fr_hash_table_create(new_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
 	if (!new_ctx->protocol_by_num) {
-		fr_strerror_printf("Failed initializing protocol_by_num hash");
+		fr_strerror_const("Failed initializing protocol_by_num hash");
 		goto error;
 	}
 
@@ -3475,7 +3475,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 	if (len < 0) len = strlen(name);
 
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name is too long");
+		fr_strerror_const("Attribute name is too long");
 		return -1;
 	}
 

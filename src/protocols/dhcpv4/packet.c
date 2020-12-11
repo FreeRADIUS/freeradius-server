@@ -126,7 +126,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 	for (i = 0; i < 14; i++) {
 		vp = fr_pair_afrom_da(ctx, *dhcp_header_attrs[i]);
 		if (!vp) {
-			fr_strerror_printf_push("Cannot decode packet due to internal error");
+			fr_strerror_const_push("Cannot decode packet due to internal error");
 		error:
 			talloc_free(vp);
 			fr_cursor_head(cursor);
@@ -368,7 +368,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 	mtu = fr_pair_find_by_da(&head, attr_dhcp_interface_mtu_size);
 
 	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
-		fr_strerror_printf("Client says MTU is smaller than minimum permitted by the specification");
+		fr_strerror_const("Client says MTU is smaller than minimum permitted by the specification");
 		return -1;
 	}
 
@@ -433,7 +433,7 @@ fr_radius_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len
 	/* Now that checks are done, allocate packet */
 	packet = fr_radius_alloc(NULL, false);
 	if (!packet) {
-		fr_strerror_printf("Failed allocating packet");
+		fr_strerror_const("Failed allocating packet");
 		return NULL;
 	}
 

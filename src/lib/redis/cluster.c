@@ -448,11 +448,11 @@ static fr_redis_cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_sl
 	} else if (strncmp(REDIS_ERROR_ASK_STR, redirect->str, sizeof(REDIS_ERROR_ASK_STR) - 1) == 0) {
 		q = p + sizeof(REDIS_ERROR_ASK_STR);	/* not a typo, skip space too */
 	} else {
-		fr_strerror_printf("No '-MOVED' or '-ASK' log_prefix");
+		fr_strerror_const("No '-MOVED' or '-ASK' log_prefix");
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 	if ((size_t)(q - p) >= (size_t)redirect->len) {
-		fr_strerror_printf("Truncated");
+		fr_strerror_const("Truncated");
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 	p = q;
@@ -464,7 +464,7 @@ static fr_redis_cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_sl
 	p = q;
 
 	if (*p != ' ') {
-		fr_strerror_printf("Missing key/host separator");
+		fr_strerror_const("Missing key/host separator");
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 	p++;			/* Skip the ' ' */
@@ -615,7 +615,7 @@ do { \
 		spare = fr_fifo_peek(cluster->free_nodes);
 		if (!spare) {
 		out_of_nodes:
-			fr_strerror_printf("Reached maximum connected nodes");
+			fr_strerror_const("Reached maximum connected nodes");
 			rcode = FR_REDIS_CLUSTER_RCODE_FAILED;
 		error:
 			cluster->remapping = false;
@@ -858,7 +858,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 	switch (fr_redis_command_status(conn, reply)) {
 	case REDIS_RCODE_RECONNECT:
 		fr_redis_reply_free(&reply);
-		fr_strerror_printf("No connections available");
+		fr_strerror_const("No connections available");
 		return FR_REDIS_CLUSTER_RCODE_NO_CONNECTION;
 
 	case REDIS_RCODE_ERROR:
@@ -868,7 +868,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
 			fr_redis_reply_free(&reply);
 			return FR_REDIS_CLUSTER_RCODE_IGNORED;
 		}
-		fr_strerror_printf("Unknown client error");
+		fr_strerror_const("Unknown client error");
 		return FR_REDIS_CLUSTER_RCODE_FAILED;
 
 	case REDIS_RCODE_SUCCESS:
@@ -1131,7 +1131,7 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 	 */
 	spare = fr_fifo_peek(cluster->free_nodes);
 	if (!spare) {
-		fr_strerror_printf("Reached maximum connected nodes");
+		fr_strerror_const("Reached maximum connected nodes");
 		pthread_mutex_unlock(&cluster->mutex);
 		return FR_REDIS_CLUSTER_RCODE_FAILED;
 	}
@@ -1164,7 +1164,7 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 		fr_fifo_push(cluster->free_nodes, spare);
 		pthread_mutex_unlock(&cluster->mutex);
 
-		fr_strerror_printf("No connections available");
+		fr_strerror_const("No connections available");
 		return FR_REDIS_CLUSTER_RCODE_NO_CONNECTION;
 	}
 	fr_pool_connection_release(found->pool, NULL, rconn);
@@ -2053,7 +2053,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 
 		spare = fr_fifo_peek(cluster->free_nodes);
 		if (!spare) {
-			fr_strerror_printf("Reached maximum connected nodes");
+			fr_strerror_const("Reached maximum connected nodes");
 			pthread_mutex_unlock(&cluster->mutex);
 			return -1;
 		}
@@ -2135,7 +2135,7 @@ ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 	context.count = 0;
 	context.found = talloc_zero_array(ctx, fr_socket_t, in_use);
 	if (!context.found) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 

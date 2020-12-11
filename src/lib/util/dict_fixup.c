@@ -96,7 +96,7 @@ static inline CC_HINT(always_inline) int dict_fixup_common(char const *filename,
 {
 	common->filename = talloc_strdup(common, filename);
 	if (!common->filename) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 	common->line = line;
@@ -134,7 +134,7 @@ int dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
 	fixup = talloc(fctx->pool, dict_fixup_enumv_t);
 	if (!fixup) {
 	oom:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 	*fixup = (dict_fixup_enumv_t) {
@@ -211,7 +211,7 @@ int dict_fixup_group(dict_fixup_ctx_t *fctx, char const *filename, int line,
 
 	fixup = talloc(fctx->pool, dict_fixup_group_t);
 	if (!fixup) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 	*fixup = (dict_fixup_group_t) {
@@ -378,7 +378,7 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 
 	fixup = talloc(fctx->pool, dict_fixup_clone_t);
 	if (!fixup) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 	*fixup = (dict_fixup_clone_t) {

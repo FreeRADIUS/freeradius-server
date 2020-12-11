@@ -35,9 +35,9 @@ RCSID("$Id$")
 typedef struct fr_log_entry_s fr_log_entry_t;
 struct fr_log_entry_s {
 	fr_dlist_t	list;
-	char		*msg;		//!< Log message.
+	char const	*msg;		//!< Log message.
 
-	char		*subject;	//!< Subject for error markers.
+	char const	*subject;	//!< Subject for error markers.
 	size_t		offset;		//!< Where to place the msg marker relative to the subject.
 };
 
@@ -386,7 +386,7 @@ void fr_strerror_marker_printf_push_head(char const *subject, size_t offset, cha
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *strerror_const(char const *msg)
+static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *msg)
 {
 	fr_log_entry_t	*entry;
 	fr_log_buffer_t	*buffer;
@@ -402,12 +402,14 @@ static fr_log_entry_t *strerror_const(char const *msg)
 		return NULL;
 	}
 
-	entry = talloc_zero(pool_alternate(buffer), fr_log_entry_t);
+	entry = talloc(pool_alternate(buffer), fr_log_entry_t);
 	if (!entry) {
 		fr_perror("Failed allocating memory for libradius error buffer");
 		return NULL;
 	}
-	memcpy(&entry->msg, &msg, sizeof(entry->msg));
+	*entry = (fr_log_entry_t) {
+		.msg = msg
+	};
 
 	pool_free_alt(buffer);
 	fr_strerror_clear(buffer, false);
@@ -452,7 +454,7 @@ static fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *
 		fr_perror("Failed allocating memory for libradius error buffer");
 		return NULL;
 	}
-	memcpy(&entry->msg, &msg, sizeof(entry->msg));
+	entry->msg = msg;
 
 	return entry;
 }

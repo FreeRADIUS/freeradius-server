@@ -72,7 +72,7 @@ int fr_aka_sim_crypto_init_checkcode(TALLOC_CTX *ctx, fr_aka_sim_checkcode_t **c
 {
 	*checkcode = talloc_zero(ctx, fr_aka_sim_checkcode_t);
 	if (!*checkcode) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
@@ -198,7 +198,7 @@ static int fr_aka_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_l
 		p += p[1] << 2;		/* Advance */
 	}
 
-	fr_strerror_printf("No MAC attribute found");
+	fr_strerror_const("No MAC attribute found");
 
 	return 1;
 }
@@ -249,17 +249,17 @@ ssize_t fr_aka_sim_crypto_sign_packet(uint8_t out[static AKA_SIM_MAC_DIGEST_SIZE
 	uint16_t		packet_len;
 
 	if (unlikely(!eap_packet)) {
-		fr_strerror_printf("Invalid argument: eap_packet is NULL");
+		fr_strerror_const("Invalid argument: eap_packet is NULL");
 		return -1;
 	}
 
 	if (unlikely(!md)) {
-		fr_strerror_printf("Invalid argument: md is NULL");
+		fr_strerror_const("Invalid argument: md is NULL");
 		return -1;
 	}
 
 	if (unlikely(!key) || (key_len == 0)) {
-		fr_strerror_printf("Invalid argument: key is NULL");
+		fr_strerror_const("Invalid argument: key is NULL");
 		return -1;
 	}
 
@@ -949,7 +949,7 @@ int fr_aka_sim_crypto_kdf_0_reauth(fr_aka_sim_keys_t *keys)
    	 *	the peer initialize the counter to one."
 	 */
 	if (keys->reauth.counter == 0) {
-		fr_strerror_printf("Re-authentication counter not initialised, must be >= 1");
+		fr_strerror_const("Re-authentication counter not initialised, must be >= 1");
 		return -1;
 	}
 

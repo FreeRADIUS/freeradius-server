@@ -1079,7 +1079,7 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const *
 	worker = talloc_zero(ctx, fr_worker_t);
 	if (!worker) {
 nomem:
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 
@@ -1120,7 +1120,7 @@ nomem:
 
 	worker->aq_control = fr_atomic_queue_alloc(worker, 1024);
 	if (!worker->aq_control) {
-		fr_strerror_printf("Failed creating atomic queue");
+		fr_strerror_const("Failed creating atomic queue");
 	fail:
 		talloc_free(worker);
 		return NULL;
@@ -1128,30 +1128,30 @@ nomem:
 
 	worker->control = fr_control_create(worker, el, worker->aq_control);
 	if (!worker->control) {
-		fr_strerror_printf_push("Failed creating control plane");
+		fr_strerror_const_push("Failed creating control plane");
 		goto fail;
 	}
 
 	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, worker_channel_callback) < 0) {
-		fr_strerror_printf_push("Failed adding control channel");
+		fr_strerror_const_push("Failed adding control channel");
 		goto fail;
 	}
 
 	worker->runnable = fr_heap_talloc_alloc(worker, worker_runnable_cmp, request_t, runnable_id);
 	if (!worker->runnable) {
-		fr_strerror_printf("Failed creating runnable heap");
+		fr_strerror_const("Failed creating runnable heap");
 		goto fail;
 	}
 
 	worker->time_order = fr_heap_talloc_alloc(worker, worker_time_order_cmp, request_t, time_order_id);
 	if (!worker->time_order) {
-		fr_strerror_printf("Failed creating time_order heap");
+		fr_strerror_const("Failed creating time_order heap");
 		goto fail;
 	}
 
 	worker->dedup = rbtree_talloc_alloc(worker, worker_dedup_cmp, request_t, NULL, RBTREE_FLAG_NONE);
 	if (!worker->dedup) {
-		fr_strerror_printf("Failed creating de_dup tree");
+		fr_strerror_const("Failed creating de_dup tree");
 		goto fail;
 	}
 
@@ -1255,13 +1255,13 @@ int fr_worker_request_add(request_t *request, module_method_t process, void *ctx
 	fr_time_t now;
 
 	if (!request || !process) {
-		fr_strerror_printf("Invalid arguments");
+		fr_strerror_const("Invalid arguments");
 		return -1;
 	}
 
 	worker = thread_local_worker;
 	if (!worker) {
-		fr_strerror_printf("No worker has been defined");
+		fr_strerror_const("No worker has been defined");
 		return -1;
 	}
 

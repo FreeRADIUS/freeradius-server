@@ -859,7 +859,7 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 
 	config = talloc_zero(ctx, main_config_t);
 	if (!config) {
-		fr_strerror_printf("Failed allocating main config");
+		fr_strerror_const("Failed allocating main config");
 		return NULL;
 	}
 

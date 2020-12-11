@@ -91,7 +91,7 @@ int fr_tcp_read_packet(fr_radius_packet_t *packet, uint32_t max_attributes, bool
 		packet_len = (packet->vector[2] << 8) | packet->vector[3];
 
 		if (packet_len < RADIUS_HEADER_LENGTH) {
-			fr_strerror_printf("Discarding packet: Smaller than RFC minimum of 20 bytes");
+			fr_strerror_const("Discarding packet: Smaller than RFC minimum of 20 bytes");
 			return -1;
 		}
 
@@ -99,13 +99,13 @@ int fr_tcp_read_packet(fr_radius_packet_t *packet, uint32_t max_attributes, bool
 		 *	If the packet is too big, then the socket is bad.
 		 */
 		if (packet_len > MAX_PACKET_LEN) {
-			fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes");
+			fr_strerror_const("Discarding packet: Larger than RFC limitation of 4096 bytes");
 			return -1;
 		}
 
 		packet->data = talloc_array(packet, uint8_t, packet_len);
 		if (!packet->data) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 

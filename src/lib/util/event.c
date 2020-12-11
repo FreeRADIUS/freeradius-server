@@ -578,7 +578,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		} while (1);
 
 		if (out > end) {
-			fr_strerror_printf("Out of memory to store kevent filters");
+			fr_strerror_const("Out of memory to store kevent filters");
 			return -1;
 		}
 
@@ -588,7 +588,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		if (has_current_func &&
 		    (!has_prev_func || (current_fflags != prev_fflags))) {
 			if ((size_t)(add_p - add) >= (NUM_ELEMENTS(add))) {
-		     		fr_strerror_printf("Out of memory to store kevent EV_ADD filters");
+		     		fr_strerror_const("Out of memory to store kevent EV_ADD filters");
 		     		return -1;
 		     	}
 		     	EVENT_DEBUG("\tEV_SET EV_ADD filter %s (%i), flags %i, fflags %i",
@@ -775,7 +775,7 @@ int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
 	int		ret;
 
 	if (fr_event_loop_exiting(dst)) {
-		fr_strerror_printf("Destination event loop exiting");
+		fr_strerror_const("Destination event loop exiting");
 		return -1;
 	}
 
@@ -909,7 +909,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	struct kevent		evset[10];
 
 	if (unlikely(!el)) {
-		fr_strerror_printf("Invalid argument: NULL event list");
+		fr_strerror_const("Invalid argument: NULL event list");
 		return -1;
 	}
 
@@ -919,7 +919,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	}
 
 	if (unlikely(el->exit)) {
-		fr_strerror_printf("Event loop exiting");
+		fr_strerror_const("Event loop exiting");
 		return -1;
 	}
 
@@ -945,7 +945,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	if (!ef) {
 		ef = talloc_zero(el, fr_event_fd_t);
 		if (unlikely(!ef)) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 		talloc_set_destructor(ef, _event_fd_delete);
@@ -1062,7 +1062,7 @@ int _fr_event_fd_insert(NDEBUG_LOCATION_ARGS
 	fr_event_io_func_t funcs =  { .read = read_fn, .write = write_fn };
 
 	if (unlikely(!read_fn && !write_fn)) {
-		fr_strerror_printf("Invalid arguments: All callbacks are NULL");
+		fr_strerror_const("Invalid arguments: All callbacks are NULL");
 		return -1;
 	}
 
@@ -1227,22 +1227,22 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 	fr_event_timer_t *ev;
 
 	if (unlikely(!el)) {
-		fr_strerror_printf("Invalid arguments: NULL event list");
+		fr_strerror_const("Invalid arguments: NULL event list");
 		return -1;
 	}
 
 	if (unlikely(!callback)) {
-		fr_strerror_printf("Invalid arguments: NULL callback");
+		fr_strerror_const("Invalid arguments: NULL callback");
 		return -1;
 	}
 
 	if (unlikely(!ev_p)) {
-		fr_strerror_printf("Invalid arguments: NULL ev_p");
+		fr_strerror_const("Invalid arguments: NULL ev_p");
 		return -1;
 	}
 
 	if (unlikely(el->exit)) {
-		fr_strerror_printf("Event loop exiting");
+		fr_strerror_const("Event loop exiting");
 		return -1;
 	}
 
@@ -1327,7 +1327,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 */
 		if (!fr_dlist_entry_in_list(&ev->entry)) fr_dlist_insert_head(&el->ev_to_add, ev);
 	} else if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
-		fr_strerror_printf_push("Failed inserting event");
+		fr_strerror_const_push("Failed inserting event");
 		talloc_set_destructor(ev, NULL);
 		*ev_p = NULL;
 		talloc_free(ev);
@@ -1745,7 +1745,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	if (el->will_exit || el->exit) {
 		el->exit = el->will_exit;
 
-		fr_strerror_printf("Event loop exiting");
+		fr_strerror_const("Event loop exiting");
 		return -1;
 	}
 
@@ -2260,7 +2260,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 	el->time = fr_time;
@@ -2269,7 +2269,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 
 	el->times = fr_heap_talloc_alloc(el, fr_event_timer_cmp, fr_event_timer_t, heap_id);
 	if (!el->times) {
-		fr_strerror_printf("Failed allocating event heap");
+		fr_strerror_const("Failed allocating event heap");
 	error:
 		talloc_free(el);
 		return NULL;
@@ -2277,14 +2277,14 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 
 	el->fds = rbtree_talloc_alloc(el, fr_event_fd_cmp, fr_event_fd_t, NULL, 0);
 	if (!el->fds) {
-		fr_strerror_printf("Failed allocating FD tree");
+		fr_strerror_const("Failed allocating FD tree");
 		goto error;
 	}
 
 #ifdef LOCAL_PID
 	el->pids = fr_heap_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, heap_id);
 	if (!el->pids) {
-		fr_strerror_printf("Failed allocating PID heap");
+		fr_strerror_const("Failed allocating PID heap");
 		goto error;
 	}
 #endif

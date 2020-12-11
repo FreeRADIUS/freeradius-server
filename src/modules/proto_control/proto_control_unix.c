@@ -397,13 +397,13 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	struct stat buf;
 
 	if (!path) {
-		fr_strerror_printf("No path provided, was NULL");
+		fr_strerror_const("No path provided, was NULL");
 		return -1;
 	}
 
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
-		fr_strerror_printf("Path too long in socket filename");
+		fr_strerror_const("Path too long in socket filename");
 		return -1;
 	}
 
@@ -628,7 +628,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 
 	p = strrchr(dir, FR_DIR_SEP);
 	if (!p) {
-		fr_strerror_printf("Failed determining parent directory");
+		fr_strerror_const("Failed determining parent directory");
 	error:
 		talloc_free(dir);
 		if (sock_fd >= 0) close(sock_fd);
@@ -773,7 +773,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 
 	name = strrchr(path, FR_DIR_SEP);
 	if (!name) {
-		fr_strerror_printf("Can't determine socket name");
+		fr_strerror_const("Can't determine socket name");
 		goto error;
 	}
 	name++;
@@ -829,7 +829,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	len = strlen(path);
 #endif
 	if (len >= sizeof(salocal.sun_path)) {
-		fr_strerror_printf("Path too long in socket filename");
+		fr_strerror_const("Path too long in socket filename");
 		goto error;
 	}
 

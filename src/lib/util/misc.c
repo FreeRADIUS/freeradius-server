@@ -297,12 +297,12 @@ int fr_blocking(int fd)
 #else
 int fr_nonblock(UNUSED int fd)
 {
-	fr_strerror_printf("Non blocking sockets are not supported");
+	fr_strerror_const("Non blocking sockets are not supported");
 	return -1;
 }
 int fr_blocking(UNUSED int fd)
 {
-	fr_strerror_printf("Non blocking sockets are not supported");
+	fr_strerror_const("Non blocking sockets are not supported");
 	return -1;
 }
 #endif
@@ -379,7 +379,7 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 
 			/* Select returned 0 which means it reached the timeout */
 			if (ret == 0) {
-				fr_strerror_printf("Write timed out");
+				fr_strerror_const("Write timed out");
 				return -1;
 			}
 
@@ -627,7 +627,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 			p++;
 			subseconds = strtoul(p, &tail, 10);
 			if (subseconds > NSEC) {
-				fr_strerror_printf("Invalid nanosecond specifier");
+				fr_strerror_const("Invalid nanosecond specifier");
 				return -1;
 			}
 
@@ -727,7 +727,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	f[2] = mystrtok(&p, " \t");
 	f[3] = mystrtok(&p, " \t"); /* may, or may not, be present */
 	if (!f[0] || !f[1] || !f[2]) {
-		fr_strerror_printf("Too few fields");
+		fr_strerror_const("Too few fields");
 		return -1;
 	}
 
@@ -783,7 +783,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 
 	/* month not found? */
 	if (tm->tm_mon == 12) {
-		fr_strerror_printf("No month found");
+		fr_strerror_const("No month found");
 		return -1;
 	}
 
@@ -802,7 +802,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		 *  impossible to tell what's the day, and what's the year.
 		 */
 		if (tm->tm_mday < 1900) {
-			fr_strerror_printf("Invalid year < 1900");
+			fr_strerror_const("Invalid year < 1900");
 			return -1;
 		}
 
@@ -818,7 +818,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	 *  If the day is out of range, die.
 	 */
 	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
-		fr_strerror_printf("Invalid day of month");
+		fr_strerror_const("Invalid day of month");
 		return -1;
 	}
 
@@ -829,7 +829,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		f[0] = f[3];	/* HH */
 		f[1] = strchr(f[0], ':'); /* find : separator */
 		if (!f[1]) {
-			fr_strerror_printf("No ':' after hour");
+			fr_strerror_const("No ':' after hour");
 			return -1;
 		}
 
@@ -880,7 +880,7 @@ int fr_size_from_str(size_t *out, char const *str)
 	switch (tolower(q[0])) {
 	case 'n':		/* nibble */
 		if (size & 0x01) {
-			fr_strerror_printf("Sizes specified in nibbles must be an even number");
+			fr_strerror_const("Sizes specified in nibbles must be an even number");
 			return -1;
 		}
 		size /= 2;
