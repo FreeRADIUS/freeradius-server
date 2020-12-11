@@ -252,7 +252,6 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 
 	read = fread(sbuff->end, 1, available, fctx->file);
 	sbuff->end += read;	/* Advance end, which increases fr_sbuff_remaining() */
-	*sbuff->end = '\0';	/* Terminate sbuff */
 
 	/** Check for errors
 	 */
