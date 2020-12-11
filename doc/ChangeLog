@@ -1,5 +1,7 @@
 FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
+	* Many new "unlang" documentation files.  See "make docsite"
+	  and doc/antora
 	* Update dictionary.bskyb.  Fixes #3339.
 	* Update alcatel.sr. #3495
 	* Abfab-tls updates from Alejandro Perez.
@@ -43,6 +45,11 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  a fixed-size "varchar".
 	* The default minimum TLS version is not TLS 1.2
 	  Older versions can be allowed by setting tls_min_version
+	* Add "tls_min_version" to ldap module configuration.
+	* Added mods-available/dhcp_sql which is a DHCP-specific instance
+	  of the SQL module.
+	* Add radmin command "show client list verbose", which gives a lot
+	  more information about each client.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
@@ -77,9 +84,13 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Update the "sql" module so that it uses fewer handles for group selection,
 	  which means that it is less likely to complain that the
 	  connection pool is exhausted.
+	* Update the "sql" module to return "ok" when no rows have been updated
+	  for accounting on/off.
 	* Make the "date" module handle UTC more consistently.
 	* Check for, and complain about, inconsistent use of tls_min_version
 	  versus disable_tlsv1
+	* Fix "read client from SQL" code so that it properly ties clients
+	  to a virtual server.  Also document the behavior.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
