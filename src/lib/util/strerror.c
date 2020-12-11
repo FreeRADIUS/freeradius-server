@@ -18,8 +18,8 @@
  *
  * @file src/lib/util/strerror.c
  *
- * @copyright 2017 The FreeRADIUS server project
- * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2017-2020 The FreeRADIUS server project
+ * @copyright 2017-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
@@ -75,16 +75,6 @@ static void _fr_logging_free(void *arg)
 	fr_strerror_buffer = NULL;
 
 	logging_stop = true;
-}
-
-/** Reset cursor state
- *
- * @param[in] buffer	to clear cursor of.
- */
-static inline CC_HINT(always_inline) void fr_strerror_clear(fr_log_buffer_t *buffer)
-{
-	fr_dlist_clear(&buffer->entries);
-
 }
 
 /** Initialise thread local storage
@@ -167,7 +157,7 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 	if (!fmt) {
 		talloc_free_children(buffer->pool_a);
 		talloc_free_children(buffer->pool_b);
-		fr_strerror_clear(buffer);
+		fr_dlist_clear(&buffer->entries);
 		return NULL;
 	}
 
@@ -186,7 +176,7 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 	entry->offset = 0;
 
 	pool_alt_free_children(buffer);
-	fr_strerror_clear(buffer);
+	fr_dlist_clear(&buffer->entries);
 	fr_dlist_insert_tail(&buffer->entries, entry);
 
 	return entry;
@@ -404,7 +394,7 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *
 	 *	Clear any existing log messages
 	 */
 	if (!msg) {
-		fr_strerror_clear(buffer);
+		fr_dlist_clear(&buffer->entries);
 		talloc_free_children(buffer->pool_a);
 		talloc_free_children(buffer->pool_b);
 		return NULL;
@@ -428,7 +418,7 @@ static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *
 	entry->offset = 0;
 
 	pool_alt_free_children(buffer);
-	fr_strerror_clear(buffer);
+	fr_dlist_clear(&buffer->entries);
 	fr_dlist_insert_tail(&buffer->entries, entry);
 
 	return entry;
@@ -551,7 +541,7 @@ char const *fr_strerror(void)
 	 *	Memory gets freed on next call to
 	 *	fr_strerror_printf or fr_strerror_printf_push.
 	 */
-	fr_strerror_clear(buffer);
+	fr_dlist_clear(&buffer->entries);
 
 	return entry->msg;
 }
@@ -581,7 +571,7 @@ char const *fr_strerror_marker(char const **subject, size_t *offset)
 	 *	Memory gets freed on next call to
 	 *	fr_strerror_printf or fr_strerror_printf_push.
 	 */
-	fr_strerror_clear(buffer);
+	fr_dlist_clear(&buffer->entries);
 
 	*subject = entry->subject;
 	*offset = entry->offset;
