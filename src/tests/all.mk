@@ -102,7 +102,7 @@ define TEST_BOOTSTRAP
 #
 #  The test files are files without extensions.
 #
-OUTPUT.$(TEST) := $(patsubst %/,%,$(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
+OUTPUT.$(TEST) := $(patsubst %/,%,$(subst $(top_srcdir)/src,$(BUILD_DIR),$(abspath $(DIR))))
 OUTPUT := $$(OUTPUT.$(TEST))
 
 #
