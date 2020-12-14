@@ -66,6 +66,14 @@ FILES := $(filter-out $(FILES_SKIP),$(FILES))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
+#  For each output file, find the rlm_*.la module which it needs,
+#  and make the output file depend on the library.  That way if the
+#  module is re-built, then the tests are re-run.
+#
+$(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(dir $x)))))
+
+
+#
 #  Files in the output dir depend on the unit tests
 #
 #	src/tests/modules/*/FOO.unlang	unlang for the test
