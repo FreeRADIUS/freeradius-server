@@ -47,8 +47,12 @@ extern "C" {
  */
 #ifdef __GNUC__
 #  define CC_HINT(_x) __attribute__ ((_x))
+#  define likely(_x)	__builtin_expect((_x), 1)
+#  define unlikely(_x)	__builtin_expect((_x), 0)
 #else
 #  define CC_HINT(_x)
+#  define likely(_x)	_x
+#  define unlikely(_x)	_x
 #endif
 
 #ifdef HAVE_ATTRIBUTE_BOUNDED

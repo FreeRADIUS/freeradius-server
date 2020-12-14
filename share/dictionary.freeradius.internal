@@ -527,6 +527,11 @@ ATTRIBUTE	Tmp-Cast-IPv4Prefix			1870	ipv4prefix
 #	these attributes.
 #
 ATTRIBUTE	WiMAX-MN-NAI				1900	string
+ATTRIBUTE	WiMAX-SIM-Ki				1901	octets
+ATTRIBUTE	WiMAX-SIM-OPc				1902	octets
+ATTRIBUTE	WiMAX-SIM-AMF				1903	octets
+ATTRIBUTE	WiMAX-SIM-SQN				1904	octets
+ATTRIBUTE	WiMAX-SIM-RAND				1905	octets
 
 ATTRIBUTE	TLS-Cert-Serial				1910	string
 ATTRIBUTE	TLS-Cert-Expiration			1911	string
