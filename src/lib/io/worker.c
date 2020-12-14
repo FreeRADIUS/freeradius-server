@@ -936,6 +936,20 @@ redo:
 		break;
 	}
 
+	/*
+	 *	If we're running a real request, then the final
+	 *	indentation MUST be zero.  Otherwise we skipped
+	 *	something!
+	 *
+	 *	Also check that the request is NOT marked as
+	 *	"yielded", but is in fact done.
+	 *
+	 *	@todo - check that the stack is at frame 0, otherwise
+	 *	more things have gone wrong.
+	 */
+	fr_assert(request->parent || (request->log.unlang_indent == 0));
+	fr_assert(!unlang_interpret_is_resumable(request));
+
 	RDEBUG("Done request");
 
 	/*

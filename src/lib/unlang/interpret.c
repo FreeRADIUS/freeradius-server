@@ -1159,6 +1159,21 @@ rlm_rcode_t unlang_interpret_stack_result(request_t *request)
 	return stack->result;
 }
 
+/** Check if a request as resumable.
+ *
+ * @param[in] request		The current request.
+ * @return
+ *	- true if the request is resumable (i.e. has yeilded)
+ *	- false if the request is not resumable (i.e. has not yielded)
+ */
+bool unlang_interpret_is_resumable(request_t *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+
+	return is_yielded(frame);
+}
+
 /** Mark a request as resumable.
  *
  * It's not called "unlang_interpret", because it doesn't actually
