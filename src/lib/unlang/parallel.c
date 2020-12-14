@@ -45,13 +45,13 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
 	 *	the parent anything.  Because we have that kind of
 	 *	relationship.
 	 *
-	 *	Note that we call unlang_interpret_resumable() here
+	 *	Note that we call unlang_interpret_mark_resumable() here
 	 *	because unlang_parallel_process() calls
 	 *	unlang_interpret(), and NOT child->async->process.
 	 */
 	if (request->parent) {
 		child->state = CHILD_EXITED;
-		unlang_interpret_resumable(request->parent);
+		unlang_interpret_mark_resumable(request->parent);
 	}
 
 	/*
@@ -272,7 +272,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		case CHILD_YIELDED:
 			fr_assert(state->children[i].child != NULL);
 
-			if (state->children[i].child->runnable_id == -2) { /* see unlang_interpret_resumable() */
+			if (state->children[i].child->runnable_id == -2) { /* see unlang_interpret_mark_resumable() */
 				(void) fr_heap_extract(state->children[i].child->backlog,
 						       state->children[i].child);
 				goto runnable;

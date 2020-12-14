@@ -186,7 +186,7 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 
 	if (state->ev) fr_event_timer_delete(&state->ev);
 
-	unlang_interpret_resumable(request);
+	unlang_interpret_mark_resumable(request);
 }
 
 static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
@@ -208,7 +208,7 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 
 		REDEBUG("Error reading from child program - %s", fr_syserror(errno));
 		unlang_tmpl_exec_cleanup(request);
-		unlang_interpret_resumable(request);
+		unlang_interpret_mark_resumable(request);
 		return;
 	}
 
@@ -280,7 +280,7 @@ static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_
 	state->failed = true;
 
 	unlang_tmpl_exec_cleanup(request);
-	unlang_interpret_resumable(request);
+	unlang_interpret_mark_resumable(request);
 }
 
 

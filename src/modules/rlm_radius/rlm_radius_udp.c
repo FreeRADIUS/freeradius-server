@@ -2553,7 +2553,7 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 	r->rcode = RLM_MODULE_FAIL;
 	r->treq = NULL;
 
-	unlang_interpret_resumable(request);
+	unlang_interpret_mark_resumable(request);
 }
 
 /** Response has already been written to the rctx at this point
@@ -2570,7 +2570,7 @@ static void request_complete(request_t *request, void *preq, void *rctx, UNUSED 
 
 	r->treq = NULL;
 
-	unlang_interpret_resumable(request);
+	unlang_interpret_mark_resumable(request);
 }
 
 /** Explicitly free resources associated with the protocol request

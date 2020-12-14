@@ -166,7 +166,7 @@ static void _xlat_icmp_timeout(request_t *request,
 
 	RDEBUG2("No response to ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
 
-	unlang_interpret_resumable(request);
+	unlang_interpret_mark_resumable(request);
 }
 
 /** Xlat to delay the request
@@ -375,7 +375,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	 *	We have a reply!
 	 */
 	echo->replied = true;
-	unlang_interpret_resumable(echo->request);
+	unlang_interpret_mark_resumable(echo->request);
 }
 
 static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,

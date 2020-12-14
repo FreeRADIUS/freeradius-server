@@ -133,7 +133,7 @@ static void _sigtran_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fl
 	if (txn->ctx.defunct) return;		/* Request was stopped */
 
 	fr_assert(txn->ctx.request);
-	unlang_interpret_resumable(txn->ctx.request);	/* Continue processing */
+	unlang_interpret_mark_resumable(txn->ctx.request);	/* Continue processing */
 }
 
 /** Called by a new thread to register a new req_pipe

@@ -95,7 +95,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			 */
 			curl_multi_remove_handle(mandle, candle);
 
-			unlang_interpret_resumable(request);
+			unlang_interpret_mark_resumable(request);
 		}
 			break;
 

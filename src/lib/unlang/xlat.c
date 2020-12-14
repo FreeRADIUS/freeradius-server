@@ -373,7 +373,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
  *	A common pattern is to use ``return unlang_xlat_yield(...)``.
  *
  * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_interpret_resumable().
+ * @param[in] resume		Called on unlang_interpret_mark_resumable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] rctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
