@@ -71,6 +71,12 @@ bool const sbuff_char_class_float[UINT8_MAX + 1] = {
 
 bool const sbuff_char_class_hex[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_HEX };
 bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
+bool const sbuff_char_whitespace[UINT8_MAX + 1] = {
+	['\t'] = true, ['\n'] = true, ['\r'] = true, ['\f'] = true, ['\v'] = true, [' '] = true,
+};
+bool const sbuff_char_blank[UINT8_MAX + 1] = {
+	['\t'] = true, [' '] = true,
+};
 
 /** Escape rules to use when an escape_rules pointer is NULL
  */
