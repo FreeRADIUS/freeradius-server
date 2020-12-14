@@ -320,7 +320,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -443,7 +443,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			RETURN_MODULE_HANDLED;
 		}
 
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 			/*
@@ -580,7 +580,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
