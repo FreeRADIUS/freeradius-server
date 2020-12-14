@@ -284,6 +284,7 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] rhs_rules		rules for parsing RHS attribute references.
  * @param[in] rhs_term		terminating rules for the RHS
+ * @param[in] whitespace	what kind of whitespace to skip
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -291,7 +292,8 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
 int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		    fr_table_num_sorted_t const *op_table, size_t op_table_len,
 		    tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
-		    fr_sbuff_parse_rules_t const *rhs_term)
+		    fr_sbuff_parse_rules_t const *rhs_term,
+		    bool const whitespace[static UINT8_MAX + 1])
 {
 	ssize_t		slen;
 	fr_token_t	token;
@@ -301,7 +303,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	*out = NULL;
 	MEM(map = talloc_zero(ctx, map_t));
 
-	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+	slen = fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, whitespace);
 	if (slen < 0) return -1;
 
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &sbuff, T_BARE_WORD);
@@ -355,7 +357,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		if (tmpl_resolve(map->lhs) < 0) goto error;
 	}
 
-	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+	slen = fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, whitespace);
 	if (slen < 0) {
 		fr_strerror_const("Unexpected end of string after parsing left side");
 		goto error;
@@ -370,7 +372,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		goto error;
 	}
 
-	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+	slen = fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, whitespace);
 	if (slen < 0) {
 		fr_strerror_const("Unexpected end of string after operator");
 		goto error;
@@ -712,7 +714,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 	fr_sbuff_t sbuff = FR_SBUFF_IN(vp_str, strlen(vp_str));
 
 	if (map_afrom_sbuff(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
-			    lhs_rules, rhs_rules, NULL) < 0) {
+			    lhs_rules, rhs_rules, NULL, sbuff_char_whitespace) < 0) {
 		return -1;
 	}
 
