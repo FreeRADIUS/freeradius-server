@@ -191,47 +191,20 @@ jobs:
       run: |
         yum install -y *.rpm
 
+    - name: Config check
+      run: |
+        radiusd -XC
+
+    #
+    #  We now perform some post-install tests that depend on the availability
+    #  of the source tree
+    #
     - name: Install pre-built eapol_test
       run: |
         yum install -y libnl3 make gdb which
         mv eapol_test /usr/local/bin
         chmod +x /usr/local/bin/eapol_test
 
-    - name: Config check
-      run: |
-        radiusd -XC
-        echo 'bill Password.Cleartext := asdf1234' > /etc/raddb/mods-config/files/authorize
-
-    - name: Start FreeRADIUS
-      run: |
-        radiusd -xx
-
-    - name: PAP auth with package config
-      run: |
-        echo "User-Name=bill, User-Password=asdf1234" | radclient 127.0.0.1 auth testing123
-
-    - name: EAP-TLS auth with package config and certs built on package install
-      run: |
-       echo 'network={'                                      > /eapol_test-eap-tls.conf
-       echo 'key_mgmt=WPA-EAP'                              >> /eapol_test-eap-tls.conf
-       echo 'eap=TLS'                                       >> /eapol_test-eap-tls.conf
-       echo 'identity="bill"'                               >> /eapol_test-eap-tls.conf
-       echo 'ca_cert="/etc/raddb/certs/rsa/ca.pem"'         >> /eapol_test-eap-tls.conf
-       echo 'client_cert="/etc/raddb/certs/rsa/client.pem"' >> /eapol_test-eap-tls.conf
-       echo 'private_key="/etc/raddb/certs/rsa/client.key"' >> /eapol_test-eap-tls.conf
-       echo 'private_key_passwd="whatever"'                 >> /eapol_test-eap-tls.conf
-       echo 'eapol_flags=3'                                 >> /eapol_test-eap-tls.conf
-       echo '}'                                             >> /eapol_test-eap-tls.conf
-       eapol_test -a 127.0.0.1 -s testing123 -c /eapol_test-eap-tls.conf -r 1
-
-    - name: Stop FreeRADIUS
-      run: |
-        pkill radiusd
-
-    #
-    #  We now perform some post-install tests that depend on the availability
-    #  of the source tree
-    #
     - uses: actions/checkout@v2
       with:
         path: freeradius
