@@ -1,7 +1,7 @@
 #
 #	The WiMAX module currently takes no configuration.
 #
-#### INSTRUCTIONS FOR V1 and V2.0 WIMAX #########################
+#	## Instructions for v1 and v2.0 WiMAX
 #
 #	It should be listed in the "authorize" and "preacct" sections.
 #	This enables the module to fix the horrible binary version
@@ -91,15 +91,18 @@
 #		  to a specific DHCP server.  vDHCP-RK is the same
 #		  thing.
 #
-#### INSTRUCTIONS FOR V2.1 (LTE) WIMAX ############################
+#
+#
+#	## Instructions for v2.1 (LTE) WiMAX:
 #
 #	When called from the "authorize" this module will detect the
 #	presence of the following attributes:
+#
 #		request:WiMAX-Re-synchronization-Info
 #		control:WiMAX-SIM-Ki
 #		control:WiMAX-SIM-OPc
 #
-#	If all attributes are present (i.e. a known SIM is requesting a
+#	If all attributes are present, (i.e. a known SIM is requesting a
 #	resync) then the module will attempt to extract the new SQN and
 #	save it in control:WiMAX-SIM-SQN. It will also save a copy of
 #	RAND from the request in control:WiMAX-SIM-RAND.
@@ -108,6 +111,7 @@
 #	e.g. via a call to the sql module using some unlang
 #
 #	When called in the "post_auth" section it looks for:
+#
 #		control:WiMAX-SIM-Ki
 #		control:WiMAX-SIM-OPc
 #		control:WiMAX-SIM-AMF
@@ -122,7 +126,8 @@
 #	stored in reply:WiMAX-E-UTRAN-Vector-RAND. If it is present then
 #	the value is simply copied to the reply attribute.
 #
-#   Then it calls the Milenage algorithm to generate:
+#	Then it calls the Milenage algorithm to generate:
+#
 #		reply:WiMAX-E-UTRAN-Vector-XRES
 #		reply:WiMAX-E-UTRAN-Vector-AUTN
 #
