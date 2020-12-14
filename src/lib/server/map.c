@@ -1155,7 +1155,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 				talloc_free(n);
 				goto error;
 			}
-		} else {
+		} else if (map->op != T_OP_CMP_TRUE) {
 			if (fr_value_box_cast(n, &n->data, n->vp_type, n->da, tmpl_value(map->rhs)) < 0) {
 				RPEDEBUG("Implicit cast failed");
 				rcode = -1;
