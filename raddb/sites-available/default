@@ -349,10 +349,25 @@ authorize {
 	#
 	#  The WiMAX specification says that the Calling-Station-Id
 	#  is 6 octets of the MAC.  This definition conflicts with
-	#  RFC 3580, and all common RADIUS practices.  Un-commenting
-	#  the "wimax" module here means that it will fix the
-	#  Calling-Station-Id attribute to the normal format as
-	#  specified in RFC 3580 Section 3.21
+	#  RFC 3580, and all common RADIUS practices.  If you are using
+	#  old style WiMAX (non LTE) the un-commenting the "wimax" module
+	#  here means that it will fix the Calling-Station-Id attribute to
+	#  the normal format as specified in RFC 3580 Section 3.21.
+	#
+	#  If you are using WiMAX 2.1 (LTE) then un-commenting will allow 
+	#  the module to handle SQN resyncronisation. Prior to calling the
+	#  module it is necessary to populate the following attributes
+	#  with the relevant keys:
+	#    control:WiMAX-SIM-Ki
+	#    control:WiMAX-SIM-OPc
+	#
+	#  If WiMAX-Re-synchronization-Info is found in the request then
+	#  the module will attempt to extract SQN and store it in
+	#  control:WiMAX-SIM-SQN. Also a copy of RAND is extracted to
+	#  control:WiMAX-SIM-RAND.
+	#
+	#  If the SIM cannot be authenticated using Ki and OPc then reject
+	#  will be returned.
 #	wimax
 
 	#
@@ -774,8 +789,8 @@ post-auth {
 	exec
 
 	#
-	#  Calculate the various WiMAX keys.  In order for this to work,
-	#  you will need to define the WiMAX NAI, usually via
+	#  In order to calcualate the various keys for old style WiMAX
+	#  (non LTE) you will need to define the WiMAX NAI, usually via
 	#
 	#	update request {
 	#	       &WiMAX-MN-NAI = "%{User-Name}"
@@ -796,8 +811,14 @@ post-auth {
 	#  are included.  See "raddb/modules/wimax", configuration
 	#  entry "delete_mppe_keys" for more information.
 	#
+	#  For LTE style WiMAX you need to populate the following with the
+	#  relevant values:
+	#    control:WiMAX-SIM-Ki
+	#    control:WiMAX-SIM-OPc
+	#    control:WiMAX-SIM-AMF
+	#    control:WiMAX-SIM-SQN
+	#
 #	wimax
-
 
 	#  If there is a client certificate (EAP-TLS, sometimes PEAP
 	#  and TTLS), then some attributes are filled out after the

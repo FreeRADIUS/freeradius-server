@@ -555,4 +555,59 @@ ATTRIBUTE	WiMAX-Visited-HNP-PMIP6			136	ipv6prefix
 ATTRIBUTE	WiMAX-Visited-Interface-Id-PMIP6	137	ifid
 ATTRIBUTE	WiMAX-Visited-IPv4-HoA-PMIP6-2		138	ipaddr
 
+ATTRIBUTE	WiMAX-AE-Command-Code			143	byte
+
+VALUE	WiMAX-AE-Command-Code	Authentication-Information-Request	1
+VALUE	WiMAX-AE-Command-Code	Authentication-Information-Answer	2
+VALUE	WiMAX-AE-Command-Code	Update-Location-Request		3
+VALUE	WiMAX-AE-Command-Code	Update-Location-Answer		4
+VALUE	WiMAX-AE-Command-Code	Cancel-Location-Request		5
+VALUE	WiMAX-AE-Command-Code	Cancel-Location-Answer		6
+VALUE	WiMAX-AE-Command-Code	Purge-UE-Request		7
+VALUE	WiMAX-AE-Command-Code	Purge-UE-Answer			8
+VALUE	WiMAX-AE-Command-Code	Insert-Subscriber-Data-Request	9
+VALUE	WiMAX-AE-Command-Code	Insert-Subscriber-Data-Answer	10
+VALUE	WiMAX-AE-Command-Code	Delete-Subscriber-Data-Request	11
+VALUE	WiMAX-AE-Command-Code	Delete-Subscriber-Data-Answer	12
+VALUE	WiMAX-AE-Command-Code	Notification-Request		13
+VALUE	WiMAX-AE-Command-Code	Notification-Answer		14
+VALUE	WiMAX-AE-Command-Code	Accounting			15
+
+ATTRIBUTE	WiMAX-Requested-EUTRAN-Authentication-Info	144	tlv
+ATTRIBUTE	WiMAX-Number-Of-Requested-Vectors	144.1	integer
+ATTRIBUTE	WiMAX-Immediate-Response-Preferred	144.2	integer
+ATTRIBUTE	WiMAX-Re-synchronization-Info		144.3	octets
+
+VALUE	WiMAX-Immediate-Response-Preferred	Yes		0
+
+ATTRIBUTE	WiMAX-Authentication-Info		145	tlv
+ATTRIBUTE	WiMAX-E-UTRAN-Vector			145.1	tlv
+ATTRIBUTE	WiMAX-E-UTRAN-Vector-Item-Number	145.1.1	integer
+ATTRIBUTE	WiMAX-E-UTRAN-Vector-RAND		145.1.2	octets
+ATTRIBUTE	WiMAX-E-UTRAN-Vector-XRES		145.1.3	octets
+ATTRIBUTE	WiMAX-E-UTRAN-Vector-AUTN		145.1.4	octets
+ATTRIBUTE	WiMAX-E-UTRAN-Vector-KASME		145.1.5	octets
+
+ATTRIBUTE	WiMAX-Visited-PLMN-ID			146	octets
+
+ATTRIBUTE	WiMAX-RAT-Type				150	integer
+
+ATTRIBUTE	WiMAX-Cancellation-Type		155	byte
+
+VALUE	WiMAX-Cancellation-Type	MME_UPDATE_PROCEDURE		0
+VALUE	WiMAX-Cancellation-Type	SUBSCRIPTION_WITHDRAWAL		2
+VALUE	WiMAX-Cancellation-Type	INITIAL_ATTACH_PROCEDURE	4
+
+ATTRIBUTE	WiMAX-EPS-Location-Information		156	tlv
+ATTRIBUTE	WiMAX-E-UTRAN-Cell-Global-Identity	156.1	octets
+ATTRIBUTE	WiMAX-Tracking-Area-Identity		156.2	octets
+ATTRIBUTE	WiMAX-Geographical-Information		156.3	octets
+ATTRIBUTE	WiMAX-Geodetic-Information		156.4	octets
+ATTRIBUTE	WiMAX-Current-Location-Retrieved	156.5	byte
+ATTRIBUTE	WiMAX-Age-Of-Location-Information	156.6	integer
+
+VALUE	WiMAX-Current-Location-Retrieved	Active-Location-Retrieval	0
+
+ATTRIBUTE	WiMAX-Service-Selection			166	string
+
 END-VENDOR	WiMAX
