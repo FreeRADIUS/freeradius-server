@@ -999,7 +999,7 @@ int main(int argc, char *argv[])
 		if (!fr_pair_validate(failed, &filter_vps, &request->reply_pairs)) {
 			fr_pair_validate_debug(request, failed);
 			fr_perror("Output file %s does not match attributes in filter %s",
-				  output_file ? output_file : input_file, filter_file);
+				  output_file ? output_file : "-", filter_file);
 			ret = EXIT_FAILURE;
 			goto cleanup;
 		}
