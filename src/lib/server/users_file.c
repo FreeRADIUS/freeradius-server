@@ -38,34 +38,6 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 /*
- *	Debug code.
- */
-#if 0
-static void debug_pair_list(PAIR_LIST *pl)
-{
-	fr_pair_t *vp;
-	fr_cursor_t cursor;
-
-	while(pl) {
-		printf("Pair list: %s\n", pl->name);
-		printf("** Check:\n");
-		for(vp = fr_cursor_init(&cursor, &pl->check); vp; vp = fr_cursor_next(&cursor)) {
-			printf("    ");
-			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
-			printf("\n");
-		}
-		printf("** Reply:\n");
-		for(vp = fr_cursor_init(&cursor, &pl->reply); vp; vp = fr_cursor_next(&cursor)) {
-			printf("    ");
-			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
-			printf("\n");
-		}
-		pl = pl->next;
-	}
-}
-#endif
-
-/*
  *	Free a PAIR_LIST
  */
 void pairlist_free(PAIR_LIST **pl)
@@ -74,37 +46,171 @@ void pairlist_free(PAIR_LIST **pl)
 	*pl = NULL;
 }
 
+static fr_table_num_sorted_t const check_cmp_op_table[] = {
+	{ L("!*"),	T_OP_CMP_FALSE		},
+	{ L("!="),	T_OP_NE			},
+	{ L("!~"),	T_OP_REG_NE		},
+	{ L("+="),	T_OP_ADD		},
+	{ L(":="),	T_OP_SET		},
+	{ L("<"),	T_OP_LT			},
+	{ L("<="),	T_OP_LE			},
+	{ L("="),	T_OP_EQ			},
+	{ L("=*"),	T_OP_CMP_TRUE		},
+	{ L("=="),	T_OP_CMP_EQ		},
+	{ L("=~"),	T_OP_REG_EQ		},
+	{ L(">"),	T_OP_GT			},
+	{ L(">="),	T_OP_GE			}
+};
+static size_t check_cmp_op_table_len = NUM_ELEMENTS(check_cmp_op_table);
 
-#define FIND_MODE_NAME  0
-#define FIND_MODE_WANT_REPLY 1
-#define FIND_MODE_HAVE_REPLY 2
+static const fr_sbuff_term_t name_terms = FR_SBUFF_TERMS(
+		L("\t"),
+		L("\n"),
+		L(" "),
+		L("#"),
+);
+
+static fr_sbuff_parse_rules_t const rhs_term = {
+	.escapes = &(fr_sbuff_unescape_rules_t){
+		.chr = '\\',
+		/*
+		 *	Allow barewords to contain whitespace
+		 *	if they're escaped.
+		 */
+		.subs = {
+			['\t'] = '\t',
+			['\n'] = '\n',
+			[' '] = ' '
+		},
+		.do_hex = true,
+		.do_oct = false
+	},
+	.terminals = &FR_SBUFF_TERMS(
+		L("\t"),
+		L("\n"),
+		L(" "),
+		L("#"),
+		L(","),
+	)
+};
+
+/*
+ *	Caller saw a $INCLUDE at the start of a line.
+ */
+static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbuff, PAIR_LIST **last,
+			 char const *file, int lineno)
+{
+	size_t		len;
+	char		*newfile, *p, c;
+	fr_sbuff_marker_t name;
+
+	*last = NULL;
+	fr_sbuff_advance(sbuff, 8);
+
+	/*
+	 *	Skip spaces after the $INCLUDE.
+	 */
+	if (fr_sbuff_adv_past_allowed(sbuff, SIZE_MAX, sbuff_char_blank) == 0) {
+		ERROR("%s[%d]: Unexpected text after $INCLUDE",
+		      file, lineno);
+		return -1;
+	}
+
+	/*
+	 *	Remember when the name started, and skip over the name
+	 *	until spaces, comments, or LF
+	 */
+	fr_sbuff_marker(&name, sbuff);
+	len = fr_sbuff_adv_until(sbuff, SIZE_MAX, &name_terms, 0);
+	if (len == 0) {
+		fr_sbuff_marker_release(&name);
+		ERROR("%s[%d]: No filename after $INCLUDE ",
+		      file, lineno);
+		return -1;
+	}
+
+	/*
+	 *	If the input file is a relative path, try to copy the
+	 *	leading directory from it.  If there's no leading
+	 *	directory, just use the $INCLUDE name as-is.
+	 *
+	 *	If there is a leading directory in the input name,
+	 *	paste that as the directory to the $INCLUDE name.
+	 *
+	 *	Otherwise the $INCLUDE name is an absolute path, use
+	 *	it as -is.
+	 */
+	c = *fr_sbuff_current(&name);
+	if (c != '/') {
+		p = strrchr(file, '/');
+
+		if (!p) goto copy_name;
+
+		newfile = talloc_asprintf(NULL, "%.*s/%.*s",
+					  (int) (p - file), file,
+					  (int) len, fr_sbuff_current(&name));
+	} else {
+	copy_name:
+		newfile = talloc_asprintf(NULL, "%.*s", (int) len, fr_sbuff_current(&name));
+	}
+	fr_sbuff_marker_release(&name);
+
+	/*
+	 *	Skip spaces and comments after the name.
+	 */
+	fr_sbuff_adv_past_allowed(sbuff, SIZE_MAX, sbuff_char_blank);
+	if (fr_sbuff_next_if_char(sbuff, '#')) {
+		(void) fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n');
+	}
+
+	/*
+	 *	There's no LF, but if we skip non-spaces and
+	 *	non-comments to find the LF, then there must be extra
+	 *	text after the filename.  That's an error.
+	 *
+	 *	Unless the line has EOF after the filename.  in which
+	 *	case this error will get hit, too.
+	 */
+	if (!fr_sbuff_is_char(sbuff, '\n') &&
+	    (fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n') > 0)) {
+		ERROR("%s[%d]: Unexpected text after filename",
+		      file, lineno);
+		talloc_free(newfile);
+		return -1;
+	}
+
+	/*
+	 *	Read the $INCLUDEd file recursively.
+	 */
+	if (pairlist_read(ctx, dict, newfile, last, 0) != 0) {
+		ERROR("%s[%d]: Could not read included file %s: %s",
+		      file, lineno, newfile, fr_syserror(errno));
+		talloc_free(newfile);
+		return -1;
+	}
+	talloc_free(newfile);
+
+	return 0;
+}
+
 
 /*
  *	Read the users file. Return a PAIR_LIST.
  */
 int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain)
 {
-	FILE *fp;
-	int mode = FIND_MODE_NAME;
-	char entry[256];
-	char buffer[8192];
-	char const *ptr;
-	fr_pair_list_t check_tmp;
-	fr_pair_list_t reply_tmp;
-	PAIR_LIST *pl = NULL, *t;
-	PAIR_LIST **last = &pl;
-	int order = 0;
-	int lineno = 0;
-	int entry_lineno = 0;
-	fr_token_t parsecode;
-#ifdef HAVE_REGEX_H
-	fr_pair_t *vp;
-	fr_cursor_t cursor;
-#endif
-	char newfile[8192];
+	char			*q;
+	PAIR_LIST		*pl = NULL;
+	PAIR_LIST		**last = &pl;
+	int			order = 0;
+	int			lineno		= 1;
+	map_t			**map_tail;
+	FILE			*fp;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_file_t	fctx;
+	tmpl_rules_t		lhs_rules, rhs_rules;
+	char			buffer[8192];
 
-	fr_pair_list_init(&check_tmp);
-	fr_pair_list_init(&reply_tmp);
 	DEBUG2("Reading file %s", file);
 
 	/*
@@ -112,254 +218,408 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	 *	more useful...
 	 */
 	if ((fp = fopen(file, "r")) == NULL) {
-		if (!complain)
-			return -1;
+		if (!complain) return -1;
+
 		ERROR("Couldn't open %s for reading: %s", file, fr_syserror(errno));
 		return -1;
 	}
 
-	/*
-	 *	Allocate the structure for one entry.
-	 */
-	MEM(t = talloc_zero(ctx, PAIR_LIST));
-	fr_pair_list_init(&t->check);
-	fr_pair_list_init(&t->reply);
+	fr_sbuff_init_file(&sbuff, &fctx, buffer, sizeof(buffer), fp, SIZE_MAX);
 
-	/*
-	 *	Read the entire file into memory for speed.
-	 */
-	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		lineno++;
-
-		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
-			fclose(fp);
-			ERROR("%s[%d]: line too long", file, lineno);
-			pairlist_free(&pl);
-			return -1;
-		}
+	lhs_rules = (tmpl_rules_t) {
+		.dict_def = dict,
+		.request_def = REQUEST_CURRENT,
+		.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+		.disallow_qualifiers = true, /* for now, until more tests are made */
 
 		/*
-		 *	If the line contains nothing but whitespace,
-		 *	ignore it.
+		 *	Otherwise the tmpl code returns 0 when asked
+		 *	to parse unknown names.  So we say "please
+		 *	parse unknown names as unresolved attributes",
+		 *	and then do a second pass to complain that the
+		 *	thing isn't known.
 		 */
-		ptr = buffer;
-		fr_skip_whitespace(ptr);
+		.allow_unresolved = true,
+	};
+	rhs_rules = (tmpl_rules_t) {
+		.dict_def = dict,
+		.request_def = REQUEST_CURRENT,
+		.prefix = TMPL_ATTR_REF_PREFIX_YES,
+		.disallow_qualifiers = true, /* for now, until rlm_files supports it */
+	};
 
-		if (*ptr == '#' || *ptr == '\n' || !*ptr) continue;
+	while (true) {
+		size_t		len;
+		bool		comma;
+		bool		leading_spaces;
+		PAIR_LIST	*t;
 
-parse_again:
-		if (mode == FIND_MODE_NAME) {
-			/*
-			 *	The user's name MUST be the first text on the line.
-			 */
-			if (isspace((int) buffer[0]))  {
-				ERROR("%s[%d]: Entry does not begin with a user name",
-				      file, lineno);
-				fclose(fp);
-				return -1;
-			}
-
-			/*
-			 *	Get the name.
-			 */
-			ptr = buffer;
-			getword(&ptr, entry, sizeof(entry), false);
-			entry_lineno = lineno;
-
-			/*
-			 *	Include another file if we see
-			 *	$INCLUDE filename
-			 */
-			if (strcasecmp(entry, "$INCLUDE") == 0) {
-				fr_skip_whitespace(ptr);
-
-				/*
-				 *	If it's an absolute pathname,
-				 *	then use it verbatim.
-				 *
-				 *	If not, then make the $include
-				 *	files *relative* to the current
-				 *	file.
-				 */
-				if (FR_DIR_IS_RELATIVE(ptr)) {
-					char *p;
-
-					strlcpy(newfile, file,
-						sizeof(newfile));
-					p = strrchr(newfile, FR_DIR_SEP);
-					if (!p) {
-						p = newfile + strlen(newfile);
-						*p = FR_DIR_SEP;
-					}
-					getword(&ptr, p + 1, sizeof(newfile) - 1 - (p - newfile), false);
-				} else {
-					getword(&ptr, newfile, sizeof(newfile), false);
-				}
-
-				if (pairlist_read(ctx, dict, newfile, last, 0) != 0) {
-					pairlist_free(&pl);
-					ERROR("%s[%d]: Could not open included file %s: %s",
-					      file, lineno, newfile, fr_syserror(errno));
-					fclose(fp);
-					return -1;
-				}
-
-				/*
-				 *	t may be NULL, it may have one
-				 *	entry, or it may be a linked list
-				 *	of entries.  Go to the end of the
-				 *	list.
-				 */
-				while (*last) {
-					(*last)->order = order++;
-					last = &((*last)->next);
-				}
-				continue;
-			} /* $INCLUDE ... */
-
-			/*
-			 *	Parse the check values
-			 */
-			fr_assert(check_tmp == NULL);
-			fr_assert(reply_tmp == NULL);
-
-			parsecode = fr_pair_list_afrom_str(t, dict, ptr, &check_tmp);
-			if (parsecode == T_INVALID) {
-				pairlist_free(&pl);
-				PERROR("%s[%d]: Parse error (check) for entry %s", file, lineno, entry);
-				fclose(fp);
-				return -1;
-			}
-
-			if (parsecode != T_EOL) {
-				pairlist_free(&pl);
-				talloc_free(t);
-				ERROR("%s[%d]: Invalid text after check attributes for entry %s",
-				      file, lineno, entry);
-				fclose(fp);
-				return -1;
-			}
-
-#ifdef HAVE_REGEX_H
-			/*
-			 *	Do some more sanity checks.
-			 */
-			for (vp = fr_cursor_init(&cursor, &check_tmp);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				if (((vp->op == T_OP_REG_EQ) ||
-				     (vp->op == T_OP_REG_NE)) &&
-				    (vp->vp_type != FR_TYPE_STRING)) {
-					pairlist_free(&pl);
-					talloc_free(t);
-					ERROR("%s[%d]: Cannot use regular expressions for non-string "
-					      "attributes in entry %s", file, lineno, entry);
-					fclose(fp);
-					return -1;
-				}
-			}
-#endif
-
-			/*
-			 *	The reply MUST be on a new line.
-			 */
-			mode = FIND_MODE_WANT_REPLY;
+		/*
+		 *	If the line is empty or has only comments,
+		 *	then we don't care about leading spaces.
+		 */
+		leading_spaces = (fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank) > 0);
+		if (fr_sbuff_next_if_char(&sbuff, '#')) {
+			(void) fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n');
+		}
+		if (fr_sbuff_next_if_char(&sbuff, '\n')) {
+			lineno++;
 			continue;
 		}
 
 		/*
-		 *	We COULD have a reply, OR we could have a new entry.
+		 *	We're trying to read a name.  It MUST have
+		 *	been at the start of the line.  So whatever
+		 *	this is, it's wrong.
 		 */
-		if (mode == FIND_MODE_WANT_REPLY) {
-			if (!isspace((int) buffer[0])) goto create_entry;
-
-			mode = FIND_MODE_HAVE_REPLY;
-		}
-
-		/*
-		 *	mode == FIND_MODE_HAVE_REPLY
-		 */
-
-		/*
-		 *	The previous line ended with a comma, and then
-		 *	we have the start of a new entry!
-		 */
-		if (!isspace((int) buffer[0])) {
-		trailing_comma:
-			pairlist_free(&pl);
-			talloc_free(t);
-			ERROR("%s[%d]: Invalid comma after the reply attributes.  Please delete it.",
+		if (leading_spaces) {
+			ERROR("%s[%d]: Entry does not begin with a user name",
 			      file, lineno);
-			fclose(fp);
-			return -1;
-		}
-
-		/*
-		 *	Parse the reply values.  If there's a trailing
-		 *	comma, keep parsing the reply values.
-		 */
-		parsecode = fr_pair_list_afrom_str(t, dict, buffer, &reply_tmp);
-		if (parsecode == T_COMMA) {
-			continue;
-		}
-
-		/*
-		 *	We expect an EOL.  Anything else is an error.
-		 */
-		if (parsecode != T_EOL) {
+		fail:
 			pairlist_free(&pl);
-			talloc_free(t);
-			PERROR("%s[%d]: Parse error (reply) for entry %s", file, lineno, entry);
 			fclose(fp);
 			return -1;
 		}
 
-	create_entry:
-		t->check = check_tmp;
-		t->reply = reply_tmp;
-		t->lineno = entry_lineno;
-		t->order = order++;
-		fr_pair_list_init(&check_tmp);
-		fr_pair_list_init(&reply_tmp);
+		/*
+		 *	$INCLUDE filename
+		 */
+		if (fr_sbuff_is_str(&sbuff, "$INCLUDE", 8)) {
+			if (users_include(ctx, dict, &sbuff, &t, file, lineno) < 0) goto fail;
 
-		t->name = talloc_typed_strdup(t, entry);
+			/*
+			 *	The file may have read no entries, one
+			 *	entry, or it may be a linked list of
+			 *	entries.  Go to the end of the list.
+			 */
+			*last = t;
+			while (*last) {
+				(*last)->order = order++;
+				last = &((*last)->next);
+			}
 
-		*last = t;
-		last = &(t->next);
+			if (fr_sbuff_next_if_char(&sbuff, '\n')) {
+				lineno++;
+				continue;
+			}
+
+			/*
+			 *	The next character is not LF, but the
+			 *	function skipped to LF.  So, by
+			 *	process of elimination, we must be at
+			 *	EOF.
+			 */
+			break;
+		} /* else it wasn't $INCLUDE */
 
 		/*
-		 *	Allocate another one, just in case it's needed.
+		 *	We MUST be either at a valid entry, OR at EOF.
 		 */
 		MEM(t = talloc_zero(ctx, PAIR_LIST));
-		fr_pair_list_init(&t->check);
-		fr_pair_list_init(&t->reply);
+		t->lineno = lineno;
+		t->order = order++;
 
 		/*
-		 *	Look for a name.  If we came here because
-		 *	there were no reply attributes, then re-parse
-		 *	the current line, instead of reading another one.
+		 *	Copy the name from the entry.
 		 */
-		mode = FIND_MODE_NAME;
-		if (feof(fp)) break;
-		if (!isspace((int) buffer[0])) goto parse_again;
+		len = fr_sbuff_out_abstrncpy_until(t, &q, &sbuff, SIZE_MAX, &name_terms, NULL);
+		if (len == 0) {
+			talloc_free(t);
+			break;
+		}
+		t->name = q;
+		map_tail = &t->check;
+
+		lhs_rules.list_def = PAIR_LIST_CONTROL;
+		comma = false;
+
+check_item:
+		/*
+		 *	Skip spaces before the item, and allow the
+		 *	check list to end on comment or LF.
+		 *
+		 *	Note that we _don't_ call map_afrom_sbuff() to
+		 *	skip spaces, as it will skip LF, too!
+		 */
+		(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+		if (fr_sbuff_is_char(&sbuff, '#')) goto check_item_comment;
+		if (fr_sbuff_is_char(&sbuff, '\n')) goto check_item_end;
+
+		/*
+		 *	Try to parse the check item.
+		 */
+		if (map_afrom_sbuff(t, map_tail, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
+				    &lhs_rules, &rhs_rules, &rhs_term, sbuff_char_blank) < 0) {
+			ERROR("%s[%d]: Failed reading check pair: %s",
+			      file, lineno, fr_strerror());
+		fail_entry:
+			talloc_free(t);
+			goto fail;
+		}
+
+		/*
+		 *	The map "succeeded", but no map was created.
+		 *	It must have hit a terminal character, OR EOF.
+		 *
+		 *	Except we've already skipped spaces, tabs,
+		 *	comments, and LFs.  So the only thing which is
+		 *	left is a comma.
+		 */
+		if (!*map_tail) {
+			if (fr_sbuff_is_char(&sbuff, ',')) {
+				ERROR("%s[%d]: Unexpected extra comma reading check pair",
+				      file, lineno);
+				goto fail_entry;
+			}
+
+			/*
+			 *	Otherwise map_afrom_sbuff() returned
+			 *	nothing, because there's no more
+			 *	input.
+			 */
+
+		add_entry:
+			*last = t;
+			break;
+		}
+		fr_assert((*map_tail)->lhs != NULL);
+		fr_assert((*map_tail)->rhs != NULL);
+		fr_assert((*map_tail)->next == NULL);
+
+		if (!tmpl_is_attr((*map_tail)->lhs)) {
+			ERROR("%s[%d]: Unknown attribute '%s'",
+			      file, lineno, (*map_tail)->lhs->name);
+			goto fail_entry;
+		}
+
+		if (!tmpl_is_data((*map_tail)->rhs) && !tmpl_is_exec((*map_tail)->rhs) &&
+		    !tmpl_contains_xlat((*map_tail)->rhs)) {
+			ERROR("%s[%d]: Invalid RHS '%s' for check item",
+			      file, lineno, (*map_tail)->rhs->name);
+			goto fail_entry;
+		}
+
+		map_tail = &(*map_tail)->next;
+
+		/*
+		 *	There can be spaces before any comma.
+		 */
+		(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+
+		/*
+		 *	Allow a comma after this item.  But remember
+		 *	if we had a comma.
+		 */
+		if (fr_sbuff_next_if_char(&sbuff, ',')) {
+			comma = true;
+			goto check_item;
+		}
+		comma = false;
+
+	check_item_comment:
+		/*
+		 *	There wasn't a comma after the item, so the
+		 *	next thing MUST be a comment, LF, EOF.
+		 *
+		 *	If there IS stuff before the LF, then it's
+		 *	unknown text.
+		 */
+		if (fr_sbuff_next_if_char(&sbuff, '#')) {
+			(void) fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n');
+		}
+	check_item_end:
+		if (fr_sbuff_next_if_char(&sbuff, '\n')) {
+			/*
+			 *	The check item list ended with a comma.
+			 *	That's bad.
+			 */
+			if (comma) {
+				ERROR("%s[%d]: Invalid comma ending the check item list.",
+				      file, lineno);
+				goto fail_entry;
+			}
+
+			lineno++;
+			goto setup_reply;
+		}
+
+		/*
+		 *	We didn't see SPACE LF or SPACE COMMENT LF.
+		 *	There's something else going on.
+		 */
+		if (fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n') > 0) {
+			ERROR("%s[%d]: Unexpected text after check items: %s",
+			      file, lineno, fr_strerror());
+			goto fail_entry;
+		}
+
+		/*
+		 *	The next character is not LF, but we
+		 *	skipped to LF above.  So, by process
+		 *	of elimination, we must be at EOF.
+		 */
+		if (!fr_sbuff_is_char(&sbuff, '\n')) {
+			goto add_entry;
+		}
+
+setup_reply:
+		/*
+		 *	Setup the reply items.
+		 */
+		map_tail = &t->reply;
+		lhs_rules.list_def = PAIR_LIST_REPLY;
+		comma = false;
+
+reply_item:
+		/*
+		 *	Reply items start with spaces.  If there's no
+		 *	spaces, then the current entry is done.  Add
+		 *	it to the list, and go back to reading the
+		 *	user name or $INCLUDE.
+		 */
+		if (fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank) == 0) {
+			if (comma) {
+				ERROR("%s[%d]: Unexpected trailing comma in previous line",
+				      file, lineno);
+				goto fail_entry;
+			}
+
+			/*
+			 *	The line doesn't begin with spaces.
+			 *	The list of reply items MUST be
+			 *	finished.  Go look for an entry name.
+			 *
+			 *	Note that we don't allow comments in
+			 *	the middle of the reply item list.  Oh
+			 *	well.
+			 */
+			*last = t;
+			last = &(t->next);
+			continue;
+
+		} else if (lineno == (t->lineno + 1)) {
+			fr_assert(comma == false);
+
+		} else if (!comma) {
+			ERROR("%s[%d]: Missing comma in previous line",
+			      file, lineno);
+			goto fail_entry;
+		}
+
+		/*
+		 *	SPACES COMMENT or SPACES LF means "end of
+		 *	reply item list"
+		 */
+		if (fr_sbuff_is_char(&sbuff, '#')) {
+			(void) fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n');
+		}
+		if (fr_sbuff_next_if_char(&sbuff, '\n')) {
+			lineno++;
+			goto add_entry;
+		}
+
+next_reply_item:
+		/*
+		 *	Unlike check items, we don't skip spaces or
+		 *	comments here.  All of the code paths which
+		 *	lead to here have already checked for those
+		 *	cases.
+		 */
+		if (map_afrom_sbuff(t, map_tail, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+				    &lhs_rules, &rhs_rules, &rhs_term, sbuff_char_blank) < 0) {
+			ERROR("%s[%d]: Failed reading reply pair: %s",
+			      file, lineno, fr_strerror());
+			goto fail;
+		}
+
+		/*
+		 *	The map "succeeded", but no map was created.
+		 *	Maybe we hit a terminal string, or EOF.
+		 *
+		 *	We can't have hit space/tab, as that was
+		 *	checked for at "reply_item", and again after
+		 *	map_afrom_sbuff(), if we actually got
+		 *	something.
+		 *
+		 *	What's left is a comment, comma, LF, or EOF.
+		 */
+		if (!*map_tail) {
+			(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+			if (fr_sbuff_is_char(&sbuff, ',')) {
+				ERROR("%s[%d]: Unexpected extra comma reading reply pair",
+				      file, lineno);
+				goto fail_entry;
+			}
+
+			if (fr_sbuff_is_char(&sbuff, '#')) goto reply_item_comment;
+			if (fr_sbuff_is_char(&sbuff, '\n')) goto reply_item_end;
+
+			/*
+			 *	We didn't read anything, but none of
+			 *	the terminal characters match.  It must be EOF.
+			 */
+			goto add_entry;
+		}
+		fr_assert((*map_tail)->lhs != NULL);
+		fr_assert((*map_tail)->rhs != NULL);
+		fr_assert((*map_tail)->next == NULL);
+
+		if (!tmpl_is_attr((*map_tail)->lhs)) {
+			ERROR("%s[%d]: Unknown attribute '%s'",
+			      file, lineno, (*map_tail)->lhs->name);
+			goto fail_entry;
+		}
+
+		if (!tmpl_is_data((*map_tail)->rhs) && !tmpl_is_exec((*map_tail)->rhs) &&
+		    !tmpl_contains_xlat((*map_tail)->rhs)) {
+			ERROR("%s[%d]: Invalid RHS '%s' for reply item",
+			      file, lineno, (*map_tail)->rhs->name);
+			goto fail_entry;
+		}
+
+		fr_assert(tmpl_list((*map_tail)->lhs) == PAIR_LIST_REPLY);
+
+		map_tail = &(*map_tail)->next;
+
+		(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+
+		/*
+		 *	Commas separate entries on the same line.  And
+		 *	we allow spaces after commas, too.
+		 */
+		if (fr_sbuff_next_if_char(&sbuff, ',')) {
+			comma = true;
+			(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+		} else {
+			comma = false;
+		}
+
+		/*
+		 *	Comments or LF will end this particular line.
+		 *
+		 *	Reading the next line will cause a complaint
+		 *	if this line ended with a comma.
+		 */
+	reply_item_comment:
+		if (fr_sbuff_next_if_char(&sbuff, '#')) {
+			(void) fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n');
+		}
+	reply_item_end:
+		if (fr_sbuff_next_if_char(&sbuff, '\n')) {
+			lineno++;
+			goto reply_item;
+		}
+
+		/*
+		 *	Not comment or LF, the content MUST be another
+		 *	pair.
+		 */
+		if (comma) goto next_reply_item;
+
+		ERROR("%s[%d]: Unexpected text after reply pair: %s",
+		      file, lineno, fr_sbuff_current(&sbuff));
+		goto fail_entry;
 	}
-
-	/*
-	 *	We're at EOF.  If we're supposed to read more, that's
-	 *	an error.
-	 */
-	if (mode == FIND_MODE_HAVE_REPLY) goto trailing_comma;
-
-	/*
-	 *	We had an entry, but no reply attributes.  That's OK.
-	 */
-	if (mode == FIND_MODE_WANT_REPLY) goto create_entry;
-
-	/*
-	 *	We allocated one more than we need, so free this one
-	 *	now.
-	 */
-	talloc_free(t);
 
 	/*
 	 *	Else we were looking for an entry.  We didn't get one

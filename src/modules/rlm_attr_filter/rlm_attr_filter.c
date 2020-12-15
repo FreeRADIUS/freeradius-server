@@ -107,7 +107,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
-	fr_pair_t *vp;
+	map_t *map;
 
 	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1);
 	if (rcode < 0) {
@@ -115,30 +115,40 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	}
 
 	/*
-	 * Walk through the 'attrs' file list.
+	 *	Walk through the 'attrs' file list.
 	 */
-
-	entry = attrs;
-	while (entry) {
-		entry->check = entry->reply;
-		entry->reply = NULL;
-
-		for (vp = fr_cursor_init(&cursor, &entry->check);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-		    /*
-		     * If it's NOT a vendor attribute,
-		     * and it's NOT a wire protocol
-		     * and we ignore Fall-Through,
-		     * then bitch about it, giving a good warning message.
-		     */
-		     if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
-			WARN("[%s]:%d Check item \"%s\"\n\tfound in filter list for realm \"%s\".\n",
-			       filename, entry->lineno, vp->da->name, entry->name);
-		    }
+	for (entry = attrs; entry != NULL; entry = entry->next) {
+		/*
+		 *	We apply the rules in the reply items.
+		 */
+		if (entry->check) {
+			WARN("%s[%d] Check list is not empty for entry \"%s\".\n",
+			     filename, entry->lineno, entry->name);
 		}
 
-		entry = entry->next;
+		for (map = fr_cursor_init(&cursor, &entry->reply);
+		     map;
+		     map = fr_cursor_next(&cursor)) {
+			fr_dict_attr_t const *da;
+
+			if (!tmpl_is_attr(map->lhs)) {
+				ERROR("%s[%d] Left side of filter %s is not an attribute",
+				      filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
+			da = tmpl_da(map->lhs);
+
+			/*
+			 * If it's NOT a vendor attribute,
+			 * and it's NOT a wire protocol
+			 * and we ignore Fall-Through,
+			 * then bitch about it, giving a good warning message.
+			 */
+			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
+				WARN("%s[%d] Check item \"%s\" was found in filter list for entry \"%s\".\n",
+				     filename, entry->lineno, da->name, entry->name);
+			}
+		}
 	}
 
 	*pair_list = attrs;
@@ -173,9 +183,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 								fr_radius_packet_t *packet)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
-	fr_pair_t	*vp;
-	fr_cursor_t	input, check, out;
-	fr_pair_t	*input_item, *check_item;
+	fr_cursor_t	out;
 	fr_pair_list_t	output;
 	PAIR_LIST	*pl;
 	int		found = 0;
@@ -209,6 +217,10 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	for (pl = inst->attrs; pl; pl = pl->next) {
 		int fall_through = 0;
 		int relax_filter = inst->relaxed;
+		map_t *map;
+		fr_pair_t *check_item, *input_item;
+		fr_pair_list_t check_list;
+		fr_cursor_t check, cursor;
 
 		/*
 		 *  If the current entry is NOT a default,
@@ -217,18 +229,27 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		 */
 		if ((strcmp(pl->name, "DEFAULT") != 0) &&
 		    (strcmp(keyname, pl->name) != 0))  {
-		    continue;
+			continue;
 		}
 
 		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = fr_cursor_init(&check, &pl->check);
-		     check_item;
-		     check_item = fr_cursor_next(&check)) {
+		fr_pair_list_init(&check_list);
+		fr_cursor_init(&check, &check_list);
+
+		for (map = fr_cursor_init(&cursor, &pl->reply);
+		     map;
+		     map = fr_cursor_next(&cursor)) {
+			if (map_to_vp(packet, &check_item, request, map, NULL) < 0) {
+				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
+				continue;
+			}
+
 		     	if (check_item->da == attr_fall_through) {
 				if (check_item->vp_uint32 == 1) {
 					fall_through = 1;
+					fr_pair_list_free(&check_item);
 					continue;
 				}
 		     	} else if (check_item->da == attr_relax_filter) {
@@ -240,12 +261,14 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 			 *    the output list without checking it.
 			 */
 			if (check_item->op == T_OP_SET ) {
-				vp = fr_pair_copy(packet, check_item);
-				if (!vp) goto error;
-
-				xlat_eval_pair(request, vp);
-				fr_cursor_append(&out, vp);
+				fr_cursor_append(&out, check_item);
+				continue;
 			}
+
+			/*
+			 *	Append the realized VP to the check list.
+			 */
+			fr_cursor_append(&check, check_item);
 		}
 
 		/*
@@ -256,9 +279,9 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = fr_cursor_init(&input, &packet->vps);
+		for (input_item = fr_cursor_init(&cursor, &packet->vps);
 		     input_item;
-		     input_item = fr_cursor_next(&input)) {
+		     input_item = fr_cursor_next(&cursor)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
@@ -290,13 +313,13 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 			 *  should copy unmatched attributes ('relaxed' mode).
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
+				fr_pair_t *vp;
+
 				if (!pass) {
 					RDEBUG3("Attribute \"%s\" allowed by relaxed mode", input_item->da->name);
 				}
-				vp = fr_pair_copy(packet, input_item);
-				if (!vp) {
-					goto error;
-				}
+				vp = fr_cursor_remove(&check);
+				fr_assert(vp != NULL);
 				fr_cursor_append(&out, vp);
 			}
 		}
@@ -322,10 +345,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	packet->vps = output;
 
 	RETURN_MODULE_UPDATED;
-
-error:
-	fr_pair_list_free(&output);
-	RETURN_MODULE_FAIL;
 }
 
 #define RLM_AF_FUNC(_x, _y) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \

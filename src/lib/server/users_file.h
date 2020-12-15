@@ -32,12 +32,13 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/server/map.h>
 #include <talloc.h>
 
 typedef struct pair_list {
 	char const		*name;
-	fr_pair_list_t		check;
-	fr_pair_list_t		reply;
+	map_t			*check;
+	map_t			*reply;
 	int			order;
 	int			lineno;
 	struct pair_list	*next;
