@@ -40,6 +40,7 @@ typedef struct pair_list {
 	map_t			*check;
 	map_t			*reply;
 	int			order;
+	char const		*filename;
 	int			lineno;
 	struct pair_list	*next;
 } PAIR_LIST;

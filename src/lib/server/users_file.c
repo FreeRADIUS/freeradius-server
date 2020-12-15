@@ -209,6 +209,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_file_t	fctx;
 	tmpl_rules_t		lhs_rules, rhs_rules;
+	char			*filename = talloc_strdup(ctx, file);
 	char			buffer[8192];
 
 	DEBUG2("Reading file %s", file);
@@ -316,6 +317,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	We MUST be either at a valid entry, OR at EOF.
 		 */
 		MEM(t = talloc_zero(ctx, PAIR_LIST));
+		t->filename = filename;
 		t->lineno = lineno;
 		t->order = order++;
 
