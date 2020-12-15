@@ -589,6 +589,7 @@ static int aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PA
 	 *	have put it in control:WiMAX-SIM-RAND so we can grab it from there)
 	 */
 	rand_previous = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_RAND, 0, TAG_ANY);
+	MEM(rand = pair_make_reply("WiMAX-E-UTRAN-Vector-RAND", NULL, T_OP_SET));
 	if (!rand_previous) {
 		uint32_t lvalue;
 		uint8_t buffer[WIMAX_EPSAKA_RAND_SIZE];
@@ -598,11 +599,10 @@ static int aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PA
 			memcpy(buffer + i * 4, &lvalue, sizeof(lvalue));
 		}
 
-		MEM(rand = pair_make_reply("WiMAX-E-UTRAN-Vector-RAND", NULL, T_OP_SET));
 		fr_pair_value_memcpy(rand, buffer, WIMAX_EPSAKA_RAND_SIZE);
 
 	} else {
-		fr_pair_add(&request->reply->vps, fr_pair_list_copy(request->reply, rand_previous));
+		fr_pair_value_memcpy(rand, rand_previous->vp_octets, WIMAX_EPSAKA_RAND_SIZE);
 	}
 
    	/*
