@@ -131,7 +131,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		     map = fr_cursor_next(&cursor)) {
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of check item %s is not an attribute",
-				      filename, entry->lineno, map->lhs->name);
+				      entry->filename, entry->lineno, map->lhs->name);
 				return -1;
 
 			}
@@ -153,7 +153,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			if ((fr_dict_vendor_num_by_da(da) != 0) ||
 			    (da->attr < 0x100)) {
 				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-				     filename, entry->lineno,
+				     entry->filename, entry->lineno,
 				     da->name, da->name,
 				     entry->name);
 				map->op = T_OP_CMP_EQ;
@@ -173,7 +173,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		     map = fr_cursor_next(&cursor)) {
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of reply item %s is not an attribute",
-				      filename, entry->lineno, map->rhs->name);
+				      entry->filename, entry->lineno, map->rhs->name);
 				return -1;
 			}
 			da = tmpl_da(map->lhs);
@@ -189,7 +189,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 				WARN("%s[%d] Check item \"%s\"\n"
 				     "\tfound in reply item list for user \"%s\".\n"
 				     "\tThis attribute MUST go on the first line"
-				     " with the other check items", filename, entry->lineno, da->name,
+				     " with the other check items", entry->filename, entry->lineno, da->name,
 				     entry->name);
 			}
 
