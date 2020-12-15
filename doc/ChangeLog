@@ -50,6 +50,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  of the SQL module.
 	* Add radmin command "show client list verbose", which gives a lot
 	  more information about each client.
+	* Add support for EAPS-AKA authentication to rlm_wimax.
+	  Fixes #3801. Patches from Benjamin Thompson.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
