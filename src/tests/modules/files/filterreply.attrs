@@ -8,3 +8,5 @@ User-Password = "testing123"
 #  Expected answer
 #
 Packet-Type == Access-Accept
+Reply-Message == "success1"
+Reply-Message == "success2"
