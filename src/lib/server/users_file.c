@@ -172,7 +172,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	 *	case this error will get hit, too.
 	 */
 	if (!fr_sbuff_is_char(sbuff, '\n') &&
-	    (fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n') > 0)) {
+	    (fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n') != NULL)) {
 		ERROR("%s[%d]: Unexpected text after filename",
 		      file, lineno);
 		talloc_free(newfile);
@@ -447,7 +447,7 @@ check_item:
 		 *	We didn't see SPACE LF or SPACE COMMENT LF.
 		 *	There's something else going on.
 		 */
-		if (fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n') > 0) {
+		if (fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n') != NULL) {
 			ERROR("%s[%d]: Unexpected text after check items: %s",
 			      file, lineno, fr_strerror());
 			goto fail_entry;
