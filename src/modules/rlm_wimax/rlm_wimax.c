@@ -152,7 +152,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	/* Look for the Re-synchronization-Info attribute in the request */
 	resync_info = fr_pair_find_by_da(request->packet->vps, inst->resync_info, TAG_ANY);
-	if (resync_info->vp_length < (WIMAX_EPSAKA_RAND_SIZE + WIMAX_EPSAKA_AUTS_SIZE)) {
+	if (resync_info && (resync_info->vp_length < (WIMAX_EPSAKA_RAND_SIZE + WIMAX_EPSAKA_AUTS_SIZE))) {
 		RWDEBUG("Found request:WiMAX-Re-synchronization-Info with incorrect length: Ignoring it");
 		resync_info = NULL;
 	}
@@ -164,13 +164,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	We grab them from the control list here
 	 */
 	ki = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_KI, 0, TAG_ANY);
-	if (ki->vp_length < MILENAGE_CK_SIZE) {
+	if (ki && (ki->vp_length < MILENAGE_CK_SIZE)) {
 		RWDEBUG("Found config:WiMAX-SIM-Ki with incorrect length: Ignoring it");
 		ki = NULL;
 	}
 
 	opc = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_OPC, 0, TAG_ANY);
-	if (opc->vp_length < MILENAGE_IK_SIZE) {
+	if (opc && (opc->vp_length < MILENAGE_IK_SIZE)) {
 		RWDEBUG("Found config:WiMAX-SIM-OPC with incorrect length: Ignoring it");
 		opc = NULL;
 	}
@@ -228,7 +228,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		/* Add SQN to control:WiMAX-SIM-SQN */
 		sqn = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_SQN, 0, TAG_ANY);
-		if (sqn->vp_length < WIMAX_EPSAKA_SQN_SIZE) {
+		if (sqn && (sqn->vp_length < WIMAX_EPSAKA_SQN_SIZE)) {
 			RWDEBUG("Found config:WiMAX-SIM-SQN with incorrect length: Ignoring it");
 			sqn = NULL;
 		}
@@ -241,7 +241,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		/* Add RAND to control:WiMAX-SIM-RAND */
 		rand = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_RAND, 0, TAG_ANY);
-		if (rand->vp_length < WIMAX_EPSAKA_RAND_SIZE) {
+		if (rand && (rand->vp_length < WIMAX_EPSAKA_RAND_SIZE)) {
 			RWDEBUG("Found config:WiMAX-SIM-RAND with incorrect length: Ignoring it");
 			rand = NULL;
 		}
@@ -612,7 +612,7 @@ static rlm_rcode_t aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, 
 	 *	have put it in control:WiMAX-SIM-RAND so we can grab it from there)
 	 */
 	rand_previous = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_RAND, 0, TAG_ANY);
-	if (rand_previous->vp_length < WIMAX_EPSAKA_RAND_SIZE) {
+	if (rand_previous && (rand_previous->vp_length < WIMAX_EPSAKA_RAND_SIZE)) {
 		RWDEBUG("Found config:WiMAX-SIM-Rand with incorrect size.  Ignoring it.");
 		rand_previous = NULL;
 	}
@@ -647,15 +647,15 @@ static rlm_rcode_t aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, 
 	uint64_t sqn_bin = 0x0000000000000000;
 	for (i = 0; i < sqn->vp_length; ++i) sqn_bin = (sqn_bin << 8) | sqn->vp_octets[i];
 
-	if (opc->vp_length < MILENAGE_OPC_SIZE) {
+	if (!opc || (opc->vp_length < MILENAGE_OPC_SIZE)) {
 		RWDEBUG("Found config:WiMAX-SIM-OPC with incorrect size.  Ignoring it");
 		return RLM_MODULE_NOOP;
 	}
-	if (amf->vp_length < MILENAGE_AMF_SIZE) {
+	if (!amf || (amf->vp_length < MILENAGE_AMF_SIZE)) {
 		RWDEBUG("Found config:WiMAX-SIM-AMF with incorrect size.  Ignoring it");
 		return RLM_MODULE_NOOP;
 	}
-	if (ki->vp_length < MILENAGE_KI_SIZE) {
+	if (!ki || (ki->vp_length < MILENAGE_KI_SIZE)) {
 		RWDEBUG("Found config:WiMAX-SIM-KI with incorrect size.  Ignoring it");
 		return RLM_MODULE_NOOP;
 	}
