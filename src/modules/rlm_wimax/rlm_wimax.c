@@ -152,6 +152,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	/* Look for the Re-synchronization-Info attribute in the request */
 	resync_info = fr_pair_find_by_da(request->packet->vps, inst->resync_info, TAG_ANY);
+	if (resync_info->vp_length < (WIMAX_EPSAKA_RAND_SIZE + WIMAX_EPSAKA_AUTS_SIZE)) {
+		RWDEBUG("Found request:WiMAX-Re-synchronization-Info with incorrect length: Ignoring it");
+		resync_info = NULL;
+	}
 
 	/*
 	 *	These are the private keys which should be added to the control
@@ -160,7 +164,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	We grab them from the control list here
 	 */
 	ki = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_KI, 0, TAG_ANY);
+	if (ki->vp_length < MILENAGE_CK_SIZE) {
+		RWDEBUG("Found config:WiMAX-SIM-Ki with incorrect length: Ignoring it");
+		ki = NULL;
+	}
+
 	opc = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_OPC, 0, TAG_ANY);
+	if (opc->vp_length < MILENAGE_IK_SIZE) {
+		RWDEBUG("Found config:WiMAX-SIM-OPC with incorrect length: Ignoring it");
+		opc = NULL;
+	}
 
 	/* If we have resync info (RAND and AUTS), Ki and OPc then we can proceed */
 	if (resync_info && ki && opc) {
@@ -215,6 +228,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		/* Add SQN to control:WiMAX-SIM-SQN */
 		sqn = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_SQN, 0, TAG_ANY);
+		if (sqn->vp_length < WIMAX_EPSAKA_SQN_SIZE) {
+			RWDEBUG("Found config:WiMAX-SIM-SQN with incorrect length: Ignoring it");
+			sqn = NULL;
+		}
+
 		if (!sqn) {
 			MEM(sqn = pair_make_config("WiMAX-SIM-SQN", NULL, T_OP_SET));
 			fr_pair_value_memcpy(sqn, sqn_bin_arr, WIMAX_EPSAKA_SQN_SIZE);
@@ -223,6 +241,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 		/* Add RAND to control:WiMAX-SIM-RAND */
 		rand = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_RAND, 0, TAG_ANY);
+		if (rand->vp_length < WIMAX_EPSAKA_RAND_SIZE) {
+			RWDEBUG("Found config:WiMAX-SIM-RAND with incorrect length: Ignoring it");
+			rand = NULL;
+		}
+
 		if (!rand) {
 			MEM(rand = pair_make_config("WiMAX-SIM-RAND", NULL, T_OP_SET));
 			fr_pair_value_memcpy(rand, rand_bin, WIMAX_EPSAKA_RAND_SIZE);
@@ -575,10 +598,10 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
  *	These are the keys needed for new style WiMAX (LTE / 3gpp authentication),
  	for WiMAX v2.1
  */
-static int aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PAIR *ki, VALUE_PAIR *opc,
-			     VALUE_PAIR *amf, VALUE_PAIR *sqn, VALUE_PAIR *plmn)
+static rlm_rcode_t aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PAIR *ki, VALUE_PAIR *opc,
+				     VALUE_PAIR *amf, VALUE_PAIR *sqn, VALUE_PAIR *plmn)
 {  
-	int i;
+	size_t i;
 	VALUE_PAIR *rand_previous, *rand, *xres, *autn, *kasme;
 
 	/*
@@ -589,6 +612,11 @@ static int aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PA
 	 *	have put it in control:WiMAX-SIM-RAND so we can grab it from there)
 	 */
 	rand_previous = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_RAND, 0, TAG_ANY);
+	if (rand_previous->vp_length < WIMAX_EPSAKA_RAND_SIZE) {
+		RWDEBUG("Found config:WiMAX-SIM-Rand with incorrect size.  Ignoring it.");
+		rand_previous = NULL;
+	}
+
 	MEM(rand = pair_make_reply("WiMAX-E-UTRAN-Vector-RAND", NULL, T_OP_SET));
 	if (!rand_previous) {
 		uint32_t lvalue;
@@ -617,7 +645,20 @@ static int aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PA
 
 	/* But first convert uint8 SQN to uint64 */
 	uint64_t sqn_bin = 0x0000000000000000;
-	for (i = 0; i < WIMAX_EPSAKA_SQN_SIZE; ++i) sqn_bin = (sqn_bin << 8) | sqn->vp_octets[i];
+	for (i = 0; i < sqn->vp_length; ++i) sqn_bin = (sqn_bin << 8) | sqn->vp_octets[i];
+
+	if (opc->vp_length < MILENAGE_OPC_SIZE) {
+		RWDEBUG("Found config:WiMAX-SIM-OPC with incorrect size.  Ignoring it");
+		return RLM_MODULE_NOOP;
+	}
+	if (amf->vp_length < MILENAGE_AMF_SIZE) {
+		RWDEBUG("Found config:WiMAX-SIM-AMF with incorrect size.  Ignoring it");
+		return RLM_MODULE_NOOP;
+	}
+	if (ki->vp_length < MILENAGE_KI_SIZE) {
+		RWDEBUG("Found config:WiMAX-SIM-KI with incorrect size.  Ignoring it");
+		return RLM_MODULE_NOOP;
+	}
 
 	/* Call milenage */
 	milenage_umts_generate(autn_bin, ik_bin, ck_bin, ak_bin, xres_bin, opc->vp_octets,
@@ -662,11 +703,11 @@ static int aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PA
 	/* Perform an HMAC-SHA256 using Key k from step 1 and s as the message. */
 	uint8_t kasme_bin[WIMAX_EPSAKA_KASME_SIZE];
 	HMAC_CTX *hmac;
-	unsigned int kasme_len = WIMAX_EPSAKA_KASME_SIZE;
+	unsigned int kasme_len = sizeof(kasme_bin);
 
 	hmac = HMAC_CTX_new();
-	HMAC_Init_ex(hmac, kk_bin, WIMAX_EPSAKA_KK_SIZE, EVP_sha256(), NULL);
-	HMAC_Update(hmac, ks_bin, WIMAX_EPSAKA_KS_SIZE);
+	HMAC_Init_ex(hmac, kk_bin, sizeof(kk_bin), EVP_sha256(), NULL);
+	HMAC_Update(hmac, ks_bin, sizeof(ks_bin));
 	HMAC_Final(hmac, &kasme_bin[0], &kasme_len);
 	HMAC_CTX_free(hmac);
 
@@ -698,21 +739,21 @@ static int aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PA
 	/* Print keys to log for debugging */
 	if (rad_debug_lvl) {
 		RDEBUG("-------- Milenage in --------");
-		RDEBUG_HEX(request, "OPc   ", opc->vp_octets, WIMAX_EPSAKA_OPC_SIZE);
-		RDEBUG_HEX(request, "Ki    ", ki->vp_octets, WIMAX_EPSAKA_KI_SIZE);
-		RDEBUG_HEX(request, "RAND  ", rand->vp_octets, WIMAX_EPSAKA_RAND_SIZE);
-		RDEBUG_HEX(request, "SQN   ", sqn->vp_octets, WIMAX_EPSAKA_SQN_SIZE);
-		RDEBUG_HEX(request, "AMF   ", amf->vp_octets, WIMAX_EPSAKA_AMF_SIZE);
+		RDEBUG_HEX(request, "OPc   ", opc->vp_octets, opc->vp_length);
+		RDEBUG_HEX(request, "Ki    ", ki->vp_octets, ki->vp_length);
+		RDEBUG_HEX(request, "RAND  ", rand->vp_octets, rand->vp_length);
+		RDEBUG_HEX(request, "SQN   ", sqn->vp_octets, sqn->vp_length);
+		RDEBUG_HEX(request, "AMF   ", amf->vp_octets, amf->vp_length);
 		RDEBUG("-------- Milenage out -------");
-		RDEBUG_HEX(request, "XRES  ", xres->vp_octets, WIMAX_EPSAKA_XRES_SIZE);
-		RDEBUG_HEX(request, "Ck    ", ck_bin, WIMAX_EPSAKA_CK_SIZE);
-		RDEBUG_HEX(request, "Ik    ", ik_bin, WIMAX_EPSAKA_IK_SIZE);
-		RDEBUG_HEX(request, "Ak    ", ak_bin, WIMAX_EPSAKA_AK_SIZE);
-		RDEBUG_HEX(request, "AUTN  ", autn->vp_octets, WIMAX_EPSAKA_AUTN_SIZE);
+		RDEBUG_HEX(request, "XRES  ", xres->vp_octets, xres->vp_length);
+		RDEBUG_HEX(request, "Ck    ", ck_bin, sizeof(ck_bin));
+		RDEBUG_HEX(request, "Ik    ", ik_bin, sizeof(ik_bin));
+		RDEBUG_HEX(request, "Ak    ", ak_bin, sizeof(ak_bin));
+		RDEBUG_HEX(request, "AUTN  ", autn->vp_octets, autn->vp_length);
 		RDEBUG("-----------------------------");
-		RDEBUG_HEX(request, "Kk    ", kk_bin, WIMAX_EPSAKA_KK_SIZE);
-		RDEBUG_HEX(request, "Ks    ", ks_bin, WIMAX_EPSAKA_KS_SIZE);
-		RDEBUG_HEX(request, "KASME ", kasme->vp_octets, WIMAX_EPSAKA_KASME_SIZE);
+		RDEBUG_HEX(request, "Kk    ", kk_bin, sizeof(kk_bin));
+		RDEBUG_HEX(request, "Ks    ", ks_bin, sizeof(ks_bin));
+		RDEBUG_HEX(request, "KASME ", kasme->vp_octets, kasme->vp_length);
 	}
 
 	return RLM_MODULE_UPDATED;
