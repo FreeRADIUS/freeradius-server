@@ -198,6 +198,7 @@ fr_table_num_sorted_t const map_assignment_op_table[] = {
 	{ L("!="),	T_OP_NE			},
 	{ L("!~"),	T_OP_REG_NE		},
 	{ L("+="),	T_OP_ADD		},
+	{ L("-="),	T_OP_SUB		},
 	{ L(":="),	T_OP_SET		},
 	{ L("<"),	T_OP_LT			},
 	{ L("<="),	T_OP_LE			},
