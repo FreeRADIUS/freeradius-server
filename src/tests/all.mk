@@ -4,6 +4,7 @@
 
 PORT := 12340
 SECRET := testing123
+DICT_PATH := $(top_srcdir)/share/dictionary
 
 #
 #	We need the 'git-lfs' installed to fetch some binary files.
