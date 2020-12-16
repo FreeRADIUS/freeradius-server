@@ -324,7 +324,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 
 	vp = fr_pair_find_by_da(vps, attr_dhcp_opcode);
 	if (vp) {
-		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) vp->vp_uint8);
+		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint8);
 	} else {
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)0x01);	/* client message */
 	}
