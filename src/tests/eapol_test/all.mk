@@ -8,6 +8,9 @@
 #  skip the rest of these tests.
 #
 ifneq "$(findstring test,$(MAKECMDGOALS))" ""
+$(BUILD_DIR)/tests/eapol_test:
+	@mkdir -p $@
+
 # define where the EAPOL_TEST is located.  If necessary, build it.
 $(BUILD_DIR)/tests/eapol_test/eapol_test.mk: | $(BUILD_DIR)/tests/eapol_test
 	${Q}echo "EAPOL_TEST=" $(shell $(top_srcdir)/scripts/ci/eapol_test-build.sh) > $@
