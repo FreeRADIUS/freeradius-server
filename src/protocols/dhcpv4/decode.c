@@ -46,41 +46,26 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
  */
 static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
 {
-	int num_entries = 1;
-
 	*out = len;
 
 	/*
-	 *	Could be an array of bytes, integers, etc.
+	 *	Not an array attribute.
 	 */
-	if (da->flags.array) switch (da->type) {
-	case FR_TYPE_UINT8:
-		num_entries = len;
-		*out = 1;
-		break;
+	if (!da->flags.array) return 1;
 
-	case FR_TYPE_UINT16: /* ignore any trailing data */
-		num_entries = len >> 1;
-		*out = 2;
-		break;
-
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_DATE: /* ignore any trailing data */
-		num_entries = len >> 2;
-		*out = 4;
-		break;
-
-	case FR_TYPE_IPV6_ADDR:
-		num_entries = len >> 4;
-		*out = 16;
-		break;
-
-	default:
-		break;
+	/*
+	 *	Is an array, but isn't fixed size.
+	 *
+	 *	Huh?  The dictionary parser should really have caught
+	 *	this.
+	 */
+	if (!da->flags.length) {
+		fr_assert(0);
+		return 1;
 	}
 
-	return num_entries;
+	*out = da->flags.length;
+	return len / da->flags.length;
 }
 
 /*
@@ -368,14 +353,12 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 *	Values with a fixed length may be coalesced into a single option
 	 */
 	values = fr_dhcpv4_array_members(&value_len, data_len, parent);
-	if (values) {
-		FR_PROTO_TRACE("found %u coalesced values (%zu bytes each)", values, value_len);
+	FR_PROTO_TRACE("found %u coalesced values (%zu bytes each)", values, value_len);
 
-		if ((values * value_len) != data_len) {
-			fr_strerror_printf("Option length not divisible by its fixed value "
-					  "length (probably trailing garbage)");
-			return -1;
-		}
+	if (parent->flags.array && (values * value_len) != data_len) {
+		fr_strerror_printf("Option length not divisible by its fixed value "
+				   "length (probably trailing garbage)");
+		return -1;
 	}
 
 	/*
