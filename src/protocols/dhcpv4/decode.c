@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <talloc.h>
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/io/test_point.h>
@@ -356,9 +357,15 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	FR_PROTO_TRACE("found %u coalesced values (%zu bytes each)", values, value_len);
 
 	if (parent->flags.array && (values * value_len) != data_len) {
-		fr_strerror_printf("Option length not divisible by its fixed value "
-				   "length (probably trailing garbage)");
-		return -1;
+		fr_pair_t *vp;
+
+		p = data;
+
+	raw:
+		vp = fr_raw_from_network(ctx, parent, p, (data + data_len) - p);
+		if (!vp) return -1;
+		fr_cursor_append(cursor, vp);
+		return data_len;
 	}
 
 	/*
@@ -368,14 +375,11 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	for (i = 0, p = data; i < values; i++) {
 		len = decode_value_internal(ctx, cursor, parent, p, value_len);
 		if (len <= 0) return len;
-		if (len != (ssize_t)value_len) {
-			fr_strerror_const("Failed decoding complete option value");
-			return -1;
-		}
+		if (len != (ssize_t)value_len) goto raw;
 		p += len;
 	}
 
-	return p - data;
+	return data_len;
 }
 
 /*
