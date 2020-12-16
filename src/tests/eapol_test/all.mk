@@ -36,6 +36,7 @@ CONFIG_PATH := $(TEST_PATH)/config
 RADIUS_LOG := $(OUTPUT)/radiusd.log
 GDB_LOG := $(OUTPUT)/gdb.log
 TEST_BIN := $(BUILD_DIR)/bin/local
+DICT_PATH := $(if $(DICT_PATH),$(DICT_PATH),$(top_srcdir)/share/dictionary)
 
 #
 #   We use the stock raddb modules to help detect typos and other issues
