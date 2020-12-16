@@ -36,6 +36,7 @@ ALL_TGTS:=$(addprefix rlm_eap_,$(notdir $(subst -,_,$(patsubst %.conf,%.la,$(wil
 RADIUSD_BIN:=$(shell which radiusd || which freeradius)
 PORT:=1812
 SECRET:=testing123
+DICT_PATH:=/usr/share/freeradius/dictionary/
 
 #
 #  We assume a preinstalled version of eapol_test
