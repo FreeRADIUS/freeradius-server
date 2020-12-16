@@ -1559,7 +1559,7 @@ static inline ssize_t _fr_dbuff_out_uint64v(uint64_t *num, uint8_t **pos_p, fr_d
  *
  * @copydetails fr_dbuff_out_uint64v
  */
-#define FR_DBUFF_UINT64V_OUT_RETURN(_num, _dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_out_uint64v, _num, _dbuff_or_marker, _len)
+#define FR_DBUFF_OUT_UINT64V_RETURN(_num, _dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_out_uint64v, _num, _dbuff_or_marker, _len)
 
 /** @} */
 
