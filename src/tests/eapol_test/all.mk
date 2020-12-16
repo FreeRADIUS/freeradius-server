@@ -8,6 +8,9 @@
 #  skip the rest of these tests.
 #
 ifneq "$(findstring test,$(MAKECMDGOALS))" ""
+$(BUILD_DIR)/tests/eapol_test:
+	@mkdir -p $@
+
 # define where the EAPOL_TEST is located.  If necessary, build it.
 $(BUILD_DIR)/tests/eapol_test/eapol_test.mk: | $(BUILD_DIR)/tests/eapol_test
 	${Q}echo "EAPOL_TEST=" $(shell $(top_srcdir)/scripts/ci/eapol_test-build.sh) > $@
@@ -36,7 +39,6 @@ CONFIG_PATH := $(TEST_PATH)/config
 RADIUS_LOG := $(OUTPUT)/radiusd.log
 GDB_LOG := $(OUTPUT)/gdb.log
 TEST_BIN := $(BUILD_DIR)/bin/local
-DICT_PATH := $(if $(DICT_PATH),$(DICT_PATH),$(top_srcdir)/share/dictionary)
 
 #
 #   We use the stock raddb modules to help detect typos and other issues
@@ -102,7 +104,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 		echo "--------------------------------------------------";		\
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
 		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) test.eap.radiusd_kill;						\
-		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) METHOD=$(notdir $(patsubst %.conf,%,$<)) TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -n servers -d $(dir $<)config -D share/dictionary/ -lstdout -f";\
+		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) METHOD=$(notdir $(patsubst %.conf,%,$<)) TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -n servers -d $(dir $<)config -D $(DICT_PATH) -lstdout -f";\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
 		echo "           log is in $(OUT)"; \
 		rm -f $(BUILD_DIR)/tests/test.eap;                                      \
