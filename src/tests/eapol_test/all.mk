@@ -87,8 +87,8 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 	@echo "EAPOL-TEST $(notdir $(patsubst %.conf,%,$<))"
-	${Q}$(MAKE) --no-print-directory test.eap.radiusd_kill
-	${Q}$(MAKE) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start
+	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.eap.radiusd_kill
+	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.ok,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
@@ -100,15 +100,15 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
 		echo "Last entries in server log ($(RADIUS_LOG)):";			\
 		echo "--------------------------------------------------";		\
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)";			\
-		$(MAKE) test.eap.radiusd_kill;						\
+		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) test.eap.radiusd_kill;						\
 		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) METHOD=$(notdir $(patsubst %.conf,%,$<)) TEST_PORT=$(PORT) $(RADIUSD_BIN) -Pxxx -n servers -d $(dir $<)config -D share/dictionary/ -lstdout -f";\
 		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET) $(KEY) "; \
 		echo "           log is in $(OUT)"; \
 		rm -f $(BUILD_DIR)/tests/test.eap;                                      \
-		$(MAKE) --no-print-directory test.eap.radiusd_kill;			\
+		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.eap.radiusd_kill;			\
 		exit 1;\
 	fi
-	${Q}$(MAKE) --no-print-directory test.eap.radiusd_stop
+	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.eap.radiusd_stop
 	${Q}touch $@
 
 $(TEST): $(EAPOL_OK_FILES)

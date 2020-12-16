@@ -38,6 +38,10 @@ jobs:
         echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
 
+    #
+    #  Required so that the checkout action uses git protocol rather than the GitHub REST API.
+    #  make rpm requires the FR directory to be a git repository.
+    #
     - name: Install recent git
       run: |
         apt-get update
@@ -85,6 +89,14 @@ jobs:
         mv libkqueue/*.deb debs
         mv *.deb debs
 
+    - name: Build eapol_test
+      run: |
+        apt-get install -y libnl-3-dev libnl-genl-3-dev
+        ./configure
+        make -j `nproc` eapol_test
+        mv scripts/ci/eapol_test/eapol_test ../debs
+      working-directory: freeradius
+
     - name: Store DEBs
       uses: actions/upload-artifact@v2
       with:
@@ -116,6 +128,12 @@ jobs:
 
     steps:
 
+    # For pkill
+    - name: Install procps
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends procps
+
     - name: Load DEBs
       uses: actions/download-artifact@v2
       with:
@@ -128,10 +146,40 @@ jobs:
 
     - name: Install DEBs
       run: |
-        apt-get update
         find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y --no-install-recommends
 
-    - name: Startup test
+    - name: Config test
       run: |
         freeradius -XC
 
+    #
+    #  We now perform some post-install tests that depend on the availability
+    #  of the source tree
+    #
+    - name: Install pre-built eapol_test
+      run: |
+        apt-get install -y libssl1.? libdbus-1-? libnl-3-200 libnl-genl-3-200
+        mv eapol_test /usr/local/bin
+        chmod +x /usr/local/bin/eapol_test
+
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Run the post-install test target
+      run: |
+        make -C raddb/certs
+        touch Make.inc
+        mkdir -p build/tests/eapol_test
+        echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
+        make -f scripts/ci/package-test.mk package-test
+      working-directory: freeradius
+
+    - name: Upload radius logs on failure
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: radius-logs-${{ matrix.env.NAME }}.tgz
+        path: |
+          /var/log/freeradius
+          freeradius/build/tests/eapol_test
