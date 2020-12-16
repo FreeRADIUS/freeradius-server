@@ -77,6 +77,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 {
 	fr_pair_t *vp;
 	uint8_t const *p = data;
+	uint8_t const *end = data + data_len;
 
 	FR_PROTO_TRACE("%s called to parse %zu bytes", __FUNCTION__, data_len);
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
@@ -108,9 +109,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	}
 
 	if (vp->da->type == FR_TYPE_STRING) {
-		uint8_t const *q, *end;
-
-		end = data + data_len;
+		uint8_t const *q;
 
 		/*
 		 *	Not allowed to be an array, copy the whole value
@@ -149,6 +148,8 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	 *	Doesn't include scope, whereas the generic format can
 	 */
 	case FR_TYPE_IPV6_ADDR:
+		if ((size_t) (end - p) < sizeof(vp->vp_ipv6addr)) goto raw;
+
 		memcpy(&vp->vp_ipv6addr, p, sizeof(vp->vp_ipv6addr));
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.scope_id = 0;
@@ -158,6 +159,8 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
+		if ((size_t) (end - (p + 1)) < sizeof(vp->vp_ipv6addr)) goto raw;
+
 		memcpy(&vp->vp_ipv6addr, p + 1, sizeof(vp->vp_ipv6addr));
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.scope_id = 0;
@@ -172,6 +175,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 
 		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, da, p, data_len, true);
 		if (ret < 0) {
+		raw:
 			FR_PROTO_TRACE("decoding as unknown type");
 			if (fr_pair_to_unknown(vp) < 0) return -1;
 			fr_pair_value_memdup(vp, p, data_len, true);
