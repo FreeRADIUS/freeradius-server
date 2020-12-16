@@ -262,7 +262,18 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 	uint8_t const		*end = data + data_len;
 	fr_dict_attr_t const	*child;
 
-	if (data_len < 3) return -1; /* type, length, value */
+	/*
+	 *	Type, length, data.  If that doesn't exist, we decode
+	 *	the data as "raw" in the parents context/
+	 */
+	if (data_len < 3) {
+		fr_pair_t *vp;
+
+		vp = fr_raw_from_network(ctx, parent, data, data_len);
+		if (!vp) return -1;
+		fr_cursor_append(cursor, vp);
+		return data_len;
+	}
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);

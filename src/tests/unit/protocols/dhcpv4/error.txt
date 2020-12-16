@@ -19,5 +19,26 @@ match raw.Subnet-Selection-Option = 0x010203
 decode-proto 0101 0600 f59e ad14 0000 0000 0b0c 0c0c 0000 0000 0000 0000 0a0b 0b0b 4eaa 0000 0010 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 6382 5363 3501 0176 0931 302e 322e 3130 2e30 3d04 6a69 6d61 ff00 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000
 match Opcode = Client-Message, Hardware-Type = Ethernet, Hardware-Address-Length = 6, Hop-Count = 0, Transaction-Id = 4120816916, Number-of-Seconds = 0, Flags = 0, Client-IP-Address = 11.12.12.12, Your-IP-Address = 0.0.0.0, Server-IP-Address = 0.0.0.0, Gateway-IP-Address = 10.11.11.11, Client-Hardware-Address = 4e:aa:00:00:00:10, Message-Type = Discover, raw.Subnet-Selection-Option = 0x31302e322e31302e30, Client-Identifier = 0x6a696d61, Network-Subnet = 10.11.11.11/32
 
+#
+#  decode TLV which doesn't contain enough data to be a TLV.
+#
+decode-pair 52 02 01 02
+match raw.Relay-Agent-Information = 0x0102
+
+encode-pair -
+match 52 02 01 02
+
+#
+#  This is correct
+#
+encode-pair Router-Address = 127.0.0.1, Router-Address = 127.0.0.2
+match 03 08 7f 00 00 01 7f 00 00 02
+
+#
+#  But if we don't have enough data, the whole thing is corrupt.
+#
+decode-pair 03 07 7f 00 00 01 7f 00 00
+match raw.Router-Address = 0x7f0000017f0000
+
 count
-match 12
+match 20
