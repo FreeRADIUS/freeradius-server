@@ -153,7 +153,7 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 	/*
 	 *	Associate the "clients" list with the virtual server.
 	 */
-	if (cs && (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0)) {
+	if (cs && (cf_data_add(cs, "clients", clients, NULL) < 0)) {
 		ERROR("Failed to associate client list with section %s\n", cf_section_name1(cs));
 		client_list_free(clients);
 		return false;
