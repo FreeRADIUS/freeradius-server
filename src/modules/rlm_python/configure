@@ -2724,7 +2724,7 @@ fi
 
 
 	if test "x$PYTHON_CONFIG_BIN" = x; then
-		for ac_prog in  python-config python3-config python2.7-config
+		for ac_prog in  python3-config
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -2780,7 +2780,7 @@ test -n "$PYTHON_CONFIG_BIN" || PYTHON_CONFIG_BIN="not-found"
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 
-																						mod_cflags=`echo " $python_cflags" | sed -e '\
+																								mod_cflags=`echo " $python_cflags" | sed -e '\
 			s/ -I/ -isystem/g;\
 			s/ -isysroot[ =]\{0,1\}[^-]*/ /g;\
 			s/ -O[^[[:blank:]]]*/ /g;\

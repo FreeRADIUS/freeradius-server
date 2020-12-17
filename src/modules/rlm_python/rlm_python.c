@@ -65,11 +65,6 @@ typedef struct {
 							///< in the python path.
 	PyObject	*module;		//!< Local, interpreter specific module.
 
-#if PY_MAJOR_VERSION == 2
-	bool		single_interpreter_mode;//!< Whether or not to create interpreters per module
-						//!< instance.
-#endif
-
 	python_func_def_t
 	instantiate,
 	authorize,
@@ -95,11 +90,8 @@ typedef struct {
 static void		*python_dlhandle;
 static PyThreadState	*global_interpreter;	//!< Our first interpreter.
 
-#if PY_MAJOR_VERSION == 3
 static rlm_python_t	*current_inst;		//!< Used for communication with inittab functions.
 static CONF_SECTION	*current_conf;		//!< Used for communication with inittab functions.
-#endif
-
 static char		*default_path;		//!< The default python path.
 
 /*
@@ -119,23 +111,6 @@ static char		*default_path;		//!< The default python path.
  *	issue, we only support using a global interpreter
  *	for Python 2.7 and below.
  */
-#if PY_MAJOR_VERSION == 2
-static PyObject		*global_module;		//!< Global radiusd Python module.
-
-/*
- *	Python 2.7 has its own versions of these which
- *	operate on UCS2 encoding *sigh*
- */
-#  undef PyUnicode_AsUTF8
-#  undef PyUnicode_FromString
-#  undef PyUnicode_CheckExact
-#  undef PyUnicode_FromFormat
-
-#  define PyUnicode_AsUTF8 PyString_AsString
-#  define PyUnicode_FromString PyString_FromString
-#  define PyUnicode_CheckExact PyString_CheckExact
-#  define PyUnicode_FromFormat PyString_FromFormat
-#endif
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -158,10 +133,6 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("python_path", FR_TYPE_STRING, rlm_python_t, python_path) },
 	{ FR_CONF_OFFSET("python_path_include_conf_dir", FR_TYPE_BOOL, rlm_python_t, python_path_include_conf_dir), .dflt = "yes" },
 	{ FR_CONF_OFFSET("python_path_include_default", FR_TYPE_BOOL, rlm_python_t, python_path_include_default), .dflt = "yes" },
-
-#if PY_MAJOR_VERSION == 2
-	{ FR_CONF_OFFSET("cext_compat", FR_TYPE_BOOL, rlm_python_t, single_interpreter_mode), .dflt = "no" },
-#endif
 
 	CONF_PARSER_TERMINATOR
 };
@@ -872,7 +843,6 @@ static char *python_path_build(TALLOC_CTX *ctx, rlm_python_t *inst, CONF_SECTION
 /*
  *	Python 3 interpreter initialisation and destruction
  */
-#if PY_MAJOR_VERSION == 3
 static PyObject *python_module_init(void)
 {
 	rlm_python_t	*inst = current_inst;
@@ -970,103 +940,6 @@ static void python_interpreter_free(UNUSED rlm_python_t *inst, PyThreadState *in
 	PyThreadState_Swap(global_interpreter);	/* Get a none-null thread state */
 	PyEval_SaveThread();		/* Unlock GIL */
 }
-/*
- *	Python 2 interpreter initialisation and destruction
- */
-#else
-static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
-{
-	char *path;
-
-	/*
-	 *	This sets up a separate environment for each python module instance
-	 *	These will be destroyed on Py_Finalize().
-	 */
-	if (!inst->single_interpreter_mode) {
-		PyEval_RestoreThread(global_interpreter);
-		LSAN_DISABLE(inst->interpreter = Py_NewInterpreter());
-		if (!inst->interpreter) {
-			ERROR("Failed creating new interpreter");
-			return -1;
-		}
-		PyEval_SaveThread();		/* Unlock GIL */
-		DEBUG3("Created new interpreter %p", inst->interpreter);
-	} else {
-		inst->interpreter = global_interpreter;
-		DEBUG3("Reusing global interpreter %p", inst->interpreter);
-	}
-
-	PyEval_RestoreThread(inst->interpreter);
-
-	/*
-	 *	Due to limitations in Python, sub-interpreters don't work well
-	 *	with Python C extensions if they use GIL lock functions.
-	 */
-	if (!inst->single_interpreter_mode || !global_module) {
-		PyObject	*module;
-
-		/*
-		 *	Initialise a new Python 2.7 module, with our default methods
-		 */
-		module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
-		if (!module) {
-			ERROR("Failed creating module");
-			python_error_log(inst, NULL);
-		error:
-			Py_XDECREF(module);
-			PyEval_SaveThread();
-			return -1;
-		}
-
-		/*
-		 *	Py_InitModule3 returns a borrowed ref, the actual
-		 *	module is owned by sys.modules, so we also need
-		 *	to own the module to prevent it being freed early.
-		 */
-		Py_INCREF(module);
-
-		if ((python_module_import_config(inst, conf, module) < 0) ||
-		    (python_module_import_constants(inst, module) < 0)) goto error;
-
-		if (inst->single_interpreter_mode) global_module = module;
-
-		inst->module = module;
-	} else {
-		inst->module = global_module;
-		Py_INCREF(inst->module);
-		inst->pythonconf_dict = PyObject_GetAttrString(inst->module, "config");
-		Py_INCREF(inst->pythonconf_dict);
-	}
-
-	path = python_path_build(inst, inst, conf);
-	DEBUG3("Setting python path to \"%s\"", path);
-	PySys_SetPath(path);
-	talloc_free(path);
-
-	PyEval_SaveThread();
-
-	return 0;
-}
-
-static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
-{
-	/*
-	 *	We incremented the reference count earlier
-	 *	during module initialisation.
-	 */
-	Py_XDECREF(inst->module);
-
-	/*
-	 *	Only destroy if it's a subinterpreter
-	 */
-	if (inst->single_interpreter_mode) return;
-
-	PyEval_AcquireLock();
-	PyThreadState_Swap(interp);
-	Py_EndInterpreter(interp);
-	PyEval_ReleaseLock();
-}
-#endif
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -1234,7 +1107,6 @@ static int mod_load(void)
 	python_dlhandle = dl_open_by_sym("Py_IsInitialized", RTLD_NOW | RTLD_GLOBAL);
 	if (!python_dlhandle) LOAD_WARN("Failed loading libpython symbols into global symbol table");
 
-#if PY_MAJOR_VERSION == 3
 	/*
 	 *	Python 3 introduces the concept of a
 	 *	"inittab", i.e. a list of modules which
@@ -1242,18 +1114,12 @@ static int mod_load(void)
 	 *	interpreter is spawned.
 	 */
 	PyImport_AppendInittab("radiusd", python_module_init);
-#endif
-
 	LSAN_DISABLE(Py_InitializeEx(0));	/* Don't override signal handlers - noop on subs calls */
 
 	/*
 	 *	Get the default search path so we can append to it.
 	 */
-#if PY_MAJOR_VERSION == 3
 	default_path = Py_EncodeLocale(Py_GetPath(), NULL);
-#else
-	default_path = Py_GetPath();
-#endif
 
 	/*
 	 *	As of 3.7 this is called by Py_Initialize
@@ -1261,29 +1127,16 @@ static int mod_load(void)
 #if PY_VERSION_HEX < 0x03070000
 	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 #endif
-	fr_assert(PyEval_ThreadsInitialized());
 
 	/*
 	 *	Set program name (i.e. the software calling the interpreter)
 	 */
-#if PY_MAJOR_VERSION == 3
 	{
 		wchar_t *wide_name;
 		wide_name = Py_DecodeLocale(main_config->name, NULL);
 		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
 		PyMem_RawFree(wide_name);
 	}
-#else
-	{
-		char const *const_name;
-		char *name;
-
-		const_name = main_config->name;
-
-		memcpy(&name, &const_name, sizeof(name));
-		Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-	}
-#endif
 	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
 	return 0;
@@ -1296,9 +1149,7 @@ static void mod_unload(void)
 	Py_Finalize();
 	if (python_dlhandle) dlclose(python_dlhandle);	/* dlclose will SEGV on null handle */
 
-#if PY_MAJOR_VERSION == 3
 	if (default_path) PyMem_RawFree(default_path);
-#endif
 }
 
 /*
