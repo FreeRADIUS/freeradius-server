@@ -426,18 +426,18 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 		break;
 
 	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_DATE:
 	case FR_TYPE_IFID:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_ETHERNET:
 	{
 		ssize_t slen;
 		char buffer[256];
 
-		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
+		slen = fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &vp->data, NULL);
 		if (slen < 0) {
 		error:
 			ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
