@@ -44,19 +44,22 @@ endif
 endif
 
 TEST_PATH := $(top_builddir)/src/tests
+DICT_PATH := $(TEST_PATH)
 BIN_PATH := $(BUILD_PATH)/bin/local
+RADIUSD_BIN := $(BIN_PATH)/radiusd
+
+ifeq "$(DICT_PATH)" "$(TEST_PATH)"
 LIB_PATH := $(BUILD_PATH)/lib/.libs/
 DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
-
 export DYLD_LIBRARY_PATH
+endif
 
-RADDB_PATH := $(top_builddir)/raddb
+RADDB_PATH := $(top_builddir)/raddb/
 
 TESTS	= mschapv1 digest-01/digest* \
 	test.example.com
 
 PORT	 = 12340
-#PORT	 = 1812
 ACCTPORT = $(shell expr $(PORT) + 1)
 
 #	example.com stripped.example.com
@@ -76,18 +79,22 @@ clean:
 	@rm -f test.conf dictionary *.ok *.log
 
 dictionary:
-	@echo "# test dictionary not install.  Delete at any time." > dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> dictionary
+	@echo "# test dictionary not install.  Delete at any time." > dictionary;  \
+	echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> dictionary;          \
+	echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> dictionary; \
+	if [ "$(DICT_PATH)" = "$(TEST_PATH)" ]; then                               \
+	    echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> dictionary; \
+	    echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> dictionary;  \
+	fi
 
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > test.conf
-	@echo "libdir =" $(LIB_PATH) >> test.conf
+	@if [ -n "$(LIB_PATH)" ]; then  \
+	    echo "libdir =" $(LIB_PATH) >> test.conf; \
+	fi
 	@echo "testdir =" $(TEST_PATH) >> test.conf
 	@echo 'logdir = $${testdir}' >> test.conf
-	@echo 'maindir = ${top_builddir}/raddb/' >> test.conf
+	@echo "maindir =" $(RADDB_PATH) >> test.conf
 	@echo 'radacctdir = $${testdir}' >> test.conf
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
 	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> test.conf
@@ -104,7 +111,7 @@ test.conf: dictionary
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "Starting server... "
-	@if ! $(BIN_PATH)/radiusd -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH); then\
+	@if ! $(RADIUSD_BIN) -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(DICT_PATH); then \
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
