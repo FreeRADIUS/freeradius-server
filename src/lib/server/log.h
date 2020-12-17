@@ -113,8 +113,8 @@ void	log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 
 void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line,
-			   char const *str, size_t idx,
-			   char const *fmt, ...) CC_HINT(format (printf, 8, 9)) CC_HINT(nonnull);
+			   char const *str, size_t str_len,
+			   size_t marker_idx, char const *marker, ...) CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull);
 
 void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
@@ -144,7 +144,7 @@ void	log_global_free(void);
  * @param[in] _str_len		length of subject string. May be SIZE_MAX
  *				to print the entire string.
  * @param[in] _marker_idx	Where to place the marker.  May be negative.
- * @param[in] _marker		text to print at marker_idx.
+ * @param[in] _marker		text to print at marker_marker_idx.
  * @param[in] _line_prefix_fmt	Prefix to add to all log lines.
  * @param[in] ...		Arguments for _line_prefix_fmt.
  */
@@ -416,22 +416,22 @@ void	log_global_free(void);
  *
  * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
- * @param[in] _type	log category, a #fr_log_type_t value.
- * @param[in] _lvl	log priority, a #fr_log_lvl_t value.
- * @param[in] _str	to mark e.g. "my pet kitty".
- * @param[in] _idx	index e.g. 3 (starts from 0).
- * @param[in] _fmt	error message e.g. "kitties are not pets, are nature devouring hell beasts".
- * @param[in] ...	arguments for error string.
+ * @param[in] _type		log category, a #fr_log_type_t value.
+ * @param[in] _lvl		log priority, a #fr_log_lvl_t value.
+ * @param[in] _str		to mark e.g. "my pet kitty".
+ * @param[in] _marker_idx	index e.g. 3 (starts from 0).
+ * @param[in] _marker		error message e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param[in] ...		arguments for error string.
  */
 #ifndef DEBUG_INDENT
-#define RMARKER(_type, _lvl, _str, _idx, _fmt, ...) \
+#define RMARKER(_type, _lvl, _str, _marker_idx, _marker, ...) \
 	log_request_marker(_type, _lvl, request, \
 			   __FILE__, __LINE__, \
-			   _str, _idx, _fmt, ## __VA_ARGS__)
+			   _str, SIZE_MAX, _marker_idx, _marker, ## __VA_ARGS__)
 #else
-#define RMARKER(_type, _lvl, _str, _idx, _fmt, ...) do { \
+#define RMARKER(_type, _lvl, _str, _marker_idx, _marker, ...) do { \
 		RDEBUG4("== (0) at %s[%u]", __FILE__, __LINE__); \
-		log_request_marker(_type, _lvl, request, __FILE__, __LINE__, _str, _idx, _fmt, ## __VA_ARGS__); \
+		log_request_marker(_type, _lvl, request, __FILE__, __LINE__, _str, _marker_idx, _marker, ## __VA_ARGS__); \
 	} while (0)
 #endif
 
@@ -447,11 +447,11 @@ void	log_global_free(void);
  * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
  * @param[in] _str	to mark e.g. "my pet kitty".
- * @param[in] _idx	index e.g. 3 (starts from 0).
- * @param[in] _fmt	error message e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param[in] _marker_idx	index e.g. 3 (starts from 0).
+ * @param[in] _marker	error message e.g. "kitties are not pets, are nature devouring hell beasts".
  * @param[in] ...	arguments for error string.
  */
-#define REMARKER(_str, _idx, _fmt, ...)	RMARKER(L_DBG_ERR, L_DBG_LVL_1, _str, _idx, _fmt, ## __VA_ARGS__)
+#define REMARKER(_str, _marker_idx, _marker, ...)	RMARKER(L_DBG_ERR, L_DBG_LVL_1, _str, _marker_idx, _marker, ## __VA_ARGS__)
 
 /** Output string with error marker, showing where format error occurred
  *
@@ -465,11 +465,11 @@ void	log_global_free(void);
  * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
  * @param[in] _str	to mark e.g. "my pet kitty".
- * @param[in] _idx	index e.g. 3 (starts from 0).
- * @param[in] _fmt	error message e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param[in] _marker_idx	index e.g. 3 (starts from 0).
+ * @param[in] _marker	error message e.g. "kitties are not pets, are nature devouring hell beasts".
  * @param[in] ...	arguments for error string.
  */
-#define RDMARKER(_str, _idx, _fmt, ...)	RMARKER(L_DBG, L_DBG_LVL_1, _str, _idx, _fmt, ## __VA_ARGS__)
+#define RDMARKER(_str, _marker_idx, _marker, ...)	RMARKER(L_DBG, L_DBG_LVL_1, _str, _marker_idx, _marker, ## __VA_ARGS__)
 
 /** Use different logging functions depending on whether request is NULL or not.
  *

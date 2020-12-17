@@ -857,33 +857,41 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 
 /** Write the string being parsed, and a marker showing where the parse error occurred
  *
- * @param[in] type	the log category.
- * @param[in] lvl	of debugging this message should be logged at.
- * @param[in] request	The current request.
- * @param[in] file	src file the log message was generated in.
- * @param[in] line	number the log message was generated on.
- * @param[in] str	string we were parsing.
- * @param[in] idx	The position of the marker relative to the string.
- * @param[in] fmt	What the parse error was.
- * @param[in] ...	Arguments for fmt string.
+ * @param[in] type		the log category.
+ * @param[in] lvl		of debugging this message should be logged at.
+ * @param[in] request		The current request.
+ * @param[in] file		src file the log message was generated in.
+ * @param[in] line		number the log message was generated on.
+ * @param[in] str		Subject string we're printing a marker for.
+ * @param[in] str_len		Subject string length.  Use SIZE_MAX for the
+ *				length of the string.
+ * @param[in] marker_idx	The position of the marker relative to the string.
+ * @param[in] marker_fmt	What the parse error was.
+ * @param[in] ...		Arguments for fmt string.
  */
 void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
-			char const *str, size_t idx,
-			char const *fmt, ...)
+			char const *str, size_t str_len, size_t marker_idx,
+			char const *marker_fmt, ...)
 {
-	char const	*prefix = "";
-	uint8_t		unlang_indent;
-	uint8_t		module_indent;
-	va_list		ap;
-	char		*errstr;
+	char const		*ellipses = "";
+	uint8_t			unlang_indent;
+	uint8_t			module_indent;
+	va_list			ap;
+	char			*error;
+	static char const	marker_spaces[] = "                                                            "; /* 60 */
 
-	if (idx >= sizeof(spaces)) {
-		size_t offset = (idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
-		idx -= offset;
+	if (str_len == SIZE_MAX) str_len = strlen(str);
+
+	if (marker_idx < 0) marker_idx = marker_idx * -1;
+
+	if (marker_idx >= sizeof(marker_spaces)) {
+		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
+		marker_idx -= offset;
 		str += offset;
+		str_len -= offset;
 
-		prefix = "... ";
+		ellipses = "... ";
 	}
 
 	/*
@@ -894,13 +902,13 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	request->log.unlang_indent = 0;
 	request->log.module_indent = 0;
 
-	log_request(type, lvl, request, file, line, "%s%s", prefix, str);
-
-	va_start(ap, fmt);
-	errstr = fr_vasprintf(request, fmt, ap);
+	va_start(ap, marker_fmt);
+	error = fr_vasprintf(request, marker_fmt, ap);
 	va_end(ap);
-	log_request(type, lvl, request, file, line, "%s%.*s^ %s", prefix, (int) idx, spaces, errstr);
-	talloc_free(errstr);
+
+	log_request(type, lvl, request, file, line, "%s%.*s", ellipses, (int)str_len, str);
+	log_request(type, lvl, request, file, line, "%s%.*s^ %s", ellipses, (int) marker_idx, marker_spaces, error);
+	talloc_free(error);
 
 	request->log.unlang_indent = unlang_indent;
 	request->log.module_indent = module_indent;

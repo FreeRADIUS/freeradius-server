@@ -688,21 +688,21 @@ void fr_log_marker(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	va_list			ap;
 	TALLOC_CTX		*thread_log_pool = fr_log_pool_init();
 	char			*line_prefix = NULL;
-	static char const	spaces[] = "                                                                                                                        ";
+	static char const	marker_spaces[] = "                                                            "; /* 60 */
 
 	if (str_len == SIZE_MAX) str_len = strlen(str);
 
 	if (marker_idx < 0) marker_idx = marker_idx * -1;
 
-	if ((size_t)marker_idx >= sizeof(spaces)) {
-		size_t offset = (marker_idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
+	if ((size_t)marker_idx >= sizeof(marker_spaces)) {
+		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
 		marker_idx -= offset;
 
 		if (offset > str_len) offset = str_len;
 		str += offset;
 		str_len -= offset;
 
-		ellipses  = "... ";
+		ellipses = "... ";
 	}
 
 	if (line_prefix_fmt) {
@@ -714,7 +714,7 @@ void fr_log_marker(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	fr_log(log, type, file, line, "%s%s%.*s",
 	       line_prefix ? line_prefix : "", ellipses, (int)str_len, str);
 	fr_log(log, type, file, line, "%s%s%.*s^ %s",
-	       line_prefix ? line_prefix : "", ellipses, (int)marker_idx, spaces, marker);
+	       line_prefix ? line_prefix : "", ellipses, (int)marker_idx, marker_spaces, marker);
 
 	if (line_prefix_fmt) talloc_free(line_prefix);
 }
