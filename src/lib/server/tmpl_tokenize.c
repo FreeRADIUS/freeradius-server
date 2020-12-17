@@ -2767,7 +2767,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 			fr_strerror_const("Unterminated cast");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
-		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	}
 	if (out) *out = cast;
 

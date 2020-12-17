@@ -2165,7 +2165,7 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 	static size_t tmpl_rule_func_table_len = NUM_ELEMENTS(tmpl_rule_func_table);
 
 	while (fr_sbuff_extend(&sbuff)) {
-		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 		fr_sbuff_out_by_longest_prefix(&slen, &func, tmpl_rule_func_table, &sbuff, NULL);
 		if (func == NULL) {
@@ -2174,7 +2174,7 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 			RETURN_COMMAND_ERROR();
 		}
 
-		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 		if (!fr_sbuff_next_if_char(&sbuff, '=')) {
 			fr_strerror_printf("Expected '=' after rule identifier, got \"%pV\"",
@@ -2182,7 +2182,7 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 			RETURN_COMMAND_ERROR();
 		}
 
-		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 		if (func(&cc->tmpl_rules, &sbuff) <= 0) RETURN_COMMAND_ERROR();
 	}
@@ -2884,7 +2884,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 	fr_sbuff_parse_error_t	err;
 
 	while (fr_sbuff_extend(in)) {
-		fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 
 		MEM(lr = talloc_zero(ctx, command_line_range_t));
 		fr_dlist_insert_tail(out, lr);
@@ -2903,7 +2903,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 			max = lr->start;
 		}
 		lr->end = lr->start;	/* Default to a single line */
-		fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 
 	again:
 		if (!fr_sbuff_extend(in)) break;
@@ -2919,7 +2919,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 		 */
 		case ',':
 			fr_sbuff_next(in);
-			fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+			fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 			continue;
 
 		/*
@@ -2928,7 +2928,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 		case '-':
 		{
 			fr_sbuff_next(in);
-			fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+			fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 
 			/*
 			 *	A bare '-' with no number means
@@ -2954,7 +2954,7 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 			} else {
 				max = lr->end;
 			}
-			fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+			fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 		}
 			goto again;
 		}

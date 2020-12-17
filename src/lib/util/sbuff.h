@@ -1396,7 +1396,7 @@ size_t	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 
 #define fr_sbuff_adv_past_strcase_literal(_sbuff, _needle) fr_sbuff_adv_past_strcase(_sbuff, _needle, sizeof(_needle) - 1)
 
-size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len);
+size_t	fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *tt);
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1]);
 

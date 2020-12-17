@@ -238,7 +238,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 				talloc_free(text);
 				goto error;
 			}
-			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 		} else if (attribute) {
 			cf_log_err(cp, "Invalid quoting.  Unquoted attribute reference is required");
 			goto error;

@@ -1116,7 +1116,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 	slen = tmpl_cast_from_substr(&cast, &our_in);
 	if (slen < 0) return slen;
 
-	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	fr_sbuff_marker(&m, &our_in);
 
 	/*
@@ -1253,7 +1253,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 
 	MEM(c = talloc_zero(ctx, fr_cond_t));
 
-	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	if (!fr_sbuff_extend(&our_in)) {
 		fr_strerror_const("Empty condition is invalid");
 	error:
@@ -1266,7 +1266,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '!')) {
 		c->negate = true;
-		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 		/*
 		 *  Just for stupidity
@@ -1300,7 +1300,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			goto error;
 		}
 
-		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 		goto closing_brace;
 	}
 
@@ -1332,7 +1332,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	/*
 	 *	We may (or not) have an operator
 	 */
-	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 	/*
 	 *	What's found directly after the LHS token determines
@@ -1433,7 +1433,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		fr_strerror_const("Invalid operator");
 		goto error;
 	}
-	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 	{
 		map_t 	*map;
@@ -1515,7 +1515,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			goto error;
 		}
 
-		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 		/*
 		 *	Check cast type.  We can have the RHS
@@ -1548,7 +1548,7 @@ closing_brace:
 			goto error;
 		}
 		fr_sbuff_advance(&our_in, 1);
-		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 		goto done;
 	}
 

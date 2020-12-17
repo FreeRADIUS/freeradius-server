@@ -431,13 +431,14 @@ static inline CC_HINT(always_inline) void fr_sbuff_terminal_idx_init(size_t *nee
  * @param[in] idx		Fastpath index, populated by
  *				fr_sbuff_terminal_idx_init.
  * @param[in] term		terminals to search in.
+ * @param[in] needle_len	Length of the longest needle.
  * @return
  *      - true if found.
  *	- false if not.
  */
 static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 					    uint8_t idx[static UINT8_MAX + 1],
-					    fr_sbuff_term_t const *term)
+					    fr_sbuff_term_t const *term, size_t needle_len)
 {
 	uint8_t 	term_idx;
 
@@ -457,7 +458,7 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	/*
 	 *	Special case for EOFlike states
 	 */
-	remaining = fr_sbuff_extend_lowat(&status, in, 1);
+	remaining = fr_sbuff_extend_lowat(&status, in, needle_len);
 	if (remaining == 0) {
 		if (status & FR_SBUFF_EXTEND_ERROR) return false;
 		return (idx['\0'] != 0);
@@ -754,14 +755,14 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
 		if (escape_chr == '\0') {
-			while ((p < end) && !fr_sbuff_terminal_search(in, p, idx, tt)) p++;
+			while ((p < end) && !fr_sbuff_terminal_search(in, p, idx, tt, needle_len)) p++;
 		} else {
 			while (p < end) {
 				if (do_escape) {
 					do_escape = false;
 				} else if (*p == escape_chr) {
 					do_escape = true;
-				} else if (fr_sbuff_terminal_search(in, p, idx, tt)) {
+				} else if (fr_sbuff_terminal_search(in, p, idx, tt, needle_len)) {
 					break;
 				}
 				p++;
@@ -947,7 +948,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		}
 
 	next:
-		if (tt && fr_sbuff_terminal_search(in, fr_sbuff_current(&our_in), idx, tt)) break;
+		if (tt && fr_sbuff_terminal_search(in, fr_sbuff_current(&our_in), idx, tt, needle_len)) break;
 		fr_sbuff_advance(&our_in, 1);
 	};
 
@@ -1605,14 +1606,19 @@ size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
  *
  * @param[in] sbuff		sbuff to search in.
  * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
+ * @param[in] tt		If not NULL, stop if we find a terminal sequence.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len)
+size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *tt)
 {
 	size_t		total = 0;
 	char const	*p;
+	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
+	size_t		needle_len = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
+
+	if (tt) fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
 	while (total < len) {
 		char *end;
@@ -1621,7 +1627,8 @@ size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len)
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
-		while ((p < end) && isspace(*p)) p++;
+		while ((p < end) && isspace(*p) &&
+		       ((needle_len == 0) || !fr_sbuff_terminal_search(sbuff, p, idx, tt, needle_len))) p++;
 
 		total += fr_sbuff_set(sbuff, p);
 		if (p != end) break;		/* stopped early, break */
@@ -1695,14 +1702,14 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *
 		p = sbuff->p;
 
 		if (escape_chr == '\0') {
-			while ((p < end) && !fr_sbuff_terminal_search(sbuff, p, idx, tt)) p++;
+			while ((p < end) && !fr_sbuff_terminal_search(sbuff, p, idx, tt, needle_len)) p++;
 		} else {
 			while (p < end) {
 				if (do_escape) {
 					do_escape = false;
 				} else if (*p == escape_chr) {
 					do_escape = true;
-				} else if (fr_sbuff_terminal_search(sbuff, p, idx, tt)) {
+				} else if (fr_sbuff_terminal_search(sbuff, p, idx, tt, needle_len)) {
 					break;
 				}
 				p++;
@@ -1964,5 +1971,5 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	 */
 	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
-	return fr_sbuff_terminal_search(in, in->p, idx, tt);
+	return fr_sbuff_terminal_search(in, in->p, idx, tt, needle_len);
 }

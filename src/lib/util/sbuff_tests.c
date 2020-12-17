@@ -947,7 +947,7 @@ static void test_file_extend(void)
 	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, 128) == &sbuff);
 
 	TEST_CASE("Advance past whitespace, which will require shift/extend");
-	TEST_CHECK_LEN(sizeof(fbuff) - 6, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX));
+	TEST_CHECK_LEN(sizeof(fbuff) - 6, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL));
 	TEST_CASE("Verify that we passed all and only whitespace");
 	(void) fr_sbuff_out_abstrncpy(NULL, &post_ws, &sbuff, 24);
 	TEST_CHECK_STRCMP(post_ws, "xyzzy");
@@ -1026,30 +1026,30 @@ static void test_adv_past_whitespace(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 5);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL), 5);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a         test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL), 0);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL), 0);
 
 	TEST_CASE("Check for token that is the string");
 	fr_sbuff_init(&sbuff, in_ws, sizeof(in_ws));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX), 5);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL), 5);
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, 2), 2);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, 2, NULL), 2);
 	TEST_CHECK_STRCMP(sbuff.p, "   i am a         test string");
 
 	TEST_CASE("Length constraint without token match");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, 2), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&sbuff, 2, NULL), 0);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 }
 

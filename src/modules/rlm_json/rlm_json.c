@@ -211,7 +211,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 	}
 
 	sbuff = FR_SBUFF_IN((*in)->vb_strvalue, (*in)->vb_length);
-	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 	/*
 	 * Iterate through the list of attribute templates in the xlat. For each
@@ -273,7 +273,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 		TALLOC_FREE(vpt);
 
 		/* Jump forward to next attr */
-		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX);
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 	}
 
 	/*

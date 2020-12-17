@@ -1288,7 +1288,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 	 *	don't want them to become a whitespace
 	 *	literal.
 	 */
-	fr_sbuff_adv_past_whitespace(in, SIZE_MAX);
+	fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 	fr_sbuff_marker(&m, &our_in);
 
 	fr_cursor_init(&cursor, head);
@@ -1390,7 +1390,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 *	then error.
 		 */
 		fr_sbuff_set(&m, &our_in);
-		len = fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX);
+		len = fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 		/*
 		 *	Check to see if we have a terminal char
