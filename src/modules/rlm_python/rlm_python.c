@@ -863,7 +863,7 @@ static PyObject *python_module_init(void)
 		NULL,				/* m_free */
 	};
 
-	fr_assert(inst && conf);
+	fr_assert(inst);
 
 	module = PyModule_Create(&py_module_def);
 	if (!module) {
