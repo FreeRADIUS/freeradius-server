@@ -1166,12 +1166,8 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	with refs.  It shouldn't appear anywhere else.
 	 */
 	if (flags->extra) {
-		if (flags->subtype != FLAG_HAS_REF) {
-			fr_strerror_const("Unsupported extension.");
-			return false;
-		}
-
-		return true;
+		fr_strerror_const("Unsupported extension.");
+		return false;
 	}
 
 	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {

@@ -103,7 +103,6 @@ enum {
 	FLAG_KEY_FIELD,					//!< this is a key field for a subsequent struct
 	FLAG_BIT_FIELD,				       	//!< bit field inside of a struct
 	FLAG_LENGTH_UINT16,				//!< string / octets type is prefixed by uint16 of length
-	FLAG_HAS_REF,			       		//!< the attribute has a reference to somewhere else
 };
 
 #define fr_dict_attr_is_key_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_KEY_FIELD))

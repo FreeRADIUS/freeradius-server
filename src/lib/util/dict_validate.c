@@ -166,7 +166,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (flags->extra) {
 		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_LENGTH_UINT16) &&
-		    (flags->subtype != FLAG_BIT_FIELD) && (flags->subtype != FLAG_HAS_REF)) {
+		    (flags->subtype != FLAG_BIT_FIELD)) {
 			fr_strerror_const("The 'key' and 'length' flags cannot be used with any other flags.");
 			return false;
 		}
@@ -221,11 +221,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			break;
 
 		case FR_TYPE_TLV:
-			if (flags->subtype != FLAG_HAS_REF) {
-				fr_strerror_const("Invalid type for extra flag.");
-				return false;
-			}
-
 			ALLOW_FLAG(extra);
 			/* @todo - allow arrays of struct? */
 			ALLOW_FLAG(subtype);
@@ -242,18 +237,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			fr_strerror_printf("The 'length' flag cannot be used used with type %s",
 					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 			return false;
-		}
-
-		if (flags->subtype == FLAG_HAS_REF) {
-			if ((type != FR_TYPE_GROUP) && (type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT)) {
-				fr_strerror_printf("The 'ref' flag cannot be used used with type %s",
-						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-				return false;
-			}
-
-			/*
-			 *	@todo - double-check refs here, and not in dict_read_process_attribute().
-			 */
 		}
 
 		FORBID_OTHER_FLAGS(extra);

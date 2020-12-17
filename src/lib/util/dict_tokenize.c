@@ -443,8 +443,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			}
 
 			*ref = talloc_strdup(ctx->fixup.pool, value);
-			flags->extra = true;
-			flags->subtype = FLAG_HAS_REF;
 
 		} else if (strcmp(key, "clone") == 0) {
 			if (!value) {
