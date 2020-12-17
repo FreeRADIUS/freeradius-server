@@ -192,7 +192,7 @@ static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
 
 static PyMethodDef module_methods[] = {
 	{ "log", &mod_log, METH_VARARGS,
-	  "radiusd.log(level, msg)\n\n" \
+	  "freeradius.log(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR\n"
 	},
@@ -851,8 +851,8 @@ static PyObject *python_module_init(void)
 
 	static struct PyModuleDef py_module_def = {
 		PyModuleDef_HEAD_INIT,
-		"radiusd",			/* m_name */
-		"FreeRADIUS python module",	/* m_doc */
+		"freeradius",			/* m_name */
+		"freeRADIUS python module",	/* m_doc */
 		-1,				/* m_size */
 		module_methods,			/* m_methods */
 		NULL,				/* m_reload */
@@ -911,9 +911,9 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 *	own copy which it can mutate as much as
 	 *      it wants.
 	 */
- 	module = PyImport_ImportModule("radiusd");
+ 	module = PyImport_ImportModule("freeradius");
  	if (!module) {
- 		ERROR("Failed importing \"radiusd\" module into interpreter %p", inst->interpreter);
+ 		ERROR("Failed importing \"freeradius\" module into interpreter %p", inst->interpreter);
  		return -1;
  	}
 	if ((python_module_import_config(inst, conf, module) < 0) ||
@@ -1113,7 +1113,7 @@ static int mod_load(void)
 	 *	are automatically created when the first
 	 *	interpreter is spawned.
 	 */
-	PyImport_AppendInittab("radiusd", python_module_init);
+	PyImport_AppendInittab("freeradius", python_module_init);
 	LSAN_DISABLE(Py_InitializeEx(0));	/* Don't override signal handlers - noop on subs calls */
 
 	/*
