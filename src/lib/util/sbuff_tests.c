@@ -700,6 +700,36 @@ static void test_unescape_multi_char_terminals(void)
 	TEST_CHECK_STRCMP(out, " baz");
 }
 
+static void test_unescape_eof_terminal(void)
+{
+	char const		in[] = "foo, bar";
+	fr_sbuff_t		sbuff;
+	ssize_t			slen;
+	fr_sbuff_term_t		tt_eof = FR_SBUFF_TERMS(
+					L(""),
+					L(","),
+				);
+	fr_sbuff_term_t		tt = FR_SBUFF_TERMS(
+					L(",")
+				);
+	char			out[100];
+
+	fr_sbuff_init(&sbuff, in, sizeof(in));
+
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt_eof, NULL);
+	TEST_CHECK(slen == 3);
+	TEST_CHECK_STRCMP(out, "foo");
+
+	fr_sbuff_advance(&sbuff, 1);	/* Advance past comma */
+
+	slen = fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(out, sizeof(out)), &sbuff, SIZE_MAX, &tt_eof, NULL);
+	TEST_CHECK(slen == 4);
+	TEST_CHECK_STRCMP(out, " bar");
+
+	TEST_CHECK(fr_sbuff_is_terminal(&sbuff, &tt_eof) == true);
+	TEST_CHECK(fr_sbuff_is_terminal(&sbuff, &tt) == false);
+}
+
 static void test_no_advance(void)
 {
 	char const	*in = "i am a test string";
@@ -1381,6 +1411,7 @@ TEST_LIST = {
 	{ "fr_sbuff_out_bstrncpy_until",	test_bstrncpy_until },
 	{ "multi-char terminals",		test_unescape_multi_char_terminals },
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
+	{ "fr_sbuff_terminal_eof",		test_unescape_eof_terminal },
 
 	/*
 	 *	Extending buffer

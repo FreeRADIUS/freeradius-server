@@ -446,6 +446,7 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	ssize_t		mid;
 
 	size_t		remaining;
+	fr_sbuff_extend_status_t	status = FR_SBUFF_EXTENDABLE;
 
 	if (!term) return false;			/* If there's no terminals, we don't need to search */
 
@@ -453,7 +454,15 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	term_idx = idx[(uint8_t)*p];			/* Fast path */
 	if (!term_idx) return false;
 
-	remaining = fr_sbuff_remaining(in);
+	/*
+	 *	Special case for EOFlike states
+	 */
+	remaining = fr_sbuff_extend_lowat(&status, in, 1);
+	if (remaining == 0) {
+		if (status & FR_SBUFF_EXTEND_ERROR) return false;
+		return (idx['\0'] != 0);
+	}
+
 	mid = term_idx - 1;				/* Inform the mid point from the index */
 
 	while (start <= end) {
@@ -1954,8 +1963,6 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	 *	figure out the longest needle.
 	 */
 	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
-
-	if (!fr_sbuff_extend_lowat(NULL, in, needle_len)) return false;
 
 	return fr_sbuff_terminal_search(in, in->p, idx, tt);
 }

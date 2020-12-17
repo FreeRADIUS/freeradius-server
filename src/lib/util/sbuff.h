@@ -217,6 +217,7 @@ typedef enum {
 
 #define FR_SBUFF_FLAG_EXTENDABLE		0x01
 #define FR_SBUFF_FLAG_EXTENDED			0x02
+#define FR_SBUFF_FLAG_EXTEND_ERROR		0x04
 
 /** Whether the buffer is currently extendable and whether it was extended
  *
@@ -225,7 +226,8 @@ typedef enum {
 	FR_SBUFF_NOT_EXTENDABLE			= 0x00,
 	FR_SBUFF_EXTENDABLE			= FR_SBUFF_FLAG_EXTENDABLE,
 	FR_SBUFF_EXTENDABLE_EXTENDED		= FR_SBUFF_FLAG_EXTENDABLE | FR_SBUFF_FLAG_EXTENDED,
-	FR_SBUFF_EXTENDED			= FR_SBUFF_FLAG_EXTENDED
+	FR_SBUFF_EXTENDED			= FR_SBUFF_FLAG_EXTENDED,
+	FR_SBUFF_EXTEND_ERROR			= FR_SBUFF_FLAG_EXTEND_ERROR
 } fr_sbuff_extend_status_t;
 
 #define fr_sbuff_is_extendable(_status)		((_status) & FR_SBUFF_FLAG_EXTENDABLE)
