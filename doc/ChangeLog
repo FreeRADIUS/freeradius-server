@@ -93,6 +93,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  versus disable_tlsv1
 	* Fix "read client from SQL" code so that it properly ties clients
 	  to a virtual server.  Also document the behavior.
+	* Update / correct data types in dictionary.wimax
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
