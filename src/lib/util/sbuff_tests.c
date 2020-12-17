@@ -823,6 +823,8 @@ static void test_talloc_extend(void)
 	TEST_CHECK(strcmp(fr_sbuff_start(&sbuff), "01234567890123456789012345678901234ABCDEFGHIJKLMNO") == 0);
 	TEST_SBUFF_USED(&sbuff, 50);
 	TEST_SBUFF_LEN(&sbuff, 51);
+
+	talloc_free(sbuff.buff);
 }
 
 static void test_talloc_extend_init_zero(void)
@@ -852,6 +854,8 @@ static void test_talloc_extend_init_zero(void)
 	TEST_CHECK(strcmp(fr_sbuff_start(&sbuff), "ABCD") == 0);
 	TEST_SBUFF_USED(&sbuff, 4);
 	TEST_SBUFF_LEN(&sbuff, 7);
+
+	talloc_free(sbuff.buff);
 }
 
 static void test_talloc_extend_multi_level(void)
@@ -883,6 +887,8 @@ static void test_talloc_extend_multi_level(void)
 	TEST_CHECK(sbuff_0.start == sbuff_1.start);
 	TEST_CHECK(sbuff_0.end == sbuff_1.end);
 	TEST_CHECK(sbuff_0.p == sbuff_1.p);
+
+	talloc_free(sbuff_0.buff);
 }
 
 static void test_talloc_extend_with_marker(void)
@@ -930,6 +936,8 @@ static void test_talloc_extend_with_marker(void)
 	TEST_CHECK((marker_1.p - sbuff_0.start) == 2);
 	TEST_SBUFF_USED(&sbuff_0, 3);
 	TEST_SBUFF_LEN(&sbuff_0, 5);
+
+	talloc_free(sbuff_0.buff);
 }
 
 static void test_file_extend(void)

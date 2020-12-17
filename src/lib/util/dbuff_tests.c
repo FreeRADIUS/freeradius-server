@@ -356,6 +356,9 @@ static void test_dbuff_talloc_extend(void)
 	/*
 	 * @todo: the analogous test for extensible source.
 	 */
+
+	talloc_free(dbuff1.buff);
+	talloc_free(dbuff2.buff);
 }
 
 static void test_dbuff_talloc_extend_multi_level(void)
@@ -382,6 +385,8 @@ static void test_dbuff_talloc_extend_multi_level(void)
 	TEST_CHECK(fr_dbuff_used(&dbuff2) == 0);
 	TEST_CHECK(fr_dbuff_remaining(&dbuff2) == 0);
 	TEST_CHECK(fr_dbuff_in(&dbuff2, (uint64_t) 0x123456789abcdef0) == -8);
+
+	talloc_free(dbuff1.buff);
 }
 
 static void test_dbuff_fd(void)
