@@ -1149,7 +1149,12 @@ static void mod_unload(void)
 	PyThreadState_Swap(global_interpreter); /* Swap to the main thread */
 	if (default_path) PyMem_Free(default_path);
 
-	Py_Finalize();
+	/*
+	 *	PyImport_Cleanup - Leaks memory in python 3.6
+	 *	should check once we require 3.8 that this is
+	 *	still needed.
+	 */
+	LSAN_DISABLE(Py_Finalize());			/* Ignore leaks on exit, we don't reload modules so we don't care */
 	if (python_dlhandle) dlclose(python_dlhandle);	/* dlclose will SEGV on null handle */
 }
 
