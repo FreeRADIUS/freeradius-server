@@ -184,7 +184,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 	 *	then assume we need to re-terminate
 	 *	later.
 	 */
-	reterminate = (*sbuff->p == '\0') && !sbuff->is_const;
+	reterminate = (sbuff->p < sbuff->end) && (*sbuff->p == '\0') && !sbuff->is_const;
 
 	/*
 	 *	Determine the maximum shift amount.
