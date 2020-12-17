@@ -219,7 +219,7 @@ static void python_error_log(const rlm_python_t *inst, request_t *request)
 		PyTracebackObject *ptb = (PyTracebackObject*)p_traceback;
 		size_t fnum = 0;
 
-		for(; ptb != NULL; ptb = ptb->tb_next, fnum++) {
+		while (ptb != NULL) {
 			PyFrameObject *cur_frame = ptb->tb_frame;
 
 			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
@@ -228,6 +228,9 @@ static void python_error_log(const rlm_python_t *inst, request_t *request)
 				PyFrame_GetLineNumber(cur_frame),
 				PyUnicode_AsUTF8(cur_frame->f_code->co_name)
 			);
+
+			ptb = ptb->tb_next;
+			fnum++;
 		}
 	}
 
