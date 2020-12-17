@@ -198,22 +198,22 @@ VALUE	WiMAX-Classifer-Direction	FF			4
 ATTRIBUTE	WiMAX-Source-Specification		28.11.5	tlv
 
 ATTRIBUTE	WiMAX-Source-IPAddress			28.11.5.1	ipaddr
-ATTRIBUTE	WiMAX-Source-IPAddressRange		28.11.5.2	combo-ip
-ATTRIBUTE	WiMAX-Source-IPAddressMask		28.11.5.3	octets
-ATTRIBUTE	WiMAX-Source-Port			28.11.5.4	octets
-ATTRIBUTE	WiMAX-Source-Port-Range			28.11.5.5	octets
-ATTRIBUTE	WiMAX-Source-Inverted			28.11.5.6	octets
-ATTRIBUTE	WiMAX-Source-Assigned			28.11.5.7	octets
+ATTRIBUTE	WiMAX-Source-IPAddressRange		28.11.5.2	octets # 2 of ipv4addr OR ipv6addr
+ATTRIBUTE	WiMAX-Source-IPAddressMask		28.11.5.3	combo-ip
+ATTRIBUTE	WiMAX-Source-Port			28.11.5.4	short
+ATTRIBUTE	WiMAX-Source-Port-Range			28.11.5.5	integer # really 2 short
+ATTRIBUTE	WiMAX-Source-Inverted			28.11.5.6	byte
+ATTRIBUTE	WiMAX-Source-Assigned			28.11.5.7	byte
 
 ATTRIBUTE	WiMAX-Destination-Specification		28.11.6	tlv
 
 ATTRIBUTE	WiMAX-Destination-IPAddress		28.11.6.1	ipaddr
-ATTRIBUTE	WiMAX-Destination-IPAddressRange	28.11.6.2	combo-ip
-ATTRIBUTE	WiMAX-Destination-IPAddressMask		28.11.6.3	octets
-ATTRIBUTE	WiMAX-Destination-Port			28.11.6.4	octets
-ATTRIBUTE	WiMAX-Destination-Port-Range		28.11.6.5	octets
-ATTRIBUTE	WiMAX-Destination-Inverted		28.11.6.6	octets
-ATTRIBUTE	WiMAX-Destination-Assigned		28.11.6.7	octets
+ATTRIBUTE	WiMAX-Destination-IPAddressRange	28.11.6.2	octets # 2 of ipv4addr OR ipv6addr
+ATTRIBUTE	WiMAX-Destination-IPAddressMask		28.11.6.3	combo-ip
+ATTRIBUTE	WiMAX-Destination-Port			28.11.6.4	short
+ATTRIBUTE	WiMAX-Destination-Port-Range		28.11.6.5	integer # really 2 short
+ATTRIBUTE	WiMAX-Destination-Inverted		28.11.6.6	byte
+ATTRIBUTE	WiMAX-Destination-Assigned		28.11.6.7	byte
 
 ATTRIBUTE	WiMAX-IP-TOS/DSCP-Range-and-Mask	28.11.7	octets
 ATTRIBUTE	WiMAX-VLAN-ID				28.11.8	integer
@@ -453,12 +453,10 @@ ATTRIBUTE	WiMAX-PFDv2-Classifier-Direction	84.9.4	byte
 
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Source-Spec	84.9.5	tlv
 ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address		84.9.5.1	combo-ip
-# really two IPv4 OR IPv6 addresses
-ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Range	84.9.5.2	octets
+ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Range	84.9.5.2	octets # 2 of ipv4addr OR ipv6addr
 ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Mask		84.9.5.3	combo-ip
 ATTRIBUTE	WiMAX-PFDv2-Src-Port			84.9.5.4	short
-# 2 shorts
-ATTRIBUTE	WiMAX-PFDv2-Src-Port-Range		84.9.5.5	integer
+ATTRIBUTE	WiMAX-PFDv2-Src-Port-Range		84.9.5.5	integer # really 2 short
 ATTRIBUTE	WiMAX-PFDv2-Src-Inverted		84.9.5.6	byte
 ATTRIBUTE	WiMAX-PFDv2-Src-Assigned		84.9.5.7	byte
 
