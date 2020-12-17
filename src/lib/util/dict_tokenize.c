@@ -528,12 +528,17 @@ static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
 
 /*
  *	Process the ALIAS command
+ *
+ *	ALIAS name ref
+ *
+ *	Creates an attribute "name" in the root namespace of the current
+ *	dictionary, which is a pointer to "ref".
  */
 static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
 	fr_dict_attr_t const	*da;
-	fr_dict_attr_t 		*new;
-	fr_dict_attr_t const	*parent = ctx->stack[ctx->stack_depth].da;
+	fr_dict_attr_t 		*self;
+	fr_dict_attr_t const	*parent = ctx->dict->root;
 	fr_hash_table_t		*namespace;
 
 	if (argc != 2) {
@@ -557,23 +562,38 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	}
 
 	/*
-	 *	The <src> can be a name.
+	 *	The <ref> can be a name.
+	 *
+	 *	Note that we don't do fixups here.  ALIASes MUST point
+	 *	to attributes which exist.
 	 */
 	da = fr_dict_attr_by_oid(NULL, parent, argv[1]);
 	if (!da) {
-		fr_strerror_printf("Attribute %s does not exist", argv[1]);
+		fr_strerror_printf("Attribute %s does not exist in dictionary %s", argv[1], parent->name);
 		return -1;
 
 	}
 
+	if (fr_dict_attr_ref(da)) {
+		fr_strerror_const("An ALIAS MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
+		return -1;
+	}
+
 	/*
 	 *	Note that we do NOT call fr_dict_attr_add() here.
-	 *	When that function adds two equivalent attributes the
+	 *
+	 *	When that function adds two equivalent attributes, the
 	 *	second one is prioritized for printing.  For ALIASes,
-	 *	we want the first one to be prioritized.
+	 *	we want the pre-existing one to be prioritized.
+	 *
+	 *	i.e. you can lookup the ALIAS by "name", but you
+	 *	actually get returned "ref".
 	 */
-	new = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type, &da->flags);
-	if (unlikely(!new)) return -1;
+	self = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type, &da->flags);
+	if (unlikely(!self)) return -1;
+
+	self->dict = ctx->dict;
+	dict_attr_ref_set(self, da);
 
 	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
@@ -583,7 +603,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		return -1;
 	}
 
-	if (!fr_hash_table_insert(namespace, new)) {
+	if (!fr_hash_table_insert(namespace, self)) {
 		fr_strerror_const("Internal error storing attribute");
 		goto error;
 	}
