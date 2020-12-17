@@ -1935,7 +1935,19 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	uint8_t		idx[UINT8_MAX + 1];	/* Fast path index */
 	size_t		needle_len = 1;
 
-	if (!tt) return false;
+	/*
+	 *	No terminal, check for EOF.
+	 */
+	if (!tt) {
+		fr_sbuff_extend_status_t status = FR_SBUFF_EXTENDABLE;
+
+		if ((fr_sbuff_extend_lowat(&status, in, 1) == 0) &&
+		    (status & FR_SBUFF_EXTEND_ERROR) == 0) {
+			return true;
+		}
+		
+		return false;
+	}
 
 	/*
 	 *	Initialise the fastpath index and
