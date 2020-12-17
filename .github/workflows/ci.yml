@@ -142,5 +142,12 @@ jobs:
         make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ]
       if: ${{ matrix.env.CC == 'clang' }}
 
+    - name: "Clang Static Analyzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-scan.tgz
+        path: build/plist/**/*.html
+      if: ${{ matrix.env.CC == 'clang' && failure() }}
+
     - name: Test
       run: make ci-test
