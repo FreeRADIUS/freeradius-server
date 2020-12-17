@@ -849,7 +849,6 @@ static char *python_path_build(TALLOC_CTX *ctx, rlm_python_t *inst, CONF_SECTION
 static PyObject *python_module_init(void)
 {
 	rlm_python_t	*inst = current_inst;
-	CONF_SECTION	*conf = current_conf;
 	PyObject	*module;
 
 	static struct PyModuleDef py_module_def = {
