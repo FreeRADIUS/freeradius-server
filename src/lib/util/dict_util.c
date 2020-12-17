@@ -1828,6 +1828,17 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		return -fr_sbuff_marker_release_behind(&start);
 	}
 
+	/*
+	 *	Follow references, unless this attribute is a grouping
+	 *	attribute.
+	 */
+	if (child->type != FR_TYPE_GROUP) {
+		fr_dict_attr_t const *ref;
+
+		ref = fr_dict_attr_ref(child);
+		if (ref) child = ref;
+	}
+
 	*out = child;
 
 	return fr_sbuff_marker_release_behind(&start);
