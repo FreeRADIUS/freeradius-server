@@ -264,7 +264,6 @@ jobs:
             --with-udpfromto=$LIBS_OPTIONAL \
             --with-openssl=$LIBS_OPTIONAL \
             --with-pcre=$LIBS_OPTIONAL \
-            --with-rlm-python-bin=/usr/bin/python2.7 \
         || cat ./config.log
         echo "Contents of src/include/autoconf.h"
         cat "./src/include/autoconf.h"
