@@ -700,7 +700,7 @@ static void test_unescape_multi_char_terminals(void)
 	TEST_CHECK_STRCMP(out, " baz");
 }
 
-static void test_unescape_eof_terminal(void)
+static void test_eof_terminal(void)
 {
 	char const		in[] = "foo, bar";
 	fr_sbuff_t		sbuff;
@@ -1411,7 +1411,7 @@ TEST_LIST = {
 	{ "fr_sbuff_out_bstrncpy_until",	test_bstrncpy_until },
 	{ "multi-char terminals",		test_unescape_multi_char_terminals },
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
-	{ "fr_sbuff_terminal_eof",		test_unescape_eof_terminal },
+	{ "fr_sbuff_terminal_eof",		test_eof_terminal },
 
 	/*
 	 *	Extending buffer
