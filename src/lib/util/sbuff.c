@@ -1602,14 +1602,16 @@ size_t fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 	return fr_sbuff_advance(sbuff, needle_len);
 }
 
-/** Wind position to the first non-whitespace character
+/** Wind position past characters in the allowed set
  *
  * @param[in] sbuff		sbuff to search in.
  * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
+ * @param[in] allowed		character set.
  * @param[in] tt		If not NULL, stop if we find a terminal sequence.
  * @return how many bytes we advanced.
  */
-size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *tt)
+size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool
+				 const allowed[static UINT8_MAX + 1], fr_sbuff_term_t const *tt)
 {
 	size_t		total = 0;
 	char const	*p;
@@ -1627,42 +1629,12 @@ size_t fr_sbuff_adv_past_whitespace(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
-		while ((p < end) && isspace(*p) &&
+		while ((p < end) && allowed[(uint8_t)*p] &&
 		       ((needle_len == 0) || !fr_sbuff_terminal_search(sbuff, p, idx, tt, needle_len))) p++;
 
 		total += fr_sbuff_set(sbuff, p);
 		if (p != end) break;		/* stopped early, break */
 	}
-
-	return total;
-}
-
-/** Wind position past characters in the allowed set
- *
- * @param[in] sbuff		sbuff to search in.
- * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
- * @param[in] allowed		character set.
- * @return how many bytes we advanced.
- */
-size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool const allowed[static UINT8_MAX + 1])
-{
-	size_t		total = 0;
-	char const	*p;
-
-	CHECK_SBUFF_INIT(sbuff);
-
-	while (total < len) {
-		char *end;
-
-		if (!fr_sbuff_extend(sbuff)) break;
-
-		end = CONSTRAINED_END(sbuff, len, total);
-		p = sbuff->p;
-		while ((p < end) && allowed[(uint8_t)*p]) p++;
-
-		total += fr_sbuff_set(sbuff, p);
-		if (p != end) break;	/* stopped early, break */
-	};
 
 	return total;
 }

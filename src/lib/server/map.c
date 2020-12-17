@@ -284,8 +284,8 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  * @param[in] op_table_len	length of op_table
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] rhs_rules		rules for parsing RHS attribute references.
- * @param[in] rhs_term		terminating rules for the RHS
- * @param[in] whitespace	what kind of whitespace to skip
+ * @param[in] p_rules		a list of terminals which will stop string
+ *				parsing.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -293,18 +293,18 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
 int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		    fr_table_num_sorted_t const *op_table, size_t op_table_len,
 		    tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
-		    fr_sbuff_parse_rules_t const *rhs_term,
-		    bool const whitespace[static UINT8_MAX + 1])
+		    fr_sbuff_parse_rules_t const *p_rules)
 {
-	ssize_t		slen;
-	fr_token_t	token;
-	map_t		*map;
-	fr_sbuff_t	sbuff = FR_SBUFF_NO_ADVANCE(in);
+	ssize_t			slen;
+	fr_token_t		token;
+	map_t			*map;
+	fr_sbuff_t		sbuff = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 
 	*out = NULL;
 	MEM(map = talloc_zero(ctx, map_t));
 
-	slen = fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, whitespace);
+	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, tt);
 	if (slen < 0) return -1;
 
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &sbuff, T_BARE_WORD);
@@ -358,7 +358,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		if (tmpl_resolve(map->lhs) < 0) goto error;
 	}
 
-	slen = fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, whitespace);
+	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, tt);
 	if (slen < 0) {
 		fr_strerror_const("Unexpected end of string after parsing left side");
 		goto error;
@@ -373,7 +373,7 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		goto error;
 	}
 
-	slen = fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, whitespace);
+	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, tt);
 	if (slen < 0) {
 		fr_strerror_const("Unexpected end of string after operator");
 		goto error;
@@ -394,14 +394,14 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		break;
 
 	default:
-		if (!rhs_term) rhs_term = &tmpl_parse_rules_bareword_quoted;
+		if (!p_rules) p_rules = &tmpl_parse_rules_bareword_quoted;
 
 		/*
 		 *	Use the RHS termination rules ONLY for bare
 		 *	words.  For quoted strings we already know how
 		 *	to terminate the input string.
 		 */
-		slen = tmpl_afrom_substr(map, &map->rhs, &sbuff, token, rhs_term, rhs_rules);
+		slen = tmpl_afrom_substr(map, &map->rhs, &sbuff, token, p_rules, rhs_rules);
 		break;
 	}
 	if (slen < 0) goto error;
@@ -715,7 +715,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 	fr_sbuff_t sbuff = FR_SBUFF_IN(vp_str, strlen(vp_str));
 
 	if (map_afrom_sbuff(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
-			    lhs_rules, rhs_rules, NULL, sbuff_char_whitespace) < 0) {
+			    lhs_rules, rhs_rules, NULL) < 0) {
 		return -1;
 	}
 

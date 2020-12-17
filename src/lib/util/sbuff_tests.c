@@ -1070,32 +1070,32 @@ static void test_adv_past_allowed(void)
 
 	TEST_CASE("Check for token at beginning of string");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 5);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 5);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a         test string");
 
 	TEST_CASE("Check for token not at beginning of string");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 0);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 
 	TEST_CASE("Check for token with zero length string");
 	fr_sbuff_init(&sbuff, in, 0 + 1);
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
 
 	TEST_CASE("Check for token at the end of the string");
 	fr_sbuff_init(&sbuff, in_ws, sizeof(in_ws));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }), 5);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 5);
 	TEST_CHECK(sbuff.p == sbuff.end);
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init(&sbuff, in, sizeof(in));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }), 2);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 2);
 	TEST_CHECK_STRCMP(sbuff.p, "   i am a         test string");
 
 	TEST_CASE("Length constraint with token match");
 	fr_sbuff_init(&sbuff, in_ns, sizeof(in_ns));
-	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }), 0);
+	TEST_CHECK_LEN(fr_sbuff_adv_past_allowed(&sbuff, 2, (bool[UINT8_MAX + 1]){ [' '] = true }, NULL), 0);
 	TEST_CHECK_STRCMP(sbuff.p, "i am a test string");
 }
 

@@ -110,7 +110,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	/*
 	 *	Skip spaces after the $INCLUDE.
 	 */
-	if (fr_sbuff_adv_past_allowed(sbuff, SIZE_MAX, sbuff_char_blank) == 0) {
+	if (fr_sbuff_adv_past_blank(sbuff, SIZE_MAX, NULL) == 0) {
 		ERROR("%s[%d]: Unexpected text after $INCLUDE",
 		      file, lineno);
 		return -1;
@@ -158,7 +158,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	/*
 	 *	Skip spaces and comments after the name.
 	 */
-	fr_sbuff_adv_past_allowed(sbuff, SIZE_MAX, sbuff_char_blank);
+	fr_sbuff_adv_past_blank(sbuff, SIZE_MAX, NULL);
 	if (fr_sbuff_next_if_char(sbuff, '#')) {
 		(void) fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n');
 	}
@@ -259,7 +259,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	If the line is empty or has only comments,
 		 *	then we don't care about leading spaces.
 		 */
-		leading_spaces = (fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank) > 0);
+		leading_spaces = (fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL) > 0);
 		if (fr_sbuff_next_if_char(&sbuff, '#')) {
 			(void) fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n');
 		}
@@ -343,7 +343,7 @@ check_item:
 		 *	Note that we _don't_ call map_afrom_sbuff() to
 		 *	skip spaces, as it will skip LF, too!
 		 */
-		(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+		(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 		if (fr_sbuff_is_char(&sbuff, '#')) goto check_item_comment;
 		if (fr_sbuff_is_char(&sbuff, '\n')) goto check_item_end;
 
@@ -351,7 +351,7 @@ check_item:
 		 *	Try to parse the check item.
 		 */
 		if (map_afrom_sbuff(t, map_tail, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
-				    &lhs_rules, &rhs_rules, &rhs_term, sbuff_char_blank) < 0) {
+				    &lhs_rules, &rhs_rules, &rhs_term) < 0) {
 			ERROR("%s[%d]: Failed reading check pair: %s",
 			      file, lineno, fr_strerror());
 		fail_entry:
@@ -406,7 +406,7 @@ check_item:
 		/*
 		 *	There can be spaces before any comma.
 		 */
-		(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+		(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 
 		/*
 		 *	Allow a comma after this item.  But remember
@@ -479,7 +479,7 @@ reply_item:
 		 *	it to the list, and go back to reading the
 		 *	user name or $INCLUDE.
 		 */
-		if (fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank) == 0) {
+		if (fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL) == 0) {
 			if (comma) {
 				ERROR("%s[%d]: Unexpected trailing comma in previous line",
 				      file, lineno);
@@ -528,7 +528,7 @@ next_reply_item:
 		 *	cases.
 		 */
 		if (map_afrom_sbuff(t, map_tail, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
-				    &lhs_rules, &rhs_rules, &rhs_term, sbuff_char_blank) < 0) {
+				    &lhs_rules, &rhs_rules, &rhs_term) < 0) {
 			ERROR("%s[%d]: Failed reading reply pair: %s",
 			      file, lineno, fr_strerror());
 			goto fail;
@@ -546,7 +546,7 @@ next_reply_item:
 		 *	What's left is a comment, comma, LF, or EOF.
 		 */
 		if (!*map_tail) {
-			(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+			(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 			if (fr_sbuff_is_char(&sbuff, ',')) {
 				ERROR("%s[%d]: Unexpected extra comma reading reply pair",
 				      file, lineno);
@@ -583,7 +583,7 @@ next_reply_item:
 
 		map_tail = &(*map_tail)->next;
 
-		(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+		(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 
 		/*
 		 *	Commas separate entries on the same line.  And
@@ -591,7 +591,7 @@ next_reply_item:
 		 */
 		if (fr_sbuff_next_if_char(&sbuff, ',')) {
 			comma = true;
-			(void) fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, sbuff_char_blank);
+			(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 		} else {
 			comma = false;
 		}

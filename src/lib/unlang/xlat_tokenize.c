@@ -357,7 +357,7 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 	 *	%{module:args}
 	 */
 	fr_sbuff_marker(&m_s, in);
-	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars);
+	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars, NULL);
 
 	if (!fr_sbuff_is_char(in, ':')) {
 		fr_strerror_const("Can't find function/argument separator");
@@ -446,7 +446,7 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 	 *	%{module:args}
 	 */
 	fr_sbuff_marker(&m_s, in);
-	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars);
+	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars, NULL);
 
 	if (!fr_sbuff_is_char(in, ':')) {
 		fr_strerror_const("Can't find function/argument separator");
