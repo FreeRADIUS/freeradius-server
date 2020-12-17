@@ -140,7 +140,7 @@ static CONF_PARSER module_config[] = {
 static struct {
 	char const *name;
 	int  value;
-} radiusd_constants[] = {
+} freeradius_constants[] = {
 
 #define A(x) { #x, x },
 
@@ -193,8 +193,8 @@ static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
 static PyMethodDef module_methods[] = {
 	{ "log", &mod_log, METH_VARARGS,
 	  "freeradius.log(level, msg)\n\n" \
-	  "Print a message using radiusd logging system. level should be one of the\n" \
-	  "constants L_DBG, L_AUTH, L_INFO, L_ERR\n"
+	  "Print a message using the freeradius daemon's logging system. level should be one of the\n" \
+	  "following constants L_DBG, L_WARN, L_INFO, L_ERR, L_DBG_WARN, L_DBG_ERR, L_DBG_WARN_REQ, L_DBG_ERR_REQ\n"
 	},
 	{ NULL, NULL, 0, NULL },
 };
@@ -805,8 +805,8 @@ static int python_module_import_constants(rlm_python_t *inst, PyObject *module)
 {
 	size_t i;
 
-	for (i = 0; radiusd_constants[i].name; i++) {
-		if ((PyModule_AddIntConstant(module, radiusd_constants[i].name, radiusd_constants[i].value)) < 0) {
+	for (i = 0; freeradius_constants[i].name; i++) {
+		if ((PyModule_AddIntConstant(module, freeradius_constants[i].name, freeradius_constants[i].value)) < 0) {
 			ERROR("Failed adding constant to module");
 			python_error_log(inst, NULL);
 			return -1;
