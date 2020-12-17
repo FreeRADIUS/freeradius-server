@@ -137,6 +137,20 @@ void	log_global_free(void);
 #define _FR_LOG_DST_PERROR(_lvl, _fmt, ...) fr_log_perror(LOG_DST, _lvl, __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
 #define _FR_LOG_DST_FATAL(_fmt, ...) log_fatal(LOG_DST, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
 
+/** Write a log message with marker
+ *
+ * @param[in] _lvl		log level.
+ * @param[in] _str		to markup.
+ * @param[in] _str_len		length of subject string. May be SIZE_MAX
+ *				to print the entire string.
+ * @param[in] _marker_idx	Where to place the marker.  May be negative.
+ * @param[in] _marker		text to print at marker_idx.
+ * @param[in] _line_prefix_fmt	Prefix to add to all log lines.
+ * @param[in] ...		Arguments for _line_prefix_fmt.
+ */
+#define _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _line_prefix_fmt, ...) \
+	fr_log_marker(LOG_DST, _lvl, __FILE__, __LINE__, _str, _str_len, _marker_idx, _line_prefix_fmt, ## __VA_ARGS__)
+
 /*
  *  Adds a default prefix to all messages in a source file
  *
@@ -150,10 +164,12 @@ void	log_global_free(void);
 #  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL(LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, LOG_PREFIX, LOG_PREFIX_ARGS)
 #else
 #  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, LOG_PREFIX _fmt, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, LOG_PREFIX _fmt, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL(LOG_PREFIX _fmt, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, LOG_PREFIX)
 #endif
 
 /** @name Log global messages
@@ -184,7 +200,9 @@ void	log_global_free(void);
 #define PWARN(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_WARN, _fmt, ## __VA_ARGS__)
 #define PERROR(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_ERR, _fmt, ## __VA_ARGS__)
 
-
+#define IMARKER(_str, _marker_idx, _marker)	_FR_LOG_PREFIX_MARKER(L_INFO, _str, SIZE_MAX, _marker_idx, _marker)
+#define WMARKER(_str, _marker_idx, _marker)	_FR_LOG_PREFIX_MARKER(L_WARN, _str, SIZE_MAX, _marker_idx, _marker)
+#define EMARKER(_str, _marker_idx, _marker)	_FR_LOG_PREFIX_MARKER(L_ERR, _str, SIZE_MAX, _marker_idx, _marker)
 /** @} */
 
 /** @name Log global debug messages (DEBUG*)
@@ -227,7 +245,7 @@ void	log_global_free(void);
 #define PDEBUG2(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
 #define PDEBUG3(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
 #define PDEBUG4(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
-#define PDEBUGX(_lvl, _fmt, ...)		_PDEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
+#define PDEBUGX(_lvl, _fmt, ...)	_PDEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)

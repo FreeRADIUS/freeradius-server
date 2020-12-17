@@ -149,14 +149,18 @@ int	fr_log_perror(fr_log_t const *log, fr_log_type_t type,
 		      char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, ...)
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (1));
 
-void	fr_log_hex(fr_log_t const *log, fr_log_type_t type,
-		   char const *file, int line,
-		   uint8_t const *data, size_t data_len, char const *fmt, ...)
+void	fr_log_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		      char const *str, size_t str_len,
+		      ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
+		      CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull (1,3,5,8));
+
+void	fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		   uint8_t const *data, size_t data_len, char const *line_prefix_fmt, ...)
 		   CC_HINT(format (printf, 7, 8)) CC_HINT(nonnull (1,3,5));
 
-void	fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type,
-			  char const *file, int line,
-			  uint8_t const *data, size_t data_len, ssize_t slen, char const *error, char const *fmt, ...)
+void	fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+			  uint8_t const *data, size_t data_len,
+			  ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
 			  CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull (1, 3, 5, 8));
 #ifdef __cplusplus
 }

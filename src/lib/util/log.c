@@ -666,20 +666,84 @@ int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int
 }
 
 DIAG_OFF(format-nonliteral)
+/** Print out an error marker
+ *
+ * @param[in] log		destination.
+ * @param[in] type		of log message.
+ * @param[in] file		src file the log message was generated in.
+ * @param[in] line		number the log message was generated on.
+ * @param[in] str		Subject string we're printing a marker for.
+ * @param[in] str_len		Subject string length.  Use SIZE_MAX for the
+ *				length of the string.
+ * @param[in] marker_idx	Where to place the marker.  May be negative.
+ * @param[in] marker		text to print at marker_idx.
+ * @param[in] line_prefix_fmt	Prefix to add to the marker messages.
+ * @param[in] ...		Arguments for line_prefix_fmt.
+ */
+void fr_log_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		   char const *str, size_t str_len,
+		   ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
+{
+	char const		*ellipses = "";
+	va_list			ap;
+	TALLOC_CTX		*thread_log_pool = fr_log_pool_init();
+	char			*line_prefix = NULL;
+	static char const	spaces[] = "                                                                                                                        ";
+
+	if (str_len == SIZE_MAX) str_len = strlen(str);
+
+	if (marker_idx < 0) marker_idx = marker_idx * -1;
+
+	if ((size_t)marker_idx >= sizeof(spaces)) {
+		size_t offset = (marker_idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
+		marker_idx -= offset;
+
+		if (offset > str_len) offset = str_len;
+		str += offset;
+		str_len -= offset;
+
+		ellipses  = "... ";
+	}
+
+	if (line_prefix_fmt) {
+		va_start(ap, line_prefix_fmt);
+		line_prefix = fr_vasprintf(thread_log_pool, line_prefix_fmt, ap);
+		va_end(ap);
+	}
+
+	fr_log(log, type, file, line, "%s%s%.*s",
+	       line_prefix ? line_prefix : "", ellipses, (int)str_len, str);
+	fr_log(log, type, file, line, "%s%s%.*s^ %s",
+	       line_prefix ? line_prefix : "", ellipses, (int)marker_idx, spaces, marker);
+
+	if (line_prefix_fmt) talloc_free(line_prefix);
+}
+
+/** Print out hex block
+ *
+ * @param[in] log		destination.
+ * @param[in] type		of log message.
+ * @param[in] file		src file the log message was generated in.
+ * @param[in] line		number the log message was generated on.
+ * @param[in] data		to print.
+ * @param[in] data_len		length of data.
+ * @param[in] line_prefix_fmt	Prefix to add to the marker messages.
+ * @param[in] ...		Arguments for line_prefix_fmt.
+ */
 void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		uint8_t const *data, size_t data_len, char const *fmt, ...)
+		uint8_t const *data, size_t data_len, char const *line_prefix_fmt, ...)
 {
 	size_t		i, j, len;
 	char		*p;
 	char		buffer[(0x10 * 3) + 1];
 	TALLOC_CTX	*thread_log_pool = fr_log_pool_init();
-	char		*prefix = NULL;
+	char		*line_prefix = NULL;
 
-	if (fmt) {
+	if (line_prefix_fmt) {
 		va_list ap;
 
-		va_start(ap, fmt);
-		prefix = talloc_asprintf(thread_log_pool, fmt, ap);
+		va_start(ap, line_prefix_fmt);
+		line_prefix = fr_vasprintf(thread_log_pool, line_prefix_fmt, ap);
 		va_end(ap);
 	}
 
@@ -689,38 +753,50 @@ void fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int l
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
 
-		if (fmt) {
-			fr_log(log, type, file, line, "%pV%04x: %s",
-			       fr_box_strvalue_buffer(prefix), (int)i, buffer);
+		if (line_prefix_fmt) {
+			fr_log(log, type, file, line, "%s%04x: %s",
+			       line_prefix, (int)i, buffer);
 		} else {
 			fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
 		}
 	}
 
-	if (fmt) talloc_free(prefix);
+	if (line_prefix_fmt) talloc_free(line_prefix);
 }
 
+/** Print out hex block
+ *
+ * @param[in] log		destination.
+ * @param[in] type		of log message.
+ * @param[in] file		src file the log message was generated in.
+ * @param[in] line		number the log message was generated on.
+ * @param[in] data		to print.
+ * @param[in] data_len		length of data.
+ * @param[in] marker_idx	Where to place the marker.  May be negative.
+ * @param[in] marker		text to print at marker_idx.
+ * @param[in] line_prefix_fmt	Prefix to add to the marker messages.
+ * @param[in] ...		Arguments for line_prefix_fmt.
+ */
 void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		       uint8_t const *data, size_t data_len, ssize_t slen,
-		       char const *error, char const *fmt, ...)
+		       uint8_t const *data, size_t data_len,
+		       ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
 {
 	size_t		i, j, len;
 	char		*p;
 	char		buffer[(0x10 * 3) + 1];
 	TALLOC_CTX	*thread_log_pool = fr_log_pool_init();
 
-	char		*prefix = NULL;
+	char		*line_prefix = NULL;
 	static char	spaces[3 * 0x10];	/* Bytes per line */
 
 	if (!*spaces) memset(spaces, ' ', sizeof(spaces) - 1);	/* Leave a \0 */
 
-	if (slen < 0) slen = +(slen);
-
-	if (fmt) {
+	if (marker_idx < 0) marker_idx = marker_idx * -1;
+	if (line_prefix_fmt) {
 		va_list ap;
 
-		va_start(ap, fmt);
-		prefix = talloc_asprintf(thread_log_pool, fmt, ap);
+		va_start(ap, line_prefix_fmt);
+		line_prefix = fr_vasprintf(thread_log_pool, line_prefix_fmt, ap);
 		va_end(ap);
 	}
 
@@ -730,9 +806,9 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
 
-		if (fmt) {
-			fr_log(log, type, file, line, "%pV%04x: %s",
-			       fr_box_strvalue_buffer(prefix), (int)i, buffer);
+		if (line_prefix_fmt) {
+			fr_log(log, type, file, line, "%s%04x: %s",
+			       line_prefix, (int)i, buffer);
 		} else {
 			fr_log(log, type, file, line, "%04x: %s", (int)i, buffer);
 		}
@@ -740,17 +816,18 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 		/*
 		 *	Marker is on this line
 		 */
-		if (((size_t)slen >= i) && ((size_t)slen < (i + 0x10))) {
-			if (fmt) {
-				fr_log(log, type, file, line, "%pV      %.*s^ %s", fr_box_strvalue_buffer(prefix),
-				       (int)((slen - i) * 3), spaces, error);
+		if (((size_t)marker_idx >= i) && ((size_t)marker_idx < (i + 0x10))) {
+			if (line_prefix_fmt) {
+				fr_log(log, type, file, line, "%s      %.*s^ %s", line_prefix,
+				       (int)((marker_idx - i) * 3), spaces, marker);
 			} else {
-				fr_log(log, type, file, line, "      %.*s^ %s", (int)((slen - i) * 3), spaces, error);
+				fr_log(log, type, file, line, "      %.*s^ %s",
+				       (int)((marker_idx - i) * 3), spaces, marker);
 			}
 		}
 	}
 
-	if (fmt) talloc_free(prefix);
+	if (line_prefix_fmt) talloc_free(line_prefix);
 }
 DIAG_ON(format-nonliteral)
 
