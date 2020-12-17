@@ -287,109 +287,99 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  * @param[in] p_rules		a list of terminals which will stop string
  *				parsing.
  * @return
- *	- <0 on error
- *	- 0 on success
+ *	- >0 on success.
+ *	- <=0 on error.
  */
-int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
-		    fr_table_num_sorted_t const *op_table, size_t op_table_len,
-		    tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
-		    fr_sbuff_parse_rules_t const *p_rules)
+ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
+			 fr_table_num_sorted_t const *op_table, size_t op_table_len,
+			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+			 fr_sbuff_parse_rules_t const *p_rules)
 {
 	ssize_t			slen;
 	fr_token_t		token;
 	map_t			*map;
-	fr_sbuff_t		sbuff = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_marker_t	m_lhs, m_rhs;
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 
 	*out = NULL;
 	MEM(map = talloc_zero(ctx, map_t));
 
-	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, tt);
-	if (slen < 0) return -1;
+	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
-	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &sbuff, T_BARE_WORD);
+	fr_sbuff_marker(&m_lhs, &our_in);
+	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
 	switch (token) {
 	case T_SOLIDUS_QUOTED_STRING:
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
-		slen = tmpl_afrom_substr(map, &map->lhs, &sbuff, token,
+		slen = tmpl_afrom_substr(map, &map->lhs, &our_in, token,
 					 tmpl_parse_rules_quoted[token], lhs_rules);
 		break;
 
 	default:
-		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &sbuff,
+		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 					      &map_parse_rules_bareword_quoted, lhs_rules);
 		break;
 	}
 
-	if (slen < 0) {
+	if (!map->lhs) {
 	error:
-		talloc_free(map);
-		return -1;
-	}
+		slen = 0;
 
-	/*
-	 *	We didn't parse anything from the LHS, that's OK.  The
-	 *	input must be empty.
-	 */
-	if (slen == 0) {
+	error_adj:
 		talloc_free(map);
-		*out = NULL;
-		return 0;
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 	}
 
 	/*
 	 *	Check for, and skip, the trailing quote if we had a leading quote.
 	 */
 	if (token != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&sbuff, fr_token_quote[token])) {
+		if (!fr_sbuff_is_char(&our_in, fr_token_quote[token])) {
 			fr_strerror_const("Unexpected end of quoted string");
-			return -1;
+			goto error;
 		}
 
-		fr_sbuff_advance(&sbuff, 1);
+		fr_sbuff_advance(&our_in, 1);
 
 		/*
 		 *	The tmpl code does NOT return tmpl_type_data
 		 *	for string data without xlat.  Instead, it
 		 *	creates TMPL_TYPE_UNRESOLVED.
 		 */
-		if (tmpl_resolve(map->lhs) < 0) goto error;
+		if (tmpl_resolve(map->lhs) < 0) {
+			fr_sbuff_set(&our_in, &m_lhs);	/* Marker points to LHS */
+			goto error;
+		}
 	}
 
-	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, tt);
-	if (slen < 0) {
-		fr_strerror_const("Unexpected end of string after parsing left side");
-		goto error;
-	}
+	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
 	/*
 	 *	Parse operator.
 	 */
-	fr_sbuff_out_by_longest_prefix(&slen, &map->op, op_table, &sbuff, 0);
-	if (slen <= 0) {
+	fr_sbuff_out_by_longest_prefix(&slen, &map->op, op_table, &our_in, T_INVALID);
+	if (map->op == T_INVALID) {
 		fr_strerror_const("Invalid operator");
-		goto error;
+		goto error_adj;
 	}
 
-	slen = fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, tt);
-	if (slen < 0) {
-		fr_strerror_const("Unexpected end of string after operator");
-		goto error;
-	}
+	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
 	/*
 	 *	Copy LHS code above, except parsing in RHS, with some
 	 *	minor modifications.
 	 */
-	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &sbuff, T_BARE_WORD);
+	fr_sbuff_marker(&m_rhs, &our_in);
+	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
 	switch (token) {
 	case T_SOLIDUS_QUOTED_STRING:
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
-		slen = tmpl_afrom_substr(map, &map->rhs, &sbuff, token,
+		slen = tmpl_afrom_substr(map, &map->rhs, &our_in, token,
 					 tmpl_parse_rules_quoted[token], rhs_rules);
 		break;
 
@@ -401,35 +391,29 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		 *	words.  For quoted strings we already know how
 		 *	to terminate the input string.
 		 */
-		slen = tmpl_afrom_substr(map, &map->rhs, &sbuff, token, p_rules, rhs_rules);
+		slen = tmpl_afrom_substr(map, &map->rhs, &our_in, token, p_rules, rhs_rules);
 		break;
 	}
-	if (slen < 0) goto error;
-
-	if (slen == 0) {
-		fr_strerror_const("Unexpected end of input after operator");
-		goto error;
-	}
-	fr_assert(map->rhs != NULL);
+	if (!map->rhs) goto error_adj;
 
 	/*
 	 *	Check for, and skip, the trailing quote if we had a leading quote.
 	 */
 	if (token != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&sbuff, fr_token_quote[token])) {
+		if (!fr_sbuff_next_if_char(&our_in, fr_token_quote[token])) {
 			fr_strerror_const("Unexpected end of quoted string");
-			return -1;
+			goto error;
 		}
-
-		fr_sbuff_advance(&sbuff, 1);
 
 		/*
 		 *	The tmpl code does NOT return tmpl_type_data
 		 *	for string data without xlat.  Instead, it
 		 *	creates TMPL_TYPE_UNRESOLVED.
 		 */
-		if (tmpl_resolve(map->rhs) < 0) goto error;
-
+		if (tmpl_resolve(map->rhs) < 0) {
+			fr_sbuff_set(&our_in, &m_rhs);	/* Marker points to RHS */
+			goto error;
+		}
 	} else if (tmpl_is_attr(map->lhs) && (tmpl_is_unresolved(map->rhs) || tmpl_is_data(map->rhs))) {
 		/*
 		 *	If the operator is "true" or "false", just
@@ -439,17 +423,22 @@ int map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		if ((map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
 			fr_dict_attr_t const *da = tmpl_da(map->lhs);
 
-			if (tmpl_cast_in_place(map->rhs, da->type, da) < 0) goto error;
+			if (tmpl_cast_in_place(map->rhs, da->type, da) < 0) {
+				fr_sbuff_set(&our_in, &m_rhs);	/* Marker points to RHS */
+				goto error;
+			}
 		} else {
-			if (tmpl_cast_in_place(map->rhs, FR_TYPE_STRING, NULL) < 0) goto error;
+			if (tmpl_cast_in_place(map->rhs, FR_TYPE_STRING, NULL) < 0) {
+				fr_sbuff_set(&our_in, &m_rhs);	/* Marker points to RHS */
+				goto error;
+			}
 		}
 	}
 
-	fr_sbuff_set(in, &sbuff);
 	MAP_VERIFY(map);
 	*out = map;
 
-	return 0;
+	return fr_sbuff_set(in, &our_in);
 }
 
 
@@ -714,7 +703,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 {
 	fr_sbuff_t sbuff = FR_SBUFF_IN(vp_str, strlen(vp_str));
 
-	if (map_afrom_sbuff(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+	if (map_afrom_substr(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
 			    lhs_rules, rhs_rules, NULL) < 0) {
 		return -1;
 	}

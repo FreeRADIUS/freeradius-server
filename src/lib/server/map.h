@@ -123,7 +123,7 @@ int		map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *raw,
 int		map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp,
 			     tmpl_rules_t const *rules);
 
-int		map_afrom_sbuff(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
+ssize_t		map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 				fr_table_num_sorted_t const *op_table, size_t op_table_len,
 				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 				fr_sbuff_parse_rules_t const *p_rules);

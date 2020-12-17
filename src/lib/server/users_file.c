@@ -37,6 +37,53 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
+static inline void line_error_marker(char const *src_file, int src_line,
+				     char const *user_file, int user_line,
+				     fr_sbuff_t *sbuff, char const *error)
+{
+	char			*end;
+	fr_sbuff_marker_t	start;
+
+	fr_sbuff_marker(&start, sbuff);
+	end = fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n');
+	if (!end) end = fr_sbuff_end(sbuff);
+	fr_sbuff_set(sbuff, &start);
+
+	fr_log_marker(LOG_DST, L_ERR, src_file, src_line,
+		      fr_sbuff_start(sbuff), end - fr_sbuff_start(sbuff),
+		      fr_sbuff_used(sbuff), error, "%s[%d]: ", user_file, user_line);
+}
+/** Print out a line oriented error marker at the current position of the sbuff
+ *
+ * @param[in] _sbuff	to print error for.
+ * @param[in] _error	message.
+ */
+#define ERROR_MARKER(_sbuff, _error) line_error_marker(__FILE__, __LINE__, file, lineno, _sbuff, _error)
+
+static inline void line_error_marker_adj(char const *src_file, int src_line,
+					 char const *user_file, int user_line,
+					 fr_sbuff_t *sbuff, ssize_t marker_idx, char const *error)
+{
+	char			*end;
+	fr_sbuff_marker_t	start;
+
+	fr_sbuff_marker(&start, sbuff);
+	end = fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n');
+	if (!end) end = fr_sbuff_end(sbuff);
+	fr_sbuff_set(sbuff, &start);
+
+	fr_log_marker(LOG_DST, L_ERR, src_file, src_line,
+		      fr_sbuff_current(sbuff), end - fr_sbuff_current(sbuff),
+		      marker_idx, error, "%s[%d]: ", user_file, user_line);
+}
+/** Print out a line oriented error marker relative to the current position of the sbuff
+ *
+ * @param[in] _sbuff	to print error for.
+ * @param[in] _idx	Where the error occurred.
+ * @param[in] _error	message.
+ */
+#define ERROR_MARKER_ADJ(_sbuff, _idx, _error) line_error_marker_adj(__FILE__, __LINE__, file, lineno, _sbuff, _idx, _error)
+
 /*
  *	Free a PAIR_LIST
  */
@@ -86,9 +133,9 @@ static fr_sbuff_parse_rules_t const rhs_term = {
 		.do_oct = false
 	},
 	.terminals = &FR_SBUFF_TERMS(
+		L(""),
 		L("\t"),
 		L("\n"),
-		L(" "),
 		L("#"),
 		L(","),
 	)
@@ -111,8 +158,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	 *	Skip spaces after the $INCLUDE.
 	 */
 	if (fr_sbuff_adv_past_blank(sbuff, SIZE_MAX, NULL) == 0) {
-		ERROR("%s[%d]: Unexpected text after $INCLUDE",
-		      file, lineno);
+	    	ERROR_MARKER(sbuff, "Unexpected text after $INCLUDE");
 		return -1;
 	}
 
@@ -123,9 +169,8 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	fr_sbuff_marker(&name, sbuff);
 	len = fr_sbuff_adv_until(sbuff, SIZE_MAX, &name_terms, 0);
 	if (len == 0) {
+	    	ERROR_MARKER(sbuff, "No filename after $INCLUDE");
 		fr_sbuff_marker_release(&name);
-		ERROR("%s[%d]: No filename after $INCLUDE ",
-		      file, lineno);
 		return -1;
 	}
 
@@ -173,8 +218,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	 */
 	if (!fr_sbuff_is_char(sbuff, '\n') &&
 	    (fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n') != NULL)) {
-		ERROR("%s[%d]: Unexpected text after filename",
-		      file, lineno);
+	    	ERROR_MARKER(sbuff, "Unexpected text after filename");
 		talloc_free(newfile);
 		return -1;
 	}
@@ -251,6 +295,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 
 	while (true) {
 		size_t		len;
+		ssize_t		slen;
 		bool		comma;
 		bool		leading_spaces;
 		PAIR_LIST	*t;
@@ -274,8 +319,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	this is, it's wrong.
 		 */
 		if (leading_spaces) {
-			ERROR("%s[%d]: Entry does not begin with a user name",
-			      file, lineno);
+	    		ERROR_MARKER(&sbuff, "Entry does not begin with a user name");
 		fail:
 			pairlist_free(&pl);
 			fclose(fp);
@@ -340,7 +384,7 @@ check_item:
 		 *	Skip spaces before the item, and allow the
 		 *	check list to end on comment or LF.
 		 *
-		 *	Note that we _don't_ call map_afrom_sbuff() to
+		 *	Note that we _don't_ call map_afrom_substr() to
 		 *	skip spaces, as it will skip LF, too!
 		 */
 		(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
@@ -350,10 +394,10 @@ check_item:
 		/*
 		 *	Try to parse the check item.
 		 */
-		if (map_afrom_sbuff(t, map_tail, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
-				    &lhs_rules, &rhs_rules, &rhs_term) < 0) {
-			ERROR("%s[%d]: Failed reading check pair: %s",
-			      file, lineno, fr_strerror());
+		slen = map_afrom_substr(t, map_tail, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
+				       &lhs_rules, &rhs_rules, &rhs_term);
+		if (!*map_tail) {
+	    		ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
 		fail_entry:
 			talloc_free(t);
 			goto fail;
@@ -369,13 +413,13 @@ check_item:
 		 */
 		if (!*map_tail) {
 			if (fr_sbuff_is_char(&sbuff, ',')) {
-				ERROR("%s[%d]: Unexpected extra comma reading check pair",
-				      file, lineno);
+				ERROR_MARKER(&sbuff, "Unexpected extra comma reading check pair");
+
 				goto fail_entry;
 			}
 
 			/*
-			 *	Otherwise map_afrom_sbuff() returned
+			 *	Otherwise map_afrom_substr() returned
 			 *	nothing, because there's no more
 			 *	input.
 			 */
@@ -436,8 +480,7 @@ check_item:
 			 *	That's bad.
 			 */
 			if (comma) {
-				ERROR("%s[%d]: Invalid comma ending the check item list.",
-				      file, lineno);
+				ERROR_MARKER(&sbuff, "Invalid comma ending the check item list");
 				goto fail_entry;
 			}
 
@@ -450,8 +493,7 @@ check_item:
 		 *	There's something else going on.
 		 */
 		if (fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n') != NULL) {
-			ERROR("%s[%d]: Unexpected text after check items: %s",
-			      file, lineno, fr_strerror());
+			ERROR_MARKER(&sbuff, "Unexpected text after check item");
 			goto fail_entry;
 		}
 
@@ -481,8 +523,7 @@ reply_item:
 		 */
 		if (fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL) == 0) {
 			if (comma) {
-				ERROR("%s[%d]: Unexpected trailing comma in previous line",
-				      file, lineno);
+				ERROR("%s[%d]: Unexpected trailing comma in previous line", file, lineno);
 				goto fail_entry;
 			}
 
@@ -503,8 +544,7 @@ reply_item:
 			fr_assert(comma == false);
 
 		} else if (!comma) {
-			ERROR("%s[%d]: Missing comma in previous line",
-			      file, lineno);
+			ERROR("%s[%d]: Missing comma in previous line", file, lineno);
 			goto fail_entry;
 		}
 
@@ -527,10 +567,10 @@ next_reply_item:
 		 *	lead to here have already checked for those
 		 *	cases.
 		 */
-		if (map_afrom_sbuff(t, map_tail, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
-				    &lhs_rules, &rhs_rules, &rhs_term) < 0) {
-			ERROR("%s[%d]: Failed reading reply pair: %s",
-			      file, lineno, fr_strerror());
+		slen = map_afrom_substr(t, map_tail, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+				       &lhs_rules, &rhs_rules, &rhs_term);
+		if (!*map_tail) {
+			ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
 			goto fail;
 		}
 
@@ -540,7 +580,7 @@ next_reply_item:
 		 *
 		 *	We can't have hit space/tab, as that was
 		 *	checked for at "reply_item", and again after
-		 *	map_afrom_sbuff(), if we actually got
+		 *	map_afrom_substr(), if we actually got
 		 *	something.
 		 *
 		 *	What's left is a comment, comma, LF, or EOF.
@@ -548,8 +588,7 @@ next_reply_item:
 		if (!*map_tail) {
 			(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 			if (fr_sbuff_is_char(&sbuff, ',')) {
-				ERROR("%s[%d]: Unexpected extra comma reading reply pair",
-				      file, lineno);
+				ERROR_MARKER(&sbuff, "Unexpected extra comma reading reply pair");
 				goto fail_entry;
 			}
 
@@ -618,8 +657,7 @@ next_reply_item:
 		 */
 		if (comma) goto next_reply_item;
 
-		ERROR("%s[%d]: Unexpected text after reply pair: %s",
-		      file, lineno, fr_sbuff_current(&sbuff));
+		ERROR_MARKER(&sbuff, "Unexpected text after reply");
 		goto fail_entry;
 	}
 
