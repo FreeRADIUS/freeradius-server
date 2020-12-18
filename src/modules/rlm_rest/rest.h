@@ -123,6 +123,8 @@ typedef struct rlm_rest_section_t {
 	char const		*body_str;	//!< The string version of the encoding/content type.
 	http_body_type_t	body;		//!< What encoding type should be used.
 
+	bool			raw_value;	//!< If true, enumerated attributes are provided as a numeric value
+
 	char const		*force_to_str;	//!< Force decoding with this decoder.
 	http_body_type_t	force_to;	//!< Override the Content-Type header in the response
 						//!< to force decoding as a particular type.
@@ -263,7 +265,7 @@ typedef struct rlm_rest_handle_t {
  *	CURLOPT_READFUNCTION prototype.
  */
 typedef size_t (*rest_read_t)(void *ptr, size_t size, size_t nmemb,
-			      void *userdata);
+			      void *userdata, rlm_rest_section_t *section);
 
 /*
  *	Connection API callbacks

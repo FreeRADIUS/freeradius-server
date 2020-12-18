@@ -60,6 +60,7 @@ static const CONF_PARSER section_config[] = {
 	{ "uri", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, uri), ""   },
 	{ "method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, method_str), "GET" },
 	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
+	{ "raw_value", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, raw_value), "no" },
 	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data), NULL },
 	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
 
@@ -223,6 +224,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 		.name = "xlat",
 		.method = HTTP_METHOD_GET,
 		.body = HTTP_BODY_NONE,
+		.raw_value = false,
 		.body_str = "application/x-www-form-urlencoded",
 		.require_auth = false,
 		.force_to = HTTP_BODY_PLAIN

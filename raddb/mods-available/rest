@@ -65,6 +65,8 @@ rest {
 	#                   'delete' or any custom HTTP method.
 	#    body         - The format of the HTTP body sent to the remote server.
 	#                   May be 'none', 'post' or 'json', defaults to 'none'.
+	#    raw_value    - If true, enumerated attribute values are provided as numeric
+	#                   values. Defaults to false.
 	#    data         - Send custom freeform data in the HTTP body. Content-type
 	#                   may be specified with 'body'. Will be expanded.
 	#                   Values from expansion will not be escaped, this should be
@@ -102,7 +104,7 @@ rest {
 	#  - attr_type  Numerical representation of the attribute type.
 	#  - type       Type of the attribute (e.g. "integer", "string", "ipaddr", "octets", ...).
 	#  - value      Attribute value, for enumerated attributes the human readable value is
-	#               provided and not the numeric value.
+	#               provided and not the numeric value (Depends on the 'raw_value' config item).
 	#  {
 	#      "<attribute0>":{
 	#          "attr_type":<attr_type0>,
