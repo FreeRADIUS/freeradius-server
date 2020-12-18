@@ -505,12 +505,18 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
+			if (vp->da->flags.has_value) break;
+
 			return snprintf(out, freespace, "%u", vp->vp_integer);
 
 		case PW_TYPE_SHORT:
+			if (vp->da->flags.has_value) break;
+
 			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_short);
 
 		case PW_TYPE_BYTE:
+			if (vp->da->flags.has_value) break;
+
 			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_byte);
 
 		case PW_TYPE_SIGNED:
