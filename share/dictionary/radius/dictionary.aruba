@@ -69,6 +69,8 @@ ATTRIBUTE	Gateway-Zone				54	string
 
 ATTRIBUTE	STP-Admin-Edge-Port			58	integer
 
+ATTRIBUTE	UBT-Gateway-CPPM-Role			59	string
+
 VALUE	AirGroup-Device-Type		Personal-Device		1
 VALUE	AirGroup-Device-Type		Shared-Device		2
 VALUE	AirGroup-Device-Type		Deleted-Device		3
