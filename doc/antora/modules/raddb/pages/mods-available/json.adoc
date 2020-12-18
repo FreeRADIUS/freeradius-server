@@ -369,8 +369,8 @@ names in `array_of_names` will have corresponding indexes to the values in
 
 ```
 json {
-	encode_format {
-#		output_format = object
+	encode {
+#		output_mode = object
 		attribute {
 #			prefix =
 		}

@@ -346,7 +346,7 @@ linelog {
 		Access-Reject = "Sent reject: %{User-Name}"
 		Access-Challenge = "Sent challenge: %{User-Name}"
 	}
-	destination = 'file'
+	destination = file
 	file {
 		filename = ${logdir}/linelog
 		permissions = 0600

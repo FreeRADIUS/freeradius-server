@@ -19,6 +19,13 @@ expansion, such as:
 
 
 
+== Capabilities and Permissions
+
+On Linus, you may need to do:
+
+
+In order for the `icmp` module to bind to a "raw" socket.
+
 
 
 ## Configuration Settings
@@ -63,6 +70,7 @@ Copy of the `icmp` module, as it may be easier to remember `ping` than `icmp`.
 ```
 #	`%{icmp:192.0.2.1}`
 #	`%{icmp:%{NAS-IP-Address}}`
+#	$ setcap cap_net_raw+ep ${bindir}/radiusd
 icmp {
 #	interface = eth0
 	src_ipaddr = *

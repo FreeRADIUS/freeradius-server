@@ -100,6 +100,27 @@ At least one of these attributes should be set at the end of each
 section for a response to be sent.
 
 
+The DHCP Server Identifier is set here since it is returned in OFFERs
+
+Call a policy (defined in policy.d/dhcp) to set common reply attributes
+
+Do a simple mapping of MAC to assigned IP.
+
+See below for the definition of the "mac2ip"
+module.
+
+mac2ip
+
+If the MAC wasn't found in that list, do something else.
+You could call a Perl, Python, or Java script here.
+
+if (notfound) {
+...
+}
+
+Or, allocate IPs from the DHCP pool in SQL. You may need to
+set the pool name here if you haven't set it elsewhere.
+
 Set the type of packet to send in reply.
 
 The server will look at the Message-Type attribute to
@@ -114,36 +135,28 @@ In the event that Message-Type is not set then the
 server will fall back to determining the type of reply
 based on the rcode of this section.
 
-
-The contents here are invented.  Change them!
-
-Do a simple mapping of MAC to assigned IP.
-
-See below for the definition of the "mac2ip"
-module.
-
-mac2ip
-
-If the MAC wasn't found in that list, do something else.
-You could call a Perl, Python, or Java script here.
-
-if (notfound) {
-...
+update reply {
+     &Message-Type = Offer
 }
-
-Or, allocate IPs from the DHCP pool in SQL. You may need to
-set the pool name here if you haven't set it elsewhere.
 
 If Message-Type is not set, returning "ok" or
 "updated" from this section will respond with a Offer
 message.
 
 Other rcodes will tell the server to not return any response.
+ok
 
+
+The DHCP Server Identifier is set here since it is returned in OFFERs
+
+If the request is not for this server then silently discard it
 
 Response packet type. See Discover section above.
+update reply {
+     &Message-Type = Ack
+}
 
-The contents here are invented.  Change them!
+Call a policy (defined in policy.d/dhcp) to set common reply attributes
 
 Do a simple mapping of MAC to assigned IP.
 
@@ -161,6 +174,7 @@ if (notfound) {
 
 Or, allocate IPs from the DHCP pool in SQL. You may need to
 set the pool name here if you haven't set it elsewhere.
+
 
 If Message-Type is not set, returning "ok" or
 "updated" from this section will respond with a Ack
@@ -168,6 +182,7 @@ packet.
 
 "handled" will not return a packet, all other rcodes will
 send back a NAK.
+ok
 
 
 Other DHCP packet types
@@ -176,11 +191,24 @@ There should be a separate section for each DHCP message type.
 By default this configuration will ignore them all. Any packet type
 not defined here will be responded to with a NAK.
 
+If using IPs from a DHCP pool in SQL then you may need to set the
+pool name here if you haven't set it elsewhere and mark the IP as declined.
+
+
+
+A dummy config for Inform packets - this should match the
+options set in the Request section above, except Inform replies
+must not set Your-IP-Address or IP-Address-Lease-Time
+
+Call a policy (defined in policy.d/dhcp) to set common reply attributes
 
 
 
 For Windows 7 boxes
 
+
+If using IPs from a DHCP pool in SQL then you may need to set the
+pool name here if you haven't set it elsewhere and release the IP.
 
 
 The thing being queried for is implicit
@@ -274,52 +302,44 @@ listen {
 #client private {
 #}
 recv Discover {
-	update reply {
-	       &Message-Type = Offer
-	}
-	update reply {
-		&Domain-Name-Server = 127.0.0.1
-		&Domain-Name-Server = 127.0.0.2
-		&Subnet-Mask = 255.255.255.0
-		&Router-Address = 192.0.2.1
-		&IP-Address-Lease-Time = 86400
+	update control {
 		&Server-Identifier = 192.0.2.1
 	}
+	dhcp_common
 #	update control {
 #		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
-	ok
 }
 recv Request {
-	update reply {
-	       &Message-Type = Ack
-	}
-	update reply {
-		&Domain-Name-Server = 127.0.0.1
-		&Domain-Name-Server = 127.0.0.2
-		&Subnet-Mask = 255.255.255.0
-		&Router-Address = 192.0.2.1
-		&IP-Address-Lease-Time = 86400
+	update control {
 		&Server-Identifier = 192.0.2.1
 	}
+	if (&request.Server-Identifier && \
+	    &request.Server-Identifier != &control.Server-Identifier) {
+	        do_not_respond
+	}
+	dhcp_common
+#	update control {
+#		&IP-Pool.Name := "local"
+#	}
+#	dhcp_sqlippool
+	if (ok) {
+		update reply {
+			&Your-IP-Address := "%{%{request.Requested-IP-Address}:-{request.Client-IP-Address}}"
+		}
+	}
+}
+recv Decline {
 #	update control {
 #		&IP-Pool.Name := "local"
 #	}
 #	dhcp_sqlippool
 	ok
 }
-recv Decline {
-	update reply {
-	       &Message-Type = Do-Not-Respond
-	}
-	reject
-}
 recv Inform {
-	update reply {
-	       &Message-Type = Do-Not-Respond
-	}
-	reject
+	dhcp_common
+	ok
 }
 #recv Inform {
 #	update reply {
@@ -331,10 +351,11 @@ recv Inform {
 #	ok
 #}
 recv Release {
-	update reply {
-	       &Message-Type = Do-Not-Respond
-	}
-	reject
+#	update control {
+#		&IP-Pool.Name := "local"
+#	}
+#	dhcp_sqlippool
+	ok
 }
 recv Lease-Query {
 	if (&Client-Hardware-Address) {

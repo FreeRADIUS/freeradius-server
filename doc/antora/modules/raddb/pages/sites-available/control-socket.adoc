@@ -78,11 +78,6 @@ rw = read/write access.
 
 @todo - add "limit" section
 
-
-These don't do anything for now
-
-
-
 == Default Configuration
 
 ```
@@ -107,12 +102,6 @@ server control {
 #			gid = radius
 			mode = rw
 		}
-	}
-	recv {
-		ok
-	}
-	send {
-		ok
 	}
 }
 ```

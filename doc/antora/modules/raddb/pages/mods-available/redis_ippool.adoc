@@ -56,12 +56,34 @@ Used for bulk lease cleanups.
 
 
 
-device:: The device identifier.
+owner:: The unique owner identifier to which an IP is assigned.
 
-This is usually the MAC address.  It could be a combination
-of attributes, a `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` or a certificate serial number
-(if the number of sessions were limited to one per
-user/serial).
+This is used as the lookup key to determine the IP address that has
+been allocated to a owner. It MUST therefore be something unique to
+each "owner" to which an IP address may be assigned.
+
+For DHCP it is often simply the MAC address of the owner.
+
+
+
+https://tools.ietf.org/html/rfc2132[RFC 2132] specifies that the DHCP client may supply a unique
+identifier ("uid") using Option 61 (Client-Identifier) in which
+case it must be used as the lookup key for configuration data.
+Otherwise the client hardware address must be used. To comply with
+this requirement use the following:
+
+
+
+For purposes such as IP assignment using a RADIUS Framed-IP-Address
+attribute the "owner" identifier could be a `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` or a
+certificate serial number provided that the number of sessions is
+limited to one per user/serial.
+
+On a hostile network it SHOULD include a component that you trust,
+arranged such that the overall key cannot be spoofed by manipulation
+of the user-controlled data. For example you might determine that
+Vendor-Specific.ADSL-Forum.Agent-Circuit-ID is trusted but that Calling-Station-Id is
+formatted as a user-controlled MAC address:
 
 
 
@@ -122,7 +144,9 @@ redis_ippool {
 #	wait_num = 10
 #	wait_timeout = 2
 #	gateway = &NAS-Identifier
-	device = &Client-Hardware-Address
+	owner = &Client-Hardware-Address
+#	owner = "%{%{Client-Identifier}:-%{Client-Hardware-Address}}"
+#	owner = "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID} %{Calling-Station-Id}"
 	requested_address = "%{%{Requested-IP-Address}:-%{Client-IP-Address}}"
 #	ipv4_integer = yes
 	allocated_address_attr = &reply.Your-IP-Address

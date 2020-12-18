@@ -1639,7 +1639,7 @@ eap {
 		cipher_server_preference = yes
 #		tls_max_version = 1.2
 #		tls_min_version = 1.2
-		ecdh_curve = "prime256v1"
+		ecdh_curve = prime256v1
 		cache {
 #			virtual_server = 'tls-cache'
 #			name = "%{EAP-Type}%{Virtual-Server}"

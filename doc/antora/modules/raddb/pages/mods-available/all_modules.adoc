@@ -103,7 +103,6 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/cui.adoc[cui]	| CUI
 | xref:mods-available/detail.example.com.adoc[detail.example.com]	| Detail (Sample)
 | xref:mods-available/detail.log.adoc[detail.log]	| Detail (Log Sample)
-| xref:mods-available/dhcp_sqlippool.adoc[dhcp_sqlippool]	| DHCP SQL-IP-Pool
 | xref:mods-available/eap_inner.adoc[eap_inner]	| EAP/Inner
 | xref:mods-available/echo.adoc[echo]	| Echo
 | xref:mods-available/etc_group.adoc[etc_group]	| etc_group

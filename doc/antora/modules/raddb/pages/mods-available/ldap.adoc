@@ -635,6 +635,11 @@ NOTE: The default is libldap's default, which varies based on the contents of `l
 
 
 
+Minimum TLS version to accept. We STRONGLY recommend
+setting this to "1.2"
+
+
+
 ### Connection Pool
 
 The connection pool is new for >= 3.0, and will be used in many
@@ -890,6 +895,7 @@ ldap {
 #		private_key_file = /path/to/radius.key
 #		random_file = /dev/urandom
 #		require_cert = 'demand'
+#		tls_min_version = "1.2"
 	}
 	pool {
 		start = ${thread[pool].num_workers}

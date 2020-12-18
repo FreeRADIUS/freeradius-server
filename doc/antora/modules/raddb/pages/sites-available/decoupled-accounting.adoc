@@ -52,7 +52,11 @@ For Simultaneous-Use tracking.
 Due to packet losses in the network, the data here
 may be incorrect.  There is little we can do about it.
 
+
 Return an address to the IP Pool when we see a stop record.
+
+Ensure that &control.IP-Pool.Name is set to determine which
+
 
 
 Log traffic to an SQL database.
@@ -117,7 +121,8 @@ send Accounting-Response {
 	unix
 	radutmp
 #	sradutmp
-#	main_pool
+￼	#  pool of IPs are used.
+	sqlippool
 #	sql
 #	sql_log
 #	pgsql-voip

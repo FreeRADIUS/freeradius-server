@@ -61,8 +61,8 @@ See also the core provided expansions which are equivalent to
 
 utc::
 
-If `utc` is enabled then any conversions from a date
-attribute to a `string` will be made as UTC, not localtime.
+If `utc` is enabled then any conversions will be made
+as UTC, not localtime.
 
 .Default is to use localtime.
 

@@ -1426,7 +1426,7 @@ recv Access-Request {
 	-sql
 #	smbpasswd
 	-ldap
-#	daily
+#	dailycounter
 	expiration
 	logintime
 	pap
