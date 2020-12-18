@@ -98,16 +98,24 @@ rest {
 	#  [outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>
 	#
 	#  JSON - All attributes and values are escaped according to the JSON specification
+	#  - attribute  Name of the attribute.
+	#  - attr_type  Numerical representation of the attribute type.
+	#  - type       Type of the attribute (e.g. "integer", "string", "ipaddr", "octets", ...).
+	#  - value      Attribute value, for enumerated attributes the human readable value is
+	#               provided and not the numeric value.
 	#  {
 	#      "<attribute0>":{
+	#          "attr_type":<attr_type0>,
 	#          "type":"<type0>",
 	#          "value":[<value0>,<value1>,<valueN>]
 	#      },
 	#      "<attribute1>":{
+	#          "attr_type":<attr_type1>,
 	#          "type":"<type1>",
 	#          "value":[...]
 	#      },
 	#      "<attributeN>":{
+	#          "attr_type":<attr_typeN>,
 	#          "type":"<typeN>",
 	#          "value":[...]
 	#      },

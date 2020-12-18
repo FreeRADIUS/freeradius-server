@@ -747,7 +747,8 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
-			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
+			len = snprintf(p, freespace + 1, "\"%s\":{\"attr_type\":%d,\"type\":\"%s\",\"value\":[",
+				vp->da->name, vp->da->attr, type);
 			if (len >= freespace) goto no_space;
 			p += len;
 			freespace -= len;
