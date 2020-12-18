@@ -19,14 +19,14 @@ rest {
 #		ca_path = ${certdir}
 
 #		certificate_file        = /path/to/radius.crt
-#		private_key_file	= /path/to/radius.key
-#		private_key_password	= "supersecret"
-#		random_file		= /dev/urandom
+#		private_key_file        = /path/to/radius.key
+#		private_key_password    = "supersecret"
+#		random_file             = /dev/urandom
 
 		#  Server certificate verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
 		#    "yes" (verify the cert was issued by one of the
-		#	   trusted CAs)
+		#          trusted CAs)
 		#
 		#  The default is "yes"
 #		check_cert = yes
@@ -34,7 +34,7 @@ rest {
 		#  Server certificate CN verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
 		#    "yes" (verify the CN in the certificate matches the host
-		#	   in the URI)
+		#          in the URI)
 		#
 		#  The default is "yes"
 #		check_cert_cn = yes
@@ -114,10 +114,10 @@ rest {
 	#  }
 	#
 	#  The response format adds three optional fields:
-	#  - do_xlat	If true, any values will be xlat expanded. Defaults to true.
-	#  - is_json	If true, any nested JSON data will be copied to the attribute
+	#  - do_xlat    If true, any values will be xlat expanded. Defaults to true.
+	#  - is_json    If true, any nested JSON data will be copied to the attribute
 	#               in string form. Defaults to true.
-	#  - op	        Controls how the attribute is inserted into the target list.
+	#  - op         Controls how the attribute is inserted into the target list.
 	#               Defaults to ':='. To create multiple attributes from multiple
 	#               values, this should be set to '+=', otherwise only the last
 	#               value will be used, and it will be assigned to a single
@@ -174,11 +174,11 @@ rest {
 	#  2xx    successful    yes           ok/updated
 	#  5xx    server error  no            fail
 	#  xxx    -             no            invalid
-        preacct {
-                uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
-                method = 'post'
-                tls = ${..tls}
-        }
+	preacct {
+		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
+		method = 'post'
+		tls = ${..tls}
+	}
 	accounting {
 		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting"
 		method = 'post'
