@@ -123,6 +123,7 @@ typedef struct rlm_rest_section_t {
 	char const		*body_str;	//!< The string version of the encoding/content type.
 	http_body_type_t	body;		//!< What encoding type should be used.
 
+	bool			attr_num;	//!< If true, the the attribute number is supplied for each attribute.
 	bool			raw_value;	//!< If true, enumerated attributes are provided as a numeric value
 
 	char const		*force_to_str;	//!< Force decoding with this decoder.
