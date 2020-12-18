@@ -871,8 +871,8 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
  */
 void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
-			char const *str, size_t str_len, size_t marker_idx,
-			char const *marker_fmt, ...)
+			char const *str, size_t str_len,
+			ssize_t marker_idx, char const *marker_fmt, ...)
 {
 	char const		*ellipses = "";
 	uint8_t			unlang_indent;

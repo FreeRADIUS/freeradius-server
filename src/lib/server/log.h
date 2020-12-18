@@ -114,7 +114,7 @@ void	log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line,
 			   char const *str, size_t str_len,
-			   size_t marker_idx, char const *marker, ...) CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull);
+			   ssize_t marker_idx, char const *marker, ...) CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull);
 
 void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
