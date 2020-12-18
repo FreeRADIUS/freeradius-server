@@ -115,6 +115,9 @@ $(TEST): $(EAPOL_OK_FILES)
 	@touch $(BUILD_DIR)/tests/$@
 
 else
+$(BUILD_DIR)/tests/eapol_test:
+	@mkdir -p $@
+
 $(TEST):
 	@echo "eapol_test build previously failed, skipping... retry with: $(MAKE) clean.$@ && $(MAKE) $@"
 
