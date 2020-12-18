@@ -885,7 +885,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 
 	if (marker_idx < 0) marker_idx = marker_idx * -1;
 
-	if (marker_idx >= sizeof(marker_spaces)) {
+	if ((size_t)marker_idx >= sizeof(marker_spaces)) {
 		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
 		marker_idx -= offset;
 		str += offset;
