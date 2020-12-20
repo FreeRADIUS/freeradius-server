@@ -561,6 +561,8 @@ void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx);
  *
  * @{
  */
+fr_dict_t 		*fr_dict_alloc(char const *proto_name, unsigned int proto_number) CC_HINT(nonnull);
+
 void			fr_dict_reference(fr_dict_t *dict);
 
 int			fr_dict_free(fr_dict_t **dict);
