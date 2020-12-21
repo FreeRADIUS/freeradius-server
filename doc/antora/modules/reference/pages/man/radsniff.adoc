@@ -5,6 +5,7 @@ Alan DeKok
 :man manual: FreeRADIUS
 :man source: FreeRADIUS
 :page-layout: base
+:manvolnum: 8
 
 == NAME
 

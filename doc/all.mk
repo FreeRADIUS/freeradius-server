@@ -6,7 +6,7 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,doc html pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 ifneq "$(WITH_DOC)" ""
 
 #
@@ -103,20 +103,19 @@ $(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},
 install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
 
 #
-#  For now, list each "man" page individually.  They are all generated from source
-#  "adoc" files.  And "make" isn't smart enough to figure that out.
-#
-#  We install doc/man/foo.? into $(R)/$(mandir)/man?/foo.?
-#
-#  Because GNU Make sucks at string substitution, we have stupid rules to do that.
-#
 #  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
 #  rule here, instead of overloading the "install.man" rule.
 #
-MAN_FILES := doc/man/radclient.1 doc/man/radiusd.8
-INSTALL_MAN_FILES := $(join $(patsubst .%,$(R)/$(mandir)/man%/,$(suffix $(MAN_FILES))),$(patsubst doc/man/%,%,$(MAN_FILES)))
-
-$(foreach FILE,$(MAN_FILES),$(eval $(call ADD_INSTALL_RULE.file,${FILE},$(R)/$(mandir)/$(join $(patsubst .%,man%/,$(suffix ${FILE})),$(patsubst doc/man/%,%,${FILE})))))
+ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
+$(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
+	@rm -f $@
+	for x in $^; do \
+		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
+		echo "INSTALL_MAN_FILES += $(R)/$(mandir)/man$$y/$$(basename $$x | sed 's/.adoc//' ).$$y" >> $@; \
+		echo "$(R)/$(mandir)/man$$y/$$(basename $$x | sed 's/.adoc//' ).$$y: $$x | $(R)/$(mandir)/man$$y" >> $@; \
+		echo "\t"'asciidoctor -b manpage $$<  > $$@' >> $@; \
+		echo "" >> $@; \
+	done
 
 install.doc.man: $(INSTALL_MAN_FILES)
 

@@ -58,3 +58,9 @@
 *** xref:xlat/character.adoc[Single Letter Expansions]
 *** xref:xlat/attribute.adoc[Attribute References]
 *** xref:xlat/module.adoc[Module References]
+
+** xref:man/index.adoc["man" pages]
+*** xref:man/radclient.adoc[radclient]
+*** xref:man/radiusd.adoc[radiusd]
+*** xref:man/radmin.adoc[radmin]
+*** xref:man/radsniff.adoc[radsniff]

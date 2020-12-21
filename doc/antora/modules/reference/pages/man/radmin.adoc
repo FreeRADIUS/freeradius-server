@@ -1,0 +1,145 @@
+= radmin(8)
+Alan DeKok
+:doctype: manpage
+:release-version: 4.0.0
+:man manual: FreeRADIUS
+:man source: FreeRADIUS
+:page-layout: base
+:manvolnum: 8
+
+== NAME
+
+radmin - FreeRADIUS Administration tool
+
+== SYNOPSIS
+
+*radmin* [*-d* _config_directory_] [*-e* _command_] [*-E*] [*-f*
+_socket_file_] [*-h*] [*-i* _input_file_] [*-l* _log_file_] [*-n*
+_name_] [*-q*]
+
+== DESCRIPTION
+
+FreeRADIUS Server administration tool that connects to the control
+socket of a running server, and gives a command-line interface to it.
+
+At this time, only a few commands are supported. Please type "help" at
+the command prompt for detailed information about the supported
+commands.
+
+== WARNING
+
+The security protections offered by this command are limited to the
+permissions on the Unix domain socket, and the server configuration. If
+someone can connect to the Unix domain socket, they have a substantial
+amount of control over the server.
+
+== OPTIONS
+
+The following command-line options are accepted by the program.
+
+* Defaults to _/etc/raddb_. *radmin* looks here for the server
+configuration files to find the "listen" section that defines the
+control socket filename.
+* Run _command_ and exit.
+* Echo commands as they are being executed.
+* Specify the socket filename directly. The radiusd.conf file is not
+read.
+* Print usage help information.
+* Reads input from the specified file. If not specified, stdin is used.
+This also sets "-q".
+* Writes the commands which are executed to this log file. This
+functionality is off by default.
+* Read _raddb/name.conf_ instead of _raddb/radiusd.conf_.
+* Quiet mode.
+
+== COMMANDS
+
+The commands implemented by the command-line interface are almost
+completely controlled by the server. There are a few commands
+interpreted locally by radmin:
+
+* Reconnect to the server.
+* Exit from radmin.
+* Exit from radmin.
+
+The other commands are implemented by the server. Type "help" at the
+prompt for more information.
+
+== EXAMPLES
+
+* Set debug logs to /var/log/radius/bob.log. There is very little
+checking of this filename. Rogue administrators may be able use this
+command to over-write almost any file on the system. If those
+administrators have write access to "radius.conf", they can do the same
+thing without radmin, too.
+* Enable debugging output for all requests that match the condition. Any
+"unlang" condition is valid here. The condition is parsed as a string,
+so it must be enclosed in single or double quotes. Strings enclosed in
+double-quotes must have back-slashes and the quotation marks escaped
+inside of the string.
+
+Only one debug condition can be active at a time.
+
+* A more complex condition that enables debugging output for requests
+containing User-Name "bob", or requests that originate from source IP
+address 192.0.2.22.
+* Disable debug conditionals.
+
+== FULL LIST OF COMMANDS
+
+* do sub-command of add
+* Add client configuration commands
+* Add new client definition from <filename>
+* debugging commands
+* Enable debugging for requests matching [condition]
+* Set debug level to <number>. Higher is more debugging.
+* Send all debugging output to [filename]
+* do sub-command of del
+* Delete client configuration commands
+* Delete a dynamically created client
+* sends a HUP signal to the server, or optionally to one module
+* commands to inject packets into a running server
+* Inject packets to the destination IP and port.
+* Inject packets as if they came from <ipaddr>
+* Inject packet from input-file>, with results sent to <output-file>
+* reconnect to a running server
+* terminates the server, and cause it to exit
+* do sub-command of set
+* set module commands
+* set configuration for <module>
+* set the module to be alive or dead (always return "fail")
+* set home server commands
+* set state for given home server
+* do sub-command of show
+* do sub-command of client
+* show configuration for given client
+* shows list of global clients
+* show debug properties
+* Shows current debugging condition.
+* Shows current debugging level.
+* Shows current debugging file.
+* do sub-command of home_server
+* show configuration for given home server
+* shows list of home servers
+* shows state of given home server
+* do sub-command of module
+* show configuration for given module
+* show other module properties
+* shows list of loaded modules
+* show sections where <module> may be used
+* shows time at which server started
+* Prints version of the running server
+* Prints out configuration as XML
+* do sub-command of stats
+* show statistics for given client, or for all clients (auth or acct)
+* show statistics for given home server (ipaddr and port), or for all
+home servers (auth or acct)
+* show statistics for the given detail file
+
+== SEE ALSO
+
+unlang(5), radiusd.conf(5), raddb/sites-available/control-socket
+
+== AUTHOR
+
+Alan DeKok <aland@freeradius.org>
