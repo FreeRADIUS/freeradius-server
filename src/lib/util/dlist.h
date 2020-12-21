@@ -221,6 +221,80 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *lis
 	list_head->num_elements++;
 }
 
+/** Insert an item after an item already in the list
+ *
+ * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
+ *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
+ *
+ * @param[in] list_head	to insert ptr into.
+ * @param[in] pos	to insert ptr after.
+ * @param[in] ptr	to insert.
+ */
+static inline CC_HINT(nonnull(1)) void fr_dlist_insert_after(fr_dlist_head_t *list_head, void *pos, void *ptr)
+{
+	fr_dlist_t *entry, *pos_entry;
+
+	if (!ptr) return;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
+#endif
+
+	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	if (!pos) {
+		pos_entry = &(list_head->entry);
+	} else {
+		pos_entry = (fr_dlist_t *) (((uint8_t *) pos) + list_head->offset);
+	}
+
+	if (!fr_cond_assert(pos_entry->next != NULL)) return;
+	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
+
+	entry->prev = pos_entry;
+	entry->next = pos_entry->next;
+	pos_entry->next->prev = entry;
+	pos_entry->next = entry;
+
+	list_head->num_elements++;
+}
+
+/** Insert an item before an item already in the list
+ *
+ * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
+ *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
+ *
+ * @param[in] list_head	to insert ptr into.
+ * @param[in] pos	to insert ptr before.
+ * @param[in] ptr	to insert.
+ */
+static inline CC_HINT(nonnull(1)) void fr_dlist_insert_before(fr_dlist_head_t *list_head, void *pos, void *ptr)
+{
+	fr_dlist_t *entry, *pos_entry;
+
+	if (!pos || !ptr) return;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
+#endif
+
+	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	if (!pos) {
+		pos_entry = &(list_head->entry);
+	} else {
+		pos_entry = (fr_dlist_t *) (((uint8_t *) pos) + list_head->offset);
+	}
+
+	if (!fr_cond_assert(pos_entry->next != NULL)) return;
+	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
+
+	entry->next = pos_entry;
+	entry->prev = pos_entry->prev;
+	pos_entry->prev->next = entry;
+	pos_entry->prev = entry;
+
+	list_head->num_elements++;
+}
+
 /** Return the HEAD item of a list or NULL if the list is empty
  *
  * @param[in] list_head		to return the HEAD item from.
