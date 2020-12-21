@@ -12,7 +12,7 @@
 
 *`man` page:* `radiusd.conf`
 
-*documentation page:* xref:unlang:xlat/index.adoc[String expansions]
+*documentation page:* xref:reference:unlang/xlat/index.adoc[String expansions]
 
 There are two kinds of variables within the server. The first is within
 `radiusd.conf` and related files. These variables are referenced via the

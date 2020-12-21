@@ -12,9 +12,9 @@
 
 *documentation page(s):*
 
-- xref:unlang:condition/index.adoc[Conditions]
-- xref:unlang:condition/regex.adoc[Regular expressions]
-- xref:unlang:update.adoc[The Update Statement]
+- xref:reference:unlang/condition/index.adoc[Conditions]
+- xref:reference:unlang/condition/regex.adoc[Regular expressions]
+- xref:reference:unlang/update.adoc[The Update Statement]
 
 include::partial$unlang_start.adoc[]
 

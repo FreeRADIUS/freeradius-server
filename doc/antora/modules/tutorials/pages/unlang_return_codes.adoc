@@ -10,9 +10,9 @@
 
 *`man` page:* unlang
 
-- xref:unlang:condition/index.adoc[Conditional Expressions]
-- xref:unlang:return_codes[Return Codes]
-- xref:unlang:condition/return_code.adoc[The Return Code Operator]
+- xref:reference:unlang/condition/index.adoc[Conditional Expressions]
+- xref:reference:unlang/return_codes[Return Codes]
+- xref:reference:unlang/condition/return_code.adoc[The Return Code Operator]
 - xref:raddb:mods-available/always.adoc[The Always Module]
 - xref:raddb:mods-available/sometimes.adoc[The Sometimes Module]
 
@@ -33,7 +33,7 @@ To minimise external dependencies, for this exercise we will use the
 xref:raddb:mods-available/sometimes.adoc[sometimes] module to simulate an
 unreliable external database.
 
-This module will return a specified xref:unlang:return_codes[return code] 50%
+This module will return a specified xref:reference:unlang/return_codes[return code] 50%
 of the time.
 
 Create an instance of the sometimes module called `bad_ldap`.
@@ -61,7 +61,7 @@ If the policies are correct you will see that FreeRADIUS returns an
     sometimes module?
 2.  Looking through the unlang keyword list, do you see any of keywords
     that might produce similar fail-over behaviour as the behaviour
-    configured above xref:unlang:keywords.adoc[Keywords].
+    configured above xref:reference:unlang/keywords.adoc[Keywords].
 
 
 // Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
