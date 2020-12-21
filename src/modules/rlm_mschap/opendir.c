@@ -291,7 +291,7 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
 	uiCurr = 0;
 
-	user_id_len = (uint32_t)short_user_name ? strlen(short_user_name) : 0;
+	user_id_len = (uint32_t)(short_user_name ? strlen(short_user_name) : 0);
 
 	RDEBUG2("OD username_string = %s, OD short_user_name=%s (length = %u)",
 		username_string, short_user_name, user_id_len);
