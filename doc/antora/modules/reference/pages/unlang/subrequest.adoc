@@ -10,8 +10,8 @@ subrequest <type> {
 
 The `subrequest` keyword creates a child request.  The child request
 is empty, and contains no attributes.  Attributes in the child can be
-copied from the parent via the xref:update.adoc[update] keyword.
-Please see the xref:list.adoc[list] syntax for a description of how to
+copied from the parent via the xref:unlang/update.adoc[update] keyword.
+Please see the xref:unlang/list.adoc[list] syntax for a description of how to
 refer to parent requests.
 
 <type>:: The type of the child request being created.
@@ -99,7 +99,7 @@ sending a `Disconnect-Request` packet may result in a multiple-second
 delay the NAS does not respond quickly, due to retransmits.
 
 A child request can be made asynchronous by using the
-xref:detach.adoc[detach] keyword.  Once a child request is detached
+xref:unlang/detach.adoc[detach] keyword.  Once a child request is detached
 from the parent, the parent can continue execution independently of
 the child.  However, once a child request is detached from the parent
 request, the child can no longer access any attributes in the parent.

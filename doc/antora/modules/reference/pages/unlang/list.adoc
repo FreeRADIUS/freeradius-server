@@ -22,7 +22,7 @@ names.
 
 NOTE: In version 3, there were additional lists such as `proxy`,
 `proxy-reply`, and `coa`.  These lists have been removed in version 4.
-See the xref:subrequest.adoc[subrequest] keyword for how to create
+See the xref:unlang/subrequest.adoc[subrequest] keyword for how to create
 child requests.
 
 With the exception of `session-state`, all of the above lists are

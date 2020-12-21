@@ -6,7 +6,7 @@
 <module>.<method>
 ----
 
-This variant of xref:module.adoc[<module>] is used in one processing
+This variant of xref:unlang/module.adoc[<module>] is used in one processing
 section. It calls a module using the method of another processing
 section. For example, it can be used to call a module's `recv
 Access-Request` method while processing the `send Access-Accept`

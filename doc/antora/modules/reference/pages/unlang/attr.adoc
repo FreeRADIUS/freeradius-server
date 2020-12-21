@@ -13,7 +13,7 @@ When used as an existence check in a condition, the condition
 evaluates to `true` if the attribute exists.  Otherwise, the condition
 evaluates to `false`.
 
-When used elsewhere, such as in xref:switch.adoc[switch], it returns
+When used elsewhere, such as in xref:unlang/switch.adoc[switch], it returns
 the value of the named attribute.
 
 .Examples
@@ -26,7 +26,7 @@ the value of the named attribute.
 == Lists
 
 The attribute reference can also be qualified with a
-xref:list.adoc[list] reference.  When no list is given, the server
+xref:unlang/list.adoc[list] reference.  When no list is given, the server
 looks in the input packet list for the named attribute.
 
 .Examples

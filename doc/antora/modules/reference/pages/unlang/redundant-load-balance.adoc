@@ -9,7 +9,7 @@ redundant-load-balance [ <key> ] {
 ----
 
 The `redundant-load-balance` section operates as a combination of the
-xref:redundant.adoc[redundant] and xref:load-balance.adoc[load-balance]
+xref:unlang/redundant.adoc[redundant] and xref:unlang/load-balance.adoc[load-balance]
 sections.
 
 <key>:: An attribute reference or expansion which will be hashed in

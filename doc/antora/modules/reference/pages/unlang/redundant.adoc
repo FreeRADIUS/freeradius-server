@@ -25,7 +25,7 @@ behave identically, otherwise different requests will be processed
 through different modules and will give different results.
 
 In general, we recommend using the
-xref:redundant-load-balance.adoc[redundant-load-balance] statement
+xref:unlang/redundant-load-balance.adoc[redundant-load-balance] statement
 instead of `redundant`.
 
 .Example

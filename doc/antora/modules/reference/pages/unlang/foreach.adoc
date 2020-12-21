@@ -10,11 +10,11 @@ foreach <attribute-reference> {
 
 The `foreach` statement loops over a set of attributes as given by
 `<attribute-reference>`.  The loop can be exited early by using the
-xref:break.adoc[break] keyword.
+xref:unlang/break.adoc[break] keyword.
 
 <attribute-reference>::
 
-The xref:attr.adoc[attribute reference] which will will be looped
+The xref:unlang/attr.adoc[attribute reference] which will will be looped
 over.  The reference can be to one attribute, to an array, a child, or
 be a subset.
 

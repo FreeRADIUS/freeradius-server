@@ -12,7 +12,7 @@ The `load-balance` section is similar to the `redundant` section
 except that only one module in the subsection is ever called.
 
 In general, the
-xref:redundant-load-balance.adoc[redundant-load-balance] statement is
+xref:unlang/redundant-load-balance.adoc[redundant-load-balance] statement is
 more useful than this one.
 
 <key>:: An attribute reference or expansion which will be hashed in

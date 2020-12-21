@@ -11,8 +11,8 @@ else {
 }
 ----
 
-An xref:if.adoc[if] statement can have an `else` clause. If _condition_
-evaluates to `false`, the statements in the xref:if.adoc[if] subsection are skipped
+An xref:unlang/if.adoc[if] statement can have an `else` clause. If _condition_
+evaluates to `false`, the statements in the xref:unlang/if.adoc[if] subsection are skipped
 and the statements within the `else` subsection are executed.
 
 .Example

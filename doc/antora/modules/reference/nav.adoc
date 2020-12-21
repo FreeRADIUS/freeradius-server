@@ -2,10 +2,6 @@
 
 ** xref:unlang/index.adoc[Unlang Policy Language]
 
-*** xref:unlang/list.adoc[Attribute Lists]
-*** xref:unlang/attr.adoc[Attribute References]
-*** xref:unlang/return_codes.adoc[Return Codes]
-
 *** xref:unlang/keywords.adoc[Keywords]
 **** xref:unlang/break.adoc[break]
 **** xref:unlang/call.adoc[call]
@@ -42,6 +38,10 @@
 **** xref:unlang/condition/not.adoc[The '!' Operator]
 **** xref:unlang/condition/para.adoc[The '( )' Operator]
 **** xref:unlang/condition/regex.adoc[Regular Expressions]
+
+*** xref:unlang/list.adoc[Attribute Lists]
+*** xref:unlang/attr.adoc[Attribute References]
+*** xref:unlang/return_codes.adoc[Return Codes]
 
 ** xref:type/index.adoc[Data Types]
 *** xref:type/index.adoc[List of Data Types]

@@ -19,7 +19,7 @@ statements are ignored.
 statements]_ from inside of the `caller` section will be executed.
 These statements will be executed in the context of the current request.
 
-A virtual server may the the target of multiple xref:call.adoc[call]
+A virtual server may the the target of multiple xref:unlang/call.adoc[call]
 keywords, each of which uses a different protocol.  For example, a
 policy which handles RADIUS `Access-Request` packets may create a DHCP
 `Discover` packet in order to perform IP address allocation.  The DHCP
@@ -31,7 +31,7 @@ DHCPv4.
 The `caller` keyword allows a virtual server to check where it is
 called from, and to apply different policies based on that
 information.  The `caller` keywords is in some senses the counter-part
-to the xref:call.adoc[call] keyword.
+to the xref:unlang/call.adoc[call] keyword.
 
 It may have been possible to use `if` conditions to perform this
 check.  However, doing so would involve creating additional syntax

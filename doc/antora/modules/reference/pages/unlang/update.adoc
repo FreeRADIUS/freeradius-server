@@ -51,7 +51,7 @@ the _<list>_ qualifier is omitted, then each entry inside of the
 `update` section *must* be prefixed with a list name.  For example,
 `&request.User-Name ...`
 
-Please see the xref:list.adoc[list] page for valid list names.
+Please see the xref:unlang/list.adoc[list] page for valid list names.
 
 == Server Attributes
 

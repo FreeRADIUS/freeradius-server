@@ -27,9 +27,9 @@ The `unlang` processing can be split into some high-level concepts.
 
 == Keywords
 
-xref:keywords.adoc[Keywords], which are the basic statements of the
-language, e.g., xref:load-balance.adoc[load-balance],
-xref:if.adoc[if], xref:else.adoc[else], etc.
+xref:unlang/keywords.adoc[Keywords], which are the basic statements of the
+language, e.g., xref:unlang/load-balance.adoc[load-balance],
+xref:unlang/if.adoc[if], xref:unlang/else.adoc[else], etc.
 
 .Example
 [source,unlang]
@@ -57,7 +57,7 @@ if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
 
 == Update Statements
 
-xref:update.adoc[update] statements are used to edit attributes and
+xref:unlang/update.adoc[update] statements are used to edit attributes and
 lists of attributes.
 
 Most request packets will result in reply packets that contain
@@ -132,9 +132,9 @@ and values for those variables.  Those values do not change when the
 server is running.
 
 In contrast, `unlang` performs run-time processing of requests.
-Conditional statements such as xref:if.adoc[if] are evaluated for every
+Conditional statements such as xref:unlang/if.adoc[if] are evaluated for every
 packet that is received.  Attribute editing statements such as
-xref:update.adoc[update] can be used to edit attribute contents or lists
+xref:unlang/update.adoc[update] can be used to edit attribute contents or lists
 of attributes.
 
 .Example

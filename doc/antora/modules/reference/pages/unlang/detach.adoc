@@ -8,7 +8,7 @@ detach
 
 The `detach` statement is used to separare a child request from a
 parent request.  The `detach` statement can only be used inside of a
-xref:subrequest.adoc[subrequest] section.
+xref:unlang/subrequest.adoc[subrequest] section.
 
 Once a child request is detached from the parent, the parent can
 continue execution independently of the child.  However, once a child

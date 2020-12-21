@@ -7,8 +7,8 @@ break
 ----
 
 The `break` statement is used to exit an enclosing
-xref:foreach.adoc[foreach] loop.  The `break` statement only be used
-inside of a xref:foreach.adoc[foreach] loop.
+xref:unlang/foreach.adoc[foreach] loop.  The `break` statement only be used
+inside of a xref:unlang/foreach.adoc[foreach] loop.
 
 .Example
 [source,unlang]

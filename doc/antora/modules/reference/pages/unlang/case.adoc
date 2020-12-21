@@ -9,8 +9,8 @@ case [ <match> ] {
 ----
 
 The `case` statement is used to match data inside of a
-xref:switch.adoc[switch] statement.  The `case` statement cannot be used
-outside of a xref:switch.adoc[switch] statement.
+xref:unlang/switch.adoc[switch] statement.  The `case` statement cannot be used
+outside of a xref:unlang/switch.adoc[switch] statement.
 
 
 The `<match>` text can be an attribute reference such as `&User-Name`,
@@ -19,11 +19,11 @@ text is a dynamically expanded string, then the match is performed on
 the output of the string expansion.
 
 The keyword `default` can be used to specify the default action to
-take inside of a xref:switch.adoc[switch] statement.
+take inside of a xref:unlang/switch.adoc[switch] statement.
 
 If no `<match>` text is given, it means that the `case` statement is
 the "default" and will match all which is not matched by another
-`case` statement inside of the same xref:switch.adoc[switch].
+`case` statement inside of the same xref:unlang/switch.adoc[switch].
 
 .Example
 [source,unlang]
