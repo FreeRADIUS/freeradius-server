@@ -206,7 +206,7 @@ endif
 #
 build/docsite/sitemap.xml: $(ADOC_FILES)
 	@echo ANTORA site.yml
-	${Q}$(ANTORA) site.yml
+	${Q}$(ANTORA) $(ANTORA_FLAGS) site.yml
 
 #
 #  Markdown files get converted to asciidoc via pandoc.
