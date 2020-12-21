@@ -109,13 +109,15 @@ install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
 ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
 $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 	@rm -f $@
-	for x in $^; do \
+	@for x in $^; do \
 		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
 		echo "INSTALL_MAN_FILES += $(R)/$(mandir)/man$$y/$$(basename $$x | sed 's/.adoc//' ).$$y" >> $@; \
 		echo "$(R)/$(mandir)/man$$y/$$(basename $$x | sed 's/.adoc//' ).$$y: $$x | $(R)/$(mandir)/man$$y" >> $@; \
 		echo "\t"'asciidoctor -b manpage $$<  > $$@' >> $@; \
 		echo "" >> $@; \
 	done
+
+-include $(BUILD_DIR)/make/man.mk
 
 install.doc.man: $(INSTALL_MAN_FILES)
 
