@@ -113,7 +113,7 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
  *	  integer that would be required to encode the attribute.
  *	- >0 - The number of bytes written to out.
  */
-typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_cursor_t *cursor, void *encoder_ctx);
+typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void *encoder_ctx);
 
 /** A generic interface for decoding fr_pair_ts
  *
@@ -130,5 +130,5 @@ typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_cursor_t *cursor, void *
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
 				    uint8_t const *data, size_t data_len, void *decoder_ctx);
