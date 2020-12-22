@@ -58,7 +58,7 @@ static char const       *dict_dir  = "share/dictionary";
 
 /* Set by pair_tests_init()*/
 static TALLOC_CTX       *autofree;
-static fr_pair_list_t   sample_pairs = NULL;
+static fr_pair_list_t   sample_pairs;
 static char const       *sample_string = "We love Tapioca!";
 static size_t           sample_string_len = 16;
 static uint8_t          sample_octets[] = {
@@ -92,12 +92,16 @@ typedef struct {
 #define FR_TEST_VALUES          4
 #define FR_TEST_TLV_ROOT        5
 #define FR_TEST_TLV_STRING      1
+#define FR_TEST_DATE		6
+#define FR_TEST_IPV4_ADDR	7
 
 static fr_dict_t *dict_test;
 
 static fr_dict_attr_t const *attr_test_integer;
 static fr_dict_attr_t const *attr_test_octets;
 static fr_dict_attr_t const *attr_test_string;
+static fr_dict_attr_t const *attr_test_date;
+static fr_dict_attr_t const *attr_test_ipv4_addr;
 static fr_dict_attr_t const *attr_test_tlv_root;
 static fr_dict_attr_t const *attr_test_tlv_string;
 static fr_dict_attr_t const *attr_test_values;
@@ -112,6 +116,8 @@ static fr_dict_adhoc_attr_t test_dict_attrs[] = {
 	{ .attr = FR_TEST_INTEGER, .parent = NULL, .da = &attr_test_integer, .name = "Test-Integer", .type = FR_TYPE_UINT32, },
 	{ .attr = FR_TEST_OCTETS, .parent = NULL, .da = &attr_test_octets, .name = "Test-Octets", .type = FR_TYPE_OCTETS, },
 	{ .attr = FR_TEST_STRING, .parent = NULL, .da = &attr_test_string, .name = "Test-String", .type = FR_TYPE_STRING, },
+	{ .attr = FR_TEST_DATE, .parent = NULL, .da = &attr_test_date, .name = "Test-Date", .type = FR_TYPE_DATE, },
+	{ .attr = FR_TEST_IPV4_ADDR, .parent = NULL, .da = &attr_test_ipv4_addr, .name = "Test-IPv4-Addr", .type = FR_TYPE_IPV4_ADDR, },
 	{ .attr = FR_TEST_TLV_ROOT, .parent = NULL, .da = &attr_test_tlv_root, .name = "Test-TLV-Root", .type = FR_TYPE_TLV, },
 	{ .attr = FR_TEST_TLV_STRING, .parent = &attr_test_tlv_root, .da = &attr_test_tlv_string, .name = "Test-TLV-String", .type = FR_TYPE_STRING, },
 	{ .attr = FR_TEST_VALUES, .parent = NULL, .da = &attr_test_values, .name = "Test-Values", .type = FR_TYPE_UINT32, .values = &attr_test_values_entries },
@@ -192,6 +198,7 @@ static void pair_tests_init(void)
 	if (init_adhoc_attrs(test_dict_attrs) < 0) goto error;
 
 	/* Initialize the "sample_pairs" list */
+	fr_pair_list_init(&sample_pairs);
 	if (load_attr_pairs(&sample_pairs) < 0) goto error;
 }
 
@@ -292,16 +299,16 @@ static void test_fr_pair_to_unknown(void)
 	TEST_CHECK(vp && vp->da->flags.is_unknown == true);
 }
 
-static void test_fr_cursor_iter_by_da_init(void)
+static void test_fr_dcursor_iter_by_da_init(void)
 {
 	fr_pair_t   *vp, *needle;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 
-	TEST_CASE("Searching for attr_test_integer using fr_cursor_iter_by_da_init()");
+	TEST_CASE("Searching for attr_test_integer using fr_dcursor_iter_by_da_init()");
 	needle = NULL;
-	for (vp = fr_cursor_iter_by_da_init(&cursor, &sample_pairs, attr_test_integer);
+	for (vp = fr_dcursor_iter_by_da_init(&cursor, &sample_pairs, attr_test_integer);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		if (!needle) {
 			needle = vp;
 			continue;
@@ -316,16 +323,16 @@ static void test_fr_cursor_iter_by_da_init(void)
 	TEST_CHECK(needle && needle->da == attr_test_integer);
 }
 
-static void test_fr_cursor_iter_by_ancestor_init(void)
+static void test_fr_dcursor_iter_by_ancestor_init(void)
 {
 	fr_pair_t   *vp, *needle;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 
-	TEST_CASE("Searching for attr_test_tlv_string as ascend of attr_test_tlv_root using fr_cursor_iter_by_ancestor_init()");
+	TEST_CASE("Searching for attr_test_tlv_string as ascend of attr_test_tlv_root using fr_dcursor_iter_by_ancestor_init()");
 	needle = NULL;
-	for (vp = fr_cursor_iter_by_ancestor_init(&cursor, &sample_pairs, attr_test_tlv_root);
+	for (vp = fr_dcursor_iter_by_ancestor_init(&cursor, &sample_pairs, attr_test_tlv_root);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		TEST_CHECK(vp != NULL);
 		if (vp->da == attr_test_tlv_string) {
 			needle = vp;
@@ -384,8 +391,9 @@ static void test_fr_pair_find_by_child_num(void)
 
 static void test_fr_pair_add(void)
 {
-	fr_cursor_t    cursor;
-	fr_pair_t      *vp, *local_pairs;
+	fr_dcursor_t   cursor;
+	fr_pair_t      *vp;
+	fr_pair_list_t	local_pairs;
 	size_t         count = 0;
 
 	TEST_CASE("Add 3 pairs using fr_pair_add()");
@@ -397,9 +405,9 @@ static void test_fr_pair_add(void)
 	fr_pair_add(&local_pairs, fr_pair_afrom_da(autofree, attr_test_tlv_root));
 
 	/* lets' count */
-	for (vp = fr_cursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, &local_pairs);
 		 vp;
-		 vp = fr_cursor_next(&cursor)) count++;
+		 vp = fr_dcursor_next(&cursor)) count++;
 
 	TEST_CASE("Expected (count == 3)");
 	TEST_CHECK(count == 3);
@@ -421,8 +429,9 @@ static void test_fr_pair_delete_by_child_num(void)
 
 static void test_fr_pair_add_by_da(void)
 {
-	fr_cursor_t    cursor;
-	fr_pair_t      *vp, *local_pairs;
+	fr_dcursor_t   cursor;
+	fr_pair_t      *vp;
+	fr_pair_list_t	local_pairs;
 	TALLOC_CTX     *ctx = talloc_null_ctx();
 
 	fr_pair_list_init(&local_pairs);
@@ -431,9 +440,9 @@ static void test_fr_pair_add_by_da(void)
 	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_string) == 0);
 
 	/* lets' count */
-	for (vp = fr_cursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, &local_pairs);
 		 vp;
-		 vp = fr_cursor_next(&cursor)) {
+		 vp = fr_dcursor_next(&cursor)) {
 		TEST_CASE("Expected (vp->da == attr_test_string)");
 		TEST_CHECK(vp->da == attr_test_string);
 	}
@@ -514,7 +523,7 @@ static void test_fr_pair_cmp(void)
 
 static void test_fr_pair_list_cmp(void)
 {
-	fr_pair_t *local_pairs1, *local_pairs2;
+	fr_pair_list_t local_pairs1, local_pairs2;
 
 	fr_pair_list_init(&local_pairs1);
 	fr_pair_list_init(&local_pairs2);
@@ -534,7 +543,7 @@ static void test_fr_pair_list_cmp(void)
 
 static void test_fr_pair_list_copy(void)
 {
-	fr_pair_t *local_pairs;
+	fr_pair_list_t local_pairs;
 
 	fr_pair_list_init(&local_pairs);
 
@@ -549,8 +558,9 @@ static void test_fr_pair_list_copy(void)
 
 static void test_fr_pair_list_copy_by_da(void)
 {
-	fr_cursor_t    cursor;
-	fr_pair_t      *vp, *local_pairs;
+	fr_dcursor_t   cursor;
+	fr_pair_t      *vp;
+	fr_pair_list_t	local_pairs;
 
 	fr_pair_list_init(&local_pairs);
 
@@ -558,9 +568,9 @@ static void test_fr_pair_list_copy_by_da(void)
 	TEST_CHECK(fr_pair_list_copy_by_da(autofree, &local_pairs, &sample_pairs, attr_test_string, 0) > 0);
 
 	TEST_CASE("The 'local_pairs' should have only attr_test_string");
-	for (vp = fr_cursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, &local_pairs);
 		 vp;
-		 vp = fr_cursor_next(&cursor)) {
+		 vp = fr_dcursor_next(&cursor)) {
 		TEST_CASE("Validating VP_VERIFY()");
 		VP_VERIFY(vp);
 
@@ -573,8 +583,9 @@ static void test_fr_pair_list_copy_by_da(void)
 
 static void test_fr_pair_list_copy_by_ancestor(void)
 {
-	fr_cursor_t    cursor;
-	fr_pair_t      *vp, *local_pairs, *needle = NULL;
+	fr_dcursor_t   cursor;
+	fr_pair_t      *vp, *needle = NULL;
+	fr_pair_list_t	local_pairs;
 
 	fr_pair_list_init(&local_pairs);
 
@@ -582,9 +593,9 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	TEST_CHECK(fr_pair_list_copy_by_ancestor(autofree, &local_pairs, &sample_pairs, attr_test_tlv_root, 0) > 0);
 
 	TEST_CASE("The 'local_pairs' should have only attr_test_tlv_string (ancestor of 'Test-TLV-Root'");
-	for (vp = fr_cursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, &local_pairs);
 		 vp;
-		 vp = fr_cursor_next(&cursor)) {
+		 vp = fr_dcursor_next(&cursor)) {
 		TEST_CASE("Validating VP_VERIFY()");
 		VP_VERIFY(vp);
 
@@ -605,14 +616,17 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 
 static void test_fr_pair_list_sort(void)
 {
-	fr_cursor_t cursor;
-	fr_pair_t   *vp, *local_pairs;
-	TALLOC_CTX  *ctx = talloc_null_ctx();
+	fr_dcursor_t	cursor;
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	TALLOC_CTX	*ctx = talloc_null_ctx();
 
 	TEST_CASE("Create 'local_pairs' with 3 attributes not ordered");
 	fr_pair_list_init(&local_pairs);
 
 	TEST_CASE("Add attr_test_string back into 'local_pairs'");
+	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_date) == 0);
+	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_ipv4_addr) == 0);
 	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_octets) == 0);
 	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_integer) == 0);
 	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_values) == 0); // It will be go to the tail
@@ -620,18 +634,25 @@ static void test_fr_pair_list_sort(void)
 
 	TEST_CASE("Sorting 'local_pairs' by fr_pair_list_sort(local_pairs, fr_pair_cmp_by_da)");
 	fr_pair_list_sort(&local_pairs, fr_pair_cmp_by_da);
-
 	TEST_CASE("1st (da == attr_test_integer)");
-	TEST_CHECK((vp = fr_cursor_init(&cursor, &local_pairs)) != NULL);
+	TEST_CHECK((vp = fr_dcursor_init(&cursor, &local_pairs)) != NULL);
 	TEST_CHECK(vp && vp->da == attr_test_integer);
 
 	TEST_CASE("2st (da == attr_test_octets)");
-	TEST_CHECK((vp = fr_cursor_next(&cursor)) != NULL);
+	TEST_CHECK((vp = fr_dcursor_next(&cursor)) != NULL);
 	TEST_CHECK(vp && vp->da == attr_test_octets);
 
 	TEST_CASE("3st (da == attr_test_string)");
-	TEST_CHECK((vp = fr_cursor_next(&cursor)) != NULL);
+	TEST_CHECK((vp = fr_dcursor_next(&cursor)) != NULL);
 	TEST_CHECK(vp && vp->da == attr_test_string);
+
+	TEST_CASE("4th (da == attr_test_date)");
+	TEST_CHECK((vp = fr_dcursor_next(&cursor)) != NULL);
+	TEST_CHECK(vp && vp->da == attr_test_date);
+
+	TEST_CASE("5th (da == attr_test_ipv4_addr)");
+	TEST_CHECK((vp = fr_dcursor_next(&cursor)) != NULL);
+	TEST_CHECK(vp && vp->da == attr_test_ipv4_addr);
 
 	fr_pair_list_free(&local_pairs);
 }
@@ -1231,8 +1252,8 @@ TEST_LIST = {
 	{ "fr_pair_steal",                        test_fr_pair_steal },
 
 	/* Searching and list modification */
-	{ "fr_cursor_iter_by_da_init",            test_fr_cursor_iter_by_da_init },
-	{ "fr_cursor_iter_by_ancestor_init",      test_fr_cursor_iter_by_ancestor_init },
+	{ "fr_dcursor_iter_by_da_init",           test_fr_dcursor_iter_by_da_init },
+	{ "fr_dcursor_iter_by_ancestor_init",     test_fr_dcursor_iter_by_ancestor_init },
 	{ "fr_pair_to_unknown",                   test_fr_pair_to_unknown },
 	{ "fr_pair_find_by_da",                   test_fr_pair_find_by_da },
 	{ "fr_pair_find_by_num",                  test_fr_pair_find_by_num },

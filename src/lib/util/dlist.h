@@ -386,6 +386,7 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *lis
 	head = &(list_head->entry);
 
 	if (entry->next == head) return NULL;
+	if (!entry->next) return NULL;
 	entry = entry->next;
 
 	memcpy(&m_entry, &entry, sizeof(m_entry));
@@ -514,6 +515,42 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_tail(fr_dlist_head_t *list_
 	(void)fr_dlist_remove(list_head, item);
 
 	return item;	/* fr_dlist_remove returns the previous item */
+}
+
+/** Replace an item in a dlist
+ *
+ * @param list_head in which the original item is.
+ * @param item to replace.
+ * @param ptr replacement item.
+ * @return
+ *	- The item replaced
+ *	- NULL if nothing replaced
+ */
+static inline void *fr_dlist_replace(fr_dlist_head_t *list_head, void *item, void *ptr)
+{
+	fr_dlist_t *item_entry;
+	fr_dlist_t *ptr_entry;
+
+	if (!item || !ptr) return NULL;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (list_head->type) (void)_talloc_get_type_abort(ptr, list_head->type, __location__);
+#endif
+
+	item_entry = (fr_dlist_t *)(((uint8_t *)item) + list_head->offset);
+	if (!fr_dlist_entry_in_list(item_entry)) return NULL;
+
+	ptr_entry = (fr_dlist_t *)(((uint8_t *)ptr) + list_head->offset);
+
+	/* Link replacement item into list */
+	item_entry->prev->next = ptr_entry;
+	ptr_entry->prev = item_entry->prev;
+	item_entry->next->prev = ptr_entry;
+	ptr_entry->next = item_entry->next;
+
+	/* Reset links on replaced item */
+	item_entry->prev = item_entry->next = item_entry;
+	return item;
 }
 
 /** Check all items in the list are valid
