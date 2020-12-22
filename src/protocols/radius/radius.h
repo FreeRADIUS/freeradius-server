@@ -130,7 +130,7 @@ ssize_t		fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 				 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps);
 
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
-				 char const *secret, UNUSED size_t secret_len, fr_cursor_t *cursor) CC_HINT(nonnull(1,2,5,7));
+				 char const *secret, UNUSED size_t secret_len, fr_dcursor_t *cursor) CC_HINT(nonnull(1,2,5,7));
 
 int		fr_radius_init(void);
 
@@ -164,7 +164,7 @@ void		_fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *p
 
 typedef struct {
 	fr_pair_t	*parent;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 } fr_radius_tag_ctx_t;
 
 typedef struct {
@@ -193,7 +193,7 @@ void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENG
 					       uint8_t id, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH],
 					       char const *password, size_t password_len) CC_HINT(nonnull(1,3,4));
 
-ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx);
 
 /*
  *	protocols/radius/decode.c
@@ -206,15 +206,15 @@ ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, 
 ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
 						 uint8_t const *vector, bool tunnel_password_zeros);
 
-ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
 					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 					    fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
 
-ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t data_len,
 				     fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
 
-ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
 				      uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);

@@ -909,7 +909,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_radius_ctx_t		packet_ctx;
 	fr_dbuff_t		work_dbuff, length_dbuff;
 
@@ -978,8 +978,8 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_cursor_talloc_iter_init(&cursor, vps, fr_radius_next_encodable, dict_radius, fr_pair_t);
-	while ((vp = fr_cursor_current(&cursor))) {
+	fr_dcursor_talloc_iter_init(&cursor, vps, fr_radius_next_encodable, dict_radius, fr_pair_t);
+	while ((vp = fr_dcursor_current(&cursor))) {
 		VP_VERIFY(vp);
 
 		/*
@@ -1007,7 +1007,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
  *
  */
 ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, UNUSED size_t secret_len, fr_cursor_t *cursor)
+			 char const *secret, UNUSED size_t secret_len, fr_dcursor_t *cursor)
 {
 	ssize_t			slen;
 	uint8_t const		*attr, *end;

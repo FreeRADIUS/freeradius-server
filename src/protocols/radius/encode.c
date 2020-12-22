@@ -37,15 +37,15 @@ RCSID("$Id$")
 
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_cursor_t *cursor, void *encoder_ctx);
+			    fr_dcursor_t *cursor, void *encoder_ctx);
 
 static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
-				       fr_cursor_t *cursor, void *encoder_ctx);
+				       fr_dcursor_t *cursor, void *encoder_ctx);
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_cursor_t *cursor, void *encoder_ctx);
+			      fr_dcursor_t *cursor, void *encoder_ctx);
 
 /** Encode a CHAP password
  *
@@ -238,10 +238,10 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, uint8_t const *in, size
 
 static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
-				       fr_cursor_t *cursor, void *encoder_ctx)
+				       fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t		slen;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 253);
 
@@ -267,7 +267,7 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) break;
 
 		/*
 		 *	We can encode multiple sub TLVs, if after
@@ -275,7 +275,7 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 		 *	at this depth is the same.
 		 */
 		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
-		vp = fr_cursor_current(cursor);
+		vp = fr_dcursor_current(cursor);
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -283,13 +283,13 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_cursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	fr_dbuff_marker_t	len_m;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	VP_VERIFY(fr_cursor_current(cursor));
+	VP_VERIFY(fr_dcursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	if (da_stack->da[depth]->type != FR_TYPE_TLV) {
@@ -322,13 +322,13 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *e
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	/*
 	 *	Note that we skip tags inside of tags!
 	 */
-	fr_cursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_radius, fr_pair_t);
-	while ((vp = fr_cursor_current(&cursor))) {
+	fr_dcursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_radius, fr_pair_t);
+	while ((vp = fr_dcursor_current(&cursor))) {
 		VP_VERIFY(vp);
 
 		/*
@@ -357,11 +357,11 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *e
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_cursor_t *cursor, void *encoder_ctx)
+			    fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	size_t			len;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_radius_ctx_t		*packet_ctx = encoder_ctx;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -397,7 +397,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 					    encode_tlv_hdr_internal);
 		if (slen <= 0) return slen;
 
-		vp = fr_cursor_current(cursor);
+		vp = fr_dcursor_current(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
@@ -525,7 +525,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	be written.
 	 */
 	if (fr_dbuff_used(&value_dbuff) == 0) {
-		vp = fr_cursor_next(cursor);
+		vp = fr_dcursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return 0;
 	}
@@ -616,7 +616,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
-	vp = fr_cursor_next(cursor);
+	vp = fr_dcursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -731,7 +731,7 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 				   fr_da_stack_t *da_stack, unsigned int depth,
-				   fr_cursor_t *cursor, void *encoder_ctx)
+				   fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 #ifndef NDEBUG
@@ -740,7 +740,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 #endif
 	int			extra;
 	fr_dbuff_marker_t	hdr;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_t		*attr_dbuff;
 
@@ -841,12 +841,12 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_concat(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_cursor_t *cursor, UNUSED void *encoder_ctx)
+			     fr_dcursor_t *cursor, UNUSED void *encoder_ctx)
 {
 	uint8_t const		*p;
 	size_t			left;
 	ssize_t			slen;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -875,7 +875,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 		slen -= left;
 	}
 
-	vp = fr_cursor_next(cursor);
+	vp = fr_dcursor_next(cursor);
 
 	/*
 	 *	@fixme: attributes with 'concat' MUST of type
@@ -894,7 +894,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
-				       fr_cursor_t *cursor, void *encoder_ctx)
+				       fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t 		slen;
 	fr_dbuff_marker_t	hdr;
@@ -939,7 +939,7 @@ static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 				      fr_da_stack_t *da_stack, unsigned int depth,
-				      fr_cursor_t *cursor, void *encoder_ctx)
+				      fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	size_t			hdr_len;
@@ -1028,12 +1028,12 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 				fr_da_stack_t *da_stack, unsigned int depth,
-				fr_cursor_t *cursor, void *encoder_ctx)
+				fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr;
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
@@ -1102,7 +1102,7 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_cursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_marker_t	hdr;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -1159,9 +1159,9 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
  *
  */
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_cursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encoder_ctx)
 {
-	fr_pair_t const	*vp = fr_cursor_current(cursor);
+	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	start;
 
@@ -1204,7 +1204,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&start), 2, "header rfc");
 
-		vp = fr_cursor_next(cursor);
+		vp = fr_dcursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
@@ -1220,7 +1220,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 				  "message-authenticator");
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&start), 2, "header rfc");
 
-		vp = fr_cursor_next(cursor);
+		vp = fr_dcursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
@@ -1242,7 +1242,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
  *	- 0 Nothing to encode (or attribute skipped).
  *	- <0 an error occurred.
  */
-ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t const		*vp;
 	ssize_t			len;
@@ -1253,7 +1253,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 
 	if (!cursor) return PAIR_ENCODE_FATAL_ERROR;
 
-	vp = fr_cursor_current(cursor);
+	vp = fr_dcursor_current(cursor);
 	if (!vp) return 0;
 
 	VP_VERIFY(vp);
@@ -1272,7 +1272,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 
 		if (!vp->da->flags.internal ||
 		    !((vp->da->attr > FR_TAG_BASE) && (vp->da->attr < (FR_TAG_BASE + 0x20)))) {
-			fr_cursor_next(cursor);
+			fr_dcursor_next(cursor);
 			return PAIR_ENCODE_SKIPPED;
 		}
 
@@ -1285,7 +1285,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 		packet_ctx->tag = 0;
 		if (len < 0) return len;
 
-		fr_cursor_next(cursor); /* skip the tag attribute */
+		fr_dcursor_next(cursor); /* skip the tag attribute */
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
@@ -1313,7 +1313,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 		if (!fr_dict_attr_is_top_level(vp->da) ||
 		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
-			fr_cursor_next(cursor);
+			fr_dcursor_next(cursor);
 			fr_strerror_const("Zero length string attributes not allowed");
 			return PAIR_ENCODE_SKIPPED;
 		}
@@ -1401,7 +1401,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *enco
 	/*
 	 *	We couldn't do it, so we didn't do anything.
 	 */
-	if (fr_cursor_current(cursor) == vp) {
+	if (fr_dcursor_current(cursor) == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
