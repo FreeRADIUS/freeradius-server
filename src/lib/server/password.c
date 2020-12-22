@@ -856,13 +856,13 @@ static fr_pair_t *password_process(TALLOC_CTX *ctx, request_t *request, fr_pair_
  */
 int password_normalise_and_replace(request_t *request, bool normify)
 {
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 	int		replaced = 0;
 	fr_pair_t	*known_good, *new;
 
-	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
+	for (known_good = fr_dcursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
 	     known_good;
-	     known_good = fr_cursor_next(&cursor)) {
+	     known_good = fr_dcursor_next(&cursor)) {
 		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return -1;
 
 		/*
@@ -879,8 +879,8 @@ int password_normalise_and_replace(request_t *request, bool normify)
 			RDEBUG2("Replacing &control.%s with &control.%s",
 				known_good->da->name, new->da->name);
 		}
-		fr_cursor_free_item(&cursor);
-		fr_cursor_prepend(&cursor, new);
+		fr_dcursor_free_item(&cursor);
+		fr_dcursor_prepend(&cursor, new);
 		replaced++;
 	}
 
@@ -953,12 +953,12 @@ static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, request_t *req
 fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 			  fr_dict_attr_t const *allowed_attrs[], size_t allowed_attrs_len, bool normify)
 {
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 	fr_pair_t	*known_good;
 
-	for (known_good = fr_cursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
+	for (known_good = fr_dcursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
 	     known_good;
-	     known_good = fr_cursor_next(&cursor)) {
+	     known_good = fr_dcursor_next(&cursor)) {
 		password_info_t		*info;
 		fr_pair_t		*out;
 		size_t			i;
