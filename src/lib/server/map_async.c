@@ -519,7 +519,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	case TMPL_TYPE_ATTR:
 	{
-		fr_cursor_t		from;
+		fr_dcursor_t		from;
 		tmpl_cursor_ctx_t	cc_attr;
 		fr_pair_t		*vp;
 		fr_value_box_t		*n_vb;
@@ -567,7 +567,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			goto error;
 		}
 
-		vp = fr_cursor_current(&from);
+		vp = fr_dcursor_current(&from);
 		fr_assert(vp);		/* Should have errored out */
 		do {
 			n_vb = fr_value_box_alloc_null(n->mod->rhs);
@@ -591,7 +591,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				fr_value_box_copy(n_vb, n_vb, &vp->data);
 			}
 			fr_cursor_append(&values, n_vb);
-		} while ((vp = fr_cursor_next(&from)));
+		} while ((vp = fr_dcursor_next(&from)));
 
 		tmpl_cursor_clear(&cc_attr);
 	}
@@ -657,7 +657,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 */
 	case TMPL_TYPE_EXEC:
 	{
-		fr_cursor_t	to, from;
+		fr_cursor_t	to;
+		fr_dcursor_t	from;
 		fr_pair_list_t	vp_head;
 		fr_pair_t	*vp;
 
@@ -707,8 +708,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			return 0;	/* No pairs returned */
 		}
 
-		(void)fr_cursor_init(&from, &vp_head);
-		while ((vp = fr_cursor_remove(&from))) {
+		(void)fr_dcursor_init(&from, &vp_head);
+		while ((vp = fr_dcursor_remove(&from))) {
 			map_t *mod;
 			tmpl_rules_t rules;
 
@@ -718,23 +719,23 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 			if (map_afrom_vp(n, &mod, vp, &rules) < 0) {
 				RPEDEBUG("Failed converting VP to map");
-				fr_cursor_head(&from);
-				fr_cursor_free_item(&from);
+				fr_dcursor_head(&from);
+				fr_dcursor_free_item(&from);
 				goto error;
 			}
 
 			if (tmpl_is_exec(mod->lhs) || tmpl_is_exec(mod->rhs)) {
 				RPEDEBUG("Program output cannot request execution of another program for attribute %s", vp->da->name);
-				fr_cursor_head(&from);
-				fr_cursor_free_item(&from);
+				fr_dcursor_head(&from);
+				fr_dcursor_free_item(&from);
 				goto error;
 			}
 
 
 			if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
 				RPEDEBUG("Program output cannot request regular expression matching for attribute %s", vp->da->name);
-				fr_cursor_head(&from);
-				fr_cursor_free_item(&from);
+				fr_dcursor_head(&from);
+				fr_dcursor_free_item(&from);
 				goto error;
 			}
 
@@ -937,7 +938,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	request_t		*context;
 	TALLOC_CTX		*parent;
 
-	fr_cursor_t		list;
+	fr_dcursor_t		list;
 	tmpl_cursor_ctx_t	cc;
 
 	memset(&cc, 0, sizeof(cc));
@@ -1008,7 +1009,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		case T_OP_EQ:
 		{
 			bool		exists = false;
-			fr_cursor_t	from, to, to_insert;
+			fr_dcursor_t	from, to, to_insert;
 			fr_pair_list_t	vp_from, vp_to_insert;
 			fr_pair_t	*vp, *vp_to = NULL;
 
@@ -1016,26 +1017,26 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			if (fr_pair_list_empty(&vp_from)) goto finish;
 
-			fr_cursor_init(&from, &vp_from);
-			fr_cursor_init(&to_insert, &vp_to_insert);
-			fr_cursor_init(&to, vp_list);
+			fr_dcursor_init(&from, &vp_from);
+			fr_dcursor_init(&to_insert, &vp_to_insert);
+			fr_dcursor_init(&to, vp_list);
 
-			while ((vp = fr_cursor_remove(&from))) {
-				for (vp_to = fr_cursor_head(&to);
+			while ((vp = fr_dcursor_remove(&from))) {
+				for (vp_to = fr_dcursor_head(&to);
 				     vp_to;
-				     vp_to = fr_cursor_next(&to)) {
+				     vp_to = fr_dcursor_next(&to)) {
 					if (fr_pair_cmp_by_da(vp_to, vp) == 0) exists = true;
 				}
 
 				if (exists) {
 					talloc_free(vp);	/* Don't overwrite */
 				} else {
-					fr_cursor_insert(&to_insert, vp);
+					fr_dcursor_insert(&to_insert, vp);
 				}
 			}
 
-			fr_cursor_tail(&to);
-			fr_cursor_merge(&to, &to_insert);	/* Do this last so we don't expand the 'to' set */
+			fr_dcursor_tail(&to);
+			fr_dcursor_merge(&to, &to_insert);	/* Do this last so we don't expand the 'to' set */
 		}
 			goto finish;
 
@@ -1079,12 +1080,12 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 *	The cursor was set to the Nth one.  Delete it, and only it.
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
-			fr_cursor_free_item(&list);
+			fr_dcursor_free_item(&list);
 		/*
 		 *	Wildcard: delete all of the matching ones
 		 */
 		} else {
-			fr_cursor_free_list(&list);		/* Remember, we're using a custom iterator */
+			fr_dcursor_free_list(&list);		/* Remember, we're using a custom iterator */
 		}
 
 		/*
@@ -1119,7 +1120,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 
 			do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
-					fr_cursor_free_item(&list);
+					fr_dcursor_free_item(&list);
 					goto finish;
 				}
 			} while ((vb = vb->next));
@@ -1137,11 +1138,11 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 
 		     	do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
-					fr_cursor_free_item(&list);
+					fr_dcursor_free_item(&list);
 					break;
 				}
 		     	} while ((vb = vb->next));
-		} while ((found = fr_cursor_next(&list)));
+		} while ((found = fr_dcursor_next(&list)));
 	}
 		goto finish;
 
@@ -1180,23 +1181,23 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 *	Instance specific[n] overwrite
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
-			fr_cursor_t	from;
+			fr_dcursor_t	from;
 			fr_pair_list_t	vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			if (fr_pair_list_empty(&vp_from)) goto finish;
 
-			fr_cursor_init(&from, &vp_from);
+			fr_dcursor_init(&from, &vp_from);
 
-			fr_cursor_merge(&list, &from);	/* Merge first (insert after current attribute) */
-			fr_cursor_free_item(&list);	/* Then free the current attribute */
+			fr_dcursor_merge(&list, &from);	/* Merge first (insert after current attribute) */
+			fr_dcursor_free_item(&list);	/* Then free the current attribute */
 			goto finish;
 		}
 
 		/*
 		 *	All instances[*] overwrite
 		 */
-		fr_cursor_free_list(&list);		/* Remember, we're using a custom iterator */
+		fr_dcursor_free_list(&list);		/* Remember, we're using a custom iterator */
 		goto do_add;
 
 	/*
@@ -1222,7 +1223,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
 			} while ((vb = vb->next));
 
-			if (remove) fr_cursor_free_item(&list);
+			if (remove) fr_dcursor_free_item(&list);
 			goto finish;
 		}
 
@@ -1238,11 +1239,11 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			} while ((vb = vb->next));
 
 			if (remove) {
-				fr_cursor_free_item(&list);
+				fr_dcursor_free_item(&list);
 			} else {
-				fr_cursor_next(&list);
+				fr_dcursor_next(&list);
 			}
-		} while ((found = fr_cursor_current(&list)));
+		} while ((found = fr_dcursor_current(&list)));
 	}
 		goto finish;
 
