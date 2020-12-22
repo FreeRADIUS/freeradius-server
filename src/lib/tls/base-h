@@ -471,7 +471,7 @@ void 		fr_tls_session_info_cb(SSL const *s, int where, int ret);
 void 		fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 				      void const *buf, size_t len, SSL *ssl, void *arg);
 
-int		fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
+int		fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx,
 				     		    fr_tls_session_t *session, X509 *cert, int depth);
 
 int		fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session);

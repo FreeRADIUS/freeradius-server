@@ -838,7 +838,7 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, session, (uint8_t const *)inbuf, len);
 }
 
-static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t *request, fr_cursor_t *cursor,
+static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *pair_list,
 					    	    int attr, int attr_index, char const *value)
 {
 	fr_pair_t *vp;
@@ -855,14 +855,14 @@ static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t
 	RINDENT();
 	RDEBUG3("%pP", vp);
 	REXDENT();
-	fr_cursor_append(cursor, vp);
+	fr_pair_add(pair_list, vp);
 
 	return vp;
 }
 
 /** Extract attributes from an X509 certificate
  *
- * @param cursor	to copy attributes to.
+ * @param pair_list	to copy attributes to.
  * @param ctx		to allocate attributes in.
  * @param session	current TLS session.
  * @param cert		to validate.
@@ -871,7 +871,7 @@ static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t
  *	- 0 on success.
  *	- < 0 on failure.
  */
-int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
+int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx,
 				     fr_tls_session_t *session, X509 *cert, int depth)
 {
 	char		buffer[1024];
@@ -892,9 +892,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	request_t		*request;
 
-#define CERT_ATTR_ADD(_attr, _attr_index, _value) fr_tls_session_cert_attr_add(ctx, request, cursor, _attr, _attr_index, _value)
-
-	fr_cursor_tail(cursor);
+#define CERT_ATTR_ADD(_attr, _attr_index, _value) fr_tls_session_cert_attr_add(ctx, request, pair_list, _attr, _attr_index, _value)
 
 	attr_index = depth;
 	if (attr_index > 1) attr_index = 1;
@@ -1099,7 +1097,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 					continue;
 				}
 
-				fr_cursor_append(cursor, vp);
+				fr_pair_add(pair_list, vp);
 			}
 			BIO_free_all(out);
 		}
