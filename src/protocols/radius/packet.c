@@ -124,7 +124,7 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
 	fr_pair_list_t		head;
-	fr_cursor_t		cursor, out;
+	fr_dcursor_t		cursor, out;
 	fr_radius_ctx_t		packet_ctx = {
 					.secret = secret,
 					.tunnel_password_zeros = tunnel_password_zeros
@@ -182,7 +182,7 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	packet_length = packet->data_len - RADIUS_HEADER_LENGTH;
 	num_attributes = 0;
 
-	fr_cursor_init(&cursor, &head);
+	fr_dcursor_init(&cursor, &head);
 
 	/*
 	 *	Loop over the attributes, decoding them into VPs.
@@ -210,7 +210,7 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 		/*
 		 *	Count the ones which were just added
 		 */
-		while (fr_cursor_next(&cursor)) num_attributes++;
+		while (fr_dcursor_next(&cursor)) num_attributes++;
 
 		/*
 		 *	VSA's may not have been counted properly in
@@ -235,10 +235,10 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 		talloc_free_children(packet_ctx.tmp_ctx);
 	}
 
-	fr_cursor_init(&out, list);
-	fr_cursor_tail(&out);		/* Move insertion point to the end of the list */
-	fr_cursor_head(&cursor);
-	fr_cursor_merge(&out, &cursor);
+	fr_dcursor_init(&out, list);
+	fr_dcursor_tail(&out);		/* Move insertion point to the end of the list */
+	fr_dcursor_head(&cursor);
+	fr_dcursor_merge(&out, &cursor);
 
 	/*
 	 *	Merge information from the outside world into our
