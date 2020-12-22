@@ -79,7 +79,6 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	int		my_ok = ok;
 
 	fr_pair_list_t	cert_vps;
-	fr_cursor_t	cursor;
 
 	char const	**identity_p;
 	char const	*identity = NULL;
@@ -140,8 +139,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	client's cert in SSL_CTX's X509_STORE.
 	 */
 	if (identity && (depth <= 1) && !SSL_session_reused(ssl)) {
-		fr_cursor_init(&cursor, &cert_vps);
-		fr_tls_session_pairs_from_x509_cert(&cursor, request, tls_session, cert, depth);
+		fr_tls_session_pairs_from_x509_cert(&cert_vps, request, tls_session, cert, depth);
 
 		/*
 		 *	Add a copy of the cert_vps to session state.
@@ -153,8 +151,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	fr_tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_cursor_head(&cursor);
-		if (cert_vps) {
+		if (!fr_pair_list_empty(&cert_vps)) {
 			RDEBUG2("Adding certificate attributes to session-state");
 
 			/*
