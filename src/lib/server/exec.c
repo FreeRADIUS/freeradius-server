@@ -554,7 +554,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 		 *	but not the existing ones.
 		 */
 		fr_pair_list_tainted(&vps);
-		fr_pair_add(output_pairs, vps);
+		fr_tmp_pair_list_move(output_pairs, &vps);
 
 	} else if (out) {
 		/*
