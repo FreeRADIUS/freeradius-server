@@ -165,6 +165,8 @@ $(error OPENSSL_LIBS must be define in order to use WITH_OPENSSL_*)
 endif
 endif
 
+CFLAGS += -DUSE_DOUBLE_LIST
+
 # Path to clang, setting this enables the 'scan.*' build targets
 # which perform static analysis on various server components.
 ANALYZE.c       := @clang_path@
