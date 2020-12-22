@@ -806,7 +806,6 @@ static fr_pair_list_t map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *
 {
 	map_t	*mod;
 	fr_pair_list_t	head;
-	fr_cursor_t	cursor;
 
 	fr_pair_list_init(&head);
 	fr_assert(vlm->mod);
@@ -815,13 +814,15 @@ static fr_pair_list_t map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *
 	 *	Fast path...
 	 */
 	if (!vlm->mod->next && !tmpl_value(vlm->mod->rhs)->next) {
-		return map_list_mod_to_vp(ctx, vlm->mod->lhs, tmpl_value(vlm->mod->rhs));
+		fr_pair_t *vp;
+		vp = map_list_mod_to_vp(ctx, vlm->mod->lhs, tmpl_value(vlm->mod->rhs));
+		fr_pair_add(&head, vp);
+		return head;
 	}
 
 	/*
 	 *	Slow path.  This may generate multiple attributes.
 	 */
-	fr_cursor_init(&cursor, &head);
 	for (mod = vlm->mod;
 	     mod;
 	     mod = mod->next) {
@@ -833,11 +834,10 @@ static fr_pair_list_t map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *
 	     	     vb = vb->next) {
 			vp = map_list_mod_to_vp(ctx, mod->lhs, vb);
 			if (!vp) {
-				fr_cursor_head(&cursor);
-				fr_cursor_free_list(&cursor);
-				return NULL;
+				fr_pair_list_free(&head);
+				return head;
 			}
-			fr_cursor_append(&cursor, vp);
+			fr_pair_add(&head, vp);
 		}
 	}
 
