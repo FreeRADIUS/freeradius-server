@@ -71,7 +71,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 	fr_pair_t		*vp;
 	fr_pair_list_t		args;
 	fr_dict_attr_t const	*da;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	fr_pair_list_init(&args);
 	fr_assert(ef != NULL);
@@ -86,12 +86,12 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 	}
 
 	fr_pair_list_copy(request ? request->request_ctx : NULL, &args, &ef->trigger_args);
-	fr_cursor_init(&cursor, &args);
+	fr_dcursor_init(&cursor, &args);
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));
 	fr_pair_value_strdup(vp, entry->filename);
 
-	fr_cursor_prepend(&cursor, vp);
+	fr_dcursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
 	trigger_exec(request, ef->conf, name, false, &args);
