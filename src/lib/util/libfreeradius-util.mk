@@ -42,8 +42,8 @@ SOURCES		:= \
 		   missing.c \
 		   net.c \
 		   packet.c \
-		   pair_legacy.c \
 		   $(if $(findstring USE_DOUBLE_LIST,$(CFLAGS)),dpair.c,pair.c) \
+		   $(if $(findstring USE_DOUBLE_LIST,$(CFLAGS)),dpair_legacy.c,pair_legacy.c) \
 		   pair_print.c \
 		   pair_tokenize.c \
 		   paths.c \
