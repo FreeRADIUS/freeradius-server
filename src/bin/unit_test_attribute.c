@@ -1340,10 +1340,9 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
-	if (head) {
-		fr_cursor_init(&cursor, &head);
 
 		for (vp = fr_cursor_head(&cursor);
+	if (!fr_pair_list_empty(&head)) {
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
@@ -1443,10 +1442,10 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
-	if (head) {
 		fr_cursor_init(&cursor, &head);
 
 		for (vp = fr_cursor_head(&cursor);
+	if (!fr_pair_list_empty(&head)) {
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if ((slen = fr_pair_print(&sbuff, NULL, vp)) < 0) {

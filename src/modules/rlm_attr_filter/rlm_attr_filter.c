@@ -334,7 +334,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	 *	No entry matched.  We didn't do anything.
 	 */
 	if (!found) {
-		fr_assert(!output);
+		fr_assert(fr_pair_list_empty(&output));
 		RETURN_MODULE_NOOP;
 	}
 

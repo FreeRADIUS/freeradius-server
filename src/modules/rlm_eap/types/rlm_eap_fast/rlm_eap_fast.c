@@ -346,7 +346,7 @@ error:
 		if (t->pac.key) talloc_free(t->pac.key);
 
 		memset(&t->pac, 0, sizeof(t->pac));
-		if (fast_vps) fr_pair_list_free(&fast_vps);
+		if (!fr_pair_list_empty(&fast_vps)) fr_pair_list_free(&fast_vps);
 		return 1;
 	}
 

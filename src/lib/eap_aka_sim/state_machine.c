@@ -3381,7 +3381,7 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps
 	}
 	/* vps is the data from the client */
 	aka_vps = fr_cursor_next(&cursor);
-	if (aka_vps && RDEBUG_ENABLED2) {
+	if (!fr_pair_list_empty(&aka_vps) && RDEBUG_ENABLED2) {
 		RDEBUG2("Decoded attributes");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &aka_vps, NULL);
 	}

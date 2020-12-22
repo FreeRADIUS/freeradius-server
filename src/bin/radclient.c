@@ -412,7 +412,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Skip empty entries
 		 */
-		if (!request->request_pairs) {
+		if (fr_pair_list_empty(&request->request_pairs)) {
 			WARN("Skipping \"%s\": No Attributes", files->packets);
 			talloc_free(request);
 			continue;
@@ -1092,7 +1092,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	/*
 	 *	Check if the contents of the packet matched the filter
 	 */
-	} else if (!request->filter) {
+	} else if (fr_pair_list_empty(&request->filter)) {
 		stats.passed++;
 	} else {
 		fr_pair_t const *failed[2];

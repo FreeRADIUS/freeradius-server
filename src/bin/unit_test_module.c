@@ -313,7 +313,7 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 	fr_cursor_t cursor;
 	fr_dict_enum_t *dv;
 
-	if (!*list) {
+	if (fr_pair_list_empty(list)) {
 		fprintf(fp, "\n");
 		return;
 	}
@@ -957,7 +957,7 @@ int main(int argc, char *argv[])
 		/*
 		 *	Filter files can't be empty.
 		 */
-		if (!filter_vps) {
+		if (fr_pair_list_empty(&filter_vps)) {
 			fr_perror("No attributes in filter file %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
@@ -1003,7 +1003,7 @@ int main(int argc, char *argv[])
 	 *	Some state machines already include a response Packet-Type
 	 *	so we need to try and update it, else we end up with two!
 	 */
-	if (filter_vps) {
+	if (!fr_pair_list_empty(&filter_vps)) {
 		fr_pair_t const *failed[2];
 
 		MEM(pair_update_reply(&vp, attr_packet_type) >= 0);

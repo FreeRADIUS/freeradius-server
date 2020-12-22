@@ -179,7 +179,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	fr_assert(vps != NULL);
+	fr_assert(!fr_pair_list_empty(&vps));
 
 	foreach->request = request;
 	foreach->depth = foreach_depth;

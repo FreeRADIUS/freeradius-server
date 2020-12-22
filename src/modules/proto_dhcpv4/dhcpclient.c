@@ -705,7 +705,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if ((request_init(&packet, &packet_vps, filename) < 0) || !packet_vps) {
+	if ((request_init(&packet, &packet_vps, filename) < 0) || fr_pair_list_empty(&packet_vps)) {
 		ERROR("Nothing to send");
 		fr_exit(EXIT_FAILURE);
 	}

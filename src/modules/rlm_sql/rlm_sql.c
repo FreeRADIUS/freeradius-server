@@ -939,7 +939,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 				continue;
 			}
 
-			fr_assert(reply_tmp != NULL); /* coverity, among others */
+			fr_assert(!fr_pair_list_empty(&reply_tmp)); /* coverity, among others */
 			*do_fall_through = fall_through(&reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);

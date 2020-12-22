@@ -1863,7 +1863,7 @@ recurse:
 	 *	Now that our children have added options, see if we
 	 *	can add some, too.
 	 */
-	if (head->options) {
+	if (!fr_pair_list_empty(&head->options)) {
 		fr_pair_t *vp = NULL;
 		fr_cursor_t option_cursor;
 		fr_cursor_t reply_cursor;
