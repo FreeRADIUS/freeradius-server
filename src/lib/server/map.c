@@ -1077,7 +1077,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 	case TMPL_TYPE_ATTR:
 	{
-		fr_cursor_t from;
+		fr_dcursor_t from;
 
 		fr_assert((tmpl_is_attr(map->lhs) && tmpl_da(map->lhs)) ||
 			   (tmpl_is_list(map->lhs) && !tmpl_da(map->lhs)));
@@ -1087,7 +1087,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 */
 		if (tmpl_copy_pairs(ctx, &found, request, map->rhs) < 0) return 0;
 
-		vp = fr_cursor_init(&from, &found);
+		vp = fr_dcursor_init(&from, &found);
 
 		/*
 		 *  Src/Dst attributes don't match, convert src attributes
@@ -1095,7 +1095,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 */
 		if (tmpl_is_attr(map->lhs) &&
 		    (tmpl_da(map->rhs)->type != tmpl_da(map->lhs)->type)) {
-			for (; vp; vp = fr_cursor_current(&from)) {
+			for (; vp; vp = fr_dcursor_current(&from)) {
 				MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 
 				if (fr_value_box_cast(n, &n->data,
@@ -1105,7 +1105,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 					talloc_free(n);
 					return -1;
 				}
-				vp = fr_cursor_remove(&from);	/* advances cursor */
+				vp = fr_dcursor_remove(&from);	/* advances cursor */
 				talloc_free(vp);
 
 				fr_assert((n->vp_type != FR_TYPE_STRING) || (n->vp_strvalue != NULL));
@@ -1121,7 +1121,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 *   Otherwise we just need to fixup the attribute types
 		 *   and operators
 		 */
-		for (; vp; vp = fr_cursor_next(&from)) {
+		for (; vp; vp = fr_dcursor_next(&from)) {
 			vp->da = tmpl_da(map->lhs);
 			vp->op = map->op;
 		}
@@ -1216,7 +1216,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	fr_pair_list_t		*list, head;
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
-	fr_cursor_t		dst_list, src_list;
+	fr_dcursor_t		dst_list, src_list;
 
 	bool			found = false;
 
@@ -1233,7 +1233,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	fr_assert(map->rhs != NULL);
 
 	tmp_ctx = talloc_pool(request, 1024);
-	fr_cursor_init(&src_list, &head);
+	fr_dcursor_init(&src_list, &tmp_list);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
@@ -1432,8 +1432,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	We've found the Nth one.  Delete it, and only it.
 		 */
 		} else {
-			dst = fr_cursor_remove(&dst_list);
 			fr_pair_list_free(&dst);
+			dst = fr_dcursor_remove(&dst_list);
 		}
 
 		/*
@@ -1469,8 +1469,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
-					dst = fr_cursor_remove(&dst_list);
-					fr_pair_list_free(&dst);
+					dst = fr_dcursor_remove(&dst_list);
+					talloc_free(&dst);
 					found = true;
 				}
 			}
@@ -1483,17 +1483,17 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	All instances[*] delete
 		 */
-		for (dst = fr_cursor_current(&dst_list);
+		for (dst = fr_dcursor_current(&dst_list);
 		     dst;
-		     dst = fr_cursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs))) {
+		     dst = fr_dcursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs))) {
 			for (vp = fr_pair_list_head(&src_list);
 			     vp;
 			     vp = fr_pair_list_next(&src_list, vp)) {
 				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
-					dst = fr_cursor_remove(&dst_list);
-					fr_pair_list_free(&dst);
+					dst = fr_dcursor_remove(&dst_list);
+					talloc_free(&dst);
 					found = true;
 				}
 			}
@@ -1538,7 +1538,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Need to copy src to all dsts
 		 */
-		src_vp = fr_cursor_head(&src_list);
+		src_vp = fr_dcursor_head(&src_list);
 		if (!src_vp) {
 			fr_dlist_talloc_free(&leaf);
 			rcode = -1;
@@ -1596,8 +1596,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		} else {
 			extent = fr_dlist_head(&leaf);
 			if (dst) {
-				DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-				dst = fr_cursor_replace(&dst_list, fr_pair_copy(extent->list_ctx, src_vp));
+				DEBUG_OVERWRITE(dst, fr_dcursor_current(&src_list));
+				dst = fr_dcursor_replace(&dst_list, fr_pair_copy(extent->list_ctx, src_vp));
 				talloc_free(dst);
 			} else {
 				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
@@ -1668,14 +1668,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		fr_pair_list_sort(&head, fr_pair_cmp_by_da);
 		fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
-		fr_cursor_head(&dst_list);
+		fr_dcursor_head(&dst_list);
 
 		for (b = fr_pair_list_head(&src_list);
 		     b;
 		     b = fr_pair_list_next(&src_list, b)) {
-			for (a = fr_cursor_current(&dst_list);
+			for (a = fr_dcursor_current(&dst_list);
 			     a;
-			     a = fr_cursor_next(&dst_list)) {
+			     a = fr_dcursor_next(&dst_list)) {
 				int8_t cmp;
 
 				cmp = fr_pair_cmp_by_da(a, b);	/* attribute and tag match */
@@ -1684,7 +1684,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 				cmp = (fr_value_box_cmp_op(map->op, &a->data, &b->data) == 0);
 				if (cmp != 0) {
-					a = fr_cursor_remove(&dst_list);
+					a = fr_dcursor_remove(&dst_list);
 					talloc_free(a);
 				}
 			}
