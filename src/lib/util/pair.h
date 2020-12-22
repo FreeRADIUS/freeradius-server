@@ -21,6 +21,9 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
+#ifdef USE_DOUBLE_LIST
+#include <freeradius-devel/util/dpair.h>
+#else
 RCSIDH(pair_h, "$Id$")
 
 #include <freeradius-devel/build.h>
@@ -417,4 +420,5 @@ void		fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict);
 
 #ifdef __cplusplus
 }
+#endif
 #endif
