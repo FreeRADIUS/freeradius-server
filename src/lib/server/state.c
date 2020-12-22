@@ -270,7 +270,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 static int _state_entry_free(fr_state_entry_t *entry)
 {
 #ifdef WITH_VERIFY_PTR
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 	fr_pair_t *vp;
 
 	/*
@@ -278,9 +278,9 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	 *	by the state context.
 	 */
 	if (entry->ctx) {
-		for (vp = fr_cursor_init(&cursor, &entry->ctx->children);
+		for (vp = fr_dcursor_init(&cursor, &entry->ctx->children);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 			fr_assert(entry->ctx == talloc_parent(vp));
 		}
 	}
