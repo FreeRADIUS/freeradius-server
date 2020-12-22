@@ -506,7 +506,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 {
 	int	       		rcode;
 	fr_pair_t		*vp;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dict_attr_t const	*da = NULL;
@@ -518,7 +518,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 
 	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, da) < 0) {
 			RPEDEBUG("Failed realizing RHS %pV", &vp->data);
 			if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
@@ -543,7 +543,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 	int	       		rcode;
 	fr_pair_t		*virt, *vp;
 	fr_value_box_t		*rhs, rhs_cast;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
 
 	fr_assert(tmpl_is_attr(map->lhs));
@@ -554,7 +554,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 
 	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, NULL) < 0) {
 			RPEDEBUG("Failed realizing RHS %pV", &vp->data);
 			if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
@@ -734,14 +734,14 @@ check_attrs:
 	case TMPL_TYPE_ATTR:
 	{
 		fr_pair_t		*vp;
-		fr_cursor_t		cursor;
+		fr_dcursor_t		cursor;
 		tmpl_cursor_ctx_t	cc;
 
 		fr_assert(!lhs);
 
 		for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->lhs);
 		     vp;
-	     	     vp = fr_cursor_next(&cursor)) {
+	     	     vp = fr_dcursor_next(&cursor)) {
 			fr_value_box_t lhs_cast;
 
 			/*
