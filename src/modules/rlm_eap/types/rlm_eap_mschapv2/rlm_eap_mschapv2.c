@@ -375,7 +375,7 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 			RPERROR("Failed copying %s", attr_ms_chap_error->name);
 			RETURN_MODULE_FAIL;
 		}
-		if (response) {
+		if (!fr_pair_list_empty(&response)) {
 			int n, err, retry;
 			char buf[34];
 
@@ -555,7 +555,7 @@ failure:
 		case FR_EAP_MSCHAPV2_SUCCESS:
 			eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
-			if (data->mppe_keys) {
+			if (!fr_pair_list_empty(&data->mppe_keys)) {
 				RDEBUG2("Adding stored attributes to parent");
 				log_request_pair_list(L_DBG_LVL_2, request, NULL, &data->mppe_keys, "&parent.reply.");
 				MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->mppe_keys) >= 0);

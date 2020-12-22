@@ -333,9 +333,9 @@ static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 
 	if (node->cluster->triggers_enabled) {
 		args = trigger_args_afrom_server(pool, node->name, node->addr.inet.dst_port);
-		if (!args) return;
+		if (fr_pair_list_empty(args)) return;
 
-		if (node->cluster->trigger_args) MEM(fr_pair_list_copy(node->cluster, &args,
+		if (!fr_pair_list_empty(&node->cluster->trigger_args)) MEM(fr_pair_list_copy(node->cluster, args,
 								      &node->cluster->trigger_args) >= 0);
 
 		fr_pool_enable_triggers(pool, node->cluster->trigger_prefix, &args);
@@ -397,9 +397,9 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 
 		if (trigger_enabled() && cluster->triggers_enabled) {
 			args = trigger_args_afrom_server(node->pool, node->name, node->addr.inet.dst_port);
-			if (!args) goto error;
+			if (fr_pair_list_empty(args)) goto error;
 
-			if (cluster->trigger_args) MEM(fr_pair_list_copy(cluster, &args, &cluster->trigger_args) >= 0);
+			if (!fr_pair_list_empty(&cluster->trigger_args)) MEM(fr_pair_list_copy(cluster, args, &cluster->trigger_args) >= 0);
 
 			fr_pool_enable_triggers(node->pool, node->cluster->trigger_prefix, &args);
 
@@ -2268,7 +2268,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	fr_redis_cluster_t	*cluster;
 
 	fr_assert(triggers_enabled || !trigger_prefix);
-	fr_assert(triggers_enabled || !*trigger_args);
+	fr_assert(triggers_enabled || fr_pair_list_empty(trigger_args));
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {

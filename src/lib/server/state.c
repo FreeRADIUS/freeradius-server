@@ -654,7 +654,7 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	if (request->session_state_pairs) {
+	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Restored &session-state");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 	}
@@ -687,9 +687,9 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	request_data_list_init(&data);
 	request_data_by_persistance(&data, request, true);
 
-	if (!request->session_state_pairs && fr_dlist_empty(&data)) return 0;
+	if (fr_pair_list_empty(&request->session_state_pairs) && fr_dlist_empty(&data)) return 0;
 
-	if (request->session_state_pairs) {
+	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Saving &session-state");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 	}

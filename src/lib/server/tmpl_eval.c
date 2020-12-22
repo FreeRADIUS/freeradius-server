@@ -1736,6 +1736,7 @@ int tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 void tmpl_extents_debug(fr_dlist_head_t *head)
 {
 	tmpl_attr_extent_t const *extent = NULL;
+	fr_pair_t *vp = NULL;
 
 	for (extent = fr_dlist_head(head);
 	     extent;
@@ -1758,7 +1759,12 @@ void tmpl_extents_debug(fr_dlist_head_t *head)
 			FR_FAULT_LOG("list_ctx     : %p (%s)", extent->list_ctx, ctx_name);
 		}
 		FR_FAULT_LOG("list         : %p", extent->list);
-		FR_FAULT_LOG("list (first) : %s (%p)", *extent->list ? (*extent->list)->da->name : "none", *extent->list);
+		if (fr_pair_list_empty(extent->list)) {
+			FR_FAULT_LOG("list (first) : none (%p)", extent->list);
+		} else {
+			vp = fr_pair_list_head(extent->list);
+			FR_FAULT_LOG("list (first) : %s (%p)", vp->da->name, extent->list);
+		}
 	}
 
 }

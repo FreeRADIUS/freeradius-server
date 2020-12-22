@@ -572,7 +572,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 *	Pack any tunneled VPs and send them back
 	 *	to the supplicant.
 	 */
-	if (tunnel_vps) {
+	if (!fr_pair_list_empty(&tunnel_vps)) {
 		RDEBUG2("Sending tunneled reply attributes");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tunnel_vps, NULL);
 

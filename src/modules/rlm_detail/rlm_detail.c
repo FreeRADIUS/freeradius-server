@@ -245,7 +245,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		return -1;
 	}
 
-	if (!list) {
+	if (fr_pair_list_empty(list)) {
 		RWDEBUG("Skipping empty packet");
 		return 0;
 	}

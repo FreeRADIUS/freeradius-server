@@ -1044,7 +1044,8 @@ static void rs_packet_cleanup(rs_request_t *request)
 				rs_packet_print(request, request->id, RS_LOST, request->in,
 						request->packet, &request->packet_vps,
 						NULL, NULL, false,
-					        conf->filter_response_vps || !(conf->event_flags & RS_NORMAL));
+					        !fr_pair_list_empty(&conf->filter_response_vps) ||
+						!(conf->event_flags & RS_NORMAL));
 			}
 		}
 
@@ -1447,7 +1448,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			/*
 			 *	Now verify the packet passes the attribute filter
 			 */
-			if (conf->filter_response_vps) {
+			if (!fr_pair_list_empty(&conf->filter_response_vps)) {
 				fr_pair_list_sort(&decoded, fr_pair_cmp_by_da);
 				if (!fr_pair_validate_relaxed(NULL, &conf->filter_response_vps, &decoded)) {
 					goto drop_response;
@@ -1591,7 +1592,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 		search.expect->code = packet->code;
 
-		if ((conf->link_da_num > 0) && decoded) {
+		if ((conf->link_da_num > 0) && (!fr_pair_list_empty(&decoded))) {
 			int ret;
 			ret = rs_get_pairs(packet, &search.link_vps, &decoded, conf->link_da,
 					   conf->link_da_num);
@@ -1605,7 +1606,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	If we have linking attributes set, attempt to find a request in the linking tree.
 		 */
-		if (search.link_vps) {
+		if (!fr_pair_list_empty(&search.link_vps)) {
 			rs_request_t *tuple;
 
 			original = rbtree_finddata(link_tree, &search);
@@ -1647,7 +1648,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Now verify the packet passes the attribute filter
 		 */
-		if (conf->filter_request_vps) {
+		if (!fr_pair_list_empty(&conf->filter_request_vps)) {
 			if (!fr_pair_validate_relaxed(NULL, &conf->filter_request_vps, &decoded)) {
 				goto drop_request;
 			}
@@ -1702,7 +1703,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->expect = talloc_steal(original, search.expect);
 			fr_pair_list_move(&original->expect_vps, &search.expect_vps);
 
-			if (search.link_vps) {
+			if (!fr_pair_list_empty(&search.link_vps)) {
 				bool ret;
 				fr_cursor_t cursor;
 				fr_pair_t *vp;
@@ -1727,7 +1728,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	don't know what the response to that request would
 			 *	of been.
 			 */
-			if (conf->filter_response_vps) {
+			if (!fr_pair_list_empty(&conf->filter_response_vps)) {
 				original->silent_cleanup = true;
 			}
 		}
@@ -1973,8 +1974,8 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 {
 	int ret;
 
-	RS_ASSERT(a->link_vps);
-	RS_ASSERT(b->link_vps);
+	RS_ASSERT(!fr_pair_list_empty(&a->link_vps));
+	RS_ASSERT(!fr_pair_list_empty(&b->link_vps));
 
 	ret = (int) a->expect->code - (int) b->expect->code;
 	if (ret != 0) return ret;
@@ -2039,7 +2040,7 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 		return -1;
 	}
 
-	if (!*out) {
+	if (fr_pair_list_empty(out)) {
 		ERROR("Empty RADIUS filter '%s'", filter);
 		return -1;
 	}
@@ -2719,7 +2720,7 @@ int main(int argc, char *argv[])
 	 *	But, if were just logging requests, or graphing packets, we don't need to decode
 	 *	attributes.
 	 */
-	if (conf->list_da_num || conf->link_da_num || conf->filter_response_vps || conf->filter_request_vps ||
+	if (conf->list_da_num || conf->link_da_num || !fr_pair_list_empty(&conf->filter_response_vps) || !fr_pair_list_empty(&conf->filter_request_vps) ||
 	    conf->print_packet) {
 		conf->decode_attrs = true;
 	}
@@ -2808,7 +2809,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS request code     : [%s]", fr_packet_codes[conf->filter_request_code]);
 		}
 
-		if (conf->filter_request_vps){
+		if (!fr_pair_list_empty(&conf->filter_request_vps)){
 			DEBUG2("  RADIUS request filter   :");
 			fr_pair_list_log(&default_log, &conf->filter_request_vps);
 		}
@@ -2817,7 +2818,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS response code    : [%s]", fr_packet_codes[conf->filter_response_code]);
 		}
 
-		if (conf->filter_response_vps){
+		if (!fr_pair_list_empty(&conf->filter_response_vps)){
 			DEBUG2("  RADIUS response filter  :");
 			fr_pair_list_log(&default_log, &conf->filter_response_vps);
 		}

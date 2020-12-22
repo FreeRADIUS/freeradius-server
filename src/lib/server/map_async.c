@@ -702,7 +702,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	Parse the VPs from the RHS.
 		 */
 		vp_head = fr_pair_list_afrom_box(ctx, request->dict, *rhs_result);
-		if (!vp_head) {
+		if (fr_pair_list_empty(&vp_head)) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");
 			return 0;	/* No pairs returned */
@@ -1015,7 +1015,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 
 			fr_pair_list_init(&vp_to_insert);
 			vp_from = map_list_mod_to_vps(parent, vlm);
-			if (!vp_from) goto finish;
+			if (fr_pair_list_empty(&vp_from)) goto finish;
 
 			fr_cursor_init(&from, &vp_from);
 			fr_cursor_init(&to_insert, &vp_to_insert);
@@ -1046,7 +1046,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_pair_list_t	vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
-			fr_assert(vp_from);
+			fr_assert(!fr_pair_list_empty(&vp_from));
 
 			fr_cursor_init(&to, vp_list);
 			fr_cursor_tail(&to);
@@ -1161,7 +1161,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		fr_pair_list_t	vp_from;
 
 		vp_from = map_list_mod_to_vps(parent, vlm);
-		if (!vp_from) goto finish;
+		if (fr_pair_list_empty(&vp_from)) goto finish;
 
 		fr_cursor_init(&to, vp_list);
 		fr_cursor_tail(&to);		/* Insert after the last instance */
@@ -1195,7 +1195,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_pair_list_t	vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
-			if (!vp_from) goto finish;
+			if (fr_pair_list_empty(&vp_from)) goto finish;
 
 			fr_cursor_init(&from, &vp_from);
 

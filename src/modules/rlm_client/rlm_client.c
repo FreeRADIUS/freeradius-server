@@ -286,7 +286,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 *	Ensure we're only being called from the main thread,
 	 *	with fake packets.
 	 */
-	if ((request->packet->socket.inet.src_port != 0) || (request->request_pairs != NULL) ||
+	if ((request->packet->socket.inet.src_port != 0) || (!fr_pair_list_empty(&request->request_pairs)) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
 		RETURN_MODULE_NOOP;

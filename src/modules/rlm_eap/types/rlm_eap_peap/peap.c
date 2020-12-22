@@ -306,7 +306,7 @@ static void eap_peap_inner_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *pairs,
  */
 static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_session, fr_pair_list_t *vps)
 {
-	fr_assert(*vps != NULL);
+	fr_assert(!fr_pair_list_empty(vps));
 	fr_pair_t *this;
 	fr_cursor_t cursor;
 
@@ -552,7 +552,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
 		fake = request_alloc(request, &(request_init_args_t){ .parent = request });
-		fr_assert(!fake->request_pairs);
+		fr_assert(fr_pair_list_empty(&fake->request_pairs));
 		eap_peap_soh_verify(fake, data, data_len);
 		setup_fake_request(request, fake, t);
 
@@ -572,9 +572,9 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		}
 
 		/* save the SoH VPs */
-		fr_assert(!t->soh_reply_vps);
+		fr_assert(fr_pair_list_empty(&t->soh_reply_vps));
 		MEM(fr_pair_list_copy(t, &t->soh_reply_vps, &fake->reply_pairs) >= 0);
-		fr_assert(!fake->reply_pairs);
+		fr_assert(fr_pair_list_empty(&fake->reply_pairs));
 		TALLOC_FREE(fake);
 
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
@@ -653,7 +653,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 	}
 
 	fake = request_alloc(request, &(request_init_args_t){ .parent = request });
-	fr_assert(!fake->request_pairs);
+	fr_assert(fr_pair_list_empty(&fake->request_pairs));
 
 	switch (t->status) {
 	/*
@@ -687,7 +687,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 	case PEAP_STATUS_PHASE2:
 		eap_peap_inner_to_pairs(fake->request_ctx, &fake->request_pairs,
 					eap_round, data, data_len);
-		if (!fake->request_pairs) {
+		if (fr_pair_list_empty(&fake->request_pairs)) {
 			talloc_free(fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
 			rcode = RLM_MODULE_REJECT;

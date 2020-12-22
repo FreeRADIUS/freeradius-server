@@ -763,7 +763,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*parent_da = NULL;
 
-	if (!*vps || !request->log.dst) return;
+	if (fr_pair_list_empty(vps) || !request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
@@ -815,7 +815,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 	fr_dict_attr_t const	*parent_da = NULL;
 	fr_pair_t		*vp;
 
-	if (!*vps || !request->log.dst) return;
+	if (fr_pair_list_empty(vps) || !request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 

@@ -699,7 +699,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	 *	This shouldn't really happen.
 	 */
 	vp = fr_cursor_current(cursor);
-	if (!vp->vp_group) {
+	if (fr_pair_list_empty(&vp->vp_group)) {
 		vp = fr_cursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return PAIR_ENCODE_SKIPPED;

@@ -919,7 +919,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_LIST:
-		if (!output_pairs) {
+		if (fr_pair_list_empty(&output_pairs)) {
 			REDEBUG("No valid attributes received from program");
 			return -2;
 		}
@@ -1006,7 +1006,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		/*
 		 *	List to list copy is empty if the src list has no attributes.
 		 */
-		if (!found) return 0;
+		if (fr_pair_list_empty(&found)) return 0;
 
 		for (vp = fr_cursor_init(&cursor, &found);
 		     vp;
@@ -1340,10 +1340,10 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	if (!tmpl_is_null(map->rhs)) {
 		rcode = func(parent, &head, request, map, ctx);
 		if (rcode < 0) {
-			fr_assert(!head);
+			fr_assert(fr_pair_list_empty(tmp_list));
 			goto finish;
 		}
-		if (!head) {
+		if (fr_pair_list_empty(tmp_list)) {
 			RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
 			goto finish;
 		}
@@ -1376,7 +1376,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		switch (map->op) {
 		case T_OP_CMP_FALSE:
 			/* We don't need the src VPs (should just be 'ANY') */
-			fr_assert(!head);
+			fr_assert(fr_pair_list_empty(tmp_list));
 
 			/* Clear the entire dst list */
 			fr_pair_list_free(list);
@@ -1425,7 +1425,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 */
 	case T_OP_CMP_FALSE:
 		/* We don't need the src VPs (should just be 'ANY') */
-		fr_assert(!head);
+		fr_assert(fr_pair_list_empty(tmp_list));
 		if (!dst) goto finish;
 
 		/*
@@ -1707,7 +1707,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	}
 
 update:
-	fr_assert(!head);
+	fr_assert(fr_pair_list_empty(tmp_list));
 
 finish:
 	tmpl_cursor_clear(&cc);

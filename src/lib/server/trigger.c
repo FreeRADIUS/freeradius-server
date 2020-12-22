@@ -83,7 +83,7 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	/*
 	 *	No arguments available.
 	 */
-	if (!head) return -1;
+	if (fr_pair_list_empty(head)) return -1;
 
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), fmt);
 	if (!da) {
@@ -406,7 +406,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	ctx->name = talloc_strdup(ctx, value);
 
 	if (request) {
-		if (request->request_pairs) {
+		if (!fr_pair_list_empty(&request->request_pairs)) {
 			(void) fr_pair_list_copy(ctx, &ctx->vps, &request->request_pairs);
 		}
 

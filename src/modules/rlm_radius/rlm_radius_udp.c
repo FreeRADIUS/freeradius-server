@@ -1841,7 +1841,7 @@ static void request_mux(fr_event_list_t *el,
 		}
 
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
-		if (u->extra) log_request_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
+		if (!fr_pair_list_empty(&u->extra)) log_request_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
 
 		/*
 		 *	Record pointers to the buffer we'll be writing
@@ -2544,7 +2544,7 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	fr_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
 	fr_assert(state != FR_TRUNK_REQUEST_STATE_INIT);
 
@@ -2564,7 +2564,7 @@ static void request_complete(request_t *request, void *preq, void *rctx, UNUSED 
 	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 
-	fr_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
 	if (u->status_check) return;
 
@@ -2580,7 +2580,7 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
 {
 	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
 
-	fr_assert(!u->rr && !u->packet && !u->extra && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
 	/*
 	 *	Don't free status check requests.
