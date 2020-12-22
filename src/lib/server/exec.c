@@ -58,7 +58,7 @@ static void fr_exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs,
 {
 	char			*p;
 	size_t			i;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
 	char			buffer[1024];
@@ -101,9 +101,9 @@ static void fr_exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs,
 	if (request) {
 		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
 		if (da) {
-			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, da);
+			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, da);
 			     vp && (i < (envlen - 1));
-			     vp = fr_cursor_next(&cursor)) {
+			     vp = fr_dcursor_next(&cursor)) {
 				DEBUG3("export %pV", &vp->data);
 				memcpy(&envp[i++], &vp->vp_strvalue, sizeof(*envp));
 			}
@@ -603,7 +603,7 @@ wait:
  *	- <0 on error
  *	- 0 on success
  *
- *  @todo - maybe take an fr_cursor_t instead of env_pairs?  That
+ *  @todo - maybe take an fr_dcursor_t instead of env_pairs?  That
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
@@ -696,7 +696,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_p
  *	- <0 on error
  *	- 0 on success
  *
- *  @todo - maybe take an fr_cursor_t instead of env_pairs?  That
+ *  @todo - maybe take an fr_dcursor_t instead of env_pairs?  That
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
