@@ -1094,7 +1094,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			 */
 			packet_ctx->tags = talloc_zero_array(NULL, fr_radius_tag_ctx_t *, 32);
 			if (!packet_ctx->tags) {
-				fr_pair_list_free(&vp);
+				talloc_free(vp);
 				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 				return -1;
 			}
@@ -1108,21 +1108,21 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 
 			packet_ctx->tags[tag] = talloc_zero(packet_ctx->tags, fr_radius_tag_ctx_t);
 			if (!packet_ctx->tags[tag]) {
-				fr_pair_list_free(&vp);
+				talloc_free(vp);
 				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 				return -1;
 			}
 
 			group_da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), FR_TAG_BASE + tag);
 			if (!group_da) {
-				fr_pair_list_free(&vp);
+				talloc_free(vp);
 				fr_strerror_printf("Failed finding attribute 'Tag-%u'", tag);
 				return -1;
 			}
 
 			group = fr_pair_afrom_da(ctx, group_da);
 			if (!group) {
-				fr_pair_list_free(&vp);
+				talloc_free(vp);
 				return -1;
 			}
 
@@ -1467,7 +1467,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 
 	default:
 	raw:
-		if (vp) fr_pair_list_free(&vp);
+		if (vp) talloc_free(vp);
 
 		vp = fr_raw_from_network(ctx, parent, data, attr_len);
 		tag = 0;
@@ -1580,7 +1580,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			 *	Paranoid loop prevention
 			 */
 			if (vp->da->flags.is_unknown) {
-				fr_pair_list_free(&vp);
+				talloc_free(vp);
 				return -1;
 			}
 			goto raw;
