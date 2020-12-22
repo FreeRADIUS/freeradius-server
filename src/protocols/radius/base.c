@@ -872,24 +872,22 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	return 0;
 }
 
-void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx);
+void *fr_radius_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx);
 
-void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx)
+void *fr_radius_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
 {
-	fr_pair_t	*c, *p;
+	fr_pair_t	*c;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
 	if (!to_eval) return NULL;
 
-	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
+	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
 		VP_VERIFY(c);
 		if ((c->da->dict == dict) &&
 		    (!c->da->flags.internal || ((c->da->attr > FR_TAG_BASE) && (c->da->attr < (FR_TAG_BASE + 0x20))))) {
 			break;
 		}
 	}
-
-	*prev = p;
 
 	return c;
 }

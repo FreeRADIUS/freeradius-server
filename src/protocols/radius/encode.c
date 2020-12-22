@@ -1481,7 +1481,7 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 /*
  *	No one else should be using this.
  */
-extern void *fr_radius_next_encodable(void **prev, void *to_eval, void *uctx);
+extern void *fr_radius_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx);
 
 /*
  *	Test points
