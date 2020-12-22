@@ -89,9 +89,7 @@ void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da
 
 /** Implements the default iterator to encode pairs belonging to a specific dictionary that are not internal
  *
- * @param[in,out] prev	The fr_pair_t before curr. Will be updated to point to the
- *			pair before the one returned, or the last pair in the list
- *			if no matching pairs found.
+ * @param[in] list	to itterate over.
  * @param[in] to_eval	The fr_pair_t after cursor->current.  Will be checked to
  *			see if it matches the specified fr_dict_t.
  * @param[in] uctx	The fr_dict_t to search for.
@@ -99,19 +97,17 @@ void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-void *fr_proto_next_encodable(void **prev, void *to_eval, void *uctx)
+void *fr_proto_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
 {
-	fr_pair_t	*c, *p;
+	fr_pair_t	*c;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
 	if (!to_eval) return NULL;
 
-	for (p = *prev, c = to_eval; c; p = c, c = c->next) {
+	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
 		VP_VERIFY(c);
 		if ((c->da->dict == dict) && (!c->da->flags.internal)) break;
 	}
-
-	*prev = p;
 
 	return c;
 }
