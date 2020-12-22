@@ -57,7 +57,7 @@ static char const       *dict_dir  = "share/dictionary";
 
 /* Set by pair_tests_init()*/
 static TALLOC_CTX       *autofree;
-static fr_pair_list_t   sample_pairs = NULL;
+static fr_pair_list_t   sample_pairs;
 static char const       *sample_string = "We love Tapioca!";
 
 /*
@@ -190,6 +190,7 @@ static void pair_tests_init(void)
 	if (init_adhoc_attrs(test_dict_attrs) < 0) goto error;
 
 	/* Initialize the "sample_pairs" list */
+	fr_pair_list_init(&sample_pairs);
 	if (load_attr_pairs(&sample_pairs) < 0) goto error;
 }
 
@@ -199,12 +200,10 @@ static void pair_tests_init(void)
 static void test_fr_pair_make(void)
 {
 	fr_pair_t      *vp;
-	fr_cursor_t    cursor;
 	fr_pair_list_t list;
 	TALLOC_CTX     *ctx = talloc_null_ctx();
 
 	fr_pair_list_init(&list);
-	fr_cursor_init(&cursor, &list);
 
 	TEST_CASE("Creating 'vp' using fr_pair_make()");
 	TEST_CHECK((vp = fr_pair_make(ctx, dict_test, &list, "Test-String", sample_string, T_DOUBLE_QUOTED_STRING)) != NULL);
