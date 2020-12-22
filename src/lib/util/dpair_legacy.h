@@ -21,9 +21,6 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
-#ifdef USE_DOUBLE_LIST
-#include <freeradius-devel/util/dpair_legacy.h>
-#else
 RCSIDH(pair_legacy_h, "$Id$")
 
 #include <freeradius-devel/build.h>
@@ -51,5 +48,4 @@ void		fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from);
 
 #ifdef __cplusplus
 }
-#endif
 #endif
