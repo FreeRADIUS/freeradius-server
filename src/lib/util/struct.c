@@ -49,7 +49,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
 	if (!vp) return NULL;
 
 	if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
-		fr_pair_list_free(&vp);
+		talloc_free(vp);
 		return NULL;
 	}
 
@@ -257,7 +257,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		 */
 		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, child_length, true) < 0) {
 			FR_PROTO_TRACE("fr_struct_from_network - failed decoding child VP");
-			fr_pair_list_free(&vp);
+			talloc_free(vp);
 		unknown:
 			fr_pair_list_free(&head);
 
