@@ -62,7 +62,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
 /** Convert a STRUCT to one or more VPs
  *
  */
-ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
+ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
 			       void *decoder_ctx,
 			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv)
@@ -71,7 +71,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
 	fr_pair_list_t		head;
-	fr_cursor_t		child_cursor;
+	fr_dcursor_t		child_cursor;
 	fr_pair_t		*vp, *key_vp;
 	unsigned int		offset = 0;
 
@@ -83,7 +83,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	/*
 	 *	Record where we were in the list when this function was called
 	 */
-	fr_cursor_init(&child_cursor, &head);
+	fr_dcursor_init(&child_cursor, &head);
 	child_num = 1;
 	key_vp = NULL;
 
@@ -166,7 +166,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 			vp->type = VT_DATA;
 			vp->vp_tainted = true;
-			fr_cursor_append(&child_cursor, vp);
+			fr_dcursor_append(&child_cursor, vp);
 			p += (num_bits >> 3); /* go to the LAST bit, not the byte AFTER the last bit */
 			offset = num_bits & 0x07;
 			child_num++;
@@ -226,7 +226,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 			p += slen;   	/* not always the same as child->flags.length */
 			child_num++;	/* go to the next child */
-			if (fr_dict_attr_is_key_field(child)) key_vp = fr_cursor_tail(&child_cursor);
+			if (fr_dict_attr_is_key_field(child)) key_vp = fr_dcursor_tail(&child_cursor);
 			continue;
 		}
 
@@ -267,13 +267,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			/*
 			 *	And append this one VP to the output cursor.
 			 */
-			fr_cursor_append(cursor, vp);
+			fr_dcursor_append(cursor, vp);
 			return data_len;
 		}
 
 		vp->type = VT_DATA;
 		vp->vp_tainted = true;
-		fr_cursor_append(&child_cursor, vp);
+		fr_dcursor_append(&child_cursor, vp);
 
 		if (fr_dict_attr_is_key_field(vp->da)) key_vp = vp;
 
@@ -323,7 +323,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 				return -(p - data);
 			}
 
-			fr_cursor_append(&child_cursor, vp);
+			fr_dcursor_append(&child_cursor, vp);
 			p = end;
 		} else {
 			fr_assert(child->type == FR_TYPE_STRUCT);
@@ -336,9 +336,9 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 
 		fr_dict_unknown_free(&child);
 
-		fr_cursor_head(&child_cursor);
-		fr_cursor_tail(cursor);
-		fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
+		fr_dcursor_head(&child_cursor);
+		fr_dcursor_tail(cursor);
+		fr_dcursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
 
 		/*
 		 *	Else return whatever we decoded.  Note that if
@@ -349,9 +349,9 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	}
 
 done:
-	fr_cursor_head(&child_cursor);
-	fr_cursor_tail(cursor);
-	fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
+	fr_dcursor_head(&child_cursor);
+	fr_dcursor_tail(cursor);
+	fr_dcursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
 
 	return data_len;
 }
@@ -405,7 +405,7 @@ static int8_t pair_sort_increasing(void const *a, void const *b)
 
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_cursor_t *parent_cursor, void *encoder_ctx,
+			     fr_dcursor_t *parent_cursor, void *encoder_ctx,
 			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -414,9 +414,9 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	unsigned int		child_num = 1;
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
-	fr_pair_t const		*vp = fr_cursor_current(parent_cursor);
+	fr_pair_t const		*vp = fr_dcursor_current(parent_cursor);
 	fr_dict_attr_t const   	*key_da, *parent, *tlv = NULL;
-	fr_cursor_t		child_cursor, *cursor;
+	fr_dcursor_t		child_cursor, *cursor;
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
@@ -436,15 +436,15 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	If we get passed a struct VP, sort it's children.
 	 */
 	if (vp->da->type == FR_TYPE_STRUCT) {
-		fr_pair_t *sorted = fr_cursor_current(parent_cursor); /* NOT const */
+		fr_pair_t *sorted = fr_dcursor_current(parent_cursor); /* NOT const */
 
 		fr_pair_list_sort(&sorted->vp_group, pair_sort_increasing);
-		fr_cursor_init(&child_cursor, &sorted->vp_group);
+		fr_dcursor_init(&child_cursor, &sorted->vp_group);
 
 		/*
 		 *	Build the da_stack for the new structure.
 		 */
-		vp = fr_cursor_current(&child_cursor);
+		vp = fr_dcursor_current(&child_cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 		cursor = &child_cursor;
@@ -574,7 +574,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			}
 
 			do {
-				vp = fr_cursor_next(cursor);
+				vp = fr_dcursor_next(cursor);
 				if (!vp || !vp->da->flags.internal) break;
 			} while (vp != NULL);
 			goto next;
@@ -603,7 +603,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_proto_da_stack_build(da_stack, child);
 			len = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
 			if (len < 0) return len;
-			vp = fr_cursor_current(cursor);
+			vp = fr_dcursor_current(cursor);
 
 		} else {
 			/*
@@ -623,7 +623,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
 
 			do {
-				vp = fr_cursor_next(cursor);
+				vp = fr_dcursor_next(cursor);
 				if (!vp || !vp->da->flags.internal) break;
 			} while (vp != NULL);
 		}
@@ -661,7 +661,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		if ((vp->da->parent == key_da) &&
 		    (vp->da->type != FR_TYPE_TLV)) {
 			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return -1;
-			(void) fr_cursor_next(cursor);
+			(void) fr_dcursor_next(cursor);
 			goto done;
 		}
 
@@ -671,7 +671,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	}
 
 done:
-	vp = fr_cursor_current(cursor);
+	vp = fr_dcursor_current(cursor);
 	if (tlv) {
 		ssize_t slen;
 
@@ -684,7 +684,7 @@ done:
 			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
 			if (slen < 0) return slen;
 
-			vp = fr_cursor_current(cursor);
+			vp = fr_dcursor_current(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		}
 	}
@@ -702,7 +702,7 @@ done:
 	 *	We've encoded the children, so tell the parent cursor
 	 *	that we've encoded the parent.
 	 */
-	if (cursor != parent_cursor) (void) fr_cursor_next(parent_cursor);
+	if (cursor != parent_cursor) (void) fr_dcursor_next(parent_cursor);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
