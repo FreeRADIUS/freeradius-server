@@ -67,6 +67,10 @@ ATTRIBUTE	Aruba-QoS-Trust-Mode			52	integer
 ATTRIBUTE	Aruba-UBT-Gateway-Role			53	string
 ATTRIBUTE	Aruba-Gateway-Zone			54	string
 
+ATTRIBUTE	Aruba-STP-Admin-Edge-Port		58	integer
+
+ATTRIBUTE	Aruba-UBT-Gateway-CPPM-Role		59	string
+
 VALUE	Aruba-AirGroup-Device-Type	Personal-Device		1
 VALUE	Aruba-AirGroup-Device-Type	Shared-Device		2
 VALUE	Aruba-AirGroup-Device-Type	Deleted-Device		3
@@ -84,5 +88,8 @@ VALUE	Aruba-Port-Auth-Mode		Client-Mode		2
 VALUE	Aruba-QoS-Trust-Mode		DSCP			0
 VALUE	Aruba-QoS-Trust-Mode		QoS			1
 VALUE	Aruba-QoS-Trust-Mode		None			2
+
+VALUE	Aruba-STP-Admin-Edge-Port	Disable			0
+VALUE	Aruba-STP-Admin-Edge-Port	Enable			1
 
 END-VENDOR Aruba
