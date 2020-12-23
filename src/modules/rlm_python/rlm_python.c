@@ -853,14 +853,10 @@ static PyObject *python_module_init(void)
 
 	static struct PyModuleDef py_module_def = {
 		PyModuleDef_HEAD_INIT,
-		"freeradius",			/* m_name */
-		"freeRADIUS python module",	/* m_doc */
-		-1,				/* m_size */
-		module_methods,			/* m_methods */
-		NULL,				/* m_reload */
-		NULL,				/* m_traverse */
-		NULL,				/* m_clear */
-		NULL,				/* m_free */
+		.m_name = "freeradius",
+		.m_doc = "freeRADIUS python module",
+		.m_size = -1,
+		.m_methods = module_methods
 	};
 
 	fr_assert(inst);

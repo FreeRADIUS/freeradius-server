@@ -37,7 +37,7 @@ if test x$with_[]modname != xno; then
 		old_CFLAGS="$CFLAGS"
 		unset CFLAGS
 
-		python_cflags=`${PYTHON_CONFIG_BIN} --cflags`
+		python_cflags=`${PYTHON_CONFIG_BIN} --cflags --embed`
 		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"])
 
 		dnl # Convert -I to -isystem to get rid of warnings about issues in Python headers
@@ -66,7 +66,7 @@ if test x$with_[]modname != xno; then
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
-		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
+		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags --embed`
 		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"])
 
 		dnl # Strip -Wl,-O1... Is -O even a valid linker flag??
