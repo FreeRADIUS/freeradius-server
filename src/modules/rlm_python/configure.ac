@@ -37,7 +37,18 @@ if test x$with_[]modname != xno; then
 		old_CFLAGS="$CFLAGS"
 		unset CFLAGS
 
-		python_cflags=`${PYTHON_CONFIG_BIN} --cflags --embed`
+		dnl #
+		dnl # Not all python3-config versions have --embed.  If doesn't
+		dnl # the utility throws an error, and if it does, it omits the
+		dnl # linker argument to link to Python.
+		dnl #
+		if ${PYTHON_CONFIG_BIN} --help 2>&1 | grep '\-\-embed'; then
+			PYTHON_CONFIG_EMBED="--embed"
+		else
+			PYTHON_CONFIG_EMBED=""
+		fi
+
+		python_cflags=`${PYTHON_CONFIG_BIN} --cflags ${PYTHON_CONFIG_EMBED}`
 		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"])
 
 		dnl # Convert -I to -isystem to get rid of warnings about issues in Python headers
@@ -66,7 +77,7 @@ if test x$with_[]modname != xno; then
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
-		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags --embed`
+		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags ${PYTHON_CONFIG_EMBED}`
 		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"])
 
 		dnl # Strip -Wl,-O1... Is -O even a valid linker flag??

@@ -2776,7 +2776,13 @@ test -n "$PYTHON_CONFIG_BIN" || PYTHON_CONFIG_BIN="not-found"
 								old_CFLAGS="$CFLAGS"
 		unset CFLAGS
 
-		python_cflags=`${PYTHON_CONFIG_BIN} --cflags --embed`
+												if ${PYTHON_CONFIG_BIN} --help 2>&1 | grep '\-\-embed'; then
+			PYTHON_CONFIG_EMBED="--embed"
+		else
+			PYTHON_CONFIG_EMBED=""
+		fi
+
+		python_cflags=`${PYTHON_CONFIG_BIN} --cflags ${PYTHON_CONFIG_EMBED}`
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 
@@ -2795,7 +2801,7 @@ $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags were \"${mod_cflags}\"" >&6;}
 
-		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags --embed`
+		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags ${PYTHON_CONFIG_EMBED}`
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&6;}
 
