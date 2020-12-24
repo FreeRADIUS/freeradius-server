@@ -586,7 +586,7 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 			va_end(aq);
 
 			fr_sbuff_in_strcpy(&sbuff, ": ");
-			fr_sbuff_in_bstrcpy_buffer(&sbuff, error);
+			fr_sbuff_in_strcpy(&sbuff, error);	/* may not be talloced with const */
 			error = fr_sbuff_start(&sbuff);
 		}
 	/*
@@ -626,7 +626,7 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	while ((error = fr_strerror_pop())) {
 		if (f_rules->subsq_prefix) {
 			fr_sbuff_set(&sbuff, &prefix_m);
-			fr_sbuff_in_bstrcpy_buffer(&sbuff, error);
+			fr_sbuff_in_strcpy(&sbuff, error);	/* may not be talloced with const */
 			error = fr_sbuff_start(&sbuff);
 		}
 
