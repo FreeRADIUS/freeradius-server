@@ -62,7 +62,6 @@ static void NEVER_RETURNS usage(char *argv[])
 	fprintf(stderr, "usage: %s [OPTS] filename ...\n", argv[0]);
 	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>       Set main dictionary directory (defaults to " DICTDIR ").\n");
-	fprintf(stderr, "  -O <output_dir>    Set output directory\n");
 	fprintf(stderr, "  -x                 Debugging mode.\n");
 	fprintf(stderr, "  -M                 Show program version information.\n");
 	fprintf(stderr, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
