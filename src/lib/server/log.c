@@ -659,15 +659,15 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line, char const *fmt, ...)
 {
-	char const *strerror;
+	char const *error;
 
 	if (!request->log.dst) return;
 
 	/*
 	 *	No strerror gets us identical behaviour to log_request_error
 	 */
-	strerror = fr_strerror_pop();
-	if (!strerror) {
+	error = fr_strerror_pop();
+	if (!error) {
 		va_list		ap;
 		log_dst_t	*dst_p;
 
@@ -695,18 +695,16 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 
 		if (!tmp) return;
 
-		log_request_error(type, lvl, request, file, line, "%s: %s", tmp, strerror);
+		log_request_error(type, lvl, request, file, line, "%s: %s", tmp, error);
 		talloc_free(tmp);
 	} else {
-		log_request_error(type, lvl, request, file, line, "%s", strerror);
+		log_request_error(type, lvl, request, file, line, "%s", error);
 	}
 
 	/*
 	 *	Only the first message gets the prefix
 	 */
-	while ((strerror = fr_strerror_pop())) {
-		log_request_error(type, lvl, request, file, line, "%s", strerror);
-	}
+	while ((error = fr_strerror_pop())) log_request_error(type, lvl, request, file, line, "%s", error);
 }
 
 /** Cleanup the memory pool used by the OID sbuff
