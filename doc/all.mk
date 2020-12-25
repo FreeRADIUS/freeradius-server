@@ -112,13 +112,15 @@ $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 	${Q}for x in $^; do \
 		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
 		z=$$(basename $$x | sed 's/.adoc//'); \
-		echo "INSTALL_MAN_FILES += $(R)/$(mandir)/man$$y/$$z.$$y" >> $@; \
-		echo "$(R)/$(mandir)/man$$y/$$z.$$y: $$x | $(R)/$(mandir)/man$$y" >> $@; \
-		echo "\t"'asciidoctor -b manpage $$<  > $$@' >> $@; \
+		echo "INSTALL_MAN_FILES += $(R)$(mandir)/man$$y/$$z.$$y" >> $@; \
+		echo "$(R)$(mandir)/man$$y/$$z.$$y: $$x | $(R)$(mandir)/man$$y" >> $@; \
+		echo "\t"'@echo INSTALL-MAN $$(notdir $$@)' >> $@; \
+		echo "\t"'@asciidoctor -b manpage $$< -o $$@' >> $@; \
 		echo "" >> $@; \
 	done
 
 -include $(BUILD_DIR)/make/man.mk
+ALL_INSTALL += $(INSTALL_MAN_FILES)
 
 install.doc.man: $(INSTALL_MAN_FILES)
 
