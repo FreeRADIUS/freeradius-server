@@ -93,14 +93,14 @@ DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/develope
 ALL_DOC_FILES	:= $(patsubst doc/%,%,$(sort $(DOC_FILES) $(ADOC_FILES) $(HTML_FILES)))
 
 #
-#  Install doc/FOO into $(R)/$(docdir)/FOO
+#  Install doc/FOO into $(R)$(docdir)/FOO
 #
-$(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},$(R)/$(docdir)/${FILE})))
+$(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},$(R)$(docdir)/${FILE})))
 
 #
 #  Have a "doc" install target for testing.
 #
-install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
+install.doc: $(addprefix $(R)$(docdir)/,$(ALL_DOC_FILES))
 
 #
 #  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
@@ -176,14 +176,14 @@ doxygen:
 #
 #  Ensure that the installation directory gets created
 #
-$(eval $(call ADD_INSTALL_RULE.file,doc/doxygen/html/index.html,$(R)/$(docdir)/doxygen/html/index.html))
+$(eval $(call ADD_INSTALL_RULE.file,doc/doxygen/html/index.html,$(R)$(docdir)/doxygen/html/index.html))
 
 #
 #  Make sure that the base directory is build, and then just copy all
 #  of the files over manually.
 #
-install.doxygen: $(R)/$(docdir)/doxygen/html/index.html
-	${Q}cp -RP doc/doxygen/html $(R)/$(docdir)/doc/doxygen/html
+install.doxygen: $(R)$(docdir)/doxygen/html/index.html
+	${Q}cp -RP doc/doxygen/html $(R)$(docdir)/doc/doxygen/html
 
 #
 #  Add the doxygen files to the install targt
