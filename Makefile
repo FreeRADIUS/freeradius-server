@@ -118,7 +118,12 @@ endif
 # For compatibility with typical GNU packages (e.g. as seen in libltdl),
 # we make sure DESTDIR is defined.
 #
+#  If R is defined, ensure that it ends in a '/'.
+#
+ifneq "$(R)" ""
+R:=$(subst //,/,$(R)/)
 export DESTDIR := $(R)
+endif
 
 DICTIONARIES := $(wildcard $(addsuffix /dictionary*,$(addprefix share/dictionary/,$(PROTOCOLS))))
 
