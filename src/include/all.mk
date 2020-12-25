@@ -133,19 +133,17 @@ SRC_INCLUDE_DIR := ${R}${includedir}/freeradius
 #
 #  install the headers by re-writing the local files
 #
-#  install-sh function for creating directories gets confused
-#  if there's a trailing slash, tries to create a directory
-#  it already created, and fails...
+#  You would like the order dependency on the directory to work.  But
+#  GNU Make is stupid, and doesn't pay attention to either its'
+#  documentation, or what we want.
 #
-${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
+${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(patsubst %/,%,$(dir $@))
+	@$(PROGRAM_INSTALL) -d -m 755 $(patsubst %/,%,$(dir $@))
 	@echo INSTALL $(subst src/include,freeradius-server,$<)
-	${Q}$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
 # Expression must deal with indentation after the hash and copy it to the substitution string.
 # Hash not anchored to allow substitution in function documentation.
 	${Q}sed -e 's/#\([\\t ]*\)include <freeradius-devel\/\([^>]*\)>/#\1include <freeradius\/\2>/g' < $< > $@
 	${Q}chmod 644 $@
-
-all: $(addprefix src/include/,$(HEADERS_DY))
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
 install: install.src.include
