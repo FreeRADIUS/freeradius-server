@@ -731,7 +731,7 @@ $(foreach B,$(INSTALL_BIN),\
 
 # Build rules for installation subdirectories
 $(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
-  $(eval $(call ADD_INSTALL_RULE.dir,${D})))
+  $(eval $(call ADD_INSTALL_RULE.dir,$(subst //,/,${D}))))
 
 #
 #  Now that all of the targets have been defined, include auto-build
