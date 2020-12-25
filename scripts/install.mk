@@ -205,7 +205,7 @@ endef
 define ADD_INSTALL_RULE.dir
     # Install directory
     .PHONY: ${1}
-    ${1}:
+    ${1}: ${JLIBTOOL}
 	@$(ECHO) INSTALL -d -m 755 ${1}
 	$(Q)$${PROGRAM_INSTALL} -d -m 755 ${1}
 endef
