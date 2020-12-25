@@ -130,9 +130,6 @@ scan: $(BOOTSTRAP_BUILD)
 # define the installation directory
 SRC_INCLUDE_DIR := ${R}${includedir}/freeradius
 
-$(SRC_INCLUDE_DIR):
-	${Q}$(INSTALL) -d -m 755 ${SRC_INCLUDE_DIR}
-
 #
 #  install the headers by re-writing the local files
 #
