@@ -642,6 +642,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_libfreeradius_curl
 with_libcurl
 '
       ac_precious_vars='build_alias
@@ -1259,6 +1260,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-libfreeradius-curl
+                          build without libcurl support
+
   --with-libcurl=PREFIX   look for the curl library in PREFIX/lib and headers
                           in PREFIX/include
 
@@ -1934,7 +1938,14 @@ ac_config_headers="$ac_config_headers config.h"
 
 
 
-if test x$with_libfreeradius-curl != xno; then
+
+# Check whether --with-libfreeradius-curl was given.
+if test "${with_libfreeradius_curl+set}" = set; then :
+  withval=$with_libfreeradius_curl;
+fi
+
+
+if test x$with_libfreeradius_curl != xno; then
 
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -4574,5 +4585,6 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
 
 
