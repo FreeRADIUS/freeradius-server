@@ -9,17 +9,12 @@ on:
 jobs:
   rpm-build:
 
-    # Really we want to build on rolling Fedora Rawhide, however it is
-    # currently affected by a permission issue due to a glibc/systemd bug:
-    #
-    #   https://bugzilla.redhat.com/show_bug.cgi?id=1869030
-    #
     strategy:
       matrix:
         env:
           - { NAME: "centos-7",  OS: "centos:7" }
           - { NAME: "centos-8",  OS: "centos:8" }
-          - { NAME: "fedora-33", OS: "fedora:33" }
+          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -30,6 +25,28 @@ jobs:
     name: "RPM build"
 
     steps:
+
+    #
+    #  The secomp filters used by GitHub Action's Docker do not allow
+    #  faccessat2, as used by glibc >= 2.32.9000-16.
+    #
+    #      https://bugzilla.redhat.com/show_bug.cgi?id=1869030
+    #
+    #  It may take a while for GH to upgrade Docker so for now we downgrade
+    #  and/or pin glibc.
+    #
+    - name: Downgrade/pin glibc on Rawhide
+      if: ${{ matrix.env.NAME == 'fedora-rawhide' }}
+      run: |
+        yum install -y \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-devel-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-common-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/noarch/glibc-headers-x86-2.32.9000-15.fc34.noarch.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-langpack-en-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-minimal-langpack-2.32.9000-15.fc34.x86_64.rpm \
+             yum-plugin-versionlock
+        yum versionlock glibc*
 
     # Required so that the checkout action uses git protocol rather than the GitHub REST API.
     # make rpm requires the FR directory to be a git repository.
@@ -125,7 +142,7 @@ jobs:
         env:
           - { NAME: "centos-7", OS: "centos:7" }
           - { NAME: "centos-8", OS: "centos:8" }
-          - { NAME: "fedora-33", OS: "fedora:33" }
+          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -136,6 +153,22 @@ jobs:
     name: "RPM install test"
 
     steps:
+
+    #
+    #  See corresponding comment in the build job
+    #
+    - name: Downgrade glibc on Rawhide
+      if: ${{ matrix.env.NAME == 'fedora-rawhide' }}
+      run: |
+        yum install -y \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-devel-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-common-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/noarch/glibc-headers-x86-2.32.9000-15.fc34.noarch.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-langpack-en-2.32.9000-15.fc34.x86_64.rpm \
+             https://kojipkgs.fedoraproject.org/packages/glibc/2.32.9000/15.fc34/x86_64/glibc-minimal-langpack-2.32.9000-15.fc34.x86_64.rpm \
+             yum-plugin-versionlock
+        yum versionlock glibc*
 
     - name: Extra repos for CentOS
       if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
