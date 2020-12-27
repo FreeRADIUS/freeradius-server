@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_yubikey
 with_yubikey_include_dir
 with_yubikey_lib_dir
 with_yubikey_dir
@@ -1257,6 +1258,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_yubikey   build without module
+
   --with-yubikey-include-dir=DIR
                           Directory where the yubikey includes may be found
   --with-yubikey-lib-dir=DIR
@@ -1793,6 +1796,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_yubikey was given.
+if test "${with_rlm_yubikey+set}" = set; then :
+  withval=$with_rlm_yubikey;
+fi
 
 
 if test x$with_rlm_yubikey != xno; then

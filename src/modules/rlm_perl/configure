@@ -638,6 +638,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_perl
 with_perl
 '
       ac_precious_vars='build_alias
@@ -1256,6 +1257,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_perl      build without module
+
   --with-perl=[PATH]    absolute path to perl executable
 
 Some influential environment variables:
@@ -1822,6 +1825,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_perl was given.
+if test "${with_rlm_perl+set}" = set; then :
+  withval=$with_rlm_perl;
+fi
 
 
 # ===========================================================================

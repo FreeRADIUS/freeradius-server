@@ -2,7 +2,11 @@ AC_PREREQ([2.53])
 AC_INIT(base.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-ldap])
-AC_DEFUN(modname_useropt,[libfreeradius_ldap])
+AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
+
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without LDAP support])]
+)
 
 fail=
 SMART_LIBS=

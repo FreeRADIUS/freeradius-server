@@ -4,6 +4,10 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
 AC_CONFIG_HEADER(config.h)
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 fail=
 SMART_LIBS=
 SMART_CLFAGS=

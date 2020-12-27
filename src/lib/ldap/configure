@@ -637,6 +637,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_libfreeradius_ldap
 with_libfreeradius_ldap_lib_dir
 with_libfreeradius_ldap_include_dir
 '
@@ -1254,6 +1255,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-libfreeradius-ldap
+                          build without LDAP support
+
   --with-libfreeradius-ldap-lib-dir=DIR	   directory for LDAP library files
   --with-libfreeradius-ldap-include-dir=DIR   directory for LDAP include files
 
@@ -1895,6 +1899,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+
+# Check whether --with-libfreeradius-ldap was given.
+if test "${with_libfreeradius_ldap+set}" = set; then :
+  withval=$with_libfreeradius_ldap;
+fi
 
 
 fail=

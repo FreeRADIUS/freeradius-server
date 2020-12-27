@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_postgresql
 with_rlm_sql_postgresql_lib_dir
 with_rlm_sql_postgresql_include_dir
 '
@@ -1253,6 +1254,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_sql_postgresql
+                          build without module
+
   --with-rlm-sql-postgresql-lib-dir=DIR       Directory for PostgreSQL library files
   --with-rlm-sql-postgresql-include-dir=DIR   Directory for PostgreSQL include files
 
@@ -1848,6 +1852,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_sql_postgresql was given.
+if test "${with_rlm_sql_postgresql+set}" = set; then :
+  withval=$with_rlm_sql_postgresql;
+fi
 
 
 fail=

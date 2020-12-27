@@ -4,6 +4,10 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_couchbase])
 AC_CONFIG_HEADER(config.h)
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
