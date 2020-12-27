@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_unbound
 with_rlm_unbound_lib_dir
 with_rlm_unbound_include_dir
 '
@@ -1253,6 +1254,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_unbound   build without module
+
   --with-rlm-unbound-lib-dir=DIR       directory for libunbound library files
   --with-rlm-unbound-include-dir=DIR   directory for libunbound include files
 
@@ -1781,6 +1784,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_unbound was given.
+if test "${with_rlm_unbound+set}" = set; then :
+  withval=$with_rlm_unbound;
+fi
 
 
 if test x$with_rlm_unbound != xno; then

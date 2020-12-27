@@ -637,6 +637,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_opendirectory
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1250,6 +1251,13 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_opendirectory
+                          build without module
+
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -1813,6 +1821,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_opendirectory was given.
+if test "${with_rlm_opendirectory+set}" = set; then :
+  withval=$with_rlm_opendirectory;
+fi
 
 
 if test x$with_rlm_opendirectory != xno; then
@@ -3020,7 +3035,7 @@ if test x"$fail" != x""; then
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_opendirectory." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_opendirectory." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_opendirectory requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_opendirectory requires: $fail." >&2;};
+$as_echo "$as_me: WARNING: FAILURE: rlm_opendirectory requires: $fail." >&2;}
 		targetname=""
 	fi
 fi

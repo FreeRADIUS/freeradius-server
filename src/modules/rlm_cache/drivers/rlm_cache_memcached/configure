@@ -637,6 +637,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_cache_memcached
 with_libmemcached_include_dir
 with_libmemcached_lib_dir
 with_libmemcached_dir
@@ -1256,6 +1257,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_cache_memcached
+                          build without module
+
   --with-libmemcached-include-dir=DIR
                           Directory where the libmemcached includes may be
                           found
@@ -1895,6 +1899,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_cache_memcached was given.
+if test "${with_rlm_cache_memcached+set}" = set; then :
+  withval=$with_rlm_cache_memcached;
+fi
 
 
 if test x$with_rlm_cache_memcached != xno; then

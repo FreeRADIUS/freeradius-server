@@ -4,6 +4,10 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_pam])
 AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC

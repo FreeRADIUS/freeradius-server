@@ -678,6 +678,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_lua
 with_lua_include_dir
 with_lua_lib_dir
 '
@@ -1298,6 +1299,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_lua       build without module
+
   --with-lua-include-dir=DIR
                           Directory where the lua includes may be found
   --with-lua-lib-dir=DIR  Directory where the lua libraries may be found
@@ -2259,6 +2262,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_lua was given.
+if test "${with_rlm_lua+set}" = set; then :
+  withval=$with_rlm_lua;
+fi
 
 
 if test x$with_rlm_lua != xno; then
