@@ -110,6 +110,8 @@ extern const FR_NAME_NUMBER http_body_type_table[];
 
 extern const FR_NAME_NUMBER http_content_type_table[];
 
+extern const FR_NAME_NUMBER http_negotiation_table[];
+
 /*
  *	Structure for section configuration
  */
@@ -164,6 +166,9 @@ typedef struct rlm_rest_t {
 
 	struct timeval		connect_timeout_tv;	//!< Connection timeout timeval.
 	long			connect_timeout;	//!< Connection timeout ms.
+
+	char const		*http_negotiation_str;	//!< The string version of the http_negotiation
+	long			http_negotiation;	//!< The HTTP protocol version to use
 
 	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
 

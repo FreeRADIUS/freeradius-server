@@ -54,6 +54,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  Fixes #3801. Patches from Benjamin Thompson.
 	* Add rlm_rest support for HTTP/2.
 	* Add REST-HTTP-Status-Code attribute holding HTTP status code.
+	* Add option to set http_negotiation in rlm_rest.  Fixes #2821.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.

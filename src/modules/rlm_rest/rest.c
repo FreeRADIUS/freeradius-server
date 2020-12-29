@@ -115,6 +115,15 @@ do {\
 	}\
 } while (0)
 
+/*
+ * that macro is originally declared in include/curl/curlver.h
+ * We have to use this as curl uses lots of enums
+ */
+#ifndef CURL_AT_LEAST_VERSION
+#  define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | (z))
+#  define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
+#endif
+
 const unsigned long http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
 	0,			// HTTP_AUTH_UNKNOWN
 	0,			// HTTP_AUTH_NONE
@@ -219,6 +228,40 @@ const FR_NAME_NUMBER http_content_type_table[] = {
 	{ "application/x-yaml",			HTTP_BODY_YAML		},
 
 	{  NULL , -1 }
+};
+
+/** Conversion table for "HTTP" protocol version to use.
+ *
+ * Used by rlm_rest_t for specify the http client version.
+ *
+ * Values we expect to use in curl_easy_setopt()
+ *
+ * @see fr_str2int
+ * @see fr_int2str
+ */
+const FR_NAME_NUMBER http_negotiation_table[] = {
+
+	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
+	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
+/*
+ *	These are all enum values
+ */
+#if CURL_AT_LEAST_VERSION(7,49,0)
+	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
+#endif
+#if CURL_AT_LEAST_VERSION(7,33,0)
+	{ "2.0+auto",	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
+								///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
+								///< server. (Added in 7.33.0)
+#endif
+#if CURL_AT_LEAST_VERSION(7,47,0)
+	{ "2.0+tls",	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
+								///< libcurl will fall back to HTTP 1.1 if HTTP 2
+								///< can't be negotiated with the HTTPS server.
+								///< For clear text HTTP servers, libcurl will use 1.1.
+#endif
+	{ "default", 	CURL_HTTP_VERSION_NONE }		//!< We don't care about what version the library uses.
+								///< libcurl will use whatever it thinks fit.
 };
 
 /*
@@ -2012,6 +2055,16 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	SET_OPTION(CURLOPT_URL, uri);
 	SET_OPTION(CURLOPT_NOSIGNAL, 1);
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
+
+	/*
+	 *	As described in https://curl.se/libcurl/c/CURLOPT_HTTP_VERSION.html,
+	 *	The libcurl decides which http version should be
+	 *  used by default accoring by library version.
+	 */
+	if (instance->http_negotiation != CURL_HTTP_VERSION_NONE) {
+		RDEBUG3("Set HTTP negotiation for %s", instance->http_negotiation_str);
+		SET_OPTION(CURLOPT_HTTP_VERSION, instance->http_negotiation);
+	}
 
 	content_type = fr_int2str(http_content_type_table, type, section->body_str);
 	snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
