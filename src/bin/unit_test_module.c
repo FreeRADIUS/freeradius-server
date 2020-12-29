@@ -141,7 +141,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 {
 	fr_pair_t	*vp;
 	request_t	*request;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 
 	static int	number = 0;
 
@@ -235,9 +235,9 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 		}
 	};
 
-	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+	for (vp = fr_dcursor_init(&cursor, &request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		/*
 		 *	Double quoted strings get marked up as xlat expansions,
 		 *	but we don't support that here.
@@ -264,9 +264,9 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	} /* loop over the VP's we read in */
 
 	if (fr_debug_lvl) {
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+		for (vp = fr_dcursor_init(&cursor, &request->request_pairs);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 			/*
 			 *	Take this opportunity to verify all the fr_pair_ts are still valid.
 			 */
@@ -289,7 +289,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
 	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
-	request->reply_pairs = NULL;
+	fr_pair_list_init(&request->reply_pairs);
 	request->reply->data = NULL;
 	request->reply->data_len = 0;
 
@@ -310,7 +310,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
 	fr_pair_t *vp;
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 	fr_dict_enum_t *dv;
 
 	if (fr_pair_list_empty(list)) {
@@ -321,9 +321,9 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(packet->code));
 	if (dv) fprintf(fp, "%s\n", dv->name);
 
-	for (vp = fr_cursor_init(&cursor, list);
+	for (vp = fr_dcursor_init(&cursor, list);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the fr_pair_ts are still valid.
 		 */
