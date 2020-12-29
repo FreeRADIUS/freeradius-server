@@ -174,11 +174,11 @@ rest {
 	#  2xx    successful    yes           ok/updated
 	#  5xx    server error  no            fail
 	#  xxx    -             no            invalid
-        preacct {
-                uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
-                method = 'post'
-                tls = ${..tls}
-        }
+	preacct {
+		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
+		method = 'post'
+		tls = ${..tls}
+	}
 	accounting {
 		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting"
 		method = 'post'
