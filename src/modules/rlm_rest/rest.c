@@ -221,6 +221,34 @@ const FR_NAME_NUMBER http_content_type_table[] = {
 	{  NULL , -1 }
 };
 
+/** Conversion table for "HTTP" protocol version to use.
+ *
+ * Used by rlm_rest_section_t for specify the http client version.
+ *
+ * Values we expect to use in curl_easy_setopt()
+ *
+ * @see fr_str2int
+ * @see fr_int2str
+ */
+const FR_NAME_NUMBER http_version_table[] = {
+	{ "1.0",	CURL_HTTP_VERSION_1_0		},
+	{ "1.1",	CURL_HTTP_VERSION_1_1		},
+#ifdef CURL_HTTP_VERSION_2_0	/* Added in 7.33.0 */
+	{ "2.0",	CURL_HTTP_VERSION_2_0		},
+#endif
+#ifdef CURL_HTTP_VERSION_2TLS	/* Added in 7.33.0 */
+	{ "2.0/tls",	CURL_HTTP_VERSION_2TLS		},
+#endif
+#ifdef CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE	/* Added in 7.49.0 */
+	{ "2.0/prior",	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },
+#endif
+#ifdef CURL_HTTP_VERSION_3		/* Added in 7.66.0 */
+	{ "3",		CURL_HTTP_VERSION_3		},
+#endif
+
+	{  NULL , 		-1 }
+};
+
 /*
  *	Encoder specific structures.
  *	@todo split encoders/decoders into submodules.
@@ -1995,6 +2023,15 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	SET_OPTION(CURLOPT_URL, uri);
 	SET_OPTION(CURLOPT_NOSIGNAL, 1);
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
+
+	/*
+	 *	Only set the HTTP version if it was previously set.
+	 *	if not, just let libcurl decide that as well.
+	 */
+	if (section->http_version != CURL_HTTP_VERSION_NONE) {
+		RDEBUG("Set HTTP version for %s", section->http_version_str);
+		SET_OPTION(CURLOPT_HTTP_VERSION, section->http_version);
+	}
 
 	content_type = fr_int2str(http_content_type_table, type, section->body_str);
 	snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);

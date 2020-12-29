@@ -62,6 +62,7 @@ static const CONF_PARSER section_config[] = {
 	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
 	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data), NULL },
 	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
+	{ "http_version", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, http_version_str), NULL },
 
 	/* User authentication */
 	{ "auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, auth_str), "none" },
@@ -867,6 +868,23 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 		default:
 			break;
 		}
+	}
+
+	if (config->http_version_str) {
+		config->http_version = fr_str2int(http_version_table, config->http_version_str, -1);
+
+		if (config->http_version == -1) {
+			cf_log_err_cs(cs, "Unsupported HTTP version \"%s\".", config->http_version_str);
+			return -1;
+		}
+	} else {
+		/*
+		 *	As described in https://curl.se/libcurl/c/CURLOPT_HTTP_VERSION.html,
+		 *	The libcurl set by default the http client version for different
+		 *	versions of libcurl.
+		 *	Therefore, let's set as 'none' just to help rest_request_config() to don't touch on it.
+		 */
+		config->http_version = CURL_HTTP_VERSION_NONE;
 	}
 
 	return 0;
