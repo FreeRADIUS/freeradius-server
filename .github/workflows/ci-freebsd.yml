@@ -1,0 +1,33 @@
+name: CI FreeBSD
+
+on:
+  push:
+    branches:
+      - packaging_test
+  schedule:
+    - cron: '0 20 * * *'
+
+jobs:
+  freebsd-build:
+
+    runs-on: macos-latest
+
+    name: "FreeBSD build"
+
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Test using a FreeBSD VirtualBox VM
+      uses: vmactions/freebsd-vm@v0.0.9
+      with:
+        usesh: true
+        prepare: pkg install -y gmake talloc git
+        run: |
+          freebsd-version
+          cd freeradius
+          ./configure
+          gmake -j `sysctl -n hw.ncpu`
+          gmake test.eap
