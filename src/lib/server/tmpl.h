@@ -986,7 +986,7 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			CC_HINT(nonnull (2, 3, 4));
 
 fr_pair_t		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
-					  fr_cursor_t *cursor, request_t *request,
+					  fr_dcursor_t *cursor, request_t *request,
 					  tmpl_t const *vpt);
 
 void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
