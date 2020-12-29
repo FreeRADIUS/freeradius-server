@@ -205,6 +205,25 @@ do { \
 	.parent 	= (_dbuff) \
 }
 
+/** Let the dbuff be advanced by operations on its child
+ *
+ *
+ * @param[in] _dbuff	to make an ephemeral copy of.
+ */
+#define FR_DBUFF_COPY(_dbuff) (fr_dbuff_t) \
+{ \
+	.buff		= (_dbuff)->buff, \
+	.start		= (_dbuff)->p, \
+	.end		= (_dbuff)->end, \
+	.p		= (_dbuff)->p, \
+	.is_const 	= (_dbuff)->is_const, \
+	.adv_parent 	= true, \
+	.shifted	= (_dbuff)->shifted, \
+	.extend		= (_dbuff)->extend, \
+	.uctx		= (_dbuff)->uctx, \
+	.parent 	= (_dbuff) \
+}
+
 /** @cond */
 
 /** Reserve _reserve bytes in the dbuff when passing it to another function
