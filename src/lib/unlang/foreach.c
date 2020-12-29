@@ -48,7 +48,7 @@ static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 f
  */
 typedef struct {
 	request_t		*request;			//!< The current request.
-	fr_cursor_t		cursor;				//!< Used to track our place in the list
+	fr_dcursor_t		cursor;				//!< Used to track our place in the list
 								///< we're iterating over.
 	fr_pair_list_t 		vps;				//!< List containing the attribute(s) we're
 								///< iterating over.
@@ -88,7 +88,7 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 
 	foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 
-	vp = fr_cursor_current(&foreach->cursor);
+	vp = fr_dcursor_current(&foreach->cursor);
 	if (!vp) {
 		*p_result = frame->result;
 #ifndef NDEBUG
@@ -96,7 +96,7 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 #endif
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
-	(void) fr_cursor_next(&foreach->cursor);
+	(void) fr_dcursor_next(&foreach->cursor);
 
 #ifndef NDEBUG
 	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", foreach->depth, &vp->data);
@@ -184,7 +184,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 	foreach->request = request;
 	foreach->depth = foreach_depth;
 	foreach->vps = vps;
-	fr_cursor_talloc_init(&foreach->cursor, &foreach->vps, fr_pair_t);
+	fr_dcursor_talloc_init(&foreach->cursor, &foreach->vps, fr_pair_t);
 #ifndef NDEBUG
 	foreach->indent = request->log.unlang_indent;
 #endif
