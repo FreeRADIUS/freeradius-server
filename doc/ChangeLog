@@ -53,6 +53,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Add support for EAPS-AKA authentication to rlm_wimax.
 	  Fixes #3801. Patches from Benjamin Thompson.
 	* Add rlm_rest support for HTTP/2.
+	* Add REST-HTTP-Status-Code attribute holding HTTP status code.
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.

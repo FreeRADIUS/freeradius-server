@@ -169,6 +169,9 @@ rest {
 	#  2xx    successful    yes           ok/updated
 	#  5xx    server error  no            fail
 	#  xxx    -             no            invalid
+	#
+	#  The status code is held in %{reply:REST-HTTP-Status-Code}.
+	#
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authorize"
 		method = 'get'

@@ -2339,6 +2339,7 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->handle;
 	CURLcode		ret;
+	VALUE_PAIR 		*vp;
 
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
@@ -2346,6 +2347,14 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
 
 		return -1;
 	}
+
+	/*
+	 *  Save the HTTP return status code.
+	 */
+	vp = pair_make_reply("REST-HTTP-Status-Code", NULL, T_OP_SET);
+	vp->vp_integer = rest_get_handle_code(handle);
+
+	RDEBUG2("Adding reply:REST-HTTP-Status-Code += \"%d\"", vp->vp_integer);
 
 	return 0;
 }
