@@ -485,7 +485,7 @@ struct tmpl_s {
 typedef struct tmpl_cursor_ctx_s tmpl_cursor_ctx_t;
 typedef struct tmpl_cursor_nested_s tmpl_cursor_nested_t;
 
-typedef fr_pair_t *(*tmpl_cursor_eval_t)(fr_pair_t **prev, fr_pair_t *current, tmpl_cursor_nested_t *ns);
+typedef fr_pair_t *(*tmpl_cursor_eval_t)(fr_pair_t *current, tmpl_cursor_nested_t *ns);
 
 /** State for traversing an attribute reference
  *
