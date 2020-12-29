@@ -1569,6 +1569,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 {
 	rlm_rest_response_t *ctx = userdata;
 	REQUEST *request = ctx->request; /* Used by RDEBUG */
+	VALUE_PAIR *vp;
 
 	char const *p = in, *q;
 
@@ -1646,6 +1647,14 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		if (!((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
 
 		ctx->code = atoi(p);
+
+		/*
+		 *  Save the HTTP return status code.
+		 */
+		vp = pair_make_reply("REST-HTTP-Status-Code", NULL, T_OP_ADD);
+		vp->vp_integer = ctx->code;
+
+		RDEBUG2("Adding reply:REST-HTTP-Status-Code += \"%d\"", vp->vp_integer);
 
 		/*
 		 *  Process reason_phrase (if present).
