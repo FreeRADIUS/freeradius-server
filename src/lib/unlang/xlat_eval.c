@@ -561,7 +561,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 	fr_pair_t		*vp = NULL;
 	fr_value_box_t		*value;
 
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
 
 	xlat_action_t		ret = XLAT_ACTION_DONE;
@@ -614,9 +614,9 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 	{
 		uint32_t		count = 0;
 
-		for (vp = fr_cursor_current(&cursor);
+		for (vp = fr_dcursor_current(&cursor);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) count++;
+		     vp = fr_dcursor_next(&cursor)) count++;
 
 		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 		value->datum.uint32 = count;
@@ -629,15 +629,15 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 	 *	Output multiple #value_box_t, one per attribute.
 	 */
 	case NUM_ALL:
-		if (!fr_cursor_current(&cursor)) goto done;
+		if (!fr_dcursor_current(&cursor)) goto done;
 
 		/*
 		 *	Loop over all matching #fr_value_pair
 		 *	shallow copying buffers.
 		 */
-		for (vp = fr_cursor_current(&cursor);	/* Initialised above to the first matching attribute */
+		for (vp = fr_dcursor_current(&cursor);	/* Initialised above to the first matching attribute */
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 		     	value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 			fr_value_box_copy(value, value, &vp->data);
 			fr_cursor_append(out, value);
@@ -650,7 +650,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 		 *	The cursor was set to the correct
 		 *	position above by tmpl_cursor_init.
 		 */
-		vp = fr_cursor_current(&cursor);			/* NULLness checked above */
+		vp = fr_dcursor_current(&cursor);			/* NULLness checked above */
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 		if (!value) goto oom;
 
