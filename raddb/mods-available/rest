@@ -80,6 +80,8 @@ rest {
 	#    password     - Password to use for authentication, will be expanded.
 	#    require_auth - Require HTTP authentication.
 	#    timeout      - HTTP request timeout in seconds, defaults to 4.0.
+	#    http_version - Specify HTTP protocol version to use. one of '1.0', '1.1', '2.0',
+	#                   '2.0/tls', '2.0/prior' or '3'. (libcurl option CURLOPT_HTTP_VERSION)
 	#
 	#  Additional HTTP headers may be specified with control:REST-HTTP-Header.
 	#  The values of those attributes should be in the format:
@@ -90,7 +92,6 @@ rest {
 	#  (i.e. deleted) after each call to the rest module, and each
 	#  %{rest:} expansion.  This is so that headers from one REST
 	#  call do not affect headers from a different REST call.
-
 	#
 	#  Body encodings are the same for requests and responses
 	#
@@ -160,6 +161,7 @@ rest {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authorize"
 		method = 'get'
 		tls = ${..tls}
+#		http_version = 1.1
 	}
 	authenticate {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authenticate"
