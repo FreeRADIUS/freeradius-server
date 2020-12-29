@@ -58,7 +58,7 @@ static char const       *dict_dir  = "share/dictionary";
 
 /* Set by pair_tests_init()*/
 static TALLOC_CTX       *autofree;
-static fr_pair_list_t   sample_pairs = NULL;
+static fr_pair_list_t   sample_pairs;
 
 typedef struct value {
 	char const *key;
@@ -185,6 +185,7 @@ static void pair_tests_init(void)
 	if (init_adhoc_attrs(test_dict_attrs) < 0) goto error;
 
 	/* Initialize the "sample_pairs" list */
+	fr_pair_list_init(&sample_pairs);
 	if (load_attr_pairs(&sample_pairs) < 0) goto error;
 
 
@@ -213,21 +214,19 @@ static request_t *request_fake_alloc(void)
  */
 static void test_pair_add_request(void)
 {
-	fr_pair_t      *local_pair;
-	fr_cursor_t    cursor;
+	fr_pair_t      *local_vp;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
 	TEST_CASE("Add 'Test-Integer' in 'request_pairs' using pair_add_request()");
-	TEST_CHECK(pair_add_request(&local_pair, attr_test_integer) == 0);
+	TEST_CHECK(pair_add_request(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
-	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->request_pairs)) != NULL);
+	TEST_CHECK((vp = fr_pair_list_head(&request->request_pairs)) != NULL);
 	VP_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
 	vp->vp_uint32 = 12345;
-
 	TEST_CHECK(vp->vp_uint32 == 12345);
 	TEST_MSG("Expected %s == 12345", attr_test_integer->name);
 
@@ -237,7 +236,6 @@ static void test_pair_add_request(void)
 static void test_pair_add_reply(void)
 {
 	fr_pair_t      *local_vp;
-	fr_cursor_t    cursor;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
@@ -245,7 +243,7 @@ static void test_pair_add_reply(void)
 	TEST_CHECK(pair_add_reply(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
-	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->reply_pairs)) != NULL);
+	TEST_CHECK((vp = fr_pair_list_head(&request->reply_pairs)) != NULL);
 	VP_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
@@ -260,7 +258,6 @@ static void test_pair_add_reply(void)
 static void test_pair_add_control(void)
 {
 	fr_pair_t      *local_vp;
-	fr_cursor_t    cursor;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
@@ -268,7 +265,7 @@ static void test_pair_add_control(void)
 	TEST_CHECK(pair_add_control(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
-	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->control_pairs)) != NULL);
+	TEST_CHECK((vp = fr_pair_list_head(&request->control_pairs)) != NULL);
 	VP_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
@@ -283,7 +280,6 @@ static void test_pair_add_control(void)
 static void test_pair_add_session_state(void)
 {
 	fr_pair_t      *local_vp;
-	fr_cursor_t    cursor;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
@@ -291,7 +287,7 @@ static void test_pair_add_session_state(void)
 	TEST_CHECK(pair_add_session_state(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
-	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->session_state_pairs)) != NULL);
+	TEST_CHECK((vp = fr_pair_list_head(&request->session_state_pairs)) != NULL);
 	VP_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
