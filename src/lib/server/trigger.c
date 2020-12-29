@@ -461,15 +461,15 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
  *	- NULL on failure, or if triggers are not enabled.
  *	- list containing Pool-Server and Pool-Port
  */
-fr_pair_t *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
+fr_pair_list_t *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
 {
 	fr_dict_attr_t const	*server_da;
 	fr_dict_attr_t const	*port_da;
-	fr_pair_list_t		out;
+	fr_pair_list_t		*out;
 	fr_pair_t		*vp;
-	fr_cursor_t		cursor;
 
-	fr_pair_list_init(&out);
+	out = fr_pair_list_alloc(ctx);
+	fr_pair_list_init(out);
 	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
@@ -482,15 +482,13 @@ fr_pair_t *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16
 		return NULL;
 	}
 
-	fr_cursor_init(&cursor, &out);
-
 	MEM(vp = fr_pair_afrom_da(ctx, server_da));
 	fr_pair_value_strdup(vp, server);
-	fr_cursor_append(&cursor, vp);
+	fr_pair_add(out, vp);
 
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_uint16 = port;
-	fr_cursor_append(&cursor, vp);
+	fr_pair_add(out, vp);
 
 	return out;
 }

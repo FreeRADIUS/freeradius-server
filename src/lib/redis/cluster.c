@@ -325,10 +325,9 @@ static int _cluster_node_cmp(void const *a, void const *b)
  */
 static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 {
-	fr_pair_list_t	args;
+	fr_pair_list_t	*args = NULL;
 	fr_redis_cluster_node_t	*node = opaque;
 
-	fr_pair_list_init(&args);
 	node->addr = node->pending_addr;
 
 	if (node->cluster->triggers_enabled) {
@@ -338,9 +337,9 @@ static void _cluster_node_conf_apply(fr_pool_t *pool, void *opaque)
 		if (!fr_pair_list_empty(&node->cluster->trigger_args)) MEM(fr_pair_list_copy(node->cluster, args,
 								      &node->cluster->trigger_args) >= 0);
 
-		fr_pool_enable_triggers(pool, node->cluster->trigger_prefix, &args);
+		fr_pool_enable_triggers(pool, node->cluster->trigger_prefix, args);
 
-		fr_pair_list_free(&args);
+		fr_pair_list_free(args);
 	}
 }
 
@@ -373,10 +372,9 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 	 */
 	if (!node->pool) {
 		char		buffer[256];
-		fr_pair_list_t	args;
+		fr_pair_list_t	*args = NULL;
 		CONF_SECTION	*pool;
 
-		fr_pair_list_init(&args);
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
 
 		pool = cf_section_find(cluster->module, "pool", NULL);
@@ -401,9 +399,9 @@ static fr_redis_cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster
 
 			if (!fr_pair_list_empty(&cluster->trigger_args)) MEM(fr_pair_list_copy(cluster, args, &cluster->trigger_args) >= 0);
 
-			fr_pool_enable_triggers(node->pool, node->cluster->trigger_prefix, &args);
+			fr_pool_enable_triggers(node->pool, node->cluster->trigger_prefix, args);
 
-			fr_pair_list_free(&args);
+			fr_pair_list_free(args);
 		}
 
 		if (fr_pool_start(node->pool) < 0) goto error;
