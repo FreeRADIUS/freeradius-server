@@ -95,36 +95,6 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 }
 
 
-/** Copy VP(s) from the specified request.
- *
- * @note DEPRECATED, TO NOT USE.  @see xlat_fmt_to_cursor instead.
- *
- * @param ctx to alloc new fr_pair_ts in.
- * @param out where to write the pointer to the copied VP. Will be NULL if the attribute couldn't be
- *	resolved.
- * @param request current request.
- * @param name attribute name including qualifiers.
- * @return
- *	- -4 if either the attribute or qualifier were invalid.
- *	- The same error codes as #tmpl_find_vp for other error conditions.
- */
-int xlat_fmt_copy_vp(TALLOC_CTX *ctx, fr_pair_t **out, request_t *request, char const *name)
-{
-	int ret;
-	tmpl_t *vpt;
-
-	*out = NULL;
-
-	if (tmpl_afrom_attr_str(request, NULL,
-				&vpt, name, &(tmpl_rules_t){ .dict_def = request->dict }) <= 0) return -4;
-
-	ret = tmpl_copy_pairs(ctx, out, request, vpt);
-	talloc_free(vpt);
-
-	return ret;
-}
-
-
 /** Convenience function to convert a string attribute reference to a cursor
  *
  * This is intended to be used by xlat functions which need to iterate over
