@@ -110,8 +110,6 @@ extern const FR_NAME_NUMBER http_body_type_table[];
 
 extern const FR_NAME_NUMBER http_content_type_table[];
 
-extern const FR_NAME_NUMBER http_version_table[];
-
 /*
  *	Structure for section configuration
  */
@@ -128,9 +126,6 @@ typedef struct rlm_rest_section_t {
 	char const		*force_to_str;	//!< Force decoding with this decoder.
 	http_body_type_t	force_to;	//!< Override the Content-Type header in the response
 						//!< to force decoding as a particular type.
-
-	char const		*http_version_str;	//!< The string version of the http_version
-	long			http_version;		//!< The HTTP protocol version to use
 
 	char const		*data;		//!< Custom body data (optional).
 
