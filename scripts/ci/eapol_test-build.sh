@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/sh
 
 #
 #  This program is is free software; you can redistribute it and/or modify
@@ -37,6 +37,7 @@ TMP_BUILD_DIR="${BUILD_DIR}"
 : ${HOSTAPD_GIT_TAG:="hostap_2_8"}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
+: ${MAKE:=make}
 : ${BUILD_CONF_DIR:="$(dirname $0)/eapol_test"}
 : ${EAPOL_TEST_PATH:="${BUILD_CONF_DIR}/eapol_test"}
 
@@ -53,27 +54,30 @@ if [ -z "${FORCE_BUILD}" ]; then
     fi
 fi
 
-case "$OSTYPE" in
-linux-gnu)
+OS="$(uname)"
+
+case "$OS" in
+linux-gnu|Linux)
     BUILD_CONF_FILE="${BUILD_CONF_DIR}/config_linux"
     ;;
 
-darwin*)
+darwin*|Darwin*)
     BUILD_CONF_FILE="${BUILD_CONF_DIR}/config_osx"
     ;;
 
-freebsd*)
+freebsd*|FreeBSD*)
     BUILD_CONF_FILE="${BUILD_CONF_DIR}/config_freebsd"
+    MAKE=gmake
     ;;
 
 *)
-    echo "Don't have specific eapol_test build config for OS $OSTYPE.  Using linux build config"
+    echo "Don't have specific eapol_test build config for OS $OS.  Using linux build config"
     BUILD_CONF_FILE="${BUILD_CONF_DIR}/linux"
     ;;
 esac
 
 if [ ! -e "${BUILD_CONF_FILE}" ]; then
-    echo "Missing build config file \"${BUILD_CONF_FILE}\" for OS $OSTYPE, please contribute one" 1>&2
+    echo "Missing build config file \"${BUILD_CONF_FILE}\" for OS $OS, please contribute one" 1>&2
     exit 1
 fi
 
@@ -86,7 +90,7 @@ fi
 
 cp "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
-if ! make -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
+if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
     echo "Build error" 1>&2
     if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
     exit 1
