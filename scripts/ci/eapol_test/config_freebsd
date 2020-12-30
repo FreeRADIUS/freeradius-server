@@ -24,13 +24,13 @@ CFLAGS += -g3 -O0 -Wno-error=deprecated-declarations
 # replacement for WEXT and its use allows wpa_supplicant to properly control
 # the driver to improve existing functionality like roaming and to support new
 # functionality.
-CONFIG_DRIVER_WEXT=n
+CONFIG_DRIVER_WEXT=
 
 # Driver interface for Linux drivers using the nl80211 kernel interface
-CONFIG_DRIVER_NL80211=n
+CONFIG_DRIVER_NL80211=
 
 # QCA vendor extensions to nl80211
-CONFIG_DRIVER_NL80211_QCA=n
+CONFIG_DRIVER_NL80211_QCA=
 
 # driver_nl80211.c requires libnl. If you are compiling it yourself
 # you may need to point hostapd to your version of libnl.
@@ -113,7 +113,7 @@ CONFIG_EAP_GTC=y
 CONFIG_EAP_OTP=y
 
 # EAP-SIM (enable CONFIG_PCSC, if EAP-SIM is used)
-#CONFIG_EAP_SIM=y
+CONFIG_EAP_SIM=y
 
 # EAP-PSK (experimental; this is _not_ needed for WPA-PSK)
 CONFIG_EAP_PSK=y
@@ -125,7 +125,7 @@ CONFIG_EAP_PWD=y
 CONFIG_EAP_PAX=y
 
 # LEAP
-CONFIG_EAP_LEAP=n
+CONFIG_EAP_LEAP=
 
 # EAP-AKA (enable CONFIG_PCSC, if EAP-AKA is used)
 CONFIG_EAP_AKA=y
