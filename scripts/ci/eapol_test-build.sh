@@ -38,7 +38,7 @@ TMP_BUILD_DIR="${BUILD_DIR}"
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
 : ${MAKE:=make}
-: ${BUILD_CONF_DIR:="$(dirname $0)/eapol_test"}
+: ${BUILD_CONF_DIR:="$(dirname "$0")/eapol_test"}
 : ${EAPOL_TEST_PATH:="${BUILD_CONF_DIR}/eapol_test"}
 
 if [ -z "${FORCE_BUILD}" ]; then
@@ -48,7 +48,7 @@ if [ -z "${FORCE_BUILD}" ]; then
     fi
 
     WHICH_EAPOL_TEST="$(which eapol_test)"
-    if [ ! -z "${WHICH_EAPOL_TEST}" ]; then
+    if [ -n "${WHICH_EAPOL_TEST}" ]; then
         echo "${WHICH_EAPOL_TEST}"
         exit 0
     fi
