@@ -36,7 +36,7 @@ RCSID("$Id$")
 
 #include "log.h"
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__FreeBSD__)
 #include <link.h>
 #endif
 

@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include "tmpl_priv.h"
 #include <signal.h>
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__FreeBSD__)
 #include <sys/wait.h>
 #endif
 
