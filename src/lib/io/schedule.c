@@ -542,7 +542,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Create the network threads first.
 	 */
 	for (i = 0; i < sc->config->max_networks; i++) {
-		DEBUG3("Creating %u/%u networks", i, sc->config->max_networks);
+		DEBUG3("Creating %u/%u networks", i + 1, sc->config->max_networks);
 
 		/*
 		 *	Create a worker "glue" structure
@@ -571,7 +571,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 */
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->networks); i++) {
 		DEBUG3("Waiting for semaphore from network %u/%u",
-		       i, (unsigned int)fr_dlist_num_elements(&sc->networks));
+		       i + 1, (unsigned int)fr_dlist_num_elements(&sc->networks));
 		SEM_WAIT_INTR(&sc->network_sem);
 	}
 
@@ -601,7 +601,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Create all of the workers.
 	 */
 	for (i = 0; i < sc->config->max_workers; i++) {
-		DEBUG3("Creating %u/%u workers", i, sc->config->max_workers);
+		DEBUG3("Creating %u/%u workers", i + 1, sc->config->max_workers);
 
 		/*
 		 *	Create a worker "glue" structure
@@ -630,7 +630,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 */
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
 		DEBUG3("Waiting for semaphore from worker %u/%u",
-		       i, (unsigned int)fr_dlist_num_elements(&sc->workers));
+		       i + 1, (unsigned int)fr_dlist_num_elements(&sc->workers));
 		SEM_WAIT_INTR(&sc->worker_sem);
 	}
 
@@ -743,7 +743,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	 *	are no input channels, they exit, too.
 	 */
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->networks); i++) {
-		DEBUG2("Scheduler - Waiting for semaphore indicating network exit %u/%u", i,
+		DEBUG2("Scheduler - Waiting for semaphore indicating network exit %u/%u", i + 1,
 		       (unsigned int)fr_dlist_num_elements(&sc->networks));
 		SEM_WAIT_INTR(&sc->network_sem);
 	}
