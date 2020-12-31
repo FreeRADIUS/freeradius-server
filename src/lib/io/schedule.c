@@ -693,6 +693,10 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 /** Destroy a scheduler, and tell its child threads to exit.
  *
+ * @note This may be called with no worker or network threads in the case of a
+ *	 instantiation error.  This function _should_ deal with that condition
+ *	 gracefully.
+ *
  * @param[in] sc_to_free the scheduler
  * @return
  *	- <0 on error
@@ -721,9 +725,6 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		fr_worker_destroy(sc->single_worker);
 		goto done;
 	}
-
-	if (!fr_cond_assert(fr_dlist_num_elements(&sc->networks) > 0)) return -1;
-	if (!fr_cond_assert(fr_dlist_num_elements(&sc->workers) > 0)) return -1;
 
 	/*
 	 *	Signal each network thread to exit.
