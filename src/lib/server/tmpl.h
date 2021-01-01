@@ -312,6 +312,8 @@ struct tmpl_rules_s {
 
 	bool			disallow_qualifiers;	//!< disallow request / list qualifiers
 
+	bool			disallow_filters;	//!< disallow filters.
+
 	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
 							///< Instantiated xlats are not added to the global
 							///< trees, regexes are not JIT'd.
@@ -792,7 +794,7 @@ typedef enum {
 							///< which is disallowed.
 	TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED,		//!< Attribute resolved in a dictionary different
 							///< to the one specified.
-	TMPL_ATTR_ERROR_TAGGED_NOT_ALLOWED,		//!< Tagged attributes not allowed here.
+	TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED,		//!< Filters disallowed by rules.
 	TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
 	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
 	TMPL_ATTR_ERROR_MISSING_TERMINATOR		//!< Unexpected text found after attribute reference

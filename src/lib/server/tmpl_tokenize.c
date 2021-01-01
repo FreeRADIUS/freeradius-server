@@ -1168,17 +1168,26 @@ static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_att
  * @param[out] err	Parse error code.
  * @param[in] ar	to populate filter for.
  * @param[in] name	containing more attribute ref data.
+ * @param[in] t_rules	see tmpl_attr_afrom_attr_substr.
  * @return
  *	- TMPL_ATTR_REF_HAS_FILTER on success with filter parsed.
  *	- TMPL_ATTR_REF_NO_FILTER on success with no filter.
  *	- TMPL_ATTR_REF_BAD_FILTER on failure.
  */
-static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar, fr_sbuff_t *name)
+static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
+						 fr_sbuff_t *name, tmpl_rules_t const *t_rules)
 {
 	/*
 	 *	Parse array subscript (and eventually complex filters)
 	 */
 	if (!fr_sbuff_next_if_char(name, '[')) return TMPL_ATTR_REF_NO_FILTER;
+
+	if (t_rules->disallow_filters) {
+		fr_strerror_const("Filters not allowed here");
+		if (err) *err = TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED;
+
+		return TMPL_ATTR_REF_BAD_FILTER;
+	}
 
 	switch (*fr_sbuff_current(name)) {
 	case '#':
@@ -1250,7 +1259,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
  * @param[in,out] vpt		to append this reference to.
  * @param[in] parent		Last known parent.
  * @param[in] name		to parse.
- * @param[in] rules		see tmpl_attr_afrom_attr_substr.
+ * @param[in] t_rules		see tmpl_attr_afrom_attr_substr.
  * @param[in] depth		How deep we are.  Used to check for maximum nesting level.
  * @return
  *	- <0 on error.
@@ -1260,7 +1269,7 @@ static inline CC_HINT(nonnull(3,6))
 int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					   tmpl_t *vpt,
 					   fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
-					   fr_sbuff_t *name, tmpl_rules_t const *rules,
+					   fr_sbuff_t *name, tmpl_rules_t const *t_rules,
 					   unsigned int depth)
 {
 	tmpl_attr_t		*ar = NULL;
@@ -1320,7 +1329,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 		.ar_parent = parent,
 	};
 
-	if (tmpl_attr_parse_filter(err, ar, name) < 0) goto error;
+	if (tmpl_attr_parse_filter(err, ar, name, t_rules) < 0) goto error;
 
 	/*
 	 *	Insert the ar into the list of attribute references
@@ -1332,7 +1341,7 @@ int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *e
 	 *	future OID components are also unresolved.
 	 */
 	if (fr_sbuff_next_if_char(name, '.')) {
-		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, NULL, NULL, name, rules, depth + 1);
+		ret = tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, NULL, NULL, name, t_rules, depth + 1);
 		if (ret < 0) {
 			fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			return -1;
@@ -1667,7 +1676,7 @@ do_suffix:
 	 *	- The type of attribute.
 	 *	- If this is the leaf attribute reference.
 	 */
-	if ((filter = tmpl_attr_parse_filter(err, ar, name)) == TMPL_ATTR_REF_BAD_FILTER) goto error;
+	if ((filter = tmpl_attr_parse_filter(err, ar, name, t_rules)) == TMPL_ATTR_REF_BAD_FILTER) goto error;
 
 	/*
 	 *	At the end of the attribute reference. If there's a
@@ -1876,6 +1885,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
  *							with a protocol outside of the passed dict_def.
  *				- disallow_internal	If true, don't allow fallback to internal
  *							attributes.
+ *				- disallow_filters
  *
  * @see REMARKER to produce pretty error markers from the return value.
  *
@@ -2005,7 +2015,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		tmpl_attr_t *ar;
 
 		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
-		switch (tmpl_attr_parse_filter(err, ar, &our_name)) {
+		switch (tmpl_attr_parse_filter(err, ar, &our_name, t_rules)) {
 		case 0:						/* No filter */
 			talloc_free(ar);
 			break;
@@ -2047,20 +2057,20 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
  *				If only #request_ref_t #pair_list_t qualifiers are found,
  *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
- * @param[in] rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
+ * @param[in] t_rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
  *
  * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
  *	name string isn't parsed.
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-			    tmpl_t **out, char const *name, tmpl_rules_t const *rules)
+			    tmpl_t **out, char const *name, tmpl_rules_t const *t_rules)
 {
 	ssize_t slen, name_len;
 
-	if (!rules) rules = &default_attr_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
 
 	name_len = strlen(name);
-	slen = tmpl_afrom_attr_substr(ctx, err, out, &FR_SBUFF_IN(name, name_len), NULL, rules);
+	slen = tmpl_afrom_attr_substr(ctx, err, out, &FR_SBUFF_IN(name, name_len), NULL, t_rules);
 	if (slen <= 0) return slen;
 
 	if (!fr_cond_assert(*out)) return -1;
