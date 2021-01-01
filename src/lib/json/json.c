@@ -518,7 +518,6 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 						fr_json_format_t const *format)
 {
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 	struct json_object	*obj;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
@@ -529,9 +528,9 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 
 	MEM(obj = json_object_new_object());
 
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		char const		*attr_name;
 		struct json_object	*vp_object, *values, *value, *type_name;
 
@@ -637,7 +636,6 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 						 fr_json_format_t const *format)
 {
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 	struct json_object	*obj;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
@@ -649,9 +647,9 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 
 	MEM(obj = json_object_new_object());
 
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		char const		*attr_name;
 		struct json_object	*vp_object, *value;
 		struct json_object	*values = NULL;
@@ -741,7 +739,6 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 						      fr_json_format_t const *format)
 {
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 	struct json_object	*obj;
 	struct json_object	*seen_attributes = NULL;
@@ -761,9 +758,9 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		seen_attributes = json_object_new_object();
 	}
 
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		char const		*attr_name;
 		struct json_object	*name, *value, *type_name;
 		struct json_object	*values = NULL;
@@ -872,7 +869,6 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 							    fr_json_format_t const *format)
 {
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 	struct json_object	*obj;
 
@@ -886,9 +882,9 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 	 *	This array format is very simple - just add all the
 	 *	attribute values to the array in order.
 	 */
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		struct json_object	*value;
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
@@ -922,7 +918,6 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps,
 							   fr_json_format_t const *format)
 {
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 	struct json_object	*obj;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
@@ -936,9 +931,9 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 	/*
 	 *	Add all the attribute names to the array in order.
 	 */
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		char const		*attr_name;
 		struct json_object	*value;
 
