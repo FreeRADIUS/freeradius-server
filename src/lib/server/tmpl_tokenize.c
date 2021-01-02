@@ -3927,7 +3927,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 				tmpl_attr_debug(vpt);
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
 						     "TMPL_TYPE_ATTR known attribute \"%s\" "
-						     "occurred after unknown attribute "
+						     "occurred after unknown attribute %s "
 						     "in attr ref list",
 						     file, line,
 						     ar->da->name,
@@ -3961,7 +3961,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 				tmpl_attr_debug(vpt);
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
 						     "TMPL_TYPE_ATTR unknown attribute \"%s\" "
-						     "occurred after unresolved attribute "
+						     "occurred after unresolved attribute %s "
 						     "in attr ref list",
 						     file, line, ar->da->name,
 						     ar->ar_unresolved);
