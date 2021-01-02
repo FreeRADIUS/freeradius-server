@@ -511,6 +511,8 @@ static bool pass2_cond_callback(fr_cond_t *c, UNUSED void *uctx)
 	case COND_TYPE_TRUE:
 	case COND_TYPE_FALSE:
 	case COND_TYPE_RCODE:
+	case COND_TYPE_AND:
+	case COND_TYPE_OR:
 		return true;
 
 	/*
