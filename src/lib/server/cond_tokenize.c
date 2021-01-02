@@ -684,47 +684,45 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	}
 
 	/*
-	 *	Convert maps to literals.  Convert one form of map to
-	 *	a standardized form.  This doesn't make any
-	 *	theoretical difference, but it does mean that the
-	 *	run-time evaluation has fewer cases to check.
+	 *	Normalise the equality checks.
+	 *
+	 *	This doesn't make a lot of difference, but it does
+	 *	help fix !* and =*, which are horrible hacks.
 	 */
-	if (c->type == COND_TYPE_MAP) do {
+	if (c->type == COND_TYPE_MAP) switch (c->data.map->op) {
 		/*
 		 *	!FOO !~ BAR --> FOO =~ BAR
-		 */
-		if (c->negate && (c->data.map->op == T_OP_REG_NE)) {
-			c->negate = false;
-			c->data.map->op = T_OP_REG_EQ;
-		}
-
-		/*
+		 *
 		 *	FOO !~ BAR --> !FOO =~ BAR
 		 */
-		if (!c->negate && (c->data.map->op == T_OP_REG_NE)) {
-			c->negate = true;
-			c->data.map->op = T_OP_REG_EQ;
-		}
+		case T_OP_REG_NE:
+			if (c->negate) {
+				c->negate = false;
+				c->data.map->op = T_OP_REG_EQ;
+			} else {
+				c->negate = true;
+				c->data.map->op = T_OP_REG_EQ;
+			}
+			break;
 
 		/*
 		 *	!FOO != BAR --> FOO == BAR
-		 */
-		if (c->negate && (c->data.map->op == T_OP_NE)) {
-			c->negate = false;
-			c->data.map->op = T_OP_CMP_EQ;
-		}
-
-		/*
+		 *
 		 *	This next one catches "LDAP-Group != foo",
 		 *	which doesn't work as-is, but this hack fixes
 		 *	it.
 		 *
 		 *	FOO != BAR --> !FOO == BAR
 		 */
-		if (!c->negate && (c->data.map->op == T_OP_NE)) {
-			c->negate = true;
-			c->data.map->op = T_OP_CMP_EQ;
-		}
+		case T_OP_NE:
+			if (c->negate) {
+				c->negate = false;
+				c->data.map->op = T_OP_CMP_EQ;
+			} else {
+				c->negate = true;
+				c->data.map->op = T_OP_CMP_EQ;
+			}
+			break;
 
 		/*
 		 *	FOO =* BAR --> FOO
@@ -733,8 +731,9 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		 *	FOO may be a string, or a delayed attribute
 		 *	reference.
 		 */
-		if ((c->data.map->op == T_OP_CMP_TRUE) ||
-		    (c->data.map->op == T_OP_CMP_FALSE)) {
+		case T_OP_CMP_TRUE:
+		case T_OP_CMP_FALSE:
+		{
 			tmpl_t *vpt;
 
 			vpt = talloc_steal(c, c->data.map->lhs);
@@ -751,9 +750,22 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 
 			c->type = COND_TYPE_EXISTS;
 			c->data.vpt = vpt;
-			break;	/* it's no longer a map */
+			goto check_exists;
 		}
 
+		/*
+		 *	Don't do any other re-writing.
+		 */
+		default:
+			break;
+
+	}
+
+	/*
+	 *	Do compile-time evaluation of literals.  That way it
+	 *	does not need to be done at run-time.
+	 */
+	if (c->type == COND_TYPE_MAP) {
 		/*
 		 *	Both are data (IP address, integer, etc.)
 		 *
@@ -773,7 +785,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 				c->type = COND_TYPE_FALSE;
 			}
 
-			break;	/* it's no longer a map */
+			goto check_true; /* it's no longer a map */
 		}
 
 		/*
@@ -806,7 +818,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			 *	Free map after using it above.
 			 */
 			TALLOC_FREE(c->data.map);
-			break;
+			goto check_true;
 		}
 
 		/*
@@ -857,8 +869,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			 */
 			fr_assert(!tmpl_is_unresolved(c->data.map->rhs));
 		}
-
-	} while (0);
+	}
 
 	/*
 	 *	Existence checks.  We short-circuit static strings,
@@ -870,6 +881,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 *	"foo" is NOT the same as 'foo' or a bare foo.
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
+	check_exists:
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -978,6 +990,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	/*
 	 *	!TRUE -> FALSE
 	 */
+check_true:
 	if (c->type == COND_TYPE_TRUE) {
 		if (c->negate) {
 			c->negate = false;
@@ -994,6 +1007,10 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			c->type = COND_TYPE_TRUE;
 		}
 	}
+
+	/*
+	 *	We now do short-circuit evaluation of && and ||.
+	 */
 
 	/*
 	 *	true && FOO --> FOO
