@@ -632,10 +632,8 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	if ((c->type == COND_TYPE_CHILD) && !c->data.child->next) {
 		fr_cond_t *child;
 
-		child = talloc_steal(ctx, c->data.child);
-		c->data.child = NULL;
-
-		child->next = talloc_steal(child, c->next);
+		child = c->data.child;
+		child->next = c->next;
 		c->next = NULL;
 
 		/*
@@ -662,9 +660,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	    !c->next && !c->negate) {
 		fr_cond_t *child;
 
-		child = talloc_steal(ctx, c->data.child);
-		c->data.child = NULL;
-
+		child = c->data.child;
 		talloc_free(c);
 		c = child;
 	}
@@ -1006,9 +1002,8 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 
 	hoist_grandchild:
 
-		next = talloc_steal(ctx, c->next->next);
-		c->next = NULL;
-
+		next = c->next->next;
+		talloc_free(c->next);
 		talloc_free(c);
 		c = next;
 	}
@@ -1269,7 +1264,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		c->type = COND_TYPE_CHILD;
 		c->ci = cf_section_to_item(cs);
 
-		slen = cond_tokenize(c, &c->data.child, cs, &our_in, brace + 1, t_rules);
+		slen = cond_tokenize(ctx, &c->data.child, cs, &our_in, brace + 1, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1295,7 +1290,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 *	Grab the LHS
 	 */
 	fr_sbuff_marker(&m_lhs_cast, &our_in);
-	slen = cond_tokenize_operand(c, &lhs, &m_lhs, &our_in, t_rules);
+	slen = cond_tokenize_operand(ctx, &lhs, &m_lhs, &our_in, t_rules);
 	if (!lhs) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
@@ -1457,7 +1452,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	Grab the RHS
 		 */
 		fr_sbuff_marker(&m_rhs_cast, &our_in);
-		slen = cond_tokenize_operand(c, &rhs, &m_rhs, &our_in, t_rules);
+		slen = cond_tokenize_operand(ctx, &rhs, &m_rhs, &our_in, t_rules);
 		if (!rhs) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1576,11 +1571,11 @@ closing_brace:
 		fr_cond_t *child;
 
 
-		MEM(child = talloc_zero(c, fr_cond_t));
+		MEM(child = talloc_zero(ctx, fr_cond_t));
 		child->type = cond_op;
 		child->ci = cf_section_to_item(cs);
 
-		slen = cond_tokenize(child, &child->next, cs, &our_in, brace, t_rules);
+		slen = cond_tokenize(ctx, &child->next, cs, &our_in, brace, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1593,7 +1588,7 @@ closing_brace:
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(c, &c->next, cs, &our_in, brace, t_rules);
+	slen = cond_tokenize(ctx, &c->next, cs, &our_in, brace, t_rules);
 	if (slen <= 0) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
