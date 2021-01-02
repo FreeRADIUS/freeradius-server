@@ -615,7 +615,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
  *	recurse.  Instead, it just looks at itself, and it's immediate
  *	children for optimizations
  */
-static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_out)
+static int cond_normalise(fr_token_t lhs_type, fr_cond_t **c_out)
 {
 	fr_cond_t *c = *c_out;
 
@@ -1630,7 +1630,7 @@ closing_brace:
 	}
 
 done:
-	if (cond_normalise(ctx, lhs ? lhs->quote : T_INVALID, &c) < 0) {
+	if (cond_normalise(lhs ? lhs->quote : T_INVALID, &c) < 0) {
 		talloc_free(c);
 		return 0;
 	}
@@ -1729,7 +1729,7 @@ int fr_cond_from_map(TALLOC_CTX *ctx, fr_cond_t **head, map_t *map)
 	cond->type = COND_TYPE_MAP;
 	cond->data.map = map;
 
-	if (cond_normalise(ctx, T_BARE_WORD, &cond) < 0) return -1;
+	if (cond_normalise(T_BARE_WORD, &cond) < 0) return -1;
 
 	/*
 	 *	If the condition is still a MAP, then make the map
