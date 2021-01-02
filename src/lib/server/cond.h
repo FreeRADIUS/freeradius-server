@@ -39,12 +39,6 @@ extern "C" {
 typedef struct fr_cond_s fr_cond_t;
 #endif
 
-typedef enum {
-	COND_NONE = 0,
-	COND_AND = '&',
-	COND_OR = '|'
-} fr_cond_op_t;
-
 extern fr_table_num_sorted_t const cond_logical_op_table[];
 extern size_t cond_logical_op_table_len;
 
@@ -61,6 +55,8 @@ typedef enum {
 	COND_TYPE_EXISTS,
 	COND_TYPE_RCODE,
 	COND_TYPE_MAP,
+	COND_TYPE_AND,
+	COND_TYPE_OR,
 	COND_TYPE_CHILD
 } fr_cond_type_t;
 
@@ -99,7 +95,6 @@ struct fr_cond_s {
 
 	fr_dict_attr_t const	*cast;		//!< Legacy - Should be removed.
 
-	fr_cond_op_t		next_op;
 	fr_cond_t		*next;
 };
 

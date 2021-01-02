@@ -88,7 +88,6 @@ void cond_debug(fr_cond_t const *cond)
 		INFO("\tnegate : %s", c->negate ? "true" : "false");
 		INFO("\tcast   : %s", c->cast ? fr_table_str_by_value(fr_value_box_type_table,
 								      c->cast->type, "<INVALID>") : "none");
-		INFO("\top     : %s", fr_table_str_by_value(cond_logical_op_table, c->next_op, "<INVALID>"));
 		INFO("\tfixup  : %s", fr_table_str_by_value(cond_pass2_table, c->pass2_fixup, "<INVALID>"));
 
 		switch (c->type) {
@@ -793,14 +792,26 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t co
 		if (!c->next) break;
 
 		/*
-		 *	FALSE && ... = FALSE
+		 *	Do short-circuit evaluations.
 		 */
-		if (!rcode && (c->next_op == COND_AND)) return false;
+		if (c->next) {
+			switch (c->next->type) {
+			case COND_TYPE_AND:
+				if (!rcode) return false;
 
-		/*
-		 *	TRUE || ... = TRUE
-		 */
-		if (rcode && (c->next_op == COND_OR)) return true;
+				c = c->next; /* skip the && */
+				break;
+
+			case COND_TYPE_OR:
+				if (rcode) return true;
+
+				c = c->next; /* skip the || */
+				break;
+
+			default:
+				break;
+			}
+		}
 
 		c = c->next;
 	}

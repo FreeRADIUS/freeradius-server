@@ -54,8 +54,8 @@ fr_table_num_sorted_t const cond_quote_table[] = {
 size_t cond_quote_table_len = NUM_ELEMENTS(cond_quote_table);
 
 fr_table_num_sorted_t const cond_logical_op_table[] = {
-	{ L("&&"),	COND_AND		},
-	{ L("||"),	COND_OR			}
+	{ L("&&"),	COND_TYPE_AND		},
+	{ L("||"),	COND_TYPE_OR		}
 };
 size_t cond_logical_op_table_len = NUM_ELEMENTS(cond_logical_op_table);
 
@@ -117,6 +117,14 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 			FR_SBUFF_IN_CHAR_RETURN(&our_out, ')');
 			break;
 
+		case COND_TYPE_AND:
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " && ");
+			break;
+
+		case COND_TYPE_OR:
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " || ");
+			break;
+
 		case COND_TYPE_TRUE:
 			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "true");
 			break;
@@ -129,27 +137,9 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 			break;
 		}
 
-		if (c->next_op == COND_NONE) {
-			fr_assert(c->next == NULL);
-			goto done;
-		}
-
-		switch (c->next_op) {
-		case COND_AND:
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " && ");
-			break;
-
-		case COND_OR:
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, " || ");
-			break;
-
-		default:
-			fr_assert(0);
-		}
 		c = c->next;
 	}
 
-done:
 	fr_sbuff_terminate(&our_out);
 	return fr_sbuff_set(out, &our_out);
 }
@@ -648,8 +638,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		child->next = talloc_steal(child, c->next);
 		c->next = NULL;
 
-		child->next_op = c->next_op;
-
 		/*
 		 *	Set the negation properly
 		 */
@@ -996,36 +984,29 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	/*
 	 *	true && FOO --> FOO
 	 */
-	if ((c->type == COND_TYPE_TRUE) &&
-	    (c->next_op == COND_AND)) {
-		fr_cond_t *next;
-
-		next = talloc_steal(ctx, c->next);
-		c->next = NULL;
-
-		talloc_free(c);
-		c = next;
+	if ((c->type == COND_TYPE_TRUE) && c->next &&
+	    (c->next->type == COND_TYPE_AND)) {
+		goto hoist_grandchild;
 	}
 
 	/*
 	 *	false && FOO --> false
 	 */
-	if ((c->type == COND_TYPE_FALSE) &&
-	    (c->next_op == COND_AND)) {
-
-		talloc_free(c->next);
-		c->next = NULL;
-		c->next_op = COND_NONE;
+	if ((c->type == COND_TYPE_FALSE) && c->next &&
+	    (c->next->type == COND_TYPE_AND)) {
+		goto drop_child;
 	}
 
 	/*
 	 *	false || FOO --> FOO
 	 */
-	if ((c->type == COND_TYPE_FALSE) &&
-	    (c->next_op == COND_OR)) {
+	if ((c->type == COND_TYPE_FALSE) && c->next &&
+	    (c->next->type == COND_TYPE_OR)) {
 		fr_cond_t *next;
 
-		next = talloc_steal(ctx, c->next);
+	hoist_grandchild:
+
+		next = talloc_steal(ctx, c->next->next);
 		c->next = NULL;
 
 		talloc_free(c);
@@ -1035,12 +1016,11 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	/*
 	 *	true || FOO --> true
 	 */
-	if ((c->type == COND_TYPE_TRUE) &&
-	    (c->next_op == COND_OR)) {
-
+	if ((c->type == COND_TYPE_TRUE) && c->next &&
+	    (c->next->type == COND_TYPE_OR)) {
+	drop_child:
 		talloc_free(c->next);
 		c->next = NULL;
-		c->next_op = COND_NONE;
 	}
 
 	*c_out = c;
@@ -1247,7 +1227,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 
 	tmpl_t			*lhs = NULL;
 	fr_token_t		op;
-	fr_cond_op_t		cond_op;
+	fr_cond_type_t		cond_op;
 
 	fr_sbuff_marker_t	m_lhs, m_lhs_cast, m_op, m_rhs, m_rhs_cast;
 
@@ -1353,23 +1333,24 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 */
 		goto unary;
 
-	/*
-	 *	FOO - Existence check
-	 */
+	} else if (fr_sbuff_is_char(&our_in, '&') || fr_sbuff_is_char(&our_in, '|')) {
+		/*
+		 *	FOO && ...
+		 *	FOO || ...
+		 *
+		 *	end of sub-expression.
+		 */
+		goto unary;
+
 	} else if (!fr_sbuff_extend(&our_in)) {
+		/*
+		 *	FOO - Existence check at EOF
+		 */
 		if (brace) {
 			fr_strerror_const("Missing closing brace");
 			goto error;
 		}
 
-		goto unary;
-	}
-
-	/*
-	 *	FOO && ... - Logical operator (existence check)
-	 */
-	fr_sbuff_out_by_longest_prefix(&slen, &cond_op, cond_logical_op_table, &FR_SBUFF_NO_ADVANCE(&our_in), COND_NONE);
-	if ((cond_op == COND_AND) || (cond_op == COND_OR)) {
 	unary:
 		if (c->cast) {
 			fr_strerror_const("Cannot do cast for existence check");
@@ -1539,6 +1520,11 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	} /* parse OP RHS */
 
 closing_brace:
+
+	/*
+	 *	Recurse to parse the next condition.
+	 */
+
 	/*
 	 *	...COND)
 	 */
@@ -1576,20 +1562,33 @@ closing_brace:
 		if (fr_sbuff_is_char(&our_in, '{')) goto done;
 	}
 
-	/*
-	 *	Allow ((a == b) && (b == c))
-	 */
 	fr_sbuff_out_by_longest_prefix(&slen, &cond_op, cond_logical_op_table,
-				       &our_in, COND_NONE);
+				       &our_in, COND_TYPE_INVALID);
 	if (slen == 0) {
 		fr_strerror_const("Unexpected text after condition");
 		goto error;
 	}
 
 	/*
-	 *	Recurse to parse the next condition.
+	 *	We have a short-circuit condition, create it.
 	 */
-	c->next_op = cond_op;
+	if (cond_op != COND_TYPE_INVALID) {
+		fr_cond_t *op;
+
+
+		MEM(op = talloc_zero(c, fr_cond_t));
+		op->type = cond_op;
+		op->ci = cf_section_to_item(cs);
+
+		slen = cond_tokenize(op, &op->next, cs, &our_in, brace, t_rules);
+		if (slen <= 0) {
+			fr_sbuff_advance(&our_in, slen * -1);
+			goto error;
+		}
+
+		c->next = op;
+		goto done;
+	}
 
 	/*
 	 *	May still be looking for a closing brace.
@@ -1658,6 +1657,8 @@ bool fr_cond_walk(fr_cond_t *c, bool (*callback)(fr_cond_t *cond, void *uctx), v
 		case COND_TYPE_RCODE:
 		case COND_TYPE_EXISTS:
 		case COND_TYPE_MAP:
+		case COND_TYPE_AND:
+		case COND_TYPE_OR:
 		case COND_TYPE_TRUE:
 		case COND_TYPE_FALSE:
 			break;
@@ -1670,11 +1671,6 @@ bool fr_cond_walk(fr_cond_t *c, bool (*callback)(fr_cond_t *cond, void *uctx), v
 				return false;
 			}
 		}
-
-		/*
-		 *	No sibling, stop.
-		 */
-		if (c->next_op == COND_NONE) break;
 
 		/*
 		 *	process the next sibling
