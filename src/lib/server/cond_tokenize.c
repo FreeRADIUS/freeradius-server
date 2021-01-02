@@ -87,7 +87,7 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 		if (c->negate) FR_SBUFF_IN_CHAR_RETURN(&our_out, '!');
 
 		switch (c->type) {
-		case COND_TYPE_EXISTS:
+		case COND_TYPE_TMPL:
 			fr_assert(c->data.vpt != NULL);
 			if (c->cast) {
 				FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
@@ -748,9 +748,9 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 
 			TALLOC_FREE(c->data.map);
 
-			c->type = COND_TYPE_EXISTS;
+			c->type = COND_TYPE_TMPL;
 			c->data.vpt = vpt;
-			goto check_exists;
+			goto check_tmpl;
 		}
 
 		/*
@@ -880,8 +880,8 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 *
 	 *	"foo" is NOT the same as 'foo' or a bare foo.
 	 */
-	if (c->type == COND_TYPE_EXISTS) {
-	check_exists:
+	if (c->type == COND_TYPE_TMPL) {
+	check_tmpl:
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -1422,7 +1422,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			goto closing_brace;
 		}
 
-		c->type = COND_TYPE_EXISTS;
+		c->type = COND_TYPE_TMPL;
 		c->ci = cf_section_to_item(cs);
 		c->data.vpt = lhs;
 
@@ -1685,7 +1685,7 @@ bool fr_cond_walk(fr_cond_t *c, bool (*callback)(fr_cond_t *cond, void *uctx), v
 			return false;
 
 		case COND_TYPE_RCODE:
-		case COND_TYPE_EXISTS:
+		case COND_TYPE_TMPL:
 		case COND_TYPE_MAP:
 		case COND_TYPE_AND:
 		case COND_TYPE_OR:

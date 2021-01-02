@@ -357,7 +357,7 @@ static bool pass2_fixup_map(fr_cond_t *c)
 					 *	"%{Foo}" == '' ---> !Foo
 					 *	"%{Foo}" != '' ---> Foo
 					 */
-					c->type = COND_TYPE_EXISTS;
+					c->type = COND_TYPE_TMPL;
 					c->data.vpt = vpt;
 					c->negate = !c->negate;
 
@@ -524,7 +524,7 @@ static bool pass2_cond_callback(fr_cond_t *c, UNUSED void *uctx)
 	/*
 	 *	Fix up the template.
 	 */
-	case COND_TYPE_EXISTS:
+	case COND_TYPE_TMPL:
 		fr_assert(!tmpl_is_regex_xlat_unresolved(c->data.vpt));
 		return pass2_fixup_tmpl(c, c->ci, &c->data.vpt);
 

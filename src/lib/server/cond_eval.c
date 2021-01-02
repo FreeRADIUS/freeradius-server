@@ -45,7 +45,7 @@ RCSID("$Id$")
  */
 static fr_table_num_sorted_t const cond_type_table[] = {
 	{ L("child"),		COND_TYPE_CHILD		},
-	{ L("exists"),		COND_TYPE_EXISTS	},
+	{ L("tmpl"),		COND_TYPE_TMPL		},
 	{ L("false"),		COND_TYPE_FALSE		},
 	{ L("invalid"),		COND_TYPE_INVALID	},
 	{ L("map"),		COND_TYPE_MAP		},
@@ -104,7 +104,7 @@ void cond_debug(fr_cond_t const *cond)
 			INFO("\trcode  : %s", fr_table_str_by_value(rcode_table, c->data.rcode, ""));
 			break;
 
-		case COND_TYPE_EXISTS:
+		case COND_TYPE_TMPL:
 			tmpl_debug(c->data.vpt);
 			break;
 
@@ -755,7 +755,7 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t co
 
 	while (c) {
 		switch (c->type) {
-		case COND_TYPE_EXISTS:
+		case COND_TYPE_TMPL:
 			rcode = cond_eval_tmpl(request, depth, c->data.vpt);
 			/* Existence checks are special, because we expect them to fail */
 			if (rcode < 0) rcode = 0;
