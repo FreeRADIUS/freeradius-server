@@ -608,6 +608,13 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 	return 1;
 }
 
+/** Normalise one level of a condition
+ *
+ *	This function is called after every individual condition is
+ *	tokenized.  As a result, this function does not need to
+ *	recurse.  Instead, it just looks at itself, and it's immediate
+ *	children for optimizations
+ */
 static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_out)
 {
 	fr_cond_t *c = *c_out;
@@ -626,43 +633,54 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 */
 
 	/*
-	 *	(FOO)     --> FOO
-	 *	(FOO) ... --> FOO ...
+	 *	Loop because we might hoist a child to a child.
 	 */
-	if ((c->type == COND_TYPE_CHILD) && !c->data.child->next) {
+	while (c->type == COND_TYPE_CHILD) {
 		fr_cond_t *child;
 
 		child = c->data.child;
-		child->next = c->next;
-		c->next = NULL;
 
 		/*
-		 *	Set the negation properly
+		 *	(FOO)     --> FOO
+		 *	(FOO) ... --> FOO ...
 		 */
-		if ((c->negate && !child->negate) ||
-		    (!c->negate && child->negate)) {
-			child->negate = true;
-		} else {
-			child->negate = false;
+		if (!child->next) {
+			child->next = c->next;
+
+			/*
+			 *	!(!FOO) --> FOO, etc.
+			 */
+			child->negate = (c->negate != child->negate);
+			talloc_free(c);
+			c = child;
+			continue;
 		}
 
-		talloc_free(c);
-		c = child;
+		/*
+		 *	(FOO ...) --> FOO ...
+		 *
+		 *	But don't do !(FOO || BAR) --> !FOO || BAR
+		 *	Because that's different.
+		 */
+		if (!c->next && !c->negate) {
+			talloc_free(c);
+			c = child;
+			continue;
+		}
+
+		/*
+		 *	Can't do anything else, stop looping.
+		 */
+		break;
 	}
 
 	/*
-	 *	(FOO ...) --> FOO ...
-	 *
-	 *	But don't do !(FOO || BAR) --> !FOO || BAR
-	 *	Because that's different.
+	 *	No further optimizations are possible, so we just
+	 *	return.
 	 */
-	if ((c->type == COND_TYPE_CHILD) &&
-	    !c->next && !c->negate) {
-		fr_cond_t *child;
-
-		child = c->data.child;
-		talloc_free(c);
-		c = child;
+	if (c->type == COND_TYPE_CHILD) {
+		*c_out = c;
+		return 0;
 	}
 
 	/*
