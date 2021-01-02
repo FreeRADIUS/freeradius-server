@@ -1573,20 +1573,20 @@ closing_brace:
 	 *	We have a short-circuit condition, create it.
 	 */
 	if (cond_op != COND_TYPE_INVALID) {
-		fr_cond_t *op;
+		fr_cond_t *child;
 
 
-		MEM(op = talloc_zero(c, fr_cond_t));
-		op->type = cond_op;
-		op->ci = cf_section_to_item(cs);
+		MEM(child = talloc_zero(c, fr_cond_t));
+		child->type = cond_op;
+		child->ci = cf_section_to_item(cs);
 
-		slen = cond_tokenize(op, &op->next, cs, &our_in, brace, t_rules);
+		slen = cond_tokenize(child, &child->next, cs, &our_in, brace, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
 		}
 
-		c->next = op;
+		c->next = child;
 		goto done;
 	}
 
