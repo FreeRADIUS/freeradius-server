@@ -134,15 +134,6 @@ void cond_debug(fr_cond_t const *cond)
 int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 {
 	switch (vpt->type) {
-	case TMPL_TYPE_UNRESOLVED:
-		/*
-		 *	Empty string is false, non-empty string
-		 *	is true.
-		 *
-		 *	@todo: Maybe also check for digits?
-		 */
-		return (*vpt->data.unescaped != '\0');
-
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
 		if (tmpl_find_vp(NULL, request, vpt) == 0) {
@@ -170,6 +161,7 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 	/*
 	 *	Can't have a bare ... (/foo/) ...
 	 */
+	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_UNCOMPILED:
 	case TMPL_TYPE_REGEX_XLAT:
