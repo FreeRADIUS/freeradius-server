@@ -128,14 +128,11 @@ void cond_debug(fr_cond_t const *cond)
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] vpt the template to evaluate
  * @return
- *	- -1 on failure.
- *	- 0 for "no match".
+ *	- 0 for "no match" or failure
  *	- 1 for "match".
  */
 int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 {
-	int rcode = -1;
-
 	switch (vpt->type) {
 	case TMPL_TYPE_UNRESOLVED:
 		/*
@@ -144,15 +141,12 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 		 *
 		 *	@todo: Maybe also check for digits?
 		 */
-		rcode = (*vpt->data.unescaped != '\0');
-		break;
+		return (*vpt->data.unescaped != '\0');
 
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
 		if (tmpl_find_vp(NULL, request, vpt) == 0) {
-			rcode = true;
-		} else {
-			rcode = false;
+			return true;
 		}
 		break;
 
@@ -165,7 +159,7 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 		slen = tmpl_aexpand(request, &p, request, vpt, NULL, NULL);
 		if (slen < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
-			return -1;
+			return false;
 		}
 		talloc_free(p);
 
@@ -183,13 +177,16 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 		fr_assert(0 == 1);
 		FALL_THROUGH;
 
+	/*
+	 *	TMPL_TYPE_DATA is not allowed here, as it is
+	 *	statically evaluated to true/false by cond_normalise()
+	 */
 	default:
 		EVAL_DEBUG("FAIL %d", __LINE__);
-		rcode = -1;
 		break;
 	}
 
-	return rcode;
+	return false;
 }
 
 #ifdef HAVE_REGEX
@@ -757,8 +754,6 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t co
 		switch (c->type) {
 		case COND_TYPE_TMPL:
 			rcode = cond_eval_tmpl(request, depth, c->data.vpt);
-			/* Existence checks are special, because we expect them to fail */
-			if (rcode < 0) rcode = 0;
 			break;
 
 		case COND_TYPE_RCODE:
