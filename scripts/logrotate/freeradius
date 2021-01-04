@@ -5,44 +5,31 @@
 #
 
 #
-#    Global options for all files
-#
-daily
-rotate 14
-missingok
-compress
-delaycompress
-notifempty
-su radiusd radiusd
-
-#
 #  The main server log
 #
 /var/log/radius/radius.log {
 	copytruncate
+	daily
+	rotate 14
+	missingok
+	compress
+	delaycompress
+	notifempty
+	su radiusd radiusd
 }
 
 #
 #  Session monitoring utilities
 #
-/var/log/radius/checkrad.log /var/log/radius/radwatch.log {
-	nocreate
-}
-
-#
-#  Session database modules
-#
-/var/log/radius/radutmp /var/log/radius/radwtmp {
-	nocreate
-}
-
+/var/log/radius/checkrad.log /var/log/radius/radwatch.log
 #
 #  SQL log files
 #
-/var/log/radius/sqllog.sql {
-	nocreate
-}
-
+/var/log/radius/sqllog.sql
+#
+#  Session database modules
+#
+/var/log/radius/radutmp /var/log/radius/radwtmp
 # There are different detail-rotating strategies you can use.  One is
 # to write to a single detail file per IP and use the rotate config
 # below.  Another is to write to a daily detail file per IP with:
@@ -52,4 +39,11 @@ su radiusd radiusd
 # detail files.  You do not need to comment out the below for method #2.
 /var/log/radius/radacct/*/detail {
 	nocreate
+	daily
+	rotate 14
+	missingok
+	compress
+	delaycompress
+	notifempty
+	su radiusd radiusd
 }
