@@ -618,6 +618,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_out)
 {
 	fr_cond_t *c = *c_out;
+	fr_cond_t *next;
 
 	/*
 	 *	Normalize the condition before returning.
@@ -681,8 +682,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 *	return.
 	 */
 	if (c->type == COND_TYPE_CHILD) {
-		*c_out = c;
-		return 0;
+		goto check_short_circuit;
 	}
 
 	/*
@@ -760,7 +760,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		 */
 		default:
 			break;
-
 	}
 
 	/*
@@ -1014,10 +1013,13 @@ check_true:
 	 *	We now do short-circuit evaluation of && and ||.
 	 */
 
+check_short_circuit:
+	if (!c->next) goto done;
+
 	/*
 	 *	true && FOO --> FOO
 	 */
-	if ((c->type == COND_TYPE_TRUE) && c->next &&
+	if ((c->type == COND_TYPE_TRUE) &&
 	    (c->next->type == COND_TYPE_AND)) {
 		goto hoist_grandchild;
 	}
@@ -1025,7 +1027,7 @@ check_true:
 	/*
 	 *	false && FOO --> false
 	 */
-	if ((c->type == COND_TYPE_FALSE) && c->next &&
+	if ((c->type == COND_TYPE_FALSE) &&
 	    (c->next->type == COND_TYPE_AND)) {
 		goto drop_child;
 	}
@@ -1033,27 +1035,71 @@ check_true:
 	/*
 	 *	false || FOO --> FOO
 	 */
-	if ((c->type == COND_TYPE_FALSE) && c->next &&
-	    (c->next->type == COND_TYPE_OR)) {
-		fr_cond_t *next;
-
+	if ((c->type == COND_TYPE_FALSE) &&
+	     (c->next->type == COND_TYPE_OR)) {
 	hoist_grandchild:
 		next = talloc_steal(ctx, c->next->next);
 		talloc_free(c->next);
 		talloc_free(c);
 		c = next;
+		goto done;	/* we've already called normalise for FOO */
 	}
 
 	/*
 	 *	true || FOO --> true
 	 */
-	if ((c->type == COND_TYPE_TRUE) && c->next &&
-	    (c->next->type == COND_TYPE_OR)) {
+	if ((c->type == COND_TYPE_TRUE) &&
+	     (c->next->type == COND_TYPE_OR)) {
+
 	drop_child:
-		talloc_free(c->next);
-		c->next = NULL;
+		TALLOC_FREE(c->next);
+		goto done;	/* we don't need to normalise a boolean */
 	}
 
+	/*
+	 *	the short-circuit operators don't call normalise, so
+	 *	we have to check for that, too.
+	 */
+	next = c->next;
+	if (!next->next) goto done;
+
+	/*
+	 *	FOO && true --> FOO
+	 */
+	if ((next->type == COND_TYPE_AND) &&
+	    (next->next->type == COND_TYPE_TRUE)) {
+		goto drop_next_child;
+	}
+
+	/*
+	 *	FOO && false --> false
+	 */
+	if ((next->type == COND_TYPE_AND) &&
+	    (next->next->type == COND_TYPE_FALSE)) {
+		goto hoist_next_grandchild;
+	}
+
+	/*
+	 *	FOO || false --> FOO
+	 */
+	if ((next->type == COND_TYPE_OR) &&
+	     (next->next->type == COND_TYPE_FALSE)) {
+	drop_next_child:
+		TALLOC_FREE(c->next);
+	}
+
+	/*
+	 *	FOO || true --> true
+	 */
+	if ((next->type == COND_TYPE_OR) &&
+	     (next->next->type == COND_TYPE_TRUE)) {
+	hoist_next_grandchild:
+		next = talloc_steal(ctx, next->next);
+		talloc_free(c->next);
+		c = next;
+	}
+
+done:
 	*c_out = c;
 
 	return 0;

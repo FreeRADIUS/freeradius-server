@@ -624,5 +624,20 @@ match true
 condition &radius.User-Name == 'bob'
 match &User-Name == 'bob'
 
+condition !(!(0))
+match false
+
+condition (true) && (false)
+match false
+
+#
+#  More short-circuit evaluations
+#
+condition (&User-Name == "bob") && (false)
+match false
+
+condition (&User-Name == "bob") || (true)
+match true
+
 count
-match 309
+match 317
