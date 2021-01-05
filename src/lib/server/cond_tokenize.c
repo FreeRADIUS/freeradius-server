@@ -1086,6 +1086,7 @@ check_short_circuit:
 	     (next->next->type == COND_TYPE_FALSE)) {
 	drop_next_child:
 		TALLOC_FREE(c->next);
+		goto done;
 	}
 
 	/*
