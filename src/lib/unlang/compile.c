@@ -194,7 +194,7 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, CONF_ITEM const *ci, tmpl_t **vpt_
 	return true;
 }
 
-static bool pass2_fixup_map(fr_cond_t *c)
+static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 {
 	tmpl_t		*vpt;
 	map_t	*map;
@@ -362,8 +362,8 @@ static bool pass2_fixup_map(fr_cond_t *c)
 					c->negate = !c->negate;
 
 					WARN("%s[%d]: Please change (\"%%{%s}\" %s '') to %c&%s",
-					     cf_filename(cf_item_to_section(c->ci)),
-					     cf_lineno(cf_item_to_section(c->ci)),
+					     cf_filename(cf_item_to_section(ci)),
+					     cf_lineno(cf_item_to_section(ci)),
 					     vpt->name, c->negate ? "==" : "!=",
 					     c->negate ? '!' : ' ', vpt->name);
 
@@ -502,8 +502,11 @@ static bool pass2_fixup_map(fr_cond_t *c)
 	return true;
 }
 
-static bool pass2_cond_callback(fr_cond_t *c, UNUSED void *uctx)
+static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 {
+	CONF_SECTION *cs = talloc_get_type_abort(uctx, CONF_SECTION);
+	CONF_ITEM *ci = cf_section_to_item(cs);
+
 	switch (c->type) {
 	/*
 	 *	These don't get optimized.
@@ -526,13 +529,13 @@ static bool pass2_cond_callback(fr_cond_t *c, UNUSED void *uctx)
 	 */
 	case COND_TYPE_TMPL:
 		fr_assert(!tmpl_is_regex_xlat_unresolved(c->data.vpt));
-		return pass2_fixup_tmpl(c, c->ci, &c->data.vpt);
+		return pass2_fixup_tmpl(c, ci, &c->data.vpt);
 
 	/*
 	 *	Fixup the map
 	 */
 	case COND_TYPE_MAP:
-		return pass2_fixup_map(c);
+		return pass2_fixup_cond_map(c, uctx);
 
 	/*
 	 *	Nothing else has pass2 fixups
@@ -2482,7 +2485,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 *	parsed.  Now that they are all defined, we need to fix
 		 *	them up.
 		 */
-		if (!fr_cond_walk(cond, pass2_cond_callback, unlang_ctx)) return NULL;
+		if (!fr_cond_walk(cond, pass2_cond_callback, cs)) return NULL;
 		c = compile_section(parent, unlang_ctx, cs, ext);
 	}
 	if (!c) return NULL;
