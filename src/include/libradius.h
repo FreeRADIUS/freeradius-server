@@ -449,7 +449,7 @@ size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char q
 
 char     	*vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
-size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp, bool raw_value);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
