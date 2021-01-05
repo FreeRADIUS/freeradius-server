@@ -724,7 +724,6 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
  *
  * @param[in] request the request_t
  * @param[in] modreturn the previous module return code
- * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
  * @return
  *	- -1 on failure.
@@ -732,9 +731,11 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t const *c)
+int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 {
 	int rcode = -1;
+	int depth = 0;
+
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
 
@@ -757,8 +758,9 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t co
 			break;
 
 		case COND_TYPE_CHILD:
-			rcode = cond_eval(request, modreturn, depth + 1, c->data.child);
-			break;
+			depth++;
+			c = c->data.child;
+			continue;
 
 		case COND_TYPE_TRUE:
 			rcode = true;
@@ -772,6 +774,9 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t co
 			return -1;
 		}
 
+		/*
+		 *	Errors cause failures.
+		 */
 		if (rcode < 0) return rcode;
 
 		if (c->negate) rcode = !rcode;
@@ -784,13 +789,13 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t co
 		if (c->next) {
 			switch (c->next->type) {
 			case COND_TYPE_AND:
-				if (!rcode) return false;
+				if (!rcode) goto return_to_parent;
 
 				c = c->next; /* skip the && */
 				break;
 
 			case COND_TYPE_OR:
-				if (rcode) return true;
+				if (rcode) goto return_to_parent;
 
 				c = c->next; /* skip the || */
 				break;
@@ -798,6 +803,19 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, int depth, fr_cond_t co
 			default:
 				break;
 			}
+		}
+
+		/*
+		 *	We've fallen off of the end of this evaluation
+		 *	string.  Go back up to the parent, and then to
+		 *	the next sibling of the parent.
+		 */
+		if (!c->next) {
+return_to_parent:
+			c = c->parent;
+			depth--;
+
+			if (!c) break; /* we have to do this, otherwise the next line will fail */
 		}
 
 		c = c->next;

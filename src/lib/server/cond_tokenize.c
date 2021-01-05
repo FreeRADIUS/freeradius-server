@@ -653,6 +653,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			 *	!(!FOO) --> FOO, etc.
 			 */
 			child->negate = (c->negate != child->negate);
+			child->parent = c->parent;
 			talloc_free(c);
 			c = child;
 			continue;
@@ -666,6 +667,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		 */
 		if (!c->next && !c->negate) {
 			(void) talloc_steal(ctx, child);
+			child->parent = c->parent;
 			talloc_free(c);
 			c = child;
 			continue;

@@ -42,7 +42,7 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request)
 	gext = unlang_group_to_cond(g);
 	fr_assert(gext->cond != NULL);
 
-	condition = cond_eval(request, *p_result, 0, gext->cond);
+	condition = cond_eval(request, *p_result, gext->cond);
 	if (condition < 0) {
 		switch (condition) {
 		case -2:
