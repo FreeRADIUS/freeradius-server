@@ -615,7 +615,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
  *	recurse.  Instead, it just looks at itself, and it's immediate
  *	children for optimizations
  */
-static int cond_normalise(fr_token_t lhs_type, fr_cond_t **c_out)
+static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_out)
 {
 	fr_cond_t *c = *c_out;
 
@@ -645,7 +645,8 @@ static int cond_normalise(fr_token_t lhs_type, fr_cond_t **c_out)
 		 *	(FOO) ... --> FOO ...
 		 */
 		if (!child->next) {
-			child->next = c->next;
+			(void) talloc_steal(ctx, child);
+			child->next = talloc_steal(child, c->next);
 
 			/*
 			 *	!(!FOO) --> FOO, etc.
@@ -663,6 +664,7 @@ static int cond_normalise(fr_token_t lhs_type, fr_cond_t **c_out)
 		 *	Because that's different.
 		 */
 		if (!c->next && !c->negate) {
+			(void) talloc_steal(ctx, child);
 			talloc_free(c);
 			c = child;
 			continue;
@@ -1036,8 +1038,7 @@ check_true:
 		fr_cond_t *next;
 
 	hoist_grandchild:
-
-		next = c->next->next;
+		next = talloc_steal(ctx, c->next->next);
 		talloc_free(c->next);
 		talloc_free(c);
 		c = next;
@@ -1300,7 +1301,10 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent
 		 */
 		c->type = COND_TYPE_CHILD;
 
-		slen = cond_tokenize(ctx, &c->data.child, c, cs, &our_in, brace + 1, t_rules);
+		/*
+		 *	Children are allocated from the parent.
+		 */
+		slen = cond_tokenize(c, &c->data.child, c, cs, &our_in, brace + 1, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1326,7 +1330,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent
 	 *	Grab the LHS
 	 */
 	fr_sbuff_marker(&m_lhs_cast, &our_in);
-	slen = cond_tokenize_operand(ctx, &lhs, &m_lhs, &our_in, t_rules);
+	slen = cond_tokenize_operand(c, &lhs, &m_lhs, &our_in, t_rules);
 	if (!lhs) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
@@ -1479,13 +1483,13 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent
 			goto error;
 		}
 
-		MEM(c->data.map = map = talloc(c, map_t));
+		MEM(c->data.map = map = talloc_zero(c, map_t));
 
 		/*
 		 *	Grab the RHS
 		 */
 		fr_sbuff_marker(&m_rhs_cast, &our_in);
-		slen = cond_tokenize_operand(ctx, &rhs, &m_rhs, &our_in, t_rules);
+		slen = cond_tokenize_operand(c, &rhs, &m_rhs, &our_in, t_rules);
 		if (!rhs) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1603,12 +1607,19 @@ closing_brace:
 	if (cond_op != COND_TYPE_INVALID) {
 		fr_cond_t *child;
 
-
-		MEM(child = talloc_zero(ctx, fr_cond_t));
+		/*
+		 *	This node is talloc parented by the previous
+		 *	condition.
+		 */
+		MEM(child = talloc_zero(c, fr_cond_t));
 		child->type = cond_op;
 		child->parent = c->parent;
 
-		slen = cond_tokenize(ctx, &child->next, parent, cs, &our_in, brace, t_rules);
+		/*
+		 *	siblings are allocated from their older
+		 *	siblings.
+		 */
+		slen = cond_tokenize(child, &child->next, parent, cs, &our_in, brace, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1620,15 +1631,18 @@ closing_brace:
 
 	/*
 	 *	May still be looking for a closing brace.
+	 *
+	 *	siblings are allocated from their older
+	 *	siblings.
 	 */
-	slen = cond_tokenize(ctx, &c->next, parent, cs, &our_in, brace, t_rules);
+	slen = cond_tokenize(c, &c->next, parent, cs, &our_in, brace, t_rules);
 	if (slen <= 0) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
 	}
 
 done:
-	if (cond_normalise(lhs ? lhs->quote : T_INVALID, &c) < 0) {
+	if (cond_normalise(ctx, lhs ? lhs->quote : T_INVALID, &c) < 0) {
 		talloc_free(c);
 		return 0;
 	}
@@ -1727,7 +1741,7 @@ int fr_cond_from_map(TALLOC_CTX *ctx, fr_cond_t **head, map_t *map)
 	cond->type = COND_TYPE_MAP;
 	cond->data.map = map;
 
-	if (cond_normalise(T_BARE_WORD, &cond) < 0) return -1;
+	if (cond_normalise(ctx, T_BARE_WORD, &cond) < 0) return -1;
 
 	/*
 	 *	If the condition is still a MAP, then make the map
