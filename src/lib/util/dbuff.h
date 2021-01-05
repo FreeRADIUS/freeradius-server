@@ -200,6 +200,7 @@ do { \
 	.p		= (_dbuff)->p, \
 	.is_const 	= (_dbuff)->is_const, \
 	.adv_parent 	= false, \
+	.shifted	= (_dbuff)->shifted, \
 	.extend		= (_dbuff)->extend, \
 	.uctx		= (_dbuff)->uctx, \
 	.parent 	= (_dbuff) \
@@ -240,6 +241,7 @@ do { \
 	.p		= (_dbuff)->p, \
 	.is_const	= (_dbuff)->is_const, \
 	.adv_parent	= _adv_parent, \
+	.shifted	= (_dbuff)->shifted, \
 	.extend		= NULL, \
 	.uctx		= NULL, \
 	.parent		= (_dbuff) \
