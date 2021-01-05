@@ -2135,7 +2135,7 @@ static ssize_t command_tmpl_rule_request_def(tmpl_rules_t *rules, fr_sbuff_t *va
 {
 	ssize_t slen;
 
-	fr_sbuff_out_by_longest_prefix(&slen, &rules->request_def, request_ref_table, value, REQUEST_UNKNOWN);
+	fr_sbuff_out_by_longest_prefix(&slen, &rules->request_def, tmpl_request_ref_table, value, REQUEST_UNKNOWN);
 
 	if (rules->request_def == REQUEST_UNKNOWN) {
 		fr_strerror_printf("Invalid request specifier \"%pV\"",

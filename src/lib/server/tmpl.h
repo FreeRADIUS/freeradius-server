@@ -92,7 +92,7 @@ typedef enum pair_list_e {
 	PAIR_LIST_STATE,		//!< Attributes to store multiple rounds of
 					///< challenges/responses.
 	PAIR_LIST_UNKNOWN		//!< Unknown list.
-} pair_list_t;
+} tmpl_pair_list_t;
 
 extern fr_table_num_ordered_t const pair_list_table[];
 extern size_t pair_list_table_len;
@@ -105,10 +105,10 @@ typedef enum requests_ref_e {
 
 	REQUEST_PARENT,			//!< Parent (whatever it is).
 	REQUEST_UNKNOWN			//!< Unknown request.
-} request_ref_t;
+} tmpl_request_ref_t;
 
-extern fr_table_num_sorted_t const request_ref_table[];
-extern size_t request_ref_table_len;
+extern fr_table_num_sorted_t const tmpl_request_ref_table[];
+extern size_t tmpl_request_ref_table_len;
 
 /** Base data type is an attribute reference
  *
@@ -286,10 +286,10 @@ struct tmpl_rules_s {
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
 
-	request_ref_t		request_def;		//!< Default request to use with
+	tmpl_request_ref_t	request_def;		//!< Default request to use with
 							///< unqualified attribute references.
 
-	pair_list_t		list_def;		//!< Default list to use with unqualified
+	tmpl_pair_list_t	list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
 
 	fr_dict_attr_t const	*attr_parent;		//!< Point in dictionary tree to resume parsing
@@ -380,7 +380,7 @@ typedef struct {
 	fr_dlist_t		_CONST entry;		//!< Entry in the doubly linked list
 							///< of request references.
 
-	request_ref_t		_CONST request;
+	tmpl_request_ref_t	_CONST request;
 } tmpl_request_t;
 
 
@@ -452,7 +452,7 @@ struct tmpl_s {
 
 			fr_dlist_head_t		rr;		//!< Request to search or insert in.
 
-			pair_list_t		list;		//!< List to search or insert in.
+			tmpl_pair_list_t	list;		//!< List to search or insert in.
 								///< deprecated.
 
 			fr_dlist_head_t		ar;		//!< Head of the attribute reference list.
@@ -583,7 +583,7 @@ extern fr_sbuff_parse_rules_t const *tmpl_parse_rules_quoted[T_TOKEN_LAST];
  *
  * @{
  */
-static inline request_ref_t tmpl_request(tmpl_t const *vpt)
+static inline tmpl_request_ref_t tmpl_request(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt) ||
@@ -651,7 +651,7 @@ static inline int16_t tmpl_num(tmpl_t const *vpt)
 	return ((tmpl_attr_t *)fr_dlist_tail(&vpt->data.attribute.ar))->ar_num;
 }
 
-static inline pair_list_t tmpl_list(tmpl_t const *vpt)
+static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt) ||			/* Remove once list is part of ar dlist */
@@ -753,7 +753,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    fr_pair_list_t *head;
    fr_value_box_t value;
 
-   RADIUS_LIST_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   tmpl_pair_list_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
    if (!list) return -1; // error
 
    value.strvalue = talloc_typed_strdup(NULL, "my new username");
@@ -766,12 +766,12 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  * @param _ref to resolve.
  * @param _list to resolve.
  */
-#define RADIUS_LIST_AND_CTX(_ctx, _head, _request, _ref, _list) \
+#define tmpl_pair_list_AND_CTX(_ctx, _head, _request, _ref, _list) \
 do {\
 	request_t *_rctx = _request; \
 	if ((radius_request(&_rctx, _ref) < 0) || \
-	    !(_head = radius_list(_rctx, _list)) || \
-	    !(_ctx = radius_list_ctx(_rctx, _list))) {\
+	    !(_head = tmpl_request_pair_list(_rctx, _list)) || \
+	    !(_ctx = tmpl_request_pair_list_ctx(_rctx, _list))) {\
 		_ctx = NULL; \
 		_head = NULL; \
 	}\
@@ -846,17 +846,17 @@ typedef enum {
 
 void			tmpl_debug(tmpl_t const *vpt);
 
-fr_pair_list_t		*radius_list(request_t *request, pair_list_t list);
+fr_pair_list_t		*tmpl_request_pair_list(request_t *request, tmpl_pair_list_t list);
 
-fr_radius_packet_t	*radius_packet(request_t *request, pair_list_t list_name);
+fr_radius_packet_t	*tmpl_request_packet(request_t *request, tmpl_pair_list_t list_name);
 
-TALLOC_CTX		*radius_list_ctx(request_t *request, pair_list_t list_name);
+TALLOC_CTX		*tmpl_request_pair_list_ctx(request_t *request, tmpl_pair_list_t list_name);
 
-size_t			radius_list_name(pair_list_t *out, char const *name, pair_list_t default_list);
+size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list);
 
-int			radius_request(request_t **request, request_ref_t name);
+int			radius_request(request_t **request, tmpl_request_ref_t name);
 
-size_t			radius_request_name(request_ref_t *out, char const *name, request_ref_t unknown);
+size_t			radius_request_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t unknown);
 
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...);
 
@@ -893,9 +893,9 @@ void			tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT
 
 void			tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
 
-void			tmpl_attr_set_request(tmpl_t *vpt, request_ref_t request) CC_HINT(nonnull);
+void			tmpl_attr_set_request(tmpl_t *vpt, tmpl_request_ref_t request) CC_HINT(nonnull);
 
-void			tmpl_attr_set_list(tmpl_t *vpt, pair_list_t list) CC_HINT(nonnull);
+void			tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list) CC_HINT(nonnull);
 
 int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 					     fr_dict_attr_t const *da);

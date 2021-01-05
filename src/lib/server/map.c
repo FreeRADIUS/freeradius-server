@@ -898,7 +898,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	/*
 	 *	We always put the request pairs into the environment
 	 */
-	input_pairs = radius_list(request, PAIR_LIST_REQUEST);
+	input_pairs = tmpl_request_pair_list(request, PAIR_LIST_REQUEST);
 
 	/*
 	 *	Automagically switch output type depending on our destination
@@ -997,7 +997,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		fr_pair_list_t *from = NULL;
 
 		if (radius_request(&context, tmpl_request(map->rhs)) == 0) {
-			from = radius_list(context, tmpl_list(map->rhs));
+			from = tmpl_request_pair_list(context, tmpl_list(map->rhs));
 		}
 		if (!from) return 0;
 
@@ -1226,8 +1226,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 	map_t			exp_map;
 	tmpl_t			*exp_lhs;
-	request_ref_t		request_ref;
-	pair_list_t		list_ref;
+	tmpl_request_ref_t	request_ref;
+	tmpl_pair_list_t	list_ref;
 
 	tmpl_cursor_ctx_t	cc = {};
 
@@ -1313,13 +1313,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	if (radius_request(&context, request_ref) < 0) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\" in right side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_value(request_ref_table, request_ref, "<INVALID>"));
+			fr_table_str_by_value(tmpl_request_ref_table, request_ref, "<INVALID>"));
 		rcode = -2;
 		goto finish;
 	}
 
 	list_ref = tmpl_list(map->lhs);
-	list = radius_list(context, list_ref);
+	list = tmpl_request_pair_list(context, list_ref);
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\" in left side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
@@ -1328,7 +1328,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		goto finish;
 	}
 
-	parent = radius_list_ctx(context, tmpl_list(map->lhs));
+	parent = tmpl_request_pair_list_ctx(context, tmpl_list(map->lhs));
 	fr_assert(parent);
 
 	/*

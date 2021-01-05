@@ -757,13 +757,13 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto skip;
 		}
 
-		vps = radius_list(current, tmpl_list(dst));
+		vps = tmpl_request_pair_list(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
-		ctx = radius_list_ctx(current, tmpl_list(dst));
+		ctx = tmpl_request_pair_list_ctx(current, tmpl_list(dst));
 		da = tmpl_da(dst);
 
 		fr_assert(vps);
@@ -1043,12 +1043,12 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			continue;
 		}
 
-		vps = radius_list(current, tmpl_list(dst));
+		vps = tmpl_request_pair_list(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			continue;
 		}
-		ctx = radius_list_ctx(current, tmpl_list(dst));
+		ctx = tmpl_request_pair_list_ctx(current, tmpl_list(dst));
 
 		/*
 		 *  Alternative JSON structure which allows operator,

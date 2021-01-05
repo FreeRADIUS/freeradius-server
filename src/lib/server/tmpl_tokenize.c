@@ -86,14 +86,14 @@ fr_table_num_ordered_t const pair_list_table[] = {
 };
 size_t pair_list_table_len = NUM_ELEMENTS(pair_list_table);
 
-/** Map keywords to #request_ref_t values
+/** Map keywords to #tmpl_request_ref_t values
  */
-fr_table_num_sorted_t const request_ref_table[] = {
+fr_table_num_sorted_t const tmpl_request_ref_table[] = {
 	{ L("current"),		REQUEST_CURRENT			},
 	{ L("outer"),		REQUEST_OUTER			},
 	{ L("parent"),		REQUEST_PARENT			},
 };
-size_t request_ref_table_len = NUM_ELEMENTS(request_ref_table);
+size_t tmpl_request_ref_table_len = NUM_ELEMENTS(tmpl_request_ref_table);
 
 
 /** Special attribute reference indexes
@@ -208,7 +208,7 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 	 */
 	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
 		FR_FAULT_LOG("\t[%u] %s (%u)", i,
-			     fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"), rr->request);
+			     fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"), rr->request);
 		i++;
 	}
 
@@ -285,12 +285,12 @@ void tmpl_debug(tmpl_t const *vpt)
 	}
 }
 
-/** @name Parse list and request qualifiers to #pair_list_t and #request_ref_t values
+/** @name Parse list and request qualifiers to #pair_list_t and #tmpl_request_ref_t values
  *
- * These functions also resolve #pair_list_t and #request_ref_t values to #request_t
+ * These functions also resolve #pair_list_t and #tmpl_request_ref_t values to #request_t
  * structs and the head of #fr_pair_t lists in those structs.
  *
- * For adding new #fr_pair_t to the lists, the #radius_list_ctx function can be used
+ * For adding new #fr_pair_t to the lists, the #tmpl_request_pair_list_ctx function can be used
  * to obtain the appropriate TALLOC_CTX pointer.
  *
  * @note These don't really have much to do with #tmpl_t. They're in the same
@@ -301,17 +301,17 @@ void tmpl_debug(tmpl_t const *vpt)
 /** Resolve attribute name to a #pair_list_t value.
  *
  * Check the name string for #pair_list_t qualifiers and write a #pair_list_t value
- * for that list to out. This value may be passed to #radius_list, along with the current
+ * for that list to out. This value may be passed to #tmpl_pair_list, along with the current
  * #request_t, to get a pointer to the actual list in the #request_t.
  *
  * If we're sure we've definitely found a list qualifier token delimiter (``:``) but the
- * string doesn't match a #radius_list qualifier, return 0 and write #PAIR_LIST_UNKNOWN
+ * string doesn't match a #tmpl_pair_list qualifier, return 0 and write #PAIR_LIST_UNKNOWN
  * to out.
  *
  * If we can't find a string that looks like a request qualifier, set out to def, and
  * return 0.
  *
- * @note #radius_list_name should be called before passing a name string that may
+ * @note #tmpl_pair_list_name should be called before passing a name string that may
  *	contain qualifiers to #fr_dict_attr_by_name.
  *
  * @param[out] out Where to write the list qualifier.
@@ -322,9 +322,9 @@ void tmpl_debug(tmpl_t const *vpt)
  *	start of the attribute name (if any).
  *
  * @see pair_list
- * @see radius_list
+ * @see tmpl_pair_list
  */
-size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
+size_t tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t def)
 {
 	char const *p = name;
 	char const *q;
@@ -378,31 +378,31 @@ size_t radius_list_name(pair_list_t *out, char const *name, pair_list_t def)
 	}
 }
 
-/** Resolve attribute name to a #request_ref_t value.
+/** Resolve attribute name to a #tmpl_request_ref_t value.
  *
  * Check the name string for qualifiers that reference a parent #request_t.
  *
- * If we find a string that matches a #request_ref_t qualifier, return the number of chars
+ * If we find a string that matches a #tmpl_request_ref_t qualifier, return the number of chars
  * we consumed.
  *
  * If we're sure we've definitely found a list qualifier token delimiter (``*``) but the
- * qualifier doesn't match one of the #request_ref_t qualifiers, return 0 and set out to
+ * qualifier doesn't match one of the #tmpl_request_ref_t qualifiers, return 0 and set out to
  * #REQUEST_UNKNOWN.
  *
  * If we can't find a string that looks like a request qualifier, set out to def, and
  * return 0.
  *
- * @param[out] out The #request_ref_t value the name resolved to (or #REQUEST_UNKNOWN).
+ * @param[out] out The #tmpl_request_ref_t value the name resolved to (or #REQUEST_UNKNOWN).
  * @param[in] name of attribute.
  * @param[in] def default request ref to return if no request qualifier is present.
  * @return 0 if no valid request qualifier could be found, else the number of bytes consumed.
  *	The caller may then advanced the name pointer by the value returned, to get the
  *	start of the attribute list or attribute name(if any).
  *
- * @see radius_list_name
- * @see request_ref_table
+ * @see tmpl_pair_list_name
+ * @see tmpl_request_ref_table
  */
-size_t radius_request_name(request_ref_t *out, char const *name, request_ref_t def)
+size_t radius_request_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t def)
 {
 	char const *p, *q;
 
@@ -420,7 +420,7 @@ size_t radius_request_name(request_ref_t *out, char const *name, request_ref_t d
 		return 0;
 	}
 
-	*out = fr_table_value_by_substr(request_ref_table, name, q - p, REQUEST_UNKNOWN);
+	*out = fr_table_value_by_substr(tmpl_request_ref_table, name, q - p, REQUEST_UNKNOWN);
 	if (*out == REQUEST_UNKNOWN) return 0;
 
 	return (q + 1) - p;
@@ -644,7 +644,7 @@ tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char con
  /** Allocate a new request reference and add it to the end of the attribute reference list
  *
  */
-static tmpl_request_t *tmpl_req_ref_add(tmpl_t *vpt, request_ref_t request)
+static tmpl_request_t *tmpl_req_ref_add(tmpl_t *vpt, tmpl_request_ref_t request)
 {
 	tmpl_request_t	*rr;
 	TALLOC_CTX	*ctx;
@@ -919,7 +919,7 @@ void tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to)
 /** Set the request for an attribute ref
  *
  */
-void tmpl_attr_set_request(tmpl_t *vpt, request_ref_t request)
+void tmpl_attr_set_request(tmpl_t *vpt, tmpl_request_ref_t request)
 {
 	fr_assert_msg(tmpl_is_attr(vpt), "Expected tmpl type 'attr', got '%s'",
 		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
@@ -931,7 +931,7 @@ void tmpl_attr_set_request(tmpl_t *vpt, request_ref_t request)
 	TMPL_ATTR_VERIFY(vpt);
 }
 
-void tmpl_attr_set_list(tmpl_t *vpt, pair_list_t list)
+void tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list)
 {
 	vpt->data.attribute.list = list;
 
@@ -1769,14 +1769,14 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 					      	     tmpl_rules_t const *t_rules,
 					      	     unsigned int depth)
 {
-	request_ref_t		ref;
+	tmpl_request_ref_t		ref;
 	size_t			ref_len;
 	tmpl_request_t		*rr;
 	fr_dlist_head_t		*list = &vpt->data.attribute.rr;
 	fr_sbuff_marker_t	s_m;
 
 	fr_sbuff_marker(&s_m, name);
-	fr_sbuff_out_by_longest_prefix(&ref_len, &ref, request_ref_table, name, t_rules->request_def);
+	fr_sbuff_out_by_longest_prefix(&ref_len, &ref, tmpl_request_ref_table, name, t_rules->request_def);
 
 	/*
 	 *	No match
@@ -1854,15 +1854,15 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
- * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
- *				If only #request_ref_t #pair_list_t qualifiers are found,
+ * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
+ *				If only #tmpl_request_ref_t #pair_list_t qualifiers are found,
  *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
  * @param[in] p_rules		Formatting rules used to check for trailing garbage.
  * @param[in] t_rules		Rules which control parsing:
  *				- dict_def		The default dictionary to use if attributes
  *							are unqualified.
  *				- request_def		The default #request_t to set if no
- *							#request_ref_t qualifiers are found in name.
+ *							#tmpl_request_ref_t qualifiers are found in name.
  *				- list_def		The default list to set if no #pair_list_t
  *							qualifiers are found in the name.
  *				- allow_unknown		If true attributes in the format accepted by
@@ -2054,8 +2054,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  * @param[out] err		May be NULL.  Provides the exact error that the parser hit
  *				when processing the attribute ref.
  * @param[out] out		Where to write pointer to new #tmpl_t.
- * @param[in] name		of attribute including #request_ref_t and #pair_list_t qualifiers.
- *				If only #request_ref_t #pair_list_t qualifiers are found,
+ * @param[in] name		of attribute including #tmpl_request_ref_t and #pair_list_t qualifiers.
+ *				If only #tmpl_request_ref_t #pair_list_t qualifiers are found,
  *				a #TMPL_TYPE_LIST #tmpl_t will be produced.
  * @param[in] t_rules		Rules which control parsing.  See tmpl_afrom_attr_substr() for details.
  *
@@ -3550,7 +3550,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
 		if (rr->request == REQUEST_CURRENT) continue;	/* Don't print the default request */
 
-		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, request_ref_table, rr->request, "<INVALID>");
+		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, tmpl_request_ref_table, rr->request, "<INVALID>");
 		printed_rr = true;
 	}
 

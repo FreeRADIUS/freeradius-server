@@ -36,16 +36,16 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct {
-	char const	*name;
-	bool		wait;
-	char const	*program;
-	char const	*input;
-	char const	*output;
-	pair_list_t	input_list;
-	pair_list_t	output_list;
-	bool		shell_escape;
-	fr_time_delta_t	timeout;
-	bool		timeout_is_set;
+	char const		*name;
+	bool			wait;
+	char const		*program;
+	char const		*input;
+	char const		*output;
+	tmpl_pair_list_t	input_list;
+	tmpl_pair_list_t	output_list;
+	bool			shell_escape;
+	fr_time_delta_t		timeout;
+	bool			timeout_is_set;
 
 	tmpl_t	*tmpl;
 } rlm_exec_t;
@@ -113,7 +113,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	if (inst->input_list) {
-		input_pairs = radius_list(request, inst->input_list);
+		input_pairs = tmpl_request_pair_list(request, inst->input_list);
 		if (!input_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
 			return -1;
@@ -159,7 +159,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	if (inst->input) {
 		p = inst->input;
-		p += radius_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
+		p += tmpl_pair_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err(conf, "Invalid input list '%s'", inst->input);
 			return -1;
@@ -168,7 +168,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	if (inst->output) {
 		p = inst->output;
-		p += radius_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
+		p += tmpl_pair_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err(conf, "Invalid output list '%s'", inst->output);
 			return -1;
@@ -270,7 +270,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 	if (inst->input) {
 		fr_pair_list_t *input_pairs;
 
-		input_pairs = radius_list(request, inst->input_list);
+		input_pairs = tmpl_request_pair_list(request, inst->input_list);
 		if (!input_pairs) {
 			RETURN_MODULE_INVALID;
 		}
@@ -362,10 +362,10 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 
 		RDEBUG("EXEC GOT -- %pV", m->box);
 
-		output_pairs = radius_list(request, inst->output_list);
+		output_pairs = tmpl_request_pair_list(request, inst->output_list);
 		fr_assert(output_pairs != NULL);
 
-		ctx = radius_list_ctx(request, inst->output_list);
+		ctx = tmpl_request_pair_list_ctx(request, inst->output_list);
 
 		vps = fr_pair_list_afrom_box(ctx, request->dict, m->box);
 		if (vps) fr_pair_list_move(output_pairs, &vps);
@@ -425,14 +425,14 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	if (inst->input) {
 		fr_pair_list_t *input_pairs;
 
-		input_pairs = radius_list(request, inst->input_list);
+		input_pairs = tmpl_request_pair_list(request, inst->input_list);
 		if (!input_pairs) RETURN_MODULE_INVALID;
 
 		env_pairs = *input_pairs;
 	}
 
 	if (inst->output) {
-		if (!radius_list(request, inst->output_list)) {
+		if (!tmpl_request_pair_list(request, inst->output_list)) {
 			RETURN_MODULE_INVALID;
 		}
 	}

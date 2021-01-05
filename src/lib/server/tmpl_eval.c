@@ -45,7 +45,7 @@ RCSID("$Id$")
  *
  * @see tmpl_cursor_init
  */
-fr_pair_list_t *radius_list(request_t *request, pair_list_t list)
+fr_pair_list_t *tmpl_request_pair_list(request_t *request, tmpl_pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -75,38 +75,6 @@ fr_pair_list_t *radius_list(request_t *request, pair_list_t list)
 	return NULL;
 }
 
-/** Resolve a list to the #fr_radius_packet_t holding the HEAD pointer for a #fr_pair_t list
- *
- * Returns a pointer to the #fr_radius_packet_t that holds the HEAD pointer of a given list,
- * for the current #request_t.
- *
- * @param[in] request To resolve list in.
- * @param[in] list #pair_list_t value to resolve to #fr_radius_packet_t.
- * @return
- *	- #fr_radius_packet_t on success.
- *	- NULL on failure.
- *
- * @see radius_list
- */
-fr_radius_packet_t *radius_packet(request_t *request, pair_list_t list)
-{
-	switch (list) {
-	/* Don't add default */
-	case PAIR_LIST_STATE:
-	case PAIR_LIST_CONTROL:
-	case PAIR_LIST_UNKNOWN:
-		return NULL;
-
-	case PAIR_LIST_REQUEST:
-		return request->packet;
-
-	case PAIR_LIST_REPLY:
-		return request->reply;
-	}
-
-	return NULL;
-}
-
 /** Return the correct TALLOC_CTX to alloc #fr_pair_t in, for a list
  *
  * Allocating new #fr_pair_t in the context of a #request_t is usually wrong.
@@ -120,9 +88,9 @@ fr_radius_packet_t *radius_packet(request_t *request, pair_list_t list)
  *	- TALLOC_CTX on success.
  *	- NULL on failure.
  *
- * @see radius_list
+ * @see tmpl_pair_list
  */
-TALLOC_CTX *radius_list_ctx(request_t *request, pair_list_t list)
+TALLOC_CTX *tmpl_request_pair_list_ctx(request_t *request, tmpl_pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -147,13 +115,45 @@ TALLOC_CTX *radius_list_ctx(request_t *request, pair_list_t list)
 	return NULL;
 }
 
-/** Resolve a #request_ref_t to a #request_t.
+/** Resolve a list to the #fr_radius_packet_t holding the HEAD pointer for a #fr_pair_t list
+ *
+ * Returns a pointer to the #fr_radius_packet_t that holds the HEAD pointer of a given list,
+ * for the current #request_t.
+ *
+ * @param[in] request To resolve list in.
+ * @param[in] list #pair_list_t value to resolve to #fr_radius_packet_t.
+ * @return
+ *	- #fr_radius_packet_t on success.
+ *	- NULL on failure.
+ *
+ * @see tmpl_pair_list
+ */
+fr_radius_packet_t *tmpl_request_packet(request_t *request, tmpl_pair_list_t list)
+{
+	switch (list) {
+	/* Don't add default */
+	case PAIR_LIST_STATE:
+	case PAIR_LIST_CONTROL:
+	case PAIR_LIST_UNKNOWN:
+		return NULL;
+
+	case PAIR_LIST_REQUEST:
+		return request->packet;
+
+	case PAIR_LIST_REPLY:
+		return request->reply;
+	}
+
+	return NULL;
+}
+
+/** Resolve a #tmpl_request_ref_t to a #request_t.
  *
  * Sometimes #request_t structs may be chained to each other, as is the case
- * when internally proxying EAP. This function resolves a #request_ref_t
+ * when internally proxying EAP. This function resolves a #tmpl_request_ref_t
  * to a #request_t higher in the chain than the current #request_t.
  *
- * @see radius_list
+ * @see tmpl_pair_list
  * @param[in,out] context #request_t to start resolving from, and where to write
  *	a pointer to the resolved #request_t back to.
  * @param[in] name (request) to resolve.
@@ -161,7 +161,7 @@ TALLOC_CTX *radius_list_ctx(request_t *request, pair_list_t list)
  *	- 0 if request is valid in this context.
  *	- -1 if request is not valid in this context.
  */
-int radius_request(request_t **context, request_ref_t name)
+int radius_request(request_t **context, tmpl_request_ref_t name)
 {
 	request_t *request = *context;
 
@@ -1217,7 +1217,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 			if (err) {
 				*err = -3;
 				fr_strerror_printf("Request context \"%s\" not available",
-						   fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"));
+						   fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
 			}
 		error:
 			memset(cc, 0, sizeof(*cc));	/* so tmpl_cursor_clear doesn't explode */
@@ -1228,7 +1228,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	/*
 	 *	Get the right list in the specified context
 	 */
-	list_head = radius_list(request, tmpl_list(vpt));
+	list_head = tmpl_request_pair_list(request, tmpl_list(vpt));
 	if (!list_head) {
 		if (err) {
 			*err = -2;
@@ -1237,7 +1237,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 		}
 		goto error;
 	}
-	list_ctx = radius_list_ctx(request, tmpl_list(vpt));
+	list_ctx = tmpl_request_pair_list_ctx(request, tmpl_list(vpt));
 
 	/*
 	 *	Initialise the temporary cursor context
@@ -1471,7 +1471,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 		TALLOC_CTX	*ctx;
 		fr_pair_list_t	*head;
 
-		RADIUS_LIST_AND_CTX(ctx, head, request, tmpl_request(vpt), tmpl_list(vpt));
+		tmpl_pair_list_AND_CTX(ctx, head, request, tmpl_request(vpt), tmpl_list(vpt));
 
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(vpt)));
 		*out = vp;
@@ -1549,7 +1549,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
 		if (radius_request(&request, rr->request) < 0) {
 			fr_strerror_printf("Request context \"%s\" not available",
-					   fr_table_str_by_value(request_ref_table, rr->request, "<INVALID>"));
+					   fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
 			return -3;
 		}
 	}
@@ -1557,13 +1557,13 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	/*
 	 *	Get the right list in the specified context
 	 */
-	list_head = radius_list(request, tmpl_list(vpt));
+	list_head = tmpl_request_pair_list(request, tmpl_list(vpt));
 	if (!list_head) {
 		fr_strerror_printf("List \"%s\" not available in this context",
 				   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
 		return -2;
 	}
-	list_ctx = radius_list_ctx(request, tmpl_list(vpt));
+	list_ctx = tmpl_request_pair_list_ctx(request, tmpl_list(vpt));
 
 	/*
 	 *	If it's a list, just return the list head

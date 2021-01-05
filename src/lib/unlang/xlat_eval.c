@@ -464,7 +464,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, r
 	 *	If there's no packet, we can't print any attribute
 	 *	referencing it.
 	 */
-	packet = radius_packet(request, tmpl_list(vpt));
+	packet = tmpl_request_packet(request, tmpl_list(vpt));
 	if (!packet) return XLAT_ACTION_DONE;
 
 	if (tmpl_da(vpt) == attr_packet_type) {

@@ -110,8 +110,8 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			if (tmpl_request(attr->lhs) != tmpl_request(map->lhs)) {
 				RWDEBUG("valuepair \"%pV\" has conflicting request qualifier (%s vs %s), skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
-					fr_table_str_by_value(request_ref_table, tmpl_request(attr->lhs), "<INVALID>"),
-					fr_table_str_by_value(request_ref_table, tmpl_request(map->lhs), "<INVALID>"));
+					fr_table_str_by_value(tmpl_request_ref_table, tmpl_request(attr->lhs), "<INVALID>"),
+					fr_table_str_by_value(tmpl_request_ref_table, tmpl_request(map->lhs), "<INVALID>"));
 			next_pair:
 				talloc_free(attr);
 				continue;
