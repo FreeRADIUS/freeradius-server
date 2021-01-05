@@ -963,6 +963,28 @@ static void test_file_extend(void)
 	fclose(fp);
 }
 
+static void test_file_extend_max(void)
+{
+	fr_sbuff_t	sbuff;
+	fr_sbuff_uctx_file_t	fctx;
+	FILE		*fp;
+	char		buff[16];
+	char		fbuff[] = "                        xyzzy";
+	char		*post_ws;
+
+	TEST_CASE("Initialization");
+	fp = fmemopen(fbuff, sizeof(fbuff) - 1, "r");
+	TEST_CHECK(fp != NULL);
+	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, sizeof(fbuff) - 8) == &sbuff);
+
+	TEST_CASE("Confirm that max stops us from seeing xyzzy");
+	TEST_CHECK_LEN(sizeof(fbuff) - 8, fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL));
+	(void) fr_sbuff_out_abstrncpy(NULL, &post_ws, &sbuff, 24);
+	TEST_CHECK_STRCMP(post_ws, "");
+	talloc_free(post_ws);
+	fclose(fp);
+}
+
 static void test_adv_past_str(void)
 {
 	fr_sbuff_t	sbuff;
@@ -1429,6 +1451,7 @@ TEST_LIST = {
 	{ "fr_sbuff_talloc_extend_multi_level",	test_talloc_extend_multi_level },
 	{ "fr_sbuff_talloc_extend_with_marker",	test_talloc_extend_with_marker },
 	{ "fr_sbuff_file_extend",		test_file_extend },
+	{ "fr_sbuff_file_extend_max",		test_file_extend_max },
 
 	{ "fr_sbuff_no_advance",		test_no_advance },
 

@@ -232,7 +232,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
  */
 size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 {
-	size_t			read, available;
+	size_t			read, available, total_read;
 	fr_sbuff_uctx_file_t	*fctx;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -241,6 +241,12 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 	if (fctx->eof) return 0;
 
 	if (extension == SIZE_MAX) extension = 0;
+
+	total_read = sbuff->shifted + (sbuff->end - sbuff->buff);
+	if (total_read >= fctx->max) {
+		fr_strerror_const("Can't satisfy extension request, max bytes read");
+		return 0;	/* There's no way we could satisfy the extension request */
+	}
 
 	if (fr_sbuff_used(sbuff)) {
 		/*
@@ -253,6 +259,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 	}
 
 	available = fctx->buff_end - sbuff->end;
+	if (available > (fctx->max - total_read)) available = fctx->max - total_read;
 	if (available < extension) {
 		fr_strerror_printf("Can't satisfy extension request for %zu bytes", extension);
 		return 0;	/* There's no way we could satisfy the extension request */
@@ -1945,7 +1952,7 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 		    (status & FR_SBUFF_EXTEND_ERROR) == 0) {
 			return true;
 		}
-		
+
 		return false;
 	}
 
