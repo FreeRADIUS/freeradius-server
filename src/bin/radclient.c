@@ -326,7 +326,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 {
 	FILE		*packets, *filters = NULL;
 
-	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
 	rc_request_t	*request;
 	bool		packets_done = false;
@@ -445,9 +444,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			/*
 			 *	xlat expansions aren't supported here
 			 */
-			for (vp = fr_cursor_init(&cursor, &request->filter);
+			for (vp = fr_pair_list_head(&request->filter);
 			     vp;
-			     vp = fr_cursor_next(&cursor)) {
+			     vp = fr_pair_list_next(&request->filter, vp)) {
 			     again:
 				/*
 				 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
@@ -462,10 +461,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				}
 
 				if (vp->da == attr_packet_type) {
-					vp = fr_cursor_remove(&cursor);	/* so we don't break the filter */
+					fr_pair_t *next;
+					next = fr_pair_list_next(&request->filter, vp);	/* so we don't break the filter */
 					request->filter_code = vp->vp_uint32;
-					talloc_free(vp);
-					vp = fr_cursor_current(&cursor);
+					fr_pair_delete(&request->filter, vp);
+					vp = next;
 					if (!vp) break;
 					goto again;
 				}
@@ -480,9 +480,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Process special attributes
 		 */
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 			/*
 			 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 			 */
