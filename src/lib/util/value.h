@@ -601,6 +601,9 @@ ssize_t		fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 					  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
 				  	  uint8_t const *src, size_t len, bool tainted);
+ssize_t		fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
+						fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+						fr_dbuff_t *dbuff, size_t len, bool tainted);
 
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
@@ -663,6 +666,9 @@ int		fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst,
 int		fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				      char const *src, size_t len, bool tainted);
 
+int		fr_value_box_bstrndup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					    fr_dbuff_t *dbuff, size_t len, bool tainted);
+
 int		fr_value_box_bstrdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					   char const *src, bool tainted);
 
@@ -688,6 +694,9 @@ int		fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *ds
 
 int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				    uint8_t const *src, size_t len, bool tainted);
+
+int		fr_value_box_memdup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					  fr_dbuff_t *dbuff, size_t len, bool tainted);
 
 int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					   uint8_t const *src, bool tainted);
