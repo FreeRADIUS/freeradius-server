@@ -647,13 +647,14 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		 */
 		if (!child->next) {
 			(void) talloc_steal(ctx, child);
+			child->parent = c->parent;
 			child->next = talloc_steal(child, c->next);
 
 			/*
 			 *	!(!FOO) --> FOO, etc.
 			 */
 			child->negate = (c->negate != child->negate);
-			child->parent = c->parent;
+
 			talloc_free(c);
 			c = child;
 			continue;
@@ -668,6 +669,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		if (!c->next && !c->negate) {
 			(void) talloc_steal(ctx, child);
 			child->parent = c->parent;
+
 			talloc_free(c);
 			c = child;
 			continue;
@@ -1289,7 +1291,6 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
  *
  *  @param[in] ctx	talloc ctx
  *  @param[out] out	pointer to the returned condition structure
- *  @param[in] parent	the parent of this #fr_cond_t
  *  @param[in] cs	our configuration section
  *  @param[in] in	the start of the string to process.  Should be "(..."
  *  @param[in] brace	look for a closing brace (how many deep we are)
@@ -1298,7 +1299,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent,
+static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			     CONF_SECTION *cs, fr_sbuff_t *in, int brace,
 			     tmpl_rules_t const *t_rules)
 {
@@ -1313,7 +1314,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent
 	fr_sbuff_marker_t	m_lhs, m_lhs_cast, m_op, m_rhs, m_rhs_cast;
 
 	MEM(c = talloc_zero(ctx, fr_cond_t));
-	c->parent = parent;
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	if (!fr_sbuff_extend(&our_in)) {
@@ -1343,7 +1343,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent
 	 *	(COND)
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
-
 		/*
 		 *	We've already eaten one layer of
 		 *	brackets.  Go recurse to get more.
@@ -1353,7 +1352,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent
 		/*
 		 *	Children are allocated from the parent.
 		 */
-		slen = cond_tokenize(c, &c->data.child, c, cs, &our_in, brace + 1, t_rules);
+		slen = cond_tokenize(c, &c->data.child, cs, &our_in, brace + 1, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1662,13 +1661,12 @@ closing_brace:
 		 */
 		MEM(child = talloc_zero(c, fr_cond_t));
 		child->type = cond_op;
-		child->parent = c->parent;
 
 		/*
 		 *	siblings are allocated from their older
 		 *	siblings.
 		 */
-		slen = cond_tokenize(child, &child->next, parent, cs, &our_in, brace, t_rules);
+		slen = cond_tokenize(child, &child->next, cs, &our_in, brace, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1684,7 +1682,7 @@ closing_brace:
 	 *	siblings are allocated from their older
 	 *	siblings.
 	 */
-	slen = cond_tokenize(c, &c->next, parent, cs, &our_in, brace, t_rules);
+	slen = cond_tokenize(c, &c->next, cs, &our_in, brace, t_rules);
 	if (slen <= 0) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
@@ -1699,6 +1697,22 @@ done:
 	*out = c;
 
 	return fr_sbuff_set(in, &our_in);
+}
+
+/*
+ *	Normalisation will restructure the conditional tree, including
+ *	removing and/or rearranging the parents.  So we reparent
+ *	everything after the full normalization has run.
+ */
+static void cond_reparent(fr_cond_t *c, fr_cond_t *parent)
+{
+	while (c) {
+		c->parent = parent;
+
+		if (c->type == COND_TYPE_CHILD) cond_reparent(c->data.child, c);
+
+		c = c->next;
+	}
 }
 
 /** Tokenize a conditional check
@@ -1716,6 +1730,8 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 	char buffer[8192];
 	ssize_t diff, slen;
 
+	*head = NULL;
+
 	if (!cf_expand_variables(cf_filename(cs), cf_lineno(cs), cf_item_to_section(cf_parent(cs)),
 				 buffer, sizeof(buffer),
 				 fr_sbuff_current(in), fr_sbuff_remaining(in), NULL)) {
@@ -1724,8 +1740,13 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 	}
 
 	diff = fr_sbuff_remaining(in) - strlen(buffer); /* Hack so that we appear to consume more of the string */
-	slen = cond_tokenize(cs, head, NULL, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0, rules);
+	slen = cond_tokenize(cs, head, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0, rules);
 	if (slen < 0) return slen;
+
+	/*
+	 *	Now that everything has been normalized, reparent the children.
+	 */
+	if (*head) cond_reparent(*head, NULL);
 
 	return slen + diff;
 }

@@ -781,44 +781,42 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 
 		if (c->negate) rcode = !rcode;
 
-		if (!c->next) break;
-
-		/*
-		 *	Do short-circuit evaluations.
-		 */
-		if (c->next) {
-			switch (c->next->type) {
-			case COND_TYPE_AND:
-				if (!rcode) goto return_to_parent;
-
-				c = c->next; /* skip the && */
-				break;
-
-			case COND_TYPE_OR:
-				if (rcode) goto return_to_parent;
-
-				c = c->next; /* skip the || */
-				break;
-
-			default:
-				break;
-			}
-		}
-
 		/*
 		 *	We've fallen off of the end of this evaluation
 		 *	string.  Go back up to the parent, and then to
 		 *	the next sibling of the parent.
+		 *
+		 *	Do this repeatedly until we have a c->next
 		 */
-		if (!c->next) {
+		while (!c->next) {
 return_to_parent:
 			c = c->parent;
-			depth--;
+			if (!c) return rcode;
 
-			if (!c) break; /* we have to do this, otherwise the next line will fail */
+			depth--;
+			fr_assert(depth >= 0);
 		}
 
-		c = c->next;
+		/*
+		 *	Do short-circuit evaluations.
+		 */
+		switch (c->next->type) {
+		case COND_TYPE_AND:
+			if (!rcode) goto return_to_parent;
+
+			c = c->next->next; /* skip the && */
+			break;
+
+		case COND_TYPE_OR:
+			if (rcode) goto return_to_parent;
+
+			c = c->next->next; /* skip the || */
+			break;
+
+		default:
+			c = c->next;
+			break;
+		}
 	}
 
 	if (rcode < 0) {
