@@ -80,7 +80,7 @@ struct fr_cond_s {
 	fr_cond_type_t		type;
 
 	union {
-		map_t		*map;		//!< Binary expression.
+		map_t			*map;		//!< Binary expression.
 		tmpl_t			*vpt;		//!< Unary expression.
 		fr_cond_t  		*child;		//!< Nested condition.
 		rlm_rcode_t		rcode;		//!< Rcode check.   We handle this outside of
@@ -92,6 +92,7 @@ struct fr_cond_s {
 
 	fr_dict_attr_t const	*cast;		//!< Legacy - Should be removed.
 
+	fr_cond_t		*parent;
 	fr_cond_t		*next;
 };
 

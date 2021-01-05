@@ -1238,8 +1238,9 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 /** Tokenize a conditional check
  *
  *  @param[in] ctx	talloc ctx
- *  @param[in] cs	our configuration section
  *  @param[out] out	pointer to the returned condition structure
+ *  @param[in] parent	the parent of this #fr_cond_t
+ *  @param[in] cs	our configuration section
  *  @param[in] in	the start of the string to process.  Should be "(..."
  *  @param[in] brace	look for a closing brace (how many deep we are)
  *  @param[in] t_rules	for attribute parsing
@@ -1247,7 +1248,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
+static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out, fr_cond_t *parent,
 			     CONF_SECTION *cs, fr_sbuff_t *in, int brace,
 			     tmpl_rules_t const *t_rules)
 {
@@ -1262,6 +1263,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	fr_sbuff_marker_t	m_lhs, m_lhs_cast, m_op, m_rhs, m_rhs_cast;
 
 	MEM(c = talloc_zero(ctx, fr_cond_t));
+	c->parent = parent;
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	if (!fr_sbuff_extend(&our_in)) {
@@ -1298,7 +1300,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 */
 		c->type = COND_TYPE_CHILD;
 
-		slen = cond_tokenize(ctx, &c->data.child, cs, &our_in, brace + 1, t_rules);
+		slen = cond_tokenize(ctx, &c->data.child, c, cs, &our_in, brace + 1, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1604,8 +1606,9 @@ closing_brace:
 
 		MEM(child = talloc_zero(ctx, fr_cond_t));
 		child->type = cond_op;
+		child->parent = c->parent;
 
-		slen = cond_tokenize(ctx, &child->next, cs, &our_in, brace, t_rules);
+		slen = cond_tokenize(ctx, &child->next, parent, cs, &our_in, brace, t_rules);
 		if (slen <= 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
@@ -1618,7 +1621,7 @@ closing_brace:
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = cond_tokenize(ctx, &c->next, cs, &our_in, brace, t_rules);
+	slen = cond_tokenize(ctx, &c->next, parent, cs, &our_in, brace, t_rules);
 	if (slen <= 0) {
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
@@ -1658,7 +1661,7 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 	}
 
 	diff = fr_sbuff_remaining(in) - strlen(buffer); /* Hack so that we appear to consume more of the string */
-	slen = cond_tokenize(cs, head, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0, rules);
+	slen = cond_tokenize(cs, head, NULL, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0, rules);
 	if (slen < 0) return slen;
 
 	return slen + diff;
