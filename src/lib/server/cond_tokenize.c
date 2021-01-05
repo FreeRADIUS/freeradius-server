@@ -1297,7 +1297,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	brackets.  Go recurse to get more.
 		 */
 		c->type = COND_TYPE_CHILD;
-		c->ci = cf_section_to_item(cs);
 
 		slen = cond_tokenize(ctx, &c->data.child, cs, &our_in, brace + 1, t_rules);
 		if (slen <= 0) {
@@ -1416,14 +1415,12 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			TALLOC_FREE(lhs);
 
 			c->type = COND_TYPE_RCODE;
-			c->ci = cf_section_to_item(cs);
 			c->data.rcode = rcode;
 
 			goto closing_brace;
 		}
 
 		c->type = COND_TYPE_TMPL;
-		c->ci = cf_section_to_item(cs);
 		c->data.vpt = lhs;
 
 		goto closing_brace;
@@ -1454,7 +1451,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	The next thing should now be a comparison operator.
 		 */
 		c->type = COND_TYPE_MAP;
-		c->ci = cf_section_to_item(cs);
 
 		switch (op) {
 #ifdef HAVE_REGEX
@@ -1608,7 +1604,6 @@ closing_brace:
 
 		MEM(child = talloc_zero(ctx, fr_cond_t));
 		child->type = cond_op;
-		child->ci = cf_section_to_item(cs);
 
 		slen = cond_tokenize(ctx, &child->next, cs, &our_in, brace, t_rules);
 		if (slen <= 0) {

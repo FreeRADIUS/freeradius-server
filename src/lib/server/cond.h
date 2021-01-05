@@ -79,9 +79,6 @@ typedef enum {
 struct fr_cond_s {
 	fr_cond_type_t		type;
 
-	CONF_ITEM const		*ci;		//!< Configuration item this condition
-						///< is derived from.
-
 	union {
 		map_t		*map;		//!< Binary expression.
 		tmpl_t			*vpt;		//!< Unary expression.
