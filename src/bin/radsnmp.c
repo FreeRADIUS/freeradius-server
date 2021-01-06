@@ -206,7 +206,7 @@ static fr_radius_packet_t *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
  *	- >0 on success (how much of the OID string we parsed).
  *	- <=0 on failure (where format error occurred).
  */
-static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_cursor_t *cursor,
+static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_dcursor_t *cursor,
 				     char const *oid, int type, char const *value)
 {
 	ssize_t			slen;
@@ -219,7 +219,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 
 	if (!oid) return 0;
 
-	fr_cursor_tail(cursor);
+	fr_dcursor_tail(cursor);
 
 	/*
 	 *	Trim first.
@@ -281,7 +281,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		MEM(vp = fr_pair_afrom_da(ctx, index_attr));
 		vp->vp_uint32 = attr;
 
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 	}
 
 	/*
@@ -289,7 +289,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	 */
 	if (slen <= 0) {
 	error:
-		fr_cursor_free_list(cursor);
+		fr_dcursor_free_list(cursor);
 		return slen;
 	}
 
@@ -341,7 +341,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 			break;
 		}
 
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 		return slen;
 	}
 
@@ -359,7 +359,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	MEM(vp = fr_pair_afrom_da(ctx, attr_freeradius_snmp_type));
 	vp->vp_uint32 = type;
 
-	fr_cursor_append(cursor, vp);
+	fr_dcursor_append(cursor, vp);
 
 	return slen;
 }
@@ -388,7 +388,7 @@ static int radsnmp_get_response(int fd,
 				fr_dict_attr_t const *root, fr_dict_attr_t const *type,
 				fr_pair_list_t *head)
 {
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_pair_t		*vp, *type_vp;
 	fr_dict_attr_t const	*parent = root;
 	unsigned int		written = 0;
@@ -426,9 +426,9 @@ static int radsnmp_get_response(int fd,
 	 *	attribute grouping to coalesce all related index
 	 *	attributes under a single request OID.
 	 */
-	 for (vp = fr_cursor_init(&cursor, head);
+	 for (vp = fr_dcursor_init(&cursor, head);
 	      vp;
-	      vp = fr_cursor_next(&cursor)) {
+	      vp = fr_dcursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
 	      	/*
 	      	 *	We only care about TLV attributes beneath our root
@@ -491,7 +491,7 @@ static int radsnmp_get_response(int fd,
 		/*
 		 *	Next attribute should be the type
 		 */
-		type_vp = fr_cursor_next(&cursor);
+		type_vp = fr_dcursor_next(&cursor);
 		if (!type_vp || (type_vp->da != type)) {
 			fr_strerror_printf("No %s found in response, or occurred out of order", type->name);
 			return -1;
@@ -646,7 +646,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		char			*line;
 		ssize_t			slen;
 
-		fr_cursor_t		cursor;
+		fr_dcursor_t		cursor;
 		fr_pair_t		*vp;
 		fr_radius_packet_t	*packet;
 		fr_pair_list_t		request_vps;
@@ -661,7 +661,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			return EXIT_FAILURE;
 		}
 		fr_pair_list_init(&request_vps);
-		fr_cursor_init(&cursor, &request_vps);
+		fr_dcursor_init(&cursor, &request_vps);
 
 		NEXT_LINE(line, buffer);
 
@@ -753,7 +753,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 */
 		MEM(vp = fr_pair_afrom_da(packet, attr_freeradius_snmp_operation));
 		vp->vp_uint32 = (unsigned int)command;	/* Commands must match dictionary */
-		fr_cursor_append(&cursor, vp);
+		fr_dcursor_append(&cursor, vp);
 
 		/*
 		 *	Add message authenticator or the stats
@@ -761,7 +761,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 */
 		MEM(vp = fr_pair_afrom_da(packet, attr_message_authenticator));
 		fr_pair_value_memdup(vp, (uint8_t const *)"\0", 1, true);
-		fr_cursor_append(&cursor, vp);
+		fr_dcursor_append(&cursor, vp);
 
 		/*
 		 *	Send the packet
