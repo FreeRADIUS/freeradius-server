@@ -188,7 +188,6 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 	LDAPControl		*acctmultisessionid_control = NULL;
 	struct berval		tracking_id;
 
-	fr_cursor_t		cursor;
 	fr_pair_t const	*vp;
 
 	memcpy(&hostname, main_config->name, sizeof(hostname)); /* const / non-const issues */
@@ -196,9 +195,9 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *
 	/*
 	 *	@todo - MULTI_PROTOCOL - switch to auto-loaded dictionaries.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		case FR_NAS_IP_ADDRESS:
 		case FR_NAS_IPV6_ADDRESS:
