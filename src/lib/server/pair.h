@@ -63,7 +63,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define pair_add_session_state(_attr, _da) fr_pair_add_by_da(request->state_ctx, _attr, &request->state, _da)
+#define pair_add_session_state(_attr, _da) fr_pair_add_by_da(request->state_ctx, _attr, &request->state_pairs, _da)
 
 /** Return or allocate a fr_pair_t in the request list
  *
@@ -107,7 +107,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-#define pair_update_session_state(_attr, _da) fr_pair_update_by_da(request->state_ctx, _attr, &request->state, _da)
+#define pair_update_session_state(_attr, _da) fr_pair_update_by_da(request->state_ctx, _attr, &request->state_pairs, _da)
 
 /** Delete a fr_pair_t in a list
  *
