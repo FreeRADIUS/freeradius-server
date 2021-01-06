@@ -1540,6 +1540,44 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	return cnt;
 }
 
+/** Duplicate a list of pairs starting at a particular item
+ *
+ * Copy all pairs from 'from' regardless of tag, attribute or vendor, starting at 'item'.
+ *
+ * @param[in] ctx	for new #fr_pair_t (s) to be allocated in.
+ * @param[in] to	where to copy attributes to.
+ * @param[in] from	whence to copy #fr_pair_t (s).
+ * @param[in] item	to start copying at
+ * @return
+ *	- >0 the number of attributes copied.
+ *	- 0 if no attributes copied.
+ *	- -1 on error.
+ */
+int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from, fr_pair_t *item)
+{
+	fr_pair_list_t	tmp_list;
+	fr_pair_t	*vp, *new_vp;
+	int		cnt = 0;
+
+	fr_pair_list_init(&tmp_list);
+
+	for (vp = item;
+	     vp;
+	     vp = fr_pair_list_next(from, vp), cnt++) {
+		VP_VERIFY(vp);
+		new_vp = fr_pair_copy(ctx, vp);
+		if (!new_vp) {
+			fr_pair_list_free(&tmp_list);
+			return -1;
+		}
+		fr_pair_add(&tmp_list, new_vp);
+	}
+
+	fr_dlist_move(&to->head, &tmp_list.head);
+
+	return cnt;
+}
+
 /** Free/zero out value (or children) of a given VP
  *
  * @param[in] vp to clear value from.
