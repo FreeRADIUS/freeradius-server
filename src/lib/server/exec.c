@@ -69,9 +69,9 @@ static void fr_exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs,
 	 *	hold mutexes.  They might be locked when we fork,
 	 *	and will remain locked in the child.
 	 */
-	for (vp = fr_cursor_init(&cursor, input_pairs), i = 0;
+	for (vp = fr_pair_list_head(input_pairs), i = 0;
 	     vp && (i < envlen - 1);
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(input_pairs, vp)) {
 		size_t n;
 
 		/*
