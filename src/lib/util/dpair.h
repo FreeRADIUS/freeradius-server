@@ -291,6 +291,10 @@ void		*fr_pair_list_head(fr_pair_list_t const *list);
 /** @hidecallergraph */
 void		*fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item);
 
+void		*fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item);
+
+void		*fr_pair_list_tail(fr_pair_list_t const *list);
+
 /** @name Pair to pair copying
  *
  * @{
