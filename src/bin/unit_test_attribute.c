@@ -1341,10 +1341,10 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	it if so.
 	 */
 
-		for (vp = fr_cursor_head(&cursor);
 	if (!fr_pair_list_empty(&head)) {
+		for (vp = fr_pair_list_head(&head);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&head, vp)) {
 			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
 			oob:
 				fr_strerror_const("Out of output buffer space");
@@ -1353,7 +1353,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 			}
 			p += slen;
 
-			if (fr_cursor_next_peek(&cursor)) {
+			if (fr_pair_list_next(&head, vp)) {
 				slen = strlcpy(p, ", ", end - p);
 				if (is_truncated((size_t)slen, end - p)) goto oob;
 				p += slen;
@@ -1372,7 +1372,6 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 				  char *data, size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_proto_decode_t	*tp = NULL;
-	fr_cursor_t 	cursor;
 	void		*decoder_ctx = NULL;
 	char		*p;
 	uint8_t		*to_dec;
@@ -1442,12 +1441,11 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	 *	Output may be an error, and we ignore
 	 *	it if so.
 	 */
-		fr_cursor_init(&cursor, &head);
 
-		for (vp = fr_cursor_head(&cursor);
 	if (!fr_pair_list_empty(&head)) {
+		for (vp = fr_pair_list_head(&head);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&head, vp)) {
 			if ((slen = fr_pair_print(&sbuff, NULL, vp)) < 0) {
 			oob:
 				fr_strerror_printf("Out of output buffer space (%zd)", slen);
@@ -1455,7 +1453,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 				RETURN_COMMAND_ERROR();
 			}
 
-			if (fr_cursor_next_peek(&cursor)) {
+			if (fr_pair_list_next(&head, vp)) {
 				if (fr_sbuff_in_char(&sbuff, ',', ' ') <= 0) goto oob;
 			}
 		}
@@ -2004,9 +2002,9 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 
 	p = data;
 	end = data + COMMAND_OUTPUT_MAX;
-	for (vp = fr_cursor_init(&cursor, &head);
+	for (vp = fr_pair_list_head(&head);
 	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&head, vp)) {
 		if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) <= 0) RETURN_OK_WITH_ERROR();
 		p += (size_t)slen;
 
