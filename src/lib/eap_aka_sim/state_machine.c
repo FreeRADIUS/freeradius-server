@@ -800,8 +800,8 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
-	fr_cursor_t		cursor;
-	fr_cursor_t		to_encode;
+	fr_dcursor_t		cursor;
+	fr_dcursor_t		to_encode;
 	fr_pair_list_t		head;
 	fr_pair_t		*vp, *subtype_vp;
 	ssize_t			ret;
@@ -843,8 +843,8 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 		}
 	}
 
-	fr_cursor_init(&cursor, &request->reply_pairs);
-	fr_cursor_init(&to_encode, &head);
+	fr_dcursor_init(&cursor, &request->reply_pairs);
+	fr_dcursor_init(&to_encode, &head);
 
 	/*
 	 *	We have to be *SUPER* careful here not to reorder
@@ -854,12 +854,12 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 	 *	otherwise the KDF will produce a different
 	 *	result.
 	 */
-	while ((vp = fr_cursor_current(&cursor))) {
+	while ((vp = fr_dcursor_current(&cursor))) {
 		if (!fr_dict_attr_common_parent(encoder_ctx.root, vp->da, true)) {
-			fr_cursor_next(&cursor);
+			fr_dcursor_next(&cursor);
 			continue;
 		}
-		vp = fr_cursor_remove(&cursor);
+		vp = fr_dcursor_remove(&cursor);
 
 		/*
 		 *	Silently discard encrypted attributes until
@@ -875,7 +875,7 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 			continue;
 		}
 
-		fr_cursor_prepend(&to_encode, vp);
+		fr_dcursor_prepend(&to_encode, vp);
 	}
 
 
@@ -887,8 +887,8 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 	eap_session->this_round->set_request_id = true;
 
 	ret = fr_aka_sim_encode(request, &head, &encoder_ctx);
-	fr_cursor_head(&to_encode);
-	fr_cursor_free_list(&to_encode);
+	fr_dcursor_head(&to_encode);
+	fr_dcursor_free_list(&to_encode);
 
 	if (ret < 0) {
 		RPEDEBUG("Failed encoding attributes");
@@ -3354,13 +3354,13 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps
 					.keys = &eap_aka_sim_session->keys,
 				};
 	fr_pair_list_t		aka_vps;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	int			ret;
 
 	fr_pair_list_init(&aka_vps);
-	fr_cursor_init(&cursor, &request->request_pairs);
-	fr_cursor_tail(&cursor);
+	fr_dcursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_tail(&cursor);
 
 	ret = fr_aka_sim_decode(request,
 				&cursor,
@@ -3379,7 +3379,7 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps
 		return common_failure_notification_enter(p_result, mctx, request, eap_session);
 	}
 	/* vps is the data from the client */
-	aka_vps = fr_cursor_next(&cursor);
+	aka_vp = fr_dcursor_next(&cursor);
 	if (!fr_pair_list_empty(&aka_vps) && RDEBUG_ENABLED2) {
 		RDEBUG2("Decoded attributes");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &aka_vps, NULL);
