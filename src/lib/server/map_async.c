@@ -801,12 +801,12 @@ static inline fr_pair_t *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr,
 /** Allocate one or more fr_pair_ts from a #vp_list_mod_t
  *
  */
-static fr_pair_list_t map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm)
+static fr_pair_list_t *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm)
 {
 	map_t	*mod;
-	fr_pair_list_t	head;
+	fr_pair_list_t	*head;
 
-	fr_pair_list_init(&head);
+	head = fr_pair_list_alloc(ctx);
 	fr_assert(vlm->mod);
 
 	/*
@@ -815,7 +815,7 @@ static fr_pair_list_t map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *
 	if (!vlm->mod->next && !tmpl_value(vlm->mod->rhs)->next) {
 		fr_pair_t *vp;
 		vp = map_list_mod_to_vp(ctx, vlm->mod->lhs, tmpl_value(vlm->mod->rhs));
-		fr_pair_add(&head, vp);
+		fr_pair_add(head, vp);
 		return head;
 	}
 
@@ -833,10 +833,10 @@ static fr_pair_list_t map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *
 	     	     vb = vb->next) {
 			vp = map_list_mod_to_vp(ctx, mod->lhs, vb);
 			if (!vp) {
-				fr_pair_list_free(&head);
+				fr_pair_list_free(head);
 				return head;
 			}
-			fr_pair_add(&head, vp);
+			fr_pair_add(head, vp);
 		}
 	}
 
@@ -997,9 +997,13 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			goto finish;
 
 		case T_OP_SET:
+		{
+			fr_pair_list_t *tmp_list;
 			fr_pair_list_free(vp_list);				/* Clear the existing list */
-			*vp_list = map_list_mod_to_vps(parent, vlm);		/* Replace with a new list */
+			tmp_list = map_list_mod_to_vps(parent, vlm);		/* Replace with a new list */
+			fr_tmp_pair_list_move(vp_list, tmp_list);
 			goto finish;
+		}
 
 		/*
 		 *	Ugh... exponential... Fixme? Build a tree if number
@@ -1009,14 +1013,14 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		{
 			bool		exists = false;
 			fr_dcursor_t	from, to, to_insert;
-			fr_pair_list_t	vp_from, vp_to_insert;
+			fr_pair_list_t	*vp_from, vp_to_insert;
 			fr_pair_t	*vp, *vp_to = NULL;
 
 			fr_pair_list_init(&vp_to_insert);
 			vp_from = map_list_mod_to_vps(parent, vlm);
-			if (fr_pair_list_empty(&vp_from)) goto finish;
+			if (fr_pair_list_empty(vp_from)) goto finish;
 
-			fr_dcursor_init(&from, &vp_from);
+			fr_dcursor_init(&from, vp_from);
 			fr_dcursor_init(&to_insert, &vp_to_insert);
 			fr_dcursor_init(&to, vp_list);
 
@@ -1041,10 +1045,10 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 
 		case T_OP_ADD:
 		{
-			fr_pair_list_t	vp_from;
+			fr_pair_list_t	*vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
-			fr_assert(!fr_pair_list_empty(&vp_from));
+			fr_assert(!fr_pair_list_empty(vp_from));
 
 			fr_tmp_pair_list_move(vp_list, vp_from);
 		}
@@ -1151,10 +1155,10 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	case T_OP_ADD:
 	do_add:
 	{
-		fr_pair_list_t	vp_from;
+		fr_pair_list_t	*vp_from;
 
 		vp_from = map_list_mod_to_vps(parent, vlm);
-		if (fr_pair_list_empty(&vp_from)) goto finish;
+		if (fr_pair_list_empty(vp_from)) goto finish;
 
 		fr_tmp_pair_list_move(vp_list, vp_from);
 	}
@@ -1181,12 +1185,12 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_dcursor_t	from;
-			fr_pair_list_t	vp_from;
+			fr_pair_list_t	*vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
-			if (fr_pair_list_empty(&vp_from)) goto finish;
+			if (fr_pair_list_empty(vp_from)) goto finish;
 
-			fr_dcursor_init(&from, &vp_from);
+			fr_dcursor_init(&from, vp_from);
 
 			fr_dcursor_merge(&list, &from);	/* Merge first (insert after current attribute) */
 			fr_dcursor_free_item(&list);	/* Then free the current attribute */
