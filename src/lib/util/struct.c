@@ -433,14 +433,13 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	}
 
 	/*
-	 *	If we get passed a struct VP, sort it's children.
+	 *	If we get passed a struct VP, sort its children.
 	 */
 	if (vp->da->type == FR_TYPE_STRUCT) {
 		fr_pair_t *sorted = fr_dcursor_current(parent_cursor); /* NOT const */
 
 		fr_pair_list_sort(&sorted->vp_group, pair_sort_increasing);
 		fr_dcursor_init(&child_cursor, &sorted->vp_group);
-
 		/*
 		 *	Build the da_stack for the new structure.
 		 */
