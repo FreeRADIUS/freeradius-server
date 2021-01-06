@@ -224,6 +224,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	int			num, lineno;
 	uint8_t const		*p, *end;
 	fr_pair_t		*vp;
+	fr_pair_list_t		tmp_list;
 	fr_dcursor_t		cursor;
 	time_t			timestamp = 0;
 
@@ -261,6 +262,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	lineno = 1;
 	fr_dcursor_init(&cursor, &request->request_pairs);
 	fr_dcursor_tail(&cursor);	/* Ensure we only free what we add on error */
+	fr_pair_list_init(&tmp_list);
 
 	/*
 	 *	Parse each individual line.
@@ -321,15 +323,14 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		}
 
 		/*
-		 *	The parsing function appends the created VPs
-		 *	to the input list, so we need to set 'vp =
-		 *	NULL'.  We don't want to have multiple cursor
-		 *	functions walking over the list.
+		 *	Ensure temporary list is empty before each use
 		 */
-		vp = NULL;
-		if ((fr_pair_list_afrom_str(request->request_ctx, request->dict, (char const *) p, &vp) > 0) && vp) {
-			fr_cursor_append(&cursor, vp);
+		fr_pair_list_clear(&tmp_list);
+		if ((fr_pair_list_afrom_str(request->request_ctx, request->dict, (char const *) p, &tmp_list) > 0) && !fr_pair_list_empty(&tmp_list)) {
+			vp = fr_pair_list_head(&tmp_list);
+			fr_tmp_pair_list_move(&request->request_pairs, &tmp_list);
 		} else {
+			vp = NULL;
 			RWDEBUG("Ignoring line %d - :%s", lineno, p);
 		}
 
