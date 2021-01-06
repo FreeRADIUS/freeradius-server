@@ -250,9 +250,9 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 		fr_assert(client->dynamic);
 
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp != NULL;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 			if (!flag_encrypted(&vp->da->flags)) {
 				switch (vp->da->type) {
 				default:
