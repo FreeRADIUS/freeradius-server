@@ -226,6 +226,7 @@ ATTRIBUTE	Huawei-Application-Scene		221	octets
 ATTRIBUTE	Huawei-MS-Maximum-MAC-Study-Number	222	octets # ether??
 ATTRIBUTE	Huawei-GGSN-Vendor			232	string
 ATTRIBUTE	Huawei-GGSN-Version			233	string
+ATTRIBUTE	Huawei-Ext-Specific		        238	string
 ATTRIBUTE	Huawei-Web-URL				253	string
 ATTRIBUTE	Huawei-Version				254	string
 ATTRIBUTE	Huawei-Product-ID			255	string
