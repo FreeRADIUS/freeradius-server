@@ -948,7 +948,6 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vp
 	last_match = *vps;
 
 	fr_cursor_init(&list_cursor, &last_match);
-	fr_cursor_init(&out_cursor, out);
 	for (i = 0; i < num; i++) {
 		match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i]);
 		if (!match) {
@@ -962,7 +961,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vp
 				fr_pair_list_free(out);
 				return -1;
 			}
-			fr_cursor_append(&out_cursor, copy);
+			fr_pair_add(out, copy);
 			fr_pair_list_set_head(last_match, *match);
 
 			count++;
@@ -1705,14 +1704,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 			if (!fr_pair_list_empty(&search.link_vps)) {
 				bool ret;
-				fr_cursor_t cursor;
 				fr_pair_t *vp;
 
-
-				for (vp = fr_cursor_init(&cursor, &search.link_vps);
+				for (vp = fr_pair_list_head(&search.link_vps);
 				     vp;
-				     vp = fr_cursor_next(&cursor)) {
-					fr_pair_steal(original, search.link_vps);
+				     vp = fr_pair_list_next(&search.link_vps, vp)) {
+					fr_pair_steal(original, vp);
 				}
 				fr_pair_list_move(&original->link_vps, &search.link_vps);
 
@@ -2030,7 +2027,6 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 
 static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 {
-	fr_cursor_t cursor;
 	fr_pair_t *vp;
 	fr_token_t code;
 
@@ -2045,9 +2041,9 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 		return -1;
 	}
 
-	for (vp = fr_cursor_init(&cursor, out);
+	for (vp = fr_pair_list_head(out);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(out, vp)) {
 		/*
 		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 		 */
