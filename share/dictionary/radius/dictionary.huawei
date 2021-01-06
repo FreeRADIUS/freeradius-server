@@ -226,6 +226,7 @@ ATTRIBUTE	Application-Scene			221	octets
 ATTRIBUTE	MS-Maximum-MAC-Study-Number		222	octets # ether??
 ATTRIBUTE	GGSN-Vendor				232	string
 ATTRIBUTE	GGSN-Version				233	string
+ATTRIBUTE	Ext-Specific				238	string
 ATTRIBUTE	Web-URL					253	string
 ATTRIBUTE	Version					254	string
 ATTRIBUTE	Product-ID				255	string
