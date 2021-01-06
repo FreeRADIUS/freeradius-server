@@ -139,8 +139,8 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 	int				i, foreach_depth = 0;
 	fr_pair_list_t			vps;
 
-	fr_pair_list_init(&vps);
 	frame = &stack->frame[stack->depth];
+	fr_pair_list_init(&vps);
 	instruction = frame->instruction;
 	g = unlang_generic_to_group(instruction);
 	gext = unlang_group_to_foreach(g);
@@ -183,7 +183,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 
 	foreach->request = request;
 	foreach->depth = foreach_depth;
-	foreach->vps = vps;
+	fr_tmp_pair_list_move(&foreach->vps, &vps);
 	fr_dcursor_talloc_init(&foreach->cursor, &foreach->vps, fr_pair_t);
 #ifndef NDEBUG
 	foreach->indent = request->log.unlang_indent;
