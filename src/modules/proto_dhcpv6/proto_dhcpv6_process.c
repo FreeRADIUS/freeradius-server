@@ -109,14 +109,13 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *pa
  */
 static inline CC_HINT(always_inline) void dhcpv6_reply_initialise(request_t *request)
 {
-	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
 
 	switch (request->packet->code) {
 	case FR_DHCPV6_RELAY_FORWARD:
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		     	if (vp->da == attr_hop_count) {
 		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
