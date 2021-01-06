@@ -351,7 +351,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 */
 	if (tmpl_is_list(mutated->lhs) && tmpl_is_list(mutated->rhs)) {
 		fr_cursor_t	to;
-		fr_cursor_t	from;
 		fr_pair_list_t	*list = NULL;
 		fr_pair_t	*vp = NULL;
 
@@ -361,7 +360,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		list = map_check_src_or_dst(request, mutated, mutated->rhs);
 		if (!list) goto error;
 
-		vp = fr_cursor_init(&from, list);
+		vp = fr_pair_list_head(list);
 		/*
 		 *	No attributes found on LHS.
 		 */
@@ -419,7 +418,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			fr_cursor_append(&to, n_mod);
 
 			MAP_VERIFY(n_mod);
-		} while ((vp = fr_cursor_next(&from)));
+		} while ((vp = fr_pair_list_next(list, vp)));
 
 		goto finish;
 	}
@@ -1042,17 +1041,12 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 
 		case T_OP_ADD:
 		{
-			fr_cursor_t	to, from;
 			fr_pair_list_t	vp_from;
 
 			vp_from = map_list_mod_to_vps(parent, vlm);
 			fr_assert(!fr_pair_list_empty(&vp_from));
 
-			fr_cursor_init(&to, vp_list);
-			fr_cursor_tail(&to);
-
-			fr_cursor_init(&from, &vp_from);
-			fr_cursor_merge(&to, &from);
+			fr_tmp_pair_list_move(vp_list, vp_from);
 		}
 			goto finish;
 
@@ -1157,17 +1151,12 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	case T_OP_ADD:
 	do_add:
 	{
-		fr_cursor_t	to, from;
 		fr_pair_list_t	vp_from;
 
 		vp_from = map_list_mod_to_vps(parent, vlm);
 		if (fr_pair_list_empty(&vp_from)) goto finish;
 
-		fr_cursor_init(&to, vp_list);
-		fr_cursor_tail(&to);		/* Insert after the last instance */
-
-		fr_cursor_init(&from, &vp_from);
-		fr_cursor_merge(&to, &from);
+		fr_tmp_pair_list_move(vp_list, vp_from);
 	}
 		goto finish;
 
