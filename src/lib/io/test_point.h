@@ -91,7 +91,7 @@ typedef struct {
 typedef struct {
 	fr_test_point_ctx_alloc_t	test_ctx;	//!< Allocate a test ctx for the encoder.
 	fr_pair_encode_t		func;		//!< Encoder for pairs.
-	fr_cursor_iter_t		next_encodable;	//!< Iterator to use to select attributes
+	fr_dcursor_iter_t		next_encodable;	//!< Iterator to use to select attributes
 							///< to encode.
 	fr_cursor_eval_t		eval;		//!< Evaluation function to filter
 							///< attributes to encode.
