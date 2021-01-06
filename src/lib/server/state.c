@@ -647,7 +647,7 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 
 	if (request->state) {
 		RDEBUG2("Restored &session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->state, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->state_pairs, "&session-state.");
 	}
 
 	/*
@@ -682,7 +682,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 
 	if (request->state) {
 		RDEBUG2("Saving &session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->state, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->state_pairs, "&session-state.");
 	}
 
 	vp = fr_pair_find_by_da(&request->request_pairs, state->da);

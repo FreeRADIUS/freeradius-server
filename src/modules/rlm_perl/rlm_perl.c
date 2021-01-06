@@ -871,7 +871,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 		perl_store_vps(request->packet, request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", "request");
 		perl_store_vps(request->reply, request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", "reply");
 		perl_store_vps(request, request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", "control");
-		perl_store_vps(request->state_ctx, request, &request->state, rad_state_hv, "RAD_STATE", "session-state");
+		perl_store_vps(request->state_ctx, request, &request->state_pairs, rad_state_hv, "RAD_STATE", "session-state");
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works

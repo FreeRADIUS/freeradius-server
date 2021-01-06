@@ -156,5 +156,5 @@ RCSIDH(server_pair_h, "$Id$")
  *	- >0 the number of pairs deleted.
  *	- 0 if no pairs were deleted.
  */
-#define pair_delete_session_state(_pair) pair_delete(&request->state, _pair)
+#define pair_delete_session_state(_pair) pair_delete(&request->state_pairs, _pair)
 

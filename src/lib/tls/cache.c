@@ -288,7 +288,7 @@ int fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session)
 	RINDENT();
 	RDEBUG2("&session-state.%pP", vp);
 	REXDENT();
-	fr_pair_add(&request->state, vp);
+	fr_pair_add(&request->state_pairs, vp);
 
 	/*
 	 *	Call the virtual server to write the session
@@ -308,7 +308,7 @@ int fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session)
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_da(&request->state, attr_tls_session_data);
+	fr_pair_delete_by_da(&request->state_pairs, attr_tls_session_data);
 
 	return ret;
 }
@@ -365,7 +365,7 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 		return NULL;
 	}
 
-	vp = fr_pair_find_by_da(&request->state, attr_tls_session_data);
+	vp = fr_pair_find_by_da(&request->state_pairs, attr_tls_session_data);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		return NULL;
@@ -411,7 +411,7 @@ static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_da(&request->state, attr_tls_session_data);
+	fr_pair_delete_by_da(&request->state_pairs, attr_tls_session_data);
 
 	return sess;
 }

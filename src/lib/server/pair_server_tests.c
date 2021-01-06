@@ -393,7 +393,7 @@ static void test_pair_update_session_state(void)
 	vp->vp_uint32 = 7890;
 
 	TEST_CASE("Expected attr_test_integer (vp->vp_uint32 == 7890)");
-	TEST_CHECK((vp = fr_pair_find_by_da(&request->state, attr_test_integer)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&request->state_pairs, attr_test_integer)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
@@ -448,13 +448,13 @@ static void test_pair_delete_session_state(void)
 	request_t      *request = request_fake_alloc();
 
 	TEST_CASE("Copy 'sample_pairs' into 'request->state'");
-	TEST_CHECK(fr_pair_list_copy(autofree, &request->state, &sample_pairs) > 0);
+	TEST_CHECK(fr_pair_list_copy(autofree, &request->state_pairs, &sample_pairs) > 0);
 
 	TEST_CASE("Delete 'Test-Integer' in 'request->state' using pair_delete_session_state()");
 	TEST_CHECK(pair_delete_session_state(attr_test_integer) > 0);
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->state'");
-	TEST_CHECK(fr_pair_find_by_da(&request->state, attr_test_integer) == NULL);
+	TEST_CHECK(fr_pair_find_by_da(&request->state_pairs, attr_test_integer) == NULL);
 }
 
 TEST_LIST = {
