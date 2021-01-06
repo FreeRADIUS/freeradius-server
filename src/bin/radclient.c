@@ -946,7 +946,7 @@ static int send_one_packet(rc_request_t *request)
 		return -1;
 	}
 
-	fr_packet_log(&default_log, request->packet, false);
+	fr_packet_log(&default_log, request->packet, &request->request_pairs, false);
 
 	return 0;
 }
@@ -1049,7 +1049,7 @@ static int recv_one_packet(fr_time_t wait_time)
 		goto packet_done;
 	}
 
-	fr_packet_log(&default_log, request->reply, true);
+	fr_packet_log(&default_log, request->reply, &request->reply_pairs, true);
 
 	/*
 	 *	Increment counters...

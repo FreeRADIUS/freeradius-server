@@ -153,23 +153,24 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *parent, fr_pair_t const *vp)
 
 /** Print a list of attributes and enumv
  *
- * @param[in] log to output to.
- * @param[in] vp to print.
- * @param[in] file where the message originated
- * @param[in] line where the message originated
+ * @param[in] log	to output to.
+ * @param[in] list	to print.
+ * @param[in] file	where the message originated
+ * @param[in] line	where the message originated
  */
-void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t const *vp, char const *file, int line)
+void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_list_t const *list, char const *file, int line)
 {
-	fr_pair_t *our_vp;
-	fr_cursor_t cursor;
+	fr_pair_list_t	*our_list;
+	fr_pair_t	*vp;
+	fr_cursor_t	cursor;
 
-	memcpy(&our_vp, &vp, sizeof(vp)); /* const work-arounds */
+	memcpy(&our_list, &list, sizeof(list)); /* const work-arounds */
 
-	for (vp = fr_cursor_init(&cursor, &our_vp); vp; vp = fr_cursor_next(&cursor)) {\
+	for (vp = fr_cursor_init(&cursor, our_list); vp; vp = fr_cursor_next(&cursor)) {\
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
 			fr_log(log, L_DBG, file, line, "%*s%s {", lvl * 2, "", vp->da->name);
-			_fr_pair_list_log(log, lvl + 1, vp->vp_group, file, line);
+			_fr_pair_list_log(log, lvl + 1, &vp->vp_group, file, line);
 			fr_log(log, L_DBG, file, line, "%*s}", lvl * 2, "");
 			break;
 
@@ -182,7 +183,7 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t const *vp, char c
 /** Useful for calling from debuggers
  *
  */
-void fr_pair_list_debug(fr_pair_t const *vp)
+void fr_pair_list_debug(fr_pair_list_t const *list)
 {
-	_fr_pair_list_log(&default_log, 0, vp, "<internal>", 0);
+	_fr_pair_list_log(&default_log, 0, list, "<internal>", 0);
 }

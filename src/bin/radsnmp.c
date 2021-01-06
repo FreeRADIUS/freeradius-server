@@ -785,7 +785,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we're about to send
 			 */
-			fr_packet_log(&default_log, packet, false);
+			fr_packet_log(&default_log, packet, &packet->vps, false);
 
 			FD_ZERO(&set); /* clear the set */
 			FD_SET(fd, &set);
@@ -844,7 +844,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we received in response
 			 */
-			fr_packet_log(&default_log, reply, true);
+			fr_packet_log(&default_log, reply, &reply->vps, true);
 
 			switch (command) {
 			case RADSNMP_GET:

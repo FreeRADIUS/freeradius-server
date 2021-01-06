@@ -63,8 +63,9 @@ fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint3
 
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
 uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);
+
 void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received);
-void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received);
+void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received);
 
 /*
  *	"find" returns a pointer to the fr_radius_packet_t* member in the

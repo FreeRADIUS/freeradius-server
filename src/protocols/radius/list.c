@@ -28,10 +28,11 @@ RCSID("$Id$")
 #include "radius.h"
 #include "list.h"
 
+#include <fcntl.h>
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/tcp.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/udp.h>
-#include <freeradius-devel/server/tcp.h>
-#include <fcntl.h>
 
 /*
  *	See if two packets are identical.
@@ -841,10 +842,10 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 /*
  *	Debug the packet header and all attributes
  */
-void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received)
+void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
 {
 	fr_packet_header_log(log, packet, received);
-	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, packet->vps);
+	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, list);
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(log, packet);
 #endif
