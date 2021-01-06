@@ -1251,7 +1251,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 				  char *data, size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
-	fr_cursor_t 	cursor;
+	fr_dcursor_t 	cursor;
 	void		*decoder_ctx = NULL;
 	char		*p, *end;
 	uint8_t		*to_dec;
@@ -1304,7 +1304,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	Run the input data through the test
 	 *	point to produce fr_pair_ts.
 	 */
-	fr_cursor_init(&cursor, &head);
+	fr_dcursor_init(&cursor, &head);
 	while (to_dec < to_dec_end) {
 		slen = tp->func(cc->tmp_ctx, &cursor, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
@@ -1587,7 +1587,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 {
 	fr_test_point_pair_encode_t	*tp = NULL;
 
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 	void		*encoder_ctx = NULL;
 	ssize_t		slen;
 	char		*p = in;
@@ -1666,11 +1666,11 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 #endif
 		}
 
-		for (vp = fr_cursor_talloc_iter_init(&cursor, &head,
+		for (vp = fr_dcursor_talloc_iter_init(&cursor, &head,
 						     tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
 						     cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, fr_pair_t);
 		     vp;
-		     vp = fr_cursor_current(&cursor)) {
+		     vp = fr_dcursor_current(&cursor)) {
 			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encoder_ctx);
 			cc->last_ret = slen;
 
@@ -1976,13 +1976,13 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 	fr_pair_t *vp;
 	fr_pair_list_t head;
 	char *p, *end;
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 
 	fr_pair_list_init(&head);
 	ctx.ctx = cc->tmp_ctx;
 	ctx.parent = fr_dict_root(cc->tmpl_rules.dict_def);
 	ctx.cursor = &cursor;
-	fr_cursor_init(&cursor, &head);
+	fr_dcursor_init(&cursor, &head);
 
 	p = in;
 	end = in + inlen;
