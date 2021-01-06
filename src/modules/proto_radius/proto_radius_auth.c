@@ -275,7 +275,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	rlm_rcode_t			rcode;
 	CONF_SECTION			*unlang;
 	fr_dict_enum_t const		*dv = NULL;
-	fr_cursor_t			cursor;
+	fr_dcursor_t			cursor;
 	void				*instruction;
 
 	REQUEST_VERIFY(request);
@@ -352,9 +352,9 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		 *	Find Auth-Type, and complain if they have too many.
 		 */
 		auth_type = NULL;
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
+		for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 			if (!auth_type) {
 				auth_type = vp;
 				continue;
