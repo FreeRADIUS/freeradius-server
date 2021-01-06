@@ -263,7 +263,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 	dc_offer_t		*offer_list = NULL;
 	fd_set			read_fd;
 	int			retval;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	fr_pair_list_init(&reply_vps);
 
@@ -308,7 +308,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 
 			if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, reply->data, reply->data_len);
 
-			fr_cursor_init(&cursor, &reply_vps);
+			fr_dcursor_init(&cursor, &reply_vps);
 			if (fr_dhcpv4_decode(reply, reply->data, reply->data_len, &cursor, &reply->code) < 0) {
 				ERROR("Failed decoding reply");
 				return NULL;
@@ -745,8 +745,8 @@ int main(int argc, char **argv)
 	 *	Decode to produce fr_pair_ts from the default field
 	 */
 	if (fr_debug_lvl) {
-		fr_cursor_t cursor;
-		fr_cursor_init(&cursor, &packet_vps);
+		fr_dcursor_t cursor;
+		fr_dcursor_init(&cursor, &packet_vps);
 
 		if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, packet->data, packet->data_len);
 
@@ -764,8 +764,8 @@ int main(int argc, char **argv)
 	}
 
 	if (reply) {
-		fr_cursor_t cursor;
-		fr_cursor_init(&cursor, &reply_vps);
+		fr_dcursor_t cursor;
+		fr_dcursor_init(&cursor, &reply_vps);
 		if (fr_dhcpv4_decode(reply, reply->data, reply->data_len, &cursor, &reply->code) < 0) {
 			ERROR("Failed decoding packet");
 			ret = -1;
