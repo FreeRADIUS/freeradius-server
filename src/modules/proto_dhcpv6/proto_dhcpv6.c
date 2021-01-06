@@ -187,7 +187,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_address_t const	*address = track->address;
 	RADCLIENT const		*client;
 	fr_radius_packet_t	*packet = request->packet;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -215,7 +215,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_dhcpv6_ok().
 	 */
-	fr_cursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_init(&cursor, &request->request_pairs);
 	if (fr_dhcpv6_decode(request->request_ctx, packet->data, packet->data_len, &cursor) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
