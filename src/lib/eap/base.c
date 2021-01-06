@@ -115,25 +115,21 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ NULL }
 };
 
-fr_pair_t *eap_packet_to_vp(fr_radius_packet_t *packet, eap_packet_raw_t const *eap)
+void eap_packet_to_vp(fr_radius_packet_t *packet, eap_packet_raw_t const *eap, fr_pair_list_t *list)
 {
 	int		total, size;
 	uint8_t const *ptr;
-	fr_pair_list_t	head;
 	fr_pair_t	*vp;
-	fr_cursor_t	out;
 
-	fr_pair_list_init(&head);
 	total = eap->length[0] * 256 + eap->length[1];
 
 	if (total == 0) {
 		DEBUG("Asked to encode empty EAP-Message!");
-		return NULL;
+		return;
 	}
 
 	ptr = (uint8_t const *) eap;
 
-	fr_cursor_init(&out, &head);
 	do {
 		size = total;
 		if (size > 253) size = 253;
@@ -141,13 +137,11 @@ fr_pair_t *eap_packet_to_vp(fr_radius_packet_t *packet, eap_packet_raw_t const *
 		MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
 		fr_pair_value_memdup(vp, ptr, size, false);
 
-		fr_cursor_append(&out, vp);
+		fr_pair_add(list, vp);
 
 		ptr += size;
 		total -= size;
 	} while (total > 0);
-
-	return head;
 }
 
 /** Basic EAP packet verifications & validations
