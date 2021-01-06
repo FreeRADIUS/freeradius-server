@@ -286,12 +286,12 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	unsigned char		*ptr;
 	uint16_t		len;
 	int			total_len;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	vp = fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_message);
+	vp = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_message);
 	if (!vp) {
 		fr_strerror_const("EAP-Message not found");
 		return NULL;
@@ -324,9 +324,9 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	 *	Sanity check the length, BEFORE allocating  memory.
 	 */
 	total_len = 0;
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_dcursor_head(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		total_len += vp->vp_length;
 
 		if (total_len > len) {
@@ -357,9 +357,9 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	ptr = (unsigned char *)eap_packet;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_dcursor_head(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		memcpy(ptr, vp->vp_strvalue, vp->vp_length);
 		ptr += vp->vp_length;
 	}
