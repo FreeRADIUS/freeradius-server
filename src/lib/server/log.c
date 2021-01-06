@@ -758,7 +758,6 @@ static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
 void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 			   fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 {
-	fr_cursor_t 		cursor;
 	fr_pair_list_t		*m_vp;
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*parent_da = NULL;
@@ -770,9 +769,9 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 	memcpy(&m_vp, &vps, sizeof(m_vp));
 
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, m_vp);
+	for (vp = fr_pair_list_head(m_vp);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(m_vp, vp)) {
 		VP_VERIFY(vp);
 
 		/*
@@ -811,7 +810,6 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 				 fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 {
-	fr_cursor_t 		cursor;
 	fr_dict_attr_t const	*parent_da = NULL;
 	fr_pair_t		*vp;
 
@@ -820,9 +818,9 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 	if (!log_rdebug_enabled(lvl, request)) return;
 
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		VP_VERIFY(vp);
 
 		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
