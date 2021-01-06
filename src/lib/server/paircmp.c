@@ -502,8 +502,6 @@ int paircmp(request_t *request,
 	    fr_pair_list_t *request_list,
 	    fr_pair_list_t *check_list)
 {
-	fr_cursor_t		cursor;
-	fr_cursor_t		request_cursor;
 	fr_pair_t		*check_item;
 	fr_pair_t		*auth_item;
 	fr_dict_attr_t const	*from;
@@ -512,9 +510,9 @@ int paircmp(request_t *request,
 	int			compare;
 	bool			first_only;
 
-	for (check_item = fr_cursor_init(&cursor, check_list);
+	for (check_item = fr_pair_list_head(check_list);
 	     check_item;
-	     check_item = fr_cursor_next(&cursor)) {
+	     check_item = fr_pair_list_next(check_list, check_item)) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -558,14 +556,14 @@ int paircmp(request_t *request,
 		 */
 		first_only = other_attr(check_item->da, &from);
 
-		auth_item = fr_cursor_init(&request_cursor, request_list);
+		auth_item = fr_pair_list_head(request_list);
 
 	try_again:
 		if (!first_only) {
 			while (auth_item != NULL) {
 				if ((auth_item->da == from) || (!from)) break;
 
-				auth_item = fr_cursor_next(&request_cursor);
+				auth_item = fr_pair_list_next(request_list, auth_item);
 			}
 		}
 
@@ -645,7 +643,7 @@ int paircmp(request_t *request,
 		 *	another of the same attribute, which DOES match.
 		 */
 		if ((result != 0) && (!first_only)) {
-			auth_item = fr_cursor_next(&request_cursor);
+			auth_item = fr_pair_list_next(request_list, auth_item);
 			result = 0;
 			goto try_again;
 		}
