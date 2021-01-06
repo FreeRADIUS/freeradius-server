@@ -400,7 +400,7 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *lis
  *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
  *
  * @param[in] list_head		containing ptr.
- * @param[in] ptr		to retrieve the next item from.
+ * @param[in] ptr		to retrieve the previous item to.
  *				If ptr is NULL, the TAIL of the list will be returned.
  * @return
  *	- The previous item in the list if ptr is not NULL.
