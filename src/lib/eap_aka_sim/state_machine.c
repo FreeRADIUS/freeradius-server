@@ -158,8 +158,7 @@ static inline void section_rcode_ignored(request_t *request)
  */
 static bool identity_req_set_by_user(request_t *request, eap_aka_sim_session_t *eap_aka_sim_session)
 {
-	fr_pair_t 	*vp;
-	fr_cursor_t	cursor;
+	fr_pair_t 	*vp, *prev;
 	bool		set_by_user = false;
 
 	/*
@@ -169,15 +168,16 @@ static bool identity_req_set_by_user(request_t *request, eap_aka_sim_session_t *
 	 *	then delete them so they don't screw
 	 *	up any of the other code.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->reply_pairs);
+	for (vp = fr_pair_list_head(&request->reply_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->reply_pairs, vp)) {
 		if (vp->da == attr_eap_aka_sim_permanent_id_req) {
 			eap_aka_sim_session->id_req = AKA_SIM_PERMANENT_ID_REQ;
 		found:
 			set_by_user = true;
 			RDEBUG2("Previous section added &reply.%pP, will request additional identity", vp);
-			fr_cursor_free_item(&cursor);
+			prev = fr_pair_delete(&request->reply_pairs, vp);
+			vp = prev;
 		}
 		else if (vp->da == attr_eap_aka_sim_fullauth_id_req) {
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
@@ -1710,7 +1710,6 @@ static unlang_action_t sim_start_request_send(rlm_rcode_t *p_result, module_ctx_
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
 	fr_pair_t		*vp;
-	fr_cursor_t		cursor;
 	uint8_t			*p, *end;
 
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
@@ -1732,7 +1731,7 @@ static unlang_action_t sim_start_request_send(rlm_rcode_t *p_result, module_ctx_
 	 *	Iterate over the the versions adding them
 	 *      to the version list we use for keying.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->reply_pairs); vp; vp = fr_cursor_next(&cursor)) {
+	for (vp = fr_pair_list_head(&request->reply_pairs); vp; vp = fr_pair_list_next(&request->reply_pairs, vp)) {
 		if (vp->da != attr_eap_aka_sim_version_list) continue;
 
 		if ((end - p) < 2) break;
