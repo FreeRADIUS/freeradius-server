@@ -485,7 +485,7 @@ struct tmpl_s {
 typedef struct tmpl_cursor_ctx_s tmpl_cursor_ctx_t;
 typedef struct tmpl_cursor_nested_s tmpl_cursor_nested_t;
 
-typedef fr_pair_t *(*tmpl_cursor_eval_t)(fr_pair_t *current, tmpl_cursor_nested_t *ns);
+typedef fr_pair_t *(*tmpl_cursor_eval_t)(fr_dlist_head_t *list_head, fr_pair_t *current, tmpl_cursor_nested_t *ns);
 
 /** State for traversing an attribute reference
  *
@@ -501,11 +501,11 @@ struct tmpl_cursor_nested_s {
 		struct {
 			fr_da_stack_t		da_stack;		//!< fr_dict_attr_t hierarchy
 									///< between a->b.
-			fr_cursor_stack_t	*cursor_stack;		//!< Track state as we traverse VPs.
+			fr_dcursor_stack_t	*cursor_stack;		//!< Track state as we traverse VPs.
 		} tlv;
 
 		struct {
-			fr_cursor_t		cursor;			//!< Group traversal is much easier
+			fr_dcursor_t		cursor;			//!< Group traversal is much easier
 									///< but we still need to keep track
 									///< where we are in the list in case
 									///< we're doing counts.

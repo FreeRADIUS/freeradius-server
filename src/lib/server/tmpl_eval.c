@@ -777,12 +777,14 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 /** Traverse a TLV attribute
  *
- * @param[in,out] prev	The previous pair in the list.
+ * @param[in] list_head The head of the pair_list being evaluated.
  * @param[in] current	The pair to evaluate.
  * @param[in] ns	Tracks tree position between cursor calls.
- * @return the number of attributes matching ar.
+ * @return
+ *	- the next matching vp
+ *	- NULL if none found
  */
-static fr_pair_t *_tmpl_cursor_tlv_eval(UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_tlv_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
 {
 	fr_dcursor_stack_t	*cs;
 	fr_dcursor_t		*cursor;
@@ -907,8 +909,14 @@ void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr
  *
  * Here we just look for a particular group attribute in the context of its parent
  *
+ * @param[in] list_head The head of the pair_list being evaluated.
+ * @param[in] current	The pair to evaluate.
+ * @param[in] ns	Tracks tree position between cursor calls.
+ * @return
+ *	- the next matching attribute
+ *	- NULL if none found
  */
-static fr_pair_t *_tmpl_cursor_group_eval(UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_group_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
 {
 	fr_pair_t *vp;
 
@@ -945,14 +953,20 @@ void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_at
 
 /** Find a leaf attribute
  *
+ * @param[in] list_head The head of the pair_list being evaluated.
+ * @param[in] curr	The current attribute to start searching from.
+ * @param[in] ns	Tracks tree position between cursor calls.
+ * @return
+ *	- the next matching attribute
+ *	- NULL if none found
  */
-static fr_pair_t *_tmpl_cursor_leaf_eval(fr_pair_t *curr, tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_leaf_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_cursor_nested_t *ns)
 {
 	fr_pair_t *vp = curr;
 
 	while (vp) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) return vp;
-		vp = vp->next;
+		vp = fr_dlist_next(list_head, vp);
 	}
 
 	return NULL;
@@ -978,7 +992,7 @@ void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 /** Stub list eval function until we can remove lists
  *
  */
-static fr_pair_t *_tmpl_cursor_list_eval(fr_pair_t *curr, UNUSED tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_list_eval(UNUSED fr_dlist_head_t *list_head, fr_pair_t *curr, UNUSED tmpl_cursor_nested_t *ns)
 {
 	return curr;
 }
@@ -1009,9 +1023,14 @@ static inline CC_HINT(always_inline) void _tmpl_cursor_eval_pop(tmpl_cursor_ctx_
  *
  * To pop or not to pop is determined by whether evaluating the context again
  * would/should/could produce another fr_pair_t.
+ *
+ * @param[in] list_head The head of the pair_list being evaluated.
+ * @param[in] curr	The pair to evaluate.
+ * @param[in] cc	Tracks state between cursor calls.
+ * @return the vp evaluated.
  */
 static inline CC_HINT(always_inline)
-fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
+fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
 {
 	tmpl_attr_t const	*ar;
 	tmpl_cursor_nested_t	*ns;
@@ -1025,7 +1044,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
 	 *	Get the first instance
 	 */
 	case NUM_ANY:
-		vp = ns->func(curr, ns);
+		vp = ns->func(list_head, curr, ns);
 		_tmpl_cursor_eval_pop(cc);
 		break;
 
@@ -1035,7 +1054,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
 	case NUM_ALL:
 	case NUM_COUNT:
 	all_inst:
-		vp = ns->func(curr, ns);
+		vp = ns->func(list_head, curr, ns);
 		if (!vp) _tmpl_cursor_eval_pop(cc);	/* pop only when we're done */
 		break;
 
@@ -1044,12 +1063,12 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
 	 */
 	case NUM_LAST:
 		vp = NULL;
-		while ((iter = ns->func(iter, ns))) {
+		while ((iter = ns->func(list_head, iter, ns))) {
 			vp = iter;
 
-			if (!vp->next) break;
+			if (!fr_dlist_next(list_head, vp)) break;
 
-			iter = vp->next;
+			iter = fr_dlist_next(list_head,vp);
 		}
 		_tmpl_cursor_eval_pop(cc);
 		break;
@@ -1062,12 +1081,12 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
 		int16_t		i = 0;
 
 		for (;;) {
-			vp = ns->func(iter, ns);
+			vp = ns->func(list_head, iter, ns);
 			if (!vp) break;	/* Prev and next at the correct points */
 
 			if (++i > ar->num) break;
 
-			iter = vp->next;
+			iter = fr_dlist_next(list_head, vp);
 		};
 		_tmpl_cursor_eval_pop(cc);
 	}
@@ -1099,7 +1118,7 @@ void _tmpl_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t c
 	} else goto leaf;
 }
 
-static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *uctx)
+static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 {
 	tmpl_cursor_ctx_t	*cc = uctx;
 	tmpl_t const		*vpt = cc->vpt;
@@ -1124,14 +1143,15 @@ static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *u
 		 */
 		while ((ns = fr_dlist_tail(&cc->nested))) {
 			ar = ns->ar;
-			vp = _tmpl_cursor_eval(curr, cc);
+			vp = _tmpl_cursor_eval(list, curr, cc);
 			if (!vp) continue;
 
 			ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
 			if (ar) {
 				list_head = &vp->vp_group;
 				_tmpl_cursor_init(vp, list_head, ar, cc);
-				curr = *list_head;
+				curr = fr_pair_list_head(list_head);
+				list = &list_head->head;
 				continue;
 			}
 
@@ -1149,7 +1169,7 @@ static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *u
 	case TMPL_TYPE_LIST:
 		if (!fr_dlist_tail(&cc->nested)) goto null_result;	/* end of list */
 
-		vp = _tmpl_cursor_eval(curr, cc);
+		vp = _tmpl_cursor_eval(list, curr, cc);
 		if (!vp) goto null_result;
 
 		return vp;
@@ -1365,7 +1385,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
-	*out = NULL;
+	fr_pair_list_clear(out);
 
 	for (vp = tmpl_cursor_init(&err, NULL, &cc, &from, request, vpt);
 	     vp;
@@ -1602,13 +1622,13 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	 *	  references to push, i.e. we're at the deepest attribute
 	 *	  reference.
 	 */
-	curr = *list_head;
+	curr = fr_pair_list_head(list_head);
 	while ((ns = fr_dlist_tail(&cc.nested))) {
 		tmpl_attr_t const *n_ar;
 
 		list_ctx = ns->list_ctx;
 		ar = ns->ar;
-		curr = _tmpl_cursor_eval(curr, &cc);
+		curr = _tmpl_cursor_eval(&list_head->head, curr, &cc);
 		if (!curr) {
 			/*
 			 *	References extend beyond current
@@ -1627,7 +1647,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 			list_head = &curr->vp_group;
 			list_ctx = curr;	/* Allocations are under the group */
 			_tmpl_cursor_init(list_ctx, list_head, ar, &cc);
-			curr = *list_head;
+			curr = fr_pair_list_head(list_head);
 			continue;
 		}
 
