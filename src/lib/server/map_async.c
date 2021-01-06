@@ -659,10 +659,9 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	{
 		fr_cursor_t	to;
 		fr_dcursor_t	from;
-		fr_pair_list_t	vp_head;
+		fr_pair_list_t	*vp_head = NULL;
 		fr_pair_t	*vp;
 
-		fr_pair_list_init(&vp_head);
 		/*
 		 *	If the LHS is an attribute, we just do the
 		 *	same thing as an xlat expansion.
@@ -702,13 +701,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	Parse the VPs from the RHS.
 		 */
 		vp_head = fr_pair_list_afrom_box(ctx, request->dict, *rhs_result);
-		if (fr_pair_list_empty(&vp_head)) {
+		if (fr_pair_list_empty(vp_head)) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");
 			return 0;	/* No pairs returned */
 		}
 
-		(void)fr_dcursor_init(&from, &vp_head);
+		(void)fr_dcursor_init(&from, vp_head);
 		while ((vp = fr_dcursor_remove(&from))) {
 			map_t *mod;
 			tmpl_rules_t rules;

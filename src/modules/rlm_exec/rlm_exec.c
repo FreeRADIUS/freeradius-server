@@ -358,7 +358,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 
 	if (inst->output && m->box) {
 		TALLOC_CTX *ctx;
-		fr_pair_list_t vps, *output_pairs;
+		fr_pair_list_t *vps, *output_pairs;
 
 		RDEBUG("EXEC GOT -- %pV", m->box);
 
