@@ -168,7 +168,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	RHEXDUMP3(data, data_len, "proto_tacacs decode packet");
 
@@ -220,7 +220,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to ???
 	 */
-	fr_cursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_init(&cursor, &request->request_pairs);
 	if (fr_tacacs_decode(request->request_ctx, request->packet->data, request->packet->data_len,
 			     NULL, client->secret, talloc_array_length(client->secret) - 1,
 			     &cursor) < 0) {
