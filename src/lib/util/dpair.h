@@ -282,6 +282,7 @@ int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					fr_pair_list_t *from, fr_dict_attr_t const *da, unsigned int count);
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					      fr_pair_list_t *from, fr_dict_attr_t const *parent_da, unsigned int count);
+int		fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from, fr_pair_t *item);
 void		fr_tmp_pair_list_move(fr_pair_list_t *dst, fr_pair_list_t *tmp_list);
 
 /** @hidecallergraph */
