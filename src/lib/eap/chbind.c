@@ -38,7 +38,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	size_t			total;
 	uint8_t			*ptr, *end;
 	fr_pair_t		const *vp;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	total = 0;
 	for (vp = fr_pair_list_head(&request->reply_pairs);
@@ -89,15 +89,15 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	ptr += 4;
 	end = ptr + total;
 
-	fr_cursor_init(&cursor, &request->reply_pairs);
-	while ((vp = fr_cursor_current(&cursor)) && (ptr < end)) {
+	fr_dcursor_init(&cursor, &request->reply_pairs);
+	while ((vp = fr_dcursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 *	i.e. tagged, encrypted, or extended attributes
 		 */
 		if (vp->da->flags.subtype) {
 		next:
-			fr_cursor_next(&cursor);
+			fr_dcursor_next(&cursor);
 			continue;
 		}
 		if (vp->da == attr_message_authenticator) goto next;
@@ -204,11 +204,11 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
-		fr_cursor_t cursor;
+		fr_dcursor_t cursor;
 
 		fr_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
-		fr_cursor_init(&cursor, &fake->request_pairs);
+		fr_dcursor_init(&cursor, &fake->request_pairs);
 		while (data_len > 0) {
 			ssize_t attr_len;
 
@@ -273,17 +273,17 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	uint8_t 		*ptr;
 	fr_pair_t		*vp;
 	chbind_packet_t		*packet;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
-	if (!fr_cursor_iter_by_da_init(&cursor, vps, attr_eap_channel_binding_message)) return NULL;
+	if (!fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_channel_binding_message)) return NULL;
 
 	/*
 	 *	Compute the total length of the channel binding data.
 	 */
 	length = 0;
-	for (vp = fr_cursor_current(&cursor);
+	for (vp = fr_dcursor_current(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		length += vp->vp_length;
 	}
 
@@ -302,9 +302,9 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	 *	Copy the data over to our packet.
 	 */
 	packet = (chbind_packet_t *) ptr;
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_dcursor_head(&cursor);
 	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		memcpy(ptr, vp->vp_octets, vp->vp_length);
 		ptr += vp->vp_length;
 	}
