@@ -320,7 +320,6 @@ static inline CC_HINT(nonnull) void *fr_dlist_head(fr_dlist_head_t const *list_h
 static inline CC_HINT(nonnull) bool fr_dlist_empty(fr_dlist_head_t const *list_head)
 {
 	fr_dlist_t const *head = &(list_head->entry);
-
 	return (head->prev == head);
 }
 
@@ -607,6 +606,8 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 
 	dst->prev->next = src->next;
 	dst->prev = src->prev;
+
+	list_dst->num_elements += list_src->num_elements;
 
 	fr_dlist_entry_init(src);
 	list_src->num_elements = 0;
