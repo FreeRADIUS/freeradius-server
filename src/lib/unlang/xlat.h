@@ -263,7 +263,7 @@ typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t out
 
 int		xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name);
 
-int		xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_cursor_t **out,
+int		xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_dcursor_t **out,
 				   bool *tainted, request_t *requst, char const *fmt);
 
 ssize_t		xlat_eval(char *out, size_t outlen, request_t *request, char const *fmt, xlat_escape_legacy_t escape,
