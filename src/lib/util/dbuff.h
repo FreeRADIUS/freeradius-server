@@ -334,6 +334,7 @@ static inline void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t
 	if (unlikely(end < start)) end = start;	/* Could be an assert? */
 
 	*out = (fr_dbuff_t){
+		.buff_i = start,
 		.start_i = start,
 		.p_i = start,
 		.end_i = end,
@@ -490,6 +491,7 @@ static inline fr_dbuff_t *fr_dbuff_init_fd(fr_dbuff_t *dbuff, fr_dbuff_uctx_fd_t
  */
 #define FR_DBUFF_TMP(_start, _len_or_end) \
 (fr_dbuff_t){ \
+	.buff_i		= (uint8_t const *)(_start), \
 	.start_i	= (uint8_t const *)(_start), \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (uint8_t const *)(_start) + (size_t)(_len_or_end), \
