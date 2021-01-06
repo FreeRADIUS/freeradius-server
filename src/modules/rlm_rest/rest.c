@@ -751,19 +751,19 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto skip;
 		}
 
-		if (radius_request(&current, tmpl_request(dst)) < 0) {
+		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
 
-		vps = tmpl_request_pair_list(current, tmpl_list(dst));
+		vps = tmpl_list_head(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
-		ctx = tmpl_request_pair_list_ctx(current, tmpl_list(dst));
+		ctx = tmpl_list_ctx(current, tmpl_list(dst));
 		da = tmpl_da(dst);
 
 		fr_assert(vps);
@@ -1038,17 +1038,17 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			continue;
 		}
 
-		if (radius_request(&current, tmpl_request(dst)) < 0) {
+		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			continue;
 		}
 
-		vps = tmpl_request_pair_list(current, tmpl_list(dst));
+		vps = tmpl_list_head(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			continue;
 		}
-		ctx = tmpl_request_pair_list_ctx(current, tmpl_list(dst));
+		ctx = tmpl_list_ctx(current, tmpl_list(dst));
 
 		/*
 		 *  Alternative JSON structure which allows operator,

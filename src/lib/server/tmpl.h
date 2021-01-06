@@ -769,9 +769,9 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
 #define tmpl_pair_list_AND_CTX(_ctx, _head, _request, _ref, _list) \
 do {\
 	request_t *_rctx = _request; \
-	if ((radius_request(&_rctx, _ref) < 0) || \
-	    !(_head = tmpl_request_pair_list(_rctx, _list)) || \
-	    !(_ctx = tmpl_request_pair_list_ctx(_rctx, _list))) {\
+	if ((tmpl_request_ptr(&_rctx, _ref) < 0) || \
+	    !(_head = tmpl_list_head(_rctx, _list)) || \
+	    !(_ctx = tmpl_list_ctx(_rctx, _list))) {\
 		_ctx = NULL; \
 		_head = NULL; \
 	}\
@@ -846,17 +846,17 @@ typedef enum {
 
 void			tmpl_debug(tmpl_t const *vpt);
 
-fr_pair_list_t		*tmpl_request_pair_list(request_t *request, tmpl_pair_list_t list);
+fr_pair_list_t		*tmpl_list_head(request_t *request, tmpl_pair_list_t list);
 
-fr_radius_packet_t	*tmpl_request_packet(request_t *request, tmpl_pair_list_t list_name);
+fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list_name);
 
-TALLOC_CTX		*tmpl_request_pair_list_ctx(request_t *request, tmpl_pair_list_t list_name);
+TALLOC_CTX		*tmpl_list_ctx(request_t *request, tmpl_pair_list_t list_name);
 
 size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list);
 
-int			radius_request(request_t **request, tmpl_request_ref_t name);
+int			tmpl_request_ptr(request_t **request, tmpl_request_ref_t name);
 
-size_t			radius_request_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t unknown);
+size_t			tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t unknown);
 
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...);
 

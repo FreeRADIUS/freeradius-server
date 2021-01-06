@@ -363,7 +363,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 			continue;
 		}
 
-		if (radius_request(&request, tmpl_request(dst)) < 0) {
+		if (tmpl_request_ptr(&request, tmpl_request(dst)) < 0) {
 			ERROR("Attribute name %s refers to outer request but not in a tunnel, skipping...", ckey);
 			talloc_free(dst);
 			continue;

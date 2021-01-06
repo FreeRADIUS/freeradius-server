@@ -113,7 +113,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	if (inst->input_list) {
-		input_pairs = tmpl_request_pair_list(request, inst->input_list);
+		input_pairs = tmpl_list_head(request, inst->input_list);
 		if (!input_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
 			return -1;
@@ -270,7 +270,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 	if (inst->input) {
 		fr_pair_list_t *input_pairs;
 
-		input_pairs = tmpl_request_pair_list(request, inst->input_list);
+		input_pairs = tmpl_list_head(request, inst->input_list);
 		if (!input_pairs) {
 			RETURN_MODULE_INVALID;
 		}
@@ -362,10 +362,10 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 
 		RDEBUG("EXEC GOT -- %pV", m->box);
 
-		output_pairs = tmpl_request_pair_list(request, inst->output_list);
+		output_pairs = tmpl_list_head(request, inst->output_list);
 		fr_assert(output_pairs != NULL);
 
-		ctx = tmpl_request_pair_list_ctx(request, inst->output_list);
+		ctx = tmpl_list_ctx(request, inst->output_list);
 
 		vps = fr_pair_list_afrom_box(ctx, request->dict, m->box);
 		if (vps) fr_pair_list_move(output_pairs, &vps);
@@ -425,14 +425,14 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	if (inst->input) {
 		fr_pair_list_t *input_pairs;
 
-		input_pairs = tmpl_request_pair_list(request, inst->input_list);
+		input_pairs = tmpl_list_head(request, inst->input_list);
 		if (!input_pairs) RETURN_MODULE_INVALID;
 
 		env_pairs = *input_pairs;
 	}
 
 	if (inst->output) {
-		if (!tmpl_request_pair_list(request, inst->output_list)) {
+		if (!tmpl_list_head(request, inst->output_list)) {
 			RETURN_MODULE_INVALID;
 		}
 	}

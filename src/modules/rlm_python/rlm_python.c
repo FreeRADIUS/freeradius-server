@@ -331,7 +331,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 			continue;
 		}
 
-		if (radius_request(&current, tmpl_request(dst)) < 0) {
+		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
 			ERROR("%s - Attribute name %s.%s refers to outer request but not in a tunnel, skipping...",
 			      funcname, list_name, s1);
 			talloc_free(dst);

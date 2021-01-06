@@ -490,7 +490,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 	 */
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
-		p += radius_request_name(&our_lhs_rules.request_def, p, REQUEST_CURRENT);
+		p += tmpl_request_ref_by_name(&our_lhs_rules.request_def, p, REQUEST_CURRENT);
 		if (our_lhs_rules.request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
 			return -1;
@@ -898,7 +898,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	/*
 	 *	We always put the request pairs into the environment
 	 */
-	input_pairs = tmpl_request_pair_list(request, PAIR_LIST_REQUEST);
+	input_pairs = tmpl_list_head(request, PAIR_LIST_REQUEST);
 
 	/*
 	 *	Automagically switch output type depending on our destination
@@ -996,8 +996,8 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	if (tmpl_is_list(map->lhs) && tmpl_is_list(map->rhs)) {
 		fr_pair_list_t *from = NULL;
 
-		if (radius_request(&context, tmpl_request(map->rhs)) == 0) {
-			from = tmpl_request_pair_list(context, tmpl_list(map->rhs));
+		if (tmpl_request_ptr(&context, tmpl_request(map->rhs)) == 0) {
+			from = tmpl_list_head(context, tmpl_list(map->rhs));
 		}
 		if (!from) return 0;
 
@@ -1310,7 +1310,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 	context = request;
 	request_ref = tmpl_request(map->lhs);
-	if (radius_request(&context, request_ref) < 0) {
+	if (tmpl_request_ptr(&context, request_ref) < 0) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\" in right side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
 			fr_table_str_by_value(tmpl_request_ref_table, request_ref, "<INVALID>"));
@@ -1319,7 +1319,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	}
 
 	list_ref = tmpl_list(map->lhs);
-	list = tmpl_request_pair_list(context, list_ref);
+	list = tmpl_list_head(context, list_ref);
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\" in left side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
@@ -1328,7 +1328,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		goto finish;
 	}
 
-	parent = tmpl_request_pair_list_ctx(context, tmpl_list(map->lhs));
+	parent = tmpl_list_ctx(context, tmpl_list(map->lhs));
 	fr_assert(parent);
 
 	/*

@@ -290,7 +290,7 @@ void tmpl_debug(tmpl_t const *vpt)
  * These functions also resolve #pair_list_t and #tmpl_request_ref_t values to #request_t
  * structs and the head of #fr_pair_t lists in those structs.
  *
- * For adding new #fr_pair_t to the lists, the #tmpl_request_pair_list_ctx function can be used
+ * For adding new #fr_pair_t to the lists, the #tmpl_list_ctx function can be used
  * to obtain the appropriate TALLOC_CTX pointer.
  *
  * @note These don't really have much to do with #tmpl_t. They're in the same
@@ -402,7 +402,7 @@ size_t tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_li
  * @see tmpl_pair_list_name
  * @see tmpl_request_ref_table
  */
-size_t radius_request_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t def)
+size_t tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t def)
 {
 	char const *p, *q;
 

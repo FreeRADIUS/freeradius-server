@@ -45,7 +45,7 @@ RCSID("$Id$")
  *
  * @see tmpl_cursor_init
  */
-fr_pair_list_t *tmpl_request_pair_list(request_t *request, tmpl_pair_list_t list)
+fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -90,7 +90,7 @@ fr_pair_list_t *tmpl_request_pair_list(request_t *request, tmpl_pair_list_t list
  *
  * @see tmpl_pair_list
  */
-TALLOC_CTX *tmpl_request_pair_list_ctx(request_t *request, tmpl_pair_list_t list)
+TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
 {
 	if (!request) return NULL;
 
@@ -128,7 +128,7 @@ TALLOC_CTX *tmpl_request_pair_list_ctx(request_t *request, tmpl_pair_list_t list
  *
  * @see tmpl_pair_list
  */
-fr_radius_packet_t *tmpl_request_packet(request_t *request, tmpl_pair_list_t list)
+fr_radius_packet_t *tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list)
 {
 	switch (list) {
 	/* Don't add default */
@@ -161,7 +161,7 @@ fr_radius_packet_t *tmpl_request_packet(request_t *request, tmpl_pair_list_t lis
  *	- 0 if request is valid in this context.
  *	- -1 if request is not valid in this context.
  */
-int radius_request(request_t **context, tmpl_request_ref_t name)
+int tmpl_request_ptr(request_t **context, tmpl_request_ref_t name)
 {
 	request_t *request = *context;
 
@@ -1213,7 +1213,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	 *	Navigate to the correct request context
 	 */
 	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
-		if (radius_request(&request, rr->request) < 0) {
+		if (tmpl_request_ptr(&request, rr->request) < 0) {
 			if (err) {
 				*err = -3;
 				fr_strerror_printf("Request context \"%s\" not available",
@@ -1228,7 +1228,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	/*
 	 *	Get the right list in the specified context
 	 */
-	list_head = tmpl_request_pair_list(request, tmpl_list(vpt));
+	list_head = tmpl_list_head(request, tmpl_list(vpt));
 	if (!list_head) {
 		if (err) {
 			*err = -2;
@@ -1237,7 +1237,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 		}
 		goto error;
 	}
-	list_ctx = tmpl_request_pair_list_ctx(request, tmpl_list(vpt));
+	list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
 
 	/*
 	 *	Initialise the temporary cursor context
@@ -1547,7 +1547,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	 *	Navigate to the correct request context
 	 */
 	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
-		if (radius_request(&request, rr->request) < 0) {
+		if (tmpl_request_ptr(&request, rr->request) < 0) {
 			fr_strerror_printf("Request context \"%s\" not available",
 					   fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
 			return -3;
@@ -1557,13 +1557,13 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	/*
 	 *	Get the right list in the specified context
 	 */
-	list_head = tmpl_request_pair_list(request, tmpl_list(vpt));
+	list_head = tmpl_list_head(request, tmpl_list(vpt));
 	if (!list_head) {
 		fr_strerror_printf("List \"%s\" not available in this context",
 				   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
 		return -2;
 	}
-	list_ctx = tmpl_request_pair_list_ctx(request, tmpl_list(vpt));
+	list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
 
 	/*
 	 *	If it's a list, just return the list head

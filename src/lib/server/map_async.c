@@ -203,7 +203,7 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
 	tmpl_pair_list_t	list_ref;
 
 	request_ref = tmpl_request(src_dst);
-	if (radius_request(&context, request_ref) < 0) {
+	if (tmpl_request_ptr(&context, request_ref) < 0) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\"",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
 			fr_table_str_by_value(tmpl_request_ref_table, request_ref, "<INVALID>"));
@@ -211,7 +211,7 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
 	}
 
 	list_ref = tmpl_list(src_dst);
-	list = tmpl_request_pair_list(context, list_ref);
+	list = tmpl_list_head(context, list_ref);
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to to invalid list qualifier \"%s\"",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
@@ -980,12 +980,12 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	 *	All this has been checked by #map_to_list_mod
 	 */
 	context = request;
-	if (!fr_cond_assert(mod && radius_request(&context, tmpl_request(mod->lhs)) == 0)) return -1;
+	if (!fr_cond_assert(mod && tmpl_request_ptr(&context, tmpl_request(mod->lhs)) == 0)) return -1;
 
-	vp_list = tmpl_request_pair_list(context, tmpl_list(mod->lhs));
+	vp_list = tmpl_list_head(context, tmpl_list(mod->lhs));
 	if (!fr_cond_assert(vp_list)) return -1;
 
-	parent = tmpl_request_pair_list_ctx(context, tmpl_list(mod->lhs));
+	parent = tmpl_list_ctx(context, tmpl_list(mod->lhs));
 	fr_assert(parent);
 
 	/*
