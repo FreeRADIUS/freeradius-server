@@ -41,9 +41,9 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	fr_cursor_t		cursor;
 
 	total = 0;
-	for (vp = fr_cursor_init(&cursor, &request->reply_pairs);
+	for (vp = fr_pair_list_head(&request->reply_pairs);
 	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->reply_pairs, vp)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
