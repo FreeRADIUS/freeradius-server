@@ -939,19 +939,19 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  */
 static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vps, fr_dict_attr_t const *da[], int num)
 {
-	fr_cursor_t list_cursor, out_cursor;
+	fr_dcursor_t list_cursor;
 	fr_pair_t *match, *copy;
-	fr_pair_list_t last_match;
+	fr_pair_t *last_match = NULL;
 	uint64_t count = 0;
 	int i;
 
-	last_match = *vps;
+	last_match = fr_pair_list_head(vps);
 
-	fr_cursor_init(&list_cursor, &last_match);
+	fr_dcursor_init(&list_cursor, vps);
 	for (i = 0; i < num; i++) {
-		match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i]);
+		match = fr_dcursor_filter_next(&list_cursor, fr_pair_matches_da, da[i]);
 		if (!match) {
-			fr_cursor_init(&list_cursor, &last_match);
+			fr_dcursor_set_current(&list_cursor, last_match);
 			continue;
 		}
 
@@ -962,10 +962,10 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vp
 				return -1;
 			}
 			fr_pair_add(out, copy);
-			fr_pair_list_set_head(last_match, *match);
+			last_match = match;
 
 			count++;
-		} while ((match = fr_cursor_filter_next(&list_cursor, fr_pair_matches_da, da[i])));
+		} while ((match = fr_dcursor_filter_next(&list_cursor, fr_pair_matches_da, da[i])));
 	}
 
 	return count;
@@ -2674,28 +2674,28 @@ int main(int argc, char *argv[])
 	}
 
 	if (conf->filter_request) {
-		fr_cursor_t cursor;
+		fr_dcursor_t cursor;
 		fr_pair_t *type;
 
 		if (rs_build_filter(&conf->filter_request_vps, conf->filter_request) < 0) usage(64);
 
-		type = fr_cursor_iter_by_da_init(&cursor, &conf->filter_request_vps, attr_packet_type);
+		type = fr_dcursor_iter_by_da_init(&cursor, &conf->filter_request_vps, attr_packet_type);
 		if (type) {
-			fr_cursor_remove(&cursor);
+			fr_dcursor_remove(&cursor);
 			conf->filter_request_code = type->vp_uint32;
 			talloc_free(type);
 		}
 	}
 
 	if (conf->filter_response) {
-		fr_cursor_t cursor;
+		fr_dcursor_t cursor;
 		fr_pair_t *type;
 
 		if (rs_build_filter(&conf->filter_response_vps, conf->filter_response) < 0) usage(64);
 
-		type = fr_cursor_iter_by_da_init(&cursor, &conf->filter_response_vps, attr_packet_type);
+		type = fr_dcursor_iter_by_da_init(&cursor, &conf->filter_response_vps, attr_packet_type);
 		if (type) {
-			fr_cursor_remove(&cursor);
+			fr_dcursor_remove(&cursor);
 			conf->filter_response_code = type->vp_uint32;
 			talloc_free(type);
 		}
