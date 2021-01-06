@@ -108,8 +108,8 @@ static void request_init(char const *file, int line, request_t *request)
 	/*
 	 *	Initialise pair value lists
 	 */
-	fr_pair_list_init(&request->control);
-	fr_pair_list_init(&request->state);
+	fr_pair_list_init(&request->control_pairs);
+	fr_pair_list_init(&request->state_pairs);
 }
 
 /** Callback for freeing a request struct

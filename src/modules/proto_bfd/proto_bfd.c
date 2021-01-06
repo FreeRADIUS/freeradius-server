@@ -387,8 +387,8 @@ static const char *bfd_state[] = {
 static void bfd_request(bfd_state_t *session, request_t *request, fr_radius_packet_t *packet)
 {
 	memset(request, 0, sizeof(*request));
-	fr_pair_list_init(&request->control);
-	fr_pair_list_init(&request->state);
+	fr_pair_list_init(&request->control_pairs);
+	fr_pair_list_init(&request->state_pairs);
 	memset(packet, 0, sizeof(*packet));
 	fr_pair_list_init(&packet->vps);
 
