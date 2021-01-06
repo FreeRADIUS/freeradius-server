@@ -224,7 +224,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	int			num, lineno;
 	uint8_t const		*p, *end;
 	fr_pair_t		*vp;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	time_t			timestamp = 0;
 
 	RHEXDUMP3(data, data_len, "proto_detail decode packet");
@@ -259,8 +259,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	}
 
 	lineno = 1;
-	fr_cursor_init(&cursor, &request->request_pairs);
-	fr_cursor_tail(&cursor);	/* Ensure we only free what we add on error */
+	fr_dcursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_tail(&cursor);	/* Ensure we only free what we add on error */
 
 	/*
 	 *	Parse each individual line.
@@ -281,7 +281,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		if ((*p != '\0') && (*p != '\t')) {
 			REDEBUG("Malformed line %d", lineno);
 		error:
-			fr_cursor_free_list(&cursor);
+			fr_dcursor_free_list(&cursor);
 			return -1;
 		}
 
@@ -308,7 +308,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			if (vp) {
 				vp->vp_date = ((fr_time_t) timestamp) * NSEC;
 				vp->type = VT_DATA;
-				fr_cursor_append(&cursor, vp);
+				fr_dcursor_append(&cursor, vp);
 			}
 			goto next;
 		}
