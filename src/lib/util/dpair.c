@@ -610,6 +610,32 @@ inline void *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item
 	return fr_dlist_next(&list->head, item);
 }
 
+/** Get the previous item in a valuepair list before a specific entry
+ *
+ * @param[in] list	to walk
+ * @param[in] item	whose "prev" item to return
+ * @return
+ *	- NULL if the head of the list has been reached
+ *	- pointer to the previous item
+ */
+inline void *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
+{
+	return fr_dlist_prev(&list->head, item);
+}
+
+/** Get the tail of a valuepair list
+ *
+ * @param[in] list	to return the tail of
+ *
+ * @return
+ *	- NULL if the list is empty
+ *	- pointer to the last item in the list.
+ */
+inline void *fr_pair_list_tail(fr_pair_list_t const *list)
+{
+	return fr_dlist_tail(&list->head);
+}
+
 /** Add a VP to the end of the list.
  *
  * Links an additional VP 'add' at the beginnng or end of a list.
