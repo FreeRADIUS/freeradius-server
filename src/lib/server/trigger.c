@@ -63,11 +63,11 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 		     request_t *request, char const *fmt)
 {
-	fr_pair_list_t		head;
+	fr_pair_list_t		*head = NULL;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
 
-	fr_pair_list_init(&head);
+
 	if (!triggers_init) {
 		ERROR("Triggers are not enabled");
 		return -1;
@@ -91,7 +91,7 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		return -1;
 	}
 
-	vp = fr_pair_find_by_da(&head, da);
+	vp = fr_pair_find_by_da(head, da);
 	if (!vp) {
 		ERROR("Attribute \"%s\" is not valid for this trigger", fmt);
 		return -1;
