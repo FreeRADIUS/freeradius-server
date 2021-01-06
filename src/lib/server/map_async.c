@@ -1028,7 +1028,10 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 				for (vp_to = fr_dcursor_head(&to);
 				     vp_to;
 				     vp_to = fr_dcursor_next(&to)) {
-					if (fr_pair_cmp_by_da(vp_to, vp) == 0) exists = true;
+					if (fr_pair_cmp_by_da(vp_to, vp) == 0) {
+						exists = true;
+						break;
+					}
 				}
 
 				if (exists) {
