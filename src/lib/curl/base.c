@@ -150,7 +150,6 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	int			i;
 	char		 	buffer[265];
 	char			*p , *q, *attr = buffer;
-	fr_cursor_t		cursor, list;
 	fr_pair_list_t		cert_vps;
 	/*
 	 *	Examples and documentation show cert_info being
@@ -166,7 +165,6 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	ptr.to_info = NULL;
 
 	fr_pair_list_init(&cert_vps);
-	fr_cursor_init(&list, &request->request_pairs);
 
 	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
 	if (ret != CURLE_OK) {
@@ -182,7 +180,6 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 		struct curl_slist *cert_attrs;
 
 		RDEBUG2("Processing certificate %i",i);
-		fr_cursor_init(&cursor, &cert_vps);
 
 		for (cert_attrs = ptr.to_certinfo->certinfo[i];
 		     cert_attrs;
@@ -208,26 +205,17 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 			MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
 			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
 
-			fr_cursor_append(&cursor, vp);
+			fr_pair_add(&cert_vps, vp);
 		}
 		/*
 		 *	Add a copy of the cert_vps to the request list.
-		 *
-		 *	Both PVS studio and Coverity detect the condition
-		 *	below as logically dead code unless we explicitly
-		 *	set cert_vps.  This is because they're too dumb
-		 *	to realise that the cursor argument passed to
-		 *	tls_session_pairs_from_x509_cert contains a
-		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_cursor_head(&cursor);
-		if (cert_vps) {
+		if (!fr_pair_list_empty(&cert_vps)) {
 			/*
 			 *	Print out all the pairs we have so far
 			 */
 			log_request_pair_list(L_DBG_LVL_2, request, NULL, &cert_vps, NULL);
-			fr_cursor_merge(&list, &cursor);
-			fr_pair_list_init(&cert_vps);
+			fr_tmp_pair_list_move(&request->request_pairs, &cert_vps);
 		}
 	}
 	return 0;
