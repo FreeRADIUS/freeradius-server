@@ -1589,8 +1589,9 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 *  HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
 		 *
 		 *  "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
+		 *  "HTTP/2 " (8) + "100 " (4) + "\r\n" (2) = 12
 		 */
-		if (s < 14) {
+		if (s < 12) {
 			REDEBUG("Malformed HTTP header: Status line too short");
 			goto malformed;
 		}
@@ -1628,8 +1629,10 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		p++;
 		s--;
 
-		/*  Char after reason code must be a space, or \r */
-		if (!((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
+		/*
+		 *  "xxx( |\r)" status code and terminator.
+		 */
+		if (!isdigit(p[0]) || !isdigit(p[1]) || !isdigit(p[2]) || !((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
 
 		ctx->code = atoi(p);
 
