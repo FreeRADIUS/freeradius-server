@@ -1041,8 +1041,8 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 		RETURN_OK_WITH_ERROR();
 	}
 
-	slen = fr_pair_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, head);
 	talloc_list_free(&head);
+	slen = fr_pair_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, fr_pair_list_head(&head));
 
 	if (slen < 0) {
 		fr_strerror_const("Encoder output would overflow output buffer");
