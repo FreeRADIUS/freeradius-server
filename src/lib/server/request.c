@@ -502,7 +502,9 @@ int request_detach(request_t *fake, bool will_free)
 /*
  *	Verify a packet.
  */
-static void packet_verify(char const *file, int line, request_t const *request, fr_radius_packet_t const *packet, char const *type)
+static void packet_verify(char const *file, int line,
+			  request_t const *request, fr_radius_packet_t const *packet,
+			  fr_pair_list_t const *list, char const *type)
 {
 	TALLOC_CTX *parent;
 
@@ -525,7 +527,7 @@ static void packet_verify(char const *file, int line, request_t const *request, 
 
 	if (!packet->vps) return;
 
-	fr_pair_list_verify(file, line, packet, &packet->vps);
+	fr_pair_list_verify(file, line, packet, list);
 }
 
 /*
@@ -551,7 +553,7 @@ void request_verify(char const *file, int line, request_t const *request)
 	fr_assert(request->server_cs != NULL);
 
 	if (request->packet) {
-		packet_verify(file, line, request, request->packet, "request");
+		packet_verify(file, line, request, request->packet, &request->request_pairs, "request");
 #if 0
 		/*
 		 *	@todo - a multi-protocol server shouldn't have
@@ -563,7 +565,7 @@ void request_verify(char const *file, int line, request_t const *request)
 		}
 #endif
 	}
-	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
+	if (request->reply) packet_verify(file, line, request, request->reply, &request->reply_pairs, "reply");
 
 	if (request->async) {
 		(void) talloc_get_type_abort(request->async, fr_async_t);
