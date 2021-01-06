@@ -51,7 +51,8 @@ typedef struct {
 /** Encode a packet
  *
  */
-ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_radius_packet_t const *original, char const *secret)
+ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
+				fr_radius_packet_t const *original, char const *secret)
 {
 	uint8_t const *original_data;
 	ssize_t slen;
@@ -77,7 +78,7 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_radius_packet_t c
 	memcpy(data + 4, packet->vector, sizeof(packet->vector));
 
 	slen = fr_radius_encode(data, sizeof(data), original_data, secret, talloc_array_length(secret) - 1,
-				packet->code, packet->id, &packet->vps);
+				packet->code, packet->id, list);
 	if (slen < 0) return slen;
 
 	/*
@@ -100,14 +101,22 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_radius_packet_t c
 	return 0;
 }
 
-
 /** Calculate/check digest, and decode radius attributes
  *
+ * @param[in] packet			to decode.
+ * @param[in] list			to add pairs to.
+ * @param[in] original			packet, if this is a reply.
+ * @param[in] max_attributes		to decode.
+ * @param[in] tunnel_password_zeros	set random elements of the tunnel password
+ *					vectors to zero to aid in testing.
+ * @param[in] secret			shared secret used for decoding encrypted
+ *					password attributes.
  * @return
  *	- 0 on success
  *	- -1 on decoding error.
  */
-int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_radius_packet_t *original,
+int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
+			    fr_radius_packet_t *original,
 			    uint32_t max_attributes, bool tunnel_password_zeros, char const *secret)
 {
 	int			packet_length;
@@ -225,7 +234,7 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_radius_packet_t *orig
 		talloc_free_children(packet_ctx.tmp_ctx);
 	}
 
-	fr_cursor_init(&out, &packet->vps);
+	fr_cursor_init(&out, list);
 	fr_cursor_tail(&out);		/* Move insertion point to the end of the list */
 	fr_cursor_head(&cursor);
 	fr_cursor_merge(&out, &cursor);
@@ -455,8 +464,8 @@ fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, ui
  *
  * Also attach reply attribute value pairs and any user message provided.
  */
-int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
-			  char const *secret)
+int fr_radius_packet_send(fr_radius_packet_t *packet, fr_pair_list_t *list,
+			  fr_radius_packet_t const *original, char const *secret)
 {
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
@@ -472,7 +481,7 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_radius_packet_t const *
 		/*
 		 *	Encode the packet.
 		 */
-		if (fr_radius_packet_encode(packet, original, secret) < 0) {
+		if (fr_radius_packet_encode(packet, list, original, secret) < 0) {
 			return -1;
 		}
 

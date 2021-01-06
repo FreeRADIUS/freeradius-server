@@ -192,7 +192,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
-static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *request,
+static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 			   char const *password)
 {
 	unsigned int		i;
@@ -205,7 +205,7 @@ static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *request,
 
 	MEM(challenge = fr_pair_afrom_da(packet, attr_ms_chap_challenge));
 
-	fr_pair_add(request, challenge);
+	fr_pair_add(list, challenge);
 	challenge->vp_length = 8;
 	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
 	for (i = 0; i < challenge->vp_length; i++) {
@@ -213,7 +213,7 @@ static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *request,
 	}
 
 	MEM(reply = fr_pair_afrom_da(packet, attr_ms_chap_response));
-	fr_pair_add(request, reply);
+	fr_pair_add(list, reply);
 	reply->vp_length = 50;
 	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->vp_length);
 	memset(p, 0, reply->vp_length);
@@ -939,7 +939,7 @@ static int send_one_packet(rc_request_t *request)
 	/*
 	 *	Send the packet.
 	 */
-	if (fr_radius_packet_send(request->packet, NULL, secret) < 0) {
+	if (fr_radius_packet_send(request->packet, &request->request_pairs, NULL, secret) < 0) {
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
 		deallocate_id(request);
 		request->done = true;
@@ -1043,7 +1043,8 @@ static int recv_one_packet(fr_time_t wait_time)
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_packet_decode(request->reply, request->packet, RADIUS_MAX_ATTRIBUTES, false, secret) != 0) {
+	if (fr_radius_packet_decode(request->reply, &request->reply_pairs,
+				    request->packet, RADIUS_MAX_ATTRIBUTES, false, secret) != 0) {
 		REDEBUG("Reply decode failed");
 		stats.lost++;
 		goto packet_done;

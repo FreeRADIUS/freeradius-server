@@ -766,14 +766,14 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 */
 		{
 			fr_radius_packet_t	*reply = NULL;
-			ssize_t		rcode;
+			ssize_t			rcode;
 
-			fd_set		set;
+			fd_set			set;
 
-			unsigned int	ret;
-			unsigned int	i;
+			unsigned int		ret;
+			unsigned int		i;
 
-			if (fr_radius_packet_encode(packet, NULL, conf->secret) < 0) {
+			if (fr_radius_packet_encode(packet, &packet->vps, NULL, conf->secret) < 0) {
 				fr_perror("Failed encoding packet");
 				return EXIT_FAILURE;
 			}
@@ -822,7 +822,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 						talloc_free(packet);
 						continue;
 					}
-					if (fr_radius_packet_decode(reply, packet,
+					if (fr_radius_packet_decode(reply, &reply->vps, packet,
 								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
 						fr_perror("Failed decoding reply");
 						goto recv_error;
