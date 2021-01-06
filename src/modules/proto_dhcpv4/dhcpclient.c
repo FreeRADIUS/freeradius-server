@@ -144,7 +144,6 @@ static void NEVER_RETURNS usage(void)
 static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, char const *filename)
 {
 	FILE			*fp;
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 	bool			filedone = false;
 	fr_radius_packet_t	*packet;
@@ -177,9 +176,9 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 	/*
 	 *	Fix / set various options
 	 */
-	for (vp = fr_cursor_init(&cursor, packet_vps);
+	for (vp = fr_pair_list_head(packet_vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(packet_vps, vp)) {
 
 		/*
 		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
@@ -497,7 +496,6 @@ static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *reques
 
 static void dhcp_packet_debug(fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
 {
-	fr_cursor_t	cursor;
 	char		buffer[2048];
 
 	char		src_ipaddr[INET6_ADDRSTRLEN];
@@ -542,9 +540,9 @@ static void dhcp_packet_debug(fr_radius_packet_t *packet, fr_pair_list_t *list, 
 #endif
 	       packet->data_len);
 
-	for (vp = fr_cursor_init(&cursor, list);
+	for (vp = fr_pair_list_head(list);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(list, vp)) {
 		VP_VERIFY(vp);
 
 		fr_pair_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), NULL, vp);
