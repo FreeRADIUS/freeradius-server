@@ -76,7 +76,8 @@ typedef enum {
 	RS_LOST		= 0x20
 } rs_status_t;
 
-typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle, fr_radius_packet_t *packet,
+typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle,
+				   fr_radius_packet_t *packet, fr_pair_list_t *list,
 				   struct timeval *elapsed, struct timeval *latency, bool response, bool body);
 typedef enum {
 #ifdef HAVE_COLLECTDC_H
@@ -190,11 +191,13 @@ typedef struct {
 	struct timeval		when;			//!< Time when the packet was received, or next time an event
 							//!< is scheduled.
 	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
-	fr_radius_packet_t		*packet;		//!< The original packet.
-	fr_radius_packet_t		*expect;		//!< Request/response.
-	fr_radius_packet_t		*linked;		//!< The subsequent response or forwarded request the packet
+	fr_radius_packet_t	*packet;		//!< The original packet.
+	fr_pair_list_t		packet_vps;
+	fr_radius_packet_t	*expect;		//!< Request/response.
+	fr_pair_list_t		expect_vps;
+	fr_radius_packet_t	*linked;		//!< The subsequent response or forwarded request the packet
 							//!< was linked against.
-
+	fr_pair_list_t		link_vps;		//!< fr_pair_ts used to link retransmissions.
 
 	rs_capture_t		capture[RS_RETRANSMIT_MAX];	//!< Buffered request packets (if a response filter
 								//!< has been applied).
@@ -209,7 +212,7 @@ typedef struct {
 	bool			silent_cleanup;		//!< Cleanup was forced before normal expiry period,
 							//!< ignore stats about packet loss.
 
-	fr_pair_list_t		link_vps;		//!< fr_pair_ts used to link retransmissions.
+
 
 	bool			in_request_tree;	//!< Whether the request is currently in the request tree.
 	bool			in_link_tree;		//!< Whether the request is currently in the linked tree.
