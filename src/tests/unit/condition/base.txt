@@ -139,7 +139,7 @@ condition <ipaddr>&Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>&Filter-Id == <integer>&Framed-IP-Address
-match ERROR offset 22: Unexpected cast
+match ERROR offset 22: Unexpected cast in right side of comparison
 
 condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
 match ERROR offset 23: Unknown data type
