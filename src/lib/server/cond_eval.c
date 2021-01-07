@@ -470,7 +470,7 @@ do {\
 		cast_type = tmpl_da(map->lhs)->type;
 
 		EVAL_DEBUG("NORMALISATION TYPE %s (PAIRCMP TYPE)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
+			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
 	/*
 	 *	Otherwise we use the explicit cast, or implicit
 	 *	cast (from an attribute reference).
