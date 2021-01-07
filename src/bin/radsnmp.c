@@ -648,7 +648,8 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 		fr_cursor_t		cursor;
 		fr_pair_t		*vp;
-		fr_radius_packet_t		*packet;
+		fr_radius_packet_t	*packet;
+		fr_pair_list_t		request_pairs;
 
 		/*
 		 *	Alloc a new packet so we can start adding
@@ -659,7 +660,8 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			ERROR("Failed allocating request");
 			return EXIT_FAILURE;
 		}
-		fr_cursor_init(&cursor, &packet->vps);
+		fr_pair_list_init(&request_pairs);
+		fr_cursor_init(&cursor, &request_pairs);
 
 		NEXT_LINE(line, buffer);
 
@@ -766,6 +768,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 */
 		{
 			fr_radius_packet_t	*reply = NULL;
+			fr_pair_list_t		reply_pairs;
 			ssize_t			rcode;
 
 			fd_set			set;
@@ -773,7 +776,9 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			unsigned int		ret;
 			unsigned int		i;
 
-			if (fr_radius_packet_encode(packet, &packet->vps, NULL, conf->secret) < 0) {
+			fr_pair_list_init(&reply_pairs);
+
+			if (fr_radius_packet_encode(packet, &request_pairs, NULL, conf->secret) < 0) {
 				fr_perror("Failed encoding packet");
 				return EXIT_FAILURE;
 			}
@@ -785,7 +790,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we're about to send
 			 */
-			fr_packet_log(&default_log, packet, &packet->vps, false);
+			fr_packet_log(&default_log, packet, &reply_pairs, false);
 
 			FD_ZERO(&set); /* clear the set */
 			FD_SET(fd, &set);
@@ -822,7 +827,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 						talloc_free(packet);
 						continue;
 					}
-					if (fr_radius_packet_decode(reply, &reply->vps, packet,
+					if (fr_radius_packet_decode(reply, &reply_pairs, packet,
 								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
 						fr_perror("Failed decoding reply");
 						goto recv_error;
@@ -844,13 +849,13 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we received in response
 			 */
-			fr_packet_log(&default_log, reply, &reply->vps, true);
+			fr_packet_log(&default_log, reply, &reply_pairs, true);
 
 			switch (command) {
 			case RADSNMP_GET:
 			case RADSNMP_GETNEXT:
 				ret = radsnmp_get_response(STDOUT_FILENO, conf->snmp_oid_root,
-							   attr_freeradius_snmp_type, &reply->vps);
+							   attr_freeradius_snmp_type, &reply_pairs);
 				switch (ret) {
 				case -1:
 					fr_perror("Failed converting pairs to varbind response");
@@ -867,7 +872,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				break;
 
 			case RADSNMP_SET:
-				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, &reply->vps) < 0) {
+				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, &reply_pairs) < 0) {
 					fr_perror("Failed writing SET response");
 					return EXIT_FAILURE;
 				}
@@ -879,7 +884,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			}
 
 
-			talloc_free(packet);
+			talloc_free(packet);	/* Frees pairs */
 		}
 	}
 
