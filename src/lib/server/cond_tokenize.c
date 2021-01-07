@@ -89,11 +89,6 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 		switch (c->type) {
 		case COND_TYPE_TMPL:
 			fr_assert(c->data.vpt != NULL);
-			if (c->cast) {
-				FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
-							   fr_table_str_by_value(fr_value_box_type_table,
-										 c->cast->type, "??"));
-			}
 			FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, c->data.vpt, TMPL_ATTR_REF_PREFIX_YES);
 			break;
 
