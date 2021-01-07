@@ -253,12 +253,15 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 	fr_time_delta_t	our_timeout;
 	fr_radius_packet_t	*found = NULL;
 	fr_radius_packet_t	*reply = NULL;
-	int		nb_reply = 0;
-	int		nb_offer = 0;
-	dc_offer_t	*offer_list = NULL;
-	fd_set		read_fd;
-	int		retval;
-	fr_cursor_t	cursor;
+	fr_pair_list_t		reply_vps;
+	int			nb_reply = 0;
+	int			nb_offer = 0;
+	dc_offer_t		*offer_list = NULL;
+	fd_set			read_fd;
+	int			retval;
+	fr_cursor_t		cursor;
+
+	fr_pair_list_init(&reply_vps);
 
 	our_timeout = timeout;
 
@@ -301,7 +304,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 
 			if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, reply->data, reply->data_len);
 
-			fr_cursor_init(&cursor, &reply->vps);
+			fr_cursor_init(&cursor, &reply_vps);
 			if (fr_dhcpv4_decode(reply, reply->data, reply->data_len, &cursor, &reply->code) < 0) {
 				ERROR("Failed decoding reply");
 				return NULL;
@@ -310,9 +313,9 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 			if (!found) found = reply;
 
 			if (reply->code == FR_DHCP_OFFER) {
-				fr_pair_t *vp1 = fr_pair_find_by_da(&reply->vps,
+				fr_pair_t *vp1 = fr_pair_find_by_da(&reply_vps,
 								     attr_dhcp_dhcp_server_identifier);
-				fr_pair_t *vp2 = fr_pair_find_by_da(&reply->vps,
+				fr_pair_t *vp2 = fr_pair_find_by_da(&reply_vps,
 								     attr_dhcp_your_ip_address);
 
 				if (vp1 && vp2) {
@@ -483,7 +486,7 @@ static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *packet
 }
 #endif	/* HAVE_LIBPCAP */
 
-static void dhcp_packet_debug(fr_radius_packet_t *packet, bool received)
+static void dhcp_packet_debug(fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
 {
 	fr_cursor_t	cursor;
 	char		buffer[2048];
@@ -530,7 +533,7 @@ static void dhcp_packet_debug(fr_radius_packet_t *packet, bool received)
 #endif
 	       packet->data_len);
 
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, list);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
@@ -726,7 +729,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Encode the packet
 	 */
-	if (fr_dhcpv4_packet_encode(packet) < 0) {
+	if (fr_dhcpv4_packet_encode(packet, &packet_vps) < 0) {
 		ERROR("Failed encoding packet");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -741,7 +744,7 @@ int main(int argc, char **argv)
 		if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, packet->data, packet->data_len);
 
 		fr_dhcpv4_decode(packet, packet->data, packet->data_len, &cursor, &packet->code);
-		dhcp_packet_debug(packet, false);
+		dhcp_packet_debug(packet, &packet_vps, false);
 	}
 
 #ifdef HAVE_LIBPCAP
@@ -760,7 +763,7 @@ int main(int argc, char **argv)
 			ERROR("Failed decoding packet");
 			ret = -1;
 		}
-		dhcp_packet_debug(reply, true);
+		dhcp_packet_debug(reply, &reply_vps, true);
 	}
 
 	fr_dhcpv4_global_free();

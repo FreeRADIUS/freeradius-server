@@ -391,7 +391,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 	return 0;
 }
 
-int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet)
+int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
 	ssize_t		len;
 	fr_pair_t	*vp;
@@ -411,7 +411,7 @@ int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet)
 		packet->id = fr_rand();
 	}
 
-	len = fr_dhcpv4_encode(packet->data, packet->data_len, NULL, packet->code, packet->id, &packet->vps);
+	len = fr_dhcpv4_encode(packet->data, packet->data_len, NULL, packet->code, packet->id, list);
 	if (len < 0) return -1;
 
 	packet->data_len = len;

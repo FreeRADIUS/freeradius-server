@@ -171,7 +171,7 @@ uint8_t const	*fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 
 int		fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cursor_t *cursor, unsigned int *code);
 
-int		fr_dhcpv4_packet_encode(fr_radius_packet_t *packet);
+int		fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list);
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 /*
