@@ -2812,27 +2812,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	 *	Only "base" data types are allowed.  Structural types
 	 *	and horrid WiMAX crap is forbidden.
 	 */
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_IFID:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_BOOL:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_DATE:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_VALUE:
 		break;
 	}
 
