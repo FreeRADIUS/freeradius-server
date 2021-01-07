@@ -141,13 +141,13 @@ static void NEVER_RETURNS usage(void)
 /*
  *	Initialize the request.
  */
-static fr_radius_packet_t *request_init(char const *filename)
+static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, char const *filename)
 {
-	FILE *fp;
-	fr_cursor_t cursor;
-	fr_pair_t *vp;
-	bool filedone = false;
-	fr_radius_packet_t *packet;
+	FILE			*fp;
+	fr_cursor_t		cursor;
+	fr_pair_t		*vp;
+	bool			filedone = false;
+	fr_radius_packet_t	*packet;
 
 	/*
 	 *	Determine where to read the VP's from.
@@ -156,7 +156,7 @@ static fr_radius_packet_t *request_init(char const *filename)
 		fp = fopen(filename, "r");
 		if (!fp) {
 			ERROR("Error opening %s: %s", filename, fr_syserror(errno));
-			return NULL;
+			return -1;
 		}
 	} else {
 		fp = stdin;
@@ -167,17 +167,17 @@ static fr_radius_packet_t *request_init(char const *filename)
 	/*
 	 *	Read the VP's.
 	 */
-	if (fr_pair_list_afrom_file(packet, dict_dhcpv4, &packet->vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(packet, dict_dhcpv4, packet_vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
 		fr_radius_packet_free(&packet);
 		if (fp && (fp != stdin)) fclose(fp);
-		return NULL;
+		return -1;
 	}
 
 	/*
 	 *	Fix / set various options
 	 */
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, packet_vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 
@@ -190,7 +190,7 @@ static fr_radius_packet_t *request_init(char const *filename)
 				fr_perror("dhcpclient");
 				fr_radius_packet_free(&packet);
 				if (fp && (fp != stdin)) fclose(fp);
-				return NULL;
+				return -1;
 			}
 			vp->type = VT_DATA;
 		}
@@ -231,7 +231,9 @@ static fr_radius_packet_t *request_init(char const *filename)
 	/*
 	 *	And we're done.
 	 */
-	return packet;
+	*out = packet;
+
+	return 0;
 }
 
 
@@ -551,12 +553,17 @@ int main(int argc, char **argv)
 	char const		*dict_dir = DICTDIR;
 	char const		*filename = NULL;
 
-	fr_radius_packet_t		*packet = NULL;
-	fr_radius_packet_t		*reply = NULL;
+	fr_radius_packet_t	*packet = NULL;
+	fr_pair_list_t		packet_vps;
+	fr_radius_packet_t	*reply = NULL;
+	fr_pair_list_t		reply_vps;
 
 	TALLOC_CTX		*autofree;
 
 	int			ret;
+
+	fr_pair_list_init(&packet_vps);
+	fr_pair_list_init(&reply_vps);
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -686,8 +693,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	packet = request_init(filename);
-	if (!packet || !packet->vps) {
+	if ((request_init(&packet, &packet_vps, filename) < 0) || !packet_vps) {
 		ERROR("Nothing to send");
 		fr_exit(EXIT_FAILURE);
 	}
@@ -730,7 +736,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_debug_lvl) {
 		fr_cursor_t cursor;
-		fr_cursor_init(&cursor, &packet->vps);
+		fr_cursor_init(&cursor, &packet_vps);
 
 		if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, packet->data, packet->data_len);
 
@@ -749,7 +755,7 @@ int main(int argc, char **argv)
 
 	if (reply) {
 		fr_cursor_t cursor;
-		fr_cursor_init(&cursor, &reply->vps);
+		fr_cursor_init(&cursor, &reply_vps);
 		if (fr_dhcpv4_decode(reply, reply->data, reply->data_len, &cursor, &reply->code) < 0) {
 			ERROR("Failed decoding packet");
 			ret = -1;
