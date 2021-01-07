@@ -1815,8 +1815,22 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	If we're filtering on responses we can only indicate we received it on response, or timeout.
 	 */
 	} else if (!conf->filter_response && (conf->event_flags & status)) {
-		rs_packet_print(original, original ? original->id : count, status, event->in,
-				original->packet, &original->packet_vps,
+		uint64_t		print_id;
+		fr_radius_packet_t	*print_packet;
+		fr_pair_list_t		*print_pair_list;
+
+		if (original) {
+			print_id = original->id;
+			print_packet = original->packet;
+			print_pair_list = &original->packet_vps;
+		} else {
+			print_id = count;
+			print_packet = packet;
+			print_pair_list = &decoded;
+		}
+
+		rs_packet_print(original, print_id, status, event->in,
+				print_packet, print_pair_list,
 				&elapsed, NULL, response, true);
 	}
 
