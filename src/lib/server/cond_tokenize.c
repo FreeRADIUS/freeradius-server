@@ -98,10 +98,10 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 			break;
 
 		case COND_TYPE_MAP:
-			if (c->cast) {
+			if (c->data.map->lhs->cast) {
 				FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
 							   fr_table_str_by_value(fr_value_box_type_table,
-										 c->cast->type, "??"));
+										 c->data.map->lhs->cast, "??"));
 			}
 			FR_SBUFF_RETURN(map_print, &our_out, c->data.map);
 			break;
@@ -153,7 +153,6 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8)) {
-			c->cast = NULL;
 			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 			return true;
 		}
@@ -162,29 +161,25 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 	if (lhs_type == FR_TYPE_UINT32) {
 		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8)) {
-			c->cast = NULL;
 			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 			return true;
 		}
 
 		if (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) {
-			c->cast = tmpl_da(c->data.map->rhs);
-			tmpl_cast_set(c->data.map->lhs, c->cast->type);
+			tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
 			return true;
 		}
 	}
 
 	if (lhs_type == FR_TYPE_UINT16) {
 		if (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8) {
-			c->cast = NULL;
 			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 			return true;
 		}
 
 		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32)) {
-			c->cast = tmpl_da(c->data.map->rhs);
-			tmpl_cast_set(c->data.map->lhs, c->cast->type);
+			tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
 			return true;
 		}
 	}
@@ -193,8 +188,7 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16)) {
-			c->cast = tmpl_da(c->data.map->rhs);
-			tmpl_cast_set(c->data.map->lhs, c->cast->type);
+			tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
 			return true;
 		}
 	}
@@ -215,15 +209,13 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 	 */
 	if ((lhs_type == FR_TYPE_IPV4_ADDR) &&
 	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV4_PREFIX)) {
-		c->cast = tmpl_da(c->data.map->rhs);
-		tmpl_cast_set(c->data.map->lhs, c->cast->type);
+		tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
 		return true;
 	}
 
 	if ((lhs_type == FR_TYPE_IPV6_ADDR) &&
 	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV6_PREFIX)) {
-		c->cast = tmpl_da(c->data.map->rhs);
-		tmpl_cast_set(c->data.map->lhs, c->cast->type);
+		tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
 		return true;
 	}
 
@@ -233,14 +225,18 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 			       char const *lhs, char const *rhs)
 {
+	fr_type_t cast_type = c->data.map->lhs->cast;
+
+	fr_assert(cast_type != FR_TYPE_INVALID);
+
 	if (tmpl_is_attr(c->data.map->rhs) &&
-	    (c->cast->type != tmpl_da(c->data.map->rhs)->type)) {
-		if (cond_type_check(c, c->cast->type)) {
+	    (cast_type != tmpl_da(c->data.map->rhs)->type)) {
+		if (cond_type_check(c, c->data.map->lhs->cast)) {
 			return 1;
 		}
 
 		fr_strerror_printf("Cannot compare types '%s' (cast) and '%s' (attr)",
-				   fr_table_str_by_value(fr_value_box_type_table, c->cast->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, tmpl_da(c->data.map->rhs)->type, "<INVALID>"));
 		return 0;
 	}
@@ -257,7 +253,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	 *	Cast it to the appropriate data type.
 	 */
 	if (tmpl_is_unresolved(c->data.map->lhs) &&
-	    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
+	    (tmpl_cast_in_place(c->data.map->lhs, cast_type, NULL) < 0)) {
 		fr_strerror_const("Failed to parse field");
 		return -(lhs - start);
 	}
@@ -268,7 +264,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 	 */
 	if ((tmpl_is_data(c->data.map->lhs)) &&
 	    (tmpl_is_unresolved(c->data.map->rhs)) &&
-	    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
+	    (tmpl_cast_in_place(c->data.map->rhs, cast_type, NULL) < 0)) {
 		fr_strerror_const("Failed to parse field");
 		return -(rhs - start);
 	}
@@ -283,8 +279,8 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		 *      dst.min == src.min
 		 *	dst.max == src.max
 		 */
-		if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][0]) &&
-		    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][1])) {
+		if ((dict_attr_sizes[cast_type][0] == dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][0]) &&
+		    (dict_attr_sizes[cast_type][1] == dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][1])) {
 			goto cast_ok;
 		}
 
@@ -301,7 +297,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		 *	ifid to uint64 is OK
 		 */
 		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_IFID) &&
-		    (c->cast->type == FR_TYPE_UINT64)) {
+		    (cast_type == FR_TYPE_UINT64)) {
 			goto cast_ok;
 		}
 
@@ -309,7 +305,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		 *	ipaddr to ipv4prefix is OK
 		 */
 		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_IPV4_ADDR) &&
-		    (c->cast->type == FR_TYPE_IPV4_PREFIX)) {
+		    (cast_type == FR_TYPE_IPV4_PREFIX)) {
 			goto cast_ok;
 		}
 
@@ -317,7 +313,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		 *	ipv6addr to ipv6prefix is OK
 		 */
 		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_IPV6_ADDR) &&
-		    (c->cast->type == FR_TYPE_IPV6_PREFIX)) {
+		    (cast_type == FR_TYPE_IPV6_PREFIX)) {
 			goto cast_ok;
 		}
 
@@ -325,7 +321,7 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		 *	uint64 to ethernet is OK.
 		 */
 		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_UINT64) &&
-		    (c->cast->type == FR_TYPE_ETHERNET)) {
+		    (cast_type == FR_TYPE_ETHERNET)) {
 			goto cast_ok;
 		}
 
@@ -333,8 +329,8 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		 *	dst.max < src.min
 		 *	dst.min > src.max
 		 */
-		if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][0]) ||
-		    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][1])) {
+		if ((dict_attr_sizes[cast_type][1] < dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][0]) ||
+		    (dict_attr_sizes[cast_type][0] > dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][1])) {
 			fr_strerror_const("Cannot cast to attribute of incompatible size");
 			return 0;
 		}
@@ -344,12 +340,11 @@ cast_ok:
 	/*
 	 *	Casting to a redundant type means we don't need the cast.
 	 *
-	 *	Do this LAST, as the rest of the code above assumes c->cast
+	 *	Do this LAST, as the rest of the code above assumes cast_type
 	 *	is not NULL.
 	 */
 	if (tmpl_is_attr(c->data.map->lhs) &&
-	    (c->cast->type == tmpl_da(c->data.map->lhs)->type)) {
-		c->cast = NULL;
+	    (cast_type == tmpl_da(c->data.map->lhs)->type)) {
 		tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 	}
 
@@ -364,6 +359,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 	tmpl_t		*attr, *data, *xlat, *unresolved, *xlat_unresolved, *exec, *vpt;
 	tmpl_t		*lhs = c->data.map->lhs, *rhs = c->data.map->rhs;
 	fr_token_t	op = c->data.map->op;
+	fr_type_t	cast_type = c->data.map->lhs->cast;
 
 /** True if one operand is of _type_a and the other of _type_b
  */
@@ -431,8 +427,8 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 	 *
 	 *	FIXME - We should revisit this when RHS casting is supported.
 	 */
-	if (c->cast && tmpl_is_unresolved(rhs) &&
-	    (tmpl_cast_in_place(rhs, c->cast->type, c->cast) < 0)) {
+	if ((cast_type != FR_TYPE_INVALID) && tmpl_is_unresolved(rhs) &&
+	    (tmpl_cast_in_place(rhs, cast_type, NULL) < 0)) {
 	    	fr_strerror_const("Failed to parse field");
 		return -fr_sbuff_used(m_rhs);
 	}
@@ -473,16 +469,14 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 		case FR_TYPE_IPV4_ADDR:
 			if (strchr(vpt->name, '/') != NULL) {
 				type = FR_TYPE_IPV4_PREFIX;
-				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + type);
-				tmpl_cast_set(c->data.map->lhs, c->cast->type);
+				tmpl_cast_set(c->data.map->lhs, type);
 			}
 			break;
 
 		case FR_TYPE_IPV6_ADDR:
 			if (strchr(vpt->name, '/') != NULL) {
 				type = FR_TYPE_IPV6_PREFIX;
-				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + type);
-				tmpl_cast_set(c->data.map->lhs, c->cast->type);
+				tmpl_cast_set(c->data.map->lhs, type);
 			}
 			break;
 
@@ -497,7 +491,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 		 *	can never match.
 		 */
 		if (tmpl_cast_in_place(vpt, type,
-				       c->cast ? NULL : tmpl_da(attr)) < 0) {
+				       (cast_type != FR_TYPE_INVALID) ? NULL : tmpl_da(attr)) < 0) {
 			fr_dict_attr_t const *da = tmpl_da(attr);
 
 			switch (da->attr) {
@@ -520,7 +514,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 				 */
 				tmpl_attr_to_raw(attr);
 				if (tmpl_cast_in_place(vpt, tmpl_da(attr)->type,
-						       c->cast ? NULL : tmpl_da(attr)) < 0) {
+						       (cast_type != FR_TYPE_INVALID) ? NULL : tmpl_da(attr)) < 0) {
 					fr_strerror_const("Failed to parse value for attribute");
 					TMPL_RETURN(vpt);
 				}
@@ -555,15 +549,11 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 	 */
 	if (TMPL_OF_TYPE_A_B(attr, xlat_unresolved) || TMPL_OF_TYPE_A_B(attr, xlat) || TMPL_OF_TYPE_A_B(attr, exec)) {
 		if (tmpl_da(attr)->type == FR_TYPE_IPV4_ADDR) {
-			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
-							    FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
-			tmpl_cast_set(c->data.map->lhs, c->cast->type);
+			tmpl_cast_set(c->data.map->lhs, FR_TYPE_IPV4_PREFIX);
 		}
 
 		if (tmpl_da(attr)->type == FR_TYPE_IPV6_ADDR) {
-			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
-							    FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
-			tmpl_cast_set(c->data.map->lhs, c->cast->type);
+			tmpl_cast_set(c->data.map->lhs, FR_TYPE_IPV6_PREFIX);
 		}
 	}
 
@@ -706,9 +696,9 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 *	should likely be removed once the conditional
 	 *	evaluator is smarter.
 	 */
-	if ((c->type == COND_TYPE_MAP) && c->cast &&
+	if ((c->type == COND_TYPE_MAP) && (c->data.map->lhs->cast != FR_TYPE_INVALID) &&
 	    tmpl_is_attr(c->data.map->rhs) &&
-	    (c->cast->type == tmpl_da(c->data.map->rhs)->type) &&
+	    (c->data.map->lhs->cast == tmpl_da(c->data.map->rhs)->type) &&
 	    !tmpl_is_attr(c->data.map->lhs)) {
 		tmpl_t *tmp;
 
@@ -716,7 +706,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		c->data.map->rhs = c->data.map->lhs;
 		c->data.map->lhs = tmp;
 
-		c->cast = NULL;
 		tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 
 		switch (c->data.map->op) {
@@ -846,7 +835,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 
 			rcode = cond_eval_map(NULL, 0, c);
 			TALLOC_FREE(c->data.map);
-			c->cast = NULL;
 
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
@@ -869,8 +857,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		    tmpl_is_unresolved(c->data.map->lhs) &&
 		    !c->pass2_fixup) {
 			int rcode;
-
-			fr_assert(c->cast == NULL);
 
 			rcode = cond_eval_map(NULL, 0, c);
 			if (rcode) {
@@ -1401,14 +1387,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	if (tmpl_is_attr_unresolved(lhs)) c->pass2_fixup = PASS2_FIXUP_ATTR;
 
 	/*
-	 *	Hack...
-	 */
-	if (lhs->cast != FR_TYPE_INVALID) {
-		c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + lhs->cast);
-
-	}
-
-	/*
 	 *	We may (or not) have an operator
 	 */
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
@@ -1451,7 +1429,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		}
 
 	unary:
-		if (c->cast) {
+		if (lhs->cast != FR_TYPE_INVALID) {
 			fr_strerror_const("Cannot do cast for existence check");
 			fr_sbuff_set(&our_in, &m_lhs_cast);
 			goto error;
@@ -1600,7 +1578,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	if the RHS is an attr, it MUST be the
 		 *	same type as the LHS.
 		 */
-		if (c->cast) {
+		if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
 			slen = cond_check_cast(c, fr_sbuff_start(&our_in), m_lhs.p, m_rhs.p);
 			if (slen <= 0) {
 				fr_sbuff_set(&our_in, our_in.start + (slen * -1));

@@ -90,8 +90,6 @@ struct fr_cond_s {
 	bool			negate;		//!< Invert the result of the expression.
 	fr_cond_pass2_t		pass2_fixup;
 
-	fr_dict_attr_t const	*cast;		//!< Legacy - Should be removed.
-
 	fr_cond_t		*parent;
 	fr_cond_t		*next;
 };
