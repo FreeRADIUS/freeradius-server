@@ -86,8 +86,6 @@ void cond_debug(fr_cond_t const *cond)
 	for (c = cond; c; c =c->next) {
 		INFO("cond %s (%p)", fr_table_str_by_value(cond_type_table, c->type, "<INVALID>"), cond);
 		INFO("\tnegate : %s", c->negate ? "true" : "false");
-		INFO("\tcast   : %s", c->cast ? fr_table_str_by_value(fr_value_box_type_table,
-								      c->cast->type, "<INVALID>") : "none");
 		INFO("\tfixup  : %s", fr_table_str_by_value(cond_pass2_table, c->pass2_fixup, "<INVALID>"));
 
 		switch (c->type) {
@@ -412,7 +410,6 @@ static int cond_normalise_and_cmp(request_t *request, fr_cond_t const *c, fr_val
 
 	fr_value_box_t const	*rhs = NULL;
 
-	fr_dict_attr_t const	*cast = NULL;
 	fr_type_t		cast_type = FR_TYPE_INVALID;
 
 	fr_value_box_t		lhs_cast = { .type = FR_TYPE_INVALID };
@@ -429,7 +426,7 @@ do {\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
 			   fr_table_str_by_value(fr_value_box_type_table, _s->type, "<INVALID>"),\
 			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));\
-		if (fr_value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
+		if (fr_value_box_cast(request, &_s ## _cast, cast_type, NULL, _s) < 0) {\
 			if (request) RPEDEBUG("Failed casting " #_s " operand");\
 			rcode = -1;\
 			goto finish;\
@@ -467,11 +464,10 @@ do {\
 	 *	Magic attribute is always the LHS.
 	 */
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
-		fr_assert(!c->cast);
 		fr_assert(tmpl_is_attr(map->lhs));
 		fr_assert(!tmpl_is_attr(map->rhs) || !paircmp_find(tmpl_da(map->rhs))); /* expensive assert */
 
-		cast = tmpl_da(map->lhs);
+		cast_type = tmpl_da(map->lhs)->type;
 
 		EVAL_DEBUG("NORMALISATION TYPE %s (PAIRCMP TYPE)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
@@ -481,18 +477,18 @@ do {\
 	 *	We already have the data for the lhs, so we convert
 	 *	it here.
 	 */
-	} else if (c->cast) {
-		cast = c->cast;
+	} else if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
+		cast_type = c->data.map->lhs->cast;
 		EVAL_DEBUG("NORMALISATION TYPE %s (EXPLICIT CAST)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
+			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
 	} else if (tmpl_is_attr(map->lhs)) {
-		cast = tmpl_da(map->lhs);
+		cast_type = tmpl_da(map->lhs)->type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS REF)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
+			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
 	} else if (tmpl_is_attr(map->rhs)) {
-		cast = tmpl_da(map->rhs);
+		cast_type = tmpl_da(map->rhs)->type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS REF)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
+			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
 	} else if (tmpl_is_data(map->lhs)) {
 		cast_type = tmpl_value_type(map->lhs);
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS DATA)",
@@ -502,8 +498,6 @@ do {\
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS DATA)",
 			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
 	}
-
-	if (cast) cast_type = cast->type;
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
