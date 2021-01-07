@@ -38,10 +38,10 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 	unlang_t		*this, *found, *null_case;
 
 	unlang_group_t		*switch_g;
-	unlang_switch_t	*switch_gext;
+	unlang_switch_t		*switch_gext;
 
 	fr_cond_t		cond;
-	map_t		map;
+	map_t			map;
 	tmpl_t			vpt;
 
 	switch_g = unlang_generic_to_group(instruction);
@@ -107,7 +107,7 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 	 *	"case {...}" statement.
 	 */
 	for (this = switch_g->children; this; this = this->next) {
-		unlang_group_t		*case_g;
+		unlang_group_t	*case_g;
 		unlang_case_t	*case_gext;
 
 		fr_assert(this->type == UNLANG_TYPE_CASE);
@@ -124,23 +124,11 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 		}
 
 		/*
-		 *	If we're switching over an attribute
-		 *	AND we haven't pre-parsed the data for
-		 *	the case statement, then cast the data
-		 *	to the type of the attribute.
+		 *	Create the map for comparisons.
 		 */
 		if (tmpl_is_attr(switch_gext->vpt) && !tmpl_is_data(case_gext->vpt)) {
-			map.rhs = switch_gext->vpt;
 			map.lhs = case_gext->vpt;
-			cond.cast = tmpl_da(switch_gext->vpt);
-
-			/*
-			 *	Remove unnecessary casting.
-			 */
-			if (tmpl_is_attr(case_gext->vpt) &&
-			    (tmpl_da(switch_gext->vpt)->type == tmpl_da(case_gext->vpt)->type)) {
-				cond.cast = NULL;
-			}
+			map.rhs = switch_gext->vpt;
 
 		/*
 		 *	Use the pre-expanded string.
@@ -148,19 +136,22 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 		} else if (tmpl_is_xlat(switch_gext->vpt) ||
 			   tmpl_is_xlat_unresolved(switch_gext->vpt) ||
 			   tmpl_is_exec(switch_gext->vpt)) {
-			map.rhs = case_gext->vpt;
 			map.lhs = &vpt;
-			cond.cast = NULL;
+			map.rhs = case_gext->vpt;
 
 		/*
-		 *	Else evaluate the 'switch' statement.
+		 *	Else use the 'switch' statement as-is.
 		 */
 		} else {
-			map.rhs = case_gext->vpt;
 			map.lhs = switch_gext->vpt;
-			cond.cast = NULL;
+			map.rhs = case_gext->vpt;
 		}
 
+		/*
+		 *	Evaluate the 'switch' statement.
+		 *
+		 *	Note that we don't need to do any casting of the RHS
+		 */
 		if (cond_eval_map(request, 0, &cond) == 1) {
 			found = this;
 			break;
