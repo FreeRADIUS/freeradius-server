@@ -83,6 +83,8 @@ static const CONF_PARSER section_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ "connect_uri", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_t, connect_uri), NULL },
 	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout_tv), "4.0" },
+	{ "http_negotiation", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_t, http_negotiation_str), "default" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -927,6 +929,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*		(parse_sub_section(conf, &inst->checksimul, MOD_SESSION) < 0) || */
 		(parse_sub_section(conf, &inst->post_auth, MOD_POST_AUTH) < 0))
 	{
+		return -1;
+	}
+
+	inst->http_negotiation = fr_str2int(http_negotiation_table, inst->http_negotiation_str, -1);
+	if (inst->http_negotiation == -1) {
+		cf_log_err_cs(conf, "Unsupported HTTP version \"%s\".", inst->http_negotiation_str);
 		return -1;
 	}
 

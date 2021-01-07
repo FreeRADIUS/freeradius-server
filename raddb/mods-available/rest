@@ -54,6 +54,12 @@ rest {
 #	connect_timeout = 4.0
 
 	#
+	# Specify HTTP protocol version to use. one of '1.0', '1.1', '2.0', '2.0+auto',
+	# '2.0+tls' or 'default'. (libcurl option CURLOPT_HTTP_VERSION)
+	#
+#	http_negotiation = 1.1
+
+	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#  For example if you list rest in the authorize section of a virtual server,
@@ -94,7 +100,6 @@ rest {
 	#  (i.e. deleted) after each call to the rest module, and each
 	#  %{rest:} expansion.  This is so that headers from one REST
 	#  call do not affect headers from a different REST call.
-
 	#
 	#  Body encodings are the same for requests and responses
 	#
@@ -169,6 +174,9 @@ rest {
 	#  2xx    successful    yes           ok/updated
 	#  5xx    server error  no            fail
 	#  xxx    -             no            invalid
+	#
+	#  The status code is held in %{reply:REST-HTTP-Status-Code}.
+	#
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authorize"
 		method = 'get'
