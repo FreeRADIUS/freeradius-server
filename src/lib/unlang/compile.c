@@ -222,37 +222,37 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 	}
 
 	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-		fr_dict_attr_t const *cast = c->cast;
+		fr_type_t cast_type = c->data.map->lhs->cast;
 
 		/*
 		 *	Resolve the attribute references first
 		 */
 		if (tmpl_is_attr_unresolved(map->lhs)) {
 			if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) return false;
-			if (!cast) cast = tmpl_da(map->lhs);
+			if (cast_type == FR_TYPE_INVALID) cast_type = tmpl_da(map->lhs)->type;
 		}
 
 		if (tmpl_is_attr_unresolved(map->rhs)) {
 			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
-			if (!cast) cast = tmpl_da(map->rhs);
+			if (cast_type == FR_TYPE_INVALID) cast_type = tmpl_da(map->rhs)->type;
 		}
 
 		/*
 		 *	Then fixup the other side if it was unresolved
 		 */
 		if (tmpl_is_unresolved(map->lhs)) {
-			switch (cast->type) {
+			switch (cast_type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->lhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
-										   FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
+					cast_type = FR_TYPE_IPV4_PREFIX;
+					tmpl_cast_set(c->data.map->lhs, cast_type);
 				}
 				break;
 
 			case FR_TYPE_IPV6_ADDR:
 				if (strchr(c->data.map->lhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
-						    				   FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
+					cast_type = FR_TYPE_IPV6_PREFIX;
+					tmpl_cast_set(c->data.map->lhs, cast_type);
 				}
 				break;
 
@@ -260,26 +260,26 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 				break;
 			}
 
-			if (tmpl_cast_in_place(c->data.map->lhs, cast->type, cast) < 0) {
+			if (tmpl_cast_in_place(c->data.map->lhs, cast_type, NULL) < 0) {
 				cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-					   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<UNKNOWN>"),
+					   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<UNKNOWN>"),
 					   fr_box_strvalue_len(map->lhs->name, map->lhs->len));
 
 				return false;
 			}
 		} else if (tmpl_is_unresolved(map->rhs)) {
-			switch (cast->type) {
+			switch (cast_type) {
 			case FR_TYPE_IPV4_ADDR:
 				if (strchr(c->data.map->rhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
-										   FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
+					cast_type = FR_TYPE_IPV4_PREFIX;
+					tmpl_cast_set(c->data.map->lhs, cast_type);
 				}
 				break;
 
 			case FR_TYPE_IPV6_ADDR:
 				if (strchr(c->data.map->rhs->name, '/') != NULL) {
-					c->cast = cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
-						    				   FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
+					cast_type = FR_TYPE_IPV6_PREFIX;
+					tmpl_cast_set(c->data.map->lhs, cast_type);
 				}
 				break;
 
@@ -287,9 +287,9 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 				break;
 			}
 
-			if (tmpl_cast_in_place(c->data.map->rhs, cast->type, cast) < 0) {
+			if (tmpl_cast_in_place(c->data.map->rhs, cast_type, NULL) < 0) {
 				cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-					   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<UNKNOWN>"),
+					   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<UNKNOWN>"),
 					   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
 				return false;
 			}
@@ -482,9 +482,9 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 		return false;
 	}
 
-	if (c->cast) {
+	if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
 		cf_log_err(map->ci, "Cannot cast virtual attribute %s to %s", map->lhs->name,
-			   fr_table_str_by_value(fr_value_box_type_table, c->cast->type, "<INVALID>"));
+			   fr_table_str_by_value(fr_value_box_type_table, c->data.map->lhs->type, "<INVALID>"));
 		return false;
 	}
 
