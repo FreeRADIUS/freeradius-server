@@ -690,6 +690,60 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	}
 
 	/*
+	 *	<ipaddr>"foo" CMP &Attribute-Name The cast may
+	 *	not be necessary, and we can re-write it so
+	 *	that the attribute reference is on the LHS.
+	 *
+	 *	@todo - this rewrite isn't strictly necessary, and
+	 *	should likely be removed once the conditional
+	 *	evaluator is smarter.
+	 */
+	if ((c->type == COND_TYPE_MAP) && c->cast &&
+	    tmpl_is_attr(c->data.map->rhs) &&
+	    (c->cast->type == tmpl_da(c->data.map->rhs)->type) &&
+	    !tmpl_is_attr(c->data.map->lhs)) {
+		tmpl_t *tmp;
+
+		tmp = c->data.map->rhs;
+		c->data.map->rhs = c->data.map->lhs;
+		c->data.map->lhs = tmp;
+
+		c->cast = NULL;
+
+		switch (c->data.map->op) {
+		case T_OP_CMP_EQ:
+		case T_OP_NE:
+			/* do nothing */
+			break;
+
+		case T_OP_LE:
+			c->data.map->op = T_OP_GE;
+			break;
+
+		case T_OP_LT:
+			c->data.map->op = T_OP_GT;
+			break;
+
+		case T_OP_GE:
+			c->data.map->op = T_OP_LE;
+			break;
+
+		case T_OP_GT:
+			c->data.map->op = T_OP_LT;
+			break;
+
+		default:
+			fr_strerror_const("Internal sanity check failed 1");
+			return -1;
+		}
+
+		/*
+		 *	This must have been parsed into TMPL_TYPE_DATA.
+		 */
+		fr_assert(!tmpl_is_unresolved(c->data.map->rhs));
+	}
+
+	/*
 	 *	Normalise the equality checks.
 	 *
 	 *	This doesn't make a lot of difference, but it does
@@ -824,55 +878,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			 */
 			TALLOC_FREE(c->data.map);
 			goto check_true;
-		}
-
-		/*
-		 *	<ipaddr>"foo" CMP &Attribute-Name The cast may
-		 *	not be necessary, and we can re-write it so
-		 *	that the attribute reference is on the LHS.
-		 */
-		if (c->cast &&
-		    tmpl_is_attr(c->data.map->rhs) &&
-		    (c->cast->type == tmpl_da(c->data.map->rhs)->type) &&
-		    !tmpl_is_attr(c->data.map->lhs)) {
-			tmpl_t *tmp;
-
-			tmp = c->data.map->rhs;
-			c->data.map->rhs = c->data.map->lhs;
-			c->data.map->lhs = tmp;
-
-			c->cast = NULL;
-
-			switch (c->data.map->op) {
-			case T_OP_CMP_EQ:
-				/* do nothing */
-				break;
-
-			case T_OP_LE:
-				c->data.map->op = T_OP_GE;
-				break;
-
-			case T_OP_LT:
-				c->data.map->op = T_OP_GT;
-				break;
-
-			case T_OP_GE:
-				c->data.map->op = T_OP_LE;
-				break;
-
-			case T_OP_GT:
-				c->data.map->op = T_OP_LT;
-				break;
-
-			default:
-				fr_strerror_const("Internal sanity check failed 1");
-				return -1;
-			}
-
-			/*
-			 *	This must have been parsed into TMPL_TYPE_DATA.
-			 */
-			fr_assert(!tmpl_is_unresolved(c->data.map->rhs));
 		}
 	}
 
