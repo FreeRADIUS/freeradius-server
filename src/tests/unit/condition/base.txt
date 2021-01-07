@@ -135,8 +135,8 @@ match ERROR offset 0: Cannot do cast for existence check
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
 
-condition <ipaddr>&Filter-Id == <ipaddr>&Framed-IP-Address
-match ERROR offset 22: Unexpected cast
+condition <ipaddr>&Filter-Id == &Framed-IP-Address
+match <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>&Filter-Id == <integer>&Framed-IP-Address
 match ERROR offset 22: Unexpected cast

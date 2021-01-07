@@ -2787,20 +2787,154 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 /** Set a cast for a tmpl
  *
  * @param[in,out] vpt	to set cast for.
- * @param[in] type	to set.
+ * @param[in] dst_type	to set.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_cast_set(tmpl_t *vpt, fr_type_t type)
+int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 {
-	if (fr_dict_non_data_types[type]) {
-		fr_strerror_const("Forbidden data type in cast");
+	fr_type_t src_type;
+
+	switch (dst_type) {
+	default:
+		fr_strerror_printf("Forbidden data type '%s' in cast",
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "??"));
 		return -1;
+
+	/*
+	 *	We can always remove a cast.
+	 */
+	case FR_TYPE_INVALID:
+		goto done;
+
+	/*
+	 *	Only "base" data types are allowed.  Structural types
+	 *	and horrid WiMAX crap is forbidden.
+	 */
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_TIME_DELTA:
+		break;
 	}
 
-	vpt->cast = type;
+	switch (vpt->type) {
+	/*
+	 *	This should have been fixed before we got here.
+	 */
+	case TMPL_TYPE_ATTR_UNRESOLVED:
 
+	/*
+	 *	By default, tmpl types cannot be cast to anything.
+	 */
+	default:
+		if (dst_type != FR_TYPE_INVALID) {
+			fr_strerror_const("Cannot use cast here.");
+			return -1;
+		}
+		break;
+
+	/*
+	 *	These tmpl types are effectively of data type
+	 *	"string", so they can be cast to anything.
+	 */
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_EXEC_UNRESOLVED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
+		break;
+
+	case TMPL_TYPE_DATA:
+		src_type = tmpl_value_type(vpt);
+
+		/*
+		 *	Don't suppress duplicate casts for now, the
+		 *	conditional parser still needs them.
+		 */
+		goto check_types;
+
+	case TMPL_TYPE_ATTR:
+		src_type = tmpl_da(vpt)->type;
+
+
+		/*
+		 *	Suppress casts where they are duplicate.
+		 */
+		if (src_type == dst_type) {
+			vpt->cast = FR_TYPE_INVALID;
+			return 0;
+		}
+
+	check_types:
+		/*
+		 *	Anything can be cast to a string or octets.
+		 */
+		if ((dst_type == FR_TYPE_STRING) || (dst_type == FR_TYPE_OCTETS)) {
+			break;
+		}
+
+		/*
+		 *	Integers, dates, etc. can all be cast to each
+		 *	other.  We will do run-time checks to see if
+		 *	the _values_ being cast fit within the
+		 *	permitted data types.
+		 */
+		if ((src_type >= FR_TYPE_BOOL) && (dst_type >= FR_TYPE_BOOL)) {
+			break;
+		}
+
+		/*
+		 *	IP address types can be cast to each other.
+		 *
+		 *	IP addresses can also be cast to some integers,
+		 *	but we don't check for that.
+		 */
+		if (((src_type >= FR_TYPE_IPV4_ADDR) && (dst_type >= FR_TYPE_IPV4_ADDR)) &&
+		    ((src_type <= FR_TYPE_IPV6_PREFIX) && (dst_type <= FR_TYPE_IPV6_PREFIX))) {
+			break;
+		}
+
+		/*
+		 *	IFID / Ethernet can only be cast to uint64.
+		 *
+		 *	Note that we already check for dst_type of string/octets above.
+		 */
+		if (((src_type == FR_TYPE_IFID) || (src_type == FR_TYPE_IFID)) && (dst_type != FR_TYPE_UINT64)) {
+			fr_strerror_printf("Cannot cast type '%s' to '%s'",
+					   fr_table_str_by_value(fr_value_box_type_table, src_type, "??"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "??"));
+			return -1;
+		}
+
+		/*
+		 *	Other casts MAY be forbidden, but we don't
+		 *	bother checking those here.  :(
+		 */
+		break;
+
+	}
+
+done:
+	vpt->cast = dst_type;
 	return 0;
 }
 
