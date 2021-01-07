@@ -159,6 +159,7 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8)) {
 			c->cast = NULL;
+			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 			return true;
 		}
 	}
@@ -167,11 +168,13 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8)) {
 			c->cast = NULL;
+			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 			return true;
 		}
 
 		if (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) {
 			c->cast = tmpl_da(c->data.map->rhs);
+			tmpl_cast_set(c->data.map->lhs, c->cast->type);
 			return true;
 		}
 	}
@@ -179,12 +182,14 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 	if (lhs_type == FR_TYPE_UINT16) {
 		if (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8) {
 			c->cast = NULL;
+			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 			return true;
 		}
 
 		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32)) {
 			c->cast = tmpl_da(c->data.map->rhs);
+			tmpl_cast_set(c->data.map->lhs, c->cast->type);
 			return true;
 		}
 	}
@@ -194,6 +199,7 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32) ||
 		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16)) {
 			c->cast = tmpl_da(c->data.map->rhs);
+			tmpl_cast_set(c->data.map->lhs, c->cast->type);
 			return true;
 		}
 	}
@@ -215,12 +221,14 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 	if ((lhs_type == FR_TYPE_IPV4_ADDR) &&
 	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV4_PREFIX)) {
 		c->cast = tmpl_da(c->data.map->rhs);
+		tmpl_cast_set(c->data.map->lhs, c->cast->type);
 		return true;
 	}
 
 	if ((lhs_type == FR_TYPE_IPV6_ADDR) &&
 	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV6_PREFIX)) {
 		c->cast = tmpl_da(c->data.map->rhs);
+		tmpl_cast_set(c->data.map->lhs, c->cast->type);
 		return true;
 	}
 
@@ -347,6 +355,7 @@ cast_ok:
 	if (tmpl_is_attr(c->data.map->lhs) &&
 	    (c->cast->type == tmpl_da(c->data.map->lhs)->type)) {
 		c->cast = NULL;
+		tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 	}
 
 	return 1;
@@ -470,6 +479,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 			if (strchr(vpt->name, '/') != NULL) {
 				type = FR_TYPE_IPV4_PREFIX;
 				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + type);
+				tmpl_cast_set(c->data.map->lhs, c->cast->type);
 			}
 			break;
 
@@ -477,6 +487,7 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 			if (strchr(vpt->name, '/') != NULL) {
 				type = FR_TYPE_IPV6_PREFIX;
 				c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + type);
+				tmpl_cast_set(c->data.map->lhs, c->cast->type);
 			}
 			break;
 
@@ -551,11 +562,13 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 		if (tmpl_da(attr)->type == FR_TYPE_IPV4_ADDR) {
 			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 							    FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
+			tmpl_cast_set(c->data.map->lhs, c->cast->type);
 		}
 
 		if (tmpl_da(attr)->type == FR_TYPE_IPV6_ADDR) {
 			c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()),
 							    FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
+			tmpl_cast_set(c->data.map->lhs, c->cast->type);
 		}
 	}
 
@@ -709,6 +722,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		c->data.map->lhs = tmp;
 
 		c->cast = NULL;
+		tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 
 		switch (c->data.map->op) {
 		case T_OP_CMP_EQ:
@@ -838,6 +852,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			rcode = cond_eval_map(NULL, 0, c);
 			TALLOC_FREE(c->data.map);
 			c->cast = NULL;
+
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
 			} else {
@@ -1395,6 +1410,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	 */
 	if (lhs->cast != FR_TYPE_INVALID) {
 		c->cast = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + lhs->cast);
+
 	}
 
 	/*
