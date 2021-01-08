@@ -170,7 +170,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_address_t const *address = track->address;
 	RADCLIENT const *client;
 	fr_radius_packet_t *packet = request->packet;
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 
 	fr_assert(data[0] < FR_VQP_MAX_CODE);
 
@@ -201,7 +201,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_vmps_ok().
 	 */
-	fr_cursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_init(&cursor, &request->request_pairs);
 	if (fr_vmps_decode(request->request_ctx, packet->data, packet->data_len, &cursor, &packet->code) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
@@ -233,7 +233,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	fr_io_address_t const *address = track->address;
 	ssize_t data_len;
 	RADCLIENT const *client;
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 
 	/*
 	 *	The packet timed out.  Tell the network side that the packet is dead.
@@ -304,7 +304,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
 	}
 
-	fr_cursor_talloc_iter_init(&cursor, &request->reply_pairs, fr_proto_next_encodable, dict_vmps, fr_pair_t);
+	fr_dcursor_talloc_iter_init(&cursor, &request->reply_pairs, fr_proto_next_encodable, dict_vmps, fr_pair_t);
 
 	data_len = fr_vmps_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				  request->reply->code, request->reply->id, &cursor);
