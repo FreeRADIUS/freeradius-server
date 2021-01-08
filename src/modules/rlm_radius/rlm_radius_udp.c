@@ -1186,7 +1186,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	decode_fail_t		reason;
 	uint8_t			code;
 	uint8_t			original[RADIUS_HEADER_LENGTH];
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
@@ -1241,7 +1241,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	 *	This only fails if the packet is strangely malformed,
 	 *	or if we run out of memory.
 	 */
-	fr_cursor_init(&cursor, reply);
+	fr_dcursor_init(&cursor, reply);
 	if (fr_radius_decode(ctx, data, packet_len, original,
 			     inst->secret, talloc_array_length(inst->secret) - 1, &cursor) < 0) {
 		REDEBUG("Failed decoding attributes for packet");
@@ -1396,7 +1396,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	if (proxy_state) {
 		uint8_t		*attr = u->packet + packet_len;
 		fr_pair_t	*vp;
-		fr_cursor_t	cursor;
+		fr_dcursor_t	cursor;
 		int		count = 0;
 
 		/*
@@ -1406,9 +1406,9 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		 *	sure that it's a loop.
 		 */
 		if (DEBUG_ENABLED) {
-			for (vp = fr_cursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
+			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
 			     vp;
-			     vp = fr_cursor_next(&cursor)) {
+			     vp = fr_dcursor_next(&cursor)) {
 				if ((vp->vp_length == 5) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {
 					count++;
 				}
