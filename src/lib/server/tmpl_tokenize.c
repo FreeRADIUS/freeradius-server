@@ -2865,52 +2865,13 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 		}
 
 	check_types:
-		/*
-		 *	Anything can be cast to a string or octets.
-		 */
-		if ((dst_type == FR_TYPE_STRING) || (dst_type == FR_TYPE_OCTETS)) {
-			break;
-		}
-
-		/*
-		 *	Integers, dates, etc. can all be cast to each
-		 *	other.  We will do run-time checks to see if
-		 *	the _values_ being cast fit within the
-		 *	permitted data types.
-		 */
-		if ((src_type >= FR_TYPE_BOOL) && (dst_type >= FR_TYPE_BOOL)) {
-			break;
-		}
-
-		/*
-		 *	IP address types can be cast to each other.
-		 *
-		 *	IP addresses can also be cast to some integers,
-		 *	but we don't check for that.
-		 */
-		if (((src_type >= FR_TYPE_IPV4_ADDR) && (dst_type >= FR_TYPE_IPV4_ADDR)) &&
-		    ((src_type <= FR_TYPE_IPV6_PREFIX) && (dst_type <= FR_TYPE_IPV6_PREFIX))) {
-			break;
-		}
-
-		/*
-		 *	IFID / Ethernet can only be cast to uint64.
-		 *
-		 *	Note that we already check for dst_type of string/octets above.
-		 */
-		if (((src_type == FR_TYPE_IFID) || (src_type == FR_TYPE_IFID)) && (dst_type != FR_TYPE_UINT64)) {
+		if (!fr_type_cast(dst_type, src_type)) {
 			fr_strerror_printf("Cannot cast type '%s' to '%s'",
 					   fr_table_str_by_value(fr_value_box_type_table, src_type, "??"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "??"));
 			return -1;
 		}
-
-		/*
-		 *	Other casts MAY be forbidden, but we don't
-		 *	bother checking those here.  :(
-		 */
 		break;
-
 	}
 
 done:

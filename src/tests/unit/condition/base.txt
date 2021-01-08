@@ -425,7 +425,7 @@ match &Tmp-Integer64-0 == &reply.Foo-Stuff-Bar
 #  Casting attributes of different size
 #
 condition <ipaddr>&Tmp-Integer64-0 == &Framed-IP-Address
-match ERROR offset 0: Cannot cast to attribute of incompatible size
+match ERROR offset 8: Cannot cast type 'uint64' to 'ipaddr'
 
 condition <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 match ERROR offset 0: Cannot cast to attribute of incompatible size
