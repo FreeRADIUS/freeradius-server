@@ -320,7 +320,6 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	eap_fast_tunnel_t	*t;
 	fr_pair_list_t		fast_vps;
 	fr_pair_t		*vp;
-	fr_cursor_t		cursor;
 	char const		*errmsg;
 	int			dlen, plen;
 	uint16_t		length;
@@ -382,15 +381,14 @@ error:
 
 	RHEXDUMP3((uint8_t const *)&opaque_plaintext, plen, "PAC-Opaque plaintext data section");
 
-	fr_cursor_init(&cursor, &fast_vps);
 	if (eap_fast_decode_pair(tls_session, &fast_vps, attr_eap_fast_pac_opaque_tlv, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
 		errmsg = fr_strerror();
 		goto error;
 	}
 
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_pair_list_head(&fast_vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&fast_vps, vp)) {
 		if (vp->da == attr_eap_fast_pac_info_pac_type) {
 			fr_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint32;
