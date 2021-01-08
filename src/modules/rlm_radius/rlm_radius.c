@@ -403,11 +403,11 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 	 *	Check for proxy loops.
 	 */
 	if (RDEBUG_ENABLED) {
-		fr_cursor_t cursor;
+		fr_dcursor_t cursor;
 
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
+		for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 			if (vp->vp_length != 4) continue;
 
 			if (memcmp(&inst->proxy_state, vp->vp_octets, 4) == 0) {
