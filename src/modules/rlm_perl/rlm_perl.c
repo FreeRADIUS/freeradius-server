@@ -799,7 +799,6 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
 	I32		key_len, len, i, j;
 	int		ret = 0;
 
-	*vps = NULL;
 	for (i = hv_iterinit(my_hv); i > 0; i--) {
 		res_sv = hv_iternextsv(my_hv,&key,&key_len);
 		if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
@@ -826,7 +825,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 {
 
 	rlm_perl_t		*inst = instance;
-	fr_pair_t		*vp;
+	fr_pair_list_t		vps;
 	int			exitstatus=0, count;
 	STRLEN			n_a;
 
@@ -910,29 +909,29 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 		FREETMPS;
 		LEAVE;
 
-		vp = NULL;
-		if ((get_hv_content(request->request_ctx, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) == 0) {
+		fr_pair_list_init(&vps);
+		if ((get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "RAD_REQUEST", "request")) == 0) {
 			fr_pair_list_free(&request->request_pairs);
-			request->request_pairs = vp;
-			vp = NULL;
+			fr_tmp_pair_list_move(&request->request_pairs, &vps);
+			fr_pair_list_init(&vps);
 		}
 
-		if ((get_hv_content(request->reply_ctx, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
+		if ((get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "RAD_REPLY", "reply")) == 0) {
 			fr_pair_list_free(&request->reply_pairs);
-			request->reply_pairs = vp;
-			vp = NULL;
+			fr_tmp_pair_list_move(&request->reply_pairs, &vps);
+			fr_pair_list_init(&vps);
 		}
 
-		if ((get_hv_content(request->control_ctx, request, rad_config_hv, &vp, "RAD_CONFIG", "control")) == 0) {
+		if ((get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "RAD_CONFIG", "control")) == 0) {
 			fr_pair_list_free(&request->control_pairs);
-			request->control_pairs = vp;
-			vp = NULL;
+			fr_tmp_pair_list_move(&request->control_pairs, &vps);
+			fr_pair_list_init(&vps);
 		}
 
-		if ((get_hv_content(request->session_state_ctx, request, rad_state_hv, &vp, "RAD_STATE", "session-state")) == 0) {
+		if ((get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "RAD_STATE", "session-state")) == 0) {
 			fr_pair_list_free(&request->session_state_pairs);
-			request->session_state_pairs = vp;
-			vp = NULL;
+			fr_tmp_pair_list_move(&request->session_state_pairs, &vps);
+			fr_pair_list_init(&vps);
 		}
 	}
 	RETURN_MODULE_RCODE(exitstatus);
