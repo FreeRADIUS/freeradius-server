@@ -269,7 +269,6 @@ static void eap_peap_inner_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *pairs,
 	size_t 		total;
 	uint8_t		*p;
 	fr_pair_t	*vp = NULL;
-	fr_cursor_t	cursor;
 
 	if (data_len > 65535) return; /* paranoia */
 
@@ -287,15 +286,14 @@ static void eap_peap_inner_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *pairs,
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 	memcpy(p + EAP_HEADER_LEN, data, total);
 
-	fr_cursor_init(&cursor, pairs);
-	fr_cursor_append(&cursor, vp);
+	fr_pair_add(pairs, vp);
 	while (total < data_len) {
 		MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
 		fr_pair_value_memdup(vp, data + total, (data_len - total), false);
 
 		total += vp->vp_length;
 
-		fr_cursor_append(&cursor, vp);
+		fr_pair_add(pairs, vp);
 	}
 }
 
@@ -308,22 +306,21 @@ static int eap_peap_inner_from_pairs(request_t *request, fr_tls_session_t *tls_s
 {
 	fr_assert(!fr_pair_list_empty(vps));
 	fr_pair_t *this;
-	fr_cursor_t cursor;
 
 	/*
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
-	this = fr_cursor_init(&cursor, vps);
+	this = fr_pair_list_head(vps);
 	(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets + EAP_HEADER_LEN,
 					this->vp_length - EAP_HEADER_LEN);
 
 	/*
 	 *	Send the rest of the EAP data, but skipping the first VP.
 	 */
-	for (this = fr_cursor_next(&cursor);
+	for (this = fr_pair_list_next(vps, this);
 	     this;
-	     this = fr_cursor_next(&cursor)) {
+	     this = fr_pair_list_next(vps, this)) {
 		(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets, this->vp_length);
 	}
 
