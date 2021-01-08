@@ -546,7 +546,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
-		(void) fr_cursor_init(&cursor, reply_list);
 
 		for (vp = fr_dcursor_iter_by_da_init(&cursor, reply_list, attr_eap_message);
 		     vp;
