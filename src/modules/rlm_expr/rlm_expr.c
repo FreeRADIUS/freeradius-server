@@ -218,7 +218,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 		int			i, max, err;
 		ssize_t			slen;
 		fr_pair_t		*vp;
-		fr_cursor_t		cursor;
+		fr_dcursor_t		cursor;
 		tmpl_cursor_ctx_t	cc;
 
 		slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
@@ -246,7 +246,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 		x = 0;
 		for (i = 0, vp = tmpl_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
-		     i++, vp = fr_cursor_next(&cursor)) {
+		     i++, vp = fr_dcursor_next(&cursor)) {
 			int64_t		y;
 			fr_value_box_t	value;
 
