@@ -235,7 +235,7 @@ static int log_always(fr_log_t const *log, fr_log_type_t type,
  *	- true if message should be logged.
  *	- false if message shouldn't be logged.
  */
-inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t *request)
+inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request)
 {
 	if (!request->log.dst) return false;
 
