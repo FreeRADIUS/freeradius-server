@@ -335,7 +335,6 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	pool = talloc_pool(NULL, 2048);
 	for (map = inst->maps; map != NULL; map = map->next) {
 		fr_pair_list_t	to_cache;
-		fr_cursor_t	cursor;
 
 		fr_pair_list_init(&to_cache);
 		fr_assert(map->lhs && map->rhs);
@@ -349,9 +348,9 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 			continue;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &to_cache);
+		for (vp = fr_pair_list_head(&to_cache);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&to_cache, vp)) {
 			/*
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
