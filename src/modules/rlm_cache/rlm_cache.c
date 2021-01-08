@@ -366,7 +366,6 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 			default:
 				break;
 			}
-
 			RINDENT();
 			if (RDEBUG_ENABLED2) map_debug_log(request, map, vp);
 			REXDENT();
@@ -542,7 +541,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 
 	rlm_cache_handle_t	*handle;
 
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_pair_t		*vp;
 
 	bool			merge = true, insert = true, expire = false, set_ttl = false;
@@ -777,9 +776,9 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->control_pairs);
+	for (vp = fr_dcursor_init(&cursor, &request->control_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 	     again:
 		if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
@@ -790,9 +789,9 @@ finish:
 		case FR_CACHE_ALLOW_INSERT:
 		case FR_CACHE_MERGE_NEW:
 			RDEBUG2("Removing &control.%s", vp->da->name);
-			vp = fr_cursor_remove(&cursor);
+			vp = fr_dcursor_remove(&cursor);
 			talloc_free(vp);
-			vp = fr_cursor_current(&cursor);
+			vp = fr_dcursor_current(&cursor);
 			if (!vp) break;
 			goto again;
 		}
