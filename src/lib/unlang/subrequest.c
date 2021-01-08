@@ -34,7 +34,7 @@ RCSID("$Id$")
  */
 typedef struct {
 	rlm_rcode_t			*p_result;			//!< Where to store the result.
-	request_t				*child;				//!< Pre-allocated child request.
+	request_t			*child;				//!< Pre-allocated child request.
 	bool				free_child;			//!< Whether we should free the child after
 									///< it completes.
 	bool				detachable;			//!< Whether the request can be detached.
@@ -87,7 +87,7 @@ static void unlang_subrequest_signal(request_t *request, fr_state_signal_t actio
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
-	request_t				*child = talloc_get_type_abort(state->child, request_t);
+	request_t			*child = talloc_get_type_abort(state->child, request_t);
 
 	unlang_interpret_signal(child, action);
 }
