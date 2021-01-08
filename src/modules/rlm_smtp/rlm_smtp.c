@@ -88,8 +88,8 @@ typedef struct {
 typedef struct {
 	request_t			*request;
 	fr_curl_io_request_t	*randle;
-	fr_cursor_t		cursor;
-	fr_cursor_t		body_cursor;
+	fr_dcursor_t		cursor;
+	fr_dcursor_t		body_cursor;
 	fr_dbuff_t		vp_in;
 	struct curl_slist	*recipients;
 	struct curl_slist	*header;
@@ -201,11 +201,11 @@ static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict
 	int 				elems_added = 0;
 
 	/* Iterate over the VP and add the string value to the curl_slist */
-	vp = fr_cursor_iter_by_da_init(&uctx->cursor, &uctx->request->request_pairs, dict_attr);
+	vp = fr_dcursor_iter_by_da_init(&uctx->cursor, &uctx->request->request_pairs, dict_attr);
 	while (vp) {
 		*out = curl_slist_append(*out, vp->vp_strvalue);
 		elems_added++;
-		vp = fr_cursor_next(&uctx->cursor);
+		vp = fr_dcursor_next(&uctx->cursor);
 	}
 	/* Check that the elements were found */
 	if (elems_added == 0) {
@@ -229,7 +229,7 @@ static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t
 	while (vp) {
 		count += 1;
 		*out = curl_slist_append(*out, vp->vp_strvalue);
-		vp = fr_cursor_next(&uctx->cursor);
+		vp = fr_dcursor_next(&uctx->cursor);
 	}
 	/* Return the number of elements that were found */
 	tmpl_cursor_clear(&cc);
@@ -277,7 +277,7 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t co
 	vp = tmpl_cursor_init(NULL, NULL, &cc, &uctx->cursor, uctx->request, vpt);
 	while (vp) {
 		copied += fr_sbuff_in_bstrncpy(out, vp->vp_strvalue, vp->vp_length);
-		vp = fr_cursor_next(&uctx->cursor);
+		vp = fr_dcursor_next(&uctx->cursor);
 		/* If there will be more values, add a comma and whitespace */
 		if (vp) {
 			copied += fr_sbuff_in_strcpy(out, delimeter);
@@ -385,7 +385,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tm
 	/* Check for any file attachments */
 	for( vp = tmpl_cursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
 	vp;
-       	vp = fr_cursor_next(&uctx->cursor)){
+       	vp = fr_dcursor_next(&uctx->cursor)){
 		if(vp->vp_tainted) {
 			RDEBUG2("Skipping a tainted attachment");
 			continue;
@@ -577,7 +577,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 
 	fr_dbuff_init(&out, (uint8_t *)ptr, (size * nmemb));  /* Wrap the output buffer so we can track our position easily */
 
-	vp = fr_cursor_current(&uctx->body_cursor);
+	vp = fr_dcursor_current(&uctx->body_cursor);
 	if (!vp) {
 		RDEBUG2("vp could not be found for the body element");
 		return 0;
@@ -588,7 +588,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 		return fr_dbuff_used(&out);
 	}
 	/* Once this value pair is fully copied, prepare for the next element */
-	vp = fr_cursor_next(&uctx->body_cursor);
+	vp = fr_dcursor_next(&uctx->body_cursor);
 	if (vp) {
 		fr_dbuff_init(&uctx->vp_in, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
 
@@ -614,7 +614,7 @@ static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
 	mime_body = curl_mime_init(uctx->randle->candle);
 
 	/* initialize the cursor used by the body_source function*/
-	vp = fr_cursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
+	vp = fr_dcursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
 	fr_dbuff_init(&uctx->vp_in, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
 
 	/* Add a mime part to mime_body for every body element */
@@ -623,12 +623,12 @@ static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
 		part = curl_mime_addpart(mime_body);
 		curl_mime_encoder(part, "8bit");
 		curl_mime_data_cb(part, vp->vp_length, body_source, NULL, NULL, uctx);
-		vp = fr_cursor_next(&uctx->body_cursor);
+		vp = fr_dcursor_next(&uctx->body_cursor);
 	}
 	RDEBUG2("initialized %d body element part(s)", body_elements);
 
 	/* Re-initialize the cursor for use when uploading the data to curl */
-	fr_cursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
+	fr_dcursor_iter_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
 
 	/* Add body_mime as a subpart of the mime request with a local content-disposition*/
 	part = curl_mime_addpart(mime);
