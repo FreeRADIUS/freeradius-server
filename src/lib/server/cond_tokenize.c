@@ -139,6 +139,121 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 	return fr_sbuff_set(out, &our_out);
 }
 
+/** Promote the types in a FOO OP BAR comparison.
+ *
+ */
+static int cond_promote_types(fr_cond_t *c)
+{
+	fr_type_t lhs_type, rhs_type;
+	fr_type_t cast_type;
+
+#ifdef HAVE_REGEX
+	/*
+	 *	We don't do casting on regexes.
+	 */
+	if ((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE)) return 0;
+#endif
+
+	/*
+	 *	There's a cast, remember it.
+	 */
+	if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
+		lhs_type = c->data.map->lhs->cast;
+
+		/*
+		 *	Two explicit casts MUST be the same, otherwise
+		 *	it's an error.
+		 *
+		 *	We only do type promotion when at least one
+		 *	data type is implicitly specified.
+		 */
+		if (c->data.map->rhs->cast != FR_TYPE_INVALID) {
+			if (c->data.map->rhs->cast != lhs_type) {
+				fr_strerror_const("Incompatible casts");
+				return -1;
+			}
+			return 0;
+		}
+
+	} else if (tmpl_is_data(c->data.map->lhs)) {
+		/*
+		 *	Choose the data type which was parsed.
+		 */
+		lhs_type = tmpl_value_type(c->data.map->lhs);
+
+	} else if (tmpl_is_attr(c->data.map->lhs)) {
+		/*
+		 *	Choose the attribute type which was parsed.
+		 */
+		lhs_type = tmpl_da(c->data.map->lhs)->type;
+
+	} else {
+		lhs_type = FR_TYPE_INVALID;
+	}
+
+	if (c->data.map->rhs->cast != FR_TYPE_INVALID) {
+		rhs_type = c->data.map->rhs->cast;
+
+	} else if (tmpl_is_data(c->data.map->rhs)) {
+		rhs_type = tmpl_value_type(c->data.map->rhs);
+
+	} else if (tmpl_is_attr(c->data.map->rhs)) {
+		rhs_type = tmpl_da(c->data.map->rhs)->type;
+
+	} else {
+		rhs_type = FR_TYPE_INVALID;
+
+		/*
+		 *	Both sides are have unresolved issues.  Leave
+		 *	them alone...
+		 */
+		if (lhs_type == FR_TYPE_INVALID) return 0;
+	}
+
+	/*
+	 *	Both types are identical.  Ensure that LHS / RHS are
+	 *	cast as appropriate.
+	 */
+	if (lhs_type == rhs_type) {
+		cast_type = lhs_type;
+		goto set_types;
+	}
+
+	/*
+	 *	Only one side has a known data type.  Cast the other
+	 *	side to it.
+	 *
+	 *	Note that we don't check the return code for
+	 *	tmpl_cast_set().  If one side is an unresolved
+	 *	attribute, then the cast will fail.  Which is fine,
+	 *	because we will just check it again after the pass2
+	 *	fixups.
+	 */
+	if ((lhs_type != FR_TYPE_INVALID) && (rhs_type == FR_TYPE_INVALID)) {
+		(void) tmpl_cast_set(c->data.map->rhs, lhs_type);
+		return 0;
+	}
+
+	if ((rhs_type != FR_TYPE_INVALID) && (lhs_type == FR_TYPE_INVALID)) {
+		(void) tmpl_cast_set(c->data.map->lhs, rhs_type);
+		return 0;
+	}
+
+	cast_type = fr_type_promote(lhs_type, rhs_type);
+	fr_assert(cast_type != FR_TYPE_INVALID);
+
+	/*
+	 *	Cast both sides to the promoted type.  If the tmpl
+	 *	already has a data type, then the cast will just do
+	 *	nothing.
+	 */
+set_types:
+	(void) tmpl_cast_set(c->data.map->lhs, cast_type);
+	(void) tmpl_cast_set(c->data.map->rhs, cast_type);
+
+	return 0;
+}
+
 
 static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 {
@@ -1553,6 +1668,16 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 #endif
 
 		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+		/*
+		 *	Promote the data types to the appropriate
+		 *	values.
+		 */
+		if (cond_promote_types(c) < 0) {
+			fr_sbuff_set(&our_in, our_in.start);
+			goto error;
+
+		}
 
 		/*
 		 *	Check cast type.  We can have the RHS

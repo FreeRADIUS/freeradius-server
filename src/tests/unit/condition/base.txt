@@ -409,8 +409,11 @@ match &User-Name == "foo"
 condition <integer>"%{md4: 1 + 1}" < &NAS-Port
 match &NAS-Port > "%{md4: 1 + 1}"
 
+#
+#  The string gets parsed as an IP address.
+#
 condition &Filter-Id == &Framed-IP-Address
-match ERROR offset 0: Cannot compare attributes of type 'string' and 'ipaddr'
+match <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>127.0.0.1 == &Filter-Id
 match ERROR offset 0: Cannot compare types 'ipaddr' (cast) and 'string' (attr)
