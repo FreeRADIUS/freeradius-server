@@ -412,7 +412,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			continue;
 		}
 
-		RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
+		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, filename);
 		found = true;
 		fall_through = false;
 
