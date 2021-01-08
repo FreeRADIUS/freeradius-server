@@ -500,7 +500,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		 * Copy what we need into the TTLS tunnel and leave
 		 * the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, reply_list); vp; vp = fr_cursor_next(&cursor)) {
+		for (vp = fr_pair_list_head(reply_list); vp; vp = fr_pair_list_next(reply_list, vp)) {
 			if (fr_dict_vendor_num_by_da(vp->da) != VENDORPEC_MICROSOFT) continue;
 
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
@@ -800,14 +800,13 @@ static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_sess
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	fr_pair_t			*vp;
-	fr_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
 
 	memset(&my_binding, 0, sizeof(my_binding));
 
-	for (vp = fr_cursor_init(&cursor, fast_vps);
+	for (vp = fr_pair_list_head(fast_vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(fast_vps, vp)) {
 		FR_CODE code = FR_CODE_ACCESS_REJECT;
 		if (vp->da->parent == attr_eap_fast_tlv) {
 			if (vp->da == attr_eap_fast_eap_payload) {
