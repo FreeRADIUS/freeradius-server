@@ -216,7 +216,7 @@ condition &Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition <integer>X == 1
-match ERROR offset 9: Failed to parse field
+match ERROR offset 0: Failed parsing left side of condition as type 'uint32'
 
 condition &NAS-Port == X
 match ERROR offset 13: Failed to parse value for attribute
@@ -329,7 +329,7 @@ condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 condition <ipaddr>127.0.0.1/327 == 127.0.0.1
-match ERROR offset 8: Failed to parse field
+match ERROR offset 0: Failed parsing left side of condition as type 'ipaddr'
 
 condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
@@ -590,8 +590,13 @@ match true
 condition <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
 match <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
 
+#
+#  rewrite so that the attribute is on the LHS
+#  and, move the cast to the attribute, as the RHS
+#  is parsed as ipv4prefix
+#
 condition <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
-match <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
+match <ipv4prefix>&NAS-IP-Address < 192.168.0.0/24
 
 #
 #  We add casts to the LHS if necessary

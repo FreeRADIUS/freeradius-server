@@ -242,14 +242,40 @@ static int cond_promote_types(fr_cond_t *c)
 	cast_type = fr_type_promote(lhs_type, rhs_type);
 	fr_assert(cast_type != FR_TYPE_INVALID);
 
-	/*
-	 *	Cast both sides to the promoted type.  If the tmpl
-	 *	already has a data type, then the cast will just do
-	 *	nothing.
-	 */
 set_types:
-	(void) tmpl_cast_set(c->data.map->lhs, cast_type);
-	(void) tmpl_cast_set(c->data.map->rhs, cast_type);
+	/*
+	 *	Cast both sides to the promoted type.
+	 *
+	 *	If the tmpl has no data type, then try to cast it now.
+	 *
+	 *	If the tmpl already has a data type, then the cast
+	 *	will just do nothing.
+	 */
+	if (tmpl_is_unresolved(c->data.map->lhs)) {
+		if (tmpl_cast_in_place(c->data.map->lhs, cast_type, NULL) < 0) {
+			fr_strerror_printf("Failed parsing left side of condition as type '%s'",
+					   fr_table_str_by_value(fr_value_box_type_table,
+								 cast_type, "??"));
+			return -1;
+		}
+
+		(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
+	} else {
+		(void) tmpl_cast_set(c->data.map->lhs, cast_type);
+	}
+
+	if (tmpl_is_unresolved(c->data.map->rhs)) {
+		if (tmpl_cast_in_place(c->data.map->rhs, cast_type, NULL) < 0) {
+			fr_strerror_printf("Failed parsing right side of condition as type '%s'",
+					   fr_table_str_by_value(fr_value_box_type_table,
+								 cast_type, "??"));
+			return -1;
+		}
+
+		(void) tmpl_cast_set(c->data.map->rhs, FR_TYPE_INVALID);
+	} else {
+		(void) tmpl_cast_set(c->data.map->rhs, cast_type);
+	}
 
 	return 0;
 }
@@ -758,17 +784,14 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 *	should likely be removed once the conditional
 	 *	evaluator is smarter.
 	 */
-	if ((c->type == COND_TYPE_MAP) && (c->data.map->lhs->cast != FR_TYPE_INVALID) &&
+	if ((c->type == COND_TYPE_MAP) &&
 	    tmpl_is_attr(c->data.map->rhs) &&
-	    (c->data.map->lhs->cast == tmpl_da(c->data.map->rhs)->type) &&
 	    !tmpl_is_attr(c->data.map->lhs)) {
 		tmpl_t *tmp;
 
 		tmp = c->data.map->rhs;
 		c->data.map->rhs = c->data.map->lhs;
 		c->data.map->lhs = tmp;
-
-		tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
 
 		switch (c->data.map->op) {
 		case T_OP_CMP_EQ:
