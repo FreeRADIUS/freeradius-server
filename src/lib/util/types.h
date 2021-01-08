@@ -214,7 +214,8 @@ typedef enum {
 /*
  *  In value.c, but should likely be here.
  */
-bool fr_type_cast(fr_type_t dst, fr_type_t src);
+bool		fr_type_cast(fr_type_t dst, fr_type_t src);
+fr_type_t	fr_type_promote(fr_type_t a, fr_type_t b);
 
 #ifdef __cplusplus
 }

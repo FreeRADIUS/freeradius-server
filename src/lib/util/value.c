@@ -5285,3 +5285,273 @@ bool fr_type_cast(fr_type_t dst, fr_type_t src)
 	return type_cast_table[src][dst];
 }
 
+#undef O
+#define O(_x) [FR_TYPE_ ## _x] = FR_TYPE_ ## _x
+
+/** promote (a,b) -> a or b
+ *		a/b are not octets / string
+ *		a and b are both FR_TYPE_VALUE
+ *
+ *  Note that this table can return a type which is _not_ a or b.
+ *
+ *  Many lookups of table[a][b] will return b.  Some will return a.
+ *  Others will return a type which is compatible with both a and b.
+ */
+static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
+	[FR_TYPE_IPV4_ADDR] = {
+		O(IPV4_PREFIX),
+		O(IPV6_ADDR),
+		O(IPV6_PREFIX),
+		[FR_TYPE_UINT32] = FR_TYPE_IPV4_ADDR,
+	},
+
+	[FR_TYPE_IPV4_PREFIX] = {
+		[FR_TYPE_IPV4_ADDR] = FR_TYPE_IPV4_PREFIX,
+		O(IPV4_PREFIX),
+		[FR_TYPE_IPV6_ADDR] = FR_TYPE_IPV6_PREFIX,
+		O(IPV6_PREFIX),
+	},
+
+	[FR_TYPE_IPV6_ADDR] = {
+		O(IPV6_PREFIX),
+	},
+
+	[FR_TYPE_IPV6_PREFIX] = {
+		[FR_TYPE_IPV6_ADDR] = FR_TYPE_IPV6_PREFIX,
+	},
+
+	/* unsigned integers */
+
+	[FR_TYPE_BOOL] = {
+		O(UINT8),
+		O(UINT16),
+		O(UINT32),
+		O(UINT64),
+		O(INT8),
+		O(INT16),
+		O(INT32),
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+	},
+
+	[FR_TYPE_UINT8] = {
+		O(UINT16),
+		O(UINT32),
+		O(UINT64),
+		[FR_TYPE_INT8] = FR_TYPE_UINT8,
+		O(INT16),
+		O(INT32),
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+	},
+
+	[FR_TYPE_UINT16] = {
+		[FR_TYPE_UINT8] = FR_TYPE_UINT16,
+		O(UINT32),
+		O(UINT64),
+		[FR_TYPE_INT16] = FR_TYPE_UINT16,
+		O(INT32),
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+	},
+
+	[FR_TYPE_UINT32] = {
+		O(IPV4_ADDR),
+		[FR_TYPE_UINT8] = FR_TYPE_UINT32,
+		[FR_TYPE_UINT16] = FR_TYPE_UINT32,
+		O(UINT64),
+		[FR_TYPE_INT32] = FR_TYPE_UINT32,
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+		O(DATE),
+	},
+
+	[FR_TYPE_UINT64] = {
+		[FR_TYPE_UINT8] = FR_TYPE_UINT64,
+		[FR_TYPE_UINT16] = FR_TYPE_UINT64,
+		[FR_TYPE_UINT32] = FR_TYPE_UINT64,
+
+		[FR_TYPE_INT8] = FR_TYPE_UINT64,
+		[FR_TYPE_INT16] = FR_TYPE_UINT64,
+		[FR_TYPE_INT32] = FR_TYPE_UINT64,
+		[FR_TYPE_INT64] = FR_TYPE_UINT64,
+		O(SIZE),
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT64,
+		O(FLOAT64),
+		O(TIME_DELTA),
+		O(DATE),
+	},
+
+	[FR_TYPE_SIZE] = {
+		[FR_TYPE_UINT8] = FR_TYPE_SIZE,
+		[FR_TYPE_UINT16] = FR_TYPE_SIZE,
+		[FR_TYPE_UINT32] = FR_TYPE_SIZE,
+		[FR_TYPE_UINT64] = FR_TYPE_SIZE,
+		[FR_TYPE_INT8] = FR_TYPE_SIZE,
+		[FR_TYPE_INT16] = FR_TYPE_SIZE,
+		[FR_TYPE_INT32] = FR_TYPE_SIZE,
+		[FR_TYPE_INT64] = FR_TYPE_SIZE,
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT64,
+		O(FLOAT64),
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_SIZE,
+		O(DATE),
+	},
+
+	/* signed integers */
+	[FR_TYPE_INT8] = {
+		O(UINT8),
+		O(UINT16),
+		O(UINT32),
+		O(UINT64),
+		O(INT16),
+		O(INT32),
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+	},
+
+	[FR_TYPE_INT16] = {
+		[FR_TYPE_UINT8] = FR_TYPE_INT16,
+		O(UINT16),
+		O(UINT32),
+		O(UINT64),
+		[FR_TYPE_INT8] = FR_TYPE_INT16,
+		O(INT32),
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+	},
+
+	[FR_TYPE_INT32] = {
+		[FR_TYPE_UINT8] = FR_TYPE_INT32,
+		[FR_TYPE_UINT16] = FR_TYPE_INT32,
+		O(UINT32),
+		O(UINT64),
+		[FR_TYPE_INT8] = FR_TYPE_INT32,
+		[FR_TYPE_INT16] = FR_TYPE_INT32,
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+		O(DATE),
+	},
+
+	[FR_TYPE_INT64] = {
+		[FR_TYPE_UINT8] = FR_TYPE_UINT64,
+		[FR_TYPE_UINT16] = FR_TYPE_UINT64,
+		[FR_TYPE_UINT32] = FR_TYPE_UINT64,
+		O(UINT64),
+		O(SIZE),
+		[FR_TYPE_INT8] = FR_TYPE_UINT64,
+		[FR_TYPE_INT16] = FR_TYPE_UINT64,
+		[FR_TYPE_INT32] = FR_TYPE_UINT64,
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT64,
+		O(FLOAT64),
+		O(TIME_DELTA),
+		O(DATE),
+	},
+
+	[FR_TYPE_TIME_DELTA] = {
+		[FR_TYPE_BOOL] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_UINT8] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_UINT16] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_UINT32] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_UINT64] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_SIZE] = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_INT8] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_INT16] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_INT32] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_INT64] = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_FLOAT64] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_DATE] = FR_TYPE_TIME_DELTA,
+	},
+
+	[FR_TYPE_DATE] = {
+		[FR_TYPE_UINT32] = FR_TYPE_DATE,
+		[FR_TYPE_UINT64] = FR_TYPE_DATE,
+		[FR_TYPE_SIZE] = FR_TYPE_DATE,
+
+		[FR_TYPE_INT32] = FR_TYPE_DATE,
+		[FR_TYPE_INT64] = FR_TYPE_DATE,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_DATE,
+		[FR_TYPE_FLOAT64] = FR_TYPE_DATE,
+		O(TIME_DELTA),
+	},
+};
+
+/** Return the promoted type
+ *
+ *  We presume that the two types are compatible, as checked by
+ *  calling fr_type_cast().  The main difference here is that the two
+ *  types don't have any src / dst relationship.  Instead, we just
+ *  pick one which best suits any value-box comparisons
+ *
+ *  Note that this function can return a type which is _not_ a or b.
+ *
+ * @param a	type one
+ * @param b	type two
+ * @return	the promoted type
+ */
+fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
+{
+	/*
+	 *	Invalid types
+	 */
+	if ((a == FR_TYPE_INVALID) || (a >= FR_TYPE_TLV)) return FR_TYPE_INVALID;
+	if ((b == FR_TYPE_INVALID) || (b >= FR_TYPE_TLV)) return FR_TYPE_INVALID;
+
+	if (a == b) return a;
+
+	/*
+	 *	string / octets and "type", the un-typed data gets cast to
+	 *	"type".
+	 *
+	 *	We prefer to cast raw data to real types.  We also
+	 *	prefer to _parse_ strings, and do the type checking on
+	 *	the real types.  That way we have things like:  "000" == 0
+	 */
+	if (a == FR_TYPE_OCTETS) return b;
+	if (b == FR_TYPE_OCTETS) return a;
+
+	/*
+	 *	Check for string after octets, because we want to cast
+	 *	octets to string, and not vice versa.
+	 */
+	if (a == FR_TYPE_STRING) return b;
+	if (b == FR_TYPE_STRING) return a;
+
+	/*
+	 *	Otherwise bad things happen. :(
+	 */
+	fr_assert(type_promote_table[a][b] == type_promote_table[b][a]);
+
+	fr_assert(type_promote_table[a][b] != FR_TYPE_INVALID);
+
+	/*
+	 *	That takes care of the simple cases.  :( Now to the
+	 *	complex ones.  Instead of masses of if / then / else,
+	 *	we just use a lookup table.
+	 */
+	return type_promote_table[a][b];
+}
