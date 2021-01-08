@@ -33,11 +33,10 @@ static unlang_action_t CC_HINT(nonnull) mod_utf8_clean(rlm_rcode_t *p_result, UN
 {
 	size_t		i, len;
 	fr_pair_t	*vp;
-	fr_cursor_t	cursor;
 
-	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		if (vp->vp_type != FR_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->vp_length; i += len) {
