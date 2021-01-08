@@ -969,7 +969,6 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	fr_pair_list_t	found;
 	fr_pair_list_t	vps;
 	request_t	*context = request;
-	fr_cursor_t	cursor;
 	ssize_t		slen;
 	char		*str;
 
@@ -1008,9 +1007,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 */
 		if (fr_pair_list_empty(&found)) return 0;
 
-		for (vp = fr_cursor_init(&cursor, &found);
+		for (vp = fr_pair_list_head(&found);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&found, vp)) {
 			vp->op = T_OP_ADD;
 		}
 
@@ -1096,9 +1095,6 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 */
 		if (tmpl_is_attr(map->lhs) &&
 		    (tmpl_da(map->rhs)->type != tmpl_da(map->lhs)->type)) {
-			fr_cursor_t to;
-
-			(void) fr_cursor_init(&to, out);
 			for (; vp; vp = fr_cursor_current(&from)) {
 				MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 
@@ -1115,7 +1111,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 				fr_assert((n->vp_type != FR_TYPE_STRING) || (n->vp_strvalue != NULL));
 
 				n->op = map->op;
-				fr_cursor_append(&to, n);
+				fr_pair_add(out, n);
 			}
 
 			return 0;
@@ -1358,11 +1354,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	if (RDEBUG_ENABLED)
 #endif
 	{
-		fr_cursor_t cursor;
-
-		for (vp = fr_cursor_init(&cursor, &head);
+		for (vp = fr_pair_list_head(&src_list);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&src_list, vp)) {
 			VP_VERIFY(vp);
 
 			if (RDEBUG_ENABLED) map_debug_log(request, map, vp);
@@ -1469,10 +1463,10 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Instance specific[n] delete
 		 */
 		if (tmpl_num(map->lhs) != NUM_ANY) {
-			for (vp = fr_cursor_head(&src_list);
+			for (vp = fr_pair_list_head(&src_list);
 			     vp;
-			     vp = fr_cursor_next(&src_list)) {
-				head->op = T_OP_CMP_EQ;
+			     vp = fr_pair_list_next(&src_list, vp)) {
+				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_cursor_remove(&dst_list);
@@ -1492,10 +1486,10 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		for (dst = fr_cursor_current(&dst_list);
 		     dst;
 		     dst = fr_cursor_filter_next(&dst_list, fr_pair_matches_da, tmpl_da(map->lhs))) {
-			for (vp = fr_cursor_head(&src_list);
+			for (vp = fr_pair_list_head(&src_list);
 			     vp;
-			     vp = fr_cursor_next(&src_list)) {
-				head->op = T_OP_CMP_EQ;
+			     vp = fr_pair_list_next(&src_list, vp)) {
+				vp->op = T_OP_CMP_EQ;
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_cursor_remove(&dst_list);
@@ -1585,7 +1579,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Find out what we need to build and build it
 		 */
-		src_vp = fr_cursor_tail(&src_list);
+		src_vp = fr_pair_list_tail(&src_list);
 		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
 		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
 		    op_set_error:
@@ -1676,9 +1670,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		fr_cursor_head(&dst_list);
 
-		for (b = fr_cursor_head(&src_list);
+		for (b = fr_pair_list_head(&src_list);
 		     b;
-		     b = fr_cursor_next(&src_list)) {
+		     b = fr_pair_list_next(&src_list, b)) {
 			for (a = fr_cursor_current(&dst_list);
 			     a;
 			     a = fr_cursor_next(&dst_list)) {
