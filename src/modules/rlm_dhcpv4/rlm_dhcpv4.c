@@ -79,7 +79,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		uint8_t const	*p, *end;
 		ssize_t		len;
 		fr_pair_list_t	vps;
-		fr_cursor_t	options_cursor;
+		fr_dcursor_t	options_cursor;
 
 		fr_pair_list_init(&vps);
 		if (vb->type != FR_TYPE_OCTETS) {
@@ -90,7 +90,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			continue;
 		}
 
-		fr_cursor_init(&options_cursor, &vps);
+		fr_dcursor_init(&options_cursor, &vps);
 
 		p = vb->vb_octets;
 		end = vb->vb_octets + vb->vb_length;
@@ -146,7 +146,7 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_t **in)
 {
-	fr_cursor_t	*cursor;
+	fr_dcursor_t	*cursor;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
 
@@ -163,9 +163,9 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	if (xlat_fmt_to_cursor(NULL, &cursor, &tainted, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
 
-	if (!fr_cursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
+	if (!fr_dcursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
 
-	while (fr_cursor_filter_current(cursor, fr_dhcpv4_is_encodable, NULL)) {
+	while (fr_dcursor_filter_current(cursor, fr_dhcpv4_is_encodable, NULL)) {
 		len = fr_dhcpv4_encode_option(&FR_DBUFF_TMP(p, end), cursor,
 					      &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
 		if (len < 0) {
