@@ -291,13 +291,11 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 	fr_pair_t *vp;
 	fr_pair_list_t *list, groups;
 	TALLOC_CTX *list_ctx, *value_ctx;
-	fr_cursor_t list_cursor, groups_cursor;
 
 	int is_dn, i, count;
 
 	fr_assert(entry);
 	fr_assert(attr);
-	fr_pair_list_init(&groups);
 
 	/*
 	 *	Parse the membership information we got in the initial user query.
@@ -325,7 +323,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 	 *	once all group info has been gathered/resolved
 	 *	successfully.
 	 */
-	fr_cursor_init(&groups_cursor, &groups);
+	fr_pair_list_init(&groups);
 
 	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
 		is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
@@ -337,7 +335,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 			if (is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
-				fr_cursor_append(&groups_cursor, vp);
+				fr_pair_add(&groups, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
 			 *	this to a DN. Store all the group names in an array so we can do one query.
@@ -354,7 +352,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 			if (!is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
-				fr_cursor_append(&groups_cursor, vp);
+				fr_pair_add(&groups, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
 			 *	this to a name.
@@ -380,7 +378,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrdup_buffer(vp, name, true);
-				fr_cursor_append(&groups_cursor, vp);
+				fr_pair_add(&groups, vp);
 				talloc_free(name);
 			}
 		}
@@ -394,25 +392,22 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 
 	if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 
-	fr_cursor_init(&list_cursor, list);
-
 	RDEBUG2("Adding cacheable user object memberships");
 	RINDENT();
 	if (RDEBUG_ENABLED) {
-		for (vp = fr_cursor_head(&groups_cursor);
+		for (vp = fr_pair_list_head(&groups);
 		     vp;
-		     vp = fr_cursor_next(&groups_cursor)) {
+		     vp = fr_pair_list_next(&groups, vp)) {
 			RDEBUG2("&control.%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		}
 	}
 
-	fr_cursor_head(&groups_cursor);
-	fr_cursor_merge(&list_cursor, &groups_cursor);
+	fr_tmp_pair_list_move(list, &groups);
 
 	for (dn_p = group_dn; *dn_p; dn_p++) {
 		MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 		fr_pair_value_strdup(vp, *dn_p);
-		fr_cursor_append(&list_cursor, vp);
+		fr_pair_add(list, vp);
 
 		RDEBUG2("&control.%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		ldap_memfree(*dn_p);
