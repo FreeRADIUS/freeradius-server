@@ -540,15 +540,15 @@ static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, mo
 	char			buffer[1024];
 	fr_pair_t		*key, *i;
 	struct mypasswd		*pw, *last_found;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	int			found = 0;
 
 	key = fr_pair_find_by_da(&request->request_pairs, inst->keyattr);
 	if (!key) RETURN_MODULE_NOTFOUND;
 
-	for (i = fr_cursor_iter_by_da_init(&cursor, &key, inst->keyattr);
+	for (i = fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, inst->keyattr);
 	     i;
-	     i = fr_cursor_next(&cursor)) {
+	     i = fr_dcursor_next(&cursor)) {
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
