@@ -241,13 +241,6 @@ static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
 		return 0;
 	}
 
-#ifdef HAVE_REGEX
-	if (tmpl_contains_regex(c->data.map->rhs)) {
-		fr_strerror_const("Cannot use cast with regex comparison");
-		return -(rhs - start);
-	}
-#endif
-
 	/*
 	 *	The LHS is a literal which has been cast to a data type.
 	 *	Cast it to the appropriate data type.
@@ -1386,6 +1379,18 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 	}
 	if (tmpl_is_attr_unresolved(lhs)) c->pass2_fixup = PASS2_FIXUP_ATTR;
 
+#ifdef HAVE_REGEX
+	/*
+	 *	LHS can't have regex.  We can't use regex as a unary
+	 *	existence check.
+	 */
+	if (tmpl_contains_regex(lhs)) {
+		fr_strerror_const("Unexpected regular expression");
+		fr_sbuff_set(&our_in, &m_lhs);
+		goto error;
+	}
+#endif
+
 	/*
 	 *	We may (or not) have an operator
 	 */
@@ -1432,12 +1437,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		if (lhs->cast != FR_TYPE_INVALID) {
 			fr_strerror_const("Cannot do cast for existence check");
 			fr_sbuff_set(&our_in, &m_lhs_cast);
-			goto error;
-		}
-
-		if (tmpl_contains_regex(lhs)) {
-			fr_strerror_const("Unexpected regular expression");
-			fr_sbuff_set(&our_in, &m_lhs);
 			goto error;
 		}
 
@@ -1556,19 +1555,48 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			goto error;
 		}
 
-		if (((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) &&
-		    (!tmpl_contains_regex(lhs) && !tmpl_contains_regex(rhs))) {
-			fr_strerror_const("Expected regular expression");
+#ifdef HAVE_REGEX
+		/*
+		 *	LHS can't have regex.  We can't use regex as a unary
+		 *	existence check.
+		 */
+		if (tmpl_contains_regex(rhs) &&
+		    !((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) {
+			fr_strerror_const("Unexpected regular expression");
 			fr_sbuff_set(&our_in, &m_rhs);
 			goto error;
 		}
 
-		if (((op != T_OP_REG_EQ) && (op != T_OP_REG_NE)) &&
-		    (tmpl_contains_regex(lhs) || tmpl_contains_regex(rhs))) {
-		     	fr_strerror_const("Unexpected regular expression");	/* Fixme should point to correct operand */
-			fr_sbuff_set(&our_in, &m_rhs);
-			goto error;
+		/*
+		 *	=~ and !~ MUST have regular expression on the
+		 *	RHS.
+		 */
+		if ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) {
+			if (!tmpl_contains_regex(rhs)) {
+				fr_strerror_const("Expected regular expression");
+				fr_sbuff_set(&our_in, &m_rhs);
+				goto error;
+			}
+
+			/*
+			 *	Can't use casts with regular
+			 *	expressions, on LHS or RHS.  Instead,
+			 *	the regular expression returns a
+			 *	true/false match.
+			 */
+			if (lhs->cast != FR_TYPE_INVALID) {
+				fr_strerror_const("Invalid cast used with regular expression");
+				fr_sbuff_set(&our_in, &m_lhs);
+				goto error;
+			}
+
+			if (rhs->cast != FR_TYPE_INVALID) {
+				fr_strerror_const("Invalid cast used with regular expression");
+				fr_sbuff_set(&our_in, &m_rhs);
+				goto error;
+			}
 		}
+#endif
 
 		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
