@@ -558,7 +558,7 @@ failure:
 			if (data->mppe_keys) {
 				RDEBUG2("Adding stored attributes to parent");
 				log_request_pair_list(L_DBG_LVL_2, request, NULL, &data->mppe_keys, "&parent.reply.");
-				MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, &data->mppe_keys) >= 0);
+				MEM(fr_pair_list_copy(parent->reply, &parent->reply_pairs, &data->mppe_keys) >= 0);
 			} else {
 				RDEBUG2("No stored attributes to copy to parent");
 			}
@@ -572,7 +572,7 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, &data->reply) >= 0);
+			MEM(fr_pair_list_copy(parent->reply, &parent->reply_pairs, &data->reply) >= 0);
 			RETURN_MODULE_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
@@ -790,13 +790,13 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	if (!fr_cond_assert(parent)) RETURN_MODULE_FAIL;
 
-	auth_challenge = fr_pair_find_by_da(&parent->control, attr_ms_chap_challenge);
+	auth_challenge = fr_pair_find_by_da(&parent->control_pairs, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
-	peer_challenge = fr_pair_find_by_da(&parent->control, attr_ms_chap_peer_challenge);
+	peer_challenge = fr_pair_find_by_da(&parent->control_pairs, attr_ms_chap_peer_challenge);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;
@@ -805,7 +805,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	if (auth_challenge) {
 		created_auth_challenge = false;
 
-		peer_challenge = fr_pair_find_by_da(&parent->control, attr_ms_chap_peer_challenge);
+		peer_challenge = fr_pair_find_by_da(&parent->control_pairs, attr_ms_chap_peer_challenge);
 		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 			RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 			peer_challenge = NULL;

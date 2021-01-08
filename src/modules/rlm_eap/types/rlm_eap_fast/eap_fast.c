@@ -474,7 +474,8 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_session,
 						  fr_tls_session_t *tls_session,
-						  request_t *request, fr_radius_packet_t *reply)
+						  request_t *request,
+						  fr_radius_packet_t *reply, fr_pair_list_t *reply_list)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 	fr_pair_t			*vp;
@@ -499,7 +500,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		 * Copy what we need into the TTLS tunnel and leave
 		 * the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
+		for (vp = fr_cursor_init(&cursor, reply_list); vp; vp = fr_cursor_next(&cursor)) {
 			if (fr_dict_vendor_num_by_da(vp->da) != VENDORPEC_MICROSOFT) continue;
 
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
@@ -545,9 +546,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
-		(void) fr_cursor_init(&cursor, &reply->vps);
+		(void) fr_cursor_init(&cursor, reply_list);
 
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &reply->vps, attr_eap_message);
+		for (vp = fr_cursor_iter_by_da_init(&cursor, reply_list, attr_eap_message);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, vp->vp_length, vp->vp_octets);
@@ -639,7 +640,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 
 		MEM(tvp = fr_pair_afrom_da(fake, attr_eap_type));
 		tvp->vp_uint32 = t->default_provisioning_method;
-		fr_pair_add(&fake->control, tvp);
+		fr_pair_add(&fake->control_pairs, tvp);
 
 		/*
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
@@ -647,12 +648,12 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge));
 			fr_pair_value_memdup(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
-			fr_pair_add(&fake->control, tvp);
+			fr_pair_add(&fake->control_pairs, tvp);
 			RHEXDUMP3(t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
 
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge));
 			fr_pair_value_memdup(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
-			fr_pair_add(&fake->control, tvp);
+			fr_pair_add(&fake->control_pairs, tvp);
 			RHEXDUMP3(t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
 		}
 	}
@@ -745,7 +746,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 		/*
 		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
 		 */
-		rcode = process_reply(eap_session, tls_session, request, fake->reply);
+		rcode = process_reply(eap_session, tls_session, request, fake->reply, &fake->reply_pairs);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
 			code = FR_CODE_ACCESS_REJECT;

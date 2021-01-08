@@ -48,11 +48,8 @@ fr_radius_packet_t *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
 		return NULL;
 	}
 	rp->id = -1;
-	fr_pair_list_init(&rp->vps);
 
-	if (new_vector) {
-		fr_rand_buffer(rp->vector, sizeof(rp->vector));
-	}
+	if (new_vector) fr_rand_buffer(rp->vector, sizeof(rp->vector));
 
 	return rp;
 }
@@ -81,9 +78,7 @@ fr_radius_packet_t *fr_radius_alloc_reply(TALLOC_CTX *ctx, fr_radius_packet_t *p
 	fr_socket_addr_swap(&reply->socket, &packet->socket);
 	reply->id = packet->id;
 	reply->code = 0; /* UNKNOWN code */
-	memset(reply->vector, 0,
-	       sizeof(reply->vector));
-	reply->vps = NULL;
+	memset(reply->vector, 0, sizeof(reply->vector));
 	reply->data = NULL;
 	reply->data_len = 0;
 
@@ -102,8 +97,6 @@ void fr_radius_packet_free(fr_radius_packet_t **packet_p)
 	packet = *packet_p;
 
 	PACKET_VERIFY(packet);
-
-	fr_pair_list_free(&packet->vps);
 
 	talloc_free(packet);
 	*packet_p = NULL;

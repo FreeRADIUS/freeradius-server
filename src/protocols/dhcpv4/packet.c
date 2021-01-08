@@ -405,7 +405,7 @@ int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list)
 	if (packet->code == 0) packet->code = FR_DHCP_NAK;
 
 	/* store xid */
-	if ((vp = fr_pair_find_by_da(&packet->vps, attr_dhcp_transaction_id))) {
+	if ((vp = fr_pair_find_by_da(list, attr_dhcp_transaction_id))) {
 		packet->id = vp->vp_uint32;
 	} else {
 		packet->id = fr_rand();

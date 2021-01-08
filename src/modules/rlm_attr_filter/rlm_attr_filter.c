@@ -180,7 +180,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_result,
 								void const *instance, request_t *request,
-								fr_radius_packet_t *packet)
+								fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
 	fr_cursor_t	out;
@@ -279,7 +279,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = fr_cursor_init(&cursor, &packet->vps);
+		for (input_item = fr_cursor_init(&cursor, list);
 		     input_item;
 		     input_item = fr_cursor_next(&cursor)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
@@ -341,22 +341,22 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	/*
 	 *	Replace the existing request list with our filtered one
 	 */
-	fr_pair_list_free(&packet->vps);
-	packet->vps = output;
+	fr_pair_list_free(list);
+	fr_pair_list_move(list, &output);
 
 	RETURN_MODULE_UPDATED;
 }
 
-#define RLM_AF_FUNC(_x, _y) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
+#define RLM_AF_FUNC(_x, _y, _z) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
-		return attr_filter_common(p_result, mctx->instance, request, request->_y); \
+		return attr_filter_common(p_result, mctx->instance, request, request->_y, &request->_z##_pairs); \
 	}
 
-RLM_AF_FUNC(authorize, packet)
-RLM_AF_FUNC(post_auth, reply)
+RLM_AF_FUNC(authorize, packet, request)
+RLM_AF_FUNC(post_auth, reply, reply)
 
-RLM_AF_FUNC(preacct, packet)
-RLM_AF_FUNC(accounting, reply)
+RLM_AF_FUNC(preacct, packet, request)
+RLM_AF_FUNC(accounting, reply, reply)
 
 /* globally exported name */
 extern module_t rlm_attr_filter;

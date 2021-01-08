@@ -59,8 +59,8 @@ typedef struct {
 } rc_stats_t;
 
 typedef struct {
-	char const *packets;			//!< The file containing the request packet
-	char const *filters;			//!< The file containing the definition of the
+	char const		*packets;	//!< The file containing the request packet
+	char const		*filters;	//!< The file containing the definition of the
 						//!< packet we want to match.
 } rc_file_pair_t;
 
@@ -80,8 +80,8 @@ struct rc_request {
 	fr_radius_packet_t	*packet;	//!< The outgoing request.
 	fr_radius_packet_t	*reply;		//!< The incoming response.
 
-	fr_pair_list_t		*request_list;
-	fr_pair_list_t		*reply_list;
+	fr_pair_list_t		request_list;
+	fr_pair_list_t		reply_list;
 
 	fr_pair_list_t		filter;		//!< If the reply passes the filter, then the request passes.
 	FR_CODE			filter_code;	//!< Expected code of the response packet.

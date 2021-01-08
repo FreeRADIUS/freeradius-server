@@ -234,7 +234,8 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
  * @param[in] packet associated with the request (request, reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
-static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request, fr_radius_packet_t *packet, bool compat)
+static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
+			fr_radius_packet_t *packet, fr_pair_list_t *list, bool compat)
 {
 	fr_pair_t *vp;
 	char timestamp[256];
@@ -244,7 +245,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		return -1;
 	}
 
-	if (!packet->vps) {
+	if (!list) {
 		RWDEBUG("Skipping empty packet");
 		return 0;
 	}
@@ -322,7 +323,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	{
 		fr_cursor_t cursor;
 		/* Write each attribute/value to the log file */
-		for (vp = fr_cursor_init(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, list);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			fr_token_t op;
@@ -361,7 +362,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
  *	Do detail, compatible with old accounting
  */
 static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-						  fr_radius_packet_t *packet, bool compat)
+						  fr_radius_packet_t *packet, fr_pair_list_t *list,
+						  bool compat)
 {
 	int		outfd, dupfd;
 	char		buffer[DIRLEN];
@@ -426,7 +428,7 @@ skip_group:
 		RETURN_MODULE_FAIL;
 	}
 
-	if (detail_write(outfp, inst, request, packet, compat) < 0) goto fail;
+	if (detail_write(outfp, inst, request, packet, list, compat) < 0) goto fail;
 
 	/*
 	 *	Flush everything
@@ -445,7 +447,7 @@ skip_group:
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return detail_do(p_result, mctx, request, request->packet, true);
+	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs, true);
 }
 
 /*
@@ -453,7 +455,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return detail_do(p_result, mctx, request, request->packet, false);
+	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs, false);
 }
 
 /*
@@ -461,7 +463,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  */
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return detail_do(p_result, mctx, request, request->reply, false);
+	return detail_do(p_result, mctx, request, request->reply, &request->reply_pairs, false);
 }
 
 

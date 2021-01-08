@@ -63,7 +63,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[] = {
 /*
  *	Debug the packet if requested.
  */
-static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
+static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *packet, fr_pair_list_t const *list, bool received)
 {
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
@@ -96,9 +96,9 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 		    );
 
 	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &packet->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &packet->vps, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	}
 }
 
@@ -186,7 +186,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	switch (request->request_state) {
 	case REQUEST_INIT:
 	{
-		dhcpv6_packet_debug(request, request->packet, true);
+		dhcpv6_packet_debug(request, request->packet, &request->request_pairs, true);
 
 		dhcpv6_reply_initialise(request);
 
@@ -315,7 +315,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			 *	being called via the `call {}` keyword.
 			 */
 			MEM(fr_pair_update_by_da(request->reply, &reply_packet_type,
-						 &request->reply->vps, attr_packet_type) >= 0);
+						 &request->reply_pairs, attr_packet_type) >= 0);
 			reply_packet_type->vp_uint32 = request->reply->code;
 
 			/*
@@ -326,7 +326,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 				RETURN_MODULE_HANDLED;
 			}
 
-			if (RDEBUG_ENABLED) dhcpv6_packet_debug(request, request->reply, false);
+			if (RDEBUG_ENABLED) dhcpv6_packet_debug(request, request->reply, &request->reply_pairs, false);
 		}
 		break;
 

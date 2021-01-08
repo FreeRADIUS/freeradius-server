@@ -200,8 +200,8 @@ static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	fr_pair_t		*challenge, *reply;
 	uint8_t			nthash[16];
 
-	fr_pair_delete_by_da(&packet->vps, attr_ms_chap_challenge);
-	fr_pair_delete_by_da(&packet->vps, attr_ms_chap_response);
+	fr_pair_delete_by_da(list, attr_ms_chap_challenge);
+	fr_pair_delete_by_da(list, attr_ms_chap_response);
 
 	MEM(challenge = fr_pair_afrom_da(packet, attr_ms_chap_challenge));
 
@@ -1093,8 +1093,8 @@ static int recv_one_packet(fr_time_t wait_time)
 	} else {
 		fr_pair_t const *failed[2];
 
-		fr_pair_list_sort(&request->reply->vps, fr_pair_cmp_by_da);
-		if (fr_pair_validate(failed, &request->filter, &request->reply->vps)) {
+		fr_pair_list_sort(&request->reply_pairs, fr_pair_cmp_by_da);
+		if (fr_pair_validate(failed, &request->filter, &request->reply_pairs)) {
 			RDEBUG("%s: Response passed filter", request->name);
 			stats.passed++;
 		} else {

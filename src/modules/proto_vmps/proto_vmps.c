@@ -201,7 +201,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_vmps_ok().
 	 */
-	fr_cursor_init(&cursor, &packet->vps);
+	fr_cursor_init(&cursor, &request->request_pairs);
 	if (fr_vmps_decode(packet, packet->data, packet->data_len, &cursor, &packet->code) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;

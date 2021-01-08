@@ -464,7 +464,8 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
  *	Use a reply packet to determine what to do.
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  request_t *request, fr_radius_packet_t *reply)
+						  request_t *request,
+						  fr_radius_packet_t *reply, fr_pair_list_t *reply_list)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	fr_pair_t	*vp;
@@ -510,7 +511,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_cursor_init(&cursor, reply_list);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da == attr_ms_chap2_success) {
@@ -548,7 +549,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_cursor_init(&cursor, reply_list);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 		     	if ((vp->da == attr_eap_message) || (vp->da == attr_reply_message)) {
@@ -742,7 +743,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		/*
 		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
 		 */
-		rcode = process_reply(eap_session, tls_session, request, request->reply);
+		rcode = process_reply(eap_session, tls_session, request, request->reply, &request->reply_pairs);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
 			code = FR_CODE_ACCESS_REJECT;

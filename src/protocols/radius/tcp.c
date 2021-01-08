@@ -145,11 +145,6 @@ int fr_tcp_read_packet(fr_radius_packet_t *packet, uint32_t max_attributes, bool
 		return -1;
 	}
 
-	/*
-	 *	Explicitly set the VP list to empty.
-	 */
-	packet->vps = NULL;
-
 	if (fr_debug_lvl) {
 		char ip_buf[INET6_ADDRSTRLEN], buffer[256];
 

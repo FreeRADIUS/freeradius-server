@@ -376,7 +376,7 @@ static ssize_t rad_recvfrom(int sockfd, fr_radius_packet_t *packet, int flags)
 fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
 {
 	ssize_t			data_len;
-	fr_radius_packet_t		*packet;
+	fr_radius_packet_t	*packet;
 
 	/*
 	 *	Allocate the new request data structure
@@ -451,11 +451,6 @@ fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, ui
 	 *	certain IP's.  The problem is that we don't know
 	 *	how to do this properly for all possible clients...
 	 */
-
-	/*
-	 *	Explicitely set the VP list to empty.
-	 */
-	packet->vps = NULL;
 
 	return packet;
 }

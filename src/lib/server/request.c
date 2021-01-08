@@ -108,6 +108,8 @@ static void request_init(char const *file, int line, request_t *request)
 	/*
 	 *	Initialise pair value lists
 	 */
+	fr_pair_list_init(&request->request_pairs);
+	fr_pair_list_init(&request->reply_pairs);
 	fr_pair_list_init(&request->control_pairs);
 	fr_pair_list_init(&request->state_pairs);
 }
@@ -525,8 +527,6 @@ static void packet_verify(char const *file, int line,
 
 	PACKET_VERIFY(packet);
 
-	if (!packet->vps) return;
-
 	fr_pair_list_verify(file, line, packet, list);
 }
 
@@ -548,7 +548,7 @@ void request_verify(char const *file, int line, request_t const *request)
 			    file, line, sizeof(request_t), talloc_get_size(request));
 
 	fr_pair_list_verify(file, line, request, &request->control_pairs);
-	fr_pair_list_verify(file, line, request->state_ctx, &request->state);
+	fr_pair_list_verify(file, line, request->state_ctx, &request->state_pairs);
 
 	fr_assert(request->server_cs != NULL);
 

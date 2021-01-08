@@ -100,16 +100,18 @@ struct request_s {
 	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
-	fr_radius_packet_t		*packet;	//!< Incoming request.
-	fr_radius_packet_t		*reply;		//!< Outgoing response.
-
-	fr_pair_list_t		control;	//!< #fr_pair_t list used to set per request parameters
-						//!< for modules and the server core at runtime.
+	fr_radius_packet_t	*packet;	//!< Incoming request.
+	fr_radius_packet_t	*reply;		//!< Outgoing response.
 
 	uint64_t		seq_start;	//!< State sequence ID.  Stable identifier for a sequence of requests
 						//!< and responses.
+
+	fr_pair_list_t		request_list;
+	fr_pair_list_t		reply_list;
+	fr_pair_list_t		control_list;	//!< #fr_pair_t list used to set per request parameters
+						//!< for modules and the server core at runtime.
 	TALLOC_CTX		*state_ctx;	//!< for request->state
-	fr_pair_list_t		state;		//!< #fr_pair_t list available over the lifetime of the authentication
+	fr_pair_list_t		state_list;	//!< #fr_pair_t list available over the lifetime of the authentication
 						//!< attempt. Useful where the attempt involves a sequence of
 						//!< many request/challenge packets, like OTP, and EAP.
 

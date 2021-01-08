@@ -323,8 +323,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
-				   request_t *request, char const *filename, rbtree_t *tree,
-				   fr_radius_packet_t *packet, fr_radius_packet_t *reply)
+				   request_t *request, char const *filename, rbtree_t *tree)
 {
 	char const		*name;
 	PAIR_LIST const 	*user_pl, *default_pl;
@@ -408,7 +407,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			fr_cursor_tail(&list_cursor);
 		}
 
-		if (paircmp(request, &packet->vps, &list) != 0) {
+		if (paircmp(request, &request->request_pairs, &list) != 0) {
 			fr_pair_list_free(&list);
 			continue;
 		}
@@ -430,7 +429,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			     map = fr_cursor_next(&cursor)) {
 				if (map->op == T_OP_CMP_FALSE) continue;
 
-				if (map_to_vp(reply, &vp, request, map, NULL) < 0) {
+				if (map_to_vp(request->reply, &vp, request, map, NULL) < 0) {
 					RPWARN("Failed parsing map for reply item %s, skipping it", map->rhs->name);
 					break;
 				}
@@ -446,7 +445,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 					continue;
 				}
 
-				radius_pairmove(request, &reply->vps, &vp, true);
+				radius_pairmove(request, &request->reply_pairs, &vp, true);
 			}
 		}
 
@@ -478,8 +477,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->filename,
-			   inst->users ? inst->users : inst->common,
-			   request->packet, request->reply);
+			   inst->users ? inst->users : inst->common);
 }
 
 
@@ -493,8 +491,7 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->acct_usersfile,
-			   inst->acct_users ? inst->acct_users : inst->common,
-			   request->packet, request->reply);
+			   inst->acct_users ? inst->acct_users : inst->common);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -502,8 +499,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->auth_usersfile,
-			   inst->auth_users ? inst->auth_users : inst->common,
-			   request->packet, request->reply);
+			   inst->auth_users ? inst->auth_users : inst->common);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -511,8 +507,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->postauth_usersfile,
-			   inst->postauth_users ? inst->postauth_users : inst->common,
-			   request->packet, request->reply);
+			   inst->postauth_users ? inst->postauth_users : inst->common);
 }
 
 

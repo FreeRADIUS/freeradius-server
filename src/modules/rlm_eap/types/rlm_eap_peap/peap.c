@@ -372,7 +372,8 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
  *	Use a reply packet to determine what to do.
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  request_t *request, fr_radius_packet_t *reply)
+						  request_t *request,
+						  fr_radius_packet_t *reply, fr_pair_list_t *reply_list)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	fr_pair_t *vp;
@@ -389,7 +390,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		} else {
 			RDEBUG2("Got tunneled reply code %i", reply->code);
 		}
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, reply_list, NULL);
 	}
 
 	switch (reply->code) {
@@ -416,7 +417,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		fr_pair_list_copy_by_da(t, &vp, &reply->vps, attr_eap_message, 0);
+		fr_pair_list_copy_by_da(t, &vp, reply_list, attr_eap_message, 0);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -577,8 +578,8 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 
 		/* save the SoH VPs */
 		fr_assert(!t->soh_reply_vps);
-		MEM(fr_pair_list_copy(t, &t->soh_reply_vps, &fake->reply->vps) >= 0);
-		fr_assert(!fake->reply->vps);
+		MEM(fr_pair_list_copy(t, &t->soh_reply_vps, &fake->reply_pairs) >= 0);
+		fr_assert(!fake->reply_pairs);
 		TALLOC_FREE(fake);
 
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
@@ -743,7 +744,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
 		rcode = RLM_MODULE_REJECT;
 	} else {
-		rcode = process_reply(eap_session, tls_session, request, fake->reply);
+		rcode = process_reply(eap_session, tls_session, request, fake->reply, &fake->reply_list);
 	}
 
 finish:

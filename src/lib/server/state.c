@@ -289,7 +289,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
  * @note Called with the mutex held.
  */
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
-					    fr_radius_packet_t *packet, fr_state_entry_t *old)
+					    fr_pair_list_t *reply_list, fr_state_entry_t *old)
 {
 	size_t			i;
 	uint32_t		x;
@@ -412,7 +412,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	int the reply, we use that in preference to the
 	 *	old state.
 	 */
-	vp = fr_pair_find_by_da(&packet->vps, state->da);
+	vp = fr_pair_find_by_da(reply_list, state->da);
 	if (vp) {
 		if (DEBUG_ENABLED && (vp->vp_length > sizeof(entry->state))) {
 			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
@@ -475,9 +475,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		 */
 		entry->state_comp.server_id = state->server_id;
 
-		MEM(vp = fr_pair_afrom_da(packet, state->da));
+		MEM(vp = fr_pair_afrom_da(request, state->da));
 		fr_pair_value_memdup(vp, entry->state, sizeof(entry->state), false);
-		fr_pair_add(&packet->vps, vp);
+		fr_pair_add(reply_list, vp);
 	}
 
 	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %" PRIu64 "s",
@@ -495,7 +495,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	if (!rbtree_insert(state->tree, entry)) {
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
-		fr_pair_delete_by_da(&packet->vps, state->da);
+		fr_pair_delete_by_da(reply_list, state->da);
 		talloc_free(entry);
 		return NULL;
 	}
@@ -645,7 +645,7 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	if (request->state) {
+	if (request->state_pairs) {
 		RDEBUG2("Restored &session-state");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->state_pairs, "&session-state.");
 	}
@@ -680,7 +680,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 
 	if (!request->state_pairs && fr_dlist_empty(&data)) return 0;
 
-	if (request->state) {
+	if (request->state_pairs) {
 		RDEBUG2("Saving &session-state");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->state_pairs, "&session-state.");
 	}
@@ -690,7 +690,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	if (vp) old = state_entry_find(state, request, &vp->data);
 
-	entry = state_entry_create(state, request, request->reply, old);
+	entry = state_entry_create(state, request, &request->reply_pairs, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Creating state entry failed");
@@ -703,7 +703,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 
 	entry->seq_start = request->seq_start;
 	entry->ctx = request->state_ctx;
-	entry->vps = request->state;
+	entry->vps = request->state_pairs;
 	fr_dlist_move(&entry->data, &data);
 
 	request->state_ctx = NULL;
@@ -737,7 +737,7 @@ void fr_state_store_in_parent(request_t *request, void const *unique_ptr, int un
 	 *	it easier to store/restore the
 	 *	whole lot...
 	 */
-	if (request->state) {
+	if (request->state_pairs) {
 		/*
 		 *	If parent and child share a state_ctx
 		 *	which they usually should do, then just
@@ -745,7 +745,7 @@ void fr_state_store_in_parent(request_t *request, void const *unique_ptr, int un
 		 *	and don't bother copying.
 		 */
 		request_data_talloc_add(request, (void *)fr_state_store_in_parent, 0, fr_pair_t,
-					request->state, true, false, true);
+					request->state_pairs, true, false, true);
 		request->state_pairs = NULL;
 	}
 
@@ -810,7 +810,7 @@ void fr_state_detach(request_t *request, bool will_free)
 	if (unlikely(request->parent == NULL)) return;
 
 	if (will_free) {
-		fr_pair_list_free(&request->state);
+		fr_pair_list_free(&request->state_pairs);
 
 		/*
 		 *	The non-persistable stuff is
@@ -831,8 +831,8 @@ void fr_state_detach(request_t *request, bool will_free)
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, true);
 	request_data_by_persistance_reparent(new_state_ctx, NULL, request, false);
 
-	(void) fr_pair_list_copy(new_state_ctx, &vps, &request->state);
-	fr_pair_list_free(&request->state);
+	(void) fr_pair_list_copy(new_state_ctx, &vps, &request->state_pairs);
+	fr_pair_list_free(&request->state_pairs);
 
 	request->state_pairs = vps;
 

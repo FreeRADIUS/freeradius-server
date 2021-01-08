@@ -54,7 +54,7 @@ fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[] = {
 /*
  *	Debug the packet if requested.
  */
-static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
+static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
 {
 	int i;
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
@@ -96,16 +96,16 @@ static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 
 		if (!*dhcp_header_attrs[i]) continue;
 
-		vp = fr_pair_find_by_da(&packet->vps, *dhcp_header_attrs[i]);
+		vp = fr_pair_find_by_da(list, *dhcp_header_attrs[i]);
 		if (!vp) continue;
 		RDEBUGX(L_DBG_LVL_1, "%pP", vp);
 	}
 	REXDENT();
 
 	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &packet->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &packet->vps, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	}
 }
 
@@ -151,7 +151,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		dhcpv4_packet_debug(request, request->packet, true);
+		dhcpv4_packet_debug(request, request->packet, &request->request_pairs, true);
 
 		request->component = "dhcpv4";
 
@@ -294,7 +294,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			RETURN_MODULE_HANDLED;
 		}
 
-		if (RDEBUG_ENABLED) dhcpv4_packet_debug(request, request->reply, false);
+		if (RDEBUG_ENABLED) dhcpv4_packet_debug(request, request->reply, &request->reply_pairs, false);
 		break;
 
 	default:

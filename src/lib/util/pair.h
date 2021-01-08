@@ -50,10 +50,10 @@ extern "C" {
 #  define LIST_VERIFY(_x)
 #endif
 
-#define request_pairs	packet->vps
-#define	reply_pairs	reply->vps
-#define control_pairs	control
-#define state_pairs	state
+#define request_pairs	request_list
+#define	reply_pairs	reply_list
+#define control_pairs	control_list
+#define state_pairs	state_list
 
 /** The type of value a fr_pair_t contains
  *
