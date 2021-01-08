@@ -321,11 +321,10 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	}
 
 	{
-		fr_cursor_t cursor;
 		/* Write each attribute/value to the log file */
-		for (vp = fr_cursor_init(&cursor, list);
+		for (vp = fr_pair_list_head(list);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(list, vp)) {
 			fr_token_t op;
 
 			if (inst->ht && fr_hash_table_find_by_data(inst->ht, vp->da)) continue;
