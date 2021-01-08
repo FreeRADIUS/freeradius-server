@@ -65,14 +65,13 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				        request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				        fr_value_box_t **in)
 {
-	fr_cursor_t	in_cursor, cursor;
+	fr_cursor_t	in_cursor;
 	fr_value_box_t	*vb, *vb_decoded;
 	fr_pair_t	*vp;
 	fr_pair_list_t	head;
 	int		decoded = 0;
 
 	fr_pair_list_init(&head);
-	fr_cursor_init(&cursor, &head);
 
 	for (vb = fr_cursor_talloc_init(&in_cursor, in, fr_value_box_t);
 	     vb;
@@ -109,13 +108,12 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			}
 			p += len;
 		}
-		fr_cursor_head(&options_cursor);
-		fr_cursor_merge(&cursor, &options_cursor);
+		fr_tmp_pair_list_move(&head, &vps);
 	}
 
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_pair_list_head(&head);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&head, vp)) {
 		RDEBUG2("dhcp_option: &%pP", vp);
 		decoded++;
 	}
