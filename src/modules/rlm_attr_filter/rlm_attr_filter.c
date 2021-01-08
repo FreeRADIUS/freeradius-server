@@ -183,7 +183,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 								fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
-	fr_cursor_t	out;
 	fr_pair_list_t	output;
 	PAIR_LIST	*pl;
 	int		found = 0;
@@ -209,7 +208,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	 *	Head of the output list
 	 */
 	fr_pair_list_init(&output);
-	fr_cursor_init(&out, &output);
 
 	/*
 	 *      Find the attr_filter profile entry for the entry.
@@ -220,7 +218,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		map_t *map;
 		fr_pair_t *check_item, *input_item;
 		fr_pair_list_t check_list;
-		fr_cursor_t check, cursor;
+		fr_cursor_t cursor;
 
 		/*
 		 *  If the current entry is NOT a default,
@@ -236,7 +234,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		found = 1;
 
 		fr_pair_list_init(&check_list);
-		fr_cursor_init(&check, &check_list);
 
 		for (map = fr_cursor_init(&cursor, &pl->reply);
 		     map;
@@ -261,14 +258,14 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 			 *    the output list without checking it.
 			 */
 			if (check_item->op == T_OP_SET ) {
-				fr_cursor_append(&out, check_item);
+				fr_pair_add(&output, check_item);
 				continue;
 			}
 
 			/*
 			 *	Append the realized VP to the check list.
 			 */
-			fr_cursor_append(&check, check_item);
+			fr_pair_add(&check_list, check_item);
 		}
 
 		/*
@@ -279,17 +276,17 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = fr_cursor_init(&cursor, list);
+		for (input_item = fr_pair_list_head(list);
 		     input_item;
-		     input_item = fr_cursor_next(&cursor)) {
+		     input_item = fr_pair_list_next(list, input_item)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
 			 *  Reset the check_item pointer to beginning of the list
 			 */
-			for (check_item = fr_cursor_head(&check);
+			for (check_item = fr_pair_list_head(&check_list);
 			     check_item;
-			     check_item = fr_cursor_next(&check)) {
+			     check_item = fr_pair_list_next(&check_list, check_item)) {
 				/*
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
@@ -313,14 +310,15 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 			 *  should copy unmatched attributes ('relaxed' mode).
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
-				fr_pair_t *vp;
+				fr_pair_t *prev = fr_pair_list_prev(&packet->vps, input_item);
 
 				if (!pass) {
 					RDEBUG3("Attribute \"%s\" allowed by relaxed mode", input_item->da->name);
 				}
-				vp = fr_cursor_remove(&check);
-				fr_assert(vp != NULL);
-				fr_cursor_append(&out, vp);
+				fr_pair_remove(&packet->vps, input_item);
+				fr_assert(input_item != NULL);
+				fr_pair_add(&output, input_item);
+				input_item = prev; /* Set input_item to previous in the list for outer loop */
 			}
 		}
 
