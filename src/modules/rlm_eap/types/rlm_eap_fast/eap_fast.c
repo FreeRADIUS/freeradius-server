@@ -423,7 +423,7 @@ unexpected:
  *
  * FIXME do something with mandatory
  */
-ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			     uint8_t const *data, size_t data_len,
 			     void *decoder_ctx)
 {
@@ -449,7 +449,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
 			MEM(vp = fr_pair_afrom_child_num(ctx, parent, attr));
 
 		} else if (da->type == FR_TYPE_TLV) {
-			p += (size_t) eap_fast_decode_pair(ctx, cursor, parent, p, len, decoder_ctx);
+			p += (size_t) eap_fast_decode_pair(ctx, out, parent, p, len, decoder_ctx);
 			continue;
 
 		} else {
@@ -461,7 +461,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_
 			fr_pair_to_unknown(vp);
 			fr_pair_value_memdup(vp, p, len, true);
 		}
-		fr_cursor_append(cursor, vp);
+		fr_pair_add(out, vp);
 		p += len;
 	}
 
@@ -897,7 +897,6 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 {
 	FR_CODE			code;
 	fr_pair_list_t		fast_vps;
-	fr_cursor_t		cursor;
 	uint8_t const		*data;
 	size_t			data_len;
 	eap_fast_tunnel_t	*t;
@@ -950,8 +949,7 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		return FR_CODE_ACCESS_CHALLENGE;
 	}
 
-	fr_cursor_init(&cursor, &fast_vps);
-	if (eap_fast_decode_pair(request, &cursor, attr_eap_fast_tlv,
+	if (eap_fast_decode_pair(request, &fast_vps, attr_eap_fast_tlv,
 				 data, data_len, NULL) < 0) return FR_CODE_ACCESS_REJECT;
 
 	RDEBUG2("Got Tunneled FAST TLVs");

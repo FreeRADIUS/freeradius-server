@@ -258,6 +258,6 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 /*
  *	A bunch of EAP-FAST helper functions.
  */
-ssize_t		eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t		eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			     	     uint8_t const *data, size_t data_len,
 			     	     UNUSED void *decoder_ctx);
