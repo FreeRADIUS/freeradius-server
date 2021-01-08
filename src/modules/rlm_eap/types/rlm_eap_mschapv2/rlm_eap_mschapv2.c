@@ -378,10 +378,11 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 		if (!fr_pair_list_empty(&response)) {
 			int n, err, retry;
 			char buf[34];
+			fr_pair_t *vp = fr_pair_list_head(&response);
 
-			VP_VERIFY(response);
+			VP_VERIFY(vp);
 
-			RDEBUG2("MSCHAP-Error: %pV", &response->data);
+			RDEBUG2("MSCHAP-Error: %pV", &vp->data);
 
 			/*
 			 *	Parse the new challenge out of the
@@ -389,7 +390,7 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 			 *	issues a re-try, we will know which
 			 *	challenge value that they used.
 			 */
-			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
+			n = sscanf(vp->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
 			if (n == 3) {
 				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
 					err, retry, buf);
@@ -408,7 +409,7 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 	/*
 	 *	No response, die.
 	 */
-	if (!response) {
+	if (fr_pair_list_empty(&response)) {
 		REDEBUG("No %s or %s attributes were found", attr_ms_chap2_success->name, attr_ms_chap_error->name);
 		RETURN_MODULE_INVALID;
 	}
@@ -417,7 +418,7 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eap_mschapv2_compose(eap_session->inst, request, eap_session, response);
+	eap_mschapv2_compose(eap_session->inst, request, eap_session, fr_pair_list_head(&response));
 	fr_pair_list_free(&response);
 
 	RETURN_MODULE_OK;
