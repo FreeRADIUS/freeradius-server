@@ -180,9 +180,11 @@ int		fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list);
 #include <linux/if_packet.h>
 int		fr_dhcpv4_raw_socket_open(struct sockaddr_ll *p_ll, int iface_index);
 
-int		fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *p_ll, fr_radius_packet_t *packet);
+int		fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *p_ll,
+					  fr_radius_packet_t *packet, fr_pair_list_t *list);
 
-fr_radius_packet_t	*fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll, fr_radius_packet_t *request);
+fr_radius_packet_t	*fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll,
+						  fr_radius_packet_t *request, fr_pair_list_t *list);
 #endif
 
 /*

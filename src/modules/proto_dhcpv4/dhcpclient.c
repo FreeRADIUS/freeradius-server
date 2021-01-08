@@ -248,7 +248,12 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 #ifdef HAVE_LINUX_IF_PACKET_H
 					    struct sockaddr_ll *p_ll,
 #endif
-					    fr_radius_packet_t *packet_p)
+					    fr_radius_packet_t *request,
+#ifndef HAVE_LINUX_IF_PACKET_H
+					    UNUSED
+#endif
+					    fr_pair_list_t *request_list
+					    )
 {
 	fr_time_delta_t	our_timeout;
 	fr_radius_packet_t	*found = NULL;
@@ -287,7 +292,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 			/* There is something to read on our socket */
 
 #ifdef HAVE_LINUX_IF_PACKET_H
-			reply = fr_dhcv4_raw_packet_recv(lsockfd, p_ll, packet_p);
+			reply = fr_dhcv4_raw_packet_recv(lsockfd, p_ll, request, request_list);
 #else
 #  ifdef HAVE_LIBPCAP
 			reply = fr_dhcpv4_pcap_recv(pcap);
@@ -314,13 +319,13 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 
 			if (reply->code == FR_DHCP_OFFER) {
 				fr_pair_t *vp1 = fr_pair_find_by_da(&reply_vps,
-								     attr_dhcp_dhcp_server_identifier);
+								    attr_dhcp_dhcp_server_identifier);
 				fr_pair_t *vp2 = fr_pair_find_by_da(&reply_vps,
-								     attr_dhcp_your_ip_address);
+								    attr_dhcp_your_ip_address);
 
 				if (vp1 && vp2) {
 					nb_offer++;
-					offer_list = talloc_realloc(packet_p, offer_list, dc_offer_t, nb_offer);
+					offer_list = talloc_realloc(request, offer_list, dc_offer_t, nb_offer);
 					offer_list[nb_offer - 1].server_addr = vp1->vp_ipv4addr;
 					offer_list[nb_offer - 1].offered_addr = vp2->vp_ipv4addr;
 				}
@@ -354,7 +359,11 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 }
 #endif	/* <if/packet.h> or <pcap.h> */
 
-static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *packet)
+static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *request,
+#ifndef HAVE_LINUX_IF_PACKET_H
+			    UNUSED
+#endif
+			    fr_pair_list_t *request_list)
 {
 	int on = 1;
 
@@ -368,13 +377,13 @@ static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *pack
 	} else
 #endif
 	{
-		sockfd = fr_socket_server_udp(&packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, NULL, false);
+		sockfd = fr_socket_server_udp(&request->socket.inet.src_ipaddr, &request->socket.inet.src_port, NULL, false);
 		if (sockfd < 0) {
 			ERROR("Error opening socket - %s", fr_strerror());
 			return -1;
 		}
 
-		if (fr_socket_bind(sockfd, &packet->socket.inet.src_ipaddr, &packet->socket.inet.src_port, NULL) < 0) {
+		if (fr_socket_bind(sockfd, &request->socket.inet.src_ipaddr, &request->socket.inet.src_port, NULL) < 0) {
 			ERROR("Error binding socket - %s", fr_strerror());
 			return -1;
 		}
@@ -395,17 +404,17 @@ static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *pack
 		ERROR("Can't set broadcast option: %s", fr_syserror(errno));
 		return -1;
 	}
-	packet->socket.fd = sockfd;
+	request->socket.fd = sockfd;
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
-		if (fr_dhcpv4_raw_packet_send(sockfd, &ll, packet) < 0) {
-			ERROR("Failed sending (fr_dhcpv4_raw_packet_send): %s", fr_syserror(errno));
+		if (fr_dhcpv4_raw_request_send(sockfd, &ll, request, request_list) < 0) {
+			ERROR("Failed sending (fr_dhcpv4_raw_request_send): %s", fr_syserror(errno));
 			return -1;
 		}
 		if (!reply_expected) return 0;
 
-		*reply = fr_dhcpv4_recv_raw_loop(sockfd, &ll, packet);
+		*reply = fr_dhcpv4_recv_raw_loop(sockfd, &ll, request, request_list);
 		if (!*reply) {
 			ERROR("Error receiving reply (fr_dhcpv4_recv_raw_loop)");
 			return -1;
@@ -413,7 +422,7 @@ static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *pack
 	} else
 #endif
 	{
-		if (fr_dhcpv4_udp_packet_send(packet) < 0) {
+		if (fr_dhcpv4_udp_packet_send(request) < 0) {
 			ERROR("Failed sending: %s", fr_syserror(errno));
 			return -1;
 		}
@@ -435,7 +444,7 @@ static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *pack
 }
 
 #ifdef HAVE_LIBPCAP
-static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *packet)
+static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *request, fr_pair_list_t *request_list)
 {
 	char ip[16];
 	char pcap_filter[255];
@@ -452,8 +461,8 @@ static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *packet
 		return -1;
 	}
 
-	fr_inet_ntoh(&packet->socket.inet.src_ipaddr, ip, sizeof(ip));
-	sprintf(pcap_filter, "udp and dst port %d", packet->socket.inet.src_port);
+	fr_inet_ntoh(&request->socket.inet.src_ipaddr, ip, sizeof(ip));
+	sprintf(pcap_filter, "udp and dst port %d", request->socket.inet.src_port);
 
 	if (fr_pcap_apply_filter(pcap, pcap_filter) < 0) {
 		ERROR("Failing setting filter");
@@ -461,8 +470,8 @@ static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *packet
 		return -1;
 	}
 
-	if (fr_dhcpv4_pcap_send(pcap, eth_bcast, packet) < 0) {
-		ERROR("Failed sending packet");
+	if (fr_dhcpv4_pcap_send(pcap, eth_bcast, request) < 0) {
+		ERROR("Failed sending request");
 		talloc_free(pcap);
 		return -1;
 	}
@@ -473,7 +482,7 @@ static int send_with_pcap(fr_radius_packet_t **reply, fr_radius_packet_t *packet
 #ifdef HAVE_LINUX_IF_PACKET_H
 				      &ll,
 #endif
-				      packet);
+				      request, request_list);
 
 	if (!*reply) {
 		ERROR("Error receiving reply");
@@ -749,11 +758,11 @@ int main(int argc, char **argv)
 
 #ifdef HAVE_LIBPCAP
 	if (raw_mode) {
-		ret = send_with_pcap(&reply, packet);
+		ret = send_with_pcap(&reply, packet, &packet_vps);
 	} else
 #endif
 	{
-		ret = send_with_socket(&reply, packet);
+		ret = send_with_socket(&reply, packet, &packet_vps);
 	}
 
 	if (reply) {
