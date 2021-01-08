@@ -408,8 +408,8 @@ static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *requ
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
-		if (fr_dhcpv4_raw_request_send(sockfd, &ll, request, request_list) < 0) {
-			ERROR("Failed sending (fr_dhcpv4_raw_request_send): %s", fr_syserror(errno));
+		if (fr_dhcpv4_raw_packet_send(sockfd, &ll, request, request_list) < 0) {
+			ERROR("Failed sending (fr_dhcpv4_raw_packet_send): %s", fr_syserror(errno));
 			return -1;
 		}
 		if (!reply_expected) return 0;
