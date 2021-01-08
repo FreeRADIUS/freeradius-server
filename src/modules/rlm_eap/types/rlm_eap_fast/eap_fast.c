@@ -479,7 +479,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 	fr_pair_t			*vp;
-	fr_cursor_t			cursor;
+	fr_dcursor_t			cursor;
 
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
@@ -548,9 +548,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		 */
 		(void) fr_cursor_init(&cursor, reply_list);
 
-		for (vp = fr_cursor_iter_by_da_init(&cursor, reply_list, attr_eap_message);
+		for (vp = fr_dcursor_iter_by_da_init(&cursor, reply_list, attr_eap_message);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 			eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, vp->vp_length, vp->vp_octets);
 		}
 
