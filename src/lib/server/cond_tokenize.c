@@ -550,52 +550,6 @@ static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff
 		}
 	}
 
-	/*
-	 *	If the LHS is a bare word, AND it looks like
-	 *	an attribute, try to parse it as such.
-	 *
-	 *	This allows LDAP-Group and SQL-Group to work.
-	 *
-	 *	The real fix is to just read the config files,
-	 *	and do no parsing until after all of the modules
-	 *	are loaded.  But that has issues, too.
-	 */
-	if (tmpl_is_unresolved(lhs) && (lhs->quote == T_BARE_WORD)) {
-		int hyphens = 0;
-		bool may_be_attr = true;
-		size_t i;
-		ssize_t attr_slen;
-
-		/*
-		 *	Backwards compatibility: Allow Foo-Bar,
-		 *	e.g. LDAP-Group and SQL-Group.
-		 */
-		for (i = 0; i < lhs->len; i++) {
-			if (!fr_dict_attr_allowed_chars[(uint8_t) lhs->name[i]]) {
-				may_be_attr = false;
-				break;
-			}
-
-			if (lhs->name[i] == '-') {
-				hyphens++;
-			}
-		}
-
-		if (!hyphens || (hyphens > 3)) may_be_attr = false;
-
-		if (may_be_attr) {
-			attr_slen = tmpl_afrom_attr_str(c->data.map, NULL, &vpt, fr_sbuff_current(m_lhs),
-							&(tmpl_rules_t){
-								.allow_unknown = true,
-								.allow_unresolved = true
-							});
-			if ((attr_slen > 0) && (vpt->len == lhs->len)) {
-				talloc_free(lhs);
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
-			}
-		}
-	}
-
 	return 1;
 }
 
