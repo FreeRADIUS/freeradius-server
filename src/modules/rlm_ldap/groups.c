@@ -835,18 +835,18 @@ unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 {
 	fr_pair_t	*vp;
 	int		ret;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 
 	/*
 	 *	We return RLM_MODULE_INVALID here as an indication
 	 *	the caller should try a dynamic group lookup instead.
 	 */
-	vp =  fr_cursor_iter_by_da_init(&cursor, &request->control_pairs, inst->cache_da);
+	vp =  fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, inst->cache_da);
 	if (!vp) RETURN_MODULE_INVALID;
 
-	for (vp = fr_cursor_current(&cursor);
+	for (vp = fr_dcursor_current(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		ret = fr_pair_cmp_op(T_OP_CMP_EQ, vp, check);
 		if (ret == 1) {
 			RDEBUG2("User found. Matched cached membership");
