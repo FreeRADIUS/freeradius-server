@@ -295,13 +295,13 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 }
 
 
-static void print_packet(FILE *fp, fr_radius_packet_t *packet)
+static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
 	fr_pair_t *vp;
 	fr_cursor_t cursor;
 	fr_dict_enum_t *dv;
 
-	if (!packet) {
+	if (!*list) {
 		fprintf(fp, "\n");
 		return;
 	}
@@ -309,7 +309,7 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet)
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(packet->code));
 	if (dv) fprintf(fp, "%s\n", dv->name);
 
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, list);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
@@ -550,7 +550,7 @@ static request_t *request_clone(request_t *old)
 	if (!request->reply) request->reply = fr_radius_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
-	(void) fr_pair_list_copy(request->packet, &request->request_pairs, &old->packet->vps);
+	(void) fr_pair_list_copy(request->packet, &request->request_pairs, &old->request_pairs);
 	request->packet->timestamp = fr_time();
 	request->number = old->number++;
 
@@ -981,7 +981,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	print_packet(fp, request->reply);
+	print_packet(fp, request->reply, &request->reply_pairs);
 
 	if (output_file) fclose(fp);
 

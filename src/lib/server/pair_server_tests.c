@@ -293,7 +293,7 @@ static void test_pair_add_session_state(void)
 	TEST_CHECK(pair_add_session_state(&local_pairs, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
-	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->state)) != NULL);
+	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->state_pairs)) != NULL);
 	VP_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");

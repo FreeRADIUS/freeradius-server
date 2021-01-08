@@ -66,7 +66,7 @@ fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
 		return &request->control_pairs;
 
 	case PAIR_LIST_STATE:
-		return &request->state;
+		return &request->state_pairs;
 	}
 
 	RWDEBUG2("List \"%s\" is not available",

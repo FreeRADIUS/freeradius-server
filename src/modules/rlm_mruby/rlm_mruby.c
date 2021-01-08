@@ -408,7 +408,7 @@ static unlang_action_t CC_HINT(nonnull) do_mruby(rlm_rcode_t *p_result, request_
 	mruby_set_vps(request, mrb, mruby_request, "@request", &request->request_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@reply", &request->reply_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->state);
+	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->state_pairs);
 
 DIAG_OFF(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);

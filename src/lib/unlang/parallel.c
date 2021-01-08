@@ -118,7 +118,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 						       &child->reply_pairs,
 						       &request->reply_pairs) < 0) ||
 				    (fr_pair_list_copy(child,
-						       &child->control,
+						       &child->control_pairs,
 						       &request->control_pairs) < 0)) {
 					REDEBUG("failed copying lists to clone");
 					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);

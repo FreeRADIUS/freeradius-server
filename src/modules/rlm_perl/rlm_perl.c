@@ -930,7 +930,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 		}
 
 		if ((get_hv_content(request->state_ctx, request, rad_state_hv, &vp, "RAD_STATE", "session-state")) == 0) {
-			fr_pair_list_free(&request->state);
+			fr_pair_list_free(&request->state_pairs);
 			request->state_pairs = vp;
 			vp = NULL;
 		}
