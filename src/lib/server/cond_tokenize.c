@@ -1082,7 +1082,7 @@ static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_
 	return 0;
 }
 
-static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
+static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 				     fr_sbuff_marker_t *opd_start, fr_sbuff_t *in,
 				     tmpl_rules_t const *rules)
 {
@@ -1160,7 +1160,7 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 #endif
 	}
 
-	slen = tmpl_afrom_substr(ctx, &vpt, &our_in, type, p_rules, rules);
+	slen = tmpl_afrom_substr(c, &vpt, &our_in, type, p_rules, rules);
 	if (!vpt) {
 		fr_sbuff_advance(&our_in, slen * -1);
 
@@ -1226,6 +1226,8 @@ static ssize_t cond_tokenize_operand(TALLOC_CTX *ctx, tmpl_t **out,
 		fr_sbuff_set(&our_in, &m);	/* Reset to start of cast */
 		goto error;
 	}
+
+	if (tmpl_is_attr_unresolved(vpt)) c->pass2_fixup = PASS2_FIXUP_ATTR;
 
 	*out = vpt;
 
@@ -1331,7 +1333,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		fr_sbuff_advance(&our_in, slen * -1);
 		goto error;
 	}
-	if (tmpl_is_attr_unresolved(lhs)) c->pass2_fixup = PASS2_FIXUP_ATTR;
 
 #ifdef HAVE_REGEX
 	/*
@@ -1489,7 +1490,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
 		}
-		if (tmpl_is_attr_unresolved(rhs)) c->pass2_fixup = PASS2_FIXUP_ATTR;
 
 		/*
 		 *	Groups can't be on the RHS of a comparison, either
