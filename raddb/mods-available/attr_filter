@@ -48,3 +48,14 @@ attr_filter attr_filter.accounting_response {
 	key = "%{User-Name}"
 	filename = ${modconfdir}/${.:name}/accounting_response
 }
+
+#
+#  Enforce CoA or Disconnect packets.
+#
+#  Note that you MUST edit the "coa" file below for your
+#  local configuration.  Add in any attributes needed by the NAS.
+#
+attr_filter attr_filter.coa {
+	key = "%{User-Name}"
+	filename = ${modconfdir}/${.:name}/coa
+}
