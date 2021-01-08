@@ -2464,7 +2464,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 
 		treq->request->reply->code = code;
 		r->rcode = radius_code_to_rcode[code];
-		fr_pair_add(&request->reply_pairs, reply);
+		fr_tmp_pair_list_move(&request->reply_pairs, &reply);
 		fr_trunk_request_signal_complete(treq);
 	}
 }
