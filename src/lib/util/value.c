@@ -5181,3 +5181,106 @@ fr_value_box_t *fr_value_box_list_get(fr_value_box_t *head, int index)
 
 	return head;
 }
+
+#define O(_x) [FR_TYPE_ ## _x] = true
+
+/*
+ *	Can we promote [src][dst] -> dst
+ *		dst is not octets / string
+ *		src and dst are both FR_TYPE_VALUE
+ */
+static const bool type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
+	[FR_TYPE_IPV4_ADDR] = {
+		O(IPV4_PREFIX),
+		O(IPV6_ADDR),
+		O(IPV6_PREFIX),
+		O(UINT32), /* ipv4 addresses are uint32 */
+	},
+	[FR_TYPE_IPV4_PREFIX] = {
+		O(IPV4_ADDR),	/* if the prefix is /32 */
+		O(IPV6_ADDR),
+		O(IPV6_PREFIX),
+	},
+	[FR_TYPE_IPV6_ADDR] = {
+		O(IPV6_PREFIX),
+	},
+	[FR_TYPE_IPV6_PREFIX] = {
+		O(IPV6_ADDR),	/* if the prefix is /128 */
+	},
+
+	[FR_TYPE_ETHERNET] = {
+		O(UINT64),
+	},
+
+	[FR_TYPE_UINT64] = {
+		O(ETHERNET),
+	},
+
+	[FR_TYPE_DATE] = {	/* in 2021, dates always have values 2^31 or more */
+		O(UINT32),
+		O(UINT64),
+		O(INT32),
+		O(INT64),
+		O(SIZE),
+		O(FLOAT32),
+		O(FLOAT64),
+		O(TIME_DELTA),
+	},
+
+	[FR_TYPE_TIME_DELTA] = {
+		O(DATE),
+	},
+
+	[FR_TYPE_UINT32] = {
+		O(IPV4_ADDR),
+	},
+
+};
+
+
+/** Return if we're allowed to cast the types.
+ *
+ * @param dst	the destination type we wish to cast to
+ * @param src	the source type we wish to cast to
+ *
+ */
+bool fr_type_cast(fr_type_t dst, fr_type_t src)
+{
+	/*
+	 *	Invalid casts.
+	 */
+	if ((dst == FR_TYPE_INVALID) || (src >= FR_TYPE_TLV)) return false;
+	if ((src == FR_TYPE_INVALID) || (dst >= FR_TYPE_TLV)) return false;
+
+	if (src == dst) return true;
+
+	/*
+	 *	Anything can be converted to octets or strings.
+	 */
+	if (dst == FR_TYPE_OCTETS) return true;
+	if (dst == FR_TYPE_STRING) return true;
+
+	/*
+	 *	Strings and octets can be converted to anything.  We
+	 *	do run-time checks on the values to see if they fit.
+	 */
+	if (src == FR_TYPE_OCTETS) return true;
+	if (src == FR_TYPE_STRING) return true;
+
+	/*
+	 *	Any integer-style thing can be cast to any other
+	 *	integer-style thing.  Mostly.  We do run-time checks
+	 *	on values to see if they fit.
+	 */
+	if (((src >= FR_TYPE_BOOL) && (src <= FR_TYPE_TIME_DELTA)) &&
+	    ((dst >= FR_TYPE_BOOL) && (dst <= FR_TYPE_TIME_DELTA))) {
+		return true;
+	}
+
+	/*
+	 *	That takes care of the simple cases.  :( Now to the
+	 *	complex ones.  Instead of masses of if / then / else,
+	 *	we just use a lookup table.
+	 */
+	return type_promote_table[src][dst];
+}

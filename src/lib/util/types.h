@@ -31,6 +31,7 @@ extern "C" {
 
 /** Internal data types used within libfreeradius
  *
+ *  Order is important!  Please see fr_type_promote() for details.
  */
 typedef enum {
 	FR_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
@@ -65,9 +66,9 @@ typedef enum {
 	FR_TYPE_FLOAT32,			//!< Single precision floating point.
 	FR_TYPE_FLOAT64,			//!< Double precision floating point.
 
-	FR_TYPE_DATE,				//!< 32 Bit Unix timestamp.
-
 	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
+
+	FR_TYPE_DATE,				//!< Unix time stamp, always has value >2^31
 
 	FR_TYPE_TLV,				//!< Contains nested attributes.
 	FR_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
@@ -209,6 +210,11 @@ typedef enum {
 #define FR_TYPE_QUOTED \
 	FR_TYPE_STRING: \
 	case FR_TYPE_DATE
+
+/*
+ *  In value.c, but should likely be here.
+ */
+bool fr_type_cast(fr_type_t dst, fr_type_t src);
 
 #ifdef __cplusplus
 }
