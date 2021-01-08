@@ -453,6 +453,7 @@ static void identity_to_crypto_identity(request_t *request, eap_aka_sim_session_
 	talloc_free(eap_aka_sim_session->keys.identity);
 	eap_aka_sim_session->keys.identity_len = len;
 	MEM(eap_aka_sim_session->keys.identity = talloc_memdup(eap_aka_sim_session, identity, len));
+
 }
 
 /** Determine if we're after authentication
@@ -3353,6 +3354,7 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps
 	fr_aka_sim_decode_ctx_t	ctx = {
 					.keys = &eap_aka_sim_session->keys,
 				};
+	fr_pair_t		*aka_vp;
 	fr_pair_list_t		aka_vps;
 	fr_dcursor_t		cursor;
 
@@ -3380,6 +3382,7 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps
 	}
 	/* vps is the data from the client */
 	aka_vp = fr_dcursor_next(&cursor);
+	fr_pair_sublist_copy(request, &aka_vps, &request->request_pairs, aka_vp);
 	if (!fr_pair_list_empty(&aka_vps) && RDEBUG_ENABLED2) {
 		RDEBUG2("Decoded attributes");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &aka_vps, NULL);
@@ -3390,7 +3393,7 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps
 		REDEBUG("Missing AT_SUBTYPE");
 		goto failure;
 	}
-	*vps = aka_vps;
+	fr_tmp_pair_list_move(vps, &aka_vps);
 
 	RDEBUG2("Received EAP-Response/%pV", &(*subtype_vp)->data);
 
