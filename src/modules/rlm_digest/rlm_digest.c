@@ -87,15 +87,14 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_digest_t);
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 
 	/*
 	 *	Find the first attribute which is parented by Digest-Attributes.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		if (vp->da->parent == attr_digest_attributes) break;
 	}
 	/*
