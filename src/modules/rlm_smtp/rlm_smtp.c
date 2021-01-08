@@ -742,7 +742,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	fr_pair_t const 		*smtp_body, *username, *password;
 
-	if (fr_pair_find_by_da(&request->control, attr_auth_type) != NULL) {
+	if (fr_pair_find_by_da(&request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
 		RETURN_MODULE_NOOP;
 	}
