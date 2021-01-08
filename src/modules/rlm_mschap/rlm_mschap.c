@@ -1626,12 +1626,11 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *
 	 */
 	new_nt_enc_len = 0;
 	for (seq = 1; seq < 4; seq++) {
-		fr_cursor_t cursor;
 		int found = 0;
 
-		for (nt_enc = fr_cursor_init(&cursor, &request->request_pairs);
+		for (nt_enc = fr_pair_list_head(&request->request_pairs);
 		     nt_enc;
-		     nt_enc = fr_cursor_next(&cursor)) {
+		     nt_enc = fr_pair_list_next(&request->request_pairs, nt_enc)) {
 			if (fr_dict_vendor_num_by_da(nt_enc->da) != VENDORPEC_MICROSOFT) continue;
 
 			if (nt_enc->da->attr != FR_MSCHAP_NT_ENC_PW) continue;
