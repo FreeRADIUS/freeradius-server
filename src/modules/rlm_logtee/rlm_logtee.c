@@ -458,7 +458,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 	rlm_logtee_t const	*inst = t->inst;
 	char			*msg, *exp;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_pair_t		*vp;
 	log_dst_t		*dst;
 
@@ -473,11 +473,11 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 	t->type->vp_uint32 = (uint32_t) type;
 	t->lvl->vp_uint32 = (uint32_t) lvl;
 
-	fr_cursor_init(&cursor, &request->request_pairs);
-	fr_cursor_prepend(&cursor, t->msg);
-	fr_cursor_prepend(&cursor, t->type);
-	fr_cursor_prepend(&cursor, t->lvl);
-	fr_cursor_head(&cursor);
+	fr_dcursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_prepend(&cursor, t->msg);
+	fr_dcursor_prepend(&cursor, t->type);
+	fr_dcursor_prepend(&cursor, t->lvl);
+	fr_dcursor_head(&cursor);
 
 	/*
 	 *	Now expand our fmt string to encapsulate the
@@ -502,14 +502,14 @@ finish:
 	/*
 	 *	Don't free, we re-use the fr_pair_ts for the next message
 	 */
-	vp = fr_cursor_remove(&cursor);
-	if (!fr_cond_assert(vp == t->lvl)) fr_cursor_append(&cursor, vp);
+	vp = fr_dcursor_remove(&cursor);
+	if (!fr_cond_assert(vp == t->lvl)) fr_dcursor_append(&cursor, vp);
 
-	vp = fr_cursor_remove(&cursor);
-	if (!fr_cond_assert(vp == t->type)) fr_cursor_append(&cursor, vp);
+	vp = fr_dcursor_remove(&cursor);
+	if (!fr_cond_assert(vp == t->type)) fr_dcursor_append(&cursor, vp);
 
-	vp = fr_cursor_remove(&cursor);
-	if (!fr_cond_assert(vp == t->msg)) fr_cursor_append(&cursor, vp);
+	vp = fr_dcursor_remove(&cursor);
+	if (!fr_cond_assert(vp == t->msg)) fr_dcursor_append(&cursor, vp);
 
 	fr_value_box_clear(&t->msg->data);		/* Clear message data */
 }
