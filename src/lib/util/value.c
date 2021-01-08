@@ -5189,7 +5189,7 @@ fr_value_box_t *fr_value_box_list_get(fr_value_box_t *head, int index)
  *		dst is not octets / string
  *		src and dst are both FR_TYPE_VALUE
  */
-static const bool type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
+static const bool type_cast_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 	[FR_TYPE_IPV4_ADDR] = {
 		O(IPV4_PREFIX),
 		O(IPV6_ADDR),
@@ -5282,5 +5282,6 @@ bool fr_type_cast(fr_type_t dst, fr_type_t src)
 	 *	complex ones.  Instead of masses of if / then / else,
 	 *	we just use a lookup table.
 	 */
-	return type_promote_table[src][dst];
+	return type_cast_table[src][dst];
 }
+
