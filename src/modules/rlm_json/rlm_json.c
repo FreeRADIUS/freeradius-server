@@ -190,8 +190,6 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 
 	ssize_t			slen;
 	tmpl_t			*vpt = NULL;
-	fr_cursor_t		cursor;
-	fr_cursor_t		filter;
 	fr_pair_list_t		json_vps, vps;
 	bool			negate;
 	char			*json_str = NULL;
@@ -249,18 +247,19 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 
 		if (negate) {
 			/* Remove all template attributes from JSON list */
-			for (fr_pair_t *vp = fr_cursor_init(&filter, &vps);
+			for (fr_pair_t *vp = fr_pair_list_head(&vps);
 			     vp;
-			     vp = fr_cursor_next(&filter)) {
+			     vp = fr_pair_list_next(&vps, vp)) {
 
-				fr_pair_t *vpm = fr_cursor_init(&cursor, &json_vps);
+				fr_pair_t *vpm = fr_pair_list_head(&json_vps);
 				while (vpm) {
 					if (vp->da == vpm->da) {
-						talloc_free(fr_cursor_remove(&cursor));
-						vpm = fr_cursor_current(&cursor);
+						fr_pair_t *next = fr_pair_list_next(&json_vps, vpm);
+						fr_pair_delete(&json_vps, vpm);
+						vpm = next;
 						continue;
 					}
-					vpm = fr_cursor_next(&cursor);
+					vpm = fr_pair_list_next(&json_vps, vpm);
 				}
 			}
 
