@@ -998,7 +998,6 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 {
 	int ret;
 	fr_pair_t *vp;
-	fr_cursor_t cursor;
 
 	/*
 	 *	The attribute isn't an array, so it MUST have a
@@ -1010,7 +1009,6 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	}
 
 	MEM(vp = fr_pair_afrom_da(parent, da));
-	(void) fr_cursor_init(&cursor, &parent->options);
 
 	/*
 	 *	Add in the first value.
@@ -1023,8 +1021,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 	vp->op = T_OP_EQ;
 
-	fr_cursor_append(&cursor, vp);
-	(void) fr_cursor_tail(&cursor);
+	fr_pair_add(&parent->options, vp);
 
 	// @todo - print out ISC names...
 	IDEBUG("%.*s option %s %s ", state->braces, spaces, da->name, value);
@@ -1050,8 +1047,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 		vp->op = T_OP_EQ;
 
-		fr_cursor_append(&cursor, vp);
-		(void) fr_cursor_tail(&cursor);
+		fr_pair_add(&parent->options, vp);
 
 		// @todo - print out ISC names...
 		IDEBUG("%.*s option %s %.*ss ", state->braces, spaces, da->name, state->token_len, state->token);
@@ -1662,7 +1658,6 @@ static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 {
 	int ret;
 	fr_pair_t *vp;
-	fr_cursor_t cursor;
 
 	if (!info->parent) return -1; /* internal error */
 
@@ -1671,9 +1666,7 @@ static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 	ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 	if (ret < 0) return ret;
 
-	(void) fr_cursor_init(&cursor, &info->parent->options);
-	(void) fr_cursor_tail(&cursor);
-	fr_cursor_append(&cursor, vp);
+	fr_pair_add(&info->parent->options, vp);
 
 	talloc_free(info);
 	return 2;
@@ -1769,8 +1762,6 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 	 *	Find a "fixed-address" sub-statement.
 	 */
 	for (info = host->child; info != NULL; info = info->next) {
-		fr_cursor_t cursor;
-
 		if (!info->cmd) return -1; /* internal error */
 
 		/*
@@ -1785,12 +1776,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 		ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 		if (ret < 0) return ret;
 
-		/*
-		 *	<sigh> I miss pair_add()
-		 */
-		(void) fr_cursor_init(&cursor, &request->reply_pairs);
-		(void) fr_cursor_tail(&cursor);
-		fr_cursor_append(&cursor, vp);
+		fr_pair_add(&request->reply_pairs, vp);
 
 		/*
 		 *	If we've found a fixed IP, then tell
@@ -1865,11 +1851,6 @@ recurse:
 	 */
 	if (!fr_pair_list_empty(&head->options)) {
 		fr_pair_t *vp = NULL;
-		fr_cursor_t option_cursor;
-		fr_cursor_t reply_cursor;
-
-		(void) fr_cursor_init(&reply_cursor, &request->reply_pairs);
-		(void) fr_cursor_tail(&reply_cursor);
 
 		/*
 		 *	Walk over the input list, adding the options
@@ -1890,9 +1871,9 @@ recurse:
 		 *	options that match.  This would likely be
 		 *	faster.
 		 */
-		for (vp = fr_cursor_init(&option_cursor, &head->options);
+		for (vp = fr_pair_list_head(&head->options);
 		     vp != NULL;
-		     vp = fr_cursor_next(&option_cursor)) {
+		     vp = fr_pair_list_next(&head->options, vp)) {
 			fr_pair_t *reply;
 
 			reply = fr_pair_find_by_da(&request->reply_pairs, vp->da);
@@ -1908,14 +1889,13 @@ recurse:
 				copy = fr_pair_copy(request->reply_ctx, vp);
 				if (!copy) return -1;
 
-				fr_cursor_append(&reply_cursor, copy);
-				(void) fr_cursor_tail(&reply_cursor);
+				fr_pair_add(&request->reply_pairs, copy);
 
-				next = fr_cursor_next_peek(&option_cursor);
+				next = fr_pair_list_next(&head->options, vp);
 				if (!next) break;
 				if (next->da != vp->da) break;
 
-				vp = fr_cursor_next(&option_cursor);
+				vp = fr_pair_list_next(&head->options, vp);
 			}
 		}
 
