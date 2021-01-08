@@ -54,6 +54,9 @@ typedef enum {
 	FR_TYPE_UINT32,				//!< 32 Bit unsigned integer.
 	FR_TYPE_UINT64,				//!< 64 Bit unsigned integer.
 
+	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
+						//!< address on the local system.
+
 	FR_TYPE_INT8,				//!< 8 Bit signed integer.
 	FR_TYPE_INT16,				//!< 16 Bit signed integer.
 	FR_TYPE_INT32,				//!< 32 Bit signed integer.
@@ -63,9 +66,6 @@ typedef enum {
 	FR_TYPE_FLOAT64,			//!< Double precision floating point.
 
 	FR_TYPE_DATE,				//!< 32 Bit Unix timestamp.
-
-	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
-						//!< address on the local system.
 
 	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
 
