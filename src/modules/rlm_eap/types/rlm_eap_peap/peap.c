@@ -368,7 +368,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 						  fr_radius_packet_t *reply, fr_pair_list_t *reply_list)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
-	fr_pair_t *vp;
+	fr_pair_list_t vps;
 	peap_tunnel_t *t = tls_session->opaque;
 
 	if (RDEBUG_ENABLED2) {
@@ -408,16 +408,16 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	of the tunnel.  Any Reply-Message in the
 		 *	Access-Challenge is ignored.
 		 */
-		vp = NULL;
-		fr_pair_list_copy_by_da(t, &vp, reply_list, attr_eap_message, 0);
+		fr_pair_list_init(&vps);
+		fr_pair_list_copy_by_da(t, &vps, reply_list, attr_eap_message, 0);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
 		 *	VP's back to the client.
 		 */
-		if (vp) {
-			eap_peap_inner_from_pairs(request, tls_session, &vp);
-			fr_pair_list_free(&vp);
+		if (!fr_pair_list_empty(&vps)) {
+			eap_peap_inner_from_pairs(request, tls_session, &vps);
+			fr_pair_list_free(&vps);
 		}
 
 		rcode = RLM_MODULE_HANDLED;
