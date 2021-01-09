@@ -296,7 +296,7 @@ ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original
 
 ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps)
 {
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 	fr_pair_t	*vp;
 	ssize_t	len;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -482,13 +482,13 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 *  operates correctly. This changes the order of the list, but never mind...
 	 */
 	fr_pair_list_sort(vps, fr_dhcpv4_attr_cmp);
-	fr_cursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_dhcpv4, fr_pair_t);
+	fr_dcursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_dhcpv4, fr_pair_t);
 
 	/*
 	 *  Each call to fr_dhcpv4_encode_option will encode one complete DHCP option,
 	 *  and sub options.
 	 */
-	while ((vp = fr_cursor_current(&cursor))) {
+	while ((vp = fr_dcursor_current(&cursor))) {
 		/*
 		 *	The encoder skips message type, and returns
 		 *	"len==0" for it.  We want to allow that, BUT
@@ -497,7 +497,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		 *	manually, too.
 		 */
 		if (vp->da == attr_dhcp_message_type) {
-			(void) fr_cursor_next(&cursor);
+			(void) fr_dcursor_next(&cursor);
 			continue;
 		}
 
