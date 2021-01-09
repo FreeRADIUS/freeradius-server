@@ -250,7 +250,9 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 	tmpl_t	*dst;
 	fr_pair_t	*vp;
 	request_t		*current = request;
+	fr_pair_list_t	tmp_list;
 
+	fr_pair_list_init(&tmp_list);
 	/*
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
@@ -350,8 +352,9 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		}
 
-		radius_pairmove(request,  vps, &vp, false);
+		fr_pair_add(&tmp_list, vp);
 	}
+	radius_pairmove(request, vps, &tmp_list, false);
 }
 
 
