@@ -166,7 +166,7 @@ void		fr_dhcpv6_global_free(void);
 /*
  *	encode.c
  */
-ssize_t		fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void * encoder_ctx);
+ssize_t		fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * encoder_ctx);
 
 /*
  *	decode.c
