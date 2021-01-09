@@ -40,4 +40,4 @@ extern fr_dict_attr_t const *attr_relay_message;
 /*
  *	A private function that is used only in base.c and encode.c
  */
-void *fr_dhcpv6_next_encodable(void **prev, void *to_eval, void *uctx);
+void *fr_dhcpv6_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx);
