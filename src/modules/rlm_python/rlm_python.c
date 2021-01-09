@@ -465,7 +465,6 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 static unlang_action_t do_python_single(rlm_rcode_t *p_result,
 					rlm_python_t const *inst, request_t *request, PyObject *p_func, char const *funcname)
 {
-	fr_cursor_t	cursor;
 	fr_pair_t	*vp;
 	PyObject	*p_ret = NULL;
 	PyObject	*p_arg = NULL;
@@ -482,9 +481,7 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result,
 	 */
 	tuple_len = 0;
 	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) tuple_len++;
+		tuple_len = fr_pair_list_len(&request->request_pairs);
 	}
 
 	if (tuple_len == 0) {
@@ -497,9 +494,9 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result,
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
+		     vp = fr_pair_list_next(&request->request_pairs, vp), i++) {
 			PyObject *pp;
 
 			/* The inside tuple has two only: */
