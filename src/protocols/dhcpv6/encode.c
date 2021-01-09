@@ -288,18 +288,15 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	case FR_TYPE_GROUP:
 	{
-		fr_pair_list_t child;
 		fr_dcursor_t child_cursor;
 
 		/*
 		 *	Encode the child options.
 		 */
-		child = vp->vp_group;
-		if (child) {
+		if (!fr_pair_list_empty(&vp->vp_group)) {
 			(void) fr_dcursor_init(&child_cursor, &vp->vp_group);
 
 			while (fr_dcursor_current(&child_cursor) != NULL) {
-				child = fr_dcursor_current(&child_cursor);
 				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encoder_ctx);
 				if (slen == PAIR_ENCODE_SKIPPED) continue;
 
