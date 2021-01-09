@@ -904,7 +904,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			REXDENT();
 			radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
-			fr_pair_list_init(&check_tmp);
+			fr_pair_list_clear(&check_tmp);
 		}
 
 		if (inst->config->authorize_group_reply_query) {
@@ -941,7 +941,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
 			radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
-			fr_pair_list_init(&reply_tmp);
+			fr_pair_list_clear(&reply_tmp);
 		/*
 		 *	If there's no reply query configured, then we assume
 		 *	FALL_THROUGH_NO, which is the same as the users file if you
@@ -1185,8 +1185,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
-	fr_pair_t		*check_tmp = NULL;
-	fr_pair_t		*reply_tmp = NULL;
+	fr_pair_list_t		check_tmp;
+	fr_pair_list_t		reply_tmp;
 	fr_pair_t 		*user_profile = NULL;
 
 	bool			user_found = false;
@@ -1197,6 +1197,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	char			*expanded = NULL;
 
+	fr_pair_list_init(&check_tmp);
+	fr_pair_list_init(&reply_tmp);
 	fr_assert(request->packet != NULL);
 	fr_assert(request->reply != NULL);
 
@@ -1261,8 +1263,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
 		if (paircmp(request, &request->request_pairs, &check_tmp) != 0) {
-			fr_pair_list_free(&check_tmp);
-			check_tmp = NULL;
+			fr_pair_list_clear(&check_tmp);
 			goto skip_reply;
 		}
 
@@ -1278,7 +1279,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
 		rcode = RLM_MODULE_OK;
-		check_tmp = NULL;
+		fr_pair_list_clear(&check_tmp);
 	}
 
 	if (inst->config->authorize_reply_query) {
@@ -1313,7 +1314,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
 
 		rcode = RLM_MODULE_OK;
-		reply_tmp = NULL;
+		fr_pair_list_clear(&reply_tmp);
 	}
 
 	/*
