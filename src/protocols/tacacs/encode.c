@@ -44,12 +44,11 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_list_t *v
 {
 	uint8_t     arg_cnt = 0;
 	fr_pair_t   *vp;
-	fr_cursor_t cursor;
 	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		if (arg_cnt == 255) break;
 
 		if ((vp->da != da) || (vp->vp_length > 0xff)) continue;
@@ -68,13 +67,12 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_list_t *v
 static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dict_attr_t const *da)
 {
 	fr_pair_t   *vp;
-	fr_cursor_t cursor;
 	uint8_t     arg_cnt = 0;
 	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor), arg_cnt++) {
+	     vp = fr_pair_list_next(vps,vp), arg_cnt++) {
 		if (arg_cnt == 255) break;
 
 		if (vp->da != da || vp->vp_length > 0xff) continue;
