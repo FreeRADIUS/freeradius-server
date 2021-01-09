@@ -233,6 +233,8 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
 		}
 
+		c->pass2_fixup = PASS2_FIXUP_NONE;
+
 		/*
 		 *	Now that we have known data types for the LHS
 		 *	/ RHS attribute(s), go check them.
@@ -241,8 +243,6 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 			cf_log_err(ci, "Failed parsing condition after dynamic attributes were defined.");
 			return false;
 		}
-
-		c->pass2_fixup = PASS2_FIXUP_NONE;
 	}
 
 	/*

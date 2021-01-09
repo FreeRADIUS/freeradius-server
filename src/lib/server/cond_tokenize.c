@@ -304,6 +304,18 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 *	them alone...
 		 */
 		if (lhs_type == FR_TYPE_INVALID) {
+
+			/*
+			 *	If we still have unresolved data, then
+			 *	ensure that they are converted to
+			 *	strings.
+			 */
+			if ((c->pass2_fixup == PASS2_FIXUP_NONE) &&
+			    tmpl_is_unresolved(c->data.map->lhs) && tmpl_is_unresolved(c->data.map->rhs)) {
+				if (tmpl_cast_in_place(c->data.map->lhs, FR_TYPE_STRING, NULL) < 0) return -1;
+				if (tmpl_cast_in_place(c->data.map->rhs, FR_TYPE_STRING, NULL) < 0) return -1;
+			}
+
 			return 0;
 		}
 	}
@@ -613,37 +625,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			}
 
 			goto check_true; /* it's no longer a map */
-		}
-
-		/*
-		 *	Both are literal strings.  They're not parsed
-		 *	as TMPL_TYPE_DATA because there's no cast to an
-		 *	attribute.
-		 *
-		 *	We can do the evaluation here, so that it
-		 *	doesn't need to be done at run time
-		 */
-		if (tmpl_is_unresolved(c->data.map->rhs) &&
-		    tmpl_is_unresolved(c->data.map->lhs) &&
-		    !c->pass2_fixup) {
-			int rcode;
-
-			rcode = cond_eval_map(NULL, 0, c);
-			if (rcode) {
-				c->type = COND_TYPE_TRUE;
-			} else {
-				DEBUG4("OPTIMIZING (%s %s %s) --> FALSE",
-				       c->data.map->lhs->name,
-				       fr_table_str_by_value(fr_tokens_table, c->data.map->op, "??"),
-				       c->data.map->rhs->name);
-				c->type = COND_TYPE_FALSE;
-			}
-
-			/*
-			 *	Free map after using it above.
-			 */
-			TALLOC_FREE(c->data.map);
-			goto check_true;
 		}
 	}
 
@@ -1046,6 +1027,16 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 		fr_strerror_printf("Failed defining attribute %s", tmpl_da(vpt)->name);
 		fr_sbuff_set(&our_in, &m);
 		goto error;
+	}
+
+	if (tmpl_is_unresolved(vpt) &&
+	    ((type == T_BACK_QUOTED_STRING) || (type == T_SINGLE_QUOTED_STRING) || (type == T_DOUBLE_QUOTED_STRING))) {
+		if (tmpl_cast_in_place(vpt, FR_TYPE_STRING, NULL) < 0) {
+			fr_sbuff_set(&our_in, &m);
+			goto error;
+		}
+
+		cast = FR_TYPE_INVALID;
 	}
 
 	if (tmpl_cast_set(vpt, cast) < 0) {
