@@ -146,7 +146,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 	ssize_t			slen;
 	fr_pair_t		*vp;
 	fr_arp_packet_t		*arp;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_da_stack_t		da_stack;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
@@ -158,9 +158,9 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 	/*
 	 *	Find the first attribute which is parented by ARP-Packet.
 	 */
-	for (vp = fr_cursor_init(&cursor, vps);
+	for (vp = fr_dcursor_init(&cursor, vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		if (vp->da->parent == attr_arp_packet) break;
 	}
 
@@ -223,7 +223,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_list_t *list)
 {
 	fr_arp_packet_t const *arp;
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 
 	if (packet_len < FR_ARP_PACKET_SIZE) {
 		fr_strerror_printf("Packet is too small (%d) to be ARP", (int) packet_len);
@@ -258,7 +258,7 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	 *	If the packet is too long, we discard any extra data.
 	 */
 	fr_pair_list_init(list);
-	fr_cursor_init(&cursor, list);
+	fr_dcursor_init(&cursor, list);
 	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE,
 				      NULL, NULL, NULL);
 }
