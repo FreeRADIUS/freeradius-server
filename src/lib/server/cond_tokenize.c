@@ -139,13 +139,102 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 	return fr_sbuff_set(out, &our_out);
 }
 
+
+static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
+{
+	fr_dict_attr_t const *da;
+	fr_type_t type = *p_type;
+
+	fr_assert(type != FR_TYPE_INVALID);
+	fr_assert(type < FR_TYPE_TLV);
+
+	if (tmpl_is_unresolved(vpt)) {
+		switch (type) {
+		case FR_TYPE_IPV4_ADDR:
+			if (strchr(vpt->name, '/') != NULL) {
+				*p_type = type = FR_TYPE_IPV4_PREFIX;
+				(void) tmpl_cast_set(other, type);
+			}
+			break;
+
+		case FR_TYPE_IPV6_ADDR:
+			if (strchr(vpt->name, '/') != NULL) {
+				*p_type = type = FR_TYPE_IPV6_PREFIX;
+				(void) tmpl_cast_set(other, type);
+			}
+			break;
+
+		default:
+			break;
+		}
+
+	} else if (tmpl_is_attr(vpt)) {
+		(void) tmpl_cast_set(vpt, type);
+		return 0;
+
+	} else if (!tmpl_is_data(vpt)) {
+		/*
+		 *	Nothing to do.
+		 */
+		return 0;
+
+	} else if (tmpl_value_type(vpt) == type) {
+#if 0
+		/*
+		 *	The parser will parse "256" as a 16-bit
+		 *	integer.  If that's being compared to an 8-bit
+		 *	type, then fr_type_promote() will promote that
+		 *	8-bit integer to 16-bits.
+		 *
+		 *	However... if the 8-bit data type comes from
+		 *	an attribute, then we know at compile time
+		 *	that the value won't fit.  So we should issue
+		 *	a compile-time error.
+		 *
+		 *	As a result, we call the cast below, even if
+		 *	the type of the value matches the type we're
+		 *	going to cast.
+		 */
+		if (tmpl_is_attr(other)) {
+			// double check it?
+		}
+#endif
+
+//		(void) tmpl_cast_set(vpt, FR_TYPE_INVALID);
+		return 0;
+	}
+
+	/*
+	 *	Allow enumerated values like "PPP" for
+	 *	Framed-Protocol, which is an integer data type.
+	 */
+	if (tmpl_is_attr(other)) {
+		da = tmpl_da(other);
+	} else {
+		da = NULL;
+	}
+
+	if (tmpl_cast_in_place(vpt, type, da) < 0) {
+		fr_strerror_printf("Failed parsing value as type '%s'",
+				   fr_table_str_by_value(fr_value_box_type_table,
+							 type, "??"));
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /** Promote the types in a FOO OP BAR comparison.
  *
  */
-static int cond_promote_types(fr_cond_t *c)
+static int cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs)
 {
 	fr_type_t lhs_type, rhs_type;
 	fr_type_t cast_type;
+	fr_dict_attr_t const *lhs_da, *rhs_da;
+
+	lhs_da = rhs_da = NULL;
 
 #ifdef HAVE_REGEX
 	/*
@@ -155,11 +244,10 @@ static int cond_promote_types(fr_cond_t *c)
 #endif
 
 	/*
-	 *	There's a cast, remember it.
+	 *	Figure out the type of the LHS.
 	 */
 	if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
 		lhs_type = c->data.map->lhs->cast;
-
 		/*
 		 *	Two explicit casts MUST be the same, otherwise
 		 *	it's an error.
@@ -170,8 +258,10 @@ static int cond_promote_types(fr_cond_t *c)
 		if (c->data.map->rhs->cast != FR_TYPE_INVALID) {
 			if (c->data.map->rhs->cast != lhs_type) {
 				fr_strerror_const("Incompatible casts");
+				fr_sbuff_set(in, fr_sbuff_start(in));
 				return -1;
 			}
+
 			return 0;
 		}
 
@@ -191,6 +281,9 @@ static int cond_promote_types(fr_cond_t *c)
 		lhs_type = FR_TYPE_INVALID;
 	}
 
+	/*
+	 *	Figure out the type of the RHS.
+	 */
 	if (c->data.map->rhs->cast != FR_TYPE_INVALID) {
 		rhs_type = c->data.map->rhs->cast;
 
@@ -207,7 +300,9 @@ static int cond_promote_types(fr_cond_t *c)
 		 *	Both sides are have unresolved issues.  Leave
 		 *	them alone...
 		 */
-		if (lhs_type == FR_TYPE_INVALID) return 0;
+		if (lhs_type == FR_TYPE_INVALID) {
+			return 0;
+		}
 	}
 
 	/*
@@ -230,13 +325,13 @@ static int cond_promote_types(fr_cond_t *c)
 	 *	fixups.
 	 */
 	if ((lhs_type != FR_TYPE_INVALID) && (rhs_type == FR_TYPE_INVALID)) {
-		(void) tmpl_cast_set(c->data.map->rhs, lhs_type);
-		return 0;
+		cast_type = lhs_type;
+		goto set_types;
 	}
 
 	if ((rhs_type != FR_TYPE_INVALID) && (lhs_type == FR_TYPE_INVALID)) {
-		(void) tmpl_cast_set(c->data.map->lhs, rhs_type);
-		return 0;
+		cast_type = rhs_type;
+		goto set_types;
 	}
 
 	cast_type = fr_type_promote(lhs_type, rhs_type);
@@ -244,455 +339,42 @@ static int cond_promote_types(fr_cond_t *c)
 
 set_types:
 	/*
-	 *	Cast both sides to the promoted type.
-	 *
-	 *	If the tmpl has no data type, then try to cast it now.
-	 *
-	 *	If the tmpl already has a data type, then the cast
-	 *	will just do nothing.
+	 *	If the caller is doing comparisons with prefixes, then
+	 *	update the cast to an IP prefix.  But only if they're
+	 *	not comparing IP addresses by value.  <sigh> We should
+	 *	really have separate "set membership" operators.
 	 */
-	if (tmpl_is_unresolved(c->data.map->lhs)) {
-		if (tmpl_cast_in_place(c->data.map->lhs, cast_type, NULL) < 0) {
-			fr_strerror_printf("Failed parsing left side of condition as type '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table,
-								 cast_type, "??"));
-			return -1;
-		}
+	if (((cast_type == FR_TYPE_IPV4_ADDR) || (cast_type == FR_TYPE_IPV6_ADDR)) &&
+	    (lhs_type != rhs_type)) {
+		switch (c->data.map->op) {
+		default:
+			break;
 
-		(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
-	} else {
-		(void) tmpl_cast_set(c->data.map->lhs, cast_type);
+		case T_OP_LT:
+		case T_OP_LE:
+		case T_OP_GT:
+		case T_OP_GE:
+			cast_type++; /* addr -> prefix */
+			break;
+		}
 	}
 
-	if (tmpl_is_unresolved(c->data.map->rhs)) {
-		if (tmpl_cast_in_place(c->data.map->rhs, cast_type, NULL) < 0) {
-			fr_strerror_printf("Failed parsing right side of condition as type '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table,
-								 cast_type, "??"));
-			return -1;
-		}
+	/*
+	 *	Cast both sides to the promoted type.
+	 */
+	if (cond_cast_tmpl(c->data.map->lhs, &cast_type, c->data.map->rhs) < 0) {
+		fr_sbuff_set(in, m_lhs);
+		return -1;
+	}
 
-		(void) tmpl_cast_set(c->data.map->rhs, FR_TYPE_INVALID);
-	} else {
-		(void) tmpl_cast_set(c->data.map->rhs, cast_type);
+	if (cond_cast_tmpl(c->data.map->rhs, &cast_type, c->data.map->lhs) < 0) {
+		fr_sbuff_set(in, m_rhs);
+		return -1;
 	}
 
 	return 0;
 }
 
-
-static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
-{
-	/*
-	 *	SOME integer mismatch is OK.  If the LHS has a large type,
-	 *	and the RHS has a small type, it's OK.
-	 *
-	 *	If the LHS has a small type, and the RHS has a large type,
-	 *	then add a cast to the LHS.
-	 */
-	if (lhs_type == FR_TYPE_UINT64) {
-		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32) ||
-		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16) ||
-		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8)) {
-			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
-			return true;
-		}
-	}
-
-	if (lhs_type == FR_TYPE_UINT32) {
-		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16) ||
-		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8)) {
-			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
-			return true;
-		}
-
-		if (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) {
-			tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
-			return true;
-		}
-	}
-
-	if (lhs_type == FR_TYPE_UINT16) {
-		if (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT8) {
-			tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
-			return true;
-		}
-
-		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) ||
-		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32)) {
-			tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
-			return true;
-		}
-	}
-
-	if (lhs_type == FR_TYPE_UINT8) {
-		if ((tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT64) ||
-		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT32) ||
-		    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_UINT16)) {
-			tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
-			return true;
-		}
-	}
-
-	if ((lhs_type == FR_TYPE_IPV4_PREFIX) &&
-	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV4_ADDR)) {
-		return true;
-	}
-
-	if ((lhs_type == FR_TYPE_IPV6_PREFIX) &&
-	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV6_ADDR)) {
-		return true;
-	}
-
-	/*
-	 *	Same checks as above, but with the types swapped, and
-	 *	with explicit cast for the interpretor.
-	 */
-	if ((lhs_type == FR_TYPE_IPV4_ADDR) &&
-	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV4_PREFIX)) {
-		tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
-		return true;
-	}
-
-	if ((lhs_type == FR_TYPE_IPV6_ADDR) &&
-	    (tmpl_da(c->data.map->rhs)->type == FR_TYPE_IPV6_PREFIX)) {
-		tmpl_cast_set(c->data.map->lhs, tmpl_da(c->data.map->rhs)->type);
-		return true;
-	}
-
-	return false;
-}
-
-static ssize_t cond_check_cast(fr_cond_t *c, char const *start,
-			       char const *lhs, char const *rhs)
-{
-	fr_type_t cast_type = c->data.map->lhs->cast;
-
-	fr_assert(cast_type != FR_TYPE_INVALID);
-
-	if (tmpl_is_attr(c->data.map->rhs) &&
-	    (cast_type != tmpl_da(c->data.map->rhs)->type)) {
-		if (cond_type_check(c, c->data.map->lhs->cast)) {
-			return 1;
-		}
-
-		fr_strerror_printf("Cannot compare types '%s' (cast) and '%s' (attr)",
-				   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, tmpl_da(c->data.map->rhs)->type, "<INVALID>"));
-		return 0;
-	}
-
-	/*
-	 *	The LHS is a literal which has been cast to a data type.
-	 *	Cast it to the appropriate data type.
-	 */
-	if (tmpl_is_unresolved(c->data.map->lhs) &&
-	    (tmpl_cast_in_place(c->data.map->lhs, cast_type, NULL) < 0)) {
-		fr_strerror_const("Failed to parse field");
-		return -(lhs - start);
-	}
-
-	/*
-	 *	The RHS is a literal, and the LHS has been cast to a data
-	 *	type.
-	 */
-	if ((tmpl_is_data(c->data.map->lhs)) &&
-	    (tmpl_is_unresolved(c->data.map->rhs)) &&
-	    (tmpl_cast_in_place(c->data.map->rhs, cast_type, NULL) < 0)) {
-		fr_strerror_const("Failed to parse field");
-		return -(rhs - start);
-	}
-
-	/*
-	 *	We may be casting incompatible
-	 *	types.  We check this based on
-	 *	their size.
-	 */
-	if (tmpl_is_attr(c->data.map->lhs)) {
-		/*
-		 *      dst.min == src.min
-		 *	dst.max == src.max
-		 */
-		if ((dict_attr_sizes[cast_type][0] == dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][0]) &&
-		    (dict_attr_sizes[cast_type][1] == dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][1])) {
-			goto cast_ok;
-		}
-
-		/*
-		 *	Run-time parsing of strings.
-		 *	Run-time copying of octets.
-		 */
-		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_STRING) ||
-		    (tmpl_da(c->data.map->lhs)->type == FR_TYPE_OCTETS)) {
-			goto cast_ok;
-		}
-
-		/*
-		 *	ifid to uint64 is OK
-		 */
-		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_IFID) &&
-		    (cast_type == FR_TYPE_UINT64)) {
-			goto cast_ok;
-		}
-
-		/*
-		 *	ipaddr to ipv4prefix is OK
-		 */
-		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_IPV4_ADDR) &&
-		    (cast_type == FR_TYPE_IPV4_PREFIX)) {
-			goto cast_ok;
-		}
-
-		/*
-		 *	ipv6addr to ipv6prefix is OK
-		 */
-		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_IPV6_ADDR) &&
-		    (cast_type == FR_TYPE_IPV6_PREFIX)) {
-			goto cast_ok;
-		}
-
-		/*
-		 *	uint64 to ethernet is OK.
-		 */
-		if ((tmpl_da(c->data.map->lhs)->type == FR_TYPE_UINT64) &&
-		    (cast_type == FR_TYPE_ETHERNET)) {
-			goto cast_ok;
-		}
-
-		/*
-		 *	dst.max < src.min
-		 *	dst.min > src.max
-		 */
-		if ((dict_attr_sizes[cast_type][1] < dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][0]) ||
-		    (dict_attr_sizes[cast_type][0] > dict_attr_sizes[tmpl_da(c->data.map->lhs)->type][1])) {
-			fr_strerror_const("Cannot cast to attribute of incompatible size");
-			return 0;
-		}
-	}
-
-cast_ok:
-	/*
-	 *	Casting to a redundant type means we don't need the cast.
-	 *
-	 *	Do this LAST, as the rest of the code above assumes cast_type
-	 *	is not NULL.
-	 */
-	if (tmpl_is_attr(c->data.map->lhs) &&
-	    (cast_type == tmpl_da(c->data.map->lhs)->type)) {
-		tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
-	}
-
-	return 1;
-}
-
-/*
- *	See if two attribute comparisons are OK.
- */
-static ssize_t cond_check_attrs(fr_cond_t *c, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs)
-{
-	tmpl_t		*attr, *data, *xlat, *unresolved, *xlat_unresolved, *exec, *vpt;
-	tmpl_t		*lhs = c->data.map->lhs, *rhs = c->data.map->rhs;
-	fr_token_t	op = c->data.map->op;
-	fr_type_t	cast_type = c->data.map->lhs->cast;
-
-/** True if one operand is of _type_a and the other of _type_b
- */
-#define TMPL_OF_TYPE_A_B(_type_a, _type_b) \
-	((((tmpl_is_##_type_a(lhs) && (_type_a = lhs)) && (tmpl_is_##_type_b(rhs) && (_type_b = rhs)))) || \
-	(((tmpl_is_##_type_a(rhs) && (_type_a = rhs)) && (tmpl_is_##_type_b(lhs) && (_type_b = lhs)))))
-
-/** True if one operand is of _type_a and the other is not of _type_a
- *
- */
-#define TMPL_OF_TYPE_A_NOT_A(_type_a, _out_b) \
-	((((tmpl_is_##_type_a(lhs) && (_type_a = lhs)) && (!tmpl_is_##_type_a(rhs) && (_out_b = rhs)))) || \
-	(((tmpl_is_##_type_a(rhs) && (_type_a = rhs)) && (!tmpl_is_##_type_a(lhs) && (_out_b = lhs)))))
-
-/** True if both operands are of _type_a
- *
- */
-#define TMPL_OF_TYPE_A_A(_type_a) \
-	((tmpl_is_##_type_a(lhs)) && (tmpl_is_##_type_a(rhs)))
-
-#define TMPL_RETURN(_vpt) return -((_vpt) == lhs ? fr_sbuff_used(m_lhs) : fr_sbuff_used(m_rhs))
-
-	/*
-	 *	Attribute comparison with a box
-	 */
-	if (TMPL_OF_TYPE_A_B(attr, data)) {
-		fr_type_t		type = tmpl_da(attr)->type;
-
-		/*
-		 *	Most of the time the box type takes
-		 *	precedence, except in the case of a few types
-		 *	like IP prefixes.
-		 */
-		switch (tmpl_value_type(data)) {
-		case FR_TYPE_IPV4_PREFIX:
-		case FR_TYPE_IPV6_PREFIX:
-			type = tmpl_value_type(data);
-			break;
-
-		default:
-			break;
-		}
-
-		if (tmpl_cast_in_place(data, type, tmpl_da(attr)) < 0) {
-			fr_strerror_const_push("Failed casting data to match attribute");
-			return -(data == lhs ? fr_sbuff_used(m_lhs) : fr_sbuff_used(m_rhs));
-		}
-	}
-
-	/*
-	 *	Two attributes?  They must be of the same type
-	 */
-	if (TMPL_OF_TYPE_A_A(attr) && (tmpl_da(lhs)->type != tmpl_da(rhs)->type)) {
-		if (cond_type_check(c, tmpl_da(lhs)->type)) return 1;	/* Or be mungeable to the same type */
-
-		fr_strerror_printf("Cannot compare attributes of type '%s' and '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, tmpl_da(lhs)->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, tmpl_da(rhs)->type, "<INVALID>"));
-		return 0;
-	}
-
-	/*
-	 *	The LHS has been cast to a data type, and the RHS is a
-	 *	literal.  Cast the RHS to the type of the cast.
-	 *
-	 *	FIXME - We should revisit this when RHS casting is supported.
-	 */
-	if ((cast_type != FR_TYPE_INVALID) && tmpl_is_unresolved(rhs) &&
-	    (tmpl_cast_in_place(rhs, cast_type, NULL) < 0)) {
-	    	fr_strerror_const("Failed to parse field");
-		return -fr_sbuff_used(m_rhs);
-	}
-
-	/*
-	 *	The LHS is an attribute, and the RHS is a literal.  Cast the
-	 *	RHS to the data type of the LHS.
-	 *
-	 *	Note: There's a hack in here to always parse RHS as the
-	 *	equivalent prefix type if the LHS is an IP address.
-	 *
-	 *	This allows Framed-IP-Address < 192.168.0.0./24
-	 */
-	unresolved = NULL;
-	data = NULL;	/* gcc stupidity */
-	if (TMPL_OF_TYPE_A_B(attr, unresolved) || TMPL_OF_TYPE_A_B(attr, data)) {
-		fr_type_t type = tmpl_da(attr)->type;
-
-		vpt = unresolved ? unresolved : data;
-
-		/*
-		 *	Invalid: User-Name == bob
-		 *	Valid:   User-Name == "bob"
-		 *
-		 *	There's no real reason for
-		 *	this, other than consistency.
-		 */
-		if ((unresolved || (data && tmpl_value_type(data) == FR_TYPE_STRING)) &&
-		    (tmpl_da(attr)->type == FR_TYPE_STRING) &&
-		    (op != T_OP_CMP_TRUE) &&
-		    (op != T_OP_CMP_FALSE) &&
-		    (vpt->quote == T_BARE_WORD)) {
-			fr_strerror_const("Comparison value must be a quoted string");
-			TMPL_RETURN(vpt);
-		}
-
-		switch (tmpl_da(attr)->type) {
-		case FR_TYPE_IPV4_ADDR:
-			if (strchr(vpt->name, '/') != NULL) {
-				type = FR_TYPE_IPV4_PREFIX;
-				tmpl_cast_set(c->data.map->lhs, type);
-			}
-			break;
-
-		case FR_TYPE_IPV6_ADDR:
-			if (strchr(vpt->name, '/') != NULL) {
-				type = FR_TYPE_IPV6_PREFIX;
-				tmpl_cast_set(c->data.map->lhs, type);
-			}
-			break;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Do not pass LHS as enumv if we're casting
-		 *	as that means there's now a type mismatch between
-		 *	attr and vpt, which means the enumerations
-		 *	can never match.
-		 */
-		if (tmpl_cast_in_place(vpt, type,
-				       (cast_type != FR_TYPE_INVALID) ? NULL : tmpl_da(attr)) < 0) {
-			fr_dict_attr_t const *da = tmpl_da(attr);
-
-			switch (da->attr) {
-			case FR_AUTH_TYPE:
-				/*
-				 *	The types for these attributes are dynamically allocated
-				 *	by module.c, so we can't enforce strictness here.
-				 */
-				c->pass2_fixup = PASS2_FIXUP_TYPE;
-				break;
-
-			default:
-				if (!attr->data.attribute.was_oid) {
-					fr_strerror_const("Failed to parse value for attribute");
-					TMPL_RETURN(vpt);
-				}
-				/*
-				 *	Convert the attr to a raw type and
-				 *	try the cast again.
-				 */
-				tmpl_attr_to_raw(attr);
-				if (tmpl_cast_in_place(vpt, tmpl_da(attr)->type,
-						       (cast_type != FR_TYPE_INVALID) ? NULL : tmpl_da(attr)) < 0) {
-					fr_strerror_const("Failed to parse value for attribute");
-					TMPL_RETURN(vpt);
-				}
-				break;
-			}
-		}
-
-		/*
-		 *	Stupid WiMAX shit.
-		 *	Cast the LHS to the
-		 *	type of the RHS.
-		 */
-		if (tmpl_da(attr)->type == FR_TYPE_COMBO_IP_ADDR) {
-			if (tmpl_attr_abstract_to_concrete(attr, tmpl_value_type(vpt)) < 0) {
-				fr_strerror_const("Cannot find type for attribute");
-				TMPL_RETURN(attr);
-			}
-		}
-	} /* attr to literal comparison */
-
-	/*
-	 *	If one side is unresolved, and the other is data,
-	 *	we can use the data type to attempt a cast on the
-	 *	unresolved side.
-	 */
-	if (TMPL_OF_TYPE_A_B(data, unresolved) &&
-	    (tmpl_cast_in_place(unresolved, tmpl_value_type(data), NULL) < 0)) TMPL_RETURN(unresolved);
-
-	/*
-	 *	The RHS will turn into... something.  Allow for prefixes
-	 *	there, too.
-	 */
-	if (TMPL_OF_TYPE_A_B(attr, xlat_unresolved) || TMPL_OF_TYPE_A_B(attr, xlat) || TMPL_OF_TYPE_A_B(attr, exec)) {
-		if (tmpl_da(attr)->type == FR_TYPE_IPV4_ADDR) {
-			tmpl_cast_set(c->data.map->lhs, FR_TYPE_IPV4_PREFIX);
-		}
-
-		if (tmpl_da(attr)->type == FR_TYPE_IPV6_ADDR) {
-			tmpl_cast_set(c->data.map->lhs, FR_TYPE_IPV6_PREFIX);
-		}
-	}
-
-	return 1;
-}
 
 /** Normalise one level of a condition
  *
@@ -1696,30 +1378,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	Promote the data types to the appropriate
 		 *	values.
 		 */
-		if (cond_promote_types(c) < 0) {
-			fr_sbuff_set(&our_in, our_in.start);
+		if (cond_promote_types(c, &our_in, &m_lhs, &m_rhs) < 0) {
 			goto error;
-
-		}
-
-		/*
-		 *	Check cast type.  We can have the RHS
-		 *	a string if the LHS has a cast.  But
-		 *	if the RHS is an attr, it MUST be the
-		 *	same type as the LHS.
-		 */
-		if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
-			slen = cond_check_cast(c, fr_sbuff_start(&our_in), m_lhs.p, m_rhs.p);
-			if (slen <= 0) {
-				fr_sbuff_set(&our_in, our_in.start + (slen * -1));
-				goto error;
-			}
-		} else {
-			slen = cond_check_attrs(c, &m_lhs, &m_rhs);
-			if (slen <= 0) {
-				fr_sbuff_set(&our_in, our_in.start + (slen * -1));
-				goto error;
-			}
 		}
 	} /* parse OP RHS */
 

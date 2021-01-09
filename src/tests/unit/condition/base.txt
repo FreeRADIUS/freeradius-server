@@ -195,7 +195,7 @@ condition &User-Name == 'bob'
 match &User-Name == 'bob'
 
 condition &User-Name == bob
-match ERROR offset 14: Comparison value must be a quoted string
+match &User-Name == 'bob'
 
 # Integer (etc.) types must be "bare"
 condition &Session-Timeout == 10
@@ -216,10 +216,10 @@ condition &Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition <integer>X == 1
-match ERROR offset 0: Failed parsing left side of condition as type 'uint32'
+match ERROR offset 9: Failed parsing value as type 'uint32'
 
 condition &NAS-Port == X
-match ERROR offset 13: Failed to parse value for attribute
+match ERROR offset 13: Failed parsing value as type 'uint32'
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -243,12 +243,11 @@ match <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name
 condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-
 condition <ether> 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 match <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 8: Failed to parse field
+match ERROR offset 8: Failed parsing value as type 'ether'
 
 #
 #  Tests for boolean data types.
@@ -329,7 +328,7 @@ condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 condition <ipaddr>127.0.0.1/327 == 127.0.0.1
-match ERROR offset 0: Failed parsing left side of condition as type 'ipaddr'
+match ERROR offset 8: Failed parsing value as type 'ipv4prefix'
 
 condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
@@ -416,7 +415,7 @@ condition &Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>127.0.0.1 == &Filter-Id
-match ERROR offset 0: Cannot compare types 'ipaddr' (cast) and 'string' (attr)
+match <ipaddr>&Filter-Id == 127.0.0.1
 
 condition &Tmp-Integer64-0 == &request.Foo-Stuff-Bar
 match &Tmp-Integer64-0 == &Foo-Stuff-Bar
@@ -430,8 +429,13 @@ match &Tmp-Integer64-0 == &reply.Foo-Stuff-Bar
 condition <ipaddr>&Tmp-Integer64-0 == &Framed-IP-Address
 match ERROR offset 8: Cannot cast type 'uint64' to 'ipaddr'
 
+#
+#  LHS is a prefix, which _might_ be castable to an address
+#  if the prefix is /32.  We don't know enough at compile time,
+#  so this may be a run-time failure.
+#
 condition <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
-match ERROR offset 0: Cannot cast to attribute of incompatible size
+match <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 
 # but these are allowed
 condition <ether>&Tmp-Integer64-0 == "%{module: foo}"
