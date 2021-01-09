@@ -1158,7 +1158,11 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			RINDENT();
 			RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, tmpl_list(dst), ""), vp);
 			REXDENT();
-			radius_pairmove(current, vps, &vp, false);
+
+			fr_pair_list_t tmp_list;
+			fr_pair_list_init(&tmp_list);
+			fr_pair_add(&tmp_list, vp);
+			radius_pairmove(current, vps, &tmp_list, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array
 		 *  the behaviour appears to be to occasionally segfault.
