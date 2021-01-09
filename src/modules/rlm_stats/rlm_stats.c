@@ -160,7 +160,6 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 
 	fr_pair_t *vp;
 	rlm_stats_data_t mydata, *stats;
-	fr_cursor_t cursor;
 	char buffer[64];
 	uint64_t local_stats[NUM_ELEMENTS(inst->stats)];
 
@@ -255,8 +254,6 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	/*
 	 *	Create attributes based on the statistics.
 	 */
-	fr_cursor_init(&cursor, &request->reply_pairs);
-
 	MEM(pair_update_reply(&vp, attr_freeradius_stats4_type) >= 0);
 	vp->vp_uint32 = stats_type;
 
@@ -304,8 +301,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	if (vp ) {
 		vp = fr_pair_copy(request->reply_ctx, vp);
 		if (vp) {
-			fr_cursor_append(&cursor, vp);
-			(void) fr_cursor_tail(&cursor);
+			fr_pair_add(&request->reply_pairs, vp);
 		}
 	}
 
@@ -323,8 +319,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, da));
 		vp->vp_uint64 = local_stats[i];
 
-		fr_cursor_append(&cursor, vp);
-		(void) fr_cursor_tail(&cursor);
+		fr_pair_add(&request->reply_pairs, vp);
 	}
 
 	RETURN_MODULE_OK;
