@@ -146,7 +146,7 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 }
 
 
-int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cursor_t *cursor, unsigned int *code)
+int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcursor_t *cursor, unsigned int *code)
 {
 	uint8_t const  	*ptr, *end;
 	int		attr;
@@ -165,14 +165,14 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cur
 	if (code) *code = data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_cursor_append(cursor, vp);
+	fr_dcursor_append(cursor, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_error_code);
 	if (!vp) goto oom;
 	vp->vp_uint32 = data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_cursor_append(cursor, vp);
+	fr_dcursor_append(cursor, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_sequence_number);
 	if (!vp) goto oom;
@@ -181,7 +181,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cur
 	vp->vp_uint32 = ntohl(vp->vp_uint32);
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_cursor_append(cursor, vp);
+	fr_dcursor_append(cursor, vp);
 
 	ptr = data + FR_VQP_HDR_LEN;
 	end = data + data_len;
@@ -232,7 +232,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cur
 		ptr += attr_len;
 		vp->vp_tainted = true;
 		DEBUG2("&%pP", vp);
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 	}
 
 	/*
@@ -264,7 +264,7 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 #endif
 
 ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
-		       int code, uint32_t seq_no, fr_cursor_t *cursor)
+		       int code, uint32_t seq_no, fr_dcursor_t *cursor)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_pair_t 		*vp;
@@ -293,25 +293,25 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	Encode the VP's.
 	 */
-	while ((vp = fr_cursor_current(cursor))) {
+	while ((vp = fr_dcursor_current(cursor))) {
 		size_t len;
 
 		if (vp->da == attr_packet_type) {
 			fr_dbuff_current(&hdr)[1] = (uint8_t)vp->vp_uint32;
-			fr_cursor_next(cursor);
+			fr_dcursor_next(cursor);
 			continue;
 		}
 
 		if (vp->da == attr_error_code) {
 			fr_dbuff_current(&hdr)[2] = vp->vp_uint8;
-			fr_cursor_next(cursor);
+			fr_dcursor_next(cursor);
 			continue;
 		}
 
 		if (!original && (vp->da == attr_sequence_number)) {
 			sequence = htonl(vp->vp_uint32);
 			memcpy(&fr_dbuff_current(&hdr)[4], &sequence, sizeof(sequence));
-			fr_cursor_next(cursor);
+			fr_dcursor_next(cursor);
 			continue;
 		}
 
@@ -367,7 +367,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		}
 		fr_dbuff_current(&hdr)[3]++;	/* Update the Data Count */
 
-		fr_cursor_next(cursor);
+		fr_dcursor_next(cursor);
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -528,10 +528,10 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
  */
 static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 
 	fr_pair_list_init(list);
-	fr_cursor_init(&cursor, list);
+	fr_dcursor_init(&cursor, list);
 
 	return fr_vmps_decode(ctx, data, data_len, &cursor, NULL);
 }
@@ -571,9 +571,9 @@ fr_test_point_proto_decode_t vmps_tp_decode_proto = {
  */
 static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 
-	fr_cursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_vmps, fr_pair_t);
+	fr_dcursor_talloc_iter_init(&cursor, vps, fr_proto_next_encodable, dict_vmps, fr_pair_t);
 
 	return fr_vmps_encode(&FR_DBUFF_TMP(data, data_len), NULL, -1, -1, &cursor);
 }
