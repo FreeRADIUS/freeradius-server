@@ -103,7 +103,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 	return NULL;
 }
 
-int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_cursor_t *cursor, unsigned int *code)
+int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcursor_t *cursor, unsigned int *code)
 {
 	size_t		i;
 	uint8_t const  	*p = data;
@@ -131,8 +131,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 			fr_strerror_const_push("Cannot decode packet due to internal error");
 		error:
 			talloc_free(vp);
-			fr_cursor_head(cursor);
-			fr_cursor_free_list(cursor);
+			fr_dcursor_head(cursor);
+			fr_dcursor_free_list(cursor);
 			return -1;
 		}
 
@@ -190,14 +190,14 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 
 		if (!vp) continue;
 
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 	}
 
 	/*
 	 *	Loop over the options.
 	 */
 
-	head = fr_cursor_head(cursor);
+	fr_dcursor_head(cursor);
 
 	/*
 	 * 	Nothing uses tail after this call, if it does in the future
@@ -218,8 +218,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 
 			len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4, p, (end - p), NULL);
 			if (len <= 0) {
-				fr_cursor_head(cursor);
-				fr_cursor_free_list(cursor);
+				fr_dcursor_head(cursor);
+				fr_dcursor_free_list(cursor);
 				return len;
 			}
 			p += len;
@@ -251,8 +251,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 					len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
-						fr_cursor_head(cursor);
-						fr_cursor_free_list(cursor);
+						fr_dcursor_head(cursor);
+						fr_dcursor_free_list(cursor);
 						return len;
 					}
 					p += len;
@@ -271,8 +271,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 					len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
-						fr_cursor_head(cursor);
-						fr_cursor_free_list(cursor);
+						fr_dcursor_head(cursor);
+						fr_dcursor_free_list(cursor);
 						return len;
 					}
 					p += len;
@@ -360,7 +360,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
 	}
 
-	fr_cursor_append(cursor, vp);
+	fr_dcursor_append(cursor, vp);
 
 	/*
 	 *	Client can request a LARGER size, but not a smaller
