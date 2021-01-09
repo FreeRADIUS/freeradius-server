@@ -228,7 +228,7 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 /** Promote the types in a FOO OP BAR comparison.
  *
  */
-static int cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs)
+int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs)
 {
 	fr_type_t lhs_type, rhs_type;
 	fr_type_t cast_type;
@@ -255,7 +255,7 @@ static int cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m
 		if (c->data.map->rhs->cast != FR_TYPE_INVALID) {
 			if (c->data.map->rhs->cast != lhs_type) {
 				fr_strerror_const("Incompatible casts");
-				fr_sbuff_set(in, fr_sbuff_start(in));
+				if (in) fr_sbuff_set(in, fr_sbuff_start(in));
 				return -1;
 			}
 
@@ -360,12 +360,12 @@ set_types:
 	 *	Cast both sides to the promoted type.
 	 */
 	if (cond_cast_tmpl(c->data.map->lhs, &cast_type, c->data.map->rhs) < 0) {
-		fr_sbuff_set(in, m_lhs);
+		if (in) fr_sbuff_set(in, m_lhs);
 		return -1;
 	}
 
 	if (cond_cast_tmpl(c->data.map->rhs, &cast_type, c->data.map->lhs) < 0) {
-		fr_sbuff_set(in, m_rhs);
+		if (in) fr_sbuff_set(in, m_rhs);
 		return -1;
 	}
 
@@ -1375,7 +1375,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		 *	Promote the data types to the appropriate
 		 *	values.
 		 */
-		if (cond_promote_types(c, &our_in, &m_lhs, &m_rhs) < 0) {
+		if (fr_cond_promote_types(c, &our_in, &m_lhs, &m_rhs) < 0) {
 			goto error;
 		}
 	} /* parse OP RHS */

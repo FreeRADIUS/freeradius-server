@@ -222,77 +222,24 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 	}
 
 	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-		fr_type_t cast_type = c->data.map->lhs->cast;
-
 		/*
 		 *	Resolve the attribute references first
 		 */
 		if (tmpl_is_attr_unresolved(map->lhs)) {
 			if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) return false;
-			if (cast_type == FR_TYPE_INVALID) cast_type = tmpl_da(map->lhs)->type;
 		}
 
 		if (tmpl_is_attr_unresolved(map->rhs)) {
 			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
-			if (cast_type == FR_TYPE_INVALID) cast_type = tmpl_da(map->rhs)->type;
 		}
 
 		/*
-		 *	Then fixup the other side if it was unresolved
+		 *	Now that we have known data types for the LHS
+		 *	/ RHS attribute(s), go check them.
 		 */
-		if (tmpl_is_unresolved(map->lhs)) {
-			switch (cast_type) {
-			case FR_TYPE_IPV4_ADDR:
-				if (strchr(c->data.map->lhs->name, '/') != NULL) {
-					cast_type = FR_TYPE_IPV4_PREFIX;
-					tmpl_cast_set(c->data.map->lhs, cast_type);
-				}
-				break;
-
-			case FR_TYPE_IPV6_ADDR:
-				if (strchr(c->data.map->lhs->name, '/') != NULL) {
-					cast_type = FR_TYPE_IPV6_PREFIX;
-					tmpl_cast_set(c->data.map->lhs, cast_type);
-				}
-				break;
-
-			default:
-				break;
-			}
-
-			if (tmpl_cast_in_place(c->data.map->lhs, cast_type, NULL) < 0) {
-				cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-					   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<UNKNOWN>"),
-					   fr_box_strvalue_len(map->lhs->name, map->lhs->len));
-
-				return false;
-			}
-		} else if (tmpl_is_unresolved(map->rhs)) {
-			switch (cast_type) {
-			case FR_TYPE_IPV4_ADDR:
-				if (strchr(c->data.map->rhs->name, '/') != NULL) {
-					cast_type = FR_TYPE_IPV4_PREFIX;
-					tmpl_cast_set(c->data.map->lhs, cast_type);
-				}
-				break;
-
-			case FR_TYPE_IPV6_ADDR:
-				if (strchr(c->data.map->rhs->name, '/') != NULL) {
-					cast_type = FR_TYPE_IPV6_PREFIX;
-					tmpl_cast_set(c->data.map->lhs, cast_type);
-				}
-				break;
-
-			default:
-				break;
-			}
-
-			if (tmpl_cast_in_place(c->data.map->rhs, cast_type, NULL) < 0) {
-				cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-					   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<UNKNOWN>"),
-					   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
-				return false;
-			}
+		if (fr_cond_promote_types(c, NULL, NULL, NULL) < 0) {
+			cf_log_err(ci, "Failed parsing condition after dynamic attributes were defined.");
+			return false;
 		}
 
 		c->pass2_fixup = PASS2_FIXUP_NONE;

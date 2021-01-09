@@ -96,6 +96,8 @@ struct fr_cond_s {
 
 ssize_t	fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const *rules, fr_sbuff_t *in) CC_HINT(nonnull(1,2,4));
 
+int	fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs) CC_HINT(nonnull(1));
+
 ssize_t	cond_print(fr_sbuff_t *out, fr_cond_t const *c);
 
 bool fr_cond_walk(fr_cond_t *head, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx);
