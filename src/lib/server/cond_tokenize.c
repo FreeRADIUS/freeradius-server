@@ -232,9 +232,6 @@ static int cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m
 {
 	fr_type_t lhs_type, rhs_type;
 	fr_type_t cast_type;
-	fr_dict_attr_t const *lhs_da, *rhs_da;
-
-	lhs_da = rhs_da = NULL;
 
 #ifdef HAVE_REGEX
 	/*
