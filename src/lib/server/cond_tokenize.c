@@ -682,6 +682,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		 *	codes.
 		 */
 		case TMPL_TYPE_UNRESOLVED:
+		check_bool:
 			if (!*c->data.vpt->name) {
 				c->type = COND_TYPE_FALSE;
 				TALLOC_FREE(c->data.vpt);
@@ -742,6 +743,8 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			break;
 
 		case TMPL_TYPE_DATA:
+			if (lhs_type != T_BARE_WORD) goto check_bool;
+
 		{
 			fr_value_box_t res;
 
