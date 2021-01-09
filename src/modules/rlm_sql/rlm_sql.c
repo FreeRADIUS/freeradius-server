@@ -857,7 +857,6 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 		fr_pair_value_strdup(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
-			fr_cursor_t	cursor;
 			fr_pair_t	*vp;
 
 			/*
@@ -898,9 +897,9 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 
 			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
 			RINDENT();
-			for (vp = fr_cursor_init(&cursor, &check_tmp);
+			for (vp = fr_pair_list_head(&check_tmp);
 			     vp;
-			     vp = fr_cursor_next(&cursor)) {
+			     vp = fr_pair_list_next(&check_tmp, vp)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
 				rcode = RLM_MODULE_UPDATED;
@@ -1277,9 +1276,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 		RDEBUG2("Conditional check items matched, merging assignment check items");
 		RINDENT();
-		for (vp = fr_cursor_init(&cursor, &check_tmp);
+		for (vp = fr_pair_list_head(&check_tmp);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&check_tmp, vp)) {
 			if (!fr_assignment_op[vp->op]) continue;
 			RDEBUG2("&%pP", vp);
 		}
