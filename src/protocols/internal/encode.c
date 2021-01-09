@@ -53,13 +53,13 @@
  */
 static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
-			       fr_cursor_t *cursor, void *encoder_ctx)
+			       fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	enc_field, len_field, value_field;
 	fr_dbuff_t		value_dbuff;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_pair_t		*vp = fr_cursor_current(cursor);
+	fr_pair_t		*vp = fr_dcursor_current(cursor);
 
 	ssize_t			slen;
 	size_t			flen, vlen, mlen;
@@ -124,7 +124,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&value_dbuff), slen, "value %s",
 				  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
-		fr_cursor_next(cursor);
+		fr_dcursor_next(cursor);
 		break;
 
 	/*
@@ -158,12 +158,12 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		 *	children to encode...
 		 */
 		if (da == vp->da) {
-			fr_cursor_t	children;
+			fr_dcursor_t	children;
 			fr_pair_t	*child;
 
-			for (child = fr_cursor_talloc_init(&children, &vp->vp_group, fr_pair_t);
+			for (child = fr_dcursor_talloc_init(&children, &vp->vp_group, fr_pair_t);
 			     child;
-			     child = fr_cursor_current(&children)) {
+			     child = fr_dcursor_current(&children)) {
 
 				FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, child->da->name);
 
@@ -173,7 +173,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 				slen = internal_encode(&value_dbuff, da_stack, depth + 1, &children, encoder_ctx);
 				if (slen < 0) return slen;
 			}
-			fr_cursor_next(cursor);
+			fr_dcursor_next(cursor);
 			break;
 		}
 
@@ -194,17 +194,17 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_GROUP:
 	{
-		fr_cursor_t	children;
+		fr_dcursor_t	children;
 
-		for (vp = fr_cursor_talloc_init(&children, &vp->vp_group, fr_pair_t);
+		for (vp = fr_dcursor_talloc_init(&children, &vp->vp_group, fr_pair_t);
 		     vp;
-		     vp = fr_cursor_current(&children)) {
+		     vp = fr_dcursor_current(&children)) {
 		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
 
 			slen = fr_internal_encode_pair(&value_dbuff, &children, encoder_ctx);
 			if (slen < 0) return slen;
 		}
-		fr_cursor_next(cursor);
+		fr_dcursor_next(cursor);
 	}
 		break;
 
@@ -254,12 +254,12 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
  *	- 0 Nothing to encode (or attribute skipped).
  *	- <0 an error occurred.
  */
-ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t		*vp;
 	fr_da_stack_t		da_stack;
 
-	vp = fr_cursor_current(cursor);
+	vp = fr_dcursor_current(cursor);
 	if (!vp) return 0;
 
 	fr_proto_da_stack_build(&da_stack, vp->da);
