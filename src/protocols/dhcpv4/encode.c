@@ -50,9 +50,9 @@
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_cursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encoder_ctx)
+			    fr_dcursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encoder_ctx)
 {
-	fr_pair_t	*vp = fr_cursor_current(cursor);
+	fr_pair_t	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	ssize_t		slen;
 
@@ -74,7 +74,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (slen < 0) return slen;
 		break;
 	}
-	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */
+	vp = fr_dcursor_next(cursor);	/* We encoded a leaf, advance the cursor */
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -175,13 +175,13 @@ static uint8_t *extend_option(fr_dbuff_t *dbuff, uint8_t *hdr, int len)
  */
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_cursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
+			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
 {
 	ssize_t			len;
 	uint8_t			*hdr;
 	size_t			deduct = 0;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_pair_t		*vp = fr_cursor_current(cursor);
+	fr_pair_t		*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -243,7 +243,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			if (!hdr) break;
 		}
 
-		next = fr_cursor_current(cursor);
+		next = fr_dcursor_current(cursor);
 		if (!next || (vp->da != next->da)) break;
 		vp = next;
 	} while (vp->da->flags.array);
@@ -265,12 +265,12 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_cursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
+			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
 {
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	uint8_t			*hdr, *next_hdr, *start;
-	fr_pair_t const		*vp = fr_cursor_current(cursor);
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -352,7 +352,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) break;
 
 		/*
 	 	 *	We can encode multiple sub TLVs, if after
@@ -360,7 +360,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 	 *	at this depth is the same.
 	 	 */
 		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
-		vp = fr_cursor_current(cursor);
+		vp = fr_dcursor_current(cursor);
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -370,7 +370,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
-			       fr_cursor_t *cursor, void *encoder_ctx)
+			       fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
 	fr_dbuff_t		hdr_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
@@ -453,7 +453,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 		}
 		if (len < 0) return len;
 
-		vp = fr_cursor_current(cursor);
+		vp = fr_dcursor_current(cursor);
 		if (!vp) break;
 
 		/*
@@ -483,7 +483,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
  *	- < 0 error.
  *	- 0 not valid option for DHCP (skipping).
  */
-ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_pair_t		*vp;
 	unsigned int		depth = 0;
@@ -491,14 +491,14 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_cursor_t *cursor, void *en
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	vp = fr_cursor_current(cursor);
+	vp = fr_dcursor_current(cursor);
 	if (!vp) return -1;
 
 	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
 	if ((vp->da->attr > 255) && (vp->da->attr != FR_DHCP_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
-		(void)fr_cursor_next(cursor);
+		(void)fr_dcursor_next(cursor);
 		return 0;
 	}
 
