@@ -866,8 +866,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 				goto finish;
 			}
 
-			fr_cursor_init(&cursor, &check_tmp);
-			rows = sql_getvpdata(request->control_ctx, inst, request, handle, &cursor, expanded);
+			rows = sql_getvpdata(request->control_ctx, inst, request, handle, &check_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving check pairs for group %s", entry->name);
@@ -909,7 +908,6 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 		}
 
 		if (inst->config->authorize_group_reply_query) {
-			fr_cursor_t	cursor;
 
 			/*
 			 *	Now get the reply pairs since the paircmp matched
@@ -921,8 +919,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 				goto finish;
 			}
 
-			fr_cursor_init(&cursor, &reply_tmp);
-			rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &cursor, expanded);
+			rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &reply_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
@@ -1231,7 +1228,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (inst->config->authorize_check_query) {
-		fr_cursor_t	cursor;
 		fr_pair_t	*vp;
 
 		if (xlat_aeval(request, &expanded, request, inst->config->authorize_check_query,
@@ -1249,8 +1245,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			RETURN_MODULE_RCODE(rcode);
 		}
 
-		fr_cursor_init(&cursor, &check_tmp);
-		rows = sql_getvpdata(request->control_ctx, inst, request, &handle, &cursor, expanded);
+		rows = sql_getvpdata(request->control_ctx, inst, request, &handle, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Failed getting check attributes");
@@ -1287,7 +1282,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	if (inst->config->authorize_reply_query) {
-		fr_cursor_t	cursor;
 
 		/*
 		 *	Now get the reply pairs since the paircmp matched
@@ -1299,8 +1293,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			goto error;
 		}
 
-		fr_cursor_init(&cursor, &reply_tmp);
-		rows = sql_getvpdata(request->reply_ctx, inst, request, &handle, &cursor, expanded);
+		rows = sql_getvpdata(request->reply_ctx, inst, request, &handle, &reply_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");
