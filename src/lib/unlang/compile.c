@@ -1953,6 +1953,8 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 		return NULL;
 	}
 
+	if (!tmpl_is_attr(gext->vpt)) (void) tmpl_cast_set(gext->vpt, FR_TYPE_STRING);
+
 	/*
 	 *	Walk through the children of the switch section,
 	 *	ensuring that they're all 'case' statements, and then compiling them.
@@ -2029,7 +2031,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char const		*name2;
 	unlang_t		*c;
 	unlang_group_t		*case_g;
-	unlang_case_t	*case_gext;
+	unlang_case_t		*case_gext;
 	tmpl_t			*vpt = NULL;
 	tmpl_rules_t		parse_rules;
 
@@ -2099,14 +2101,19 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 */
 
 		/*
-		 *	We're switching over an attribute.  Check that the
-		 *	values match.
+		 *	This "case" statement is unresolved.  Try to
+		 *	resolve it to the data type of the parent
+		 *	"switch" tmpl.
 		 */
-		if (tmpl_is_unresolved(vpt) &&
-		    tmpl_is_attr(switch_gext->vpt)) {
-			fr_assert(tmpl_da(switch_gext->vpt) != NULL);
+		if (tmpl_is_unresolved(vpt)) {
+			fr_type_t cast_type = switch_gext->vpt->cast;
+			fr_dict_attr_t const *da = NULL;
 
-			if (tmpl_cast_in_place(vpt, tmpl_da(switch_gext->vpt)->type, tmpl_da(switch_gext->vpt)) < 0) {
+			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_da(switch_gext->vpt);
+
+			if ((cast_type == FR_TYPE_INVALID) && da) cast_type = da->type;
+
+			if (tmpl_cast_in_place(vpt, cast_type, da) < 0) {
 				cf_log_perr(cs, "Invalid argument for case statement");
 				talloc_free(vpt);
 				return NULL;
