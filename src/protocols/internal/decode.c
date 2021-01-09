@@ -78,7 +78,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 
 	ssize_t		slen;
 	fr_pair_list_t	children;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	FR_PROTO_TRACE("Decoding TLV - %s (%zu bytes)", parent_da->name, fr_dbuff_len(&work_dbuff));
@@ -101,21 +101,21 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	 *	we need to do an intermediary TLV
 	 *	VP to retain the nesting structure.
 	 */
-	if (fr_cursor_init(&cursor, &children) && fr_cursor_next(&cursor)) {
+	if (fr_dcursor_init(&cursor, &children) && fr_dcursor_next(&cursor)) {
 		fr_pair_t	*tlv;
 
 		tlv = fr_pair_afrom_da(ctx, parent_da);
 		if (!tlv) return PAIR_DECODE_OOM;
 
-		while (fr_cursor_head(&cursor)) {
+		while (fr_dcursor_head(&cursor)) {
 		     	FR_PROTO_TRACE("Moving %s into %s",
-		     		       ((fr_pair_t *)fr_cursor_head(&cursor))->da->name, tlv->da->name);
-			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_cursor_remove(&cursor)));
+		     		       ((fr_pair_t *)fr_dcursor_head(&cursor))->da->name, tlv->da->name);
+			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_dcursor_remove(&cursor)));
 		}
 
 		fr_pair_add(head, tlv);
 	} else {
-		fr_pair_add(head, fr_cursor_head(&cursor));
+		fr_pair_add(head, fr_dcursor_head(&cursor));
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -332,17 +332,17 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 /** Create a single fr_pair_t and all its nesting
  *
  */
-ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
 				uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	return fr_internal_decode_pair_dbuff(ctx, cursor, dict, &FR_DBUFF_TMP(data, data_len), decoder_ctx);
 }
 
-ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
 				fr_dbuff_t *dbuff, void *decoder_ctx)
 {
 	fr_pair_list_t	list;
-	fr_cursor_t	tmp_cursor;
+	fr_dcursor_t	tmp_cursor;
 	ssize_t		slen;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
@@ -351,8 +351,8 @@ ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_d
 	slen = internal_decode_pair(ctx, &list, fr_dict_root(dict), &work_dbuff, decoder_ctx);
 	if (slen <= 0) return slen;
 
-	fr_cursor_init(&tmp_cursor, &list);
-	fr_cursor_merge(cursor, &tmp_cursor);
+	fr_dcursor_init(&tmp_cursor, &list);
+	fr_dcursor_merge(cursor, &tmp_cursor);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
