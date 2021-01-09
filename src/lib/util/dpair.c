@@ -2659,3 +2659,14 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
 	fr_dict_attr_t const	*da = uctx;
 	return da == vp->da;
 }
+
+/** Get the length of a list of fr_pair_t
+ *
+ * @param[in] list to return the length of
+ *
+ * @return number of entries in the list
+ */
+inline size_t fr_pair_list_len(fr_pair_list_t const *list)
+{
+	return list->head.num_elements;
+}
