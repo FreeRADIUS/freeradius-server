@@ -181,7 +181,6 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->instance, rlm_radutmp_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	struct radutmp		ut, u;
-	fr_cursor_t		cursor;
 	fr_pair_t		*vp;
 	int			status = -1;
 	int			protocol = -1;
@@ -253,9 +252,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		if ((vp->da == attr_login_ip_host) ||
 		    (vp->da == attr_framed_ip_address)) {
 			ut.framed_address = vp->vp_ipv4addr;
