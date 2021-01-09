@@ -378,7 +378,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_INIT) ctx->state = READ_STATE_ATTR_BEGIN;
 
 	while (freespace > 0) {
-		vp = fr_cursor_current(&ctx->cursor);
+		vp = fr_dcursor_current(&ctx->cursor);
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
@@ -469,7 +469,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  there are more attributes, insert a separator
 		 */
-		if (fr_cursor_next(&ctx->cursor)) {
+		if (fr_dcursor_next(&ctx->cursor)) {
 			if (freespace < 1) goto no_space;
 			*p++ = '&';
 			freespace--;
@@ -1729,7 +1729,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	char const		*content_type;
 
 	fr_pair_t 		*header;
-	fr_cursor_t		headers;
+	fr_dcursor_t		headers;
 
 	char			buffer[512];
 
@@ -1793,10 +1793,10 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	for (header =  fr_cursor_iter_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
+	for (header =  fr_dcursor_iter_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
 	     header;
-	     header = fr_cursor_next(&headers)) {
-		header = fr_cursor_remove(&headers);
+	     header = fr_dcursor_next(&headers)) {
+		header = fr_dcursor_remove(&headers);
 		if (!strchr(header->vp_strvalue, ':')) {
 			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
 				header->vp_strvalue);
@@ -2022,7 +2022,7 @@ do {\
 
 	case REST_HTTP_BODY_POST:
 		rest_request_init(section, request, &ctx->request);
-		fr_cursor_init(&(ctx->request.cursor), &request->request_pairs);
+		fr_dcursor_init(&(ctx->request.cursor), &request->request_pairs);
 
 		if (rest_request_config_body(inst, section, request, randle, rest_encode_post) < 0) return -1;
 
