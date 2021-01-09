@@ -55,7 +55,7 @@
 	vp = fr_pair_afrom_da(ctx, _da); \
 	if (!vp) goto fail; \
 	vp->vp_uint8 = _field; \
-	fr_cursor_append(cursor, vp); \
+	fr_dcursor_append(cursor, vp); \
 } while (0)
 
 #define DECODE_FIELD_STRING8(_da, _field) do { \
@@ -72,7 +72,7 @@
 /**
  *	Decode a TACACS+ 'arg_N' fields.
  */
-static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
+static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *da,
 			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const **data, uint8_t const *end)
 {
 	uint8_t i;
@@ -106,7 +106,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 		}
 
 		fr_pair_value_bstrndup(vp, (char const *) p, arg_list[i], true);
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 		p += arg_list[i];
 		*data  = p;
 	}
@@ -117,7 +117,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 /**
  *	Decode a TACACS+ field.
  */
-static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
+static int tacacs_decode_field(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *da,
 				uint8_t const **field_data, uint16_t field_len, uint8_t const *end)
 {
 	uint8_t const *p = *field_data;
@@ -147,7 +147,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 		*field_data = p;
 	}
 
-	fr_cursor_append(cursor, vp);
+	fr_dcursor_append(cursor, vp);
 
 	return 0;
 }
@@ -155,7 +155,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_att
 /**
  *	Decode a TACACS+ packet
  */
-ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_cursor_t *cursor)
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_dcursor_t *cursor)
 {
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
@@ -669,10 +669,10 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
-	fr_cursor_t cursor;
+	fr_dcursor_t cursor;
 
 	fr_pair_list_init(list);
-	fr_cursor_init(&cursor, list);
+	fr_dcursor_init(&cursor, list);
 
 	return fr_tacacs_decode(ctx, data, data_len, NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), &cursor);
 }
