@@ -214,7 +214,7 @@ typedef struct {
 	request_t			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
-	fr_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
+	fr_dcursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
 
 	size_t			chunk;		//!< Chunk size
 
