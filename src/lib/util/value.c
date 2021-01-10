@@ -5237,6 +5237,18 @@ static const bool type_cast_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 
 };
 
+/*
+ *	This is different from FR_TYPE_NUMERIC, largely in that it
+ *	doesn't include FR_TYPE_DATE.  Because we know that dates
+ *	always have values 2^31 or greater, so casts exclude some of
+ *	the smaller integer types.
+ */
+static const bool type_is_number[FR_TYPE_MAX] = {
+	O(BOOL),  O(SIZE),   O(FLOAT32), O(FLOAT64),
+	O(UINT8), O(UINT16), O(UINT32), O(UINT64),
+	O(INT8),  O(INT16),  O(INT32),  O(INT64),
+	O(TIME_DELTA),
+};
 
 /** Return if we're allowed to cast the types.
  *
@@ -5249,8 +5261,21 @@ bool fr_type_cast(fr_type_t dst, fr_type_t src)
 	/*
 	 *	Invalid casts.
 	 */
-	if ((dst == FR_TYPE_INVALID) || (src >= FR_TYPE_TLV)) return false;
-	if ((src == FR_TYPE_INVALID) || (dst >= FR_TYPE_TLV)) return false;
+	switch (dst) {
+	case FR_TYPE_NON_VALUES:
+		return false;
+
+	default:
+		break;
+	}
+
+	switch (src) {
+	case FR_TYPE_NON_VALUES:
+		return false;
+
+	default:
+		break;
+	}
 
 	if (src == dst) return true;
 
@@ -5272,8 +5297,7 @@ bool fr_type_cast(fr_type_t dst, fr_type_t src)
 	 *	integer-style thing.  Mostly.  We do run-time checks
 	 *	on values to see if they fit.
 	 */
-	if (((src >= FR_TYPE_BOOL) && (src <= FR_TYPE_TIME_DELTA)) &&
-	    ((dst >= FR_TYPE_BOOL) && (dst <= FR_TYPE_TIME_DELTA))) {
+	if (type_is_number[src] && type_is_number[dst]) {
 		return true;
 	}
 
@@ -5518,8 +5542,21 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 	/*
 	 *	Invalid types
 	 */
-	if ((a == FR_TYPE_INVALID) || (a >= FR_TYPE_TLV)) return FR_TYPE_INVALID;
-	if ((b == FR_TYPE_INVALID) || (b >= FR_TYPE_TLV)) return FR_TYPE_INVALID;
+	switch (a) {
+	case FR_TYPE_NON_VALUES:
+		return FR_TYPE_INVALID;
+
+	default:
+		break;
+	}
+
+	switch (b) {
+	case FR_TYPE_NON_VALUES:
+		return FR_TYPE_INVALID;
+
+	default:
+		break;
+	}
 
 	if (a == b) return a;
 

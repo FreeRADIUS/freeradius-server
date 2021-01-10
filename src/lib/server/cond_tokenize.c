@@ -458,7 +458,11 @@ set_types:
 		case T_OP_LE:
 		case T_OP_GT:
 		case T_OP_GE:
-			cast_type++; /* addr -> prefix */
+			if (cast_type == FR_TYPE_IPV4_ADDR) {
+				cast_type = FR_TYPE_IPV4_PREFIX;
+			} else {
+				cast_type = FR_TYPE_IPV6_PREFIX;
+			}
 			break;
 		}
 	}

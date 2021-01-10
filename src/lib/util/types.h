@@ -29,9 +29,7 @@ RCSIDH(types_h, "$Id$")
 extern "C" {
 #endif
 
-/** Internal data types used within libfreeradius
- *
- *  Order is important!  Please see fr_type_promote() for details.
+/** Internal data types
  */
 typedef enum {
 	FR_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
