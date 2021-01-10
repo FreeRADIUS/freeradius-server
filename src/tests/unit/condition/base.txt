@@ -138,8 +138,12 @@ match <ipaddr>&Filter-Id == &Framed-IP-Address
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
 
+#
+#  We can automatically promote things as needed.  But if the
+#  user forces incompatible types, then that's an error.
+#
 condition <ipaddr>&Filter-Id == <integer>&Framed-IP-Address
-match ERROR offset 22: Unexpected cast in right side of comparison
+match ERROR offset 0: Incompatible casts
 
 condition <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
 match ERROR offset 23: Unknown data type

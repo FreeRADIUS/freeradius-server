@@ -1320,12 +1320,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			.rhs = rhs
 		};
 
-		if (rhs->cast != FR_TYPE_INVALID) {
-			fr_strerror_const("Unexpected cast in right side of comparison");
-			fr_sbuff_set(&our_in, &m_rhs_cast);
-			goto error;
-		}
-
 #ifdef HAVE_REGEX
 		/*
 		 *	LHS can't have regex.  We can't use regex as a unary
