@@ -233,13 +233,6 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	fr_type_t lhs_type, rhs_type;
 	fr_type_t cast_type;
 
-#ifdef HAVE_REGEX
-	/*
-	 *	We don't do casting on regexes.
-	 */
-	if ((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE)) return 0;
-#endif
-
 	/*
 	 *	Figure out the type of the LHS.
 	 */
@@ -278,6 +271,10 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		lhs_type = FR_TYPE_STRING;
 
 	} else {
+#ifdef HAVE_REGEX
+		fr_assert(!tmpl_is_regex(c->data.map->lhs));
+#endif
+
 		lhs_type = FR_TYPE_INVALID;
 	}
 
@@ -296,6 +293,23 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	} else if (tmpl_is_xlat(c->data.map->rhs) || tmpl_is_exec(c->data.map->rhs)) {	
 		rhs_type = FR_TYPE_STRING;
 
+#ifdef HAVE_REGEX
+	} else if (tmpl_is_regex(c->data.map->rhs)) {
+		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
+		fr_assert(!tmpl_is_list(c->data.map->lhs));
+
+		/*
+		 *	If the LHS is unresolved data, then cast it to
+		 *	a string.
+		 */
+		if (tmpl_is_unresolved(c->data.map->lhs)) {
+			if (tmpl_cast_in_place(c->data.map->lhs, FR_TYPE_STRING, NULL) < 0) return -1;
+		}
+
+		return 0;
+#endif
+
+
 	} else {
 		rhs_type = FR_TYPE_INVALID;
 
@@ -304,7 +318,6 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 *	them alone...
 		 */
 		if (lhs_type == FR_TYPE_INVALID) {
-
 			/*
 			 *	If we still have unresolved data, then
 			 *	ensure that they are converted to

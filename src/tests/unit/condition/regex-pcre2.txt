@@ -2,8 +2,11 @@ proto-dictionary radius
 
 need-feature regex-pcre2
 
+#
+#  Bare words are cast to strings, too.
+#
 condition foo =~ /bar/gimsux
-match foo =~ /bar/gimsux
+match 'foo' =~ /bar/gimsux
 
 count
 match 3

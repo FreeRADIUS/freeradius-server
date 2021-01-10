@@ -10,28 +10,31 @@ condition (ok == /foo/)
 match ERROR offset 7: Unexpected regular expression
 
 #
-#  Convert !~ to !(COND) for regex
+#  bare words are cast to strings
 #
 condition foo =~ /bar/
-match foo =~ /bar/
+match 'foo' =~ /bar/
 
+#
+#  Convert !~ to !(COND) for regex
+#
 condition foo !~ /bar/
-match !foo =~ /bar/
+match !'foo' =~ /bar/
 
 condition !foo !~ /bar/
-match foo =~ /bar/
+match 'foo' =~ /bar/
 
 #
 #  Flags
 #
 condition foo =~ /bar/i
-match foo =~ /bar/i
+match 'foo' =~ /bar/i
 
 condition foo =~ /bar/m
-match foo =~ /bar/m
+match 'foo' =~ /bar/m
 
 condition foo =~ /bar/im
-match foo =~ /bar/im
+match 'foo' =~ /bar/im
 
 condition foo =~ /bar/ima
 match ERROR offset 14: Unsupported regex flag 'a'
