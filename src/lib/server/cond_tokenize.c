@@ -274,7 +274,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 */
 		lhs_type = tmpl_da(c->data.map->lhs)->type;
 
-	} else if (tmpl_is_xlat(c->data.map->lhs)) {
+	} else if (tmpl_is_xlat(c->data.map->lhs) || tmpl_is_exec(c->data.map->lhs)) {
 		lhs_type = FR_TYPE_STRING;
 
 	} else {
@@ -293,7 +293,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	} else if (tmpl_is_attr(c->data.map->rhs)) {
 		rhs_type = tmpl_da(c->data.map->rhs)->type;
 
-	} else if (tmpl_is_xlat(c->data.map->rhs)) {
+	} else if (tmpl_is_xlat(c->data.map->rhs) || tmpl_is_exec(c->data.map->rhs)) {	
 		rhs_type = FR_TYPE_STRING;
 
 	} else {
