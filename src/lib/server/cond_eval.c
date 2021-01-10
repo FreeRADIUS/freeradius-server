@@ -621,13 +621,10 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 
 #ifndef NDEBUG
 	/*
-	 *	Regex LHS may have an unresolved tmpl, as it's just a
-	 *	string.  Maybe we want to cast that to data?
+	 *	At this point, all tmpls MUST have been resolved.
 	 */
-	if ((c->data.map->op != T_OP_REG_EQ) && (c->data.map->op != T_OP_REG_NE)) {
-		fr_assert(!tmpl_is_unresolved(c->data.map->lhs) || (c->data.map->lhs->cast != FR_TYPE_INVALID));
-		fr_assert(!tmpl_is_unresolved(c->data.map->rhs) || (c->data.map->rhs->cast != FR_TYPE_INVALID));
-	}
+	fr_assert(!tmpl_is_unresolved(c->data.map->lhs) || (c->data.map->lhs->cast != FR_TYPE_INVALID));
+	fr_assert(!tmpl_is_unresolved(c->data.map->rhs) || (c->data.map->rhs->cast != FR_TYPE_INVALID));
 #endif
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
