@@ -233,22 +233,22 @@ condition <ipaddr>127.0.0.1 == "127.0.0.1"
 match true
 
 condition <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
-match <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
+match 127.0.0.1 == "%{md4: 127.0.0.1}"
 
 #
 #  Bare %{...} is allowed.
 #
 condition <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
-match <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
+match 127.0.0.1 == %{md4:127.0.0.1}
 
 condition <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
+match 127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
 
 condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
 condition <ether> 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
-match <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
+match 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 8: Failed parsing value as type 'ether'

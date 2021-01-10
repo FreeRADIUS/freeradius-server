@@ -2845,11 +2845,6 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 
 	case TMPL_TYPE_DATA:
 		src_type = tmpl_value_type(vpt);
-
-		/*
-		 *	Don't suppress duplicate casts for now, the
-		 *	conditional parser still needs them.
-		 */
 		goto check_types;
 
 	case TMPL_TYPE_ATTR:
@@ -2859,12 +2854,12 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 		/*
 		 *	Suppress casts where they are duplicate.
 		 */
+	check_types:
 		if (src_type == dst_type) {
 			vpt->cast = FR_TYPE_INVALID;
 			return 0;
 		}
 
-	check_types:
 		if (!fr_type_cast(dst_type, src_type)) {
 			fr_strerror_printf("Cannot cast type '%s' to '%s'",
 					   fr_table_str_by_value(fr_value_box_type_table, src_type, "??"),

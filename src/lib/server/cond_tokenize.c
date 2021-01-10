@@ -221,6 +221,13 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 		return -1;
 	}
 
+	/*
+	 *	The result has to be data, AND of the correct type.
+	 *	Which means we no longer need the cast.
+	 */
+	fr_assert(tmpl_is_data(vpt));
+	fr_assert((vpt->cast == FR_TYPE_INVALID) || (vpt->cast == tmpl_value_type(vpt)));
+	(void) tmpl_cast_set(vpt, FR_TYPE_INVALID);
 	return 0;
 }
 
