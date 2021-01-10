@@ -233,6 +233,38 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	fr_type_t lhs_type, rhs_type;
 	fr_type_t cast_type;
 
+#ifdef HAVE_REGEX
+	/*
+	 *	Regular expressions have their own casting rules.
+	 */
+	if (tmpl_is_regex(c->data.map->rhs)) {
+		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
+		fr_assert(!tmpl_is_list(c->data.map->lhs));
+
+		/*
+		 *	If the LHS is unresolved data, then cast it to
+		 *	a string.
+		 */
+		if (tmpl_is_unresolved(c->data.map->lhs)) {
+			if (tmpl_cast_in_place(c->data.map->lhs, FR_TYPE_STRING, NULL) < 0) return -1;
+
+			(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
+			return 0;
+		}
+
+		/*
+		 *	The LHS doesn't have a cast, so we coerce it
+		 *	to string.  This means one fewer check at
+		 *	run-time.
+		 */
+		if (c->data.map->lhs->cast == FR_TYPE_INVALID) {
+			(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_STRING);
+		}
+
+		return 0;
+	}
+#endif
+
 	/*
 	 *	Rewrite the map so that the attribute being evaluated
 	 *	is on the LHS.  This exchange makes cond_eval() easier
@@ -339,23 +371,6 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 
 	} else if (tmpl_is_xlat(c->data.map->rhs) || tmpl_is_exec(c->data.map->rhs)) {	
 		rhs_type = FR_TYPE_STRING;
-
-#ifdef HAVE_REGEX
-	} else if (tmpl_is_regex(c->data.map->rhs)) {
-		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
-		fr_assert(!tmpl_is_list(c->data.map->lhs));
-
-		/*
-		 *	If the LHS is unresolved data, then cast it to
-		 *	a string.
-		 */
-		if (tmpl_is_unresolved(c->data.map->lhs)) {
-			if (tmpl_cast_in_place(c->data.map->lhs, FR_TYPE_STRING, NULL) < 0) return -1;
-		}
-
-		return 0;
-#endif
-
 
 	} else {
 		rhs_type = FR_TYPE_INVALID;
@@ -1357,8 +1372,18 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			 *	expressions, on LHS or RHS.  Instead,
 			 *	the regular expression returns a
 			 *	true/false match.
+			 *
+			 *	It's OK to have a redundant cast to
+			 *	string on the LHS.  We also allow a
+			 *	cast to octets, in which case we do a
+			 *	binary regex comparison.
+			 *
+			 *	@todo - ensure that the regex
+			 *	interpreter is binary-safe!
 			 */
-			if (lhs->cast != FR_TYPE_INVALID) {
+			if ((lhs->cast != FR_TYPE_INVALID) &&
+			    (lhs->cast != FR_TYPE_STRING) &&
+			    (lhs->cast != FR_TYPE_OCTETS)) {
 				fr_strerror_const("Invalid cast used with regular expression");
 				fr_sbuff_set(&our_in, &m_lhs);
 				goto error;
