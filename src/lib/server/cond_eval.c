@@ -538,27 +538,21 @@ do {\
 	 *	Expanded types start as strings, then get converted
 	 *	to the type of the attribute or the explicit cast.
 	 */
-	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_REGEX_XLAT:
 	{
 		ssize_t ret;
 		fr_value_box_t data;
+		char *p;
 
-		if (!tmpl_is_unresolved(map->rhs)) {
-			char *p;
-
-			ret = tmpl_aexpand(request, &p, request, map->rhs, escape, NULL);
-			if (ret < 0) {
-				EVAL_DEBUG("FAIL [%i]", __LINE__);
-				rcode = -1;
-				goto finish;
-			}
-			fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
-		} else {
-			fr_value_box_bstrdup_buffer_shallow(NULL, &data, NULL, map->rhs->data.unescaped, false);
+		ret = tmpl_aexpand(request, &p, request, map->rhs, escape, NULL);
+		if (ret < 0) {
+			EVAL_DEBUG("FAIL [%i]", __LINE__);
+			rcode = -1;
+			goto finish;
 		}
+		fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
 		rhs = &data;
 
 		CHECK_INT_CAST(lhs, rhs);
@@ -566,7 +560,7 @@ do {\
 		CAST(rhs);
 
 		rcode = cond_cmp_values(request, c, lhs, rhs);
-		if (!tmpl_is_unresolved(map->rhs)) talloc_free(data.datum.ptr);
+		talloc_free(data.datum.ptr);
 
 		break;
 	}
@@ -584,7 +578,8 @@ do {\
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_ATTR_UNRESOLVED:
+	case TMPL_TYPE_UNRESOLVED:		/* should now be a TMPL_TYPE_DATA */
+	case TMPL_TYPE_ATTR_UNRESOLVED:		/* should now be a TMPL_TYPE_ATTR */
 	case TMPL_TYPE_XLAT_UNRESOLVED:		/* should now be a TMPL_TYPE_XLAT */
 	case TMPL_TYPE_EXEC_UNRESOLVED:		/* should now be a TMPL_TYPE_EXEC */
 	case TMPL_TYPE_REGEX_UNCOMPILED:	/* should now be a TMPL_TYPE_REGEX */
@@ -623,8 +618,8 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 	/*
 	 *	At this point, all tmpls MUST have been resolved.
 	 */
-	fr_assert(!tmpl_is_unresolved(c->data.map->lhs) || (c->data.map->lhs->cast != FR_TYPE_INVALID));
-	fr_assert(!tmpl_is_unresolved(c->data.map->rhs) || (c->data.map->rhs->cast != FR_TYPE_INVALID));
+	fr_assert(!tmpl_is_unresolved(c->data.map->lhs));
+	fr_assert(!tmpl_is_unresolved(c->data.map->rhs));
 #endif
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
@@ -674,7 +669,6 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		rcode = cond_normalise_and_cmp(request, c, tmpl_value(map->lhs));
 		break;
 
-	case TMPL_TYPE_UNRESOLVED:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
 	{
@@ -682,18 +676,13 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		ssize_t		ret;
 		fr_value_box_t	data;
 
-		if (!tmpl_is_unresolved(map->lhs)) {
-			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
-			if (ret < 0) {
-				EVAL_DEBUG("FAIL [%i]", __LINE__);
-				return ret;
-			}
-
-			fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
-		} else {
-			fr_value_box_bstrdup_buffer_shallow(NULL, &data, NULL, map->lhs->data.unescaped, false);
+		ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
+		if (ret < 0) {
+			EVAL_DEBUG("FAIL [%i]", __LINE__);
+			return ret;
 		}
 
+		fr_value_box_bstrndup_shallow(&data, NULL, p, ret, false);
 		rcode = cond_normalise_and_cmp(request, c, &data);
 		if (p) talloc_free(p);
 	}
@@ -703,8 +692,9 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 	 *	Unsupported types (should have been parse errors)
 	 */
 	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_UNINITIALISED:
+	case TMPL_TYPE_UNRESOLVED:		/* should now be a TMPL_TYPE_DATA */
+	case TMPL_TYPE_ATTR_UNRESOLVED:		/* should now be a TMPL_TYPE_ATTR */
 	case TMPL_TYPE_EXEC_UNRESOLVED:		/* should now be a TMPL_TYPE_EXEC */
 	case TMPL_TYPE_XLAT_UNRESOLVED:		/* should now be a TMPL_TYPE_XLAT */
 	case TMPL_TYPE_REGEX_UNCOMPILED:	/* should now be a TMPL_TYPE_REGEX */
