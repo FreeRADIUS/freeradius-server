@@ -644,9 +644,9 @@ do {\
 			CAST(rhs);
 
 			rcode = cond_cmp_values(request, c, lhs, rhs);
+			fr_value_box_clear(&rhs_cast);
 			if (rcode != 0) break;
 
-			fr_value_box_clear(&rhs_cast);
 		}
 		tmpl_cursor_clear(&cc);
 	}
