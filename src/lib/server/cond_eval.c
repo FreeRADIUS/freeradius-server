@@ -393,6 +393,126 @@ done:
 	return p - out;
 }
 
+//#undef WITH_REALIZE_TMPL
+#define WITH_REALIZE_TMPL
+
+#ifdef WITH_REALIZE_TMPL
+/** Turn a raw #tmpl_t into #fr_value_data_t, mostly.
+ *
+ *  It does nothing for lists, attributes, and precompiled regexes.
+ *
+ *  For #TMPL_TYPE_DATA, it returns the raw data, which MUST NOT have
+ *  a cast, and which MUST have the correct data type.
+ *
+ *  For everything else (exec, xlat, regex-xlat), it evaluates the
+ *  tmpl, and returns a "realized" #fr_value_box_t.  That box can then
+ *  be used for comparisons, with minimal extra processing.
+ */
+static int cond_realize_tmpl(request_t *request,
+			     fr_value_box_t **out, fr_value_box_t **to_free,
+			     tmpl_t *in, tmpl_t *other) /* both really should be 'const' */
+{
+	fr_value_box_t		*box;
+	xlat_escape_legacy_t	escape = NULL;
+
+	*out = *to_free = NULL;
+
+	switch (in->type) {
+	/*
+	 *	These are handled elsewhere.
+	 */
+	case TMPL_TYPE_LIST:
+#ifdef HAVE_REGEX
+	case TMPL_TYPE_REGEX:
+#endif
+		return 0;
+
+	case TMPL_TYPE_ATTR:
+		/*
+		 *	fast path?  If there's only one attribute, AND
+		 *	tmpl_num is a simple number, then just find
+		 *	that attribute.  This fast path should ideally
+		 *	avoid all of the cost of setting up the
+		 *	cursors?
+		 */
+		return 0;
+
+	/*
+	 *	Return the raw data, which MUST already have been
+	 *	converted to the correct thing.
+	 */
+	case TMPL_TYPE_DATA:
+		fr_assert((in->cast == FR_TYPE_INVALID) || (in->cast == tmpl_value_type(in)));
+		*out = tmpl_value(in);
+		return 0;
+
+#ifdef HAVE_REGEX
+	case TMPL_TYPE_REGEX_XLAT:
+		escape = regex_escape;
+		FALL_THROUGH;
+#endif
+
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_XLAT:
+	{
+		ssize_t		ret;
+		fr_type_t	cast_type;
+		fr_dict_attr_t const *da = NULL;
+
+		box = NULL;
+		ret = tmpl_aexpand(request, &box, request, in, escape, NULL);
+		if (ret < 0) return ret;
+
+		fr_assert(box != NULL);
+
+		/*
+		 *	We can't be TMPL_TYPE_ATTR or TMPL_TYPE_DATA,
+		 *	because that was caught above.
+		 *
+		 *	So we look for an explicit cast, and if we
+		 *	don't find that, then the *other* side MUST
+		 *	have an explicit data type.
+		 */
+		if (in->cast != FR_TYPE_INVALID) {
+			cast_type = in->cast;
+
+		} else if (other->cast) {
+			cast_type = other->cast;
+
+		} else if (tmpl_is_attr(other)) {
+			da = tmpl_da(other);
+			cast_type = da->type;
+
+		} else if (tmpl_is_data(other)) {
+			cast_type = tmpl_value_type(other);
+
+		} else {
+			cast_type = FR_TYPE_STRING;
+		}
+
+		if (cast_type != box->type) {
+			if (fr_value_box_cast_in_place(box, box, cast_type, da) < 0) {
+				return -1;
+			}
+		}
+
+		*out = *to_free = box;
+		return 0;
+	}
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Other tmpl type, return an error.
+	 */
+	fr_assert(0);
+	return -1;
+}
+#endif	/* WITH_REALIZE_TMP */
+
+
 /** Convert both operands to the same type
  *
  * If casting is successful, we call cond_cmp_values to do the comparison
@@ -611,8 +731,12 @@ finish:
 int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 {
 	int rcode = 0;
-
 	map_t const *map = c->data.map;
+
+#ifdef WITH_REALIZE_TMPL
+	fr_value_box_t *lhs, *lhs_free;
+	fr_value_box_t *rhs, *rhs_free;
+#endif
 
 #ifndef NDEBUG
 	/*
@@ -627,6 +751,56 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
 
 	MAP_VERIFY(map);
+
+#ifdef WITH_REALIZE_TMPL
+	/*
+	 *	Realize the LHS of a condition.
+	 */
+	if (cond_realize_tmpl(request, &lhs, &lhs_free, map->lhs, map->rhs) < 0) {
+		fr_strerror_const("Failed evaluating left side of condition");
+		return -1;
+	}
+
+	/*
+	 *	Realize the RHS of a condition.
+	 */
+	if (cond_realize_tmpl(request, &rhs, &rhs_free, map->rhs, map->lhs) < 0) {
+		fr_strerror_const("Failed evaluating right side of condition");
+		return -1;
+	}
+
+	/*
+	 *	We have both left and right sides as #fr_value_box_t,
+	 *	we can just evaluate the comparison here.
+	 *
+	 *	This is largely just cond_cmp_values() ...
+	 */
+	if (lhs && rhs) {
+		if (map->op != T_OP_REG_EQ) {
+			fr_assert(map->op != T_OP_REG_NE); /* must be ! ... =~ ... */
+			rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
+		} else {
+			rcode = cond_do_regex(request, c, lhs, rhs);
+		}
+
+		talloc_free(lhs_free);
+		talloc_free(rhs_free);
+		return rcode;
+	}
+
+	/*
+	 *	@todo - check for LHS list / attr, and loop over it,
+	 *	calling the appropriate function.  We have "realized"
+	 *	the LHS for all other tmpl types.
+	 *
+	 *	Inside of the loop, we check for RHS list / attr /
+	 *	data / regex, and call the appropriate comparison
+	 *	function.
+	 */
+
+	talloc_free(lhs_free);
+	talloc_free(rhs_free);
+#endif	/* WITH_REALIZE_TMPL */
 
 	switch (map->lhs->type) {
 	/*
