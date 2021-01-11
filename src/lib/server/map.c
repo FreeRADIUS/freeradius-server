@@ -1205,10 +1205,10 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 {
 	int			rcode = 0;
 	fr_pair_t		*vp, *dst;
-	fr_pair_list_t		*list, head;
+	fr_pair_list_t		*list, src_list;
 	request_t		*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
-	fr_dcursor_t		dst_list, src_list;
+	fr_dcursor_t		dst_list;
 
 	bool			found = false;
 
@@ -1219,13 +1219,12 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 	tmpl_cursor_ctx_t	cc = {};
 
-	fr_pair_list_init(&head);
+	fr_pair_list_init(&src_list);
 	MAP_VERIFY(map);
 	fr_assert(map->lhs != NULL);
 	fr_assert(map->rhs != NULL);
 
 	tmp_ctx = talloc_pool(request, 1024);
-	fr_dcursor_init(&src_list, &tmp_list);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
@@ -1326,12 +1325,12 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	VPs to work with.
 	 */
 	if (!tmpl_is_null(map->rhs)) {
-		rcode = func(parent, &head, request, map, ctx);
+		rcode = func(parent, &src_list, request, map, ctx);
 		if (rcode < 0) {
-			fr_assert(fr_pair_list_empty(tmp_list));
+			fr_assert(fr_pair_list_empty(&src_list));
 			goto finish;
 		}
-		if (fr_pair_list_empty(tmp_list)) {
+		if (fr_pair_list_empty(&src_list)) {
 			RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
 			goto finish;
 		}
@@ -1362,7 +1361,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		switch (map->op) {
 		case T_OP_CMP_FALSE:
 			/* We don't need the src VPs (should just be 'ANY') */
-			fr_assert(fr_pair_list_empty(tmp_list));
+			fr_assert(fr_pair_list_empty(&src_list));
 
 			/* Clear the entire dst list */
 			fr_pair_list_free(list);
@@ -1370,9 +1369,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		case T_OP_SET:
 			if (tmpl_is_list(map->rhs)) {
-				fr_pair_list_free(list);
-				*list = head;
-				fr_pair_list_init(&head);
+				fr_pair_list_clear(list);
+				fr_tmp_pair_list_move(list, &src_list);
+				fr_pair_list_init(&src_list);
 			} else {
 				FALL_THROUGH;
 
@@ -1381,13 +1380,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				FALL_THROUGH;
 
 		case T_OP_ADD:
-				fr_pair_list_move(list, &head);
-				fr_pair_list_free(&head);
+				fr_pair_list_move(list, &src_list);
+				fr_pair_list_clear(&src_list);
 			}
 			goto update;
 
 		default:
-			fr_pair_list_free(&head);
+			fr_pair_list_free(&src_list);
 			rcode = -1;
 			goto finish;
 		}
@@ -1411,7 +1410,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 */
 	case T_OP_CMP_FALSE:
 		/* We don't need the src VPs (should just be 'ANY') */
-		fr_assert(fr_pair_list_empty(tmp_list));
+		fr_assert(fr_pair_list_empty(&src_list));
 		if (!dst) goto finish;
 
 		/*
@@ -1424,8 +1423,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	We've found the Nth one.  Delete it, and only it.
 		 */
 		} else {
-			fr_pair_list_free(&dst);
 			dst = fr_dcursor_remove(&dst_list);
+			talloc_free(dst);
 		}
 
 		/*
@@ -1447,7 +1446,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	case T_OP_SUB:
 		/* We didn't find any attributes earlier */
 		if (!dst) {
-			fr_pair_list_free(&head);
+			fr_pair_list_free(&src_list);
 			goto finish;
 		}
 
@@ -1467,7 +1466,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				}
 			}
 			rcode = 0;
-			fr_pair_list_free(&head);
+			fr_pair_list_free(&src_list);
 			if (!found) goto finish;
 			goto update;
 		}
@@ -1491,7 +1490,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			}
 		}
 		rcode = 0;
-		fr_pair_list_free(&head);
+		fr_pair_list_free(&src_list);
 		if (!found) goto finish;
 		goto update;
 	}
@@ -1509,7 +1508,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (dst) {
 			RDEBUG3("Refusing to overwrite (use :=)");
-			fr_pair_list_free(&head);
+			fr_pair_list_free(&src_list);
 			goto finish;
 		}
 
@@ -1530,7 +1529,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Need to copy src to all dsts
 		 */
-		src_vp = fr_dcursor_head(&src_list);
+		src_vp = fr_pair_list_head(&src_list);
 		if (!src_vp) {
 			fr_dlist_talloc_free(&leaf);
 			rcode = -1;
@@ -1549,7 +1548,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		/* Free any we didn't insert */
-		fr_pair_list_free(&head);
+		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_assert(fr_dlist_num_elements(&leaf) == 0);
 	}
@@ -1588,7 +1587,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		} else {
 			extent = fr_dlist_head(&leaf);
 			if (dst) {
-				DEBUG_OVERWRITE(dst, fr_dcursor_current(&src_list));
+				DEBUG_OVERWRITE(dst, src_vp);
 				dst = fr_dcursor_replace(&dst_list, fr_pair_copy(extent->list_ctx, src_vp));
 				talloc_free(dst);
 			} else {
@@ -1597,7 +1596,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		/* Free any we didn't insert */
-		fr_pair_list_free(&head);
+		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_dlist_talloc_free(&leaf);
 	}
@@ -1628,18 +1627,18 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
 			while ((extent = fr_dlist_tail(&leaf))) {
-				fr_pair_list_copy(extent->list_ctx, extent->list, &head);
+				fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 				fr_dlist_talloc_free_tail(&leaf);
 			}
 			/* Free all the src vps */
-			fr_pair_list_free(&head);
+			fr_pair_list_free(&src_list);
 		} else {
 			extent = fr_dlist_head(&leaf);
-			fr_pair_list_copy(extent->list_ctx, extent->list, &head);
+			fr_pair_list_copy(extent->list_ctx, extent->list, &src_list);
 			fr_dlist_talloc_free_head(&leaf);
 		}
 
-		fr_pair_list_free(&head);
+		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_assert(fr_dlist_num_elements(&leaf) == 0);
 	}
@@ -1657,7 +1656,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	{
 		fr_pair_t *a, *b;
 
-		fr_pair_list_sort(&head, fr_pair_cmp_by_da);
+		fr_pair_list_sort(&src_list, fr_pair_cmp_by_da);
 		fr_pair_list_sort(list, fr_pair_cmp_by_da);
 
 		fr_dcursor_head(&dst_list);
@@ -1682,7 +1681,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			}
 			if (!a) break;	/* end of the list */
 		}
-		fr_pair_list_free(&head);
+		fr_pair_list_free(&src_list);
 	}
 		break;
 
@@ -1693,7 +1692,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	}
 
 update:
-	fr_assert(fr_pair_list_empty(tmp_list));
+	fr_assert(fr_pair_list_empty(&src_list));
 
 finish:
 	tmpl_cursor_clear(&cc);
