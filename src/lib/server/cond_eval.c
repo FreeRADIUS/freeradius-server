@@ -331,7 +331,12 @@ static int cond_cmp_values(request_t *request, fr_cond_t const *c, fr_value_box_
 		fr_value_box_copy(vp, &vp->data, rhs);
 
 		fr_pair_list_single_value(vps,*vp);
-		rcode = paircmp(request, &request->request_pairs, &vps);
+
+		/*
+		 *	Do JUST the virtual attribute comparison.
+		 *	Skip all of the rest of the complexity of paircmp().
+		 */
+		rcode = paircmp_virtual(request, &request->request_pairs, vp, &vps);
 		rcode = (rcode == 0) ? 1 : 0;
 		talloc_free(vp);
 		goto finish;
@@ -393,8 +398,7 @@ done:
 	return p - out;
 }
 
-//#undef WITH_REALIZE_TMPL
-#define WITH_REALIZE_TMPL
+#undef WITH_REALIZE_TMPL
 
 #ifdef WITH_REALIZE_TMPL
 /** Turn a raw #tmpl_t into #fr_value_data_t, mostly.

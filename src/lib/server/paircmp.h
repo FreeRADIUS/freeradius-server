@@ -41,6 +41,11 @@ int		paircmp_pairs(request_t *request, fr_pair_t *check, fr_pair_t *vp);
 
 int		paircmp(request_t *request, fr_pair_list_t *request_list, fr_pair_list_t *check_list);
 
+int		paircmp_virtual(request_t *request,
+				fr_pair_list_t *request_list,
+				fr_pair_t *check_item,
+				fr_pair_list_t *check_list);
+
 int		paircmp_find(fr_dict_attr_t const *da);
 
 int		paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,

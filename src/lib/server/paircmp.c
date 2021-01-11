@@ -538,6 +538,40 @@ static int paircmp_func(request_t *request,
 	return paircmp_pairs(request, check_item, request_item);
 }
 
+
+/** Compare check_item and request
+ *
+ * Unlike paircmp_pairs() this function will call any attribute-specific
+ * comparison functions registered.  vp to be matched is request_item or
+ * found in check_list or looked up from external sources depending on the
+ * comparison function called.
+ *
+ * @param[in] request		Current request.
+ * @param[in] request_list	list pairs.
+ * @param[in] check_item	item to compare.
+ * @param[in] check_list	list.
+ * @return
+ *	- 0 if check_item matches
+ *	- -1 if check_item is smaller
+ *	- 1 if check_item is larger
+ */
+int paircmp_virtual(request_t *request,
+		    fr_pair_list_t *request_list,
+		    fr_pair_t *check_item,
+		    fr_pair_list_t *check_list)
+{
+	paircmp_t *c;
+
+	for (c = cmp; c; c = c->next) {
+		if (c->da == check_item->da) {
+			return (c->compare)(c->instance, request, request_list, check_item, check_list);
+		}
+	}
+
+	return -1;
+}
+
+
 /** Compare two pair lists except for the password information.
  *
  * For every element in "check_list" at least one matching copy must be present
