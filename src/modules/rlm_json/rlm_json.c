@@ -266,7 +266,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 			fr_pair_list_free(&vps);
 		} else {
 			/* Add template VPs to JSON list */
-			fr_pair_add(&json_vps, vps);
+			fr_tmp_pair_list_move(&json_vps, &vps);
 		}
 
 		TALLOC_FREE(vpt);
