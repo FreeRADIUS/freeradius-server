@@ -112,6 +112,14 @@ void cond_debug(fr_cond_t const *cond)
 			INFO(")");
 			break;
 
+		case COND_TYPE_AND:
+			INFO("&& ");
+			break;
+
+		case COND_TYPE_OR:
+			INFO("|| ");
+			break;
+
 		default:
 			break;
 		}
