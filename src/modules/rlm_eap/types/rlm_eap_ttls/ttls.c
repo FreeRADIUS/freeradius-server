@@ -327,14 +327,13 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 	size_t		total;
 	uint64_t	attr64;
 	fr_pair_t	*vp;
-	fr_cursor_t	cursor;
 
 	p = buffer;
 	total = 0;
 
-	for (vp = fr_cursor_init(&cursor, list);
+	for (vp = fr_pair_list_head(list);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(list, vp)) {
 		/*
 		 *	Too much data: die.
 		 */
@@ -470,8 +469,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	fr_pair_t	*vp;
 	fr_pair_list_t	tunnel_vps;
-	fr_cursor_t	cursor;
-	fr_cursor_t	to_tunnel;
 
 	ttls_tunnel_t	*t = tls_session->opaque;
 
@@ -504,26 +501,25 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	{
 		RDEBUG2("Got tunneled Access-Accept");
 
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, reply_list);
+		for (vp = fr_pair_list_head(reply_list);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(reply_list, vp)) {
 			if (vp->da == attr_ms_chap2_success) {
 				RDEBUG2("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 
 				rcode = RLM_MODULE_HANDLED;
 				t->authenticated = true;
-				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
 			} else if (vp->da == attr_eap_channel_binding_message) {
 				rcode = RLM_MODULE_HANDLED;
 				t->authenticated = true;
-				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
 			}
 		}
 	}
@@ -543,19 +539,17 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	case FR_CODE_ACCESS_CHALLENGE:
 		RDEBUG2("Got tunneled Access-Challenge");
 
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
-
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, reply_list);
+		for (vp = fr_pair_list_head(reply_list);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(reply_list, vp)) {
 		     	if ((vp->da == attr_eap_message) || (vp->da == attr_reply_message)) {
-		     		fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
 		     	} else if (vp->da == attr_eap_channel_binding_message) {
-				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
 		     	}
 		}
 		rcode = RLM_MODULE_HANDLED;
