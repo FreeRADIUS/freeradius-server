@@ -216,10 +216,12 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		int fall_through = 0;
 		int relax_filter = inst->relaxed;
 		map_t *map;
+		fr_pair_list_t tmp_list;
 		fr_pair_t *check_item, *input_item;
 		fr_pair_list_t check_list;
 		fr_cursor_t cursor;
 
+		fr_pair_list_init(&tmp_list);
 		/*
 		 *  If the current entry is NOT a default,
 		 *  AND the realm does NOT match the current entry,
@@ -238,15 +240,16 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		for (map = fr_cursor_init(&cursor, &pl->reply);
 		     map;
 		     map = fr_cursor_next(&cursor)) {
-			if (map_to_vp(packet, &check_item, request, map, NULL) < 0) {
+			if (map_to_vp(packet, &tmp_list, request, map, NULL) < 0) {
 				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
 				continue;
 			}
 
+			check_item = fr_pair_list_head(&tmp_list);
 		     	if (check_item->da == attr_fall_through) {
 				if (check_item->vp_uint32 == 1) {
 					fall_through = 1;
-					fr_pair_list_free(&check_item);
+					fr_pair_list_free(&tmp_list);
 					continue;
 				}
 		     	} else if (check_item->da == attr_relax_filter) {
