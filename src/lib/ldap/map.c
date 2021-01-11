@@ -40,12 +40,12 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 {
 	fr_ldap_result_t	*self = uctx;
 	fr_pair_list_t		head;
+	fr_pair_list_t		tmp_list;
 	fr_pair_t		*vp;
-	fr_cursor_t		cursor, to_append;
 	int			i;
 
 	fr_pair_list_init(&head);
-	fr_cursor_init(&cursor, &head);
+	fr_pair_list_init(&tmp_list);
 
 	switch (map->lhs->type) {
 	/*
@@ -125,14 +125,13 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 				goto next_pair;
 			}
 
-			if (map_to_vp(ctx, &vp, request, attr, NULL) < 0) {
+			if (map_to_vp(ctx, &tmp_list, request, attr, NULL) < 0) {
 				RWDEBUG("Failed creating attribute for valuepair \"%pV\", skipping...",
 					fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len));
 				goto next_pair;
 			}
 
-			fr_cursor_init(&to_append, &vp);
-			fr_cursor_merge(&cursor, &to_append);
+			fr_tmp_pair_list_move(&head, &tmp_list);
 			talloc_free(attr);
 
 			/*
@@ -164,7 +163,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			}
 
 			vp->op = map->op;
-			fr_cursor_append(&cursor, vp);
+			fr_pair_add(&head, vp);
 
 			/*
 			 *	Only process the first value, unless the operator is +=
@@ -177,7 +176,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 		fr_assert(0);
 	}
 
-	*out = head;
+	fr_tmp_pair_list_move(out, &head);
 
 	return 0;
 }
