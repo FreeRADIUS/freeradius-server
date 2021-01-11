@@ -139,7 +139,7 @@ static int diameter_verify(request_t *request, uint8_t const *data, unsigned int
 /*
  *	Convert diameter attributes to our fr_pair_t's
  */
-static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len,
 				    void *decoder_ctx)
 {
@@ -164,7 +164,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		if ((end - p) < 8) {
 			fr_strerror_printf("Malformed diameter VPs.  Needed at least 8 bytes, got %zu bytes", end - p);
 		error:
-			fr_cursor_free_list(cursor);
+			fr_dcursor_free_list(cursor);
 			return -1;
 		}
 
@@ -252,7 +252,7 @@ do_value:
 		 *	to the nearest 4-byte boundary.
 		 */
 		p += (value_len + 0x03) & ~0x03;
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 
 		if (vp->da->flags.is_unknown) continue;
 
@@ -586,7 +586,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp = NULL;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
 	size_t			data_len;
@@ -631,7 +631,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	/*
 	 *	Add the tunneled attributes to the request request.
 	 */
-	fr_cursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_init(&cursor, &request->request_pairs);
 	if (eap_ttls_decode_pair(request->request_ctx, &cursor, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
