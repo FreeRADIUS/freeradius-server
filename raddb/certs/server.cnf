@@ -58,6 +58,8 @@ commonName		= "Example Server Certificate"
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer:always
 
 #  This should be a host name of the RADIUS server.
 #  Note that the host name is exchanged in EAP *before*
