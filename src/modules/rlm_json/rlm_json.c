@@ -396,12 +396,11 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 				    map_t const *map, void *uctx)
 {
 	fr_pair_t			*vp;
-	fr_cursor_t			cursor;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
 	fr_value_box_t			*head, *value;
 	int				ret;
 
-	fr_pair_list_init(out);
+	fr_pair_list_clear(out);
 
 	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);
@@ -412,19 +411,20 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 	if (ret == 0) return 0;
 	fr_assert(head);
 
-	for (fr_cursor_init(&cursor, out), value = head;
+	for (value = head;
 	     value;
-	     fr_cursor_append(&cursor, vp), value = value->next) {
+	     fr_pair_add(out, vp), value = value->next) {
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
 
 		if (fr_value_box_steal(vp, &vp->data, value) < 0) {
 			RPEDEBUG("Copying data to attribute failed");
 			talloc_free(vp);
-			talloc_free(*out);
+			fr_pair_list_free(out);
 			return -1;
 		}
 	}
+
 	return 0;
 }
 
