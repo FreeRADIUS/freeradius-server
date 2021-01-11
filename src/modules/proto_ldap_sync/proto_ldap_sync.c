@@ -502,7 +502,7 @@ static request_t *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst
 	if (!ctx) return NULL;
 	talloc_set_name_const(ctx, "ldap_inst_pool");
 
-	packet = fr_radius_alloc(ctx, false);
+	packet = fr_radius_packet_alloc(ctx, false);
 	packet->socket.fd = listen->fd;
 	packet->id = sync_id;
 	packet->socket.inet.src_ipaddr = inst->dst_ipaddr;

@@ -381,7 +381,7 @@ fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, ui
 	/*
 	 *	Allocate the new request data structure
 	 */
-	packet = fr_radius_alloc(ctx, false);
+	packet = fr_radius_packet_alloc(ctx, false);
 	if (!packet) {
 		fr_strerror_const("out of memory");
 		return NULL;

@@ -162,7 +162,7 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 		fp = stdin;
 	}
 
-	packet = fr_radius_alloc(NULL, false);
+	packet = fr_radius_packet_alloc(NULL, false);
 
 	/*
 	 *	Read the VP's.

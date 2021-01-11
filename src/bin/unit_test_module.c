@@ -164,7 +164,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 		return NULL;
 	}
 
-	request->packet = fr_radius_alloc(request, false);
+	request->packet = fr_radius_packet_alloc(request, false);
 	if (!request->packet) {
 		ERROR("No memory");
 		talloc_free(request);
@@ -172,7 +172,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	}
 	request->packet->timestamp = fr_time();
 
-	request->reply = fr_radius_alloc(request, false);
+	request->reply = fr_radius_packet_alloc(request, false);
 	if (!request->reply) {
 		ERROR("No memory");
 		talloc_free(request);
@@ -546,8 +546,8 @@ static request_t *request_clone(request_t *old)
 	request = request_alloc(NULL);
 	if (!request) return NULL;
 
-	if (!request->packet) request->packet = fr_radius_alloc(request, false);
-	if (!request->reply) request->reply = fr_radius_alloc(request, false);
+	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
+	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
 	(void) fr_pair_list_copy(request->packet, &request->request_pairs, &old->request_pairs);

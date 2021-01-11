@@ -1329,7 +1329,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	recover once some requests timeout, so make an effort to deal
 	 *	with allocation failures gracefully.
 	 */
-	packet = fr_radius_alloc(conf, false);
+	packet = fr_radius_packet_alloc(conf, false);
 	if (!packet) {
 		REDEBUG("Failed allocating memory to hold decoded packet");
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
@@ -1579,7 +1579,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Save the request for later matching
 		 */
-		search.expect = fr_radius_alloc_reply(packet, packet);
+		search.expect = fr_radius_packet_alloc_reply(packet, packet);
 		if (!search.expect) {
 			REDEBUG("Failed allocating memory to hold expected reply");
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);

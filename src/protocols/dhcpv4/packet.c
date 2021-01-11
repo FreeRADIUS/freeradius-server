@@ -431,7 +431,7 @@ fr_radius_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len
 	if (data_len < MIN_PACKET_SIZE) return NULL;
 
 	/* Now that checks are done, allocate packet */
-	packet = fr_radius_alloc(NULL, false);
+	packet = fr_radius_packet_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_const("Failed allocating packet");
 		return NULL;

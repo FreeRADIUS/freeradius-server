@@ -192,7 +192,7 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 	size_t			dhcp_data_len;
 	socklen_t		sock_len;
 
-	packet = fr_radius_alloc(NULL, false);
+	packet = fr_radius_packet_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_const("Failed allocating packet");
 		return NULL;

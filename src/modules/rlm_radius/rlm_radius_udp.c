@@ -365,8 +365,8 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	request->name = talloc_strdup(request, h->module_name);
 
 	request->el = el;
-	request->packet = fr_radius_alloc(request, false);
-	request->reply = fr_radius_alloc(request, false);
+	request->packet = fr_radius_packet_alloc(request, false);
+	request->reply = fr_radius_packet_alloc(request, false);
 
 	/*
 	 *	Create the VPs, and ignore any errors

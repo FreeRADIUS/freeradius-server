@@ -342,13 +342,13 @@ static request_t *request_init_fake(char const *file, int line, request_t *reque
 	 */
 	fake->server_cs = request->server_cs;
 
-	fake->packet = fr_radius_alloc(fake, true);
+	fake->packet = fr_radius_packet_alloc(fake, true);
 	if (!fake->packet) {
 		talloc_free(fake);
 		return NULL;
 	}
 
-	fake->reply = fr_radius_alloc(fake, false);
+	fake->reply = fr_radius_packet_alloc(fake, false);
 	if (!fake->reply) {
 		talloc_free(fake);
 		return NULL;

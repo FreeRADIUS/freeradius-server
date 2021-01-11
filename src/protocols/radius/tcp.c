@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 fr_radius_packet_t *fr_tcp_recv(int sockfd, int flags)
 {
-	fr_radius_packet_t *packet = fr_radius_alloc(NULL, false);
+	fr_radius_packet_t *packet = fr_radius_packet_alloc(NULL, false);
 
 	if (!packet) return NULL;
 

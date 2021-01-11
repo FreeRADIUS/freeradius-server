@@ -71,8 +71,8 @@ typedef struct {
 	size_t			partial;
 } fr_radius_packet_t;
 
-fr_radius_packet_t	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
-fr_radius_packet_t	*fr_radius_alloc_reply(TALLOC_CTX *ctx, fr_radius_packet_t *);
+fr_radius_packet_t	*fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector);
+fr_radius_packet_t	*fr_radius_packet_alloc_reply(TALLOC_CTX *ctx, fr_radius_packet_t *);
 void		fr_radius_packet_free(fr_radius_packet_t **);
 
 #ifdef __cplusplus

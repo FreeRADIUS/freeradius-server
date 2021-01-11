@@ -193,10 +193,10 @@ static request_t *request_fake_alloc(void)
 	 */
 	request = request_local_alloc(autofree);
 
-	request->packet = fr_radius_alloc(request, false);
+	request->packet = fr_radius_packet_alloc(request, false);
 	TEST_CHECK(request->packet != NULL);
 
-	request->reply = fr_radius_alloc(request, false);
+	request->reply = fr_radius_packet_alloc(request, false);
 	TEST_CHECK(request->reply != NULL);
 
 	return request;

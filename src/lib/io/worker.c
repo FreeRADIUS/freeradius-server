@@ -654,10 +654,10 @@ static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time
 {
 	request->el = worker->el;
 	request->backlog = worker->runnable;
-	MEM(request->packet = fr_radius_alloc(request, false));
+	MEM(request->packet = fr_radius_packet_alloc(request, false));
 	request->packet->timestamp = now;
 
-	request->reply = fr_radius_alloc(request, false);
+	request->reply = fr_radius_packet_alloc(request, false);
 	fr_assert(request->reply != NULL);
 
 	request->number = atomic_fetch_add_explicit(&request_number, 1, memory_order_seq_cst);

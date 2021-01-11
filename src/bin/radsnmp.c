@@ -165,7 +165,7 @@ static fr_radius_packet_t *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 {
 	fr_radius_packet_t *packet;
 
-	packet = fr_radius_alloc(conf, true);
+	packet = fr_radius_packet_alloc(conf, true);
 
 	packet->code = conf->code;
 
