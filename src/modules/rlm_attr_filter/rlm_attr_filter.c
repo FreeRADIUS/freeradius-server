@@ -343,7 +343,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	 *	Replace the existing request list with our filtered one
 	 */
 	fr_pair_list_free(list);
-	fr_pair_list_move(list, &output);
+	fr_tmp_pair_list_move(list, &output);
 
 	RETURN_MODULE_UPDATED;
 }
