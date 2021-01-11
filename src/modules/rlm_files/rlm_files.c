@@ -351,7 +351,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		map_t *map;
 		PAIR_LIST const *pl;
 		fr_pair_list_t list;
-		fr_cursor_t cursor, list_cursor;
+		fr_cursor_t cursor;
 		bool fall_through = false;
 
 		/*
@@ -376,7 +376,6 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		}
 
 		fr_pair_list_init(&list);
-		fr_cursor_init(&list_cursor, &list);
 
 		/*
 		 *	Realize the map to a list of VPs
@@ -386,25 +385,16 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		for (map = fr_cursor_init(&cursor, &pl->check);
 		     map;
 		     map = fr_cursor_next(&cursor)) {
-			if (map_to_vp(request->control_ctx, &vp, request, map, NULL) < 0) {
+			fr_pair_list_t tmp_list;
+			fr_pair_list_init(&tmp_list);
+			if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
 				fr_pair_list_free(&list);
 				RPWARN("Failed parsing map for check item, skipping entry");
 				break;
 			}
-			VP_VERIFY(vp);
+			LIST_VERIFY(&tmp_list);
 
-			/*
-			 *	@todo - handle an actual list.
-			 *
-			 *	This short-cut SHOULD be OK, as the
-			 *	parser above ensures that the LHS of
-			 *	the map is an attribute, and not a
-			 *	list.
-			 */
-
-			fr_assert(vp->next == NULL);
-			fr_cursor_append(&list_cursor, vp);
-			fr_cursor_tail(&list_cursor);
+			fr_tmp_pair_list_move(&list, &tmp_list);
 		}
 
 		if (paircmp(request, &request->request_pairs, &list) != 0) {
@@ -427,9 +417,11 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			for (map = fr_cursor_init(&cursor, &pl->reply);
 			     map;
 			     map = fr_cursor_next(&cursor)) {
+				fr_pair_list_t tmp_list;
+				fr_pair_list_init(&tmp_list);
 				if (map->op == T_OP_CMP_FALSE) continue;
 
-				if (map_to_vp(request->reply_ctx, &vp, request, map, NULL) < 0) {
+				if (map_to_vp(request->reply_ctx, &tmp_list, request, map, NULL) < 0) {
 					RPWARN("Failed parsing map for reply item %s, skipping it", map->rhs->name);
 					break;
 				}
@@ -439,13 +431,14 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 				 *	reply list.  If so, don't copy
 				 *	the attribute over to the reply
 				 */
+				vp = fr_pair_list_head(&tmp_list);
 				if (vp->da == attr_fall_through) {
 					fall_through = vp->vp_bool;
-					fr_pair_list_free(&vp);
+					fr_pair_list_free(&tmp_list);
 					continue;
 				}
 
-				radius_pairmove(request, &request->reply_pairs, &vp, true);
+				radius_pairmove(request, &request->reply_pairs, &tmp_list, true);
 			}
 		}
 
