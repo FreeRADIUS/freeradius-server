@@ -69,11 +69,9 @@ static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_prefix;
 static fr_dict_attr_t const *attr_request_processing_stage;
 static fr_dict_attr_t const *attr_strip_user_name;
 static fr_dict_attr_t const *attr_stripped_user_name;
-static fr_dict_attr_t const *attr_suffix;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_virtual_server;
@@ -88,11 +86,9 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_prefix, .name = "Prefix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_request_processing_stage, .name = "Request-Processing-Stage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_strip_user_name, .name = "Strip-User-Name", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_suffix, .name = "Suffix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
@@ -102,80 +98,6 @@ fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 };
 
 static paircmp_t *cmp;
-
-
-/*
- *	Compare prefix/suffix.
- *
- *	If they compare:
- *	- if FR_STRIP_USER_NAME is present in check_list,
- *	  strip the username of prefix/suffix.
- *	- if FR_STRIP_USER_NAME is not present in check_list,
- *	  add a FR_STRIPPED_USER_NAME to the request.
- */
-static int prefix_suffix_cmp(UNUSED void *instance,
-			     request_t *request,
-			     fr_pair_list_t *request_list,
-			     fr_pair_t *check_item,
-			     fr_pair_list_t *check_list)
-{
-	fr_pair_t	*vp;
-	char const	*name;
-	char		rest[FR_MAX_STRING_LEN];
-	int		len, namelen;
-	int		ret = -1;
-	fr_pair_t	*username;
-
-	if (!request) return -1;
-
-	username = fr_pair_find_by_da(&request->request_pairs, attr_stripped_user_name);
-	if (!username) username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	if (!username) return -1;
-
-	VP_VERIFY(check_item);
-
-	name = username->vp_strvalue;
-
-	RDEBUG3("Comparing name \"%s\" and check value \"%pV\"", name, &check_item->data);
-
-	len = strlen(check_item->vp_strvalue);
-
-	if (check_item->da == attr_prefix) {
-		ret = strncmp(name, check_item->vp_strvalue, len);
-		if (ret == 0)
-			strlcpy(rest, name + len, sizeof(rest));
-	} else if (check_item->da == attr_suffix) {
-		namelen = strlen(name);
-		if (namelen >= len) {
-			ret = strcmp(name + namelen - len, check_item->vp_strvalue);
-			if (ret == 0) strlcpy(rest, name, namelen - len + 1);
-		}
-	}
-
-	if (ret != 0) return ret;
-
-	/*
-	 *	If Strip-User-Name == No, then don't do any more.
-	 */
-	vp = fr_pair_find_by_da(check_list, attr_strip_user_name);
-	if (vp && !vp->vp_uint32) return ret;
-
-	/*
-	 *	See where to put the stripped user name.
-	 */
-	vp = fr_pair_find_by_da(check_list, attr_stripped_user_name);
-	if (!vp) {
-		/*
-		 *	If "request" is NULL, then the memory will be
-		 *	lost!
-		 */
-		MEM(vp = fr_pair_afrom_da(request->packet, attr_stripped_user_name));
-		fr_pair_add(request_list, vp);
-	}
-	fr_pair_value_strdup(vp, rest);
-
-	return ret;
-}
 
 
 /*
@@ -903,8 +825,6 @@ int paircmp_init(void)
 		return -1;
 	}
 
-	paircmp_register(attr_prefix, attr_user_name, false, prefix_suffix_cmp, NULL);
-	paircmp_register(attr_suffix, attr_user_name, false, prefix_suffix_cmp, NULL);
 	paircmp_register(attr_packet_type, NULL, true, packet_cmp, NULL);
 
 	paircmp_register(attr_client_ip_address, NULL, true, generic_cmp, NULL);
@@ -922,8 +842,6 @@ int paircmp_init(void)
 
 void paircmp_free(void)
 {
-	paircmp_unregister(attr_prefix, prefix_suffix_cmp);
-	paircmp_unregister(attr_suffix, prefix_suffix_cmp);
 	paircmp_unregister(attr_packet_type, packet_cmp);
 
 	paircmp_unregister(attr_client_ip_address, generic_cmp);

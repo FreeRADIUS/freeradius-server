@@ -125,9 +125,8 @@ ATTRIBUTE	Stripped-User-Domain			1001	string
 
 ATTRIBUTE	Menu					1002	string
 ATTRIBUTE	Termination-Menu			1003	string
-ATTRIBUTE	Prefix					1004	string
-ATTRIBUTE	Suffix					1005	string
-# Was Group
+# 1004, 1005, 1006 were Prefix, Suffix, and Group.
+# 
 ATTRIBUTE	Connect-Rate				1007	integer
 ATTRIBUTE	Add-Prefix				1008	string
 ATTRIBUTE	Add-Suffix				1009	string

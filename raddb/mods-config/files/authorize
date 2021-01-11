@@ -131,17 +131,6 @@
 #		Fall-Through = Yes
 
 #
-# If the user logs in as 'username.shell', then authenticate them
-# using the default method, give them shell access, and stop processing
-# the rest of the file.
-#
-#DEFAULT	Suffix == ".shell"
-#		Service-Type = Login-User,
-#		Login-Service = Telnet,
-#		Login-IP-Host = your.shell.machine
-
-
-#
 # The rest of this file contains the several DEFAULT entries.
 # DEFAULT entries match with all login names.
 # Note that DEFAULT entries can also Fall-Through (see first entry).
