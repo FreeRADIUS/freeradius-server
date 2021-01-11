@@ -319,9 +319,7 @@ static int cond_cmp_values(request_t *request, fr_cond_t const *c, fr_value_box_
 	 */
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
 		fr_pair_t *vp;
-		fr_pair_list_t vps;
 
-		fr_pair_list_init(&vps);
 		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
 		fr_assert(tmpl_is_attr(map->lhs));
 
@@ -330,13 +328,11 @@ static int cond_cmp_values(request_t *request, fr_cond_t const *c, fr_value_box_
 
 		fr_value_box_copy(vp, &vp->data, rhs);
 
-		fr_pair_list_single_value(vps,*vp);
-
 		/*
 		 *	Do JUST the virtual attribute comparison.
 		 *	Skip all of the rest of the complexity of paircmp().
 		 */
-		rcode = paircmp_virtual(request, &request->request_pairs, vp, &vps);
+		rcode = paircmp_virtual(request, &request->request_pairs, vp);
 		rcode = (rcode == 0) ? 1 : 0;
 		talloc_free(vp);
 		goto finish;

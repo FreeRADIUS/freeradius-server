@@ -35,7 +35,7 @@ extern "C" {
 #include <freeradius-devel/util/pair.h>
 
 /* for paircmp_register */
-typedef int (*RAD_COMPARE_FUNC)(void *instance, request_t *,fr_pair_list_t *, fr_pair_t *, fr_pair_list_t *);
+typedef int (*RAD_COMPARE_FUNC)(void *instance, request_t *,fr_pair_list_t *, fr_pair_t *);
 
 int		paircmp_pairs(request_t *request, fr_pair_t *check, fr_pair_t *vp);
 
@@ -43,8 +43,7 @@ int		paircmp(request_t *request, fr_pair_list_t *request_list, fr_pair_list_t *c
 
 int		paircmp_virtual(request_t *request,
 				fr_pair_list_t *request_list,
-				fr_pair_t *check_item,
-				fr_pair_list_t *check_list);
+				fr_pair_t *check_item);
 
 int		paircmp_find(fr_dict_attr_t const *da);
 

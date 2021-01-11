@@ -101,7 +101,7 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
  *	The Unix-Group = handler.
  */
 static int groupcmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list,
-		    fr_pair_t *check, UNUSED fr_pair_list_t *check_list)
+		    fr_pair_t *check)
 {
 	struct passwd	*pwd;
 	struct group	*grp;

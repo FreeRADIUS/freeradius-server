@@ -189,8 +189,7 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 	{ NULL }
 };
 
-static int rlm_test_cmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t *check,
-			UNUSED fr_pair_list_t *check_list)
+static int rlm_test_cmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
 {
 	fr_assert(check->vp_type == FR_TYPE_STRING);
 
