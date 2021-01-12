@@ -549,7 +549,7 @@ static fr_pair_t *password_process_sha2(TALLOC_CTX *ctx, request_t *request, fr_
 		if (!out) return NULL;
 
 		normalised = password_process_sha2(ctx, request, out);
-		talloc_list_free(&out);
+		TALLOC_FREE(out);
 
 		return normalised;
 	}
@@ -595,7 +595,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
 		if (!out) return NULL;
 
 		normalised = password_process_sha3(ctx, request, out);
-		talloc_list_free(&out);
+		TALLOC_FREE(out);
 
 		return normalised;
 	}
@@ -779,10 +779,10 @@ static fr_pair_t *password_process(TALLOC_CTX *ctx, request_t *request, fr_pair_
 		 *	operations.
 		 */
 		if (!from_recurse) {
-			if (from_func != known_good) talloc_list_free(&from_func);
+			if (from_func != known_good) TALLOC_FREE(from_func);
 			return NULL;
 		}
-		if ((from_func != known_good) && (from_recurse != from_func)) talloc_list_free(&from_func);
+		if ((from_func != known_good) && (from_recurse != from_func)) TALLOC_FREE(from_func);
 
 		return from_recurse;
 	}
@@ -812,7 +812,7 @@ static fr_pair_t *password_process(TALLOC_CTX *ctx, request_t *request, fr_pair_
 				 out->da->name, MIN_LEN(info), out->vp_length);
 		}
 	invalid:
-		if (out != known_good) talloc_list_free(&out);	/* Free attribute we won't be returning */
+		if (out != known_good) TALLOC_FREE(out);	/* Free attribute we won't be returning */
 		return NULL;
 	}
 
@@ -913,7 +913,7 @@ static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, request_t *req
 		/*
 		 *	New attribute not in our allowed list
 		 */
-		talloc_list_free(&new);		/* da didn't match, treat as ephemeral */
+		TALLOC_FREE(new);		/* da didn't match, treat as ephemeral */
 		return NULL;			/* Process next input attribute */
 	}
 
@@ -936,7 +936,7 @@ static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, request_t *req
  * pair *MUST* be freed, or added to one of the pair lists appropriate to the
  * ctx passed in.
  *
- * @param[out] ephemeral	If true, the caller must use talloc_list_free
+ * @param[out] ephemeral	If true, the caller must use TALLOC_FREE
  *				to free the return value of this function.
  *				Alternatively 'ctx' can be freed, which is
  *				simpler and cleaner, but some people have

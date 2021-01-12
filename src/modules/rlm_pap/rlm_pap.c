@@ -926,7 +926,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Authenticate, and return.
 	 */
 	auth_func(&rcode, inst, request, known_good, password);
-	if (ephemeral) talloc_list_free(&known_good);
+	if (ephemeral) TALLOC_FREE(known_good);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		REDEBUG("Password incorrect");
