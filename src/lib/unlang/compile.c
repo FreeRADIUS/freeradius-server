@@ -1953,6 +1953,18 @@ static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlan
 		return NULL;
 	}
 
+	if (tmpl_is_list(gext->vpt)) {
+		cf_log_err(cs, "Cannot use list for 'switch' statement");
+		talloc_free(g);
+		return NULL;
+	}
+
+	if (tmpl_contains_regex(gext->vpt)) {
+		cf_log_err(cs, "Cannot use regular expression for 'switch' statement");
+		talloc_free(g);
+		return NULL;
+	}
+
 	if (!tmpl_is_attr(gext->vpt)) (void) tmpl_cast_set(gext->vpt, FR_TYPE_STRING);
 
 	/*
@@ -2099,6 +2111,17 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		/*
 		 *	Do type-specific checks on the case statement
 		 */
+		if (tmpl_is_list(vpt)) {
+			cf_log_perr(cs, "Cannot use list for target of 'case' statement");
+			talloc_free(vpt);
+			return NULL;
+		}
+
+		if (tmpl_contains_regex(vpt)) {
+			cf_log_err(cs, "Cannot use regular expression for target of 'case' statement");
+			talloc_free(vpt);
+			return NULL;
+		}
 
 		/*
 		 *	This "case" statement is unresolved.  Try to
@@ -2114,7 +2137,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			if ((cast_type == FR_TYPE_INVALID) && da) cast_type = da->type;
 
 			if (tmpl_cast_in_place(vpt, cast_type, da) < 0) {
-				cf_log_perr(cs, "Invalid argument for case statement");
+				cf_log_perr(cs, "Invalid argument for 'case' statement");
 				talloc_free(vpt);
 				return NULL;
 			}
