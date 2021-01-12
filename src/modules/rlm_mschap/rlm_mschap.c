@@ -1550,7 +1550,7 @@ found_password:
 		if (ret < 0) {
 			RERROR("Failed generating NT-Password");
 			talloc_free(nt_password);
-			if (*ephemeral) talloc_list_free(&password);
+			if (*ephemeral) TALLOC_FREE(password);
 			return -1;
 		}
 
@@ -1561,7 +1561,7 @@ found_password:
 			RDEBUG2("Hashed &control.%s to create %s", attr_nt_password->name, password->da->name);
 		}
 
-		if (*ephemeral) talloc_list_free(&password);
+		if (*ephemeral) TALLOC_FREE(password);
 
 		*ephemeral = true;	/* We generated a temporary password */
 		*out = nt_password;
@@ -2116,7 +2116,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} /* else we weren't asked to use MPPE */
 
 finish:
-	if (ephemeral) talloc_list_free(&nt_password);
+	if (ephemeral) TALLOC_FREE(nt_password);
 
 	RETURN_MODULE_RCODE(rcode);
 }

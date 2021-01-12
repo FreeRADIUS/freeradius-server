@@ -74,7 +74,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	 */
 	packet = eap_md5_extract(eap_session->this_round);
 	if (!packet) {
-		if (ephemeral) talloc_list_free(&known_good);
+		if (ephemeral) TALLOC_FREE(known_good);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -102,7 +102,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	eap_md5_compose(eap_session->this_round, reply);
 	talloc_free(packet);
 
-	if (ephemeral) talloc_list_free(&known_good);
+	if (ephemeral) TALLOC_FREE(known_good);
 
 	RETURN_MODULE_OK;
 }

@@ -334,7 +334,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 					       inst->server_id, strlen(inst->server_id),
 					       session->peer_id, strlen(session->peer_id),
 					       &session->token, inst->bnctx);
-		if (ephemeral) talloc_list_free(&known_good);
+		if (ephemeral) TALLOC_FREE(known_good);
 		if (ret < 0) {
 			REDEBUG("Failed to obtain password element");
 			RETURN_MODULE_FAIL;

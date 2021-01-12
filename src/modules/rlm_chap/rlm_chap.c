@@ -269,7 +269,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	password and chap response.
 	 */
 	ret = fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH);
-	if (ephemeral) talloc_list_free(&known_good);
+	if (ephemeral) TALLOC_FREE(known_good);
 	if (ret != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
 
