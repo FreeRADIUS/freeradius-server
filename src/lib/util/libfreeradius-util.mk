@@ -10,6 +10,7 @@ SOURCES		:= \
 		   cap.c \
 		   cursor.c \
 		   dbuff.c \
+		   dcursor.c \
 		   debug.c \
 		   dict_ext.c \
 		   dict_fixup.c \
