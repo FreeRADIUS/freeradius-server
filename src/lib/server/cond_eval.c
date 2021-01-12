@@ -512,6 +512,47 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 	return rcode;
 }
 
+static int cond_compare_virtual(request_t *request, map_t const *map)
+{
+	int	       		rcode;
+	fr_pair_t		*virt, *vp;
+	fr_value_box_t		*rhs, rhs_cast;
+	fr_cursor_t		cursor;
+	tmpl_cursor_ctx_t	cc;
+
+	fr_assert(tmpl_is_attr(map->lhs));
+	fr_assert(tmpl_is_attr(map->rhs));
+
+	fr_value_box_clear(&rhs_cast);
+
+	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, NULL) < 0) {
+			RPEDEBUG("Failed realizing RHS %pV", &vp->data);
+			if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
+			rcode = -1;
+			break;
+		}
+
+		/*
+		 *	Create the virtual check item.
+		 */
+		MEM(virt = fr_pair_afrom_da(request, tmpl_da(map->lhs)));
+		virt->op = map->op;
+		fr_value_box_copy(virt, &virt->data, rhs);
+
+		rcode = paircmp_virtual(request, &request->request_pairs, virt);
+		talloc_free(virt);
+		rcode = (rcode == 0) ? 1 : 0;
+		if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
+		if (rcode != 0) break;
+	}
+
+	tmpl_cursor_clear(&cc);
+	return rcode;
+}
+
 /** Evaluate a map
  *
  * @param[in] request the request_t
@@ -586,15 +627,27 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 
 		fr_assert(tmpl_is_attr(map->lhs));
 
+		if (map->op == T_OP_REG_EQ) {
+			fr_strerror_const("Virtual attributes cannot be used with regular expressions");
+			return -1;
+		}
+
 		/*
-		 *	@todo - Also allow:
-		 *
-		 *		&LDAP-Group == &Foo-Bar
-		 *
-		 *	which would be useful, if expensive.
+		 *	&LDAP-Group == &Filter-Id
+		 */
+		if (tmpl_is_attr(map->rhs)) {
+			fr_assert(!lhs);
+			fr_assert(!rhs);
+
+			rcode = cond_compare_virtual(request, map);
+			goto done;
+		}
+
+		/*
+		 *	Forbid bad things.
 		 */
 		if (!rhs) {
-			fr_strerror_const("Cannot compare virtual attribute to other attribute");
+			fr_strerror_const("Invalid comparison for virtual attribute");
 			return -1;
 		}
 
