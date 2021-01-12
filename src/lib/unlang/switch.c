@@ -42,14 +42,13 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 
 	fr_cond_t		cond;
 	map_t			map;
-	tmpl_t			vpt;
+	tmpl_t			vpt, *switch_vpt;
 
 	switch_g = unlang_generic_to_group(instruction);
 	switch_gext = unlang_group_to_switch(switch_g);
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
-	memset(&vpt, 0, sizeof(vpt));
 
 	cond.type = COND_TYPE_MAP;
 	cond.data.map = &map;
@@ -60,6 +59,7 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 	fr_assert(switch_gext->vpt != NULL);
 
 	null_case = found = NULL;
+	switch_vpt = switch_gext->vpt;
 
 	/*
 	 *	The attribute doesn't exist.  We can skip
@@ -100,6 +100,7 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 
 		tmpl_init_shallow(&vpt, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, p, len);
 		fr_value_box_bstrndup_shallow(&vpt.data.literal, NULL, p, len, false);
+		switch_vpt = &vpt;
 	}
 
 	/*
@@ -125,25 +126,21 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 
 		/*
 		 *	Create the map for comparisons.
+		 *
+		 *	Try to ensure that any attribute is on the
+		 *	LHS, as that's what cond_eval() expects to
+		 *	see.
 		 */
-		if (tmpl_is_attr(switch_gext->vpt) && !tmpl_is_data(case_gext->vpt)) {
-			map.lhs = case_gext->vpt;
-			map.rhs = switch_gext->vpt;
-
-		/*
-		 *	Use the pre-expanded string.
-		 */
-		} else if (tmpl_is_xlat(switch_gext->vpt) ||
-			   tmpl_is_xlat_unresolved(switch_gext->vpt) ||
-			   tmpl_is_exec(switch_gext->vpt)) {
-			map.lhs = &vpt;
+		if (tmpl_is_attr(switch_vpt)) {
+			map.lhs = switch_vpt;
 			map.rhs = case_gext->vpt;
 
-		/*
-		 *	Else use the 'switch' statement as-is.
-		 */
+		} else if (tmpl_is_attr(case_gext->vpt)) {
+			map.lhs = case_gext->vpt;
+			map.rhs = switch_vpt;
+
 		} else {
-			map.lhs = switch_gext->vpt;
+			map.lhs = switch_vpt;
 			map.rhs = case_gext->vpt;
 		}
 
