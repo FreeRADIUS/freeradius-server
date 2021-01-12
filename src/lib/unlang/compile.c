@@ -424,7 +424,10 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 
 	if (!paircmp_find(tmpl_da(map->lhs))) return true;
 
-	if (tmpl_is_regex_xlat_unresolved(map->rhs)) {
+	/*
+	 *	It's a pair comparison.  Do additional checks.
+	 */
+	if (tmpl_contains_regex(map->rhs)) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex", map->lhs->name);
 		return false;
 	}
@@ -434,6 +437,11 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 			   fr_table_str_by_value(fr_value_box_type_table, c->data.map->lhs->type, "<INVALID>"));
 		return false;
 	}
+
+	/*
+	 *	Force the RHS to be cast to whatever the LHS da is.
+	 */
+	(void) tmpl_cast_set(map->rhs, tmpl_da(map->lhs)->type);
 
 	if (map->op != T_OP_CMP_EQ) {
 		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s", map->lhs->name);
