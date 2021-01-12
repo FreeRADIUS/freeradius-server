@@ -254,31 +254,6 @@ static int cond_do_regex(request_t *request, fr_cond_t const *c,
 }
 #endif
 
-#ifdef WITH_EVAL_DEBUG
-static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const *rhs)
-{
-	if (lhs) {
-		if (lhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%pV\" (%zu)" , &lhs->datum, lhs->vb_length);
-		} else {
-			EVAL_DEBUG("LHS: 0x%pH (%zu)", &lhs->datum, lhs->vb_length);
-		}
-	} else {
-		EVAL_DEBUG("LHS: VIRTUAL");
-	}
-
-	if (rhs) {
-		if (rhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%pV\" (%zu)", &rhs->datum, rhs->vb_length);
-		} else {
-			EVAL_DEBUG("RHS: 0x%pH (%zu)", &rhs->datum, rhs->vb_length);
-		}
-	} else {
-		EVAL_DEBUG("RHS: COMPILED");
-	}
-}
-#endif
-
 static size_t regex_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char *p = out;
