@@ -60,6 +60,6 @@ def send_coa(p):
   print(p)
   return freeradius.RLM_MODULE_OK
 
-def detach():
+def detach(p):
   print("*** goodbye from example.py ***")
   return freeradius.RLM_MODULE_OK
