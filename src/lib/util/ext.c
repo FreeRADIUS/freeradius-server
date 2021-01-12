@@ -342,8 +342,9 @@ void fr_ext_debug(fr_ext_t const *def, char const *name, void const *chunk)
 	FR_FAULT_LOG("%s ext total_len=%zu", name, talloc_get_size(chunk));
 	for (i = 0; i < (int)def->max; i++) {
 		uint8_t *ext_offsets = fr_ext_offsets(def, chunk);
+
 		if (ext_offsets[i]) {
-			void		*ext = fr_ext_ptr(chunk, ext_offsets[i], def[i].info->has_hdr);
+			void		*ext = fr_ext_ptr(chunk, ext_offsets[i], def->info[i].has_hdr);
 			size_t		ext_len = fr_ext_len(def, chunk, i);
 			char const	*ext_name = fr_table_ordered_str_by_num(def->name_table,
 										*def->name_table_len,
