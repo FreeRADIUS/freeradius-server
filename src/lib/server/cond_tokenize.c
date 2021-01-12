@@ -244,30 +244,52 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	/*
 	 *	Regular expressions have their own casting rules.
 	 */
-	if (tmpl_is_regex(c->data.map->rhs)) {
+	if (tmpl_contains_regex(c->data.map->rhs)) {
 		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
 		fr_assert(!tmpl_is_list(c->data.map->lhs));
+		fr_assert(c->data.map->rhs->cast == FR_TYPE_INVALID);
 
 		/*
-		 *	If the LHS is unresolved data, then cast it to
-		 *	a string.
+		 *	Can't use casts with regular expressions, on
+		 *	LHS or RHS.  Instead, the regular expression
+		 *	returns a true/false match.
+		 *
+		 *	It's OK to have a redundant cast to string on
+		 *	the LHS.  We also allow a cast to octets, in
+		 *	which case we do a binary regex comparison.
+		 *
+		 *	@todo - ensure that the regex interpreter is
+		 *	binary-safe!
 		 */
-		if (tmpl_is_unresolved(c->data.map->lhs)) {
-			if (tmpl_cast_in_place(c->data.map->lhs, FR_TYPE_STRING, NULL) < 0) return -1;
+		cast_type = c->data.map->lhs->cast;
+		if (cast_type != FR_TYPE_INVALID) {
+			if ((cast_type != FR_TYPE_STRING) &&
+			    (cast_type != FR_TYPE_OCTETS)) {
+				fr_strerror_const("Invalid cast used with regular expression");
+				if (in) fr_sbuff_set(in, m_lhs);
+				return -1;
+			}
+		} else {
+			cast_type = FR_TYPE_STRING;
+		}
+
+		/*
+		 *	Ensure that the data is cast appropriately.
+		 */
+		if (tmpl_is_unresolved(c->data.map->lhs) || tmpl_is_data(c->data.map->lhs)) {
+			if (tmpl_cast_in_place(c->data.map->lhs, FR_TYPE_STRING, NULL) < 0) {
+				if (in) fr_sbuff_set(in, m_lhs);
+				return -1;
+			}
 
 			(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
-			return 0;
 		}
 
 		/*
-		 *	The LHS doesn't have a cast, so we coerce it
-		 *	to string.  This means one fewer check at
-		 *	run-time.
+		 *	Force a cast to 'string', so the conditional
+		 *	evaluator has less work to do.
 		 */
-		if (c->data.map->lhs->cast == FR_TYPE_INVALID) {
-			(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_STRING);
-		}
-
+		(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_STRING);
 		return 0;
 	}
 #endif
@@ -1041,6 +1063,12 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	 *	at the start of the flags.
 	 */
 	if (type == T_SOLIDUS_QUOTED_STRING) {
+		if (cast != FR_TYPE_INVALID) {
+			fr_strerror_const("Invalid cast used with regular expression");
+			fr_sbuff_set(&our_in, &m);
+			goto error;
+		}
+
 		if (!tmpl_contains_regex(vpt)) {
 			fr_strerror_const("Expected regex");
 			fr_sbuff_set(&our_in, &m);
@@ -1388,34 +1416,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		if ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) {
 			if (!tmpl_contains_regex(rhs)) {
 				fr_strerror_const("Expected regular expression");
-				fr_sbuff_set(&our_in, &m_rhs);
-				goto error;
-			}
-
-			/*
-			 *	Can't use casts with regular
-			 *	expressions, on LHS or RHS.  Instead,
-			 *	the regular expression returns a
-			 *	true/false match.
-			 *
-			 *	It's OK to have a redundant cast to
-			 *	string on the LHS.  We also allow a
-			 *	cast to octets, in which case we do a
-			 *	binary regex comparison.
-			 *
-			 *	@todo - ensure that the regex
-			 *	interpreter is binary-safe!
-			 */
-			if ((lhs->cast != FR_TYPE_INVALID) &&
-			    (lhs->cast != FR_TYPE_STRING) &&
-			    (lhs->cast != FR_TYPE_OCTETS)) {
-				fr_strerror_const("Invalid cast used with regular expression");
-				fr_sbuff_set(&our_in, &m_lhs);
-				goto error;
-			}
-
-			if (rhs->cast != FR_TYPE_INVALID) {
-				fr_strerror_const("Invalid cast used with regular expression");
 				fr_sbuff_set(&our_in, &m_rhs);
 				goto error;
 			}
