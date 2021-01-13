@@ -40,7 +40,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* More RFC complaince for various corner cases of DHCP,
 	* Treat DHCP Discover and Request differently for lease allocation times.
 	* Add support for PBKDF2 keys. Fixes #2649
-	* Update dictionary.mikrotik, dictionary.aruba
+	* Update dictionary.mikrotik, dictionary.aruba, dictionary.paloalto
 	* Update default PostgreSQL schema to use "text" instead of
 	  a fixed-size "varchar".
 	* The default minimum TLS version is not TLS 1.2
