@@ -181,18 +181,15 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_do_regex(request_t *request, fr_cond_t const *c,
-		         fr_value_box_t const *lhs,
-		         fr_value_box_t const *rhs,
-			 regex_t *preg)
+static int cond_do_regex(request_t *request, fr_value_box_t const *subject, regex_t *preg)
 {
 	uint32_t	subcaptures;
 	int		ret;
 
 	fr_regmatch_t	*regmatch;
 
-	if (!fr_cond_assert(lhs != NULL)) return -1;
-	if (!fr_cond_assert(lhs->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(subject != NULL)) return -1;
+	if (!fr_cond_assert(subject->type == FR_TYPE_STRING)) return -1;
 
 	EVAL_DEBUG("CMP WITH REGEX");
 
@@ -203,7 +200,7 @@ static int cond_do_regex(request_t *request, fr_cond_t const *c,
 	/*
 	 *	Evaluate the expression
 	 */
-	ret = regex_exec(preg, lhs->vb_strvalue, lhs->vb_length, regmatch);
+	ret = regex_exec(preg, subject->vb_strvalue, subject->vb_length, regmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -578,7 +575,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		 *	We have a value on the LHS.  Just go do that.
 		 */
 		if (lhs) {
-			rcode = cond_do_regex(request, c, lhs, rhs, preg);
+			rcode = cond_do_regex(request, lhs, preg);
 			goto done;
 		}
 
@@ -680,7 +677,7 @@ check_attrs:
 			 *	precompiled regex.
 			 */
 			if (map->op == T_OP_REG_EQ) {
-				rcode = cond_do_regex(request, c, lhs, rhs, preg);
+				rcode = cond_do_regex(request, lhs, preg);
 				goto next;
 			}
 
