@@ -313,12 +313,12 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 			 *  should copy unmatched attributes ('relaxed' mode).
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
-				fr_pair_t *prev = fr_pair_list_prev(&packet->vps, input_item);
+				fr_pair_t *prev = fr_pair_list_prev(list, input_item);
 
 				if (!pass) {
 					RDEBUG3("Attribute \"%s\" allowed by relaxed mode", input_item->da->name);
 				}
-				fr_pair_remove(&packet->vps, input_item);
+				fr_pair_remove(list, input_item);
 				fr_assert(input_item != NULL);
 				fr_pair_add(&output, input_item);
 				input_item = prev; /* Set input_item to previous in the list for outer loop */
