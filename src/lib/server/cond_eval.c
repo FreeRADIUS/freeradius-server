@@ -555,11 +555,14 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 	 *	Precompile the regular expressions.
 	 */
 	if (map->op == T_OP_REG_EQ) {
-		if (!rhs) {
-			fr_assert(map->rhs->type == TMPL_TYPE_REGEX);
+		if (tmpl_is_regex(map->rhs)) {
+			if (!fr_cond_assert(!rhs)) goto done;
+
 			preg = tmpl_regex(map->rhs);
 		} else {
 			ssize_t slen;
+
+			if (!fr_cond_assert(rhs && tmpl_contains_regex(map->rhs))) goto done;
 
 			slen = regex_compile(request, &preg_free, rhs->vb_strvalue, rhs->vb_length,
 					     tmpl_regex_flags(map->rhs), true, true);
