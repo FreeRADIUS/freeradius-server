@@ -6,7 +6,7 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,install doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 ifneq "$(WITH_DOC)" ""
 
 #
@@ -171,7 +171,7 @@ test.doc:
 ifneq "$(DOXYGEN)" ""
 ifneq "$(GRAPHVIZ_DOT)" ""
 .PHONY: doxygen
-doxygen:
+doxygen doc/doxygen/html/index.html:
 	@echo DOXYGEN $(DOXYGEN_DIR)
 	${Q}mkdir -p $(DOXYGEN_HTML_DIR)
 	${Q}(cd $(DOXYGEN_DIR) && $(DOXYGEN))
