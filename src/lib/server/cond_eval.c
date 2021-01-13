@@ -183,41 +183,18 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
  */
 static int cond_do_regex(request_t *request, fr_cond_t const *c,
 		         fr_value_box_t const *lhs,
-		         fr_value_box_t const *rhs)
+		         fr_value_box_t const *rhs,
+			 regex_t *preg)
 {
-	map_t const *map = c->data.map;
-
-	ssize_t		slen;
 	uint32_t	subcaptures;
 	int		ret;
 
-	regex_t		*preg, *rreg = NULL;
 	fr_regmatch_t	*regmatch;
 
 	if (!fr_cond_assert(lhs != NULL)) return -1;
 	if (!fr_cond_assert(lhs->type == FR_TYPE_STRING)) return -1;
 
 	EVAL_DEBUG("CMP WITH REGEX");
-
-	switch (map->rhs->type) {
-	case TMPL_TYPE_REGEX: /* pre-compiled to a regex */
-		preg = tmpl_regex(map->rhs);
-		break;
-
-	default:
-		if (!fr_cond_assert(rhs && rhs->type == FR_TYPE_STRING)) return -1;
-		if (!fr_cond_assert(rhs && rhs->vb_strvalue)) return -1;
-		slen = regex_compile(request, &rreg, rhs->vb_strvalue, rhs->vb_length,
-				     tmpl_regex_flags(map->rhs), true, true);
-		if (slen <= 0) {
-			REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
-			EVAL_DEBUG("FAIL %d", __LINE__);
-
-			return -1;
-		}
-		preg = rreg;
-		break;
-	}
 
 	subcaptures = regex_subcapture_count(preg);
 	if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
@@ -248,7 +225,6 @@ static int cond_do_regex(request_t *request, fr_cond_t const *c,
 	}
 
 	talloc_free(regmatch);	/* free if not consumed */
-	if (preg) talloc_free(rreg);
 
 	return ret;
 }
@@ -545,6 +521,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 
 	fr_value_box_t *lhs, *lhs_free;
 	fr_value_box_t *rhs, *rhs_free;
+	regex_t		*preg, *preg_free;
 
 #ifndef NDEBUG
 	/*
@@ -559,6 +536,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
 
 	MAP_VERIFY(map);
+	preg = preg_free = NULL;
 
 	/*
 	 *	Realize the LHS of a condition.
@@ -577,19 +555,47 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 	}
 
 	/*
+	 *	Precompile the regular expressions.
+	 */
+	if (map->op == T_OP_REG_EQ) {
+		if (!rhs) {
+			fr_assert(map->rhs->type == TMPL_TYPE_REGEX);
+			preg = tmpl_regex(map->rhs);
+		} else {
+			ssize_t slen;
+
+			slen = regex_compile(request, &preg_free, rhs->vb_strvalue, rhs->vb_length,
+					     tmpl_regex_flags(map->rhs), true, true);
+			if (slen <= 0) {
+				REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
+				EVAL_DEBUG("FAIL %d", __LINE__);
+				return -1;
+			}
+			preg = preg_free;
+		}
+
+		/*
+		 *	We have a value on the LHS.  Just go do that.
+		 */
+		if (lhs) {
+			rcode = cond_do_regex(request, c, lhs, rhs, preg);
+			goto done;
+		}
+
+		/*
+		 *	Otherwise loop over the LHS attribute / list.
+		 */
+		goto check_attrs;
+	}
+
+	/*
 	 *	We have both left and right sides as #fr_value_box_t,
 	 *	we can just evaluate the comparison here.
 	 *
 	 *	This is largely just cond_cmp_values() ...
 	 */
 	if (lhs && rhs) {
-		if (map->op != T_OP_REG_EQ) {
-			fr_assert(map->op != T_OP_REG_NE); /* must be ! ... =~ ... */
-			rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
-		} else {
-			rcode = cond_do_regex(request, c, lhs, rhs);
-		}
-
+		rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
 		goto done;
 	}
 
@@ -640,6 +646,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		goto done;
 	}
 
+check_attrs:
 	switch (map->lhs->type) {
 	/*
 	 *	LHS is an attribute or list
@@ -668,20 +675,12 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 			}
 
 			/*
-			 *	We can do the regex comparison now.
-			 *	If we have a realized RHS, then the
-			 *	function will compile that.  Otherwise
-			 *	if there's no RHS, the function will
-			 *	use the pre-compiled regex.
-			 *
-			 *	@todo - hoist the regex compilation of
-			 *	RHS out of the loop, so that we
-			 *	compile it only once, instead of
-			 *	repeatedly for each attribute.  That
-			 *	should speed things up a bit.
+			 *	Now that we have a realized LHS, we
+			 *	can do a regex comparison, using the
+			 *	precompiled regex.
 			 */
 			if (map->op == T_OP_REG_EQ) {
-				rcode = cond_do_regex(request, c, lhs, rhs);
+				rcode = cond_do_regex(request, c, lhs, rhs, preg);
 				goto next;
 			}
 
@@ -726,18 +725,6 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 	}
 		break;
 
-	case TMPL_TYPE_DATA:
-	case TMPL_TYPE_XLAT:
-		/*
-		 *	LHS is expanded.  RHS is a precompiled regex.
-		 */
-		fr_assert(map->op == T_OP_REG_EQ);
-		fr_assert(!rhs);
-		fr_assert(tmpl_is_regex(map->rhs));
-
-		rcode = cond_do_regex(request, c, lhs, NULL);
-		break;
-
 	default:
 		fr_assert(0);
 		rcode = -1;
@@ -749,6 +736,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 done:
 	talloc_free(lhs_free);
 	talloc_free(rhs_free);
+	talloc_free(preg_free);
 	return rcode;
 }
 
