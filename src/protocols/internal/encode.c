@@ -62,7 +62,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	fr_pair_t		*vp = fr_cursor_current(cursor);
 
 	ssize_t			slen;
-	size_t			flen, vlen;
+	size_t			flen, vlen, mlen;
 
 	uint8_t			buff[sizeof(uint64_t)];
 
@@ -111,10 +111,11 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
 
 	/*
-	 *	Create dbuff to hold encoded data that assures space
-	 *	for the length.
+	 *	Create dbuff to hold encoded data--the fr_dbuff_move() done
+	 *	if the length field needs more than one byte will guard
+	 *	against insufficient space.
 	 */
-	value_dbuff = FR_DBUFF_RESERVE(&work_dbuff, sizeof(uint64_t) - 1);
+	value_dbuff = FR_DBUFF_COPY(&work_dbuff);
 	fr_dbuff_marker(&value_field, &value_dbuff);
 
 	switch (da->type) {
@@ -229,7 +230,8 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	if (flen > 1) {
 		fr_dbuff_advance(&value_field, flen - 1);
 		fr_dbuff_set_to_start(&value_dbuff);
-		fr_dbuff_move(&value_field, &value_dbuff, vlen);
+		mlen = fr_dbuff_move(&value_field, &value_dbuff, vlen);
+		if (mlen < vlen) return -(vlen - mlen);
 	}
 
 	fr_dbuff_in_memcpy(&len_field, buff, flen);
