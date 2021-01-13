@@ -113,8 +113,9 @@ $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
 		z=$$(basename $$x | sed 's/.adoc//'); \
 		echo "INSTALL_MAN_FILES += $(R)$(mandir)/man$$y/$$z.$$y" >> $@; \
-		echo "$(R)$(mandir)/man$$y/$$z.$$y: $$x | $(R)$(mandir)/man$$y" >> $@; \
+		echo "$(R)$(mandir)/man$$y/$$z.$$y: $$x" >> $@; \
 		echo "\t"'@echo INSTALL-MAN $$(notdir $$@)' >> $@; \
+		echo "\t"'@echo mkdir -p $$(dir $$@)' >> $@; \
 		echo "\t"'@asciidoctor -b manpage $$< -o $$@' >> $@; \
 		echo "" >> $@; \
 	done
@@ -122,7 +123,7 @@ $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 -include $(BUILD_DIR)/make/man.mk
 ALL_INSTALL += $(INSTALL_MAN_FILES)
 
-install.doc.man: $(INSTALL_MAN_FILES)
+install.doc.man install.man: $(INSTALL_MAN_FILES)
 
 .PHONY: clean.doc
 clean.doc:
