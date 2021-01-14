@@ -482,6 +482,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(tmpl_is_attr(map->rhs));
 
+	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_clear(&rhs_cast);
 
 	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
