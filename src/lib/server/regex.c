@@ -302,7 +302,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, 
 	char const	*p;
 	int		ret;
 
-	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	rc = talloc_get_type_abort(request_data_reference(request, request, REQUEST_DATA_REGEX), fr_regcapture_t);
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;

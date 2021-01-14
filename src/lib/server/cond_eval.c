@@ -176,12 +176,22 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
 #ifdef HAVE_REGEX
 /** Perform a regular expressions comparison between two operands
  *
+ * @param[in] request		The current request.
+ * @param[in] subject		to executed regex against.
+ * @param[in,out] preg		Pointer to pre-compiled or runtime-compiled
+ *				regular expression.  In the case of runtime-compiled
+ *				the pattern may be stolen by the `regex_sub_to_request`
+ *				function as the original pattern is needed to resolve
+ *				capture groups.
+ *				The caller should only free the `regex_t *` if it
+ *				compiled it, and the pointer has not been set to NULL
+ *				when this function returns.
  * @return
  *	- -1 on failure.
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_do_regex(request_t *request, fr_value_box_t const *subject, regex_t *preg)
+static int cond_do_regex(request_t *request, fr_value_box_t const *subject, regex_t **preg)
 {
 	uint32_t	subcaptures;
 	int		ret;
@@ -193,14 +203,14 @@ static int cond_do_regex(request_t *request, fr_value_box_t const *subject, rege
 
 	EVAL_DEBUG("CMP WITH REGEX");
 
-	subcaptures = regex_subcapture_count(preg);
+	subcaptures = regex_subcapture_count(*preg);
 	if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
 	MEM(regmatch = regex_match_data_alloc(NULL, subcaptures));
 
 	/*
 	 *	Evaluate the expression
 	 */
-	ret = regex_exec(preg, subject->vb_strvalue, subject->vb_length, regmatch);
+	ret = regex_exec(*preg, subject->vb_strvalue, subject->vb_length, regmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -209,7 +219,7 @@ static int cond_do_regex(request_t *request, fr_value_box_t const *subject, rege
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, &preg, &regmatch);
+		regex_sub_to_request(request, preg, &regmatch);
 		break;
 
 	case -1:
@@ -513,12 +523,13 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
  */
 int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 {
-	int rcode = 0;
-	map_t const *map = c->data.map;
+	int		rcode = 0;
+	map_t const	*map = c->data.map;
 
 	fr_value_box_t *lhs, *lhs_free;
 	fr_value_box_t *rhs, *rhs_free;
-	regex_t		*preg, *preg_free;
+	regex_t		*preg;
+	bool		we_compiled_preg = false;
 
 #ifndef NDEBUG
 	/*
@@ -533,7 +544,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
 
 	MAP_VERIFY(map);
-	preg = preg_free = NULL;
+	preg = NULL;
 
 	/*
 	 *	Realize the LHS of a condition.
@@ -564,21 +575,21 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 
 			if (!fr_cond_assert(rhs && tmpl_contains_regex(map->rhs))) goto done;
 
-			slen = regex_compile(request, &preg_free, rhs->vb_strvalue, rhs->vb_length,
+			slen = regex_compile(request, &preg, rhs->vb_strvalue, rhs->vb_length,
 					     tmpl_regex_flags(map->rhs), true, true);
 			if (slen <= 0) {
 				REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
 				EVAL_DEBUG("FAIL %d", __LINE__);
 				return -1;
 			}
-			preg = preg_free;
+			we_compiled_preg = true;
 		}
 
 		/*
 		 *	We have a value on the LHS.  Just go do that.
 		 */
 		if (lhs) {
-			rcode = cond_do_regex(request, lhs, preg);
+			rcode = cond_do_regex(request, lhs, &preg);
 			goto done;
 		}
 
@@ -680,7 +691,7 @@ check_attrs:
 			 *	precompiled regex.
 			 */
 			if (map->op == T_OP_REG_EQ) {
-				rcode = cond_do_regex(request, lhs, preg);
+				rcode = cond_do_regex(request, lhs, &preg);
 				goto next;
 			}
 
@@ -736,7 +747,7 @@ check_attrs:
 done:
 	talloc_free(lhs_free);
 	talloc_free(rhs_free);
-	talloc_free(preg_free);
+	if (preg && we_compiled_preg) talloc_free(preg);
 	return rcode;
 }
 
