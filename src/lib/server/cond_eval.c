@@ -528,8 +528,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 
 	fr_value_box_t *lhs, *lhs_free;
 	fr_value_box_t *rhs, *rhs_free;
-	regex_t		*preg;
-	bool		we_compiled_preg = false;
+	regex_t		*preg, *preg_free;
 
 #ifndef NDEBUG
 	/*
@@ -544,7 +543,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 		   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
 
 	MAP_VERIFY(map);
-	preg = NULL;
+	preg = preg_free = NULL;
 
 	/*
 	 *	Realize the LHS of a condition.
@@ -575,14 +574,14 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 
 			if (!fr_cond_assert(rhs && tmpl_contains_regex(map->rhs))) goto done;
 
-			slen = regex_compile(request, &preg, rhs->vb_strvalue, rhs->vb_length,
+			slen = regex_compile(request, &preg_free, rhs->vb_strvalue, rhs->vb_length,
 					     tmpl_regex_flags(map->rhs), true, true);
 			if (slen <= 0) {
 				REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
 				EVAL_DEBUG("FAIL %d", __LINE__);
 				return -1;
 			}
-			we_compiled_preg = true;
+			preg = preg_free;
 		}
 
 		/*
@@ -747,7 +746,12 @@ check_attrs:
 done:
 	talloc_free(lhs_free);
 	talloc_free(rhs_free);
-	if (preg && we_compiled_preg) talloc_free(preg);
+
+	/*
+	 *	Capture groups may have grabbed preg and put it into
+	 *	request data, in which case we don't free it.
+	 */
+	if (preg) talloc_free(preg_free);
 	return rcode;
 }
 
