@@ -162,13 +162,12 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	Output must be a non-zero limited size.
 	 */
-	if ((dict_attr_sizes[type][0] ==  0) ||
-	    (dict_attr_sizes[type][0] != dict_attr_sizes[type][1])) {
+	if ((min_size(type) ==  0) || !is_fixed_size(type)) {
 		REDEBUG("unpack requires fixed-size output type, not '%s'", data_type);
 		goto nothing;
 	}
 
-	if (input_len < (offset + dict_attr_sizes[type][0])) {
+	if (input_len < (offset + min_size(type))) {
 		REDEBUG("Insufficient data to unpack '%s' from '%s'", data_type, data_name);
 		goto nothing;
 	}
@@ -181,7 +180,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	MEM(cast = fr_pair_afrom_da(request, da));
 
-	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
+	memcpy(&(cast->data), input + offset, min_size(type));
 
 	/*
 	 *	Hacks

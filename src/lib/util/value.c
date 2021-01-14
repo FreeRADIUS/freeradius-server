@@ -4209,7 +4209,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Set size for all fixed length attributes.
 	 */
-	ret = dict_attr_sizes[*dst_type][1];	/* Max length */
+	ret = max_size(*dst_type);
 
 	/*
 	 *	Lookup any names before continuing
@@ -4501,13 +4501,13 @@ parse:
 		if (fr_inet_pton(&dst->vb_ip, in, inlen, AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
 		switch (dst->vb_ip.af) {
 		case AF_INET:
-			ret = dict_attr_sizes[FR_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
+			ret = min_size(FR_TYPE_COMBO_IP_ADDR); /* size of IPv4 address */
 			*dst_type = FR_TYPE_IPV4_ADDR;
 			break;
 
 		case AF_INET6:
 			*dst_type = FR_TYPE_IPV6_ADDR;
-			ret = dict_attr_sizes[FR_TYPE_COMBO_IP_ADDR][1]; /* size of IPv6 address */
+			ret = max_size(FR_TYPE_COMBO_IP_ADDR); /* size of IPv6 address */
 			break;
 
 		default:
