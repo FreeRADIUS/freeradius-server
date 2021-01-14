@@ -49,6 +49,7 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
+	memset(&vpt, 0, sizeof(vpt));
 
 	cond.type = COND_TYPE_MAP;
 	cond.data.map = &map;
