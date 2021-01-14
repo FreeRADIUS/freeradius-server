@@ -7,6 +7,26 @@
 #  build the documentation.
 #
 WITH_DOC := $(strip $(foreach x,install doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+#
+#  We're installing the documentation, but there's no "docdir".
+#
+ifneq "$(findstring install,$(WITH_DOC))" ""
+ifeq "$(docdir)" "no"
+$(error 'docdir' is required to do 'make install')
+endif
+
+#
+#  Skip "make install*" if asciidoctor and pandoc are missing.
+#
+ifeq "$(ASCIIDOCTOR)" ""
+WITH_DOC=
+endif
+ifeq "$(PANDOC)" ""
+WITH_DOC=
+endif
+
+endif
+
 ifneq "$(WITH_DOC)" ""
 
 #
@@ -30,15 +50,6 @@ endif
 ifeq "$(ANTORA)" ""
 ifneq "$(findstring docsite,$(MAKECMDGOALS))" ""
 $(error antora is required to build the documentation)
-endif
-endif
-
-#
-#  We're installing the documentation, but there's no "docdir".
-#
-ifeq "$(docdir)" "no"
-ifneq "$(findstring install,$(WITH_DOC))" ""
-$(error 'docdir' is required to do 'make install')
 endif
 endif
 
