@@ -212,8 +212,8 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 		 *	then don't encode this VP.
 		 */
 		if (hdr[1] && vp->da->flags.array &&
-		    (dict_attr_sizes[vp->da->type][0] == dict_attr_sizes[vp->da->type][1]) &&
-		    (hdr[1] + dict_attr_sizes[vp->da->type][0]) > 255) {
+		    is_fixed_size(vp->da->type) &&
+		    (hdr[1] + min_size(vp->da->type)) > 255) {
 			break;
 		}
 

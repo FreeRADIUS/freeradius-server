@@ -506,7 +506,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			 *	@todo - allow dns_label encoding as
 			 *	the first member.
 			 */
-			if ((dict_attr_sizes[sibling->type][1] == ~(size_t) 0) &&
+			if ((max_size(sibling->type) == ~(size_t) 0) &&
 			    (sibling->flags.length == 0)) {
 				fr_strerror_const("Only the last child of a 'struct' attribute can have variable length");
 				return false;
