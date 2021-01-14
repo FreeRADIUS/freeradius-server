@@ -299,16 +299,18 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name)
 {
 	fr_regcapture_t	*rc;
+	void		*rd;
 	char const	*p;
 	int		ret;
 
-	rc = talloc_get_type_abort(request_data_reference(request, request, REQUEST_DATA_REGEX), fr_regcapture_t);
-	if (!rc) {
+	rd = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!rd) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
 		return -1;
 	}
 
+	rc = talloc_get_type_abort(rd, fr_regcapture_t);
 	ret = pcre_get_named_substring(rc->preg->compiled, rc->regmatch->subject,
 				       (int *)rc->regmatch->match_data, (int)rc->regmatch->used, name, &p);
 	switch (ret) {
