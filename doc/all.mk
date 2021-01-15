@@ -7,6 +7,28 @@
 #  build the documentation.
 #
 WITH_DOC := $(strip $(foreach x,install doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+
+#
+#  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
+#  rule here, instead of overloading the "install.man" rule.
+#
+ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
+$(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
+	@rm -f $@
+	${Q}for x in $^; do \
+		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
+		z=$$(basename $$x | sed 's/.adoc//'); \
+		echo "AUTO_MAN_FILES += $(R)$(mandir)/man$$y/$$z.$$y" >> $@; \
+		echo "man/man$$y/$$z.$$y: $$x" >> $@; \
+		printf "\t"'@echo AUTO-MAN $$(notdir $$@)'"\n" >> $@; \
+		printf "\t"'@mkdir -p $$(dir $$@)'"\n" >> $@; \
+		printf "\t"'@asciidoctor -b manpage $$< -o $$@'"\n" >> $@; \
+		echo "" >> $@; \
+	done
+
+-include $(BUILD_DIR)/make/man.mk
+all: $(AUTO_MAN_FILES)
+
 #
 #  We're installing the documentation, but there's no "docdir".
 #
@@ -58,7 +80,7 @@ endif
 #
 all.doc: html docsite
 
-install: install.doc install.doc.man
+install: install.doc
 
 clean: clean.doc
 
@@ -112,29 +134,6 @@ $(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},
 #  Have a "doc" install target for testing.
 #
 install.doc: $(addprefix $(R)$(docdir)/,$(ALL_DOC_FILES))
-
-#
-#  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
-#  rule here, instead of overloading the "install.man" rule.
-#
-ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
-$(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
-	@rm -f $@
-	${Q}for x in $^; do \
-		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
-		z=$$(basename $$x | sed 's/.adoc//'); \
-		echo "INSTALL_MAN_FILES += $(R)$(mandir)/man$$y/$$z.$$y" >> $@; \
-		echo "$(R)$(mandir)/man$$y/$$z.$$y: $$x" >> $@; \
-		printf "\t"'@echo INSTALL-MAN $$(notdir $$@)'"\n" >> $@; \
-		printf "\t"'@echo mkdir -p $$(dir $$@)'"\n" >> $@; \
-		printf "\t"'@asciidoctor -b manpage $$< -o $$@'"\n" >> $@; \
-		echo "" >> $@; \
-	done
-
--include $(BUILD_DIR)/make/man.mk
-ALL_INSTALL += $(INSTALL_MAN_FILES)
-
-install.doc.man install.man: $(INSTALL_MAN_FILES)
 
 .PHONY: clean.doc
 clean.doc:
