@@ -66,9 +66,8 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	bool tainted = false;
 	char *data_name, *data_size, *data_type;
 	char *p;
-	size_t len, input_len;
+	size_t len, input_len, offset;
 	ssize_t slen;
-	int offset;
 	fr_type_t type;
 	fr_dict_attr_t const *da;
 	fr_pair_t *vp;;
@@ -157,7 +156,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	if (offset >= input_len) {
-		REDEBUG("unpack offset %d is larger than input data length %zd", offset, input_len);
+		REDEBUG("unpack offset %zu is larger than input data length %zu", offset, input_len);
 		goto nothing;
 	}
 
