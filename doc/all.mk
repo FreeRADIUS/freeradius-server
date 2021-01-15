@@ -125,9 +125,9 @@ $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 		z=$$(basename $$x | sed 's/.adoc//'); \
 		echo "INSTALL_MAN_FILES += $(R)$(mandir)/man$$y/$$z.$$y" >> $@; \
 		echo "$(R)$(mandir)/man$$y/$$z.$$y: $$x" >> $@; \
-		echo "\t"'@echo INSTALL-MAN $$(notdir $$@)' >> $@; \
-		echo "\t"'@echo mkdir -p $$(dir $$@)' >> $@; \
-		echo "\t"'@asciidoctor -b manpage $$< -o $$@' >> $@; \
+		printf "\t"'@echo INSTALL-MAN $$(notdir $$@)'"\n" >> $@; \
+		printf "\t"'@echo mkdir -p $$(dir $$@)'"\n" >> $@; \
+		printf "\t"'@asciidoctor -b manpage $$< -o $$@'"\n" >> $@; \
 		echo "" >> $@; \
 	done
 
