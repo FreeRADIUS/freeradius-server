@@ -56,42 +56,6 @@ fr_table_num_ordered_t const date_precision_table[] = {
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
 
-
-/** Map data types to min / max data sizes
- */
-size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
-
-	[FR_TYPE_STRING]	= {0, ~0},
-	[FR_TYPE_OCTETS]	= {0, ~0},
-
-	[FR_TYPE_IPV4_ADDR]	= {4, 4},
-	[FR_TYPE_IPV4_PREFIX]	= {6, 6},
-	[FR_TYPE_IPV6_ADDR]	= {16, 16},
-	[FR_TYPE_IPV6_PREFIX]	= {2, 18},
-	[FR_TYPE_COMBO_IP_ADDR]	= {4, 16},
-	[FR_TYPE_IFID]		= {8, 8},
-	[FR_TYPE_ETHERNET]	= {6, 6},
-
-	[FR_TYPE_BOOL]		= {1, 1},
-	[FR_TYPE_UINT8]		= {1, 1},
-	[FR_TYPE_UINT16]	= {2, 2},
-	[FR_TYPE_UINT32]	= {4, 4},
-	[FR_TYPE_UINT64]	= {8, 8},
-	[FR_TYPE_SIZE]		= {sizeof(size_t), sizeof(size_t)},
-	[FR_TYPE_INT32]		= {4, 4},
-
-	[FR_TYPE_DATE]		= {4, 4},
-	[FR_TYPE_TIME_DELTA]   	= {4, 4},
-
-	[FR_TYPE_TLV]		= {2, ~0},
-	[FR_TYPE_STRUCT]	= {1, ~0},
-
-	[FR_TYPE_VSA]		= {4, ~0},
-
-	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
-};
-
 /** Characters allowed in dictionary names
  *
  */

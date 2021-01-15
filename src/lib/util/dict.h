@@ -109,15 +109,6 @@ enum {
 #define da_is_bit_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_BIT_FIELD))
 #define da_is_length_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT16))
 
-extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
-
-#define min_size(_type) (dict_attr_sizes[_type][0])
-#define max_size(_type) (dict_attr_sizes[_type][1])
-
-static inline bool is_fixed_size(fr_type_t type)
-{
-	return min_size(type) == max_size(type);
-}
 
 /** Extension identifier
  *
