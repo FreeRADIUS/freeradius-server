@@ -1,0 +1,28 @@
+#
+#  PRE: if update
+#
+update request {
+	&NAS-Identifier = "yes"
+}
+
+#
+#  test raw values
+#
+if (&Test-Paircmp == 'yes') {
+	success
+
+}
+else {
+	test_fail
+}
+
+#
+#  test inter-attribute comparisons
+#
+if (&Test-Paircmp == &NAS-Identifier) {
+	success
+
+}
+else {
+	test_fail
+}

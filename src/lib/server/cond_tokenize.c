@@ -301,7 +301,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	 *	for attributes.
 	 */
 	if (tmpl_is_attr(c->data.map->rhs) &&
-	    !tmpl_is_attr(c->data.map->lhs)) {
+	    !tmpl_contains_attr(c->data.map->lhs)) { /* also unresolved attributes! */
 		tmpl_t *tmp;
 		fr_sbuff_marker_t *m_tmp;
 
