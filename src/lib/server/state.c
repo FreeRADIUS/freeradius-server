@@ -758,6 +758,8 @@ void fr_state_store_in_parent(request_t *child, void const *unique_ptr, int uniq
 		request_data_list_init(&child_entry->data);
 		talloc_set_destructor(child_entry, _free_child_data);
 
+		child_entry->ctx = child->session_state_ctx;
+
 		/*
 		 *	Pull everything out of the child,
 		 *	add it to our temporary list head...
@@ -775,15 +777,15 @@ void fr_state_store_in_parent(request_t *child, void const *unique_ptr, int uniq
 		 */
 		request_data_talloc_add(request->parent, unique_ptr, unique_int,
 					state_child_entry_t, child_entry, true, false, true);
-	}
 
-	/*
-	 *	Ensure fr_state_restore_to_child
-	 *      can be called again if it's actually
-	 *	needed, by giving the child it's own
-	 *      unique state_ctx again.
-	 */
-	MEM(request->session_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));
+		/*
+		 *	Ensure fr_state_restore_to_child
+		 *	can be called again if it's actually
+		 *	needed, by giving the child it's own
+		 * 	unique state_ctx again.
+		 */
+		MEM(request->session_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));
+	}
 }
 
 /** Restore subrequest data from a parent request
