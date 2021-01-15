@@ -325,10 +325,7 @@ static int _request_free(request_t *request)
 		/*
 		 *	Reinitialise the request
 		 */
-		talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
-		fr_assert_msg(talloc_parent(request->session_state_ctx) == NULL, "session_state_ctx %s", talloc_get_name(talloc_parent(request->session_state_ctx)));
 		talloc_free_children(request);
-		talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
 
 		memset(request, 0, sizeof(*request));
 		request->component = "free_list";
@@ -339,9 +336,6 @@ static int _request_free(request_t *request)
 		 */
 		fr_dlist_insert_head(free_list, request);
 		request_free_list = free_list;
-
-		talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
-
 
 		return -1;	/* Prevent free */
  	}
