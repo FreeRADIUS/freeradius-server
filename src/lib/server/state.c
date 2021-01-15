@@ -823,6 +823,7 @@ void fr_state_restore_to_child(request_t *child, void const *unique_ptr, int uni
 	 *	If we can restore from the parent, do so
 	 */
 	TALLOC_FREE(child->session_state_ctx);
+	fr_assert_msg(child_entry->ctx, "session child entry missing ctx");
 	child->session_state_ctx = child_entry->ctx;
 	child_entry->ctx = NULL;				/* No longer owns the ctx */
 	child_entry->thawed = child;
