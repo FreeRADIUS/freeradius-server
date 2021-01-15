@@ -123,7 +123,7 @@ DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/develope
 #  We remove the "doc/" prefix, because the documentation files are
 #  installed into $(docdir)/foo, and not $(docdir)/doc/.
 #
-ALL_DOC_FILES	:= $(patsubst doc/%,%,$(sort $(DOC_FILES) $(ADOC_FILES) $(HTML_FILES)))
+ALL_DOC_FILES	:= $(patsubst doc/%,%,$(sort $(DOC_FILES) $(ADOC_FILES)
 
 #
 #  Install doc/FOO into $(R)$(docdir)/FOO
