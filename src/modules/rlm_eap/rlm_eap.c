@@ -617,7 +617,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 								     request->dict));
 
 	if (method->submodule->clone_parent_lists) {
-		if (fr_pair_list_copy(eap_session->subrequest,
+		if (fr_pair_list_copy(eap_session->subrequest->control_ctx,
 				      &eap_session->subrequest->control_pairs, &request->control_pairs) < 0) {
 		list_copy_fail:
 			RERROR("Failed copying parent's attribute list");
