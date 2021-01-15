@@ -236,6 +236,7 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 		memcpy(&request->pair_list, &args->pair_list, sizeof(request->pair_list));
 
 #define list_init(_ctx, _list) \
+	do { \
 		vp = fr_pair_afrom_da(_ctx, request_attr_##_list); \
 		if (unlikely(!vp)) { \
 			talloc_free(pair_root); \
@@ -243,7 +244,8 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 			return -1; \
 		} \
 		fr_pair_add(&pair_root->children, vp); \
-		request->pair_list._list = vp;
+		request->pair_list._list = vp; \
+	} while(0)
 
 		if (!request->pair_list.request) list_init(request->pair_root, request);
 		if (!request->pair_list.reply) list_init(request->pair_root, reply);
