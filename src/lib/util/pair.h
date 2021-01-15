@@ -184,6 +184,15 @@ void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected
  */
 #define	fr_pair_list_single_value(_list, _vp) (_list = &_vp)
 
+/**  Function to detect empty pair_list
+ *
+ * Returns true for empty lists.
+ */
+static inline bool fr_pair_list_empty(fr_pair_list_t const *list)
+{
+	return (!*list);
+}
+
 /* Allocation and management */
 fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx);
 
