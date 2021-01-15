@@ -580,7 +580,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	/*
 	 *	Allocate a fake request_t structure.
 	 */
-	fake = request_alloc_fake(request, NULL);
+	fake = request_alloc(request, &(request_init_args_t){ .parent = request });
 	fr_assert(!fake->request_pairs);
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -589,7 +589,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	 *	Add the tunneled attributes to the fake request.
 	 */
 
-	MEM(fake->request_pairs = vp = fr_pair_afrom_da(fake->packet, attr_eap_message));
+	MEM(fake->request_pairs = vp = fr_pair_afrom_da(fake->request_ctx, attr_eap_message));
 	fr_pair_value_memdup(fake->request_pairs, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");
@@ -598,7 +598,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
+	MEM(fr_pair_add_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/*
@@ -631,7 +631,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	} /* else there WAS a t->username */
 
 	if (t->username) {
-		vp = fr_pair_copy(fake->packet, t->username);
+		vp = fr_pair_copy(fake->request_ctx, t->username);
 		fr_pair_add(&fake->request_pairs, vp);
 	}
 
@@ -680,8 +680,8 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 			/*
 			 *	Tell the original request that it's going to be proxied.
 			 */
-			fr_pair_list_copy_by_da(request, &request->control_pairs,
-						&fake->control, attr_proxy_to_realm, 0);
+			fr_pair_list_copy_by_da(request->control_ctx, &request->control_pairs,
+						&fake->control_pairs, attr_proxy_to_realm, 0);
 
 			/*
 			 *	Seed the proxy packet with the tunneled request.
@@ -691,7 +691,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 			/*
 			 *	FIXME: Actually proxy stuff
 			 */
-			request->proxy = request_alloc_fake(request, NULL);
+			request->proxy = request_alloc(request, &(request_init_args_t){ .parent = request });
 
 			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
 			memset(&request->proxy->packet->src_ipaddr, 0,

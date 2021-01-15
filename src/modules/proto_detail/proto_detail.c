@@ -304,7 +304,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 			timestamp = atoi((char const *) p);
 
-			vp = fr_pair_afrom_da(request->packet, attr_packet_original_timestamp);
+			vp = fr_pair_afrom_da(request->request_ctx, attr_packet_original_timestamp);
 			if (vp) {
 				vp->vp_date = ((fr_time_t) timestamp) * NSEC;
 				vp->type = VT_DATA;
@@ -327,7 +327,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 *	functions walking over the list.
 		 */
 		vp = NULL;
-		if ((fr_pair_list_afrom_str(request->packet, request->dict, (char const *) p, &vp) > 0) && vp) {
+		if ((fr_pair_list_afrom_str(request->request_ctx, request->dict, (char const *) p, &vp) > 0) && vp) {
 			fr_cursor_append(&cursor, vp);
 		} else {
 			RWDEBUG("Ignoring line %d - :%s", lineno, p);

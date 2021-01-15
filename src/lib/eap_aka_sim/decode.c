@@ -996,7 +996,7 @@ int fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const 
 	 *	in the SIM/AKA/AKA' dict.
 	 */
 	while (p < end) {
-		ret = fr_aka_sim_decode_pair(request->packet, decoded, dict, p, end - p, decoder_ctx);
+		ret = fr_aka_sim_decode_pair(request->request_ctx, decoded, dict, p, end - p, decoder_ctx);
 		if (ret <= 0) {
 			RPEDEBUG("Failed decoding AT");
 		error:
@@ -1015,7 +1015,7 @@ int fr_aka_sim_decode(request_t *request, fr_cursor_t *decoded, fr_dict_t const 
 	{
 		fr_pair_t *vp;
 
-		vp = fr_pair_afrom_child_num(request->packet, fr_dict_root(dict), FR_SUBTYPE);
+		vp = fr_pair_afrom_child_num(request->request_ctx, fr_dict_root(dict), FR_SUBTYPE);
 		if (!vp) {
 			fr_strerror_const("Failed allocating subtype attribute");
 			goto error;

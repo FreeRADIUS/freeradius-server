@@ -373,8 +373,8 @@ static int identity_to_permanent_identity(request_t *request, fr_pair_t *in, eap
 	 *	fancy, just copy Identity -> Permanent-Identity.
 	 */
 	if (!strip_hint) {
-		MEM(fr_pair_update_by_da(request->state_ctx, &vp,
-					 &request->state_pairs, attr_eap_aka_sim_permanent_identity) >= 0);
+		MEM(fr_pair_update_by_da(request->session_state_ctx, &vp,
+					 &request->session_state_pairs, attr_eap_aka_sim_permanent_identity) >= 0);
 		fr_pair_value_bstrndup(vp, in->vp_strvalue, in->vp_length, true);
 		return 0;
 	}
@@ -409,8 +409,8 @@ static int identity_to_permanent_identity(request_t *request, fr_pair_t *in, eap
 	 */
 	if ((fr_aka_sim_id_type(&our_type, &our_method, in->vp_strvalue, in->vp_length) < 0) ||
 	    (our_type != AKA_SIM_ID_TYPE_PERMANENT)) {
-		MEM(fr_pair_update_by_da(request->state_ctx, &vp,
-					 &request->state_pairs, attr_eap_aka_sim_permanent_identity) >= 0);
+		MEM(fr_pair_update_by_da(request->session_state_ctx, &vp,
+					 &request->session_state_pairs, attr_eap_aka_sim_permanent_identity) >= 0);
 		fr_pair_value_bstrndup(vp, in->vp_strvalue, in->vp_length, true);
 
 		RDEBUG2("%s has incorrect hint byte, expected '%c', got '%c'.  "
@@ -429,8 +429,8 @@ static int identity_to_permanent_identity(request_t *request, fr_pair_t *in, eap
 		 *	Strip off the hint byte, and then add the permanent
 		 *	identity to the output list.
 		 */
-		MEM(fr_pair_update_by_da(request->state_ctx, &vp,
-					 &request->state_pairs, attr_eap_aka_sim_permanent_identity) >= 0);
+		MEM(fr_pair_update_by_da(request->session_state_ctx, &vp,
+					 &request->session_state_pairs, attr_eap_aka_sim_permanent_identity) >= 0);
 		fr_pair_value_bstrndup(vp, in->vp_strvalue + 1, in->vp_length - 1, true);
 
 		RDEBUG2("Stripping 'hint' byte from %s", attr_eap_aka_sim_permanent_identity->name);
@@ -590,7 +590,7 @@ static unlang_action_t pseudonym_store_resume(rlm_rcode_t *p_result, module_ctx_
 		 *	state increment by 1, otherwise, add the
 		 *	attribute and set to zero.
 		 */
-		vp = fr_pair_find_by_da(&request->state_pairs, attr_eap_aka_sim_counter);
+		vp = fr_pair_find_by_da(&request->session_state_pairs, attr_eap_aka_sim_counter);
 		if (vp) {
 			vp->vp_uint16++;
 		/*
@@ -1160,7 +1160,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	 */
 	case FR_EAP_METHOD_SIM:
 	case FR_EAP_METHOD_AKA:
-		if (fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request, &request->state_pairs,
+		if (fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request, &request->session_state_pairs,
 								       &eap_aka_sim_session->keys) != 0) {
 		request_new_id:
 			switch (eap_aka_sim_session->last_id_req) {
@@ -1192,7 +1192,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	case FR_EAP_METHOD_AKA_PRIME:
 		switch (eap_aka_sim_session->kdf) {
 		case FR_KDF_VALUE_PRIME_WITH_CK_PRIME_IK_PRIME:
-			if (fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request, &request->state_pairs,
+			if (fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request, &request->session_state_pairs,
 									   &eap_aka_sim_session->keys) != 0) {
 				goto request_new_id;
 			}

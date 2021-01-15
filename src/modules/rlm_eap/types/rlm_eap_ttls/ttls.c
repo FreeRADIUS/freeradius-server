@@ -638,7 +638,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	 *	Add the tunneled attributes to the request request.
 	 */
 	fr_cursor_init(&cursor, &request->request_pairs);
-	if (eap_ttls_decode_pair(request->packet, &cursor, fr_dict_root(fr_dict_internal()),
+	if (eap_ttls_decode_pair(request->request_ctx, &cursor, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
 		code = FR_CODE_ACCESS_REJECT;
@@ -686,7 +686,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			vp = fr_pair_copy(request->packet, t->username);
+			vp = fr_pair_copy(request->request_ctx, t->username);
 			fr_pair_add(&request->request_pairs, vp);
 		}
 	} /* else the request ALREADY had a User-Name */
@@ -712,7 +712,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		if (req->response) {
 			RDEBUG2("sending chbind response");
 			fr_pair_add(&request->reply_pairs,
-				    eap_chbind_packet2vp(request->reply, req->response));
+				    eap_chbind_packet2vp(request->reply_ctx, req->response));
 		} else {
 			RDEBUG2("no chbind response");
 		}

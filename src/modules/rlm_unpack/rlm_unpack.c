@@ -172,7 +172,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	MEM(vp = fr_pair_afrom_da(request, da));
+	MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
 
 	/*
 	 *	Call the generic routines to get data from the

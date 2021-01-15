@@ -558,7 +558,7 @@ failure:
 			if (data->mppe_keys) {
 				RDEBUG2("Adding stored attributes to parent");
 				log_request_pair_list(L_DBG_LVL_2, request, NULL, &data->mppe_keys, "&parent.reply.");
-				MEM(fr_pair_list_copy(parent->reply, &parent->reply_pairs, &data->mppe_keys) >= 0);
+				MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->mppe_keys) >= 0);
 			} else {
 				RDEBUG2("No stored attributes to copy to parent");
 			}
@@ -572,7 +572,7 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			MEM(fr_pair_list_copy(parent->reply, &parent->reply_pairs, &data->reply) >= 0);
+			MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->reply) >= 0);
 			RETURN_MODULE_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);

@@ -628,7 +628,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	MEM(vp = fr_pair_afrom_da(request->reply, inst->allocated_address_da));
+	MEM(vp = fr_pair_afrom_da(request->reply_ctx, inst->allocated_address_da));
 	if (fr_pair_value_from_str(vp, allocation, allocation_len, '\0', true) < 0) {
 		DO_PART(alloc_commit);
 

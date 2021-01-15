@@ -706,7 +706,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 	if (fr_heap_num_elements(worker->time_order) >= (uint32_t) worker->config.max_requests) goto nak;
 
-	ctx = request = request_alloc(NULL);
+	ctx = request = request_alloc(NULL, NULL);
 	if (!request) goto nak;
 
 	worker_request_init(worker, request, now);

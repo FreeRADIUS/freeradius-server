@@ -221,7 +221,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	transport, via a call to ???
 	 */
 	fr_cursor_init(&cursor, &request->request_pairs);
-	if (fr_tacacs_decode(request->packet, request->packet->data, request->packet->data_len,
+	if (fr_tacacs_decode(request->request_ctx, request->packet->data, request->packet->data_len,
 			     NULL, client->secret, talloc_array_length(client->secret) - 1,
 			     &cursor) < 0) {
 		RPEDEBUG("Failed decoding packet");

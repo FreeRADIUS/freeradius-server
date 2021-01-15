@@ -46,11 +46,11 @@ static size_t		seed_string_len = 3;
 
 /**********************************************************************/
 typedef struct request_s request_t;
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx);
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args);
 void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request);
 int talloc_const_free(void const *ptr);
 
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx)
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args)
 {
 	return NULL;
 }

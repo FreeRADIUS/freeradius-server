@@ -194,12 +194,12 @@ DIAG_ON(type-limits)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_lua_unmarshall(fr_pair_t **out,
+static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 			     UNUSED rlm_lua_t const *inst, request_t *request, lua_State *L, fr_dict_attr_t const *da)
 {
 	fr_pair_t *vp;
 
-	MEM(vp = fr_pair_afrom_da(request, da));
+	MEM(vp = fr_pair_afrom_da(ctx, da));
 	switch (lua_type(L, -1)) {
 	case LUA_TNUMBER:
 	{
@@ -390,7 +390,7 @@ static int _lua_pair_set(lua_State *L)
 		return 0;
 	}
 
-	if (fr_lua_unmarshall(&new, inst, request, L, da) < 0) return -1;
+	if (fr_lua_unmarshall(request->request_ctx, &new, inst, request, L, da) < 0) return -1;
 
 	/*
 	 *	If there was already a VP at that index we replace it

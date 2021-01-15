@@ -107,7 +107,7 @@ fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
 	fr_pair_t *vp;
 
 	vp = talloc_zero(ctx, fr_pair_t);
-	if (!vp) {
+	if (unlikely(!vp)) {
 		fr_strerror_const("Out of memory");
 		return NULL;
 	}
@@ -116,6 +116,58 @@ fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
 	vp->type = VT_NONE;
 
 	talloc_set_destructor(vp, _fr_pair_free);
+
+	return vp;
+}
+
+/** A special allocation function which disables child autofree
+ *
+ * This is intended to allocate root attributes for requests.
+ * These roots are special in that they do not necessarily own
+ * the child attributes and _MUST NOT_ free them when they
+ * themselves are freed.
+ *
+ * @param[in] ctx	to allocate the pair root in.
+ * @param[in] da	The root attribute.
+ * @return
+ *	- A new root pair on success.
+ *	- NULL on failure.
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	fr_pair_t *vp;
+
+	vp = talloc_zero(ctx, fr_pair_t);
+	if (unlikely(!vp)) {
+		fr_strerror_const("Out of memory");
+		return NULL;
+	}
+
+	vp->op = T_OP_EQ;
+	vp->type = VT_NONE;
+
+	if (unlikely(da->flags.is_unknown)) {
+		fr_strerror_const("Root attribute cannot be unknown");
+		return NULL;
+	}
+
+	vp->da = da;
+
+#ifndef NDEBUG
+	switch (da->type) {
+	case FR_TYPE_GROUP:
+#endif
+		fr_pair_list_init(&vp->children);
+
+#ifndef NDEBUG
+		break;
+
+	default:
+		fr_strerror_const("Root must be a group type");
+		return NULL;
+	}
+#endif
 
 	return vp;
 }
@@ -136,10 +188,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	fr_pair_t *vp;
 
 	vp = fr_pair_alloc_null(ctx);
-	if (!vp) {
-		fr_strerror_const("Out of memory");
-		return NULL;
-	}
+	if (!vp) return NULL;
 
 	/*
 	 *	If we get passed an unknown da, we need to ensure that
@@ -156,7 +205,16 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	 *	Use the 'da' to initialize more fields.
 	 */
 	vp->da = da;
-	fr_value_box_init(&vp->data, da->type, da, false);
+
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		fr_pair_list_init(&vp->children);
+		break;
+
+	default:
+		fr_value_box_init(&vp->data, da->type, da, false);
+		break;
+	}
 
 	return vp;
 }
@@ -2270,17 +2328,26 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 					     fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
 					     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, "<INVALID>"));
 		}
-	} else if (vp->da->type != vp->data.type) {
-		char data_type_int[10], da_type_int[10];
+	} else {
+		switch (vp->da->type) {
+		case FR_TYPE_VALUE:
+		if (vp->da->type != vp->data.type) {
+			char data_type_int[10], da_type_int[10];
 
-		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
-		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->da->type);
+			snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
+			snprintf(da_type_int, sizeof(da_type_int), "%i", vp->da->type);
 
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
-				     "data type (%s) does not match da type (%s)",
-				     file, line, vp->da, vp->da->name,
-				     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, data_type_int),
-				     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, da_type_int));
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
+					     "data type (%s) does not match da type (%s)",
+					     file, line, vp->da, vp->da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, data_type_int),
+					     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, da_type_int));
+		}
+			break;
+
+		default:
+			break;
+		}
 	}
 }
 

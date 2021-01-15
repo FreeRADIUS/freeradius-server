@@ -324,7 +324,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 
 	unsigned int			pipelined = 0;
 
-	request = request_alloc(inst);
+	request = request_alloc(inst, NULL);
 	while (more) {
 		fr_ipaddr_t	acked = ipaddr; 	/* Record our progress */
 		size_t		reply_cnt = 0;
@@ -728,7 +728,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	request_t			*request;
 	uint8_t 		**result;
 
-	request = request_alloc(inst);
+	request = request_alloc(inst, NULL);
 
 	IPPOOL_BUILD_KEY(key, key_p, "*}:pool", 1);
 
@@ -919,7 +919,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 #define STATS_COMMANDS_TOTAL 8
 
-	request = request_alloc(inst);
+	request = request_alloc(inst, NULL);
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 

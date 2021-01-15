@@ -871,7 +871,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			}
 
 			fr_cursor_init(&cursor, &check_tmp);
-			rows = sql_getvpdata(request, inst, request, handle, &cursor, expanded);
+			rows = sql_getvpdata(request->control_ctx, inst, request, handle, &cursor, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving check pairs for group %s", entry->name);
@@ -926,7 +926,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			}
 
 			fr_cursor_init(&cursor, &reply_tmp);
-			rows = sql_getvpdata(request->reply, inst, request, handle, &cursor, expanded);
+			rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &cursor, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
@@ -1254,7 +1254,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		}
 
 		fr_cursor_init(&cursor, &check_tmp);
-		rows = sql_getvpdata(request, inst, request, &handle, &cursor, expanded);
+		rows = sql_getvpdata(request->control_ctx, inst, request, &handle, &cursor, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Failed getting check attributes");
@@ -1304,7 +1304,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		}
 
 		fr_cursor_init(&cursor, &reply_tmp);
-		rows = sql_getvpdata(request->reply, inst, request, &handle, &cursor, expanded);
+		rows = sql_getvpdata(request->reply_ctx, inst, request, &handle, &cursor, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");

@@ -118,27 +118,27 @@ static inline CC_HINT(always_inline) void dhcpv6_reply_initialise(request_t *req
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 		     	if (vp->da == attr_hop_count) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		     	if (vp->da == attr_relay_link_address) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		     	if (vp->da == attr_relay_peer_address) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		     	if (vp->da == attr_interface_id) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply, vp));
+		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		}
 		break;
 
 	default:
-		fr_pair_list_copy_by_da(request->reply, &request->reply_pairs, &request->request_pairs, attr_transaction_id, 1);
-		fr_pair_list_copy_by_ancestor(request->reply, &request->reply_pairs, &request->request_pairs, attr_client_id, 0);
+		fr_pair_list_copy_by_da(request->reply_ctx, &request->reply_pairs, &request->request_pairs, attr_transaction_id, 1);
+		fr_pair_list_copy_by_ancestor(request->reply_ctx, &request->reply_pairs, &request->request_pairs, attr_client_id, 0);
 		break;
 	}
 }
@@ -314,7 +314,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			 *	Add reply->packet-type in case we're
 			 *	being called via the `call {}` keyword.
 			 */
-			MEM(fr_pair_update_by_da(request->reply, &reply_packet_type,
+			MEM(fr_pair_update_by_da(request->reply_ctx, &reply_packet_type,
 						 &request->reply_pairs, attr_packet_type) >= 0);
 			reply_packet_type->vp_uint32 = request->reply->code;
 

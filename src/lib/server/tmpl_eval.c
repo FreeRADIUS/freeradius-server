@@ -66,7 +66,7 @@ fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
 		return &request->control_pairs;
 
 	case PAIR_LIST_STATE:
-		return &request->state_pairs;
+		return &request->session_state_pairs;
 	}
 
 	RWDEBUG2("List \"%s\" is not available",
@@ -96,16 +96,16 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, tmpl_pair_list_t list)
 
 	switch (list) {
 	case PAIR_LIST_REQUEST:
-		return request->packet;
+		return request->request_ctx;
 
 	case PAIR_LIST_REPLY:
-		return request->reply;
+		return request->reply_ctx;
 
 	case PAIR_LIST_CONTROL:
-		return request;
+		return request->control_ctx;
 
 	case PAIR_LIST_STATE:
-		return request->state_ctx;
+		return request->session_state_ctx;
 
 	/* Don't add default */
 	case PAIR_LIST_UNKNOWN:

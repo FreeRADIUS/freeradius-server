@@ -46,7 +46,9 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 
 #include "radclient.h"
 
-#define pair_update_request(_attr, _da) fr_pair_update_by_da(request->packet, _attr, &request->request_pairs, _da)
+#define pair_update_request(_attr, _da) fr_pair_update_by_da(request, _attr, &request->request_pairs, _da)
+#define request_pairs	request_list
+#define reply_pairs	reply_list
 
 static int retries = 3;
 static fr_time_delta_t timeout = ((fr_time_delta_t) 5) * NSEC;
@@ -391,7 +393,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Read the request VP's.
 		 */
-		if (fr_pair_list_afrom_file(request->packet, dict_radius,
+		if (fr_pair_list_afrom_file(request, dict_radius,
 					    &request->request_pairs, packets, &packets_done) < 0) {
 			char const *input;
 

@@ -67,13 +67,13 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
  */
 static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t *request)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_parallel_state_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_parallel_state_t		*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 
-	int			i, priority;
-	rlm_rcode_t		result;
-	unlang_parallel_child_state_t child_state = CHILD_DONE; /* hope that we're done */
+	int				i, priority;
+	rlm_rcode_t			result;
+	unlang_parallel_child_state_t	child_state = CHILD_DONE; /* hope that we're done */
 	request_t			*child;
 
 	/*
@@ -111,13 +111,13 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 				 *	contains state information for
 				 *	the parent.
 				 */
-				if ((fr_pair_list_copy(child->packet,
+				if ((fr_pair_list_copy(child->request_ctx,
 						       &child->request_pairs,
 						       &request->request_pairs) < 0) ||
-				    (fr_pair_list_copy(child->reply,
+				    (fr_pair_list_copy(child->reply_ctx,
 						       &child->reply_pairs,
 						       &request->reply_pairs) < 0) ||
-				    (fr_pair_list_copy(child,
+				    (fr_pair_list_copy(child->control_ctx,
 						       &child->control_pairs,
 						       &request->control_pairs) < 0)) {
 					REDEBUG("failed copying lists to clone");

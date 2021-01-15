@@ -359,7 +359,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	head before the module destructor
 	 *      runs.
 	 */
-	request = request_local_alloc(u);
+	request = request_local_alloc(u, NULL);
 	request->async = talloc_zero(request, fr_async_t);
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->module_name);
@@ -2375,7 +2375,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		/*
 		 *	Validate and decode the incoming packet
 		 */
-		reason = decode(request->reply, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
+		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
 		if (reason != DECODE_FAIL_NONE) {
 			RWDEBUG("Ignoring invalid response");
 			continue;
@@ -2434,7 +2434,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 
 			vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 			if (!vp) {
-				MEM(vp = fr_pair_afrom_da(request->reply, attr_packet_type));
+				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_packet_type));
 				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
 				fr_pair_add(&request->reply_pairs, vp);
 			}
@@ -2457,7 +2457,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 
 			fr_pair_delete_by_da(&reply, attr_message_authenticator);
 
-			MEM(vp = fr_pair_afrom_da(request->reply, attr_message_authenticator));
+			MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_message_authenticator));
 			(void) fr_pair_value_memdup(vp, (uint8_t const *) "", 1, false);
 			fr_pair_add(&request->reply_pairs, vp);
 		}

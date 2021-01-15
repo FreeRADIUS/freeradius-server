@@ -49,11 +49,11 @@ fr_dict_autoload_t subrequest_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_request_lifetime;
+static fr_dict_attr_t const *request_attr_request_lifetime;
 
 extern fr_dict_attr_autoload_t subrequest_dict_attr[];
 fr_dict_attr_autoload_t subrequest_dict_attr[] = {
-	{ .out = &attr_request_lifetime, .name = "Request-Lifetime", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &request_attr_request_lifetime, .name = "Request-Lifetime", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ NULL }
 };
 
@@ -208,6 +208,8 @@ static unlang_action_t unlang_subrequest_start(rlm_rcode_t *p_result, request_t 
 							     state->session.unique_ptr,
 							     state->session.unique_int);
 
+	REQUEST_VERIFY(child);
+
 	RDEBUG2("Creating subrequest (%s)", child->name);
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &child->request_pairs, NULL);
 
@@ -259,7 +261,7 @@ static unlang_action_t unlang_subrequest_state_init(rlm_rcode_t *p_result, reque
 	/*
 	 *	Set the packet type.
 	 */
-	MEM(vp = fr_pair_afrom_da(child->packet, gext->attr_packet_type));
+	MEM(vp = fr_pair_afrom_da(child->request_ctx, gext->attr_packet_type));
 
 	if (gext->type_enum) {
 		child->packet->code = vp->vp_uint32 = gext->type_enum->value->vb_uint32;
@@ -310,12 +312,12 @@ static unlang_action_t unlang_subrequest_state_init(rlm_rcode_t *p_result, reque
 
 	if (gext->src) {
 		if (tmpl_is_list(gext->src)) {
-			if (tmpl_copy_pairs(child->packet, &child->request_pairs, request, gext->src) < -1) {
+			if (tmpl_copy_pairs(child->request_ctx, &child->request_pairs, request, gext->src) < -1) {
 				RPEDEBUG("Failed copying source attributes into subrequest");
 				goto fail;
 			}
 		} else {
-			if (tmpl_copy_pair_children(child->packet, &child->request_pairs, request, gext->src) < -1) {
+			if (tmpl_copy_pair_children(child->request_ctx, &child->request_pairs, request, gext->src) < -1) {
 				RPEDEBUG("Failed copying source attributes into subrequest");
 				goto fail;
 			}
@@ -373,7 +375,7 @@ int unlang_detached_child_init(request_t *request)
 	/*
 	 *	Set Request Lifetime
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_request_lifetime);
+	vp = fr_pair_find_by_da(&request->control_pairs, request_attr_request_lifetime);
 	if (!vp || (vp->vp_uint32 > 0)) {
 		fr_time_delta_t when = 0;
 		const fr_event_timer_t **ev_p;

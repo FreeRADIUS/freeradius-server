@@ -143,7 +143,7 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
 {
 	fr_pair_t	*vp;
-	request_t		*request;
+	request_t	*request;
 	fr_cursor_t	cursor;
 
 	static int	number = 0;
@@ -151,8 +151,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc(ctx);
-
+	request = request_local_alloc(ctx, NULL);
 	/*
 	 *	FIXME - Should be less RADIUS centric, but everything
 	 *	else assumes RADIUS at the moment so we can fix this later.
@@ -193,7 +192,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->packet, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
 		fr_perror("%s", main_config->name);
 		talloc_free(request);
 		return NULL;
@@ -343,7 +342,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(NULL);
+	request = request_alloc(NULL, NULL);
 
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;
@@ -543,14 +542,14 @@ static request_t *request_clone(request_t *old)
 {
 	request_t *request;
 
-	request = request_alloc(NULL);
+	request = request_alloc(NULL, NULL);
 	if (!request) return NULL;
 
 	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
 	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
-	(void) fr_pair_list_copy(request->packet, &request->request_pairs, &old->request_pairs);
+	(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &old->request_pairs);
 	request->packet->timestamp = fr_time();
 	request->number = old->number++;
 
@@ -938,7 +937,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (fr_pair_list_afrom_file(request, dict_protocol, &filter_vps, fp, &filedone) < 0) {
+		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone) < 0) {
 			fr_perror("Failed reading attributes from %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}

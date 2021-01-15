@@ -1543,7 +1543,7 @@ found_password:
 		int		ret;
 		fr_pair_t	*nt_password;
 
-		MEM(nt_password = fr_pair_afrom_da(request, attr_nt_password));
+		MEM(nt_password = fr_pair_afrom_da(request->request_ctx, attr_nt_password));
 		MEM(fr_pair_value_mem_alloc(nt_password, &p, NT_DIGEST_LENGTH, false) == 0);
 		ret = mschap_nt_password_hash(p, password->vp_strvalue);
 

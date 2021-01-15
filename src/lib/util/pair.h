@@ -50,11 +50,6 @@ extern "C" {
 #  define LIST_VERIFY(_x)
 #endif
 
-#define request_pairs	request_list
-#define	reply_pairs	reply_list
-#define control_pairs	control_list
-#define state_pairs	state_list
-
 /** The type of value a fr_pair_t contains
  *
  * This is used to add structure to nested fr_pair_ts and specifies what type of node it is (set, list, data).
@@ -194,14 +189,12 @@ static inline bool fr_pair_list_empty(fr_pair_list_t const *list)
 }
 
 /* Allocation and management */
-fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx);
-
 fr_pair_list_t	*fr_pair_list_alloc(TALLOC_CTX *ctx);
 
-/**
- *
- * @hidecallergraph
- */
+fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx);
+
+fr_pair_t	*fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
+
 fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
 
 fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);

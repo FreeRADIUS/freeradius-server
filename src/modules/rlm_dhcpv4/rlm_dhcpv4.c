@@ -100,7 +100,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(request->packet, &options_cursor, dict_dhcpv4,
+			len = fr_dhcpv4_decode_option(request->request_ctx, &options_cursor, dict_dhcpv4,
 						      p, end - p, NULL);
 			if (len <= 0) {
 				RPERROR("DHCP option decoding failed");
@@ -120,7 +120,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		decoded++;
 	}
 
-	fr_pair_list_move(&(request->request_pairs), &head);
+	fr_pair_list_move(&request->request_pairs, &head);
 
 	/* Free any unmoved pairs */
 	fr_pair_list_free(&head);

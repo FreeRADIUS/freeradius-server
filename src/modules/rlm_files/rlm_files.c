@@ -386,7 +386,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		for (map = fr_cursor_init(&cursor, &pl->check);
 		     map;
 		     map = fr_cursor_next(&cursor)) {
-			if (map_to_vp(request, &vp, request, map, NULL) < 0) {
+			if (map_to_vp(request->control_ctx, &vp, request, map, NULL) < 0) {
 				fr_pair_list_free(&list);
 				RPWARN("Failed parsing map for check item, skipping entry");
 				break;
@@ -429,7 +429,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			     map = fr_cursor_next(&cursor)) {
 				if (map->op == T_OP_CMP_FALSE) continue;
 
-				if (map_to_vp(request->reply, &vp, request, map, NULL) < 0) {
+				if (map_to_vp(request->reply_ctx, &vp, request, map, NULL) < 0) {
 					RPWARN("Failed parsing map for reply item %s, skipping it", map->rhs->name);
 					break;
 				}

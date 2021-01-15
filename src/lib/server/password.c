@@ -742,7 +742,7 @@ do_header:
 	}
 
 bad_header:
-	MEM(new = fr_pair_afrom_da(request, def));
+	MEM(new = fr_pair_afrom_da(ctx, def));
 	fr_pair_value_bstrndup(new, p, end - p, true);
 
 	return new;

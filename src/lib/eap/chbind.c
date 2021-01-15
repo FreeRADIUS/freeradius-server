@@ -184,13 +184,13 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 		   (chbind->response == NULL));
 
 	/* Set-up the fake request */
-	fake = request_alloc_fake(request, NULL);
-	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
+	fake = request_alloc(request, &(request_init_args_t){ .parent = request });
+	MEM(fr_pair_add_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
-		vp = fr_pair_copy(fake->packet, chbind->username);
+		vp = fr_pair_copy(fake->request_ctx, chbind->username);
 		fr_pair_add(&fake->request_pairs, vp);
 	}
 
@@ -209,7 +209,7 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 		while (data_len > 0) {
 			ssize_t attr_len;
 
-			attr_len = fr_radius_decode_pair(fake->packet, &cursor, dict_radius,
+			attr_len = fr_radius_decode_pair(fake->request_ctx, &cursor, dict_radius,
 							 attr_data, data_len, NULL);
 			if (attr_len <= 0) {
 				/*
@@ -303,13 +303,13 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	return packet;
 }
 
-fr_pair_t *eap_chbind_packet2vp(fr_radius_packet_t *packet, chbind_packet_t *chbind)
+fr_pair_t *eap_chbind_packet2vp(TALLOC_CTX *ctx, chbind_packet_t *chbind)
 {
 	fr_pair_t	*vp;
 
 	if (!chbind) return NULL; /* don't produce garbage */
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_eap_channel_binding_message));
+	MEM(vp = fr_pair_afrom_da(ctx, attr_eap_channel_binding_message));
 	fr_pair_value_memdup(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind), false);
 
 	return vp;

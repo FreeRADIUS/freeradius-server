@@ -77,11 +77,12 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 {
 	request_t			*child;
 
-	if (!detachable) {
-		child = request_alloc_fake(parent, namespace);
-	} else {
-		child = request_alloc_detachable(parent, namespace);
-	}
+	child = request_alloc(detachable ? NULL : parent,
+			      (&(request_init_args_t){
+			      		.parent = parent,
+			      		.namespace = namespace,
+			      		.detachable = detachable
+			      }));
 	if (!child) return NULL;
 
 	/*
@@ -117,6 +118,8 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	 *	"unlang", and doesn't send replies or anything else.
 	 */
 	child->async->process = unlang_io_process_interpret;
+
+	REQUEST_VERIFY(child);
 
 	return child;
 }

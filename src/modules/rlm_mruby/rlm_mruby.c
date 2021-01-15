@@ -408,7 +408,7 @@ static unlang_action_t CC_HINT(nonnull) do_mruby(rlm_rcode_t *p_result, request_
 	mruby_set_vps(request, mrb, mruby_request, "@request", &request->request_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@reply", &request->reply_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->state_pairs);
+	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->session_state_pairs);
 
 DIAG_OFF(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);
@@ -449,8 +449,8 @@ DIAG_ON(class-varargs)
 				RETURN_MODULE_FAIL;
 			}
 
-			add_vp_tuple(request->reply, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), function_name);
-			add_vp_tuple(request, request, &request->control_pairs, mrb, mrb_ary_entry(mruby_result, 2), function_name);
+			add_vp_tuple(request->reply_ctx, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), function_name);
+			add_vp_tuple(request->control_ctx, request, &request->control_pairs, mrb, mrb_ary_entry(mruby_result, 2), function_name);
 			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0)));
 
 		default:

@@ -75,7 +75,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	 */
 	request->dict = dict_arp;
 
-	if (fr_arp_decode(request->packet, data, data_len, &request->request_pairs) < 0) {
+	if (fr_arp_decode(request->request_ctx, data, data_len, &request->request_pairs) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}

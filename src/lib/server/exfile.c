@@ -85,7 +85,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 		return;
 	}
 
-	fr_pair_list_copy(request, &args, &ef->trigger_args);
+	fr_pair_list_copy(request ? request->request_ctx : NULL, &args, &ef->trigger_args);
 	fr_cursor_init(&cursor, &args);
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));

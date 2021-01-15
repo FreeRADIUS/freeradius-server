@@ -565,7 +565,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 		/*
 		 *	Create the virtual check item.
 		 */
-		MEM(virt = fr_pair_afrom_da(request, tmpl_da(map->lhs)));
+		MEM(virt = fr_pair_afrom_da(request->request_ctx, tmpl_da(map->lhs)));
 		virt->op = map->op;
 		fr_value_box_copy(virt, &virt->data, rhs);
 
@@ -711,7 +711,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 			return -1;
 		}
 
-		MEM(vp = fr_pair_afrom_da(request, tmpl_da(map->lhs)));
+		MEM(vp = fr_pair_afrom_da(request->request_ctx, tmpl_da(map->lhs)));
 		vp->op = c->data.map->op;
 		fr_value_box_copy(vp, &vp->data, rhs);
 

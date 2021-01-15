@@ -40,6 +40,7 @@ static void pair_tests_init(void);
 #endif
 
 #include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/acutest_helpers.h>
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
@@ -173,6 +174,11 @@ static void pair_tests_init(void)
 	if (!fr_dict_global_ctx_init(autofree, dict_dir)) goto error;
 
 	/*
+	 *	Initialise attributes that go in requests
+	 */
+	if (request_global_init() < 0) goto error;
+
+	/*
 	 *	Set the root name of the dictionary
 	 */
 	dict_test = fr_dict_alloc("test", 666);
@@ -182,6 +188,8 @@ static void pair_tests_init(void)
 
 	/* Initialize the "sample_pairs" list */
 	if (load_attr_pairs(&sample_pairs) < 0) goto error;
+
+
 }
 
 static request_t *request_fake_alloc(void)
@@ -191,7 +199,7 @@ static request_t *request_fake_alloc(void)
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc(autofree);
+	request = request_local_alloc(autofree, NULL);
 
 	request->packet = fr_radius_packet_alloc(request, false);
 	TEST_CHECK(request->packet != NULL);
@@ -207,15 +215,13 @@ static request_t *request_fake_alloc(void)
  */
 static void test_pair_add_request(void)
 {
-	fr_pair_t      *local_pairs;
+	fr_pair_t      *local_pair;
 	fr_cursor_t    cursor;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	fr_pair_list_init(&local_pairs);
-
 	TEST_CASE("Add 'Test-Integer' in 'request_pairs' using pair_add_request()");
-	TEST_CHECK(pair_add_request(&local_pairs, attr_test_integer) == 0);
+	TEST_CHECK(pair_add_request(&local_pair, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->request_pairs)) != NULL);
@@ -227,20 +233,18 @@ static void test_pair_add_request(void)
 	TEST_CHECK(vp->vp_uint32 == 12345);
 	TEST_MSG("Expected %s == 12345", attr_test_integer->name);
 
-	fr_pair_list_free(&local_pairs);
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_add_reply(void)
 {
-	fr_pair_t      *local_pairs;
+	fr_pair_t      *local_vp;
 	fr_cursor_t    cursor;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	fr_pair_list_init(&local_pairs);
-
 	TEST_CASE("Add 'Test-Integer' in 'reply_pairs' using pair_add_reply()");
-	TEST_CHECK(pair_add_reply(&local_pairs, attr_test_integer) == 0);
+	TEST_CHECK(pair_add_reply(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->reply_pairs)) != NULL);
@@ -252,20 +256,18 @@ static void test_pair_add_reply(void)
 	TEST_CHECK(vp->vp_uint32 == 12345);
 	TEST_MSG("Expected %s == 12345", attr_test_integer->name);
 
-	fr_pair_list_free(&local_pairs);
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_add_control(void)
 {
-	fr_pair_t      *local_pairs;
+	fr_pair_t      *local_vp;
 	fr_cursor_t    cursor;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	fr_pair_list_init(&local_pairs);
-
 	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_add_control()");
-	TEST_CHECK(pair_add_control(&local_pairs, attr_test_integer) == 0);
+	TEST_CHECK(pair_add_control(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->control_pairs)) != NULL);
@@ -277,23 +279,21 @@ static void test_pair_add_control(void)
 	TEST_CHECK(vp->vp_uint32 == 12345);
 	TEST_MSG("Expected %s == 12345", attr_test_integer->name);
 
-	fr_pair_list_free(&local_pairs);
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_add_session_state(void)
 {
-	fr_pair_t      *local_pairs;
+	fr_pair_t      *local_vp;
 	fr_cursor_t    cursor;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	fr_pair_list_init(&local_pairs);
-
 	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_add_session_state()");
-	TEST_CHECK(pair_add_session_state(&local_pairs, attr_test_integer) == 0);
+	TEST_CHECK(pair_add_session_state(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
-	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->state_pairs)) != NULL);
+	TEST_CHECK((vp = fr_cursor_init(&cursor, &request->session_state_pairs)) != NULL);
 	VP_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
@@ -302,7 +302,7 @@ static void test_pair_add_session_state(void)
 	TEST_CHECK(vp->vp_uint32 == 12345);
 	TEST_MSG("Expected %s == 12345", attr_test_integer->name);
 
-	fr_pair_list_free(&local_pairs);
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_update_request(void)
@@ -330,6 +330,8 @@ static void test_pair_update_request(void)
 	 * Such 'vp != NULL' just to mute clang "warning: Dereference of null pointer"
 	 */
 	TEST_CHECK(vp && vp->vp_uint32 == 112233);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_update_reply(void)
@@ -353,6 +355,8 @@ static void test_pair_update_reply(void)
 	VP_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->vp_uint32 == 3333);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_update_control(void)
@@ -376,6 +380,8 @@ static void test_pair_update_control(void)
 	VP_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->vp_uint32 == 44444);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_update_session_state(void)
@@ -393,12 +399,14 @@ static void test_pair_update_session_state(void)
 	vp->vp_uint32 = 7890;
 
 	TEST_CASE("Expected attr_test_integer (vp->vp_uint32 == 7890)");
-	TEST_CHECK((vp = fr_pair_find_by_da(&request->state_pairs, attr_test_integer)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&request->session_state_pairs, attr_test_integer)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->vp_uint32 == 7890);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_delete_request(void)
@@ -413,6 +421,8 @@ static void test_pair_delete_request(void)
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->request_pairs'");
 	TEST_CHECK(fr_pair_find_by_da(&request->request_pairs, attr_test_integer) == NULL);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_delete_reply(void)
@@ -427,6 +437,8 @@ static void test_pair_delete_reply(void)
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->reply_pairs'");
 	TEST_CHECK(fr_pair_find_by_da(&request->reply_pairs, attr_test_integer) == NULL);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_delete_control(void)
@@ -441,6 +453,8 @@ static void test_pair_delete_control(void)
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->control_pairs'");
 	TEST_CHECK(fr_pair_find_by_da(&request->control_pairs, attr_test_integer) == NULL);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 static void test_pair_delete_session_state(void)
@@ -448,13 +462,15 @@ static void test_pair_delete_session_state(void)
 	request_t      *request = request_fake_alloc();
 
 	TEST_CASE("Copy 'sample_pairs' into 'request->state'");
-	TEST_CHECK(fr_pair_list_copy(autofree, &request->state_pairs, &sample_pairs) > 0);
+	TEST_CHECK(fr_pair_list_copy(autofree, &request->session_state_pairs, &sample_pairs) > 0);
 
 	TEST_CASE("Delete 'Test-Integer' in 'request->state' using pair_delete_session_state()");
 	TEST_CHECK(pair_delete_session_state(attr_test_integer) > 0);
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->state'");
-	TEST_CHECK(fr_pair_find_by_da(&request->state_pairs, attr_test_integer) == NULL);
+	TEST_CHECK(fr_pair_find_by_da(&request->session_state_pairs, attr_test_integer) == NULL);
+
+	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
 TEST_LIST = {

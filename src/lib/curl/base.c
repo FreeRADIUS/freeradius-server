@@ -208,7 +208,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
 				continue;
 			}
-			MEM(vp = fr_pair_afrom_da(request->packet, da));
+			MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
 			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
 
 			fr_cursor_append(&cursor, vp);

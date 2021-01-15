@@ -302,7 +302,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	}
 
 	if (vp ) {
-		vp = fr_pair_copy(request->reply, vp);
+		vp = fr_pair_copy(request->reply_ctx, vp);
 		if (vp) {
 			fr_cursor_append(&cursor, vp);
 			(void) fr_cursor_tail(&cursor);
@@ -320,7 +320,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), buffer);
 		if (!da) continue;
 
-		MEM(vp = fr_pair_afrom_da(request->reply, da));
+		MEM(vp = fr_pair_afrom_da(request->reply_ctx, da));
 		vp->vp_uint64 = local_stats[i];
 
 		fr_cursor_append(&cursor, vp);

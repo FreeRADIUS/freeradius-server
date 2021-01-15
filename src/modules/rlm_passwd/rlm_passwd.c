@@ -564,9 +564,9 @@ static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, mo
 		if (!pw) continue;
 
 		do {
-			result_add(request, inst, request, &request->control_pairs, pw, 0, "config");
-			result_add(request->reply, inst, request, &request->reply_pairs, pw, 1, "reply_items");
-			result_add(request->packet, inst, request, &request->request_pairs, pw, 2, "request_items");
+			result_add(request->control_ctx, inst, request, &request->control_pairs, pw, 0, "config");
+			result_add(request->reply_ctx, inst, request, &request->reply_pairs, pw, 1, "reply_items");
+			result_add(request->request_ctx, inst, request, &request->request_pairs, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
 
 		found++;

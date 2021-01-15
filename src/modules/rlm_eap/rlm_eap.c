@@ -626,7 +626,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 			RETURN_MODULE_FAIL;
 		}
 
-		if (fr_pair_list_copy(eap_session->subrequest->packet,
+		if (fr_pair_list_copy(eap_session->subrequest->request_ctx,
 				      &eap_session->subrequest->request_pairs,
 				      &request->request_pairs) < 0) goto list_copy_fail;
 	}
@@ -907,7 +907,7 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 		 */
 		vp = fr_pair_find_by_da(&request->reply_pairs, attr_user_name);
 		if (!vp) {
-			vp = fr_pair_copy(request->reply, username);
+			vp = fr_pair_copy(request->reply_ctx, username);
 			fr_pair_add(&request->reply_pairs, vp);
 		}
 

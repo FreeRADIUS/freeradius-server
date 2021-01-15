@@ -1780,7 +1780,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 
 		if (info->cmd->type != ISC_FIXED_ADDRESS) continue;
 
-		MEM(vp = fr_pair_afrom_da(request->reply_pairs, attr_your_ip_address));
+		MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_your_ip_address));
 
 		ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 		if (ret < 0) return ret;
@@ -1905,7 +1905,7 @@ recurse:
 			while (vp) {
 				fr_pair_t *next, *copy;
 
-				copy = fr_pair_copy(request->reply, vp);
+				copy = fr_pair_copy(request->reply_ctx, vp);
 				if (!copy) return -1;
 
 				fr_cursor_append(&reply_cursor, copy);

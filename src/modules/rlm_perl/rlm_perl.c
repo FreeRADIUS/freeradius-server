@@ -868,10 +868,10 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
 
-		perl_store_vps(request->packet, request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", "request");
-		perl_store_vps(request->reply, request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", "reply");
-		perl_store_vps(request, request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", "control");
-		perl_store_vps(request->state_ctx, request, &request->state_pairs, rad_state_hv, "RAD_STATE", "session-state");
+		perl_store_vps(request->request_ctx, request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", "request");
+		perl_store_vps(request->reply_ctx, request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", "reply");
+		perl_store_vps(request->control_ctx, request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", "control");
+		perl_store_vps(request->session_state_ctx, request, &request->session_state_pairs, rad_state_hv, "RAD_STATE", "session-state");
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works
@@ -911,27 +911,27 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 		LEAVE;
 
 		vp = NULL;
-		if ((get_hv_content(request->packet, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) == 0) {
+		if ((get_hv_content(request->request_ctx, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) == 0) {
 			fr_pair_list_free(&request->request_pairs);
 			request->request_pairs = vp;
 			vp = NULL;
 		}
 
-		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
+		if ((get_hv_content(request->reply_ctx, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
 			fr_pair_list_free(&request->reply_pairs);
 			request->reply_pairs = vp;
 			vp = NULL;
 		}
 
-		if ((get_hv_content(request, request, rad_config_hv, &vp, "RAD_CONFIG", "control")) == 0) {
+		if ((get_hv_content(request->control_ctx, request, rad_config_hv, &vp, "RAD_CONFIG", "control")) == 0) {
 			fr_pair_list_free(&request->control_pairs);
 			request->control_pairs = vp;
 			vp = NULL;
 		}
 
-		if ((get_hv_content(request->state_ctx, request, rad_state_hv, &vp, "RAD_STATE", "session-state")) == 0) {
-			fr_pair_list_free(&request->state_pairs);
-			request->state_pairs = vp;
+		if ((get_hv_content(request->session_state_ctx, request, rad_state_hv, &vp, "RAD_STATE", "session-state")) == 0) {
+			fr_pair_list_free(&request->session_state_pairs);
+			request->session_state_pairs = vp;
 			vp = NULL;
 		}
 	}

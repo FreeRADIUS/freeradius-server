@@ -1092,7 +1092,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_cursor_t *cursor, TALLOC_CTX *ctx,
 					continue;
 				}
 
-				MEM(vp = fr_pair_afrom_da(request, da));
+				MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
 				if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 					RPWDEBUG3("Skipping: %s += '%s'", attribute, value);
 					talloc_free(vp);
@@ -1437,10 +1437,10 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
 
 		RDEBUG2("Adding TLS session information to request");
-		vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_cipher_suite);
+		vp = fr_pair_afrom_da(request->session_state_ctx, attr_tls_session_cipher_suite);
 		if (vp) {
 			fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher));
-			fr_pair_add(&request->state_pairs, vp);
+			fr_pair_add(&request->session_state_pairs, vp);
 			RINDENT();
 			RDEBUG2("&session-state.%pP", vp);
 			REXDENT();
@@ -1453,10 +1453,10 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 			version = tls_version_str[session->info.version];
 		}
 
-		vp = fr_pair_afrom_da(request->state_ctx, attr_tls_session_version);
+		vp = fr_pair_afrom_da(request->session_state_ctx, attr_tls_session_version);
 		if (vp) {
 			fr_pair_value_strdup(vp, version);
-			fr_pair_add(&request->state_pairs, vp);
+			fr_pair_add(&request->session_state_pairs, vp);
 			RINDENT();
 			RDEBUG2("&session-state.TLS-Session-Version := \"%s\"", version);
 			REXDENT();
@@ -1607,7 +1607,7 @@ fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *con
 		return NULL;
 	}
 
-	request = request_alloc(session);
+	request = request_alloc(session, NULL);
 
 	fr_tls_session_request_bind(request, session->ssl);
 

@@ -205,7 +205,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 		/*
 		 *	Bootstrap these for simpliciy.
 		 */
-		(void) fr_pair_list_copy(request->packet, &request->request_pairs, &ctx->vps);
+		(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &ctx->vps);
 
 		if (unlang_interpret_push_instruction(request, NULL,
 						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
@@ -376,7 +376,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	/*
 	 *	radius_exec_program always needs a request.
 	 */
-	fake = request_alloc(NULL);
+	fake = request_alloc(NULL, NULL);
 	memcpy(&fake->server_cs, &subcs, sizeof(subcs)); /* completely wrong, but we need to use _something_ */
 
 	/*

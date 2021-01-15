@@ -386,12 +386,6 @@ static const char *bfd_state[] = {
 
 static void bfd_request(bfd_state_t *session, request_t *request, fr_radius_packet_t *packet)
 {
-	memset(request, 0, sizeof(*request));
-	fr_pair_list_init(&request->request_pairs);
-	fr_pair_list_init(&request->reply_pairs);
-	fr_pair_list_init(&request->control_pairs);
-	fr_pair_list_init(&request->state_pairs);
-
 	memset(packet, 0, sizeof(*packet));
 
 	request->packet = packet;
@@ -403,16 +397,16 @@ static void bfd_request(bfd_state_t *session, request_t *request, fr_radius_pack
 
 static void bfd_trigger(bfd_state_t *session)
 {
-	fr_radius_packet_t packet;
-	request_t request;
-	char buffer[256];
+	fr_radius_packet_t	packet;
+	request_t		*request = request_local_alloc(session, NULL);
+	char			buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "server.bfd.%s",
 		 bfd_state[session->session_state]);
 
-	bfd_request(session, &request, &packet);
+	bfd_request(session, request, &packet);
 
-	trigger_exec(&request, NULL, buffer, false, NULL);
+	trigger_exec(request, NULL, buffer, false, NULL);
 }
 
 
@@ -1348,7 +1342,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		request_t *request;
 		fr_radius_packet_t *packet, *reply;
 
-		request = request_alloc(session);
+		request = request_alloc(session, NULL);
 		packet = fr_radius_packet_alloc(request, 0);
 		reply = fr_radius_packet_alloc(request, 0);
 

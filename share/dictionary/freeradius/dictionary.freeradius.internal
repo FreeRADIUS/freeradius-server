@@ -44,10 +44,12 @@ ATTRIBUTE	Relax-Filter				501	bool
 #	Range:	1 - 10
 #		Attribute lists
 #
-ATTRIBUTE	Request					1	group
-ATTRIBUTE	Reply					2	group
-ATTRIBUTE	Session-State				3	group
+ATTRIBUTE	Root					1	group
+ATTRIBUTE	Request					2	group
+ATTRIBUTE	Reply					3	group
 ATTRIBUTE	Control					4	group
+ATTRIBUTE	Session-State				5	group
+
 
 #
 #	Range:	11 - 19

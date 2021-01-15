@@ -350,7 +350,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		}
 
-		radius_pairmove(current, vps, &vp, false);
+		radius_pairmove(request,  vps, &vp, false);
 	}
 }
 
@@ -564,10 +564,10 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result,
 		/* Now have the return value */
 		rcode = PyLong_AsLong(p_tuple_int);
 		/* Reply item tuple */
-		mod_vptuple(request->reply, inst, request, &request->reply_pairs,
+		mod_vptuple(request->reply_ctx, inst, request, &request->reply_pairs,
 			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
 		/* Config item tuple */
-		mod_vptuple(request, inst, request, &request->control_pairs,
+		mod_vptuple(request->control_ctx, inst, request, &request->control_pairs,
 			    PyTuple_GET_ITEM(p_ret, 2), funcname, "config");
 
 	} else if (PyNumber_Check(p_ret)) {

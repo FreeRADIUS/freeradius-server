@@ -53,7 +53,7 @@ static bool			touch_memory = false;
 /**********************************************************************/
 typedef struct request_s request_t;
 
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx)
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args)
 {
 	return NULL;
 }
