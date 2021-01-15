@@ -165,6 +165,8 @@ size_t fr_value_box_type_table_len = NUM_ELEMENTS(fr_value_box_type_table);
  *	 Use #fr_value_box_network_length instead, as that deals with variable
  *	 length attributes too.
  */
+#define network_min_size(_x) (fr_value_box_network_sizes[_x][0])
+#define network_max_size(_x) (fr_value_box_network_sizes[_x][1])
 static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INVALID]			= {~0, 0},
 
@@ -1127,7 +1129,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
 		return value->vb_length;
 
 	default:
-		return fr_value_box_network_sizes[value->type][0];
+		return network_min_size(value->type);
 	}
 }
 
@@ -1210,8 +1212,8 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		break;
 
 	default:
-		min = fr_value_box_network_sizes[value->type][0];
-		max = fr_value_box_network_sizes[value->type][1];
+		min = network_min_size(value->type);
+		max = network_max_size(value->type);
 		break;
 	}
 
@@ -1468,8 +1470,8 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 	size_t		min, max;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	min = fr_value_box_network_sizes[type][0];
-	max = fr_value_box_network_sizes[type][1];
+	min = network_min_size(type);
+	max = network_max_size(type);
 
 	if (len < min) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
@@ -1740,23 +1742,23 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 		if (!fr_cond_assert(false)) return -1;
 	}
 
-	if (src->vb_length < fr_value_box_network_sizes[dst_type][0]) {
+	if (src->vb_length < network_min_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 				   "destination type size %zd",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
 				   src->vb_length,
-				   fr_value_box_network_sizes[dst_type][0]);
+				   network_min_size(dst_type));
 		return -1;
 	}
 
-	if (src->vb_length > fr_value_box_network_sizes[dst_type][1]) {
+	if (src->vb_length > network_max_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 				   "destination type size %zd",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
 				   src->vb_length,
-				   fr_value_box_network_sizes[dst_type][1]);
+				   network_max_size(dst_type));
 		return -1;
 	}
 
@@ -2954,23 +2956,23 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (src->type == FR_TYPE_OCTETS) {
 		fr_value_box_t tmp;
 
-		if (src->vb_length < fr_value_box_network_sizes[dst_type][0]) {
+		if (src->vb_length < network_min_size(dst_type)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 					   "destination type size %zd",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
 					   src->vb_length,
-					   fr_value_box_network_sizes[dst_type][0]);
+					   network_min_size(dst_type));
 			return -1;
 		}
 
-		if (src->vb_length > fr_value_box_network_sizes[dst_type][1]) {
+		if (src->vb_length > network_max_size(dst_type)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 					   "destination type size %zd",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
 					   src->vb_length,
-					   fr_value_box_network_sizes[dst_type][1]);
+					   network_max_size(dst_type));
 			return -1;
 		}
 
@@ -4209,7 +4211,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Set size for all fixed length attributes.
 	 */
-	ret = max_size(*dst_type);
+	ret = network_max_size(*dst_type);
 
 	/*
 	 *	Lookup any names before continuing
@@ -4501,13 +4503,13 @@ parse:
 		if (fr_inet_pton(&dst->vb_ip, in, inlen, AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
 		switch (dst->vb_ip.af) {
 		case AF_INET:
-			ret = min_size(FR_TYPE_COMBO_IP_ADDR); /* size of IPv4 address */
 			*dst_type = FR_TYPE_IPV4_ADDR;
+			ret = network_min_size(*dst_type);
 			break;
 
 		case AF_INET6:
 			*dst_type = FR_TYPE_IPV6_ADDR;
-			ret = max_size(FR_TYPE_COMBO_IP_ADDR); /* size of IPv6 address */
+			ret = network_max_size(*dst_type);
 			break;
 
 		default:
