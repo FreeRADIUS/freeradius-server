@@ -259,7 +259,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 		 *	Compile the LHS to an attribute reference only
 		 *	if the RHS is a literal.
 		 *
-		 *	@todo v3.1: allow anything anywhere.
+		 *	@todo - allow anything anywhere.
 		 */
 		if (!tmpl_is_unresolved(map->rhs)) {
 			if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) {
@@ -408,7 +408,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 	}
 
 	/*
-	 *	@todo v3.1: do the same thing for the RHS...
+	 *	@todo - do the same thing for the RHS...
 	 */
 
 	/*
