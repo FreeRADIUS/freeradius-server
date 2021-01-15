@@ -41,6 +41,10 @@ RCSID("$Id$")
 #  define EVAL_DEBUG(...)
 #endif
 
+static int cond_realize_tmpl(request_t *request,
+			     fr_value_box_t **out, fr_value_box_t **to_free,
+			     tmpl_t *in, tmpl_t *other);
+
 /** Map keywords to #pair_list_t values
  */
 static fr_table_num_sorted_t const cond_type_table[] = {
@@ -118,59 +122,120 @@ void cond_debug(fr_cond_t const *cond)
  *
  * @param[in] request the request_t
  * @param[in] depth of the recursion (only used for debugging)
- * @param[in] vpt the template to evaluate
+ * @param[in] in the template to evaluate
  * @return
- *	- 0 for "no match" or failure
+ *	- <0 for failure
+ *	- 0 for "no match"
  *	- 1 for "match".
  */
-int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *vpt)
+int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *in)
 {
+	int rcode = -1;
+	fr_pair_t *vp = NULL;
+	fr_value_box_t *box, *box_free;
+	tmpl_t *vpt;
+
+	box = box_free = NULL;
+	memcpy(&vpt, &in, sizeof(in)); /* const issues */
+
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		if (tmpl_find_vp(NULL, request, vpt) == 0) {
-			return true;
+		/*
+		 *	No cast means that it's amn existence check.
+		 */
+		if (vpt->cast == FR_TYPE_INVALID) {
+			return (tmpl_find_vp(NULL, request, vpt) == 0);
+		}
+
+		/*
+		 *	Cast means that we cast the attribute to a
+		 *	particular type.
+		 */
+		if (tmpl_find_vp(&vp, request, vpt) < 0) {
+			return -1;
+		}
+
+		MEM(box = fr_value_box_alloc_null(request));
+		box_free = box;
+
+		if (fr_value_box_cast(box, box, vpt->cast, NULL, &vp->data) < 0) {
+			if (request) RPEDEBUG("Failed casting %pV to type %s", box,
+					      fr_table_str_by_value(fr_value_box_type_table,
+								    vpt->cast, "??"));
+			goto done;
 		}
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_EXEC:
-	{
-		char	*p;
-		ssize_t	slen;
-
-		slen = tmpl_aexpand(request, &p, request, vpt, NULL, NULL);
-		if (slen < 0) {
-			EVAL_DEBUG("FAIL %d", __LINE__);
-			return false;
+		/*
+		 *	Realize and cast the tmpl.
+		 */
+		if (cond_realize_tmpl(request, &box, &box_free, vpt, NULL) < 0) {
+			fr_strerror_const("Failed evaluating condition");
+			return -1;
 		}
-		talloc_free(p);
 
-		if (slen == 0) return false;
-	}
-		return true;
+		/*
+		 *	Old-style: zero length strings are false.
+		 *	Other strings are true.
+		 *
+		 *	We don't yet have xlats returning lists of
+		 *	value boxes, so there's an assert.
+		 */
+		if (vpt->cast == FR_TYPE_INVALID) {
+			switch (box->type) {
+			case FR_TYPE_STRING:
+			case FR_TYPE_OCTETS:
+				rcode = (box->vb_length > 0);
+				goto done;
 
-	/*
-	 *	Can't have a bare ... (/foo/) ...
-	 */
-	case TMPL_TYPE_UNRESOLVED:
-	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_REGEX_UNCOMPILED:
-	case TMPL_TYPE_REGEX_XLAT:
-	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
-		fr_assert(0 == 1);
-		FALL_THROUGH;
-
-	/*
-	 *	TMPL_TYPE_DATA is not allowed here, as it is
-	 *	statically evaluated to true/false by cond_normalise()
-	 */
-	default:
-		EVAL_DEBUG("FAIL %d", __LINE__);
+				/*
+				 *	Not yet handled.
+				 */
+			default:
+				fr_assert(0);
+				return -1;
+			}
+		}
 		break;
+
+		/*
+		 *	Everything else MUST have been forbidden, or
+		 *	already realized to a COND_TYPE_TRUE/FALSE.
+		 */
+	default:
+		fr_assert(0);
+		EVAL_DEBUG("FAIL %d", __LINE__);
+		goto done;
 	}
 
-	return false;
+	/*
+	 *	If it's already a bool, just use that.
+	 *
+	 *	Otherwise cast the data to bool.  This cast lets the
+	 *	value code figure out what is false and what is true.
+	 */
+	if (box->type == FR_TYPE_BOOL) {
+		rcode = box->vb_bool;
+
+	} else {
+		fr_value_box_t out;
+
+		fr_value_box_init_null(&out);
+		if (fr_value_box_cast(request, &out, FR_TYPE_BOOL, NULL, box) < 0) {
+			talloc_free(box_free);
+			return -1;
+		}
+
+		rcode = out.vb_bool;
+		fr_value_box_clear(&out);
+	}
+
+done:
+	talloc_free(box_free);
+	return rcode;
 }
 
 #ifdef HAVE_REGEX
@@ -351,6 +416,9 @@ static int cond_realize_tmpl(request_t *request,
 		if (in->cast != FR_TYPE_INVALID) {
 			cast_type = in->cast;
 
+		} else if (!other) {
+			cast_type = FR_TYPE_STRING;
+
 		} else if (other->cast) {
 			cast_type = other->cast;
 
@@ -429,7 +497,6 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 							    vpt->cast, "??"));
 		return -1;
 	}
-
 
 	*realized = box;
 	return 0;
