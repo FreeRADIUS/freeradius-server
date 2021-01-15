@@ -211,9 +211,9 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 		 *	there's no room for the next fixed-size value,
 		 *	then don't encode this VP.
 		 */
-		if (hdr[1] && vp->da->flags.array &&
-		    is_fixed_size(vp->da->type) &&
-		    (hdr[1] + min_size(vp->da->type)) > 255) {
+		if (vp->da->flags.array &&
+		    ((len = fr_value_box_network_length(&vp->data)) > 0) &&
+		    (hdr[1] + len) > 255) {
 			break;
 		}
 
