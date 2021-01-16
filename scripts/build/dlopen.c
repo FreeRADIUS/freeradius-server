@@ -561,7 +561,7 @@ static char *make_dlerror(__attribute__((unused)) char const *nm, __attribute__(
 typedef struct ad_define_s {
 	struct ad_define_s *next;
 	size_t		    len;
-	char		    name[0];
+	char		    name[];
 } ad_define_t;
 
 static ad_define_t *ad_define_head = NULL;
@@ -776,7 +776,7 @@ static char *make_ad_search_libs(__attribute__((unused)) char const *nm, unsigne
 	char *p, *q, *r;
 	char const *name;
 	void *symbol = NULL;
-	void *handle;
+	void *handle = NULL;
 
 	/*
 	 *	Get the symbol name

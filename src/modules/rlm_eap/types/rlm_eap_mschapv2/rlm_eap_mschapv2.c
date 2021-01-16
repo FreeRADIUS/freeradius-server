@@ -314,7 +314,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	if (!fr_cond_assert(eap_session->inst)) return 0;
+	if (!fr_cond_assert(eap_session->inst)) RETURN_MODULE_FAIL;
 	eap_mschapv2_compose(eap_session->inst, request, eap_session, response);
 	data->code = FR_EAP_MSCHAPV2_SUCCESS;
 
@@ -459,7 +459,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	uint8_t				*p;
 	size_t				length;
 
-	if (!fr_cond_assert(eap_session->inst)) return 0;
+	if (!fr_cond_assert(eap_session->inst)) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Sanity check the response.

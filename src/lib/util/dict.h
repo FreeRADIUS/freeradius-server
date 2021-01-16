@@ -170,7 +170,7 @@ typedef struct {
 
 	uint8_t			ext[FR_DICT_ENUM_EXT_MAX];	//!< Extensions to the dictionary attribute.
 
-	fr_dict_attr_t const	*child_struct[0];		//!< for key fields
+	fr_dict_attr_t const	*child_struct[];		//!< for key fields
 } fr_dict_enum_t CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Private enterprise

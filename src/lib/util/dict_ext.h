@@ -71,7 +71,13 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_dict_attr_t const	*da_stack[0];			//!< Stack of dictionary attributes
+	bool			unused;				//!< Zero length arrays are apparently GNU extensions
+								///< and we're not allowed to have structs with a
+								///< single variable array as its member.
+								///< We'll likely want to store something else here
+								///< at some point, so we just have a dummy field to
+								///< avoid changing all the code.
+	fr_dict_attr_t const	*da_stack[];			//!< Stack of dictionary attributes
 } fr_dict_attr_ext_da_stack_t;
 
 /** Attribute extension - Holds enumeration values

@@ -161,11 +161,11 @@ fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
 	{ NULL }
 };
 
-fr_value_box_t const	*enum_acct_status_type_start;
-fr_value_box_t const	*enum_acct_status_type_interim_update;
-fr_value_box_t const	*enum_acct_status_type_stop;
-fr_value_box_t const	*enum_acct_status_type_on;
-fr_value_box_t const	*enum_acct_status_type_off;
+static fr_value_box_t const	*enum_acct_status_type_start;
+static fr_value_box_t const	*enum_acct_status_type_interim_update;
+static fr_value_box_t const	*enum_acct_status_type_stop;
+static fr_value_box_t const	*enum_acct_status_type_on;
+static fr_value_box_t const	*enum_acct_status_type_off;
 
 extern fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[];
 fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[] = {

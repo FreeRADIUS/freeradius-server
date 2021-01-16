@@ -26,9 +26,6 @@
 #include <freeradius-devel/tls/base.h>
 #endif
 
-#define CURL_NO_OLDIES 1
-
-#include <curl/curl.h>
 #include <talloc.h>
 
 static uint32_t instance_count = 0;
@@ -39,10 +36,10 @@ static fr_dict_autoload_t curl_dict[] = {
 	{ NULL }
 };
 
-fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
-	{L("allow"),     	CURLUSESSL_TRY          },
-	{L("demand"),     	CURLUSESSL_ALL          },
-	{L("never"), 	CURLUSESSL_NONE         },
+static fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
+	{L("allow"),     CURLUSESSL_TRY          },
+	{L("demand"),    CURLUSESSL_ALL          },
+	{L("never"),	 CURLUSESSL_NONE         },
 };
 static size_t fr_curl_sslcode_table_len = NUM_ELEMENTS(fr_curl_sslcode_table);
 

@@ -102,8 +102,8 @@ typedef struct {
 /*
  * 	Used to ensure that only strings are being set to the tmpl_t ** output
  */
-static int cf_table_parse_tmpl(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, CONF_PARSER const *rule)
+static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			       CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int 			ret = 0;
 	ssize_t			slen;
@@ -501,15 +501,15 @@ static int recipients_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, rlm_smtp_t
 /*
  *	Generates a curl_slist of header elements header elements
  */
-static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, UNUSED rlm_smtp_t const *inst)
+static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, rlm_smtp_t const *inst)
 {
 	fr_sbuff_t 			time_out;
 	char const 			*to = "TO: ";
 	char const 			*cc = "CC: ";
-	request_t				*request = uctx->request;
+	request_t			*request = uctx->request;
 	fr_sbuff_t 			conf_buffer;
 	fr_sbuff_uctx_talloc_t 		conf_ctx;
-	map_t			*conf_map;
+	map_t				*conf_map;
 
 	char 				*expanded_rhs;
 

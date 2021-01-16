@@ -247,7 +247,11 @@ static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 	state->ptr = p;
 }
 
-static void unlang_tmpl_exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void unlang_tmpl_exec_timeout(
+#ifndef __linux__
+				     UNUSED
+#endif
+				     fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	request_t			*request = uctx;
 	unlang_stack_t			*stack = request->stack;

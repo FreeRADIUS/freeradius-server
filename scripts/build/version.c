@@ -81,7 +81,7 @@ static int make_version_cmp(bool *err,
 
 	while ((a < a_end) && (b < b_end)) {
 		unsigned long	a_num, b_num;
-		size_t		a_len, b_len;
+		size_t		a_len = 0, b_len;
 		int		ret;
 		bool		a_str = false;
 

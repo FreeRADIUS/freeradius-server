@@ -52,5 +52,5 @@ typedef struct {
 typedef struct {
 	uint32_t			header;
 	size_t				client_id_len;
-	uint8_t				client_id[0];
+	uint8_t				client_id[];
 } proto_dhcpv6_track_t;

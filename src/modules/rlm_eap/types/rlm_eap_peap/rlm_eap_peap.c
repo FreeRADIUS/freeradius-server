@@ -227,7 +227,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		 */
 		if (eap_tls_success(request, eap_session,
 				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    NULL, 0) < 0) return 0;
+				    NULL, 0) < 0) RETURN_MODULE_RCODE(rcode);
 	}
 		break;
 

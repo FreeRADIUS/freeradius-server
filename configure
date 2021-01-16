@@ -13146,23 +13146,24 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
 	-W \
 	-Weverything \
 	-Wformat=2 \
-	-Wno-disabled-macro-expansion \
-	-Wno-missing-field-initializers \
 	-Wno-date-time \
-    	-Wno-padded \
+	-Wno-disabled-macro-expansion \
+	-Wno-format-pedantic \
+	-Wno-missing-field-initializers \
+    	-Wno-cast-align \
+    	-Wno-conversion \
+    	-Wno-covered-switch-default \
+    	-Wno-documentation-unknown-command \
+    	-Wno-extended-offsetof \
+    	-Wno-gnu-statement-expression \
     	-Wno-gnu-zero-variadic-macro-arguments \
+    	-Wno-packed \
+    	-Wno-padded \
+    	-Wno-reserved-id-macro \
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
-    	-Wno-conversion \
     	-Wno-switch-enum \
-    	-Wno-gnu-statement-expression \
-    	-Wno-extended-offsetof \
-    	-Wno-cast-align \
-    	-Wno-documentation-unknown-command \
-    	-Wno-covered-switch-default \
-    	-Wno-packed \
-    	-Wno-reserved-id-macro \
-	-Wno-format-pedantic \
+    	-wno-gnu-empty-initializer \
         $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then

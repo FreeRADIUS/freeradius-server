@@ -30,10 +30,6 @@ RCSIDH(rest_h, "$Id$")
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/pool.h>
 
-#define CURL_NO_OLDIES 1
-
-#include <curl/curl.h>
-
 /*
  *	The common JSON library (also tells us if we have json-c)
  */

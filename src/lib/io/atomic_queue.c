@@ -59,7 +59,7 @@ struct fr_atomic_queue_s {
 
 	void						*chunk;		//!< To pass to free. The non-aligned address.
 
-	alignas(CACHE_LINE_SIZE) fr_atomic_queue_entry_t entry[0];	//!< The entry array, also aligned
+	alignas(CACHE_LINE_SIZE) fr_atomic_queue_entry_t entry[];	//!< The entry array, also aligned
 									///< to ensure it's not in the same cache
 									///< line as tail and size.
 };

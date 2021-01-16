@@ -172,7 +172,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	uint8_t		exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t		peer_confirm[SHA256_DIGEST_LENGTH];
 
-	if (((eap_round = eap_session->this_round) == NULL) || !inst) return 0;
+	if (((eap_round = eap_session->this_round) == NULL) || !inst) RETURN_MODULE_FAIL;
 
 	session = talloc_get_type_abort(eap_session->opaque, pwd_session_t);
 	response = eap_session->this_round->response;
@@ -233,8 +233,8 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	 */
 	if (EAP_PWD_GET_MORE_BIT(hdr)) {
 		if (!session->in) {
-			RDEBUG2("Unexpected fragment.");
-			return 0;
+			RDEBUG2("Unexpected fragment");
+			RETURN_MODULE_INVALID;
 		}
 
 		if ((session->in_pos + in_len) > session->in_len) {
