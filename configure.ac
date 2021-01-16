@@ -1721,6 +1721,7 @@ if test "x$developer" = "xyes"; then
     	-Wno-covered-switch-default \
     	-Wno-documentation-unknown-command \
     	-Wno-extended-offsetof \
+    	-Wno-gnu-empty-initializer \
     	-Wno-gnu-statement-expression \
     	-Wno-gnu-zero-variadic-macro-arguments \
     	-Wno-packed \
@@ -1729,7 +1730,7 @@ if test "x$developer" = "xyes"; then
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
     	-Wno-switch-enum \
-    	-Wno-gnu-empty-initializer \
+    	-Wno-vla \
         $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
