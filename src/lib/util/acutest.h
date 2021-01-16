@@ -404,7 +404,7 @@ test_cleanup_(void)
     free((void*) test_details_);
 }
 
-static void
+static void TEST_ATTRIBUTE_(noreturn)
 test_exit_(int exit_code)
 {
     test_cleanup_();
