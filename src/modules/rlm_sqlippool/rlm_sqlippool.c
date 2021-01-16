@@ -330,8 +330,6 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 /*
  *	Don't repeat yourself
  */
-#undef DO
-#define DO(_x) if(sqlippool_command(inst->_x, handle, inst, request, NULL, 0) < 0) return RLM_MODULE_FAIL
 #define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request, NULL, 0) <0) goto error
 
 /*
