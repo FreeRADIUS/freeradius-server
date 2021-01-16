@@ -1180,12 +1180,12 @@ static int _event_timer_free(fr_event_timer_t *ev)
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
 	} else {
 		int		ret = fr_heap_extract(el->times, ev);
-		char const	*file = "not-available";
-		int		line = 0;
+		char const	*err_file = "not-available";
+		int		err_line = 0;
 
 #ifndef NDEBUG
-		file = ev->file;
-		line = ev->line;
+		err_file = ev->file;
+		err_line = ev->line;
 #endif
 
 		/*
@@ -1193,7 +1193,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
 		 */
 		if (!fr_cond_assert_msg(ret == 0,
 					"Event %p, heap_id %i, allocd %s[%u], was not found in the event heap or "
-					"insertion list when freed: %s", ev, ev->heap_id, file, line,
+					"insertion list when freed: %s", ev, ev->heap_id, err_file, err_line,
 					 fr_strerror())) return -1;
 	}
 
@@ -1292,21 +1292,24 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 *	if it's in the heap before extracting it.
 		 */
 		if (!fr_dlist_entry_in_list(&ev->entry)) {
-			int ret;
+			int		ret;
+			char const	*err_file = "not-available";
+			int		err_line = 0;
 
 			ret = fr_heap_extract(el->times, ev);
+
+#ifndef NDEBUG
+			err_file = ev->file;
+			err_line = ev->line;
+#endif
+
 			/*
 			 *	Events MUST be in the heap (or the insertion list).
 			 */
 			if (!fr_cond_assert_msg(ret == 0,
 						"Event %p, heap_id %i, allocd %s[%u], was not found in the event "
 						"heap or insertion list when freed: %s", ev, ev->heap_id,
-#ifndef NDEBUG
-						ev->file, ev->line,
-#else
-						"not-available", 0,
-#endif
-						fr_strerror())) return -1;
+						err_file, err_line, fr_strerror())) return -1;
 		}
 	}
 
