@@ -653,22 +653,12 @@ void request_verify(char const *file, int line, request_t const *request)
 	fr_pair_list_verify(file, line, request->reply_ctx, &request->reply_pairs);
 	(void)talloc_get_type_abort(request->control_ctx, fr_pair_t);
 	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs);
+	(void)talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
+	fr_assert_msg(talloc_parent(request->session_state_ctx) == NULL,
+		      "session_state_ctx must not be parented by another chunk, but is parented by %s",
+		      talloc_get_name(talloc_parent(request->session_state_ctx)));
 
-	/*
-	 *	FIXME - Should never be NULL, but it's expensive
-	 *	to allow a session ctx after moving everything
-	 *	to the state entry.
-	 *
-	 *	Once there's a state pool we should revisit this.
-	 */
-	if (request->session_state_ctx) {
-		(void)talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
-		fr_assert_msg(talloc_parent(request->session_state_ctx) == NULL,
-			      "session_state_ctx must not be parented by another chunk, but is parented by %s",
-			      talloc_get_name(talloc_parent(request->session_state_ctx)));
-
-		fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
-	}
+	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
 
 	fr_assert(request->server_cs != NULL);
 
