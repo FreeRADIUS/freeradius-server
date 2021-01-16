@@ -78,10 +78,6 @@ bool const sbuff_char_blank[UINT8_MAX + 1] = {
 	['\t'] = true, [' '] = true,
 };
 
-/** Escape rules to use when an escape_rules pointer is NULL
- */
-static fr_sbuff_unescape_rules_t escape_none = {};
-
 /** Copy function that allows overlapping memory ranges to be copied
  *
  * @param[out] o_start		start of output buffer.
