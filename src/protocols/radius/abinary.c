@@ -1206,12 +1206,12 @@ static int ascend_parse_generic(int argc, char **argv,
 ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outlen)
 {
 	int		token, type;
-	int		slen;
+	int		slen = 0;
 	int		argc;
 	char		*argv[32];
 	ascend_filter_t filter;
 	char		*p;
-	size_t		size;
+	size_t		size = 0;
 
 	/*
 	 *	Tokenize the input string in the VP.
