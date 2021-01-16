@@ -73,7 +73,7 @@ static fr_table_num_ordered_t const attr_table[] = {
 	{ L("unknown"),		TMPL_ATTR_TYPE_UNKNOWN		},
 	{ L("unresolved"),	TMPL_ATTR_TYPE_UNRESOLVED	}
 };
-size_t attr_table_len = NUM_ELEMENTS(attr_table);
+static size_t attr_table_len = NUM_ELEMENTS(attr_table);
 
 /** Map keywords to #pair_list_t values
  */
