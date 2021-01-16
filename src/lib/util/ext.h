@@ -128,7 +128,7 @@ struct fr_ext_s {
 	fr_table_num_ordered_t const	*name_table;	//!< String identifiers for the extensions.
 	size_t			*name_table_len;	//!< How many extensions there are in the table.
 	int			max;			//!< The highest extension value.
-	fr_ext_info_t const	info[];			//!< Additional information about each extension.
+	fr_ext_info_t const	*info;			//!< Additional information about each extension.
 };
 
 /** Optional extension header struct
