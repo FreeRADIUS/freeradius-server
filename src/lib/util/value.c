@@ -282,7 +282,7 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-uint64_t const fr_value_box_integer_max[] = {
+static uint64_t const fr_value_box_integer_max[] = {
 	[FR_TYPE_BOOL]				= true,
 	[FR_TYPE_UINT8]				= UINT8_MAX,
 	[FR_TYPE_UINT16]			= UINT16_MAX,
@@ -302,7 +302,7 @@ uint64_t const fr_value_box_integer_max[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-int64_t const fr_value_box_integer_min[] = {
+static int64_t const fr_value_box_integer_min[] = {
 	[FR_TYPE_BOOL]				= false,
 	[FR_TYPE_UINT8]				= 0,
 	[FR_TYPE_UINT16]			= 0,
@@ -2741,13 +2741,6 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 					       fr_value_box_t const *src)
 {
 	switch (src->type) {
-	default:
-	bad_cast:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 				             src->vb_strvalue, src->vb_length, '\0', src->tainted);
@@ -2820,9 +2813,16 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		dst->vb_uint64 = fr_net_to_uint64(&src->vb_ifid[0]);
 		return 0;
 	}
+
+	default:
+		break;
 	}
 
-	return 0;
+bad_cast:
+	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+			   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+			   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+	return -1;
 }
 
 /** Convert one type of fr_value_box_t to another
@@ -3111,7 +3111,7 @@ int fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
  *
  * @param[in] data to clear.
  */
-inline void fr_value_box_clear_value(fr_value_box_t *data)
+void fr_value_box_clear_value(fr_value_box_t *data)
 {
 	switch (data->type) {
 	case FR_TYPE_OCTETS:
