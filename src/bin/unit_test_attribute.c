@@ -2151,6 +2151,7 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 	fr_sbuff_t		sbuff = FR_SBUFF_IN(in, inlen);
 	ssize_t			slen;
 	command_tmpl_rule_func	func;
+	void			*res;
 
 	static fr_table_ptr_sorted_t tmpl_rule_func_table[] = {
 		{ L("allow_foreign"),		(void *)command_tmpl_rule_allow_foreign		},
@@ -2167,12 +2168,13 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 	while (fr_sbuff_extend(&sbuff)) {
 		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
-		fr_sbuff_out_by_longest_prefix(&slen, &func, tmpl_rule_func_table, &sbuff, NULL);
-		if (func == NULL) {
+		fr_sbuff_out_by_longest_prefix(&slen, &res, tmpl_rule_func_table, &sbuff, NULL);
+		if (res == NULL) {
 			fr_strerror_printf("Specified rule \"%pV\" is invalid",
 					   fr_box_strvalue_len(fr_sbuff_current(&sbuff), fr_sbuff_remaining(&sbuff)));
 			RETURN_COMMAND_ERROR();
 		}
+		func = (command_tmpl_rule_func)res;	/* -Wpedantic */
 
 		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 

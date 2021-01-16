@@ -3526,7 +3526,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return compile_tmpl(parent, unlang_ctx, cp);
 		}
 
-		compile = fr_table_value_by_str(unlang_pair_keywords, name, NULL);
+		compile = (unlang_op_compile_t)fr_table_value_by_str(unlang_pair_keywords, name, NULL);	/* Cast for -Wpedantic */
 		if (compile) return compile(parent, unlang_ctx, ci);
 
 		/*
