@@ -1876,7 +1876,7 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs);
 
-static unlang_t *compile_switch(UNUSED unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	CONF_ITEM		*ci;
 	fr_token_t		type;
