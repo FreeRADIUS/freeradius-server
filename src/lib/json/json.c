@@ -153,7 +153,8 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		break;
 
 	case json_type_boolean:
-		fr_value_box_shallow(out, (bool)json_object_get_boolean(object), tainted);
+		/* Don't cast to bool, else -Wbad-function-cast */
+		fr_value_box_shallow(out, (json_object_get_boolean(object) > 0), tainted);
 		break;
 
 	case json_type_null:
