@@ -108,7 +108,7 @@ static const char *packet_name[] = {
 	[FR_TAC_PLUS_ACCT] = "Accounting",
 };
 
-static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	// proto_tacacs_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
