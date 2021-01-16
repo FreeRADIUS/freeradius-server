@@ -540,7 +540,7 @@ tmpl_t *tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char c
 	tmpl_type_init(vpt, type);
 
 	va_start(ap, fmt);
-	vpt->name = fr_vasprintf(vpt, fmt, ap),
+	vpt->name = fr_vasprintf(vpt, fmt, ap);
 	vpt->len = talloc_array_length(vpt->name) - 1;
 	vpt->quote = quote;
 	va_end(ap);
