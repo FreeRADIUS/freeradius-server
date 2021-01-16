@@ -34,7 +34,6 @@ RCSID("$Id$")
 #include "attrs.h"
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
-#define TAG_VALID_ZERO(x)      	((x) >= 0 && (x) < 0x20)
 
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
