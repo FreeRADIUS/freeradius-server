@@ -3,7 +3,7 @@
 #  because we don't wait for the response.
 #
 update request {
-	&Tmp-String-0 := "%{exec_sync:/bin/bash -c 'echo hello'}"
+	&Tmp-String-0 := "%{exec_sync:/bin/sh -c 'echo hello'}"
 }
 if (&Tmp-String-0 != 'hello') {
 	test_fail
@@ -15,7 +15,7 @@ if (&Tmp-String-0 != 'hello') {
 #  Sync calls should have their output added to the request
 #
 update request {
-	&Tmp-String-0 := "%{exec_sync:/bin/bash -c 'echo \"reply.Reply-Message = \'hello\'\"'}"
+	&Tmp-String-0 := "%{exec_sync:/bin/sh -c 'echo \"reply.Reply-Message = \'hello\'\"'}"
 }
 
 if (&reply.Reply-Message != 'hello') {

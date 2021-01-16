@@ -3,7 +3,7 @@
 #  because we don't wait for the response.
 #
 update request {
-	&Tmp-String-0 := `/bin/bash -c 'echo hello'`
+	&Tmp-String-0 := `/bin/sh -c 'echo hello'`
 }
 if (&Tmp-String-0 != 'hello') {
 	test_fail
@@ -15,7 +15,7 @@ if (&Tmp-String-0 != 'hello') {
 #  Test default list override
 #
 #update request {
-#	control: += `/bin/bash -c "echo reply.Reply-Message = \'hello\'"`
+#	control: += `/bin/sh -c "echo reply.Reply-Message = \'hello\'"`
 #}
 
 #if (&reply.Reply-Message != 'hello') {
