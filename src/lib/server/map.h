@@ -151,6 +151,7 @@ extern fr_table_num_sorted_t const map_assignment_op_table[];
 extern size_t map_assignment_op_table_len;
 
 extern fr_sbuff_parse_rules_t const map_parse_rules_bareword_quoted;
+extern fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST];
 
 #ifdef __cplusplus
 }

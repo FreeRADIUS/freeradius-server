@@ -255,7 +255,7 @@ fr_sbuff_parse_rules_t const map_parse_rules_bareword_quoted = {
 	)
 };
 
-static fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
+fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
 	[T_BARE_WORD]			= &map_parse_rules_bareword_quoted,
 	[T_DOUBLE_QUOTED_STRING]	= &tmpl_parse_rules_double_quoted,
 	[T_SINGLE_QUOTED_STRING]	= &tmpl_parse_rules_single_quoted,
