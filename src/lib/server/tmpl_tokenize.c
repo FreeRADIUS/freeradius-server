@@ -68,7 +68,7 @@ size_t tmpl_type_table_len = NUM_ELEMENTS(tmpl_type_table);
 
 /** Attr ref types
  */
-static r_table_num_ordered_t const attr_table[] = {
+static fr_table_num_ordered_t const attr_table[] = {
 	{ L("normal"),		TMPL_ATTR_TYPE_NORMAL		},
 	{ L("unknown"),		TMPL_ATTR_TYPE_UNKNOWN		},
 	{ L("unresolved"),	TMPL_ATTR_TYPE_UNRESOLVED	}
