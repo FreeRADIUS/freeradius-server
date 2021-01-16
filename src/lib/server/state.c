@@ -714,9 +714,9 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	entry->ctx = request->session_state_ctx;
 	fr_dlist_move(&entry->data, &data);
 
-	request->session_state_ctx = NULL;
-
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	MEM(request->session_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));	/* fixme - should use a pool */
 
 	RDEBUG3("%s - saved", state->da->name);
 	REQUEST_VERIFY(request);
