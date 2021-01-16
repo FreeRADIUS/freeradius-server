@@ -36,7 +36,7 @@ static fr_table_num_sorted_t const cap_set_table[] = {
 	{ L("inherited"),	CAP_INHERITABLE	},
 	{ L("permitted"),	CAP_PERMITTED	}
 };
-size_t cap_set_table_len = NUM_ELEMENTS(cap_set_table);
+static size_t cap_set_table_len = NUM_ELEMENTS(cap_set_table);
 
 /** Ensure we don't loose updates, and the threads have a consistent view of the capability set
  *
