@@ -13163,7 +13163,7 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
     	-Wno-switch-enum \
-    	-wno-gnu-empty-initializer \
+    	-Wno-gnu-empty-initializer \
         $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then

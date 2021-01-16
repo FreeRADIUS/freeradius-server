@@ -1729,7 +1729,7 @@ if test "x$developer" = "xyes"; then
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
     	-Wno-switch-enum \
-    	-wno-gnu-empty-initializer \
+    	-Wno-gnu-empty-initializer \
         $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
