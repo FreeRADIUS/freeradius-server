@@ -3170,7 +3170,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
  *
  * @param[in] data to clear.
  */
-inline void fr_value_box_clear(fr_value_box_t *data)
+void fr_value_box_clear(fr_value_box_t *data)
 {
 	fr_value_box_clear_value(data);
 	fr_value_box_init(data, FR_TYPE_INVALID, NULL, false);
