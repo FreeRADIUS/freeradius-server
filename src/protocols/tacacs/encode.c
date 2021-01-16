@@ -657,7 +657,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 */
 	if (original &&
 	    ((original->flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0)) {
-		packet->hdr.flags &= ~FR_TAC_PLUS_UNENCRYPTED_FLAG;
+		packet->hdr.flags &= ~(int)FR_TAC_PLUS_UNENCRYPTED_FLAG;	/* Cast to avoid -Wassign-enum */
 	}
 
 	/*
