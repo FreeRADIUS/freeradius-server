@@ -894,14 +894,13 @@ rlm_rcode_t unlang_interpret_section(request_t *request, CONF_SECTION *subcs, rl
  */
 rlm_rcode_t unlang_interpret_synchronous(request_t *request, CONF_SECTION *cs, rlm_rcode_t action, bool child_el)
 {
-	fr_event_list_t *el, *old_el;
+	fr_event_list_t	*old_el, *el = NULL;
 	fr_heap_t	*backlog, *old_backlog;
 	rlm_rcode_t	rcode;
 	char const	*caller;
-	request_t		*sub_request = NULL;
+	request_t	*sub_request = NULL;
 	bool		wait_for_event;
 	int		iterations = 0;
-
 
 	old_el = request->el;
 	if (child_el) {
@@ -1010,7 +1009,7 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request, CONF_SECTION *cs, r
 		}
 	}
 
-	if (child_el) talloc_free(el);
+	talloc_free(el);
 	talloc_free(backlog);
 	request->el = old_el;
 	request->backlog = old_backlog;
