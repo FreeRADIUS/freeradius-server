@@ -1000,7 +1000,7 @@ void fr_dhcpv6_global_free(void)
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);
-};
+}
 
 static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
