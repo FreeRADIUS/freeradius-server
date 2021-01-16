@@ -1181,8 +1181,8 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	return fr_sbuff_advance(in, end - buff); \
 }
 
-SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100);
-SBUFF_PARSE_FLOAT_DEF(float64, double, strtod, 100);
+SBUFF_PARSE_FLOAT_DEF(float32, float, strtof, 100)
+SBUFF_PARSE_FLOAT_DEF(float64, double, strtod, 100)
 
 /** Move data from one sbuff to another
  *
