@@ -349,14 +349,10 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_STRING16(packet->authen.reply.data_len, attr_tacacs_data);
 
 			goto check_reply;
-
-		} else {
-		unknown_packet:
-			fr_strerror_const("decode: Unknown packet type");
-			return -1;
 		}
-
-		break;
+	unknown_packet:
+		fr_strerror_const("decode: Unknown packet type");
+		return -1;
 
 	case FR_TAC_PLUS_AUTHOR:
 		if (packet_is_author_request(packet)) {
@@ -420,7 +416,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			}
 
 			goto check_request;
-
 		} else if (packet_is_author_response(packet)) {
 			/*
 			 * 5.2. The Authorization RESPONSE Packet Body
@@ -492,11 +487,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 
 			goto check_reply;
 
-		} else {
-			goto unknown_packet;
 		}
-
-		break;
+		goto unknown_packet;
 
 	case FR_TAC_PLUS_ACCT:
 		if (packet_is_acct_request(packet)) {
@@ -637,10 +629,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 */
 			packet->hdr.seq_no &= 0xfe;
 
-		} else {
-			goto unknown_packet;
 		}
-		break;
+		goto unknown_packet;
 
 	default:
 		fr_strerror_printf("encode: TACACS+ type %u", packet->hdr.type);
