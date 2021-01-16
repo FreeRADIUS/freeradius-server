@@ -444,7 +444,7 @@ static void mod_entry_point_set(void const *instance, request_t *request)
 	request->async->process_inst = type_submodule->data;
 }
 
-static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
 {
 	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
 
