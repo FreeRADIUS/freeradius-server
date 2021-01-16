@@ -2041,12 +2041,12 @@ static unlang_action_t common_reauthentication_send_resume(rlm_rcode_t *p_result
 		case AKA_SIM_FULLAUTH_ID_REQ:
 		case AKA_SIM_PERMANENT_ID_REQ:
 		default:
-			REDEBUG("Last requested Full-Auth-Id or Permanent-Identity, "
-				"but received a Fast-Auth-Id.  Cannot continue");
-		failure:
-			return common_failure_notification_enter(p_result, mctx, request, eap_session);
+			break;
 		}
-		break;
+		REDEBUG("Last requested Full-Auth-Id or Permanent-Identity, "
+			"but received a Fast-Auth-Id.  Cannot continue");
+	failure:
+		return common_failure_notification_enter(p_result, mctx, request, eap_session);
 
 	/*
 	 *	Policy rejected the user
