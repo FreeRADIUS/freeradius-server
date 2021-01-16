@@ -54,8 +54,6 @@ static void pair_tests_init(void);
 #	include <gperftools/profiler.h>
 #endif
 
-#define ARRAY_SIZE(x)   ((sizeof(x)/sizeof(x[0])))
-
 static char const       *dict_dir  = "share/dictionary";
 
 /* Set by pair_tests_init()*/
