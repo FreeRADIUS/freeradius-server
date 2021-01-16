@@ -108,7 +108,7 @@ typedef struct {
 	uint16_t	dstport;
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
-	uint8_t		end[0];
+	uint8_t		end[];
 
 	// @todo - extra juniper stuff
 } ascend_ip_filter_t;
@@ -161,7 +161,7 @@ typedef struct {
 	uint16_t	dstport;
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
-	uint8_t		end[0];
+	uint8_t		end[];
 
 	// @todo - extra juniper stuff
 } ascend_ipv6_filter_t;
@@ -201,7 +201,7 @@ typedef struct {
 	ascend_ipx_net_t dst;
 	uint8_t		srcSocComp;
 	uint8_t		dstSocComp;
-	uint8_t		end[0];
+	uint8_t		end[];
 } ascend_ipx_filter_t;
 
 
@@ -236,7 +236,7 @@ typedef struct {
 	uint8_t		mask[ RAD_MAX_FILTER_LEN ];
 	uint8_t		value[ RAD_MAX_FILTER_LEN ];
 	uint8_t		compNeq;
-	uint8_t		end[0];
+	uint8_t		end[];
 } ascend_generic_filter_t;
 
 /*
