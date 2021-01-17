@@ -569,6 +569,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Requests have odd sequence numbers.
 			 */
 			packet->hdr.seq_no |= 0x01;
+			break;
 
 		} else if (packet_is_acct_reply(packet)) {
 			/**
