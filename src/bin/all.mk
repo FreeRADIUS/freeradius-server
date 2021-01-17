@@ -26,7 +26,7 @@ FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
 #
 #  Add the fuzzer only if everything was built with the fuzzing flags.
 #
-ifneq "$(findstring -fsanitize=fuzzer,${CFLAGS})" ""
+ifneq "$(findstring fuzzer,${CFLAGS})" ""
 
 #
 #  Define a function to do all of the same thing.
