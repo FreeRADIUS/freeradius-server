@@ -305,12 +305,10 @@ static int _request_free(request_t *request)
 	 *	thread, to avoid spurious allocations.
 	 */
 	if (fr_dlist_num_elements(request_free_list) <= 256) {
-		TALLOC_CTX		*state_ctx;
 		fr_dlist_head_t		*free_list;
 
 		if (request->session_state_ctx) {
-			fr_assert(!request->parent || (request->session_state_ctx != request->parent->session_state_ctx));
-			fr_assert(talloc_parent(state_ctx) != request);	/* Should never be directly parented */
+			fr_assert(talloc_parent(request->session_state_ctx) != request);	/* Should never be directly parented */
 			talloc_free(request->session_state_ctx);	/* Not parented from the request */
 		}
 		free_list = request_free_list;
@@ -341,25 +339,8 @@ static int _request_free(request_t *request)
 really_free:
 	/*
 	 *	state_ctx is parented separately.
-	 *
-	 *	The reason why it's OK to do this, is if the state attributes
-	 *	need to persist across requests, they will already have been
-	 *	moved to a fr_state_entry_t, with the state pointers in the
-	 *	request being set to NULL, before the request is freed/
-	 *
-	 *	Note also that we do NOT call TALLOC_FREE(), which
-	 *	sets state_ctx=NULL.  We don't control the order in
-	 *	which talloc frees the children.  And the parents
-	 *	state_ctx pointer needs to stick around so that all of
-	 *	the children can check it.
-	 *
-	 *	If this assertion hits, it means that someone didn't
-	 *	call fr_state_store_in_parent()
 	 */
-	if (request->session_state_ctx) {
-		fr_assert(!request->parent || (request->session_state_ctx != request->parent->session_state_ctx));
-		talloc_free(request->session_state_ctx);
-	}
+	if (request->session_state_ctx) TALLOC_FREE(request->session_state_ctx);
 
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
