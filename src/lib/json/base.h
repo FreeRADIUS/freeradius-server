@@ -36,7 +36,7 @@ RCSIDH(json_h, "$Id$")
 
 DIAG_OFF(documentation-deprecated-sync)
 #    include <json-c/json.h>
-DIAG_ON(documentation-deprecated-sync);
+DIAG_ON(documentation-deprecated-sync)
 
 #  elif defined(HAVE_JSON_JSON_H)
 #    include <json/json.h>
