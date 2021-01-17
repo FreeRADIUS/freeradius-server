@@ -56,19 +56,20 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - { OS: ubuntu-18.04, CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { OS: ubuntu-18.04, CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { OS: ubuntu-18.04, CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
-          - { OS: ubuntu-18.04, CC: gcc,   TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
-          - { OS: ubuntu-18.04, CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { OS: ubuntu-18.04, CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { OS: ubuntu-18.04, CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
-          - { OS: ubuntu-18.04, CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DNDEBUG" }
-          - { OS: macos-10.15,  CC: clang, TEST_CERTS: yes, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc-lean      }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc           }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc-O2-g3     }
+          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc-ndebug    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-altlibs }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: macos-10.15,  NAME: macos-clang         }
 
     env: ${{ matrix.env }}
 
-    name: "${{ matrix.env.OS }} ${{ matrix.env.CC }} ${{ toJson(matrix.env) }}"
+    name: "${{ matrix.env.NAME }} ${{ toJson(matrix.env) }}"
 
     steps:
 
@@ -183,7 +184,7 @@ jobs:
         libnl-genl-3-dev \
         libpam0g-dev \
         libpcap-dev \
-        libpcre3-dev \
+        libpcre2-dev \
         libperl-dev \
         libpq-dev \
         libpython-all-dev \
@@ -269,10 +270,26 @@ jobs:
         sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10
 
+    #
+    #  Build using some alternative libraries
+    #
+    #    PCRE 2       -> PCRE 1
+    #    MIT Kerberos -> HEIMDAL Kerberos
+    #
+    - name: Use alternative libraries
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
+        sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
+        sudo apt-get install -y --no-install-recommends heimdal-dev
+
     - name: Show versions
       run: |
         $CC --version
         make --version
+        krb5-config --all || :
+        pcre-config --libs-posix --version 2>/dev/null || :
+        pcre2-config --libs-posix --version 2>/dev/null || :
 
     - name: Hacks to silence clang-12 warnings in talloc and json-c (MacOS)
       if: ${{ runner.os == 'macOS' }}
