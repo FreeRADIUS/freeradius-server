@@ -36,6 +36,8 @@ src/tests/fuzzer-corpus/$(PROTOCOL):
 		tar -xf $(PROTOCOL).tar; \
 	fi
 
+$(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTOCOL).la
+
 #
 #  Run the fuzzer binary against the fuzzer corpus data files.
 #
@@ -48,11 +50,11 @@ src/tests/fuzzer-corpus/$(PROTOCOL):
 #  This will track values across compare instructions.  But it can slow down scanning by 2x, and
 #  increase the size of the corpus by several times.
 #
-fuzzer.$(PROTOCOL): ./build/bin/local/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
+fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)
 
 #
 #  tests add a 10s timeout.  This is so that we can see if the fuzzers run _at all_.
 #
-test.fuzzer.$(PROTOCOL): ./build/bin/local/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
+test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -timeout=10 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)
