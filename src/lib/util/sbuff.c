@@ -1170,7 +1170,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	} \
 	res = _func(buff, &end); \
 	if (errno == ERANGE) { \
-		if (err) *err = res == 0 ? FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW : FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
+		if (err) *err = ((res > 0) ? FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW : FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW); \
 		return 0; \
 	} \
 	if (no_trailing && (*end != '\0')) { \
