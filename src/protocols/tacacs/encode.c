@@ -628,7 +628,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	Replies have even sequence numbers.
 			 */
 			packet->hdr.seq_no &= 0xfe;
-
+			break;
 		}
 		goto unknown_packet;
 
