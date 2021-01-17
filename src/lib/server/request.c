@@ -308,17 +308,10 @@ static int _request_free(request_t *request)
 		TALLOC_CTX		*state_ctx;
 		fr_dlist_head_t		*free_list;
 
-		/*
-		 *	Ensure any data associated
-		 *	with the state ctx is freed.
-		 */
-		state_ctx = request->session_state_ctx;
-		fr_assert(talloc_parent(state_ctx) != request);	/* Should never be directly parented */
-
 		if (request->session_state_ctx) {
 			fr_assert(!request->parent || (request->session_state_ctx != request->parent->session_state_ctx));
-			talloc_free_children(request->session_state_ctx);
-			talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
+			fr_assert(talloc_parent(state_ctx) != request);	/* Should never be directly parented */
+			talloc_free(request->session_state_ctx);	/* Not parented from the request */
 		}
 		free_list = request_free_list;
 
@@ -329,7 +322,6 @@ static int _request_free(request_t *request)
 
 		memset(request, 0, sizeof(*request));
 		request->component = "free_list";
-		request->session_state_ctx = state_ctx;		/* Use the old, now cleared, state_ctx */
 
 		/*
 		 *	Reinsert into the free list
@@ -366,7 +358,6 @@ really_free:
 	 */
 	if (request->session_state_ctx) {
 		fr_assert(!request->parent || (request->session_state_ctx != request->parent->session_state_ctx));
-
 		talloc_free(request->session_state_ctx);
 	}
 
