@@ -183,8 +183,8 @@ ATTRIBUTE	NDS-Tree-Name			86	octets
 ATTRIBUTE	NDS-Context			87	octets
 
 # RFC 4280 - Broadcast and Multicast Control Servers
-ATTRIBUTE	BCMS-Server-IPv4-FQDN		88	string array
-ATTRIBUTE	BCMS-Server-IPv4-Address		89	ipaddr array
+ATTRIBUTE	BCMS-Server-IPv4-FQDN		88	octets # really dns_label array
+ATTRIBUTE	BCMS-Server-IPv4-Address	89	ipaddr array
 
 # Authentication
 ATTRIBUTE	Authentication			90	octets
@@ -273,9 +273,9 @@ ATTRIBUTE	MoS-IPv4-Address-CS		.2	ipaddr array
 ATTRIBUTE	MoS-IPv4-Address-ES		.3	ipaddr array
 
 ATTRIBUTE	MoS-IPv4-FQDN			140	tlv
-ATTRIBUTE	MoS-IPv4-FQDN-IS			.1	string array # and dns_label
-ATTRIBUTE	MoS-IPv4-FQDN-CS			.2	string array # and dns_label
-ATTRIBUTE	MoS-IPv4-FQDN-ES			.3	string array # and dns_label
+ATTRIBUTE	MoS-IPv4-FQDN-IS			.1	octets # really dns_label array
+ATTRIBUTE	MoS-IPv4-FQDN-CS			.2	octets # really dns_label array
+ATTRIBUTE	MoS-IPv4-FQDN-ES			.3	octets # really dns_label array
 
 # RFC 6011 - SIP UA Configuration Service Domains
 ATTRIBUTE	SIP-UA-Configuration-Service-Domains 141	string

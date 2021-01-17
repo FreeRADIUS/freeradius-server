@@ -660,6 +660,11 @@ static fr_table_num_ordered_t const subtype_table[] = {
 static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
+	if (flags->array && !flags->length) {
+		fr_strerror_const("Variable length attributes cannot be marked as 'array'");
+		return false;
+	}
+
 	/*
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
