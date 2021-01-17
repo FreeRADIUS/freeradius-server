@@ -59,9 +59,10 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
 	 *
 	 *	Huh?  The dictionary parser should really have caught
 	 *	this.
+	 *
+	 *	@todo - handle DNS labels, which are _delimited_ strings
 	 */
 	if (!da->flags.length) {
-		fr_assert(0);
 		return 1;
 	}
 
