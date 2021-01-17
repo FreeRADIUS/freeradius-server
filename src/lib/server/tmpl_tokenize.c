@@ -108,6 +108,12 @@ static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 
 static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref);
 
+/*
+ *	Can't use |= or ^= else we get out of range errors
+ */
+#define UNRESOLVED_SET(_flags) (*(_flags) = (*(_flags) | TMPL_FLAG_UNRESOLVED))
+#define RESOLVED_SET(_flags) (*(_flags) = (*(_flags) & ~TMPL_FLAG_UNRESOLVED))
+
 void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 {
 	char buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
@@ -2523,7 +2529,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			if (!head) return slen;
 
-			if (flags.needs_resolving) type |= TMPL_FLAG_UNRESOLVED;
+			if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
 			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
 			vpt->data.xlat.ex = head;
@@ -2651,7 +2657,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		} else {
 			tmpl_type_t	type = TMPL_TYPE_XLAT;
 
-			if (flags.needs_resolving) type |= TMPL_FLAG_UNRESOLVED;
+			if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
 			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
 			vpt->data.xlat.ex = head;
@@ -2683,7 +2689,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			return slen;
 		}
 
-		if (flags.needs_resolving) type |= TMPL_FLAG_UNRESOLVED;
+		if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
 		vpt->data.xlat.ex = head;
@@ -2725,7 +2731,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		} else {
 			tmpl_type_t type = TMPL_TYPE_REGEX_XLAT;
 
-			if (flags.needs_resolving) type |= TMPL_FLAG_UNRESOLVED;
+			if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
 			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
 			vpt->data.xlat.ex = head;
@@ -3136,8 +3142,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 		 */
 	}
 
-	vpt->type ^= TMPL_FLAG_UNRESOLVED;
-
+	RESOLVED_SET(&vpt->type);
 	TMPL_VERIFY(vpt);
 
 	return 0;
@@ -3161,7 +3166,7 @@ static inline CC_HINT(always_inline) int tmpl_xlat_resolve(tmpl_t *vpt)
 {
 	if (xlat_resolve(&vpt->data.xlat.ex, &vpt->data.xlat.flags, false) < 0) return -1;
 
-	vpt->type ^= TMPL_FLAG_UNRESOLVED;
+	RESOLVED_SET(&vpt->type);
 	TMPL_VERIFY(vpt);
 
 	return 0;
@@ -3311,7 +3316,7 @@ int tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p)
 		return -1;
 	}
 
-	if (vpt->data.xlat.flags.needs_resolving) vpt->type |= TMPL_FLAG_UNRESOLVED;
+	if (vpt->data.xlat.flags.needs_resolving) UNRESOLVED_SET(&vpt->type);
 
 	*vpt_p = vpt;
 
