@@ -925,7 +925,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	return 0;
 }
 
-static void python_interpreter_free(UNUSED rlm_python_t *inst, PyThreadState *interp)
+static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 {
 	/*
 	 *	We incremented the reference count earlier
