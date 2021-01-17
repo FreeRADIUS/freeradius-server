@@ -1076,6 +1076,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 
 		attr += slen;
 		talloc_free_children(packet_ctx.tmp_ctx);
+		packet_ctx.tags = NULL;
 	}
 
 	/*
