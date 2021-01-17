@@ -229,6 +229,11 @@ static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, 
 	bool		allow_relay;
 	size_t		packet_len = end - packet;
 
+	if (end == packet) {
+		fr_strerror_const("Packet is empty");
+		return 0;
+	}
+
 	if (depth > DHCPV6_MAX_RELAY_NESTING) {
 		fr_strerror_const("Too many layers forwarded packets");
 		return 0;
@@ -631,6 +636,8 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	uint8_t const		*p, *end;
 	fr_dhcpv6_decode_ctx_t	packet_ctx;
 	fr_pair_t		*vp;
+
+	if (!packet_len) return 0; /* protect access to packet[0] */
 
 	/*
 	 *	Get the packet type.
