@@ -50,3 +50,9 @@ src/tests/fuzzer-corpus/$(PROTOCOL):
 #
 fuzzer.$(PROTOCOL): ./build/bin/local/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)
+
+#
+#  tests add a 10s timeout.  This is so that we can see if the fuzzers run _at all_.
+#
+test.fuzzer.$(PROTOCOL): ./build/bin/local/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
+	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -timeout=10 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)

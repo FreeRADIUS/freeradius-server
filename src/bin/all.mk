@@ -48,8 +48,10 @@ fuzzer.help:
 	@for _p in $(PROTOCOLS); do echo "    make fuzzer.$$_p"; done
 	@echo
 
+test.fuzzer: $(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS))
+
 else
 .PHONY: fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X})
-fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X}):
+fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X}) test.fuzzer:
 	@echo "The server MUST be built with '--enable-llvm-fuzzer-sanitizer'"
 endif
