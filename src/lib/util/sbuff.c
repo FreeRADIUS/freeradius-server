@@ -550,7 +550,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 			/*
 			 *	Duplicate
 			 */
-			if (terminal_cmp(&tmp[j], &tmp[j + 1]) == 0) {
+			if (terminal_cmp(tmp[j], tmp[j + 1]) == 0) {
 				i--;
 				tmp[j] = NULL;
 			}
