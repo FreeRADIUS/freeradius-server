@@ -31,8 +31,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-DIAG_OFF(flexible-array-extensions)
-
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers
  * are:
