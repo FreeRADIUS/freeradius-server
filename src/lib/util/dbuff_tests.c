@@ -4,6 +4,19 @@
 
 #include "dbuff.h"
 
+/*
+ *	We're testing float equality not by adding numbers, but by
+ *	copying memory to / from network buffers.  Disable this
+ *	spurious warning.
+ *
+ *	The tests should arguably be doing memcmp(), to ensure that
+ *	the floats are equal on a *bit* level, not on a *semantic*
+ *	level.
+ */
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wfloat-equal"
+#endif
+
 #define TEST_CHECK_LEN(_got, _exp) \
 do { \
 	size_t _our_got = (_got); \
