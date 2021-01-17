@@ -350,8 +350,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 
 			goto check_reply;
 		}
-	unknown_packet:
-		fr_strerror_const("decode: Unknown packet type");
+
+		fr_strerror_const("encode: Unknown authentication packet type");
 		return -1;
 
 	case FR_TAC_PLUS_AUTHOR:
@@ -488,7 +488,9 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			goto check_reply;
 
 		}
-		goto unknown_packet;
+
+		fr_strerror_const("encode: Unknown authorization packet type");
+		return -1;
 
 	case FR_TAC_PLUS_ACCT:
 		if (packet_is_acct_request(packet)) {
@@ -631,10 +633,12 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			packet->hdr.seq_no &= 0xfe;
 			break;
 		}
-		goto unknown_packet;
+
+		fr_strerror_const("encode: Unknown accounting packet type");
+		return -1;
 
 	default:
-		fr_strerror_printf("encode: TACACS+ type %u", packet->hdr.type);
+		fr_strerror_printf("encode: unknown packet type %u", packet->hdr.type);
 		return -1;
 	}
 

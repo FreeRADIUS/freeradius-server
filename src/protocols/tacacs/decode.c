@@ -443,7 +443,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 		} else {
 		unknown_packet:
-			fr_strerror_const("Unknown packet type");
+			fr_strerror_const("Unknown authentication packet");
 			goto fail;
 		}
 		break;
