@@ -85,8 +85,12 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
+	/*
+	 *	string / octets can be empty.  Other data types are
+	 *	incorrect if they're empty.
+	 */
 	if (data_len == 0) {
-		fr_assert((da->type == FR_TYPE_OCTETS) || (da->type == FR_TYPE_STRING));
+		if (!((da->type == FR_TYPE_OCTETS) || (da->type == FR_TYPE_STRING))) goto raw;
 		goto finish;
 	}
 
