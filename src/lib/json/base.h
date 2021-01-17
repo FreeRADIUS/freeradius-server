@@ -34,11 +34,10 @@ RCSIDH(json_h, "$Id$")
 #ifdef HAVE_JSON
 #  if defined(HAVE_JSONMC_JSON_H)
 
-#if defined(__APPLE__) && defined(__clang__)
-#pragma clang diagnostic ignored "-Wdocumentation-deprecated-sync"
-#endif
-
+DIAG_OFF(documentation-deprecated-sync)
 #    include <json-c/json.h>
+DIAG_ON(documentation-deprecated-sync);
+
 #  elif defined(HAVE_JSON_JSON_H)
 #    include <json/json.h>
 #  else

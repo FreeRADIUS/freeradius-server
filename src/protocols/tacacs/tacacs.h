@@ -258,9 +258,7 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				body[];
 } fr_tacacs_packet_acct_reply_hdr_t;
 
-#if defined(__clang__)
-#pragma clang diagnostic ignored "-Wflexible-array-extensions"
-#endif
+DIAG_OFF(flexible-array-extensions)
 
 typedef struct CC_HINT(__packed__) {
 	fr_tacacs_packet_hdr_t					hdr;
@@ -280,6 +278,8 @@ typedef struct CC_HINT(__packed__) {
 		} acct;
 	};
 } fr_tacacs_packet_t;
+
+DIAG_ON(flexible-array-extensions)
 
 extern char const *fr_tacacs_packet_codes[];
 

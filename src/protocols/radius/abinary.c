@@ -31,9 +31,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#if defined(__clang__)
-#pragma clang diagnostic ignored "-Wflexible-array-extensions"
-#endif
+DIAG_OFF(flexible-array-extensions)
 
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers
