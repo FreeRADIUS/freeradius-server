@@ -29,9 +29,13 @@ RCSIDH(jsonc_missing_h, "$Id$")
 #ifdef HAVE_JSON
 #  if defined(HAVE_JSONMC_JSON_H)
 
+#ifdef __clang__
 DIAG_OFF(documentation-deprecated-sync)
+#endif
 #    include <json-c/json.h>
+#ifdef __clang__
 DIAG_ON(documentation-deprecated-sync)
+#endif
 
 #  elif defined(HAVE_JSON_JSON_H)
 #    include <json/json.h>
