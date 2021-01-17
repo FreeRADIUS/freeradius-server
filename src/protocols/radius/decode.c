@@ -1467,6 +1467,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		if (vp) fr_pair_list_free(&vp);
 
 		vp = fr_raw_from_network(ctx, parent, data, attr_len);
+		tag = 0;
 		goto done;
 	}
 
