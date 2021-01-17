@@ -258,6 +258,10 @@ typedef struct CC_HINT(__packed__) {
 	uint8_t				body[];
 } fr_tacacs_packet_acct_reply_hdr_t;
 
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wflexible-array-extensions"
+#endif
+
 typedef struct CC_HINT(__packed__) {
 	fr_tacacs_packet_hdr_t					hdr;
 	union {
