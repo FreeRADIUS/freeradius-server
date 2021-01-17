@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <stdint.h>
 #include <string.h>
 
-_Thread_local char *sbuff_scratch;
+static _Thread_local char *sbuff_scratch;
 
 static_assert(sizeof(long long) >= sizeof(int64_t), "long long must be as wide or wider than an int64_t");
 static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be as wide or wider than an uint64_t");
