@@ -558,8 +558,10 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		/*
 		 *	Short-hand for simplicity.
 		 */
-#define CHECK(_type) if (a->datum._type < b->datum._type)   { compare = -1; \
-		} else if (a->datum._type > b->datum._type) { compare = +1; }
+#define CHECK(_type) do { \
+			if (a->datum._type < b->datum._type)   { compare = -1; \
+			} else if (a->datum._type > b->datum._type) { compare = +1; } \
+		     } while (0)		
 
 	case FR_TYPE_BOOL:
 		CHECK(boolean);
