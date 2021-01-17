@@ -275,7 +275,7 @@ request_t	*_request_alloc(char const *file, int line, TALLOC_CTX *ctx, request_i
 #define		request_local_alloc(_ctx, _args) _request_local_alloc(__FILE__, __LINE__, (_ctx), (_args))
 request_t	*_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx, request_init_args_t const *args);
 
-int		request_detach(request_t *child, bool will_free);
+int		request_detach(request_t *child);
 
 int		request_global_init(void);
 void		request_global_free(void);

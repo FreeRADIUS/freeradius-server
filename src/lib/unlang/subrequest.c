@@ -367,7 +367,7 @@ int unlang_detached_child_init(request_t *request)
 {
 	fr_pair_t		*vp;
 
-	if (request_detach(request, false) < 0) {
+	if (request_detach(request) < 0) {
 		ERROR("Failed detaching child");
 		return -1;
 	}
@@ -485,7 +485,7 @@ static unlang_action_t unlang_detach(rlm_rcode_t *p_result, request_t *request)
  */
 void unlang_subrequest_free(request_t **child)
 {
-	request_detach(*child, true);
+	request_detach(*child);
 	talloc_free(*child);
 	*child = NULL;
 }

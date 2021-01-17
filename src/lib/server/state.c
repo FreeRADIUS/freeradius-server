@@ -835,49 +835,6 @@ void fr_state_restore_to_child(request_t *child, void const *unique_ptr, int uni
 	talloc_free(child_entry);
 }
 
-/** Move all request data and session-state VPs into a new state_ctx
- *
- * If we don't do this on detach, session-state VPs and persistable
- * request data will be freed when the parent's state_ctx is freed.
- * If the parent was freed before the child, we'd get all kinds of
- * use after free nastiness.
- *
- * @param[in] request		to detach.
- * @param[in] will_free		Caller super pinky swears to free
- *				the request ASAP, and that it wont
- *				touch persistable request data,
- *				request->session_state_ctx or request->state.
- */
-void fr_state_detach(request_t *request, bool will_free)
-{
-	fr_pair_t	*new_state_ctx;
-
-	if (will_free) {
-		fr_pair_list_free(&request->session_state_pairs);
-
-		/*
-		 *	The non-persistable stuff is
-		 *	prented directly by the request
-		 */
-		request_data_persistable_free(request);
-		return;
-	}
-
-	/*
-	 *	Alloc a new pairlist to use as the
-	 *	state ctx and the head of the
-	 *	state list.
-	 */
-	MEM(new_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));
-	request_data_by_persistance_reparent(new_state_ctx, NULL, request, true);
-	request_data_by_persistance_reparent(new_state_ctx, NULL, request, false);
-
-	(void) fr_pair_list_copy(new_state_ctx, &new_state_ctx->children, &request->session_state_pairs);
-	fr_pair_list_free(&request->session_state_pairs);
-
-	request->session_state_ctx = new_state_ctx;
-}
-
 /** Return number of entries created
  *
  */

@@ -518,15 +518,11 @@ request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx, req
  * @note This should be used for requests in preparation for freeing them.
  *
  * @param[in] child		request to unlink.
- * @param[in] will_free		Caller super pinky swears to free
- *				the request ASAP, and that it wont
- *				touch persistable request data,
- *				request->session_state_ctx or request->state.
  * @return
  *	 - 0 on success.
  *	 - -1 on failure.
  */
-int request_detach(request_t *child, bool will_free)
+int request_detach(request_t *child)
 {
 	request_t		*request = child->parent;
 
@@ -536,12 +532,6 @@ int request_detach(request_t *child, bool will_free)
 	 *	Unlink the child from the parent.
 	 */
 	request_data_get(request, child, 0);
-
-	/*
-	 *	Fixup any sate or persistent
-	 *	request data.
-	 */
-	fr_state_detach(child, will_free);
 
 	child->parent = NULL;
 

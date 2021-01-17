@@ -351,7 +351,7 @@ static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, request_t *
 
 	eap_session = talloc_get_type_abort(rctx, eap_session_t);
 
-	(void)fr_cond_assert(request_detach(eap_session->subrequest, true) == 0);
+	(void)fr_cond_assert(request_detach(eap_session->subrequest) == 0);
 	TALLOC_FREE(eap_session->subrequest);
 
 	/*
@@ -382,7 +382,7 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED mod
 	/*
 	 *	Cleanup the subrequest
 	 */
-	(void)fr_cond_assert(request_detach(eap_session->subrequest, true) == 0);
+	(void)fr_cond_assert(request_detach(eap_session->subrequest) == 0);
 	TALLOC_FREE(eap_session->subrequest);
 
 	/*
