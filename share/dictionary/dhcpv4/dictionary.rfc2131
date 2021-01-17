@@ -323,7 +323,7 @@ ATTRIBUTE	Reboot-Time			211	date
 ATTRIBUTE	6RD				212	octets
 
 # RFC 5986 - Discovering the Local Location Information Server (LIS)
-ATTRIBUTE	Access-Network-Domain-Name		213	string array
+ATTRIBUTE	Access-Network-Domain-Name		213	string # really one dns_label
 
 # RFC 3942 - 214-219 - Unassigned
 
