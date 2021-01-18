@@ -108,8 +108,10 @@ static void test_dbuff_net_encode(void)
 	int16_t		i16val = 0x1234;
 	int32_t		i32val = 0xd34d;
 	int64_t		i64val = 0x123456789abcdef0;
-	float		fval = 0;
-	double		dval = 0;
+	float		float_in = 1.0f + FLT_EPSILON;
+	float		float_out = 0;
+	double		double_in = 1.0 + DBL_EPSILON;
+	double		double_out = 0;
 
 	TEST_CASE("Generate wire format unsigned 16-bit value");
 	memset(buff, 0, sizeof(buff));
@@ -254,18 +256,18 @@ static void test_dbuff_net_encode(void)
 	TEST_CASE("Generate wire-format float");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in(&dbuff, 1.0f + FLT_EPSILON) == 4);
+	TEST_CHECK(fr_dbuff_in(&dbuff, float_in) == 4);
 	fr_dbuff_set_to_start(&dbuff);
-	TEST_CHECK(fr_dbuff_out(&fval, &dbuff) == 4);
-	TEST_CHECK(fval == 1.0f + FLT_EPSILON);
+	TEST_CHECK(fr_dbuff_out(&float_out, &dbuff) == 4);
+	TEST_CHECK(memcmp(&float_out, &float_in, sizeof(float)) == 0);
 
 	TEST_CASE("Generate wire-format double");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in(&dbuff, 1.0 + DBL_EPSILON) == 8);
+	TEST_CHECK(fr_dbuff_in(&dbuff, double_in) == 8);
 	fr_dbuff_set_to_start(&dbuff);
-	TEST_CHECK(fr_dbuff_out(&dval, &dbuff) == 8);
-	TEST_CHECK(dval == 1.0 + DBL_EPSILON);
+	TEST_CHECK(fr_dbuff_out(&double_out, &dbuff) == 8);
+	TEST_CHECK(memcmp(&double_out, &double_in, sizeof(double)) == 0);
 
 	TEST_CASE("Refuse to write to too-small space");
 	fr_dbuff_init(&dbuff, buff, sizeof(uint32_t));
