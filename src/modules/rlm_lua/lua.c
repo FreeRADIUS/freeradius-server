@@ -544,7 +544,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 	 *	for v in request[User-Name].pairs() do
 	 */
 	lua_newtable(L);
-	lua_pushlightuserdata(L, request->request_pairs);
+	lua_pushlightuserdata(L, &request->request_pairs);
 	lua_pushlightuserdata(L, up);
 	lua_pushcclosure(L, _lua_pair_iterator_init, 2);
 	lua_setfield(L, -2, "pairs");
