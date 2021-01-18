@@ -312,7 +312,7 @@ static int _lua_pair_get(lua_State *L)
 {
 	request_t			*request = fr_lua_util_get_request();
 
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp = NULL;
 	int			index;
@@ -325,10 +325,10 @@ static int _lua_pair_get(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_cursor_iter_by_da_init(&cursor, &request->request_pairs, da);
+	fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, da);
 
 	for (index = (int) lua_tointeger(L, -1); index >= 0; index--) {
-		vp = fr_cursor_next(&cursor);
+		vp = fr_dcursor_next(&cursor);
 		if (!vp) return 0;
 	}
 
@@ -353,7 +353,7 @@ static int _lua_pair_set(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_util_get_inst();
 	request_t			*request = fr_lua_util_get_request();
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp = NULL, *new;
 	lua_Integer		index;
@@ -374,10 +374,10 @@ static int _lua_pair_set(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_cursor_iter_by_da_init(&cursor, &request->request_pairs, da);
+	fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, da);
 
 	for (index = lua_tointeger(L, -2); index >= 0; index--) {
-		vp = fr_cursor_next(&cursor);
+		vp = fr_dcursor_next(&cursor);
 		if (vp) break;
 	}
 
@@ -386,7 +386,7 @@ static int _lua_pair_set(lua_State *L)
 	 *	attribute the cursor is currently positioned at.
 	 */
 	if (delete) {
-		fr_cursor_remove(&cursor);
+		fr_dcursor_remove(&cursor);
 		return 0;
 	}
 
@@ -397,9 +397,9 @@ static int _lua_pair_set(lua_State *L)
 	 *	else we add a new VP to the list.
 	 */
 	if (vp) {
-		fr_cursor_replace(&cursor, new);
+		fr_dcursor_replace(&cursor, new);
 	} else {
-		fr_cursor_append(&cursor, new);
+		fr_dcursor_append(&cursor, new);
 	}
 
 	return 0;
@@ -409,7 +409,7 @@ static int _lua_pair_iterator(lua_State *L)
 {
 	request_t			*request = fr_lua_util_get_request();
 
-	fr_cursor_t		*cursor;
+	fr_dcursor_t		*cursor;
 	fr_pair_t		*vp;
 
 	/*
@@ -423,7 +423,7 @@ static int _lua_pair_iterator(lua_State *L)
 	fr_assert(cursor);
 
 	/* Packet list should be light user data too at some point... */
-	vp = fr_cursor_next(cursor);
+	vp = fr_dcursor_next(cursor);
 	if (!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -438,7 +438,7 @@ static int _lua_pair_iterator_init(lua_State *L)
 {
 	request_t			*request = fr_lua_util_get_request();
 
-	fr_cursor_t		*cursor;
+	fr_dcursor_t		*cursor;
 	fr_dict_attr_t const	*da;
 
 
@@ -451,12 +451,12 @@ static int _lua_pair_iterator_init(lua_State *L)
 	da = lua_touserdata(L, lua_upvalueindex(2));
 	fr_assert(da);
 
-	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
+	cursor = (fr_dcursor_t*) lua_newuserdata(L, sizeof(fr_dcursor_t));
 	if (!cursor) {
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_cursor_iter_by_da_init(cursor, &request->request_pairs, da);	/* @FIXME: Shouldn't use list head */
+	fr_dcursor_iter_by_da_init(cursor, &request->request_pairs, da);	/* @FIXME: Shouldn't use list head */
 
 	lua_pushcclosure(L, _lua_pair_iterator, 1);
 
@@ -467,7 +467,7 @@ static int _lua_list_iterator(lua_State *L)
 {
 	request_t			*request = fr_lua_util_get_request();
 
-	fr_cursor_t		*cursor;
+	fr_dcursor_t		*cursor;
 	fr_pair_t		*vp;
 
 	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
@@ -476,7 +476,7 @@ static int _lua_list_iterator(lua_State *L)
 	fr_assert(cursor);
 
 	/* Packet list should be light user data too at some point... */
-	vp = fr_cursor_current(cursor);
+	vp = fr_dcursor_current(cursor);
 	if(!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -486,7 +486,7 @@ static int _lua_list_iterator(lua_State *L)
 
 	if (fr_lua_marshall(request, L, vp) < 0) return -1;
 
-	fr_cursor_next(cursor);
+	fr_dcursor_next(cursor);
 
 	return 2;
 }
@@ -497,14 +497,14 @@ static int _lua_list_iterator(lua_State *L)
 static int _lua_list_iterator_init(lua_State *L)
 {
 	request_t			*request = fr_lua_util_get_request();
-	fr_cursor_t		*cursor;
+	fr_dcursor_t		*cursor;
 
-	cursor = (fr_cursor_t*) lua_newuserdata(L, sizeof(fr_cursor_t));
+	cursor = (fr_dcursor_t*) lua_newuserdata(L, sizeof(fr_dcursor_t));
 	if (!cursor) {
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_cursor_init(cursor, &request->request_pairs);	/* @FIXME: Shouldn't use list head */
+	fr_dcursor_init(cursor, &request->request_pairs);	/* @FIXME: Shouldn't use list head */
 
 	lua_pushlightuserdata(L, cursor);
 	lua_pushcclosure(L, _lua_list_iterator, 1);
@@ -713,11 +713,11 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 	lua_newtable(L);
 
 	if (request) {
-		fr_cursor_t 	cursor;
+		fr_dcursor_t 	cursor;
 
 		/* Attribute list table */
 		fr_pair_list_sort(&request->request_pairs, fr_pair_cmp_by_da);
-		fr_cursor_init(&cursor, &request->request_pairs);
+		fr_dcursor_init(&cursor, &request->request_pairs);
 
 		/*
 		 *	Setup the environment
