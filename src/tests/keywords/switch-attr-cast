@@ -9,9 +9,7 @@ update request {
 
 switch &Service-Type {
        case "%{expr: 1 + 2}" {
-		update reply {
-			&Filter-Id := "3"
-		}
+		test_fail
        }
 
        #
@@ -23,10 +21,8 @@ switch &Service-Type {
 		success
        }
 
-       case {
-		update reply {
-			&Filter-Id := "default"
-		}
+       default {
+		test_fail
        }
 
 }

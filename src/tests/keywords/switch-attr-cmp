@@ -21,7 +21,7 @@ switch &User-Name {
 		test_fail
 	}
 
-	case {
+	default {
 		test_fail
 	}
 
