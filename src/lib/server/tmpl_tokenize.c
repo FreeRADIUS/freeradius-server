@@ -40,6 +40,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+/* clang-format off */
 /** Map #tmpl_type_t values to descriptive strings
  */
 fr_table_num_ordered_t const tmpl_type_table[] = {
@@ -105,6 +106,7 @@ static fr_table_num_sorted_t const attr_num_table[] = {
 	{ L("n"),		NUM_LAST			}
 };
 static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
+/* clang-format on */
 
 static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref);
 
@@ -994,6 +996,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
  * @{
  */
 
+/* clang-format off */
 /** Default parser rules
  *
  * Because this is getting to be a ridiculous number of parsing rules
@@ -1103,6 +1106,7 @@ fr_sbuff_parse_rules_t const *tmpl_parse_rules_quoted[T_TOKEN_LAST] = {
 	[T_SOLIDUS_QUOTED_STRING]	= &tmpl_parse_rules_solidus_quoted,
 	[T_BACK_QUOTED_STRING]		= &tmpl_parse_rules_backtick_quoted
 };
+/* clang-format on */
 
 /** Verify, after skipping whitespace, that a substring ends in a terminal char, or ends without further chars
  *
