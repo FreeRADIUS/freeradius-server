@@ -690,6 +690,7 @@ fi
 %doc %{_mandir}/man8/radcrypt.8.gz
 %doc %{_mandir}/man8/raddebug.8.gz
 %doc %{_mandir}/man8/radmin.8.gz
+%doc %{_mandir}/man8/radiusd.8.gz
 # dictionaries
 %dir %attr(755,root,root) /usr/share/freeradius
 /usr/share/freeradius/*
@@ -855,16 +856,16 @@ fi
 /usr/bin/radtest
 /usr/bin/radwho
 /usr/bin/radzap
-/usr/bin/rlm_redis_ippool_tool
 /usr/bin/smbencrypt
 # man-pages
+%doc %{_mandir}/man1/dhcpclient.1.gz
+%doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz
 %doc %{_mandir}/man1/radzap.1.gz
-%doc %{_mandir}/man1/dhcpclient.1.gz
+%doc %{_mandir}/man8/radsniff.8.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
-%doc %{_mandir}/man8/rlm_redis_ippool_tool.8.gz
 
 %files perl-util
 %defattr(-,root,root)
@@ -938,10 +939,12 @@ fi
 
 %files redis
 %defattr(-,root,root)
+/usr/bin/rlm_redis_ippool_tool
 %{_libdir}/freeradius/rlm_redis.so
 %{_libdir}/freeradius/rlm_rediswho.so
 %{_libdir}/freeradius/rlm_cache_redis.so
 %{_libdir}/freeradius/rlm_redis_ippool.so
+%doc %{_mandir}/man8/rlm_redis_ippool_tool.8.gz
 
 %files rest
 %defattr(-,root,root)
