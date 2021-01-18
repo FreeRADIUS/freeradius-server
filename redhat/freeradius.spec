@@ -713,7 +713,6 @@ fi
 %files config
 %dir %attr(755,root,radiusd) %{_sysconfdir}/raddb
 %defattr(-,root,radiusd)
-#%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/filter/*
 %attr(644,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/dictionary
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/panic.gdb
