@@ -367,7 +367,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		raw.op = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
 		if ((raw.op  < T_EQSTART) || (raw.op  > T_EQEND)) {
 			fr_dict_unknown_free(&da);
-			fr_strerror_const("Expecting operator");
+			fr_strerror_printf("Expecting operator for %s", da->name);
 			goto error;
 		}
 
@@ -419,7 +419,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 */
 			quote = gettoken(&p, raw.r_opand, sizeof(raw.r_opand), false);
 			if (quote == T_EOL) {
-				fr_strerror_const("Failed to get value");
+				fr_strerror_printf("Failed to get value for %s", da->name);
 				goto error;
 			}
 
