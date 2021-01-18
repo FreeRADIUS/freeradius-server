@@ -87,28 +87,52 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 /** Extend an encoded option in-place.
  *
  * @param[in] dbuff	buffer containing the option
- * @param[in] hdr	where the option starts
+ * @param[in] hdr	marker (with dbuff as parent) set to where the option starts
  * @param[in] len	length of the data being written
  * @return
- *	- NULL if we can't extend the option
- *	- !NULL which is the start of the next option
+ *	- false if we can't extend the option
+ *	- true  if we can, with hdr set to where the next option should start
+ * @note	The option starts with a two-byte (type, length) header, where
+ *		the length does *not* include the two bytes for the header.
+ *		The starting length may be non-zero, hence its counting towards
+ *		the header_byte calculation and its inclusion in sublen calculation.
+ *		(All those following start out empty, hence the initialization
+ *		of their lengths to zero.)
  */
-static uint8_t *extend_option(fr_dbuff_t *dbuff, uint8_t *hdr, int len)
+static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 {
 	size_t header_bytes;
-	uint8_t *next_hdr = NULL;
+	uint8_t			type, option_len = 0;
+	fr_dbuff_marker_t	next_hdr, dest;
+
+	/*
+	 *	This can't follow the convention of operating on
+	 *	a chlld dbuff because it must work on and amidst
+	 *	already-written data.
+	 */
+
+	fr_dbuff_marker(&next_hdr, dbuff);
+	fr_dbuff_marker(&dest, dbuff);
+
+	fr_dbuff_set(&next_hdr, hdr);
+
+	fr_dbuff_out(&type, &next_hdr);
+	fr_dbuff_out(&option_len, &next_hdr);
 
 	/*
 	 *	How many bytes we will need to add for headers.
 	 */
-	header_bytes = ((hdr[1] + len) / 255) * 2;
+	header_bytes = ((option_len + len) / 255) * 2;
 
 	/*
 	 *	No room for the new headers and data, we're done.
 	 */
-	if (fr_dbuff_advance(dbuff, header_bytes) < 0) {
-		return NULL;
+	if (fr_dbuff_extend_lowat(NULL, dbuff, header_bytes) < header_bytes) {
+		fr_dbuff_marker_release(&dest);
+		fr_dbuff_marker_release(&next_hdr);
+		return false;
 	}
+	fr_dbuff_advance(dbuff, header_bytes);
 
 	/*
 	 *	Moving the same data repeatedly in a loop is simpler
@@ -122,21 +146,21 @@ static uint8_t *extend_option(fr_dbuff_t *dbuff, uint8_t *hdr, int len)
 		 *	option, and how much data we have to move out
 		 *	of the way.
 		 */
-		sublen = 255 - hdr[1];
+		sublen = 255 - option_len;
 		if (sublen > len) sublen = len;
 
 		/*
 		 *	Add in the data left at the current pointer.
 		 */
-		hdr[1] += sublen;
+		option_len += sublen;
 		len -= sublen;
+		fr_dbuff_set(&next_hdr, fr_dbuff_current(hdr) + 1);
+		fr_dbuff_in(&next_hdr, option_len);
 
 		/*
 		 *	Nothing more to do?  Exit.
 		 */
-		if (!len) {
-			break;
-		}
+		if (!len) break;
 
 		/*
 		 *	The current option is full.  So move the
@@ -144,18 +168,22 @@ static uint8_t *extend_option(fr_dbuff_t *dbuff, uint8_t *hdr, int len)
 		 *	header, and keep looping in order to process
 		 *	the next chunk.
 		 */
-		next_hdr = hdr + (hdr[1] + 2);
-		memmove(next_hdr + 2, next_hdr, len);
+		fr_dbuff_advance(&next_hdr, option_len);
+		fr_dbuff_set(hdr, &next_hdr);
+		fr_dbuff_set(&dest, fr_dbuff_current(&next_hdr) + 2);
+		fr_dbuff_move(&dest, &next_hdr, len);
 
 		/*
 		 *	Build the new header, then jump to it and use it.
 		 */
-		next_hdr[0] = hdr[0];
-		next_hdr[1] = 0;
-		hdr = next_hdr;
+		option_len = 0;
+		fr_dbuff_set(&next_hdr, hdr);
+		fr_dbuff_in_bytes(&next_hdr, type, option_len);
 	}
 
-	return next_hdr;
+	fr_dbuff_marker_release(&dest);
+	fr_dbuff_marker_release(&next_hdr);
+	return true;
 }
 
 
@@ -178,8 +206,8 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
 {
 	ssize_t			len;
-	uint8_t			*hdr;
-	size_t			deduct = 0;
+	uint8_t			option_len = 0;
+	fr_dbuff_marker_t	hdr, len_marker;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_pair_t		*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -190,8 +218,9 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	Write out the option number and length (which, unlike RADIUS,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
-	hdr = work_dbuff.p;
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
+	fr_dbuff_marker(&hdr, &work_dbuff);
+	fr_dbuff_marker(&len_marker, &work_dbuff);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, option_len);
 
 	/*
 	 *	DHCP options with the same number (and array flag set)
@@ -213,7 +242,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 		 */
 		if (vp->da->flags.array &&
 		    ((len = fr_value_box_network_length(&vp->data)) > 0) &&
-		    (hdr[1] + len) > 255) {
+		    (option_len + len) > 255) {
 			break;
 		}
 
@@ -221,12 +250,12 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 		if (len < -1) return len;
 		if (len == -1) {
 			FR_PROTO_TRACE("No more space in option");
-			if (hdr[1] == 0) {
+			if (option_len == 0) {
 				/*
 				 * Couldn't encode anything: don't leave behind these two octets,
 				 * or rather, don't include them when advancing dbuff.
 				 */
-				deduct = 2;
+				fr_dbuff_set(&work_dbuff, &hdr);
 			}
 			break; /* Packed as much as we can */
 		}
@@ -235,12 +264,15 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 		FR_PROTO_TRACE("Encoded value is %zu byte(s)", len);
 		FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), NULL);
 
-		if ((hdr[1] + len) <= 255) {
-			hdr[1] += len;
-			FR_PROTO_TRACE("%u byte(s) available in option", 255 - hdr[1]);
+		if ((option_len + len) <= 255) {
+			option_len += len;
+			fr_dbuff_set(&len_marker, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in(&len_marker, option_len);
+			FR_PROTO_TRACE("%u byte(s) available in option", 255 - option_len);
 		} else {
-			hdr = extend_option(&work_dbuff, hdr, len);
-			if (!hdr) break;
+			if (!extend_option(&work_dbuff, &hdr, len)) break;
+			fr_dbuff_set(&len_marker, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_out(&option_len, &hdr);
 		}
 
 		next = fr_dcursor_current(cursor);
@@ -248,7 +280,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 		vp = next;
 	} while (vp->da->flags.array);
 
-	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff) - deduct);
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Write out a TLV header (and any sub TLVs or values)
@@ -269,18 +301,28 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 {
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	uint8_t			*hdr, *next_hdr, *start;
+	fr_dbuff_marker_t	hdr, next_hdr, dest, hdr_write;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
+	uint8_t			option_number, option_len;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	fr_dbuff_marker(&hdr, &work_dbuff);
+	/*
+	 *	These are set before use; their initial value doesn't matter.
+	 */
+	fr_dbuff_marker(&next_hdr, &work_dbuff);
+	fr_dbuff_marker(&dest, &work_dbuff);
+	fr_dbuff_marker(&hdr_write, &work_dbuff);
 
 	/*
 	 *	Write out the option number and length (which, unlike RADIUS,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
-	start = hdr = dbuff->p;
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, 0x00);
+	option_number = (uint8_t)da->attr;
+	option_len = 0;
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, option_number, option_len);
 
 	/*
 	 *	Encode any sub TLVs or values
@@ -302,52 +344,47 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		 *	current option, then update the header, and go
 		 *	to the next option.
 		 */
-		if ((hdr[1] + len) <= 255) {
-			hdr[1] += len;
-
+		if (option_len + len <= 255) {
+			option_len += len;
+			fr_dbuff_set(&hdr_write, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in_bytes(&hdr_write, option_len);
 		} else {
 			/*
-			 *	The data doesn't fit within the
-			 *	current option.  Maybe start a new
-			 *	option.
+			 *	If there was data before the new data, create a new header
+			 *	and advance to it.
 			 */
+			if (option_len > 0) {
+				if (fr_dbuff_extend_lowat(NULL, &work_dbuff, 2) < 2) break;
+				fr_dbuff_advance(&work_dbuff, 2);
 
-			/*
-			 *	Move the data up and start a new
-			 *	option if necessary.
-			 */
-			if (hdr[1] > 0) {
-				/*
-				 *	Not enough space for another 2 byte
-				 *	header.
-				 */
-				if (fr_dbuff_advance(&work_dbuff, 2) < 2) break;
-				next_hdr = hdr + hdr[1] + 2;
-				memmove(next_hdr + 2, next_hdr, len);
-				next_hdr[0] = start[0];
-				next_hdr[1] = 0;
-				hdr = next_hdr;
+				fr_dbuff_set(&next_hdr, fr_dbuff_current(&hdr) + (option_len + 2));
+				fr_dbuff_set(&hdr, &next_hdr);
+
+				fr_dbuff_set(&dest, fr_dbuff_current(&next_hdr) + 2);
+				fr_dbuff_move(&dest, &next_hdr, len);
+
+				option_len = 0;
+				fr_dbuff_set(&hdr_write, &hdr);
+				fr_dbuff_in_bytes(&hdr_write, option_number, option_len);
 			}
 
 			/*
-			 *	The data fits entirely within the new
-			 *	option.  Just use that.
+			 *	If the new data fits entirely within the (possibly new,
+			 *	but definitely unused) option, just use it.
 			 */
 			if (len <= 255) {
-				hdr[1] = len;
-
+				option_len += len;
+				fr_dbuff_set(&hdr_write, fr_dbuff_current(&hdr) + 1);
+				fr_dbuff_in_bytes(&hdr_write, option_len);
 			} else {
-				/*
-				 *	The data has to be split
-				 *	across multiple options.
-				 */
-				hdr = extend_option(&work_dbuff, hdr, len);
-				if (!hdr) break;
+				if (!extend_option(&work_dbuff, &hdr, len)) break;
+				fr_dbuff_set(&hdr_write, fr_dbuff_current(&hdr) + 1);
+				fr_dbuff_out(&option_len, &hdr_write);
 			}
 		}
 
 		FR_PROTO_STACK_PRINT(da_stack, depth);
-		FR_PROTO_HEX_DUMP(start, fr_dbuff_used(&work_dbuff), "TLV header and sub TLVs");
+		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "TLV header and sub TLVs");
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -373,13 +410,15 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
-	fr_dbuff_t		hdr_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
+	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dict_attr_t const	*dv;
 	ssize_t			len;
 	fr_pair_t		*vp;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	/*
 	 *	DA should be a VSA type with the value of OPTION_VENDOR_OPTS.
@@ -462,8 +501,10 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 		if (vp->da->parent != da->parent) break;
 	}
 
-	hdr_dbuff.p[1] = fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN;
-	hdr_dbuff.p[6] = fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN - 4 - 1;
+	fr_dbuff_advance(&hdr, 1);
+	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
+	fr_dbuff_advance(&hdr, 4);
+	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN - 4 - 1));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
