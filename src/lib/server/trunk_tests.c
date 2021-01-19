@@ -1832,6 +1832,7 @@ static void test_enqueue_and_io_speed(void)
  *	Connection spawning
  */
 TEST_LIST = {
+#if 0
 	/*
 	 *	Basic tests
 	 */
@@ -1868,5 +1869,6 @@ TEST_LIST = {
 	 *	Performance tests
 	 */
 	{ "Speed Test - Enqueue, and I/O",		test_enqueue_and_io_speed },
+#endif
 	{ NULL }
 };
