@@ -567,8 +567,8 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	 *	specified so that the virtual attribute can operate
 	 *	in different contexts (i.e. on the parent request).
 	 */
-	if ((tmpl_is_attr_unresolved(vpt) || (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual)) &&
-	    (tmpl_attr_count(vpt) == 1)) {
+	if ((tmpl_is_attr_unresolved(vpt) ||
+	     ((tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual)) && (tmpl_attr_count(vpt) == 1))) {
 	    	if (tmpl_is_attr(vpt)) {
 			func = xlat_func_find(tmpl_da(vpt)->name, -1);
 		} else {
@@ -593,6 +593,18 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		}
 
 		/*
+		 *	If we're not allowing unresolved attributes,
+		 *	then die here.
+		 */
+		if (!t_rules || !t_rules->allow_unresolved) {
+			talloc_free(vpt);
+
+			fr_strerror_const("Unresolved attributes not allowed in expansions here");
+			fr_sbuff_set(in, &m_s);		/* Error at the start of the attribute */
+			goto error;
+		}
+
+		/*
 		 *	Hack - We need a proper virtual attribute
 		 *	registry.  There seems to have been a
 		 *	partial conversion at some point which
@@ -603,20 +615,11 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		 *	processed correctly by the eval code
 		 *	because of the virtual flag in the dictionary.
 		 */
-		if (tmpl_is_attr(vpt)) goto do_attr;
-
-		/*
-		 *	Not a normal attribute, not a virtual attribute
-		 *	and we're not allowing unresolved attributes.
-		 */
-		if (!t_rules || !t_rules->allow_unresolved) {
-			talloc_free(vpt);
-
-			fr_strerror_const("Unresolved attributes not allowed in expansions here");
-			fr_sbuff_set(in, &m_s);		/* Error at the start of the attribute */
-			goto error;
+		if (tmpl_is_attr(vpt)) {
+			fr_assert(tmpl_is_attr_unresolved(vpt));
+			node->flags.needs_resolving = true;
+			goto do_attr;
 		}
-
 		/*
 		 *	Mark the xlat exp as needing pass2 resolution.
 		 */
@@ -629,13 +632,14 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	 *	It's a straight attribute, nothing special
 	 */
 	} else {
+		fr_assert(!tmpl_is_attr_unresolved(vpt));
+
 	do_attr:
 		xlat_exp_set_type(node, XLAT_ATTRIBUTE);
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
 		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
 		node->attr = vpt;
-		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
 	}
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
