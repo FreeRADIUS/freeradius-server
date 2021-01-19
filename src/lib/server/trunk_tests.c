@@ -4,6 +4,7 @@
 
 #include "trunk.c"
 
+#if 0
 //#include <gperftools/profiler.h>
 typedef struct {
 	fr_trunk_request_t	*treq;			//!< Trunk request.
@@ -1827,6 +1828,7 @@ static void test_enqueue_and_io_speed(void)
 
 	talloc_free(ctx);
 }
+#endif
 
 /*
  *	Connection spawning
