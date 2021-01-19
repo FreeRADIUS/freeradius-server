@@ -368,15 +368,15 @@ dnl #
 dnl #  Enable the -fsanitize=fuzzer and link in the address sanitizer
 dnl #  libraries.
 dnl #
-AC_ARG_ENABLE(llvm-fuzzer-sanitizer,
-[AS_HELP_STRING([--enable-llvm-fuzzer-sanitizer],
-                [build with support for LLVM's fuzzer sanitizer (if building with clang).])],
+AC_ARG_ENABLE(llvm-fuzzer,
+[AS_HELP_STRING([--enable-llvm-fuzzer],
+                [build with support for LLVM's fuzzer (if building with clang).])],
 [ case "$enableval" in
   no)
-    llvm_fuzzer_sanitizer=no
+    llvm_fuzzer=no
     ;;
   *)
-    llvm_fuzzer_sanitizer=yes
+    llvm_fuzzer=yes
   esac ]
 )
 
@@ -1777,7 +1777,7 @@ if test "x$developer" = "xyes"; then
   dnl #
   dnl #  If running with clang, add in FUZZER
   dnl #
-  if test "x$llvm_fuzzer_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+  if test "x$llvm_fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
     dnl #
     dnl #  -fsanitize=fuzzer  - Build with fuzzer support
     dnl #
