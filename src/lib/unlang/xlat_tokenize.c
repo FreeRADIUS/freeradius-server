@@ -633,6 +633,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		xlat_exp_set_type(node, XLAT_ATTRIBUTE);
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
+		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
 		node->attr = vpt;
 	}
 
