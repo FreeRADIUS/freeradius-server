@@ -214,10 +214,9 @@ static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb
 {
 	mrb_value	res;
 	fr_pair_t	*vp;
-	fr_cursor_t	cursor;
 
 	res = mrb_ary_new(mrb);
-	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) {
+	for (vp = fr_pair_list_head(vps); vp; vp = fr_pair_list_next(vps, vp)) {
 		mrb_value	tmp, key, val, to_cast;
 
 		tmp = mrb_ary_new_capa(mrb, 2);
