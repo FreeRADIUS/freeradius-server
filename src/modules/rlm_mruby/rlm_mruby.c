@@ -304,6 +304,9 @@ static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb
 static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, mrb_state *mrb, mrb_value value, char const *function_name)
 {
 	int i;
+	fr_pair_list_t tmp_list;
+
+	fr_pair_list_init(&tmp_list);
 
 	for (i = 0; i < RARRAY_LEN(value); i++) {
 		mrb_value	tuple = mrb_ary_entry(value, i);
@@ -378,8 +381,9 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 			DEBUG("%s: %s %s %s OK", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 		}
 
-		radius_pairmove(request, vps, &vp, false);
+		fr_pair_add(&tmp_list, vp);
 	}
+	radius_pairmove(request, vps, &tmp_list, false);
 }
 
 static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mruby_request,
