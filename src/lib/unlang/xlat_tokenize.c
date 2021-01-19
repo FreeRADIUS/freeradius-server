@@ -560,7 +560,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	/*
 	 *	We can't do %{reply.bar.baz.Packet-Type}
 	 */
-	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual &&  (tmpl_attr_count(vpt) > 1)) {
+	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual && (tmpl_attr_count(vpt) > 1)) {
 		fr_strerror_const("Virtual attributes cannot be nested.");
 		goto error;
 	}
@@ -600,9 +600,25 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		}
 
 		/*
+		 *	The attribute exists, AND it's marked virtual,
+		 *	BUT there's no callback defined for it.
+		 *	Resolve the callback in pass2.
+		 */
+		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+			xlat_exp_set_type(node, XLAT_VIRTUAL_UNRESOLVED);
+			xlat_exp_set_name_buffer_shallow(node, vpt->name);	/* vpt may be freed */
+
+			node->attr = vpt;
+			node->flags.needs_resolving = true;
+			goto check_for_brace;
+		}
+
+		/*
 		 *	If we're not allowing unresolved attributes,
-		 *	then die here.  Arguably this should be
-		 *	*before* the previous check?
+		 *	then die here.
+		 *
+		 *	The default is to forbid unresolved if there's
+		 *	no rules.
 		 */
 		if (!t_rules || !t_rules->allow_unresolved) {
 			talloc_free(vpt);
@@ -612,34 +628,13 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 			goto error;
 		}
 
-		/*
-		 *	Hack - We need a proper virtual attribute
-		 *	registry.  There seems to have been a
-		 *	partial conversion at some point which
-		 *	needs completing.
-		 *
-		 *	This means we fall back to creating the
-		 *	tmpl at a normal attribute which gets
-		 *	processed correctly by the eval code
-		 *	because of the virtual flag in the dictionary.
-		 */
-		if (tmpl_is_attr(vpt) && !tmpl_da(vpt)->flags.virtual) {
-			node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
-			goto do_attr;
-		}
+		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
+		goto do_attr;
 
-		/*
-		 *	Mark the xlat exp as needing pass2 resolution.
-		 */
-		xlat_exp_set_type(node, XLAT_VIRTUAL_UNRESOLVED);
-		xlat_exp_set_name_buffer_shallow(node, vpt->name);	/* vpt may be freed */
-
-		node->attr = vpt;
-		node->flags.needs_resolving = true;
-	/*
-	 *	It's a straight attribute, nothing special
-	 */
 	} else {
+		/*
+		 *	It's a straight attribute, nothing special
+		 */
 		fr_assert(!tmpl_is_attr_unresolved(vpt));
 
 	do_attr:
@@ -650,6 +645,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		node->attr = vpt;
 	}
 
+check_for_brace:
 	if (!fr_sbuff_next_if_char(in, '}')) {
 		fr_strerror_const("Missing closing brace");
 		goto error;
