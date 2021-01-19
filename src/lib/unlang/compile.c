@@ -405,6 +405,8 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 	vpt = c->data.map->lhs;
 	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
 		if (tmpl_attr_to_xlat(c, &vpt) < 0) return false;
+
+		fr_assert(!tmpl_is_xlat_unresolved(map->lhs));
 	}
 
 	/*
