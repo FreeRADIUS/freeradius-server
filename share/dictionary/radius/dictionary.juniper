@@ -48,6 +48,7 @@ ATTRIBUTE	Local-Group-Name			46	string
 ATTRIBUTE	Local-Interface				47	string
 ATTRIBUTE	Switching-Filter			48	string
 ATTRIBUTE	VoIP-Vlan				49	string
+ATTRIBUTE	Juniper-CWA-Redirect			50	string
 
 ATTRIBUTE	AV-Pair					52	string
 
