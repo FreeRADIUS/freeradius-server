@@ -157,10 +157,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		    ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
 		     (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
 			fr_dbuff_marker_t	p;
+			uint8_t			c = 0;
 
-			fr_dbuff_marker(&p, &work_dbuff);
 			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data);
 			if (slen < 0) return slen;
+			fr_dbuff_marker(&p, &work_dbuff);
+			fr_dbuff_advance(&p, -1);
 
 			/*
 			 *	RFC 4704 says "FQDN", unless it's a
@@ -168,10 +170,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			 *	partial name, and we omit the trailing
 			 *	zero.
 			 */
-			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) &&
-			    (*(fr_dbuff_current(&p) + fr_dbuff_current(&p)[0] + 1) == 0)) {
-				fr_dbuff_set_to_start(&work_dbuff);
-				fr_dbuff_advance(&work_dbuff, slen - 1);
+			fr_dbuff_out(&c, &p);
+			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) && !c) {
+				fr_dbuff_advance(&work_dbuff, -1);
 			}
 			break;
 		}
@@ -321,7 +322,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			fr_dict_attr_t **u;
 
 			memcpy(&u, &c, sizeof(c)); /* const issues */
-			memcpy(u, &vp->da, sizeof(vp->da));			
+			memcpy(u, &vp->da, sizeof(vp->da));
 		}
 		FALL_THROUGH;
 
