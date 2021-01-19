@@ -36,7 +36,11 @@ src/tests/fuzzer-corpus/$(PROTOCOL):
 		tar -xf $(PROTOCOL).tar; \
 	fi
 
-$(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTOCOL).la
+.PHONY: $(FUZZER_ARTIFACTS)/$(PROTOCOL)
+$(FUZZER_ARTIFACTS)/$(PROTOCOL):
+	@mkdir -p $@
+
+$(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTOCOL).la | $(FUZZER_ARTIFACTS)/$(PROTOCOL)
 
 #
 #  Run the fuzzer binary against the fuzzer corpus data files.
@@ -51,10 +55,20 @@ $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTO
 #  increase the size of the corpus by several times.
 #
 fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)
+	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)" \
+		-max_len=512 $(FUZZER_ARGUMENTS) \
+		-D share/dictionary \
+		src/tests/fuzzer-corpus/$(PROTOCOL)
 
 #
 #  tests add a 10s timeout.  This is so that we can see if the fuzzers run _at all_.
 #
 test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
-	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) -max_len=512 -timeout=10 -D share/dictionary src/tests/fuzzer-corpus/$(PROTOCOL)
+	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
+	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)" \
+		-max_len=512 $(FUZZER_ARGUMENTS) \
+		-max_total_time=$(FUZZER_TIMEOUT) \
+		-D share/dictionary \
+		src/tests/fuzzer-corpus/$(PROTOCOL)

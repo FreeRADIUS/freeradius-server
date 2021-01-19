@@ -29,6 +29,17 @@ FUZZER_PROTOCOLS = radius dhcpv4 dhcpv6 tacacs vmps
 ifneq "$(findstring fuzzer,${CFLAGS})" ""
 
 #
+#  Put the output artifacts into the build directory, but only if the
+#  variable is not already set by the environment or make filesx
+#
+FUZZER_ARTIFACTS ?= ${BUILD_DIR}/fuzzer
+
+#
+#  Time out "test.fuzzer.foo" after this number of seconds
+#
+FUZZER_TIMEOUT   ?= 10
+
+#
 #  Define a function to do all of the same thing.
 #
 define FUZZ_PROTOCOL
