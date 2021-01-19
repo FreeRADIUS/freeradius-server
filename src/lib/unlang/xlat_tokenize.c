@@ -503,6 +503,31 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 	return 0;
 }
 
+static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
+{
+	xlat_t	*func;
+
+	if (tmpl_is_attr(vpt)) {
+		func = xlat_func_find(tmpl_da(vpt)->name, -1);
+	} else {
+		func = xlat_func_find(tmpl_attr_unresolved(vpt), -1);
+	}
+	if (func) {
+		xlat_exp_set_type(node, XLAT_VIRTUAL);
+		xlat_exp_set_name_buffer_shallow(node, vpt->name);
+
+		XLAT_DEBUG("VIRTUAL <-- %pV",
+			   fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+		node->call.func = func;
+		node->attr = vpt;	/* Store for context */
+		node->flags.needs_async = func->needs_async;
+
+		return 0;
+	}
+
+	return -1;
+}
+
 /** Parse an attribute ref or a virtual attribute
  *
  */
@@ -513,7 +538,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	tmpl_attr_error_t	err;
 	tmpl_t			*vpt = NULL;
 	xlat_exp_t		*node;
-	xlat_t			*func;
+
 	fr_sbuff_marker_t	m_s;
 
 	XLAT_DEBUG("ATTRIBUTE <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
@@ -558,68 +583,37 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	}
 
 	/*
-	 *	We can't do %{reply.bar.baz.Packet-Type}
+	 *	Deal with virtual attributes.
 	 */
-	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual && (tmpl_attr_count(vpt) > 1)) {
-		fr_strerror_const("Virtual attributes cannot be nested.");
-		goto error;
-	}
-
-	/*
-	 *	Might be a virtual XLAT attribute, which is identical
-	 *	to a normal function but called without an argument
-	 *	list.
-	 *
-	 *	We only consider virtual attributes at the top level
-	 *	but we do allow request references and lists to be
-	 *	specified so that the virtual attribute can operate
-	 *	in different contexts (i.e. on the parent request).
-	 */
-	if (tmpl_is_attr_unresolved(vpt) || (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual)) {
-	    	if (tmpl_is_attr(vpt)) {
-			func = xlat_func_find(tmpl_da(vpt)->name, -1);
-		} else {
-			func = xlat_func_find(tmpl_attr_unresolved(vpt), -1);
-		}
-		if (func) {
-			xlat_exp_set_type(node, XLAT_VIRTUAL);
-			xlat_exp_set_name_buffer_shallow(node, vpt->name);
-
-			XLAT_DEBUG("VIRTUAL <-- %pV",
-				   fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
-			node->call.func = func;
-			node->attr = vpt;	/* Store for context */
-			node->flags.needs_async = func->needs_async;
-
-			if (!fr_sbuff_next_if_char(in, '}')) {
-				fr_strerror_const("Missing closing brace");
-				goto error;
-			}
-
-			goto done;
+	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
+		if (tmpl_attr_count(vpt) > 1) {
+			fr_strerror_const("Virtual attributes cannot be nested.");
+			goto error;
 		}
 
 		/*
-		 *	The attribute exists, AND it's marked virtual,
-		 *	BUT there's no callback defined for it.
-		 *	Resolve the callback in pass2.
-		 */
-		if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual) {
-			xlat_exp_set_type(node, XLAT_VIRTUAL_UNRESOLVED);
-			xlat_exp_set_name_buffer_shallow(node, vpt->name);	/* vpt may be freed */
-
-			node->attr = vpt;
-			node->flags.needs_resolving = true;
-			goto check_for_brace;
-		}
-
-		/*
-		 *	If we're not allowing unresolved attributes,
-		 *	then die here.
+		 *	This allows xlat functions to be
+		 *	used to provide values for virtual
+		 *	attributes.  If we fail to resolve
+		 *	a virtual attribute to a function
+		 *	it's likely going to be handled as
+		 *	a virtual attribute by
+		 *	xlat_eval_pair_virtual
 		 *
-		 *	The default is to forbid unresolved if there's
-		 *	no rules.
+		 *	We really need a virtual attribute
+		 *	registry so we can check if the
+		 *	attribute is valid.
 		 */
+		if (xlat_resolve_virtual_attribute(node, vpt) < 0) goto do_attr;
+	/*
+	 *	Deal with unresolved attributes.
+	 */
+	} else if (tmpl_is_attr_unresolved(vpt)) {
+		/*
+		 *	Could it be a virtual attribute?
+		 */
+		if ((tmpl_attr_count(vpt) == 1) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
+
 		if (!t_rules || !t_rules->allow_unresolved) {
 			talloc_free(vpt);
 
@@ -628,30 +622,26 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 			goto error;
 		}
 
-		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
-		goto do_attr;
-
+		xlat_exp_set_type(node, XLAT_ATTRIBUTE);
+		xlat_exp_set_name_buffer_shallow(node, vpt->name);
+		node->attr = vpt;
+		node->flags.needs_resolving = true;
+	/*
+	 *	Deal with normal attribute (or list)
+	 */
 	} else {
-		/*
-		 *	It's a straight attribute, nothing special
-		 */
-		fr_assert(!tmpl_is_attr_unresolved(vpt));
-
 	do_attr:
 		xlat_exp_set_type(node, XLAT_ATTRIBUTE);
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
-
-		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
 		node->attr = vpt;
 	}
 
-check_for_brace:
+done:
 	if (!fr_sbuff_next_if_char(in, '}')) {
 		fr_strerror_const("Missing closing brace");
 		goto error;
 	}
 
-done:
 	xlat_flags_merge(flags, &node->flags);
 	*head = node;
 	fr_sbuff_marker_release(&m_s);
