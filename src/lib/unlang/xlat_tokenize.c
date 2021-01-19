@@ -558,6 +558,14 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	}
 
 	/*
+	 *	We can't do %{reply.bar.baz.Packet-Type}
+	 */
+	if (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual &&  (tmpl_attr_count(vpt) > 1)) {
+		fr_strerror_const("Virtual attributes cannot be nested.");
+		goto error;
+	}
+
+	/*
 	 *	Might be a virtual XLAT attribute, which is identical
 	 *	to a normal function but called without an argument
 	 *	list.
@@ -567,8 +575,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	 *	specified so that the virtual attribute can operate
 	 *	in different contexts (i.e. on the parent request).
 	 */
-	if ((tmpl_is_attr_unresolved(vpt) ||
-	     ((tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual)) && (tmpl_attr_count(vpt) == 1))) {
+	if (tmpl_is_attr_unresolved(vpt) || (tmpl_is_attr(vpt) && tmpl_da(vpt)->flags.virtual)) {
 	    	if (tmpl_is_attr(vpt)) {
 			func = xlat_func_find(tmpl_da(vpt)->name, -1);
 		} else {
@@ -594,7 +601,8 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 
 		/*
 		 *	If we're not allowing unresolved attributes,
-		 *	then die here.
+		 *	then die here.  Arguably this should be
+		 *	*before* the previous check?
 		 */
 		if (!t_rules || !t_rules->allow_unresolved) {
 			talloc_free(vpt);
@@ -615,11 +623,11 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		 *	processed correctly by the eval code
 		 *	because of the virtual flag in the dictionary.
 		 */
-		if (tmpl_is_attr(vpt)) {
-			fr_assert(tmpl_is_attr_unresolved(vpt));
-			node->flags.needs_resolving = true;
+		if (tmpl_is_attr(vpt) && !tmpl_da(vpt)->flags.virtual) {
+			node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
 			goto do_attr;
 		}
+
 		/*
 		 *	Mark the xlat exp as needing pass2 resolution.
 		 */
