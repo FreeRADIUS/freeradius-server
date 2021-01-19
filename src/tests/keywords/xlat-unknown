@@ -1,0 +1,18 @@
+#
+# PRE: update escape
+#
+update reply {
+	&Vendor-Specific.WiMAX.Capability.Release = "foo"
+}
+
+#
+#  This should be Vendor-Specific.WiMAX.Relase, so the
+#  reference here should be to an unknown attribute,
+#  and the dereference should fail.
+#
+if ("%{reply.WiMAX.Capability.Release}" == "foo") {
+	test_fail
+}
+else {
+	success
+}

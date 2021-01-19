@@ -566,7 +566,16 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_cursor_t *out, requ
 
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 
-	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
+	if (!tmpl_is_attr(vpt) && !tmpl_is_list(vpt)) {
+		if (tmpl_is_attr_unresolved(vpt)) {
+			REDEBUG("Unknown attribute '%s'", vpt->name);
+			return XLAT_ACTION_FAIL;
+		}
+
+		REDEBUG("Invalid expansion type %s",
+			fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+		return XLAT_ACTION_FAIL;
+	}
 
 	/*
 	 *	See if we're dealing with an attribute in the request
