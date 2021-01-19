@@ -635,6 +635,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 
 		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
 		node->attr = vpt;
+		node->flags.needs_resolving = tmpl_is_attr_unresolved(vpt);
 	}
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
@@ -1653,6 +1654,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 				 *	FIXME - Produce proper error with marker
 				 */
 				if (!allow_unresolved) {
+				error_unresolved:
 					fr_strerror_printf_push("Failed resolving attribute in expansion %%{%s}",
 								node->fmt);
 					return -1;
@@ -1672,6 +1674,10 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 			 */
 			node->flags = (xlat_flags_t){ };
 		}
+			break;
+
+		case XLAT_ATTRIBUTE:
+			if (!allow_unresolved) goto error_unresolved;
 			break;
 
 		default:
