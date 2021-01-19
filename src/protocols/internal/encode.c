@@ -62,13 +62,14 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	size_t			flen, vlen, mlen;
 
 	uint8_t			buff[sizeof(uint64_t)];
+	uint8_t			enc_byte = 0;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	fr_dbuff_marker(&enc_field, &work_dbuff);
 
 	/*
-	 *	Zero out first encoding byte
+	 *	Advance past first encoding byte
 	 */
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00);
 
@@ -77,7 +78,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Only leaf attributes can be tainted
 	 */
 	case FR_TYPE_VALUE:
-		if (vp->vp_tainted) fr_dbuff_current(&enc_field)[0] |= FR_INTERNAL_FLAG_TAINTED;
+		if (vp->vp_tainted) enc_byte |= FR_INTERNAL_FLAG_TAINTED;
 		break;
 
 	default:
@@ -88,7 +89,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Need to use the second encoding byte
 	 */
 	if (da->flags.is_unknown) {
-		fr_dbuff_current(&enc_field)[0] |= FR_INTERNAL_FLAG_EXTENDED;
+		enc_byte |= FR_INTERNAL_FLAG_EXTENDED;
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_INTERNAL_FLAG_INTERNAL);
 	}
 
@@ -98,7 +99,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	flen = fr_dbuff_in_uint64v(&work_dbuff, da->attr);
 	if (flen <= 0) return flen;
-	fr_dbuff_current(&enc_field)[0] |= ((flen - 1) << 5);
+	enc_byte |= ((flen - 1) << 5);
 
 	/*
 	 *	Leave one byte in hopes that the length will fit
@@ -232,7 +233,8 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	}
 
 	fr_dbuff_in_memcpy(&len_field, buff, flen);
-	fr_dbuff_current(&enc_field)[0] |= ((flen - 1) << 2);
+	enc_byte |= ((flen - 1) << 2);
+	fr_dbuff_in(&enc_field, enc_byte);
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff) - vlen, "header");
 
