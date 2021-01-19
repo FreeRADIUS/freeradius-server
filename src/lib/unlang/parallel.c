@@ -74,7 +74,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 	int				i, priority;
 	rlm_rcode_t			result;
 	unlang_parallel_child_state_t	child_state = CHILD_DONE; /* hope that we're done */
-	request_t			*child;
+	request_t			*child, *child_free = NULL;
 
 	/*
 	 *	If the children should be created detached, we return
@@ -104,6 +104,8 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 							   request->dict, state->detach);
 			child->packet->code = request->packet->code;
 
+			if (state->detach) child_free = child;
+
 			if (state->clone) {
 				/*
 				 *	Note that we do NOT copy the
@@ -123,6 +125,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 					REDEBUG("failed copying lists to clone");
 					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);
 
+					talloc_free(child_free);
 					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_CALCULATE_RESULT;
 				}
@@ -140,6 +143,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			    (unlang_interpret_push(child,
 						   state->children[i].instruction, RLM_MODULE_FAIL,
 						   UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0)) {
+				talloc_free(child_free);
 				*p_result = RLM_MODULE_FAIL;
 				return UNLANG_ACTION_STOP_PROCESSING;
 			}
