@@ -56,7 +56,7 @@ $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL): $(BUILD_DIR)/lib/local/libfreeradius-$(PROTO
 #
 fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)" \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-D share/dictionary \
 		src/tests/fuzzer-corpus/$(PROTOCOL)
@@ -67,7 +67,7 @@ fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus
 test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
 	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
-		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)" \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \

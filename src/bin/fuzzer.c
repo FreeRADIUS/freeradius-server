@@ -39,13 +39,21 @@ static void *decode_ctx = NULL;
 static fr_test_point_proto_decode_t *tp = NULL;
 static fr_dict_t *dict = NULL;
 
+static dl_t *dl;
+static dl_loader_t *dl_loader;
+
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
+static void exitHandler()
+{
+	dlclose(dl->handle);
+	dl->handle = NULL;
+	talloc_free(dl_loader);
+}
+
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
-	dl_t *dl;
-	dl_loader_t *dl_loader;
 	char const *lib_dir = getenv("FR_LIBRARY_PATH");
 	char const *proto = getenv("FR_LIBRARY_FUZZ_PROTOCOL");
 	char const *dict_dir = getenv("FR_DICTIONARY_DIR");
@@ -131,6 +139,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	if (tp->test_ctx(&decode_ctx, NULL) < 0) {
 		fprintf(stderr, "fuzzer: Failed finding test point %s: %s\n",
 			buffer, fr_strerror());
+		fr_exit_now(1);
+	}
+
+	if (atexit(exitHandler)) {
+		fprintf(stderr, "fuzzer: Failed to register exit handler\n");
 		fr_exit_now(1);
 	}
 

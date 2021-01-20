@@ -22,6 +22,8 @@ env:
 #  REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
   ANALYZE_C_DUMP: 1
   FR_GLOBAL_POOL: 4M
+  TEST_CERTS: yes
+  DO_BUILD: yes
   CI: 1
   GH_ACTIONS: 1
 
@@ -56,16 +58,17 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc-lean      }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc           }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc-O2-g3     }
-          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-gcc-ndebug    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-lean    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang         }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-O2-g3   }
-          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-ndebug  }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: ubuntu-18.04, NAME: linux-clang-altlibs }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  LIBS_SHARED: yes, TEST_CERTS: yes, DO_BUILD: yes, OS: macos-10.15,  NAME: macos-clang         }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc-lean      }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc           }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc-O2-g3     }
+          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc-ndebug    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-altlibs }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-10.15,  NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  OS: ubuntu-18.04, NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
 
@@ -100,6 +103,7 @@ jobs:
         sudo dpkg-reconfigure man-db
 
     - uses: actions/setup-ruby@v1
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
 
     - name: Freshen APT repo metadata
       if: ${{ runner.os != 'macOS' }}
@@ -107,33 +111,33 @@ jobs:
         sudo apt-get update
 
     - name: Install fixture (redis)
-      if: ${{ runner.os != 'macOS' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         sudo apt-get install -y --no-install-recommends redis-server redis-tools
         sudo systemctl start redis-server
 
     - name: Install fixture (openldap)
-      if: ${{ runner.os != 'macOS' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         sudo apt-get install -y --no-install-recommends slapd ldap-utils apparmor-utils
         sudo systemctl stop slapd
         sudo aa-complain /usr/sbin/slapd
 
     - name: Install fixture (dovecot imapd)
-      if: ${{ runner.os != 'macOS' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         sudo apt-get install -y --no-install-recommends dovecot-imapd
         sudo systemctl stop dovecot
         sudo aa-complain /usr/sbin/dovecot
 
     - name: Install fixture (exim)
-      if: ${{ runner.os != 'macOS' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         sudo apt-get install -y --no-install-recommends exim4
         sudo systemctl stop exim4
 
     - name: Configure fixture (PostgreSQL)
-      if: ${{ runner.os != 'macOS' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         export PG_VER=13
         sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
@@ -141,13 +145,13 @@ jobs:
         sudo systemctl start postgresql
 
     - name: Configure fixture (MySQL)
-      if: ${{ runner.os != 'macOS' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         sudo systemctl start mysql
         mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
 
     - name: Install cassandra driver (not yet available on 20.04)
-      if: ${{ runner.os != 'macOS' && matrix.env.OS != 'ubuntu-20.04' }}
+      if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
       run: sudo ./scripts/ci/cassandra-install.sh
 
     - name: Install common build dependencies
@@ -310,17 +314,16 @@ jobs:
         #pragma clang diagnostic ignored "-Wstrict-prototypes"
         ' /usr/local/include/cassandra.h
 
-    - name: Minimal configure
-      run: ./configure -C --without-modules
-      if: ${{ matrix.env.DO_BUILD == 'no' }}
-
-    - name: Full configure
+    - name: Configure
       run: |
         if $CC -v 2>&1 | grep clang > /dev/null; then
             echo "Enabling llvm sanitizers"
             enable_llvm_sanitizers="--enable-llvm-address-sanitizer --enable-llvm-undefined-behaviour-sanitizer"
             if [ "`uname`" != "Darwin" ]; then
                 enable_llvm_sanitizers="$enable_llvm_sanitizers --enable-llvm-leak-sanitizer"
+            fi
+            if [ "$TEST_TYPE" = "fuzzing" ]; then
+                enable_llvm_sanitizers="$enable_llvm_sanitizers --enable-llvm-fuzzer"
             fi
         else
             enable_llvm_sanitizers=""
@@ -335,7 +338,6 @@ jobs:
             $enable_llvm_sanitizers \
             $build_paths \
             --prefix=$HOME/freeradius \
-            --with-shared-libs=$LIBS_SHARED \
             --with-threads=$LIBS_OPTIONAL \
             --with-udpfromto=$LIBS_OPTIONAL \
             --with-openssl=$LIBS_OPTIONAL \
@@ -343,16 +345,15 @@ jobs:
         || cat ./config.log
         echo "Contents of src/include/autoconf.h"
         cat "./src/include/autoconf.h"
-      if: ${{ matrix.env.DO_BUILD != 'no' }}
 
     - name: Make
       run: |
         make -j `nproc`
-      if: ${{ matrix.env.DO_BUILD != 'no' }}
+      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
 
-    # Disabled on MacOS to reduce the runtime
+    # Disabled on MacOS and when fuzzing to reduce the runtime
     - name: Clang Static Analyzer
-      if: ${{ runner.os != 'macOS' && matrix.env.DO_BUILD != 'no' && matrix.env.CC == 'clang' }}
+      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' && matrix.env.TEST_TYPE != 'fuzzing' }}
       run: |
         make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
 
@@ -361,10 +362,10 @@ jobs:
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html
-      if: ${{ matrix.env.DO_BUILD != 'no' && matrix.env.CC == 'clang' && failure() }}
+      if: ${{ matrix.env.CC == 'clang' && failure() }}
 
     - name: Setup fixtures and run full CI tests
-      if: ${{ runner.os != 'macOS' && matrix.env.DO_BUILD != 'no' }}
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         for i in \
             postgresql-setup.sh \
@@ -383,9 +384,27 @@ jobs:
     # Includes hack to disable trunk tests on MacOS which are currently broken
     # Also, no detect_leaks support for ASAN
     - name: Run basic tests (MacOS)
-      if: ${{ runner.os == 'macOS' }}
+      if: ${{ matrix.env.TEST_TYPE == 'macos' }}
       run: |
         : > src/lib/server/trunk_tests.mk
         make test
       env:
         ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
+
+    # Fuzz in parallel, aiming to keep to overall runtime of this job in line
+    # with other jobs in the CI workflow
+    - name: Run fuzzer tests
+      if: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}
+      run: |
+        # For fuzzing we won't be needing eapol_test
+        mkdir -p build/tests/eapol_test
+        : > build/tests/eapol_test/eapol_test.mk
+        make -j 5 test.fuzzer FUZZER_TIMEOUT=720
+        find build/fuzzer -type f && exit 1
+
+    - name: "Clang libFuzzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-fuzzer.tgz
+        path: build/fuzzer
+      if: ${{ matrix.env.TEST_TYPE == 'fuzzing' && failure() }}
