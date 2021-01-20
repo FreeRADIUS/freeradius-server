@@ -8,6 +8,7 @@
 #
 #	TESTS 1
 #
+Packet-Type = Access-Request
 User-Name = "bob",
 Digest-Response = "bdbeebb2da6adb6bca02599c2239e192"
 Digest-Attributes.Realm = "biloxi.com",

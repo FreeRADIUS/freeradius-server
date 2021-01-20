@@ -3,6 +3,7 @@
 #
 #	TESTS 1
 #
+Packet-Type = Access-Request
 User-Name = "bob"
 User-Password = "hello"
 Vendor-Specific.WiMAX.GMT-Timezone-offset = -1
