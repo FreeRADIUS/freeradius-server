@@ -65,7 +65,6 @@ extern fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_raw_attribute, .name = "Raw-Attribute", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chargeable_user_identity, .name = "Chargeable-User-Identity", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
@@ -981,39 +980,6 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	fr_cursor_talloc_iter_init(&cursor, vps, fr_radius_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_cursor_current(&cursor))) {
 		VP_VERIFY(vp);
-
-		/*
-		 *	Ignore non-wire attributes, but allow extended
-		 *	attributes.
-		 */
-		if (vp->da->flags.internal) {
-#ifndef NDEBUG
-			/*
-			 *	Permit the admin to send BADLY formatted
-			 *	attributes with a debug build.
-			 */
-			if (vp->da == attr_raw_attribute) {
-				CHECK_FREESPACE(vp->vp_length, vp->vp_length);
-
-				/*
-				 *	Skip really badly formatted attributes
-				 */
-				if (vp->vp_length > (RADIUS_MAX_STRING_LENGTH + 2)) {
-					fr_cursor_next(&cursor);
-					continue;
-				}
-
-				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
-				fr_cursor_next(&cursor);
-				continue;
-			}
-#endif
-			/*
-			 *	Skip internal attributes...
-			 */
-			fr_cursor_next(&cursor);
-			continue;
-		}
 
 		/*
 		 *	Encode an individual VP

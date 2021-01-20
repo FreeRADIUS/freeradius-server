@@ -136,7 +136,7 @@ ATTRIBUTE	Expiration				1010	date
 
 ATTRIBUTE	Client-Shortname			1011	string virtual
 
-ATTRIBUTE	Raw-Attribute				1012	octets
+# Was Raw-Attribute.  No longer supported
 ATTRIBUTE	User-Category				1013	string
 
 ATTRIBUTE	Pam-Auth				1014	string
