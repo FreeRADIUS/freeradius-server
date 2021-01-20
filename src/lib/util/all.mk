@@ -1,4 +1,5 @@
 SUBMAKEFILES := \
+	cursor_tests.mk \
 	dbuff_tests.mk \
 	dcursor_tests.mk \
 	heap_tests.mk \
