@@ -48,7 +48,6 @@ test: \
 		test.bin	\
 		test.trie	\
 		test.dict	\
-		test.misc	\
 		test.unit	\
 		test.keywords	\
 		test.xlat	\
