@@ -245,6 +245,7 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	 */
 	fr_rand_seed(packet->data, RADIUS_HEADER_LENGTH);
 	talloc_free(packet_ctx.tmp_ctx);
+	talloc_free(packet_ctx.tags);
 
 	return 0;
 }

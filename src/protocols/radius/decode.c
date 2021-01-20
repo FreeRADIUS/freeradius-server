@@ -1034,10 +1034,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		return -1;
 	}
 
-#ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
-#endif
-
 	FR_PROTO_HEX_DUMP(data, attr_len, "%s", __FUNCTION__ );
 
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
@@ -1087,12 +1083,27 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 			}
 
 			p = buffer;
-		}
+
+		} /* else the field is >=0x20, so it's not a tag */
 	}
 
 	if (tag) {
+		/*
+		 *	The EAP chbind code calls us with a NULL
+		 *	packet ctx.  Which means that we can't decode
+		 *	tags.  Which is OK, because the channel
+		 *	binding attributes used there don't have tags.
+		 */
+		if (!packet_ctx) goto raw;
+
 		if (!packet_ctx->tags) {
-			packet_ctx->tags = talloc_zero_array(packet_ctx->tmp_ctx, fr_radius_tag_ctx_t *, 32);
+			/*
+			 *	This should NOT be packet_ctx.tmp_ctx,
+			 *	as that is freed after decoding every
+			 *	packet.  We wish to aggregate the tags
+			 *	across multiple attributes.
+			 */
+			packet_ctx->tags = talloc_zero_array(NULL, fr_radius_tag_ctx_t *, 32);
 			if (!packet_ctx->tags) {
 				fr_pair_list_free(&vp);
 				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
@@ -1421,6 +1432,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	{
 		fr_dict_attr_t *raw;
 
+		if (!packet_ctx) goto raw;
+
 		/*
 		 *	Create an unknown attribute, and decode it as
 		 *	"octets".  Note that we have to account for
@@ -1436,6 +1449,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		if (!child) goto raw;
 
 		raw->flags.is_raw = 1;
+
 		/*
 		 *	"long" extended.  Decode the value.
 		 */
@@ -1478,6 +1492,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	if (!tag) {
 		vp = fr_pair_afrom_da(ctx, parent);
 	} else {
+		fr_assert(packet_ctx != NULL);
 		fr_assert(packet_ctx->tags != NULL);
 		fr_assert(packet_ctx->tags[tag] != NULL);
 		vp = fr_pair_afrom_da(packet_ctx->tags[tag]->parent, parent);
@@ -1593,6 +1608,7 @@ done:
 		return attr_len;
 	}
 
+	fr_assert(packet_ctx != NULL);
 	fr_assert(packet_ctx->tags != NULL);
 	fr_assert(packet_ctx->tags[tag] != NULL);
 	fr_cursor_append(&packet_ctx->tags[tag]->cursor, vp);
