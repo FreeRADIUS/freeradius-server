@@ -1616,8 +1616,9 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 		}
 			break;
 		/*
-		 *	This covers unresolved attributes as well as
-		 *	unresolved functions.
+		 *	Virtual unresolved attributes get
+		 *	resolved to functions, and failing
+		 *	that to a dictionary attribute.
 		 */
 		case XLAT_VIRTUAL_UNRESOLVED:
 		{
@@ -1643,16 +1644,20 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 				node->flags = (xlat_flags_t){ .needs_async = func->needs_async };
 				break;
 			}
+			FALL_THROUGH;
 
+		/*
+		 *	An unresolved attribute
+		 */
+		case XLAT_ATTRIBUTE:
 			/*
 			 *	Try and resolve (in-place) as an attribute
 			 */
-			if ((tmpl_resolve(node->attr) < 0) || (node->attr->type != TMPL_TYPE_ATTR)) {
+			if ((tmpl_resolve(node->attr) < 0) || (!tmpl_is_attr(node->attr))) {
 				/*
 				 *	FIXME - Produce proper error with marker
 				 */
 				if (!allow_unresolved) {
-				error_unresolved:
 					fr_strerror_printf_push("Failed resolving attribute in expansion %%{%s}",
 								node->fmt);
 					return -1;
@@ -1672,10 +1677,6 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 			 */
 			node->flags = (xlat_flags_t){ };
 		}
-			break;
-
-		case XLAT_ATTRIBUTE:
-			if (!allow_unresolved) goto error_unresolved;
 			break;
 
 		default:
