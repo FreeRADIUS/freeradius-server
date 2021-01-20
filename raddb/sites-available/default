@@ -1242,8 +1242,8 @@ send Access-Accept {
 	#  calculations, e.g.
 	#
 #	update reply {
-#		&WiMAX-FA-RK-Key = 0x00
-#		&WiMAX-MSK = "%{reply.EAP-MSK}"
+#		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
+#		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
 #	}
 
 	#  You may want to delete the `MS-MPPE-*-Keys` from the
