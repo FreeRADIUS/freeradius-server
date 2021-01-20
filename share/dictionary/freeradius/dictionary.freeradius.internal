@@ -125,13 +125,8 @@ VALUE	Send-CoA-Request		Yes			1
 ATTRIBUTE	Stripped-User-Name			1000	string
 ATTRIBUTE	Stripped-User-Domain			1001	string
 
-ATTRIBUTE	Menu					1002	string
-ATTRIBUTE	Termination-Menu			1003	string
-# 1004, 1005, 1006 were Prefix, Suffix, and Group.
-# 
-ATTRIBUTE	Connect-Rate				1007	integer
-ATTRIBUTE	Add-Prefix				1008	string
-ATTRIBUTE	Add-Suffix				1009	string
+# 1002..1009 were Menu, Termination-Menu, Prefix, Suffix, Group,
+# Connext-Rate, Add-Prefix, Add-Suffix
 ATTRIBUTE	Expiration				1010	date
 
 ATTRIBUTE	Client-Shortname			1011	string virtual
@@ -144,7 +139,7 @@ ATTRIBUTE	Login-Time				1015	string
 
 ATTRIBUTE	Current-Time				1016	string
 ATTRIBUTE	Realm					1017	string
-ATTRIBUTE	No-Such-Attribute			1018	string
+# 1018 was No-Such-Attribute
 
 ATTRIBUTE	Acct-Session-Start-Time			1019	date
 ATTRIBUTE	Acct-Unique-Session-Id			1020	string
@@ -178,7 +173,6 @@ ATTRIBUTE	Time-Of-Day				1089	string
 ATTRIBUTE	Inner-Tunnel-User-Name			1102	string
 ATTRIBUTE	SQL-Table-Name				1110	string
 ATTRIBUTE	Home-Server-Pool			1111	string
-ATTRIBUTE	Attribute-Map				1112	string
 
 #
 #  Attributes for dynamic clients 1120 - 1126
@@ -638,55 +632,7 @@ ATTRIBUTE	Cast-Base				2300	byte
 #
 
 VALUE	Auth-Type			Reject			4
-
-#
-#	FreeRADIUS extensions (most originally from Cistron)
-#
 VALUE	Auth-Type			Accept			254
-
-#
-#	Authorization type, too.
-#
-#VALUE	Autz-Type			Local			1
-
-#
-#	And accounting
-#
-#VALUE	Acct-Type			Local			1
-
-#
-#	And Session handling
-#
-#VALUE	Session-Type			Local			1
-
-#
-#	And Post-Auth
-#VALUE	Post-Auth-Type			Local			1
-#VALUE	Post-Auth-Type			Reject			2
-#VALUE	Post-Auth-Type			Challenge		3
-
-#
-#	And Post-Proxy
-#VALUE	Post-Proxy-Type			Fail-Access-Request	1
-#VALUE	Post-Proxy-Type			Fail-Authentication	1
-
-#VALUE	Post-Proxy-Type			Access-Reject		3
-#VALUE	Post-Proxy-Type			Reject			3
-
-#VALUE	Post-Proxy-Type			Fail-Accounting-Request	4
-#VALUE	Post-Proxy-Type			Fail-Accounting		4
-
-#VALUE	Post-Proxy-Type			Fail-Disconnect-Request	40
-#VALUE	Post-Proxy-Type			Fail-Disconnect		40
-
-#VALUE	Post-Proxy-Type			Disconnect-NAK		42
-
-#VALUE	Post-Proxy-Type			Fail-CoA-Request	43
-#VALUE	Post-Proxy-Type			Fail-CoA		43
-
-#VALUE	Post-Proxy-Type			CoA-NAK			45
-
-#VALUE	Post-Proxy-Type			Fail			256
 
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS
