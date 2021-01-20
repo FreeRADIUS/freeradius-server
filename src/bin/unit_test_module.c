@@ -158,24 +158,23 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	 */
 	request->dict = fr_dict_by_protocol_name(PROTOCOL_NAME);
 	if (!request->dict) {
-		ERROR("%s dictionary failed to load", PROTOCOL_NAME);
+		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
+	error:
 		talloc_free(request);
 		return NULL;
 	}
 
 	request->packet = fr_radius_packet_alloc(request, false);
 	if (!request->packet) {
-		ERROR("No memory");
-		talloc_free(request);
-		return NULL;
+		fr_strerror_const("No memory");
+		goto error;
 	}
 	request->packet->timestamp = fr_time();
 
 	request->reply = fr_radius_packet_alloc(request, false);
 	if (!request->reply) {
-		ERROR("No memory");
-		talloc_free(request);
-		return NULL;
+		fr_strerror_const("No memory");
+		goto error;
 	}
 
 	request->client = client;
@@ -193,15 +192,26 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	 *	Read packet from fp
 	 */
 	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
-		fr_perror("%s", main_config->name);
-		talloc_free(request);
-		return NULL;
+		goto error;
 	}
 
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_packet_type);
+	if (!vp) {
+		fr_strerror_printf("Input packet does not specify a Packet-Type");
+		goto error;
+	}
 	/*
 	 *	Set the defaults for IPs, etc.
 	 */
-	request->packet->code = access_request;
+	request->packet->code = vp->vp_uint32;
+
+	/*
+	 *	Now delete the packet-type to ensure
+	 *	the virtual attribute gets used in
+	 *	the tests.
+	 */
+	fr_pair_delete_by_da(&request->request_pairs, attr_packet_type);
+
 	request->packet->socket = (fr_socket_t){
 		.proto = IPPROTO_UDP,
 		.inet = {
@@ -255,14 +265,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 			memcpy(&request->packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.src_ipaddr));
 		}
 	} /* loop over the VP's we read in */
-
-	/*
-	 *	"0" is uniformly the "bad packet" type.
-	 */
-	if (!request->packet->code) {
-		fr_strerror_const("No 'Packet-Type' was found in the request list.  Cannot send unknown packet");
-		return NULL;
-	}
 
 	if (fr_debug_lvl) {
 		for (vp = fr_cursor_init(&cursor, &request->request_pairs);
@@ -927,7 +929,7 @@ int main(int argc, char *argv[])
 	 */
 	request = request_from_file(autofree, fp, el, client);
 	if (!request) {
-		fr_perror("Failed reading input");
+		fr_perror("Failed reading input from %s", input_file);
 		EXIT_WITH_FAILURE;
 	}
 
