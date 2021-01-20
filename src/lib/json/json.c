@@ -241,7 +241,10 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 
 #ifdef HAVE_JSON_OBJECT_GET_INT64
 	case FR_TYPE_INT64:
-		return json_object_new_int64(data->vb_int16);
+		return json_object_new_int64(data->vb_int64);
+
+	case FR_TYPE_SIZE:
+		return json_object_new_int64(data->vb_size);
 #endif
 	}
 }
