@@ -152,7 +152,11 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 
 
 	case TMPL_ATTR_TYPE_UNRESOLVED:
-		FR_FAULT_LOG("\t[%u] %s %s%s%s%s - unresolved",
+		/*
+		 *	Type reveals unresolved status
+		 *	so we don't need to add it explicitly
+		 */
+		FR_FAULT_LOG("\t[%u] %s %s%s%s%s",
 			     i,
 			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			     ar->ar_unresolved,
