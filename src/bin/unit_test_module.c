@@ -999,11 +999,14 @@ int main(int argc, char *argv[])
 	/*
 	 *	Update the list with the response type, so that it can
 	 *	be matched in filters.
+	 *
+	 *	Some state machines already include a response Packet-Type
+	 *	so we need to try and update it, else we end up with two!
 	 */
 	if (filter_vps) {
 		fr_pair_t const *failed[2];
 
-		MEM(pair_add_reply(&vp, attr_packet_type) >= 0);
+		MEM(pair_update_reply(&vp, attr_packet_type) >= 0);
 		vp->vp_uint32 = request->reply->code;
 
 
