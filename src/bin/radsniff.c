@@ -1232,6 +1232,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	fr_pair_list_init(&decoded);
 
 	memset(&search, 0, sizeof(search));
+	fr_pair_list_init(&search.packet_vps);
+	fr_pair_list_init(&search.expect_vps);
 	fr_pair_list_init(&search.link_vps);
 
 	if (!start_pcap.tv_sec) {
