@@ -124,7 +124,9 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 	 *	Decode the header.
 	 */
 	for (i = 0; i < dhcp_header_attrs_len; i++) {
-		vp = fr_pair_afrom_da(ctx, *dhcp_header_attrs[i]);
+		fr_dict_attr_t const *da = *dhcp_header_attrs[i];
+
+		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) {
 			fr_strerror_const_push("Cannot decode packet due to internal error");
 		error:
@@ -138,7 +140,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 		 *	If chaddr != 6 bytes it's probably not ethernet, and we should store
 		 *	it as an opaque type (octets).
 		 */
-		if (i == 11) {
+		if (da == attr_dhcp_client_hardware_address) {
 			/*
 			 *	Skip chaddr if it doesn't exist.
 			 */
