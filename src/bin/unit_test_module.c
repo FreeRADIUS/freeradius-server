@@ -92,9 +92,6 @@ fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
 	{ NULL }
 };
 
-
-static uint32_t access_request;
-
 /*
  *	Static functions.
  */
@@ -806,15 +803,6 @@ int main(int argc, char *argv[])
 
 	if (log_global_init(&default_log, false) < 0) {
 		EXIT_WITH_FAILURE;
-	}
-
-	if (strcmp(PROTOCOL_NAME, "radius") == 0) {
-		access_request = FR_CODE_ACCESS_REQUEST;
-	} else {
-		/*
-		 *	The caller MUST specify a Packet-Type.
-		 */
-		access_request = 0;
 	}
 
 	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
