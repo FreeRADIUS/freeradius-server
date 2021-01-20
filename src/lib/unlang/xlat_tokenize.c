@@ -622,7 +622,15 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 			goto error;
 		}
 
-		xlat_exp_set_type(node, XLAT_ATTRIBUTE);
+		/*
+		 *	We don't know it's virtual but
+		 *	we don't know it's not either...
+		 *
+		 *	Mark it up as virtual-unresolved
+		 *	and let the resolution code figure
+		 *	this out in a later pass.
+		 */
+		xlat_exp_set_type(node, XLAT_VIRTUAL_UNRESOLVED);
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
 		node->attr = vpt;
 		node->flags.needs_resolving = true;
