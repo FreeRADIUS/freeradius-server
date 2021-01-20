@@ -1,5 +1,6 @@
 SUBMAKEFILES := \
 	dbuff_tests.mk \
+	dcursor_tests.mk \
 	heap_tests.mk \
 	libfreeradius-util.mk \
 	pair_tests.mk \
