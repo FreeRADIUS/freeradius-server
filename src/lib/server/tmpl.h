@@ -710,7 +710,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  * Example:
  @code{.c}
    static tmpl_t     list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
-   fr_cursor_t       cursor;
+   fr_dcursor_t      cursor;
    tmpl_cursor_ctx_t cc,
    fr_pair_t        *vp;
 
@@ -744,7 +744,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
 
 /** Determine the correct context and list head
  *
- * Used in conjunction with the fr_cursor functions to determine the correct list
+ * Used in conjunction with the fr_dcursor functions to determine the correct list
  * and TALLOC_CTX for inserting fr_pair_ts.
  *
  * Example:
