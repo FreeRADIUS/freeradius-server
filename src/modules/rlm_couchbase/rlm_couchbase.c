@@ -247,7 +247,6 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	int docfound = 0;                       /* document found toggle */
 	lcb_error_t cb_error = LCB_SUCCESS;     /* couchbase error holder */
 	ssize_t slen;
-	fr_cursor_t cursor;
 
 
 	/* assert packet as not null */
@@ -365,11 +364,9 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	}
 
 	/* loop through pairs and add to json document */
-	fr_cursor_init(&cursor, &request->request_pairs);
-
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		/* map attribute to element */
 		if (mod_attribute_to_element(vp->da->name, inst->map, &element) == 0) {
 			/* debug */
