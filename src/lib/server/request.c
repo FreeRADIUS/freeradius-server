@@ -92,6 +92,7 @@ static inline void CC_HINT(always_inline) request_log_init_child(request_t *chil
 	memcpy(&(child->log), &(parent->log), sizeof(child->log));
 	child->log.unlang_indent = 0;	/* Apart from the indent which we reset */
 	child->log.module_indent = 0;	/* Apart from the indent which we reset */
+	child->log.lvl = parent->log.lvl;
 }
 
 static inline void CC_HINT(always_inline) request_log_init_detachable(request_t *child, request_t const *parent)
@@ -102,6 +103,7 @@ static inline void CC_HINT(always_inline) request_log_init_detachable(request_t 
 	 */
 	child->log.dst = talloc_zero(child, log_dst_t);
 	memcpy(child->log.dst, parent->log.dst, sizeof(*child->log.dst));
+	child->log.lvl = parent->log.lvl;
 }
 
 static inline CC_HINT(always_inline) int request_detachable_init(request_t *child, request_t *parent)
