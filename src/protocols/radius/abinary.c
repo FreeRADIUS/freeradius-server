@@ -1193,13 +1193,12 @@ static int ascend_parse_generic(int argc, char **argv,
  * to a binary format recognized by the Ascend boxes.
  *
  * @param vp	VP to encode
- * @param out	where to write the VP data
- * @param outlen length of the output buffer
+ * @param dbuff	where to write the VP data
  * @return
  *	- >0 on success == size of the data encoded
  *	- <=0 on failure, which is the size needed to encode the data
  */
-ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outlen)
+ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, fr_dbuff_t *dbuff)
 {
 	int		token, type;
 	int		slen = 0;
@@ -1309,14 +1308,7 @@ ssize_t fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outle
 
 	talloc_free(p);
 
-	if (size > outlen) return -size;
-
-	/*
-	 *	Copy the encoded filter to the output buffer
-	 */
-	memcpy(out, &filter, size);
-
-	return size;
+	return fr_dbuff_in_memcpy(dbuff, (uint8_t *)&filter, size);
 }
 
 /** Print an Ascend binary filter attribute to a string,

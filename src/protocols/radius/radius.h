@@ -181,7 +181,7 @@ typedef struct {
 /*
  *	protocols/radius/abinary.c
  */
-ssize_t		fr_radius_encode_abinary(fr_pair_t const *vp, uint8_t *out, size_t outlen);
+ssize_t		fr_radius_encode_abinary(fr_pair_t const *vp, fr_dbuff_t *dbuff);
 
 ssize_t		fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data_len);
 
