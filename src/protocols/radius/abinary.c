@@ -108,7 +108,6 @@ typedef struct {
 	uint16_t	dstport;
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
-	uint8_t		end[];
 
 	// @todo - extra juniper stuff
 } ascend_ip_filter_t;
@@ -161,7 +160,6 @@ typedef struct {
 	uint16_t	dstport;
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
-	uint8_t		end[];
 
 	// @todo - extra juniper stuff
 } ascend_ipv6_filter_t;
@@ -201,7 +199,6 @@ typedef struct {
 	ascend_ipx_net_t dst;
 	uint8_t		srcSocComp;
 	uint8_t		dstSocComp;
-	uint8_t		end[];
 } ascend_ipx_filter_t;
 
 
@@ -236,7 +233,6 @@ typedef struct {
 	uint8_t		mask[ RAD_MAX_FILTER_LEN ];
 	uint8_t		value[ RAD_MAX_FILTER_LEN ];
 	uint8_t		compNeq;
-	uint8_t		end[];
 } ascend_generic_filter_t;
 
 /*
@@ -1355,19 +1351,19 @@ ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data
 
 	switch ((ascend_filter_type_t)filter->type) {
 	case ASCEND_FILTER_IP:
-		size = (size_t) ((uint8_t const *) &filter->ip.end[0] - (uint8_t const *) filter);
+		size = sizeof(filter->ip);
 		break;
 
 	case ASCEND_FILTER_IPX:
-		size = (size_t) ((uint8_t const *) &filter->ipx.end[0] - (uint8_t const *) filter);
+		size = sizeof(filter->ipx);
 		break;
 
 	case ASCEND_FILTER_GENERIC:
-		size = (size_t) ((uint8_t const *) &filter->generic.end[0] - (uint8_t const *) filter);
+		size = sizeof(filter->generic);
 		break;
 
 	case ASCEND_FILTER_IPV6:
-		size = (size_t) ((uint8_t const *) &filter->ipv6.end[0] - (uint8_t const *) filter);
+		size = sizeof(filter->ipv6);
 		break;
 
 	default:
