@@ -52,5 +52,6 @@ ATTRIBUTE	FDD-SPP-Policy-Group			35	string
 ATTRIBUTE	FDD-Allow-API-Access			36	string
 ATTRIBUTE	Fpc-User-Role				40	string
 ATTRIBUTE	Tenant-Identification			41	string
+ATTRIBUTE	Host-Port-AVPair			42	string
 
 END-VENDOR Fortinet
