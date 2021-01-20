@@ -810,6 +810,14 @@ int main(int argc, char *argv[])
 	 */
 	if (unlang_init() < 0) return -1;
 
+	/*
+	 *	Ensure that we load the correct virtual server for the
+	 *	protocol, if necessary.
+	 */
+	if (!getenv("PROTOCOL")) {
+		setenv("PROTOCOL", PROTOCOL_NAME, true);
+	}
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init(config) < 0) {
 		EXIT_WITH_FAILURE;
