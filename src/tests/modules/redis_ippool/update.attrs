@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+
 User-Name = 'john'
 User-Password = 'testing123'
 NAS-IP-Address = 127.0.0.1

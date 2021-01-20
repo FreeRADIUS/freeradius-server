@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = 'user3@example.org'
 NAS-Port = 17826193
 NAS-IP-Address = 192.0.2.10

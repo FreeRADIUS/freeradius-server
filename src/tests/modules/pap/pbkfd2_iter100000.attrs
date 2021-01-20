@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = 'pbkdf2_iter100000'
 User-Password = 'password'
 

@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = "groups_user_b"
 User-Password = "UserBPassword"
 NAS-IP-Address = "1.2.3.4"

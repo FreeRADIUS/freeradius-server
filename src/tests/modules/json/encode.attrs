@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = 'john'
 Filter-Id = "f1"
 Filter-Id += "f2"

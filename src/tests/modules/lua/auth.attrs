@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = "caipirinha"
 User-Password = "gelo"
 Called-Station-Id = "aa:bb:cc:dd:ee:ff"
