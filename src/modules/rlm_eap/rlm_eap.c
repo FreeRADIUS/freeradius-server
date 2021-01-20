@@ -796,7 +796,6 @@ static unlang_action_t mod_post_proxy(rlm_rcode_t *p_result, module_ctx_t const 
 	char			*p;
 	fr_pair_t		*vp;
 	eap_session_t		*eap_session;
-	fr_cursor_t		cursor;
 
 	/*
 	 *	If there was a eap_session associated with this request,
