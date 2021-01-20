@@ -202,17 +202,31 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	 *	Set the defaults for IPs, etc.
 	 */
 	request->packet->code = access_request;
-
-	request->packet->socket.proto = IPPROTO_UDP;
-	request->packet->socket.inet.src_ipaddr.af = AF_INET;
-	request->packet->socket.inet.src_ipaddr.prefix = 32;
-	request->packet->socket.inet.src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->socket.inet.src_port = 18120;
-
-	request->packet->socket.inet.dst_ipaddr.af = AF_INET;
-	request->packet->socket.inet.dst_ipaddr.prefix = 32;
-	request->packet->socket.inet.dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->socket.inet.dst_port = 1812;
+	request->packet->socket = (fr_socket_t){
+		.proto = IPPROTO_UDP,
+		.inet = {
+			.src_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.src_port = 18120,
+			.dst_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.dst_port = 1812
+		}
+	};
 
 	for (vp = fr_cursor_init(&cursor, &request->request_pairs);
 	     vp;
