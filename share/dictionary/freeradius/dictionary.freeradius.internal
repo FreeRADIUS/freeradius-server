@@ -173,6 +173,7 @@ ATTRIBUTE	Time-Of-Day				1089	string
 ATTRIBUTE	Inner-Tunnel-User-Name			1102	string
 ATTRIBUTE	SQL-Table-Name				1110	string
 ATTRIBUTE	Home-Server-Pool			1111	string
+ATTRIBUTE	Result-Status				1112	string
 
 #
 #  Attributes for dynamic clients 1120 - 1126

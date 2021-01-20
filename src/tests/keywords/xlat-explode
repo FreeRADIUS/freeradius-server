@@ -28,9 +28,7 @@ if (&Class[3]) {
 }
 
 if ("%{explode:&control.Calling-Station-Id |}" != 0) {
-	update reply {
-		&Filter-Id += 'Fail 4'
-	}
+	test_fail
 }
 
 if ("%{explode:&control.User-Name[*] |}" != 5) {

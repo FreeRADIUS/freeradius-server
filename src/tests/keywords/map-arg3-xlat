@@ -8,5 +8,5 @@
 #  arg3 can be an xlat
 #
 map csv "%{tolower:%{User-Name}}" {
-	&reply.Filter-Id := 'field3'
+	&reply.Result-Status := 'field3'
 }

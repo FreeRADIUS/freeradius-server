@@ -9,4 +9,4 @@ NAS-IP-Address = 127.0.0.1
 #  Expected answer
 #
 Packet-Type == Access-Accept
-Filter-Id == 'filter'
+Result-Status == "success"

@@ -9,4 +9,4 @@ User-Password = "hello"
 #
 Packet-Type == Access-Accept
 Tmp-Group-0 == { Tmp-Group-0 == { Tmp-String-0 == 'hello from subrequest' } }
-Filter-Id == 'filter'
+Result-Status == "success"
