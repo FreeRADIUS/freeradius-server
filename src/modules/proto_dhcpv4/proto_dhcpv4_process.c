@@ -56,7 +56,7 @@ fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[] = {
  */
 static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
 {
-	int i;
+	size_t i;
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
@@ -91,7 +91,7 @@ static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 	 *	Print the fields in the header, too.
 	 */
 	RINDENT();
-	for (i = 0; dhcp_header_attrs[i] != NULL; i++) {
+	for (i = 0; i < dhcp_header_attrs_len; i++) {
 		fr_pair_t *vp;
 
 		if (!*dhcp_header_attrs[i]) continue;

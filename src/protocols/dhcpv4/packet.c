@@ -123,7 +123,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_c
 	/*
 	 *	Decode the header.
 	 */
-	for (i = 0; i < 14; i++) {
+	for (i = 0; i < dhcp_header_attrs_len; i++) {
 		vp = fr_pair_afrom_da(ctx, *dhcp_header_attrs[i]);
 		if (!vp) {
 			fr_strerror_const_push("Cannot decode packet due to internal error");

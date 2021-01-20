@@ -113,6 +113,7 @@ typedef struct {
 #endif
 
 extern fr_dict_attr_t const	**dhcp_header_attrs[];
+extern size_t dhcp_header_attrs_len;
 extern char const		*dhcp_message_types[];
 extern int			dhcp_header_sizes[];
 extern uint8_t			eth_bcast[ETH_ADDR_LEN];

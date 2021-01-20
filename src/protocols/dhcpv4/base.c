@@ -119,8 +119,8 @@ fr_dict_attr_t const **dhcp_header_attrs[] = {
 	&attr_dhcp_client_hardware_address,
 	&attr_dhcp_server_host_name,
 	&attr_dhcp_boot_filename,
-	NULL
 };
+size_t dhcp_header_attrs_len = NUM_ELEMENTS(dhcp_header_attrs);
 
 char const *dhcp_message_types[] = {
 	"invalid",

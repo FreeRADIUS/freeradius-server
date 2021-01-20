@@ -217,7 +217,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	transport, via a call to fr_dhcpv4_ok().
 	 */
 	fr_cursor_init(&cursor, &request->request_pairs);
-	if (fr_dhcpv4_decode(packet, packet->data, packet->data_len, &cursor, &packet->code) < 0) {
+	if (fr_dhcpv4_decode(request->request_ctx, packet->data, packet->data_len, &cursor, &packet->code) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
