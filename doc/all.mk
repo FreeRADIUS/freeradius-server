@@ -9,8 +9,9 @@
 WITH_DOC := $(strip $(foreach x,install doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 
 #
-#  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
-#  rule here, instead of overloading the "install.man" rule.
+#  Convert adoc to man, and then let "install.man" deal with things.
+#  This means a bare "make install.man" after "configure" won't get the
+#  right things, but oh well.
 #
 ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
 $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
