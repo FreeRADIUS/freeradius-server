@@ -179,7 +179,6 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	 */
 	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
-	fr_assert(ptr != NULL);
 	packet_length = packet->data_len - RADIUS_HEADER_LENGTH;
 	num_attributes = 0;
 
@@ -194,6 +193,7 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 		/*
 		 *	This may return many VPs
 		 */
+		fr_assert(ptr != NULL);
 		my_len = fr_radius_decode_pair(packet, &cursor, dict_radius, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 		fail:
