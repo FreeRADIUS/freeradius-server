@@ -298,9 +298,11 @@ static int proto_ldap_socket_print(rad_listen_t const *listen, char *buffer, siz
  *
  * @param[in] request	The current request.
  * @param[in] packet	containing attributes from the entry we received.
+ * @param[in] list	of pairs to print.
  * @param[in] received	Should always be true.
  */
-static void proto_ldap_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
+static void proto_ldap_packet_debug(request_t *request,
+				    fr_radius_packet_t *packet, UNUSED fr_pair_list_t *list, bool received)
 {
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
@@ -359,7 +361,7 @@ static void request_running(request_t *request, fr_state_signal_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, true);
+		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, &request->request_pairs, true);
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 
 		request->server_cs = request->listener->server_cs;
