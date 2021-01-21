@@ -1421,8 +1421,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	{
 		fr_dict_attr_t *raw;
 
-		if (!packet_ctx) goto raw;
-
 		/*
 		 *	Create an unknown attribute, and decode it as
 		 *	"octets".  Note that we have to account for
