@@ -44,7 +44,7 @@ distinguished_name	= server
 default_bits		= 2048
 input_password		= whatever
 output_password		= whatever
-req_extensions		= v3_req
+#req_extensions		= v3_req
 
 [server]
 countryName		= FR
