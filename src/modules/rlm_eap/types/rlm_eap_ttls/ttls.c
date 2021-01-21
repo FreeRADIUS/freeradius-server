@@ -312,7 +312,7 @@ do_value:
  *	are ones which can go inside of a RADIUS (i.e. diameter)
  *	packet.  So no server-configuration attributes, or the like.
  */
-static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pair_t *first)
+static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pair_list_t *list)
 {
 	/*
 	 *	RADIUS packets are no more than 4k in size, so if
@@ -332,7 +332,7 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 	p = buffer;
 	total = 0;
 
-	for (vp = fr_cursor_init(&cursor, &first);
+	for (vp = fr_cursor_init(&cursor, list);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
@@ -576,7 +576,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		RDEBUG2("Sending tunneled reply attributes");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tunnel_vps, NULL);
 
-		vp2diameter(request, tls_session, tunnel_vps);
+		vp2diameter(request, tls_session, &tunnel_vps);
 		fr_pair_list_free(&tunnel_vps);
 	}
 
