@@ -637,7 +637,7 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	fr_dhcpv6_decode_ctx_t	packet_ctx;
 	fr_pair_t		*vp;
 
-	if (!packet_len) return 0; /* protect access to packet[0] */
+	if (packet_len < DHCPV6_HDR_LEN) return 0; /* protect access to packet[0] */
 
 	/*
 	 *	Get the packet type.
