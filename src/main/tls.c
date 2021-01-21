@@ -3589,7 +3589,7 @@ post_ca:
 		 *	time.
 		 */
 #if defined(TLS1_3_VERSION)
-		max_version = TLS1_3_VERSION;
+		max_version = TLS1_2_VERSION;
 #elif defined(TLS1_2_VERSION)
 		max_version = TLS1_2_VERSION;
 #elif defined(TLS1_1_VERSION)
@@ -3624,6 +3624,25 @@ post_ca:
 		      conf->tls_min_version, conf->tls_max_version);
 		return NULL;
 	}
+
+#ifdef TLS1_3_VERSION
+	/*
+	 *	The IETF is endlessly waffling about TLS 1.3.  We
+	 *	don't want to have people deploy the *wrong* thing, so
+	 *	we just prevent them from using TLS 1.3 at all.
+	 */
+	if (min_version >= TLS1_3_VERSION) {
+		ERROR("tls_min_version '%s' MUST NOT be 1.3, as the standards have not been finalized.",
+		      conf->tls_min_version);
+		return NULL;
+	}
+
+	if (max_version >= TLS1_3_VERSION) {
+		ERROR("tls_max_version '%s' MUST NOT be 1.3, as the standards have not been finalized.",
+		      conf->tls_min_version);
+		return NULL;
+	}
+#endif
 
 #ifdef CHECK_FOR_PSK_CERTS
 	/*
