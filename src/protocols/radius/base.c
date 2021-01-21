@@ -913,6 +913,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	fr_radius_ctx_t		packet_ctx;
 	fr_dbuff_t		work_dbuff, length_dbuff;
 
+	memset(&packet_ctx, 0, sizeof(packet_ctx));
 	packet_ctx.secret = secret;
 	packet_ctx.rand_ctx.a = fr_rand();
 	packet_ctx.rand_ctx.b = fr_rand();
