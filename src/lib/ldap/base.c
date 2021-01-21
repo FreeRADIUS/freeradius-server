@@ -826,8 +826,6 @@ fr_ldap_rcode_t fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
 		break;
 
 	case LDAP_PROC_BAD_CONN:
-		FALL_THROUGH;
-
 	default:
 		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object");
 

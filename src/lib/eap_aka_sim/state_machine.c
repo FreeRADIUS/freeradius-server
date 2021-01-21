@@ -4139,8 +4139,6 @@ static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_
 						      (void *)common_challenge_enter);
 
 	case FR_IDENTITY_TYPE_VALUE_PERMANENT:
-		FALL_THROUGH;
-
 	default:
 		break;
 	}
