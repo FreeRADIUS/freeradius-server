@@ -69,7 +69,7 @@ typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, request_t *);
 typedef int (*rad_listen_error_t)(rad_listen_t *, int);
 typedef int (*rad_listen_print_t)(rad_listen_t const *, char *, size_t);
-typedef void (*rad_listen_debug_t)(request_t *, fr_radius_packet_t *, bool received);
+typedef void (*rad_listen_debug_t)(request_t *, fr_radius_packet_t *, fr_pair_list_t *, bool received);
 typedef int (*rad_listen_encode_t)(rad_listen_t *, request_t *);
 typedef int (*rad_listen_decode_t)(rad_listen_t *, request_t *);
 

@@ -37,7 +37,7 @@ extern "C" {
 /*
  *	Debug the packet if requested.
  */
-void common_packet_debug(request_t *request, fr_radius_packet_t *packet, bool received)
+void common_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *pairs, bool received)
 {
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
@@ -71,8 +71,8 @@ void common_packet_debug(request_t *request, fr_radius_packet_t *packet, bool re
 		       packet->data_len);
 
 	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, packet->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, pairs, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, packet->vps, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, pairs, NULL);
 	}
 }

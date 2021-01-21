@@ -194,7 +194,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			request->reply->socket.inet.src_ipaddr = request->client->src_ipaddr;
 		}
 
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
+		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, &request->reply_pairs, false);
 		break;
 
 	default:
