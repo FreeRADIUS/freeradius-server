@@ -1479,7 +1479,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 	if (!tag) {
 		vp = fr_pair_afrom_da(ctx, parent);
 	} else {
-		fr_assert(packet_ctx != NULL);
 		fr_assert(packet_ctx->tags != NULL);
 		fr_assert(packet_ctx->tags[tag] != NULL);
 		vp = fr_pair_afrom_da(packet_ctx->tags[tag]->parent, parent);
@@ -1595,7 +1594,6 @@ done:
 		return attr_len;
 	}
 
-	fr_assert(packet_ctx != NULL);
 	fr_assert(packet_ctx->tags != NULL);
 	fr_assert(packet_ctx->tags[tag] != NULL);
 	fr_cursor_append(&packet_ctx->tags[tag]->cursor, vp);
