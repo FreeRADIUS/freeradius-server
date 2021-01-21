@@ -1677,8 +1677,10 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t co
 	return 2 + ret;
 }
 
-static int _test_ctx_free(UNUSED fr_radius_ctx_t *ctx)
+static int _test_ctx_free(fr_radius_ctx_t *ctx)
 {
+	talloc_free(ctx->tags);
+
 	fr_radius_free();
 
 	return 0;
