@@ -57,7 +57,7 @@ COPY --from=build /opt /opt
 # These are needed for the server to start
 #
 RUN apk update \
-    && apk add talloc libressl pcre libwbclient \
+    && apk add talloc libressl pcre libwbclient tzdata \
     \
 #
 #  Libraries that are needed dependent on which modules are used
