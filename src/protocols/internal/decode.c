@@ -161,8 +161,8 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	fr_dict_attr_t const	*da;
 	uint8_t			enc_byte = 0, ext_byte = 0, type_field_size, len_field_size;
 	fr_dbuff_marker_t	len_field, enc_field, ext_field;
-	uint64_t		type = 0;
-	size_t			len = 0, remaining, needed;
+	uint64_t		len = 0, type = 0;
+	size_t			remaining, needed;
 	bool			tainted, extended, unknown = false;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
@@ -251,7 +251,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	if (remaining < len) {
 		fr_strerror_printf("%s: Length field value overruns input data. "
 				   "%zu byte(s) remaining, need %zu byte(s)",
-				   __FUNCTION__, remaining, len);
+				   __FUNCTION__, remaining, (size_t) len);
 		return -(fr_dbuff_current(&len_field) - fr_dbuff_start(&work_dbuff));
 	}
 
