@@ -172,10 +172,11 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 {
 	FR_CODE		code;
 	rlm_rcode_t	rcode;
-	request_t		*fake = NULL;
+	request_t	*fake = NULL;
 	uint8_t const	*attr_data;
 	size_t		data_len = 0;
 	fr_pair_t	*vp;
+	fr_radius_ctx_t packet_ctx;
 
 	/* check input parameters */
 	fr_assert((request != NULL) &&
@@ -197,6 +198,8 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 	/*
 	 *	Maybe copy the State over, too?
 	 */
+	memset(&packet_ctx, 0, sizeof(packet_ctx));
+	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
@@ -210,20 +213,26 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 			ssize_t attr_len;
 
 			attr_len = fr_radius_decode_pair(fake->request_ctx, &cursor, dict_radius,
-							 attr_data, data_len, NULL);
+							 attr_data, data_len, &packet_ctx);
 			if (attr_len <= 0) {
 				/*
 				 *	If fr_radius_decode_pair fails, return NULL string for
 				 *	channel binding response.
 				 */
 				talloc_free(fake);
+				talloc_free(packet_ctx.tmp_ctx);
+				talloc_free(packet_ctx.tags);
 
 				return FR_CODE_ACCESS_ACCEPT;
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;
 		}
+
+		talloc_free_children(packet_ctx.tmp_ctx);
 	}
+	talloc_free(packet_ctx.tmp_ctx);
+	talloc_free(packet_ctx.tags);
 
 	/*
 	 *	Set virtual server based on configuration for channel
