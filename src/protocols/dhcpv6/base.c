@@ -601,6 +601,8 @@ static bool verify_from_client(uint8_t const *packet, size_t packet_len, fr_dhcp
 bool fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decode_ctx_t const *packet_ctx,
 		      bool from_server)
 {
+	if (packet_len < DHCPV6_HDR_LEN) return false;
+
 	/*
 	 *	We support up to relaying.
 	 */
