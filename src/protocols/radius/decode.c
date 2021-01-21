@@ -1293,6 +1293,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 			memcpy(&vendor, p, 4);
 			vendor = ntohl(vendor);
 
+#ifdef __clang_analyzer__
+			if (!packet_ctx || !packet_ctx->tmp_ctx) return -1;
+#endif
 			/*
 			 *	For simplicity in our attribute tree, vendors are
 			 *	represented as a subtlv(ish) of an EVS or VSA
