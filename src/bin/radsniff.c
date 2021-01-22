@@ -1666,7 +1666,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			fr_radius_packet_free(&original->linked);
 
 			/* replace packet and vps */
-			fr_pair_list_clear(&original->packet_vps);
+			fr_pair_list_free(&original->packet_vps);
 			fr_radius_packet_free(&original->packet);
 			original->packet = talloc_steal(original, packet);
 			fr_pair_list_move(&original->packet_vps, &decoded);
@@ -1677,7 +1677,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			}
 
 			/* replace expected packets and vps */
-			fr_pair_list_clear(&original->expect_vps);
+			fr_pair_list_free(&original->expect_vps);
 			fr_radius_packet_free(&original->expect);
 			original->expect = talloc_steal(original, search.expect);
 			fr_pair_list_move(&original->expect_vps, &search.expect_vps);

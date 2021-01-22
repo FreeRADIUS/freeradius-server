@@ -378,16 +378,6 @@ inline void fr_pair_list_free(fr_pair_list_t *list)
 	fr_dlist_talloc_free(&list->head);
 }
 
-/** Free and re-initialise a valuepair list.
- *
- * @param[in] list to re-initialise
- */
-inline void fr_pair_list_clear(fr_pair_list_t *list)
-{
-	fr_pair_list_free(list);
-	fr_pair_list_init(list);
-}
-
 /** Is a valuepair list empty
  *
  * @param[in] list to check

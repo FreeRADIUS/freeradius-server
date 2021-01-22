@@ -303,7 +303,7 @@ static void udp_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, 
 static void udp_request_reset(udp_request_t *u)
 {
 	TALLOC_FREE(u->packet);
-	fr_pair_list_clear(&u->extra);	/* Freed with packet */
+	fr_pair_list_free(&u->extra);	/* Freed with packet */
 
 	/*
 	 *	Can have packet put no u->rr

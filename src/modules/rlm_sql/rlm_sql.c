@@ -904,7 +904,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			REXDENT();
 			radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
-			fr_pair_list_clear(&check_tmp);
+			fr_pair_list_free(&check_tmp);
 		}
 
 		if (inst->config->authorize_group_reply_query) {
@@ -941,7 +941,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
 			radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
-			fr_pair_list_clear(&reply_tmp);
+			fr_pair_list_free(&reply_tmp);
 		/*
 		 *	If there's no reply query configured, then we assume
 		 *	FALL_THROUGH_NO, which is the same as the users file if you
@@ -1263,7 +1263,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
 		if (paircmp(request, &request->request_pairs, &check_tmp) != 0) {
-			fr_pair_list_clear(&check_tmp);
+			fr_pair_list_free(&check_tmp);
 			goto skip_reply;
 		}
 
@@ -1279,7 +1279,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
 		rcode = RLM_MODULE_OK;
-		fr_pair_list_clear(&check_tmp);
+		fr_pair_list_free(&check_tmp);
 	}
 
 	if (inst->config->authorize_reply_query) {
@@ -1314,7 +1314,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
 
 		rcode = RLM_MODULE_OK;
-		fr_pair_list_clear(&reply_tmp);
+		fr_pair_list_free(&reply_tmp);
 	}
 
 	/*

@@ -1385,7 +1385,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
-	fr_pair_list_clear(out);
+	fr_pair_list_free(out);
 
 	for (vp = tmpl_cursor_init(&err, NULL, &cc, &from, request, vpt);
 	     vp;
