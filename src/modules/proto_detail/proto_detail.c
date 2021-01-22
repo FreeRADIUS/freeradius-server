@@ -325,7 +325,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		/*
 		 *	Ensure temporary list is empty before each use
 		 */
-		fr_pair_list_clear(&tmp_list);
+		fr_pair_list_free(&tmp_list);
 		if ((fr_pair_list_afrom_str(request->request_ctx, request->dict, (char const *) p, &tmp_list) > 0) && !fr_pair_list_empty(&tmp_list)) {
 			vp = fr_pair_list_head(&tmp_list);
 			fr_tmp_pair_list_move(&request->request_pairs, &tmp_list);

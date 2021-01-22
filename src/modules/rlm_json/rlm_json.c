@@ -400,7 +400,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 	fr_value_box_t			*head, *value;
 	int				ret;
 
-	fr_pair_list_clear(out);
+	fr_pair_list_free(out);
 
 	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);

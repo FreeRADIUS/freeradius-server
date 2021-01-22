@@ -887,7 +887,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	fr_pair_list_t output_pairs;
 
 	fr_pair_list_init(&output_pairs);
-	fr_pair_list_clear(out);
+	fr_pair_list_free(out);
 
 	MAP_VERIFY(map);
 
@@ -969,7 +969,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	char		*str;
 
 	fr_pair_list_init(&found);
-	fr_pair_list_clear(out);
+	fr_pair_list_free(out);
 
 	MAP_VERIFY(map);
 	if (!fr_cond_assert(map->lhs != NULL)) return -1;
@@ -1369,7 +1369,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		case T_OP_SET:
 			if (tmpl_is_list(map->rhs)) {
-				fr_pair_list_clear(list);
+				fr_pair_list_free(list);
 				fr_tmp_pair_list_move(list, &src_list);
 				fr_pair_list_init(&src_list);
 			} else {
@@ -1381,7 +1381,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		case T_OP_ADD:
 				fr_pair_list_move(list, &src_list);
-				fr_pair_list_clear(&src_list);
+				fr_pair_list_free(&src_list);
 			}
 			goto update;
 
