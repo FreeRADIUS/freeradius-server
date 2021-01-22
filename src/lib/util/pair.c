@@ -2526,6 +2526,16 @@ void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
 	fr_dlist_move(&dst->head, &src->head);
 }
 
+/** Move a list of fr_pair_t from a temporary list to the head of a destination list
+ *
+ * @param dst list to move pairs into
+ * @param src from which to take pairs
+ */
+void fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src)
+{
+	fr_dlist_move_head(&dst->head, &src->head);
+}
+
 /** Evaluation function for matching if vp matches a given da
  *
  * Can be used as a filter function for fr_dcursor_filter_next()
