@@ -95,6 +95,16 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	if (!dict_dir) dict_dir = DICTDIR;
 
+	/*
+	 *	When jobs=N is specified the fuzzer spawns worker processes via
+	 *	a shell. We have removed any -D dictdir argument that were
+	 *	supplied, so we pass it to our children via the environment.
+	 */
+	if (setenv("FR_DICTIONARY_DIR", dict_dir, 1)) {
+		fprintf(stderr, "Failed to set FR_DICTIONARY_DIR env variable\n");
+		fr_exit_now(1);
+	}
+
 	if (!fr_dict_global_ctx_init(NULL, dict_dir)) {
 		fr_perror("dict_global");
 		return 0;
