@@ -68,6 +68,7 @@
 	    ntohs(_field), end) < 0) goto fail; \
 } while (0)
 
+#define BODY(_x) (((uint8_t const *) pkt) + sizeof(pkt->hdr) + sizeof(pkt->_x))
 
 /**
  *	Decode a TACACS+ 'arg_N' fields.
@@ -293,7 +294,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 * |    data...
 			 * +----------------+----------------+----------------+----------------+
 			 */
-			p = pkt->authen.start.body;
+			p = BODY(authen.start);
 			PACKET_HEADER_CHECK("Authentication Start");
 
 			if ((pkt->hdr.ver.minor == 0) &&
@@ -388,7 +389,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 				goto fail;
 			}
 
-			p = pkt->authen.cont.body;
+			p = BODY(authen.cont);
 			PACKET_HEADER_CHECK("Authentication Continue");
 
 			if (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII) {
@@ -428,7 +429,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	We just echo whatever was sent in the request.
 			 */
 
-			p = pkt->authen.reply.body;
+			p = BODY(authen.reply);
 			PACKET_HEADER_CHECK("Authentication Reply");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
@@ -479,7 +480,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
-			p = pkt->author.req.body;
+			p = BODY(author.req);
 			PACKET_HEADER_CHECK("Authorization REQUEST");
 			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
@@ -503,7 +504,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
-					       pkt->author.req.arg_cnt, pkt->author.req.body, &p, end) < 0) goto fail;
+					       pkt->author.req.arg_cnt, BODY(author.req), &p, end) < 0) goto fail;
 
 		} else if (packet_is_author_response(pkt)) {
 			/*
@@ -534,7 +535,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	We just echo whatever was sent in the request.
 			 */
 
-			p = pkt->author.res.body;
+			p = BODY(author.res);
 			PACKET_HEADER_CHECK("Authorization RESPONSE");
 			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.res.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
@@ -554,7 +555,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
-					pkt->author.res.arg_cnt, pkt->author.res.body, &p, end) < 0) goto fail;
+					pkt->author.res.arg_cnt, BODY(author.res), &p, end) < 0) goto fail;
 
 		} else {
 			goto unknown_packet;
@@ -592,7 +593,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 
 			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
-			p = pkt->acct.req.body;
+			p = BODY(acct.req);
 			PACKET_HEADER_CHECK("Accounting REQUEST");
 			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct.req.arg_cnt);
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
@@ -617,7 +618,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
 			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
-					pkt->acct.req.arg_cnt, pkt->acct.req.body, &p, end) < 0) goto fail;
+					pkt->acct.req.arg_cnt, BODY(acct.req), &p, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
 			/**
@@ -638,7 +639,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			 *	We just echo whatever was sent in the request.
 			 */
 
-			p = pkt->acct.reply.body;
+			p = BODY(acct.reply);
 			PACKET_HEADER_CHECK("Accounting REPLY");
 			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
