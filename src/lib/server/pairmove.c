@@ -133,8 +133,10 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 				fr_pair_t *vp;
 				RDEBUG4("::: OVERWRITING %s FROM %d TO %d",
 				       to_vp->da->name, i, j);
+				fr_pair_remove(from, from_vp);
 				vp = fr_dlist_replace(&to->head, to_vp, from_vp);
 				talloc_free(vp);
+				from_vp = NULL;
 				edited[j] = true;
 				break;
 			}
@@ -167,7 +169,6 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 			    (from_vp->op == T_OP_GE)) {
 				int rcode;
 				int old_op = from_vp->op;
-				printf("Should get in here\n");
 				/*
 				 *	Check for equality.
 				 */
@@ -213,8 +214,10 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 						fr_pair_t *vp;
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_vp->da->name, i, j);
+						fr_pair_remove(from, from_vp);
 						vp = fr_dlist_replace(&to->head, to_vp, from_vp);
 						talloc_free(vp);
+						from_vp = NULL;
 						edited[j] = true;
 					}
 					break;
@@ -224,8 +227,10 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 						fr_pair_t *vp;
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_vp->da->name, i, j);
+						fr_pair_remove(from, from_vp);
 						vp = fr_dlist_replace(&to->head, to_vp, from_vp);
 						talloc_free(vp);
+						from_vp = NULL;
 						edited[j] = true;
 					}
 					break;
