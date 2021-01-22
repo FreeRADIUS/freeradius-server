@@ -142,7 +142,7 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *in)
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
 		/*
-		 *	No cast means that it's amn existence check.
+		 *	No cast means that it's an existence check.
 		 */
 		if (vpt->cast == FR_TYPE_INVALID) {
 			return (tmpl_find_vp(NULL, request, vpt) == 0);
