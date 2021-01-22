@@ -100,9 +100,7 @@ typedef struct {
 
 #ifdef HAVE_DIRENT_H
 		struct {
-			char		**namelist;	//!< list of names we're processing
-			uint32_t	num_files;	//!< number of files in the array
-			uint32_t	current_file;	//!< current file we are processing
+			fr_heap_t	*heap;		//!< sorted heap of files
 			char		*directory;	//!< directory name we're reading
 		};
 #endif
@@ -840,12 +838,21 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 	return 0;
 }
 
-static int filename_cmp(void const *one, void const *two)
-{
-	char const *a = one;
-	char const *b = two;
+typedef struct cf_file_heap_t {
+	char const	*filename;
+	int		heap_id;
+} cf_file_heap_t;
 
-	return strcmp(a, b);
+static int8_t filename_cmp(void const *one, void const *two)
+{
+	int rcode;
+	cf_file_heap_t const *a = one;
+	cf_file_heap_t const *b = two;
+
+	rcode = strcmp(a->filename, b->filename);
+	if (rcode < 0) return -1;
+	if (rcode > 0) return +1;
+	return 0;
 }
 
 
@@ -992,10 +999,10 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	 */
 	{
 		char		*directory;
-		rbtree_t	*tree;
 		DIR		*dir;
 		struct dirent	*dp;
 		struct stat	stat_buf;
+		cf_file_heap_t	*h;
 
 		/*
 		 *	We need to keep a copy of parent while the
@@ -1050,7 +1057,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->current = parent;
 		frame->from_dir = true;
 
-		MEM(tree = rbtree_talloc_alloc(parent, filename_cmp, char, NULL, RBTREE_FLAG_NONE));
+		MEM(frame->heap = fr_heap_alloc(frame->directory, filename_cmp, cf_file_heap_t, heap_id));
 
 		/*
 		 *	Read the whole directory before loading any
@@ -1093,17 +1100,12 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 				continue;
 			}
 
-			p = talloc_typed_strdup(directory, stack->buff[1]);
-			rbtree_insert(tree, p);
+			MEM(h = talloc_zero(frame->heap, cf_file_heap_t));
+			MEM(h->filename = talloc_typed_strdup(h, stack->buff[1]));
+			h->heap_id = -1;
+			(void) fr_heap_insert(frame->heap, h);
 		}
 		closedir(dir);
-
-		/*
-		 *	Flatten it to a sorted array.
-		 */
-		frame->num_files = rbtree_flatten(directory, (void ***) &frame->namelist, tree, RBTREE_IN_ORDER);
-		frame->current_file = 0;
-		talloc_free(tree);
 
 		/*
 		 *	No "$INCLUDE dir/" inside of update / map.  That's dumb.
@@ -1962,34 +1964,34 @@ static int frame_readdir(cf_stack_t *stack)
 {
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION *parent = frame->current;
+	cf_file_heap_t *h;
 
-	if (frame->current_file < frame->num_files) {
-		char const *filename = frame->namelist[frame->current_file++];
-
+	h = fr_heap_pop(frame->heap);
+	if (!h) {
 		/*
-		 *	Push the next filename onto the stack.
+		 *	Done reading the directory entry.  Close it, and go
+		 *	back up a stack frame.
 		 */
-		stack->depth++;
-		frame = &stack->frame[stack->depth];
-		memset(frame, 0, sizeof(*frame));
-
-		frame->type = CF_STACK_FILE;
-		frame->fp = NULL;
-		frame->parent = parent;
-		frame->current = parent;
-		frame->filename = filename;
-		frame->lineno = 0;
-		frame->from_dir = true;
-		frame->special = NULL; /* can't do includes inside of update / map */
+		talloc_free(frame->directory);
+		stack->depth--;
 		return 1;
 	}
 
 	/*
-	 *	Done reading the directory entry.  Close it, and go
-	 *	back up a stack frame.
+	 *	Push the next filename onto the stack.
 	 */
-	talloc_free(frame->directory);
-	stack->depth--;
+	stack->depth++;
+	frame = &stack->frame[stack->depth];
+	memset(frame, 0, sizeof(*frame));
+
+	frame->type = CF_STACK_FILE;
+	frame->fp = NULL;
+	frame->parent = parent;
+	frame->current = parent;
+	frame->filename = h->filename;
+	frame->lineno = 0;
+	frame->from_dir = true;
+	frame->special = NULL; /* can't do includes inside of update / map */
 	return 1;
 }
 
