@@ -650,28 +650,31 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		}
 
 		/*
-		 *  there are more attributes, insert a separator
+		 *  there are no more attributes, stop
 		 */
-		if (fr_cursor_next_peek(&ctx->cursor)) {
-			if (freespace < 1) goto no_space;
-			*p++ = '&';
-			freespace--;
-			/*
-			 *	Only advance once we have a separator
-			 *	really we should have an additional
-			 *	state for encoding the separator,
-			 *	but, we don't, and v3.0.x is stable
-			 *	so let's do the easiest fix with the
-			 *	lowest risk.
-			 */
-			fr_cursor_next(&ctx->cursor);
+		if (!fr_cursor_next_peek(&ctx->cursor)) {
+			ctx->state = READ_STATE_END;
+			encoded = p;
+			break;
 		}
+		
+		if (freespace < 1) goto no_space;
+		*p++ = '&';
+		freespace--;
+		/*
+		 *	Only advance once we have a separator
+		 *	really we should have an additional
+		 *	state for encoding the separator,
+		 *	but, we don't, and v3.0.x is stable
+		 *	so let's do the easiest fix with the
+		 *	lowest risk.
+		 */
+		fr_cursor_next(&ctx->cursor);
 
 		/*
 		 *  We wrote one full attribute value pair, record progress.
 		 */
 		encoded = p;
-
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
