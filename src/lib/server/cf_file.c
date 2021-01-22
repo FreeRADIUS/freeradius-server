@@ -483,9 +483,9 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 }
 
 /*
- *	Functions for tracking filenames.
+ *	Functions for tracking files by inode
  */
-static int _filename_cmp(void const *a, void const *b)
+static int _inode_cmp(void const *a, void const *b)
 {
 	cf_file_t const *one = a, *two = b;
 	int ret;
@@ -2329,7 +2329,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	cf_item_add(cs, &(cp->item));
 
-	MEM(tree = rbtree_talloc_alloc(cs, _filename_cmp, cf_file_t, NULL, 0));
+	MEM(tree = rbtree_talloc_alloc(cs, _inode_cmp, cf_file_t, NULL, 0));
 
 	cf_data_add(cs, tree, "filename", false);
 
