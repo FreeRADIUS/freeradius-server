@@ -115,7 +115,7 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ NULL }
 };
 
-void eap_packet_to_vp(fr_radius_packet_t *packet, eap_packet_raw_t const *eap, fr_pair_list_t *list)
+void eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t const *eap)
 {
 	int		total, size;
 	uint8_t const *ptr;
@@ -134,7 +134,7 @@ void eap_packet_to_vp(fr_radius_packet_t *packet, eap_packet_raw_t const *eap, f
 		size = total;
 		if (size > 253) size = 253;
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
+		MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
 		fr_pair_value_memdup(vp, ptr, size, false);
 
 		fr_pair_add(list, vp);
