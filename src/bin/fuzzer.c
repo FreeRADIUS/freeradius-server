@@ -83,7 +83,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 			if ((p[0] == '-') && (p[1] == 'D')) {
 				dict_dir = (*argv)[i + 1];
 
-				for (j = i + 2; j < *argc; j++) {
+				for (j = i + 2; j < *argc; i++, j++) {
 					(*argv)[i] = (*argv)[j];
 				}
 
