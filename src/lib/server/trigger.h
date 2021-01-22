@@ -50,7 +50,7 @@ void		trigger_exec_free(void);
 
 bool		trigger_enabled(void);
 
-fr_pair_list_t	*trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
+void		trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const *server, uint16_t port);
 
 typedef int (*fr_trigger_worker_t)(request_t *request, module_method_t process, void *ctx);
 extern fr_trigger_worker_t trigger_worker_request_add;
