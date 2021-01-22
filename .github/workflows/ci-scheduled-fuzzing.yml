@@ -1,0 +1,161 @@
+name: Scheduled fuzzing
+
+on:
+  push:
+    branches:
+      - run-fuzzer
+
+  schedule:
+    - cron: '0 4 * * *'
+
+env:
+  ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
+  LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
+  KQUEUE_DEBUG: yes
+  M_PERTURB: "0x42"
+  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  ANALYZE_C_DUMP: 1
+  FR_GLOBAL_POOL: 4M
+  TEST_CERTS: yes
+  DO_BUILD: yes
+  CI: 1
+  GH_ACTIONS: 1
+  CC: clang
+
+jobs:
+  fuzzer:
+
+    runs-on: ubuntu-20.04
+
+    name: Fuzzer
+
+    steps:
+
+    # Checkout, but defer pulling LFS objects until we've restored the cache
+    - uses: actions/checkout@v2
+      with:
+        lfs: false
+
+    - name: Create LFS file list as cache key
+      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+    - name: Restore LFS cache
+      uses: actions/cache@v2
+      id: lfs-cache
+      with:
+        path: .git/lfs
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+
+    # Now the LFS pull will be local if we hit the cache, or remote otherwise
+    - name: Git LFS pull
+      run: git lfs pull
+
+    - name: Package manager performance improvements
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
+
+    - name: Install common build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+        autoconf \
+        build-essential \
+        debhelper \
+        devscripts \
+        dh-make \
+        dovecot-dev \
+        fakeroot \
+        firebird-dev \
+        freetds-dev \
+        ldap-utils \
+        libcap-dev \
+        libcollectdclient-dev \
+        libcurl4-openssl-dev \
+        libgdbm-dev \
+        libgoogle-perftools-dev \
+        libhiredis-dev \
+        libidn11-dev \
+        libiodbc2 \
+        libiodbc2-dev \
+        libjson-c-dev \
+        libjson-perl \
+        libkqueue-dev \
+        libkrb5-dev \
+        libldap2-dev \
+        libluajit-5.1-dev \
+        libmemcached-dev \
+        libmysqlclient-dev \
+        libnl-genl-3-dev \
+        libpam0g-dev \
+        libpcap-dev \
+        libpcre2-dev \
+        libperl-dev \
+        libpq-dev \
+        libpython-all-dev \
+        libreadline-dev \
+        libsnmp-dev \
+        libssl-dev \
+        libtalloc-dev \
+        libunbound-dev \
+        libwbclient-dev \
+        libykclient-dev \
+        libyubikey-dev \
+        lintian \
+        luajit \
+        openssl \
+        pbuilder \
+        python-dev \
+        python3-pip \
+        quilt
+
+    - name: Install tacacs_plus
+      run: |
+        pip3 install tacacs_plus
+
+    - name: Install LLVM snapshot
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+        sudo apt-get install -y --no-install-recommends clang llvm gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+        krb5-config --all || :
+        pcre-config --libs-posix --version 2>/dev/null || :
+        pcre2-config --libs-posix --version 2>/dev/null || :
+
+    - name: Configure
+      run: |
+        echo "Enabling llvm sanitizers"
+        CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3" ./configure -C \
+            --enable-werror \
+            --enable-llvm-address-sanitizer \
+            --enable-llvm-undefined-behaviour-sanitizer \
+            --enable-llvm-leak-sanitizer \
+            --enable-llvm-fuzzer \
+            --prefix=$HOME/freeradius \
+        || cat ./config.log
+        echo "Contents of src/include/autoconf.h"
+        cat "./src/include/autoconf.h"
+
+    # Fuz all protocols in parallel, restarting each job every 5 mins (or on failure) for 4 hours
+    - name: Run fuzzer tests
+      run: |
+        # For fuzzing we won't be needing eapol_test
+        mkdir -p build/tests/eapol_test
+        : > build/tests/eapol_test/eapol_test.mk
+        timeout 14400 make -j 5 test.fuzzer FUZZER_TIMEOUT=300 FUZZER_ARGUMENTS="-jobs=10000 -workers=1" || :
+        find build/fuzzer -type f | grep . && exit 1 || :
+
+    - name: "Clang libFuzzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-fuzzer.tgz
+        path: build/fuzzer
+      if: ${{ failure() }}
