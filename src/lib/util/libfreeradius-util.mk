@@ -71,6 +71,7 @@ SOURCES		:= \
 		   timeval.c \
 		   token.c \
 		   trie.c \
+		   types.c \
 		   udp.c \
 		   udpfromto.c \
 		   value.c \
