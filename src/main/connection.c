@@ -563,19 +563,20 @@ static void fr_connection_close_internal(fr_connection_pool_t *pool, fr_connecti
  * @param[in,out] pool to modify.
  * @param[in,out] this Connection to manage.
  * @param[in] now Current time.
+ * @param[in] get whether we want to get a connection
  * @return
  *	- 0 if connection was closed.
  *	- 1 if connection handle was left open.
  */
 static int fr_connection_manage(fr_connection_pool_t *pool,
 				fr_connection_t *this,
-				time_t now)
+				time_t now, bool get)
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
 
 	/*
-	 *	Don't terminated in-use connections
+	 *	Don't terminate in-use connections
 	 */
 	if (this->in_use) return 1;
 
@@ -597,6 +598,13 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		      pool->log_prefix, this->number);
 		goto do_delete;
 	}
+
+	/*
+	 *	The connection WAS idle, but the caller is interested
+	 *	in getting a new one.  Instead of closing the old one
+	 *	and opening a new one, we just return the old one.
+	 */
+	if (get) return 1;
 
 	if ((pool->idle_timeout > 0) &&
 	    ((this->last_released.tv_sec + pool->idle_timeout) < now)) {
@@ -768,7 +776,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 */
 	for (this = pool->head; this != NULL; this = next) {
 		next = this->next;
-		fr_connection_manage(pool, this, now);
+		fr_connection_manage(pool, this, now, false);
 	}
 
 	pool->last_checked = now;
@@ -813,7 +821,9 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	do {
 		this = fr_heap_peek(pool->heap);
 		if (!this) break;
-	} while (!fr_connection_manage(pool, this, now));
+
+		fr_assert(!this->in_use);
+	} while (!fr_connection_manage(pool, this, now, true));
 
 	/*
 	 *	We have a working connection.  Extract it from the
