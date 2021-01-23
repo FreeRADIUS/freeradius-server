@@ -18,6 +18,7 @@
 /** Types of values contained within an #fr_value_box_t
  *
  * These are in a separate header file to avoid circular dependencies.
+ * DO NOT ADD FUNCTION DECLARATIONS IN THIS FILE.
  *
  * @file src/lib/util/types.h
  *
@@ -53,8 +54,6 @@ typedef enum {
 	FR_TYPE_UINT32,				//!< 32 Bit unsigned integer.
 	FR_TYPE_UINT64,				//!< 64 Bit unsigned integer.
 
-	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
-						//!< address on the local system.
 
 	FR_TYPE_INT8,				//!< 8 Bit signed integer.
 	FR_TYPE_INT16,				//!< 16 Bit signed integer.
@@ -64,9 +63,12 @@ typedef enum {
 	FR_TYPE_FLOAT32,			//!< Single precision floating point.
 	FR_TYPE_FLOAT64,			//!< Double precision floating point.
 
+	FR_TYPE_DATE,				//!< Unix time stamp, always has value >2^31
+
 	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
 
-	FR_TYPE_DATE,				//!< Unix time stamp, always has value >2^31
+	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
+						//!< address on the local system.
 
 	FR_TYPE_TLV,				//!< Contains nested attributes.
 	FR_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
@@ -86,25 +88,28 @@ typedef enum {
  *	functions that need to deal with all types representing values
  */
 #define FR_TYPE_FIXED_SIZE \
-	     FR_TYPE_UINT8: \
-	case FR_TYPE_UINT16: \
-	case FR_TYPE_UINT32: \
-	case FR_TYPE_UINT64: \
-	case FR_TYPE_SIZE: \
-	case FR_TYPE_DATE: \
-	case FR_TYPE_IFID: \
-	case FR_TYPE_ETHERNET: \
-	case FR_TYPE_IPV4_ADDR: \
+	FR_TYPE_IPV4_ADDR: \
 	case FR_TYPE_IPV4_PREFIX: \
 	case FR_TYPE_IPV6_ADDR: \
 	case FR_TYPE_IPV6_PREFIX: \
+	case FR_TYPE_IFID: \
 	case FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
-	case FR_TYPE_INT32: \
-	case FR_TYPE_TIME_DELTA: \
+	case FR_TYPE_ETHERNET: \
 	case FR_TYPE_BOOL: \
-	case FR_TYPE_FLOAT64
-
+	case FR_TYPE_UINT8: \
+	case FR_TYPE_UINT16: \
+	case FR_TYPE_UINT32: \
+	case FR_TYPE_UINT64: \
+	case FR_TYPE_INT8: \
+	case FR_TYPE_INT16: \
+	case FR_TYPE_INT32: \
+	case FR_TYPE_INT64: \
+	case FR_TYPE_FLOAT32: \
+	case FR_TYPE_FLOAT64: \
+	case FR_TYPE_DATE: \
+	case FR_TYPE_TIME_DELTA: \
+	case FR_TYPE_SIZE
 
 #define FR_TYPE_INTEGER_EXCEPT_BOOL \
 	FR_TYPE_UINT8: \
@@ -179,7 +184,7 @@ typedef enum {
 	case FR_TYPE_VALUE_BOX: \
 	case FR_TYPE_BAD
 
-/** Types which do represent concrete values
+/** Types which represent concrete values
  *
  */
 #define FR_TYPE_VALUE \
@@ -208,12 +213,6 @@ typedef enum {
 #define FR_TYPE_QUOTED \
 	FR_TYPE_STRING: \
 	case FR_TYPE_DATE
-
-/*
- *  In value.c, but should likely be here.
- */
-bool		fr_type_cast(fr_type_t dst, fr_type_t src);
-fr_type_t	fr_type_promote(fr_type_t a, fr_type_t b);
 
 #ifdef __cplusplus
 }

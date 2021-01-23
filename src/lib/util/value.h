@@ -770,6 +770,9 @@ static inline size_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
 uint32_t	fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash);
 /** @} */
 
+bool		fr_type_cast(fr_type_t dst, fr_type_t src);
+fr_type_t	fr_type_promote(fr_type_t a, fr_type_t b);
+
 #undef _CONST
 
 #ifdef __cplusplus
