@@ -518,10 +518,20 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
  * @note Must be called with the mutex held.
  *
  * @param[in,out] pool to modify.
- * @param[in,out] this Connection to delete.
+ * @param[in] this Connection to delete.
+ * @param[in] reason to close the connection
+ * @param[in] msg optional message
  */
-static void fr_connection_close_internal(fr_connection_pool_t *pool, fr_connection_t *this)
+static void fr_connection_close_internal(fr_connection_pool_t *pool, fr_connection_t *this,
+					 char const *reason, char const *msg)
 {
+	if (!msg) {
+		INFO("%s: %s (%" PRIu64 ")", pool->log_prefix, reason, this->number);
+	} else {
+		INFO("%s: %s (%" PRIu64 ") - %s", pool->log_prefix, reason, this->number, msg);
+	}
+
+
 	/*
 	 *	If it's in use, release it.
 	 */
@@ -574,6 +584,8 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
+	char const *reason = "Closing expired connection";
+	char const *msg = NULL;
 
 	/*
 	 *	Don't terminate in-use connections
@@ -582,20 +594,19 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 
 	if ((pool->max_uses > 0) &&
 	    (this->num_uses >= pool->max_uses)) {
-		DEBUG("%s: Closing expired connection (%" PRIu64 "): Hit max_uses limit", pool->log_prefix,
-		      this->number);
+		msg = "Hit max_uses limit";
+
 	do_delete:
 		if (pool->num <= pool->min) {
 			DEBUG("%s: You probably need to lower \"min\"", pool->log_prefix);
 		}
-		fr_connection_close_internal(pool, this);
+		fr_connection_close_internal(pool, this, reason, msg);
 		return 0;
 	}
 
 	if ((pool->lifetime > 0) &&
 	    ((this->created + pool->lifetime) < now)) {
-		DEBUG("%s: Closing expired connection (%" PRIu64 "): Hit lifetime limit",
-		      pool->log_prefix, this->number);
+		msg = "Hit lifetime limit";
 		goto do_delete;
 	}
 
@@ -608,8 +619,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 
 	if ((pool->idle_timeout > 0) &&
 	    ((this->last_released.tv_sec + pool->idle_timeout) < now)) {
-		INFO("%s: Closing connection (%" PRIu64 "): Hit idle_timeout, was idle for %u seconds",
-		     pool->log_prefix, this->number, (int) (now - this->last_released.tv_sec));
+		msg = "Hit idle_timeout limit";
 		goto do_delete;
 	}
 
@@ -757,9 +767,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 
 		rad_assert(found != NULL);
 
-		INFO("%s: Closing connection (%" PRIu64 "), from %d unused connections", pool->log_prefix,
-		     found->number, extra);
-		fr_connection_close_internal(pool, found);
+		fr_connection_close_internal(pool, found, "Closing connection", "Too many unused connections.");
 
 		/*
 		 *	Decrease the delay for the next time we clean
@@ -926,7 +934,7 @@ static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *p
 		/*
 		 *	We can't create a new connection, so close the current one.
 		 */
-		fr_connection_close_internal(pool, conn);
+		fr_connection_close_internal(pool, conn, "Closing connection", "Failed to reconnect");
 
 		/*
 		 *	Maybe there's a connection which is unused and
@@ -1297,9 +1305,7 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 	 *	until they're all gone.
 	 */
 	while ((this = pool->head) != NULL) {
-		INFO("%s: Closing connection (%" PRIu64 ")", pool->log_prefix, this->number);
-
-		fr_connection_close_internal(pool, this);
+		fr_connection_close_internal(pool, this, "Closing connection", "Shutting down connection pool");
 	}
 
 	fr_heap_delete(pool->heap);
@@ -1466,13 +1472,7 @@ int fr_connection_close(fr_connection_pool_t *pool, void *conn, char const *msg)
 	this = fr_connection_find(pool, conn);
 	if (!this) return 0;
 
-	if (!msg) {
-		INFO("%s: Deleting connection (%" PRIu64 ")", pool->log_prefix, this->number);
-	} else {
-		INFO("%s: Deleting connection (%" PRIu64 ") - %s", pool->log_prefix, this->number, msg);
-	}
-
-	fr_connection_close_internal(pool, this);
+	fr_connection_close_internal(pool, this, "Deleting connection", msg);
 	fr_connection_pool_check(pool);
 	return 1;
 }
