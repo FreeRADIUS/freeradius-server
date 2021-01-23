@@ -17,9 +17,6 @@
 
 /** Types of values contained within an #fr_value_box_t
  *
- * These are in a separate header file to avoid circular dependencies.
- * DO NOT ADD FUNCTION DECLARATIONS IN THIS FILE.
- *
  * @file src/lib/util/types.h
  *
  * @copyright 2017 The FreeRADIUS server project
@@ -213,6 +210,9 @@ typedef enum {
 #define FR_TYPE_QUOTED \
 	FR_TYPE_STRING: \
 	case FR_TYPE_DATE
+
+bool		fr_type_cast(fr_type_t dst, fr_type_t src);
+fr_type_t	fr_type_promote(fr_type_t a, fr_type_t b);
 
 #ifdef __cplusplus
 }
