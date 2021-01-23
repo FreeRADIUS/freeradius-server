@@ -26,6 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/io/test_point.h>
 
 /*
@@ -47,8 +49,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
 static void exitHandler()
 {
-	dlclose(dl->handle);
-	dl->handle = NULL;
+	if (dl->handle) {
+		dlclose(dl->handle);
+		dl->handle = NULL;
+	}
 	talloc_free(dl_loader);
 }
 
@@ -60,6 +64,29 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char buffer[1024];
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
+
+	/*
+	 *	Setup atexit handlers to free any thread local
+	 *	memory on exit
+	 */
+	fr_thread_local_atexit_setup();
+
+	/*
+	 *	Initialise the error stack _before_ we run any
+	 *	tests so there's no chance of the memory
+	 *	appearing as a leak the first time an error
+	 *	is generated.
+	 */
+	fr_strerror_const("fuzz");	/* allocate the pools */
+	fr_strerror();			/* clears the message, leaves the pools */
+
+	/*
+	 *	Setup our own internal atexit handler
+	 */
+	if (atexit(exitHandler)) {
+		fr_perror("fuzzer: Failed to register exit handler: %s", fr_syserror(errno));
+		fr_exit_now(EXIT_FAILURE);
+	}
 
 	/*
 	 *	Get the name from the binary name of fuzzer_foo
@@ -102,60 +129,52 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 */
 	if (setenv("FR_DICTIONARY_DIR", dict_dir, 1)) {
 		fprintf(stderr, "Failed to set FR_DICTIONARY_DIR env variable\n");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (!fr_dict_global_ctx_init(NULL, dict_dir)) {
 		fr_perror("dict_global");
-		return 0;
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
-		fprintf(stderr, "fuzzer: Failed initializing internal dictionary: %s\n",
-			fr_strerror());
-		fr_exit_now(1);
+		fr_perror("fuzzer: Failed initializing internal dictionary");
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (!proto) {
-		fprintf(stderr, "Failed to find protocol for fuzzer\n");
-		fr_exit_now(1);
+		fr_perror("Failed to find protocol for fuzzer");
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	dl_loader = dl_loader_init(NULL, NULL, 0, false);
 	if (!dl_loader) {
-		fprintf(stderr, "fuzzer: Failed initializing library loader: %s\n",
-			fr_strerror());
-		fr_exit_now(1);
+		fr_perror("fuzzer: Failed initializing library loader");
+		fr_exit_now(EXIT_FAILURE);
 	}
 	dl_search_path_prepend(dl_loader, lib_dir);
 
 	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", proto);
 	dl = dl_by_name(dl_loader, buffer, NULL, false);
 	if (!dl) {
-		fprintf(stderr, "fuzzer: Failed loading library %s: %s\n",
-			buffer, fr_strerror());
-		fr_exit_now(1);
+		fr_perror("fuzzer: Failed loading library %s", buffer);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	snprintf(buffer, sizeof(buffer), "%s_tp_decode_proto", proto);
 
 	tp = dlsym(dl->handle, buffer);
 	if (!tp) {
-		fprintf(stderr, "fuzzer: Failed finding test point %s: %s\n",
-			buffer, fr_strerror());
-		fr_exit_now(1);
+		fr_perror("fuzzer: Failed finding test point %s", buffer);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (tp->test_ctx(&decode_ctx, NULL) < 0) {
-		fprintf(stderr, "fuzzer: Failed finding test point %s: %s\n",
-			buffer, fr_strerror());
-		fr_exit_now(1);
+		fr_perror("fuzzer: Failed finding test point %s", buffer);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (atexit(exitHandler)) {
-		fprintf(stderr, "fuzzer: Failed to register exit handler\n");
-		fr_exit_now(1);
-	}
+
 
 	init = true;
 
@@ -172,6 +191,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 
 	tp->func(ctx, &vps, buf, len, decode_ctx);
 	talloc_free(ctx);
+	fr_strerror();		/* Clear any undrained errors */
 
 	return 0;
 }
