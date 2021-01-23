@@ -287,7 +287,7 @@ bool fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len, uint32_t max_attribu
 
 	slen = fr_dhcpv6_ok_internal(packet, packet + packet_len, max_attributes, 0);
 	if (slen <= 0) {
-		fr_strerror_printf("Invalid DHCPv6 packet starting at offset %zd", -slen);
+		fr_strerror_printf_push("Invalid DHCPv6 packet starting at offset %zd", -slen);
 		return false;
 	}
 
