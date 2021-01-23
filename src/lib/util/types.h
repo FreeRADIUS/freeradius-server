@@ -27,6 +27,8 @@ RCSIDH(types_h, "$Id$")
 extern "C" {
 #endif
 
+#include <stdbool.h>
+
 /** Internal data types
  */
 typedef enum {
