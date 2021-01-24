@@ -41,7 +41,7 @@ static void *decode_ctx = NULL;
 static fr_test_point_proto_decode_t *tp = NULL;
 static fr_dict_t *dict = NULL;
 
-static dl_t *dl;
+static dl_t *dl = NULL;
 static dl_loader_t *dl_loader;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
@@ -49,7 +49,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
 static void exitHandler()
 {
-	if (dl->handle) {
+	if (dl && dl->handle) {
 		dlclose(dl->handle);
 		dl->handle = NULL;
 	}
