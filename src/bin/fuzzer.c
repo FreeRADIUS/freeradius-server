@@ -193,5 +193,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	talloc_free(ctx);
 	fr_strerror();		/* Clear any undrained errors */
 
+	/*
+	 *	Clear error messages from the run.  Clearing these
+	 *	keeps malloc/free balanced, which helps to avoid the
+	 *	fuzzers leak heuristics from firing.
+	 */
+	fr_strerror_const(NULL);
+
 	return 0;
 }
