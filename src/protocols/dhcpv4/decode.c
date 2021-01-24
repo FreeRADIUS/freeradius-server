@@ -393,6 +393,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	 *	attribute.
 	 */
 	for (i = 0, p = data; i < values; i++) {
+		fr_assert((p + value_len) <= (data + data_len));
 		len = decode_value_internal(ctx, cursor, parent, p, value_len);
 		if (len <= 0) return len;
 		if (len != (ssize_t)value_len) goto raw;
@@ -478,7 +479,7 @@ next:
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor->name);
 
 	option_len = p[0];
-	if ((p + option_len) > end) {
+	if ((p + 1 + option_len) > end) {
 		len = decode_raw(ctx, cursor, vendor, p[1], p, end - p);
 		if (len < 0) return len;
 
