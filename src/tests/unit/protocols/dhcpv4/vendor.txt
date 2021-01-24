@@ -23,7 +23,7 @@ match 7d 0e 00 00 0d e9 09 01 01 01 02 01 02 03 01 03
 #  PEN + option_len, where option_len 09 > end of attribute
 # 
 decode-pair 7d 0d 00 00 00 09 09 05 06 61 61 2e 74 78 74
-match raw.V-I-Vendor-Specific.Cisco.5 = 0x08050661612e747874
+match raw.V-I-Vendor-Specific.Cisco.5 = 0x09050661612e747874
 
 count
 match 14
