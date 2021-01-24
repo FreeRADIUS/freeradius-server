@@ -55,16 +55,16 @@ The respective lines for postgresql are:
 query = "SELECT SUM(AcctSessionTime) FROM radacct WHERE
 UserName='%{%k}'"
 
-query = "SELECT SUM(AcctSessionTime - GREATER((%b -
-AcctStartTime::ABSTIME::INT4), 0)) FROM radacct WHERE UserName=%{%k}'
-AND AcctStartTime::ABSTIME::INT4 + AcctSessionTime > '%b'"
+query = "SELECT SUM(AcctSessionTime - GREATEST((%b -
+EXTRACT(epoch FROM AcctStartTime)), 0)) FROM radacct WHERE UserName='%{%k}'
+AND EXTRACT(epoch FROM AcctStartTime) + AcctSessionTime > '%b'"
 
-query = "SELECT SUM(AcctSessionTime - GREATER((%b -
-AcctStartTime::ABSTIME::INT4), 0)) FROM radacct WHERE UserName='%{%k}'
-AND AcctStartTime::ABSTIME::INT4 + AcctSessionTime > %b"
+query = "SELECT SUM(AcctSessionTime - GREATEST((%b -
+EXTRACT(epoch FROM AcctStartTime)), 0)) FROM radacct WHERE UserName='%{%k}'
+AND EXTRACT(epoch FROM AcctStartTime) + AcctSessionTime > '%b'"
 ```
 
-If you are running postgres 7.x, you may not have a GREATER function.
+If you are running postgres 7.x, you may not have a GREATEST function.
 
 An example of one is:
 
