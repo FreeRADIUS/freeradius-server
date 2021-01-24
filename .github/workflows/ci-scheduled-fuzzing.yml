@@ -55,60 +55,15 @@ jobs:
         sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
         echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
         sudo dpkg-reconfigure man-db
+        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
 
-    - name: Install common build dependencies
+    - name: Install build dependencies based on Debian packages plus extra CI packages
       run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-        autoconf \
-        build-essential \
-        debhelper \
-        devscripts \
-        dh-make \
-        dovecot-dev \
-        fakeroot \
-        firebird-dev \
-        freetds-dev \
-        ldap-utils \
-        libcap-dev \
-        libcollectdclient-dev \
-        libcurl4-openssl-dev \
-        libgdbm-dev \
-        libgoogle-perftools-dev \
-        libhiredis-dev \
-        libidn11-dev \
-        libiodbc2 \
-        libiodbc2-dev \
-        libjson-c-dev \
-        libjson-perl \
-        libkqueue-dev \
-        libkrb5-dev \
-        libldap2-dev \
-        libluajit-5.1-dev \
-        libmemcached-dev \
-        libmysqlclient-dev \
-        libnl-genl-3-dev \
-        libpam0g-dev \
-        libpcap-dev \
-        libpcre2-dev \
-        libperl-dev \
-        libpq-dev \
-        libpython-all-dev \
-        libreadline-dev \
-        libsnmp-dev \
-        libssl-dev \
-        libtalloc-dev \
-        libunbound-dev \
-        libwbclient-dev \
-        libykclient-dev \
-        libyubikey-dev \
-        lintian \
-        luajit \
-        openssl \
-        pbuilder \
-        python-dev \
-        python3-pip \
-        quilt
+        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+        debian/rules debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
     - name: Install tacacs_plus
       run: |

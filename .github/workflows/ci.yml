@@ -101,120 +101,23 @@ jobs:
         sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
         echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
         sudo dpkg-reconfigure man-db
+        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+
+    - name: Install build dependencies based on Debian packages plus extra CI packages
+      if: ${{ runner.os != 'macOS' }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+        debian/rules debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
     - uses: actions/setup-ruby@v1
       if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
 
-    - name: Freshen APT repo metadata
-      if: ${{ runner.os != 'macOS' }}
-      run: |
-        sudo apt-get update
-
-    - name: Install fixture (redis)
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends redis-server redis-tools
-        sudo systemctl start redis-server
-
-    - name: Install fixture (openldap)
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends slapd ldap-utils apparmor-utils
-        sudo systemctl stop slapd
-        sudo aa-complain /usr/sbin/slapd
-
-    - name: Install fixture (dovecot imapd)
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends dovecot-imapd
-        sudo systemctl stop dovecot
-        sudo aa-complain /usr/sbin/dovecot
-
-    - name: Install fixture (exim)
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends exim4
-        sudo systemctl stop exim4
-
-    - name: Configure fixture (PostgreSQL)
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
-      run: |
-        export PG_VER=13
-        sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
-        sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
-        sudo systemctl start postgresql
-
-    - name: Configure fixture (MySQL)
-      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
-      run: |
-        sudo systemctl start mysql
-        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
-
     - name: Install cassandra driver (not yet available on 20.04)
       if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
       run: sudo ./scripts/ci/cassandra-install.sh
-
-    - name: Install common build dependencies
-      if: ${{ runner.os != 'macOS' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends \
-        autoconf \
-        build-essential \
-        debhelper \
-        devscripts \
-        dh-make \
-        dovecot-dev \
-        fakeroot \
-        firebird-dev \
-        freetds-dev \
-        ldap-utils \
-        libcap-dev \
-        libcollectdclient-dev \
-        libcurl4-openssl-dev \
-        libgdbm-dev \
-        libgoogle-perftools-dev \
-        libhiredis-dev \
-        libidn11-dev \
-        libiodbc2 \
-        libiodbc2-dev \
-        libjson-c-dev \
-        libjson-perl \
-        libkqueue-dev \
-        libkrb5-dev \
-        libldap2-dev \
-        libluajit-5.1-dev \
-        libmemcached-dev \
-        libmysqlclient-dev \
-        libnl-genl-3-dev \
-        libpam0g-dev \
-        libpcap-dev \
-        libpcre2-dev \
-        libperl-dev \
-        libpq-dev \
-        libpython-all-dev \
-        libreadline-dev \
-        libsnmp-dev \
-        libssl-dev \
-        libtalloc-dev \
-        libunbound-dev \
-        libwbclient-dev \
-        libykclient-dev \
-        libyubikey-dev \
-        lintian \
-        luajit \
-        openssl \
-        pbuilder \
-        python-dev \
-        python3-pip \
-        quilt
-
-    - name: Install JSON build deps for 18.04
-      if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
-      run: sudo apt-get install -y --no-install-recommends libjson-c3
-
-    - name: Install JSON build deps for 20.04
-      if: ${{ matrix.env.OS == 'ubuntu-20.04' }}
-      run: sudo apt-get install -y --no-install-recommends libjson-c4
 
     - name: Install dependencies (MacOS)
       if: ${{ runner.os == 'macOS' }}
@@ -244,32 +147,18 @@ jobs:
       run: |
         pip3 install tacacs_plus
 
-    - name: Install LLVM 10 for 18.04
-      if: ${{ matrix.env.OS == 'ubuntu-18.04' && matrix.env.CC == 'clang' }}
+    - name: Install LLVM 10
+      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
       run: |
+        . /etc/os-release
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
+        sudo apt-add-repository "deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-10 main"
         sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
 
-    - name: Install GCC 10 for 18.04
-      if: ${{ matrix.env.OS == 'ubuntu-18.04' && matrix.env.CC == 'gcc' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10
-
-    - name: Install LLVM 10 for 20.04
-      if: ${{ matrix.env.OS == 'ubuntu-20.04' && matrix.env.CC == 'clang' }}
-      run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
-        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
-
-    - name: Install GCC 10 for 20.04
-      if: ${{ matrix.env.OS == 'ubuntu-20.04' && matrix.env.CC == 'gcc' }}
+    - name: Install GCC 10
+      if: ${{ matrix.env.CC == 'gcc' }}
       run: |
         sudo apt-get install -y --no-install-recommends gcc-10 gccgo-10 gdb
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10
@@ -363,6 +252,46 @@ jobs:
         name: clang-scan.tgz
         path: build/plist/**/*.html
       if: ${{ matrix.env.CC == 'clang' && failure() }}
+
+    - name: Install fixture (redis)
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends redis-server redis-tools
+        sudo systemctl start redis-server
+
+    - name: Install fixture (openldap)
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends slapd ldap-utils apparmor-utils
+        sudo systemctl stop slapd
+        sudo aa-complain /usr/sbin/slapd
+
+    - name: Install fixture (dovecot imapd)
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends dovecot-imapd
+        sudo systemctl stop dovecot
+        sudo aa-complain /usr/sbin/dovecot
+
+    - name: Install fixture (exim)
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends exim4
+        sudo systemctl stop exim4
+
+    - name: Configure fixture (PostgreSQL)
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      run: |
+        export PG_VER=13
+        sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
+        sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
+        sudo systemctl start postgresql
+
+    - name: Configure fixture (MySQL)
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      run: |
+        sudo systemctl start mysql
+        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
 
     - name: Setup fixtures and run full CI tests
       if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}

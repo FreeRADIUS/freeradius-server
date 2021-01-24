@@ -1,0 +1,17 @@
+# Extra packages that are installed for CI purposes
+Source: freeradius
+Build-Depends:
+  dovecot-dev,
+  firebird-dev,
+  freetds-dev,
+  ldap-utils,
+  libcollectdclient-dev,
+  libgoogle-perftools-dev,
+  libidn11-dev,
+  libjson-perl,
+  libluajit-5.1-dev,
+  libnl-genl-3-dev,
+  libsnmp-dev,
+  libunbound-dev,
+  luajit,
+  python3-pip
