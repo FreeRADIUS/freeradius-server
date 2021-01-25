@@ -119,7 +119,6 @@ extern "C" {
  */
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
-#define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
 #define NEVER_RETURNS		CC_HINT(noreturn)
 #define UNUSED			CC_HINT(unused)
 
