@@ -1271,22 +1271,22 @@ static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff
 #define fr_dbuff_in_bytes_partial(_dbuff, ...) \
 	fr_dbuff_in_memcpy_partial(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
-/** Copy a byte sequence into a dbuff
+/** Copy a byte sequence into a dbuff or marker
  *
  * @copybrief fr_dbuff_in_memcpy
  *
- * @param[in] _dbuff	to copy byte sequence into.
- * @param[in] ...	bytes to copy.
+ * @param[in] _dbuff_or_marker	to copy byte sequence into.
+ * @param[in] ...		bytes to copy.
  */
-#define fr_dbuff_in_bytes(_dbuff, ...) \
-	fr_dbuff_in_memcpy(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
+#define fr_dbuff_in_bytes(_dbuff_or_marker, ...) \
+	fr_dbuff_in_memcpy(_dbuff_or_marker, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
-/** Copy a byte sequence into a dbuff returning if there's insufficient space
+/** Copy a byte sequence into a dbuff or marker returning if there's insufficient space
  *
  * @copydetails fr_dbuff_in_bytes
  */
-#define FR_DBUFF_IN_BYTES_RETURN(_dbuff, ...) \
-	FR_DBUFF_IN_MEMCPY_RETURN(_dbuff, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
+#define FR_DBUFF_IN_BYTES_RETURN(_dbuff_or_marker, ...) \
+	FR_DBUFF_IN_MEMCPY_RETURN(_dbuff_or_marker, ((uint8_t []){ __VA_ARGS__ }), sizeof((uint8_t []){ __VA_ARGS__ }))
 
 /** Internal function - do not call directly
  *
@@ -1370,9 +1370,9 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
 	return _fr_dbuff_in_uint64(pos_p, out, *(uint64_t *)(&num));
 }
 
-/** Copy data from a fixed sized C type into a dbuff
+/** Copy data from a fixed sized C type into a dbuff or marker
  *
- * @param[out] _out	dbuff to write to.  Integer types will be automatically
+ * @param[out] _out	dbuff or marker to write to.  Integer types will be automatically
  *			converted to big endian byte order.
  * @param[in] _in	Value to copy.
  * @return

@@ -121,9 +121,12 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(buff[1] == 0x34);
 
 	TEST_CASE("Generate wire format unsigned 16-bit value using marker");
+	fr_dbuff_set_to_start(&dbuff);
 	TEST_CHECK(fr_dbuff_in(&marker, u16val2) == sizeof(uint16_t));
 	TEST_CHECK(buff[0] == 0xcd);
 	TEST_CHECK(buff[1] == 0xef);
+	TEST_CHECK(fr_dbuff_used(&marker) == sizeof(uint16_t));
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
 
 	TEST_CASE("Generate wire format unsigned 32-bit value");
 	memset(buff, 0, sizeof(buff));
@@ -166,7 +169,6 @@ static void test_dbuff_net_encode(void)
 	TEST_CHECK(buff[1] == 0x00);
 	TEST_CHECK(buff[2] == 0xd3);
 	TEST_CHECK(buff[3] == 0x4d);
-
 
 	TEST_CASE("Generate wire format signed 64-bit value");
 	memset(buff, 0, sizeof(buff));
@@ -271,6 +273,21 @@ static void test_dbuff_net_encode(void)
 	fr_dbuff_init(&dbuff, buff, sizeof(uint32_t));
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == -(ssize_t)(sizeof(uint64_t) - sizeof(uint32_t)));
+
+	TEST_CASE("Input bytes using dbuff current position");
+	memset(buff, 0, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+	fr_dbuff_marker(&marker, &dbuff);
+	TEST_CHECK(fr_dbuff_in_bytes(&dbuff, 0xf0, 0xed, 0xcb) == 3);
+	TEST_CHECK(buff[0] == 0xf0);
+	TEST_CHECK(buff[1] == 0xed);
+	TEST_CHECK(buff[2] == 0xcb);
+	TEST_CHECK(fr_dbuff_used(&dbuff) == 3);
+	TEST_CASE("Input bytes using marker");
+	TEST_CHECK(fr_dbuff_in_bytes(&marker, 0x01, 0x23) == 2);
+	TEST_CHECK(buff[0] == 0x01);
+	TEST_CHECK(buff[1] == 0x23);
+	TEST_CHECK(fr_dbuff_used(&marker) == 2);
 }
 
 static void test_dbuff_no_advance(void)
