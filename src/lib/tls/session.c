@@ -31,9 +31,9 @@
 #include <freeradius-devel/server/pair.h>
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dpair_legacy.h>
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
