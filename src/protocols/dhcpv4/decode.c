@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <talloc.h>
-#include <freeradius-devel/util/dpair.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/proto.h>

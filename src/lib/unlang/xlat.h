@@ -49,7 +49,7 @@ typedef struct xlat_exp xlat_exp_t;
 
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dpair.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/sbuff.h>
 

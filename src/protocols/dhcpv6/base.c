@@ -29,8 +29,8 @@
 #include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 #include <freeradius-devel/protocol/dhcpv6/rfc3315.h>
 #include <freeradius-devel/protocol/dhcpv6/rfc5007.h>
-#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/types.h>

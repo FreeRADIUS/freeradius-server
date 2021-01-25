@@ -20,7 +20,7 @@
  *
  * @copyright 2020 The FreeRADIUS server project
  */
-#include <freeradius-devel/util/dpair.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
 
 /** Print the value of an attribute to a string

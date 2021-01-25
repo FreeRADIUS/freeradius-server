@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <string.h>
 #include <stdint.h>
 #include <freeradius-devel/util/dcursor.h>
-#include <freeradius-devel/util/dpair.h>
+#include <freeradius-devel/util/pair.h>
 
 /** Return the first item matching the iterator in cursor a and cursor b
  *

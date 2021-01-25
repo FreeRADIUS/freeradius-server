@@ -15,7 +15,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include <freeradius-devel/util/dpair.h>
+#include <freeradius-devel/util/pair.h>
 
 #include <talloc.h>
 
