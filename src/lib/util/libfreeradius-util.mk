@@ -20,7 +20,6 @@ SOURCES		:= \
 		   dict_util.c \
 		   dict_validate.c \
 		   dl.c \
-		   dpair_legacy.c \
 		   dns.c \
 		   event.c \
 		   ext.c \
@@ -45,6 +44,7 @@ SOURCES		:= \
 		   net.c \
 		   packet.c \
 		   pair.c \
+		   pair_legacy.c \
 		   pair_print.c \
 		   pair_tokenize.c \
 		   paths.c \

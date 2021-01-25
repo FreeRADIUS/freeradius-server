@@ -33,8 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/dpair_legacy.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
