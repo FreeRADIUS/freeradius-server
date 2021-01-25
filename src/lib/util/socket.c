@@ -841,7 +841,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	 *	is likely to be the function which returns
 	 *	the "original" error.
 	 */
-	(void)fr_strerror();
+	fr_strerror_clear();
 
 	if (src_port) my_port = *src_port;
 	if (src_ipaddr) {

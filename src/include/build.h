@@ -190,7 +190,7 @@ extern "C" {
 	DIAG_OFF(_x) \
 	DIAG_ON(pragmas)
 #  define DIAG_ON_OPTIONAL(_x) \
-	DIAG_OFF(pragmas)
+	DIAG_OFF(pragmas) \
 	DIAG_ON(_x) \
 	DIAG_ON(pragmas)
 #  define DIAG_PUSH() DIAG_PRAGMA(push)

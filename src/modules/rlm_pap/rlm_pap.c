@@ -534,7 +534,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	 *	base64 encoded and big endian
 	 */
 	} else {
-		(void)fr_strerror();
+		fr_strerror_clear();
 		slen = fr_base64_decode((uint8_t *)&iterations, sizeof(iterations), (char const *)p, q - p);
 		if (slen < 0) {
 			RPEDEBUG("Failed decoding PBKDF2-Password iterations component (%.*s)", (int)(q - p), p);

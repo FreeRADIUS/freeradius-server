@@ -380,7 +380,7 @@ void fr_strerror_marker_printf_push_head(char const *subject, size_t offset, cha
  *
  * @hidecallergraph
  */
-static inline CC_HINT(always_inline) CC_HINT(nonnull) fr_log_entry_t *strerror_const(char const *msg)
+static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *msg)
 {
 	fr_log_entry_t	*entry;
 	fr_log_buffer_t	*buffer;
@@ -430,8 +430,7 @@ void fr_strerror_const(char const *msg)
  *
  * @hidecallergraph
  */
-static CC_HINT(always_inline) CC_HINT(nonnull)
-fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
+static CC_HINT(always_inline) fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
 {
 	fr_log_entry_t	*entry;
 
