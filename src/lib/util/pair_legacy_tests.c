@@ -44,7 +44,7 @@ static void pair_tests_init(void);
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dpair.h>
-#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/dpair_legacy.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/radius/radius.h>
