@@ -39,8 +39,8 @@ extern "C" {
 typedef struct log_dst log_dst_t;
 
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/log.h>
-#include <freeradius-devel/util/pair.h>
 
 /** Logging callback to write log messages to a destination
  *

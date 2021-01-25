@@ -32,7 +32,7 @@ extern "C" {
 
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/dpair.h>
 
 /* for paircmp_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, request_t *,fr_pair_list_t *, fr_pair_t *);

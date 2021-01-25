@@ -32,7 +32,7 @@ extern "C" {
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/dpair.h>
 
 #include <talloc.h>
 

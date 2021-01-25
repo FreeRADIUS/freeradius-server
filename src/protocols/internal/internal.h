@@ -16,7 +16,7 @@
  */
 
 #include <freeradius-devel/util/cursor.h>
-#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/dpair.h>
 
 #include <talloc.h>
 

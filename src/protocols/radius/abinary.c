@@ -22,10 +22,10 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/pair.h>
 
 #include "radius.h"
 

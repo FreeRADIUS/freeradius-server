@@ -38,7 +38,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/request.h>
-#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/dpair.h>
 
 #include <sys/types.h>
 #include <talloc.h>

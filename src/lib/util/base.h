@@ -40,6 +40,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/dns.h>
+#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/fifo.h>
 #include <freeradius-devel/util/file.h>
@@ -54,7 +55,6 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
