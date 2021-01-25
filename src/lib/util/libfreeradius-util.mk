@@ -20,6 +20,8 @@ SOURCES		:= \
 		   dict_util.c \
 		   dict_validate.c \
 		   dl.c \
+		   dpair.c \
+		   dpair_legacy.c \
 		   dns.c \
 		   event.c \
 		   ext.c \
@@ -43,8 +45,6 @@ SOURCES		:= \
 		   missing.c \
 		   net.c \
 		   packet.c \
-		   $(if $(findstring USE_DOUBLE_LIST,$(CFLAGS)),dpair.c,pair.c) \
-		   $(if $(findstring USE_DOUBLE_LIST,$(CFLAGS)),dpair_legacy.c,pair_legacy.c) \
 		   pair_print.c \
 		   pair_tokenize.c \
 		   paths.c \
