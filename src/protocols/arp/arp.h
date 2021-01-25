@@ -23,7 +23,6 @@
  *
  * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
  */
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/log.h>

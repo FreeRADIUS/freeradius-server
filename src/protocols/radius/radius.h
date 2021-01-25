@@ -24,7 +24,6 @@
  * @copyright 1999-2017 The FreeRADIUS server project
  */
 #include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/log.h>

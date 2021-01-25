@@ -23,7 +23,7 @@
  *
  * @copyright 2017-2020 The FreeRADIUS project
  */
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/value.h>
 
 /** @name Encoder errors
