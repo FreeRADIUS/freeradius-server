@@ -23,7 +23,6 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>

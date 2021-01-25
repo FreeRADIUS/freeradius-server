@@ -28,7 +28,6 @@
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/io/test_point.h>
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/dbuff.h>
