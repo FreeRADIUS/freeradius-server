@@ -32,8 +32,7 @@
  *
  *  #define curl_easy_setopt(handle,opt,param) curl_easy_setopt(handle,opt,param)
  */
-DIAG_OPTIONAL
-DIAG_OFF(disabled-macro-expansion)
+DIAG_OFF_OPTIONAL(disabled-macro-expansion)
 #define SET_MOPTION(_mandle, _opt, _val)\
 do {\
 	if ((ret = curl_multi_setopt(mandle, _opt, _val)) != CURLM_OK) {\

@@ -50,8 +50,7 @@ RCSID("$Id$")
  *	Turn off documentation warnings as file/line
  *	args aren't used for non-debug builds.
  */
-DIAG_OPTIONAL
-DIAG_OFF(documentation)
+DIAG_OFF_OPTIONAL(documentation)
 #endif
 
 #define FR_EV_BATCH_FDS (256)

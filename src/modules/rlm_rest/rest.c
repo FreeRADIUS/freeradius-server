@@ -96,9 +96,6 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
  *
  *  #define curl_easy_setopt(handle,opt,param) curl_easy_setopt(handle,opt,param)
  */
-DIAG_OPTIONAL
-DIAG_OFF(disabled-macro-expansion)
-
 const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
 	[REST_HTTP_AUTH_UNKNOWN]		= 0,
 	[REST_HTTP_AUTH_NONE]			= 0,

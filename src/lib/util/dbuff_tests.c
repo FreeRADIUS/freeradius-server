@@ -13,8 +13,6 @@
  *	the floats are equal on a *bit* level, not on a *semantic*
  *	level.
  */
-DIAG_OFF(float-equal)
-
 #define TEST_CHECK_LEN(_got, _exp) \
 do { \
 	size_t _our_got = (_got); \

@@ -197,7 +197,7 @@ static void rlm_perl_close_handles(void **handles)
 	talloc_free(handles);
 }
 
-DIAG_OFF(shadow)
+DIAG_OFF_OPTIONAL(shadow)
 static void rlm_perl_destruct(PerlInterpreter *perl)
 {
 	dTHXa(perl);
@@ -223,7 +223,7 @@ static void rlm_perl_destruct(PerlInterpreter *perl)
 	perl_destruct(perl);
 	perl_free(perl);
 }
-DIAG_ON(shadow)
+DIAG_ON_OPTIONAL(shadow)
 
 static void rlm_destroy_perl(PerlInterpreter *perl)
 {

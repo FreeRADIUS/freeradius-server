@@ -36,8 +36,7 @@ extern "C" {
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/server/module.h>
 
-DIAG_OPTIONAL
-DIAG_OFF(disabled-macro-expansion)
+DIAG_OFF_OPTIONAL(disabled-macro-expansion)
 #define FR_CURL_SET_OPTION(_x, _y)\
 do {\
 	int _ret;\
@@ -72,7 +71,7 @@ do {\
 } while (0)
 
 /*
- *␉·····We have to use this as curl uses lots of enums
+ * We have to use this as curl uses lots of enums
  */
 #ifndef CURL_AT_LEAST_VERSION
 #  define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | (z))

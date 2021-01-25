@@ -32,19 +32,15 @@ extern "C" {
 
 #include <freeradius-devel/server/request.h>
 
-#ifdef HAVE_WDOCUMENTATION
-DIAG_OFF(documentation)
-#endif
+DIAG_OFF_OPTIONAL(documentation)
 #include <unbound.h>
-#ifdef HAVE_WDOCUMENTATION
-DIAG_ON(documentation)
-#endif
+DIAG_ON_OPTIONAL(documentation)
 
 /** Logging state
  *
  */
 typedef struct {
-	request_t		*request;		//!< Request we're logging to.
+	request_t	*request;		//!< Request we're logging to.
 	FILE		*stream;		//!< Stream we use to interface with the
 						///< FreeRADIUS logging functions.
 } unbound_log_t;

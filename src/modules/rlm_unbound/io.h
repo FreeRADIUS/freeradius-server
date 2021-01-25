@@ -30,14 +30,10 @@ RCSIDH(rlm_unbound_io_h, "$Id$")
 extern "C" {
 #endif
 
-#ifdef HAVE_WDOCUMENTATION
-DIAG_OFF(documentation)
-#endif
+DIAG_OFF_OPTIONAL(documentation)
 #include <unbound.h>
 #include <unbound-event.h>
-#ifdef HAVE_WDOCUMENTATION
-DIAG_ON(documentation)
-#endif
+DIAG_ON_OPTIONAL(documentation)
 
 /** Wrapper around our event loop specifying callbacks for creating new event handles
  *

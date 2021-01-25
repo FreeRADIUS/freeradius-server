@@ -413,13 +413,9 @@ static unlang_action_t CC_HINT(nonnull) do_mruby(rlm_rcode_t *p_result, request_
 	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control_pairs);
 	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->session_state_pairs);
 
-#ifdef __clang__
-DIAG_OFF(class-varargs)
-#endif
+DIAG_OFF_OPTIONAL(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);
-#ifdef __clang__
-DIAG_ON(class-varargs)
-#endif
+DIAG_ON_OPTIONAL(class-varargs)
 
 	/* Two options for the return value:
 	 * - a fixnum: convert to rlm_rcode_t, and return that
