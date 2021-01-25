@@ -179,7 +179,7 @@ fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 
 fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp) CC_HINT(warn_unused_result);
 
-void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp) CC_HINT(warn_unused_result);
+void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 
 /** @hidecallergraph */
 void		fr_pair_list_free(fr_pair_list_t *list);
