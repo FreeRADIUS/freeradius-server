@@ -186,12 +186,12 @@ static void strerror_printf_benchmark(void)
 	uint64_t	rate;
 
 	fr_strerror_const("pre-allocate buffers");
-	fr_strerror();
+	fr_strerror_clear();
 
 	start = fr_time();
 	for (i = 0; i < 100000; i++) {
 		fr_strerror_printf("I am a test %u string %u %s", i, i, "benchmark");
-		fr_strerror();	/* Clear */
+		fr_strerror_clear();	/* Clear */
 	}
 	stop = fr_time();
 
@@ -209,12 +209,12 @@ static void strerror_const_benchmark(void)
 	uint64_t	rate;
 
 	fr_strerror_const("pre-allocate buffers");
-	fr_strerror();
+	fr_strerror_clear();
 
 	start = fr_time();
 	for (i = 0; i < 100000; i++) {
 		fr_strerror_const("I am a test string");
-		fr_strerror();	/* Clear */
+		fr_strerror_clear();	/* Clear */
 	}
 	stop = fr_time();
 

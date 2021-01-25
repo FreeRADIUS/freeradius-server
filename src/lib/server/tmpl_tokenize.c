@@ -1538,7 +1538,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
 		fr_dict_attr_t *da_unknown;
 
-		fr_strerror();	/* Clear out any existing errors */
+		fr_strerror_clear();	/* Clear out any existing errors */
 
 		/*
 		 *	If it's numeric and not a known attribute

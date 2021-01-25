@@ -147,7 +147,7 @@ int main(int argc, char **argv)
 		fr_perror("sync_touch");
 		fr_exit_now(EXIT_FAILURE);
 	}
-	fr_strerror();	/* Clear the error buffer */
+	fr_strerror_clear();	/* Clear the error buffer */
 
 	fr_set_signal(SIGPIPE, rs_signal_stop);
 	fr_set_signal(SIGINT, rs_signal_stop);

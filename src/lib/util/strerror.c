@@ -155,9 +155,7 @@ static fr_log_entry_t *strerror_vprintf(char const *fmt, va_list ap)
 	 *	Clear any existing log messages
 	 */
 	if (!fmt) {
-		talloc_free_children(buffer->pool_a);
-		talloc_free_children(buffer->pool_b);
-		fr_dlist_clear(&buffer->entries);
+		fr_strerror_clear();
 		return NULL;
 	}
 
@@ -382,23 +380,13 @@ void fr_strerror_marker_printf_push_head(char const *subject, size_t offset, cha
  *
  * @hidecallergraph
  */
-static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const(char const *msg)
+static inline CC_HINT(always_inline) CC_HINT(nonnull) fr_log_entry_t *strerror_const(char const *msg)
 {
 	fr_log_entry_t	*entry;
 	fr_log_buffer_t	*buffer;
 
 	buffer = fr_strerror_init();
 	if (unlikely(!buffer)) return NULL;
-
-	/*
-	 *	Clear any existing log messages
-	 */
-	if (!msg) {
-		fr_dlist_clear(&buffer->entries);
-		talloc_free_children(buffer->pool_a);
-		talloc_free_children(buffer->pool_b);
-		return NULL;
-	}
 
 	entry = talloc(pool_alt(buffer), fr_log_entry_t);
 	if (unlikely(!entry)) {
@@ -442,11 +430,10 @@ void fr_strerror_const(char const *msg)
  *
  * @hidecallergraph
  */
-static fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
+static CC_HINT(always_inline) CC_HINT(nonnull)
+fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
 {
 	fr_log_entry_t	*entry;
-
-	if (!msg) return NULL;
 
 	/*
 	 *	Address pathological case where we could leak memory
@@ -544,6 +531,21 @@ char const *fr_strerror(void)
 	fr_dlist_clear(&buffer->entries);
 
 	return entry->msg;
+}
+
+/** Clears all pending messages from the talloc pools
+ *
+ */
+void fr_strerror_clear(void)
+{
+	fr_log_buffer_t		*buffer;
+
+	if (unlikely(!fr_strerror_buffer)) return;
+
+	buffer = fr_strerror_init();
+	fr_dlist_clear(&buffer->entries);
+	talloc_free_children(buffer->pool_a);
+	talloc_free_children(buffer->pool_b);
 }
 
 /** Get the last library error marker

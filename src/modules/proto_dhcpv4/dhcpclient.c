@@ -430,7 +430,7 @@ static int send_with_socket(fr_radius_packet_t **reply, fr_radius_packet_t *requ
 		*reply = fr_dhcpv4_udp_packet_recv(sockfd);
 		if (!*reply) {
 			if (errno == EAGAIN) {
-				fr_strerror(); /* clear error */
+				fr_strerror_clear(); /* clear error */
 				ERROR("Timed out waiting for reply");
 			} else {
 				ERROR("Error receiving reply");
@@ -647,7 +647,7 @@ int main(int argc, char **argv)
 		fr_perror("dhcpclient");
 		fr_exit(EXIT_FAILURE);
 	}
-	fr_strerror();	/* Clear the error buffer */
+	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
 	 *	Initialise the DHCPv4 library

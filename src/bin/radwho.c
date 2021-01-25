@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 		PERROR("Failed to initialize the dictionaries");
 		return 1;
 	}
-	fr_strerror();	/* Clear the error buffer */
+	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
 	 *	Be safe.

@@ -78,7 +78,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 *	is generated.
 	 */
 	fr_strerror_const("fuzz");	/* allocate the pools */
-	fr_strerror();			/* clears the message, leaves the pools */
+	fr_strerror_clear();			/* clears the message, leaves the pools */
 
 	/*
 	 *	Setup our own internal atexit handler
@@ -191,14 +191,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 
 	tp->func(ctx, &vps, buf, len, decode_ctx);
 	talloc_free(ctx);
-	fr_strerror();		/* Clear any undrained errors */
 
 	/*
 	 *	Clear error messages from the run.  Clearing these
 	 *	keeps malloc/free balanced, which helps to avoid the
 	 *	fuzzers leak heuristics from firing.
 	 */
-	fr_strerror_const(NULL);
+	fr_strerror_clear();
 
 	return 0;
 }

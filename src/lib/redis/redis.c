@@ -437,7 +437,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 
 	fr_assert(out_len >= (size_t)*pipelined);
 
-	fr_strerror();	/* Clear any outstanding errors */
+	fr_strerror_clear();	/* Clear any outstanding errors */
 
 	if ((size_t) *pipelined > out_len) {
 		for (i = 0; i < (size_t)*pipelined; i++) {

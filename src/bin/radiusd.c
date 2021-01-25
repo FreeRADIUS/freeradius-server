@@ -901,7 +901,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Clear the libfreeradius error buffer.
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 
 	/*
 	 *	Prevent anything from modifying the dictionaries
@@ -1066,7 +1066,7 @@ cleanup:
 	 *  we don't inteferere with the onexit() handler.
 	 */
 	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
-	fr_strerror();	/* clear error buffer */
+	fr_strerror_clear();	/* clear error buffer */
 
 	return ret;
 }

@@ -41,13 +41,13 @@ extern "C" {
  * @{
  */
 /** @hidecallergraph */
-void		fr_strerror_printf(char const *fmt, ...) CC_HINT(format (printf, 1, 2));
+void		fr_strerror_printf(char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 1, 2));
 
 /** @hidecallergraph */
-void		fr_strerror_printf_push(char const *fmt, ...)  CC_HINT(format (printf, 1, 2));
+void		fr_strerror_printf_push(char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 1, 2));
 
 /** @hidecallergraph */
-void		fr_strerror_printf_push_head(char const *fmt, ...)  CC_HINT(format (printf, 1, 2));
+void		fr_strerror_printf_push_head(char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 1, 2));
 /** @} */
 
 /** @name Add an error string with marker to the thread local error stack
@@ -59,13 +59,13 @@ void		fr_strerror_printf_push_head(char const *fmt, ...)  CC_HINT(format (printf
  * @{
  */
 /** @hidecallergraph */
-void		fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
+void		fr_strerror_marker_printf(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 3, 4));
 
 /** @hidecallergraph */
-void		fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
+void		fr_strerror_marker_printf_push(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 3, 4));
 
 /** @hidecallergraph */
-void		fr_strerror_marker_printf_push_head(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
+void		fr_strerror_marker_printf_push_head(char const *subject, size_t offset, char const *fmt, ...) CC_HINT(nonnull) CC_HINT(format (printf, 3, 4));
 /** @} */
 
 /** @name Add a const error string to the thread local error stack
@@ -75,13 +75,13 @@ void		fr_strerror_marker_printf_push_head(char const *subject, size_t offset, ch
  * @{
  */
 /** @hidecallergraph */
-void		fr_strerror_const(char const *msg);
+void		fr_strerror_const(char const *msg) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		fr_strerror_const_push(char const *msg);
+void		fr_strerror_const_push(char const *msg) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		fr_strerror_const_push_head(char const *msg);
+void		fr_strerror_const_push_head(char const *msg) CC_HINT(nonnull);
 /** @} */
 
 /** @name Retrieve errors from the thread local error stack
@@ -89,22 +89,25 @@ void		fr_strerror_const_push_head(char const *msg);
  * @{
  */
 /** @hidecallergraph */
-char const	*fr_strerror(void);
+char const	*fr_strerror(void) CC_HINT(warn_unused_result);
 
 /** @hidecallergraph */
-char const	*fr_strerror_marker(char const **subject, size_t *offset);
+void		fr_strerror_clear(void);
+
+/** @hidecallergraph */
+char const	*fr_strerror_marker(char const **subject, size_t *offset) CC_HINT(nonnull);
 
 /** @hidecallergraph */
 char const	*fr_strerror_peek(void);
 
 /** @hidecallergraph */
-char const	*fr_strerror_marker_peek(char const **subject, size_t *offset);
+char const	*fr_strerror_marker_peek(char const **subject, size_t *offset) CC_HINT(nonnull);
 
 /** @hidecallergraph */
 char const	*fr_strerror_pop(void);
 
 /** @hidecallergraph */
-char const	*fr_strerror_marker_pop(char const **subject, size_t *offset);
+char const	*fr_strerror_marker_pop(char const **subject, size_t *offset) CC_HINT(nonnull);
 
 /** @hidecallergraph */
 void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));

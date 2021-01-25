@@ -1842,7 +1842,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 
 			ret = _dict_from_file(ctx, dir, argv[1], fn, line);
 			if ((ret == -2) && (argv[0][8] == '-')) {
-				fr_strerror_printf(NULL); /* delete all errors */
+				fr_strerror_clear(); /* delete all errors */
 				ret = 0;
 			}
 

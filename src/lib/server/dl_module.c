@@ -105,7 +105,7 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 	/*
 	 *	Clear pre-existing errors.
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 
 	if (dl_module->common->onload) {
 		int ret;

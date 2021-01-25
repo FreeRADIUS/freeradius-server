@@ -1042,7 +1042,7 @@ done:
 	 *	Clear any errors we may have produced in the
 	 *	capabilities check.
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 #endif
 	return 0;
 }

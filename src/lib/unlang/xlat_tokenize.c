@@ -1227,7 +1227,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 
 	*head = NULL;
 
-	fr_strerror();	/* Clear error buffer */
+	fr_strerror_clear();	/* Clear error buffer */
 	if (xlat_tokenize_literal(ctx, head, flags,
 				  &our_in, false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
 
@@ -1445,7 +1445,7 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
 	if (!flags) flags = &tmp_flags;
 	*head = NULL;
 
-	fr_strerror();	/* Clear error buffer */
+	fr_strerror_clear();	/* Clear error buffer */
 
 	if (xlat_tokenize_literal(ctx, head, flags,
 				  &our_in, false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);

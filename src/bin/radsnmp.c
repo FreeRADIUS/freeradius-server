@@ -293,7 +293,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_d
 		return slen;
 	}
 
-	fr_strerror();	/* Clear pending errors */
+	fr_strerror_clear();	/* Clear pending errors */
 
 	/*
 	 *	SNMP requests the leaf under the OID with .0.
@@ -622,7 +622,7 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, fr_pair_lis
 
 static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 {
-	fr_strerror();
+	fr_strerror_clear();
 
 #define NEXT_LINE(_line, _buffer) \
 { \
@@ -1059,7 +1059,7 @@ int main(int argc, char **argv)
 		fr_perror("radsnmp");
 		fr_exit_now(EXIT_FAILURE);
 	}
-	fr_strerror();	/* Clear the error buffer */
+	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
 	 *	Get the request type

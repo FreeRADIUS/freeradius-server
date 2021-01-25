@@ -2648,7 +2648,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	fr_strerror();	/* Clear out any non-fatal errors */
+	fr_strerror_clear();	/* Clear out any non-fatal errors */
 
 	if (conf->list_attributes) {
 		conf->list_da_num = rs_build_dict_list(conf->list_da, NUM_ELEMENTS(conf->list_da),
@@ -2900,7 +2900,7 @@ int main(int argc, char *argv[])
 		}
 
 		/* Clear any irrelevant errors */
-		fr_strerror();
+		fr_strerror_clear();
 	}
 
 	/*

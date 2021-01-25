@@ -477,7 +477,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 */
 #if defined(RTLD_DEEPBIND) && !defined(__SANITIZE_ADDRESS__)
 	flags |= RTLD_DEEPBIND;
-	fr_strerror();	/* clear error buffer */
+	fr_strerror_clear();	/* clear error buffer */
 #endif
 
 	/*
@@ -494,7 +494,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		char *ctx, *paths, *path;
 		char *p;
 
-		fr_strerror();
+		fr_strerror_clear();
 
 		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {

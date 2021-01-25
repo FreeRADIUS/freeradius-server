@@ -1327,7 +1327,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	/*
 	 *	Clear any spurious errors
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
 	/*
@@ -1434,7 +1434,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	/*
 	 *	Clear any spurious errors
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 	ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
 	/*
@@ -1726,7 +1726,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	/*
 	 *	Clear any spurious errors
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 
 	fr_pair_list_free(&head);
 
@@ -1803,7 +1803,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	/*
 	 *	Clear any spurious errors
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 
 	CLEAR_TEST_POINT(cc);
 

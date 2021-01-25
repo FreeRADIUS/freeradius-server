@@ -1074,7 +1074,7 @@ static int recv_one_packet(fr_time_t wait_time)
 		stats.rejected++;
 	}
 
-	fr_strerror();	/* Clear strerror buffer */
+	fr_strerror_clear();	/* Clear strerror buffer */
 
 	/*
 	 *	If we had an expected response code, check to see if the
@@ -1373,7 +1373,7 @@ int main(int argc, char **argv)
 			      "Failed to initialize the dictionaries");
 		return 1;
 	}
-	fr_strerror();	/* Clear the error buffer */
+	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
 	 *	Get the request type
