@@ -73,7 +73,7 @@ typedef struct {
 typedef struct {
 	fr_test_point_ctx_alloc_t	test_ctx;	//!< Allocate a test ctx for the encoder.
 	fr_tp_proto_encode_t		func;		//!< Encoder for proto layer.
-	fr_cursor_eval_t		eval;		//!< Evaluation function to filter
+	fr_dcursor_eval_t		eval;		//!< Evaluation function to filter
 							///< attributes to encode.
 } fr_test_point_proto_encode_t;
 
@@ -93,6 +93,6 @@ typedef struct {
 	fr_pair_encode_t		func;		//!< Encoder for pairs.
 	fr_dcursor_iter_t		next_encodable;	//!< Iterator to use to select attributes
 							///< to encode.
-	fr_cursor_eval_t		eval;		//!< Evaluation function to filter
+	fr_dcursor_eval_t		eval;		//!< Evaluation function to filter
 							///< attributes to encode.
 } fr_test_point_pair_encode_t;
