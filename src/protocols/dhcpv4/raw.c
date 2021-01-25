@@ -26,8 +26,8 @@
 #include "attrs.h"
 #include "dhcpv4.h"
 
+#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/net.h>
-#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/types.h>

@@ -31,7 +31,7 @@ RCSIDH(users_file_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/server/map.h>
 #include <talloc.h>
 

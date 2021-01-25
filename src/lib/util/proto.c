@@ -20,9 +20,9 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
+#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/pair.h>
 
 void fr_proto_print(char const *file, int line, char const *fmt, ...)
 {

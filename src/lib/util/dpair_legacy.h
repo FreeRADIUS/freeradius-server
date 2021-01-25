@@ -17,7 +17,7 @@
 
 /** Legacy API functions - DO NOT USE IN NEW CODE
  *
- * @file src/lib/util/pair.h
+ * @file src/lib/util/dpair.h
  *
  * @copyright 2015 The FreeRADIUS server project
  */
@@ -26,9 +26,9 @@ RCSIDH(pair_legacy_h, "$Id$")
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/token.h>
-#include <freeradius-devel/util/pair.h>
 
 #ifdef __cplusplus
 extern "C" {
