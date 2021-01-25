@@ -26,7 +26,7 @@ RCSIDH(pair_legacy_h, "$Id$")
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dcursor.h>
-#include <freeradius-devel/util/dpair.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/token.h>
 
