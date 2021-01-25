@@ -1,5 +1,5 @@
 Source: freeradius
-Build-Depends: @BUILDDEPS@ debhelper (>= 9), libjson-perl
+Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  quilt,
  dpkg-dev (>= 1.13.19),
  dh-systemd (>= 1.5),
@@ -7,6 +7,7 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9), libjson-perl
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libcap-dev,
  libgdbm-dev,
+ libjson-perl,
  libjson0 | libjson-c2 | libjson-c3 | libjson-c4 | libjson-c5,
  libjson0-dev | libjson-c-dev,
  libkrb5-dev | heimdal-dev,
