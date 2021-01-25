@@ -78,7 +78,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 *	is generated.
 	 */
 	fr_strerror_const("fuzz");	/* allocate the pools */
-	fr_strerror_clear();			/* clears the message, leaves the pools */
+	fr_strerror_clear();		/* clears the message, leaves the pools */
 
 	/*
 	 *	Setup our own internal atexit handler
