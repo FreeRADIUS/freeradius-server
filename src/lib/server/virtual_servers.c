@@ -740,7 +740,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 	fr_assert(virtual_servers);
 
 	DEBUG2("#### Opening listener interfaces ####");
-	(void) fr_strerror();
+	fr_strerror_clear();
 
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;

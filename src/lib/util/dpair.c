@@ -669,7 +669,7 @@ void _fr_pair_add(fr_pair_list_t *list, fr_pair_t *add, bool prepend)
 	} else {
 		fr_dlist_insert_tail(&list->head, add);
 	}
-	
+
 }
 
 /** Replace first matching VP
@@ -1212,7 +1212,7 @@ void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
 	head->entry.prev = &list->head.entry;
 	while (head) {
 		if (head->entry.next) {
-			/* 
+			/*
 			 * There is a "next" entry, point it back to the current one
 			 */
 			head->entry.next->prev = &head->entry;
@@ -1243,7 +1243,7 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
 
 	char *value, *str;
 
-	(void) fr_strerror();	/* Clear any existing messages */
+	fr_strerror_clear();	/* Clear any existing messages */
 
 	if (!list) {
 		if (!filter) {

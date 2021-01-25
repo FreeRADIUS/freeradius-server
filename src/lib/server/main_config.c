@@ -1239,7 +1239,7 @@ do {\
 	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
 
 	/* Clear any unprocessed configuration errors */
-	(void) fr_strerror();
+	fr_strerror_clear();
 
 	return 0;
 }
