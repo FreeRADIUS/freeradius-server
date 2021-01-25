@@ -430,7 +430,7 @@ void fr_strerror_const(char const *msg)
  *
  * @hidecallergraph
  */
-static CC_HINT(always_inline) fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
+static inline CC_HINT(always_inline) fr_log_entry_t *strerror_const_push(fr_log_buffer_t *buffer, char const *msg)
 {
 	fr_log_entry_t	*entry;
 
