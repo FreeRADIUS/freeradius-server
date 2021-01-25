@@ -20,9 +20,6 @@
  *
  * @copyright 2016 The FreeRADIUS server project
  */
-#ifdef USE_DOUBLE_LIST
-#include <freeradius-devel/util/dcursor.h>
-#endif
 RCSIDH(cursor_h, "$Id$")
 
 #ifdef __cplusplus
