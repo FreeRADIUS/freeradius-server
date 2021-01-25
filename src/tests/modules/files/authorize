@@ -77,6 +77,12 @@ filterreply  Password.Cleartext := "testing123"
 filterreply  Password.Cleartext := "testing123"
              Reply-Message !* ANY
 
+overwritereply  Password.Cleartext := "testing123"
+                Reply-Message := "firstpass",
+                Fall-Through = yes
+
+overwritereply  Password.Cleartext := "testing123"
+                Reply-Message := "secondpass"
 
 #
 #  Addition "+=" to the control list
