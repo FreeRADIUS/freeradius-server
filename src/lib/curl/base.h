@@ -36,7 +36,9 @@ extern "C" {
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/server/module.h>
 
-DIAG_OFF_OPTIONAL(disabled-macro-expansion)
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(disabled-macro-expansion)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 #define FR_CURL_SET_OPTION(_x, _y)\
 do {\
 	int _ret;\

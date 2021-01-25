@@ -34,9 +34,11 @@ RCSIDH(json_h, "$Id$")
 #ifdef HAVE_JSON
 #  if defined(HAVE_JSONMC_JSON_H)
 
-DIAG_OFF_OPTIONAL(documentation-deprecated-sync)
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(documentation-deprecated-sync)
 #    include <json-c/json.h>
-DIAG_ON_OPTIONAL(documentation-deprecated-sync)
+DIAG_ON(documentation-deprecated-sync)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 #  elif defined(HAVE_JSON_JSON_H)
 #    include <json/json.h>

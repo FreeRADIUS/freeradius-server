@@ -168,38 +168,22 @@ extern "C" {
  *	Macros for controlling warnings in GCC >= 4.2 and clang >= 2.8
  */
 #if defined(__clang__) && ((__clang_major__ * 100) + __clang_minor__ >= 208)
+#  define DIAG_UNKNOWN_PRAGMAS unknown-pragmas
 #  define DIAG_PRAGMA(_x) PRAGMA(clang diagnostic _x)
 #  define DIAG_OFF(_x) DIAG_PRAGMA(ignored JOINSTR(-W,_x))
 #  define DIAG_ON(_x) DIAG_PRAGMA(warning JOINSTR(-W,_x))
-#  define DIAG_OFF_OPTIONAL(_x) \
-	DIAG_OFF(ignored unknown-pragmas) \
-	DIAG_OFF(_x) \
-	DIAG_ON(warning unknown-pragmas)
-#  define DIAG_ON_OPTIONAL(_x) \
-	DIAG_OFF(unknown-pragmas) \
-	DIAG_ON(_x) \
-	DIAG_ON(unknown-pragmas)
 #  define DIAG_PUSH() DIAG_PRAGMA(push)
 #  define DIAG_POP() DIAG_PRAGMA(pop)
 #elif !defined(__clang__) && defined(__GNUC__) && ((__GNUC__ * 100) + __GNUC_MINOR__) >= 402
+#  define DIAG_UNKNOWN_PRAGMAS pragmas
 #  define DIAG_PRAGMA(_x) PRAGMA(GCC diagnostic _x)
 #  define DIAG_OFF(_x) DIAG_PRAGMA(ignored JOINSTR(-W,_x))
 #  define DIAG_ON(_x)  DIAG_PRAGMA(warning JOINSTR(-W,_x))
-#  define DIAG_OFF_OPTIONAL(_x) \
-	DIAG_OFF(pragmas) \
-	DIAG_OFF(_x) \
-	DIAG_ON(pragmas)
-#  define DIAG_ON_OPTIONAL(_x) \
-	DIAG_OFF(pragmas) \
-	DIAG_ON(_x) \
-	DIAG_ON(pragmas)
 #  define DIAG_PUSH() DIAG_PRAGMA(push)
 #  define DIAG_POP() DIAG_PRAGMA(pop)
 #else
 #  define DIAG_OFF(_x)
 #  define DIAG_ON(_x)
-#  define DIAG_OFF_OPTIONAL(_x)
-#  define DIAG_ON_OPTIONAL(_x)
 #  define DIAG_PUSH()
 #  define DIAG_POP()
 #endif

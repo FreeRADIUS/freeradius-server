@@ -23,7 +23,8 @@
  * @copyright 2016 The FreeRADIUS server project
  */
 
-DIAG_OFF_OPTIONAL(documentation)
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(documentation)
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/array.h>
@@ -31,6 +32,7 @@ DIAG_OFF_OPTIONAL(documentation)
 #include <mruby/numeric.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
-DIAG_ON_OPTIONAL(documentation)
+DIAG_ON(documentation)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent);

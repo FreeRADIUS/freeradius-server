@@ -32,9 +32,11 @@ extern "C" {
 
 #include <freeradius-devel/server/request.h>
 
-DIAG_OFF_OPTIONAL(documentation)
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(documentation)
 #include <unbound.h>
-DIAG_ON_OPTIONAL(documentation)
+DIAG_ON(documentation)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 /** Logging state
  *
