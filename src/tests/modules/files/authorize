@@ -84,6 +84,22 @@ overwritereply  Password.Cleartext := "testing123"
 overwritereply  Password.Cleartext := "testing123"
                 Reply-Message := "secondpass"
 
+lessthanreply  Password.Cleartext := "testing123"
+               Reply-Message := "eee",
+               Reply-Message += "aaa",
+               Fall-Through = yes
+
+lessthanreply  Password.Cleartext := "testing123"
+               Reply-Message <= "ddd"
+
+greaterthanreply  Password.Cleartext := "testing123"
+                  Reply-Message := "eee",
+                  Reply-Message += "aaa",
+                  Fall-Through = yes
+
+greaterthanreply  Password.Cleartext := "testing123"
+                  Reply-Message >= "ddd"
+
 #
 #  Addition "+=" to the control list
 #
