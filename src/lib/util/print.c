@@ -23,8 +23,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/strerror.h>

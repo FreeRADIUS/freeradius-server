@@ -29,8 +29,8 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-#include <freeradius-devel/util/dpair.h>
 #include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/talloc.h>
