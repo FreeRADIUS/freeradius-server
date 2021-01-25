@@ -166,20 +166,20 @@ void fr_pair_list_init(fr_pair_list_t *head);
 #define fr_pair_list_set_head(_list, _vp) (_list = &_vp)
 
 /* Allocation and management */
-fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx);
+fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx) CC_HINT(warn_unused_result);
 
-fr_pair_list_t	*fr_pair_list_alloc(TALLOC_CTX *ctx);
+fr_pair_list_t	*fr_pair_list_alloc(TALLOC_CTX *ctx) CC_HINT(warn_unused_result);
 
-fr_pair_t	*fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
+fr_pair_t	*fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
 
 /** @hidecallergraph */
-fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
+fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
 
-fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);
+fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr) CC_HINT(warn_unused_result);
 
-fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp);
+fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp) CC_HINT(warn_unused_result);
 
-void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
+void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp) CC_HINT(warn_unused_result);
 
 /** @hidecallergraph */
 void		fr_pair_list_free(fr_pair_list_t *list);
