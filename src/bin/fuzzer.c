@@ -36,12 +36,12 @@ RCSID("$Id$")
  *	./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -D share/dictionary /path/to/corpus/directory/
  */
 
-static bool init = false;
-static void *decode_ctx = NULL;
-static fr_test_point_proto_decode_t *tp = NULL;
-static fr_dict_t *dict = NULL;
+static bool			     init	= false;
+static void *			     decode_ctx = NULL;
+static fr_test_point_proto_decode_t *tp		= NULL;
+static fr_dict_t *		     dict	= NULL;
 
-static dl_t *dl = NULL;
+static dl_t *	    dl = NULL;
 static dl_loader_t *dl_loader;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
@@ -58,10 +58,10 @@ static void exitHandler()
 
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
-	char const *lib_dir = getenv("FR_LIBRARY_PATH");
-	char const *proto = getenv("FR_LIBRARY_FUZZ_PROTOCOL");
+	char const *lib_dir  = getenv("FR_LIBRARY_PATH");
+	char const *proto    = getenv("FR_LIBRARY_FUZZ_PROTOCOL");
 	char const *dict_dir = getenv("FR_DICTIONARY_DIR");
-	char buffer[1024];
+	char	    buffer[1024];
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
 
@@ -77,8 +77,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 *	appearing as a leak the first time an error
 	 *	is generated.
 	 */
-	fr_strerror_const("fuzz");	/* allocate the pools */
-	fr_strerror_clear();		/* clears the message, leaves the pools */
+	fr_strerror_const("fuzz"); /* allocate the pools */
+	fr_strerror_clear(); /* clears the message, leaves the pools */
 
 	/*
 	 *	Setup our own internal atexit handler
@@ -174,8 +174,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-
-
 	init = true;
 
 	return 1;
@@ -183,7 +181,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
-	TALLOC_CTX *ctx = talloc_init_const("fuzzer");
+	TALLOC_CTX *   ctx = talloc_init_const("fuzzer");
 	fr_pair_list_t vps;
 
 	fr_pair_list_init(&vps);
