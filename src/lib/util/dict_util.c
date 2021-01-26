@@ -616,8 +616,22 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
 {
 	fr_dict_attr_t *da;
 
+	/*
+	 *	Do not use talloc zero, the caller
+	 *	always initialises memory allocated
+	 *	here.
+	 */
 	da = talloc(ctx, fr_dict_attr_t);
 	if (unlikely(!da)) return NULL;
+
+	/*
+	 *	On error paths in the caller, the
+	 *	caller may free the attribute
+	 *	allocated here without initialising
+	 *	the ext array, which is then
+	 *	accessed in the destructor.
+	 */
+	memset(da->ext, 0, sizeof(da->ext));
 
 	talloc_set_destructor(da, _dict_attr_free);
 
