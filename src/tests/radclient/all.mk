@@ -39,16 +39,20 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
+	$(eval IGNORE_ERROR := $(shell grep -q "#.*IGNORE_ERROR:.*1" $< && echo 1 || echo 0))
+
 	$(Q)echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(Q)if ! $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
-		echo "FAILED";                                              \
-		cat $(FOUND);                                               \
-		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
-		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
-		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
-		exit 1;                                                     \
+		if [ "$(IGNORE_ERROR)" != "1" ]; then                               \
+			echo "FAILED";                                              \
+			cat $(FOUND);                                               \
+			rm -f $(BUILD_DIR)/tests/test.radclient;		    \
+			$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
+			echo "RADIUSD:   $(RADIUSD_RUN)";                           \
+			echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
+			exit 1;                                                     \
+		fi;                                                                 \
 	fi
 #
 #	Lets normalize the loopback interface on OSX
