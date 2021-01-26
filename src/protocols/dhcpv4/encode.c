@@ -103,7 +103,7 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 {
 	size_t header_bytes;
 	uint8_t			type, option_len = 0;
-	fr_dbuff_marker_t	next_hdr, dest;
+	fr_dbuff_marker_t	src, dest, hdr_io;
 
 	/*
 	 *	This can't follow the convention of operating on
@@ -111,13 +111,13 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 	 *	already-written data.
 	 */
 
-	fr_dbuff_marker(&next_hdr, dbuff);
+	fr_dbuff_marker(&src, dbuff);
 	fr_dbuff_marker(&dest, dbuff);
+	fr_dbuff_marker(&hdr_io, dbuff);
 
-	fr_dbuff_set(&next_hdr, hdr);
-
-	fr_dbuff_out(&type, &next_hdr);
-	fr_dbuff_out(&option_len, &next_hdr);
+	fr_dbuff_set(&hdr_io, hdr);
+	fr_dbuff_out(&type, &hdr_io);
+	fr_dbuff_out(&option_len, &hdr_io);
 
 	/*
 	 *	How many bytes we will need to add for headers.
@@ -129,7 +129,8 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 	 */
 	if (fr_dbuff_extend_lowat(NULL, dbuff, header_bytes) < header_bytes) {
 		fr_dbuff_marker_release(&dest);
-		fr_dbuff_marker_release(&next_hdr);
+		fr_dbuff_marker_release(&src);
+		fr_dbuff_marker_release(&hdr_io);
 		return false;
 	}
 	fr_dbuff_advance(dbuff, header_bytes);
@@ -154,8 +155,8 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 		 */
 		option_len += sublen;
 		len -= sublen;
-		fr_dbuff_set(&next_hdr, fr_dbuff_current(hdr) + 1);
-		fr_dbuff_in(&next_hdr, option_len);
+		fr_dbuff_set(&hdr_io, fr_dbuff_current(hdr) + 1);
+		fr_dbuff_in(&hdr_io, option_len);
 
 		/*
 		 *	Nothing more to do?  Exit.
@@ -164,25 +165,25 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 
 		/*
 		 *	The current option is full.  So move the
-		 *	trailing data up by 2 bytes.  Then add a new
-		 *	header, and keep looping in order to process
-		 *	the next chunk.
+		 *	trailing data up by 2 bytes, making room
+		 *	for a new header.
 		 */
-		fr_dbuff_advance(&next_hdr, option_len);
-		fr_dbuff_set(hdr, &next_hdr);
-		fr_dbuff_set(&dest, fr_dbuff_current(&next_hdr) + 2);
-		fr_dbuff_move(&dest, &next_hdr, len);
+		fr_dbuff_advance(hdr, option_len + 2);
+		fr_dbuff_set(&src, hdr);
+		fr_dbuff_set(&dest, fr_dbuff_current(hdr) + 2);
+		fr_dbuff_move(&dest, &src, len);
 
 		/*
-		 *	Build the new header, then jump to it and use it.
+		 *	Initialize the new header.
 		 */
 		option_len = 0;
-		fr_dbuff_set(&next_hdr, hdr);
-		fr_dbuff_in_bytes(&next_hdr, type, option_len);
+		fr_dbuff_set(&hdr_io, hdr);
+		fr_dbuff_in_bytes(&hdr_io, type, option_len);
 	}
 
 	fr_dbuff_marker_release(&dest);
-	fr_dbuff_marker_release(&next_hdr);
+	fr_dbuff_marker_release(&src);
+	fr_dbuff_marker_release(&hdr_io);
 	return true;
 }
 
@@ -207,7 +208,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 {
 	ssize_t			len;
 	uint8_t			option_len = 0;
-	fr_dbuff_marker_t	hdr, len_marker;
+	fr_dbuff_marker_t	hdr, hdr_io;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_pair_t		*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -219,7 +220,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	fr_dbuff_marker(&hdr, &work_dbuff);
-	fr_dbuff_marker(&len_marker, &work_dbuff);
+	fr_dbuff_marker(&hdr_io, &work_dbuff);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, option_len);
 
 	/*
@@ -266,13 +267,13 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 
 		if ((option_len + len) <= 255) {
 			option_len += len;
-			fr_dbuff_set(&len_marker, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in(&len_marker, option_len);
+			fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in(&hdr_io, option_len);
 			FR_PROTO_TRACE("%u byte(s) available in option", 255 - option_len);
 		} else {
 			if (!extend_option(&work_dbuff, &hdr, len)) break;
-			fr_dbuff_set(&len_marker, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_out(&option_len, &hdr);
+			fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_out(&option_len, &hdr_io);
 		}
 
 		next = fr_dcursor_current(cursor);
@@ -301,7 +302,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 {
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_marker_t	hdr, next_hdr, dest, hdr_write;
+	fr_dbuff_marker_t	hdr, next_hdr, dest, hdr_io;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	uint8_t			option_number, option_len;
@@ -314,7 +315,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 */
 	fr_dbuff_marker(&next_hdr, &work_dbuff);
 	fr_dbuff_marker(&dest, &work_dbuff);
-	fr_dbuff_marker(&hdr_write, &work_dbuff);
+	fr_dbuff_marker(&hdr_io, &work_dbuff);
 
 	/*
 	 *	Write out the option number and length (which, unlike RADIUS,
@@ -340,14 +341,13 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		if (len == 0) break;		/* Insufficient space */
 
 		/*
-		 *	If the newly added data fits within the
-		 *	current option, then update the header, and go
-		 *	to the next option.
+		 *	If the newly added data fits within the current option, then
+		 *	update the header, and go to the next option.
 		 */
 		if (option_len + len <= 255) {
 			option_len += len;
-			fr_dbuff_set(&hdr_write, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in_bytes(&hdr_write, option_len);
+			fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in_bytes(&hdr_io, option_len);
 		} else {
 			/*
 			 *	If there was data before the new data, create a new header
@@ -364,22 +364,23 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 				fr_dbuff_move(&dest, &next_hdr, len);
 
 				option_len = 0;
-				fr_dbuff_set(&hdr_write, &hdr);
-				fr_dbuff_in_bytes(&hdr_write, option_number, option_len);
+				fr_dbuff_set(&hdr_io, &hdr);
+				fr_dbuff_in_bytes(&hdr_io, option_number, option_len);
 			}
 
 			/*
 			 *	If the new data fits entirely within the (possibly new,
-			 *	but definitely unused) option, just use it.
+			 *	but definitely unused) option, just use it. Otherwise,
+			 *	it must be split across multiple options.
 			 */
 			if (len <= 255) {
 				option_len += len;
-				fr_dbuff_set(&hdr_write, fr_dbuff_current(&hdr) + 1);
-				fr_dbuff_in_bytes(&hdr_write, option_len);
+				fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
+				fr_dbuff_in_bytes(&hdr_io, option_len);
 			} else {
 				if (!extend_option(&work_dbuff, &hdr, len)) break;
-				fr_dbuff_set(&hdr_write, fr_dbuff_current(&hdr) + 1);
-				fr_dbuff_out(&option_len, &hdr_write);
+				fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
+				fr_dbuff_out(&option_len, &hdr_io);
 			}
 		}
 
