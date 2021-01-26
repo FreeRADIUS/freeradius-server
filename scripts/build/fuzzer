@@ -5,8 +5,6 @@
 #  To be run with ONE input file, in order to debug crashes, leaks,
 #  etc.
 #
-#  Add "lldb" 
-#
 
 usage() {
 	echo "Usage: ./scripts/build/fuzzer [-l] filename"
@@ -30,6 +28,6 @@ fi
 
 export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
 export LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
-PROTOCOL=$(basename $(dirname $1 ))
+PROTOCOL=$(basename $(dirname "$1" ))
 
-exec ./build/make/jlibtool --quiet --mode=execute $LLDB ./build/bin/local/fuzzer_$PROTOCOL -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary $1
+exec ./build/make/jlibtool --quiet --mode=execute $LLDB ./build/bin/local/fuzzer_${PROTOCOL} -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary "$1"
