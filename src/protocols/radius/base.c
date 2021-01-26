@@ -1026,7 +1026,9 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	while (attr < end) {
 		slen = fr_radius_decode_pair(ctx, cursor, dict_radius, attr, (end - attr), &packet_ctx);
 		if (slen < 0) {
+		fail:
 			talloc_free(packet_ctx.tmp_ctx);
+			talloc_free(packet_ctx.tags);
 			return slen;
 		}
 
@@ -1035,8 +1037,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		 *	all kinds of bad things happen.
 		 */
 		 if (!fr_cond_assert(slen <= (end - attr))) {
-			 talloc_free(packet_ctx.tmp_ctx);
-			 return -1;
+			 goto fail;
 		 }
 
 		attr += slen;
