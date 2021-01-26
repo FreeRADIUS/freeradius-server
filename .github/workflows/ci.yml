@@ -334,7 +334,7 @@ jobs:
     - name: "Clang libFuzzer: Store assets on failure"
       uses: actions/upload-artifact@v2
       with:
-        name: clang-fuzzer.tgz
+        name: clang-fuzzer
         path: build/fuzzer
       if: ${{ matrix.env.TEST_TYPE == 'fuzzing' && failure() }}
 
