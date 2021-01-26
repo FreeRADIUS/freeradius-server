@@ -227,17 +227,15 @@ do { \
 
 /** @cond */
 
-/** Reserve _reserve bytes in the dbuff when passing it to another function
+/** Limit available bytes in the dbufft to _max when passing it to another function
  *
  * @private
  */
-#define _FR_DBUFF_RESERVE(_dbuff, _reserve, _adv_parent) \
+#define _FR_DBUFF_MAX(_dbuff, _max, _adv_parent) \
 (fr_dbuff_t){ \
 	.buff		= (_dbuff)->buff, \
 	.start		= (_dbuff)->p, \
-	.end		= ((_dbuff)->end - (_reserve)) >= ((_dbuff)->p) ? \
-				(_dbuff)->end - (_reserve) : \
-				(_dbuff)->p, \
+	.end		= (((((_dbuff)->end) - (_max) < (_dbuff)->p)) ? (_dbuff)->end : ((_dbuff)->p + (_max))), \
 	.p		= (_dbuff)->p, \
 	.is_const	= (_dbuff)->is_const, \
 	.adv_parent	= _adv_parent, \
@@ -247,44 +245,6 @@ do { \
 	.parent		= (_dbuff) \
 }
 /* @endcond */
-
-/** Reserve _reserve bytes in the dbuff when passing it to another function
- *
- @code{.c}
- my_child_encoder(&FR_DBUFF_RESERVE(dbuff, 5), vp);
- @endcode
- *
- * @note Do not use to re-initialise the contents of _dbuff, i.e. to
- *	permanently shrink the exiting dbuff. The parent pointer will loop.
- *
- * @note Do not modify the "child" dbuff directly.  Use the functions
- *	 supplied as part of this API.
- *
- * @param[in] _dbuff	to reserve bytes in.
- * @param[in] _reserve	The number of bytes to reserve.
- */
-#define FR_DBUFF_RESERVE(_dbuff, _reserve) _FR_DBUFF_RESERVE(_dbuff, _reserve, true)
-
-/** Reserve _reserve bytes in the dbuff when passing it to another function
- *
- @code{.c}
- fr_dbuff_t tlv = FR_DBUFF_RESERVE_NO_ADVANCE(dbuff, UINT8_MAX);
-
- if (my_child_encoder(&tlv, vp) < 0) return -1;
-
- return fr_dbuff_advance(dbuff, fr_dbuff_used(tlv));
- @endcode
- *
- * @note Do not use to re-initialise the contents of _dbuff, i.e. to
- *	permanently shrink the exiting dbuff. The parent pointer will loop.
- *
- * @note Do not modify the "child" dbuff directly.  Use the functions
- *	 supplied as part of this API.
- *
- * @param[in] _dbuff	to reserve bytes in.
- * @param[in] _reserve	The number of bytes to reserve.
- */
-#define FR_DBUFF_RESERVE_NO_ADVANCE(_dbuff, _reserve) _FR_DBUFF_RESERVE(_dbuff, _reserve, false)
 
 /** Limit the maximum number of bytes available in the dbuff when passing it to another function
  *
@@ -301,8 +261,7 @@ do { \
  * @param[in] _dbuff	to reserve bytes in.
  * @param[in] _max	The maximum number of bytes the caller is allowed to write to.
  */
-#define FR_DBUFF_MAX(_dbuff,  _max) \
-	_FR_DBUFF_RESERVE(_dbuff, (fr_dbuff_remaining(_dbuff) > (_max)) ? (fr_dbuff_remaining(_dbuff) - (_max)) : 0, true)
+#define FR_DBUFF_MAX(_dbuff,  _max) _FR_DBUFF_MAX(_dbuff, _max, true)
 
 /** Limit the maximum number of bytes available in the dbuff when passing it to another function
  *
@@ -323,8 +282,7 @@ do { \
  * @param[in] _dbuff	to reserve bytes in.
  * @param[in] _max	The maximum number of bytes the caller is allowed to write to.
  */
-#define FR_DBUFF_MAX_NO_ADVANCE(_dbuff,  _max) \
-	_FR_DBUFF_RESERVE(_dbuff, (fr_dbuff_remaining(_dbuff) > (_max)) ? (fr_dbuff_remaining(_dbuff) - (_max)) : 0, false)
+#define FR_DBUFF_MAX_NO_ADVANCE(_dbuff,  _max) _FR_DBUFF_MAX(_dbuff, _max, false)
 
 /** Does the actual work of initialising a dbuff
  * @private
