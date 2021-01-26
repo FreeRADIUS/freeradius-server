@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+#  USAGE: ./scripts/fuzzer FILENAME
+#
+#  To be run with ONE input file, in order to debug crashes, leaks,
+#  etc.
+#
+
+export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
+export LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
+
+PROTOCOL=$(basename $(dirname $1 ))
+
+./build/make/jlibtool --quiet --mode=execute ./build/bin/local/fuzzer_$PROTOCOL -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary $1
