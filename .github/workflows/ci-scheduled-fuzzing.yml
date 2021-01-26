@@ -27,14 +27,35 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    name: Fuzzer
+    # TOTAL_RUNTIME: 20000 is just short of the 6 hours GH Actions limit
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - { PROTOCOL: radius, TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: dhcpv4, TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: dhcpv6, TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: vmps,   TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: tacacs, TOTAL_RUNTIME: 20000 }
+
+    env: ${{ matrix.env }}
+
+    name: Fuzzing ${{ matrix.env.PROTOCOL}}
 
     steps:
 
-    # Checkout, but defer pulling LFS objects until we've restored the cache
+    - name: Stamp start time
+      run: date +%s > ~/start_timestamp
+
+    #  Checkout, but defer pulling LFS objects until we've restored the cache
+    #
+    #  We include a bit of depth since we will walk the tree until we find a
+    #  commit that builds.
+    #
     - uses: actions/checkout@v2
       with:
         lfs: false
+        fetch-depth: 50
 
     - name: Create LFS file list as cache key
       run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
@@ -85,32 +106,42 @@ jobs:
         pcre-config --libs-posix --version 2>/dev/null || :
         pcre2-config --libs-posix --version 2>/dev/null || :
 
-    - name: Configure
+    # We walk up the tree if necessary to find a commit that builds so that we
+    # will fuzz something
+    - name: Find a commit that builds
+      id: pick_commit
       run: |
-        echo "Enabling llvm sanitizers"
-        CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3" ./configure -C \
+        while : ; do
+          CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3" ./configure -C \
             --enable-werror \
             --enable-llvm-address-sanitizer \
             --enable-llvm-undefined-behaviour-sanitizer \
             --enable-llvm-leak-sanitizer \
             --enable-llvm-fuzzer \
             --prefix=$HOME/freeradius \
-        || cat ./config.log
-        echo "Contents of src/include/autoconf.h"
-        cat "./src/include/autoconf.h"
+          || cat ./config.log
+          echo "Contents of src/include/autoconf.h"
+          cat "./src/include/autoconf.h"
+          mkdir -p build/tests/eapol_test
+          : > build/tests/eapol_test/eapol_test.mk
+          make -j `nproc` build/bin/fuzzer_$PROTOCOL && break || :
+          git reset --hard HEAD^
+          git clean -fxd
+        done
+        echo "::set-output name=commit_id::$(git rev-parse --short HEAD)"
 
-    # Fuz all protocols in parallel, restarting each job every 5 mins (or on failure) for 4 hours
     - name: Run fuzzer tests
       run: |
-        # For fuzzing we won't be needing eapol_test
-        mkdir -p build/tests/eapol_test
-        : > build/tests/eapol_test/eapol_test.mk
-        timeout 14400 make -j 5 test.fuzzer FUZZER_TIMEOUT=300 FUZZER_ARGUMENTS="-jobs=10000 -workers=1" || :
-        find build/fuzzer -type f | grep . && exit 1 || :
+        REMAINING_TIME=$(( $TOTAL_RUNTIME + `cat ~/start_timestamp` - `date +%s` ))
+        echo "Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
+        [[ "$REMAINING_TIME" -lt 1 ]] && exit 1
+        timeout "$REMAINING_TIME" make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT=300 FUZZER_ARGUMENTS="-jobs=10000 -workers=`nproc`" || :
+        cp fuzz-*.log build/fuzzer
+        find build/fuzzer -type f ! -name 'fuzz-*.log' | grep . && exit 1 || :
 
     - name: "Clang libFuzzer: Store assets on failure"
       uses: actions/upload-artifact@v2
       with:
-        name: clang-fuzzer.tgz
+        name: fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
         path: build/fuzzer
       if: ${{ failure() }}
