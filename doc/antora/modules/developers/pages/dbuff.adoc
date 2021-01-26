@@ -85,7 +85,7 @@ Here are the things one can do with a dbuff:
   decoding - read data from the next available byte or bytes.
 * Explicitly move the "next byte" pointer either ahead by a number of bytes, to the start, or to the end.
 * Ask how the dbuff how many bytes are remaining or have been used.
-	
+
 When encoding, data can either be one or more bytes or a signed or
 unsigned 8, 16, 32, or 64 bit integer.  There is also a `memset()`
 function for initialising uninitialised areas of the buffer. As
@@ -113,23 +113,19 @@ will allow reading or writing outside of the buffer.
 A child dbuff operates on a portion of the buffer, starting where the
 parent left off. The creator can control two things about the child:
 
-* The space available to the child. There are two ways to specify this: 
-** Give the child no more than a specified number of bytes (`FR_DBUFF_MAX()`).
-** Insist that the child only be given enough bytes that the parent has a certain number (`FR_DBUFF_RESERVE()`).
+* The space available to the child (`FR_DBUFF_MAX()` gives a child
+  dbuff with no more than a specified number of bytes available).
 * Whether the child's advances propagate up to its parents
   (`FR_DBUFF_NO_ADVANCE()` gives a child dbuff whose advances don't
-  propagate, and `FR_DBUFF_RESERVE_NO_ADVANCE()` lets you reserve and
-  prevent propagation).
+  propagate).
 
-[IMPORTANT] 
-==== 
-`FR_DBUFF_MAX()` cannott fail,  It is like an ad promising "up to one
-million dollars!" where "up to" includes zero. `FR_DBUFF_RESERVE()`,
-though, can fail in a sense, because you're promising the parent at
-least a certain number of bytes. Underneath they're both C compound
-literals, so it's not clear how to indicate an error.
+[IMPORTANT]
 ====
- 
+`FR_DBUFF_MAX()` cannot fail.  It is like an ad promising "up to one
+million dollars!" where "up to" includes zero, so the child may have
+less space than the specified maximum.
+====
+
 `FR_DBUFF_MAX()` typically shows up when a caller limits a callee to
 what will fit in a TLV in some context. `FR_DBUFF_NO_ADVANCE()` came
 into existence to let an encoding function write a header and then
@@ -142,9 +138,9 @@ become a convention:
 ssize_t encode_foo(fr_dbuff_t *dbuff, ...)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	
+
 	/* encode, operating on work_dbuff, returning on error */
-	
+
 	return fr_dbuff_advance(dbuff, fr_dbuff_used(&work_dbuff));
 }
 ----
@@ -175,6 +171,6 @@ instead of
 [source,c]
 ----
 f ((val = fr_dbuff_foo(dbuff, ...) < 0) return val;
-----	
-	
+----
+
 letting one return an error to the caller without cluttering the code.
