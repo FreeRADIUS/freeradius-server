@@ -257,6 +257,12 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		     	}
 
 			/*
+			 *	Remove pair from temporary list ready to
+			 *	add to the correct destination
+			 */
+			fr_pair_remove(&tmp_list, check_item);
+
+			/*
 			 *    If it is a SET operator, add the attribute to
 			 *    the output list without checking it.
 			 */
