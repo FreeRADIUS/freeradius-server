@@ -41,8 +41,9 @@ RCSID("$Id$")
  *	That's because if the authentication vector is different,
  *	it means that the NAS has given up on the earlier request.
  */
-int fr_packet_cmp(fr_radius_packet_t const *a, fr_radius_packet_t const *b)
+int fr_packet_cmp(void const *a_v, void const *b_v)
 {
+	fr_radius_packet_t const *a = a_v, *b = b_v;
 	int ret;
 
 	/*
@@ -102,13 +103,13 @@ typedef struct {
 
 	int		src_any;
 	int		dst_any;
-	void			*ctx;
+	void		*ctx;
 
-	uint32_t		num_outgoing;
+	uint32_t	num_outgoing;
 
-	bool			dont_use;
+	bool		dont_use;
 
-	uint8_t			id[32];
+	uint8_t		id[32];
 } fr_packet_socket_t;
 
 
@@ -279,14 +280,6 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	return true;
 }
 
-static int packet_entry_cmp(void const *one, void const *two)
-{
-	fr_radius_packet_t const * const *a = one;
-	fr_radius_packet_t const * const *b = two;
-
-	return fr_packet_cmp(*a, *b);
-}
-
 void fr_packet_list_free(fr_packet_list_t *pl)
 {
 	if (!pl) return;
@@ -306,7 +299,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 
 	pl = talloc_zero(NULL, fr_packet_list_t);
 	if (!pl) return NULL;
-	pl->tree = rbtree_alloc(pl, packet_entry_cmp, NULL, 0);	/* elements not talloc safe */
+	pl->tree = rbtree_alloc(pl, fr_packet_cmp, NULL, 0);	/* elements not talloc safe */
 	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;
@@ -327,18 +320,18 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
  *	be called before inserting the packet into the list!
  */
 bool fr_packet_list_insert(fr_packet_list_t *pl,
-			    fr_radius_packet_t **request_p)
-{
-	if (!pl || !request_p || !*request_p) return 0;
-
-	return rbtree_insert(pl->tree, request_p);
-}
-
-fr_radius_packet_t **fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t *request)
+			    fr_radius_packet_t *request)
 {
 	if (!pl || !request) return 0;
 
-	return rbtree_finddata(pl->tree, &request);
+	return rbtree_insert(pl->tree, request);
+}
+
+fr_radius_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t *request)
+{
+	if (!pl || !request) return 0;
+
+	return rbtree_finddata(pl->tree, request);
 }
 
 
@@ -346,7 +339,7 @@ fr_radius_packet_t **fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_
  *	This presumes that the reply has dst_ipaddr && dst_port set up
  *	correctly (i.e. real IP, or "*").
  */
-fr_radius_packet_t **fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_packet_t *reply)
+fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_packet_t *reply)
 {
 	fr_radius_packet_t my_request, *request;
 	fr_packet_socket_t *ps;
@@ -380,7 +373,7 @@ fr_radius_packet_t **fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius
 	my_request.id = reply->id;
 	request = &my_request;
 
-	return rbtree_finddata(pl->tree, &request);
+	return rbtree_finddata(pl->tree, request);
 }
 
 
@@ -390,7 +383,7 @@ bool fr_packet_list_yank(fr_packet_list_t *pl, fr_radius_packet_t *request)
 
 	if (!pl || !request) return false;
 
-	node = rbtree_find(pl->tree, &request);
+	node = rbtree_find(pl->tree, request);
 	if (!node) return false;
 
 	rbtree_delete(pl->tree, node);
@@ -425,12 +418,11 @@ uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
  *	should be used.
  */
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    fr_radius_packet_t **request_p, void **pctx)
+			    fr_radius_packet_t *request, void **pctx)
 {
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
 	fr_packet_socket_t *ps= NULL;
-	fr_radius_packet_t *request = *request_p;
 
 	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
 	    (request->socket.inet.dst_port == 0)) {
@@ -623,7 +615,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	/*
 	 *	If we managed to insert it, we're done.
 	 */
-	if (fr_packet_list_insert(pl, request_p)) {
+	if (fr_packet_list_insert(pl, request)) {
 		if (pctx) *pctx = ps->ctx;
 		ps->num_outgoing++;
 		pl->num_outgoing++;

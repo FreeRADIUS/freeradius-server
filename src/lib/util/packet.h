@@ -69,6 +69,8 @@ typedef struct {
 	uint32_t       		rounds;			//!< for State[0]
 
 	size_t			partial;
+
+	void			*uctx;
 } fr_radius_packet_t;
 
 fr_radius_packet_t	*fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector);

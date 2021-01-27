@@ -29,7 +29,7 @@ RCSIDH(list_h, "$Id$")
 #include <stdbool.h>
 #include <stdint.h>
 
-int fr_packet_cmp(fr_radius_packet_t const *a, fr_radius_packet_t const *b);
+int fr_packet_cmp(void const *a, void const *b);
 void fr_request_from_reply(fr_radius_packet_t *request,
 			     fr_radius_packet_t const *reply);
 
@@ -37,18 +37,15 @@ typedef struct fr_packet_list_s fr_packet_list_t;
 
 fr_packet_list_t *fr_packet_list_create(int alloc_id);
 void fr_packet_list_free(fr_packet_list_t *pl);
-bool fr_packet_list_insert(fr_packet_list_t *pl,
-			    fr_radius_packet_t **request_p);
+bool fr_packet_list_insert(fr_packet_list_t *pl, fr_radius_packet_t *request_p);
 
-fr_radius_packet_t **fr_packet_list_find(fr_packet_list_t *pl,
-				      fr_radius_packet_t *request);
-fr_radius_packet_t **fr_packet_list_find_byreply(fr_packet_list_t *pl,
-					      fr_radius_packet_t *reply);
+fr_radius_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t *request);
+fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_packet_t *reply);
 bool fr_packet_list_yank(fr_packet_list_t *pl,
 			 fr_radius_packet_t *request);
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl);
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    fr_radius_packet_t **request_p, void **pctx);
+			    fr_radius_packet_t *request_p, void **pctx);
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
 			    fr_radius_packet_t *request, bool yank);
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
@@ -66,12 +63,3 @@ uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);
 
 void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received);
 void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received);
-
-/*
- *	"find" returns a pointer to the fr_radius_packet_t* member in the
- *	caller's structure.  In order to get the pointer to the *top*
- *	of the caller's structure, you have to subtract the offset to
- *	the member from the returned pointer, and cast it to the
- *	required type.
- */
-# define fr_packet2myptr(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))

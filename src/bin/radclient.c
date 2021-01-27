@@ -376,6 +376,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			ERROR("Out of memory");
 			goto error;
 		}
+		request->packet->uctx = request;
 
 		request->packet->socket.inet.src_ipaddr = client_ipaddr;
 		request->packet->socket.inet.src_port = client_port;
@@ -796,7 +797,7 @@ static int send_one_packet(rc_request_t *request)
 		 */
 	retry:
 		request->packet->socket.inet.src_ipaddr.af = server_ipaddr.af;
-		rcode = fr_packet_list_id_alloc(packet_list, ipproto, &request->packet, NULL);
+		rcode = fr_packet_list_id_alloc(packet_list, ipproto, request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
 
@@ -960,11 +961,11 @@ static int send_one_packet(rc_request_t *request)
  */
 static int recv_one_packet(fr_time_t wait_time)
 {
-	fd_set		set;
-	fr_time_delta_t our_wait_time;
-	rc_request_t	*request;
-	fr_radius_packet_t	*reply, **packet_p;
-	volatile int	max_fd;
+	fd_set			set;
+	fr_time_delta_t		our_wait_time;
+	rc_request_t		*request;
+	fr_radius_packet_t	*reply, *packet;
+	volatile int		max_fd;
 
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
@@ -1017,14 +1018,14 @@ static int recv_one_packet(fr_time_t wait_time)
 		reply->socket.inet.src_port = server_port;
 	}
 
-	packet_p = fr_packet_list_find_byreply(packet_list, reply);
-	if (!packet_p) {
+	packet = fr_packet_list_find_byreply(packet_list, reply);
+	if (!packet) {
 		ERROR("Received reply to request we did not send. (id=%d socket %d)",
 		      reply->id, reply->socket.fd);
 		fr_radius_packet_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
-	request = fr_packet2myptr(rc_request_t, packet, packet_p);
+	request = packet->uctx;
 
 	/*
 	 *	Fails the signature validation: not a real reply.
