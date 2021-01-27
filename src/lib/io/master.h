@@ -41,6 +41,7 @@ typedef struct fr_io_client_s fr_io_client_t;
 typedef struct {
 	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
+	fr_time_t			expires;	//!< when this packet expires
 	int				packets;     	//!< number of packets using this entry
 	uint8_t				*reply;		//!< reply packet (if any)
 	size_t				reply_len;	//!< length of reply, or 1 for "do not reply"

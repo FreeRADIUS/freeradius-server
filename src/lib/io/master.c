@@ -1542,7 +1542,7 @@ have_client:
 				fr_network_t *nr;
 
 				if (track->do_not_respond) {
-					DEBUG("Ignoring retransmit from client %s - we are not responding to this request ", client->radclient->shortname);
+					DEBUG("Ignoring retransmit from client %s - we are not responding to this request", client->radclient->shortname);
 					return 0;
 				}
 
@@ -2079,13 +2079,17 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		fr_assert(inst->cleanup_delay > 0);
 		fr_assert(track->do_not_respond || track->reply_len);
 
+		track->expires = fr_time() + inst->cleanup_delay;
+
 		/*
 		 *	if the timer succeeds, then "track"
 		 *	will be cleaned up when the timer
 		 *	fires.
 		 */
-		if (fr_event_timer_in(track, el, &track->ev,
-				      inst->cleanup_delay, packet_expiry_timer, track) == 0) {
+		if (fr_event_timer_at(track, el, &track->ev,
+				      track->expires, packet_expiry_timer, track) == 0) {
+			DEBUG("proto_%s - cleaning up request in %d.%06ds", inst->app_io->name,
+			      (int) (inst->cleanup_delay / NSEC), (int) (inst->cleanup_delay % NSEC));
 			return;
 		}
 
