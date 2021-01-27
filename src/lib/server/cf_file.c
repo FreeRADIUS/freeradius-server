@@ -682,7 +682,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 
 typedef struct {
 	int		rcode;
-	rb_walker_t	callback;
+	fr_rb_walker_t	callback;
 	CONF_SECTION	*modules;
 } cf_file_callback_t;
 
@@ -2397,7 +2397,7 @@ void cf_file_check_user(uid_t uid, gid_t gid)
 /*
  *	See if any of the files have changed.
  */
-int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
+int cf_file_changed(CONF_SECTION *cs, fr_rb_walker_t callback)
 {
 	CONF_SECTION		*top;
 	cf_file_callback_t	cb;

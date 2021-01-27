@@ -54,7 +54,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
-int fr_packet_list_walk(fr_packet_list_t *pl, rb_walker_t callback, void *uctx);
+int fr_packet_list_walk(fr_packet_list_t *pl, fr_rb_walker_t callback, void *uctx);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
 fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma);
 

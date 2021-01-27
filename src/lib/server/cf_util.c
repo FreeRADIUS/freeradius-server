@@ -1681,7 +1681,7 @@ typedef struct {
 	void		*ctx;		//!< to pass to cb.
 } cf_data_walk_ctx_t;
 
-/** Wrap a cf_walker_t in an rb_walker_t
+/** Wrap a cf_walker_t in an fr_rb_walker_t
  *
  * @param[in] data	A CONF_DATA entry.
  * @param[in] uctx	A cf_data_walk_ctx_t.

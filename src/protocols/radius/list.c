@@ -379,7 +379,7 @@ fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_
 
 bool fr_packet_list_yank(fr_packet_list_t *pl, fr_radius_packet_t *request)
 {
-	rbnode_t *node;
+	fr_rb_node_t *node;
 
 	if (!pl || !request) return false;
 
@@ -671,7 +671,7 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
  *	1  means delete current node and stop
  *	2  means delete current node and continue
  */
-int fr_packet_list_walk(fr_packet_list_t *pl, rb_walker_t callback, void *uctx)
+int fr_packet_list_walk(fr_packet_list_t *pl, fr_rb_walker_t callback, void *uctx)
 {
 	if (!pl || !callback) return 0;
 

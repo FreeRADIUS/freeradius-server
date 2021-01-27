@@ -9,17 +9,11 @@
  *	This needs to be kept in lockstep with rbtree.c
  */
 
-/* RED-BLACK tree description */
-typedef enum {
-	BLACK,
-	RED
-} node_colour_t;
-
 struct rbnode_s {
-    rbnode_t		*left;		//!< left child
-    rbnode_t		*right;		//!< right child
-    rbnode_t		*parent;	//!< Parent
-    node_colour_t	colour;		//!< Node colour (BLACK, RED)
+    fr_rb_node_t		*left;		//!< left child
+    fr_rb_node_t		*right;		//!< right child
+    fr_rb_node_t		*parent;	//!< Parent
+    fr_rb_colour_t	colour;		//!< Node colour (BLACK, RED)
     void		*data;		//!< data stored in node
 };
 
@@ -27,17 +21,17 @@ struct rbtree_s {
 #ifndef NDEBUG
 	uint32_t		magic;
 #endif
-	rbnode_t		*root;
+	fr_rb_node_t		*root;
 	int			num_elements;
-	rb_comparator_t		compare;
-	rb_free_t		free;
+	fr_rb_cmp_t		compare;
+	fr_rb_free_t		free;
 	bool			replace;
 	bool			lock;
 	pthread_mutex_t		mutex;
 };
 
 /* Storage for the NIL pointer. */
-static rbnode_t *NIL;
+static fr_rb_node_t *NIL;
 
 static int comp(void const *a, void const *b)
 {
@@ -86,7 +80,7 @@ static int filter_cb(void *i, void *uctx)
  */
 static int rbcount(rbtree_t *t)
 {
-	rbnode_t *n;
+	fr_rb_node_t *n;
 	int count, count_expect;
 
 	count_expect = -1;

@@ -128,7 +128,7 @@ int map_proc_register(void *mod_inst, char const *name,
 	 */
 	proc = map_proc_find(name);
 	if (!proc) {
-		rbnode_t *node;
+		fr_rb_node_t *node;
 
 		proc = talloc_zero(mod_inst, map_proc_t);
 		strlcpy(proc->name, name, sizeof(proc->name));
