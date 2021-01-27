@@ -1783,7 +1783,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 					      	     tmpl_rules_t const *t_rules,
 					      	     unsigned int depth)
 {
-	tmpl_request_ref_t		ref;
+	tmpl_request_ref_t	ref;
 	size_t			ref_len;
 	tmpl_request_t		*rr;
 	fr_dlist_head_t		*list = &vpt->data.attribute.rr;
@@ -3144,10 +3144,18 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 		if (ar->ar_unresolved_raw) attr_to_raw(vpt, ar);
 
 		/*
-		 *	FIXME - We need logic similar to
-		 *	the original tokenize function which
-		 *	drops redundant ars.
+		 *	Remove redundant attributes
+		 *
+		 *	If it's not a group or does not specify
+		 *	an index, the ar is redundant and should
+		 *	be removed.
 		 */
+		prev = fr_dlist_prev(&vpt->data.attribute.ar, ar);
+		if (prev && (prev->ar_da != FR_TYPE_GROUP) && (prev->ar_num == NUM_ANY)) {
+			fr_dlist_remove(&vpt->data.attribute.ar, prev);
+			ar->ar_parent = prev->ar_parent;
+			talloc_free(prev);
+		}
 	}
 
 	RESOLVED_SET(&vpt->type);
