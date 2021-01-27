@@ -864,7 +864,7 @@ nak:
  */
 static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 {
-	ssize_t size = 0;
+	ssize_t size;
 	rlm_rcode_t final;
 	request_t *request;
 	fr_time_t now;
@@ -911,7 +911,6 @@ redo:
 		/*
 		 *	Done: don't send a reply.
 		 */
-		size = 1;
 		break;
 
 	case RLM_MODULE_FAIL:
@@ -919,7 +918,6 @@ redo:
 		/*
 		 *	Something went wrong.  It's done, but we don't send a reply.
 		 */
-		size = 1;
 		break;
 
 	case RLM_MODULE_YIELD:
@@ -932,9 +930,6 @@ redo:
 		 *	Don't reply to internally generated request.
 		 */
 		if (request->parent || request->async->fake) break;
-
-		size = request->async->listen->app_io->default_reply_size;
-		if (!size) size = request->async->listen->app_io->default_message_size;
 		break;
 	}
 
@@ -961,6 +956,9 @@ redo:
 	if (!request->async->fake && request->async->listen->track_duplicates) {
 		(void) rbtree_deletebydata(worker->dedup, request);
 	}
+
+	size = request->async->listen->app_io->default_reply_size;
+	if (!size) size = request->async->listen->app_io->default_message_size;
 
 	now = fr_time();
 	worker_send_reply(worker, request, size, now);
