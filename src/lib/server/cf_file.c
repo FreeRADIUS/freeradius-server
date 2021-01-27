@@ -1047,14 +1047,13 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 
 		stack->depth++;
 		frame = &stack->frame[stack->depth];
-
-		memset(frame, 0, sizeof(*frame));
-
-		frame->type = CF_STACK_DIR;
-		frame->directory = directory;
-		frame->parent = parent;
-		frame->current = parent;
-		frame->from_dir = true;
+		*frame = (cf_stack_frame_t){
+			.type = CF_STACK_DIR,
+			.directory = directory,
+			.parent = parent,
+			.current = parent,
+			.from_dir = true
+		};
 
 		MEM(frame->heap = fr_heap_alloc(frame->directory, filename_cmp, cf_file_heap_t, heap_id));
 
