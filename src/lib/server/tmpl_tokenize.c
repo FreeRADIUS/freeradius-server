@@ -3151,7 +3151,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 		 *	be removed.
 		 */
 		prev = fr_dlist_prev(&vpt->data.attribute.ar, ar);
-		if (prev && (prev->ar_da != FR_TYPE_GROUP) && (prev->ar_num == NUM_ANY)) {
+		if (prev && (prev->ar_da->type != FR_TYPE_GROUP) && (prev->ar_num == NUM_ANY)) {
 			fr_dlist_remove(&vpt->data.attribute.ar, prev);
 			ar->ar_parent = prev->ar_parent;
 			talloc_free(prev);
