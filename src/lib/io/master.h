@@ -48,6 +48,7 @@ typedef struct {
 
 	bool				discard;	//!< whether or not we discard the packet
 	bool				do_not_respond;	//!< don't respond
+	bool				finished;	//!< are we finished the request?
 
 	/*
 	 *	We can't set the "process" function here, because a

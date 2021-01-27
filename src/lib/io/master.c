@@ -1547,6 +1547,7 @@ have_client:
 				}
 
 				if (!track->reply) {
+					fr_assert(!track->finished);
 					DEBUG("Ignoring retransmit from client %s - we are still processing the request", client->radclient->shortname);
 					return 0;
 				}
@@ -2159,6 +2160,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 */
 	if (client->state != PR_CLIENT_PENDING) {
 		ssize_t packet_len;
+
+		track->finished = true;
 
 		/*
 		 *	The request later received a conflicting
