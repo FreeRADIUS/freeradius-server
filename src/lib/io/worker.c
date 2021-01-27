@@ -911,6 +911,7 @@ redo:
 		/*
 		 *	Done: don't send a reply.
 		 */
+		size = 1;
 		break;
 
 	case RLM_MODULE_FAIL:
@@ -918,6 +919,7 @@ redo:
 		/*
 		 *	Something went wrong.  It's done, but we don't send a reply.
 		 */
+		size = 1;
 		break;
 
 	case RLM_MODULE_YIELD:
