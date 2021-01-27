@@ -1408,6 +1408,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	fr_sbuff_marker_t	m_s;
 	tmpl_attr_filter_t	filter;
 	fr_dict_attr_err_t	dict_err;
+	fr_dict_attr_t const	*our_parent = parent;
 
 	fr_sbuff_marker(&m_s, name);
 
@@ -1431,7 +1432,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	/*
 	 *	No parent means we need to go hunting through all the dictionaries
 	 */
-	if (!parent) {
+	if (!our_parent) {
 		slen = fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
 								    t_rules->dict_def,
 								    name, p_rules ? p_rules->terminals : NULL,
@@ -1442,7 +1443,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	only way of recording the parent is
 		 *	by looking at the da.
 		 */
-		if (da) parent = da->parent;
+		if (da) our_parent = da->parent;
 	/*
 	 *	Otherwise we're resolving in the context of the last component,
 	 *	or its reference in the case of group attributes.
@@ -1470,7 +1471,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 							  p_rules ? p_rules->terminals : NULL);
 			if (da) {
 				dict_err = FR_DICT_ATTR_OK;
-				parent = fr_dict_root(fr_dict_internal());
+				our_parent = fr_dict_root(fr_dict_internal());
 			}
 		}
 	}
@@ -1480,7 +1481,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 */
 	switch (dict_err) {
 	case FR_DICT_ATTR_NO_CHILDREN:
-		if (parent && parent->flags.is_unknown) break;
+		if (our_parent && our_parent->flags.is_unknown) break;
 		fr_sbuff_advance(name, slen * -1);
 		goto error;
 
@@ -1500,7 +1501,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 				.ar_num = NUM_ANY,
 				.ar_type = TMPL_ATTR_TYPE_NORMAL,
 				.ar_da = da,
-				.ar_parent = parent
+				.ar_parent = our_parent
 			};
 			goto check_attr;
 		}
@@ -1520,8 +1521,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	first, and then run the rest of the logic in this
 	 *	function.
 	 */
-	if (!namespace && t_rules->dict_def) parent = namespace = fr_dict_root(t_rules->dict_def);
-	if (!namespace && !t_rules->disallow_internal) parent = namespace = fr_dict_root(fr_dict_internal());
+	if (!namespace && t_rules->dict_def) our_parent = namespace = fr_dict_root(t_rules->dict_def);
+	if (!namespace && !t_rules->disallow_internal) our_parent = namespace = fr_dict_root(fr_dict_internal());
 	if (!namespace) {
 		fr_strerror_const("Attribute references must be qualified with a protocol when used here");
 		if (err) *err = TMPL_ATTR_ERROR_UNQUALIFIED_NOT_ALLOWED;
@@ -1557,7 +1558,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 				.ar_num = NUM_ANY,
 				.ar_type = TMPL_ATTR_TYPE_NORMAL,
 				.ar_da = da,
-				.ar_parent = parent,
+				.ar_parent = our_parent,
 			};
 			vpt->data.attribute.was_oid = true;
 
@@ -1597,7 +1598,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			.ar_type = TMPL_ATTR_TYPE_UNKNOWN,
 			.ar_unknown = da_unknown,
 			.ar_da = da_unknown,
-			.ar_parent = parent,
+			.ar_parent = our_parent,
 		};
 		da = da_unknown;
 		vpt->data.attribute.was_oid = true;
@@ -1624,7 +1625,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	Once we hit one unresolved attribute we have to treat
 	 *	the rest of the components are unresolved as well.
 	 */
-	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, parent, namespace, name, t_rules, depth);
+	return tmpl_attr_afrom_attr_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, t_rules, depth);
 
 check_attr:
 	/*
@@ -1638,7 +1639,7 @@ check_attr:
 		 *	Parent is the dict root if this is the first ref in the
 		 *	chain.
 		 */
-		if (!parent) parent = fr_dict_root(dict_def);
+		if (!our_parent) our_parent = fr_dict_root(dict_def);
 
 		/*
 		 *	Even if allow_foreign is false, if disallow_internal is not
@@ -1668,7 +1669,7 @@ check_attr:
 		 *	|_ RADIUS attribute
 		 */
 		if (found_in != fr_dict_internal() &&
-		    !t_rules->allow_foreign && (found_in != fr_dict_by_da(parent))) {
+		    !t_rules->allow_foreign && (found_in != fr_dict_by_da(our_parent))) {
 			fr_strerror_printf("Foreign %s attribute found.  Only %s attributes are allowed here",
 					   fr_dict_root(found_in)->name,
 					   fr_dict_root(dict_def)->name);
@@ -1713,7 +1714,7 @@ do_suffix:
 		 *	it points to.
 		 */
 		case FR_TYPE_GROUP:
-			parent = namespace = fr_dict_attr_ref(da);
+			our_parent = namespace = fr_dict_attr_ref(da);
 			break;
 
 		case FR_TYPE_STRUCT:
@@ -1736,7 +1737,7 @@ do_suffix:
 			if ((filter == TMPL_ATTR_REF_NO_FILTER) && (ar->type == TMPL_ATTR_TYPE_NORMAL)) {
 				TALLOC_FREE(ar);
 			} else {
-				parent = da;	/* Only update the parent if we're not stripping */
+				our_parent = da;	/* Only update the parent if we're not stripping */
 			}
 			namespace = da;
 			break;
@@ -1754,7 +1755,7 @@ do_suffix:
 		}
 
 		if (ar) tmpl_attr_insert(vpt, ar);
-		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, parent, namespace, name, p_rules, t_rules, depth + 1) < 0) {
+		if (tmpl_attr_afrom_attr_substr(ctx, err, vpt, our_parent, namespace, name, p_rules, t_rules, depth + 1) < 0) {
 			if (ar) fr_dlist_talloc_free_tail(&vpt->data.attribute.ar); /* Remove and free ar */
 			goto error;
 		}
