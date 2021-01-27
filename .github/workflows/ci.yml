@@ -251,6 +251,7 @@ jobs:
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html
+        retention-days: 30
       if: ${{ matrix.env.CC == 'clang' && failure() }}
 
     - name: Install fixture (redis)
@@ -336,6 +337,7 @@ jobs:
       with:
         name: clang-fuzzer
         path: build/fuzzer
+        retention-days: 30
       if: ${{ matrix.env.TEST_TYPE == 'fuzzing' && failure() }}
 
     #
