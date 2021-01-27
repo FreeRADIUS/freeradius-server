@@ -1,9 +1,19 @@
 name: Scheduled fuzzing
 
+#
+#  This workflow will normally run on a schedule.
+#
+#  It can also be invoked manually by pushing to a branch called
+#  run-fuzzer[-<timeout>], e.g.
+#
+#    - 'run-fuzzer':      Start fuzzing immediately
+#    - 'run-fuzzer-3600': Limit the runtime to one hour
+#
+
 on:
   push:
     branches:
-      - run-fuzzer
+      - 'run-fuzzer**'
 
   schedule:
     - cron: '0 4 * * *'
@@ -132,12 +142,15 @@ jobs:
 
     - name: Run fuzzer tests
       run: |
+        [[ "$GITHUB_REF" = refs/heads/run-fuzzer-* ]] && TOTAL_RUNTIME=${GITHUB_REF#refs/heads/run-fuzzer-}
         REMAINING_TIME=$(( $TOTAL_RUNTIME + `cat ~/start_timestamp` - `date +%s` ))
         echo "Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
         [[ "$REMAINING_TIME" -lt 1 ]] && exit 1
         timeout "$REMAINING_TIME" make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT=300 FUZZER_ARGUMENTS="-jobs=10000 -workers=`nproc`" || :
         cp fuzz-*.log build/fuzzer
         find build/fuzzer -type f ! -name 'fuzz-*.log' | grep . && exit 1 || :
+      env:
+        GITHUB_REF: "${{ github.ref }}"
 
     - name: "Clang libFuzzer: Store assets on failure"
       uses: actions/upload-artifact@v2
