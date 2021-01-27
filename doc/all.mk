@@ -28,7 +28,7 @@ $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 	done
 
 -include $(BUILD_DIR)/make/man.mk
-all: $(AUTO_MAN_FILES)
+ALL_INSTALL += $(AUTO_MAN_FILES)
 
 #
 #  We're installing the documentation, but there's no "docdir".
