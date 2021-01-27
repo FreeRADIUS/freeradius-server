@@ -6,4 +6,6 @@ DEFAULT
 	Reply-Message =* ANY,
 	Vendor-Specific.Microsoft.CHAP-Error =* ANY,
 	Proxy-State =* ANY,
-	Error-Cause =* ANY
+	Error-Cause =* ANY,
+	User-Name =* ANY,
+	User-Password =* ANY

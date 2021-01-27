@@ -1,1 +1,9 @@
 attr_filter
+
+update control {
+	&Password.Cleartext := "goodbye"
+}
+
+update reply {
+        &Reply-Message := "success"
+}
