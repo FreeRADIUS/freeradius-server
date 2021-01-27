@@ -236,20 +236,12 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	fr_dcursor_t cursor;
 
 	/*
-	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 *	Process layer NAK, never respond, or "Do not respond".
 	 */
-	if (buffer_len == 1) {
-		*buffer = true;
-		return 1;
-	}
-
-	/*
-	 *	"Do not respond"
-	 */
-	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	if ((buffer_len == 1) ||
+	    (request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
 	    (request->reply->code >= FR_VQP_MAX_CODE)) {
 		track->do_not_respond = true;
-		*buffer = false;
 		return 1;
 	}
 

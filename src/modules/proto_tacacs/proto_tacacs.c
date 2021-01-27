@@ -324,22 +324,14 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	RADCLIENT const		*client;
 
 	/*
-	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 *	Process layer NAK, or "Do not respond".
 	 */
-	if (buffer_len == 1) {
-		*buffer = true;
+	if ((buffer_len == 1) ||
+	    (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_PACKET_TYPE_MAX)) {
+		track->do_not_respond = true;
 		return 1;
 	}
-
-	/*
-	 *	"Do not respond"
-	 */
-	if (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
-		*buffer = false;
-		return 1;
-	}
-	fr_assert(request->reply->code != 0);
-	fr_assert(request->reply->code < FR_PACKET_TYPE_MAX);
 
 	client = address->radclient;
 	fr_assert(client);

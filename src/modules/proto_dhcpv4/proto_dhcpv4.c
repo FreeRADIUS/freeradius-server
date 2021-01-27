@@ -252,21 +252,14 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	RADCLIENT const *client;
 
 	/*
-	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 *	process layer NAK, or "Do not respond".  We also never
+	 *	send replies to a release.
 	 */
-	if (buffer_len == 1) {
-		*buffer = true;
-		return 1;
-	}
-
-	/*
-	 *	"Do not respond".  We also never send replies to a release.
-	 */
-	if ((request->reply->code == FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) ||
+	if ((buffer_len == 1) ||
+	    (request->reply->code == FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) ||
 	    (request->reply->code == 0) || (request->reply->code >= FR_DHCP_MAX) ||
 	    (request->packet->code == FR_DHCP_RELEASE)) {
 		track->do_not_respond = true;
-		*buffer = false;
 		return 1;
 	}
 

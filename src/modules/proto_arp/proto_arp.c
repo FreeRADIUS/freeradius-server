@@ -110,17 +110,9 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	fr_arp_packet_t		*arp;
 
 	/*
-	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 *	Process layer NAK, never respond, or "Do not respond".
 	 */
-	if (buffer_len == 1) {
-		*buffer = true;
-		return 1;
-	}
-
-	/*
-	 *	"Do not respond"
-	 */
-	if (!inst->active ||
+	if ((buffer_len == 1) || !inst->active ||
 	    (request->reply->code == FR_ARP_CODE_DO_NOT_RESPOND) ||
 	    (request->reply->code == 0) || (request->reply->code >= FR_ARP_MAX_PACKET_CODE)) {
 		*buffer = false;
