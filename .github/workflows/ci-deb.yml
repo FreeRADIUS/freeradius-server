@@ -102,6 +102,7 @@ jobs:
       with:
         name: debs-${{ matrix.env.NAME }}
         path: debs
+        retention-days: 1
 
   deb-test:
 
@@ -179,7 +180,9 @@ jobs:
       if: ${{ failure() }}
       uses: actions/upload-artifact@v2
       with:
-        name: radius-logs-${{ matrix.env.NAME }}.tgz
+        name: radius-logs-${{ matrix.env.NAME }}
         path: |
           /var/log/freeradius
           freeradius/build/tests/eapol_test
+        retention-days: 30
+

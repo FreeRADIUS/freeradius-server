@@ -151,6 +151,7 @@ jobs:
       with:
         name: rpms-${{ matrix.env.NAME }}
         path: rpms
+        retention-days: 1
 
   rpm-test:
 
@@ -255,7 +256,8 @@ jobs:
       if: ${{ failure() }}
       uses: actions/upload-artifact@v2
       with:
-        name: radius-logs-${{ matrix.env.NAME }}.tgz
+        name: radius-logs-${{ matrix.env.NAME }}
         path: |
           /var/log/radius
           freeradius/build/tests/eapol_test
+        retention-days: 30

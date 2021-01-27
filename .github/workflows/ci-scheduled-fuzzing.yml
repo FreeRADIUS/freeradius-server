@@ -144,4 +144,5 @@ jobs:
       with:
         name: fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
         path: build/fuzzer
+        retention_days: 30
       if: ${{ failure() }}
