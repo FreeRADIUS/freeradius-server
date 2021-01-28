@@ -1,7 +1,7 @@
-import radiusd
+import freeradius
 
 def authorize(p):
-    if radiusd.config.get('a_param'):
-        return radiusd.RLM_MODULE_OK
+    if freeradius.config.get('a_param'):
+        return freeradius.RLM_MODULE_OK
 
-    return radiusd.RLM_MODULE_NOOP
+    return freeradius.RLM_MODULE_NOOP

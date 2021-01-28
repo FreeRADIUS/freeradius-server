@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"
@@ -76,20 +76,17 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  *
  * @param instance	Instance of this module
  * @param request	The current request
- * @param req		The request list
+ * @param request_list	The request list
  * @param check		Value pair containing group to be searched
- * @param check_pairs	Unknown
- * @param reply_pairs	Unknown
  *
  * @return
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req, VALUE_PAIR *check,
-			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
 {
 	rlm_winbind_t		*inst = instance;
-	rlm_rcode_t		rcode = 1;
+	int			ret = 1;
 	struct wbcContext	*wb_ctx;
 	wbcErr			err;
 	uint32_t		num_groups, i;
@@ -101,12 +98,12 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	char			*user_buff = NULL;
 	char const		*username;
 	char			*username_buff = NULL;
-	VALUE_PAIR		*vp_username;
+	fr_pair_t		*vp_username;
 
 	ssize_t			slen;
 	size_t			backslash = 0;
 
-	vp_username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	vp_username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!vp_username) return -1;
 
 	RINDENT();
@@ -176,7 +173,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wb_groups);
 	switch (err) {
 	case WBC_ERR_SUCCESS:
-		rcode = 0;
+		ret = 0;
 		REDEBUG2("Successfully retrieved user's groups");
 		break;
 
@@ -200,8 +197,8 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	if (!num_groups) REDEBUG2("No groups returned");
 
-	if (rcode) goto finish;
-	rcode = 1;
+	if (ret) goto finish;
+	ret = 1;
 
 	/*
 	 *	See if any of the groups match
@@ -251,7 +248,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		if (!strcasecmp(group_name, check->vp_strvalue)) {
 			REDEBUG2("Found matching group: %s", group_name);
 			found = true;
-			rcode = 0;
+			ret = 0;
 		}
 		wbcFreeMemory(group);
 
@@ -259,7 +256,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		if (found) break;
 	}
 
-	if (rcode) REDEBUG2("No groups found that match");
+	if (ret) REDEBUG2("No groups found that match");
 
 finish:
 	wbcFreeMemory(wb_groups);
@@ -271,7 +268,7 @@ error:
 	talloc_const_free(domain);
 	REXDENT();
 
-	return rcode;
+	return ret;
 }
 
 
@@ -335,12 +332,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
-		PERROR("Failed adding %s alias", inst->name);
-		return -1;
-	}
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;
 	} else if (cf_section_name2(conf)) {
@@ -385,6 +376,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  Winbind authentication will likely not work",
+		     inst->name);
+	}
+
 	/*
 	 *	If the domain has not been specified, try and find
 	 *	out what it is from winbind.
@@ -417,9 +414,19 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			goto no_domain;
 		}
 
-		tmpl_afrom_str(instance, &inst->wb_domain, wb_info->netbios_domain,
-			       strlen(wb_info->netbios_domain), T_SINGLE_QUOTED_STRING,
-			       &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, false);
+		tmpl_afrom_substr(instance, &inst->wb_domain,
+			          &FR_SBUFF_IN(wb_info->netbios_domain, strlen(wb_info->netbios_domain)),
+			          T_SINGLE_QUOTED_STRING,
+			          NULL,
+			          &(tmpl_rules_t){
+			          	.allow_unknown = true,
+			          	.allow_unresolved = true
+			          });
+		if (!inst->wb_domain) {
+			cf_log_perr(conf, "Bad domain");
+			wbcFreeMemory(wb_info);
+			return -1;
+		}
 
 		cf_log_err(conf, "Using winbind_domain '%s'", inst->wb_domain->name);
 
@@ -453,46 +460,48 @@ static int mod_detach(void *instance)
  * Checks there is a password available so we can authenticate
  * against winbind and, if so, sets Auth-Type to ourself.
  *
- * @param[in] instance	Module instance.
- * @param[in] thread	Thread specific data.
- * @param[in] request	The current request.
- *
- * @return
- *	- #RLM_MODULE_NOOP unable to use winbind authentication
- *	- #RLM_MODULE_OK Auth-Type has been set to winbind
+ * @param[out] p_result		The result of the module call:
+ *				- #RLM_MODULE_NOOP unable to use winbind authentication
+ *				- #RLM_MODULE_OK Auth-Type has been set to winbind
+ * @param[in] mctx		Module instance data.
+ * @param[in] request		The current request.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_winbind_t const *inst = instance;
-	VALUE_PAIR *vp;
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
+	fr_pair_t		*vp;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 	if (!vp) {
 		REDEBUG2("No User-Password found in the request; not doing winbind authentication.");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
+		     inst->name, inst->name);
+		RETURN_MODULE_NOOP;
+	}
 
-	return RLM_MODULE_OK;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+
+	RETURN_MODULE_OK;
 }
 
 
 /** Authenticate the user via libwbclient and winbind
  *
- * @param[in] instance	Module instance
- * @param[in] thread	Thread specific data.
- * @param[in] request	The current request
- *
- * @return One of the RLM_MODULE_* values
+ * @param[out] p_result		The result of the module call.
+ * @param[in] mctx		Module instance data.
+ * @param[in] request		The current request
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_winbind_t const *inst = instance;
-	VALUE_PAIR *username, *password;
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
+	fr_pair_t		*username, *password;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -500,12 +509,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -513,7 +522,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -532,10 +541,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (do_auth_wbclient_pap(inst, request, password) == 0) {
 		REDEBUG2("User authenticated successfully using winbind");
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
-	return RLM_MODULE_REJECT;
+	RETURN_MODULE_REJECT;
 }
 
 

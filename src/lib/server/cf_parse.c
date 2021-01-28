@@ -32,9 +32,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/tmpl.h>
-
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/types.h>
@@ -97,8 +97,43 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 		return 0;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
+	}
+}
+
+static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, bool secret)
+{
+	if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
+		cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
+
+	} else if (cp->rhs_quote == T_BARE_WORD) {
+		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
+
+	} else {
+		/*
+		 *	Print the strings with the correct quotation character and escaping.
+		 */
+		char *tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
+		char quote;
+
+		switch (cp->rhs_quote) {
+		default:
+		case T_DOUBLE_QUOTED_STRING:
+			quote = '"';
+			break;
+
+		case T_SINGLE_QUOTED_STRING:
+			quote = '\'';
+			break;
+
+		case T_BACK_QUOTED_STRING:
+			quote = '`';
+			break;
+		}
+
+		cf_log_debug(cs, "%.*s%s = %c%s%c", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, tmp, quote);
+		talloc_free(tmp);
 	}
 }
 
@@ -120,9 +155,8 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
 int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		rcode = 0;
-	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
+	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists, nonblock;
 
-	fr_ipaddr_t	*ipaddr;
 	ssize_t		slen;
 
 	int		type = rule->type;
@@ -136,10 +170,11 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	file_exists = (type == FR_TYPE_FILE_EXISTS);	/* check, not and */
 	cant_be_empty = (type & FR_TYPE_NOT_EMPTY);
 	tmpl = (type & FR_TYPE_TMPL);
+	nonblock = (type & FR_TYPE_NON_BLOCKING);
 
-	rad_assert(cp);
-	rad_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
-	rad_assert((type & FR_TYPE_ON_READ) == 0);
+	fr_assert(cp);
+	fr_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
+	fr_assert((type & FR_TYPE_ON_READ) == 0);
 
 	if (required) cant_be_empty = true;		/* May want to review this in the future... */
 
@@ -149,7 +184,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	 *	Everything except templates must have a base type.
 	 */
 	if (!type && !tmpl) {
-		cf_log_err(cp, "Configuration pair \"%s\" must have a data type", cf_pair_attr(cp));
+		cf_log_err(cp, "Configuration pair \"%s\" must have a data type", cp->attr);
 		return -1;
 	}
 
@@ -157,7 +192,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	 *	Catch crazy errors.
 	 */
 	if (!cp->value) {
-		cf_log_err(cp, "Configuration pair \"%s\" must have a value", cf_pair_attr(cp));
+		cf_log_err(cp, "Configuration pair \"%s\" must have a value", cp->attr);
 		return -1;
 	}
 
@@ -165,7 +200,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	 *	Check for zero length strings
 	 */
 	if ((cp->value[0] == '\0') && cant_be_empty) {
-		cf_log_err(cp, "Configuration pair \"%s\" must not be empty (zero length)", cf_pair_attr(cp));
+		cf_log_err(cp, "Configuration pair \"%s\" must not be empty (zero length)", cp->attr);
 		if (!required) cf_log_err(cp, "Comment item to silence this message");
 		rcode = -1;
 
@@ -174,39 +209,72 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	}
 
 	if (tmpl) {
-		vp_tmpl_t *vpt;
+		tmpl_t			*vpt;
+		static tmpl_rules_t	rules = {
+						.allow_unknown = true,
+						.allow_unresolved = true,
+						.allow_foreign = true
+					};
+		fr_type_t		cast = FR_TYPE_INVALID;
+		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		if (!cp->printed) cf_pair_debug(cs, cp, secret);
 
 		/*
-		 *	This is so we produce TMPL_TYPE_ATTR_UNDEFINED template that
-		 *	the bootstrap functions can use to create an attribute.
-		 *
-		 *	For other types of template such as xlats, we don't bother.
-		 *	There's no reason bootstrap functions need access to the raw
-		 *	xlat strings.
+		 *	Parse the cast operator for barewords
 		 */
-		if (attribute) {
-			slen = tmpl_afrom_attr_str(cp, NULL, &vpt, cp->value,
-						   &(vp_tmpl_rules_t){
-							.allow_unknown = true,
-							.allow_undefined = true
-						   });
+		if (cp->rhs_quote == T_BARE_WORD) {
+			slen = tmpl_cast_from_substr(&cast, &sbuff);
 			if (slen < 0) {
 				char *spaces, *text;
-
+			tmpl_error:
 				fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
 
 				cf_log_err(cp, "Failed parsing attribute reference:");
 				cf_log_err(cp, "%s", text);
-				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
+				cf_log_perr(cp, "%s^", spaces);
 
 				talloc_free(spaces);
 				talloc_free(text);
 				goto error;
 			}
-			*(vp_tmpl_t **)out = vpt;
+			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
+		} else if (attribute) {
+			cf_log_err(cp, "Invalid quoting.  Unquoted attribute reference is required");
+			goto error;
 		}
+
+		slen = tmpl_afrom_substr(cp, &vpt, &sbuff, cp->rhs_quote,
+					 tmpl_parse_rules_unquoted[cp->rhs_quote],
+					 &rules);
+		if (!vpt) goto tmpl_error;
+
+		if (attribute && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
+			cf_log_err(cp, "Expected attr got %s",
+				   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
+			return -1;
+		}
+
+		tmpl_cast_set(vpt, cast);
+
+		/*
+		 *	Non-blocking xlat's
+		 */
+		if (nonblock) {
+			if (vpt->type == TMPL_TYPE_EXEC) {
+				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking operation.", cp->attr);
+				return -1;
+			}
+
+			if ((vpt->type == TMPL_TYPE_XLAT) &&
+			    xlat_async_required(tmpl_xlat(vpt))) {
+				cf_log_err(cp, "The '%s' configuration item MUST NOT be used with a blocking expansion.", cp->attr);
+				return -1;
+			}
+		}
+
+		*(tmpl_t **)out = vpt;
+
 		goto finish;
 	}
 
@@ -225,11 +293,11 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			*(bool *)out = false;
 		} else {
 			cf_log_err(cs, "Invalid value \"%s\" for boolean variable %s",
-				   cp->value, cf_pair_attr(cp));
+				   cp->value, cp->attr);
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
 		break;
 
 	case FR_TYPE_UINT32:
@@ -245,13 +313,13 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 */
 		if (v > INT32_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cf_pair_attr(cp), INT32_MAX);
+				   cp->attr, INT32_MAX);
 			rcode = -1;
 			goto error;
 		}
 
 		*(uint32_t *)out = v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint32_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint32_t *)out);
 	}
 		break;
 
@@ -261,12 +329,12 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (v > UINT8_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cf_pair_attr(cp), UINT8_MAX);
+				   cp->attr, UINT8_MAX);
 			rcode = -1;
 			goto error;
 		}
 		*(uint8_t *)out = (uint8_t) v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint8_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint8_t *)out);
 	}
 		break;
 
@@ -276,49 +344,41 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (v > UINT16_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cf_pair_attr(cp), UINT16_MAX);
+				   cp->attr, UINT16_MAX);
 			rcode = -1;
 			goto error;
 		}
 		*(uint16_t *)out = (uint16_t) v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint16_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint16_t *)out);
 	}
 		break;
 
 	case FR_TYPE_UINT64:
 		*(uint64_t *)out = strtoull(cp->value, NULL, 0);
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint64_t *)out);
 		break;
 
 	case FR_TYPE_SIZE:
 	{
 		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
-			cf_log_perr(cs, "Invalid value \"%s\" for variable %s", cp->value, cf_pair_attr(cp));
+			cf_log_perr(cs, "Invalid value \"%s\" for variable %s", cp->value, cp->attr);
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(size_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cp->attr, *(size_t *)out);
 		break;
 	}
 
 	case FR_TYPE_INT32:
 		*(int32_t *)out = strtol(cp->value, NULL, 10);
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cp->attr, *(int32_t *)out);
 		break;
 
 	case FR_TYPE_STRING:
 	{
 		char **str = out;
 
-		/*
-		 *	Hide secrets when using "radiusd -X".
-		 */
-		if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
-			if (!cp->printed) cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp));
-		} else {
-			if (!cp->printed) cf_log_debug(cs, "%.*s%s = \"%pV\"", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
-						       fr_box_strvalue_buffer(cp->value));
-		}
+		if (!cp->printed) cf_pair_debug(cs, cp, secret);
 
 		/*
 		 *	If there's out AND it's an input file, check
@@ -346,7 +406,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
-		ipaddr = out;
+	{
+		fr_ipaddr_t *ipaddr = out;
 
 		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
@@ -354,15 +415,17 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
 			rcode = -1;
 			goto error;
 		}
+	}
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
-		ipaddr = out;
+	{
+		fr_ipaddr_t *ipaddr = out;
 
 		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
@@ -370,26 +433,73 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
 			rcode = -1;
 			goto error;
 		}
+	}
 		break;
 
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
-		ipaddr = out;
+	{
+		fr_ipaddr_t	*ipaddr = out;
+		int		af = AF_UNSPEC;
+		fr_type_t	our_type = FR_TYPE_INVALID;
+		fr_sbuff_t	sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
+		slen = tmpl_cast_from_substr(&our_type, &sbuff);
+		if (slen < 0) {
+			cf_log_perr(cp, "Failed parsing config item");
+			rcode = -1;
+			goto error;
+		}
+
+		if (slen > 0) {
+			if (type == FR_TYPE_COMBO_IP_ADDR) {
+				switch (our_type) {
+				case FR_TYPE_IPV4_ADDR:
+					af = AF_INET;
+					break;
+
+				case FR_TYPE_IPV6_ADDR:
+					af = AF_INET6;
+					break;
+
+				default:
+					cf_log_perr(cp, "Invalid cast, expecting 'ipv4addr' or 'ipv6addr'");
+					rcode = -1;
+					goto error;
+				}
+			} else if (type == FR_TYPE_COMBO_IP_PREFIX) {
+				switch (our_type) {
+				case FR_TYPE_IPV4_PREFIX:
+					af = AF_INET;
+					break;
+
+				case FR_TYPE_IPV6_PREFIX:
+					af = AF_INET6;
+					break;
+
+				default:
+					cf_log_perr(cp, "Invalid cast, expecting 'ipv4prefix' or 'ipv6prefix'");
+					rcode = -1;
+					goto error;
+				}
+			}
+		}
+
+		if (fr_inet_pton(ipaddr, cp->value, -1, af, true, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
 			rcode = -1;
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
 			rcode = -1;
 			goto error;
 		}
+	}
 		break;
 
 	case FR_TYPE_TIME_DELTA:
@@ -404,8 +514,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (!cp->printed) {
 			char *p;
-			p = fr_value_box_asprint(NULL, fr_box_time_delta(delta), 0);
-			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), p);
+			fr_value_box_aprint(NULL, &p, fr_box_time_delta(delta), NULL);
+			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, p);
 			talloc_free(p);
 		}
 
@@ -422,7 +532,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr,
 					       (double) num);
 		memcpy(out, &num, sizeof(num));
 	}
@@ -437,7 +547,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			rcode = -1;
 			goto error;
 		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), num);
+		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr, num);
 		memcpy(out, &num, sizeof(num));
 	}
 		break;
@@ -448,8 +558,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	It's not an error parsing the configuration
 		 *	file.
 		 */
-		rad_assert(type > FR_TYPE_INVALID);
-		rad_assert(type < FR_TYPE_MAX);
+		fr_assert(type > FR_TYPE_INVALID);
+		fr_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
 			   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"), type);
@@ -479,14 +589,14 @@ finish:
  *	- -1 on failure.
  */
 static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
-			   int type, char const *dflt, FR_TOKEN dflt_quote)
+			   int type, char const *dflt, fr_token_t dflt_quote)
 {
 	int		lineno = 0;
 	char const	*expanded;
 	CONF_PAIR	*cp;
 	char		buffer[8192];
 
-	rad_assert(dflt);
+	fr_assert(dflt);
 
 	type = FR_BASE_TYPE(type);
 
@@ -555,9 +665,9 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 	unsigned int	type = rule->type;
 	char const	*dflt = rule->dflt;
-	FR_TOKEN	dflt_quote = rule->quote;
+	fr_token_t	dflt_quote = rule->quote;
 
-	rad_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
+	fr_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
 
 	multi = (type & FR_TYPE_MULTI);
 	required = (type & FR_TYPE_REQUIRED);
@@ -609,7 +719,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		if (deprecated) {
 		deprecated:
-			cf_log_err(cp, "Configuration pair \"%s\" is deprecated", cf_pair_attr(cp));
+			cf_log_err(cp, "Configuration pair \"%s\" is deprecated", cp->attr);
 			return -2;
 		}
 
@@ -630,7 +740,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		 *	Tmpl is outside normal range
 		 */
 		else if (type & FR_TYPE_TMPL) {
-			array = (void **)talloc_zero_array(ctx, vp_tmpl_t *, count);
+			array = (void **)talloc_zero_array(ctx, tmpl_t *, count);
 		/*
 		 *	Allocate an array of values.
 		 *
@@ -676,7 +786,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			break;
 
 		case FR_TYPE_VOID:
-			rad_assert(rule->func);
+			fr_assert(rule->func);
 			array = (void **)talloc_zero_array(ctx, void *, count);
 			break;
 
@@ -699,10 +809,10 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 */
 			if (!array) {
 				entry = NULL;
-			} else if (FR_BASE_TYPE(type) == FR_TYPE_VOID) {
+			} else if ((FR_BASE_TYPE(type) == FR_TYPE_VOID) || (type & FR_TYPE_TMPL)) {
 				entry = &array[i];
 			} else {
-				entry = ((uint8_t *) array) + i * fr_value_box_field_sizes[FR_BASE_TYPE(type)];
+				entry = ((uint8_t *) array) + (i * fr_value_box_field_sizes[FR_BASE_TYPE(type)]);
 			}
 
 			/*
@@ -711,7 +821,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 */
 			if (rule->func) {
 				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
-					     cf_pair_attr(cp), cp->value);
+					     cp->attr, cp->value);
 				func = rule->func;
 			} else {
 				if (!entry) goto no_out;
@@ -764,7 +874,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		if (deprecated) goto deprecated;
 
 		if (rule->func) {
-			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
 			cp->printed = true;
 			func = rule->func;
 		}
@@ -803,7 +913,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  * **fr_type_t to data type mappings**
  * | fr_type_t               | Data type          | Dynamically allocated  |
  * | ----------------------- | ------------------ | ---------------------- |
- * | FR_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
+ * | FR_TYPE_TMPL            | ``tmpl_t``      | Yes                    |
  * | FR_TYPE_BOOL            | ``bool``           | No                     |
  * | FR_TYPE_UINT32          | ``uint32_t``       | No                     |
  * | FR_TYPE_UINT16          | ``uint16_t``       | No                     |
@@ -825,7 +935,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  *			Should be one of the following ``data`` types,
  *			and one or more of the following ``flag`` types or'd together:
  *	- ``data`` #FR_TYPE_TMPL 		- @copybrief FR_TYPE_TMPL
- *					  	  Feeds the value into #tmpl_afrom_str. Value can be
+ *					  	  Feeds the value into #tmpl_afrom_substr. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
  *	- ``data`` #FR_TYPE_BOOL		- @copybrief FR_TYPE_BOOL
  *	- ``data`` #FR_TYPE_UINT32		- @copybrief FR_TYPE_UINT32
@@ -860,7 +970,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  *	- -2 if deprecated.
  */
 int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
-		  unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote)
+		  unsigned int type, void *data, char const *dflt, fr_token_t dflt_quote)
 {
 	CONF_PARSER rule = {
 		.name = name,
@@ -1018,7 +1128,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 
 	uint8_t			**array = NULL;
 
-	rad_assert(type & FR_TYPE_SUBSECTION);
+	fr_assert(type & FR_TYPE_SUBSECTION);
 
 	subcs = cf_section_find(cs, rule->name, rule->ident2);
 	if (!subcs) return 0;
@@ -1062,7 +1172,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 		return 0;
 	}
 
-	rad_assert(subcs_size);
+	fr_assert(subcs_size);
 
 	/*
 	 *	Handle the multi subsection case (which is harder)
@@ -1240,9 +1350,73 @@ finish:
 	return ret;
 }
 
+/*
+ *	Pass2 fixups on tmpl_t
+ *
+ *	We don't have (or need yet) cf_pair_parse_pass2(), so we just
+ *	do it for tmpls.
+ */
+static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr_type_t type, bool attribute)
+{
+	tmpl_t *vpt = *out;
+
+	fr_assert(vpt);	/* We need something to resolve */
+
+	if (tmpl_resolve(vpt) < 0) {
+		cf_log_perr(cp, "Failed processing configuration item '%s'", cp->attr);
+		return -1;
+	}
+
+	if (attribute && !tmpl_is_attr(vpt)) {
+		cf_log_err(cp, "Expected attr got %s",
+			   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
+		return -1;
+	}
+
+	switch (vpt->type) {
+	/*
+	 *	All attributes should have been defined by this point.
+	 */
+	case TMPL_TYPE_ATTR_UNRESOLVED:
+		cf_log_err(cp, "Unknown attribute '%s'", tmpl_attr_unresolved(vpt));
+		return -1;
+
+	case TMPL_TYPE_UNRESOLVED:
+		/*
+		 *	Try to realize the underlying type, if at all possible.
+		 */
+		if (!attribute && type && (tmpl_cast_in_place(vpt, type, NULL) < 0)) {
+			cf_log_perr(cp, "Failed processing configuration item '%s'", cp->attr);
+			return -1;
+		}
+		break;
+
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_DATA:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_EXEC_UNRESOLVED:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
+		break;
+
+	case TMPL_TYPE_UNINITIALISED:
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_UNCOMPILED:
+	case TMPL_TYPE_REGEX_XLAT:
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+	case TMPL_TYPE_NULL:
+	case TMPL_TYPE_MAX:
+		fr_assert(0);
+		/* Don't add default */
+	}
+
+	return 0;
+}
+
 /** Fixup xlat expansions and attributes
  *
- * @param[out] base start of structure to write #vp_tmpl_t s to.
+ * @param[out] base start of structure to write #tmpl_t s to.
  * @param[in] cs CONF_SECTION to fixup.
  * @return
  *	- 0 on success.
@@ -1258,6 +1432,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		CONF_PARSER	*rule;
 		void		*data;
 		int		type;
+		fr_dict_t const	*dict = NULL;
 
 		rule = cf_data_value(rule_cd);
 
@@ -1333,6 +1508,12 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		}
 
 		/*
+		 *	Search for dictionary data somewhere in the virtual
+		 *      server.
+		 */
+		dict = virtual_server_namespace_by_ci(cf_section_to_item(cs));
+
+		/*
 		 *	Parse (and throw away) the xlat string (for validation).
 		 *
 		 *	FIXME: All of these should be converted from FR_TYPE_XLAT
@@ -1340,7 +1521,6 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 */
 		if (is_xlat) {
 			ssize_t		slen;
-			char		*value;
 			xlat_exp_t	*xlat;
 
 		redo:
@@ -1349,8 +1529,14 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			/*
 			 *	xlat expansions should be parseable.
 			 */
-			value = talloc_typed_strdup(cs, cp->value); /* modified by xlat_tokenize */
-			slen = xlat_tokenize(cs, &xlat, value, NULL);
+			slen = xlat_tokenize(cs, &xlat, NULL,
+					     &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1), NULL,
+					     &(tmpl_rules_t){
+						.dict_def = dict,
+						.allow_unknown = false,
+						.allow_unresolved = false,
+						.allow_foreign = (dict == NULL)
+					     });
 			if (slen < 0) {
 				char *spaces, *text;
 
@@ -1358,16 +1544,14 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 				cf_log_err(cp, "Failed parsing expansion string:");
 				cf_log_err(cp, "%s", text);
-				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
+				cf_log_perr(cp, "%s^", spaces);
 
 				talloc_free(spaces);
 				talloc_free(text);
-				talloc_free(value);
 				talloc_free(xlat);
 				return -1;
 			}
 
-			talloc_free(value);
 			talloc_free(xlat);
 
 			/*
@@ -1382,66 +1566,23 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		/*
 		 *	Parse the pair into a template
 		 */
+		} else if (is_tmpl && !multi) {
+			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, type, attribute) < 0) {
+				return -1;
+			}
+
 		} else if (is_tmpl) {
-			ssize_t	slen;
+			size_t i;
+			char const *name = cp->attr;
+			tmpl_t **array = *(tmpl_t ***) data;
 
-			vp_tmpl_t **out = (vp_tmpl_t **)data;
-			vp_tmpl_t *vpt;
+			for (i = 0; i < talloc_array_length(array); i++, cp = cf_pair_find_next(cs, cp, name)) {
+				if (!cp) break;
 
-			slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
-					      cf_pair_value_quote(cp),
-					      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true },
-					      true);
-			if (slen < 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(vpt, &spaces, &text, slen, cp->value);
-
-				cf_log_err(cp, "%s", text);
-				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
-
-				talloc_free(spaces);
-				talloc_free(text);
-				return -1;
+				if (cf_parse_tmpl_pass2(cs, &array[i], cp, type, attribute) < 0) {
+					return -1;
+				}
 			}
-
-			if (attribute && !tmpl_is_attr(vpt)) {
-				cf_log_err(cp, "Expected attr got %s",
-					   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
-				return -1;
-			}
-
-			switch (vpt->type) {
-			/*
-			 *	All attributes should have been defined by this point.
-			 */
-			case TMPL_TYPE_ATTR_UNDEFINED:
-				cf_log_err(cp, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
-				talloc_free(vpt);	/* Free last (vpt needed for log) */
-				return -1;
-
-			case TMPL_TYPE_UNPARSED:
-			case TMPL_TYPE_ATTR:
-			case TMPL_TYPE_LIST:
-			case TMPL_TYPE_DATA:
-			case TMPL_TYPE_EXEC:
-			case TMPL_TYPE_XLAT:
-			case TMPL_TYPE_XLAT_STRUCT:
-				break;
-
-			case TMPL_TYPE_UNKNOWN:
-			case TMPL_TYPE_REGEX:
-			case TMPL_TYPE_REGEX_STRUCT:
-			case TMPL_TYPE_NULL:
-				rad_assert(0);
-			/* Don't add default */
-			}
-
-			/*
-			 *	Free the old value if we're overwriting
-			 */
-			TALLOC_FREE(*out);
-			*(vp_tmpl_t **)out = vpt;
 		}
 	}
 
@@ -1480,7 +1621,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 
 		cd = cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, rule->name);
 		old = cf_data_value(cd);
-		rad_assert(old != NULL);
+		fr_assert(old != NULL);
 
 		/*
 		 *	Shut up about duplicates.

@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/main_loop.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/server/util.h>
@@ -52,7 +52,7 @@ static int			self_pipe[2] = { -1, -1 };
 #include <systemd/sd-daemon.h>
 
 static fr_time_delta_t		sd_watchdog_interval;
-static fr_event_timer_t		const *sd_watchdog_ev;
+static fr_event_timer_t	const	*sd_watchdog_ev;
 
 /** Reoccurring watchdog event to inform systemd we're still alive
  *
@@ -73,46 +73,10 @@ static void sd_watchdog_event(fr_event_list_t *our_el, UNUSED fr_time_t now, voi
 }
 #endif
 
-static void handle_signal_self(int flag)
-{
-	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
-		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
-			INFO("Signalled to exit");
-			fr_event_loop_exit(event_list, 1);
-		} else {
-			INFO("Signalled to terminate");
-			fr_event_loop_exit(event_list, 2);
-		}
-
-		return;
-	} /* else exit/term flags weren't set */
-
-	/*
-	 *	Tell the even loop to stop processing.
-	 */
-	if ((flag & RADIUS_SIGNAL_SELF_HUP) != 0) {
-		time_t when;
-		static time_t last_hup = 0;
-
-		when = time(NULL);
-		if ((int) (when - last_hup) < 5) {
-			INFO("Ignoring HUP (less than 5s since last one)");
-			return;
-		}
-
-		INFO("Received HUP signal");
-
-		last_hup = when;
-
-		trigger_exec(NULL, NULL, "server.signal.hup", true, NULL);
-		fr_event_loop_exit(event_list, 0x80);
-	}
-}
-
 /*
  *	Inform ourselves that we received a signal.
  */
-void main_loop_signal_self(int flag)
+void main_loop_signal_raise(int flag)
 {
 	ssize_t rcode;
 	uint8_t buffer[16];
@@ -136,8 +100,47 @@ void main_loop_signal_self(int flag)
 	if (write(self_pipe[1], buffer, 1) < 0) fr_exit(0);
 }
 
-static void main_loop_signal_handler(UNUSED fr_event_list_t *xel,
-				     UNUSED int fd, UNUSED int flags, UNUSED void *ctx)
+static void main_loop_signal_process(int flag)
+{
+	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
+		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
+			INFO("Signalled to exit");
+			fr_event_loop_exit(event_list, 1);
+		} else {
+			INFO("Signalled to terminate");
+			fr_event_loop_exit(event_list, 2);
+		}
+
+		return;
+	} /* else exit/term flags weren't set */
+
+	/*
+	 *	Tell the even loop to stop processing.
+	 */
+	if ((flag & RADIUS_SIGNAL_SELF_HUP) != 0) {
+		time_t when;
+		static time_t last_hup = 0;
+
+		when = time(NULL);
+		if (when - last_hup < (time_t) 5) {
+			INFO("Ignoring HUP (less than 5s since last one)");
+			return;
+		}
+
+		INFO("Received HUP signal");
+
+		last_hup = when;
+
+		trigger_exec(NULL, NULL, "server.signal.hup", true, NULL);
+		fr_event_loop_exit(event_list, 0x80);
+	}
+}
+
+/** I/O handler listening on the signal pipe
+ *
+ */
+static void main_loop_signal_recv(UNUSED fr_event_list_t *xel,
+				  UNUSED int fd, UNUSED int flags, UNUSED void *ctx)
 {
 	ssize_t i, rcode;
 	uint8_t buffer[32];
@@ -150,12 +153,14 @@ static void main_loop_signal_handler(UNUSED fr_event_list_t *xel,
 	 */
 	for (i = 0; i < rcode; i++) buffer[0] |= buffer[i];
 
-	handle_signal_self(buffer[0]);
+	main_loop_signal_process(buffer[0]);
 }
 
+/** Return the main loop event list
+ *
+ */
 fr_event_list_t *main_loop_event_list(void)
 {
-	/* Currently we do not run a second event loop for modules. */
 	return event_list;
 }
 
@@ -212,9 +217,18 @@ int main_loop_start(void)
 		if (under_systemd) {
 			INFO("Informing systemd we're stopping");
 			sd_notify(0, "STOPPING=1");
+			fr_event_timer_delete(&sd_watchdog_ev);
 		}
 	}
 #endif
+
+	/*
+	 *	Clear up the signal pipe we created in
+	 *	main loop init.
+	 */
+	fr_event_fd_delete(event_list, self_pipe[0], FR_EVENT_FILTER_IO);
+	close(self_pipe[0]);
+
 	return ret;
 }
 
@@ -249,27 +263,27 @@ int main_loop_init(void)
 	 *	signal handlers.
 	 */
 	if (pipe(self_pipe) < 0) {
-		ERROR("Error opening internal pipe: %s", fr_syserror(errno));
+		ERROR("Error opening self-signal pipe: %s", fr_syserror(errno));
 		return -1;
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("Error setting internal flags: %s", fr_syserror(errno));
+		ERROR("Error setting self-signal pipe flags: %s", fr_syserror(errno));
 		return -1;
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("Error setting internal flags: %s", fr_syserror(errno));
+		ERROR("Error setting self-signal pipe flags: %s", fr_syserror(errno));
 		return -1;
 	}
-	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
+	DEBUG4("Created self-signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
 	if (fr_event_fd_insert(NULL, event_list, self_pipe[0],
-			       main_loop_signal_handler,
+			       main_loop_signal_recv,
 			       NULL,
 			       NULL,
 			       event_list) < 0) {
-		PERROR("Failed creating signal pipe handler");
+		PERROR("Failed creating self-signal pipe handler");
 		return -1;
 	}
 

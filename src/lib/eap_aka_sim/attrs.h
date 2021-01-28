@@ -20,7 +20,7 @@
  *
  * @copyright 2003-2016 The FreeRADIUS server project
  */
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/protocol/eap/aka-sim/rfc4187.h>
@@ -85,3 +85,7 @@ extern fr_dict_attr_t const *attr_sim_ki;
 extern fr_dict_attr_t const *attr_sim_op;
 extern fr_dict_attr_t const *attr_sim_opc;
 extern fr_dict_attr_t const *attr_sim_sqn;
+
+extern fr_value_box_t const *enum_eap_type_sim;
+extern fr_value_box_t const *enum_eap_type_aka;
+extern fr_value_box_t const *enum_eap_type_aka_prime;

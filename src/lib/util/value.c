@@ -25,7 +25,7 @@
  *   uint8 ordering for consistency.
  *   - #fr_value_box_cast is used to convert (cast) #fr_value_box_t between INTERNAL formats.
  *   - #fr_value_box_strdup* is used to ingest nul terminated strings into the INTERNAL format.
- *   - #fr_value_box_memcpy* is used to ingest binary data into the INTERNAL format.
+ *   - #fr_value_box_memdup* is used to ingest binary data into the INTERNAL format.
  *
  * - NETWORK format is the format we send/receive on the wire.  It is not a perfect representation
  *   of data packing for all protocols, so you will likely need to overload conversion for some types.
@@ -36,7 +36,7 @@
  *
  * - PRESENTATION format is what we print to the screen, and what we get from the user, databases
  *   and configuration files.
- *   - #fr_value_box_asprint is used to convert from INTERNAL to PRESENTATION format.
+ *   - #fr_value_box_aprint is used to convert from INTERNAL to PRESENTATION format.
  *   - #fr_value_box_from_str is used to convert from PRESENTATION to INTERNAL format.
  *
  * @copyright 2014-2017 The FreeRADIUS server project
@@ -44,13 +44,18 @@
  */
 RCSID("$Id$")
 
+#define _VALUE_PRIVATE
+#include <freeradius-devel/util/value.h>
+#undef _VALUE_PRIVATE
+
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/cursor.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/net.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -93,63 +98,60 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float32) == 4,
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) == 8,
 	      "vb_float64 has unexpected length");
 
+
 /** Map data types to names representing those types
  */
 fr_table_num_ordered_t const fr_value_box_type_table[] = {
-	{ "string",		FR_TYPE_STRING		},
-	{ "octets",		FR_TYPE_OCTETS		},
+	{ L("string"),		FR_TYPE_STRING		},
+	{ L("octets"),		FR_TYPE_OCTETS		},
 
-	{ "ipaddr",		FR_TYPE_IPV4_ADDR	},
-	{ "ipv4addr",		FR_TYPE_IPV4_ADDR	},
-	{ "ipv4prefix",		FR_TYPE_IPV4_PREFIX	},
-	{ "ipv6addr",		FR_TYPE_IPV6_ADDR	},
-	{ "ipv6prefix",		FR_TYPE_IPV6_PREFIX	},
-	{ "ifid",		FR_TYPE_IFID		},
-	{ "combo-ip",		FR_TYPE_COMBO_IP_ADDR	},
-	{ "combo-prefix",	FR_TYPE_COMBO_IP_PREFIX	},
-	{ "ether",		FR_TYPE_ETHERNET	},
+	{ L("ipaddr"),		FR_TYPE_IPV4_ADDR	},
+	{ L("ipv4addr"),	FR_TYPE_IPV4_ADDR	},
+	{ L("ipv4prefix"),	FR_TYPE_IPV4_PREFIX	},
+	{ L("ipv6addr"),	FR_TYPE_IPV6_ADDR	},
+	{ L("ipv6prefix"),	FR_TYPE_IPV6_PREFIX	},
+	{ L("ifid"),		FR_TYPE_IFID		},
+	{ L("combo-ip"),	FR_TYPE_COMBO_IP_ADDR	},
+	{ L("combo-prefix"),	FR_TYPE_COMBO_IP_PREFIX	},
+	{ L("ether"),		FR_TYPE_ETHERNET	},
 
-	{ "bool",		FR_TYPE_BOOL		},
+	{ L("bool"),		FR_TYPE_BOOL		},
 
-	{ "uint8",        	FR_TYPE_UINT8		},
-	{ "uint16",        	FR_TYPE_UINT16		},
-	{ "uint32",		FR_TYPE_UINT32		},
-	{ "uint64",		FR_TYPE_UINT64		},
+	{ L("uint8"),        	FR_TYPE_UINT8		},
+	{ L("uint16"),        	FR_TYPE_UINT16		},
+	{ L("uint32"),		FR_TYPE_UINT32		},
+	{ L("uint64"),		FR_TYPE_UINT64		},
 
-	{ "int8",		FR_TYPE_INT8 		},
-	{ "int16",		FR_TYPE_INT16		},
-	{ "int32",         	FR_TYPE_INT32		},
-	{ "int64",		FR_TYPE_INT64		},
+	{ L("int8"),		FR_TYPE_INT8 		},
+	{ L("int16"),		FR_TYPE_INT16		},
+	{ L("int32"),         	FR_TYPE_INT32		},
+	{ L("int64"),		FR_TYPE_INT64		},
 
-	{ "float32",		FR_TYPE_FLOAT32		},
-	{ "float64",		FR_TYPE_FLOAT64		},
+	{ L("float32"),		FR_TYPE_FLOAT32		},
+	{ L("float64"),		FR_TYPE_FLOAT64		},
 
-	{ "time_delta",		FR_TYPE_TIME_DELTA	},
-	{ "date",		FR_TYPE_DATE		},
+	{ L("time_delta"),	FR_TYPE_TIME_DELTA	},
+	{ L("date"),		FR_TYPE_DATE		},
 
-	{ "abinary",		FR_TYPE_ABINARY		},
+	{ L("size"),		FR_TYPE_SIZE		},
 
-	{ "size",		FR_TYPE_SIZE		},
+	{ L("tlv"),		FR_TYPE_TLV		},
+	{ L("struct"),        	FR_TYPE_STRUCT		},
 
-	{ "tlv",		FR_TYPE_TLV		},
-	{ "struct",        	FR_TYPE_STRUCT		},
-
-	{ "extended",      	FR_TYPE_EXTENDED	},
-
-	{ "vsa",          	FR_TYPE_VSA		},
-	{ "vendor",        	FR_TYPE_VENDOR		},
-	{ "group",        	FR_TYPE_GROUP		},
+	{ L("vsa"),          	FR_TYPE_VSA		},
+	{ L("vendor"),        	FR_TYPE_VENDOR		},
+	{ L("group"),        	FR_TYPE_GROUP		},
 
 	/*
 	 *	Alternative names
 	 */
-	{ "cidr",         	FR_TYPE_IPV4_PREFIX	},
-	{ "byte",		FR_TYPE_UINT8		},
-	{ "short",		FR_TYPE_UINT16		},
-	{ "integer",		FR_TYPE_UINT32		},
-	{ "integer64",		FR_TYPE_UINT64		},
-	{ "decimal",		FR_TYPE_FLOAT64		},
-	{ "signed",        	FR_TYPE_INT32		}
+	{ L("cidr"),         	FR_TYPE_IPV4_PREFIX	},
+	{ L("byte"),		FR_TYPE_UINT8		},
+	{ L("short"),		FR_TYPE_UINT16		},
+	{ L("integer"),		FR_TYPE_UINT32		},
+	{ L("integer64"),	FR_TYPE_UINT64		},
+	{ L("decimal"),		FR_TYPE_FLOAT64		},
+	{ L("signed"),        	FR_TYPE_INT32		}
 };
 size_t fr_value_box_type_table_len = NUM_ELEMENTS(fr_value_box_type_table);
 
@@ -163,6 +165,8 @@ size_t fr_value_box_type_table_len = NUM_ELEMENTS(fr_value_box_type_table);
  *	 Use #fr_value_box_network_length instead, as that deals with variable
  *	 length attributes too.
  */
+#define network_min_size(_x) (fr_value_box_network_sizes[_x][0])
+#define network_max_size(_x) (fr_value_box_network_sizes[_x][1])
 static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INVALID]			= {~0, 0},
 
@@ -193,11 +197,10 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_DATE]				= {2, 8},  //!< 2, 4, or 8 only
 	[FR_TYPE_TIME_DELTA]   			= {2, 8},  //!< 2, 4, or 8 only
 
-	[FR_TYPE_ABINARY]			= {32, ~0},
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
 };
 
-/** How many uint8s wide each of the value data fields are
+/** How many bytes wide each of the value data fields are
  *
  * This is useful when copying a value from a fr_value_box_t to a memory
  * location passed as a void *.
@@ -233,8 +236,6 @@ size_t const fr_value_box_field_sizes[] = {
 
 	[FR_TYPE_TIME_DELTA]			= SIZEOF_MEMBER(fr_value_box_t, datum.time_delta),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
-
-	[FR_TYPE_ABINARY]			= SIZEOF_MEMBER(fr_value_box_t, datum.filter),
 
 	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
 
@@ -276,43 +277,209 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_TIME_DELTA]			= offsetof(fr_value_box_t, vb_time_delta),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
 
-	[FR_TYPE_ABINARY]			= offsetof(fr_value_box_t, datum.filter),
-
 	[FR_TYPE_VALUE_BOX]			= 0,
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-/** Clear/free any existing value
- *
- * @note Do not use on uninitialised memory.
- *
- * @param[in] data to clear.
- */
-inline void fr_value_box_clear(fr_value_box_t *data)
-{
-	switch (data->type) {
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-		TALLOC_FREE(data->datum.ptr);
-		data->datum.length = 0;
-		break;
+static uint64_t const fr_value_box_integer_max[] = {
+	[FR_TYPE_BOOL]				= true,
+	[FR_TYPE_UINT8]				= UINT8_MAX,
+	[FR_TYPE_UINT16]			= UINT16_MAX,
+	[FR_TYPE_UINT32]			= UINT32_MAX,
+	[FR_TYPE_UINT64]			= UINT64_MAX,
 
-	case FR_TYPE_STRUCTURAL:
-		fr_assert_fail(NULL);
-		return;
+	[FR_TYPE_INT8]				= INT8_MAX,
+	[FR_TYPE_INT16]				= INT16_MAX,
+	[FR_TYPE_INT32]				= INT32_MAX,
+	[FR_TYPE_INT64]				= INT64_MAX,
 
-	case FR_TYPE_INVALID:
-		return;
+	[FR_TYPE_DATE]				= UINT64_MAX,
+	[FR_TYPE_TIME_DELTA]			= INT64_MAX,
 
-	default:
-		memset(&data->datum, 0, dict_attr_sizes[data->type][1]);
-		break;
-	}
+	[FR_TYPE_SIZE]				= SIZE_MAX,
 
-	data->tainted = false;
-	data->type = FR_TYPE_INVALID;
-}
+	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
+};
+
+static int64_t const fr_value_box_integer_min[] = {
+	[FR_TYPE_BOOL]				= false,
+	[FR_TYPE_UINT8]				= 0,
+	[FR_TYPE_UINT16]			= 0,
+	[FR_TYPE_UINT32]			= 0,
+	[FR_TYPE_UINT64]			= 0,
+
+	[FR_TYPE_INT8]				= INT8_MIN,
+	[FR_TYPE_INT16]				= INT16_MIN,
+	[FR_TYPE_INT32]				= INT32_MIN,
+	[FR_TYPE_INT64]				= INT64_MIN,
+
+	[FR_TYPE_DATE]				= 0,
+	[FR_TYPE_TIME_DELTA]			= INT64_MIN,
+
+	[FR_TYPE_SIZE]				= 0,
+
+	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
+};
+
+fr_sbuff_unescape_rules_t fr_value_unescape_double = {
+	.name = "double",
+	.chr = '\\',
+	.subs = {
+		['"'] = '"',	/* Quoting char */
+		['%'] = '%',	/* xlat expansions */
+		['\\'] = '\\',
+		['a'] = '\a',
+		['b'] = '\b',
+		['e'] = '\\',
+		['n'] = '\n',
+		['r'] = '\r',
+		['t'] = '\t',
+		['v'] = '\v'
+	},
+	.do_hex = true,
+	.do_oct = true
+};
+
+fr_sbuff_unescape_rules_t fr_value_unescape_single = {
+	.name = "single",
+	.chr = '\\',
+	.subs = {
+		['\''] = '\'',	/* Quoting char */
+		['\\'] = '\\'
+	},
+	.do_hex = false,
+	.do_oct = false
+};
+
+fr_sbuff_unescape_rules_t fr_value_unescape_solidus = {
+	.name = "solidus",
+	.chr = '\\',
+	.subs = {
+		['%'] = '%',	/* xlat expansions */
+		['/'] = '/',	/* Quoting char */
+		['a'] = '\a',
+		['b'] = '\b',
+		['e'] = '\\',
+		['n'] = '\n',
+		['r'] = '\r',
+		['t'] = '\t',
+		['v'] = '\v'
+	},
+	.skip = {
+		['\\'] = '\\'	/* Leave this for the regex library */
+	},
+	.do_hex = true,
+	.do_oct = true
+};
+
+fr_sbuff_unescape_rules_t fr_value_unescape_backtick = {
+	.name = "backtick",
+	.chr = '\\',
+	.subs = {
+		['%'] = '%',	/* xlat expansions */
+		['\\'] = '\\',
+		['`'] = '`',	/* Quoting char */
+		['a'] = '\a',
+		['b'] = '\b',
+		['e'] = '\\',
+		['n'] = '\n',
+		['r'] = '\r',
+		['t'] = '\t',
+		['v'] = '\v'
+	},
+	.do_hex = true,
+	.do_oct = true
+};
+
+fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
+	[T_DOUBLE_QUOTED_STRING]	= &fr_value_unescape_double,
+	[T_SINGLE_QUOTED_STRING]	= &fr_value_unescape_single,
+	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_unescape_solidus,
+	[T_BACK_QUOTED_STRING]		= &fr_value_unescape_backtick,
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_double = {
+	.name = "double",
+	.chr = '\\',
+	.subs = {
+		['"'] = '"',	/* Quoting char */
+		['%'] = '%',	/* xlat expansions */
+		['\\'] = '\\',
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW,
+		SBUFF_CHAR_UNPRINTABLES_EXTENDED
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_single = {
+	.name = "single",
+	.chr = '\\',
+	.subs = {
+		['\''] = '\'',	/* Quoting char */
+		['\\'] = '\\'
+	},
+	.do_utf8 = true,
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_solidus = {
+	.name = "solidus",
+	.chr = '\\',
+	.subs = {
+		['%'] = '%',	/* xlat expansions */
+		['/'] = '/',	/* Quoting char */
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW,
+		SBUFF_CHAR_UNPRINTABLES_EXTENDED
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
+fr_sbuff_escape_rules_t fr_value_escape_backtick = {
+	.name = "backtick",
+	.chr = '\\',
+	.subs = {
+		['%'] = '%',	/* xlat expansions */
+		['\\'] = '\\',
+		['`'] = '`',	/* Quoting char */
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW,
+		SBUFF_CHAR_UNPRINTABLES_EXTENDED
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
+fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST] = {
+	[T_DOUBLE_QUOTED_STRING]	= &fr_value_escape_double,
+	[T_SINGLE_QUOTED_STRING]	= &fr_value_escape_single,
+	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_escape_solidus,
+	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick,
+};
 
 /** Copy flags and type data from one value box to another
  *
@@ -323,7 +490,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 {
 	switch (src->type) {
 	case FR_TYPE_VARIABLE_SIZE:
-		dst->datum.length = src->datum.length;
+		dst->vb_length = src->vb_length;
 		break;
 
 	default:
@@ -367,10 +534,10 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	{
 		size_t length;
 
-		if (a->datum.length < b->datum.length) {
-			length = a->datum.length;
+		if (a->vb_length < b->vb_length) {
+			length = a->vb_length;
 		} else {
-			length = b->datum.length;
+			length = b->vb_length;
 		}
 
 		if (length) {
@@ -384,15 +551,17 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		 *
 		 *	i.e. "0x00" is smaller than "0x0000"
 		 */
-		compare = a->datum.length - b->datum.length;
+		compare = a->vb_length - b->vb_length;
 	}
 		break;
 
 		/*
 		 *	Short-hand for simplicity.
 		 */
-#define CHECK(_type) if (a->datum._type < b->datum._type)   { compare = -1; \
-		} else if (a->datum._type > b->datum._type) { compare = +1; }
+#define CHECK(_type) do { \
+			if (a->datum._type < b->datum._type)   { compare = -1; \
+			} else if (a->datum._type > b->datum._type) { compare = +1; } \
+		     } while (0)
 
 	case FR_TYPE_BOOL:
 		CHECK(boolean);
@@ -489,7 +658,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
  *
  *	reserved, prefix-len, data...
  */
-static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int uint8s,
+static int fr_value_box_cidr_cmp_op(fr_token_t op, int bytes,
 				 uint8_t a_net, uint8_t const *a,
 				 uint8_t b_net, uint8_t const *b)
 {
@@ -502,7 +671,7 @@ static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int uint8s,
 	if (a_net == b_net) {
 		int compare;
 
-		compare = memcmp(a, b, uint8s);
+		compare = memcmp(a, b, bytes);
 
 		/*
 		 *	If they're identical return true for
@@ -561,14 +730,14 @@ static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int uint8s,
 	}
 
 	/*
-	 *	Do the check uint8 by uint8.  If the uint8s are
+	 *	Do the check uint8 by uint8.  If the bytes are
 	 *	identical, it MAY be a match.  If they're different,
 	 *	it is NOT a match.
 	 */
 	i = 0;
-	while (i < uint8s) {
+	while (i < bytes) {
 		/*
-		 *	All leading uint8s are identical.
+		 *	All leading bytes are identical.
 		 */
 		if (common == 0) return true;
 
@@ -606,7 +775,7 @@ static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int uint8s,
  *	- 0 if false
  *	- -1 on failure.
  */
-int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t const *b)
+int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	int compare = 0;
 
@@ -626,7 +795,7 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			fr_strerror_const("Cannot compare IPv4 with IPv6 address");
 			return -1;
 		}
 
@@ -643,7 +812,7 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
+			fr_strerror_const("Cannot compare IPv4 with IPv6 address");
 			return -1;
 		}
 
@@ -657,7 +826,7 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			fr_strerror_const("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
 
@@ -674,7 +843,7 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		default:
-			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
+			fr_strerror_const("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
 
@@ -719,179 +888,139 @@ static char const hextab[] = "0123456789abcdef";
  *
  * The quote character determines the escape sequences recognised.
  *
- * Literal mode ("'" quote char) will unescape:
+ * - Literal mode ("'" quote char) will unescape:
  @verbatim
    - \\        - Literal backslash.
    - \<quote>  - The quotation char.
  @endverbatim
- *
- * Expanded mode (any other quote char) will also unescape:
+ * - Expanded mode ('"' quote char) will also unescape:
  @verbatim
+   - \a        - Alert.
+   - \b        - Backspace.
+   - \e        - Escape character i.e. (\)
    - \r        - Carriage return.
    - \n        - Newline.
    - \t        - Tab.
+   - \v        - Vertical tab
    - \<oct>    - An octal escape sequence.
    - \x<hex>   - A hex escape sequence.
  @endverbatim
+ * - Backtick mode ('`' quote char) identical to expanded mode.
+ * - Regex mode ('/') identical to expanded mode but two successive
+ * backslashes will be interpreted as an escape sequence, but not
+ * unescaped, so that they will be passed to the underlying regex
+ * library.
+ * - Verbatim mode ('\0' quote char) copies in to out verbatim.
  *
- * Verbatim mode ("\0") passing \0 as the quote char copies in to out verbatim.
- *
- * @note The resulting string will not be \0 terminated, and may contain embedded \0s.
- * @note Invalid escape sequences will be copied verbatim.
- * @note in and out may point to the same buffer.
+ * @note The resulting output may contain embedded \0s.
+ * @note Unrecognised escape sequences will be copied verbatim.
+ * @note In and out may point to the same underlying buffer.
+ * @note Copying will stop early if an unescaped instance of the
+ *	 quoting char is found in the input buffer.
  *
  * @param[out] out	Where to write the unescaped string.
- *			Unescaping never introduces additional chars.
  * @param[in] in	The string to unescape.
- * @param[in] inlen	Length of input string.
+ * @param[in] inlen	Length of input string.  Pass SIZE_MAX to copy all data
+ *			in the input buffer.
  * @param[in] quote	Character around the string, determines unescaping mode.
  *
- * @return >= 0 the number of uint8s written to out.
+ * @return
+ *	- 0 if input string was empty.
+ *	- >0 the number of bytes written to out.
  */
-size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
+size_t fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
 {
-	char const	*p = in;
-	uint8_t		*out_p = out;
-	int		x;
+	switch (quote) {
+	default:
+		break;
 
-	/*
-	 *	No de-quoting.  Just copy the string.
-	 */
-	if (!quote) {
-		memcpy(out, in, inlen);
-		return inlen;
+	case '"':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_double);
+	}
+	case '\'':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_single);
 	}
 
-	/*
-	 *	Do escaping for single quoted strings.  Only
-	 *	single quotes get escaped.  Everything else is
-	 *	left as-is.
-	 */
-	if (quote == '\'') {
-		while (p < (in + inlen)) {
-			/*
-			 *	The quotation character is escaped.
-			 */
-			if ((p[0] == '\\') &&
-			    (p[1] == quote)) {
-				*(out_p++) = quote;
-				p += 2;
-				continue;
-			}
-
-			/*
-			 *	Two backslashes get mangled to one.
-			 */
-			if ((p[0] == '\\') &&
-			    (p[1] == '\\')) {
-				*(out_p++) = '\\';
-				p += 2;
-				continue;
-			}
-
-			/*
-			 *	Not escaped, just copy it over.
-			 */
-			*(out_p++) = *(p++);
-		}
-		return out_p - out;
+	case '`':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_backtick);
 	}
 
-	/*
-	 *	It's "string" or `string`, do all standard
-	 *	escaping.
-	 */
-	while (p < (in + inlen)) {
-		uint8_t c = *p++;
-		uint8_t *h0, *h1;
-
-		/*
-		 *	We copy all invalid escape sequences verbatim,
-		 *	even if they occur at the end of sthe string.
-		 */
-		if ((c == '\\') && (p >= (in + inlen))) {
-		invalid_escape:
-			*out_p++ = c;
-			while (p < (in + inlen)) *out_p++ = *p++;
-			return out_p - out;
-		}
-
-		/*
-		 *	Fix up \[rnt\\] -> ... the binary form of it.
-		 */
-		if (c == '\\') {
-			switch (*p) {
-			case 'r':
-				c = '\r';
-				p++;
-				break;
-
-			case 'n':
-				c = '\n';
-				p++;
-				break;
-
-			case 't':
-				c = '\t';
-				p++;
-				break;
-
-			case '\\':
-				c = '\\';
-				p++;
-				break;
-
-			default:
-				/*
-				 *	\" --> ", but only inside of double quoted strings, etc.
-				 */
-				if (*p == quote) {
-					c = quote;
-					p++;
-					break;
-				}
-
-				/*
-				 *	We need at least three chars, for either octal or hex
-				 */
-				if ((p + 2) >= (in + inlen)) goto invalid_escape;
-
-				/*
-				 *	\x00 --> binary zero character
-				 */
-				if ((p[0] == 'x') &&
-				    (h0 = memchr((uint8_t const *)hextab, tolower((int) p[1]), sizeof(hextab))) &&
-				    (h1 = memchr((uint8_t const *)hextab, tolower((int) p[2]), sizeof(hextab)))) {
-				 	c = ((h0 - (uint8_t const *)hextab) << 4) + (h1 - (uint8_t const *)hextab);
-				 	p += 3;
-				}
-
-				/*
-				 *	\000 --> binary zero character
-				 */
-				if ((p[0] >= '0') &&
-				    (p[0] <= '9') &&
-				    (p[1] >= '0') &&
-				    (p[1] <= '9') &&
-				    (p[2] >= '0') &&
-				    (p[2] <= '9') &&
-				    (sscanf(p, "%3o", &x) == 1)) {
-					c = x;
-					p += 3;
-				}
-
-				/*
-				 *	Else It's not a recognised escape sequence DON'T
-				 *	consume the backslash. This is identical
-				 *	behaviour to bash and most other things that
-				 *	use backslash escaping.
-				 */
-			}
-		}
-		*out_p++ = c;
+	case '/':
+	{
+		return fr_sbuff_out_unescape_until(out, in, inlen, NULL, &fr_value_unescape_solidus);
+	}
 	}
 
-	return out_p - out;
+	return fr_sbuff_out_bstrncpy(out, in, inlen);
+}
+
+/** Convert a string value with escape sequences into its binary form
+ *
+ * The quote character determines the escape sequences recognised.
+ *
+ * - Literal mode ("'" quote char) will unescape:
+ @verbatim
+   - \\        - Literal backslash.
+   - \<quote>  - The quotation char.
+ @endverbatim
+ * - Expanded mode ('"' quote char) will also unescape:
+ @verbatim
+   - \a        - Alert.
+   - \b        - Backspace.
+   - \e        - Escape character i.e. (\)
+   - \r        - Carriage return.
+   - \n        - Newline.
+   - \t        - Tab.
+   - \v        - Vertical tab
+   - \<oct>    - An octal escape sequence.
+   - \x<hex>   - A hex escape sequence.
+ @endverbatim
+ * - Backtick mode ('`' quote char) identical to expanded mode.
+ * - Regex mode ('/') identical to expanded mode but two successive
+ * backslashes will be interpreted as an escape sequence, but not
+ * unescaped, so that they will be passed to the underlying regex
+ * library.
+ * - Verbatim mode ('\0' quote char) copies in to out verbatim.
+ *
+ * @note The resulting output may contain embedded \0s.
+ * @note Unrecognised escape sequences will be copied verbatim.
+ * @note In and out may point to the same underlying buffer.
+ * @note Copying will stop early if an unescaped instance of the
+ *	 quoting char is found in the input buffer.
+ *
+ * @param[out] out	Where to write the unescaped string.
+ * @param[in] in	The string to unescape.
+ * @param[in] inlen	Length of input string.  Pass SIZE_MAX to copy all data
+ *			in the input buffer.
+ * @param[in] quote	Character around the string, determines unescaping mode.
+ *
+ * @return
+ *	- 0 if input string was empty.
+ *	- >0 the number of bytes written to out.
+ */
+size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
+{
+	switch (quote) {
+	default:
+		break;
+
+	case '"':
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("\""), &fr_value_unescape_double);
+
+	case '\'':
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("'"), &fr_value_unescape_single);
+
+	case '`':
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("`"), &fr_value_unescape_backtick);
+
+	case '/':
+		return fr_sbuff_out_unescape_until(out, in, inlen, &FR_SBUFF_TERM("/"), &fr_value_unescape_solidus);
+	}
+
+	return fr_sbuff_out_bstrncpy(out, in, inlen);
 }
 
 /** Performs byte order reversal for types that need it
@@ -905,6 +1034,41 @@ size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char qu
 int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
+
+	switch (src->type) {
+	default:
+		break;
+
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_INT8:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_SIZE:
+		fr_value_box_copy(NULL, dst, src);
+		return 0;
+
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_NON_VALUES:
+		fr_assert_fail(NULL);
+		return -1; /* shouldn't happen */
+	}
+
+	/*
+	 *	If we're not just flipping in place
+	 *	initialise the destination box
+	 *	with similar meta data as the src.
+	 *
+	 *	Don't use the copy meta data function
+	 *	here as that doesn't initialise the
+	 *	destination box.
+	 */
+	if (dst != src) fr_value_box_init(dst, src->type, src->enumv, src->tainted);
 
 	switch (src->type) {
 	case FR_TYPE_UINT16:
@@ -940,35 +1104,17 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_FLOAT32:
-		dst->vb_uint32 = htonl(dst->vb_uint32);
+		dst->vb_float32 = htonl((uint32_t)src->vb_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		dst->vb_uint64 = htonll(dst->vb_uint64);
+		dst->vb_float64 = htonll((uint64_t)src->vb_float64);
 		break;
 
-	case FR_TYPE_BOOL:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_INT8:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_IFID:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
-		fr_value_box_copy(NULL, dst, src);
-		return 0;
-
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-	case FR_TYPE_NON_VALUES:
+	default:
 		fr_assert_fail(NULL);
 		return -1; /* shouldn't happen */
 	}
-
-	if (dst != src) fr_value_box_copy_meta(dst, src);
 
 	return 0;
 }
@@ -982,10 +1128,10 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
 	case FR_TYPE_VARIABLE_SIZE:
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
-		return value->datum.length;
+		return value->vb_length;
 
 	default:
-		return fr_value_box_network_sizes[value->type][0];
+		return network_min_size(value->type);
 	}
 }
 
@@ -1014,33 +1160,21 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
  * - time_deltas are encoded as 16/32/64-bit signed integers.
  *
  * #FR_TYPE_SIZE is not encodable, as it is system specific.
- * #FR_TYPE_ABINARY is RADIUS specific and should be encoded by the RADIUS encoder.
  *
  * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
  * specific to the protocol anyway.
  *
- * @param[out] need	if not NULL, how many bytes are required to serialize
- *			the remainder of the boxed data.
- *			Note: Only variable length types will be partially
- *			encoded. Fixed length types will not be partially encoded.
- * @param[out] dst	Where to write serialized data.
- * @param[in] dst_len	The length of the output buffer, or maximum value fragment
- *			size.
+ * @param[out] dbuff	Where to write serialized data.
  * @param[in] value	to encode.
  * @return
- *	- 0 no bytes were written, see need value to determine if it was because
- *	  the fr_value_box_t was #FR_TYPE_OCTETS/#FR_TYPE_STRING and was
- *	  NULL (which is unfortunately valid)
+ *	- 0 no bytes were written.
  *	- >0 the number of bytes written to out.
- *	- <0 on error.
+ *	- <0 the number of bytes we'd need in dbuff to complete the operation.
  */
-ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value)
+ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 {
-	size_t min, max;
-	uint8_t *p = dst;
-	uint8_t *end = p + dst_len;
-
-	RETURN_IF_NO_SPACE_INIT(need, 1, p, dst, end);
+	size_t		min, max;
+	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	/*
 	 *	Variable length types
@@ -1048,24 +1182,27 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	switch (value->type) {
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-	{
-		size_t len;
+		max = value->vb_length;
 
 		/*
-		 *	Figure dst if we'd overflow
+		 *	Sometimes variable length *inside* the server
+		 *	has maximum length on the wire.
 		 */
-		if (value->datum.length > dst_len) {
-			if (need) *need = value->datum.length;
-			len = dst_len;
-		} else {
-			if (need) *need = 0;
-			len = value->datum.length;
+		if (value->enumv && value->enumv->flags.length) {
+			if (max < value->enumv->flags.length) {
+				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
+				FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, value->enumv->flags.length - max);
+				return fr_dbuff_set(dbuff, &work_dbuff);
+			}
+
+			/*
+			 *	Truncate the input to the maximum allowed length.
+			 */
+			max = value->enumv->flags.length;
 		}
 
-		if (value->datum.length > 0) memcpy(dst, value->datum.ptr, len);
-
-		return len;
-	}
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
+		return fr_dbuff_set(dbuff, &work_dbuff);
 
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
@@ -1077,8 +1214,8 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 		break;
 
 	default:
-		min = fr_value_box_network_sizes[value->type][0];
-		max = fr_value_box_network_sizes[value->type][1];
+		min = network_min_size(value->type);
+		max = network_max_size(value->type);
 		break;
 	}
 
@@ -1087,57 +1224,51 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	 */
 	if ((min == 0) && (max == 0)) {
 	unsupported:
-		fr_strerror_printf("Cannot encode type \"%s\"",
+		fr_strerror_printf("%s: Cannot encode type \"%s\"",
+				   __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"));
-		return -1;
-	}
-
-	/*
-	 *	Fixed type would overflow dstput buffer
-	 */
-	if (max > dst_len) {
-		if (need) *need = max;
-		return 0;
+		return FR_VALUE_BOX_NET_ERROR;
 	}
 
 	switch (value->type) {
 	case FR_TYPE_IPV4_ADDR:
-		memcpy(dst, (uint8_t const *)&value->vb_ip.addr.v4.s_addr, sizeof(value->vb_ip.addr.v4.s_addr));
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
+					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
+					  sizeof(value->vb_ip.addr.v4.s_addr));
 		break;
 	/*
 	 *	Needs special mangling
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-	 	dst[0] = value->vb_ip.prefix;
-		memcpy(&dst[1], (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
-				 sizeof(value->vb_ip.addr.v4.s_addr));
+		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
+					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
+					  sizeof(value->vb_ip.addr.v4.s_addr));
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		if (value->vb_ip.scope_id > 0) *p++ = value->vb_ip.scope_id;
-		memcpy(p, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (value->vb_ip.scope_id > 0) *p++ = value->vb_ip.scope_id;
-		*p++ = value->vb_ip.prefix;
-		memcpy(p, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
+		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_BOOL:
-		dst[0] = value->datum.boolean ? 0x01 : 0x00;
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, value->datum.boolean);
 		break;
 
 	/*
 	 *	Already in network byte-order
 	 */
-
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_INT8:
-		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
-		memcpy(dst, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
 		break;
 
 	/*
@@ -1154,19 +1285,17 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	{
 		fr_value_box_t tmp;
 
-		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
-
 		fr_value_box_hton(&tmp, value);
-		memcpy(dst, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
 	}
 		break;
 
-		/*
-		 *	Dates and deltas are stored internally as
-		 *	64-bit nanoseconds.  We have to convert to the
-		 *	network format.  First by resolution (ns, us,
-		 *	ms, s), and then by size (16/32/64-bit).
-		 */
+	/*
+	 *	Dates and deltas are stored internally as
+	 *	64-bit nanoseconds.  We have to convert to the
+	 *	network format.  First by resolution (ns, us,
+	 *	ms, s), and then by size (16/32/64-bit).
+	 */
 	case FR_TYPE_DATE:
 	{
 		uint64_t date;
@@ -1201,24 +1330,18 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 		} else switch (value->enumv->flags.length) {
 		case 2:
-			if (date >= ((int64_t) 1) << 16) {
-				memset(dst, 0xff, 2);
-			} else {
-				fr_put_be16(dst, date);
-			}
+			if (date > UINT16_MAX) date = UINT16_MAX;
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t) date);
 			break;
 
 		date_size4:
 		case 4:
-			if (date >= ((int64_t) 1) << 32) {
-				memset(dst, 0xff, 4);
-			} else {
-				fr_put_be32(dst, date);
-			}
+			if (date > UINT32_MAX) date = UINT32_MAX;
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t) date);
 			break;
 
 		case 8:
-			fr_put_be32(dst, date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, date);
 			break;
 
 		default:
@@ -1262,24 +1385,26 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 
 		} else switch (value->enumv->flags.length) {
 		case 2:
-			if (date >= ((int64_t) 1) << 16) {
-				memset(dst, 0xff, 2);
-			} else {
-				fr_put_be16(dst, date);
+			if (date < INT16_MIN) {
+				date = INT16_MIN;
+			} else if (date > INT16_MAX) {
+				date = INT16_MAX;
 			}
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t)date);
 			break;
 
 		delta_size4:
 		case 4:
-			if (date >= ((int64_t) 1) << 32) {
-				memset(dst, 0xff, 4);
-			} else {
-				fr_put_be32(dst, date);
+			if (date < INT32_MIN) {
+				date = INT32_MIN;
+			} else if (date > INT32_MAX) {
+				date = INT32_MAX;
 			}
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t)date);
 			break;
 
 		case 8:
-			fr_put_be64(dst, date);
+			FR_DBUFF_IN_RETURN(&work_dbuff, (int64_t)date);
 			break;
 
 		default:
@@ -1292,14 +1417,11 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		goto unsupported;
 	}
 
-	if (need) *need = 0;
-
-	return min;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Decode a #fr_value_box_t from serialized binary data
@@ -1331,111 +1453,179 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- >= 0 The number of bytes consumed.
- *	- <0 on error.
+ *	- <0 - The negative offset where the error occurred.
+ *	- FR_VALUE_BOX_NET_OOM (negative value) - Out of memory.
  */
 ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
 				  uint8_t const *src, size_t len,
 				  bool tainted)
 {
-	uint8_t	const *p = src;
-	size_t	min, max;
+	return fr_value_box_from_network_dbuff(ctx, dst, type, enumv, &FR_DBUFF_TMP(src, len), len, tainted);
+}
 
-	min = fr_value_box_network_sizes[type][0];
-	max = fr_value_box_network_sizes[type][1];
+ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
+					fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+					fr_dbuff_t *dbuff, size_t len,
+					bool tainted)
+{
+	size_t		min, max;
+	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+
+	min = network_min_size(type);
+	max = network_max_size(type);
 
 	if (len < min) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
 				   "Expected length >= %zu bytes, got %zu bytes",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"),
 				   min, len);
-		return -1;
+		return -(len);
 	}
 	if (len > max) {
 		fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
 				   "Expected length <= %zu bytes, got %zu bytes",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"),
 				   max, len);
-		return -1;
+		return -(max);
 	}
 
 	switch (type) {
 	case FR_TYPE_STRING:
-		if (fr_value_box_bstrndup(ctx, dst, enumv, (char const *)src, len, tainted) < 0) return -1;
-		return len;
+		if (fr_value_box_bstrndup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
+			return FR_VALUE_BOX_NET_OOM;
+		}
+		return fr_dbuff_set(dbuff, &work_dbuff);
 
 	case FR_TYPE_OCTETS:
-		if (fr_value_box_memcpy(ctx, dst, enumv, src, len, tainted) < 0) return -1;
-		return len;
+		if (fr_value_box_memdup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
+			return FR_VALUE_BOX_NET_OOM;
+		}
+		return fr_dbuff_set(dbuff, &work_dbuff);
+	default:
+		break;
+	}
 
+	/*
+	 *	Pre-Initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, type, enumv, tainted);
+	switch (type) {
 	/*
 	 *	Already in network byte order
 	 */
 	case FR_TYPE_IPV4_ADDR:
-		memcpy(&dst->vb_ip.addr.v4, src, len);
-		dst->vb_ip.af = AF_INET;
-		dst->vb_ip.prefix = 32;
-		dst->vb_ip.scope_id = 0;	/* init even if it's unused */
+		dst->vb_ip = (fr_ipaddr_t){
+			.af = AF_INET,
+			.prefix = 32,
+		};
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v4, &work_dbuff, len);
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
-		dst->vb_ip.af = AF_INET;
-		dst->vb_ip.prefix = *p++;
-		memcpy(&dst->vb_ip.addr.v4, p, sizeof(dst->vb_ip.addr.v4));
-		dst->vb_ip.scope_id = 0;	/* init even if it's unused */
-
+		dst->vb_ip = (fr_ipaddr_t){
+			.af = AF_INET,
+		};
+		FR_DBUFF_OUT_RETURN(&dst->vb_ip.prefix, &work_dbuff);
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v4, &work_dbuff, len - 1);
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		dst->vb_ip.af = AF_INET6;
-		dst->vb_ip.scope_id = len == max ? *p++ : 0;		/* optional */
-		memcpy(&dst->vb_ip.addr.v6, p, sizeof(dst->vb_ip.addr.v6));
-		dst->vb_ip.prefix = 128;
+		dst->vb_ip = (fr_ipaddr_t){
+			.af = AF_INET6,
+			.scope_id = 0,
+			.prefix = 128
+		};
+		if (len == max) {
+			uint8_t	scope_id = 0;
+
+			FR_DBUFF_OUT_RETURN(&scope_id, &work_dbuff);
+			dst->vb_ip.scope_id = scope_id;
+			len--;
+		}
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v6, &work_dbuff, len);
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		dst->vb_ip.af = AF_INET6;
-		dst->vb_ip.scope_id = len == max ? *p++ : 0;		/* optional */
-		dst->vb_ip.prefix = *p++;
-		memcpy(&dst->vb_ip.addr.v6, p, sizeof(dst->vb_ip.addr.v6));
+		dst->vb_ip = (fr_ipaddr_t){
+			.af = AF_INET6,
+			.scope_id = 0,
+		};
+		if (len == max) {
+			uint8_t	scope_id = 0;
+
+			FR_DBUFF_OUT_RETURN(&scope_id, &work_dbuff);
+			dst->vb_ip.scope_id = scope_id;
+			len--;
+		}
+		FR_DBUFF_OUT_RETURN(&dst->vb_ip.prefix, &work_dbuff);
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v6, &work_dbuff, len - 1);
 		break;
 
 	case FR_TYPE_BOOL:
-		dst->datum.boolean = src[0] > 0 ? true : false;
+		{
+			uint8_t	val = 0;
+
+			FR_DBUFF_OUT_RETURN(&val, &work_dbuff);
+			dst->datum.boolean = (val != 0);
+		}
 		break;
 
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
-	case FR_TYPE_UINT8:
+		FR_DBUFF_OUT_MEMCPY_RETURN(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], &work_dbuff, len);
+		break;
+
 	case FR_TYPE_INT8:
-		memcpy(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], src, len);
+		FR_DBUFF_OUT_RETURN(&dst->vb_int8, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT8:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint8, &work_dbuff);
+		break;
+
+	case FR_TYPE_INT16:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int16, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT16:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint16, &work_dbuff);
+		break;
+
+	case FR_TYPE_INT32:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int32, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT32:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint32, &work_dbuff);
+		break;
+
+	case FR_TYPE_INT64:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int64, &work_dbuff);
+		break;
+
+	case FR_TYPE_UINT64:
+		FR_DBUFF_OUT_RETURN(&dst->vb_uint64, &work_dbuff);
+		break;
+
+	case FR_TYPE_FLOAT32:
+		FR_DBUFF_OUT_RETURN(&dst->vb_float32, &work_dbuff);
+		break;
+
+	case FR_TYPE_FLOAT64:
+		FR_DBUFF_OUT_RETURN(&dst->vb_float64, &work_dbuff);
 		break;
 
 	/*
-	 *	Needs a bytesex operation
+	 *	Dates and deltas are stored internally as
+	 *	64-bit nanoseconds.  We have to convert from
+	 *	the network format.  First by size
+	 *	(16/32/64-bit), and then by resolution (ns,
+	 *	us, ms, s).
 	 */
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
-		memcpy(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], src, len);
-		fr_value_box_hton(dst, dst);	/* Operate in-place */
-		break;
-
-		/*
-		 *	Dates and deltas are stored internally as
-		 *	64-bit nanoseconds.  We have to convert from
-		 *	the network format.  First by size
-		 *	(16/32/64-bit), and then by resolution (ns,
-		 *	us, ms, s).
-		 */
 	case FR_TYPE_DATE:
 	{
-		size_t i, length = 4;
+		size_t length = 4;
 		fr_time_res_t precision = FR_TIME_RES_SEC;
 		uint64_t date;
 
@@ -1448,21 +1638,11 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 *	Input data doesn't match what we were told we
 		 *	need.
 		 */
-		if (len != length) return -1;
+		if (len > length) return -(length);
 
-		/*
-		 *	Just loop over the input data until we reach
-		 *	the end.  Shifting it every time.
-		 */
-		date = 0;
 		dst->enumv = enumv;
 
-		i = 0;
-		do {
-			date <<= 8;
-			date |= *(p++);
-			i++;
-		} while (i < length);
+		FR_DBUFF_OUT_UINT64V_RETURN(&date, &work_dbuff, length);
 
 		switch (precision) {
 		default:
@@ -1488,7 +1668,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	case FR_TYPE_TIME_DELTA:
 	{
-		size_t i, length = 4;
+		size_t length = 4;
 		fr_time_res_t precision = FR_TIME_RES_SEC;
 		uint64_t date;
 
@@ -1501,21 +1681,11 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		 *	Input data doesn't match what we were told we
 		 *	need.
 		 */
-		if (len != length) return -1;
+		if (len > length) return -(length);
 
-		/*
-		 *	Just loop over the input data until we reach
-		 *	the end.  Shifting it every time.
-		 */
-		date = 0;
 		dst->enumv = enumv;
 
-		i = 0;
-		do {
-			date <<= 8;
-			date |= *(p++);
-			i++;
-		} while (i < length);
+		FR_DBUFF_OUT_UINT64V_RETURN(&date, &work_dbuff, length);
 
 		switch (precision) {
 		default:
@@ -1539,20 +1709,18 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	}
 		break;
 
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		break;		/* Already dealt with */
+
 	case FR_TYPE_SIZE:
-	case FR_TYPE_ABINARY:
 	case FR_TYPE_NON_VALUES:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
 		break;
 	}
 
-	dst->type = type;
-	dst->tainted = tainted;
-	dst->enumv = enumv;
-	dst->next = NULL;
-
-	return len;
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Convert octets to a fixed size value box value
@@ -1576,33 +1744,33 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 		if (!fr_cond_assert(false)) return -1;
 	}
 
-	if (src->datum.length < fr_value_box_network_sizes[dst_type][0]) {
+	if (src->vb_length < network_min_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 				   "destination type size %zd",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-				   src->datum.length,
-				   fr_value_box_network_sizes[dst_type][0]);
+				   src->vb_length,
+				   network_min_size(dst_type));
 		return -1;
 	}
 
-	if (src->datum.length > fr_value_box_network_sizes[dst_type][1]) {
+	if (src->vb_length > network_max_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 				   "destination type size %zd",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-				   src->datum.length,
-				   fr_value_box_network_sizes[dst_type][1]);
+				   src->vb_length,
+				   network_max_size(dst_type));
 		return -1;
 	}
+
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
 
 	/*
 	 *	Copy the raw octets into the datum of a value_box
 	 *	inverting bytesex for uint32s (if LE).
 	 */
 	memcpy(&dst->datum, src->vb_octets, fr_value_box_field_sizes[dst_type]);
-	dst->type = dst_type;
-	dst->enumv = dst_enumv;
 	fr_value_box_hton(dst, dst);
 
 	return 0;
@@ -1614,6 +1782,7 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
  */
 static uint8_t const v4_v6_map[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				     0x00, 0x00, 0x00, 0x00, 0xff, 0xff };
+
 
 /** Convert any supported type to a string
  *
@@ -1637,24 +1806,64 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	 *	What we actually want here is the raw string
 	 */
 	case FR_TYPE_OCTETS:
-		dst->vb_strvalue = talloc_bstrndup(ctx, (char const *)src->vb_octets, src->datum.length);
-		dst->datum.length = src->datum.length;	/* It's the same, even though the buffer is slightly bigger */
-		break;
+		return fr_value_box_bstrndup(ctx, dst, dst_enumv,
+					     (char const *)src->vb_octets, src->vb_length, src->tainted);
+
+	case FR_TYPE_GROUP:
+	{
+		fr_cursor_t cursor;
+		fr_value_box_t *vb;
+
+		/*
+		 *	Initialise an empty buffer we can
+		 *	append to.
+		 */
+		if (fr_value_box_bstrndup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
+
+		for (vb = fr_cursor_init(&cursor, &src->vb_group);
+		     vb;
+		     vb = fr_cursor_next(&cursor)) {
+			/*
+			 *	Attempt to cast to a string so
+			 *	we can append.
+			 */
+			if (vb->type != FR_TYPE_STRING) {
+				fr_value_box_t	tmp;
+				int		ret;
+
+				if (fr_value_box_cast(ctx, &tmp, FR_TYPE_STRING, NULL, vb) < 0) return -1;
+
+				/*
+				 *	Append and continue
+				 */
+				ret = fr_value_box_bstr_append_buffer(ctx, dst, tmp.vb_strvalue, tmp.tainted);
+				fr_value_box_clear(&tmp);
+				if (ret < 0) {
+				error:
+					fr_value_box_clear(dst);
+					return -1;
+				}
+				continue;
+			}
+
+			if (fr_value_box_bstr_append_buffer(ctx, dst, vb->vb_strvalue, vb->tainted) < 0) goto error;
+		}
+	}
+		return 0;
 
 	/*
 	 *	Get the presentation format
 	 */
 	default:
-		dst->vb_strvalue = fr_value_box_asprint(ctx, src, '\0');
-		dst->datum.length = talloc_array_length(dst->vb_strvalue) - 1;
-		break;
+	{
+		char *str;
+
+		fr_value_box_aprint(ctx, &str, src, NULL);
+		if (unlikely(!str)) return -1;
+
+		return fr_value_box_bstrdup_buffer_shallow(NULL, dst, dst_enumv, str, src->tainted);
 	}
-
-	if (!dst->vb_strvalue) return -1;
-	dst->type = FR_TYPE_STRING;
-	dst->enumv = dst_enumv;
-
-	return 0;
+	}
 }
 
 /** Convert any supported type to octets
@@ -1671,8 +1880,6 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
-	uint8_t *bin;
-
 	if (!fr_cond_assert(dst_type == FR_TYPE_OCTETS)) return -1;
 
 	switch (src->type) {
@@ -1680,69 +1887,119 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	<string> (excluding terminating \0)
 	 */
 	case FR_TYPE_STRING:
-		bin = talloc_memdup(ctx, (uint8_t const *)src->vb_strvalue, src->datum.length);
-		break;
+		if (fr_value_box_memdup(ctx, dst, dst_enumv,
+					(uint8_t const *)src->vb_strvalue, src->vb_length, src->tainted) < 0) {
+			return -1;
+		}
+		return 0;
+
+	case FR_TYPE_GROUP:
+	{
+		fr_cursor_t cursor;
+		fr_value_box_t *vb;
+
+		/*
+		 *	Initialise an empty buffer we can
+		 *	append to.
+		 */
+		if (fr_value_box_memdup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
+
+		for (vb = fr_cursor_init(&cursor, &src->vb_group);
+		     vb;
+		     vb = fr_cursor_next(&cursor)) {
+			/*
+			 *	Attempt to cast to octets so
+			 *	we can append;
+			 */
+			if (vb->type != FR_TYPE_OCTETS) {
+				fr_value_box_t	tmp;
+				int		ret;
+
+				if (fr_value_box_cast(ctx, &tmp, FR_TYPE_OCTETS, NULL, vb) < 0) return -1;
+
+				/*
+				 *	Append and continue
+				 */
+				ret = fr_value_box_mem_append_buffer(ctx, dst, tmp.vb_octets, tmp.tainted);
+				fr_value_box_clear(&tmp);
+				if (ret < 0) {
+				error:
+					fr_value_box_clear(dst);
+					return -1;
+				}
+				continue;
+			}
+
+			if (fr_value_box_mem_append_buffer(ctx, dst, vb->vb_octets, vb->tainted) < 0) goto error;
+		}
+		return 0;
+	}
 
 	/*
-	 *	<4 uint8s address>
+	 *	<4 bytes address>
 	 */
 	case FR_TYPE_IPV4_ADDR:
-	{
-		bin = talloc_memdup(ctx, (uint8_t const *)&src->vb_ip.addr.v4.s_addr,
-				    sizeof(src->vb_ip.addr.v4.s_addr));
-	}
-		break;
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   (uint8_t const *)&src->vb_ip.addr.v4.s_addr,
+					   sizeof(src->vb_ip.addr.v4.s_addr), src->tainted);
 
 	/*
-	 *	<1 uint8 prefix> + <4 uint8s address>
+	 *	<1 uint8 prefix> + <4 bytes address>
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		bin = talloc_array(ctx, uint8_t, sizeof(src->vb_ip.addr.v4.s_addr) + 1);
+	{
+		uint8_t *bin;
+
+		if (fr_value_box_mem_alloc(ctx, &bin, dst, dst_enumv,
+					   sizeof(src->vb_ip.addr.v4.s_addr) + 1, src->tainted) < 0) return -1;
+
 		bin[0] = src->vb_ip.prefix;
 		memcpy(&bin[1], (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
-		break;
+	}
+		return 0;
 
 	/*
-	 *	<16 uint8s address>
+	 *	<16 bytes address>
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		bin = talloc_memdup(ctx, (uint8_t const *)src->vb_ip.addr.v6.s6_addr,
-				    sizeof(src->vb_ip.addr.v6.s6_addr));
-		break;
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   (uint8_t const *)src->vb_ip.addr.v6.s6_addr,
+					   sizeof(src->vb_ip.addr.v6.s6_addr), src->tainted);
 
 	/*
-	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 uint8s address>
+	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 bytes address>
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		bin = talloc_array(ctx, uint8_t, sizeof(src->vb_ip.addr.v6.s6_addr) + 2);
+	{
+		uint8_t *bin;
+
+		if (fr_value_box_mem_alloc(ctx, &bin, dst, dst_enumv,
+					   sizeof(src->vb_ip.addr.v6.s6_addr) + 2, src->tainted) < 0) return -1;
 		bin[0] = src->vb_ip.scope_id;
 		bin[1] = src->vb_ip.prefix;
 		memcpy(&bin[2], src->vb_ip.addr.v6.s6_addr, sizeof(src->vb_ip.addr.v6.s6_addr));
-		break;
+	}
+		return 0;
+
 	/*
 	 *	Get the raw binary in memory representation
 	 */
 	case FR_TYPE_NUMERIC:
-		fr_value_box_hton(dst, src);	/* Flip any uint32 representations */
-		bin = talloc_memdup(ctx, ((uint8_t const *)&dst->datum) + fr_value_box_offsets[src->type],
-				    fr_value_box_field_sizes[src->type]);
-		break;
+	{
+		fr_value_box_t tmp;
+
+		fr_value_box_hton(&tmp, src);	/* Flip any numeric representations */
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[src->type],
+					   fr_value_box_field_sizes[src->type], src->tainted);
+	}
 
 	default:
 		/* Not the same talloc_memdup call as above.  The above memdup reads data from the dst */
-		bin = talloc_memdup(ctx, ((uint8_t const *)&src->datum) + fr_value_box_offsets[src->type],
-				    fr_value_box_field_sizes[src->type]);
-		break;
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   ((uint8_t const *)&src->datum) + fr_value_box_offsets[src->type],
+					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
-
-	if (!bin) return -1;
-
-	talloc_set_type(bin, uint8_t);
-	fr_value_box_memsteal(ctx, dst, dst_enumv, bin, src->tainted);
-	dst->type = FR_TYPE_OCTETS;
-	dst->enumv = dst_enumv;
-
-	return 0;
 }
 
 /** Convert any supported type to an IPv4 address
@@ -1764,7 +2021,24 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type == FR_TYPE_IPV4_ADDR)) return -1;
+	fr_assert(dst_type == FR_TYPE_IPV4_ADDR);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET;
+	dst->vb_ip.prefix = 32;
+	dst->vb_ip.scope_id = 0;
 
 	switch (src->type) {
 	case FR_TYPE_IPV6_ADDR:
@@ -1807,18 +2081,12 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		       sizeof(dst->vb_ip.addr.v4));
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v4.s_addr));
+					   sizeof(dst->vb_ip.addr.v4.s_addr), src->vb_length);
 			return -1;
 		}
 		memcpy(&dst->vb_ip.addr.v4, src->vb_octets, sizeof(dst->vb_ip.addr.v4.s_addr));
@@ -1839,12 +2107,6 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->vb_ip.af = AF_INET;
-	dst->vb_ip.prefix = 32;
-	dst->vb_ip.scope_id = 0;
-	dst->type = FR_TYPE_IPV4_ADDR;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -1867,7 +2129,23 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						  fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type == FR_TYPE_IPV4_PREFIX)) return -1;
+	fr_assert(dst_type == FR_TYPE_IPV4_PREFIX);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				             src->vb_strvalue, src->vb_length, '\0', src->tainted);
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET;
+	dst->vb_ip.scope_id = 0;
 
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -1875,7 +2153,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	/*
-	 *	Copy the last four uint8s, to make an IPv4prefix
+	 *	Copy the last four bytes, to make an IPv4prefix
 	 */
 	case FR_TYPE_IPV6_ADDR:
 		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
@@ -1909,19 +2187,12 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		dst->vb_ip.prefix = src->vb_ip.prefix - (sizeof(v4_v6_map) << 3);
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1);
+					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1, src->vb_length);
 			return -1;
 		}
 		dst->vb_ip.prefix = src->vb_octets[0];
@@ -1945,11 +2216,6 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		return -1;
 	}
 
-	dst->vb_ip.af = AF_INET;
-	dst->vb_ip.scope_id = 0;
-	dst->type = FR_TYPE_IPV4_PREFIX;
-	dst->enumv = dst_enumv;
-
 	return 0;
 }
 
@@ -1971,10 +2237,26 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type == FR_TYPE_IPV6_ADDR)) return -1;
+	fr_assert(dst_type == FR_TYPE_IPV6_ADDR);
 
 	static_assert((sizeof(v4_v6_map) + sizeof(src->vb_ip.addr.v4)) <=
 		      sizeof(src->vb_ip.addr.v6), "IPv6 storage too small");
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET6;
+	dst->vb_ip.prefix = 128;
 
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -2024,18 +2306,12 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+		if (src->vb_length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr));
+					   sizeof(dst->vb_ip.addr.v6.s6_addr), src->vb_length);
 			return -1;
 		}
 		memcpy(&dst->vb_ip.addr.v6.s6_addr, src->vb_octets, sizeof(dst->vb_ip.addr.v6.s6_addr));
@@ -2047,11 +2323,6 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		break;
 	}
-
-	dst->vb_ip.af = AF_INET6;
-	dst->vb_ip.prefix = 128;
-	dst->type = FR_TYPE_IPV6_ADDR;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2074,6 +2345,23 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						  fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_IPV6_PREFIX);
+
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	dst->vb_ip.af = AF_INET6;
+
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
@@ -2108,18 +2396,12 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
-					   "may be cast to IP address types",
+		if (src->vb_length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
+			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2);
+					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2, src->vb_length);
 			return -1;
 		}
 		dst->vb_ip.scope_id = src->vb_octets[0];
@@ -2133,11 +2415,6 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->vb_ip.af = AF_INET6;
-	dst->type = FR_TYPE_IPV6_PREFIX;
-	dst->enumv = dst_enumv;
-
 	return 0;
 }
 
@@ -2158,20 +2435,30 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_ETHERNET);
+
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
+		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
+		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
 
+	default:
+		break;
+	}
+
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+
+	switch (src->type) {
 	case FR_TYPE_UINT64: {
 		uint8_t array[8];
 
-		fr_put_be64(array, src->vb_uint64);
+		fr_net_from_uint64(array, src->vb_uint64);
 
 		/*
 		 *	For OUIs in the DB.
@@ -2188,9 +2475,6 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
-
-	dst->type = FR_TYPE_ETHERNET;
-	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2210,424 +2494,56 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 					    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					    fr_value_box_t const *src)
 {
+	fr_assert(dst_type == FR_TYPE_BOOL);
+
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-	}
-
-	dst->type = FR_TYPE_BOOL;
-	dst->enumv = dst_enumv;
-
-	return 0;
-}
-
-/** Convert any supported type to a uint8
- *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_INT8 (if positive)
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
- *
- * @param ctx		unused.
- * @param dst		Where to write result of casting.
- * @param dst_type	to cast to.
- * @param dst_enumv	enumeration values.
- * @param src		Input data.
- */
-static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					     fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					     fr_value_box_t const *src)
-{
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint8 = (src->vb_bool == true) ? 1 : 0;
-		break;
-
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
+		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
+		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
+		break;
 	}
 
-	dst->type = FR_TYPE_UINT8;
-	dst->enumv = dst_enumv;
+	/*
+	 *	Pre-initialise box for non-variable types
+	 */
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
 
-	return 0;
-}
-
-/** Convert any supported type to a uint16
- *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_UINT8
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
- *
- * @param ctx		unused.
- * @param dst		Where to write result of casting.
- * @param dst_type	to cast to.
- * @param dst_enumv	enumeration values.
- * @param src		Input data.
- */
-static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					      fr_value_box_t const *src)
-{
 	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint16 = (src->vb_bool == true) ? 1 : 0;
+	case FR_TYPE_INT8:
+		dst->vb_bool = (src->vb_int8 != 0);
 		break;
 
 	case FR_TYPE_UINT8:
-		dst->vb_uint16 = src->vb_uint8;
-		break;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
-					   "signed value %d is negative ", src->vb_int8);
-			return -1;
-		}
-		dst->vb_uint16 = (uint8_t)src->vb_int8;
-		break;
-
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-	}
-
-	dst->type = FR_TYPE_UINT16;
-	dst->enumv = dst_enumv;
-
-	return 0;
-}
-
-/** Convert any supported type to a uint32
- *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_UINT8
- * - FR_TYPE_UINT16
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
- *
- * @param ctx		unused.
- * @param dst		Where to write result of casting.
- * @param dst_type	to cast to.
- * @param dst_enumv	enumeration values.
- * @param src		Input data.
- */
-static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					      fr_value_box_t const *src)
-{
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint32 = (src->vb_bool == true) ? 1 : 0;
-		break;
-
-	case FR_TYPE_UINT8:
-		dst->vb_uint32 = src->vb_uint8;
-		break;
-
-	case FR_TYPE_UINT16:
-		dst->vb_uint32 = src->vb_uint16;
-		break;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
-					   "signed value %d is negative ", src->vb_int8);
-			return -1;
-		}
-		dst->vb_uint32 = (uint8_t)src->vb_int8;
+		dst->vb_bool = (src->vb_uint8 != 0);
 		break;
 
 	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int16 to uint16.  "
-					   "signed value %d is negative ", src->vb_int16);
-			return -1;
-		}
-		dst->vb_uint32 = (uint16_t)src->vb_int16;
-		break;
-
-	case FR_TYPE_DATE:
-		/*
-		 *	Dates are represented internally as int64_t
-		 *	nanoseconds since the server started.  But we
-		 *	note that dates can't be negative.
-		 */
-
-		if (!dst->enumv) {
-			goto date_seconds;
-
-		} else {
-			fr_unix_time_t cast;
-
-			switch (dst->enumv->flags.type_size) {
-
-			date_seconds:
-			default:
-			case FR_TIME_RES_SEC:
-				cast = fr_unix_time_to_sec(src->vb_date);
-				if (cast >= ((uint64_t) 1) << 32) {
-				invalid_cast:
-					fr_strerror_printf("Invalid cast: result cannot fit into uint32");
-					return -1;
-				}
-				dst->vb_uint32 = cast;
-				break;
-
-			case FR_TIME_RES_USEC:
-				cast = fr_unix_time_to_usec(src->vb_date);
-				if (cast >= ((uint64_t) 1) << 32) goto invalid_cast;
-
-				dst->vb_uint32 = cast;
-				break;
-
-			case FR_TIME_RES_MSEC:
-				cast = fr_unix_time_to_msec(src->vb_date);
-				if (cast >= ((uint64_t) 1) << 32) goto invalid_cast;
-
-				dst->vb_uint32 = cast;
-				break;
-
-			case FR_TIME_RES_NSEC:
-				cast = src->vb_date;
-				if (cast >= ((uint64_t) 1) << 32) goto invalid_cast;
-
-				dst->vb_uint32 = cast;
-				break;
-			}
-		}
-		break;
-
-	case FR_TYPE_TIME_DELTA:
-		if (src->vb_time_delta < 0) goto invalid_cast;
-
-		if (!dst->enumv) {
-			goto delta_seconds;
-
-		} else {
-			int64_t cast;
-
-			switch (dst->enumv->flags.type_size) {
-
-			delta_seconds:
-			default:
-			case FR_TIME_RES_SEC:
-				cast = fr_time_delta_to_sec(src->vb_time_delta);
-				if (cast >= ((int64_t) 1) << 32) goto invalid_cast;
-
-				dst->vb_uint32 = cast;
-				break;
-
-			case FR_TIME_RES_USEC:
-				cast = fr_time_delta_to_usec(src->vb_time_delta);
-				if (cast >= ((int64_t) 1) << 32) goto invalid_cast;
-
-				dst->vb_uint32 = cast;
-				break;
-
-			case FR_TIME_RES_MSEC:
-				cast = fr_time_delta_to_msec(src->vb_time_delta);
-				if (cast >= ((int64_t) 1) << 32) goto invalid_cast;
-
-				dst->vb_uint32 = cast;
-				break;
-
-			case FR_TIME_RES_NSEC:
-				cast = src->vb_time_delta;
-				if (cast >= ((int64_t) 1) << 32) goto invalid_cast;
-
-				dst->vb_uint32 = cast;
-				break;
-			}
-		}
-		break;
-
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
-		break;
-
-	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-		return -1;
-	}
-
-	dst->type = FR_TYPE_UINT32;
-	dst->enumv = dst_enumv;
-
-	return 0;
-}
-
-/** Convert any supported type to a uint64
- *
- * Allowed input types are:
- * - FR_TYPE_BOOL
- * - FR_TYPE_UINT8
- * - FR_TYPE_UINT16
- * - FR_TYPE_UINT32
- * - FR_TYPE_STRING
- * - FR_TYPE_OCTETS
- *
- * @param ctx		unused.
- * @param dst		Where to write result of casting.
- * @param dst_type	to cast to.
- * @param dst_enumv	enumeration values.
- * @param src		Input data.
- */
-static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					      fr_value_box_t const *src)
-{
-	switch (src->type) {
-	case FR_TYPE_BOOL:
-		dst->vb_uint64 = (src->vb_bool == true) ? 1 : 0;
-		break;
-
-	case FR_TYPE_UINT8:
-		dst->vb_uint64 = src->vb_uint8;
+		dst->vb_bool = (src->vb_int16 != 0);
 		break;
 
 	case FR_TYPE_UINT16:
-		dst->vb_uint64 = src->vb_uint16;
-		break;
-
-	case FR_TYPE_UINT32:
-		dst->vb_uint64 = src->vb_uint32;
-		break;
-
-	case FR_TYPE_INT8:
-		if (src->vb_int8 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
-					   "signed value %d is negative ", src->vb_int8);
-			return -1;
-		}
-		dst->vb_uint64 = (uint8_t)src->vb_int8;
-		break;
-
-	case FR_TYPE_INT16:
-		if (src->vb_int16 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int16 to uint16.  "
-					   "signed value %d is negative ", src->vb_int16);
-			return -1;
-		}
-		dst->vb_uint64 = (uint16_t)src->vb_int16;
+		dst->vb_bool = (src->vb_uint16 != 0);
 		break;
 
 	case FR_TYPE_INT32:
-		if (src->vb_int32 < 0 ) {
-			fr_strerror_printf("Invalid cast: From int32 to uint32.  "
-					   "signed value %d is negative ", src->vb_int32);
-			return -1;
-		}
-		dst->vb_uint64 = (uint32_t)src->vb_int32;
+		dst->vb_bool = (src->vb_int32 != 0);
 		break;
 
-	case FR_TYPE_DATE:
-		if (!dst->enumv) {
-			goto date_seconds;
-
-		} else switch (dst->enumv->flags.type_size) {
-		date_seconds:
-		default:
-		case FR_TIME_RES_SEC:
-			dst->vb_uint64 = fr_unix_time_to_sec(src->vb_date);
-			break;
-
-		case FR_TIME_RES_USEC:
-			dst->vb_uint64 = fr_unix_time_to_usec(src->vb_date);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			dst->vb_uint64 = fr_unix_time_to_msec(src->vb_date);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			dst->vb_uint64 = src->vb_date;
-			break;
-		}
+	case FR_TYPE_UINT32:
+		dst->vb_bool = (src->vb_uint32 != 0);
 		break;
 
-	case FR_TYPE_TIME_DELTA:
-		/*
-		 *	uint64 can't hold all of int64
-		 */
-		if (src->vb_time_delta < 0) {
-			fr_strerror_printf("Invalid cast: result cannot fit into uint64");
-			return -1;
-		}
-
-		if (!dst->enumv) {
-			goto delta_seconds;
-
-		} else switch (dst->enumv->flags.type_size) {
-		delta_seconds:
-		default:
-		case FR_TIME_RES_SEC:
-			dst->vb_uint64 = fr_time_delta_to_sec(src->vb_time_delta);
-			break;
-
-		case FR_TIME_RES_USEC:
-			dst->vb_uint64 = fr_time_delta_to_usec(src->vb_time_delta);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			dst->vb_uint64 = fr_time_delta_to_msec(src->vb_time_delta);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			dst->vb_uint64 = src->vb_time_delta;
-			break;
-		}
+	case FR_TYPE_INT64:
+		dst->vb_bool = (src->vb_int64 != 0);
 		break;
 
-	case FR_TYPE_STRING:
-		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->vb_strvalue, src->datum.length, '\0', src->tainted) < 0) return -1;
-		break;
-
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src) < 0) return -1;
+	case FR_TYPE_UINT64:
+		dst->vb_bool = (src->vb_uint64 != 0);
 		break;
 
 	default:
@@ -2637,10 +2553,278 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 		return -1;
 	}
 
-	dst->type = FR_TYPE_UINT64;
-	dst->enumv = dst_enumv;
+	return 0;
+}
+
+/** Convert any signed or unsigned integer type to any other signed or unsigned integer type
+ *
+ */
+static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst,
+						       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						       fr_value_box_t const *src)
+{
+	uint64_t		tmp = 0;
+	size_t			len = fr_value_box_field_sizes[src->type];
+	int64_t			min;
+
+#define SIGN_BIT_HIGH(_int, _len)	((((uint64_t)1) << ((_len << 3) - 1)) & _int)
+#define SIGN_PROMOTE(_int, _len)	((_len) < sizeof(_int) ? \
+					(_int) | (~((__typeof__(_int))0)) << ((_len) << 3) : (_int))
+
+	switch (src->type) {
+	/*
+	 *	Dates are always represented in nanoseconds
+	 *	internally, but when we convert to another
+	 *	integer type, we scale appropriately.
+	 *
+	 *	i.e. if the attribute value resolution is
+	 *	seconds, then the integer value is
+	 *	nanoseconds -> seconds.
+	 */
+	case FR_TYPE_DATE:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			date_src_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				tmp = fr_unix_time_to_sec(src->vb_date);
+				break;
+
+			case FR_TIME_RES_USEC:
+				tmp = fr_unix_time_to_usec(src->vb_date);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				tmp = fr_unix_time_to_msec(src->vb_date);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				tmp = src->vb_date;
+				break;
+			}
+		} else goto date_src_seconds;
+		break;
+
+	/*
+	 *	Same deal with time deltas.  Note that
+	 *	even though we store the value as an
+	 *	unsigned integer, it'll be cast to a
+	 *	signed integer for comparisons.
+	 */
+	case FR_TYPE_TIME_DELTA:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			delta_src_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				tmp = (uint64_t)fr_time_delta_to_sec(src->vb_time_delta);
+				break;
+
+			case FR_TIME_RES_USEC:
+				tmp = (uint64_t)fr_time_delta_to_usec(src->vb_time_delta);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				tmp = (uint64_t)fr_time_delta_to_msec(src->vb_time_delta);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				tmp = (uint64_t)src->vb_time_delta;
+				break;
+			}
+		} else goto delta_src_seconds;
+		break;
+
+	default:
+#ifdef WORDS_BIGENDIAN
+		memcpy(((uint8_t *)&tmp) + (sizeof(tmp) - len),
+		       ((uint8_t const *)src) + fr_value_box_offsets[src->type], len);
+#else
+		memcpy(&tmp, src, len);
+#endif
+		break;
+	}
+
+	min = fr_value_box_integer_min[dst_type];
+	if ((min < 0) && SIGN_BIT_HIGH(tmp, len)) {
+		tmp = SIGN_PROMOTE(tmp, len);
+		if (((int64_t)tmp < min)) {
+			fr_strerror_printf("Invalid cast from %s to %s.  %"PRId64" "
+					   "outside value range %"PRId64"-%"PRIu64,
+					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   (int64_t)tmp,
+					   min, fr_value_box_integer_max[dst_type]);
+			return -1;
+		}
+	} else if (tmp > fr_value_box_integer_max[dst_type]) {
+		fr_strerror_printf("Invalid cast from %s to %s.  %"PRIu64" "
+				   "outside value range 0-%"PRIu64,
+				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				   tmp, fr_value_box_integer_max[dst_type]);
+		return -1;
+	}
+
+	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+	switch (dst_type) {
+	case FR_TYPE_DATE:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			date_dst_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				dst->vb_date = fr_unix_time_from_sec((fr_unix_time_t)tmp);
+				break;
+
+			case FR_TIME_RES_USEC:
+				dst->vb_date = fr_unix_time_from_usec((fr_unix_time_t)tmp);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				dst->vb_date = fr_unix_time_from_msec((fr_unix_time_t)tmp);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				dst->vb_date = fr_unix_time_from_nsec((fr_unix_time_t)tmp);
+				break;
+			}
+		} else goto date_dst_seconds;
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+		if (dst->enumv) {
+			switch (dst->enumv->flags.type_size) {
+			delta_dst_seconds:
+			default:
+			case FR_TIME_RES_SEC:
+				dst->vb_time_delta = fr_time_delta_from_sec((fr_time_delta_t)tmp);
+				break;
+
+			case FR_TIME_RES_USEC:
+				dst->vb_time_delta = fr_time_delta_from_usec((fr_time_delta_t)tmp);
+				break;
+
+			case FR_TIME_RES_MSEC:
+				dst->vb_time_delta = fr_time_delta_from_msec((fr_time_delta_t)tmp);
+				break;
+
+			case FR_TIME_RES_NSEC:
+				dst->vb_time_delta = fr_time_delta_from_nsec((fr_time_delta_t)tmp);
+				break;
+			}
+		 } else goto delta_dst_seconds;
+		 break;
+
+	default:
+#ifdef WORDS_BIGENDIAN
+		memcpy(((uint8_t *)dst) + fr_value_box_offsets[dst_type],
+		       ((uint8_t *)&tmp) + (sizeof(tmp) - len), fr_value_box_field_sizes[dst_type]);
+#else
+		memcpy(((uint8_t *)dst) + fr_value_box_offsets[dst_type],
+		       &tmp, fr_value_box_field_sizes[dst_type]);
+#endif
+		break;
+	}
 
 	return 0;
+}
+
+/** Convert any value to a signed or unsigned integer
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					       fr_value_box_t const *src)
+{
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				             src->vb_strvalue, src->vb_length, '\0', src->tainted);
+
+	case FR_TYPE_OCTETS:
+		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
+
+	case FR_TYPE_INTEGER:
+		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, src);
+
+	case FR_TYPE_IPV4_ADDR:
+	{
+		fr_value_box_t	tmp;
+
+		switch (dst_type) {
+		case FR_TYPE_UINT32:
+		case FR_TYPE_INT64:
+		case FR_TYPE_UINT64:
+		case FR_TYPE_DATE:
+		case FR_TYPE_TIME_DELTA:
+			break;
+
+		default:
+			goto bad_cast;
+		}
+
+		fr_value_box_init(&tmp, FR_TYPE_UINT32, src->enumv, src->tainted);
+		memcpy(&tmp.vb_uint32, &src->vb_ip.addr.v4, sizeof(tmp.vb_uint32));
+		fr_value_box_hton(&tmp, &tmp);
+		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, &tmp);
+	}
+
+	case FR_TYPE_ETHERNET:
+	{
+		fr_value_box_t	tmp;
+
+		switch (dst_type) {
+		case FR_TYPE_INT64:
+		case FR_TYPE_UINT64:
+		case FR_TYPE_DATE:
+		case FR_TYPE_TIME_DELTA:
+			break;
+
+		default:
+			goto bad_cast;
+		}
+
+		fr_value_box_init(&tmp, FR_TYPE_UINT64, src->enumv, src->tainted);
+#ifdef WORDS_BIGENDIAN
+		memcpy(((uint8_t *)&tmp.vb_uint64) + (sizeof(tmp.vb_uint64) - sizeof(src->vb_ether)),
+		       &src->vb_ether, sizeof(src->vb_ether));
+#else
+		memcpy(&tmp.vb_uint64, &src->vb_ether, sizeof(tmp.vb_ether));
+#endif
+		fr_value_box_hton(&tmp, &tmp);
+		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, &tmp);
+	}
+
+	case FR_TYPE_IFID:
+	{
+		switch (dst_type) {
+		case FR_TYPE_UINT64:
+			break;
+
+		default:
+			goto bad_cast;
+		}
+
+		fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+		dst->vb_uint64 = fr_net_to_uint64(&src->vb_ifid[0]);
+		return 0;
+	}
+
+	default:
+		break;
+	}
+
+bad_cast:
+	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+			   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+			   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+	return -1;
 }
 
 /** Convert one type of fr_value_box_t to another
@@ -2655,7 +2839,7 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
  * @param dst_enumv	Aliases for values contained within this fr_value_box_t.
- *			If #fr_value_box_t is passed to #fr_value_box_asprint
+ *			If #fr_value_box_t is passed to #fr_value_box_aprint
  *			names will be printed instead of actual value.
  * @param src		Input data.
  * @return
@@ -2667,11 +2851,11 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		      fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type != FR_TYPE_INVALID)) return -1;
-	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 	if (!fr_cond_assert(src != dst)) return -1;
+	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 
 	if (fr_dict_non_data_types[dst_type]) {
-		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types.",
+		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
@@ -2744,28 +2928,11 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_BOOL:
 		return fr_value_box_cast_to_bool(ctx, dst, dst_type, dst_enumv, src);
 
-	case FR_TYPE_UINT8:
-		return fr_value_box_cast_to_uint8(ctx, dst, dst_type, dst_enumv, src);
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+		return fr_value_box_cast_to_integer(ctx, dst, dst_type, dst_enumv, src);
 
-	case FR_TYPE_UINT16:
-		return fr_value_box_cast_to_uint16(ctx, dst, dst_type, dst_enumv, src);
-
-	case FR_TYPE_UINT32:
-		return fr_value_box_cast_to_uint32(ctx, dst, dst_type, dst_enumv, src);
-
-	case FR_TYPE_UINT64:
-		return fr_value_box_cast_to_uint64(ctx, dst, dst_type, dst_enumv, src);
-
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
-	case FR_TYPE_DATE:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_ABINARY:
 		break;
 
 	/*
@@ -2773,10 +2940,11 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
-		fr_assert_fail(NULL);
+		fr_strerror_printf("Invalid cast from %s to %s.  Invalid destination type",
+				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
 
@@ -2785,107 +2953,28 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
 								      src->vb_strvalue,
-								      src->datum.length, '\0', src->tainted);
-
-	if ((src->type == FR_TYPE_IFID) &&
-	    (dst_type == FR_TYPE_UINT64)) {
-		dst->vb_uint64 = fr_get_be64(&src->vb_ifid[0]);
-
-	fixed_length:
-		dst->type = dst_type;
-		dst->enumv = dst_enumv;
-
-		return 0;
-	}
-
-	/*
-	 *	We can cast uint32s less that < INT_MAX to signed
-	 */
-	if (dst_type == FR_TYPE_INT32) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->vb_int32 = src->vb_uint8;
-			break;
-
-		case FR_TYPE_UINT16:
-			dst->vb_int32 = src->vb_uint16;
-			break;
-
-		case FR_TYPE_UINT32:
-			if (src->vb_uint32 > INT_MAX) {
-				fr_strerror_printf("Invalid cast: From uint32 to signed.  uint32 value %u is larger "
-						   "than max signed int and would overflow", src->vb_uint32);
-				return -1;
-			}
-			dst->vb_int32 = (int)src->vb_uint32;
-			break;
-
-		case FR_TYPE_UINT64:
-			if (src->vb_uint32 > INT_MAX) {
-				fr_strerror_printf("Invalid cast: From uint64 to signed.  uint64 value %" PRIu64
-						   " is larger than max signed int and would overflow", src->vb_uint64);
-				return -1;
-			}
-			dst->vb_int32 = (int)src->vb_uint64;
-			break;
-
-		case FR_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-		invalid_cast:
-			fr_strerror_printf("Invalid cast from %s to %s",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
-			return -1;
-		}
-		goto fixed_length;
-	}
-
-	if (dst_type == FR_TYPE_TIME_DELTA) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->datum.time_delta = src->vb_uint8;
-			break;
-
-		case FR_TYPE_UINT16:
-			dst->datum.time_delta = src->vb_uint16;
-			break;
-
-		case FR_TYPE_UINT32:
-			dst->datum.time_delta = src->vb_uint32;
-			break;
-
-		case FR_TYPE_UINT64:
-			dst->datum.time_delta = src->vb_uint64;
-			break;
-
-		default:
-			goto invalid_cast;
-		}
-	}
+								      src->vb_length, '\0', src->tainted);
 
 	if (src->type == FR_TYPE_OCTETS) {
 		fr_value_box_t tmp;
 
-	do_octets:
-		if (src->datum.length < fr_value_box_network_sizes[dst_type][0]) {
+		if (src->vb_length < network_min_size(dst_type)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 					   "destination type size %zd",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   src->datum.length,
-					   fr_value_box_network_sizes[dst_type][0]);
+					   src->vb_length,
+					   network_min_size(dst_type));
 			return -1;
 		}
 
-		if (src->datum.length > fr_value_box_network_sizes[dst_type][1]) {
+		if (src->vb_length > network_max_size(dst_type)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 					   "destination type size %zd",
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
-					   src->datum.length,
-					   fr_value_box_network_sizes[dst_type][1]);
+					   src->vb_length,
+					   network_max_size(dst_type));
 			return -1;
 		}
 
@@ -2900,40 +2989,10 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		dst->enumv = dst_enumv;
 
 		fr_value_box_hton(dst, &tmp);
-
-		/*
-		 *	Fixup IP addresses.
-		 */
-		switch (dst->type) {
-		case FR_TYPE_IPV4_ADDR:
-			dst->vb_ip.af = AF_INET;
-			dst->vb_ip.prefix = 128;
-			dst->vb_ip.scope_id = 0;
-			break;
-
-		case FR_TYPE_IPV6_ADDR:
-			dst->vb_ip.af = AF_INET6;
-			dst->vb_ip.prefix = 128;
-			dst->vb_ip.scope_id = 0;
-			break;
-
-		default:
-			break;
-		}
-
 		return 0;
 	}
 
-	if ((src->type == FR_TYPE_IPV4_ADDR) &&
-		   ((dst_type == FR_TYPE_UINT32) ||
-		    (dst_type == FR_TYPE_DATE) ||
-		    (dst_type == FR_TYPE_TIME_DELTA) ||
-		    (dst_type == FR_TYPE_INT32))) {
-		dst->vb_uint32 = htonl(src->vb_ip.addr.v4.s_addr);
-
-	} else {		/* they're of the same uint8 order */
-		memcpy(&dst->datum, &src->datum, fr_value_box_field_sizes[src->type]);
-	}
+	memcpy(&dst->datum, &src->datum, fr_value_box_field_sizes[src->type]);
 
 	dst->type = dst_type;
 	dst->enumv = dst_enumv;
@@ -2951,7 +3010,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
  * @param vb		to cast.
  * @param dst_type	to cast to.
  * @param dst_enumv	Aliases for values contained within this fr_value_box_t.
- *			If #fr_value_box_t is passed to #fr_value_box_asprint
+ *			If #fr_value_box_t is passed to #fr_value_box_aprint
  *			names will be printed instead of actual value.
  * @return
  *	- 0 on success.
@@ -2977,9 +3036,9 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	 *	box after the cast has been completed,
 	 *	freeing any old buffers.
 	 */
-	fr_value_box_copy_shallow(ctx, &tmp, vb, false);
+	fr_value_box_copy_shallow(NULL, &tmp, vb);
 
-	if (fr_value_box_cast(vb, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
+	if (fr_value_box_cast(ctx, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
 
 	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
 
@@ -3048,6 +3107,77 @@ int fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
 	return 0;
 }
 
+/** Clear/free any existing value
+ *
+ * @note Do not use on uninitialised memory.
+ *
+ * @param[in] data to clear.
+ */
+void fr_value_box_clear_value(fr_value_box_t *data)
+{
+	switch (data->type) {
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+		talloc_free(data->datum.ptr);
+		break;
+
+	case FR_TYPE_STRUCTURAL:
+		/*
+		 *	Depth first freeing of children
+		 *
+		 *	This ensures orderly freeing, regardless
+		 *	of talloc hierarchy.
+		 */
+		switch (data->datum.children.type) {
+		case FR_VALUE_BOX_LIST_SINGLE:
+		{
+			fr_cursor_t	cursor;
+			fr_value_box_t	*vb;
+
+			for (vb = fr_cursor_init(&cursor, &data->datum.children.slist);
+			     vb;
+			     vb = fr_cursor_next(&cursor)) {
+				fr_value_box_clear_value(vb);
+				talloc_free(vb);
+			}
+		}
+			break;
+
+		case FR_VALUE_BOX_LIST_DOUBLE:
+		{
+			fr_value_box_t	*vb = NULL;
+
+			while ((vb = fr_dlist_next(&data->datum.children.dlist, vb))) {
+				fr_value_box_clear_value(vb);
+				talloc_free(vb);
+			}
+		}
+			break;
+		}
+		return;
+
+	case FR_TYPE_INVALID:
+		return;
+
+	default:
+		break;
+	}
+
+	memset(&data->datum, 0, sizeof(data->datum));
+}
+
+/** Clear/free any existing value and metadata
+ *
+ * @note Do not use on uninitialised memory.
+ *
+ * @param[in] data to clear.
+ */
+void fr_value_box_clear(fr_value_box_t *data)
+{
+	fr_value_box_clear_value(data);
+	fr_value_box_init(data, FR_TYPE_INVALID, NULL, false);
+}
+
 /** Copy value data verbatim duplicating any buffers
  *
  * @note Will free any exiting buffers associated with the dst #fr_value_box_t.
@@ -3077,9 +3207,9 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		/*
 		 *	Zero length strings still have a one uint8 buffer
 		 */
-		str = talloc_bstrndup(ctx, src->vb_strvalue, src->datum.length);
+		str = talloc_bstrndup(ctx, src->vb_strvalue, src->vb_length);
 		if (!str) {
-			fr_strerror_printf("Failed allocating string buffer");
+			fr_strerror_const("Failed allocating string buffer");
 			return -1;
 		}
 		dst->vb_strvalue = str;
@@ -3090,10 +3220,10 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 	{
 		uint8_t *bin = NULL;
 
-		if (src->datum.length) {
-			bin = talloc_memdup(ctx, src->vb_octets, src->datum.length);
+		if (src->vb_length) {
+			bin = talloc_memdup(ctx, src->vb_octets, src->vb_length);
 			if (!bin) {
-				fr_strerror_printf("Failed allocating octets buffer");
+				fr_strerror_const("Failed allocating octets buffer");
 				return -1;
 			}
 			talloc_set_type(bin, uint8_t);
@@ -3118,20 +3248,17 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
  * @param[in] ctx	to add reference from.  If NULL no reference will be added.
  * @param[in] dst	to copy value to.
  * @param[in] src	to copy value from.
- * @param[in] incr_ref	Increment the reference count on the src buffer.
- *			Only do this if you KNOW the src box/buffer was allocated by
- *			this thread and will only ever be used by this thread.
  */
-void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src, bool incr_ref)
+void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	switch (src->type) {
 	default:
-		fr_value_box_copy(ctx, dst, src);
+		fr_value_box_copy(NULL, dst, src);
 		break;
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		dst->datum.ptr = ctx && incr_ref ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
+		dst->datum.ptr = ctx ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
 		fr_value_box_copy_meta(dst, src);
 		break;
 	}
@@ -3160,9 +3287,10 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		str = talloc_steal(ctx, src->vb_strvalue);
 		if (!str) {
-			fr_strerror_printf("Failed stealing string buffer");
+			fr_strerror_const("Failed stealing string buffer");
 			return -1;
 		}
+		talloc_set_type(str, char);
 		dst->vb_strvalue = str;
 		fr_value_box_copy_meta(dst, src);
 	}
@@ -3174,14 +3302,74 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
  		bin = talloc_steal(ctx, src->vb_octets);
 		if (!bin) {
-			fr_strerror_printf("Failed stealing octets buffer");
+			fr_strerror_const("Failed stealing octets buffer");
 			return -1;
 		}
+		talloc_set_type(bin, uint8_t);
+
 		dst->vb_octets = bin;
 		fr_value_box_copy_meta(dst, src);
 	}
 		return 0;
 	}
+}
+
+/** Copy a nul terminated string to a #fr_value_box_t
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src 	a nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			char const *src, bool tainted)
+{
+	char const	*str;
+
+	str = talloc_typed_strdup(ctx, src);
+	if (!str) {
+		fr_strerror_const("Failed allocating string buffer");
+		return -1;
+	}
+
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = str;
+	dst->vb_length = talloc_array_length(str) - 1;
+
+	return 0;
+}
+
+/** Trim the length of the string buffer to match the length of the C string
+ *
+ * @param[in] ctx	to re-alloc the buffer in.
+ * @param[in,out] vb	to trim.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
+{
+	size_t	len;
+	char	*str;
+	char 	*mutable;
+
+	if (!fr_cond_assert(vb->type == FR_TYPE_STRING)) return -1;
+
+	len = strlen(vb->vb_strvalue);
+
+	memcpy(&mutable, &vb->vb_strvalue, sizeof(mutable));
+	str = talloc_realloc(ctx, mutable, char, len + 1);
+	if (!str) {
+		fr_strerror_const("Failed re-allocing string buffer");
+		return -1;
+	}
+	vb->vb_length = len;
+
+	return 0;
 }
 
 /** Print a formatted string using our internal printf wrapper and assign it to a value box
@@ -3208,12 +3396,9 @@ int fr_value_box_vasprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 
 	if (!str) return -1;
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = talloc_array_length(str) - 1;
 
 	return 0;
 }
@@ -3243,31 +3428,97 @@ int fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	return ret;
 }
 
-/** Copy a nul terminated string to a #fr_value_box_t
+/** Assign a buffer containing a nul terminated string to a box, but don't copy it
  *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
+ * @param[in] dst	to assign string to.
  * @param[in] enumv	Aliases for values.
- * @param[in] src 	a nul terminated buffer.
+ * @param[in] src	to copy string from.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			char const *src, bool tainted)
+void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				 char const *src, bool tainted)
 {
-	char const	*str;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = src;
+	dst->vb_length = strlen(src);
+}
 
-	str = talloc_typed_strdup(ctx, src);
+/** Alloc and assign an empty \0 terminated string to a #fr_value_box_t
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[out] out	if non-null where to write a pointer to the new buffer.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] len	of buffer to allocate.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			   size_t len, bool tainted)
+{
+	char	*str;
+
+	str = talloc_zero_array(ctx, char, len + 1);
 	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
+		fr_strerror_const("Failed allocating string buffer");
+		return -1;
+	}
+	str[len] = '\0';
+
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = str;
+	dst->vb_length = talloc_array_length(str) - 1;
+
+	if (out) *out = str;
+
+	return 0;
+}
+
+/** Change the length of a buffer already allocated to a value box
+ *
+ * @note Do not use on an uninitialised box.
+ *
+ * @param[in] ctx	to realloc buffer in.
+ * @param[out] out	if non-null where to write a pointer to the new buffer.
+ * @param[in] dst 	to realloc buffer for.
+ * @param[in] len	to realloc to.
+ * @return
+ *	- 0 on success.
+ *	 - -1 on failure.
+ */
+int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, size_t len)
+{
+	size_t	clen;
+	char	*cstr;
+	char	*str;
+
+	fr_assert(dst->type == FR_TYPE_STRING);
+
+	memcpy(&cstr, &dst->vb_strvalue, sizeof(cstr));
+
+	clen = talloc_array_length(dst->vb_strvalue) - 1;
+	if (clen == len) return 0;	/* No change */
+
+	str = talloc_realloc(ctx, cstr, char, len + 1);
+	if (!str) {
+		fr_strerror_printf("Failed reallocing value box buffer to %zu bytes", len + 1);
 		return -1;
 	}
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	/*
+	 *	Zero out the additional bytes
+	 */
+	if (clen < len) {
+		memset(str + clen, '\0', (len - clen) + 1);
+	} else {
+		cstr[len] = '\0';
+	}
 	dst->vb_strvalue = str;
-	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = len;
+
+	if (out) *out = str;
 
 	return 0;
 }
@@ -3288,37 +3539,36 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 
 	str = talloc_bstrndup(ctx, src, len);
 	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
+		fr_strerror_const("Failed allocating string buffer");
 		return -1;
 	}
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = len;
 
 	return 0;
 }
 
-/** Assign a string to to a #fr_value_box_t
- *
- * @param[in] dst 	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src 	a string.
- * @param[in] len	of src.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-void fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				   char const *src, size_t len, bool tainted)
+int fr_value_box_bstrndup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				fr_dbuff_t *dbuff, size_t len, bool tainted)
 {
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->vb_strvalue = src;
-	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	char	*str;
+
+	str = talloc_array(ctx, char, len + 1);
+	if (!str) {
+		fr_strerror_printf("Failed allocating string buffer");
+		return -1;
+	}
+
+	if (fr_dbuff_out_memcpy((uint8_t *)str, dbuff, len) < 0) return -1;
+	str[len] = '\0';
+
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = str;
+	dst->vb_length = len;
+
+	return 0;
 }
 
 /** Copy a nul terminated talloced buffer to a #fr_value_box_t
@@ -3336,124 +3586,74 @@ void fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *en
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			       char const *src, bool tainted)
-{
-	char	*str;
-	size_t	len;
-
-	len = talloc_array_length(src);
-	if ((len == 1) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
-		return -1;
-	}
-
-	str = talloc_bstrndup(ctx, src, len - 1);
-	if (!str) {
-		fr_strerror_printf("Failed allocating string buffer");
-		return -1;
-	}
-
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->vb_strvalue = str;
-	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
-
-	return 0;
-}
-
-/** Steal a nul terminated talloced buffer into a specified ctx, and assign to a #fr_value_box_t
- *
- * Steal a talloced nul terminated buffer, setting fields in the dst value box appropriately.
- *
- * The buffer must be \0 terminated, or an error will be returned.
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src 	a talloced nul terminated buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_value_box_bstrsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			  char *src, bool tainted)
+int fr_value_box_bstrdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			        char const *src, bool tainted)
 {
 	size_t	len;
-	char	*str;
+
+	(void)talloc_get_type_abort_const(src, char);
 
 	len = talloc_array_length(src);
 	if ((len == 0) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer empty or not \\0 terminated");
+		fr_strerror_const("Input buffer not \\0 terminated");
 		return -1;
 	}
 
-	str = talloc_steal(ctx, src);
-	if (!str) {
-		fr_strerror_printf("Failed stealing string buffer");
-		return -1;
-	}
-
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->vb_strvalue = str;
-	dst->datum.length = len - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
-
-	return 0;
+	return fr_value_box_bstrndup(ctx, dst, enumv, src, len - 1, tainted);
 }
 
-/** Steal a talloced string buffer into a specified ctx, reallocing if necessary
+/** Assign a string to to a #fr_value_box_t
  *
- * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] enumv	Aliases for values.
- * @param[in] src 	a talloced buffer.
- * @param[in] inlen	length of data in the buffer.  Buffer will be realloced if necessary.
+ * @param[in] src 	a string.
+ * @param[in] len	of src.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+void fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				   char const *src, size_t len, bool tainted)
+{
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = src;
+	dst->vb_length = len;
+}
+
+/** Assign a talloced buffer containing a nul terminated string to a box, but don't copy it
+ *
+ * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
+ *
+ * @param[in] ctx	to add reference from.  If NULL no reference will be added.
+ * @param[in] dst	to assign string to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src	to copy string from.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			    char **src, size_t inlen, bool tainted)
+int fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				        char const *src, bool tainted)
 {
 	size_t	len;
-	char	*str;
 
-	str = talloc_steal(ctx, *src);
-	if (!str) {
-		fr_strerror_printf("Failed stealing string buffer");
+	(void) talloc_get_type_abort_const(src, char);
+
+	len = talloc_array_length(src);
+	if ((len == 0) || (src[len - 1] != '\0')) {
+		fr_strerror_const("Input buffer not \\0 terminated");
 		return -1;
 	}
 
-	len = talloc_array_length(*src);
-	if (len != (inlen + 1)) {	/* +1 for \0 */
-		str = talloc_realloc_size(ctx, *src, inlen + 1);
-		if (!str) {
-			fr_strerror_printf("Failed reallocing string buffer");
-			return -1;
-		}
-		str[inlen] = '\0';
-		*src = str;
-	}
-
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->vb_strvalue = str;
-	dst->datum.length = inlen;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
+	dst->vb_strvalue = ctx ? talloc_reference(ctx, src) : src;
+	dst->vb_length = len - 1;
 
 	return 0;
 }
 
-/** Append a buffer to an existing fr_value_box_t
+/** Append bytes from a buffer to an existing #fr_value_box_t
  *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
  * @param[in] dst	value box to append to.
  * @param[in] src	octets data to append.
  * @param[in] len	length of octets data.
@@ -3462,7 +3662,7 @@ int fr_value_box_bstrsnteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t
  *	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+int fr_value_box_bstrn_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
 {
 	char *ptr, *nptr;
 	size_t nlen;
@@ -3476,26 +3676,27 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
 		return -1;
 	}
 
-	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
+	ptr = dst->datum.ptr;
 	if (!fr_cond_assert(ptr)) return -1;
 
 	if (talloc_reference_count(ptr) > 0) {
-		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
+		fr_strerror_printf("%s: Boxed value has too many references", __FUNCTION__);
 		return -1;
 	}
 
 	nlen = dst->vb_length + len + 1;
-	nptr = talloc_realloc(talloc_parent(ptr), ptr, char, dst->vb_length + len + 1);
+	nptr = talloc_realloc(ctx, ptr, char, dst->vb_length + len + 1);
 	if (!nptr) {
 		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
 				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
 		return -1;
 	}
+	talloc_set_type(nptr, char);
 	ptr = nptr;
 
 	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
 
-	dst->tainted = tainted;
+	dst->tainted = dst->tainted || tainted;
 	dst->datum.ptr = ptr;
 	dst->vb_length += len;
 
@@ -3504,56 +3705,110 @@ int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, b
 	return 0;
 }
 
-/** Assign a buffer containing a nul terminated string to a box, but don't copy it
+/** Append a talloced buffer to an existing fr_value_box_t
  *
- * @param[in] dst	to assign string to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src	to copy string to.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				 char const *src, bool tainted)
-{
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->vb_strvalue = src;
-	dst->datum.length = strlen(src);
-	dst->enumv = enumv;
-	dst->next = NULL;
-}
-
-/** Assign a talloced buffer containing a nul terminated string to a box, but don't copy it
- *
- * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
- *
- * @param[in] ctx	to add reference from.  If NULL no reference will be added.
- * @param[in] dst	to assign string to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src	to copy string to.
- * @param[in] tainted	Whether the value came from a trusted source.
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[in] dst	value box to append to.
+ * @param[in] src	string data to append.
+ * @param[in] tainted	Whether src is tainted.
  * @return
  *	- 0 on success.
- *	- -1 on failure.
+ * 	- -1 on failure.
  */
-int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				       char const *src, bool tainted)
+int fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted)
 {
-	size_t	len;
+	size_t len;
 
 	(void) talloc_get_type_abort_const(src, char);
 
 	len = talloc_array_length(src);
 	if ((len == 0) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
+		fr_strerror_const("Input buffer not \\0 terminated");
 		return -1;
 	}
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->vb_strvalue = ctx ? talloc_reference(ctx, src) : src;
-	dst->datum.length = len - 1;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	return fr_value_box_bstrn_append(ctx, dst, src, len - 1, tainted);
+}
+
+/** Pre-allocate an octets buffer for filling by the caller
+ *
+ * @note Buffer will not be zeroed, as it's assumed the caller will be filling it.
+ *
+ * @param[in] ctx	to allocate any new buffers in.
+ * @param[out] out	If non-null will be filled with a pointer to the
+ *			new buffer.
+ * @param[in] dst	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] len	of data in the buffer. If 0, a zero length
+ *			talloc buffer will be alloced. dst->vb_octets
+ *			will *NOT* be NULL.  You should use the length
+ *			field of the box to determine if any value
+ *      		is assigned.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			   size_t len, bool tainted)
+{
+	uint8_t *bin;
+
+	bin = talloc_array(ctx, uint8_t, len);
+	if (!bin) {
+		fr_strerror_const("Failed allocating octets buffer");
+		return -1;
+	}
+	talloc_set_type(bin, uint8_t);
+
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
+	dst->vb_octets = bin;
+	dst->vb_length = len;
+
+	if (out) *out = bin;
+
+	return 0;
+}
+
+/** Change the length of a buffer already allocated to a value box
+ *
+ * @note Do not use on an uninitialised box.
+ *
+ * @param[in] ctx	to realloc buffer in.
+ * @param[out] out	if non-null where to write a pointer to the new buffer.
+ * @param[in] dst 	to realloc buffer for.
+ * @param[in] len	to realloc to.
+ * @return
+ *	- 0 on success.
+ *	 - -1 on failure.
+ */
+int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, size_t len)
+{
+	size_t	clen;
+	uint8_t	*cbin;
+	uint8_t	*bin;
+
+	fr_assert(dst->type == FR_TYPE_OCTETS);
+
+	memcpy(&cbin, &dst->vb_octets, sizeof(cbin));
+
+	clen = talloc_array_length(dst->vb_octets);
+	if (clen == len) return 0;	/* No change */
+
+	bin = talloc_realloc(ctx, cbin, uint8_t, len);
+	if (!bin) {
+		fr_strerror_printf("Failed reallocing value box buffer to %zu bytes", len);
+		return -1;
+	}
+
+	/*
+	 *	Zero out the additional bytes
+	 */
+	if (clen < len) memset(bin + clen, 0x00, len - clen);
+	dst->vb_octets = bin;
+	dst->vb_length = len;
+
+	if (out) *out = bin;
 
 	return 0;
 }
@@ -3576,74 +3831,41 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memcpy(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			uint8_t const *src, size_t len, bool tainted)
 {
 	uint8_t *bin;
 
 	bin = talloc_memdup(ctx, src, len);
 	if (!bin) {
-		fr_strerror_printf("Failed allocating octets buffer");
+		fr_strerror_const("Failed allocating octets buffer");
 		return -1;
 	}
 	talloc_set_type(bin, uint8_t);
 
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = bin;
-	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = len;
 
 	return 0;
 }
 
-/** Append a buffer to an existing fr_value_box_t
- *
- * @param[in] dst	value box to append to.
- * @param[in] src	octets data to append.
- * @param[in] len	length of octets data.
- * @param[in] tainted	Whether src is tainted.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
+int fr_value_box_memdup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			      fr_dbuff_t *dbuff, size_t len, bool tainted)
 {
-	uint8_t *ptr, *nptr;
-	size_t nlen;
+	uint8_t *bin;
 
-	if (len == 0) return 0;
-
-	if (dst->type != FR_TYPE_OCTETS) {
-		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+	bin = talloc_size(ctx, len);
+	if (!bin) {
+		fr_strerror_printf("Failed allocating octets buffer");
 		return -1;
 	}
+	if (fr_dbuff_out_memcpy(bin, dbuff, len) < (ssize_t) len) return -1;
+	talloc_set_type(bin, uint8_t);
 
-	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
-	if (!fr_cond_assert(ptr)) return -1;
-
-	if (talloc_reference_count(ptr) > 0) {
-		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
-		return -1;
-	}
-
-	nlen = dst->vb_length + len;
-	nptr = talloc_realloc(talloc_parent(ptr), ptr, uint8_t, dst->vb_length + len);
-	if (!nptr) {
-		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
-				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
-		return -1;
-	}
-	ptr = nptr;
-
-	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
-
-	dst->tainted = tainted;
-	dst->datum.ptr = ptr;
-	dst->vb_length += len;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
+	dst->vb_octets = bin;
+	dst->vb_length = len;
 
 	return 0;
 }
@@ -3661,37 +3883,12 @@ int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memcpy_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			       uint8_t *src, bool tainted)
-{
-	(void) talloc_get_type_abort(src, uint8_t);
-
-	return fr_value_box_memcpy(ctx, dst, enumv, src, talloc_array_length(src), tainted);
-}
-
-/** Steal a talloced buffer into a specified ctx, and assign to a #fr_value_box_t
- *
- * Steal a talloced buffer, setting fields in the dst value box appropriately.
- *
- * @param[in] ctx 	to allocate any new buffers in.
- * @param[in] dst 	to assign new buffer to.
- * @param[in] enumv	Aliases for values.
- * @param[in] src 	a talloced nul terminated buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- */
-void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			   uint8_t const *src, bool tainted)
+int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			       uint8_t const *src, bool tainted)
 {
 	(void) talloc_get_type_abort_const(src, uint8_t);
 
-	(void) talloc_steal(ctx, src);	/* steal can never fail according to talloc docs */
-
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
-	dst->vb_octets = src;
-	dst->datum.length = talloc_array_length(src);
-	dst->enumv = enumv;
-	dst->next = NULL;
+	return fr_value_box_memdup(ctx, dst, enumv, src, talloc_array_length(src), tainted);
 }
 
 /** Assign a buffer to a box, but don't copy it
@@ -3708,15 +3905,12 @@ void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
  * @param[in] len	of buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-void fr_value_box_memcpy_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				 uint8_t *src, size_t len, bool tainted)
+void fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				 uint8_t const *src, size_t len, bool tainted)
 {
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = src;
-	dst->datum.length = len;
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = len;
 }
 
 /** Assign a talloced buffer to a box, but don't copy it
@@ -3729,17 +3923,80 @@ void fr_value_box_memcpy_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
  * @param[in] src	a talloced buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-void fr_value_box_memcpy_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				        uint8_t *src, bool tainted)
+void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				        uint8_t const *src, bool tainted)
 {
-	(void) talloc_get_type_abort(src, uint8_t);
+	(void) talloc_get_type_abort_const(src, uint8_t);
 
-	dst->type = FR_TYPE_OCTETS;
-	dst->tainted = tainted;
+	fr_value_box_init(dst, FR_TYPE_OCTETS, enumv, tainted);
 	dst->vb_octets = ctx ? talloc_reference(ctx, src) : src;
-	dst->datum.length = talloc_array_length(src);
-	dst->enumv = enumv;
-	dst->next = NULL;
+	dst->vb_length = talloc_array_length(src);
+}
+
+/** Append data to an existing fr_value_box_t
+ *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] len	length of octets data.
+ * @param[in] tainted	Whether src is tainted.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
+{
+	uint8_t *ptr, *nptr;
+	size_t nlen;
+
+	if (len == 0) return 0;
+
+	if (dst->type != FR_TYPE_OCTETS) {
+		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
+				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+		return -1;
+	}
+
+	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
+	if (!fr_cond_assert(ptr)) return -1;
+
+	if (talloc_reference_count(ptr) > 0) {
+		fr_strerror_printf("%s: Boxed value has too many references", __FUNCTION__);
+		return -1;
+	}
+
+	nlen = dst->vb_length + len;
+	nptr = talloc_realloc(ctx, ptr, uint8_t, dst->vb_length + len);
+	if (!nptr) {
+		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
+				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
+		return -1;
+	}
+	ptr = nptr;
+
+	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
+
+	dst->tainted = dst->tainted || tainted;
+	dst->datum.ptr = ptr;
+	dst->vb_length += len;
+
+	return 0;
+}
+
+/** Append a talloc buffer to an existing fr_value_box_t
+ *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] tainted	Whether src is tainted.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted)
+{
+	return fr_value_box_mem_append(ctx, dst, src, talloc_array_length(src), tainted);
 }
 
 /** Increment a boxed value
@@ -3926,8 +4183,6 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
 
 /** Convert string value to a fr_value_box_t type
  *
- * @todo Should take taint param.
- *
  * @param[in] ctx		to alloc strings in.
  * @param[out] dst		where to write parsed value.
  * @param[in,out] dst_type	of value data to create/dst_type of value created.
@@ -3953,14 +4208,12 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	if (!fr_cond_assert(*dst_type != FR_TYPE_INVALID)) return -1;
 
-	if (!in) return -1;
-
 	len = (inlen < 0) ? strlen(in) : (size_t)inlen;
 
 	/*
 	 *	Set size for all fixed length attributes.
 	 */
-	ret = dict_attr_sizes[*dst_type][1];	/* Max length */
+	ret = network_max_size(*dst_type);
 
 	/*
 	 *	Lookup any names before continuing
@@ -3972,28 +4225,15 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		fr_dict_enum_t	*enumv;
 
 		if (len > (sizeof(buffer) - 1)) {
-			tmp = talloc_array(NULL, char, len + 1);
-			if (!tmp) return -1;
-
-			name_len = fr_value_str_unescape((uint8_t *)tmp, in, len, quote);
+			name_len = fr_value_str_aunescape(NULL, &tmp,
+							  &FR_SBUFF_IN(in, len), SIZE_MAX, quote);
 			name = tmp;
 		} else {
-			name_len = fr_value_str_unescape((uint8_t *)buffer, in, len, quote);
+			name_len = fr_value_str_unescape(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
+							 &FR_SBUFF_IN(in, len), SIZE_MAX, quote);
 			name = buffer;
 		}
-		name[name_len] = '\0';
-
-		/*
-		 *	Check the name name is valid first before bothering
-		 *	to look it up.
-		 *
-		 *	Catches any embedded \0 bytes that might cause
-		 *	incorrect results.
-		 */
-		if (fr_dict_valid_name(name, name_len) <= 0) {
-			if (tmp) talloc_free(tmp);
-			goto parse;
-		}
+		fr_assert(name);
 
 		enumv = fr_dict_enum_by_name(dst_enumv, name, name_len);
 		if (tmp) talloc_free(tmp);
@@ -4013,39 +4253,13 @@ parse:
 	switch (*dst_type) {
 	case FR_TYPE_STRING:
 	{
-		char *buff, *p;
+		char *buff;
 
-		buff = talloc_bstrndup(ctx, in, len);
-
-		/*
-		 *	No de-quoting.  Just copy the string.
-		 */
-		if (!quote) {
-			ret = len;
-			dst->vb_strvalue = buff;
-			goto finish;
-		}
-
-		len = fr_value_str_unescape((uint8_t *)buff, in, len, quote);
-
-		/*
-		 *	Shrink the buffer to the correct size
-		 *	and \0 terminate it.  There is a significant
-		 *	amount of legacy code that assumes the string
-		 *	buffer in value pairs is a C string.
-		 *
-		 *	It's better for the server to print partial
-		 *	strings, instead of SEGV.
-		 */
-		dst->vb_strvalue = p = talloc_realloc(ctx, buff, char, len + 1);
-		p[len] = '\0';
-		ret = len;
+		ret = fr_value_str_aunescape(ctx, &buff, &FR_SBUFF_IN(in, len), SIZE_MAX, quote);
+		talloc_get_type_abort(buff, char);
+		dst->vb_strvalue = buff;
 	}
 		goto finish;
-
-	case FR_TYPE_VSA:
-		fr_strerror_printf("Must use 'Attr-26 = ...' instead of 'Vendor-Specific = ...'");
-		return -1;
 
 	/* raw octets: 0x01020304... */
 	case FR_TYPE_OCTETS:
@@ -4068,53 +4282,21 @@ parse:
 		 *	Invalid.
 		 */
 		if ((len & 0x01) != 0) {
-			fr_strerror_printf("Length of Hex String is not even, got %zu uint8s", len);
+			fr_strerror_printf("Length of hex string is not even, got %zu bytes", len);
 			return -1;
 		}
 
 		ret = len >> 1;
 		p = talloc_array(ctx, uint8_t, ret);
-		if (fr_hex2bin(p, ret, in + 2, len) != (size_t)ret) {
+		if (fr_hex2bin(NULL, &FR_DBUFF_TMP(p, ret), &FR_SBUFF_IN(in + 2, len), false) != (ssize_t)ret) {
 			talloc_free(p);
-			fr_strerror_printf("Invalid hex data");
+			fr_strerror_const("Invalid hex data");
 			return -1;
 		}
 
 		dst->vb_octets = p;
 	}
 		goto finish;
-
-	case FR_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
-		if ((len > 1) && (strncasecmp(in, "0x", 2) == 0)) {
-			ssize_t bin;
-
-			if (len > ((sizeof(dst->datum.filter) + 1) * 2)) {
-				fr_strerror_printf("Hex data is too large for ascend filter");
-				return -1;
-			}
-
-			bin = fr_hex2bin((uint8_t *) &dst->datum.filter, ret, in + 2, len - 2);
-			if (bin < ret) {
-				memset(((uint8_t *) &dst->datum.filter) + bin, 0, ret - bin);
-			}
-		} else {
-			if (ascend_parse_filter(dst, in, len) < 0 ) {
-				/* Allow ascend_parse_filter's strerror to bubble up */
-				return -1;
-			}
-		}
-
-		ret = sizeof(dst->datum.filter);
-		goto finish;
-#else
-		/*
-		 *	If Ascend binary is NOT defined,
-		 *	then fall through to raw octets, so that
-		 *	the user can at least make them by hand...
-		 */
-	 	goto do_octets;
-#endif
 
 	case FR_TYPE_IPV4_ADDR:
 	{
@@ -4170,8 +4352,7 @@ parse:
 	default:
 		break;
 
-	case FR_TYPE_STRUCTURAL_EXCEPT_VSA:
-	case FR_TYPE_VENDOR:
+	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_BAD:
 		fr_strerror_printf("Invalid dst_type %s",
 				   fr_table_str_by_value(fr_value_box_type_table, *dst_type, "<INVALID>"));
@@ -4184,7 +4365,7 @@ parse:
 	 */
 	if (inlen > 0) {
 		if (len >= sizeof(buffer)) {
-			fr_strerror_printf("Temporary buffer too small");
+			fr_strerror_const("Temporary buffer too small");
 			return -1;
 		}
 
@@ -4324,13 +4505,13 @@ parse:
 		if (fr_inet_pton(&dst->vb_ip, in, inlen, AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
 		switch (dst->vb_ip.af) {
 		case AF_INET:
-			ret = dict_attr_sizes[FR_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
 			*dst_type = FR_TYPE_IPV4_ADDR;
+			ret = network_min_size(*dst_type);
 			break;
 
 		case AF_INET6:
 			*dst_type = FR_TYPE_IPV6_ADDR;
-			ret = dict_attr_sizes[FR_TYPE_COMBO_IP_ADDR][1]; /* size of IPv6 address */
+			ret = network_max_size(*dst_type);
 			break;
 
 		default:
@@ -4357,19 +4538,18 @@ parse:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VARIABLE_SIZE:	/* Should have been dealt with above */
 	case FR_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
-	case FR_TYPE_GROUP:
 	case FR_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
 		return -1;
 	}
 
 finish:
-	dst->datum.length = ret;
+	dst->vb_length = ret;
 	dst->type = *dst_type;
 	dst->tainted = tainted;
 
 	/*
-	 *	Fixup enumv
+	 *	Fixup enumvs
 	 */
 	dst->enumv = dst_enumv;
 	dst->next = NULL;
@@ -4377,59 +4557,46 @@ finish:
 	return 0;
 }
 
-/** Print one attribute value to a string
+/** Print one boxed value to a string
  *
+ * This function should primarily be used when a #fr_value_box_t is being
+ * serialized in some non-standard way, i.e. as a value for a field
+ * in a database, in all other instances it's better to use
+ * #fr_value_box_print_quoted.
+ *
+ * @param[in] out	Where to write the printed string.
+ * @param[in] data	Value box to print.
+ * @param[in] e_rules	To apply to FR_TYPE_STRING types.
+ *			Is not currently applied to any other box type.
  */
-char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote)
+ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
 {
-	char *p = NULL;
+	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
 
-	if (!fr_cond_assert(data->type != FR_TYPE_INVALID)) return NULL;
+	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 
-	if (data->enumv) {
-		fr_dict_enum_t const	*dv;
+	if (!fr_cond_assert(data->type != FR_TYPE_INVALID)) return 0;
 
-		dv = fr_dict_enum_by_value(data->enumv, data);
-		if (dv) return talloc_typed_strdup(ctx, dv->name);
+	if (data->enumv && data->enumv->name) {
+		char const *name;
+
+		name = fr_dict_enum_name_by_value(data->enumv, data);
+		if (name) {
+			FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(&our_out, name, NULL);
+			goto done;
+		}
 	}
 
 	switch (data->type) {
 	case FR_TYPE_STRING:
-	{
-		size_t len, ret;
-
-		if (!quote) {
-			p = talloc_bstrndup(ctx, data->vb_strvalue, data->datum.length);
-			if (!p) return NULL;
-			talloc_set_type(p, char);
-			return p;
-		}
-
-		/* Gets us the size of the buffer we need to alloc */
-		len = fr_snprint_len(data->vb_strvalue, data->datum.length, quote);
-		p = talloc_array(ctx, char, len);
-		if (!p) return NULL;
-
-		ret = fr_snprint(p, len, data->vb_strvalue, data->datum.length, quote);
-		if (!fr_cond_assert(ret == (len - 1))) {
-			talloc_free(p);
-			return NULL;
-		}
+		if (data->vb_length) FR_SBUFF_IN_ESCAPE_RETURN(&our_out,
+								  data->vb_strvalue, data->vb_length, e_rules);
 		break;
-	}
 
 	case FR_TYPE_OCTETS:
-		p = talloc_array(ctx, char, 2 + 1 + data->datum.length * 2);
-		if (!p) return NULL;
-		p[0] = '0';
-		p[1] = 'x';
-
-		if (data->vb_octets) {
-			fr_bin2hex(p + 2, data->vb_octets, data->datum.length);
-			p[2 + (data->datum.length * 2)] = '\0';
-		} else {
-			p[2] = '\0';
-		}
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '0', 'x');
+		if (data->vb_length) FR_SBUFF_RETURN(fr_bin2hex, &our_out,
+							&FR_DBUFF_TMP(data->vb_octets, data->vb_length), SIZE_MAX);
 		break;
 
 	/*
@@ -4440,110 +4607,143 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	 *	An example is tunneled ipv4 in ipv6 addresses.
 	 */
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	{
-		char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
-
-		buff[0] = '\0';
-		fr_value_box_snprint(buff, sizeof(buff), data, '\0');
-
-		p = talloc_typed_strdup(ctx, buff);
-	}
-	break;
-
 	case FR_TYPE_IPV6_ADDR:
+		if (!fr_inet_ntop(buf, sizeof(buf), &data->vb_ip)) return 0;
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, buf);
+		break;
+
+	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_PREFIX:
-	{
-		char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
-
-		buff[0] = '\0';
-		fr_value_box_snprint(buff, sizeof(buff), data, '\0');
-
-		p = talloc_typed_strdup(ctx, buff);
-	}
-	break;
+		if (!fr_inet_ntop_prefix(buf, sizeof(buf), &data->vb_ip)) return 0;
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, buf);
+		break;
 
 	case FR_TYPE_IFID:
-		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
-					  (data->vb_ifid[0] << 8) | data->vb_ifid[1],
-					  (data->vb_ifid[2] << 8) | data->vb_ifid[3],
-					  (data->vb_ifid[4] << 8) | data->vb_ifid[5],
-					  (data->vb_ifid[6] << 8) | data->vb_ifid[7]);
+		if (!fr_inet_ifid_ntop(buf, sizeof(buf), data->vb_ifid)) return 0;
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, buf);
 		break;
 
 	case FR_TYPE_ETHERNET:
-		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
-					  data->vb_ether[0], data->vb_ether[1],
-					  data->vb_ether[2], data->vb_ether[3],
-					  data->vb_ether[4], data->vb_ether[5]);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%02x:%02x:%02x:%02x:%02x:%02x",
+					   data->vb_ether[0], data->vb_ether[1],
+					   data->vb_ether[2], data->vb_ether[3],
+					   data->vb_ether[4], data->vb_ether[5]);
 		break;
 
 	case FR_TYPE_BOOL:
-		p = talloc_typed_strdup(ctx, data->vb_uint8 ? "yes" : "no");
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, data->vb_uint8 ? "yes" : "no");
 		break;
 
 	case FR_TYPE_UINT8:
-		p = talloc_typed_asprintf(ctx, "%u", data->vb_uint8);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", data->vb_uint8);
 		break;
 
 	case FR_TYPE_UINT16:
-		p = talloc_typed_asprintf(ctx, "%u", data->vb_uint16);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", data->vb_uint16);
 		break;
 
 	case FR_TYPE_UINT32:
-		p = talloc_typed_asprintf(ctx, "%u", data->vb_uint32);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", data->vb_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_uint64);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64, data->vb_uint64);
 		break;
 
 	case FR_TYPE_INT8:
-		p = talloc_typed_asprintf(ctx, "%d", data->vb_int8);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%d", data->vb_int8);
 		break;
 
 	case FR_TYPE_INT16:
-		p = talloc_typed_asprintf(ctx, "%d", data->vb_int16);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%d", data->vb_int16);
 		break;
 
 	case FR_TYPE_INT32:
-		p = talloc_typed_asprintf(ctx, "%d", data->vb_int32);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%d", data->vb_int32);
 		break;
 
 	case FR_TYPE_INT64:
-		p = talloc_typed_asprintf(ctx, "%" PRId64, data->vb_int64);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRId64, data->vb_int64);
 		break;
 
 	case FR_TYPE_FLOAT32:
-		p = talloc_typed_asprintf(ctx, "%f", (double) data->vb_float32);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%f", (double) data->vb_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		p = talloc_typed_asprintf(ctx, "%g", data->vb_float64);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%g", data->vb_float64);
 		break;
 
 	case FR_TYPE_DATE:
 	{
-		char buff[128];
+		int64_t 	subseconds;
+		time_t		t;
+		struct tm	s_tm;
+		size_t		len;
+
+		t = fr_unix_time_to_sec(data->vb_date);
+		(void) gmtime_r(&t, &s_tm);
+
+		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
+			len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
+			FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
+			goto done;
+		}
+
+		len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);
+		FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
+		subseconds = data->vb_date % NSEC;
 
 		/*
-		 *	This is complex, so call another function to
-		 *	do the work.
+		 *	Use RFC 3339 format, which is a
+		 *	profile of ISO8601.  The ISO standard
+		 *	allows a much more complex set of date
+		 *	formats.  The RFC is much stricter.
 		 */
-		(void) fr_value_box_snprint(buff, sizeof(buff), data, quote);
-		p = talloc_typed_strdup(ctx, buff);
+		switch (data->enumv->flags.type_size) {
+		default:
+			break;
+
+		case FR_TIME_RES_MSEC:
+			subseconds /= 1000000;
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%03" PRIi64, subseconds);
+			break;
+
+		case FR_TIME_RES_USEC:
+			subseconds /= 1000;
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%06" PRIi64, subseconds);
+			break;
+
+		case FR_TIME_RES_NSEC:
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%09" PRIi64, subseconds);
+			break;
+		}
+
+		/*
+		 *	And time zone.
+		 */
+		if (s_tm.tm_gmtoff != 0) {
+			int hours, minutes;
+
+			hours = s_tm.tm_gmtoff / 3600;
+			minutes = (s_tm.tm_gmtoff / 60) % 60;
+
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%+03d:%02u", hours, minutes);
+		} else {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, 'Z');
+		}
 		break;
 	}
 
 	case FR_TYPE_SIZE:
-		p = talloc_typed_asprintf(ctx, "%zu", data->datum.size);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zu", data->datum.size);
 		break;
 
 	case FR_TYPE_TIME_DELTA:
 	{
-		char *q;
-		uint64_t lhs, rhs;
-		fr_time_res_t res = FR_TIME_RES_SEC;
+		char		*q;
+		uint64_t	lhs, rhs;
+		fr_time_res_t	res = FR_TIME_RES_SEC;
 
 		if (data->enumv) res = data->enumv->flags.type_size;
 
@@ -4570,15 +4770,13 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 			break;
 		}
 
-		p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
+		q = fr_sbuff_current(&our_out) - 1;
 
 		/*
 		 *	Truncate trailing zeros.
 		 */
-		q = p + strlen(p) - 1;
-		while (*q == '0') {
-			*(q--) = '\0';
-		}
+		while (*q == '0') *(q--) = '\0';
 
 		/*
 		 *	If there's nothing after the decimal point,
@@ -4590,35 +4788,73 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		} else {
 			q++;	/* to account for q-- above */
 		}
-
-		p = talloc_bstr_realloc(ctx, p, q - p);
+		fr_sbuff_set(&our_out, q);
 	}
 		break;
 
-	case FR_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
-		p = talloc_array(ctx, char, 128);
-		if (!p) return NULL;
-		print_abinary(NULL, p, 128, (uint8_t const *) &data->datum.filter, data->datum.length, 0);
+	case FR_TYPE_GROUP:
+	{
+		fr_value_box_t	vb;
+		ssize_t		slen;
+
+		memset(&vb, 0, sizeof(vb));
+
+		/*
+		 *	Be lazy by just converting it to a string, and then printing the string.
+		 */
+		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) return 0;
+
+		slen = fr_value_box_print(&our_out, &vb, e_rules);
+		fr_value_box_clear(&vb);
+		if (slen < 0) return slen;
+	}
 		break;
-#else
-		  /* FALL THROUGH */
-#endif
 
 	/*
 	 *	Don't add default here
 	 */
+	case FR_TYPE_TLV:		/* Not a box type */
+	case FR_TYPE_STRUCT:		/* Not a box type */
+	case FR_TYPE_VSA:		/* Not a box type */
+	case FR_TYPE_VENDOR:		/* Not a box type */
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_GROUP:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_BAD:
 		(void)fr_cond_assert(0);
-		return NULL;
+		return 0;
 	}
 
-	return p;
+done:
+	return fr_sbuff_set(out, &our_out);
+}
+
+/** Print one boxed value to a string with quotes (where needed)
+ *
+ * @param[in] out	Where to write the printed string.
+ * @param[in] data	Value box to print.
+ * @param[in] quote	To apply to FR_TYPE_STRING types.
+ *			Is not currently applied to any
+ *			other box type.
+ */
+ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, fr_token_t quote)
+{
+	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
+
+	if (quote == T_BARE_WORD) return fr_value_box_print(out, data, NULL);
+
+	switch (data->type) {
+	case FR_TYPE_QUOTED:
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, fr_token_quote[quote]);
+		FR_SBUFF_RETURN(fr_value_box_print, &our_out, data, fr_value_escape_by_quote[quote]);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, fr_token_quote[quote]);
+		break;
+
+	default:
+		return fr_value_box_print(out, data, NULL);
+	}
+
+	return fr_sbuff_set(out, &our_out);
 }
 
 /** Concatenate a list of value boxes
@@ -4643,7 +4879,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 	fr_value_box_t const	*vb;
 
 	if (!list || !*list) {
-		fr_strerror_printf("Invalid arguments.  List was NULL");
+		fr_strerror_const("Invalid arguments.  List was NULL");
 		return -1;
 	}
 
@@ -4720,9 +4956,9 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		 *	Append the next value
 		 */
 		if (type == FR_TYPE_STRING) {
-			if (fr_value_box_append_bstr(out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
+			if (fr_value_box_bstrn_append(ctx, out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
 		} else {
-			if (fr_value_box_append_mem(out, n->vb_octets, n->vb_length, n->tainted) < 0) goto error;
+			if (fr_value_box_mem_append(ctx, out, n->vb_octets, n->vb_length, n->tainted) < 0) goto error;
 		}
 
 		if (free_input) {
@@ -4742,12 +4978,13 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
  * @param[in] ctx	to allocate the buffer in.
  * @param[in] head	of the list of value boxes.
  * @param[in] delim	to insert between value box values.
- * @param[in] quote	character used set unescape mode.  @see fr_value_str_unescape.
+ * @param[in] e_rules	to control escaping of the concatenated elements.
  * @return
  *	- NULL on error.
  *	- The concatenation of the string values of the value box list on success.
  */
-char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote)
+char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim,
+			       fr_sbuff_escape_rules_t const *e_rules)
 {
 	fr_value_box_t const	*vb = head;
 	char			*aggr, *td = NULL;
@@ -4755,7 +4992,7 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 
 	if (!head) return NULL;
 
-	aggr = fr_value_box_asprint(ctx, vb, quote);
+	fr_value_box_aprint(ctx, &aggr, vb, e_rules);
 	if (!aggr) return NULL;
 	if (!vb->next) return aggr;
 
@@ -4769,7 +5006,7 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	while ((vb = vb->next)) {
 		char *str, *new_aggr;
 
-		str = fr_value_box_asprint(pool, vb, quote);
+		fr_value_box_aprint(pool, &str, vb, e_rules);
 		if (!str) continue;
 
 		new_aggr = talloc_buffer_append_variadic_buffer(ctx, aggr, 2, td, str);
@@ -4784,6 +5021,93 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	talloc_free(pool);
 
 	return aggr;
+}
+
+/** Hash the contents of a value box
+ *
+ */
+uint32_t fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash)
+{
+	switch (vb->type) {
+	case FR_TYPE_FIXED_SIZE:
+		return fr_hash_update(((uint8_t const *)vb) + fr_value_box_offsets[vb->type],
+				      fr_value_box_field_sizes[vb->type], hash);
+
+	case FR_TYPE_STRING:
+		return fr_hash_update(vb->vb_strvalue, vb->vb_length, hash);
+
+	case FR_TYPE_OCTETS:
+		return fr_hash_update(vb->vb_octets, vb->vb_length, hash);
+
+	default:
+		break;
+	}
+	return hash;
+}
+
+/** Flatten a list into individual "char *" argv-style array
+ *
+ * @param[in] ctx	to allocate boxes in.
+ * @param[out] argv_p	where output strings go
+ * @param[in] in	boxes to flatten
+ * @return
+ *	- >= 0 number of array elements in argv
+ *	- <0 on error
+ */
+int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_t const *in)
+{
+	int i, argc;
+	char **argv;
+
+	if (in->type != FR_TYPE_GROUP) {
+		argc = 1;
+
+	} else {
+		argc = fr_value_box_list_len(in);
+	}
+
+	argv = talloc_zero_array(ctx, char *, argc + 1);
+	if (!argv) return -1;
+
+	if (in->type != FR_TYPE_GROUP) {
+		fr_value_box_aprint(argv, &argv[0], in, NULL);
+	} else {
+		fr_value_box_t const *in_p;
+
+		/*
+		 *	Print the children of each group into the argv array.
+		 */
+		for (in_p = in, i = 0;
+		     in_p;
+		     in_p = in_p->next) {
+			if (!in_p->vb_group) {
+				argv[i] = talloc_typed_strdup(argv, "");
+			} else {
+				fr_value_box_aprint(argv, &argv[i], in_p->vb_group, NULL);
+			}
+			if (!argv[i]) {
+				talloc_free(argv);
+				return -1;
+			}
+
+			/*
+			 *	Unescape quoted strings, so that the
+			 *	programs get passed the unquoted
+			 *	results.
+			 */
+			if ((argv[i][0] == '"') || (argv[i][0] == '\'')) {
+				size_t inlen = talloc_array_length(argv[i]);
+				fr_value_substr_unescape(&FR_SBUFF_OUT(argv[i], inlen),
+							 &FR_SBUFF_IN(argv[i] + 1, inlen - 1),
+							 SIZE_MAX, *argv[i]);
+			}
+
+			i++;
+		}
+	}
+
+	*argv_p = argv;
+	return argc;
 }
 
 /** Do a full copy of a list of value boxes
@@ -4850,7 +5174,7 @@ bool fr_value_box_list_tainted(fr_value_box_t const *head)
  *	- NULL if there is no member at given index
  *	- member if it exists
  */
-fr_value_box_t * fr_value_box_list_get(fr_value_box_t *head, int index)
+fr_value_box_t *fr_value_box_list_get(fr_value_box_t *head, int index)
 {
 	int i = 0;
 
@@ -4860,329 +5184,4 @@ fr_value_box_t * fr_value_box_list_get(fr_value_box_t *head, int index)
 	}
 
 	return head;
-}
-
-/** Print the value of an attribute to a string
- *
- * @note return value should be checked with is_truncated.
- * @note Will always \0 terminate unless outlen == 0.
- *
- * @param out Where to write the printed version of the attribute value.
- * @param outlen Length of the output buffer.
- * @param data to print.
- * @param quote char to escape in string output.
- * @return
- *	- The number of uint8s written to the out buffer.
- *	- A number >= outlen if truncation has occurred.
- */
-size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote)
-{
-	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
-	char const	*a = NULL;
-	char		*p = out, *end = p + outlen;
-	time_t		t;
-	struct tm	s_tm;
-
-	size_t		len = 0;
-
-	if (!data) return 0;
-
-	if (!fr_cond_assert(data->type != FR_TYPE_INVALID)) return -1;
-
-	if (outlen == 0) return data->datum.length;
-
-	*out = '\0';
-
-	p = out;
-
-	if (data->enumv) {
-		fr_dict_enum_t const	*dv;
-
-		dv = fr_dict_enum_by_value(data->enumv, data);
-		if (dv) return strlcpy(out, dv->name, outlen);
-	}
-
-	switch (data->type) {
-	case FR_TYPE_STRING:
-
-		/*
-		 *	Ensure that WE add the quotation marks around the string.
-		 */
-		if (quote) {
-			if ((end - p) < 3) return data->datum.length + 2;
-
-			*p++ = quote;
-
-			len = fr_snprint(p, (end - p), data->vb_strvalue, data->datum.length, quote);
-			/* always terminate the quoted string with another quote */
-			if ((len + 1) >= (size_t)(end - p)) {
-				/* Use out not p as we're operating on the entire buffer */
-				out[outlen - 2] = (char) quote;
-				out[outlen - 1] = '\0';
-				return len + 2;
-			}
-			p += len;
-
-			*p++ = (char) quote;
-			*p = '\0';
-
-			return len + 2;
-		}
-
-		return fr_snprint(out, outlen, data->vb_strvalue, data->datum.length, quote);
-
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-		a = fr_inet_ntop(buf, sizeof(buf), &data->vb_ip);
-		len = strlen(buf);
-		break;
-
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-		a = fr_inet_ntop_prefix(buf, sizeof(buf), &data->vb_ip);
-		len = strlen(buf);
-		break;
-
-	case FR_TYPE_IFID:
-		a = fr_inet_ifid_ntop(buf, sizeof(buf), data->vb_ifid);
-		len = strlen(buf);
-		break;
-
-	case FR_TYPE_ETHERNET:
-		return snprintf(out, outlen, "%02x:%02x:%02x:%02x:%02x:%02x",
-				data->vb_ether[0], data->vb_ether[1],
-				data->vb_ether[2], data->vb_ether[3],
-				data->vb_ether[4], data->vb_ether[5]);
-
-	case FR_TYPE_BOOL:
-		return snprintf(out, outlen, "%s", data->vb_bool ? "yes" : "no");
-
-	case FR_TYPE_UINT8:
-		return snprintf(out, outlen, "%u", data->vb_uint8);
-
-	case FR_TYPE_UINT16:
-		return snprintf(out, outlen, "%u", data->vb_uint16);
-
-	case FR_TYPE_UINT32:
-		return snprintf(out, outlen, "%u", data->vb_uint32);
-
-	case FR_TYPE_UINT64:
-		return snprintf(out, outlen, "%" PRIu64, data->vb_uint64);
-
-	case FR_TYPE_INT8:
-		return snprintf(out, outlen, "%d", data->vb_int8);
-
-	case FR_TYPE_INT16:
-		return snprintf(out, outlen, "%d", data->vb_int16);
-
-	case FR_TYPE_INT32:
-		return snprintf(out, outlen, "%d", data->vb_int32);
-
-	case FR_TYPE_INT64:
-		return snprintf(out, outlen, "%" PRId64, data->vb_int64);
-
-	case FR_TYPE_FLOAT32:
-		return snprintf(out, outlen, "%f", (double) data->vb_float32);
-
-	case FR_TYPE_FLOAT64:
-		return snprintf(out, outlen, "%g", data->vb_float64);
-
-	case FR_TYPE_DATE:
-		t = fr_unix_time_to_sec(data->vb_date);
-		(void) gmtime_r(&t, &s_tm);
-
-		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
-			if (quote > 0) {
-				len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S UTC", &s_tm);
-			} else {
-				len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
-			}
-
-		} else {
-			int64_t subseconds;
-
-			/*
-			 *	Print this out first, as it's always the same
-			 */
-			if (quote > 0) {
-				len = strftime(buf, sizeof(buf) - 1, "%%%Y-%m-%dT%H:%M:%S", &s_tm);
-			} else {
-				len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);
-			}
-
-			subseconds = data->vb_date % NSEC;
-
-			/*
-			 *	Use RFC 3339 format, which is a
-			 *	profile of ISO8601.  The ISO standard
-			 *	allows a much more complex set of date
-			 *	formats.  The RFC is much stricter.
-			 */
-			switch (data->enumv->flags.type_size) {
-			default:
-				break;
-
-			case FR_TIME_RES_MSEC:
-				subseconds /= 1000000;
-				len += snprintf(buf + len, sizeof(buf) - len - 1, ".%03" PRIi64, subseconds);
-				break;
-
-			case FR_TIME_RES_USEC:
-				subseconds /= 1000;
-				len += snprintf(buf + len, sizeof(buf) - len - 1, ".%06" PRIi64, subseconds);
-				break;
-
-			case FR_TIME_RES_NSEC:
-				len += snprintf(buf + len, sizeof(buf) - len - 1, ".%09" PRIi64, subseconds);
-				break;
-			}
-
-			/*
-			 *	And time zone.
-			 */
-			if (s_tm.tm_gmtoff != 0) {
-				int hours, minutes;
-
-				hours = s_tm.tm_gmtoff / 3600;
-				minutes = (s_tm.tm_gmtoff / 60) % 60;
-
-				len += snprintf(buf + len, sizeof(buf) - len - 1, "%+03d:%02u", hours, minutes);
-			} else {
-				buf[len] = 'Z';
-				len++;
-			}
-		}
-
-		if (quote > 0) {
-			buf[0] = (char) quote;
-			buf[len] = (char) quote;
-			buf[len + 1] = '\0';
-			len++;	/* Account for trailing quote */
-		}
-		a = buf;
-		break;
-
-	case FR_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
-		len = print_abinary(NULL, buf, sizeof(buf),
-				    (uint8_t const *) data->datum.filter, data->datum.length, quote);
-		a = buf;
-		break;
-#else
-	/* FALL THROUGH */
-#endif
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_TLV:
-	{
-		size_t max;
-
-		/* Return the number of uint8s we would have written */
-		len = (data->datum.length * 2) + 2;
-		if ((end - p) <= 1) return len;
-
-
-		*p++ = '0';
-		if ((end - p) <= 1) {
-			*p = '\0';
-			return len;
-		}
-
-		*p++ = 'x';
-		if ((end - p) <= 2) {
-			*p = '\0';
-			return len;
-		}
-
-		/* Get maximum number of uint8s we can encode given (end - p) */
-		if (data->vb_octets) {
-			max = (((end - p) % 2) ? (end - p) - 1 : (end - p) - 2) / 2;
-			fr_bin2hex(p, data->vb_octets,
-				   ((size_t)data->datum.length > max) ? max : (size_t)data->datum.length);
-		} else {
-			*p = '\0';
-		}
-	}
-		return len;
-
-
-
-	case FR_TYPE_SIZE:
-		return snprintf(out, outlen, "%zu", data->datum.size);
-
-	case FR_TYPE_TIME_DELTA:
-	{
-		char		*q;
-		uint64_t	lhs, rhs;
-		fr_time_res_t	res = FR_TIME_RES_SEC;
-
-		if (data->enumv) res = data->enumv->flags.type_size;
-
-		switch (res) {
-		default:
-		case FR_TIME_RES_SEC:
-			lhs = data->datum.time_delta / NSEC;
-			rhs = data->datum.time_delta % NSEC;
-			break;
-
-		case FR_TIME_RES_MSEC:
-			lhs = data->datum.time_delta / 1000000;
-			rhs = data->datum.time_delta % 1000000;
-			break;
-
-		case FR_TIME_RES_USEC:
-			lhs = data->datum.time_delta / 1000;
-			rhs = data->datum.time_delta % 1000;
-			break;
-
-		case FR_TIME_RES_NSEC:
-			lhs = data->datum.time_delta;
-			rhs = 0;
-			break;
-		}
-
-		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%09" PRIu64, lhs, rhs);
-		a = buf;
-
-		/*
-		 *	Truncate trailing zeros.
-		 */
-		q = buf + len - 1;
-		while (*q == '0') {
-			*(q--) = '\0';
-			len--;
-		}
-
-		/*
-		 *	If there's nothing after the decimal point,
-		 *	trunctate the decimal point.  i.e. Don't print
-		 *	"5."
-		 */
-		if (*q == '.') {
-			*q = '\0';
-			len--;
-		}
-	}
-		break;
-
-	/*
-	 *	Don't add default here
-	 */
-	case FR_TYPE_INVALID:
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_EXTENDED:
-	case FR_TYPE_VSA:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_STRUCT:
-	case FR_TYPE_GROUP:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_MAX:
-		(void)fr_cond_assert(0);
-		*out = '\0';
-		return 0;
-	}
-
-	if (a) strlcpy(out, a, outlen);
-
-	return len;	/* Return the number of uint8s we would of written (for truncation detection) */
 }

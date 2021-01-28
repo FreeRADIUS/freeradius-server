@@ -13,11 +13,11 @@
 ##############################################################################
 
 #
-#  VQP / VMPS internal attributes for the packet header
+#  VQP / VMPS attributes for the packet header
 #
-ATTRIBUTE	Packet-Type				1	integer	internal
-ATTRIBUTE	Error-Code				2	integer internal
-ATTRIBUTE	Sequence-Number				3	integer internal
+ATTRIBUTE	Packet-Type				1	uint32
+ATTRIBUTE	Error-Code				2	uint8
+ATTRIBUTE	Sequence-Number				3	uint32
 
 #
 #  VQP / VMPS Attributes

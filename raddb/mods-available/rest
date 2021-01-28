@@ -206,7 +206,7 @@ rest {
 	#                     Values from expansion will not be escaped, this should be
 	#                     done using the appropriate `xlat` method e.g. `%{urlencode:<attr>}`
 	#  | `force_to`     | Force the response to be decoded with this decoder.
-	#                     May be 'plain' (creates reply:REST-HTTP-Body), 'post' or 'json'.
+	#                     May be 'plain' (creates reply.REST-HTTP-Body), 'post' or 'json'.
 	#  | `tls`          | TLS settings for HTTPS.
 	#  | `auth`         | HTTP auth method to use, one of 'none', 'srp', 'basic',
 	#                     'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
@@ -218,13 +218,13 @@ rest {
 	#  | `max_body_in`  | Maximum size of incoming HTTP body, defaults to 16k.
 	#  |===
 	#
-	#  Additional HTTP headers may be specified with `control:REST-HTTP-Header`.
+	#  Additional HTTP headers may be specified with `control.REST-HTTP-Header`.
 	#
 	#  The values of those attributes should be in the format:
 	#
 	#    <attribute>: <value>
 	#
-	#  `control:REST-HTTP-Header` attributes will be consumed after each call
+	#  `control.REST-HTTP-Header` attributes will be consumed after each call
 	#  to the rest module, and each `%{rest:}` expansion.
 	#
 
@@ -235,7 +235,7 @@ rest {
 	#
 	#  e.g:
 	#
-	#  `[outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>`
+	#  `[outer.][<list>.]<attribute0>=<value0>&[outer.][<list>.]<attributeN>=<valueN>`
 	#
 	#  JSON - All attributes and values are escaped according to the JSON specification.
 	#
@@ -277,7 +277,7 @@ rest {
 	#  [source,json]
 	#  ----
 	#  {
-	#      "[outer.][<list>:]<attribute0>":{
+	#      "[outer.][<list>.]<attribute0>":{
 	#          "is_json":<bool>,
 	#          "do_xlat":<bool>,
 	#          "op":"<operator>",

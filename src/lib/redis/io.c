@@ -26,7 +26,7 @@
  */
 
 #include <freeradius-devel/redis/io.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <hiredis/async.h>
 

@@ -6,7 +6,7 @@
 #include "io.h"
 #include "pipeline.h"
 
-#define DEBUG_LVL_SET if (test_verbose_level__ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
+#define DEBUG_LVL_SET if (test_verbose_level_ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
 
 
 typedef struct {
@@ -14,7 +14,7 @@ typedef struct {
 	uint64_t	enqueued;
 } redis_pipeline_stats_t;
 
-static void _command_complete(REQUEST *request, fr_dlist_head_t *completed, void *rctx)
+static void _command_complete(request_t *request, fr_dlist_head_t *completed, void *rctx)
 {
 	fr_time_t		io_stop;
 	fr_time_delta_t		io_time;
@@ -28,10 +28,10 @@ static void _command_complete(REQUEST *request, fr_dlist_head_t *completed, void
 	     fr_box_time_delta(io_time),
 	     (uint32_t)(stats->enqueued / ((float)io_time / NSEC)));
 
-	rad_assert(fr_dlist_num_elements(completed) == stats->enqueued);
+	fr_assert(fr_dlist_num_elements(completed) == stats->enqueued);
 }
 
-static void _command_failed(REQUEST *request, fr_dlist_head_t *completed, void *rctx)
+static void _command_failed(request_t *request, fr_dlist_head_t *completed, void *rctx)
 {
 	TEST_CHECK(0);
 }

@@ -27,13 +27,13 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/time.h>
 
 typedef struct {
 	char const	*xlat_name;		//!< Name of our xlat function.
-	vp_tmpl_t	*delay;			//!< How long we delay for.
+	tmpl_t	*delay;			//!< How long we delay for.
 	bool		relative;		//!< Whether the delay is relative to the start of request processing.
 	bool		force_reschedule;	//!< Whether we should force rescheduling of the request.
 } rlm_delay_t;
@@ -51,14 +51,8 @@ static const CONF_PARSER module_config[] = {
 /** Called when the timeout has expired
  *
  * Marks the request as resumable, and prints the delayed delay time.
- *
- * @param[in] instance		This instance of the delay module.
- * @param[in] thread		Thread specific module instance.
- * @param[in] request		The current request.
- * @param[in] rctx		Scheduled end of the delay.
- * @param[in] fired		When request processing was resumed.
  */
-static void _delay_done(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx, fr_time_t fired)
+static void _delay_done(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx, fr_time_t fired)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
@@ -70,10 +64,10 @@ static void _delay_done(UNUSED void *instance, UNUSED void *thread, REQUEST *req
 	 */
 	if (!fr_cond_assert(fired >= *yielded)) REDEBUG("Unexpected resume time");
 
-	unlang_interpret_resumable(request);
+	unlang_interpret_mark_resumable(request);
 }
 
-static void _xlat_delay_done(REQUEST *request,
+static void _xlat_delay_done(request_t *request,
 			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, fr_time_t fired)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
@@ -86,10 +80,10 @@ static void _xlat_delay_done(REQUEST *request,
 	 */
 	if (!fr_cond_assert(fired > *yielded)) REDEBUG("Unexpected resume time");
 
-	unlang_interpret_resumable(request);
+	unlang_interpret_mark_resumable(request);
 }
 
-static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
+static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 		     fr_time_t delay, bool force_reschedule, bool relative)
 {
 	/*
@@ -123,7 +117,8 @@ static int delay_add(REQUEST *request, fr_time_t *resume_at, fr_time_t now,
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static rlm_rcode_t mod_delay_return(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx)
+static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					request_t *request, void *rctx)
 {
 	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
 
@@ -133,10 +128,10 @@ static rlm_rcode_t mod_delay_return(UNUSED void *instance, UNUSED void *thread, 
 	RDEBUG3("Request delayed by %pV", fr_box_time_delta(fr_time() - *yielded));
 	talloc_free(yielded);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
-static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST *request, void *rctx,
+static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx,
 			     fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
@@ -146,15 +141,15 @@ static void mod_delay_cancel(UNUSED void *instance, UNUSED void *thread, REQUEST
 	(void) unlang_module_timeout_delete(request, rctx);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_delay_t const	*inst = instance;
+	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_delay_t);
 	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
 
 	if (inst->delay) {
 		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
-				      request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+				      request, inst->delay, NULL, NULL) < 0) RETURN_MODULE_FAIL;
 	} else {
 		delay = 0;
 	}
@@ -170,7 +165,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 	 */
 	if (delay_add(request, &resume_at, *yielded_at, delay,
 		      inst->force_reschedule, inst->delay) != 0) {
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -181,14 +176,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 
 	if (unlang_module_timeout_add(request, _delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_delay_return, mod_delay_cancel, yielded_at);
 }
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       REQUEST *request,
+				       request_t *request,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       UNUSED fr_value_box_t **in, void *rctx)
 {
@@ -209,19 +204,25 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread,
-			      void *rctx, fr_state_signal_t action)
+static void xlat_delay_cancel(request_t *request, UNUSED void *instance, UNUSED void *thread,
+			      UNUSED void *rctx, fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling delay");
-
-
-	if (!fr_cond_assert(unlang_xlat_event_timeout_delete(request, rctx) == 0)) return;
 }
 
+/** Xlat to delay the request
+ *
+ * Example (delay 2 seconds):
+@verbatim
+"%{delay:2}"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
-				REQUEST *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in)
 {
 	rlm_delay_t const	*inst;
@@ -297,7 +298,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
-	xlat = xlat_async_register(inst, inst->xlat_name, xlat_delay);
+	xlat = xlat_register(inst, inst->xlat_name, xlat_delay, true);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_delay_t *, NULL, inst);
 	return 0;
 }

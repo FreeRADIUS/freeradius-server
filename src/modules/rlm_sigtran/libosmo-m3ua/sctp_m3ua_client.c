@@ -284,18 +284,17 @@ static int m3ua_conn_write(struct osmo_fd *ofd, struct msgb *msg)
 	struct sctp_sndrcvinfo info;
 	memcpy(&info, msg->data, sizeof(info));
 
-	LOGP(DINP, LOGL_DEBUG, "Writing %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
+	LOGP(DINP, LOGL_DEBUG, "Writing %u bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
 	ret = sctp_send(ofd->fd, msg->l2h, msgb_l2len(msg), &info, 0);
 
 	if (ret != msgb_l2len(msg)) {
 		/* Needs to be thread safe for library use in threaded programs */
 		strerrbuf[0] = '\0';
-		strerror_r(errno, strerrbuf, sizeof(strerrbuf));
 
 		LOGP(DINP, LOGL_ERROR, "Failed writing to fd %i (only wrote %zu bytes): %s.\n",
-		     ofd->fd, strerrbuf);
+		     ofd->fd, ret, strerror_r(errno, strerrbuf, sizeof(strerrbuf)));
 	} else {
-		LOGP(DINP, LOGL_DEBUG, "Wrote %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
+		LOGP(DINP, LOGL_DEBUG, "Wrote %u bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
 	}
 
 	return 0;

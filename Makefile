@@ -16,7 +16,23 @@ all:
 #  Catch people who try to use BSD make
 #
 ifeq "0" "1"
-.error GNU Make is required to build FreeRADIUS
+$(error GNU Make is required to build FreeRADIUS)
+endif
+
+#
+#  The version of GNU Make is too old,
+#  don't use it (.FEATURES variable was added in 3.81)
+#
+ifndef .FEATURES
+$(error This build system requires GNU Make 4.0 or higher)
+endif
+
+#
+#  Check for our required list of features
+#
+is_feature = $(if $(filter $1,$(.FEATURES)),T)
+ifeq "$(call is_feature,load)" ""
+$(error GNU Make $(MAKE_VERSION) does not support the "load" keyword (dynamically loaded extensions), upgrade to GNU Make 4.0 or higher)
 endif
 
 #
@@ -45,12 +61,6 @@ endif
 
 MFLAGS += --no-print-directory
 
-# The version of GNU Make is too old, don't use it (.FEATURES variable was
-# wad added in 3.81)
-ifndef .FEATURES
-$(error The build system requires GNU Make 3.81 or later.)
-endif
-
 export DESTDIR := $(R)
 export PROJECT_NAME := freeradius
 
@@ -69,9 +79,24 @@ PROTOCOLS    := \
 	tacacs \
 	vmps
 
-# And over-ride all of the other magic.
+#
+#  If we're building packages or crossbuilding, just do that.
+#  Don't try to do a local build.
+#
 ifneq "$(MAKECMDGOALS)" "deb"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+#
+#  Include all of the autoconf definitions into the Make variable space
+#
+#  We include this file BEFORE starting the full make process.  That
+#  way every "all.mk" file can take advantage of the definitions seen
+#  here.
+#
+build/autoconf.mk: src/include/autoconf.h
+	@mkdir -p build
+	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
+-include build/autoconf.mk
+
 include scripts/boiler.mk
 endif
 endif
@@ -93,7 +118,12 @@ endif
 # For compatibility with typical GNU packages (e.g. as seen in libltdl),
 # we make sure DESTDIR is defined.
 #
+#  If R is defined, ensure that it ends in a '/'.
+#
+ifneq "$(R)" ""
+R:=$(subst //,/,$(R)/)
 export DESTDIR := $(R)
+endif
 
 DICTIONARIES := $(wildcard $(addsuffix /dictionary*,$(addprefix share/dictionary/,$(PROTOCOLS))))
 
@@ -107,7 +137,7 @@ $(R)$(dictdir)/%: share/dictionary/%
 dictionary.format: $(DICTIONARIES)
 	@./scripts/dict/format.pl $(DICTIONARIES)
 
-MANFILES := $(wildcard man/man*/*.?)
+MANFILES := $(wildcard man/man*/*.?) $(AUTO_MAN_FILES)
 install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
 $(R)$(mandir)/%: man/%
@@ -170,6 +200,14 @@ distclean: clean
 #  these rules enabled by default, then they're run too often.
 #
 ifeq "$(MAKECMDGOALS)" "reconfig"
+CONFIGURE_FILES=1
+endif
+
+ifneq "$(filter %configure,$(MAKECMDGOALS))" ""
+CONFIGURE_FILES=1
+endif
+
+ifeq "$(CONFIGURE_FILES)" "1"
 
 CONFIGURE_AC_FILES := $(shell find . -name configure.ac -print)
 CONFIGURE_FILES	   := $(patsubst %.ac,%,$(CONFIGURE_AC_FILES))
@@ -194,6 +232,7 @@ src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4
 		echo AUTOHEADER $@ \
 		cd $(dir $@) && $(AUTOHEADER); \
 	 fi
+	@touch $@
 
 # "%configure" doesn't match "configure"
 configure: configure.ac $(wildcard ac*.m4) $(wildcard m4/*.m4)

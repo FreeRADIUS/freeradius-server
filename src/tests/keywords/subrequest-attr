@@ -1,0 +1,14 @@
+update control {
+	&Tmp-String-0 := "Access-Request"
+}
+
+#
+#  Subrequest with an attribute reference
+#
+subrequest &control.Tmp-String-0 {
+	update parent.control {
+		&User-Name := 'bob'
+	}
+
+	success
+}

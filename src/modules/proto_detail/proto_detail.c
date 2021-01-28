@@ -22,12 +22,14 @@
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/io/application.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/util/debug.h>
+
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
@@ -144,52 +146,35 @@ static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  */
 static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	dl_module_inst_t		*parent_inst;
-	fr_dict_enum_t const	*type_enum;
-	dl_module_inst_t		*process_dl;
+	dl_module_inst_t	*process_dl;
 	proto_detail_process_t	*process_inst;
 	fr_dict_attr_t const	*attr_packet_type;
-	proto_detail_t		*inst = parent;
-
-	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
+	proto_detail_t		*inst = talloc_get_type_abort(parent, proto_detail_t);
+	int			code;
 
 	if (!inst->dict) {
 		cf_log_err(ci, "Please define 'dictionary' BEFORE 'type'");
 		return -1;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(inst->dict, "Packet-Type");
+	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(inst->dict), "Packet-Type");
 	if (!attr_packet_type) {
 		cf_log_err(ci, "Failed to find 'Packet-Type' attribute");
 		return -1;
 	}
 
-	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.
-	 */
-	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
-	if (!type_enum) {
-		cf_log_err(ci, "Invalid type \"%s\"", type_str);
-		return -1;
-	}
+	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_detail",
+					 NULL, 0, NULL, 0);
+	if (code < 0) return -1;
 
-	inst->code = type_enum->value->vb_uint32;
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
-	rad_assert(parent_inst);
+	inst->code = code;
 
 	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
+	 *	Find the process module, and tell it what dictionary
+	 *	and packet type to use.
 	 */
-	if (dl_module_instance(ctx, out, listen_cs, parent_inst, "process", DL_MODULE_TYPE_SUBMODULE) < 0) {
-		return -1;
-	}
-
 	process_dl = *(dl_module_inst_t **) out;
-	process_inst = inst->process_instance = process_dl->data;
+	process_inst = inst->process_instance = talloc_get_type_abort(process_dl->data, proto_detail_process_t);
 
 	process_inst->dict = inst->dict;
 	process_inst->attr_packet_type = attr_packet_type;
@@ -225,7 +210,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
@@ -233,13 +218,14 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	proto_detail_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_t);
 	int			num, lineno;
 	uint8_t const		*p, *end;
-	VALUE_PAIR		*vp;
-	fr_cursor_t		cursor;
+	fr_pair_t		*vp;
+	fr_pair_list_t		tmp_list;
+	fr_dcursor_t		cursor;
 	time_t			timestamp = 0;
 
 	RHEXDUMP3(data, data_len, "proto_detail decode packet");
@@ -249,13 +235,13 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	/*
 	 *	Set default addresses
 	 */
-	request->packet->sockfd = -1;
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
-	request->packet->dst_ipaddr = request->packet->src_ipaddr;
+	request->packet->socket.fd = -1;
+	request->packet->socket.inet.src_ipaddr.af = AF_INET;
+	request->packet->socket.inet.src_ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	request->packet->socket.inet.dst_ipaddr = request->packet->socket.inet.src_ipaddr;
 
-	request->reply->src_ipaddr = request->packet->src_ipaddr;
-	request->reply->dst_ipaddr = request->packet->src_ipaddr;
+	request->reply->socket.inet.src_ipaddr = request->packet->socket.inet.src_ipaddr;
+	request->reply->socket.inet.dst_ipaddr = request->packet->socket.inet.src_ipaddr;
 
 	end = data + data_len;
 
@@ -274,8 +260,9 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	lineno = 1;
-	fr_cursor_init(&cursor, &request->packet->vps);
-	fr_cursor_tail(&cursor);	/* Ensure we only free what we add on error */
+	fr_dcursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_tail(&cursor);	/* Ensure we only free what we add on error */
+	fr_pair_list_init(&tmp_list);
 
 	/*
 	 *	Parse each individual line.
@@ -296,7 +283,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		if ((*p != '\0') && (*p != '\t')) {
 			REDEBUG("Malformed line %d", lineno);
 		error:
-			fr_cursor_free_list(&cursor);
+			fr_dcursor_free_list(&cursor);
 			return -1;
 		}
 
@@ -319,11 +306,11 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 			timestamp = atoi((char const *) p);
 
-			vp = fr_pair_afrom_da(request->packet, attr_packet_original_timestamp);
+			vp = fr_pair_afrom_da(request->request_ctx, attr_packet_original_timestamp);
 			if (vp) {
 				vp->vp_date = ((fr_time_t) timestamp) * NSEC;
 				vp->type = VT_DATA;
-				fr_cursor_append(&cursor, vp);
+				fr_dcursor_append(&cursor, vp);
 			}
 			goto next;
 		}
@@ -336,15 +323,14 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		}
 
 		/*
-		 *	The parsing function appends the created VPs
-		 *	to the input list, so we need to set 'vp =
-		 *	NULL'.  We don't want to have multiple cursor
-		 *	functions walking over the list.
+		 *	Ensure temporary list is empty before each use
 		 */
-		vp = NULL;
-		if ((fr_pair_list_afrom_str(request->packet, request->dict, (char const *) p, &vp) > 0) && vp) {
-			fr_cursor_append(&cursor, vp);
+		fr_pair_list_free(&tmp_list);
+		if ((fr_pair_list_afrom_str(request->request_ctx, request->dict, (char const *) p, &tmp_list) > 0) && !fr_pair_list_empty(&tmp_list)) {
+			vp = fr_pair_list_head(&tmp_list);
+			fr_tmp_pair_list_move(&request->request_pairs, &tmp_list);
 		} else {
+			vp = NULL;
 			RWDEBUG("Ignoring line %d - :%s", lineno, p);
 		}
 
@@ -354,14 +340,14 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		if (vp) {
 			if ((vp->da == attr_packet_src_ip_address) ||
 			    (vp->da == attr_packet_src_ipv6_address)) {
-				request->packet->src_ipaddr = vp->vp_ip;
+				request->packet->socket.inet.src_ipaddr = vp->vp_ip;
 			} else if ((vp->da == attr_packet_dst_ip_address) ||
 				   (vp->da == attr_packet_dst_ipv6_address)) {
-				request->packet->dst_ipaddr = vp->vp_ip;
+				request->packet->socket.inet.dst_ipaddr = vp->vp_ip;
 			} else if (vp->da == attr_packet_src_port) {
-				request->packet->src_port = vp->vp_uint16;
+				request->packet->socket.inet.src_port = vp->vp_uint16;
 			} else if (vp->da == attr_packet_dst_port) {
-				request->packet->dst_port = vp->vp_uint16;
+				request->packet->socket.inet.dst_port = vp->vp_uint16;
 			} else if (vp->da == attr_protocol) {
 				request->dict = fr_dict_by_protocol_num(vp->vp_uint32);
 				if (!request->dict) {
@@ -382,7 +368,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	return inst->app_io->decode(inst->app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	if (buffer_len < 1) return -1;
 
@@ -390,7 +376,7 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 	return 1;
 }
 
-static void mod_entry_point_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, request_t *request)
 {
 	proto_detail_t const *inst = talloc_get_type_abort_const(instance, proto_detail_t);
 	fr_app_worker_t const *app_process;
@@ -451,7 +437,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return -1;
 	}
 
-	rad_assert(li->app_io->get_name);
+	fr_assert(li->app_io->get_name);
 	li->name = li->app_io->get_name(li);
 
 	/*
@@ -512,8 +498,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the process module.
 	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
+	while ((cp = cf_pair_find_next(conf, cp, "type")) != NULL) {
 		fr_app_worker_t const *app_process;
+
+#ifdef __clang_analyzer__
+		DEBUG("Instantiating %s", cf_pair_value(cp));
+#endif
 
 		app_process = (fr_app_worker_t const *)inst->type_submodule->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule->data,
@@ -577,6 +567,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->cs = conf;
 	inst->self = &proto_detail;
 
+	virtual_server_dict_set(inst->server_cs, inst->dict, false);
+
 	/*
 	 *	Bootstrap the process module.
 	 */
@@ -625,7 +617,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 		transport_cs = cf_section_find(inst->cs, "work", NULL);
 		parent_inst = cf_data_value(cf_data_find(inst->cs, dl_module_inst_t, "proto_detail"));
-		rad_assert(parent_inst);
+		fr_assert(parent_inst);
 
 		if (!transport_cs) {
 			transport_cs = cf_section_dup(inst->cs, inst->cs, inst->app_io_conf,

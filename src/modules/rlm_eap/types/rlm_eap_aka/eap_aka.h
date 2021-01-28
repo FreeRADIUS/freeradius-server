@@ -115,7 +115,7 @@ typedef struct {
 	/*
 	 *	Per-session configuration
 	 */
-	bool				request_identity;		//!< Always send an identity request before a
+	uint32_t       			request_identity;		//!< Always send an identity request before a
 									///< challenge.
 	bool				send_result_ind;		//!< Say that we would like to use protected
 									///< result indications
@@ -139,7 +139,7 @@ typedef struct {
 
 typedef struct {
 	char const			*network_name;			//!< Network ID as described by RFC 5448.
-	bool				request_identity;		//!< Whether we always request the identity of
+	request_identity       		request_identity;		//!< Whether we always request the identity of
 									///< the subscriber.
 	char const			*virtual_server;		//!< Virtual server for HLR integration.
 	bool				protected_success;

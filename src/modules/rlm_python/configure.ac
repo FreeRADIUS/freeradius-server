@@ -3,6 +3,10 @@ AC_INIT(rlm_python.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_python])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
@@ -25,7 +29,7 @@ if test x$with_[]modname != xno; then
 	)
 
 	if test "x$PYTHON_CONFIG_BIN" = x; then
-		AC_CHECK_PROGS(PYTHON_CONFIG_BIN, [ python-config python3-config python2.7-config ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+		AC_CHECK_PROGS(PYTHON_CONFIG_BIN, [ python3-config ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
 	fi
 
 	if test "x$PYTHON_CONFIG_BIN" = "xnot-found"; then
@@ -37,7 +41,18 @@ if test x$with_[]modname != xno; then
 		old_CFLAGS="$CFLAGS"
 		unset CFLAGS
 
-		python_cflags=`${PYTHON_CONFIG_BIN} --cflags`
+		dnl #
+		dnl # Not all python3-config versions have --embed.  If doesn't
+		dnl # the utility throws an error, and if it does, it omits the
+		dnl # linker argument to link to Python.
+		dnl #
+		if ${PYTHON_CONFIG_BIN} --help 2>&1 | grep '\-\-embed'; then
+			PYTHON_CONFIG_EMBED="--embed"
+		else
+			PYTHON_CONFIG_EMBED=""
+		fi
+
+		python_cflags=`${PYTHON_CONFIG_BIN} --cflags ${PYTHON_CONFIG_EMBED}`
 		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"])
 
 		dnl # Convert -I to -isystem to get rid of warnings about issues in Python headers
@@ -47,18 +62,26 @@ if test x$with_[]modname != xno; then
 		dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
 		dnl # Strip -W*, we decide what warnings are important
 		dnl # Strip -DNDEBUG
-		mod_cflags=`echo $python_cflags | sed -e '\
-			s/-I/-isystem/g;\
-			s/-isysroot[[ =]]\{0,1\}[[^-]]*//g;\
-			s/-O[[^[[:blank:]]]]*//g;\
-			s/-Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]//g;\
-			s/-g[[^ ]]*//g;\
-			s/-W[[^ ]]*//g;\
-			s/-DNDEBUG[[[:blank:]]]*//g;
+		dnl # Strip -frecord-gcc-switches, We decide if we need that. not python.
+		dnl # Strip -stack-clash-protection.  We don't need it for our module and it's not
+		dnl # supported by clang < 11.
+		dnl # Strip -frecord-gcc-switches. We decide if this needs recording, not python.
+		dnl # Strip specs as they're only supported by GCC and cause warnings under clang
+		mod_cflags=`echo " $python_cflags" | sed -e '\
+			s/ -I/ -isystem/g;\
+			s/ -isysroot[[ =]]\{0,1\}[[^-]]*/ /g;\
+			s/ -O[[^[[:blank:]]]]*/ /g;\
+			s/ -Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]/ /g;\
+			s/ -g[[^ ]]*/ /g;\
+			s/ -W[[^ ]]*/ /g;\
+			s/ -DNDEBUG[[[:blank:]]]*/ /g;\
+			s/ -frecord-gcc-switches/ /g;\
+			s/ -fstack-clash-protection[[[:blank:]]]*/ /g;
+			s/ -specs=[[^ ]]*/ /g;
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
-		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
+		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags ${PYTHON_CONFIG_EMBED}`
 		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"])
 
 		dnl # Strip -Wl,-O1... Is -O even a valid linker flag??

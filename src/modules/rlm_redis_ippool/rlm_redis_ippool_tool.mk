@@ -13,6 +13,6 @@ SOURCES		:= $(TARGETNAME).c
 SRC_CFLAGS	+= -I$(top_builddir)/src/lib/redis
 
 TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-redis.a libfreeradius-util.a
-TGT_LDLIBS	+= $(TALLOC_LIBS)
+TGT_LDLIBS	+= $(TALLOC_LIBS) $(OPENSSL_LIBS)
 
 MAN		:= rlm_redis_ippool_tool.8

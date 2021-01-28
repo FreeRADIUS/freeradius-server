@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/radius/radius.h>
 
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.
@@ -55,7 +56,7 @@ static fr_dict_attr_t const *attr_user_name;
 extern fr_dict_attr_autoload_t rlm_chap_dict_attr[];
 fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "Chap-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "Chap-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -63,21 +64,75 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+/** Produce a CHAP-Password hash value
+ *
+ * Example:
+@verbatim
+"%{chap_password:<password>}" == 0x<id><md5_hash>
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
+					     request_t *request, UNUSED void const *xlat_inst,
+					     UNUSED void *xlat_thread_inst,
+					     fr_value_box_t **in)
 {
-	VALUE_PAIR	*vp;
-	rlm_chap_t	*inst = instance;
+	uint8_t		chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
+	fr_value_box_t	*vb;
+	fr_pair_t	*challenge;
+	uint8_t	const	*vector;
 
-	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!*in) {
+		REDEBUG("chap requires a password as input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Use Chap-Challenge pair if present,
+	 *	Request Authenticator otherwise.
+	 */
+	challenge = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
+	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+		vector = challenge->vp_octets;
+	} else {
+		vector = request->packet->vector;
+	}
+	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector,
+				       (*in)->vb_strvalue, (*in)->vb_length);
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(vb, vb, NULL, chap_password, sizeof(chap_password), false);
+	fr_cursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	fr_pair_t		*vp;
+	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_chap_t);
+
+	if (fr_pair_find_by_da(&request->control_pairs, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	This case means the warnings below won't be printed
 	 *	unless there's a CHAP-Password in the request.
 	 */
-	if (!fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY)) return RLM_MODULE_NOOP;
+	if (!fr_pair_find_by_da(&request->request_pairs, attr_chap_password)) {
+		RETURN_MODULE_NOOP;
+	}
 
 	/*
 	 *	Create the CHAP-Challenge if it wasn't already in the packet.
@@ -85,18 +140,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	This is so that the rest of the code does not need to
 	 *	understand CHAP.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
 	if (!vp) {
 		RDEBUG2("Creating &%s from request authenticator", attr_chap_challenge->name);
 
-		MEM(vp = fr_pair_afrom_da(request->packet, attr_chap_challenge));
-		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector), true);
-		fr_pair_add(&request->packet->vps, vp);
+		MEM(vp = fr_pair_afrom_da(request->request_ctx, attr_chap_challenge));
+		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
+		fr_pair_add(&request->request_pairs, vp);
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup CHAP authentication",
+		     inst->name, inst->name);
+		RETURN_MODULE_NOOP;
+	}
 
-	return RLM_MODULE_OK;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) {
+		RETURN_MODULE_NOOP;
+	}
+
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -105,38 +168,41 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	VALUE_PAIR		*known_good;
-	VALUE_PAIR		*chap, *username;
-	uint8_t			pass_str[FR_MAX_STRING_LEN];
+	fr_pair_t		*known_good;
+	fr_pair_t		*chap, *username;
+	uint8_t			pass_str[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
 
 	int			ret;
 
 	fr_dict_attr_t const	*allowed_passwords[] = { attr_cleartext_password };
 	bool			ephemeral;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	fr_pair_t		*challenge;
+	uint8_t	const		*vector;
+
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!username) {
 		REDEBUG("&User-Name attribute is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
-	chap = fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY);
+	chap = fr_pair_find_by_da(&request->request_pairs, attr_chap_password);
 	if (!chap) {
-		REDEBUG("You set '&control:Auth-Type = CHAP' for a request that "
+		REDEBUG("You set '&control.Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (chap->vp_length == 0) {
-		REDEBUG("&request:CHAP-Password is empty");
-		return RLM_MODULE_INVALID;
+		REDEBUG("&request.CHAP-Password is empty");
+		RETURN_MODULE_INVALID;
 	}
 
 	if (chap->vp_length != RADIUS_CHAP_CHALLENGE_LENGTH + 1) {
-		REDEBUG("&request:CHAP-Password has invalid length");
-		return RLM_MODULE_INVALID;
+		REDEBUG("&request.CHAP-Password has invalid length");
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -150,20 +216,39 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 				   false);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
-	fr_radius_encode_chap_password(pass_str, request->packet, chap->vp_octets[0], known_good);
 
+	/*
+	 *	Output is id + password hash
+	 */
+
+	/*
+	 *	Use Chap-Challenge pair if present,
+	 *	Request Authenticator otherwise.
+	 */
+	challenge = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
+	if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+		vector = challenge->vp_octets;
+	} else {
+		vector = request->packet->vector;
+	}
+	fr_radius_encode_chap_password(pass_str, chap->vp_octets[0], vector,
+				       known_good->vp_strvalue, known_good->vp_length);
+
+	/*
+	 *	The password_find function already emits
+	 *	a log message about the password attribute contents
+	 *	so we don't need to duplicate it here.
+	 */
 	if (RDEBUG_ENABLED3) {
 		uint8_t	const	*p;
 		size_t		length;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
-		RDEBUG3("Comparing with \"known good\" &control:%pP", known_good);
-
-		vp = fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge);
 		if (vp) {
-			RDEBUG2("Using challenge from &request:CHAP-Challenge");
+			RDEBUG2("Using challenge from &request.CHAP-Challenge");
 			p = vp->vp_octets;
 			length = vp->vp_length;
 		} else {
@@ -177,21 +262,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		RDEBUG3("Client sent    : %pH", fr_box_octets(chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH));
 		RDEBUG3("We calculated  : %pH", fr_box_octets(pass_str + 1, RADIUS_CHAP_CHALLENGE_LENGTH));
 		REXDENT();
-	} else {
-		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
+	/*
+	 *	Skip the id field at the beginning of the
+	 *	password and chap response.
+	 */
 	ret = fr_digest_cmp(pass_str + 1, chap->vp_octets + 1, RADIUS_CHAP_CHALLENGE_LENGTH);
-	if (ephemeral) talloc_list_free(&known_good);
+	if (ephemeral) TALLOC_FREE(known_good);
 	if (ret != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
 
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	RDEBUG2("CHAP user \"%pV\" authenticated successfully", &username->data);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
@@ -201,14 +288,36 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
-		PERROR("Failed adding %s alias", attr_auth_type->name);
-		return -1;
-	}
+	return 0;
+}
+
+/*
+ *	Create instance for our module. Allocate space for
+ *	instance structure and read configuration parameters
+ */
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+{
+	rlm_chap_t		*inst = instance;
+
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-	rad_assert(inst->auth_type);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  CHAP authentication will likely not work",
+		     inst->name);
+	}
 
 	return 0;
+}
+
+static int mod_load(void)
+{
+	if (!xlat_register(NULL, "chap_password", xlat_func_chap_password, false)) return -1;
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_unregister("chap_password");
 }
 
 /*
@@ -225,7 +334,10 @@ module_t rlm_chap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "chap",
 	.inst_size	= sizeof(rlm_chap_t),
+	.onload		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.dict		= &dict_radius,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,

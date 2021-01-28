@@ -23,7 +23,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/md5.h>
 
 #include <ctype.h>
@@ -39,11 +39,11 @@ USES_APPLE_DEPRECATED_API
 /*
  *	Only used by rlm_mschap.c
  */
-rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
+unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t * usernamepair);
 
 
-static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName,
-				  tDirNodeReference* userNodeRef, tDirReference dsRef)
+static unlang_action_t getUserNodeRef(rlm_rcode_t *p_result, request_t *request, char* inUserName, char **outUserName,
+				      tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
 	tDataBuffer	     	*tDataBuff	= NULL;
 	tDirNodeReference       nodeRef		= 0;
@@ -68,13 +68,13 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 
 	if (!inUserName) {
 		REDEBUG("getUserNodeRef(): No username");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	if (!tDataBuff) {
 		REDEBUG("Failed allocating buffer");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	do {
@@ -218,10 +218,10 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	}
 	if (nodeRef != 0) dsCloseDirNode(nodeRef);
 
-	return  result;
+	RETURN_MODULE_RCODE(result);
 }
 
-rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair)
+unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t * usernamepair)
 {
 	rlm_rcode_t		rcode		 = RLM_MODULE_OK;
 	tDirStatus		status		 = eDSNoErr;
@@ -234,15 +234,15 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	uint32_t		user_id_len		 = 0;
 	char			*username_string = NULL;
 	char			*short_user_name	 = NULL;
-	VALUE_PAIR		*response;
+	fr_pair_t		*response;
 #ifndef NDEBUG
 	unsigned int t;
 #endif
 
-	response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
+	response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response);
 
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
-	if (!username_string) return RLM_MODULE_FAIL;
+	if (!username_string) RETURN_MODULE_FAIL;
 
 	strlcpy(username_string, usernamepair->vp_strvalue, usernamepair->vp_length + 1);
 
@@ -250,10 +250,10 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	if (status != eDSNoErr) {
 		talloc_free(username_string);
 		RERROR("Failed opening directory service");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	rcode = getUserNodeRef(request, username_string, &short_user_name, &userNodeRef, dsRef);
+	getUserNodeRef(&rcode, request, username_string, &short_user_name, &userNodeRef, dsRef);
 	if (rcode != RLM_MODULE_OK) {
 		if (rcode != RLM_MODULE_NOOP) {
 			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
@@ -262,7 +262,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 			talloc_free(username_string);
 		if (dsRef != 0)
 			dsCloseDirService(dsRef);
-		return rcode;
+		RETURN_MODULE_RCODE(rcode);
 	}
 
 	/* We got a node; fill the stepBuffer
@@ -291,7 +291,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
 	uiCurr = 0;
 
-	user_id_len = (uint32_t)short_user_name ? strlen(short_user_name) : 0;
+	user_id_len = (uint32_t)(short_user_name ? strlen(short_user_name) : 0);
 
 	RDEBUG2("OD username_string = %s, OD short_user_name=%s (length = %u)",
 		username_string, short_user_name, user_id_len);
@@ -305,7 +305,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	RINDENT();
 	RDEBUG2("Stepbuf server challenge : ");
 	for (t = 0; t < challenge->vp_length; t++) {
-		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) challenge->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
@@ -321,7 +321,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #ifndef NDEBUG
 	RDEBUG2("Stepbuf peer challenge   : ");
 	for (t = 2; t < 18; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
@@ -338,7 +338,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	RDEBUG2("Stepbuf p24              : ");
 	REXDENT();
 	for (t = 26; t < 50; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
+		fprintf(stderr, "%02x", (unsigned int) response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 #endif
@@ -401,10 +401,10 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 		char *status_name = dsCopyDirStatusName(status);
 		RERROR("Authentication failed - status = %s", status_name);
 		free(status_name);
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 #endif /* __APPLE__ */

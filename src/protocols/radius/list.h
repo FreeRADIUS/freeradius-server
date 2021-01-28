@@ -29,48 +29,37 @@ RCSIDH(list_h, "$Id$")
 #include <stdbool.h>
 #include <stdint.h>
 
-int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b);
-void fr_request_from_reply(RADIUS_PACKET *request,
-			     RADIUS_PACKET const *reply);
+int fr_packet_cmp(void const *a, void const *b);
+void fr_request_from_reply(fr_radius_packet_t *request,
+			     fr_radius_packet_t const *reply);
 
 typedef struct fr_packet_list_s fr_packet_list_t;
 
 fr_packet_list_t *fr_packet_list_create(int alloc_id);
 void fr_packet_list_free(fr_packet_list_t *pl);
-bool fr_packet_list_insert(fr_packet_list_t *pl,
-			    RADIUS_PACKET **request_p);
+bool fr_packet_list_insert(fr_packet_list_t *pl, fr_radius_packet_t *request_p);
 
-RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
-				      RADIUS_PACKET *request);
-RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
-					      RADIUS_PACKET *reply);
+fr_radius_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t *request);
+fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_packet_t *reply);
 bool fr_packet_list_yank(fr_packet_list_t *pl,
-			 RADIUS_PACKET *request);
+			 fr_radius_packet_t *request);
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl);
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    RADIUS_PACKET **request_p, void **pctx);
+			    fr_radius_packet_t *request_p, void **pctx);
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
-			    RADIUS_PACKET *request, bool yank);
+			    fr_radius_packet_t *request, bool yank);
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, uint16_t dst_port,
 			      void *ctx);
 bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
-int fr_packet_list_walk(fr_packet_list_t *pl, rb_walker_t callback, void *uctx);
+int fr_packet_list_walk(fr_packet_list_t *pl, fr_rb_walker_t callback, void *uctx);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
-RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma);
+fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma);
 
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
 uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);
-void fr_packet_header_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received);
-void fr_packet_log(fr_log_t const *log, RADIUS_PACKET *packet, bool received);
 
-/*
- *	"find" returns a pointer to the RADIUS_PACKET* member in the
- *	caller's structure.  In order to get the pointer to the *top*
- *	of the caller's structure, you have to subtract the offset to
- *	the member from the returned pointer, and cast it to the
- *	required type.
- */
-# define fr_packet2myptr(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
+void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received);
+void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received);

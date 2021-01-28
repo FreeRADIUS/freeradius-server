@@ -24,7 +24,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "rlm_sql_unixodbc - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sqltypes.h>
 #include "rlm_sql.h"
@@ -308,7 +308,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	SQLINTEGER			errnum = 0;
 	SQLSMALLINT			length = 255;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	errbuff[0] = state[0] = '\0';
 	SQLError(conn->env, conn->dbc, conn->stmt, state, &errnum,
@@ -353,7 +353,7 @@ static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, 
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
 			INFO("%s %s", state, error);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		case '0':		/* SQLSTATE 00 class means success */
 			res = RLM_SQL_OK;
 			break;

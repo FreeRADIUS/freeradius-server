@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/io/listen.h>
@@ -45,20 +45,20 @@ RCSID("$Id$")
  *	Run a virtual server auth and postauth
  *
  */
-rlm_rcode_t rad_virtual_server(REQUEST *request)
+unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 {
-	VALUE_PAIR *vp, *username, *parent_username = NULL;
+	fr_pair_t *vp, *username, *parent_username = NULL;
 	rlm_rcode_t final;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
-	log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
-	username = fr_pair_find_by_num(request->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
-	if (!username) username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+	username = fr_pair_find_by_num(&request->request_pairs, 0, FR_STRIPPED_USER_NAME);
+	if (!username) username = fr_pair_find_by_num(&request->request_pairs, 0, FR_USER_NAME);
 
 	if (request->parent) {
-		parent_username = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
-		if (!parent_username) parent_username = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+		parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_STRIPPED_USER_NAME);
+		if (!parent_username) parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
 	}
 
 	/*
@@ -69,7 +69,7 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 		 *	Look at the full User-Name with realm.
 		 */
 		if (parent_username->da->attr == FR_STRIPPED_USER_NAME) {
-			vp = fr_pair_find_by_num(request->parent->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+			vp = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
 			if (!vp) goto runit;
 		} else {
 			vp = parent_username;
@@ -154,40 +154,38 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 runit:
 	if (!request->async) {
 #ifdef __clang_analyzer__
-		if (!request->parent) return RLM_MODULE_FAIL;
+		if (!request->parent) RETURN_MODULE_FAIL;
 #endif
-		rad_assert(request->parent != NULL);
+		fr_assert(request->parent != NULL);
 
 		request->async = talloc_memdup(request, request->parent->async, sizeof(fr_async_t));
 		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
 	}
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
-	final = request->async->process(request->async->process_inst, NULL, request);
+	request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
 	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	fr_cond_assert(final == RLM_MODULE_OK);
 
 	if (!request->reply->code ||
 	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Debug the packet if requested.
  */
-void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+void common_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *pairs, bool received)
 {
-	char src_ipaddr[FR_IPADDR_STRLEN];
-	char dst_ipaddr[FR_IPADDR_STRLEN];
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -195,32 +193,32 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	if (!RDEBUG_ENABLED) return;
 
 
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s code %u Id %i from %s%pV%s:%i to %s%pV%s:%i "
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 		       "%s%s%s"
 #endif
 		       "length %zu",
 		       received ? "Received" : "Sent",
 		       packet->code,
 		       packet->id,
-		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->src_port,
-		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-		       packet->if_index ? "via " : "",
-		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-		       packet->if_index ? " " : "",
+		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
+		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->socket.inet.src_port,
+		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
+		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->socket.inet.dst_port,
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+		       packet->socket.inet.ifindex ? "via " : "",
+		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
+		       packet->socket.inet.ifindex ? " " : "",
 #endif
 		       packet->data_len);
 
 	if (received) {
-		log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, pairs, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, pairs, NULL);
 	}
 }

@@ -50,7 +50,7 @@ typedef struct {
 
 	int			stage;					//!< Processing stage.
 
-	uint32_t const		pac_lifetime;				//!< seconds to add to current time to describe PAC lifetime
+	uint32_t		pac_lifetime;				//!< seconds to add to current time to describe PAC lifetime
 	char const		*authority_identity;			//!< The identity we present in the EAP-TLS
 	uint8_t			a_id[PAC_A_ID_LENGTH];			//!< The identity we present in the EAP-TLS
 	char const		*pac_opaque_key;			//!< The key used to encrypt PAC-Opaque
@@ -135,14 +135,14 @@ fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
@@ -226,7 +226,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	rad_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
+	fr_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
 
 	fr_md5_calc(inst->a_id, (uint8_t const *)inst->authority_identity,
 		    talloc_array_length(inst->authority_identity) - 1);
@@ -237,7 +237,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 /** Allocate the FAST per-session data
  *
  */
-static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
+static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t const *inst)
 {
 	eap_fast_tunnel_t *t = talloc_zero(ctx, eap_fast_tunnel_t);
 
@@ -256,13 +256,13 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	return t;
 }
 
-static void eap_fast_session_ticket(tls_session_t *tls_session, const SSL *s,
+static void eap_fast_session_ticket(fr_tls_session_t *tls_session, const SSL *s,
 				    uint8_t *secret, int *secret_len)
 {
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t			seed[2 * SSL3_RANDOM_SIZE];
 
-	rad_assert(t->pac.key);
+	fr_assert(t->pac.key);
 
 	SSL_get_server_random(s, seed, SSL3_RANDOM_SIZE);
 	SSL_get_client_random(s, &seed[SSL3_RANDOM_SIZE], SSL3_RANDOM_SIZE);
@@ -285,8 +285,8 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 {
 	// FIXME enforce non-anon cipher
 
-	REQUEST		*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
-	tls_session_t	*tls_session = arg;
+	request_t		*request = (request_t *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
+	fr_tls_session_t	*tls_session = arg;
 	eap_fast_tunnel_t	*t;
 
 	if (!tls_session) return 0;
@@ -307,7 +307,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 }
 
 /*
- * hints from hostap:src/crypto/tls_openssl.c:tls_session_ticket_ext_cb()
+ * hints from hostap:src/crypto/tls_openssl.c:fr_tls_session_ticket_ext_cb()
  *
  * N.B. we actually always tell OpenSSL we have digested the ticket so that
  *      it does not cause a fail loop and enables us to update the PAC easily
@@ -315,11 +315,11 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
  */
 static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 {
-	tls_session_t		*tls_session = talloc_get_type_abort(arg, tls_session_t);
-	REQUEST			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+	fr_tls_session_t		*tls_session = talloc_get_type_abort(arg, fr_tls_session_t);
+	request_t			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), request_t);
 	eap_fast_tunnel_t	*t;
-	VALUE_PAIR		*fast_vps = NULL, *vp;
-	fr_cursor_t		cursor;
+	fr_pair_list_t		fast_vps;
+	fr_pair_t		*vp;
 	char const		*errmsg;
 	int			dlen, plen;
 	uint16_t		length;
@@ -328,6 +328,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 
 	if (!tls_session) return 0;
 
+	fr_pair_list_init(&fast_vps);
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	RDEBUG2("PAC provided via ClientHello SessionTicket extension");
@@ -337,14 +338,14 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 		errmsg = "PAC is not of type Opaque";
 error:
 		RERROR("%s, sending alert to client", errmsg);
-		if (tls_session_alert(request, tls_session, SSL3_AL_FATAL, SSL_AD_BAD_CERTIFICATE)) {
+		if (fr_tls_session_alert(request, tls_session, SSL3_AL_FATAL, SSL_AD_BAD_CERTIFICATE)) {
 			RERROR("too many alerts");
 			return 0;
 		}
 		if (t->pac.key) talloc_free(t->pac.key);
 
 		memset(&t->pac, 0, sizeof(t->pac));
-		if (fast_vps) fr_pair_list_free(&fast_vps);
+		if (!fr_pair_list_empty(&fast_vps)) fr_pair_list_free(&fast_vps);
 		return 1;
 	}
 
@@ -380,22 +381,19 @@ error:
 
 	RHEXDUMP3((uint8_t const *)&opaque_plaintext, plen, "PAC-Opaque plaintext data section");
 
-	fr_cursor_init(&cursor, &fast_vps);
-	if (eap_fast_decode_pair(tls_session, &cursor, attr_eap_fast_pac_opaque_tlv, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
+	if (eap_fast_decode_pair(tls_session, &fast_vps, attr_eap_fast_pac_opaque_tlv, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
 		errmsg = fr_strerror();
 		goto error;
 	}
 
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_pair_list_head(&fast_vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		char *value;
-
+	     vp = fr_pair_list_next(&fast_vps, vp)) {
 		if (vp->da == attr_eap_fast_pac_info_pac_type) {
-			rad_assert(t->pac.type == 0);
+			fr_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint32;
 		} else if (vp->da == attr_eap_fast_pac_info_pac_lifetime) {
-			rad_assert(t->pac.expires == 0);
+			fr_assert(t->pac.expires == 0);
 			t->pac.expires = vp->vp_uint32;
 			t->pac.expired = (vp->vp_uint32 <= time(NULL));
 		/*
@@ -403,15 +401,13 @@ error:
 		 *	The original enum didn't match a specific TLV nesting level
 		 */
 		} else if (vp->da == attr_eap_fast_pac_key) {
-			rad_assert(t->pac.key == NULL);
-			rad_assert(vp->vp_length == PAC_KEY_LENGTH);
+			fr_assert(t->pac.key == NULL);
+			fr_assert(vp->vp_length == PAC_KEY_LENGTH);
 			t->pac.key = talloc_array(t, uint8_t, PAC_KEY_LENGTH);
-			rad_assert(t->pac.key != NULL);
+			fr_assert(t->pac.key != NULL);
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 		} else {
-			value = fr_pair_asprint(tls_session, vp, '"');
-			RERROR("unknown TLV: %s", value);
-			talloc_free(value);
+			RERROR("unknown TLV: %pP", vp);
 			errmsg = "unknown TLV";
 			goto error;
 		}
@@ -451,14 +447,14 @@ error:
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_tls_status_t	status;
 
-	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	We need FAST data associated with the session, so
@@ -485,8 +481,8 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	an EAP-TLS-Success packet here.
 	 */
 	case EAP_TLS_ESTABLISHED:
-		tls_session_send(request, tls_session);
-		rad_assert(tls_session->opaque != NULL);
+		fr_tls_session_send(request, tls_session);
+		fr_assert(tls_session->opaque != NULL);
 		break;
 
 	/*
@@ -495,7 +491,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	do nothing.
 	 */
 	case EAP_TLS_HANDLED:
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -508,7 +504,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	Anything else: fail.
 	 */
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -523,22 +519,22 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	switch (eap_fast_process(request, eap_session, tls_session)) {
 	case FR_CODE_ACCESS_REJECT:
 		eap_tls_fail(request, eap_session);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
 	case FR_CODE_ACCESS_CHALLENGE:
-		tls_session_send(request, tls_session);
+		fr_tls_session_send(request, tls_session);
 		eap_tls_request(request, eap_session);
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case FR_CODE_ACCESS_ACCEPT:
-		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) return RLM_MODULE_FAIL;
-		return RLM_MODULE_OK;
+		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) RETURN_MODULE_FAIL;
+		RETURN_MODULE_OK;
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -547,7 +543,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
 	case FR_CODE_STATUS_CLIENT:
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 
 	default:
 		break;
@@ -557,20 +553,20 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	Something we don't understand: Reject it.
 	 */
 	eap_tls_fail(request, eap_session);
-	return RLM_MODULE_FAIL;
+	RETURN_MODULE_FAIL;
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
+	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t 	*eap_tls_session;
-	tls_session_t		*tls_session;
+	fr_tls_session_t	*tls_session;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	bool			client_cert;
 
 	eap_session->tls = true;
@@ -579,7 +575,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_eap_tls_require_client_cert, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_tls_require_client_cert);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {
@@ -587,7 +583,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	}
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return RLM_MODULE_FAIL;
+	if (!eap_tls_session) RETURN_MODULE_FAIL;
 
 	tls_session = eap_tls_session->tls_session;
 
@@ -625,7 +621,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 			    &tls_session->clean_in, tls_session->clean_in.used,
 			    tls_session->clean_in.used) < 0) {
 		talloc_free(tls_session);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	tls_session->record_init(&tls_session->clean_in);
@@ -633,10 +629,10 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 
 	if (!SSL_set_session_ticket_ext_cb(tls_session->ssl, _session_ticket, tls_session)) {
 		RERROR("Failed setting SSL session ticket callback");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 

@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/virtual_servers.h>
@@ -118,7 +118,7 @@ static int talloc_config_set(main_config_t *config)
 		talloc_free(null_child);
 
 		if (talloc_set_memlimit(null_ctx, config->talloc_memory_limit) < 0) {
-			fr_strerror_printf("Failed applying memory limit");
+			fr_strerror_const("Failed applying memory limit");
 			return -1;
 		}
 	}
@@ -136,6 +136,15 @@ static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void 
 	if (xlat_thread_instantiate(ctx) < 0) return -1;
 
 	return 0;
+}
+
+/** Explicitly cleanup module/xlat resources
+ *
+ */
+static void thread_detach(UNUSED void *uctx)
+{
+	modules_thread_detach();
+	xlat_thread_detach();
 }
 
 #define EXIT_WITH_FAILURE \
@@ -181,12 +190,13 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 	}
 
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 }
 #endif
 
-/*
- *	The main guy.
+/** Entry point for the daemon
+ *
+ * @hidecallgraph
  */
 int main(int argc, char *argv[])
 {
@@ -214,6 +224,10 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	fr_time_delta_t	exit_after = 0;
 #endif
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors
@@ -240,7 +254,7 @@ int main(int argc, char *argv[])
 		env = getenv("FR_GLOBAL_POOL");
 		if (env) {
 			if (fr_size_from_str(&pool_size, env) < 0) {
-				fprintf(stderr, "Invalid pool size string \"%s\": %s\n", env, fr_strerror());
+				fr_perror("Invalid pool size string \"%s\"", env);
 				EXIT_WITH_FAILURE;
 			}
 
@@ -265,7 +279,7 @@ int main(int argc, char *argv[])
 
 	/*
 	 *	Allocate the main config structure.
-	 *	It's allocating so we can hang talloced buffers off it.
+	 *	It's allocated so we can hang talloced buffers off it.
 	 */
 	config = main_config_alloc(global_ctx);
 	if (!config) {
@@ -471,10 +485,10 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 *
-	 *  tls_init() must be called before *ANY* OpenSSL functions are used, which is why
+	 *  fr_openssl_init() must be called before *ANY* OpenSSL functions are used, which is why
 	 *  it's called so early.
 	 */
-	if (tls_init() < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*
@@ -536,7 +550,7 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_dict_init() < 0) {
+	if (fr_tls_dict_init() < 0) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
@@ -584,7 +598,7 @@ int main(int argc, char *argv[])
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
-	if (tls_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
 #endif
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
@@ -593,7 +607,7 @@ int main(int argc, char *argv[])
 	 */
 	if (config->openssl_fips_mode_is_set) {
 		if (FIPS_mode_set(config->openssl_fips_mode ? 1 : 0) == 0) {
-			tls_log_error(NULL, "Failed %s OpenSSL FIPS mode",
+			fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode",
 				      config->openssl_fips_mode ? "enabling" : "disabling");
 			EXIT_WITH_FAILURE;
 		}
@@ -761,23 +775,27 @@ int main(int argc, char *argv[])
 		fr_schedule_config_t *schedule;
 
 		schedule = talloc_zero(global_ctx, fr_schedule_config_t);
-		schedule->max_workers = config->max_networks;
-		schedule->max_networks = config->max_workers;
+		schedule->max_workers = config->max_workers;
+		schedule->max_networks = config->max_networks;
 		schedule->stats_interval = config->stats_interval;
+
+		schedule->network.max_outstanding = config->max_requests;
+		schedule->worker.max_requests = config->max_requests;
+		schedule->worker.max_request_time = config->max_request_time;
 
 		/*
 		 *	Single server mode: use the global event list.
 		 *	Otherwise, each network thread will create
-		 *	it's own event list.
+		 *	its own event list.
 		 */
 		if (!config->spawn_workers) {
 			el = main_loop_event_list();
 		}
 
 		sc = fr_schedule_create(NULL, el, &default_log, fr_debug_lvl,
-					thread_instantiate, schedule);
+					thread_instantiate, thread_detach, schedule);
 		if (!sc) {
-			PERROR("Failed starting the scheduler: %s", fr_strerror());
+			PERROR("Failed starting the scheduler");
 			EXIT_WITH_FAILURE;
 		}
 
@@ -883,7 +901,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Clear the libfreeradius error buffer.
 	 */
-	fr_strerror();
+	fr_strerror_clear();
 
 	/*
 	 *	Prevent anything from modifying the dictionaries
@@ -957,7 +975,7 @@ int main(int argc, char *argv[])
 	 *  to exit gracefully.  fr_schedule_destroy only returns once all
 	 *  threads have been joined.
 	 */
-	(void) fr_schedule_destroy(sc);
+	(void) fr_schedule_destroy(&sc);
 
 	/*
 	 *  We're exiting, so we can delete the PID file.
@@ -973,6 +991,13 @@ int main(int argc, char *argv[])
 	 *  with destructors that may cause double frees and
 	 *  SEGVs.
 	 */
+	if (!config->spawn_workers) {
+		fr_event_list_t *el;
+
+		el = main_loop_event_list();
+		fr_event_loop_exit(el, 1);
+	}
+
 	main_loop_free();		/* Free the requests */
 
 	/*
@@ -987,6 +1012,12 @@ int main(int argc, char *argv[])
 		kill(-radius_pid, SIGTERM);
 	}
 cleanup:
+	/*
+	 *	This may not have been done earlier if we're
+	 *	exiting due to a startup error.
+	 */
+	(void) fr_schedule_destroy(&sc);
+
 	/*
 	 *  Frees request specific logging resources which is OK
 	 *  because all the requests will have been stopped.
@@ -1003,7 +1034,7 @@ cleanup:
 	unlang_free();
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
+	fr_openssl_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 
 	if (config) talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
@@ -1025,19 +1056,6 @@ cleanup:
 	talloc_free(global_ctx);
 
 	/*
-	 *  Now we're sure no more triggers can fire, free the
-	 *  trigger tree
-	 */
-	trigger_exec_free();
-
-	/*
-	 *  Clean out the main thread's log buffers these would
-	 *  be free on exit anyway but this stops them showing
-	 *  up in the memory report.
-	 */
-	fr_strerror_free();
-
-	/*
 	 *  Anything not cleaned up by the above is allocated in
 	 *  the NULL top level context, and is likely leaked memory.
 	 */
@@ -1048,7 +1066,7 @@ cleanup:
 	 *  we don't inteferere with the onexit() handler.
 	 */
 	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
-	fr_strerror();	/* clear error buffer */
+	fr_strerror_clear();	/* clear error buffer */
 
 	return ret;
 }
@@ -1085,7 +1103,7 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 	fprintf(output, "  -v            Print server version information.\n");
 	fprintf(output, "  -X            Turn on full debugging (similar to -tfxxl stdout).\n");
 	fprintf(output, "  -x            Turn on additional debugging (-xx gives more debugging).\n");
-	exit(status);
+	fr_exit(status);
 }
 
 
@@ -1098,16 +1116,15 @@ static void sig_fatal(int sig)
 
 	switch (sig) {
 	case SIGTERM:
-		main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 		break;
 
 	case SIGINT:
 #ifdef SIGQUIT
 	case SIGQUIT:
 #endif
-		main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 		break;
-		/* FALL-THROUGH */
 
 	default:
 		fr_exit(sig);
@@ -1123,6 +1140,6 @@ static void sig_hup(UNUSED int sig)
 {
 	reset_signal(SIGHUP, sig_hup);
 
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_HUP);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_HUP);
 }
 #endif

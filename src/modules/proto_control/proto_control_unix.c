@@ -26,22 +26,15 @@
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/fopencookie.h>
+#include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/trie.h>
 #include <netdb.h>
 
 #include "proto_control.h"
-
-#ifdef HAVE_SYS_UN_H
-#include <sys/un.h>
-#ifndef SUN_LEN
-#define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
-#endif
-#endif
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -113,10 +106,10 @@ static const CONF_PARSER unix_listen_config[] = {
 #define FR_WRITE (2)
 
 static fr_table_num_sorted_t mode_names[] = {
-	{ "read-only",		FR_READ			},
-	{ "read-write",		FR_READ | FR_WRITE	},
-	{ "ro",			FR_READ			},
-	{ "rw",			FR_READ | FR_WRITE	}
+	{ L("read-only"),		FR_READ			},
+	{ L("read-write"),		FR_READ | FR_WRITE	},
+	{ L("ro"),			FR_READ			},
+	{ L("rw"),			FR_READ | FR_WRITE	}
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
@@ -404,13 +397,13 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	struct stat buf;
 
 	if (!path) {
-		fr_strerror_printf("No path provided, was NULL");
+		fr_strerror_const("No path provided, was NULL");
 		return -1;
 	}
 
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
-		fr_strerror_printf("Path too long in socket filename");
+		fr_strerror_const("Path too long in socket filename");
 		return -1;
 	}
 
@@ -583,7 +576,9 @@ static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t ui
  *
  * @note must be called without effective root permissions (fr_suid_down).
  *
- * @param path where domain socket should be created.
+ * @param[in] path 	where domain socket should be created.
+ * @param[in] uid	Owner of the socket.
+ * @param[in] gid	Group of the socket.
  * @return a file descriptor for the bound socket on success, -1 on failure.
  */
 static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
@@ -604,7 +599,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	socklen_t		socklen;
 	struct sockaddr_un	salocal;
 
-	rad_assert(path);
+	fr_assert(path);
 
 	euid = geteuid();
 	egid = getegid();
@@ -633,7 +628,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 
 	p = strrchr(dir, FR_DIR_SEP);
 	if (!p) {
-		fr_strerror_printf("Failed determining parent directory");
+		fr_strerror_const("Failed determining parent directory");
 	error:
 		talloc_free(dir);
 		if (sock_fd >= 0) close(sock_fd);
@@ -778,7 +773,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 
 	name = strrchr(path, FR_DIR_SEP);
 	if (!name) {
-		fr_strerror_printf("Can't determine socket name");
+		fr_strerror_const("Can't determine socket name");
 		goto error;
 	}
 	name++;
@@ -834,7 +829,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	len = strlen(path);
 #endif
 	if (len >= sizeof(salocal.sun_path)) {
-		fr_strerror_printf("Path too long in socket filename");
+		fr_strerror_const("Path too long in socket filename");
 		goto error;
 	}
 
@@ -939,7 +934,7 @@ static int mod_open(fr_listen_t *li)
 	CONF_ITEM			*ci;
 	CONF_SECTION			*server_cs;
 
-	rad_assert(!thread->connection);
+	fr_assert(!thread->connection);
 
 	if (inst->peercred) {
 		sockfd = fr_server_domain_socket_peercred(inst->filename, inst->uid, inst->gid);
@@ -960,17 +955,13 @@ static int mod_open(fr_listen_t *li)
 	li->fd = thread->sockfd = sockfd;
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 
-	thread->name = talloc_typed_asprintf(thread, "proto unix filename %s", inst->filename);
-
-	// @todo - also print out auth / acct / coa, etc.
-	DEBUG("Listening on control address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
+	thread->name = talloc_typed_asprintf(thread, "control_unix from filename %s", inst->filename);
 
 	/*
 	 *	Set up the fake client
@@ -979,8 +970,8 @@ static int mod_open(fr_listen_t *li)
 	thread->radclient.ipaddr.af = AF_INET;
 	thread->radclient.src_ipaddr.af = AF_INET;
 
-	thread->radclient.server_cs = cf_item_to_section(cf_parent(cf_parent(inst->cs)));
-	rad_assert(thread->radclient.server_cs != NULL);
+	thread->radclient.server_cs = server_cs;
+	fr_assert(thread->radclient.server_cs != NULL);
 	thread->radclient.server = cf_section_name2(thread->radclient.server_cs);
 
 	return 0;
@@ -1143,7 +1134,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		struct passwd *pwd;
 
 		if (rad_getpwnam(cs, &pwd, inst->uid_name) < 0) {
-			ERROR("Failed getting uid for %s: %s", inst->uid_name, fr_strerror());
+			PERROR("Failed getting uid for %s", inst->uid_name);
 			return -1;
 		}
 		inst->uid = pwd->pw_uid;
@@ -1154,7 +1145,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	if (inst->gid_name) {
 		if (rad_getgid(cs, &inst->gid, inst->gid_name) < 0) {
-			ERROR("Failed getting gid for %s: %s", inst->gid_name, fr_strerror());
+			PERROR("Failed getting gid for %s", inst->gid_name);
 			return -1;
 		}
 	} else {

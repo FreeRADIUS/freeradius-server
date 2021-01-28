@@ -28,7 +28,7 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "../../rlm_cache.h"
 #include "../../serialize.h"
@@ -114,7 +114,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	char				buffer[256];
 	rlm_cache_config_t const	*config = dl_module_parent_data_by_child_data(instance);
 
-	rad_assert(config);
+	fr_assert(config);
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 
@@ -159,7 +159,7 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-				       REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 
@@ -205,7 +205,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_insert_t
  */
 static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-					 REQUEST *request, void *handle, const rlm_cache_entry_t *c)
+					 request_t *request, void *handle, const rlm_cache_entry_t *c)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 
@@ -242,7 +242,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-					 REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
+					 request_t *request, void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 
@@ -267,7 +267,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_acquire_t
  */
 static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, void *instance,
-			REQUEST *request)
+			request_t *request)
 {
 	rlm_cache_memcached_t *driver = instance;
 	rlm_cache_handle_t *mandle;
@@ -289,7 +289,7 @@ static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, 
  * @copydetails cache_release_t
  */
 static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *instance,
-			     REQUEST *request, rlm_cache_handle_t *handle)
+			     request_t *request, rlm_cache_handle_t *handle)
 {
 	rlm_cache_memcached_t *driver = instance;
 
@@ -301,7 +301,7 @@ static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *inst
  * @copydetails cache_reconnect_t
  */
 static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *config, void *instance,
-			      REQUEST *request)
+			      request_t *request)
 {
 	rlm_cache_memcached_t *driver = instance;
 	rlm_cache_handle_t *mandle;
@@ -316,8 +316,8 @@ static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *co
 	return 0;
 }
 
-extern cache_driver_t rlm_cache_memcached;
-cache_driver_t rlm_cache_memcached = {
+extern rlm_cache_driver_t rlm_cache_memcached;
+rlm_cache_driver_t rlm_cache_memcached = {
 	.name		= "rlm_cache_memcached",
 	.magic		= RLM_MODULE_INIT,
 	.inst_size	= sizeof(rlm_cache_memcached_t),

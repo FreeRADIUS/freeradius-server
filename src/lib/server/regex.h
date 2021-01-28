@@ -41,15 +41,15 @@ extern "C" {
  */
 #  define REQUEST_MAX_REGEX 32
 
-void	regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regmatch);
+void	regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch);
 
-int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num);
+int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num);
 
 /*
  *	Named capture groups only supported by PCRE.
  */
 #  if defined(HAVE_REGEX_PCRE2) || defined(HAVE_REGEX_PCRE)
-int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name);
+int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name);
 #  endif
 #endif
 

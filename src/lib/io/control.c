@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/rand.h>
 
 #include <fcntl.h>
 #include <string.h>
@@ -125,6 +126,9 @@ static int _control_free(fr_control_t *c)
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
 
+#ifndef NDEBUG
+	(void) fr_event_fd_unarmour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
+#endif
 	(void) fr_event_fd_delete(c->el, c->pipe[0], FR_EVENT_FILTER_IO);
 
 	close(c->pipe[0]);
@@ -148,7 +152,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 
 	c = talloc_zero(ctx, fr_control_t);
 	if (!c) {
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 	c->el = el;
@@ -169,9 +173,13 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 
 	if (fr_event_fd_insert(c, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
 		talloc_free(c);
-		fr_strerror_printf("Failed adding FD to event list control socket: %s", fr_strerror());
+		fr_strerror_const_push("Failed adding FD to event list control socket");
 		return NULL;
 	}
+
+#ifndef NDEBUG
+	(void) fr_event_fd_armour(c->el, c->pipe[0], FR_EVENT_FILTER_IO, (uintptr_t)c);
+#endif
 
 	return c;
 }
@@ -197,10 +205,10 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 		(void) fr_ring_buffer_start(rb, (uint8_t **) &m, &room);
 		if (room == 0) break;
 
-		rad_assert(m != NULL);
-		rad_assert(room >= sizeof(*m));
+		fr_assert(m != NULL);
+		fr_assert(room >= sizeof(*m));
 
-		rad_assert(m->status != FR_CONTROL_MESSAGE_FREE);
+		fr_assert(m->status != FR_CONTROL_MESSAGE_FREE);
 
 		if (m->status != FR_CONTROL_MESSAGE_DONE) break;
 
@@ -221,7 +229,7 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 	 *	Maybe we failed to garbage collect everything?
 	 */
 	if (fr_ring_buffer_used(rb) > 0) {
-		fr_strerror_printf("Data still in control buffers");
+		fr_strerror_const("Data still in control buffers");
 		return -1;
 	}
 
@@ -256,7 +264,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 		(void) fr_control_gc(c, rb);
 		m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
 		if (!m) {
-			fr_strerror_printf_push("Failed allocating from ring buffer");
+			fr_strerror_const_push("Failed allocating from ring buffer");
 			return NULL;
 		}
 	}
@@ -305,14 +313,14 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 		(void) fr_control_gc(c, rb);
 		m = fr_control_message_alloc(c, rb, id, data, data_size);
 		if (!m) {
-			fr_strerror_printf("Failed allocationg after GC");
+			fr_strerror_const("Failed allocationg after GC");
 			return -2;
 		}
 	}
 
 	if (!fr_atomic_queue_push(c->aq, m)) {
 		m->status = FR_CONTROL_MESSAGE_DONE;
-		fr_strerror_printf("Failed pushing message to atomic queue.");
+		fr_strerror_const("Failed pushing message to atomic queue.");
 		return -1;
 	}
 
@@ -375,7 +383,7 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 
 	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
 
-	rad_assert(m->status == FR_CONTROL_MESSAGE_USED);
+	fr_assert(m->status == FR_CONTROL_MESSAGE_USED);
 
 	/*
 	 *	There isn't enough room to store the data, die.
@@ -423,7 +431,7 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
 	}
 
 	if (c->type[id].callback != NULL) {
-		fr_strerror_printf("Callback is already set");
+		fr_strerror_const("Callback is already set");
 		return -1;
 	}
 

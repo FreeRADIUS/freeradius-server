@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH dictionary 5 "14 May 2019"
+.TH dictionary 5 "09 Oct 2020"
 .SH NAME
 dictionary \- RADIUS dictionary file
 .SH DESCRIPTION
@@ -44,14 +44,29 @@ is treated as comment and ignored.
 .PP
 Each line of the file can contain one of the following strings:
 .TP 0.5i
+.B ALIAS new-name  old-name
+Define an alias \fInew-name\fP which is equivalent to \fIold-name\fP.
+
+The ALIAS keyword is used to define additional names for compatibility
+reasons.  As there is no standard behind dictionary names, different
+products may use different names for the same attribute.  The ALIAS
+keyword allows you to add "site local" aliases, so that FreeRADIUS can
+read attributes from pre-existing configurations.
+
+These ALIASes are used when the server reads configuration files, or
+attributes from a database.  However, when the server prints attribute
+names, it always uses the ATTRIBUTE definition from the FreeRADIUS
+dictionary files/
+
+.TP 0.5i
 .B ATTRIBUTE name  oid  type [flags]
-Define a RADIUS attribute name to number mapping.
+Define an attribute name to number mapping.
 
 The \fIname\fP field is a printable field, taken from various
 specifications or vendor definitions.  It is most commonly used as a
 series of words, separated by hyphens.  e.g. "User-Name".
 Vendor-specific attributes (VSAs) are prefixed by the vendor name,
-e.g. "Cisco-AVPair".  The names should be globally unique, as they are
+e.g. "Vendor-Specific.Cisco.AVPair".  The names should be globally unique, as they are
 used as a key to look up the properties of the attribute.
 
 The \fIoid\fP field is taken from the relevant specification for that
@@ -59,28 +74,63 @@ name.  In most cases, it is a decimal number, such as "256".  For
 certain attributes, a "dotted number" notation is used, e.g. "1.2".
 The "dotted number" notation is used only for certain attributes.
 
-The \fItype\fP field can be one of the standard types:
+The \fItype\fP field can be one of the standard types, as defined in
+RFC 8044:
 
      string       UTF-8 printable text (the RFCs call this "text")
      octets       opaque binary data (the RFCs call this "string")
      ipaddr       IPv4 address
-     date         Seconds since January 1, 1970 (32-bits)
      integer      32-bit unsigned integer
+     ipv4prefix   IPv4 Prefix as given in RFC 6572.
      ipv6addr     IPv6 Address
      ipv6prefix   IPV6 prefix, with mask
      ifid         Interface Id (hex:hex:hex:hex)
-     integer64	  64-bit unsigned integer
 
 The \fItype\fP field can also be one of the following non-standard types:
 
+     bit[]	  Bit arrays, but are only allowed for MEMBERs
+     bool	  Boolean true / false value
+     combo=ip     Either IPv4 or IPv6 address, for WiMAX
+     combo=ipprefix   Either IPv4 or IPv6 prefix, for WiMAX
+     date         Seconds since January 1, 1970 (32-bits)
      ether        Ethernet MAC address
-     abinary      Ascend binary filter format
-     byte         8-bit unsigned integer
-     short        16-bit unsigned integer
-     signed       31-bit signed integer (packed into 32-bit field)
+     group        DHCPv6 or Diameter-style grouping
+     int8         8-bit signed integer
+     int16        16-bit signed integer
+     int32        32-bit signed integer
+     int64        64-bit signed integer
      struct       fixed-size structures
+     time_delta   a delta between two times
      tlv          Type-Length-Value (allows nested attributes)
-     ipv4prefix   IPv4 Prefix as given in RFC 6572.
+     uint8        8-bit unsigned integer
+     uint16       16-bit unsigned integer
+     uint32       32-bit unsigned integer
+     uint64       64-bit unsigned integer
+
+The following values for the \fItype\fP field are accepted, but are
+deprecated.
+
+     byte         use "int8" instead
+     integer      use "uint32" instead
+     integer64    use "uint64" instead
+     signed       use "int32" instead
+     short        use "int16" instead
+
+The following values for the \fItype\fP field are defined in RFC 8044,
+but are not accepted in FreeRADIUS.  The equivalent FreeRADIUS
+definition is, however, accepted:
+
+     concat       use "concat" as a flag instead
+     enum         use "uint32" instead
+     evs          use "vsa" instead
+     extended     use "extended" as a flag instead
+     long-extended use "long-extended" as a flag instead
+     time         use "date" instead
+
+FreeRADIUS will accept a VALUE definition for any "base" data type.
+For example, you can define VALUEs for IP addresses, Ethernet
+addresses, etc.  VALUEs cannot be defined for "structural" data types
+such as struct, tlv, vsa, group, etc.
 
 The "struct" type is a compound type.  An attribute of data type
 "struct" can have multiple sub-attributes defined, just as with TLVs.
@@ -98,7 +148,7 @@ This usage is no longer allowed.
 
 The options are:
 
-     encrypt=#    set encryption type 1, 2, or 3.
+     encrypt=...    set encryption type 1, 2, or 3.
      has_tag      The attribute can have an RFC 2868 style tag
 
 The "encrypt" flag marks the attribute as being encrypted with one of

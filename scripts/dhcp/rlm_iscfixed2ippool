@@ -1,0 +1,443 @@
+#!/usr/bin/perl -Tw
+
+######################################################################
+#
+#  Copyright (C) 2020 Network RADIUS
+#
+#  $Id$
+#
+######################################################################
+#
+#  Helper script to parse an ISC DHCP config file and extract fixed
+#  leases for populating FreeRADIUS ippool tables.
+#
+#  This script reads an ISC DCHP config file and extracts any fixed
+#  leases.  If Net::DNS is available, then any host names are resolved.
+#  The resulting list of hardware mac addresses and IP addresses are
+#  then formatted as SQL to update a standard FreeRADIUS DHCP ippool
+#  table.
+#
+#  rlm_iscfixed2ippool -c <dhcpd.conf> -t <table_name> \
+#          (-d <sql_dialect> | -f <raddb_dir> [-i <instance>]) \
+#          -k <mac|id>
+#
+
+use warnings;
+use strict;
+
+my $dns_available = 0;
+my $resolver;
+eval {
+	require Net::DNS;
+	$dns_available = 1;
+	$resolver = Net::DNS::Resolver->new;
+};
+
+#
+#  Option defaults
+#
+my $opts = {
+	dhcpdconf => '/etc/dhcp/dhcpd.conf',
+	key => 'mac'
+};
+
+#
+#  Parse the command line arguments
+#
+my $opt = '';
+for (my $i = 0; $i <= $#ARGV; $i++) {
+	if ($ARGV[$i] =~ m/^-(.)$/) {
+		if ($1 eq 'c') {
+			$opt = 'dhcpdconf';
+		} elsif ($1 eq 't') {
+			$opt = 'table_name';
+		} elsif ($1 eq 'd') {
+			$opt = 'dialect';
+		} elsif ($1 eq 'f') {
+			$opt = 'raddb_dir';
+		} elsif ($1 eq 'i') {
+			$opt = 'instance';
+		} elsif ($1 eq 'k') {
+			$opt = 'key'
+		} else {
+			&usage();
+			exit 1;
+		}
+	} else {
+		if ($opt eq '') {
+			&usage();
+			exit 1;
+		} else {
+			$opts->{$opt} = $ARGV[$i]
+		}
+	}
+}
+
+if (($opts->{key} ne 'mac') && ($opts->{key} ne 'id')) {
+	&usage();
+	exit(1);
+}
+
+#
+#  If a raddb dir is set then we parse the mods-enabled config
+#
+
+if ($opts->{raddb_dir}) {
+	my $found = 0;
+	if (-d $opts->{raddb_dir}.'/mods-enabled') {
+		opendir(my $dh, $opts->{raddb_dir}.'/mods-enabled') || die 'ERROR: Could not open directory '.$opts->{raddb_dir}.'/mods-enabled';
+		my @dir = grep { -f  "$opts->{raddb_dir}/mods-enabled/$_" } readdir($dh);
+		closedir($dh);
+		my $instance = $opts->{instance};
+		foreach my $file (@dir) {
+			open (my $fh, $opts->{raddb_dir}.'/mods-enabled/'.$file);
+			my $level = 0;
+			my $section = '';
+			my $subsection = '';
+			while (<$fh>) {
+				if ($found) {
+					&process_config_line($_, \$level, \$section, \$subsection, \$opts);
+					last if ($level == 0); # We've got to the end of the instance
+				}
+				if ($_ =~ m/\b$instance\s+\{/) {
+					# We've found the specified SQL instance
+					$found = 1;
+					$level = 1;
+				}
+			}
+			close ($fh);
+			if ($found) {
+				last;
+			}
+		}
+		if (($found) && ($opts->{dialect})) {
+			#  Check for dialect specific options
+			if ( open (my $fh, $opts->{raddb_dir}.'/mods-config/sql/driver/'.$opts->{dialect}) ) {
+				my $level = 1;
+				my $section = '';
+				my $subsection = '';
+				while (<$fh>) {
+					&process_config_line($_, \$level, \$section, \$subsection, \$opts);
+				}
+				close ($fh);
+			}
+		}
+	} else {
+		die 'ERROR: Specified FreeRADIUS config directory does not contain mods-enabled';
+	}
+	if ($found == 0) {
+		die 'ERROR: SQL instance not found in FreeRADIUS config';
+	}
+}
+
+#
+#  The SQL dialect and table name must be set
+#
+if ((!($opts->{dialect})) || (!($opts->{table_name}))) {
+	&usage();
+	exit 1;
+}
+
+
+open (my $fh, '<', $opts->{dhcpdconf}) or die "ERROR: Cannot open ISC DHCP config for reading: $opts->{dhcpdconf}";
+
+my $inhost = 0;
+my @hosts;
+my $host = {key => ''};
+while (my $line = <$fh>) {
+	$line = lc($line);
+	if ($inhost == 0) {
+		$inhost = 1 if ($line =~ m/host\s+\S+\s+{/); # We've found the beginning of a host record
+	}
+	if ($inhost) {
+		if (($opts->{key} eq 'mac') && ($line =~ m/hardware\s+ethernet\s+(([0-9a-f]{2}([:;]|\s)){6})/)) {
+			$host->{key} = $1;
+			$host->{key} =~ s/;$//;
+		}
+		if (($opts->{key} eq 'id') && ($line =~ m/dhcp-client-identifier\s+(.*?)\s*;/)) {
+			$host->{key} = $1;
+		}
+		if ($line =~ m/fixed-address\s+(.+);/) {
+			my @addresses = split(',', $1);
+			foreach my $address (@addresses) {
+				$address =~ s/^\s+//;
+				$address =~ s/\s+$//;
+				if ($address =~ m/(([0-9]{1,3}(\.|$)){4})/) {
+					push (@{$host->{ips}}, $1);
+				} elsif ($dns_available) {
+					my $reply = $resolver->search($1, 'A');
+					if ($reply) {
+						foreach my $rr ($reply->answer) {
+							push (@{$host->{ips}}, $rr->address) if ($rr->can('address'))
+						}
+					}
+				}
+			}
+		}
+		if ($line =~ m/}/) { # End of the host record - store the results and clear up
+			push (@hosts, $host) if (($host->{key}) && ($#{$host->{ips}} >= 0));
+			$host = {key => ''};
+			$inhost = 0;
+		}
+	}
+}
+
+close($fh);
+
+my ($template, $queries) = &load_templates($opts->{table_name});
+
+unless (defined $template->{$opts->{dialect}}) {
+	print STDERR "Unknown dialect. Pick one of: ";
+	print STDERR "$_ " foreach sort keys %{$template};
+	print STDERR "\n";
+	exit 1;
+}
+
+if ($opts->{radius_db}) {
+	&call_database($opts, $queries, @hosts);
+} else {
+	my $tt_available = 0;
+	eval {
+		require Template;
+		$tt_available = 1;
+	};
+	if ($tt_available) {
+		my $tt=Template->new();
+		$tt->process(\$template->{$opts->{dialect}}, {tablename => $opts->{table_name}, hosts => \@hosts}) || die $tt->error();
+	} else {
+		die "ERROR: Template Toolkit is not available. Install the Template Perl module.";
+	}
+}
+
+exit(0);
+
+sub usage {
+	print STDERR <<'EOF'
+Usage:
+  rlm_iscfixed2ippool -c <dhcpd.conf> -t <table_name> (-d <sql_dialect> | -f <raddb_dir> [ -i <instance> ]) [-k <mac|id> ]
+
+EOF
+}
+
+
+sub call_database {
+
+	my $opts = shift;
+	my $queries = shift;
+	my @entries = @_;
+
+	my $dbi_avail = 0;
+	eval {
+		require DBI;
+		$dbi_avail = 1;
+	};
+	unless($dbi_avail) {
+		die "ERROR: DBI is not available. Install the DBI Perl module.";
+	}
+
+	my $dsn;
+	if ($opts->{dialect} eq 'mysql') {
+		$dsn = "DBI:mysql:database=$opts->{radius_db};host=$opts->{server}";
+		if (defined($opts->{mysql}->{tls})) {
+			$dsn .= ';mysql_ssl=1';
+			$dsn .= ';mysql_ssl_ca_file='.$opts->{mysql}->{tls}->{ca_file} if ($opts->{mysql}->{tls}->{ca_file});
+			$dsn .= ';mysql_ssl_ca_path='.$opts->{mysql}->{tls}->{ca_path} if ($opts->{mysql}->{tls}->{ca_path});
+			$dsn .= ';mysql_ssl_client_key='.$opts->{mysql}->{tls}->{private_key_file} if ($opts->{mysql}->{tls}->{private_key_file});
+			$dsn .= ';mysql_ssl_client_cert='.$opts->{mysql}->{tls}->{certificate_file} if ($opts->{mysql}->{tls}->{certificate_file});
+			$dsn .= ';mysql_ssl_cipher='.$opts->{mysql}->{tls}->{cipher} if ($opts->{mysql}->{tls}->{cipher});
+		}
+	} elsif ($opts->{dialect} eq 'postgresql') {
+		#  Parse FreeRADIUS alternative connection string
+		if ($opts->{radius_db} =~ m/host=(.+?)\b/) {
+			$opts->{server} = $1;
+		}
+		if ($opts->{radius_db} =~ m/user=(.+?)\b/) {
+			$opts->{login} = $1;
+		}
+		if ($opts->{radius_db} =~ m/password=(.+?)\b/) {
+			$opts->{password} = $1;
+		}
+		if ($opts->{radius_db} =~ m/sslmode=(.+?)\b/) {
+			$opts->{sslmode} = $1;
+		}
+		if ($opts->{radius_db} =~ m/dbname=(.+?)\b/) {
+			$opts->{radius_db} = $1;
+		}
+		$dsn = "DBI:Pg:dbname=$opts->{radius_db};host=$opts->{server}";
+		#
+		#  DBD doesn't have all the options used by FreeRADIUS - just enable ssl if
+		#  FreeRADIUS has SSL options enabled
+		#
+		$dsn .= ';sslmode=prefer' if ($opts->{sslmode});
+	} elsif ($opts->{dialect} eq 'sqlite') {
+		$dsn = "DBI:SQLite:dbname=$opts->{sqlite}->{filename}";
+	} elsif ($opts->{dialect} eq 'mssql') {
+		if ($opts->{driver} eq 'rlm_sql_unixodbc') {
+			$dsn = "DBI:ODBC:DSN=$opts->{server}";
+		} else {
+			$dsn = "DBI:Sybase:server=$opts->{server};database=$opts->{radius_db}";
+		}
+	} elsif ($opts->{dialect} eq 'oracle') {
+		#  Extract data from Oracle connection string as used by FreeRADIUS
+		if ($opts->{radius_db} =~ m/HOST=(.+?)\)/) {
+			$opts->{server} = $1;
+		}
+		if ($opts->{radius_db} =~ m/PORT=(.+?)\)/) {
+			$opts->{port} =$1;
+		}
+		if ($opts->{radius_db} =~ m/SID=(.+?)\)/) {
+			$opts->{sid} = $1;
+		}
+		$dsn = "DBI:Oracle:host=$opts->{server};sid=$opts->{sid}";
+	} else {
+		$dsn = "DBI:$opts->{dialect}:database=$opts->{radius_db};host=$opts->{server}";
+	}
+	$dsn .= ";port=$opts->{port}" if ($opts->{port}) && ($opts->{driver} ne 'rlm_sql_unixodbc');
+
+	#  Read the results by running our query against the database
+	my $dbh = DBI->connect($dsn, $opts->{login}, $opts->{password}) || die "Unable to connect to database";
+
+	$dbh->do($queries->{$opts->{dialect}}->{pre}) if ($queries->{$opts->{dialect}}->{pre});
+
+	my $sth = $dbh->prepare($queries->{$opts->{dialect}}->{update});
+	foreach my $h (@hosts) {
+		foreach my $i (@{$h->{ips}}) {
+			$sth->execute($h->{key}, $i);
+		}
+	}
+	$sth->finish();
+
+	$dbh->do($queries->{$opts->{dialect}}->{post}) if ($queries->{$opts->{dialect}}->{post});
+
+	$dbh->disconnect();
+}
+
+
+#
+#  SQL dialect templates
+#
+
+sub load_templates {
+
+	my $tablename = shift;
+
+	my $template;
+	my $queries;
+#
+#  MySQL / MariaDB
+#
+	$queries->{'mysql'}->{pre} = 'START TRANSACTION';
+	$queries->{'mysql'}->{update} = 'UPDATE'.$tablename.' SET pool_key = ?, `status` = "static" WHERE framedipaddress = ?';
+	$queries->{'mysql'}->{post} = 'COMMIT';
+
+	$template->{'mysql'} = $queries->{'mysql'}->{pre}.";\n";
+	$template->{'mysql'} .= <<'END_mysql';
+[%- FOREACH h IN hosts %]
+[%-   FOREACH i IN h.ips %]
+UPDATE [% tablename %] SET pool_key = '[% h.key %]', `status` = 'static' WHERE framedipaddress = '[% i %]';
+[%-   END %]
+[%- END %]
+END_mysql
+	$template->{'mysql'} .= $queries->{'mysql'}->{post}.";\n";
+
+#
+#  PostgreSQL
+#
+	$queries->{'postgresql'}->{pre} = 'START TRANSACTION';
+	$queries->{'postgresql'}->{update} = 'UPDATE'.$tablename.' SET pool_key = ?, status = "static" WHERE framedipaddress = ?';
+	$queries->{'postgresql'}->{post} = 'COMMIT';
+
+	$template->{'postgresql'} = $queries->{'postgresql'}->{pre}.";\n";
+	$template->{'postgresql'} .= <<'END_postgresql';
+[%- FOREACH h IN hosts %]
+[%-   FOREACH i IN h.ips %]
+UPDATE [% tablename %] SET pool_key = '[% h.key %]', status = 'static' WHERE framedipaddress = '[% i %]';
+[%-   END %]
+[%- END %]
+END_postgresql
+	$template->{'postgresql'} .= $queries->{'postgresql'}->{post}.";\n";
+#
+#  Oracle
+#
+	$queries->{'oracle'}->{pre} = '';
+	$queries->{'oracle'}->{update} = 'UPDATE '.$tablename.' SET pool_key = ?, status_id = (SELECT status_id FROM dhcpstatus WHERE status = \'static\') WHERE FramedIPAddress = ?';
+	$queries->{'oracle'}->{post} = 'COMMIT';
+
+	$template->{'oracle'} = <<'END_oracle';
+[%- FOREACH h IN hosts %]
+[%-   FOREACH i IN h.ips %]
+UPDATE [% tablename %] SET pool_key = '[% h.key %]', status_id = (SELECT status_id FROM dhcpstatus WHERE status = 'static') WHERE framedipaddress = '[% i %]';
+[%-   END %]
+[%- END %]
+END_oracle
+	$template->{'oracle'} .= $queries->{'oracle'}->{post}.";\n";
+
+#
+#  SQLite
+#
+	$queries->{'sqlite'}->{pre} = 'BEGIN TRANSACTION';
+	$queries->{'sqlite'}->{update} = 'UPDATE '.$tablename.' SET pool_key = ?, status_id = (SELECT status_id FROM dhcpstatus WHERE status = \'static\') WHERE framedipaddress = ?';
+	$queries->{'sqlite'}->{post} = 'COMMIT';
+
+	$template->{'sqlite'} = $queries->{'sqlite'}->{pre}.";\n";
+	$template->{'sqlite'} .= <<'END_sqlite';
+[%- FOREACH h IN hosts %]
+[%-   FOREACH i IN h.ips %]
+UPDATE [% tablename %] SET pool_key = '[% h.key %]', status_id = (SELECT status_id FROM dhcpstatus WHERE status = 'static') WHERE framedipaddress = '[% i %]';
+[%-   END %]
+[%- END %]
+END_sqlite
+	$template->{'sqlite'} .= $queries->{'sqlite'}->{post}.";\n";
+
+#
+#  MS SQL
+#
+	$queries->{'mssql'}->{pre} = 'BEGIN TRAN';
+	$queries->{'mssql'}->{update} = 'UPDATE '.$tablename.' SET pool_key = ?, status_id = (SELECT status_id FROM dhcpstatus WHERE status = \'static\') WHERE framedipaddress = ?';
+	$queries->{'mssql'}->{post} = 'COMMIT TRAN';
+
+	$template->{'mssql'} = $queries->{'mssql'}->{pre}.";\n";
+	$template->{'mssql'} .= <<'END_mssql';
+[%- FOREACH h IN hosts %]
+[%-   FOREACH i IN h.ips %]
+UPDATE [% tablename %] SET pool_key = '[% h.key %]', status_id = (SELECT status_id FROM dhcpstatus WHERE status = 'static') WHERE framedipaddress = '[% i %]';
+[%-   END %]
+[%- END %]
+END_mssql
+	$template->{'mssql'} .= $queries->{'mssql'}->{post}.";\n";
+
+	return ($template, $queries);
+
+}
+
+sub process_config_line {
+	my $line = shift;
+	my $level = shift;
+	my $section = shift;
+	my $subsection = shift;
+	my $opts = shift;
+
+	$line =~ s/#.*//;  # Remove comments
+	if ($line =~ m/\s*([a-z0-9_]+)\s*=\s*(.+)/) {
+		my $param = $1;
+		my $value = $2;
+		$value =~ s/^"//;
+		$value =~ s/"\s*$//;
+		if ($$level == 1) {
+			$$opts->{$param} = $value;
+		} elsif ($$level == 2) {
+			$$opts->{$$section}->{$param} = $value;
+		} elsif ($$level == 3) {
+			$$opts->{$$section}->{$$subsection}->{$param} = $value;
+		}
+	}
+	if ($line =~ m/([a-z_]*)\s+\{/) { # Find nested sectinos
+		$$level++ ;
+		if ($$level == 2) {
+			$$section = $1;
+		} elsif ($$level == 3) {
+			$$subsection = $1;
+		}
+	}
+	$$level-- if ($line =~ m/\s+\}/); # Close of nesting
+}

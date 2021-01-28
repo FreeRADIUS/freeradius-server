@@ -4,28 +4,71 @@ proto-dictionary radius
 #
 #  Test vectors for WiMAX attributes.
 #
-encode-pair WiMAX-Release = "1.0"
+encode-pair Vendor-Specific.WiMAX.Capability.Release  = "1.0"
 match 1a 0e 00 00 60 b5 01 08 00 01 05 31 2e 30
 
 decode-pair -
-match WiMAX-Release = "1.0"
+match Vendor-Specific.WiMAX.Capability.Release = "1.0"
 
-encode-pair WiMAX-Accounting-Capabilities = 1
+encode-pair Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = 1
 match 1a 0c 00 00 60 b5 01 06 00 02 03 01
 
 decode-pair -
-match WiMAX-Accounting-Capabilities = IP-Session-Based
+match Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = IP-Session-Based
 
-encode-pair WiMAX-Release = "1.0", WiMAX-Accounting-Capabilities = 1
+encode-pair Vendor-Specific.WiMAX.Capability.Release = "1.0", Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = 1
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 01
 
 decode-pair -
-match WiMAX-Release = "1.0", WiMAX-Accounting-Capabilities = IP-Session-Based
+match Vendor-Specific.WiMAX.Capability.Release = "1.0", Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = IP-Session-Based
 
 encode-pair -
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 01
 
-encode-pair WiMAX-PFDv2-Classifier-Direction = 1
+#
+#  Testing cloned TLVs
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IP-Address = 127.0.0.1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112
+match 1a 17 00 00 60 b5 1c 11 00 0b 0e 05 0c 01 06 7f 00 00 01 04 04 08 40
+
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112
+match 1a 11 00 00 60 b5 1c 0b 00 0b 08 05 06 04 04 08 40
+
+#
+#  Dst-Spec is copied from Src-Spec
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Dst-Spec.Port = 2112
+match 1a 11 00 00 60 b5 1c 0b 00 0b 08 06 06 04 04 08 40
+
+#
+#  Src-Spec is copied from the other Src-Spec, but with more attributes added
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.MAC-Address = 00:01:02:03:04:05
+match 1a 15 00 00 60 b5 54 0f 00 09 0c 05 0a 08 08 00 01 02 03 04 05
+
+#
+# Dest-Spec is copied from the most recent Src-Spec
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Dest-Spec.MAC-Address = 00:01:02:03:04:05
+match 1a 15 00 00 60 b5 54 0f 00 09 0c 06 0a 08 08 00 01 02 03 04 05
+
+#
+#  We copied enums, too
+# 
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Assigned = Src-Assigned
+match 1a 10 00 00 60 b5 1c 0a 00 0b 07 05 05 07 03 01
+
+#
+#  Enum is copied!
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Dst-Spec.Assigned = Src-Assigned
+match 1a 10 00 00 60 b5 1c 0a 00 0b 07 06 05 07 03 01
+
+
+#
+#  More complex tests
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1
 match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 
 # Encoding this as an unknown should have it also encode-pair to the right data.
@@ -33,124 +76,148 @@ match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 #  @todo - ensure that unknown attributes still have the WiMAX
 #  "continuation" flag.
 #
-#encode-pair Attr-26.24757.84.9.4 = 0x01
-#data 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
+encode-pair 26.24757.84.9.4 = 0x01
+match 1a 0e 00 00 60 b5 54 08 00 09 05 04 03 01
 
 # and parsing the OID should parse LHS / RHS into the known attribute.
-#attribute Attr-26.24757.84.9.4 = 0x01
-#data WiMAX-PFDv2-Classifier-Direction = 1
+attribute 26.24757.84.9.4 = 0x01
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1
 
-encode-pair WiMAX-PFDv2-Classifier-Direction = 1, WiMAX-PFDv2-Src-Port = 6809
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port = 6809
 match 1a 14 00 00 60 b5 54 0e 00 09 0b 04 03 01 05 06 04 04 1a 99
 
 decode-pair -
-match WiMAX-PFDv2-Classifier-Direction = 1, WiMAX-PFDv2-Src-Port = 6809
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port = 6809
 
 decode-pair 1a 11 00 00 60 b5 54 0b 00 09 08 05 06 04 04 1a 99
-match WiMAX-PFDv2-Src-Port = 6809
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port = 6809
 
 # 26.24757.84.9.4 has the correct length.
 # 26.24757.84.9.5 has the correct length.
 # 26.24757.84.9.5.4 has the wrong length.
 decode-pair 1a 14 00 00 60 b5 54 0e 00 09 0b 04 03 01 05 06 04 05 1a 99
-match WiMAX-PFDv2-Classifier-Direction = 1, Attr-26.24757.84.9.5 = 0x04051a99
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Direction = 1, raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec = 0x04051a99
 
 # The 26.24757.1 has the wrong length
 decode-pair 1a 11 00 00 60 b5 01 0a 00 01 05 31 2e 30 02 03 01
-match Attr-26 = 0x000060b5010a000105312e30020301
+match raw.Vendor-Specific = 0x000060b5010a000105312e30020301
 
 encode-pair -
 match 1a 11 00 00 60 b5 01 0a 00 01 05 31 2e 30 02 03 01
 
 decode-pair 1a 11 00 00 60 b5 01 0c 00 01 05 31 2e 30 02 03 01
-match Attr-26 = 0x000060b5010c000105312e30020301
+match raw.Vendor-Specific = 0x000060b5010c000105312e30020301
 
 encode-pair -
 match 1a 11 00 00 60 b5 01 0c 00 01 05 31 2e 30 02 03 01
 
 # 26.24757.1.1 has the wrong length
 decode-pair 1a 11 00 00 60 b5 01 0b 00 01 04 31 2e 30 02 03 01
-match Attr-26.24757.1 = 0x0104312e30020301
+match raw.Vendor-Specific.WiMAX.Capability = 0x0104312e30020301
 
 decode-pair 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
-match Attr-26.24757.1 = 0x0106312e30020301
+match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
 
 encode-pair -
+match 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
+
+encode-pair Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+match Group list for Capability MUST start with '{'
+
+#
+#  We don't print raw attributes with a "raw" prefix.  Perhaps we should.
+#
+attribute raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+
+attribute raw.Vendor-Specific.WiMAX.1 = 0x0106312e30020301
+match raw.Vendor-Specific.WiMAX.Capability = 0x0106312e30020301
+
+encode-pair -
+match 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
+
+#
+#  This one is correct... Capability has the wrong length
+#  of data, so it's name is "1", and not "Capability".
+#
+encode-pair raw.Vendor-Specific.WiMAX.1 = 0x0106312e30020301
 match 1a 11 00 00 60 b5 01 0b 00 01 06 31 2e 30 02 03 01
 
 
 # 26.24757.1.2 has the wrong length
 decode-pair 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 02 01
-match Attr-26.24757.1 = 0x0105312e30020201
+match raw.Vendor-Specific.WiMAX.Capability = 0x0105312e30020201
 
 encode-pair -
+match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 02 01
+
+encode-pair raw.Vendor-Specific.WiMAX.1 = 0x0105312e30020201
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 02 01
 
 # 26.24757.1.1 has the correct length
 # 26.24757.1.2 has the wrong length
 # This means that 26.24757.1 is invalid, and we create a raw attribute.
 decode-pair 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 04 01
-match Attr-26.24757.1 = 0x0105312e30020401
+match raw.Vendor-Specific.WiMAX.Capability = 0x0105312e30020401
 
 encode-pair -
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 04 01
 
-encode-pair WiMAX-PFDv2-Eth-Priority-Range-Low = 55
+encode-pair raw.Vendor-Specific.WiMAX.1 = 0x0105312e30020401
+match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 04 01
+
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.Low = 55
 match 1a 12 00 00 60 b5 54 0c 00 09 09 09 07 03 05 01 03 37
 
-encode-pair WiMAX-PFDv2-Eth-Priority-Range-Low = 55, WiMAX-PFDv2-Eth-Priority-Range-High = 84
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.Low = 55, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.High = 84
 match 1a 15 00 00 60 b5 54 0f 00 09 0c 09 0a 03 08 01 03 37 02 03 54
 
 decode-pair -
-match WiMAX-PFDv2-Eth-Priority-Range-Low = 55, WiMAX-PFDv2-Eth-Priority-Range-High = 84
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.Low = 55, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.High = 84
 
 #  A less efficient encoding of the above data
 decode-pair 1a 17 00 00 60 b5 54 11 00 09 0e 09 0c 03 05 01 03 37 03 05 02 03 54
-match WiMAX-PFDv2-Eth-Priority-Range-Low = 55, WiMAX-PFDv2-Eth-Priority-Range-High = 84
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.Low = 55, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.High = 84
 
 # 26.24757.84.9.9.3.1 has the wrong length
 decode-pair 1a 15 00 00 60 b5 54 0f 00 09 0c 09 0a 03 08 01 04 37 02 03 54
-match Attr-26.24757.84.9.9.3 = 0x010437020354
+match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range = 0x010437020354
 
 # 26.24757.84.9.9.3.2 has the wrong length
 decode-pair 1a 15 00 00 60 b5 54 0f 00 09 0c 09 0a 03 08 01 03 37 02 04 54
-match Attr-26.24757.84.9.9.3 = 0x010337020454
+match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range = 0x010337020454
 
 # 26.24757.84.9.9.3.2 has the wrong length
 # This means that the SECOND 26.24757.84.9.9.3 is invalid.
 decode-pair 1a 17 00 00 60 b5 54 11 00 09 0e 09 0c 03 05 01 03 37 03 05 02 04 54
-match WiMAX-PFDv2-Eth-Priority-Range-Low = 55, Attr-26.24757.84.9.9.3 = 0x020454
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.Low = 55, raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range = 0x020454
 
 # 26.24757.84.9.9.3.1 has the wrong length
 # This means that 26.24757.84.9.9.3 is invalid.
 decode-pair 1a 17 00 00 60 b5 54 11 00 09 0e 09 0c 03 05 01 02 37 03 05 02 03 54
-match Attr-26.24757.84.9.9.3 = 0x010237, WiMAX-PFDv2-Eth-Priority-Range-High = 84
-
+match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range = 0x010237, Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Classifier-Eth-Option.Eth-Priority-Range.High = 84
 #
 #  Simple test for continued attributes
 #
 decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 60 b5 01 06 00 02 03 00
-match WiMAX-Release = "1.0", WiMAX-Accounting-Capabilities = No-Accounting
+match Vendor-Specific.WiMAX.Capability.Release = "1.0", Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = No-Accounting
 
 #
 #  See if encoding multiple attributes works
 #
-encode-pair WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32
-match 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20
-
-encode-pair WiMAX-Packet-Data-Flow-Id := 33, WiMAX-Service-Data-Flow-ID := 33, WiMAX-Service-Profile-ID := 33
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33
 match 1a 17 00 00 60 b5 1c 11 00 01 04 00 21 02 04 00 21 03 06 00 00 00 21
 
-encode-pair WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32, WiMAX-Packet-Data-Flow-Id := 33, WiMAX-Service-Data-Flow-ID := 33, WiMAX-Service-Profile-ID := 33
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33
 match 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04 00 21 02 04 00 21 03 06 00 00 00 21
 
-encode-pair WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32, WiMAX-Packet-Data-Flow-Id := 33, WiMAX-Service-Data-Flow-ID := 33, WiMAX-Service-Profile-ID := 33, Session-Timeout := 7200
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33, Session-Timeout := 7200
 match 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04 00 21 02 04 00 21 03 06 00 00 00 21 1b 06 00 00 1c 20
 
-encode-pair Acct-Interim-Interval := 3600, WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32, WiMAX-Packet-Data-Flow-Id := 33, WiMAX-Service-Data-Flow-ID := 33, WiMAX-Service-Profile-ID := 33, Session-Timeout := 7200
+encode-pair Acct-Interim-Interval := 3600, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33, Session-Timeout := 7200
 match 55 06 00 00 0e 10 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04 00 21 02 04 00 21 03 06 00 00 00 21 1b 06 00 00 1c 20
 
-encode-pair WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32, Session-Timeout := 7200, WiMAX-Packet-Data-Flow-Id := 33, WiMAX-Service-Data-Flow-ID := 33, WiMAX-Service-Profile-ID := 33
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 32, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 32, Session-Timeout := 7200, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Packet-Data-Flow-Id := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Data-Flow-ID := 33, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Service-Profile-ID := 33
 match 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 1b 06 00 00 1c 20 1a 17 00 00 60 b5 1c 11 00 01 04 00 21 02 04 00 21 03 06 00 00 00 21
 
 #
@@ -162,7 +229,19 @@ match 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 1b 06
 # data 1a ff 00 00 60 b5 01 f9 80 01 ff 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 45 1a 15 00 00 60 b5 01 0f 00 45 45 45 45 45 45 45 45 45 04 03 01
 
 # decode-pair -
-# data WiMAX-Release = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", WiMAX-Idle-Mode-Notification-Cap = Supported
+# data Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Release = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Idle-Mode-Notification-Cap = Supported
+
+#
+#  Port ranges
+#
+encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IP-Address = 127.0.0.1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range = { Start = 2112, End = 6809 }
+match 1a 1d 00 00 60 b5 1c 17 00 0b 14 05 12 01 06 7f 00 00 01 04 04 08 40 05 06 08 40 1a 99
+
+#
+#  Structs not yet decoded into sub-groups
+#
+decode-pair -
+match Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IP-Address = 127.0.0.1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range.Start = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range.End = 6809
 
 count
-match 78
+match 112

@@ -22,7 +22,7 @@ RCSID("$Id$")
  *
  * Any entries remaining in the list will be freed when the thread is joined
  */
-fr_thread_local_setup(fr_md5_ctx_t *, md5_ctx); /* macro */
+static _Thread_local fr_md5_ctx_t * md5_ctx;
 
 /*
  *	If we have OpenSSL's EVP API available, then build wrapper functions.
@@ -36,7 +36,7 @@ typedef struct {
 	bool		used;
 	fr_md5_ctx_t	*md_ctx;
 } fr_md5_free_list_t;
-fr_thread_local_setup(fr_md5_free_list_t *, md5_array); /* macro */
+static _Thread_local fr_md5_free_list_t * md5_array;
 
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
@@ -100,7 +100,7 @@ static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
 		md_ctx = EVP_MD_CTX_new();
 		if (unlikely(!md_ctx)) {
 		oom:
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return NULL;
 		}
 		EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);
@@ -454,6 +454,14 @@ static void fr_md5_local_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inl
 
 	size_t have, need;
 
+	/*
+	 *	Needed so we can calculate the zero
+	 *	length md5 hash correctly.
+	 *	ubsan doesn't like arithmetic on
+	 *	NULL pointers.
+	 */
+	if (!in) in = (uint8_t[]){ 0x00 };
+
 	/* Check how many bytes we already have and how many more we need. */
 	have = (size_t)((ctx_local->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
 	need = MD5_BLOCK_LENGTH - have;
@@ -484,7 +492,7 @@ static void fr_md5_local_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inl
 	}
 
 	/* Handle any remaining bytes of data. */
-	if (inlen != 0) memcpy(ctx_local->buffer + have, in, inlen);
+	memcpy(ctx_local->buffer + have, in, inlen);
 }
 
 /** @copydoc fr_md5_final

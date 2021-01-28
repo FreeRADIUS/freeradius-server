@@ -2,4 +2,4 @@
 
 . src/tests/bin/lib.sh
 
-do_test $TESTBIN/dhcpclient -h
+do_test $TEST_BIN/dhcpclient -h

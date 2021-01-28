@@ -25,7 +25,7 @@ MemoryLimit=2G
 RuntimeDirectory=radiusd
 RuntimeDirectoryMode=0775
 User=radiusd
-Group=radiusd 
+Group=radiusd
 ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cx -lstdout
 ExecStart=/usr/sbin/radiusd -f $FREERADIUS_OPTIONS
 Restart=on-failure
@@ -36,9 +36,12 @@ NoNewPrivileges=true
 
 # Allow binding to secure ports, broadcast addresses, and raw interfaces.
 #
-# This list of capabilities may not be exhaustive, and needs
-# further testing. Please uncomment, test, and report any issues.
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SETUID CAP_SETGID CAP_CHOWN CAP_DAC_OVERRIDE
+# As the process starts as an unprivileged user, we need to assign all capabilities that
+# the process may need.
+#
+# If FreeRADIUS needs to be run as root, AmbientCapabilities should be swapped from
+# CapabilityBoundingSet to limit the capabilities the process is given.
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SETUID CAP_SETGID CAP_CHOWN CAP_DAC_OVERRIDE
 
 # Private /tmp that isn't shared by other processes
 PrivateTmp=true

@@ -63,7 +63,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_eap - "
 
 #include <freeradius-devel/util/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/eap/base.h>
 #include "types.h"
 #include "attrs.h"
@@ -103,50 +103,45 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_eap_channel_binding_message, .name = "EAP-Channel-Binding-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_channel_binding_message, .name = "Vendor-Specific.UKERNA.EAP-Channel-Binding-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
 
-VALUE_PAIR *eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
+void eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t const *eap)
 {
 	int		total, size;
 	uint8_t const *ptr;
-	VALUE_PAIR	*head = NULL;
-	VALUE_PAIR	*vp;
-	fr_cursor_t	out;
+	fr_pair_t	*vp;
 
 	total = eap->length[0] * 256 + eap->length[1];
 
 	if (total == 0) {
 		DEBUG("Asked to encode empty EAP-Message!");
-		return NULL;
+		return;
 	}
 
 	ptr = (uint8_t const *) eap;
 
-	fr_cursor_init(&out, &head);
 	do {
 		size = total;
 		if (size > 253) size = 253;
 
-		MEM(vp = fr_pair_afrom_da(packet, attr_eap_message));
-		fr_pair_value_memcpy(vp, ptr, size, false);
+		MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
+		fr_pair_value_memdup(vp, ptr, size, false);
 
-		fr_cursor_append(&out, vp);
+		fr_pair_add(list, vp);
 
 		ptr += size;
 		total -= size;
 	} while (total > 0);
-
-	return head;
 }
 
 /** Basic EAP packet verifications & validations
@@ -205,21 +200,21 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 			uint8_t *p, *q;
 
 			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
-				fr_strerror_printf("Expanded EAP type is too short: ignoring the packet");
+				fr_strerror_const("Expanded EAP type is too short: ignoring the packet");
 				return false;
 			}
 
 			if ((eap_packet->data[1] != 0) ||
 			    (eap_packet->data[2] != 0) ||
 			    (eap_packet->data[3] != 0)) {
-				fr_strerror_printf("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
+				fr_strerror_const("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
 				return false;
 			}
 
 			if ((eap_packet->data[4] != 0) ||
 			    (eap_packet->data[5] != 0) ||
 			    (eap_packet->data[6] != 0)) {
-				fr_strerror_printf("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
+				fr_strerror_const("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
 				return false;
 			}
 
@@ -231,7 +226,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 			}
 
 			if (eap_packet->data[7] == FR_EAP_METHOD_NAK) {
-				fr_strerror_printf("Unsupported Expanded EAP-NAK: ignoring the packet");
+				fr_strerror_const("Unsupported Expanded EAP-NAK: ignoring the packet");
 				return false;
 			}
 
@@ -264,7 +259,7 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == FR_EAP_METHOD_NOTIFICATION) {
-		fr_strerror_printf("Got NOTIFICATION, Ignoring the packet");
+		fr_strerror_const("Got NOTIFICATION, Ignoring the packet");
 		return false;
 	}
 
@@ -278,21 +273,21 @@ static bool eap_is_valid(eap_packet_raw_t **eap_packet_p)
  * NOTE: Sometimes Framed-MTU might contain the length of EAP-Message,
  *      refer fragmentation in rfc2869.
  */
-eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
+eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	eap_packet_raw_t	*eap_packet;
 	unsigned char		*ptr;
 	uint16_t		len;
 	int			total_len;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	vp = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_message);
+	vp = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_message);
 	if (!vp) {
-		fr_strerror_printf("EAP-Message not found");
+		fr_strerror_const("EAP-Message not found");
 		return NULL;
 	}
 
@@ -300,7 +295,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Sanity check the length before doing anything.
 	 */
 	if (vp->vp_length < 4) {
-		fr_strerror_printf("EAP packet is too short");
+		fr_strerror_const("EAP packet is too short");
 		return NULL;
 	}
 
@@ -315,7 +310,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Take out even more weird things.
 	 */
 	if (len < 4) {
-		fr_strerror_printf("EAP packet has invalid length (less than 4 bytes)");
+		fr_strerror_const("EAP packet has invalid length (less than 4 bytes)");
 		return NULL;
 	}
 
@@ -323,9 +318,9 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Sanity check the length, BEFORE allocating  memory.
 	 */
 	total_len = 0;
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_dcursor_head(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		total_len += vp->vp_length;
 
 		if (total_len > len) {
@@ -356,9 +351,9 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	ptr = (unsigned char *)eap_packet;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_dcursor_head(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		memcpy(ptr, vp->vp_strvalue, vp->vp_length);
 		ptr += vp->vp_length;
 	}
@@ -374,15 +369,15 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 /*
  *	Add raw hex data to the reply.
  */
-void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len)
+void eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *value, int len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
-	fr_pair_value_memcpy(vp, value, len, false);
+	fr_pair_value_memdup(vp, value, len, false);
 
 	RINDENT();
-	RDEBUG2("&reply:%pP", vp);
+	RDEBUG2("&reply.%pP", vp);
 	REXDENT();
 }
 
@@ -400,13 +395,13 @@ void eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *va
  * @param[in] virtual_server	The default virtual server to send the request to.
  * @return the rcode of the last executed section in the virtual server.
  */
-rlm_rcode_t eap_virtual_server(REQUEST *request, eap_session_t *eap_session, char const *virtual_server)
+rlm_rcode_t eap_virtual_server(request_t *request, eap_session_t *eap_session, char const *virtual_server)
 {
 	eap_session_t	*eap_session_inner;
 	rlm_rcode_t	rcode;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
-	vp = fr_pair_find_by_da(request->control, attr_virtual_server, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_virtual_server);
 	request->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
 
 	if (request->server_cs) {
@@ -426,8 +421,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, eap_session_t *eap_session, cha
 					eap_session_t, eap_session->child, false, false, false);
 	}
 
-	rcode = rad_virtual_server(request);
-
+	rad_virtual_server(&rcode, request);
 	eap_session_inner = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
 	if (eap_session_inner) {
 		/*

@@ -22,8 +22,9 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 
 #include "eap_mschapv2.h"
 
@@ -79,40 +80,40 @@ fr_dict_attr_autoload_t rlm_eap_mschapv2_dict_attr[] = {
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_user_name, .name = "MS-CHAP-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_ms_chap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap_error, .name = "MS-CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_ms_chap_nt_enc_pw, .name = "MS-CHAP-NT-Enc-PW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap2_cpw, .name = "MS-CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap2_response, .name = "MS-CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_chap2_success, .name = "MS-CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_encryption_policy, .name = "MS-MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_encryption_type, .name = "MS-MPPE-Encryption-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_error, .name = "Vendor-Specific.Microsoft.CHAP-Error", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_ms_chap_nt_enc_pw, .name = "Vendor-Specific.Microsoft.CHAP-NT-Enc-PW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_cpw, .name = "Vendor-Specific.Microsoft.CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_response, .name = "Vendor-Specific.Microsoft.CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_chap2_success, .name = "Vendor-Specific.Microsoft.CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_policy, .name = "Vendor-Specific.Microsoft.MPPE-Encryption-Policy", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_encryption_type, .name = "Vendor-Specific.Microsoft.MPPE-Encryption-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 
-static void mppe_keys_store(REQUEST *request, mschapv2_opaque_t *data)
+static void mppe_keys_store(request_t *request, mschapv2_opaque_t *data)
 {
 	RDEBUG2("Storing attributes for final response");
 
 	RINDENT();
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
-				    attr_ms_mppe_encryption_policy) > 0) {
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+				    attr_ms_mppe_encryption_policy, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_policy->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
-				    attr_ms_mppe_encryption_type) > 0) {
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+				    attr_ms_mppe_encryption_type, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_encryption_type->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
-				    attr_ms_mppe_recv_key) > 0) {
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+				    attr_ms_mppe_recv_key, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_recv_key->name);
 	}
-	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, request->reply->vps,
-				    attr_ms_mppe_send_key) > 0) {
+	if (fr_pair_list_copy_by_da(data, &data->mppe_keys, &request->reply_pairs,
+				    attr_ms_mppe_send_key, 0) > 0) {
 		RDEBUG2("%s", attr_ms_mppe_send_key->name);
 	}
 	REXDENT();
@@ -134,7 +135,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), auth_type) < 0) {
+	if (fr_dict_attr_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), auth_type) < 0) {
 		cf_log_err(ci, "Failed adding %s alias", attr_auth_type->name);
 		return -1;
 	}
@@ -146,10 +147,10 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Compose the response.
  */
-static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request, eap_session_t *eap_session,
-			       VALUE_PAIR *reply) CC_HINT(nonnull);
-static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request, eap_session_t *eap_session,
-			       VALUE_PAIR *reply)
+static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *request, eap_session_t *eap_session,
+			       fr_pair_t *reply) CC_HINT(nonnull);
+static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *request, eap_session_t *eap_session,
+			       fr_pair_t *reply)
 {
 	uint8_t			*ptr;
 	int16_t			length;
@@ -259,7 +260,7 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, REQUEST *request
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request);
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 #ifdef WITH_PROXY
 /*
@@ -271,12 +272,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
  */
 static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED void *tunnel_data)
 {
-	VALUE_PAIR		*response = NULL;
+	fr_pair_list_t		response;
 	mschapv2_opaque_t	*data;
-	REQUEST			*request = eap_session->request;
+	request_t			*request = eap_session->request;
 
+	fr_pair_list_init(&response);
 	data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
-	rad_assert(request != NULL);
+	fr_assert(request != NULL);
 
 	RDEBUG2("Passing reply from proxy back into the tunnel %d", request->reply->code);
 
@@ -291,13 +293,13 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap2_success);
+		fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap2_success, 0);
 		break;
 
 	default:
 	case FR_CODE_ACCESS_REJECT:
 		REDEBUG("Proxied authentication was rejected");
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	/*
@@ -305,14 +307,14 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 */
 	if (!response) {
 		REDEBUG("Proxied reply contained no MS-CHAP2-Success or MS-CHAP-Error");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	if (!fr_cond_assert(eap_session->inst)) return 0;
+	if (!fr_cond_assert(eap_session->inst)) RETURN_MODULE_FAIL;
 	eap_mschapv2_compose(eap_session->inst, request, eap_session, response);
 	data->code = FR_EAP_MSCHAPV2_SUCCESS;
 
@@ -328,7 +330,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	access-accept e.g. vlan, etc. This lets the PEAP
 	 *	use_tunneled_reply code work
 	 */
-	MEM(fr_pair_list_copy(data, &data->reply, request->reply->vps) >= 0);
+	MEM(fr_pair_list_copy(data, &data->reply, &request->reply_pairs) >= 0);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
@@ -337,18 +339,20 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	request->reply->code = FR_CODE_ACCESS_CHALLENGE;
 	fr_pair_list_free(&response);
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 #endif
 
 
-static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
-				   eap_session_t *eap_session, rlm_rcode_t rcode)
+static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
+				       eap_session_t *eap_session, rlm_rcode_t rcode)
 {
-	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
-	eap_round_t		*eap_round = eap_session->this_round;
-	VALUE_PAIR		*response = NULL;
+	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
+	eap_round_t			*eap_round = eap_session->this_round;
+	fr_pair_list_t			response;
+ 	rlm_eap_mschapv2_t const	*inst = mctx->instance;
 
+	fr_pair_list_init(&response);
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
 	 *	want these here.
@@ -360,24 +364,25 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
 	 *	return success or failure, depending on the result.
 	 */
 	if (rcode == RLM_MODULE_OK) {
-		if (fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap2_success) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap2_success, 0) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap2_success->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		data->code = FR_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		if (fr_pair_list_copy_by_da(data, &response, request->reply->vps, attr_ms_chap_error) < 0) {
+		if (fr_pair_list_copy_by_da(data, &response, &request->reply_pairs, attr_ms_chap_error, 0) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap_error->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
-		if (response) {
+		if (!fr_pair_list_empty(&response)) {
 			int n, err, retry;
 			char buf[34];
+			fr_pair_t *vp = fr_pair_list_head(&response);
 
-			VP_VERIFY(response);
+			VP_VERIFY(vp);
 
-			RDEBUG2("MSCHAP-Error: %pV", &response->data);
+			RDEBUG2("MSCHAP-Error: %pV", &vp->data);
 
 			/*
 			 *	Parse the new challenge out of the
@@ -385,11 +390,12 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
 			 *	issues a re-try, we will know which
 			 *	challenge value that they used.
 			 */
-			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
+			n = sscanf(vp->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
 			if (n == 3) {
 				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
 					err, retry, buf);
-				fr_hex2bin(data->auth_challenge, 16, buf, strlen(buf));
+				fr_hex2bin(NULL, &FR_DBUFF_TMP(data->auth_challenge, 16),
+					   &FR_SBUFF_IN(buf, strlen(buf)), false);
 			} else {
 				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
 			}
@@ -397,66 +403,64 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst,
 		data->code = FR_EAP_MSCHAPV2_FAILURE;
 	} else {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	/*
 	 *	No response, die.
 	 */
-	if (!response) {
+	if (fr_pair_list_empty(&response)) {
 		REDEBUG("No %s or %s attributes were found", attr_ms_chap2_success->name, attr_ms_chap_error->name);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eap_mschapv2_compose(eap_session->inst, request, eap_session, response);
+	eap_mschapv2_compose(eap_session->inst, request, eap_session, fr_pair_list_head(&response));
 	fr_pair_list_free(&response);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static rlm_rcode_t mod_process_auth_type(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rcode_t		rcode;
-	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	eap_session_t		*eap_session = eap_session_get(request->parent);
+	rlm_rcode_t			rcode;
+	eap_session_t			*eap_session = eap_session_get(request->parent);
 
 	rcode = unlang_interpret(request);
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_REJECT;
+	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	if (rcode == RLM_MODULE_YIELD) return rcode;
+	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
-	return mschap_finalize(request, inst, eap_session, rcode);}
+	return mschap_finalize(p_result, mctx, request, eap_session, rcode);
+}
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	REQUEST			*parent = request->parent;
+	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_mschapv2_t);
+	request_t			*parent = request->parent;
+	eap_session_t			*eap_session = eap_session_get(parent);
+	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
+	eap_round_t			*eap_round = eap_session->this_round;
+	fr_pair_t			*auth_challenge, *response, *name;
 
-	rlm_eap_mschapv2_t	*inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	eap_session_t		*eap_session = eap_session_get(parent);
-	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
-	eap_round_t		*eap_round = eap_session->this_round;
-	VALUE_PAIR		*auth_challenge, *response, *name;
+	CONF_SECTION			*unlang;
+	rlm_rcode_t			rcode;
+	int				ccode;
+	uint8_t				*p;
+	size_t				length;
 
-	CONF_SECTION		*unlang;
-	rlm_rcode_t		rcode;
-	int			ccode;
-	uint8_t			*p;
-	size_t			length;
-	char			*q;
-
-	if (!fr_cond_assert(eap_session->inst)) return 0;
+	if (!fr_cond_assert(eap_session->inst)) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Sanity check the response.
@@ -464,7 +468,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 	if (eap_round->response->length < 6) {
 		REDEBUG("Response too short, expected at least 6 bytes, got %zu bytes",
 			eap_round->response->length);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	ccode = eap_round->response->type.data[0];
@@ -483,7 +487,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 		 * (or proxy it, I guess)
 		 */
 		if (ccode == FR_EAP_MSCHAPV2_CHGPASSWD) {
-			VALUE_PAIR	*cpw;
+			fr_pair_t	*cpw;
 			int		mschap_id = eap_round->response->type.data[1];
 			int		copied = 0;
 			int		seq = 1;
@@ -491,38 +495,36 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 			RDEBUG2("Password change packet received");
 
 			MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
-			fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
+			fr_pair_value_memdup(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 			MEM(pair_update_request(&cpw, attr_ms_chap2_cpw) >= 0);
-			p = talloc_array(cpw, uint8_t, 68);
+			MEM(fr_pair_value_mem_alloc(cpw, &p, 68, false) == 0);
 			p[0] = 7;
 			p[1] = mschap_id;
 			memcpy(p + 2, eap_round->response->type.data + 520, 66);
-			fr_pair_value_memsteal(cpw, p, false);
 
 			/*
 			 * break the encoded password into VPs (3 of them)
 			 */
 			while (copied < 516) {
-				VALUE_PAIR *nt_enc;
+				fr_pair_t *nt_enc;
 
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
 
 				MEM(pair_add_request(&nt_enc, attr_ms_chap_nt_enc_pw) >= 0);
-				p = talloc_array(nt_enc, uint8_t, 4 + to_copy);
+				MEM(fr_pair_value_mem_alloc(nt_enc, &p, 4 + to_copy, false) == 0);
 				p[0] = 6;
 				p[1] = mschap_id;
 				p[2] = 0;
 				p[3] = seq++;
 				memcpy(p + 4, eap_round->response->type.data + 4 + copied, to_copy);
-				fr_pair_value_memsteal(nt_enc, p, false);
 
 				copied += to_copy;
 			}
 
 			RDEBUG2("Built change password packet");
-			log_request_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
 
 			/*
 			 * jump to "authentication"
@@ -535,13 +537,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 		 */
 		if (ccode != FR_EAP_MSCHAPV2_FAILURE) {
 			REDEBUG("Sent FAILURE expecting FAILURE but got %d", ccode);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 
 failure:
 		request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 
 	case FR_EAP_MSCHAPV2_SUCCESS:
 		/*
@@ -554,15 +556,15 @@ failure:
 		case FR_EAP_MSCHAPV2_SUCCESS:
 			eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
-			if (data->mppe_keys) {
+			if (!fr_pair_list_empty(&data->mppe_keys)) {
 				RDEBUG2("Adding stored attributes to parent");
-				log_request_pair_list(L_DBG_LVL_2, request, data->mppe_keys, "&parent.reply:");
-				MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, data->mppe_keys) >= 0);
+				log_request_pair_list(L_DBG_LVL_2, request, NULL, &data->mppe_keys, "&parent.reply.");
+				MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->mppe_keys) >= 0);
 			} else {
 				RDEBUG2("No stored attributes to copy to parent");
 			}
 
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_EAP_MSCHAPV2_ACK:
 #ifdef WITH_PROXY
@@ -571,11 +573,11 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			MEM(fr_pair_list_copy(parent->reply, &parent->reply->vps, data->reply) >= 0);
-			return RLM_MODULE_OK;
+			MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->reply) >= 0);
+			RETURN_MODULE_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 
 	case FR_EAP_MSCHAPV2_CHALLENGE:
 		if (ccode == FR_EAP_MSCHAPV2_FAILURE) goto failure;
@@ -585,7 +587,7 @@ failure:
 		 */
 		if (ccode != FR_EAP_MSCHAPV2_RESPONSE) {
 			REDEBUG("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 		/* authentication happens below */
 		break;
@@ -593,7 +595,7 @@ failure:
 	default:
 		/* should never happen */
 		REDEBUG("Unknown state %d", data->code);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 
@@ -607,7 +609,7 @@ failure:
 	 */
 	if (eap_round->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
 		REDEBUG("Response is too short");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -624,7 +626,7 @@ failure:
 	if ((eap_round->response->type.data[4] != 49) &&
 	    (eap_round->response->type.data[4] != 16)) {
 		REDEBUG("Response is of incorrect length %d", eap_round->response->type.data[4]);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -634,7 +636,7 @@ failure:
 	length = (eap_round->response->type.data[2] << 8) | eap_round->response->type.data[3];
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -642,15 +644,15 @@ failure:
 	 *	to the challenge.  Let's try to authenticate it.
 	 *
 	 *	We do this by taking the challenge from 'data',
-	 *	the response from the EAP packet, and creating VALUE_PAIR's
+	 *	the response from the EAP packet, and creating fr_pair_t's
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
 	MEM(pair_update_request(&auth_challenge, attr_ms_chap_challenge) >= 0);
-	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
+	fr_pair_value_memdup(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN, false);
 
 	MEM(pair_update_request(&response, attr_ms_chap2_response) >= 0);
-	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);
+	MEM(fr_pair_value_mem_alloc(response, &p, MSCHAPV2_RESPONSE_LEN, false) == 0);
 	p[0] = eap_round->response->type.data[1];
 	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 	memcpy(p + 2, &eap_round->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
@@ -660,18 +662,13 @@ failure:
 	 *	the challenge sent by the client.
 	 */
 	if (data->has_peer_challenge) memcpy(p + 2, data->peer_challenge, MSCHAPV2_CHALLENGE_LEN);
-	fr_pair_value_memsteal(response, p, false);
 
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
 	MEM(pair_update_request(&name, attr_ms_chap_user_name) >= 0);
-	name->vp_tainted = true;
-	name->vp_length = length - 49 - 5;
-	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
-	memcpy(q, &eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);
-	q[name->vp_length] = '\0';
-
+	MEM(fr_pair_value_bstrndup(name, (char const *)&eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
+				   length - 49 - 5, true) == 0);
 packet_ready:
 
 #ifdef WITH_PROXY
@@ -697,7 +694,7 @@ packet_ready:
 		 */
 		tunnel = talloc_zero(request, eap_tunnel_data_t);
 
-		tunnel->tls_session = instance;
+		tunnel->tls_session = mctx->instance;
 		tunnel->callback = mschap_postproxy;
 
 		/*
@@ -726,7 +723,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((auth_challenge = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY)) != NULL) &&
+		    ((auth_challenge = fr_pair_find_by_da(&request->request_pairs, attr_user_name)) != NULL) &&
 		    ((username = memchr(auth_challenge->vp_octets, '\\', auth_challenge->vp_length)) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -734,7 +731,7 @@ packet_ready:
 			 *	FIXME: Put it into MS-CHAP-Domain?
 			 */
 			username++; /* skip the \\ */
-			fr_pair_value_strcpy(auth_challenge, username);
+			fr_pair_value_strdup(auth_challenge, username);
 		}
 
 		/*
@@ -742,7 +739,7 @@ packet_ready:
 		 *	to do the work below, AFTER the call to MS-CHAP
 		 *	authentication...
 		 */
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 #endif
 
@@ -751,9 +748,11 @@ packet_ready:
 	 */
 	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->name);
 	if (!unlang) {
-		rcode = process_authenticate(inst->auth_type->value->vb_uint32, request);
+		process_authenticate(&rcode, inst->auth_type->value->vb_uint32, request);
 	} else {
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 		rcode = unlang_interpret(request);
 
 		/*
@@ -762,54 +761,54 @@ packet_ready:
 		 */
 		if (rcode == RLM_MODULE_YIELD) {
 			eap_session->process = mod_process_auth_type;
-			return rcode;
+			return UNLANG_ACTION_YIELD;
 		}
 	}
 
-	return mschap_finalize(request, inst, eap_session, rcode);
+	return mschap_finalize(p_result, mctx, request, eap_session, rcode);
 }
 
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	REQUEST			*parent = request->parent;
+	request_t			*parent = request->parent;
 	eap_session_t		*eap_session = eap_session_get(parent);
-	VALUE_PAIR		*auth_challenge;
-	VALUE_PAIR		*peer_challenge;
+	fr_pair_t		*auth_challenge;
+	fr_pair_t		*peer_challenge;
 	mschapv2_opaque_t	*data;
 
 	uint8_t 		*p;
 	int			i;
 	bool			created_auth_challenge;
 
-	if (!fr_cond_assert(instance)) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(mctx->instance)) RETURN_MODULE_FAIL;
 
 	/*
 	 *	We're looking for attributes that should come
 	 *	from the EAP-TTLS submodule.
 	 */
-	if (!fr_cond_assert(parent)) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(parent)) RETURN_MODULE_FAIL;
 
-	auth_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_challenge, TAG_ANY);
+	auth_challenge = fr_pair_find_by_da(&parent->control_pairs, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("&parent.control:MS-CHAP-Challenge is incorrect length.  Ignoring it");
+		RWDEBUG("&parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
-	peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge, TAG_ANY);
+	peer_challenge = fr_pair_find_by_da(&parent->control_pairs, attr_ms_chap_peer_challenge);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("&parent.control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
+		RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;
 	}
 
 	if (auth_challenge) {
 		created_auth_challenge = false;
 
-		peer_challenge = fr_pair_find_by_da(parent->control, attr_ms_chap_peer_challenge, TAG_ANY);
+		peer_challenge = fr_pair_find_by_da(&parent->control_pairs, attr_ms_chap_peer_challenge);
 		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-			RWDEBUG("&parent.control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
+			RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 			peer_challenge = NULL;
 		}
 
@@ -821,9 +820,8 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 		 *	Get a random challenge.
 		 */
 		MEM(auth_challenge = fr_pair_afrom_da(eap_session, attr_ms_chap_challenge));
-		p = talloc_array(auth_challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
+		MEM(fr_pair_value_mem_alloc(auth_challenge, &p, MSCHAPV2_CHALLENGE_LEN, false) == 0);
 		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
-		fr_pair_value_memsteal(auth_challenge, p, false);
 	}
 	RDEBUG2("Issuing Challenge");
 
@@ -831,15 +829,17 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	Keep track of the challenge.
 	 */
 	data = talloc_zero(eap_session, mschapv2_opaque_t);
-	rad_assert(data != NULL);
+	fr_assert(data != NULL);
+	fr_pair_list_init(&data->mppe_keys);
+	fr_pair_list_init(&data->reply);
 
 	/*
 	 *	We're at the stage where we're challenging the user.
 	 */
 	data->code = FR_EAP_MSCHAPV2_CHALLENGE;
 	memcpy(data->auth_challenge, auth_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
-	data->mppe_keys = NULL;
-	data->reply = NULL;
+	fr_pair_list_init(&data->mppe_keys);
+	fr_pair_list_init(&data->reply);
 
 	if (peer_challenge) {
 		data->has_peer_challenge = true;
@@ -852,7 +852,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eap_mschapv2_compose(instance, request, eap_session, auth_challenge);
+	eap_mschapv2_compose(mctx->instance, request, eap_session, auth_challenge);
 	if (created_auth_challenge) TALLOC_FREE(auth_challenge);
 
 #ifdef WITH_PROXY
@@ -872,7 +872,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*

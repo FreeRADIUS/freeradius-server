@@ -26,6 +26,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+
+#include <freeradius-devel/util/hex.h>
+
 #include <ctype.h>
 
 static fr_dict_t const *dict_freeradius;
@@ -48,21 +51,26 @@ fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
 
 /** Unpack data
  *
- *  Example: %{unpack:&Class 0 integer}
+ * Example:
+@verbatim
+%{unpack:&Class 0 integer}
+@endverbatim
+ * Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
  *
- *  Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
+ * @ingroup xlat_functions
  */
 static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
+	bool tainted = false;
 	char *data_name, *data_size, *data_type;
 	char *p;
-	size_t len, input_len;
-	int offset;
+	size_t len, input_len, offset;
+	ssize_t slen;
 	fr_type_t type;
 	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp, *cast;
+	fr_pair_t *vp;;
 	uint8_t const *input;
 	char buffer[256];
 	uint8_t blob[256];
@@ -106,35 +114,49 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Attribute reference
 	 */
 	if (*data_name == '&') {
-		if (xlat_fmt_get_vp(&vp, request, data_name) < 0) goto nothing;
+		fr_pair_t *from_vp;
 
-		if ((vp->vp_type != FR_TYPE_OCTETS) &&
-		    (vp->vp_type != FR_TYPE_STRING)) {
+		if (xlat_fmt_get_vp(&from_vp, request, data_name) < 0) goto nothing;
+
+		if ((from_vp->vp_type != FR_TYPE_OCTETS) &&
+		    (from_vp->vp_type != FR_TYPE_STRING)) {
 			REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
 			goto nothing;
 		}
-		input = vp->vp_octets;
-		input_len = vp->vp_length;
+		input = from_vp->vp_octets;
+		input_len = from_vp->vp_length;
+		tainted = from_vp->vp_tainted;
 
 	} else if ((data_name[0] == '0') && (data_name[1] == 'x')) {
 		/*
 		 *	Hex data.
 		 */
 		len = strlen(data_name + 2);
-		if ((len & 0x01) != 0) {
-			REDEBUG("Invalid hex string in '%s'", data_name);
-			goto nothing;
-		}
-		input = blob;
-		input_len = fr_hex2bin(blob, sizeof(blob), data_name + 2, len);
+		if (len > 0) {
+			fr_sbuff_parse_error_t err;
 
+			input = blob;
+			input_len = fr_hex2bin(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
+					       &FR_SBUFF_IN(data_name + 2, len), true);
+			if (err) {
+				REDEBUG("Invalid hex string in '%s'", data_name);
+				goto nothing;
+			}
+		} else {
+			GOTO_ERROR;
+		}
 	} else {
 		GOTO_ERROR;
 	}
 
 	offset = (int) strtoul(data_size, &p, 10);
 	if (*p) {
-		REDEBUG("unpack requires a float64 number, not '%s'", data_size);
+		REDEBUG("unpack requires a decimal number, not '%s'", data_size);
+		goto nothing;
+	}
+
+	if (offset >= input_len) {
+		REDEBUG("unpack offset %zu is larger than input data length %zu", offset, input_len);
 		goto nothing;
 	}
 
@@ -144,65 +166,38 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	/*
-	 *	Output must be a non-zero limited size.
-	 */
-	if ((dict_attr_sizes[type][0] ==  0) ||
-	    (dict_attr_sizes[type][0] != dict_attr_sizes[type][1])) {
-		REDEBUG("unpack requires fixed-size output type, not '%s'", data_type);
-		goto nothing;
-	}
-
-	if (input_len < (offset + dict_attr_sizes[type][0])) {
-		REDEBUG("Insufficient data to unpack '%s' from '%s'", data_type, data_name);
-		goto nothing;
-	}
-
 	da = fr_dict_attr_child_by_num(fr_dict_root(dict_freeradius), attr_cast_base->attr + type);
 	if (!da) {
 		REDEBUG("Cannot decode type '%s'", data_type);
 		goto nothing;
 	}
 
-	MEM(cast = fr_pair_afrom_da(request, da));
-
-	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
+	MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
 
 	/*
-	 *	Hacks
+	 *	Call the generic routines to get data from the
+	 *	"network" buffer.
+	 *
+	 *	@todo - just parse / print the value-box directly,
+	 *	instead of putting it into a VP.
+	 *
+	 *	@todo - make this function 'async', and just return a
+	 *	copy of the value-box, instead of printing it to a string.
 	 */
-	switch (type) {
-	case FR_TYPE_INT32:
-	case FR_TYPE_UINT32:
-		cast->vp_uint32 = ntohl(cast->vp_uint32);
-		break;
-
-	case FR_TYPE_UINT16:
-		cast->vp_uint16 = ((input[offset] << 8) | input[offset + 1]);
-		break;
-
-	case FR_TYPE_UINT64:
-		cast->vp_uint64 = ntohll(cast->vp_uint64);
-		break;
-
-	case FR_TYPE_DATE:
-		cast->vp_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = ntohl(cast->vp_uint32)});
-		break;
-
-	default:
-		break;
+	if (fr_value_box_from_network(vp, &vp->data, da->type, NULL, input + offset, input_len - offset, tainted) < 0) {
+		RPEDEBUG("Failed decoding %s", vp->da->name);
+		goto nothing;
 	}
 
-	len = fr_pair_value_snprint(*out, outlen, cast, 0);
-	talloc_free(cast);
-	if (is_truncated(len, outlen)) {
+	slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(*out, outlen), vp, T_BARE_WORD);
+	talloc_free(vp);
+	if (slen < 0) {
 		REDEBUG("Insufficient buffer space to unpack data");
 		goto nothing;
 	}
 
-	return len;
+	return slen;
 }
-
 
 /*
  *	Register the xlats
@@ -211,7 +206,7 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *conf)
 {
 	if (cf_section_name2(conf)) return 0;
 
-	xlat_register(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

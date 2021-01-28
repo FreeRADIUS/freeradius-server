@@ -156,10 +156,10 @@ The `authorize()`, `authenticate()`, `preaccounting()`, and
 
 [source,c]
 ----
-int authorize(void *instance, REQUEST *request)
-int authenticate(void *instance, REQUEST *request)
-int preaccounting(void *instance, REQUEST *request)
-int accounting(void *instance, REQUEST *request)
+int authorize(void *instance, request_t *request)
+int authenticate(void *instance, request_t *request)
+int preaccounting(void *instance, request_t *request)
+int accounting(void *instance, request_t *request)
 ----
 
 they each receive the instance handle and the request, and are expected

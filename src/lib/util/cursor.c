@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 #define NEXT_PTR(_v) ((void **)(((uint8_t *)(_v)) + cursor->offset))
 
-/** Internal function to get the next attribute
+/** Internal function to get the next item
  *
  * @param[in,out] prev	attribute to the one we returned.  May be NULL.
  * @param[in] cursor	to operate on.
@@ -58,7 +58,7 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 		if (!cursor->iter) return (*cursor->head);		/* Fast path without custom iter */
 
 		current = *cursor->head;
-		return cursor->iter(prev, current, cursor->ctx);
+		return cursor->iter(prev, current, cursor->uctx);
 	}
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
@@ -82,7 +82,7 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 	 *	The iterator can just return what it was passed for curr
 	 *	and leave prev untouched if it just wants to advance by one.
 	 */
-	next = cursor->iter(prev, next, cursor->ctx);
+	next = cursor->iter(prev, next, cursor->uctx);
 	return next;
 }
 
@@ -125,6 +125,8 @@ static inline void *cursor_tail(void **prev, fr_cursor_t *cursor, void *current)
  *
  * @param[out] out	Where to copy the cursor to.
  * @param[in] in	cursor to copy.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
 {
@@ -135,6 +137,8 @@ void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
  *
  * @param[in] cursor	to operate on.
  * @return item at the start of the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_head(fr_cursor_t *cursor)
 {
@@ -162,6 +166,8 @@ void *fr_cursor_head(fr_cursor_t *cursor)
  *
  * @param[in] cursor	to operate on.
  * @return item at the end of the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_tail(fr_cursor_t *cursor)
 {
@@ -179,6 +185,8 @@ void *fr_cursor_tail(fr_cursor_t *cursor)
  * @return
  *	- Next item.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_next(fr_cursor_t *cursor)
 {
@@ -195,6 +203,8 @@ void * CC_HINT(hot) fr_cursor_next(fr_cursor_t *cursor)
  * @return
  *	- Next item.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_next_peek(fr_cursor_t *cursor)
 {
@@ -211,6 +221,8 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  * @return
  *	- Next item in list.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
  void *fr_cursor_list_next_peek(fr_cursor_t *cursor)
 {
@@ -228,6 +240,8 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  * @return
  *	- Previous item.
  *	- NULL if no previous item available.
+ *
+ * @hidecallergraph
  */
 void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
 {
@@ -242,6 +256,8 @@ void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
  * @return
  *	- The item the cursor currently points to.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
 {
@@ -259,6 +275,8 @@ void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
  *
  * @param cursor to operate on.
  * @param v to insert.
+ *
+ * @hidecallergraph
  */
 void CC_HINT(hot) fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 {
@@ -294,6 +312,8 @@ void CC_HINT(hot) fr_cursor_prepend(fr_cursor_t *cursor, void *v)
  *
  * @param[in] cursor to operate on.
  * @param[in] v to insert.
+ *
+ * @hidecallergraph
  */
 void CC_HINT(hot) fr_cursor_append(fr_cursor_t *cursor, void *v)
 {
@@ -337,6 +357,8 @@ void CC_HINT(hot) fr_cursor_append(fr_cursor_t *cursor, void *v)
  *
  * @param[in] cursor	to operate on.
  * @param[in] v		Item to insert.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_insert(fr_cursor_t *cursor, void *v)
 {
@@ -368,6 +390,8 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v)
  *
  * @param[in] cursor		to operate on.
  * @param[in] to_append		Items to append.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 {
@@ -402,19 +426,195 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 	}
 }
 
+/** Return the first item that satisfies an evaluation function.
+ *
+ * @param[in] cursor	to operate on
+ * @param[in] eval	evaluation function
+ * @param[in] uctx	context for the evaluation function
+ * @return the first item satisfying eval, or NULL if no such item exists
+ *
+ * @hidecallergraph
+ */
+void *fr_cursor_filter_head(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
+{
+	void *item;
+
+	item = fr_cursor_head(cursor);
+	if (eval(item, uctx)) return item;
+
+	return fr_cursor_filter_next(cursor, eval, uctx);
+}
+
+/** Return the next item, skipping the current item, that satisfies an evaluation function.
+ *
+ * @param[in] cursor	to operate on
+ * @param[in] eval	evaluation function
+ * @param[in] uctx	context for the evaluation function
+ * @return the next item satisfying eval, or NULL if no such item exists
+ *
+ * @hidecallergraph
+ */
+void *fr_cursor_filter_next(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
+{
+	void *item;
+
+	do {
+		item = fr_cursor_next(cursor);
+	} while (item && !eval(item, uctx));
+
+	return item;
+}
+
+/** Return the next item, starting with the current item, that satisfies an evaluation function.
+ *
+ * @param[in] cursor    to operate on
+ * @param[in] eval      evaluation function
+ * @param[in] uctx	context for the evaluation function
+ * @return the next item satisfying eval, or NULL if no such item exists
+ *
+ * @hidecallergraph
+ */
+void *fr_cursor_filter_current(fr_cursor_t *cursor, fr_cursor_eval_t eval, void const *uctx)
+{
+        void *item;
+
+        while ((item = fr_cursor_current(cursor)) && !eval(item, uctx)) {
+		fr_cursor_next(cursor);
+	}
+
+        return item;
+}
+
+
+/** Return the first item matching the iterator in cursor a and cursor b
+ *
+ * If a and b are not currently set to the same item, b will be reset,
+ * and wound to the item before a's current item.
+ *
+ * @note Both cursors must operate on the same list of items.
+ *
+ * @param[in] a		First cursor.
+ * @param[in] b		Second cursor.
+ * @return item at the start of the list.
+ *
+ * @hidecallergraph
+ */
+void *fr_cursor_intersect_head(fr_cursor_t *a, fr_cursor_t *b)
+{
+	void *a_item, *b_item;
+
+	if (unlikely(a->head != b->head)) return NULL;
+
+	a_item = fr_cursor_head(a);
+	b_item = fr_cursor_head(b);
+
+	if (a_item == b_item) return a_item;
+
+	return fr_cursor_intersect_next(a, b);
+}
+
+/** Return the next item matching the iterator in cursor a and cursor b
+ *
+ * If a and b are not currently set to the same item, b will be reset,
+ * and wound to the item before a's current item.
+ *
+ * @note Both cursors must operate on the same list of items.
+ *
+ * @param[in] a		First cursor.
+ * @param[in] b		Second cursor.
+ * @return next item in the list.
+ *
+ * @hidecallergraph
+ */
+void *fr_cursor_intersect_next(fr_cursor_t *a, fr_cursor_t *b)
+{
+	fr_cursor_iter_t	b_iter;
+	void			*b_uctx;
+
+	if (unlikely(a->head != b->head)) return NULL;
+
+	/*
+	 *	If either of the iterators lack an iterator
+	 *	just use cursor_next...
+	 */
+	if (!a->iter) return fr_cursor_next(b);
+	if (!b->iter) return fr_cursor_next(a);
+
+	/*
+	 *	Both have iterators...
+	 */
+	b_iter = b->iter;
+	b_uctx = b->uctx;
+
+	/*
+	 *	Deal with the case where the two iterators
+	 *	are out of sync.
+	 */
+	if (a->current != b->current) {
+		fr_cursor_head(b);	/* reset */
+	} else {
+		a->current = cursor_next(&a->prev, a, a->current);
+	}
+
+	/*
+	 *	Use a's iterator to select the item to
+	 *	check.
+	 */
+	do {
+		b->iter = NULL;		/* Disable b's iterator */
+
+		/*
+		 *	Find a in b (the slow way *sigh*)
+		 */
+		while ((b->current = cursor_next(&b->prev, b, b->current)) && (b->current != a->prev));
+
+		/*
+		 *	No more items...
+		 */
+		if (!b->current) {
+			fr_cursor_copy(a, b);
+			return NULL;
+		}
+
+		/*
+		 *	We're now one item before the item
+		 *	returned by a, see if b's iterator
+		 *	returns the same item as a's.
+		 */
+		 b->iter = b_iter;
+		 b->current = cursor_next(&b->prev, b, b->current);
+
+		/*
+		 *	Matched, we're done...
+		 */
+		if (a->current == b->current) return a->current;
+
+		/*
+		 *	Reset b's position to a's and try again.
+		 */
+		fr_cursor_copy(b, a);
+		b->iter = b_iter;
+		b->uctx = b_uctx;
+	} while ((a->current = cursor_next(&a->prev, a, a->current)));
+
+	return NULL;
+}
+
 /** Remove the current item
  *
- * The current item will be set to the one before the item being removed,
- * this is so the commonly used check and remove loop (below) works as expected.
+ * The current item will be set to the one after the item
+ * being removed. An example check and remove loop:
  *
  @code {.c}
    for (v = fr_cursor_init(&cursor, head);
         v;
-        v = fr_cursor_next(&cursor) {
+        v = fr_cursor_current(&cursor) {
         if (<condition>) {
             v = fr_cursor_remove(&cursor);
             talloc_free(v);
+            continue;
         }
+        v = fr_cursor_next(&cursor);
    }
  @endcode
  *
@@ -422,6 +622,8 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
  * @return
  *	- item we just removed.
  *	- NULL on error.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
 {
@@ -458,10 +660,7 @@ void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
 	}
 
 	/*
-	 *	re-advance the cursor.
-	 *
-	 *	This ensures if the iterator skips the item
-	 *	we just replaced, it doesn't become current.
+	 *	Advance the cursor to the next item after the one which we just removed.
 	 */
 	cursor->current = cursor_next(&cursor->prev, cursor, cursor->current);
 
@@ -483,6 +682,8 @@ void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
  * @return
  *	- item we just replaced.
  *	- NULL on error.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 {
@@ -553,6 +754,8 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
  * Current should be the item *after* the one freed.
  *
  * @param[in] cursor to free items in.
+ *
+ * @hidecallergraph
  */
 void fr_cursor_free_list(fr_cursor_t *cursor)
 {
@@ -572,1242 +775,28 @@ void fr_cursor_free_list(fr_cursor_t *cursor)
  * @param[in] head	to start from.
  * @param[in] offset	offsetof next ptr in the structure we're iterating over.
  * @param[in] iter	Iterator callback.
- * @param[in] ctx	to pass to iterator function.
+ * @param[in] uctx	to pass to iterator function.
  * @param[in] type	if iterating over talloced memory.
  * @return the attribute pointed to by v.
+ *
+ * @hidecallergraph
  */
 void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
-				    fr_cursor_iter_t iter, void const *ctx, char const *type)
+				    fr_cursor_iter_t iter, void const *uctx, char const *type)
 {
 	void **v;
 
 	memcpy(&v, &head, sizeof(v));			/* stupid const hacks */
-
-	cursor->head = v;
-	cursor->tail = *v;
-	cursor->prev = cursor->current = NULL;
-	cursor->iter = iter;
-	cursor->offset = offset;
-	cursor->type = type;
-	memcpy(&cursor->ctx, &ctx, sizeof(cursor->ctx));
+	*cursor = (fr_cursor_t){
+		.head = v,
+		.tail = *v,
+		.iter = iter,
+		.offset = offset,
+		.type = type
+	};
+	memcpy(&cursor->uctx, &uctx, sizeof(cursor->uctx));
 
 	if (*head) return fr_cursor_next(cursor);	/* Initialise current */
 
 	return NULL;
 }
-
-#ifdef TESTING_CURSOR
-/*
- *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../../ -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
- */
-#include <stddef.h>
-#include <freeradius-devel/util/acutest.h>
-
-typedef struct {
-	char const *name;
-	void *next;
-} test_item_t;
-
-static void *test_iter(void **prev, void *current, void *ctx)
-{
-	return current;
-}
-
-/** Verify internal state is initialised correctly
- *
- */
-void test_init_null_item(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	*head = NULL;
-
-	item_p = fr_cursor_iter_init(&cursor, &head, test_iter, &cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK((*cursor.head) == head);
-	TEST_CHECK(!cursor.tail);
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-	TEST_CHECK(!fr_cursor_list_next_peek(&cursor));
-	TEST_CHECK(cursor.ctx == &cursor);
-}
-
-void test_init_1i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	item_p = fr_cursor_init(&cursor, &head);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK((*cursor.head) == head);
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-}
-
-void test_init_2i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	item_p = fr_cursor_init(&cursor, &head);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-}
-
-void test_next(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_current(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-}
-
-void test_next_wrap(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-}
-
-void test_cursor_head_tail_null(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*head = NULL;
-
-	fr_cursor_init(&cursor, &head);
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(!fr_cursor_head(&cursor));
-	TEST_CHECK(!fr_cursor_tail(&cursor));
-}
-
-void test_cursor_head(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-}
-
-void test_cursor_head_after_next(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-}
-
-void test_cursor_tail(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-}
-
-void test_cursor_head_after_tail(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_tail(&cursor);
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-}
-
-void test_cursor_wrap_after_tail(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_tail(&cursor);
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-}
-
-void test_cursor_append_empty(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*head = NULL;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_append(&cursor, &item1);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
-}
-
-void test_cursor_append_empty_3(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*head = NULL;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_append(&cursor, &item1);
-	fr_cursor_append(&cursor, &item2);
-	fr_cursor_append(&cursor, &item3);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_next(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next(&cursor) == &item2);
-	TEST_CHECK(fr_cursor_tail(&cursor) == &item3);
-}
-
-void test_cursor_prepend_empty(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*head = NULL;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_prepend(&cursor, &item1);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
-}
-
-void test_cursor_insert_into_empty(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*head = NULL;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_insert(&cursor, &item1);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
-}
-
-void test_cursor_insert_into_empty_3(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*head = NULL;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_insert(&cursor, &item1);
-	fr_cursor_insert(&cursor, &item2);
-	fr_cursor_insert(&cursor, &item3);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_next(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next(&cursor) == &item2);
-	TEST_CHECK(fr_cursor_tail(&cursor) == &item3);
-}
-
-void test_cursor_replace_in_empty(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*head = NULL;
-
-	fr_cursor_init(&cursor, &head);
-	TEST_CHECK(!fr_cursor_replace(&cursor, &item1));
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
-}
-
-void test_cursor_prepend_1i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_prepend(&cursor, &item2);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);	/* Inserted before item 1 */
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item2);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item1);
-}
-
-void test_cursor_append_1i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_append(&cursor, &item2);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item2);
-}
-
-void test_cursor_insert_1i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_insert(&cursor, &item2);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item2);
-}
-
-void test_cursor_replace_1i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	item_p = fr_cursor_replace(&cursor, &item2);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item2);
-
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item2);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item2);
-}
-
-void test_cursor_prepend_2i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_prepend(&cursor, &item3);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item2);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item3);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item2);
-}
-
-void test_cursor_append_2i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_append(&cursor, &item3);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item3);
-}
-
-void test_cursor_insert_2i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_insert(&cursor, &item3);
-
-	/*
-	 *	Order should be
-	 *
-	 *	item1 -	HEAD
-	 *	item3
-	 *	item2 - TAIL
-	 */
-	TEST_CHECK(fr_cursor_current(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item3);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item2);
-}
-
-void test_cursor_replace_2i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	/*
-	 *	Order should be
-	 *
-	 *	item3 -	HEAD
-	 *	item2 - TAIL
-	 */
-	fr_cursor_init(&cursor, &head);
-	item_p = fr_cursor_replace(&cursor, &item3);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item3);
-
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item3);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item2);
-}
-
-void test_cursor_prepend_3i_mid(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	fr_cursor_prepend(&cursor, &item4);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item2);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item4);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item3);
-}
-
-void test_cursor_append_3i_mid(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	fr_cursor_append(&cursor, &item4);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item2);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item4);
-}
-
-void test_cursor_insert_3i_mid(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	fr_cursor_insert(&cursor, &item4);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item2);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item4);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item4);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item4);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item3);
-}
-
-void test_cursor_replace_3i_mid(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	item_p = fr_cursor_replace(&cursor, &item4);
-	TEST_CHECK(item_p == &item2);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item4);
-
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item3);
-}
-
-void test_cursor_prepend_3i_end(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	fr_cursor_next(&cursor);
-	fr_cursor_prepend(&cursor, &item4);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item3);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item4);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item3);
-}
-
-void test_cursor_append_3i_end(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	fr_cursor_next(&cursor);
-	fr_cursor_append(&cursor, &item4);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item3);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item4);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item4);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item4);
-}
-
-void test_cursor_insert_3i_end(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	fr_cursor_next(&cursor);
-	fr_cursor_insert(&cursor, &item4);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == &item3);
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item4);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(item_p == &item4);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_next(&cursor);
-	TEST_CHECK(!item_p);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item4);
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item4);
-}
-
-void test_cursor_replace_3i_end(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item4 = { "item4", NULL };
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-	fr_cursor_next(&cursor);
-	item_p = fr_cursor_replace(&cursor, &item4);
-	TEST_CHECK(item_p == &item3);
-
-	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item4);
-
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-
-	item_p = fr_cursor_head(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	item_p = fr_cursor_tail(&cursor);
-	TEST_CHECK(item_p == &item4);
-}
-
-void test_cursor_remove_empty(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	*item_p;
-	test_item_t	*head = NULL;
-
-	item_p = _fr_cursor_init(&cursor, (void **)&head, offsetof(test_item_t, next), test_iter, &cursor, NULL);
-	TEST_CHECK(!fr_cursor_remove(&cursor));
-}
-
-void test_cursor_remove_1i(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item1 = { "item1", NULL };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item1);
-
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-	TEST_CHECK(!fr_cursor_next(&cursor));
-	TEST_CHECK(!fr_cursor_tail(&cursor));
-	TEST_CHECK(!fr_cursor_head(&cursor));
-}
-
-void test_cursor_remove_2i(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item2 = { "item2", NULL };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	item_p = fr_cursor_remove(&cursor);
-
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(fr_cursor_current(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-	TEST_CHECK(!fr_cursor_next(&cursor));
-	TEST_CHECK(fr_cursor_tail(&cursor) == &item2);
-	TEST_CHECK(fr_cursor_head(&cursor) == &item2);
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item2);
-
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-	TEST_CHECK(!fr_cursor_next(&cursor));
-	TEST_CHECK(!fr_cursor_tail(&cursor));
-	TEST_CHECK(!fr_cursor_head(&cursor));
-}
-
-void test_cursor_remove_3i_start(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(fr_cursor_current(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item3);
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_current(&cursor) == &item3);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item3);
-
-	TEST_CHECK(!fr_cursor_tail(&cursor));
-	TEST_CHECK(!fr_cursor_head(&cursor));
-}
-
-void test_cursor_remove_3i_mid(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_next(&cursor);
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item2);
-	TEST_CHECK(fr_cursor_current(&cursor) == &item3);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item3);
-
-	/*
-	 *	We just removed the end of the list
-	 *	so current is now NULL.
-	 *
-	 *	We don't implicitly start moving backwards.
-	 */
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item1);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(!item_p);
-
-	TEST_CHECK(fr_cursor_tail(&cursor) == &item1);
-	TEST_CHECK(fr_cursor_head(&cursor) == &item1);
-}
-
-void test_cursor_remove_3i_end(void)
-{
-	fr_cursor_t	cursor;
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-	test_item_t	*item_p;
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_tail(&cursor);
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(item_p == &item3);
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-
-	item_p = fr_cursor_remove(&cursor);
-	TEST_CHECK(!item_p);
-
-	TEST_CHECK(!fr_cursor_current(&cursor));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == &item2);
-	TEST_CHECK(!fr_cursor_next_peek(&cursor));
-}
-
-void test_cursor_merge_start(void)
-{
-	fr_cursor_t	cursor_a, cursor_b;
-
-	test_item_t	item3b = { "item3b", NULL };
-	test_item_t	item2b = { "item2b", &item3b };
-	test_item_t	item1b = { "item1b", &item2b };
-
-	test_item_t	item3a = { "item3a", NULL };
-	test_item_t	item2a = { "item2a", &item3a };
-	test_item_t	item1a = { "item1a", &item2a };
-
-	test_item_t	*head_a = &item1a;
-	test_item_t	*head_b = &item1b;
-
-	fr_cursor_init(&cursor_a, &head_a);
-	fr_cursor_init(&cursor_b, &head_b);
-	fr_cursor_merge(&cursor_a, &cursor_b);
-
-	TEST_CHECK(fr_cursor_current(&cursor_a) == &item1a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
-
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item1b);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2b);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
-	TEST_CHECK(!fr_cursor_next(&cursor_a));
-
-	TEST_CHECK(!fr_cursor_current(&cursor_b));
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor_b));
-	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_b));
-}
-
-void test_cursor_merge_mid(void)
-{
-	fr_cursor_t	cursor_a, cursor_b;
-
-	test_item_t	item3b = { "item3b", NULL };
-	test_item_t	item2b = { "item2b", &item3b };
-	test_item_t	item1b = { "item1b", &item2b };
-
-	test_item_t	item3a = { "item3a", NULL };
-	test_item_t	item2a = { "item2a", &item3a };
-	test_item_t	item1a = { "item1a", &item2a };
-
-	test_item_t	*head_a = &item1a;
-	test_item_t	*head_b = &item1b;
-
-	fr_cursor_init(&cursor_a, &head_a);
-	fr_cursor_init(&cursor_b, &head_b);
-	fr_cursor_next(&cursor_b);
-	fr_cursor_merge(&cursor_a, &cursor_b);
-
-	TEST_CHECK(fr_cursor_current(&cursor_a) == &item1a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
-
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2b);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
-	TEST_CHECK(!fr_cursor_next(&cursor_a));
-
-	TEST_CHECK(!fr_cursor_current(&cursor_b));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor_b) == &item1b);
-	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_b));
-}
-
-void test_cursor_merge_end(void)
-{
-	fr_cursor_t	cursor_a, cursor_b;
-
-	test_item_t	item3b = { "item3b", NULL };
-	test_item_t	item2b = { "item2b", &item3b };
-	test_item_t	item1b = { "item1b", &item2b };
-
-	test_item_t	item3a = { "item3a", NULL };
-	test_item_t	item2a = { "item2a", &item3a };
-	test_item_t	item1a = { "item1a", &item2a };
-
-	test_item_t	*head_a = &item1a;
-	test_item_t	*head_b = &item1b;
-
-	fr_cursor_init(&cursor_a, &head_a);
-	fr_cursor_init(&cursor_b, &head_b);
-	fr_cursor_next(&cursor_b);
-	fr_cursor_next(&cursor_b);
-	fr_cursor_merge(&cursor_a, &cursor_b);
-
-	TEST_CHECK(fr_cursor_current(&cursor_a) == &item1a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
-	TEST_CHECK(!fr_cursor_next(&cursor_a));
-
-	TEST_CHECK(!fr_cursor_current(&cursor_b));
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor_b) == &item2b);
-	TEST_CHECK(fr_cursor_head(&cursor_b) == &item1b);
-}
-
-void test_cursor_merge_with_empty(void)
-{
-	fr_cursor_t	cursor_a, cursor_b;
-
-	test_item_t	item3b = { "item3b", NULL };
-	test_item_t	item2b = { "item2b", &item3b };
-	test_item_t	item1b = { "item1b", &item2b };
-
-	test_item_t	*head_a = NULL;
-	test_item_t	*head_b = &item1b;
-
-	fr_cursor_init(&cursor_a, &head_a);
-	fr_cursor_init(&cursor_b, &head_b);
-	fr_cursor_merge(&cursor_a, &cursor_b);
-
-	TEST_CHECK(fr_cursor_head(&cursor_a) == &item1b);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2b);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3b);
-
-	TEST_CHECK(!fr_cursor_current(&cursor_b));
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor_b));
-	TEST_CHECK(!fr_cursor_list_next_peek(&cursor_b));
-}
-
-void test_cursor_merge_empty(void)
-{
-	fr_cursor_t	cursor_a, cursor_b;
-
-	test_item_t	item3a = { "item3a", NULL };
-	test_item_t	item2a = { "item2a", &item3a };
-	test_item_t	item1a = { "item1a", &item2a };
-
-	test_item_t	*head_a = &item1a;
-	test_item_t	*head_b = NULL;
-
-	fr_cursor_init(&cursor_a, &head_a);
-	fr_cursor_init(&cursor_b, &head_b);
-	fr_cursor_merge(&cursor_a, &cursor_b);
-
-	TEST_CHECK(fr_cursor_head(&cursor_a) == &item1a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item2a);
-	TEST_CHECK(fr_cursor_next(&cursor_a) == &item3a);
-}
-
-void test_cursor_copy(void)
-{
-	fr_cursor_t	cursor_a, cursor_b;
-
-	test_item_t	item3 = { "item3", NULL };
-	test_item_t	item2 = { "item2", &item3 };
-	test_item_t	item1 = { "item1", &item2 };
-
-	test_item_t	*head = &item1;
-
-	fr_cursor_init(&cursor_a, &head);
-	fr_cursor_copy(&cursor_b, &cursor_a);
-
-	TEST_CHECK(fr_cursor_head(&cursor_b) == &item1);
-	TEST_CHECK(fr_cursor_next(&cursor_b) == &item2);
-	TEST_CHECK(fr_cursor_next(&cursor_b) == &item3);
-}
-
-void test_cursor_free(void)
-{
-	test_item_t	*item1, *item2, *item3;
-	test_item_t	*head = NULL;
-	fr_cursor_t	cursor;
-	void		*item_p;
-
-	item1 = talloc_zero(NULL, test_item_t);
-	item2 = talloc_zero(NULL, test_item_t);
-	item3 = talloc_zero(NULL, test_item_t);
-
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_append(&cursor, item1);
-	fr_cursor_append(&cursor, item2);
-	fr_cursor_append(&cursor, item3);
-
-	fr_cursor_next(&cursor);
-	fr_cursor_free_list(&cursor);
-
-	TEST_CHECK(fr_cursor_current(&cursor) == NULL);
-	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
-	TEST_CHECK(!fr_cursor_tail(&cursor));
-	TEST_CHECK(!fr_cursor_head(&cursor));
-
-	item_p = fr_cursor_remove(&cursor);
-	talloc_free(item_p);
-}
-
-TEST_LIST = {
-	/*
-	 *	Initialisation
-	 */
-	{ "init_null",			test_init_null_item },
-	{ "init_one",			test_init_1i_start },
-	{ "init_two",			test_init_2i_start },
-
-	/*
-	 *	Normal iteration
-	 */
-	{ "next",			test_next },
-	{ "next_wrap",			test_next_wrap },	/* should not wrap */
-
-	/*
-	 *	Jump to head/tail
-	 */
-	{ "head_tail_null",		test_cursor_head_tail_null },
-	{ "head",			test_cursor_head },
-	{ "head_after_next",		test_cursor_head_after_next },
-	{ "tail",			test_cursor_tail },
-	{ "head_after_tail",		test_cursor_head_after_tail },
-	{ "wrap_after_tail",		test_cursor_wrap_after_tail },
-
-	/*
-	 *	Insert with empty list
-	 */
-	{ "prepend_empty",		test_cursor_prepend_empty },
-	{ "append_empty",		test_cursor_append_empty },
-	{ "append_empty_3",		test_cursor_append_empty_3 },
-	{ "insert_into_empty",		test_cursor_insert_into_empty },
-	{ "insert_into_empty_3",	test_cursor_insert_into_empty_3 },
-	{ "replace_in_empty",		test_cursor_replace_in_empty },
-
-	/*
-	 *	Insert with one item list
-	 */
-	{ "prepend_1i_start",		test_cursor_prepend_1i_start},
-	{ "append_1i_start",		test_cursor_append_1i_start },
-	{ "insert_1i_start",		test_cursor_insert_1i_start },
-	{ "replace_1i_start",		test_cursor_replace_1i_start },
-
-	/*
-	 *	Insert with two item list
-	 */
-	{ "prepend_2i_start",		test_cursor_prepend_2i_start },
-	{ "append_2i_start",		test_cursor_append_2i_start },
-	{ "insert_2i_start",		test_cursor_insert_2i_start },
-	{ "replace_2i_start",		test_cursor_replace_2i_start },
-
-	/*
-	 *	Insert with three item list (with cursor on item2)
-	 */
-	{ "prepend_3i_mid",		test_cursor_prepend_3i_mid },
-	{ "append_3i_mid",		test_cursor_append_3i_mid },
-	{ "insert_3i_mid",		test_cursor_insert_3i_mid },
-	{ "replace_3i_mid",		test_cursor_replace_3i_mid },
-
-	 /*
-	  *	Insert with three item list (with cursor on item3)
-	  */
-	{ "prepend_3i_end",		test_cursor_prepend_3i_end },
-	{ "append_3i_end",		test_cursor_append_3i_end },
-	{ "insert_3i_end",		test_cursor_insert_3i_end },
-	{ "replace_3i_end",		test_cursor_replace_3i_end },
-
-	/*
-	 *	Remove
-	 */
-	{ "remove_empty",		test_cursor_remove_empty },
-	{ "remove_1i",			test_cursor_remove_1i },
-	{ "remove_2i",			test_cursor_remove_2i },
-	{ "remove_3i_start",		test_cursor_remove_3i_start },
-	{ "remove_3i_mid",		test_cursor_remove_3i_mid },
-	{ "remove_3i_end",		test_cursor_remove_3i_end },
-
-	/*
-	 *	Merge
-	 */
-	{ "merge_start",		test_cursor_merge_start },
-	{ "merge_mid",			test_cursor_merge_mid },
-	{ "merge_end",			test_cursor_merge_end },
-	{ "merge_with_empty",		test_cursor_merge_with_empty },
-	{ "merge_empty",		test_cursor_merge_empty },
-
-	/*
-	 *	Copy
-	 */
-	{ "copy",			test_cursor_copy },
-
-	/*
-	 *	Free
-	 */
-	{ "free", 			test_cursor_free },
-	{ 0 }
-};
-#endif

@@ -6,6 +6,25 @@ class_value_prefix = 'ai:'
 #
 #	Replacement for the old rlm_acct_unique module
 #
+#	NOTE: For compatibility with v3, the calculation of
+#	Acct-Unique-Session-Id converts the input of the MD5
+#	calculating to strings, and then converts the output
+#	of the MD5 calculation to hex.  The result is that
+#	the calculations done here will be the same as for
+#	v3.
+#
+#	This change was necessary because in v4, the expansions
+#	are binary safe.  i.e. expanding an IP address will not
+#	result in the string `192.0.2.1`, but will instead be
+#	represented internally as 32-bits of binary data `c0000201`.
+#	The MD5 hash of those inputs will then be different.
+#	We fix this issue by using `%{string:..}` to convert the
+#	inputs to MD5 into printable string form.
+#
+#	Similarly, the output of `%{md5:..}` is binary safe, and is
+#	therefore a binary blob.  We therefore convert the output
+#	of it to a printable string via `%{hex:...}`
+#
 acct_unique {
 	#
 	#  If we have a class attribute in the format
@@ -34,7 +53,7 @@ acct_unique {
 	#
 	if ("%{string:Class}" =~ /${policy.class_value_prefix}([0-9a-f]{32})/i) {
 		update request {
-			&Acct-Unique-Session-Id := "%{md5:%{1},%{Acct-Session-ID}}"
+			&Acct-Unique-Session-Id := "%{hex:%{md5:%{string:%{1},%{Acct-Session-ID}}}}"
 		}
 	}
 
@@ -46,7 +65,7 @@ acct_unique {
 	#
 	else {
 		update request {
-			&Acct-Unique-Session-Id := "%{md5:%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{%{NAS-IPv6-Address}:-%{NAS-IP-Address}},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}}"
+			&Acct-Unique-Session-Id := "%{hex:%{md5:%{string:%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{%{NAS-IPv6-Address}:-%{NAS-IP-Address}},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}}}}"
 		 }
 	}
 }

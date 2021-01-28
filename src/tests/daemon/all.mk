@@ -57,7 +57,7 @@ $(BUILD_DIR)/tests/daemon/:
 #  If the daemon changes, we kill any running tests, and start over.
 #  If the tmux session isn't running, that's OK, too.
 #
-$(BUILD_DIR)/tests/daemon/radiusd.version: $(TESTBINDIR)/radiusd
+$(BUILD_DIR)/tests/daemon/radiusd.version: $(TEST_BIN_DIR)/radiusd
 	${Q}tmux -L $(TMUX_KEY) send-key C-c 2>/dev/null || true
 	${Q}tmux -L $(TMUX_KEY) kill-server 2>/dev/null || true
 	${Q}rm -f $(BUILD_DIR)/tests/daemon/radiusd.log
@@ -68,7 +68,7 @@ $(BUILD_DIR)/tests/daemon/radiusd.version: $(TESTBINDIR)/radiusd
 #
 $(BUILD_DIR)/tests/daemon/radiusd.log: $(BUILD_DIR)/tests/daemon/radiusd.version
 	${Q}rm -f $@
-	${Q}tmux -L $(TMUX_KEY) new-session -d './$(TESTBIN)/radiusd -i 127.0.0.1 -p $(TMUX_PORT) -fxx -d ./raddb -D share/dictionary -l $@'
+	${Q}tmux -L $(TMUX_KEY) new-session -d './$(TEST_BIN)/radiusd -i 127.0.0.1 -p $(TMUX_PORT) -fxx -d ./raddb -D share/dictionary -l $@'
 
 radiusd.start: $(BUILD_DIR)/tests/daemon/radiusd.log
 

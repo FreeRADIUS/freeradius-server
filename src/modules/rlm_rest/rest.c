@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <string.h>
 #include <time.h>
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/server/pool.h>
@@ -96,17 +96,6 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
  *
  *  #define curl_easy_setopt(handle,opt,param) curl_easy_setopt(handle,opt,param)
  */
-DIAG_OPTIONAL
-DIAG_OFF(disabled-macro-expansion)
-#define SET_OPTION(_x, _y)\
-do {\
-	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
-		option = STRINGIFY(_x);\
-		REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret); \
-		goto error;\
-	}\
-} while (0)
-
 const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
 	[REST_HTTP_AUTH_UNKNOWN]		= 0,
 	[REST_HTTP_AUTH_NONE]			= 0,
@@ -135,12 +124,12 @@ const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES] = {
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_method_table[] = {
-	{ "DELETE",				REST_HTTP_METHOD_DELETE		},
-	{ "GET",				REST_HTTP_METHOD_GET		},
-	{ "PATCH",				REST_HTTP_METHOD_PATCH		},
-	{ "POST",				REST_HTTP_METHOD_POST		},
-	{ "PUT",				REST_HTTP_METHOD_PUT		},
-	{ "UNKNOWN",				REST_HTTP_METHOD_UNKNOWN	}
+	{ L("DELETE"),				REST_HTTP_METHOD_DELETE		},
+	{ L("GET"),				REST_HTTP_METHOD_GET		},
+	{ L("PATCH"),				REST_HTTP_METHOD_PATCH		},
+	{ L("POST"),				REST_HTTP_METHOD_POST		},
+	{ L("PUT"),				REST_HTTP_METHOD_PUT		},
+	{ L("UNKNOWN"),				REST_HTTP_METHOD_UNKNOWN	}
 };
 size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
 
@@ -154,31 +143,31 @@ size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_body_type_table[] = {
-	{ "html",				REST_HTTP_BODY_HTML		},
-	{ "invalid",				REST_HTTP_BODY_INVALID		},
-	{ "json",				REST_HTTP_BODY_JSON		},
-	{ "none",				REST_HTTP_BODY_NONE		},
-	{ "plain",				REST_HTTP_BODY_PLAIN		},
-	{ "post",				REST_HTTP_BODY_POST		},
-	{ "unavailable",			REST_HTTP_BODY_UNAVAILABLE	},
-	{ "unknown",				REST_HTTP_BODY_UNKNOWN		},
-	{ "unsupported",			REST_HTTP_BODY_UNSUPPORTED	},
-	{ "xml",				REST_HTTP_BODY_XML		},
-	{ "yaml",				REST_HTTP_BODY_YAML		}
+	{ L("html"),				REST_HTTP_BODY_HTML		},
+	{ L("invalid"),				REST_HTTP_BODY_INVALID		},
+	{ L("json"),				REST_HTTP_BODY_JSON		},
+	{ L("none"),				REST_HTTP_BODY_NONE		},
+	{ L("plain"),				REST_HTTP_BODY_PLAIN		},
+	{ L("post"),				REST_HTTP_BODY_POST		},
+	{ L("unavailable"),			REST_HTTP_BODY_UNAVAILABLE	},
+	{ L("unknown"),				REST_HTTP_BODY_UNKNOWN		},
+	{ L("unsupported"),			REST_HTTP_BODY_UNSUPPORTED	},
+	{ L("xml"),				REST_HTTP_BODY_XML		},
+	{ L("yaml"),				REST_HTTP_BODY_YAML		}
 };
 size_t http_body_type_table_len = NUM_ELEMENTS(http_body_type_table);
 
 fr_table_num_sorted_t const http_auth_table[] = {
-	{ "any",				REST_HTTP_AUTH_ANY		},
-	{ "basic",				REST_HTTP_AUTH_BASIC		},
-	{ "digest",				REST_HTTP_AUTH_DIGEST		},
-	{ "digest-ie",				REST_HTTP_AUTH_DIGEST_IE	},
-	{ "gss-negotiate",			REST_HTTP_AUTH_GSSNEGOTIATE	},
-	{ "none",				REST_HTTP_AUTH_NONE		},
-	{ "ntlm",				REST_HTTP_AUTH_NTLM		},
-	{ "ntlm-winbind",			REST_HTTP_AUTH_NTLM_WB		},
-	{ "safe",				REST_HTTP_AUTH_ANY_SAFE		},
-	{ "srp",				REST_HTTP_AUTH_TLS_SRP		}
+	{ L("any"),				REST_HTTP_AUTH_ANY		},
+	{ L("basic"),				REST_HTTP_AUTH_BASIC		},
+	{ L("digest"),				REST_HTTP_AUTH_DIGEST		},
+	{ L("digest-ie"),				REST_HTTP_AUTH_DIGEST_IE	},
+	{ L("gss-negotiate"),			REST_HTTP_AUTH_GSSNEGOTIATE	},
+	{ L("none"),				REST_HTTP_AUTH_NONE		},
+	{ L("ntlm"),				REST_HTTP_AUTH_NTLM		},
+	{ L("ntlm-winbind"),			REST_HTTP_AUTH_NTLM_WB		},
+	{ L("safe"),				REST_HTTP_AUTH_ANY_SAFE		},
+	{ L("srp"),				REST_HTTP_AUTH_TLS_SRP		}
 };
 size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
 
@@ -197,15 +186,15 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_content_type_table[] = {
-	{ "application/json",			REST_HTTP_BODY_JSON		},
-	{ "application/x-www-form-urlencoded",	REST_HTTP_BODY_POST		},
-	{ "application/x-yaml",			REST_HTTP_BODY_YAML		},
-	{ "application/yaml",			REST_HTTP_BODY_YAML		},
-	{ "text/html",				REST_HTTP_BODY_HTML		},
-	{ "text/plain",				REST_HTTP_BODY_PLAIN		},
-	{ "text/x-yaml",			REST_HTTP_BODY_YAML		},
-	{ "text/xml",				REST_HTTP_BODY_XML		},
-	{ "text/yaml",				REST_HTTP_BODY_YAML		}
+	{ L("application/json"),			REST_HTTP_BODY_JSON		},
+	{ L("application/x-www-form-urlencoded"),	REST_HTTP_BODY_POST		},
+	{ L("application/x-yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("application/yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("text/html"),				REST_HTTP_BODY_HTML		},
+	{ L("text/plain"),				REST_HTTP_BODY_PLAIN		},
+	{ L("text/x-yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("text/xml"),				REST_HTTP_BODY_XML		},
+	{ L("text/yaml"),				REST_HTTP_BODY_YAML		}
 };
 size_t http_content_type_table_len = NUM_ELEMENTS(http_content_type_table);
 
@@ -220,11 +209,11 @@ typedef struct {
 } rest_custom_data_t;
 
 #ifdef HAVE_JSON
-/** Flags to control the conversion of JSON values to VALUE_PAIRs.
+/** Flags to control the conversion of JSON values to fr_pair_ts.
  *
  * These fields are set when parsing the expanded format for value pairs in
  * JSON, and control how json_pair_alloc_leaf and json_pair_alloc convert the JSON
- * value, and move the new VALUE_PAIR into an attribute list.
+ * value, and move the new fr_pair_t into an attribute list.
  *
  * @see json_pair_alloc
  * @see json_pair_alloc_leaf
@@ -233,19 +222,17 @@ typedef struct {
 	int do_xlat;		//!< If true value will be expanded with xlat.
 	int is_json;		//!< If true value will be inserted as raw JSON
 				// (multiple values not supported).
-	FR_TOKEN op;		//!< The operator that determines how the new VP
+	fr_token_t op;		//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens_table
-
-	int8_t tag;		//!< Tag to assign to VP.
 } json_flags_t;
 #endif
 
 /** Frees a libcurl handle, and any additional memory used by context data.
  *
- * @param[in] randle rlm_rest_handle_t to close and free.
+ * @param[in] randle fr_curl_io_request_t to close and free.
  * @return returns true.
  */
-static int _mod_conn_free(rlm_rest_handle_t *randle)
+static int _mod_conn_free(fr_curl_io_request_t *randle)
 {
 	curl_easy_cleanup(randle->candle);
 
@@ -258,7 +245,7 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  * fr_pool_init, and called when a new connection is required by the
  * connection pool API.
  *
- * Creates an instances of rlm_rest_handle_t, and rlm_rest_curl_context_t
+ * Creates an instances of fr_curl_io_request_t, and rlm_rest_curl_context_t
  * which hold the context data required for generating requests and parsing
  * responses.
  *
@@ -273,31 +260,24 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  */
 void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
-	rlm_rest_t const	*inst = instance;
+	rlm_rest_t const	*inst = talloc_get_type_abort_const(instance, rlm_rest_t);
 
-	rlm_rest_handle_t	*randle = NULL;
+	fr_curl_io_request_t	*randle = NULL;
 	rlm_rest_curl_context_t	*curl_ctx = NULL;
-
-	CURL			*candle;
-
-	candle = curl_easy_init();
-	if (!candle) {
-		ERROR("Failed to create CURL handle");
-		return NULL;
-	}
 
 	/*
 	 *  Allocate memory for the connection handle abstraction.
 	 */
-	randle = talloc_zero(ctx, rlm_rest_handle_t);
+	randle = fr_curl_io_request_alloc(ctx);
+	if (!randle) return NULL;
+
 	curl_ctx = talloc_zero(randle, rlm_rest_curl_context_t);
 
 	curl_ctx->headers = NULL; /* CURL needs this to be NULL */
 	curl_ctx->request.instance = inst;
 	curl_ctx->response.instance = inst;
 
-	randle->ctx = curl_ctx;
-	randle->candle = candle;
+	randle->uctx = curl_ctx;
 	talloc_set_destructor(randle, _mod_conn_free);
 
 	return randle;
@@ -330,8 +310,8 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
 	/*
 	 *	If len > 0 then we must have these set.
 	 */
-	rad_assert(data->start);
-	rad_assert(data->p);
+	fr_assert(data->start);
+	fr_assert(data->p);
 
 	to_copy = data->len - (data->p - data->start);
 	len = to_copy > freespace ? freespace : to_copy;
@@ -343,10 +323,10 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
 	return len;
 }
 
-/** Encodes VALUE_PAIR linked list in POST format
+/** Encodes fr_pair_t linked list in POST format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
- * successive calls will return additional encoded VALUE_PAIRs.
+ * successive calls will return additional encoded fr_pair_ts.
  * Only complete attribute headers @verbatim '<name>=' @endverbatim and values
  * will be written to the ptr buffer.
  *
@@ -375,14 +355,15 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
 static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
-	REQUEST			*request = ctx->request; /* Used by RDEBUG */
-	VALUE_PAIR		*vp;
+	request_t			*request = ctx->request; /* Used by RDEBUG */
+	fr_pair_t		*vp;
 
 	char			*p = out;	/* Position in buffer */
 	char			*encoded = p;	/* Position in buffer of last fully encoded attribute or value */
 	char			*escaped;	/* Pointer to current URL escaped data */
 
 	size_t			len = 0;
+	ssize_t			slen;
 	size_t			freespace = (size * nmemb) - 1;
 
 	/* Allow manual chunking */
@@ -394,7 +375,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_INIT) ctx->state = READ_STATE_ATTR_BEGIN;
 
 	while (freespace > 0) {
-		vp = fr_cursor_current(&ctx->cursor);
+		vp = fr_dcursor_current(&ctx->cursor);
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
@@ -451,14 +432,14 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  Write out single attribute string.
 		 */
-		len = fr_pair_value_snprint(p, freespace, vp, 0);
-		if (is_truncated(len, freespace)) goto no_space;
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(p, freespace), vp, T_BARE_WORD);
+		if (slen < 0) return 0;
 
 		RINDENT();
-		RDEBUG3("Length : %zd", len);
+		RDEBUG3("Length : %zd", (size_t)slen);
 		REXDENT();
-		if (len > 0) {
-			escaped = curl_escape(p, len);
+		if (slen > 0) {
+			escaped = curl_escape(p, (size_t)slen);
 			if (!escaped) {
 				REDEBUG("Failed escaping string \"%s\"", vp->da->name);
 				return 0;
@@ -485,7 +466,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  there are more attributes, insert a separator
 		 */
-		if (fr_cursor_next(&ctx->cursor)) {
+		if (fr_dcursor_next(&ctx->cursor)) {
 			if (freespace < 1) goto no_space;
 			*p++ = '&';
 			freespace--;
@@ -510,10 +491,10 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 }
 
 #ifdef HAVE_JSON
-/** Encodes VALUE_PAIR linked list in JSON format
+/** Encodes fr_pair_t linked list in JSON format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
- * successive calls will return additional encoded VALUE_PAIRs.
+ * successive calls will return additional encoded fr_pair_ts.
  *
  * Only complete attribute headers
  * @verbatim "<name>":{"type":"<type>","value":[' @endverbatim
@@ -551,7 +532,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
-	REQUEST			*request = ctx->request;
+	request_t			*request = ctx->request;
 	rest_custom_data_t	*data = ctx->encoder;
 
 	size_t			freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
@@ -559,10 +540,10 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	size_t			to_copy;
 	const char		*encoded;
 
-	rad_assert(freespace > 0);
+	fr_assert(freespace > 0);
 
 	if (ctx->state == READ_STATE_INIT) {
-		encoded = fr_json_afrom_pair_list(data, &request->packet->vps, NULL);
+		encoded = fr_json_afrom_pair_list(data, &request->request_pairs, NULL);
 		if (!encoded) return -1;
 
 		data->start = data->p = encoded;
@@ -611,7 +592,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
  *	- Length of the data written to the buffer (excluding NULL).
  *	- -1 if alloc >= limit.
  */
-static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
+static ssize_t rest_request_encode_wrapper(char **out, UNUSED rlm_rest_t const *inst,
 					   rest_read_t func, size_t limit, void *userdata)
 {
 	char	*buff = NULL;
@@ -648,7 +629,7 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
  * @param[in] ctx	to initialise.
  */
 static void rest_request_init(rlm_rest_section_t const *section,
-			      REQUEST *request, rlm_rest_request_t *ctx)
+			      request_t *request, rlm_rest_request_t *ctx)
 {
 	/*
 	 * 	Setup stream read data
@@ -658,22 +639,22 @@ static void rest_request_init(rlm_rest_section_t const *section,
 	ctx->state = READ_STATE_INIT;
 }
 
-/** Converts plain response into a single VALUE_PAIR
+/** Converts plain response into a single fr_pair_t
  *
  * @param[in] inst	configuration data.
  * @param[in] section	configuration data.
- * @param[in] handle	rlm_rest_handle_t to use.
+ * @param[in] randle	fr_curl_io_request_t to use.
  * @param[in] request	Current request.
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
  * @return
- *	- Number of VALUE_PAIR processed.
+ *	- Number of fr_pair_t processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
-			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
+static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
+			     request_t *request, UNUSED fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	/*
 	 *  Empty response?
@@ -684,41 +665,39 @@ static int rest_decode_plain(rlm_rest_t const *inst, UNUSED rlm_rest_section_t c
 	 *  Use rawlen to protect against overrun, and to cope with any binary data
 	 */
 	MEM(pair_update_request(&vp, attr_rest_http_body) >= 0);
-	fr_pair_value_bstrncpy(vp, raw, rawlen);
+	fr_pair_value_bstrndup(vp, raw, rawlen, true);
 
 	RDEBUG2("&%pP", vp);
 
 	return 1;
 }
 
-/** Converts POST response into VALUE_PAIRs and adds them to the request
+/** Converts POST response into fr_pair_ts and adds them to the request
  *
- * Accepts VALUE_PAIRS in the same format as rest_encode_post, but with the
+ * Accepts fr_pair_tS in the same format as rest_encode_post, but with the
  * addition of optional attribute list qualifiers as part of the attribute name
  * string.
  *
  * If no qualifiers are specified, will default to the request list.
  *
  * POST response format is:
- * @verbatim [outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attribute1>=<value1>&[outer.][<list>:]<attributeN>=<valueN> @endverbatim
+ * @verbatim [outer.][<list>.]<attribute0>=<value0>&[outer.][<list>.]<attribute1>=<value1>&[outer.][<list>.]<attributeN>=<valueN> @endverbatim
  *
  * @see rest_encode_post
  *
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
- * @param[in] handle	rlm_rest_handle_t to use.
+ * @param[in] randle	fr_curl_io_request_t to use.
  * @param[in] request	Current request.
  * @param[in] raw	buffer containing POST data.
  * @param[in] rawlen	Length of data in raw buffer.
  * @return
- *	- Number of VALUE_PAIRs processed.
+ *	- Number of fr_pair_ts processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-			    REQUEST *request, void *handle, char *raw, size_t rawlen)
+static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+			    request_t *request, fr_curl_io_request_t *randle, char *raw, size_t rawlen)
 {
-	rlm_rest_t const	*inst = instance;
-	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
 	char const		*p = raw, *q;
@@ -733,12 +712,12 @@ static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_
 	if (*p == '\0') return 0;
 
 	while (((q = strchr(p, '=')) != NULL) && (count < REST_BODY_MAX_ATTRS)) {
-		vp_tmpl_t		*dst;
-		REQUEST			*current;
-		VALUE_PAIR		**vps;
+		tmpl_t		*dst;
+		request_t			*current;
+		fr_pair_list_t		*vps;
 		TALLOC_CTX		*ctx;
 		fr_dict_attr_t const	*da;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 
 		char			*name  = NULL;
 		char			*value = NULL;
@@ -759,8 +738,8 @@ static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_
 		RDEBUG2("Parsing attribute \"%pV\"", fr_box_strvalue_len(name, curl_len));
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
-					&(vp_tmpl_rules_t){
-						.prefix = VP_ATTR_REF_PREFIX_NO,
+					&(tmpl_rules_t){
+						.prefix = TMPL_ATTR_REF_PREFIX_NO,
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {
@@ -769,22 +748,22 @@ static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_
 			goto skip;
 		}
 
-		if (radius_request(&current, dst->tmpl_request) < 0) {
+		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
 
-		vps = radius_list(current, dst->tmpl_list);
+		vps = tmpl_list_head(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			talloc_free(dst);
 			goto skip;
 		}
-		ctx = radius_list_ctx(current, dst->tmpl_list);
-		da = dst->tmpl_da;
+		ctx = tmpl_list_ctx(current, tmpl_list(dst));
+		da = tmpl_da(dst);
 
-		rad_assert(vps);
+		fr_assert(vps);
 
 		RINDENT();
 		RDEBUG3("Type  : %s", fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
@@ -811,7 +790,7 @@ static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_
 
 		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) goto skip;
 
-		rad_assert(expanded);
+		fr_assert(expanded);
 
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (!vp) {
@@ -850,33 +829,32 @@ static int rest_decode_post(rlm_rest_t const *instance, UNUSED rlm_rest_section_
 }
 
 #ifdef HAVE_JSON
-/** Converts JSON "value" key into VALUE_PAIR.
+/** Converts JSON "value" key into fr_pair_t.
  *
  * If leaf is not in fact a leaf node, but contains JSON data, the data will
  * written to the attribute in JSON string format.
  *
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
- * @param[in] ctx	to allocate new VALUE_PAIRs in.
+ * @param[in] ctx	to allocate new fr_pair_ts in.
  * @param[in] request	Current request.
  * @param[in] da	Attribute to create.
  * @param[in] flags	containing the operator other flags controlling value
  *			expansion.
- * @param[in] leaf	object containing the VALUE_PAIR value.
+ * @param[in] leaf	object containing the fr_pair_t value.
  * @return
- *	- #VALUE_PAIR just created.
+ *	- #fr_pair_t just created.
  *	- NULL on error.
  */
-static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-				        TALLOC_CTX *ctx, REQUEST *request,
+static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
+				        TALLOC_CTX *ctx, request_t *request,
 				        fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
-	rlm_rest_t const	*inst = instance;
 	char const		*value;
 	char			*expanded = NULL;
 	int 			ret;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
 	fr_value_box_t		src;
 
@@ -896,14 +874,12 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 	switch (json_object_get_type(leaf)) {
 	case json_type_int:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
-		src.vb_int32 = json_object_get_int(leaf);
-		src.type = FR_TYPE_INT32;
+		fr_value_box_shallow(&src, (int32_t)json_object_get_int(leaf), true);
 		break;
 
 	case json_type_double:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
-		src.vb_float64 = json_object_get_double(leaf);
-		src.type = FR_TYPE_FLOAT64;
+		fr_value_box_shallow(&src, (double)json_object_get_double(leaf), true);
 		break;
 
 	case json_type_string:
@@ -913,17 +889,17 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 				talloc_free(vp);
 				return NULL;
 			}
-			src.vb_strvalue = expanded;
-			src.datum.length = talloc_array_length(src.vb_strvalue) - 1;
+			fr_value_box_bstrndup_shallow(&src, NULL, expanded,
+						      talloc_array_length(expanded) - 1, true);
 		} else {
-			src.vb_strvalue = value;
-			src.datum.length = json_object_get_string_len(leaf);
+			fr_value_box_bstrndup_shallow(&src, NULL, value,
+						      json_object_get_string_len(leaf), true);
 		}
-		src.type = FR_TYPE_STRING;
-
 		break;
 
 	default:
+	{
+		char const *str;
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'object', attribute \"%s\"", da->name);
 
 		/*
@@ -931,14 +907,14 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 		 *
 		 *	"I knew you liked JSON so I put JSON in your JSON!"
 		 */
-		src.vb_strvalue = json_object_get_string(leaf);
-		if (!src.vb_strvalue) {
+		str = json_object_get_string(leaf);
+		if (!str) {
 			RWDEBUG("Failed getting string value for attribute \"%s\" (skipping)", da->name);
 			talloc_free(vp);
 			return NULL;
 		}
-		src.type = FR_TYPE_STRING;
-		src.datum.length = strlen(src.vb_strvalue);
+		fr_value_box_strdup_shallow(&src, NULL, str, true);
+	}
 	}
 
 	ret = fr_value_box_cast(vp, &vp->data, da->type, da, &src);
@@ -950,12 +926,11 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
 	}
 
 	vp->op = flags->op;
-	vp->tag = flags->tag;
 
 	return vp;
 }
 
-/** Processes JSON response and converts it into multiple VALUE_PAIRs
+/** Processes JSON response and converts it into multiple fr_pair_ts
  *
  * Processes JSON attribute declarations in the format below. Will recurse when
  * processing nested attributes. When processing nested attributes flags and
@@ -986,7 +961,7 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
  * JSON valuepair flags:
  *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to true.
  *  - is_json	(optional) If true, any nested JSON data will be copied to the
- *			   VALUE_PAIR in string form. Defaults to true.
+ *			   fr_pair_t in string form. Defaults to true.
  *  - op	(optional) Controls how the attribute is inserted into
  *			   the target list. Defaults to ':=' (T_OP_SET).
  *
@@ -1001,17 +976,17 @@ static VALUE_PAIR *json_pair_alloc_leaf(rlm_rest_t const *instance, UNUSED rlm_r
  * @param[in] request	Current request.
  * @param[in] object	containing root node, or parent node.
  * @param[in] level	Current nesting level.
- * @param[in] max	counter, decremented after each VALUE_PAIR is created,
+ * @param[in] max	counter, decremented after each fr_pair_t is created,
  *			when 0 no more attributes will be processed.
  * @return
  *	- Number of attributes created.
  *	- < 0 on error.
  */
 static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			 REQUEST *request, json_object *object, UNUSED int level, int max)
+			   request_t *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
-	vp_tmpl_t *dst = NULL;
+	tmpl_t *dst = NULL;
 
 	if (!fr_json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
@@ -1029,9 +1004,9 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 	 *	Process VP container
 	 */
 	json_object_object_foreach(object, name, value) {
-		int i = 0, elements;
-		struct json_object *element, *tmp;
-		TALLOC_CTX *ctx;
+		int		i = 0, elements;
+		struct		json_object *element, *tmp;
+		TALLOC_CTX	*ctx;
 
 		json_flags_t flags = {
 			.op = T_OP_SET,
@@ -1039,8 +1014,9 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			.is_json = 0
 		};
 
-		REQUEST *current = request;
-		VALUE_PAIR **vps, *vp = NULL;
+		request_t		*current = request;
+		fr_pair_list_t		*vps;
+		fr_pair_t		*vp = NULL;
 
 		TALLOC_FREE(dst);
 
@@ -1050,8 +1026,8 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
-					&(vp_tmpl_rules_t){
-						.prefix = VP_ATTR_REF_PREFIX_NO,
+					&(tmpl_rules_t){
+						.prefix = TMPL_ATTR_REF_PREFIX_NO,
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {
@@ -1059,19 +1035,17 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			continue;
 		}
 
-		flags.tag = dst->tmpl_tag;
-
-		if (radius_request(&current, dst->tmpl_request) < 0) {
+		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			continue;
 		}
 
-		vps = radius_list(current, dst->tmpl_list);
+		vps = tmpl_list_head(current, tmpl_list(dst));
 		if (!vps) {
 			RWDEBUG("List not valid in this context (skipping)");
 			continue;
 		}
-		ctx = radius_list_ctx(current, dst->tmpl_list);
+		ctx = tmpl_list_ctx(current, tmpl_list(dst));
 
 		/*
 		 *  Alternative JSON structure which allows operator,
@@ -1131,7 +1105,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		}
 
 		/*
-		 *  Setup fr_pair_alloc / recursion loop.
+		 *  Setup fr_pair_afrom_da / recursion loop.
 		 */
 		if (!flags.is_json && fr_json_object_is_type(value, json_type_array)) {
 			elements = json_object_array_length(value);
@@ -1147,7 +1121,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 
 		/*
 		 *  A JSON 'value' key, may have multiple elements, iterate
-		 *  over each of them, creating a new VALUE_PAIR.
+		 *  over each of them, creating a new fr_pair_t.
 		 */
 		do {
 			if (max_attrs-- <= 0) {
@@ -1175,13 +1149,17 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 						   level + 1, max_attrs);*/
 			} else {
 				vp = json_pair_alloc_leaf(instance, section, ctx, request,
-							  dst->tmpl_da, &flags, element);
+							  tmpl_da(dst), &flags, element);
 				if (!vp) continue;
 			}
 			RINDENT();
-			RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, dst->tmpl_list, ""), vp);
+			RDEBUG2("&%s:%pP", fr_table_str_by_value(pair_list_table, tmpl_list(dst), ""), vp);
 			REXDENT();
-			radius_pairmove(current, vps, vp, false);
+
+			fr_pair_list_t tmp_list;
+			fr_pair_list_init(&tmp_list);
+			fr_pair_add(&tmp_list, vp);
+			radius_pairmove(current, vps, &tmp_list, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array
 		 *  the behaviour appears to be to occasionally segfault.
@@ -1194,7 +1172,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 	return max - max_attrs;
 }
 
-/** Converts JSON response into VALUE_PAIRs and adds them to the request.
+/** Converts JSON response into fr_pair_ts and adds them to the request.
  *
  * Converts the raw JSON string into a json-c object tree and passes it to
  * json_pair_alloc. After the tree has been parsed json_object_put is called
@@ -1207,15 +1185,15 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
  * @param[in,out] request Current request.
- * @param[in] handle	REST handle.
+ * @param[in] randle	REST handle.
  * @param[in] raw	buffer containing JSON data.
  * @param[in] rawlen	Length of data in raw buffer.
  * @return
- *	- The number of #VALUE_PAIR processed.
+ *	- The number of #fr_pair_t processed.
  *	- -1 on unrecoverable error.
  */
 static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			    REQUEST *request, UNUSED void *handle, char *raw, UNUSED size_t rawlen)
+			    request_t *request, UNUSED fr_curl_io_request_t *randle, char *raw, UNUSED size_t rawlen)
 {
 	char const *p = raw;
 
@@ -1265,7 +1243,7 @@ static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const
 static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_response_t	*ctx = userdata;
-	REQUEST			*request = ctx->request; /* Used by RDEBUG */
+	request_t			*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = (char *)in, *p = start, *end = p + (size * nmemb);
 	char			*q;
@@ -1368,7 +1346,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 */
 		q = NULL;
 		ctx->code = (int)strtoul(p, &q, 10);
-		rad_assert(q == (p + 3));	/* We check this above */
+		fr_assert(q == (p + 3));	/* We check this above */
 		p = q;
 
 		/*
@@ -1477,8 +1455,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_response_t	*ctx = userdata;
-	rlm_rest_t const	*inst = ctx->instance;
-	REQUEST			*request = ctx->request; /* Used by RDEBUG */
+	request_t			*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = in, *p = start, *end = p + (size * nmemb);
 	char			*q;
@@ -1553,9 +1530,9 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 /** Print out the response text as error lines
  *
  * @param request	The Current request.
- * @param handle	rlm_rest_handle_t used to execute the previous request.
+ * @param handle	fr_curl_io_request_t used to execute the previous request.
  */
-void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
+void rest_response_error(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
 	char		*q;
@@ -1578,9 +1555,9 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle)
 /** Print out the response text
  *
  * @param request	The Current request.
- * @param handle	rlm_rest_handle_t used to execute the previous request.
+ * @param handle	fr_curl_io_request_t used to execute the previous request.
  */
-void rest_response_debug(REQUEST *request, rlm_rest_handle_t *handle)
+void rest_response_debug(request_t *request, fr_curl_io_request_t *handle)
 {
 	char const	*p, *end;
 	char		*q;
@@ -1615,7 +1592,7 @@ void rest_response_debug(REQUEST *request, rlm_rest_handle_t *handle)
  * 			overwritten by rest_response_header.
  */
 static void rest_response_init(rlm_rest_section_t const *section,
-			       REQUEST *request, rlm_rest_response_t *ctx, http_body_type_t type)
+			       request_t *request, rlm_rest_response_t *ctx, http_body_type_t type)
 {
 	ctx->section = section;
 	ctx->request = request;
@@ -1629,16 +1606,16 @@ static void rest_response_init(rlm_rest_section_t const *section,
 /** Extracts pointer to buffer containing response data
  *
  * @param[out] out	Where to write the pointer to the buffer.
- * @param[in] handle	used for the last request.
+ * @param[in] randle	used for the last request.
  * @return
  *	- 0 if no data i available.
  *	- > 0 if data is available.
  */
-size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
+size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
 {
-	rlm_rest_curl_context_t *ctx = handle->ctx;
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
-	rad_assert(ctx->response.buffer || !ctx->response.used);
+	fr_assert(ctx->response.buffer || !ctx->response.used);
 
 	*out = ctx->response.buffer;
 	return ctx->response.used;
@@ -1650,24 +1627,20 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
  * data will be sent using multiple HTTP requests, or contiguous mode where
  * the request data will be sent in a single HTTP request.
  *
- * @param[in] instance	configuration data.
+ * @param[in] inst	configuration data.
  * @param[in] section	configuration data.
  * @param[in] request	Current request.
- * @param[in] handle	rlm_rest_handle_t to configure.
+ * @param[in] randle	fr_curl_io_request_t to configure.
  * @param[in] func	to pass to libcurl for chunked.
  *	      		transfers (NULL if not using chunked mode).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-				    REQUEST *request, rlm_rest_handle_t *handle, rest_read_t func)
+static int rest_request_config_body(rlm_rest_t const *inst, rlm_rest_section_t const *section,
+				    request_t *request, fr_curl_io_request_t *randle, rest_read_t func)
 {
-	rlm_rest_curl_context_t *ctx = handle->ctx;
-	CURL			*candle = handle->candle;
-
-	CURLcode ret = CURLE_OK;
-	char const *option = "unknown";
+	rlm_rest_curl_context_t	*uctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
 	ssize_t len;
 
@@ -1676,7 +1649,7 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  no body should be sent.
 	 */
 	if (!func) {
-		SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
+		FR_CURL_SET_OPTION(CURLOPT_POSTFIELDSIZE, 0);
 		return 0;
 	}
 
@@ -1685,8 +1658,8 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  multiple parts.
 	 */
 	if (section->chunk > 0) {
-		SET_OPTION(CURLOPT_READDATA, &ctx->request);
-		SET_OPTION(CURLOPT_READFUNCTION, func);
+		FR_CURL_SET_OPTION(CURLOPT_READDATA, &uctx->request);
+		FR_CURL_SET_OPTION(CURLOPT_READFUNCTION, func);
 
 		return 0;
 	}
@@ -1695,104 +1668,21 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
-	len = rest_request_encode_wrapper(&ctx->body, instance, func, REST_BODY_MAX_LEN, &ctx->request);
+	len = rest_request_encode_wrapper(&uctx->body, inst, func, REST_BODY_MAX_LEN, &uctx->request);
 	if (len <= 0) {
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
 	}
 	RDEBUG2("Content-Length will be %zu bytes", len);
 
-	rad_assert((len == 0) || (talloc_array_length(ctx->body) >= (size_t)len));
-	SET_OPTION(CURLOPT_POSTFIELDS, ctx->body);
-	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
+	fr_assert((len == 0) || (talloc_array_length(uctx->body) >= (size_t)len));
+	FR_CURL_SET_OPTION(CURLOPT_POSTFIELDS, uctx->body);
+	FR_CURL_SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
 
 	return 0;
 
 error:
 	return -1;
-}
-
-/** Callback to receive debugging data from libcurl
- *
- * @note Should only be set on a handle if RDEBUG_ENABLED3 is true.
- *
- * @param[in] candle	Curl handle the debugging data pertains to.
- * @param[in] type	The type of debugging data we received.
- * @param[in] data	Buffer containing debug data (not \0 terminated).  Despite the
- *			type being char *, this can be binary data depending on the
- *			curl_infotype.
- * @param[in] len	The length of the data in the buffer.
- * @param[in] uctx	The current request.
- * @return
- *	- 0 (we always indicate success)
- */
-static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, size_t len, void *uctx)
-{
-	REQUEST		*request = talloc_get_type_abort(uctx, REQUEST);
-	char const	*p = data, *q, *end = p + len;
-	char const	*verb;
-
-	switch (type) {
-	case CURLINFO_TEXT:
-		/*
-		 *	Curl debug output has trailing newlines, and could conceivably
-		 *	span multiple lines.  Take care of both cases.
-		 */
-		while (p < end) {
-			q = memchr(p, '\n', end - p);
-			if (!q) q = end;
-
-			RDEBUG3("libcurl - %pV", fr_box_strvalue_len(p, q ? q - p : p - end));
-			p = q + 1;
-		}
-
-		break;
-
-	case CURLINFO_HEADER_IN:
-		verb = "received";
-	print_header:
-		while (p < end) {
-			q = memchr(p, '\n', end - p);
-			q = q ? q + 1 : end;
-
-			if (RDEBUG_ENABLED4) {
-				RHEXDUMP4((uint8_t const *)p, q - p,
-					 "%s header: %pV",
-					 verb, fr_box_strvalue_len(p, q - p));
-			} else {
-				RDEBUG3("%s header: %pV",
-					verb, fr_box_strvalue_len(p, q - p));
-			}
-			p = q;
-		}
-		break;
-
-	case CURLINFO_HEADER_OUT:
-		verb = "sending";
-		goto print_header;
-
-	case CURLINFO_DATA_IN:
-		RHEXDUMP4((uint8_t const *)data, len, "received data[length %zu]", len);
-		break;
-
-	case CURLINFO_DATA_OUT:
-		RHEXDUMP4((uint8_t const *)data, len, "sending data[length %zu]", len);
-		break;
-
-	case CURLINFO_SSL_DATA_OUT:
-		RHEXDUMP4((uint8_t const *)data, len, "sending ssl-data[length %zu]", len);
-		break;
-
-	case CURLINFO_SSL_DATA_IN:
-		RHEXDUMP4((uint8_t const *)data, len, "received ssl-data[length %zu]", len);
-		break;
-
-	default:
-		RHEXDUMP3((uint8_t const *)data, len, "libcurl - debug data (unknown type %i)", (int)type);
-		break;
-	}
-
-	return 0;
 }
 
 /** Configures request curlopts.
@@ -1802,7 +1692,7 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
  *
  * Current FreeRADIUS custom headers are:
  *  - X-FreeRADIUS-Section	The module section being processed.
- *  - X-FreeRADIUS-Server	The current virtual server the REQUEST is
+ *  - X-FreeRADIUS-Server	The current virtual server the request_t is
  *				passing through.
  *
  * Sets up callbacks for all response processing (buffers and body data).
@@ -1810,7 +1700,7 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
  * @param[in] inst	configuration data.
  * @param[in] t		Thread specific instance data.
  * @param[in] section	configuration data.
- * @param[in] handle	to configure.
+ * @param[in] randle	to configure.
  * @param[in] request	Current request.
  * @param[in] method	to use (HTTP verbs PUT, POST, DELETE etc...).
  * @param[in] type	Content-Type for request encoding, also sets
@@ -1825,12 +1715,11 @@ static int rest_debug_log(UNUSED CURL *candle, curl_infotype type, char *data, s
  *	- -1 on failure.
  */
 int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_section_t const *section,
-			REQUEST *request, void *handle, http_method_t method,
+			request_t *request, fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
 {
-	rlm_rest_handle_t	*randle	= handle;
-	rlm_rest_curl_context_t	*ctx = randle->ctx;
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 	fr_time_delta_t		timeout;
 
@@ -1840,37 +1729,29 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	char const		*option = "unknown";
 	char const		*content_type;
 
-	VALUE_PAIR 		*header;
-	fr_cursor_t		headers;
+	fr_pair_t 		*header;
+	fr_dcursor_t		headers;
 
 	char			buffer[512];
 
-	rad_assert(candle);
-	rad_assert((!username && !password) || (username && password));
+	fr_assert(candle);
+	fr_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
 
 	/*
-	 *	Set the debugging function if needed
-	 */
-	if (RDEBUG_ENABLED3) {
-		SET_OPTION(CURLOPT_DEBUGFUNCTION, rest_debug_log);
-		SET_OPTION(CURLOPT_DEBUGDATA, request);
-		SET_OPTION(CURLOPT_VERBOSE, 1L);
-	}
-
-	/*
 	 *	Control which HTTP version we're going to use
 	 */
-	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
+	if (inst->http_negotiation != CURL_HTTP_VERSION_NONE) FR_CURL_SET_OPTION(CURLOPT_HTTP_VERSION, inst->http_negotiation);
 
 	/*
 	 *	Setup any header options and generic headers.
 	 */
-	SET_OPTION(CURLOPT_URL, uri);
-	if (section->proxy) SET_OPTION(CURLOPT_PROXY, section->proxy);
-	SET_OPTION(CURLOPT_NOSIGNAL, 1L);
-	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
+	FR_CURL_SET_OPTION(CURLOPT_URL, uri);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+	if (section->proxy) FR_CURL_SET_OPTION(CURLOPT_PROXY, section->proxy);
+	FR_CURL_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
+	FR_CURL_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 
 	/*
 	 *	HTTP/1.1 doesn't require a content type, so only set it
@@ -1890,12 +1771,9 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	timeout = fr_pool_timeout(t->pool);
 	RDEBUG3("Connect timeout is %pVs, request timeout is %pVs",
 	        fr_box_time_delta(timeout), fr_box_time_delta(section->timeout));
-	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
-	SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
-
-#ifdef CURLOPT_PROTOCOLS
-	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
-#endif
+	FR_CURL_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(timeout));
+	FR_CURL_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(section->timeout));
+	FR_CURL_SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
 
 	/*
 	 *	FreeRADIUS custom headers
@@ -1916,10 +1794,10 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	for (header =  fr_cursor_iter_by_da_init(&headers, &request->control, attr_rest_http_header);
+	for (header =  fr_dcursor_iter_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
 	     header;
-	     header = fr_cursor_next(&headers)) {
-		header = fr_cursor_remove(&headers);
+	     header = fr_dcursor_next(&headers)) {
+		header = fr_dcursor_remove(&headers);
 		if (!strchr(header->vp_strvalue, ':')) {
 			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
 				header->vp_strvalue);
@@ -1939,11 +1817,11 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 */
 	switch (method) {
 	case REST_HTTP_METHOD_GET:
-		SET_OPTION(CURLOPT_HTTPGET, 1L);
+		FR_CURL_SET_OPTION(CURLOPT_HTTPGET, 1L);
 		break;
 
 	case REST_HTTP_METHOD_POST:
-		SET_OPTION(CURLOPT_POST, 1L);
+		FR_CURL_SET_OPTION(CURLOPT_POST, 1L);
 		break;
 
 	case REST_HTTP_METHOD_PUT:
@@ -1956,23 +1834,23 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		 *	This is many cases will cause the server to block,
 		 *	indefinitely.
 		 */
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
 		break;
 
 	case REST_HTTP_METHOD_PATCH:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
 		break;
 
 	case REST_HTTP_METHOD_DELETE:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
 		break;
 
 	case REST_HTTP_METHOD_CUSTOM:
-		SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
+		FR_CURL_SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	};
 
@@ -1992,7 +1870,7 @@ do {\
 	}\
 } while (0)
 
-		if (!username || !password) cred_ctx = talloc_init("cred_ctx");
+		if (!username || !password) cred_ctx = talloc_init_const("cred_ctx");
 
 		if (!username) {
 			char *tmp = NULL;
@@ -2023,39 +1901,27 @@ do {\
 			SET_AUTH_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 			SET_AUTH_OPTION(CURLOPT_USERNAME, username);
 			SET_AUTH_OPTION(CURLOPT_PASSWORD, password);
-#if CURL_AT_LEAST_VERSION(7,21,4)
 		} else if (auth == REST_HTTP_AUTH_TLS_SRP) {
 			SET_AUTH_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
 			SET_AUTH_OPTION(CURLOPT_TLSAUTH_USERNAME, username);
 			SET_AUTH_OPTION(CURLOPT_TLSAUTH_PASSWORD, password);
-#endif
 		}
 	}
 
 	/*
 	 *	Set SSL/TLS authentication parameters
 	 */
-	if (section->tls_certificate_file) SET_OPTION(CURLOPT_SSLCERT, section->tls_certificate_file);
-	if (section->tls_private_key_file) SET_OPTION(CURLOPT_SSLKEY, section->tls_private_key_file);
-	if (section->tls_private_key_password) SET_OPTION(CURLOPT_KEYPASSWD, section->tls_private_key_password);
-	if (section->tls_ca_file) SET_OPTION(CURLOPT_CAINFO, section->tls_ca_file);
-	if (section->tls_ca_issuer_file) SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_issuer_file);
-	if (section->tls_ca_path) SET_OPTION(CURLOPT_CAPATH, section->tls_ca_path);
-	if (section->tls_random_file) SET_OPTION(CURLOPT_RANDOM_FILE, section->tls_random_file);
-
-	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1L : 0L);
-	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2L : 0L);
-	if (section->tls_extract_cert_attrs) SET_OPTION(CURLOPT_CERTINFO, 1L);
+	fr_curl_easy_tls_init(randle, &section->tls);
 
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
 	 */
 	rest_response_init(section, request, &ctx->response, type);
 
-	SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
-	SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
-	SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
-	SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
+	FR_CURL_SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
+	FR_CURL_SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
+	FR_CURL_SET_OPTION(CURLOPT_WRITEFUNCTION, rest_response_body);
+	FR_CURL_SET_OPTION(CURLOPT_WRITEDATA, &ctx->response);
 
 	/*
 	 *  Force parsing the body text as a particular encoding.
@@ -2087,7 +1953,7 @@ do {\
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	};
 
 	/*
@@ -2095,7 +1961,7 @@ do {\
 	 */
 	switch (type) {
 	case REST_HTTP_BODY_NONE:
-		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) return -1;
+		if (rest_request_config_body(inst, section, request, randle, NULL) < 0) return -1;
 
 		break;
 
@@ -2113,7 +1979,7 @@ do {\
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_custom) < 0) {
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2132,7 +1998,7 @@ do {\
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_custom) < 0) {
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2149,7 +2015,7 @@ do {\
 
 		rest_request_init(section, request, &ctx->request);
 
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_json) < 0) return -1;
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_json) < 0) return -1;
 	}
 
 		break;
@@ -2157,19 +2023,19 @@ do {\
 
 	case REST_HTTP_BODY_POST:
 		rest_request_init(section, request, &ctx->request);
-		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
+		fr_dcursor_init(&(ctx->request.cursor), &request->request_pairs);
 
-		if (rest_request_config_body(inst, section, request, handle, rest_encode_post) < 0) return -1;
+		if (rest_request_config_body(inst, section, request, randle, rest_encode_post) < 0) return -1;
 
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 
 finish:
-	SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
+	FR_CURL_SET_OPTION(CURLOPT_HTTPHEADER, ctx->headers);
 
 	return 0;
 
@@ -2177,119 +2043,24 @@ error:
 	return -1;
 }
 
-int rest_response_certinfo(rlm_rest_t const *inst, UNUSED rlm_rest_section_t const *section,
-			   REQUEST *request, void *handle)
-{
-	rlm_rest_handle_t	*randle = handle;
-	CURL			*candle = randle->candle;
-	CURLcode		ret;
-	int			i;
-	char		 	buffer[265];
-	char			*p , *q, *attr = buffer;
-	fr_cursor_t		cursor, list;
-	VALUE_PAIR		*cert_vps = NULL;
-
-	/*
-	 *	Examples and documentation show cert_info being
-	 *	a struct curl_certinfo *, but CPP checks require
-	 *	it to be a struct curl_slist *.
-	 *
-	 *	https://curl.haxx.se/libcurl/c/certinfo.html
-	 */
-	union {
-		struct curl_slist    *to_info;
-		struct curl_certinfo *to_certinfo;
-	} ptr;
-	ptr.to_info = NULL;
-
-	fr_cursor_init(&list, &request->packet->vps);
-
-	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
-	if (ret != CURLE_OK) {
-		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
-
-		return -1;
-	}
-
-	attr += strlcpy(attr, "TLS-Cert-", sizeof(buffer));
-
-	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
-	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
-		struct curl_slist *cert_attrs;
-
-		RDEBUG2("Processing certificate %i",i);
-		fr_cursor_init(&cursor, &cert_vps);
-
-		for (cert_attrs = ptr.to_certinfo->certinfo[i];
-		     cert_attrs;
-		     cert_attrs = cert_attrs->next) {
-		     	VALUE_PAIR		*vp;
-		     	fr_dict_attr_t const	*da;
-
-		     	q = strchr(cert_attrs->data, ':');
-			if (!q) {
-				RWDEBUG("Malformed certinfo from libcurl: %s", cert_attrs->data);
-				continue;
-			}
-
-			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
-			for (p = attr; *p != '\0'; p++) if (*p == ' ') *p = '-';
-
-			da = fr_dict_attr_by_name(dict_freeradius, buffer);
-			if (!da) {
-				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
-				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
-				continue;
-			}
-			MEM(vp = fr_pair_afrom_da(request->packet, da));
-			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
-
-			fr_cursor_append(&cursor, vp);
-		}
-
-		/*
-		 *	Add a copy of the cert_vps to session state.
-		 *
-		 *	Both PVS studio and Coverity detect the condition
-		 *	below as logically dead code unless we explicitly
-		 *	set cert_vps.  This is because they're too dumb
-		 *	to realise that the cursor argument passed to
-		 *	tls_session_pairs_from_x509_cert contains a
-		 *	reference to cert_vps.
-		 */
-		cert_vps = fr_cursor_current(&cursor);
-		if (cert_vps) {
-			/*
-			 *	Print out all the pairs we have so far
-			 */
-			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
-			fr_cursor_merge(&list, &cursor);
-			cert_vps = NULL;
-		}
-	}
-
-	return 0;
-}
-
 /** Sends the response to the correct decode function.
  *
  * Uses the Content-Type information written in rest_response_header to
  * determine the correct decode function to use. The decode function will
- * then convert the raw received data into VALUE_PAIRs.
+ * then convert the raw received data into fr_pair_ts.
  *
  * @param[in] instance	configuration data.
  * @param[in] section	configuration data.
  * @param[in] request	Current request.
- * @param[in] handle	to use.
+ * @param[in] randle	to use.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			 REQUEST *request, void *handle)
+			 request_t *request, fr_curl_io_request_t *randle)
 {
-	rlm_rest_handle_t	*randle = handle;
-	rlm_rest_curl_context_t	*ctx = randle->ctx;
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
 	int ret = -1;	/* -Wsometimes-uninitialized */
 
@@ -2303,16 +2074,16 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
 		return 0;
 
 	case REST_HTTP_BODY_PLAIN:
-		ret = rest_decode_plain(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
+		ret = rest_decode_plain(instance, section, request, randle, ctx->response.buffer, ctx->response.used);
 		break;
 
 	case REST_HTTP_BODY_POST:
-		ret = rest_decode_post(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
+		ret = rest_decode_post(instance, section, request, randle, ctx->response.buffer, ctx->response.used);
 		break;
 
 #ifdef HAVE_JSON
 	case REST_HTTP_BODY_JSON:
-		ret = rest_decode_json(instance, section, request, handle, ctx->response.buffer, ctx->response.used);
+		ret = rest_decode_json(instance, section, request, randle, ctx->response.buffer, ctx->response.used);
 		break;
 #endif
 
@@ -2322,7 +2093,7 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
 		return -1;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	return ret;
@@ -2337,12 +2108,11 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
  * context data.
  *
  * @param[in] instance configuration data.
- * @param[in] handle to cleanup.
+ * @param[in] randle to cleanup.
  */
-void rest_request_cleanup(UNUSED rlm_rest_t const *instance, void *handle)
+void rest_request_cleanup(UNUSED rlm_rest_t const *instance, fr_curl_io_request_t *randle)
 {
-	rlm_rest_handle_t	*randle = handle;
-	rlm_rest_curl_context_t	*ctx = randle->ctx;
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 
 	/*
@@ -2378,7 +2148,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t const *instance, void *handle)
  * @param[in] arg	pointer, gives context for escaping.
  * @return length of data written to out (excluding NULL).
  */
-size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg)
+size_t rest_uri_escape(UNUSED request_t *request, char *out, size_t outlen, char const *raw, UNUSED void *arg)
 {
 	char *escaped;
 
@@ -2403,7 +2173,7 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, char const *uri)
+ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, request_t *request, char const *uri)
 {
 	char const	*p;
 	char		*path_exp = NULL;
@@ -2469,16 +2239,15 @@ ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, cha
  *			buffer containing the escaped URI.
  * @param[in] inst	of rlm_rest.
  * @param[in] request	Current request
- * @param[in] handle	to use.
+ * @param[in] randle	to use.
  * @param[in] uri	configuration data.
  * @return
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *request,
-			       void *handle, char const *uri)
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, request_t *request,
+			       fr_curl_io_request_t *randle, char const *uri)
 {
-	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->candle;
 
 	char const		*p, *q;

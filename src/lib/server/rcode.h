@@ -26,6 +26,7 @@
 RCSIDH(rcode_h, "$Id$")
 
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/unlang/action.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +52,19 @@ typedef enum {
 	RLM_MODULE_UNKNOWN,				//!< Error resolving rcode (should not be
 							//!< returned by modules).
 } rlm_rcode_t;
+
+#define RETURN_MODULE_REJECT		do { *p_result = RLM_MODULE_REJECT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_FAIL		do { *p_result = RLM_MODULE_FAIL; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_OK		do { *p_result = RLM_MODULE_OK; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_HANDLED		do { *p_result = RLM_MODULE_HANDLED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_INVALID		do { *p_result = RLM_MODULE_INVALID; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_DISALLOW		do { *p_result = RLM_MODULE_DISALLOW; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_NOTFOUND		do { *p_result = RLM_MODULE_NOTFOUND; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_NOOP		do { *p_result = RLM_MODULE_NOOP; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_UPDATED		do { *p_result = RLM_MODULE_UPDATED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_YIELD		do { *p_result = RLM_MODULE_YIELD; return UNLANG_ACTION_YIELD; } while (0)
+#define RETURN_MODULE_RCODE(_rcode)	do { *p_result = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+
 extern fr_table_num_sorted_t const rcode_table[];
 extern size_t rcode_table_len;
 

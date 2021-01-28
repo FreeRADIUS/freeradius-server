@@ -9,37 +9,52 @@
 #
 #  The `etc_group` module provides group names from the `/etc/group` file.
 #
-#  NOTE: Please see the `passwd` module for full documentation on the
+#  NOTE: Please see the `csv` module for full documentation on the
 #  configuration items used here.
 #
 
 #
 #  ## Configuration Settings
 #
-#  The `passwd` module configuration, for the /etc/group file. Adds a
-#  `Etc-Group-Name` attribute for every group that the user is a member
-#  of.
+#  The `csv` module configuration for the /etc/group file.  The module
+#  adds a `Etc-Group-Name` attribute for every group that the user is
+#  a member of.
 #
-#  You will have to define the `Etc-Group-Name` in the `dictionary` file
-#  as a 'string' type.
+#  You will have to define the `Etc-Group-Name` in the `dictionary` file,
+#  as a `string` type.  For example:
 #
-#  The `Group` and `Group-Name` attributes are automatically created by
-#  the Unix module and check against `/etc/group` automatically.
+#	ATTRIBUTE Etc-Group-Name string 3020
 #
-#  [WARNING]
-#  ====
-#  * This means that you *CANNOT* use `Group` or `Group-Name` to do any other
-#    kind of grouping in the server. You *MUST* define a new group attribute.
-#  * This module should *NOT* be used as-is, but should be edited to
-#    point to a different group file.
-#  ====
+#  We cannot use the `Group` attribute here.  The `Group` attribute is
+#  automatically created by the `unix` module, and checked against
+#  `/etc/group` automatically.  Which means that the `Group` attribute
+#  has a pre-defined meaning, and you *cannot* use it for this module.
 #
-passwd etc_group {
-	filename = /etc/group
-	format = "=Etc-Group-Name:::*,User-Name"
-	hash_size = 50
-	ignore_nislike = yes
-	allow_multiple_keys = yes
+csv etc_group {
+	filename = ${modconfdir}/csv/${.:instance}
 	delimiter = ":"
-}
+	header = no
 
+	key = &User-Name
+
+	#
+	#  The field names are just place-holders.
+	#  They are NOT attribute names!
+	#
+	fields = "group:::,user"
+
+	index_field = user
+
+	#
+	#  Add the ETC-Group-Name attribute to the request list.
+	#  If the user is a member of multiple groups, then the
+	#  module will add multiple ETC-Group-Name attributes,
+	#  one for each group.
+	#
+	#  The field names from the `fields` entry above are used
+	#  here in the right-hand side of the `update` section.
+	#
+	update request {
+	       &ETC-Group-Name := 'group'
+	}
+}

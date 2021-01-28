@@ -1,9 +1,6 @@
 #
 #  PRE: update switch
 #
-update control {
-	&Cleartext-Password := 'hello'
-}
 
 #
 #  Virtual attribute references get mashed to xlats

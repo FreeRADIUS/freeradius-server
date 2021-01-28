@@ -80,7 +80,7 @@ struct fr_pcap {
 	fr_pcap_type_t		type;				//!< What type of handle this is.
 	char			*name;				//!< Name of file or interface.
 	uint8_t			ether_addr[ETHER_ADDR_LEN];	//!< The MAC address of the interface
-	int			if_index;			//!< ifindex of the name we're listening on.
+	int			ifindex;			//!< ifindex of the name we're listening on.
 
 	bool			promiscuous;			//!< Whether the interface is in promiscuous mode.
 								//!< Only valid for live capture handles.

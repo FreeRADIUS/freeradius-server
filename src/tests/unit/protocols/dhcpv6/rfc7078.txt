@@ -93,11 +93,11 @@ proto-dictionary dhcpv6
 #          prefix-len of 60; the prefix would be 8 octets and would contain
 #          octets 20 01 0d b8 00 00 00 00.
 #
-encode-pair Address-Selection-Flags = Privacy-Reference, Address-Selection-Table-Rows = { Address-Selection-Table-Label = 17, Address-Selection-Table-Precedence = 8, Address-Selection-Table-Prefix = ::ffff:0.0.0.16/128 }
+encode-pair Address-Selection.Privacy-Reference = yes, Address-Selection.Table-Rows = { Address-Selection-Table.Label = 17, Address-Selection-Table.Precedence = 8, Address-Selection-Table.Prefix = ::ffff:0.0.0.16/128 }
 match 00 54 00 18 01 00 55 00 13 11 08 80 00 00 00 00 00 00 00 00 00 00 ff ff 00 00 00 10
 
 decode-pair -
-match Address-Selection-Flags = Privacy-Reference, Address-Selection-Table-Rows = { Address-Selection-Table-Label = 17, Address-Selection-Table-Precedence = 8, Address-Selection-Table-Prefix = ::ffff:0.0.0.16/128 }
+match Address-Selection.Reserved = 0, Address-Selection.Automatic-Row-Addition = no, Address-Selection.Privacy-Reference = yes, Address-Selection.Table-Rows = { Address-Selection-Table.Label = 17, Address-Selection-Table.Precedence = 8, Address-Selection-Table.Prefix = ::ffff:0.0.0.16/128 }
 
 count
 match 6

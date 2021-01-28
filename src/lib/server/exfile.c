@@ -24,8 +24,9 @@
  * @copyright 2014 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/util/misc.h>
 
@@ -51,7 +52,7 @@ struct exfile_s {
 	bool			locking;
 	CONF_SECTION		*conf;			//!< Conf section to search for triggers.
 	char const		*trigger_prefix;	//!< Trigger path in the global trigger section.
-	VALUE_PAIR		*trigger_args;		//!< Arguments to pass to trigger.
+	fr_pair_list_t		trigger_args;		//!< Arguments to pass to trigger.
 };
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
@@ -64,15 +65,17 @@ struct exfile_s {
  * @param[in] entry for the file that the event occurred on.
  * @param[in] name_suffix trigger name suffix.
  */
-static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_entry_t *entry, char const *name_suffix)
+static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_entry_t *entry, char const *name_suffix)
 {
 	char			name[128];
-	VALUE_PAIR		*vp, *args;
+	fr_pair_t		*vp;
+	fr_pair_list_t		args;
 	fr_dict_attr_t const	*da;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
-	rad_assert(ef != NULL);
-	rad_assert(name_suffix != NULL);
+	fr_pair_list_init(&args);
+	fr_assert(ef != NULL);
+	fr_assert(name_suffix != NULL);
 
 	if (!ef->trigger_prefix) return;
 
@@ -82,22 +85,22 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 		return;
 	}
 
-	args = ef->trigger_args;
-	fr_cursor_init(&cursor, &args);
+	fr_pair_list_copy(request ? request->request_ctx : NULL, &args, &ef->trigger_args);
+	fr_dcursor_init(&cursor, &args);
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));
-	fr_pair_value_strcpy(vp, entry->filename);
+	fr_pair_value_strdup(vp, entry->filename);
 
-	fr_cursor_prepend(&cursor, vp);
+	fr_dcursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(request, ef->conf, name, false, args);
+	trigger_exec(request, ef->conf, name, false, &args);
 
-	talloc_free(vp);
+	fr_pair_list_free(&args);
 }
 
 
-static void exfile_cleanup_entry(exfile_t *ef, REQUEST *request, exfile_entry_t *entry)
+static void exfile_cleanup_entry(exfile_t *ef, request_t *request, exfile_entry_t *entry)
 {
 	if (entry->fd >= 0) close(entry->fd);
 
@@ -150,6 +153,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 
 	ef = talloc_zero(NULL, exfile_t);
 	if (!ef) return NULL;
+	fr_pair_list_init(&ef->trigger_args);
 
 	talloc_link_ctx(ctx, ef);
 
@@ -191,7 +195,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  * @param[in] trigger_args to make available in any triggers executed by the exfile api.
  *	Exfile-File is automatically added to this list.
  */
-void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, VALUE_PAIR *trigger_args)
+void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, fr_pair_list_t *trigger_args)
 {
 	talloc_const_free(ef->trigger_prefix);
 	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");
@@ -273,7 +277,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions)
+int exfile_open(exfile_t *ef, request_t *request, char const *filename, mode_t permissions)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
@@ -521,7 +525,7 @@ try_lock:
  *	- 0 on success.
  *	- -1 on failure.
  */
-int exfile_close(exfile_t *ef, REQUEST *request, int fd)
+int exfile_close(exfile_t *ef, request_t *request, int fd)
 {
 	uint32_t i;
 
@@ -549,6 +553,6 @@ int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 
 	pthread_mutex_unlock(&(ef->mutex));
 
-	fr_strerror_printf("Attempt to unlock file which is not tracked");
+	fr_strerror_const("Attempt to unlock file which is not tracked");
 	return -1;
 }

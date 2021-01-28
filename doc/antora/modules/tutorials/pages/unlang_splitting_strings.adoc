@@ -12,9 +12,9 @@
 
 *documentation page(s):*
 
-- xref:unlang:condition/index.adoc[Conditions]
-- xref:unlang:condition/regex.adoc[Regular expressions]
-- xref:unlang:update.adoc[The Update Statement]
+- xref:reference:unlang/condition/index.adoc[Conditions]
+- xref:reference:unlang/condition/regex.adoc[Regular expressions]
+- xref:reference:unlang/update.adoc[The Update Statement]
 
 include::partial$unlang_start.adoc[]
 
@@ -32,9 +32,9 @@ its components and setup the request for proxying.
 Create an unlang version of "suffix" that splits an incoming `&User-Name` into
 two components on the "@" separator.
 
-The first component should be written to the `&request:Stripped-User-Name`
+The first component should be written to the `&request.Stripped-User-Name`
 attribute and the second component should be written to the
-`&control:Stripped-User-Domain` attribute.
+`&control.Stripped-User-Domain` attribute.
 
 Use `bob@realm1.sh` and `bob@realm2.sh` to test your new policy to ensure
 it works as expected.
@@ -54,5 +54,5 @@ the request to the realm specified in the `&User-Name` attribute.
 3.  What is an advantage of using expression based string splitting
     over the suffix module?
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

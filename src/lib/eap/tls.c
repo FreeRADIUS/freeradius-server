@@ -75,18 +75,18 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "attrs.h"
 
 fr_table_num_ordered_t const eap_tls_status_table[] = {
-	{ "invalid",			EAP_TLS_INVALID			},
-	{ "established",		EAP_TLS_ESTABLISHED		},
-	{ "fail",			EAP_TLS_FAIL			},
-	{ "handled",			EAP_TLS_HANDLED			},
+	{ L("invalid"),			EAP_TLS_INVALID			},
+	{ L("established"),		EAP_TLS_ESTABLISHED		},
+	{ L("fail"),			EAP_TLS_FAIL			},
+	{ L("handled"),			EAP_TLS_HANDLED			},
 
-	{ "start",			EAP_TLS_START_SEND		},
-	{ "request",			EAP_TLS_RECORD_SEND		},
-	{ "ack",			EAP_TLS_ACK_SEND		},
+	{ L("start"),			EAP_TLS_START_SEND		},
+	{ L("request"),			EAP_TLS_RECORD_SEND		},
+	{ L("ack"),			EAP_TLS_ACK_SEND		},
 
-	{ "first",			EAP_TLS_RECORD_RECV_FIRST	},
-	{ "more",			EAP_TLS_RECORD_RECV_MORE	},
-	{ "complete",			EAP_TLS_RECORD_RECV_COMPLETE	}
+	{ L("first"),			EAP_TLS_RECORD_RECV_FIRST	},
+	{ L("more"),			EAP_TLS_RECORD_RECV_MORE	},
+	{ L("complete"),			EAP_TLS_RECORD_RECV_COMPLETE	}
 };
 size_t eap_tls_status_table_len = NUM_ELEMENTS(eap_tls_status_table);
 
@@ -108,16 +108,16 @@ size_t eap_tls_status_table_len = NUM_ELEMENTS(eap_tls_status_table);
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
-		    tls_record_t *record, size_t record_len, size_t frag_len)
+int eap_tls_compose(request_t *request, eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
+		    fr_tls_record_t *record, size_t record_len, size_t frag_len)
 {
 	eap_round_t		*eap_round = eap_session->this_round;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 	uint8_t			*p;
 	size_t			len = 1;	/* Flags */
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	First output the flags (for debugging)
@@ -204,7 +204,7 @@ int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status
 
 	default:
 		/* Should never enter here */
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -233,11 +233,11 @@ int eap_tls_compose(REQUEST *request, eap_session_t *eap_session, eap_tls_status
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_start(REQUEST *request, eap_session_t *eap_session)
+int eap_tls_start(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	return eap_tls_compose(request, eap_session, EAP_TLS_START_SEND,
 			       SET_START(eap_tls_session->base_flags), NULL, 0, 0);
@@ -263,14 +263,14 @@ int eap_tls_start(REQUEST *request, eap_session_t *eap_session)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
+int eap_tls_success(request_t *request, eap_session_t *eap_session,
 		    char const *keying_prf_label, size_t keying_prf_label_len,
 		    char const *sessid_prf_label, size_t sessid_prf_label_len)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	eap_session->finished = true;
 
@@ -280,7 +280,7 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 	 *	if it's not.
 	 */
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
-	tls_cache_disable_cb(tls_session->ssl, -1);
+	fr_tls_cache_disable_cb(tls_session->ssl, -1);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);	//-V575
 #endif
 
@@ -296,7 +296,7 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 	 *	could resume the session (and get access) even if phase2
 	 *	never completed.
 	 */
-	tls_cache_write(request, tls_session);
+	fr_tls_cache_write(request, tls_session);
 
 	/*
 	 *	Build the success packet
@@ -315,17 +315,19 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
 	 */
 	{
 		uint8_t		*session_id;
-		VALUE_PAIR	*vp;
-
-		if (eap_crypto_tls_session_id(request->parent->reply, request, tls_session->ssl,
-					      &session_id, eap_session->type,
-					      sessid_prf_label, sessid_prf_label_len) < 0) return -1;
+		fr_pair_t	*vp;
 
 		MEM(pair_add_reply(&vp, attr_eap_session_id) >= 0);
-		fr_pair_value_memsteal(vp, session_id, true);
+		if (eap_crypto_tls_session_id(vp, request, tls_session->ssl,
+					      &session_id, eap_session->type,
+					      sessid_prf_label, sessid_prf_label_len) < 0) {
+			pair_delete_reply(vp);
+			return -1;
+		}
+		fr_pair_value_memdup_buffer_shallow(vp, session_id, false);
 
 		RINDENT();
-		RDEBUG2("&reply:%pP", vp);
+		RDEBUG2("&reply.%pP", vp);
 		REXDENT();
 	}
 
@@ -345,19 +347,19 @@ int eap_tls_success(REQUEST *request, eap_session_t *eap_session,
  *	- 0 on success.
  *	- -1 on failure (to compose a valid packet).
  */
-int eap_tls_fail(REQUEST *request, eap_session_t *eap_session)
+int eap_tls_fail(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	eap_session->finished = true;
 
 	/*
 	 *	Destroy any cached session data
 	 */
-	tls_cache_deny(tls_session);
+	fr_tls_cache_deny(tls_session);
 
 	if (eap_tls_compose(request, eap_session, EAP_TLS_FAIL,
 			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
@@ -395,10 +397,10 @@ int eap_tls_fail(REQUEST *request, eap_session_t *eap_session)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_request(REQUEST *request, eap_session_t *eap_session)
+int eap_tls_request(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 	uint8_t			flags = eap_tls_session->base_flags;
 	size_t			frag_len;
 	bool			length_included;
@@ -487,11 +489,11 @@ int eap_tls_request(REQUEST *request, eap_session_t *eap_session)
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	that we're acking the fragment for.
  */
-static int eap_tls_ack(REQUEST *request, eap_session_t *eap_session)
+static int eap_tls_ack(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
 	return eap_tls_compose(request, eap_session, EAP_TLS_ACK_SEND,
@@ -507,10 +509,10 @@ static int eap_tls_ack(REQUEST *request, eap_session_t *eap_session)
  *	- EAP_TLS_FAIL - Fatal alert from the client.
  *	- EAP_TLS_RECORD_SEND - Need more data, or previous fragment was acked.
  */
-static eap_tls_status_t eap_tls_session_status(REQUEST *request, eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	if (tls_session == NULL){
 		REDEBUG("Unexpected ACK received:  No ongoing SSL tls_session");
@@ -578,7 +580,7 @@ static eap_tls_status_t eap_tls_session_status(REQUEST *request, eap_session_t *
  *	- EAP_TLS_RECORD_SEND send more data to peer.
  *	- EAP_TLS_ESTABLISHED handshake is complete, TLS session has been established.
  */
-static eap_tls_status_t eap_tls_verify(REQUEST *request, eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_session)
 {
 	eap_round_t		*this_round = eap_session->this_round;
 	eap_round_t		*prev_round = eap_session->prev_round;
@@ -587,7 +589,7 @@ static eap_tls_status_t eap_tls_verify(REQUEST *request, eap_session_t *eap_sess
 	eap_tls_data_t		*eap_tls_data;
 	size_t			frag_len, header_len;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	All EAP-TLS packets must contain type and flags fields.
@@ -603,8 +605,8 @@ static eap_tls_status_t eap_tls_verify(REQUEST *request, eap_session_t *eap_sess
 	 *	code which works together, so if something is wrong,
 	 *	we SHOULD core dump.
 	 *
-	 *	e.g. if this_round is NULL, of if this_round->response is
-	 *	NULL, of if it's NOT an EAP-Response, or if the packet
+	 *	e.g. if this_round is NULL, or if this_round->response is
+	 *	NULL, or if it's NOT an EAP-Response, or if the packet
 	 *	is too short.  See eap_validate()., in ../../eap.c
 	 */
 	eap_tls_data = (eap_tls_data_t *)this_round->response->type.data;
@@ -826,17 +828,17 @@ ignore_length:
  *	- EAP_TLS_ESTABLISHED if the handshake completed successfully, and there's
  *	  no more data to send.
  */
-static eap_tls_status_t eap_tls_handshake(REQUEST *request, eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_handshake(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	Continue the TLS handshake
 	 */
-	if (tls_session_handshake(request, tls_session) < 0) {
+	if (fr_tls_session_handshake(request, tls_session) < 0) {
 		REDEBUG("TLS receive handshake failed during operation");
-		tls_cache_deny(tls_session);
+		fr_tls_cache_deny(tls_session);
 		return EAP_TLS_FAIL;
 	}
 
@@ -899,10 +901,10 @@ static eap_tls_status_t eap_tls_handshake(REQUEST *request, eap_session_t *eap_s
  *	- EAP_TLS_ESTABLISHED
  *	- EAP_TLS_HANDLED
  */
-eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
+eap_tls_status_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	eap_round_t		*this_round = eap_session->this_round;
 	eap_tls_status_t	status;
@@ -911,7 +913,7 @@ eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
 	uint8_t			*data;
 	size_t			data_len;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	RDEBUG2("Continuing EAP-TLS");
 
@@ -994,7 +996,7 @@ eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
 
 			eap_tls_session->phase2 = true;
 
-			ret = tls_session_recv(request, tls_session);
+			ret = fr_tls_session_recv(request, tls_session);
 			switch (ret) {
 			case 0:
 				status = EAP_TLS_RECORD_RECV_COMPLETE;
@@ -1049,27 +1051,27 @@ eap_tls_status_t eap_tls_process(REQUEST *request, eap_session_t *eap_session)
 	return status;
 }
 
-/** Create a new tls_session_t associated with an #eap_session_t
+/** Create a new fr_tls_session_t associated with an #eap_session_t
  *
- * Creates a new server tls_session_t and associates it with an #eap_session_t
- * adding EAP specific opaque data to the SSL session created during tls_session_t
+ * Creates a new server fr_tls_session_t and associates it with an #eap_session_t
+ * adding EAP specific opaque data to the SSL session created during fr_tls_session_t
  * initialisation.
  *
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to use as a context for the eap_tls_session_t
- * @param[in] tls_conf		to use to configure the tls_session_t.
+ * @param[in] tls_conf		to use to configure the fr_tls_session_t.
  * @param[in] client_cert	Whether we require the peer to prevent a certificate.
  * @return
  *	- A new eap_tls_session on success.
  *	- NULL on error.
  */
-eap_tls_session_t *eap_tls_session_init(REQUEST *request, eap_session_t *eap_session,
+eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_session,
 					fr_tls_conf_t *tls_conf, bool client_cert)
 {
 	eap_tls_session_t	*eap_tls_session;
-	tls_session_t		*tls_session;
+	fr_tls_session_t		*tls_session;
 
-	rad_assert(request->parent);	/* must be a subrequest */
+	fr_assert(request->parent);	/* must be a subrequest */
 
 	/*
 	 *	This EAP session is associated with a TLS session
@@ -1097,7 +1099,7 @@ eap_tls_session_t *eap_tls_session_init(REQUEST *request, eap_session_t *eap_ses
 	 *	in the SSL session's opaque data so that we can use
 	 *	these data structures when we get the response.
 	 */
-	eap_tls_session->tls_session = tls_session = tls_session_init_server(eap_tls_session, tls_conf,
+	eap_tls_session->tls_session = tls_session = fr_tls_session_init_server(eap_tls_session, tls_conf,
 									     request, client_cert);
 	if (!tls_session) return NULL;
 
@@ -1161,7 +1163,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 
 	if (!tls_cs) return NULL;
 
-	tls_conf = tls_conf_parse_server(tls_cs);
+	tls_conf = fr_tls_conf_parse_server(tls_cs);
 	if (!tls_conf) return NULL;
 
 	/*

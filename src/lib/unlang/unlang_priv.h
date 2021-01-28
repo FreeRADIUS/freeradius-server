@@ -29,7 +29,7 @@
 #include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/io/listen.h>
 
@@ -60,7 +60,6 @@ typedef enum {
 	UNLANG_TYPE_LOAD_BALANCE,		//!< Load balance section.
 	UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
 	UNLANG_TYPE_PARALLEL,			//!< execute statements in parallel
-#ifdef WITH_UNLANG
 	UNLANG_TYPE_IF,				//!< Condition.
 	UNLANG_TYPE_ELSE,			//!< !Condition.
 	UNLANG_TYPE_ELSIF,			//!< !Condition && Condition.
@@ -76,10 +75,10 @@ typedef enum {
 	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
 	UNLANG_TYPE_DETACH,			//!< detach a child
 	UNLANG_TYPE_CALL,			//!< call another virtual server
-#endif
+	UNLANG_TYPE_CALLER,			//!< conditionally check parent dictionary type
 	UNLANG_TYPE_POLICY,			//!< Policy section.
-	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
+	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -97,8 +96,8 @@ typedef enum {
 #define UNLANG_NEXT_STOP	(false)
 #define UNLANG_NEXT_SIBLING	(true)
 
-#define UNLANG_DETACHABLE (true)
-#define UNLANG_NORMAL_CHILD (false)
+#define UNLANG_DETACHABLE	(true)
+#define UNLANG_NORMAL_CHILD	(false)
 
 typedef struct unlang_s unlang_t;
 
@@ -119,9 +118,20 @@ struct unlang_s {
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
-	CONF_ITEM const		*closed;       	//!< whether or not we can add any children, and where it was closed
+	bool			closed;		//!< whether or not this section is closed to new statements
 	int			actions[RLM_MODULE_NUMCODES];	//!< Priorities for the various return codes.
 };
+
+/** Describes how to allocate an #unlang_group_t with additional memory keyword specific data
+ *
+ */
+typedef struct {
+	unlang_type_t		type;		//!< Keyword.
+	size_t			len;		//!< Total length of the unlang_group_t + specialisation struct.
+	unsigned		pool_headers;	//!< How much additional space to allocate for chunk headers.
+	size_t			pool_len;	//!< How much additional space to allocate for extensions.
+	char const		*type_name;	//!< Talloc type name.
+} unlang_ext_t;
 
 /** Generic representation of a grouping
  *
@@ -131,40 +141,9 @@ typedef struct {
 	unlang_t		self;
 	unlang_t		*children;	//!< Children beneath this group.  The body of an if
 						//!< section for example.
-	unlang_t		*tail;		//!< of the children list.
+	unlang_t		**tail;		//!< pointer to the tail which gets updated
 	CONF_SECTION		*cs;
 	int			num_children;
-
-	/*
-	 *	Hackity-hack.  We should probably just have a common
-	 *	group header, and then have type-specific structures.
-	 */
-	union {
-		struct {
-			vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP
-
-			union {
-				struct {
-					vp_map_t		*map;		//!< #UNLANG_TYPE_FILTER, #UNLANG_TYPE_UPDATE, #UNLANG_TYPE_MAP,
-					map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
-				};
-				struct {
-					CONF_SECTION		*server_cs;	//!< #UNLANG_TYPE_CALL
-				};
-				struct {
-					fr_dict_t const		*dict;		//!< #UNLANG_TYPE_SUBREQUEST
-					fr_dict_attr_t const	*attr_packet_type;
-					fr_dict_enum_t const	*type_enum;
-				};
-			};
-		};
-		fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
-
-		struct {				//!< #UNLANG_TYPE_PARALLEL
-			bool			clone;
-			bool			detach;
-		};
-	};
 } unlang_group_t;
 
 /** A naked xlat
@@ -173,18 +152,10 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
-	int			exec;
-	char			*xlat_name;
-	xlat_exp_t		*exp;				//!< First xlat node to execute.
-} unlang_xlat_inline_t;
-
-/** State of a redundant operation
- *
- */
-typedef struct {
-	unlang_t 		*child;
-	unlang_t		*found;
-} unlang_frame_state_redundant_t;
+	tmpl_t const		*tmpl;
+	bool			inline_exec;
+	xlat_flags_t		flags;
+} unlang_tmpl_t;
 
 /** Our interpreter stack, as distinct from the C stack
  *
@@ -202,8 +173,8 @@ typedef struct {
 	unlang_t		*instruction;			//!< The unlang node we're evaluating.
 	unlang_t		*next;				//!< The next unlang node we will evaluate
 
-	unlang_op_interpret_t	interpret;			//!< function to call for interpreting this stack frame
-	unlang_op_signal_t	signal;				//!< function to call when signalling this stack frame
+	unlang_process_t	process;			//!< function to call for interpreting this stack frame
+	unlang_signal_t		signal;				//!< function to call when signalling this stack frame
 
 	/** Stack frame specialisations
 	 *
@@ -265,8 +236,6 @@ static inline bool is_break_point(unlang_stack_frame_t *frame)		{ return frame->
 static inline bool is_return_point(unlang_stack_frame_t *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
 static inline bool is_yielded(unlang_stack_frame_t *frame) 		{ return frame->uflags & UNWIND_FLAG_YIELDED; }
 
-static inline bool is_scheduled(REQUEST const *request)			{ return (request->runnable_id >= 0); }
-
 static inline unlang_action_t unwind_to_break(unlang_stack_t *stack)
 {
 	stack->unwind = UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME;
@@ -289,8 +258,6 @@ extern unlang_op_t unlang_ops[];
 
 #define MOD_NUM_TYPES (UNLANG_TYPE_XLAT + 1)
 
-extern char const *const comp2str[];
-
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
 
@@ -303,7 +270,7 @@ extern size_t mod_rcode_table_len;
  */
 static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
 {
-	rad_assert((p->type > UNLANG_TYPE_MODULE) && (p->type <= UNLANG_TYPE_POLICY));
+	fr_assert((p->type > UNLANG_TYPE_MODULE) && (p->type <= UNLANG_TYPE_POLICY));
 
 	return (unlang_group_t *)p;
 }
@@ -313,13 +280,13 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 	return (unlang_t *)p;
 }
 
-static inline unlang_xlat_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
+static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_XLAT_INLINE);
-	return talloc_get_type_abort(p, unlang_xlat_inline_t);
+	fr_assert(p->type == UNLANG_TYPE_TMPL);
+	return talloc_get_type_abort(p, unlang_tmpl_t);
 }
 
-static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
+static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t *p)
 {
 	return (unlang_t *)p;
 }
@@ -329,8 +296,9 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
  *
  * @{
  */
-void		unlang_interpret_push(REQUEST *request, unlang_t *instruction,
-				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame);
+int		unlang_interpret_push(request_t *request, unlang_t *instruction,
+				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
+				      CC_HINT(warn_unused_result);
 
 int		unlang_op_init(void);
 
@@ -344,9 +312,9 @@ void		unlang_op_free(void);
  *
  * @{
  */
-rlm_rcode_t	unlang_io_process_interpret(UNUSED void *instance, UNUSED void *thread, REQUEST *request);
+unlang_action_t unlang_io_process_interpret(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
-REQUEST		*unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable);
+request_t		*unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable);
 
 /** @} */
 
@@ -357,6 +325,8 @@ REQUEST		*unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace
  * @{
  */
 void		unlang_call_init(void);
+
+void		unlang_caller_init(void);
 
 void		unlang_condition_init(void);
 
@@ -383,6 +353,8 @@ int		unlang_subrequest_op_init(void);
 void		unlang_subrequest_op_free(void);
 
 void		unlang_switch_init(void);
+
+void		unlang_tmpl_init_shallow(void);
  /** @} */
 
 #ifdef __cplusplus

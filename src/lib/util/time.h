@@ -30,9 +30,9 @@ RCSIDH(time_h, "$Id$")
  *	For sys/time.h and time.h
  */
 #include <freeradius-devel/missing.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <sys/time.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -85,9 +85,12 @@ typedef struct {
 
 #define NSEC	(1000000000)
 #define USEC	(1000000)
+#define MSEC	(1000)
 
 int fr_time_start(void);
 int fr_time_sync(void);
+
+/** @hidecallergraph */
 fr_time_t fr_time(void);
 
 /*
@@ -108,17 +111,22 @@ static inline fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
 	return (((fr_unix_time_t) tv->tv_sec) * NSEC) + (((fr_unix_time_t) tv->tv_usec) * 1000);
 }
 
-static inline fr_time_delta_t fr_time_delta_from_usec(uint64_t usec)
+static inline fr_time_delta_t fr_time_delta_from_nsec(int64_t nsec)
 {
-	return (usec * 1000);
+	return nsec;
 }
 
-static inline fr_time_delta_t fr_time_delta_from_msec(uint64_t msec)
+static inline fr_time_delta_t fr_time_delta_from_usec(int64_t usec)
 {
-	return (msec * 1000000);
+	return (usec * MSEC);
 }
 
-static inline fr_time_delta_t fr_time_delta_from_sec(uint64_t sec)
+static inline fr_time_delta_t fr_time_delta_from_msec(int64_t msec)
+{
+	return (msec * USEC);
+}
+
+static inline fr_time_delta_t fr_time_delta_from_sec(int64_t sec)
 {
 	return (sec * NSEC);
 }
@@ -197,13 +205,21 @@ fr_unix_time_t fr_time_to_unix_time(fr_time_t when);
 int64_t		fr_time_wallclock_at_last_sync(void);
 
 fr_time_t	fr_time_from_sec(time_t when) CC_HINT(nonnull);
+fr_time_t	fr_time_from_msec(int64_t when) CC_HINT(nonnull);
+fr_time_t	fr_time_from_usec(int64_t when) CC_HINT(nonnull);
+fr_time_t	fr_time_from_nsec(int64_t when) CC_HINT(nonnull);
+
 fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);
 fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull);
 int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);
 int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
 
+size_t		fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt) CC_HINT(format(strftime, 3, 0));
+size_t		fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)  CC_HINT(format(strftime, 3, 0));
+
 void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
 void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));
+time_t		fr_time_from_utc(struct tm *tm) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

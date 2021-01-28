@@ -3,7 +3,7 @@
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
-#	Attributes used by ippool modules (5100-5199)
+#	Attributes used by IP-Pool modules (5100-5199)
 #
 #	$Id$
 #
@@ -13,14 +13,23 @@
 #
 FLAGS	internal
 
-ATTRIBUTE	Pool-Name				5100	string
+ATTRIBUTE	IP-Pool					5100	tlv
 
-ATTRIBUTE	Pool-Action				5101	integer
-ATTRIBUTE	Pool-Range				5102	string
+BEGIN-TLV 	IP-Pool
+ATTRIBUTE	Name					1	string	# Generic identifier for the IP pool to allocate from
+ATTRIBUTE	Name-NA					2	string	# DHCPv6 - Non-Temporary association pool
+ATTRIBUTE	Name-PD					3	string	# DHCPv6 - Prefix-deligation pool
+ATTRIBUTE	Name-TA					4	string	# DHCPv6 - Temporary association pool
+ATTRIBUTE	Action					5	integer
 
-VALUE	Pool-Action			Allocate		1
+VALUE	Action			Allocate		1
 # Renew == Update (they're the same action)
-VALUE	Pool-Action			Renew			2
-VALUE	Pool-Action			Update			2
-VALUE	Pool-Action			Release			3
-VALUE	Pool-Action			Bulk-Release		4
+VALUE	Action			Renew			2
+VALUE	Action			Update			2
+VALUE	Action			Release			3
+VALUE	Action			Bulk-Release		4
+
+ATTRIBUTE	Range					6	string
+END-TLV		IP-Pool
+
+

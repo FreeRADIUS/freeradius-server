@@ -31,8 +31,8 @@ yubikey {
 	#  split:: If true, the authorize method of `rlm_yubikey` will attempt to split the
 	#  value of `User-Password`, into the user's password, and the OTP token.
 	#
-	#  NOTE: If enabled and successful, the value of `&request:User-Password` will be
-	#  truncated and `&request:Yubikey-OTP` will be added.
+	#  NOTE: If enabled and successful, the value of `&request.User-Password` will be
+	#  truncated and `&request.Yubikey-OTP` will be added.
 	#
 #	split = yes
 
@@ -55,7 +55,7 @@ yubikey {
 	#  If two factor authentication (password concatenated with OTP) is required, split
 	#  configuration should be set to yes and the pap module should be uncommented.
 	#
-	#  Each account will need a password added (either using attribute `Cleartext-Password`,
+	#  Each account will need a password added (either using attribute `Password.Cleartext`,
 	#  `SSHA-Password`, etc.).
 	#
 	#  The module itself does not provide persistent storage as
@@ -66,11 +66,11 @@ yubikey {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Attributes                 | Description
-	#  | `&control:Yubikey-Key`     | The AES key used to decrypt the OTP data.
+	#  | `&control.Yubikey-Key`     | The AES key used to decrypt the OTP data.
 	#                                 The `Yubikey-Public-Id` and/or User-Name
 	#                                 attributes may be used to retrieve the key.
 	#                                 The value is a `16-byte` binary blob.
-	#  | `&control:Yubikey-Counter` | This is compared with the counter in the OTP
+	#  | `&control.Yubikey-Counter` | This is compared with the counter in the OTP
 	#                                 data and used to prevent replay attacks.
 	#                                 This attribute will also be available in
 	#                                 the request list after successful decryption.
@@ -84,7 +84,7 @@ yubikey {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Attributes                   | Description
-	#  | `&request:Yubikey-Public-ID` | The public portion of the OTP string.
+	#  | `&request.Yubikey-Public-ID` | The public portion of the OTP string.
 	#                                   The value is a `id_len` modhex string.
 	#  |===
 	#
@@ -93,7 +93,7 @@ yubikey {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Attributes             | Description
-	#  | `&request:Yubikey-OTP` | The OTP portion of `User-Password`.
+	#  | `&request.Yubikey-OTP` | The OTP portion of `User-Password`.
 	#  |===
 	#
 	#  These attributes are available after authentication (if successful):
@@ -101,19 +101,19 @@ yubikey {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Attributes                    | Description
-	#  | `&request:Yubikey-Private-ID` | The encrypted ID included in OTP data,
+	#  | `&request.Yubikey-Private-ID` | The encrypted ID included in OTP data,
 	#                                    should be verified for increased security.
 	#                                    The value is a `6-byte` binary blob.
-	#  | `&request:Yubikey-Counter`    | The last counter value (should be recorded).
+	#  | `&request.Yubikey-Counter`    | The last counter value (should be recorded).
 	#                                    The value is a concatenation of the 16-bit
 	#                                    session count & `8-bit` use count which form a
 	#                                    `24-bit` monotonically strictly increasing
 	#                                    integer (until the individual count ceilings
 	#                                    are hit)
-	#  | `&request:Yubikey-Timestamp`  | Token's internal clock (mainly useful for debugging).
+	#  | `&request.Yubikey-Timestamp`  | Token's internal clock (mainly useful for debugging).
 	#                                    The value is a 24-bit increasing `integer @ 8 Hz`
 	#                                    with rollover which is randomly initialized each session.
-	#  | `&request:Yubikey-Random`     | Randomly generated value from the token.
+	#  | `&request.Yubikey-Random`     | Randomly generated value from the token.
 	#                                    The value is a 16-bit integer.
 	#  |===
 	#

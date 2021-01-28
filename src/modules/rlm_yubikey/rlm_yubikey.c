@@ -25,6 +25,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/radius/radius.h>
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT
@@ -125,14 +126,18 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 	return i;
 }
 
-/**
- * @brief Convert Yubikey modhex to standard hex
+/** Xlat to convert Yubikey modhex to standard hex
  *
- * Example: "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
+ * Example:
+@verbatim
+"%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  	  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			  	  REQUEST *request, char const *fmt)
+			  	  request_t *request, char const *fmt)
 {
 	ssize_t len;
 
@@ -165,15 +170,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 #endif
 
-	if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(attr_auth_type), inst->name) < 0) {
-		PERROR("Failed adding %s alias", inst->name);
-		return -1;
-	}
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
-
 	if (!cf_section_name2(conf)) return 0;
 
-	xlat_register(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }
@@ -191,6 +190,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_yubikey_t *inst = instance;
+
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  Yubikey authentication will likely not work",
+		     inst->name);
+	}
 
 	if (inst->validate) {
 #ifdef HAVE_YKCLIENT
@@ -240,31 +245,30 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_yubikey_t const *inst = instance;
-
-	char const	*passcode;
-	size_t		len;
-	VALUE_PAIR	*vp, *password;
-	char const	*otp;
-	size_t		password_len;
-	int		ret;
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
+	char const		*passcode;
+	size_t			len;
+	fr_pair_t		*vp, *password;
+	char const		*otp;
+	size_t			password_len;
+	int			ret;
 
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 	if (!password) {
 		/*
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
 		 */
-		if (request->packet->code != FR_CODE_ACCESS_CHALLENGE) {
+		if ((request->dict == dict_radius) && request->packet->code != FR_CODE_ACCESS_CHALLENGE) {
 			RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 		}
 
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	passcode = password->vp_strvalue;
@@ -280,7 +284,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	if (len < (inst->id_len + YUBIKEY_TOKEN_LEN)) {
 		RDEBUG2("User-Password value is not the correct length, expected at least %u bytes, got %zu bytes",
 			inst->id_len + YUBIKEY_TOKEN_LEN, len);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
@@ -292,35 +296,31 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		} else {
 			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
 		}
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* May be a concatenation, check the last 32 bytes are modhex */
 	if (inst->split) {
-		char *remainder;
-
 		/*
 		 *	Insert a new request attribute just containing the OTP
 		 *	portion.
 		 */
 		MEM(pair_update_request(&vp, attr_yubikey_otp) >= 0);
-		fr_pair_value_strcpy(vp, otp);
+		fr_pair_value_strdup(vp, otp);
 
 		/*
 		 *	Replace the existing string buffer for the password
 		 *	attribute with one just containing the password portion.
 		 */
-		MEM(remainder = talloc_array(password, char, password_len + 1));
-		strlcpy(remainder, passcode, password_len + 1);
-		fr_pair_value_strsteal(password, remainder);
+		MEM(fr_pair_value_bstr_realloc(password, NULL, password_len) == 0);
 
 		RINDENT();
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("&request:%pP", vp);
-			RDEBUG3("&request:%pP", password);
+			RDEBUG3("&request.%pP", vp);
+			RDEBUG3("&request.%pP", password);
 		} else {
-			RDEBUG2("&request:%s := <<< secret >>>", vp->da->name);
-			RDEBUG2("&request:%s := <<< secret >>>", password->da->name);
+			RDEBUG2("&request.%s := <<< secret >>>", vp->da->name);
+			RDEBUG2("&request.%s := <<< secret >>>", password->da->name);
 		}
 		REXDENT();
 
@@ -338,37 +338,43 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 */
 	if (inst->id_len) {
 		MEM(pair_update_request(&vp, attr_yubikey_public_id) >= 0);
-		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
+		fr_pair_value_bstrndup(vp, passcode, inst->id_len, true);
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Yubikey authentication",
+		     inst->name, inst->name);
+		RETURN_MODULE_NOOP;
+	}
 
-	return RLM_MODULE_OK;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+
+	RETURN_MODULE_OK;
 }
 
 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rcode_t rcode = RLM_MODULE_NOOP;
-	rlm_yubikey_t const *inst = instance;
-	char const *passcode = NULL;
-	VALUE_PAIR const *vp;
-	size_t len;
-	int ret;
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	char const		*passcode = NULL;
+	fr_pair_t const	*vp;
+	size_t			len;
+	int			ret;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_yubikey_otp, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_yubikey_otp);
 	if (!vp) {
 		RDEBUG2("No Yubikey-OTP attribute found, falling back to User-Password");
 		/*
 		 *	Can't do yubikey auth if there's no password.
 		 */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 		if (!vp) {
 			REDEBUG("No User-Password in the request. Can't do Yubikey authentication");
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 	}
 
@@ -384,7 +390,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	if (len != (inst->id_len + YUBIKEY_TOKEN_LEN)) {
 		REDEBUG("%s value is not the correct length, expected bytes %u, got bytes %zu",
 			vp->da->name, inst->id_len + YUBIKEY_TOKEN_LEN, len);
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
@@ -394,25 +400,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		} else {
 			RERROR("Passcode (aes-block) value contains non modhex chars");
 		}
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 #ifdef HAVE_YUBIKEY
 	if (inst->decrypt) {
-		rcode = rlm_yubikey_decrypt(inst, request, passcode);
-		if (rcode != RLM_MODULE_OK) {
-			return rcode;
-		}
+
+		rlm_yubikey_decrypt(&rcode, inst, request, passcode);
+		if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 		/* Fall-Through to doing ykclient auth in addition to local auth */
 	}
 #endif
 
 #ifdef HAVE_YKCLIENT
-	if (inst->validate) {
-		return rlm_yubikey_validate(inst, request, passcode);
-	}
+	if (inst->validate) return rlm_yubikey_validate(p_result, inst, request, passcode);
 #endif
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*

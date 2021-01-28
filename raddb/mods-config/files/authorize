@@ -69,7 +69,7 @@
 # entry so that no DEFAULT entry will be used, and the user will NOT
 # get any attributes in addition to the ones listed here.
 #
-#steve	Cleartext-Password := "testing"
+#steve	Password.Cleartext := "testing"
 #	Service-Type = Framed-User,
 #	Framed-Protocol = PPP,
 #	Framed-IP-Address = 172.16.3.33,
@@ -83,7 +83,7 @@
 # The canonical testing user which is in most of the
 # examples.
 #
-#bob	Cleartext-Password := "hello"
+#bob	Password.Cleartext := "hello"
 #	Reply-Message := "Hello, %{User-Name}"
 #
 
@@ -95,13 +95,13 @@
 #
 # See raddb/policy.d/filter, filter_username {} section.
 #
-#"John Doe"	Cleartext-Password := "hello"
+#"John Doe"	Password.Cleartext := "hello"
 #		Reply-Message = "Hello, %{User-Name}"
 
 #
 # Dial user back and telnet to the default host for that port
 #
-#Deg	Cleartext-Password := "ge55ged"
+#Deg	Password.Cleartext := "ge55ged"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
@@ -113,7 +113,7 @@
 # connection will be broken and the user will be dialed back after which
 # he will get a connection to the host "timeshare1".
 #
-#dialbk	Cleartext-Password := "callme"
+#dialbk	Password.Cleartext := "callme"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = timeshare1,
 #	Login-Service = PortMaster,
@@ -129,17 +129,6 @@
 #swilson	Service-Type == Framed-User, Huntgroup-Name == "alphen"
 #		Framed-IP-Address = 192.0.2.65,
 #		Fall-Through = Yes
-
-#
-# If the user logs in as 'username.shell', then authenticate them
-# using the default method, give them shell access, and stop processing
-# the rest of the file.
-#
-#DEFAULT	Suffix == ".shell"
-#		Service-Type = Login-User,
-#		Login-Service = Telnet,
-#		Login-IP-Host = your.shell.machine
-
 
 #
 # The rest of this file contains the several DEFAULT entries.

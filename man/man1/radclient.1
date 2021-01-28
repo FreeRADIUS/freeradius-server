@@ -1,0 +1,242 @@
+'\" t
+.\"     Title: radclient
+.\"    Author: Alan DeKok
+.\" Generator: Asciidoctor 2.0.10
+.\"      Date: 2020-12-25
+.\"    Manual: FreeRADIUS
+.\"    Source: FreeRADIUS
+.\"  Language: English
+.\"
+.TH "RADCLIENT" "1" "2020-12-25" "FreeRADIUS" "FreeRADIUS"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+radclient \- send packets to a RADIUS server, show reply
+.SH "SYNOPSIS"
+.sp
+\fBradclient\fP \fI[ OPTIONS ]\fP \fIserver {acct|auth|status|disconnect|auto} secret\fP
+.SH "DESCRIPTION"
+.sp
+`radclient* is a radius client program. It can send arbitrary radius
+packets to a radius server, then shows the reply. It can be used to test
+changes you made in the configuration of the radius server, or it can be
+used to monitor if a radius server is up.
+.sp
+\fBradclient\fP reads radius attribute/value pairs from it standard input,
+or from a file specified on the command line. It then encodes these
+attribute/value pairs using the dictionary, and sends them to the remote
+server.
+.sp
+The \f(CRUser\-Password\fP and \f(CRCHAP\-Password\fP attributes are automatically
+encrypted before the packet is sent to the server.
+.SH "OPTIONS"
+.sp
+\fB\-4\fP
+.RS 4
+Use IPv4 (default)
+.RE
+.sp
+\fB\-6\fP
+.RS 4
+Use IPv6
+.RE
+.sp
+\fB\-c count\fP
+.RS 4
+Send each packet \fIcount\fP times.
+.RE
+.sp
+\fB\-d config_dir\fP
+.RS 4
+The directory that contains the user dictionary file. Defaults to
+\f(CR/etc/raddb\fP.
+.RE
+.sp
+\fB\-D dict_dir\fP
+.RS 4
+The directory that contains the main dictionary file. Defaults to
+\f(CR/usr/share/freeradius/dictionary\fP.
+.RE
+.sp
+\fB\-f filename[:filename]\fP
+.RS 4
+File to read the attribute/value pairs from. If this is not specified,
+they are read from stdin. This option can be specified multiple times,
+in which case packets are sent in order by file, and within each file,
+by first packet to last packet. A blank line separates logical packets
+within a file. If a pair of files separated by a colon is specified, the
+second file will be used to filter the responses to requests from the
+first. The number of requests and filters must be the same. A summary of
+filter results will be displayed if \-s is passed.
+.RE
+.sp
+\fB\-F\fP
+.RS 4
+Print the file name, packet number and reply code.
+.RE
+.sp
+\fB\-h\fP
+.RS 4
+Print usage help information.
+.RE
+.sp
+\fB\-i id\fP
+.RS 4
+Use \fIid\fP as the RADIUS request Id.
+.RE
+.sp
+\fB\-n number\fP
+.RS 4
+ Try to send \fInumber\fP requests per second, evenly spaced. This option
+allows you to slow down the rate at which radclient sends requests. When
+not using \f(CR\-n\fP, the default is to send packets as quickly as possible,
+with no inter\-packet delays.
++
+Due to limitations in radclient, this option does not accurately send
+the requested number of packets per second.
+.RE
+.sp
+\fB\-p number\fP
+.RS 4
+ Send \fInumber\fP requests in parallel, without waiting for a response
+for each one. By default, radclient sends the first request it has
+read, waits for the response, and once the response is received,
+sends the second request in its list. This option allows you to send
+many requests at simultaneously. Once \fInumber\fP are sent, radclient
+waits for all of the responses to arrive (or for the requests to
+time out), before sending any more packets.
++
+This option permits you to discover the maximum load accepted by a
+RADIUS server.
+.RE
+.sp
+\fB\-P proto\fP
+.RS 4
+Use \fIproto\fP transport protocol ("tcp" or "udp"). Only available if
+FreeRADIUS is compiled with TCP transport support.
+.RE
+.sp
+\fB\-q\fP
+.RS 4
+Go to quiet mode, and do not print out anything.
+.RE
+.sp
+\fB\-r number\fP
+.RS 4
+Try to send each packet \fInumber\fP of times as retries, before giving up on it.
+The default is 10.
+.RE
+.sp
+\fB\-s\fP
+.RS 4
+Print out some summaries of packets sent and received.
+.RE
+.sp
+\fB\-S filename\fP
+.RS 4
+ Rather than reading the shared secret from the command\-line (where it
+can be seen by others on the local system), read it instead from
+\fIfilename\fP.
+.RE
+.sp
+\fB\-t timeout\fP
+.RS 4
+Wait \fItimeout\fP seconds before deciding that the NAS has not responded
+to a request, and re\-sending the packet. The default timeout is 3.
+.RE
+.sp
+\fB\-v\fP
+.RS 4
+Print out version information.
+.RE
+.sp
+\fB\-x\fP
+.RS 4
+Print out debugging information.
+.RE
+.sp
+\fBserver[:port]\fP
+.RS 4
+ The hostname or IP address of the remote server. Optionally a UDP port
+can be specified. If no UDP port is specified, it is looked up in
+\f(CR/etc/services\fP. The service name looked for is \fBradacct\fP for accounting
+packets, and \fBradius\fP for all other requests. If a service is not found
+in \f(CR/etc/services\fP, 1813 and 1812 are used respectively.
++
+The RADIUS attributes read by \fIradclient\fP can contain the special
+attribute \f(CRPacket\-Dst\-IP\-Address\fP. If this attribute exists, then that
+IP address is where the packet is sent, and the \fBserver\fP specified on
+the command\-line is ignored.
++
+If the RADIUS attribute list always contains the \f(CRPacket\-Dst\-IP\-Address\fP
+attribute, then the \fBserver\fP parameter can be given as \fB\-\fP.
++
+The RADIUS attributes read by \fIradclient\fP can contain the special
+attribute \f(CRPacket\-Dst\-Port\fP. If this attribute exists, then that UDP
+port is where the packet is sent, and the \fB:port\fP specified on the
+command\-line is ignored.
+.RE
+.sp
+\fBauth | acct | status | disconnect | auto\fP
+.RS 4
+ Use \fBauth\fP to send an authentication packet (Access\-Request), \fBacct\fP
+to send an accounting packet (Accounting\-Request), \fBstatus\fP to send an
+status packet (Status\-Server), or \fBdisconnect\fP to send a disconnection
+request. Instead of these values, you can also use a decimal code here.
+For example, code 12 is also \fBStatus\-Server\fP.
++
+The RADIUS attributes read by \fIradclient\fP can contain the special
+attribute \f(CRPacket\-Type\fP. If this attribute exists, then that type of
+packet is sent, and the \fItype\fP specified on the command\-line is ignored.
++
+If the RADIUS attribute list always contains the \f(CRPacket\-Type\fP
+attribute, then the \fBtype\fP parameter can be given as \fBauto\fP.
+.RE
+.sp
+\fBsecret\fP
+.RS 4
+The shared secret for this client. It needs to be defined on the
+radius server side too, for the IP address you are sending the radius
+packets from.
+.RE
+.SH "EXAMPLE"
+.sp
+A sample session that queries the remote server for \fIStatus\-Server\fP.
+Not all servers support this, but FreeRADIUS has configurable support
+for it.
+.sp
+.if n .RS 4
+.nf
+$ echo "Message\-Authenticator = 0x00" | radclient 192.0.2.42 status s3cr3t
+Sending request to server 192.0.2.42, port 1812.
+Received Packet from host 192.0.2.42 code=2, id=140, length=54
+    Reply\-Message = "FreeRADIUS up 21 days, 02:05"
+.fi
+.if n .RE
+.SH "SEE ALSO"
+.sp
+radiusd(8),
+.SH "AUTHOR"
+.sp
+The FreeRADIUS Server Project (\c
+.URL "http://www.freeradius.org" "" ")"
+.SH "AUTHOR"
+.sp
+Alan DeKok

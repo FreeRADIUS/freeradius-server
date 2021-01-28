@@ -10,7 +10,7 @@
 #  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 #
 #  MS-CHAP authentication requires access to either the
-#  Cleartext-Password or NT-Password attribute for the user.  Due to
+#  Password.Cleartext or NT-Password attribute for the user.  Due to
 #  the limitations of MS-CHAP, no other password "encryption" methods
 #  are possible.
 #
@@ -322,7 +322,7 @@ mschap {
 		#
 		#  TIP: We give both examples here, but *only one should be used*.
 		#
-#		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Cleartext-Password}}"
+#		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Password.Cleartext}}"
 #		local_cpw = "%{sql:UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='NT-Password'}"
 	}
 

@@ -157,17 +157,17 @@ Useful range of values: 5 to 600
 
 
 
-nak_lifetime:: Time for which blacklisted
+nak_lifetime:: Time for which blocked
 clients are placed into a NAK cache.
 
 If a dynamic client is disallowed, it is
-placed onto a "NAK" blacklist for a period
-of time.  This blacklist helps to prevent
+placed onto a "NAK" list for a period
+of time.  This process helps to prevent
 DoS attacks.  When subsequent packets are
 received from that IP address, they hit the
 "NAK" cache, and are immediately discarded.
 
-After `nak_timeout` seconds, the blacklist
+After `nak_timeout` seconds, the blocked
 entry will be removed, and the IP will be
 allowed to try again to define a dynamic
 client.
@@ -871,7 +871,7 @@ encrypted via `crypt`, `bcrypt`, or other hashing.
 
 For users who are using CHAP authentication. A back-end database
 listed in the "recv Access-Request" section MUST supply a
-Cleartext-Password attribute. Encrypted passwords won't work.
+Password.Cleartext attribute. Encrypted passwords won't work.
 
 
 
@@ -879,7 +879,7 @@ Cleartext-Password attribute. Encrypted passwords won't work.
 
 For users who are using MS-CHAP authentication. A back-end
 database listed in the "recv Access-Request" section MUST supply
-either a Cleartext-Password attribute, or an NT-Password
+either a Password.Cleartext attribute, or an NT-Password
 attribute. Encrypted passwords won't work.
 
 
@@ -1269,8 +1269,11 @@ be incorrect. There is little we can do about it.
 
 
 
-Return an address to the IP Pool when we see a stop
-record.
+Refresh leases when we see a start or alive. Return an address to
+the IP Pool when we see a stop record.
+
+Ensure that &control.IP-Pool.Name is set to determine which
+pool of IPs are used.
 
 
 
@@ -1423,7 +1426,7 @@ recv Access-Request {
 	-sql
 #	smbpasswd
 	-ldap
-#	daily
+#	dailycounter
 	expiration
 	logintime
 	pap
@@ -1476,47 +1479,47 @@ send Access-Challenge {
 	handled
 }
 send Access-Accept {
-#	if (!&reply:State) {
+#	if (!&reply.State) {
 #		update reply {
 #			&State := "0x%{randstr:16h}"
 #		}
 #	}
 	update {
-		&reply: += &session-state:
+		&reply += &session-state
 	}
 	eap
-#	main_pool
+#	sqlippool
 #	cui
 #	reply_log
 	-sql
 #	sql_log
 #	ldap
 #	update request {
-#		WiMAX-MN-NAI = "%{User-Name}"
+#		&WiMAX-MN-NAI = "%{User-Name}"
 #	}
 #	update reply {
-#		WiMAX-FA-RK-Key = 0x00
-#		WiMAX-MSK = "%{EAP-MSK}"
+#		&WiMAX-FA-RK-Key = 0x00
+#		&WiMAX-MSK = "%{reply.EAP-MSK}"
 #	}
 #	wimax
 #	update reply {
-#		&Reply-Message += "%{session-state:TLS-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 #	insert_acct_class
-#	if (&reply:EAP-Session-Id) {
+#	if (&reply.EAP-Session-Id) {
 #		update reply {
-#			&EAP-Key-Name := &reply:EAP-Session-Id
+#			&EAP-Key-Name := &reply.EAP-Session-Id
 #		}
 #	}
 	remove_reply_message_if_eap
@@ -1560,7 +1563,7 @@ send Accounting-Response {
 	unix
 #	radutmp
 #	sradutmp
-#	main_pool
+#	sqlippool
 	-sql
 #	if (noop) {
 #		ok

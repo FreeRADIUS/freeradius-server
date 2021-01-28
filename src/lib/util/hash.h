@@ -57,14 +57,12 @@ typedef struct fr_hash_table_s fr_hash_table_t;
 typedef void (*fr_hash_table_free_t)(void *);
 typedef uint32_t (*fr_hash_table_hash_t)(void const *);
 typedef int (*fr_hash_table_cmp_t)(void const *, void const *);
-typedef int (*fr_hash_table_walk_t)(void * /* ctx */, void * /* data */);
+typedef int (*fr_hash_table_walk_t)(void *data, void *uctx);
 
 fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
 				      fr_hash_table_hash_t hashNode,
 				      fr_hash_table_cmp_t cmpNode,
 				      fr_hash_table_free_t freeNode);
-
-void		fr_hash_table_free(fr_hash_table_t *ht);
 
 int		fr_hash_table_insert(fr_hash_table_t *ht, void const *data);
 
@@ -74,13 +72,15 @@ void		*fr_hash_table_yank(fr_hash_table_t *ht, void const *data);
 
 int		fr_hash_table_replace(fr_hash_table_t *ht, void const *data);
 
-void		*fr_hash_table_finddata(fr_hash_table_t *ht, void const *data);
+void		*fr_hash_table_find_by_data(fr_hash_table_t *ht, void const *data);
+
+void		*fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data);
 
 int		fr_hash_table_num_elements(fr_hash_table_t *ht);
 
 int		fr_hash_table_walk(fr_hash_table_t *ht,
-				     fr_hash_table_walk_t callback,
-				     void *ctx);
+				   fr_hash_table_walk_t callback,
+				   void *uctx);
 
 void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter);
 

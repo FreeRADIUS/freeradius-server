@@ -27,7 +27,7 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 
@@ -58,7 +58,7 @@ fr_dict_attr_autoload_t proto_radius_dynamic_client_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -77,20 +77,22 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		}
 
 		RDEBUG("Running 'new client' from file %s", cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
-
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
@@ -113,19 +115,22 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 	rerun_nak:
 		RDEBUG("Running '%s client' from file %s", cf_section_name1(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -155,18 +160,18 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		}
 
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
-			VALUE_PAIR *vp;
+			fr_pair_t *vp;
 
-			vp = fr_pair_find_by_da(request->control, attr_freeradius_client_ip_address, TAG_ANY);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_address, TAG_ANY);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ip_prefix, TAG_ANY);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_prefix, TAG_ANY);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_prefix);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_prefix);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
 				goto deny;
 			}
 
-			vp = fr_pair_find_by_da(request->control, attr_freeradius_client_secret, TAG_ANY);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_secret);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client-Secret attribute");
 				goto deny;
@@ -189,14 +194,14 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "new",
 		.name2 = "client",

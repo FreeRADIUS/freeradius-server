@@ -25,21 +25,25 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/radius/radius.h>
+
+#include <freeradius-devel/io/pair.h>
 #include "chbind.h"
 #include "attrs.h"
 
-static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
+static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 {
-	int			length;
+	ssize_t			slen;
 	size_t			total;
 	uint8_t			*ptr, *end;
-	VALUE_PAIR		const *vp;
-	fr_cursor_t		cursor;
+	fr_pair_t		const *vp;
+	fr_dcursor_t		cursor;
 
 	total = 0;
-	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
+	for (vp = fr_pair_list_head(&request->reply_pairs);
 	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->reply_pairs, vp)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
@@ -64,7 +68,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_chbind_response_code, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_chbind_response_code);
 	if (vp) {
 		ptr[0] = vp->vp_uint32;
 	} else {
@@ -79,26 +83,35 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	ptr[3] = CHBIND_NSID_RADIUS;
 
 	RDEBUG2("Sending chbind response: code %i", (int )(ptr[0]));
-	log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
+	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 
 	/* Encode the chbind attributes into the response */
 	ptr += 4;
 	end = ptr + total;
 
-	fr_cursor_init(&cursor, &request->reply->vps);
-	while ((vp = fr_cursor_current(&cursor)) && (ptr < end)) {
+	fr_dcursor_init(&cursor, &request->reply_pairs);
+	while ((vp = fr_dcursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
+		 *	i.e. tagged, encrypted, or extended attributes
 		 */
-		if (!vp->da->flags.subtype && (vp->da->flags.subtype != FLAG_ENCRYPT_NONE)) {
+		if (vp->da->flags.subtype) {
 		next:
-			fr_cursor_next(&cursor);
+			fr_dcursor_next(&cursor);
 			continue;
 		}
 		if (vp->da == attr_message_authenticator) goto next;
 
-		length = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
-		ptr += length;
+		slen = fr_radius_encode_pair(&FR_DBUFF_TMP(ptr, end), &cursor, NULL);
+		if (slen < 0) {
+			if (slen == PAIR_ENCODE_SKIPPED) goto next;
+
+			RPERROR("Failed encoding chbind response");
+
+			talloc_free(ptr);
+			return false;
+		}
+		ptr += slen;
 	}
 
 	return true;
@@ -155,62 +168,71 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 }
 
 
-FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
+FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 {
 	FR_CODE		code;
 	rlm_rcode_t	rcode;
-	REQUEST		*fake = NULL;
+	request_t	*fake = NULL;
 	uint8_t const	*attr_data;
 	size_t		data_len = 0;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
+	fr_radius_ctx_t packet_ctx;
 
 	/* check input parameters */
-	rad_assert((request != NULL) &&
+	fr_assert((request != NULL) &&
 		   (chbind != NULL) &&
 		   (chbind->request != NULL) &&
 		   (chbind->response == NULL));
 
 	/* Set-up the fake request */
-	fake = request_alloc_fake(request, NULL);
-	MEM(fr_pair_add_by_da(fake->packet, &vp, &fake->packet->vps, attr_freeradius_proxied_to) >= 0);
+	fake = request_alloc(request, &(request_init_args_t){ .parent = request });
+	MEM(fr_pair_add_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
-		vp = fr_pair_copy(fake->packet, chbind->username);
-		fr_pair_add(&fake->packet->vps, vp);
+		vp = fr_pair_copy(fake->request_ctx, chbind->username);
+		fr_pair_add(&fake->request_pairs, vp);
 	}
 
 	/*
 	 *	Maybe copy the State over, too?
 	 */
+	memset(&packet_ctx, 0, sizeof(packet_ctx));
+	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
-		fr_cursor_t cursor;
+		fr_dcursor_t cursor;
 
-		rad_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
+		fr_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
-		fr_cursor_init(&cursor, &fake->packet->vps);
+		fr_dcursor_init(&cursor, &fake->request_pairs);
 		while (data_len > 0) {
 			ssize_t attr_len;
 
-			attr_len = fr_radius_decode_pair(fake->packet, &cursor, dict_radius,
-							 attr_data, data_len, NULL);
+			attr_len = fr_radius_decode_pair(fake->request_ctx, &cursor, dict_radius,
+							 attr_data, data_len, &packet_ctx);
 			if (attr_len <= 0) {
 				/*
 				 *	If fr_radius_decode_pair fails, return NULL string for
 				 *	channel binding response.
 				 */
 				talloc_free(fake);
+				talloc_free(packet_ctx.tmp_ctx);
+				talloc_free(packet_ctx.tags);
 
 				return FR_CODE_ACCESS_ACCEPT;
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;
 		}
+
+		talloc_free_children(packet_ctx.tmp_ctx);
 	}
+	talloc_free(packet_ctx.tmp_ctx);
+	talloc_free(packet_ctx.tags);
 
 	/*
 	 *	Set virtual server based on configuration for channel
@@ -219,8 +241,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	fake->server_cs = virtual_server_find("channel_bindings");
 	fake->packet->code = FR_CODE_ACCESS_REQUEST;
 
-	rcode = rad_virtual_server(fake);
-
+	rad_virtual_server(&rcode, fake);
 	switch (rcode) {
 		/* If the virtual server succeeded, build a reply */
 	case RLM_MODULE_OK:
@@ -229,7 +250,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 			code = FR_CODE_ACCESS_ACCEPT;
 			break;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 		/* If we got any other response from the virtual server, it maps to a reject */
 	default:
@@ -246,23 +267,23 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
  *	Handles multiple EAP-channel-binding Message attrs
  *	ie concatenates all to get the complete EAP-channel-binding packet.
  */
-chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
+chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 {
 	size_t			length;
 	uint8_t 		*ptr;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	chbind_packet_t		*packet;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 
-	if (!fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_channel_binding_message)) return NULL;
+	if (!fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_channel_binding_message)) return NULL;
 
 	/*
 	 *	Compute the total length of the channel binding data.
 	 */
 	length = 0;
-	for (vp = fr_cursor_current(&cursor);
+	for (vp = fr_dcursor_current(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		length += vp->vp_length;
 	}
 
@@ -281,9 +302,9 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Copy the data over to our packet.
 	 */
 	packet = (chbind_packet_t *) ptr;
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_dcursor_head(&cursor);
 	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		memcpy(ptr, vp->vp_octets, vp->vp_length);
 		ptr += vp->vp_length;
 	}
@@ -291,14 +312,14 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	return packet;
 }
 
-VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
+fr_pair_t *eap_chbind_packet2vp(TALLOC_CTX *ctx, chbind_packet_t *chbind)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
 	if (!chbind) return NULL; /* don't produce garbage */
 
-	MEM(vp = fr_pair_afrom_da(packet, attr_eap_channel_binding_message));
-	fr_pair_value_memcpy(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind), false);
+	MEM(vp = fr_pair_afrom_da(ctx, attr_eap_channel_binding_message));
+	fr_pair_value_memdup(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind), false);
 
 	return vp;
 }

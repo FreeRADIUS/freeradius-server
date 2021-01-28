@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = 'plaintext_with_dollar_0'
 User-Password = 'password$'
 

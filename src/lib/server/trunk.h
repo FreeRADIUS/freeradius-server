@@ -21,8 +21,8 @@
  * @file src/lib/server/trunk.c
  * @brief A management API for bonding multiple connections together.
  *
- * @copyright 2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2019 The FreeRADIUS server project
+ * @copyright 2019-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2019-2020 The FreeRADIUS server project
  */
 RCSIDH(server_trunk_h, "$Id$")
 
@@ -37,13 +37,155 @@ extern "C" {
 /*
  *	Allow public and private versions of the same structures
  */
-#ifndef TRUNK_REQUEST_NO_TYPEDEF
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
+#ifndef _TRUNK_PRIVATE
 typedef struct fr_trunk_request_pub_s fr_trunk_request_t;
-#endif
-#ifndef TRUNK_CONNECTION_NO_TYPEDEF
 typedef struct fr_trunk_connection_pub_s fr_trunk_connection_t;
+typedef struct fr_trunk_pub_s fr_trunk_t;
+#  define _CONST const
+#else
+#  define _CONST
 #endif
-typedef struct fr_trunk_s fr_trunk_t;
+
+/** Reasons for a request being cancelled
+ *
+ */
+typedef enum {
+	FR_TRUNK_CANCEL_REASON_NONE = 0,		//!< Request has not been cancelled.
+	FR_TRUNK_CANCEL_REASON_SIGNAL,			//!< Request cancelled due to a signal.
+	FR_TRUNK_CANCEL_REASON_MOVE,			//!< Request cancelled because it's being moved.
+	FR_TRUNK_CANCEL_REASON_REQUEUE			//!< A previously sent request is being requeued.
+} fr_trunk_cancel_reason_t;
+
+/** What type of I/O events the trunk connection is currently interested in receiving
+ *
+ */
+typedef enum {
+	FR_TRUNK_CONN_EVENT_NONE	= 0x00,		//!< Don't notify the trunk on connection state
+							///< changes.
+	FR_TRUNK_CONN_EVENT_READ 	= 0x01,		//!< Trunk should be notified if a connection is
+							///< readable.
+	FR_TRUNK_CONN_EVENT_WRITE	= 0x02,		//!< Trunk should be notified if a connection is
+							///< writable.
+	FR_TRUNK_CONN_EVENT_BOTH	= 0x03,		//!< Trunk should be notified if a connection is
+							///< readable or writable.
+
+} fr_trunk_connection_event_t;
+
+/** Used for sanity checks and to track which list the connection is in
+ *
+ */
+typedef enum {
+	FR_TRUNK_CONN_HALTED		= 0x0000,	//!< Halted, ready to be freed.
+	FR_TRUNK_CONN_INIT		= 0x0001,	//!< In the initial state.
+	FR_TRUNK_CONN_CONNECTING	= 0x0002,	//!< Connection is connecting.
+	FR_TRUNK_CONN_ACTIVE		= 0x0004,	//!< Connection is connected and ready to service requests.
+							///< This is active and not 'connected', because a connection
+							///< can be 'connected' and 'full' or 'connected' and 'active'.
+	FR_TRUNK_CONN_CLOSED		= 0x0008,	//!< Connection was closed, either explicitly or due to failure.
+	FR_TRUNK_CONN_FULL		= 0x0010,	//!< Connection is full and can't accept any more requests.
+	FR_TRUNK_CONN_INACTIVE		= 0x0020,	//!< Connection is inactive and can't accept any more requests.
+	FR_TRUNK_CONN_INACTIVE_DRAINING	= 0x0040,	//!< Connection is inactive, can't accept any more requests,
+							///< and will be closed once it has no more outstanding
+							///< requests.  Connections in this state can transition to
+							///< #FR_TRUNK_CONN_DRAINING.
+	FR_TRUNK_CONN_DRAINING		= 0x0080,	//!< Connection will be closed once it has no more outstanding
+							///< requests, if it's not reactivated.
+	FR_TRUNK_CONN_DRAINING_TO_FREE	= 0x0100,	//!< Connection will be closed once it has no more outstanding
+							///< requests.
+
+} fr_trunk_connection_state_t;
+
+/** All connection states
+ *
+ */
+#define FR_TRUNK_CONN_ALL \
+(\
+	FR_TRUNK_CONN_INIT | \
+	FR_TRUNK_CONN_CONNECTING | \
+	FR_TRUNK_CONN_ACTIVE | \
+	FR_TRUNK_CONN_CLOSED | \
+	FR_TRUNK_CONN_FULL | \
+	FR_TRUNK_CONN_INACTIVE | \
+	FR_TRUNK_CONN_DRAINING | \
+	FR_TRUNK_CONN_DRAINING_TO_FREE \
+)
+
+/** States where the connection may potentially be used to send requests
+ *
+ */
+#define FR_TRUNK_CONN_SERVICEABLE \
+(\
+	FR_TRUNK_CONN_ACTIVE | \
+	FR_TRUNK_CONN_INACTIVE | \
+	FR_TRUNK_CONN_DRAINING | \
+	FR_TRUNK_CONN_INACTIVE_DRAINING | \
+	FR_TRUNK_CONN_DRAINING_TO_FREE \
+)
+
+typedef enum {
+	FR_TRUNK_ENQUEUE_IN_BACKLOG = 1,		//!< Request should be enqueued in backlog
+	FR_TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
+	FR_TRUNK_ENQUEUE_NO_CAPACITY = -1,		//!< At maximum number of connections,
+							///< and no connection has capacity.
+	FR_TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,		//!< Destination is down.
+	FR_TRUNK_ENQUEUE_FAIL = -3			//!< General failure.
+} fr_trunk_enqueue_t;
+
+/** Used for sanity checks and to simplify freeing
+ *
+ * Allows us to track which
+ */
+typedef enum {
+	FR_TRUNK_REQUEST_STATE_INIT		= 0x0000,	//!< Initial state.  Requests in this state
+								///< were never assigned, and the request_t should
+								///< not have been yielded.
+	FR_TRUNK_REQUEST_STATE_UNASSIGNED	= 0x0001,	//!< Transition state - Request currently
+								///< not assigned to any connection.
+	FR_TRUNK_REQUEST_STATE_BACKLOG		= 0x0002,	//!< In the backlog.
+	FR_TRUNK_REQUEST_STATE_PENDING		= 0x0004,	//!< In the queue of a connection
+								///< and is pending writing.
+	FR_TRUNK_REQUEST_STATE_PARTIAL		= 0x0008,	//!< Some of the request was written to the socket,
+								///< more of it should be written later.
+	FR_TRUNK_REQUEST_STATE_SENT		= 0x0010,	//!< Was written to a socket.  Waiting for a response.
+	FR_TRUNK_REQUEST_STATE_COMPLETE		= 0x0020,	//!< The request is complete.
+	FR_TRUNK_REQUEST_STATE_FAILED		= 0x0040,	//!< The request failed.
+	FR_TRUNK_REQUEST_STATE_CANCEL		= 0x0080,	//!< A request on a particular socket was cancel.
+	FR_TRUNK_REQUEST_STATE_CANCEL_SENT	= 0x0100,	//!< We've informed the remote server that
+								///< the request has been cancelled.
+	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	= 0x0200,	//!< We partially wrote a cancellation request.
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	= 0x0400,	//!< Remote server has acknowledged our cancellation.
+} fr_trunk_request_state_t;
+
+/** All request states
+ *
+ */
+#define FR_TRUNK_REQUEST_STATE_ALL \
+(\
+	FR_TRUNK_REQUEST_STATE_BACKLOG | \
+	FR_TRUNK_REQUEST_STATE_PENDING | \
+	FR_TRUNK_REQUEST_STATE_PARTIAL | \
+	FR_TRUNK_REQUEST_STATE_SENT | \
+	FR_TRUNK_REQUEST_STATE_COMPLETE | \
+	FR_TRUNK_REQUEST_STATE_FAILED | \
+	FR_TRUNK_REQUEST_STATE_CANCEL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_SENT | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE \
+)
+
+/** All requests in various cancellation states
+ *
+ */
+#define FR_TRUNK_REQUEST_STATE_CANCEL_ALL \
+(\
+	FR_TRUNK_REQUEST_STATE_CANCEL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_SENT | \
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE \
+)
 
 /** Common configuration parameters for a trunk
  *
@@ -100,7 +242,57 @@ typedef struct {
 							///< If this is true, #fr_trunk_connection_signal_writable
 							///< does not need to be called, and requests will be
 							///< enqueued as soon as they're received.
+
+	bool			backlog_on_failed_conn;	//!< Assign requests to the backlog when there are no
+							//!< available connections and the last connection event
+							//!< was a failure, instead of failing them immediately.
 } fr_trunk_conf_t;
+
+/** Public fields for the trunk
+ *
+ * This saves the overhead of using accessors for commonly used fields in
+ * the trunk.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the trunk API.
+ */
+struct fr_trunk_pub_s {
+	/** @name Last time an event occurred
+	 * @{
+ 	 */
+	fr_time_t _CONST	last_above_target;	//!< Last time average utilisation went above
+							///< the target value.
+
+	fr_time_t _CONST	last_below_target;	//!< Last time average utilisation went below
+							///< the target value.
+
+	fr_time_t _CONST	last_open;		//!< Last time the connection management
+							///< function opened a connection.
+
+	fr_time_t _CONST	last_closed;		//!< Last time the connection management
+							///< function closed a connection.
+
+	fr_time_t _CONST	last_connected;		//!< Last time a connection connected.
+
+	fr_time_t _CONST	last_failed;		//!< Last time a connection failed.
+
+	fr_time_t _CONST	last_read_success;	//!< Last time we read a response.
+	/** @} */
+
+	/** @name Statistics
+	 * @{
+ 	 */
+ 	uint64_t _CONST		req_alloc;		//!< The number of requests currently
+ 							///< allocated that have not been freed
+ 							///< or returned to the free list.
+
+	uint64_t _CONST		req_alloc_new;		//!< How many requests we've allocated.
+
+	uint64_t _CONST		req_alloc_reused;	//!< How many requests were reused.
+	/** @} */
+
+	bool _CONST		triggers;		//!< do we run the triggers?
+};
 
 /** Public fields for the trunk request
  *
@@ -111,15 +303,17 @@ typedef struct {
  * the trunk API.
  */
 struct fr_trunk_request_pub_s {
-	fr_trunk_t		*trunk;			//!< Trunk this request belongs to.
+	fr_trunk_request_state_t _CONST state;		//!< Which list the request is now located in.
 
-	fr_trunk_connection_t	*tconn;			//!< Connection this request belongs to.
+	fr_trunk_t		* _CONST trunk;		//!< Trunk this request belongs to.
 
-	void			*preq;			//!< Data for the muxer to write to the connection.
+	fr_trunk_connection_t	* _CONST tconn;		//!< Connection this request belongs to.
 
-	void			*rctx;			//!< Resume ctx of the module.
+	void			* _CONST preq;		//!< Data for the muxer to write to the connection.
 
-	REQUEST			*request;		//!< The request that we're writing the data on behalf of.
+	void			* _CONST rctx;		//!< Resume ctx of the module.
+
+	request_t			* _CONST request;	//!< The request that we're writing the data on behalf of.
 };
 
 /** Public fields for the trunk connection
@@ -131,77 +325,12 @@ struct fr_trunk_request_pub_s {
  * the trunk API.
  */
 struct fr_trunk_connection_pub_s {
-	fr_connection_t		*conn;			//!< The underlying connection.
+	fr_trunk_connection_state_t _CONST state;	//!< What state the connection is in.
 
-	fr_trunk_t		*trunk;			//!< Trunk this connection belongs to.
+	fr_connection_t		* _CONST conn;		//!< The underlying connection.
+
+	fr_trunk_t		* _CONST trunk;		//!< Trunk this connection belongs to.
 };
-
-/** Reasons for a request being cancelled
- *
- */
-typedef enum {
-	FR_TRUNK_CANCEL_REASON_NONE = 0,		//!< Request has not been cancelled.
-	FR_TRUNK_CANCEL_REASON_SIGNAL,			//!< Request cancelled due to a signal.
-	FR_TRUNK_CANCEL_REASON_MOVE,			//!< Request cancelled because it's being moved.
-	FR_TRUNK_CANCEL_REASON_REQUEUE			//!< A previously sent request is being requeued.
-} fr_trunk_cancel_reason_t;
-
-/** What type of I/O events the trunk connection is currently interested in receiving
- *
- */
-typedef enum {
-	FR_TRUNK_CONN_EVENT_NONE = 0x00,		//!< Don't notify the trunk on connection state
-							///< changes.
-	FR_TRUNK_CONN_EVENT_READ = 0x01,		//!< Trunk should be notified if a connection is
-							///< readable.
-	FR_TRUNK_CONN_EVENT_WRITE = 0x02,		//!< Trunk should be notified if a connection is
-							///< writable.
-	FR_TRUNK_CONN_EVENT_BOTH = 0x03,		//!< Trunk should be notified if a connection is
-							///< readable or writable.
-
-} fr_trunk_connection_event_t;
-
-/** Used for sanity checks and to track which list the connection is in
- *
- */
-typedef enum {
-	FR_TRUNK_CONN_HALTED		= 0x00,		//!< In the initial state.
-	FR_TRUNK_CONN_CONNECTING	= 0x01,		//!< Connection is connecting.
-	FR_TRUNK_CONN_ACTIVE		= 0x02,		//!< Connection is connected and ready to service requests.
-							///< This is active and not 'connected', because a connection
-							///< can be 'connected' and 'full' or 'connected' and 'active'.
-	FR_TRUNK_CONN_FAILED		= 0x04,		//!< Connection failed.  We now wait for it to enter the
-							///< closed state.
-	FR_TRUNK_CONN_CLOSED		= 0x08,		//!< Connection was closed, either explicitly or due to failure.
-	FR_TRUNK_CONN_INACTIVE		= 0x10,		//!< Connection is inactive and can't accept any more requests.
-	FR_TRUNK_CONN_DRAINING		= 0x20,		//!< Connection will be closed once it has no more outstanding
-							///< requests, if it's not reactivated.
-	FR_TRUNK_CONN_DRAINING_TO_FREE	= 0x40		//!< Connection will be closed once it has no more outstanding
-							///< requests.
-} fr_trunk_connection_state_t;
-
-/** All connection states
- *
- */
-#define FR_TRUNK_CONN_ALL \
-(\
-	FR_TRUNK_CONN_CONNECTING | \
-	FR_TRUNK_CONN_ACTIVE | \
-	FR_TRUNK_CONN_FAILED | \
-	FR_TRUNK_CONN_CLOSED | \
-	FR_TRUNK_CONN_INACTIVE | \
-	FR_TRUNK_CONN_DRAINING | \
-	FR_TRUNK_CONN_DRAINING_TO_FREE \
-)
-
-typedef enum {
-	FR_TRUNK_ENQUEUE_IN_BACKLOG = 1,		//!< Request should be enqueued in backlog
-	FR_TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
-	FR_TRUNK_ENQUEUE_NO_CAPACITY = -1,		//!< At maximum number of connections,
-							///< and no connection has capacity.
-	FR_TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,		//!< Destination is down.
-	FR_TRUNK_ENQUEUE_FAIL = -3			//!< General failure.
-} fr_trunk_enqueue_t;
 
 /** Config parser definitions to populate a fr_trunk_conf_t
  *
@@ -397,11 +526,12 @@ typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connec
  */
 typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
 
-/** Remove an outstanding request from a tracking/matching structure
+/** Remove an outstanding "sent" request from a tracking/matching structure
  *
- * If the treq (trunk request) is in the FR_TRUNK_REQUEST_PARTIAL or
- * FR_TRUNK_REQUEST_SENT states, this callback will be called prior
- * to moving the treq to a new connection or freeing it.
+ * If the treq (trunk request) is in the FR_TRUNK_REQUEST_STATE_PARTIAL or
+ * FR_TRUNK_REQUEST_STATE_SENT states, this callback will be called prior
+ * to moving the treq to a new connection, requeueing the tre or freeing
+ * the treq.
  *
  * The treq, and any associated resources, should be
  * removed from the the matching structure associated with the
@@ -409,6 +539,12 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *
  * Which resources should be freed depends on the cancellation reason:
  *
+ * - FR_TRUNK_CANCEL_REASON_REQUEUE - If an encoded request can be
+ *   reused, then it should be kept, otherwise it should be freed.
+ *   Any resources like ID allocations bound to that request should
+ *   also be freed.
+ *   #fr_trunk_request_conn_release_t callback will not be called in this
+ *   instance and cannot be used as an alternative.
  * - FR_TRUNK_CANCEL_REASON_MOVE - If an encoded request can be reused
  *   it should be kept.  The trunk mux callback should be aware that
  *   an encoded request may already be associated with a preq and use
@@ -416,12 +552,21 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   If the encoded request cannot be reused it should be freed, and
  *   any fields in the preq that were modified during the last mux call
  *   (other than perhaps counters) should be reset to their initial values.
+ *   Alternatively the #fr_trunk_request_conn_release_t callback can be used for
+ *   the same purpose, as that will be called before the request is moved.
  * - FR_TRUNK_CANCEL_REASON_SIGNAL - The encoded request and any I/O library
  *   request handled may be freed though that may (optionally) be left to
- *   another callback like #fr_trunk_request_fail_t.
+ *   another callback like #fr_trunk_request_conn_release_t, as that will be
+ *   called as the treq is removed from the conn.
+ *   Note that the #fr_trunk_request_complete_t and
+ *   #fr_trunk_request_fail_t callbacks will not be called in this
+ *   instance.
  *
  * After this callback is complete one of several actions will be taken:
  *
+ * - If the cancellation reason was FR_TRUNK_CANCEL_REASON_REQUEUE the
+ *   treq will be placed back into the pending list of the connection it
+ *   was previously associated with.
  * - If the cancellation reason was FR_TRUNK_CANCEL_REASON_MOVE, the treq
  *   will move to the unassigned state, and then either be placed in the
  *   trunk backlog, or immediately enqueued on another trunk connection.
@@ -434,13 +579,17 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
  *   - ...and no request_cancel_mux callback was provided, the
  *     treq will enter the unassigned state and then be freed.
  *
- * @note FR_TRUNK_CANCEL_REASON_MOVE will only be set if the underlying connection
- * is bad.  No cancellation requests will be sent for requests being moved.
+ * @note FR_TRUNK_CANCEL_REASON_MOVE will only be set if the underlying
+ * connection is bad. A 'sent' treq will never be moved due to load
+ * balancing.
  *
  * @note There is no need to signal request state changes in the cancellation
  * function.  The trunk will move the request into the correct state.
  * This callback is only to allow the API client to cleanup the preq in
  * preparation for the cancellation event.
+ *
+ * @note Cancellation requests to a remote datastore should not be made
+ * here.  If that is required, a cancel_mux function should be provided.
  *
  * @param[in] conn		to remove request from.
  * @param[in] preq_to_reset	Preq to reset.
@@ -450,28 +599,43 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_c
 typedef void (*fr_trunk_request_cancel_t)(fr_connection_t *conn, void *preq_to_reset,
 					  fr_trunk_cancel_reason_t reason, void *uctx);
 
+/** Free connection specific resources from a treq, as the treq is being removed from a connection
+ *
+ * Any connection specific resources that the treq currently holds must be
+ * released.  Examples are connection-specific handles, ID allocations,
+ * and connection specific packets.
+ *
+ * The treq may be about to be freed or it may be being re-assigned to a new connection.
+ *
+ * @param[in] conn		request will be removed from.
+ * @param[in] preq_to_reset	Preq to remove connection specified resources
+ *      			from.
+ * @param[in] uctx		User context data passed to #fr_trunk_alloc.
+ */
+typedef void (*fr_trunk_request_conn_release_t)(fr_connection_t *conn, void *preq_to_reset,
+						 void *uctx);
+
 /** Write a successful result to the rctx so that the trunk API client is aware of the result
  *
  * The rctx should be modified in such a way that indicates to the trunk API client
  * that the request was sent using the trunk and a response was received.
  *
- * This callback should free any memory not bound to the lifetime of the rctx
- * or request, or that was allocated explicitly to prepare for the REQUEST *
- * being used by a trunk.  This may include I/O library request handles, raw
- * responses, and decoded responses.
+ * This function should not free any resources associated with the preq.  That should
+ * be done in the request_free callback.  This function should only be used to translate
+ * the contents of the preq into a result, and write it to the rctx.
  *
  * After this callback is complete, the request_free callback will be called if provided.
  */
-typedef void (*fr_trunk_request_complete_t)(REQUEST *request, void *preq, void *rctx, void *uctx);
+typedef void (*fr_trunk_request_complete_t)(request_t *request, void *preq, void *rctx, void *uctx);
 
 /** Write a failure result to the rctx so that the trunk API client is aware that the request failed
  *
  * The rctx should be modified in such a way that indicates to the trunk API client
  * that the request could not be sent using the trunk.
  *
- * This callback should free any memory not bound to the lifetime of the rctx
- * or request, or that was allocated explicitly to prepare for the REQUEST *
- * being used by a trunk.
+ * This function should not free any resources associated with the preq.  That should
+ * be done in the request_free callback.  This function should only be used to write
+ * a "canned" failure to the rctx.
  *
  * @note If a cancel function is provided, the cancel function should be used to remove
  *       active requests from any request/response matching, not the fail function.
@@ -480,13 +644,14 @@ typedef void (*fr_trunk_request_complete_t)(REQUEST *request, void *preq, void *
  *
  * After this callback is complete, the request_free callback will be called if provided.
  */
-typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx, void *uctx);
+typedef void (*fr_trunk_request_fail_t)(request_t *request, void *preq, void *rctx,
+					fr_trunk_request_state_t state, void *uctx);
 
 /** Free resources associated with a trunk request
  *
  * The trunk request is complete.  If there's a request still associated with the
  * trunk request, that will be provided so that it can be marked runnable, but
- * be aware that the REQUEST * value will be NULL if the request was cancelled due
+ * be aware that the request_t * value will be NULL if the request was cancelled due
  * to a signal.
  *
  * The preq and any associated data such as encoded packets or I/O library request
@@ -498,7 +663,7 @@ typedef void (*fr_trunk_request_fail_t)(REQUEST *request, void *preq, void *rctx
  * @param[in] preq_to_free	As per the name.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
-typedef void (*fr_trunk_request_free_t)(REQUEST *request, void *preq_to_free, void *uctx);
+typedef void (*fr_trunk_request_free_t)(request_t *request, void *preq_to_free, void *uctx);
 
 /** I/O functions to pass to fr_trunk_alloc
  *
@@ -524,12 +689,17 @@ typedef struct {
 	fr_trunk_request_cancel_t	request_cancel;		//!< Request should be removed from tracking
 								///< and should be reset to its initial state.
 
-	fr_trunk_request_complete_t	request_complete;	//!< Request is complete.
+	fr_trunk_request_conn_release_t	request_conn_release;	//!< Any connection specific resources should be
+								///< removed from the treq as it's about to be
+								///< moved or freed.
 
-	fr_trunk_request_fail_t		request_fail;		//!< Cleanup all resources, and inform the caller.
+	fr_trunk_request_complete_t	request_complete;	//!< Request is complete, interpret the response
+								///< contained in preq.
 
-	fr_trunk_request_free_t		request_free;		//!< Free the preq and provide a chance
-								///< to mark the request as runnable.
+	fr_trunk_request_fail_t		request_fail;		//!< Request failed, write out a canned response.
+
+	fr_trunk_request_free_t		request_free;		//!< Free the preq and any resources it holds and
+								///< provide a chance to mark the request as runnable.
 } fr_trunk_io_funcs_t;
 
 /** @name Statistics
@@ -565,24 +735,34 @@ void		fr_trunk_request_signal_cancel_complete(fr_trunk_request_t *treq) CC_HINT(
 /** @name (R)enqueue and alloc requests
  * @{
  */
-uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max) CC_HINT(nonnull);
+uint64_t 	fr_trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, int states, uint64_t max,
+						     bool fail_bound) CC_HINT(nonnull);
 
-void		fr_trunk_request_free(fr_trunk_request_t *treq);
+void		fr_trunk_request_free(fr_trunk_request_t **treq);
 
-fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, REQUEST *request) CC_HINT(nonnull(1));
+fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, request_t *request) CC_HINT(nonnull(1));
 
-void		fr_trunk_request_requeue(fr_trunk_request_t *treq) CC_HINT(nonnull);
+fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, request_t *request,
+					    void *preq, void *rctx) CC_HINT(nonnull(2));
 
-int		fr_trunk_request_enqueue(fr_trunk_request_t **treq, fr_trunk_t *trunk, REQUEST *request,
-					 void *preq, void *rctx) CC_HINT(nonnull(2));
+fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq) CC_HINT(nonnull);
+
+fr_trunk_enqueue_t fr_trunk_request_enqueue_on_conn(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn,
+						    request_t *request, void *preq, void *rctx,
+						    bool ignore_limits) CC_HINT(nonnull(2));
+
+#ifndef NDEBUG
+void		fr_trunk_request_state_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+					   fr_trunk_request_t const *treq);
+#endif
 /** @} */
 
 /** @name Dequeue protocol requests and cancellations
  * @{
  */
-fr_trunk_request_t *fr_trunk_connection_pop_cancellation(fr_trunk_connection_t *tconn);
+int fr_trunk_connection_pop_cancellation(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn);
 
-fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn);
+int fr_trunk_connection_pop_request(fr_trunk_request_t **treq_out, fr_trunk_connection_t *tconn);
 /** @} */
 
 /** @name Connection state signalling
@@ -621,7 +801,7 @@ fr_trunk_request_t *fr_trunk_connection_pop_request(fr_trunk_connection_t *tconn
  * If #fr_trunk_connection_signal_inactive is being used to remove a congested
  * connection from the active list (i.e. on receipt of an explicit protocol level
  * congestion notification), consider calling #fr_trunk_connection_requests_requeue
- * with the FR_TRUNK_REQUEST_PENDING state to redistribute that connection's
+ * with the FR_TRUNK_REQUEST_STATE_PENDING state to redistribute that connection's
  * backlog to other connections in the trunk.
  *
  * @{
@@ -635,12 +815,8 @@ void		fr_trunk_connection_signal_inactive(fr_trunk_connection_t *tconn) CC_HINT(
 void		fr_trunk_connection_signal_active(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
 
 void		fr_trunk_connection_signal_reconnect(fr_trunk_connection_t *tconn, fr_connection_reason_t reason) CC_HINT(nonnull);
-/** @} */
 
-/** @name Trunk connection accessors
- * @{
- */
-fr_connection_t	*fr_trunk_connection_get_connection(fr_trunk_connection_t *tconn) CC_HINT(nonnull);
+bool		fr_trunk_connection_in_state(fr_trunk_connection_t *tconn, int state);
 /** @} */
 
 /** @name Connection management
@@ -658,10 +834,14 @@ void		fr_trunk_connection_manage_start(fr_trunk_t *trunk) CC_HINT(nonnull);
 
 void		fr_trunk_connection_manage_stop(fr_trunk_t *trunk) CC_HINT(nonnull);
 
+int		fr_trunk_connection_manage_schedule(fr_trunk_t *trunk) CC_HINT(nonnull);
+
 fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
 				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(2, 3, 4));
 /** @} */
+
+#undef _CONST
 
 #ifdef __cplusplus
 }

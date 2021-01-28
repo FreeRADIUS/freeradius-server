@@ -50,10 +50,11 @@ typedef struct fr_listen fr_listen_t;
 }
 #endif
 
-#include <freeradius-devel/io/message.h>
-#include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/base.h>
+#include <freeradius-devel/io/control.h>
+#include <freeradius-devel/io/message.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/log.h>
 
 #include <sys/types.h>
 #include <sys/event.h>
@@ -150,6 +151,8 @@ typedef struct {
 #define PRIORITY_NORMAL (1 << 14)
 #define PRIORITY_LOW    (1 << 13)
 
+extern fr_table_num_sorted_t const channel_signals[];
+extern size_t channel_signals_len;
 extern fr_table_num_sorted_t const channel_packet_priority[];
 extern size_t channel_packet_priority_len;
 

@@ -36,7 +36,6 @@ extern "C" {
 
 /* rbtree.c */
 typedef struct rbtree_s rbtree_t;
-typedef struct rbnode_s rbnode_t;
 
 /* callback order for walking  */
 typedef enum {
@@ -44,15 +43,45 @@ typedef enum {
 	RBTREE_IN_ORDER,
 	RBTREE_POST_ORDER,
 	RBTREE_DELETE_ORDER
-} rb_order_t;
+} fr_rb_order_t;
+
+/* Red-Black tree description */
+typedef enum {
+	BLACK,
+	RED
+} fr_rb_colour_t;
+
+typedef struct fr_rb_node_s fr_rb_node_t;
+struct fr_rb_node_s {
+	fr_rb_node_t		*left;		//!< Left child
+	fr_rb_node_t		*right;		//!< Right child
+	fr_rb_node_t		*parent;	//!< Parent
+	fr_rb_colour_t		colour;		//!< Node colour (BLACK, RED)
+	bool			being_freed;	//!< Disable frees if we're currently calling
+						///< a free function.
+	void			*data;		//!< data stored in node
+};
 
 #define RBTREE_FLAG_NONE    (0)
 #define RBTREE_FLAG_REPLACE (1 << 0)
 #define RBTREE_FLAG_LOCK    (1 << 1)
 
-typedef int (*rb_comparator_t)(void const *one, void const *two);
-typedef int (*rb_walker_t)(void *data, void *uctx);
-typedef void (*rb_free_t)(void *data);
+typedef int (*fr_rb_cmp_t)(void const *one, void const *two);
+typedef int (*fr_rb_walker_t)(void *data, void *uctx);
+typedef void (*fr_rb_free_t)(void *data);
+
+#ifndef STABLE_COMPARE
+/*
+ *	The first comparison returns +1 for a>b, and -1 for a<b
+ *	The second comparison returns -1 for a>b, and +1 for a<b
+ *
+ *	Use STABLE_COMPARE when you don't really care about ordering,
+ *	you just want _an_ ordering.
+ */
+#define COMPARE_PREFER_SMALLER(_a,_b) (((_a) > (_b)) - ((_a) < (_b)))
+#define COMPARE_PREFER_LARGER(_a,_b) (((_a) < (_b)) - ((_a) > (_b)))
+#define STABLE_COMPARE COMPARE_PREFER_SMALLER
+#endif
 
 /** Creates a red black that verifies elements are of a specific talloc type
  *
@@ -68,8 +97,8 @@ typedef void (*rb_free_t)(void *data);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_talloc_create(_ctx, _cmp, _talloc_type, _node_free, _flags) \
-		_rbtree_create(_ctx, _cmp, #_talloc_type, _node_free, _flags)
+#define		rbtree_talloc_alloc(_ctx, _cmp, _talloc_type, _node_free, _flags) \
+		_rbtree_alloc(_ctx, _cmp, #_talloc_type, _node_free, _flags)
 
 /** Creates a red black tree
  *
@@ -84,31 +113,32 @@ typedef void (*rb_free_t)(void *data);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_create(_ctx, _cmp, _node_free, _flags) \
-		_rbtree_create(_ctx, _cmp, NULL, _node_free, _flags)
+#define		rbtree_alloc(_ctx, _cmp, _node_free, _flags) \
+		_rbtree_alloc(_ctx, _cmp, NULL, _node_free, _flags)
 
-rbtree_t	*_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
-				char const *type, rb_free_t node_free, int flags);
+rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, fr_rb_cmp_t compare,
+			       char const *type, fr_rb_free_t node_free, int flags);
 
 void		rbtree_node_talloc_free(void *data);
 
 bool		rbtree_insert(rbtree_t *tree, void const *data);
 
-rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);
+fr_rb_node_t	*rbtree_insert_node(rbtree_t *tree, void *data);
 
-void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
+void		rbtree_delete(rbtree_t *tree, fr_rb_node_t *z);
 
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
 
-rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
+fr_rb_node_t	*rbtree_find(rbtree_t *tree, void const *data);
 
+/** @hidecallergraph */
 void		*rbtree_finddata(rbtree_t *tree, void const *data);
 
 uint32_t	rbtree_num_elements(rbtree_t *tree);
 
-uint32_t	rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, rb_order_t order);
+uint32_t	rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, fr_rb_order_t order);
 
-void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
+void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
 
 /*
  *	The callback should be declared as:
@@ -126,7 +156,7 @@ void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
  *	or 2 to delete the current node and continue.  This may be
  *	used to batch-delete select nodes from a locked rbtree.
  */
-int		rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *uctx);
+int		rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, void *uctx);
 
 #ifdef __cplusplus
 }

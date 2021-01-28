@@ -6,9 +6,8 @@
 #
 #  DIR       = src/tests/$target
 #  BUILD_DIR = build/
-#  BIN_PATH  = $(BUILD_DIR)/bin/local
 #
-#  - Defined by the target 
+#  - Defined by the target
 #
 #  PORT      := Run the service
 #  TEST      := test.$target
@@ -39,8 +38,12 @@
 include Make.inc
 
 define RADIUSD_SERVICE
-$$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(BIN_PATH)/radiusd)
+$$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(TEST_BIN)/radiusd)
 
+#
+#  Kill it.  We don't care if it failed or not.  However, we do care
+#  if we can't kill it.
+#
 .PHONY: $(TEST).radiusd_kill
 $(TEST).radiusd_kill: | ${2}
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
@@ -50,13 +53,37 @@ $(TEST).radiusd_kill: | ${2}
 		    echo "GDB output was:"; \
 		    cat "${2}/gdb.log" 2> /dev/null; \
 		    echo "--------------------------------------------------"; \
-		    tail -n 100 "${2}/gdb.log" 2> /dev/null; \
-		    echo "Last entries in server log (${2}/gdb.log):"; \
+		    echo "Last entries in server log (${2}/radiusd.log):"; \
+		    tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
+		    exit 0; \
+		fi; \
+		if ! kill -9 `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+			exit 1; \
+		fi; \
+		rm -f ${2}/radiusd.pid; \
+		exit 0; \
+	fi
+
+#
+#  Stop it politely.
+#
+.PHONY: $(TEST).radiusd_stop
+$(TEST).radiusd_stop: | ${2}
+	${Q}if [ -f ${2}/radiusd.pid ]; then \
+		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
+		    rm -f ${2}/radiusd.pid; \
+		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
+		    echo "GDB output was:"; \
+		    cat "${2}/gdb.log" 2> /dev/null; \
+		    echo "--------------------------------------------------"; \
+		    echo "Last entries in server log (${2}/radiusd.log):"; \
+		    tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
 		    exit 1; \
 		fi; \
 		if ! kill -TERM `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 			exit 1; \
 		fi; \
+		rm -f ${2}/radiusd.pid; \
 		exit 0; \
 	fi
 
@@ -64,14 +91,25 @@ $(TEST).radiusd_kill: | ${2}
 #	Start radiusd instance
 #
 ${2}/radiusd.pid: ${2}
-	$$(eval RADIUSD_RUN := TESTDIR=$(DIR) OUTPUT=$(OUTPUT) TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n ${1} -D share/dictionary/ -l ${2}/radiusd.log)
+	$$(eval RADIUSD_RUN := TESTDIR=$(DIR) OUTPUT=$(OUTPUT) TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
 	${Q}rm -f ${2}/radiusd.log
 	${Q}if ! $$(RADIUSD_RUN); then \
 		echo "FAILED STARTING RADIUSD"; \
 		grep 'Error :' "${2}/radiusd.log"; \
 		echo "Last entries in server log (${2}/radiusd.log):"; \
+		tail -n 100 "${2}/radiusd.log" 2> /dev/null; \
 		echo "RADIUSD_RUN: $$(RADIUSD_RUN)"; \
 	fi
 
+.PHONY: $(TEST).radiusd_start
 $(TEST).radiusd_start: ${2}/radiusd.pid
+
+#
+#  If this test framework needs radiusd to be started / stopped, then ensure that
+#  the output files depend on the radiusd binary.
+#
+ifneq "$(FILES.$(TEST))" ""
+$(foreach x, $(FILES.$(TEST)), $(eval $x: $(TEST_BIN_DIR)/radiusd $(TEST_BIN_DIR)/$(CLIENT) $(top_srcdir)/src/tests/$(subst test.,,$(TEST))/config/${1}.conf))
+endif
+
 endef

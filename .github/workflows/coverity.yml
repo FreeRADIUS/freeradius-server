@@ -1,0 +1,109 @@
+name: Coverity
+
+on:
+  push:
+    branches:
+      - coverity_scan
+  schedule:
+    - cron: '0 20 * * *'
+
+jobs:
+  coverity:
+    runs-on: ubuntu-20.04
+    if: github.repository_owner == 'FreeRADIUS'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+          autoconf \
+          build-essential \
+          debhelper \
+          devscripts \
+          dh-make \
+          dovecot-dev \
+          doxygen \
+          fakeroot \
+          firebird-dev \
+          freetds-dev \
+          graphviz \
+          ldap-utils \
+          libcap-dev \
+          libcollectdclient-dev \
+          libcurl4-openssl-dev \
+          libgdbm-dev \
+          libgoogle-perftools-dev \
+          libhiredis-dev \
+          libidn11-dev \
+          libiodbc2 \
+          libiodbc2-dev \
+          libjson-c-dev \
+          libjson-c4 \
+          libjson-perl \
+          libkqueue-dev \
+          libkrb5-dev \
+          libldap2-dev \
+          libluajit-5.1-dev \
+          libmemcached-dev \
+          libmysqlclient-dev \
+          libnl-genl-3-dev \
+          libpam0g-dev \
+          libpcap-dev \
+          libpcre3-dev \
+          libperl-dev \
+          libpq-dev \
+          libpython-all-dev \
+          libreadline-dev \
+          libsnmp-dev \
+          libssl-dev \
+          libtalloc-dev \
+          libunbound-dev \
+          libwbclient-dev \
+          libykclient-dev \
+          libyubikey-dev \
+          lintian \
+          luajit \
+          lynx \
+          openssl \
+          pbuilder \
+          python-dev \
+          python3-pip \
+          quilt
+      - name: Cache coverity tool
+        uses: actions/cache@v2
+        id: cache-coverity
+        with:
+          key: coverity-tool-cache-${{ runner.os }}
+          path: coverity_tool.tar.gz
+      - name: Download coverity tool
+        if: steps.cache-coverity.outputs.cache-hit != 'true'
+        run: |
+          wget https://scan.coverity.com/download/linux64 \
+            --post-data "token=${TOKEN}&project=FreeRADIUS%2Ffreeradius-server" \
+            -O coverity_tool.tar.gz
+        env:
+          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+      - name: Extract coverity tool
+        run: |
+          mkdir coverity_tool
+          tar xzf coverity_tool.tar.gz --strip 1 -C coverity_tool
+      - name: Build with Coverity
+        run: |
+          export PATH=`pwd`/coverity_tool/bin:$PATH
+          ./configure -with-rlm-python-bin=/usr/bin/python2.7
+          cov-build --dir cov-int make
+      - name: Submit result
+        run: |
+          tar czf cov-int.tar.gz cov-int
+          curl \
+            --form token="$TOKEN" \
+            --form email="freeradius-devel@lists.freeradius.org" \
+            --form file=@cov-int.tar.gz \
+            --form version="`cat VERSION`" \
+            --form description="FreeRADIUS" \
+            https://scan.coverity.com/builds?project=freeradius%2Ffreeradius-server
+        env:
+          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}

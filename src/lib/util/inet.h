@@ -31,10 +31,30 @@ RCSIDH(inet_h, "$Id$")
 #include <net/if.h>		/* SIOCGIFADDR et al */
 #include <netinet/in.h>		/* in6?_addr */
 #include <stdbool.h>
+#include <talloc.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Struct to represent an ethernet address
+ *
+ * This is needed to represent ethernet addresses correctly in
+ * _Generic macros.
+ */
+typedef struct {
+	uint8_t		addr[6];		//!< Ethernet address.
+} fr_ethernet_t;
+
+/** Struct to represent an interface id
+ *
+ * This is needed to represent an interface id correctly in
+ * _Generic macros.
+ */
+typedef struct {
+	uint8_t		addr[8];		//!< Interface ID.
+} fr_ifid_t;
+
 /** IPv4/6 prefix
  *
  * Abstraction around the standard in_addr/in6_addr structures to
@@ -54,20 +74,6 @@ typedef struct {
 						//!< be used.
 } fr_ipaddr_t;
 
-/** Holds information necessary for binding or connecting to a socket.
- *
- */
-typedef struct {
-	union {
-		struct {
-			fr_ipaddr_t	ipaddr;	//!< IP address to bind or connect to.
-			uint16_t	port;	//!< Port to bind or connect to.
-		};
-		char const *path;		//!< Unix socket path.
-	};
-	int proto;				//!< Protocol.
-} fr_socket_addr_t;
-
 #  if defined(SIOCGIFADDR) && (defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME))
 #    define WITH_IFINDEX_RESOLUTION 1
 #  endif
@@ -84,7 +90,7 @@ extern struct in6_addr fr_inet_link_local6;
 
 /** Like FR_IPADDR_STRLEN but with space for a prefix
  */
-#define FR_IPADDR_PREFIX_STRLEN (FR_IPADDR_STRLEN + 1 + 3)
+#define FR_IPADDR_PREFIX_STRLEN (FR_IPADDR_STRLEN + 1 + 4)
 
 extern bool	fr_reverse_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
@@ -93,6 +99,7 @@ extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
  *	Utility functions
  */
 int	fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr);
+int	fr_ipaddr_is_multicast(fr_ipaddr_t const *ipaddr);
 int	fr_ipaddr_is_prefix(fr_ipaddr_t const *ipaddr);
 
 /*
@@ -116,27 +123,31 @@ int	fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 int	fr_inet_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
 			  ssize_t inlen, int af, bool resolve, bool mask);
 
-char	*fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
+char	*fr_inet_ntop(char out[static FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
 
-char	*fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
+char	*fr_inet_ntop_prefix(char out[static FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
 
 char	*fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid);
 
 uint8_t	*fr_inet_ifid_pton(uint8_t out[static 8], char const *ifid_str);
 
 /*
- *	if_index and if_name resolution
+ *	ifindex and if_name resolution
  */
 int	fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name);
 
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
-char	*fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index);
+char	*fr_ifname_from_ifindex(char out[static IFNAMSIZ], int ifindex);
 #endif
 
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
-int	fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index);
+int	fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex);
 #endif
 
+char	*fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr);
+int	fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, bool link_local);
+
+int	fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet);
 /*
  *	Comparison
  */
@@ -145,11 +156,11 @@ int	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 /*
  *	Sockaddr conversion functions
  */
-int	fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
-			      struct sockaddr_storage *sa, socklen_t *salen);
+int	fr_ipaddr_to_sockaddr(struct sockaddr_storage *sa, socklen_t *salen,
+			      fr_ipaddr_t const *ipaddr, uint16_t port);
 
-int	fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
-				fr_ipaddr_t *ipaddr, uint16_t *port);
+int	fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
+				struct sockaddr_storage const *sa, socklen_t salen);
 
 #ifdef __cplusplus
 }

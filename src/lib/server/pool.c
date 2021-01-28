@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/misc.h>
@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 typedef struct fr_pool_connection_s fr_pool_connection_t;
 
-static int connection_check(fr_pool_t *pool, REQUEST *request);
+static int connection_check(fr_pool_t *pool, request_t *request);
 
 /** An individual connection within the connection pool
  *
@@ -133,7 +133,7 @@ struct fr_pool_s {
 
 	char const	*trigger_prefix;	//!< Prefix to prepend to names of all triggers
 						//!< fired by the connection pool code.
-	VALUE_PAIR	*trigger_args;		//!< Arguments to make available in connection pool triggers.
+	fr_pair_list_t	trigger_args;		//!< Arguments to make available in connection pool triggers.
 
 	fr_time_delta_t	held_trigger_min;	//!< If a connection is held for less than the specified
 						//!< period, fire a trigger.
@@ -194,17 +194,17 @@ static int8_t last_released_cmp(void const *one, void const *two)
 static void connection_unlink(fr_pool_t *pool, fr_pool_connection_t *this)
 {
 	if (this->prev) {
-		rad_assert(pool->head != this);
+		fr_assert(pool->head != this);
 		this->prev->next = this->next;
 	} else {
-		rad_assert(pool->head == this);
+		fr_assert(pool->head == this);
 		pool->head = this->next;
 	}
 	if (this->next) {
-		rad_assert(pool->tail != this);
+		fr_assert(pool->tail != this);
 		this->next->prev = this->prev;
 	} else {
-		rad_assert(pool->tail == this);
+		fr_assert(pool->tail == this);
 		pool->tail = this->prev;
 	}
 
@@ -220,10 +220,10 @@ static void connection_unlink(fr_pool_t *pool, fr_pool_connection_t *this)
  */
 static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
 {
-	rad_assert(pool != NULL);
-	rad_assert(this != NULL);
-	rad_assert(pool->head != this);
-	rad_assert(pool->tail != this);
+	fr_assert(pool != NULL);
+	fr_assert(this != NULL);
+	fr_assert(pool->head != this);
+	fr_assert(pool->tail != this);
 
 	if (pool->head) {
 		pool->head->prev = this;
@@ -233,10 +233,10 @@ static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
 	this->prev = NULL;
 	pool->head = this;
 	if (!pool->tail) {
-		rad_assert(this->next == NULL);
+		fr_assert(this->next == NULL);
 		pool->tail = this;
 	} else {
-		rad_assert(this->next != NULL);
+		fr_assert(this->next != NULL);
 	}
 }
 
@@ -246,17 +246,17 @@ static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
  * @param[in] request	The current request (may be NULL).
  * @param[in] event	trigger name suffix.
  */
-static inline void fr_pool_trigger_exec(fr_pool_t *pool, REQUEST *request, char const *event)
+static inline void fr_pool_trigger_exec(fr_pool_t *pool, request_t *request, char const *event)
 {
 	char	name[128];
 
-	rad_assert(pool != NULL);
-	rad_assert(event != NULL);
+	fr_assert(pool != NULL);
+	fr_assert(event != NULL);
 
 	if (!pool->triggers_enabled) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, event);
-	trigger_exec(request, pool->cs, name, true, pool->trigger_args);
+	trigger_exec(request, pool->cs, name, true, &pool->trigger_args);
 }
 
 /** Find a connection handle in the connection list
@@ -293,10 +293,10 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 			pthread_t pthread_id;
 
 			pthread_id = pthread_self();
-			rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+			fr_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
 #endif
 
-			rad_assert(this->in_use == true);
+			fr_assert(this->in_use == true);
 			/* coverity[missing_unlock] */
 			return this;
 		}
@@ -323,7 +323,7 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
  *	- New connection struct.
  *	- NULL on error.
  */
-static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request, fr_time_t now, bool in_use, bool unlock)
+static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *request, fr_time_t now, bool in_use, bool unlock)
 {
 	uint64_t		number;
 	uint32_t		pending_window;
@@ -332,7 +332,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	fr_pool_connection_t	*this;
 	void			*conn;
 
-	rad_assert(pool != NULL);
+	fr_assert(pool != NULL);
 
 	/*
 	 *	If we have NO connections, and we've previously failed
@@ -342,7 +342,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	if ((pool->state.num == 0) && pool->state.pending && pool->state.last_failed) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
-	rad_assert(pool->state.num <= pool->max);
+	fr_assert(pool->state.num <= pool->max);
 
 	/*
 	 *	Don't spawn too many connections at the same time.
@@ -369,7 +369,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 
 		pthread_mutex_unlock(&pool->mutex);
 
-		if (!RATE_LIMIT_ENABLED || complain) {
+		if (!fr_rate_limit_enabled() || complain) {
 			ROPTIONAL(RERROR, ERROR, "Last connection attempt failed, waiting %pV seconds before retrying",
 				  fr_box_time_delta(pool->state.last_failed + pool->retry_delay - now));
 		}
@@ -382,7 +382,9 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 	 */
 	if (pool->state.pending > pool->pending_window) {
 		pthread_mutex_unlock(&pool->mutex);
-		RATE_LIMIT(ROPTIONAL(RWARN, WARN, "Cannot open a new connection due to rate limit after failure"));
+
+		RATE_LIMIT_GLOBAL_ROPTIONAL(RWARN, WARN,
+					    "Cannot open a new connection due to rate limit after failure");
 
 		return NULL;
 	}
@@ -489,7 +491,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
 
 	pool->state.num++;
 
-	rad_assert(pool->state.pending > 0);
+	fr_assert(pool->state.pending > 0);
 	pool->state.pending--;
 
 	/*
@@ -531,7 +533,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request,
  * @param[in] request	The current request.
  * @param[in] this	Connection to delete.
  */
-static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool_connection_t *this)
+static void connection_close_internal(fr_pool_t *pool, request_t *request, fr_pool_connection_t *this)
 {
 	/*
 	 *	If it's in use, release it.
@@ -539,12 +541,12 @@ static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool
 	if (this->in_use) {
 #ifdef PTHREAD_DEBUG
 		pthread_t pthread_id = pthread_self();
-		rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
+		fr_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
 #endif
 
 		this->in_use = false;
 
-		rad_assert(pool->state.active != 0);
+		fr_assert(pool->state.active != 0);
 		pool->state.active--;
 
 	} else {
@@ -558,7 +560,7 @@ static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool
 
 	connection_unlink(pool, this);
 
-	rad_assert(pool->state.num > 0);
+	fr_assert(pool->state.num > 0);
 	pool->state.num--;
 	talloc_free(this);
 }
@@ -579,10 +581,10 @@ static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool
  *	- 0 if connection was closed.
  *	- 1 if connection handle was left open.
  */
-static int connection_manage(fr_pool_t *pool, REQUEST *request, fr_pool_connection_t *this, time_t now)
+static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connection_t *this, time_t now)
 {
-	rad_assert(pool != NULL);
-	rad_assert(this != NULL);
+	fr_assert(pool != NULL);
+	fr_assert(this != NULL);
 
 	/*
 	 *	Don't terminated in-use connections
@@ -639,7 +641,7 @@ static int connection_manage(fr_pool_t *pool, REQUEST *request, fr_pool_connecti
  * @param[in] request	The current request.
  * @return 1
  */
-static int connection_check(fr_pool_t *pool, REQUEST *request)
+static int connection_check(fr_pool_t *pool, request_t *request)
 {
 	uint32_t	spawn, idle, extra;
 	fr_time_t		now = fr_time();
@@ -800,7 +802,7 @@ done:
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-static void *connection_get_internal(fr_pool_t *pool, REQUEST *request, bool spawn)
+static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool spawn)
 {
 	fr_time_t now;
 	fr_pool_connection_t *this;
@@ -842,7 +844,7 @@ static void *connection_get_internal(fr_pool_t *pool, REQUEST *request, bool spa
 		}
 
 		pthread_mutex_unlock(&pool->mutex);
-		if (!RATE_LIMIT_ENABLED || complain) {
+		if (!fr_rate_limit_enabled() || complain) {
 			ROPTIONAL(RERROR, ERROR, "No connections available and at max connection limit");
 			/*
 			 *	Must be done inside the mutex, reconnect callback
@@ -892,12 +894,12 @@ do_return:
  *				@verbatim <trigger name> @endverbatim is appended to form
  *				the complete path.
  * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
- *				These will usually be VALUE_PAIR (s) describing the host
+ *				These will usually be fr_pair_t (s) describing the host
  *				associated with the pool.
  *				Trigger args will be copied, input trigger_args should be freed
  *				if necessary.
  */
-void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, VALUE_PAIR *trigger_args)
+void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, fr_pair_list_t *trigger_args)
 {
 	pool->triggers_enabled = true;
 
@@ -947,13 +949,14 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	beneath the pool.
 	 */
 	MEM(pool = talloc_zero(NULL, fr_pool_t));
+	fr_pair_list_init(&pool->trigger_args);
 
 	/*
 	 *	Ensure the pool is freed at the same time
 	 *	as its parent.
 	 */
-	if (talloc_link_ctx(ctx, pool) < 0) {
-		ERROR("%s: Failed linking pool ctx", __FUNCTION__);
+	if (ctx && (talloc_link_ctx(ctx, pool) < 0)) {
+		PERROR("%s: Failed linking pool ctx", __FUNCTION__);
 		talloc_free(pool);
 
 		return NULL;
@@ -985,7 +988,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	https://code.facebook.com/posts/1499322996995183/solving-the-mystery-of-link-imbalance-a-metastable-failure-state-at-scale/
 	 */
 	if (!pool->spread) {
-		pool->heap = fr_heap_talloc_create(pool, last_reserved_cmp, fr_pool_connection_t, heap_id);
+		pool->heap = fr_heap_talloc_alloc(pool, last_reserved_cmp, fr_pool_connection_t, heap_id);
 	/*
 	 *	For some types of connections we need to used a different
 	 *	algorithm, because load balancing benefits are secondary
@@ -1005,7 +1008,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	That way we maximise time between connection use.
 	 */
 	} else {
-		pool->heap = fr_heap_talloc_create(pool, last_released_cmp, fr_pool_connection_t, heap_id);
+		pool->heap = fr_heap_talloc_alloc(pool, last_released_cmp, fr_pool_connection_t, heap_id);
 	}
 	if (!pool->heap) {
 		ERROR("%s: Failed creating connection heap", __FUNCTION__);
@@ -1129,7 +1132,7 @@ fr_pool_t *fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque)
 	copy = fr_pool_init(ctx, pool->cs, opaque, pool->create, pool->alive, pool->log_prefix);
 	if (!copy) return NULL;
 
-	if (pool->trigger_prefix) fr_pool_enable_triggers(copy, pool->trigger_prefix, pool->trigger_args);
+	if (pool->trigger_prefix) fr_pool_enable_triggers(copy, pool->trigger_prefix, &pool->trigger_args);
 
 	return copy;
 }
@@ -1210,7 +1213,7 @@ void fr_pool_reconnect_func(fr_pool_t *pool, fr_pool_reconnect_t reconnect)
  *	- -1 If we couldn't create start connections, this may be ignored
  *	     depending on the context in which this function is being called.
  */
-int fr_pool_reconnect(fr_pool_t *pool, REQUEST *request)
+int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 {
 	uint32_t		i;
 	fr_pool_connection_t	*this;
@@ -1326,9 +1329,9 @@ void fr_pool_free(fr_pool_t *pool)
 
 	fr_pool_trigger_exec(pool, NULL, "stop");
 
-	rad_assert(pool->head == NULL);
-	rad_assert(pool->tail == NULL);
-	rad_assert(pool->state.num == 0);
+	fr_assert(pool->head == NULL);
+	fr_assert(pool->tail == NULL);
+	fr_assert(pool->state.num == 0);
 
 	pthread_mutex_destroy(&pool->mutex);
 	pthread_cond_destroy(&pool->done_spawn);
@@ -1357,7 +1360,7 @@ void fr_pool_free(fr_pool_t *pool)
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-void *fr_pool_connection_get(fr_pool_t *pool, REQUEST *request)
+void *fr_pool_connection_get(fr_pool_t *pool, request_t *request)
 {
 	return connection_get_internal(pool, request, true);
 }
@@ -1372,7 +1375,7 @@ void *fr_pool_connection_get(fr_pool_t *pool, REQUEST *request)
  * @param[in] request	The current request.
  * @param[in] conn	to release.
  */
-void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
+void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 {
 	fr_pool_connection_t	*this;
 	fr_time_delta_t		held;
@@ -1414,8 +1417,6 @@ void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
 	    	pool->state.last_held_max = this->last_released;
 	}
 
-	fr_stats_bins(&pool->state.held_stats, this->last_reserved, this->last_released);
-
 	/*
 	 *	Insert the connection in the heap.
 	 *
@@ -1426,7 +1427,7 @@ void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
 	 */
 	fr_heap_insert(pool->heap, this);
 
-	rad_assert(pool->state.active != 0);
+	fr_assert(pool->state.active != 0);
 	pool->state.active--;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Released connection (%" PRIu64 ")", this->number);
@@ -1467,7 +1468,7 @@ void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
  * @param[in] conn	to reconnect.
  * @return new connection handle if successful else NULL.
  */
-void *fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn)
+void *fr_pool_connection_reconnect(fr_pool_t *pool, request_t *request, void *conn)
 {
 	fr_pool_connection_t	*this;
 
@@ -1504,7 +1505,7 @@ void *fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn
  *	- 0 If the connection could not be found.
  *	- 1 if the connection was deleted.
  */
-int fr_pool_connection_close(fr_pool_t *pool, REQUEST *request, void *conn)
+int fr_pool_connection_close(fr_pool_t *pool, request_t *request, void *conn)
 {
 	fr_pool_connection_t *this;
 

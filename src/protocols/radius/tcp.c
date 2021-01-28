@@ -28,13 +28,13 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/tcp.h>
 
-RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
+fr_radius_packet_t *fr_tcp_recv(int sockfd, int flags)
 {
-	RADIUS_PACKET *packet = fr_radius_alloc(NULL, false);
+	fr_radius_packet_t *packet = fr_radius_packet_alloc(NULL, false);
 
 	if (!packet) return NULL;
 
-	packet->sockfd = sockfd;
+	packet->socket.fd = sockfd;
 
 	if (fr_tcp_read_packet(packet, RADIUS_MAX_ATTRIBUTES, flags) != 1) {
 		fr_radius_packet_free(&packet);
@@ -45,7 +45,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 }
 
 /*
- *	Receives a packet, assuming that the RADIUS_PACKET structure
+ *	Receives a packet, assuming that the fr_radius_packet_t structure
  *	has been filled out already.
  *
  *	This ASSUMES that the packet is allocated && fields
@@ -57,7 +57,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
  *	Calling this function MAY change sockfd,
  *	if src_ipaddr.af == AF_UNSPEC.
  */
-int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma)
+int fr_tcp_read_packet(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma)
 {
 	ssize_t len;
 
@@ -68,7 +68,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 	if (!packet->data) {
 		int packet_len;
 
-		len = recv(packet->sockfd, packet->vector + packet->data_len,
+		len = recv(packet->socket.fd, packet->vector + packet->data_len,
 			   4 - packet->data_len, 0);
 		if (len == 0) return -2; /* clean close */
 
@@ -91,7 +91,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 		packet_len = (packet->vector[2] << 8) | packet->vector[3];
 
 		if (packet_len < RADIUS_HEADER_LENGTH) {
-			fr_strerror_printf("Discarding packet: Smaller than RFC minimum of 20 bytes");
+			fr_strerror_const("Discarding packet: Smaller than RFC minimum of 20 bytes");
 			return -1;
 		}
 
@@ -99,13 +99,13 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 		 *	If the packet is too big, then the socket is bad.
 		 */
 		if (packet_len > MAX_PACKET_LEN) {
-			fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes");
+			fr_strerror_const("Discarding packet: Larger than RFC limitation of 4096 bytes");
 			return -1;
 		}
 
 		packet->data = talloc_array(packet, uint8_t, packet_len);
 		if (!packet->data) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 
@@ -117,7 +117,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 	/*
 	 *	Try to read more data.
 	 */
-	len = recv(packet->sockfd, packet->data + packet->partial,
+	len = recv(packet->socket.fd, packet->data + packet->partial,
 		   packet->data_len - packet->partial, 0);
 	if (len == 0) return -2; /* clean close */
 
@@ -145,23 +145,14 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool requ
 		return -1;
 	}
 
-	/*
-	 *	Explicitly set the VP list to empty.
-	 */
-	packet->vps = NULL;
-
 	if (fr_debug_lvl) {
 		char ip_buf[INET6_ADDRSTRLEN], buffer[256];
 
-		if (packet->src_ipaddr.af != AF_UNSPEC) {
-			inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.addr,
-				  ip_buf, sizeof(ip_buf));
-			snprintf(buffer, sizeof(buffer), "host %s port %d",
-				 ip_buf, packet->src_port);
+		if (packet->socket.inet.src_ipaddr.af != AF_UNSPEC) {
+			inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr, ip_buf, sizeof(ip_buf));
+			snprintf(buffer, sizeof(buffer), "host %s port %d", ip_buf, packet->socket.inet.src_port);
 		} else {
-			snprintf(buffer, sizeof(buffer), "socket %d",
-				 packet->sockfd);
+			snprintf(buffer, sizeof(buffer), "socket %d", packet->socket.fd);
 		}
 
 	}

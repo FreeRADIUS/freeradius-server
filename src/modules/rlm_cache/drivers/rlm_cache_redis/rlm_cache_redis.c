@@ -24,7 +24,7 @@
 #define LOG_PREFIX "rlm_cache_redis - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "../../rlm_cache.h"
 #include <freeradius-devel/redis/base.h>
@@ -38,8 +38,8 @@ typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
-	vp_tmpl_t		*created_attr;	//!< LHS of the Cache-Created map.
-	vp_tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
+	tmpl_t		*created_attr;	//!< LHS of the Cache-Created map.
+	tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
 
 	fr_redis_cluster_t	*cluster;
 } rlm_cache_redis_t;
@@ -78,7 +78,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	char				buffer[256];
 	rlm_cache_config_t const	*config = dl_module_parent_data_by_child_data(instance);
 
-	rad_assert(config);
+	fr_assert(config);
 
 	buffer[0] = '\0';
 
@@ -127,7 +127,7 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
-				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_redis_t		*driver = instance;
 	size_t				i;
@@ -138,7 +138,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	redisReply			*reply = NULL;
 	int				s_ret;
 
-	vp_map_t			*head = NULL, **last = &head;
+	map_t			*head = NULL, **last = &head;
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	size_t				pool_size = 0;
 #endif
@@ -190,7 +190,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	We can get a pretty good idea of the required size of the pool
 	 */
 	for (i = 0; i < reply->elements; i += 3) {
-		pool_size += sizeof(vp_map_t) + (sizeof(vp_tmpl_t) * 2);
+		pool_size += sizeof(map_t) + (sizeof(tmpl_t) * 2);
 		if (reply->element[i]->type == REDIS_REPLY_STRING) pool_size += reply->element[i]->len + 1;
 	}
 
@@ -220,10 +220,10 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache created date
 	 */
-	if (head->lhs->tmpl_da == attr_cache_created) {
-		vp_map_t *map;
+	if (tmpl_da(head->lhs) == attr_cache_created) {
+		map_t *map;
 
-		c->created = head->rhs->tmpl_value.vb_date;
+		c->created = tmpl_value(head->rhs)->vb_date;
 
 		map = head;
 		head = head->next;
@@ -233,10 +233,10 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if (head->lhs->tmpl_da == attr_cache_expires) {
-		vp_map_t *map;
+	if (tmpl_da(head->lhs) == attr_cache_expires) {
+		map_t *map;
 
-		c->expires = head->rhs->tmpl_value.vb_date;
+		c->expires = tmpl_value(head->rhs)->vb_date;
 
 		map = head;
 		head = head->next;
@@ -257,12 +257,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_insert_t
  */
 static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, UNUSED void *handle, const rlm_cache_entry_t *c)
+					 request_t *request, UNUSED void *handle, const rlm_cache_entry_t *c)
 {
 	rlm_cache_redis_t	*driver = instance;
 	TALLOC_CTX		*pool;
 
-	vp_map_t		*map;
+	map_t		*map;
 
 	fr_redis_conn_t		*conn;
 	fr_redis_cluster_state_t	state;
@@ -282,15 +282,15 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	int			cnt;
 
-	vp_tmpl_t		expires_value;
-	vp_map_t		expires = {
+	tmpl_t		expires_value;
+	map_t		expires = {
 					.op	= T_OP_SET,
 					.lhs	= driver->expires_attr,
 					.rhs	= &expires_value,
 				};
 
-	vp_tmpl_t		created_value;
-	vp_map_t		created = {
+	tmpl_t		created_value;
+	map_t		created = {
 					.op	= T_OP_SET,
 					.lhs	= driver->created_attr,
 					.rhs	= &created_value,
@@ -300,9 +300,9 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	/*
 	 *	Encode the entry created date
 	 */
-	tmpl_init(&created_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
-	created_value.tmpl_value_type = FR_TYPE_DATE;
-	created_value.tmpl_value.vb_date = c->created;
+	tmpl_init_shallow(&created_value, TMPL_TYPE_DATA, T_BARE_WORD, "<TEMP>", 6);
+	fr_value_box_init(&created_value.data.literal, FR_TYPE_DATE, NULL, true);
+	tmpl_value(&created_value)->vb_date = c->created;
 
 	/*
 	 *	Encode the entry expiry time
@@ -310,9 +310,9 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 *	Although Redis objects expire on their own, we still need this
 	 *	to ignore entries that were created before the last epoch.
 	 */
-	tmpl_init(&expires_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
-	expires_value.tmpl_value_type = FR_TYPE_DATE;
-	expires_value.tmpl_value.vb_date = c->expires;
+	tmpl_init_shallow(&expires_value, TMPL_TYPE_DATA, T_BARE_WORD, "<TEMP>", 6);
+	fr_value_box_init(&expires_value.data.literal, FR_TYPE_DATE, NULL, true);
+	tmpl_value(&expires_value)->vb_date = c->expires;
 	expires.next = c->maps;	/* Head of the list */
 
 	for (cnt = 0, map = &created; map; cnt++, map = map->next);
@@ -425,7 +425,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+					 request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_redis_t		*driver = instance;
 	fr_redis_cluster_state_t	state;
@@ -464,8 +464,8 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	return CACHE_ERROR;
 }
 
-extern cache_driver_t rlm_cache_redis;
-cache_driver_t rlm_cache_redis = {
+extern rlm_cache_driver_t rlm_cache_redis;
+rlm_cache_driver_t rlm_cache_redis = {
 	.name		= "rlm_cache_redis",
 	.magic		= RLM_MODULE_INIT,
 	.onload		= mod_load,

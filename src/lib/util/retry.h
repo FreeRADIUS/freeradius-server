@@ -40,6 +40,7 @@ typedef struct {
 	fr_retry_config_t const	*config;		//!< master configuration
 	fr_time_t		start;			//!< when we started the retransmission
 	fr_time_t		next;			//!< when the next timer should be set
+	fr_time_t		updated;		//!< last update, really a cached "now".
 	fr_time_delta_t		rt;			//!< retransmit interval
 	uint32_t		count;			//!< number of sent packets
 } fr_retry_t;

@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/sha1.h>
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/module.h>
 
 #include <freeradius-devel/tls/base.h>
@@ -40,7 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/eap_aka_sim/base.h>
 #include <freeradius-devel/eap_aka_sim/attrs.h>
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
@@ -120,8 +120,8 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_checkcode, .name = "Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_ck, .name = "CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_client_error_code, .name = "Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_counter_too_small, .name = "Counter-Too-Small", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_counter, .name = "Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_counter_too_small, .name = "Encr-Data.Counter-Too-Small", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_counter, .name = "Encr-Data.Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_encr_data, .name = "Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_fullauth_id_req, .name = "Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_identity_type, .name = "Identity-Type", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
@@ -136,12 +136,12 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_mac, .name = "MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_method_hint, .name = "Method-Hint", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_mk, .name = "MK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_next_pseudonym, .name = "Next-Pseudonym", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_next_reauth_id, .name = "Next-Reauth-ID", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_next_pseudonym, .name = "Encr-Data.Next-Pseudonym", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_next_reauth_id, .name = "Encr-Data.Next-Reauth-ID", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_nonce_mt, .name = "Nonce-MT", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_nonce_s, .name = "Nonce-S", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_nonce_s, .name = "Encr-Data.Nonce-S", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_notification, .name = "Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_padding, .name = "Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_padding, .name = "Encr-Data.Padding", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_permanent_id_req, .name = "Permanent-Id-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_permanent_identity, .name = "Permanent-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_rand, .name = "RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
@@ -153,8 +153,8 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_version_list, .name = "Version-List", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_xres, .name = "XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 
-	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	/*
 	 *	Separate from the EAP-AKA-AND-SIM dictionary
@@ -171,6 +171,18 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_sim_op, .name = "SIM-OP", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_sim_opc, .name = "SIM-OPc", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_sim_sqn, .name = "SIM-SQN", .type = FR_TYPE_UINT64, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+fr_value_box_t const	*enum_eap_type_sim;
+fr_value_box_t const	*enum_eap_type_aka;
+fr_value_box_t const	*enum_eap_type_aka_prime;
+
+extern fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[];
+fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[] = {
+	{ .out = &enum_eap_type_sim, .name = "SIM", .attr = &attr_eap_type },
+	{ .out = &enum_eap_type_aka, .name = "AKA", .attr = &attr_eap_type },
+	{ .out = &enum_eap_type_aka_prime, .name = "AKA-Prime", .attr = &attr_eap_type },
 	{ NULL }
 };
 
@@ -204,7 +216,7 @@ size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2] = {
  * @param[in] vp to return the length of.
  * @return the length of the attribute.
  */
-size_t fr_aka_sim_attr_len(VALUE_PAIR const *vp)
+size_t fr_aka_sim_attr_len(fr_pair_t const *vp)
 {
 	switch (vp->vp_type) {
 	case FR_TYPE_VARIABLE_SIZE:
@@ -258,7 +270,7 @@ void fr_aka_sim_free(void)
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {
-	{ "encrypt=aes-cbc",		1 }, /* any non-zero value will do */
+	{ L("encrypt=aes-cbc"),		1 }, /* any non-zero value will do */
 };
 
 extern fr_dict_protocol_t libfreeradius_eap_aka_sim_dict_protocol;

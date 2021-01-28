@@ -23,18 +23,17 @@
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/protocol/vmps/vmps.h>
 
 #include "proto_vmps.h"
 
 extern fr_app_t proto_vmps;
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -106,77 +105,18 @@ fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
-	CONF_SECTION		*process_app_cs;
-	proto_vmps_t		*inst;
-	dl_module_inst_t		*parent_inst;
-	fr_dict_enum_t const	*type_enum;
-	uint32_t		code;
+	static char const *type_lib_table[FR_VQP_MAX_CODE] = {
+		[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "process",
+		[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "process",
+	};
+	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
 
-	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
-
-	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.
-	 */
-	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
-	if (!type_enum) {
-		cf_log_err(ci, "Invalid type \"%s\"", type_str);
-		return -1;
-	}
-
-	cf_data_add(ci, type_enum, NULL, false);
-
-	code = type_enum->value->vb_uint32;
-
-	if ((code != FR_PACKET_TYPE_VALUE_JOIN_REQUEST) &&
-	    (code != FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST)) {
-		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
-		return -1;
-	}
-
-	/*
-	 *	Setting 'type = foo' means you MUST have at least a
-	 *	'recv foo' section.
-	 */
-	if (!cf_section_find(server, "recv", type_enum->name)) {
-		cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
-			   type_enum->name, cf_section_name2(server));
-		return -1;
-	}
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_vmps"));
-	rad_assert(parent_inst);
-
-	/*
-	 *	Set the allowed codes so that we can compile them as
-	 *	necessary.
-	 */
-	inst = talloc_get_type_abort(parent_inst->data, proto_vmps_t);
-
-	inst->code_allowed[code] = true;
-
-	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!process_app_cs) {
-		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
-	}
-
-	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
-	 *
-	 *	We allow "type = foo", but we just load proto_vmps_all.a
-	 */
-	return dl_module_instance(ctx, out, process_app_cs, parent_inst, "all", DL_MODULE_TYPE_SUBMODULE);
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_vmps",
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
+					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 
 /** Wrapper around dl_instance
@@ -208,7 +148,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_vmps"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
@@ -223,14 +163,16 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 /** Decode the packet
  *
  */
-static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t *address = track->address;
+	fr_io_address_t const *address = track->address;
 	RADCLIENT const *client;
+	fr_radius_packet_t *packet = request->packet;
+	fr_dcursor_t cursor;
 
-	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(data[0] < FR_VQP_MAX_CODE);
 
 	RHEXDUMP3(data, data_len, "proto_vmps decode packet");
 
@@ -259,7 +201,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_vmps_ok().
 	 */
-	if (vqp_decode(request->packet) < 0) {
+	fr_dcursor_init(&cursor, &request->request_pairs);
+	if (fr_vmps_decode(request->request_ctx, packet->data, packet->data_len, &cursor, &packet->code) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -269,17 +212,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 */
 	memcpy(&request->client, &client, sizeof(client)); /* const issues */
 
-	request->packet->if_index = address->if_index;
-	request->packet->src_ipaddr = address->src_ipaddr;
-	request->packet->src_port = address->src_port;
-	request->packet->dst_ipaddr = address->dst_ipaddr;
-	request->packet->dst_port = address->dst_port;
-
-	request->reply->if_index = address->if_index;
-	request->reply->src_ipaddr = address->dst_ipaddr;
-	request->reply->src_port = address->dst_port;
-	request->reply->dst_ipaddr = address->src_ipaddr;
-	request->reply->dst_port = address->src_port;
+	request->packet->socket = address->socket;
+	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
 	request->config = main_config;
 	REQUEST_VERIFY(request);
@@ -292,33 +226,27 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_vmps_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_t);
-	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t *address = track->address;
+	fr_io_track_t *track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const *address = track->address;
 	ssize_t data_len;
 	RADCLIENT const *client;
+	fr_dcursor_t cursor;
 
 	/*
-	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 *	Process layer NAK, never respond, or "Do not respond".
 	 */
-	if (buffer_len == 1) {
-		*buffer = true;
-		return 1;
-	}
-
-	/*
-	 *	"Do not respond"
-	 */
-	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
-		*buffer = false;
+	if ((buffer_len == 1) ||
+	    (request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	    (request->reply->code >= FR_VQP_MAX_CODE)) {
+		track->do_not_respond = true;
 		return 1;
 	}
 
 	client = address->radclient;
-	rad_assert(client);
+	fr_assert(client);
 
 	/*
 	 *	Dynamic client stuff
@@ -326,7 +254,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	if (client->dynamic && !client->active) {
 		RADCLIENT *new_client;
 
-		rad_assert(buffer_len >= sizeof(client));
+		fr_assert(buffer_len >= sizeof(client));
 
 		/*
 		 *	Allocate the client.  If that fails, send back a NAK.
@@ -358,7 +286,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		if (data_len > 0) return data_len;
 	}
 
-#ifdef WITH_UDPFROMTO
 	/*
 	 *	Overwrite the src ip address on the outbound packet
 	 *	with the one specified by the client.  This is useful
@@ -366,12 +293,13 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	routing issues.
 	 */
 	if (client->src_ipaddr.af != AF_UNSPEC) {
-		request->reply->src_ipaddr = client->src_ipaddr;
+		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
 	}
-#endif
 
-	data_len = fr_vmps_encode(buffer, buffer_len, request->packet->data,
-				  request->reply->code, request->reply->id, request->reply->vps);
+	fr_dcursor_talloc_iter_init(&cursor, &request->reply_pairs, fr_proto_next_encodable, dict_vmps, fr_pair_t);
+
+	data_len = fr_vmps_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
+				  request->reply->code, request->reply->id, &cursor);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding VMPS reply");
 		return -1;
@@ -382,14 +310,14 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	return data_len;
 }
 
-static void mod_entry_point_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, request_t *request)
 {
 	proto_vmps_t const	*inst = talloc_get_type_abort_const(instance, proto_vmps_t);
 	dl_module_inst_t		*type_submodule;
 	fr_io_track_t		*track = request->async->packet_ctx;
 
-	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code <= FR_VMPS_MAX_CODE);
+	fr_assert(request->packet->code != 0);
+	fr_assert(request->packet->code <= FR_VQP_MAX_CODE);
 
 	request->server_cs = inst->io.server_cs;
 
@@ -475,15 +403,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_vmps_t		*inst = talloc_get_type_abort(instance, proto_vmps_t);
 
 	/*
-	 *	Instantiate the process modules
-	 */
-	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, inst->type_submodule_by_code,
-				       NUM_ELEMENTS(inst->type_submodule_by_code),
-				       conf) < 0) {
-		return -1;
-	}
-
-	/*
 	 *	No IO module, it's an empty listener.
 	 */
 	if (!inst->io.submodule) return 0;
@@ -528,13 +447,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
-	rad_assert(dict_vmps != NULL);
-	rad_assert(attr_packet_type != NULL);
-
-	/*
-	 *	Bootstrap the app_process modules.
-	 */
-	if (fr_app_process_bootstrap(inst->io.server_cs, inst->type_submodule, conf) < 0) return -1;
+	fr_assert(dict_vmps != NULL);
+	fr_assert(attr_packet_type != NULL);
 
 	/*
 	 *	No IO module, it's an empty listener.
@@ -560,7 +474,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
 	inst->io.dl_inst = dl_module_instance_by_data(inst);
-	rad_assert(inst != NULL);
+	fr_assert(inst != NULL);
 
 	/*
 	 *	Bootstrap the master IO handler.
@@ -570,8 +484,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (fr_vqp_init() < 0) {
-		ERROR("Failed initializing the VMPS dictionaries: %s", fr_strerror());
+	if (fr_vmps_init() < 0) {
+		PERROR("Failed initializing the VMPS dictionaries");
 		return -1;
 	}
 
@@ -580,7 +494,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_vqp_free();
+	fr_vmps_free();
 }
 
 fr_app_t proto_vmps = {

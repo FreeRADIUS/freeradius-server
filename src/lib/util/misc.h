@@ -35,6 +35,7 @@ extern "C" {
 #include <ctype.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <strings.h>
 #include <talloc.h>
 
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
@@ -62,11 +63,23 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
  */
 #define ROUND_UP(_num, _mul)		(((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
 
+/** Get the ceiling value of integer division
+ *
+ */
+#define ROUND_UP_DIV(_x, _y)	(1 + (((_x) - 1) / (_y)))
+
 /** Skip whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *
  * @param[in,out] _p	string to skip over.
  */
 #define fr_skip_whitespace(_p) while(isspace((int)*(_p))) _p++
+
+/** Skip whitespace, stopping at end ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
+ *
+ * @param[in,out] _p	string to skip over.
+ * @param[in] _e	pointer to end of string.
+ */
+#define fr_bskip_whitespace(_p, _e) while((_p < _e) && isspace((int)*(_p))) _p++
 
 /** Skip everything that's not whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *
@@ -155,14 +168,29 @@ static inline bool is_zero(char const *value)
 	return true;
 }
 
+/** Find the highest order bit in an unsigned 64 bit integer
+ *
+ * @return 0-64 indicating the position of the highest bit,
+ *	with 0 indicating no high bits, 1 indicating the 1st
+ *	bit and 64 indicating the last bit.
+ */
+static inline uint8_t fr_high_bit_pos(uint64_t num)
+{
+#ifdef HAVE_BUILTIN_CLZLL
+	return (64 - __builtin_clzll(num));
+#else
+	uint8_t ret = 1;
+	if (num == 0) return 0;
+	while (num >>= 1) ret++;
+	return ret;
+#endif
+}
+
 int		fr_set_signal(int sig, sig_t func);
 int		fr_unset_signal(int sig);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
-char		*fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen);
-size_t		fr_bin2hex(char * restrict hex, uint8_t const * restrict bin, size_t inlen);
-size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
 int		fr_strtoull(uint64_t *out, char **end, char const *value);
 int		fr_strtoll(int64_t *out, char **end, char const *value);
 char		*fr_trim(char const *str, size_t size);
@@ -176,6 +204,8 @@ size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 int		fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str);
 
 bool		fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs);
+uint64_t	fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod);
+
 int		fr_size_from_str(size_t *out, char const *str);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);

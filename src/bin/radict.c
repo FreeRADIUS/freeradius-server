@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file radict.c
- * @brief Utility to print attribute data in CSV format
+ * @brief Utility to print attribute data in tab delimited format
  *
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/autoconf.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -40,6 +41,7 @@ RCSID("$Id$")
 #include <assert.h>
 
 static fr_dict_t *dicts[255];
+static bool print_values = false;
 static fr_dict_t **dict_end = dicts;
 
 DIAG_OFF(unused-macros)
@@ -52,6 +54,7 @@ static void usage(void)
 {
 	fprintf(stderr, "usage: radict [OPTS] <attribute> [attribute...]\n");
 	fprintf(stderr, "  -E               Export dictionary definitions.\n");
+	fprintf(stderr, "  -V               Write out all attribute values.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
 	fprintf(stderr, "\n");
@@ -110,7 +113,7 @@ static int load_dicts(char const *dict_dir)
 			 */
 			if (ret == 0) {
 				if (dict_end >= (dicts + (NUM_ELEMENTS(dicts)))) {
-					fr_strerror_printf("Reached maximum number of dictionaries");
+					fr_strerror_const("Reached maximum number of dictionaries");
 					goto error;
 				}
 
@@ -134,16 +137,46 @@ static int load_dicts(char const *dict_dir)
 
 static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 {
-	char oid_str[512];
-	char flags[256];
+	char 			oid_str[512];
+	char			flags[256];
+	fr_hash_iter_t		iter;
+	fr_dict_enum_t		*enumv;
 
-	(void)fr_dict_print_attr_oid(NULL, oid_str, sizeof(oid_str), NULL, da);
+	(void)fr_dict_attr_oid_print(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da);
 
-	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
+	fr_dict_print_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	/* Protocol Name Type */
-	printf("%s\t%s\t%s\t%s\t%s\n", fr_dict_root(dict)->name, oid_str, da->name,
-	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"), flags);
+	printf("%s\t%s\t%s\t%s\t%s\n",
+	       fr_dict_root(dict)->name,
+	       oid_str,
+	       da->name,
+	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+	       flags);
+
+	if (print_values) {
+		fr_dict_attr_ext_enumv_t	*ext;
+
+		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+		if (!ext || !ext->value_by_name) return;
+
+		for (enumv = fr_hash_table_iter_init(ext->value_by_name, &iter);
+		     enumv;
+		     enumv = fr_hash_table_iter_next(ext->value_by_name, &iter)) {
+		     	char *str;
+
+			str = fr_asprintf(NULL, "%s\t%s\t%s\t%s\t%s\t%s\t%pV",
+					 fr_dict_root(dict)->name,
+					 oid_str,
+					 da->name,
+	       			    	 fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+	       			    	 flags,
+	       			    	 enumv->name,
+	       			    	 enumv->value);
+			printf("%s\n", str);
+			talloc_free(str);
+		}
+	}
 }
 
 static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
@@ -152,8 +185,9 @@ static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 	size_t			len;
 	fr_dict_attr_t const	*p;
 	char			flags[256];
+	fr_dict_attr_t const	**children;
 
-	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
+	fr_dict_print_flags(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
 
 	/*
 	 *	Root attributes are allocated outside of the pool
@@ -172,9 +206,13 @@ static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 
 	if (count) (*count)++;
 
-	len = talloc_array_length(da->children);
+	/*
+	 *	Todo - Should be fixed to use attribute walking API
+	 */
+	children = dict_attr_children(da);
+	len = talloc_array_length(children);
 	for (i = 0; i < len; i++) {
-		for (p = da->children[i]; p; p = p->next) {
+		for (p = children[i]; p; p = p->next) {
 			_fr_dict_export(dict, count, low, high, p, lvl + 1);
 		}
 	}
@@ -189,6 +227,10 @@ static void fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_
 	_fr_dict_export(dict, count, low, high, fr_dict_root(dict), 0);
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char *argv[])
 {
 	char const	*dict_dir = DICTDIR;
@@ -197,24 +239,37 @@ int main(int argc, char *argv[])
 	bool		found = false;
 	bool		export = false;
 
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree;
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radict");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 #endif
 
+	talloc_set_log_stderr();
+
 	fr_debug_lvl = 1;
 
-	while ((c = getopt(argc, argv, "ED:xh")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "ED:Vxh")) != -1) switch (c) {
 		case 'E':
 			export = true;
 			break;
 
 		case 'D':
 			dict_dir = optarg;
+			break;
+
+		case 'V':
+			print_values = true;
 			break;
 
 		case 'x':
@@ -296,7 +351,7 @@ int main(int argc, char *argv[])
 		do {
 			DEBUG2("Looking for \"%s\" in dict \"%s\"", attr, fr_dict_root(*dict_p)->name);
 
-			da = fr_dict_attr_by_name(*dict_p, attr);
+			da = fr_dict_attr_by_name(NULL, fr_dict_root(*dict_p), attr);
 			if (da) {
 				da_print_info_td(*dict_p, da);
 				found = true;

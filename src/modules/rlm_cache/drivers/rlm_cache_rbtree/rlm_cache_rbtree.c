@@ -23,7 +23,7 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "../../rlm_cache.h"
 
 typedef struct {
@@ -113,7 +113,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The cache.
 	 */
-	driver->cache = rbtree_talloc_create(NULL, cache_entry_cmp, rlm_cache_rbtree_entry_t, NULL, 0);
+	driver->cache = rbtree_talloc_alloc(NULL, cache_entry_cmp, rlm_cache_rbtree_entry_t, NULL, 0);
 	if (!driver->cache) {
 		ERROR("Failed to create cache");
 		return -1;
@@ -123,7 +123,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The heap of entries to expire.
 	 */
-	driver->heap = fr_heap_talloc_create(driver, cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
+	driver->heap = fr_heap_talloc_alloc(driver, cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
 	if (!driver->heap) {
 		ERROR("Failed to create heap for the cache");
 		return -1;
@@ -144,7 +144,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  * @copydetails cache_entry_alloc_t
  */
 static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-					    REQUEST *request)
+					    request_t *request)
 {
 	rlm_cache_rbtree_entry_t *c;
 
@@ -153,6 +153,7 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
 		RERROR("Failed allocating cache entry");
 		return NULL;
 	}
+	c->heap_id = -1;
 
 	return (rlm_cache_entry_t *)c;
 }
@@ -165,13 +166,13 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
-				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	rlm_cache_entry_t *c;
 
-	rad_assert(driver->cache);
+	fr_assert(driver->cache);
 
 	/*
 	 *	Clear out old entries
@@ -203,7 +204,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, UNUSED void *handle,
+					 request_t *request, UNUSED void *handle,
 					 uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
@@ -228,7 +229,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_insert_t
  */
 static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, void *handle,
+					 request_t *request, void *handle,
 					 rlm_cache_entry_t const *c)
 {
 	cache_status_t status;
@@ -236,7 +237,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 	rlm_cache_entry_t *my_c;
 
-	rad_assert(handle == request);
+	fr_assert(handle == request);
 
 	if (!request) return CACHE_ERROR;
 
@@ -273,7 +274,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
  * @copydetails cache_entry_set_ttl_t
  */
 static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *config, void *instance,
-					  REQUEST *request, UNUSED void *handle,
+					  request_t *request, UNUSED void *handle,
 					  rlm_cache_entry_t *c)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
@@ -302,7 +303,7 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
  * @copydetails cache_entry_count_t
  */
 static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *instance,
-				  REQUEST *request, UNUSED void *handle)
+				  request_t *request, UNUSED void *handle)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
@@ -318,7 +319,7 @@ static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
  * @copydetails cache_acquire_t
  */
 static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *instance,
-			 REQUEST *request)
+			 request_t *request)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
@@ -337,7 +338,7 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
  *
  * @copydetails cache_release_t
  */
-static void cache_release(UNUSED rlm_cache_config_t const *config, void *instance, REQUEST *request,
+static void cache_release(UNUSED rlm_cache_config_t const *config, void *instance, request_t *request,
 			  UNUSED rlm_cache_handle_t *handle)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
@@ -347,8 +348,8 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, void *instanc
 	RDEBUG3("Mutex released");
 }
 
-extern cache_driver_t rlm_cache_rbtree;
-cache_driver_t rlm_cache_rbtree = {
+extern rlm_cache_driver_t rlm_cache_rbtree;
+rlm_cache_driver_t rlm_cache_rbtree = {
 	.name		= "rlm_cache_rbtree",
 	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,

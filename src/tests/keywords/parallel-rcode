@@ -37,7 +37,7 @@ group {
 if (!fail) {
 	test_fail
 }
-if (&request:Tmp-String-0) {
+if (&request.Tmp-String-0) {
 	test_fail
 }
 
@@ -61,7 +61,7 @@ group {
 if (!fail) {
 	test_fail
 }
-if (&request:Tmp-String-0 != 'foo') {
+if (&request.Tmp-String-0 != 'foo') {
 	test_fail
 }
 

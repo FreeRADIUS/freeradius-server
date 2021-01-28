@@ -2,6 +2,7 @@ TARGET		:= libfreeradius-unlang.a
 
 SOURCES	:=	base.c \
 		call.c \
+		caller.c \
 		compile.c \
 		condition.c \
 		foreach.c \
@@ -16,7 +17,12 @@ SOURCES	:=	base.c \
 		return.c \
 		subrequest.c \
 		switch.c \
-		xlat.c
+		tmpl.c \
+		xlat.c \
+		xlat_builtin.c \
+		xlat_eval.c \
+		xlat_inst.c \
+		xlat_tokenize.c
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/unlang/*.h))
 

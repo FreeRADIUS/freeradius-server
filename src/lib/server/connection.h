@@ -20,7 +20,7 @@
  * @file lib/server/connection.h
  * @brief Simple state machine for managing connection states.
  *
- * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2017-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(connection_h, "$Id$")
 
@@ -33,24 +33,15 @@ extern "C" {
 
 #include <talloc.h>
 
-#ifndef FR_CONNECTION_NO_TYPEDEF
-typedef struct fr_connection_pub_s fr_connection_t; /* We use the private version of the fr_connection_t */
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
 #endif
-
-/** Public fields for the connection
- *
- * This saves the overhead of using accessors for commonly used fields in
- * connections.
- *
- * Though these fields are public, they should _NOT_ be modified by clients of
- * the connection API.
- */
-struct fr_connection_pub_s {
-	uint64_t		id;		//!< Unique identifier for the connection.
-	void			*h;		//!< Connection handle
-	fr_event_list_t		*el;		//!< Event list for timers and I/O events.
-	char const		*log_prefix;	//!< Prefix to add to log messages.
-};
+#ifndef _CONNECTION_PRIVATE
+typedef struct fr_connection_pub_s fr_connection_t; /* We use the private version of the fr_connection_t */
+#  define _CONST const
+#else
+#  define _CONST
+#endif
 
 typedef enum {
 	FR_CONNECTION_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
@@ -61,10 +52,33 @@ typedef enum {
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
 	FR_CONNECTION_STATE_SHUTDOWN,		//!< Connection is shutting down.
+	FR_CONNECTION_STATE_FAILED,		//!< Connection has failed.
 	FR_CONNECTION_STATE_CLOSED,		//!< Connection has been closed.
-	FR_CONNECTION_STATE_FAILED,		//!< Connection failed and is waiting to reconnect.
 	FR_CONNECTION_STATE_MAX
 } fr_connection_state_t;
+
+/** Public fields for the connection
+ *
+ * This saves the overhead of using accessors for commonly used fields in
+ * connections.
+ *
+ * Though these fields are public, they should _NOT_ be modified by clients of
+ * the connection API.
+ */
+struct fr_connection_pub_s {
+	fr_connection_state_t _CONST	state;		//!< Current connection state.
+	fr_connection_state_t _CONST	prev;		//!< The previous state the connection was in.
+	uint64_t _CONST			id;		//!< Unique identifier for the connection.
+	void			* _CONST h;		//!< Connection handle
+	fr_event_list_t		* _CONST el;		//!< Event list for timers and I/O events.
+	char const		* _CONST log_prefix;	//!< Prefix to add to log messages.
+
+	uint64_t _CONST			reconnected;	//!< How many times we've attempted to establish or
+							///< re-establish this connection.
+	uint64_t _CONST			timed_out;	//!< How many times has this connection timed out when
+							///< connecting.
+	bool _CONST			triggers;	//!< do we run the triggers?
+};
 
 typedef enum {
 	FR_CONNECTION_FAILED = 0,		//!< Connection is being reconnected because it failed.
@@ -79,6 +93,8 @@ typedef struct {
 						//!< or for shutdown to close the connection.
 	fr_time_delta_t reconnection_delay;	//!< How long to wait after failures.
 } fr_connection_conf_t;
+
+typedef struct fr_connection_watch_entry_s fr_connection_watch_entry_t;
 
 extern fr_table_num_ordered_t const fr_connection_states[];
 extern size_t fr_connection_states_len;
@@ -181,25 +197,37 @@ typedef struct {
  * connection.  The actual free will be deferred until the watcher returns.
  *
  * @param[in] conn	Being watched.
- * @param[in] state	That was entered.
+ * @param[in] prev	State we came from.
+ * @param[in] state	State that was entered (the current state)
  * @param[in] uctx	that was passed to fr_connection_add_watch_*.
  */
-typedef void(*fr_connection_watch_t)(fr_connection_t *conn, fr_connection_state_t state, void *uctx);
+typedef void(*fr_connection_watch_t)(fr_connection_t *conn,
+				     fr_connection_state_t prev, fr_connection_state_t state, void *uctx);
 
 /** @name Add watcher functions that get called before (pre) the state callback and after (post)
  * @{
  */
-void			fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
-						    fr_connection_watch_t watch, bool oneshot, void const *uctx);
+fr_connection_watch_entry_t *fr_connection_add_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
+							 fr_connection_watch_t watch, bool oneshot, void const *uctx);
 
-void			fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
-						     fr_connection_watch_t watch, bool oneshot, void const *uctx);
+fr_connection_watch_entry_t *fr_connection_add_watch_post(fr_connection_t *conn, fr_connection_state_t state,
+							  fr_connection_watch_t watch, bool oneshot, void const *uctx);
 
 int			fr_connection_del_watch_pre(fr_connection_t *conn, fr_connection_state_t state,
 						    fr_connection_watch_t watch);
 
 int			fr_connection_del_watch_post(fr_connection_t *conn, fr_connection_state_t state,
 						     fr_connection_watch_t watch);
+
+void			fr_connection_watch_enable(fr_connection_watch_entry_t *entry);
+
+void			fr_connection_watch_disable(fr_connection_watch_entry_t *entry);
+
+void			fr_connection_watch_enable_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx);
+
+void			fr_connection_watch_set_uctx(fr_connection_watch_entry_t *entry, void const *uctx);
+
+bool			fr_connection_watch_is_enabled(fr_connection_watch_entry_t *entry);
 /** @} */
 
 /** @name Statistics
@@ -222,6 +250,10 @@ void			fr_connection_signal_reconnect(fr_connection_t *conn, fr_connection_reaso
 void			fr_connection_signal_shutdown(fr_connection_t *conn);
 
 void			fr_connection_signal_halt(fr_connection_t *conn);
+
+void			fr_connection_signals_pause(fr_connection_t *conn);
+
+void			fr_connection_signals_resume(fr_connection_t *conn);
 /** @} */
 
 /** @name Install generic I/O events on an FD to signal state changes
@@ -237,6 +269,8 @@ fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     fr_connection_funcs_t const *funcs, fr_connection_conf_t const *conf,
 					     char const *log_prefix, void const *uctx);
 /** @} */
+
+#undef _CONST
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,989 @@
+= Built-In Expansions
+
+In addition to storing attribute references, the server has a number
+of built-in expansions.  These expansions act largely as functions
+which operate on inputs, and produce an output.
+
+== Attribute Manipulation
+
+=== %{length: ... }
+
+The `length` expansion returns the size of the input as an integer.
+When the input is a string, then the output is identical to the
+`strlen` expansion.
+
+When the input is an attribute reference, the output is the size of
+the attributes data as encoded "on the wire".
+
+.Return: _size_
+
+.Determining the length of fixed and variable length attributes
+====
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "Caipirinha"
+    &Framed-IP-Address := 192.0.2.1
+}
+
+update reply {
+    &Reply-Message := "The length of %{control.Tmp-String-0} is %{length:&control.Tmp-String-0}"
+    &Reply-Message += "The length of %{control.Framed-IP-Address} is %{length:&control.Framed-IP-Address}"
+}
+----
+
+.Output
+....
+The length of Caipirinha is 10
+The length of 192.168.0.2 is 4
+....
+====
+
+=== %{integer:<&ref>}
+
+Print the value of the attribute an integer.
+
+In normal operation, `integer` attributes are printed using the name
+given by a `VALUE` statement in a dictionary. Similarly, date
+attributes are printed as dates, i.e., "January 1 2010.
+
+The `integer` expansion applies only to attributes which can be
+converted to an integer. For all other inputs, it returns `0`.
+
+A common usage is to find the difference between two dates.
+
+For example, if a request contains `Service-Type = Login-User`, the
+expansion of `%{integer:&Service-Type}` will yield `1`, which is the
+value associated with the `Login-User` name. Using
+`%{integer:&Event-Timestamp}` will return the event timestamp as an
+unsigned 32-bit number.
+
+.Return: _string_
+
+.Determining the integer value of an enumerated attribute
+====
+[source,unlang]
+----
+update {
+    &control.Service-Type := Login-User
+}
+update reply {
+    &Reply-Message := "The value of Service-Type is %{integer:&control.Service-Type}"
+}
+----
+
+.Output
+
+```
+The value of Service-Type is 1
+```
+====
+
+=== %{rand:<number>}
+
+Generate random number from `0` to `<number>-1`.
+
+.Return: _uint64_
+
+.Generating a random number between 0 and 511
+====
+[source,unlang]
+----
+update reply {
+    &Reply-Message := "The random number is %{rand:512}"
+}
+----
+
+.Output
+
+```
+The random number is 347
+```
+====
+
+=== %{tag:<attribute ref>}
+
+CAUTION: This expansion is deprecated and will likely be removed.
+
+Returns a list of tags for any attributes found using ``<attribute ref>``.
+
+.Return: _int8_
+
+.Determining the tag value of the second instance of the `radius.Tunnel-Server-Endpoint` attribute
+====
+[source,unlang]
+----
+update request {
+    &Tunnel-Server-Endpoint   := '192.0.1.1'
+    &Tunnel-Server-Endpoint:1 := '192.0.5.2'
+    &Tunnel-Server-Endpoint:1 += '192.0.3.8'
+    &Tunnel-Server-Endpoint:2 := '192.0.2.1'
+    &Tunnel-Server-Endpoint:2 += '192.0.3.4'
+}
+
+update reply {
+    &Reply-Message := "The tag value of the second instance of Tunnel-Server-Enpoint is %{request.Tunnel-Server-Endpoint[1]}"
+}
+----
+
+.Output
+
+```
+The tag value of the second instance of Tunnel-Server-Enpoint is 192.0.5.2
+```
+====
+
+=== %{string:<data>}
+
+Convert input to a string if (possible).  For _octets_ type attributes, this
+means interpreting the data as a UTF8 string, and inserting octal escape
+sequences where appropriate.
+
+For other types, this means printing the value in its _presentation_ format,
+i.e. dotted quads for IPv4 addresses, link:https://en.wikipedia.org/wiki/ISO_8601[ISO 8601]
+time for date types, enumeration values for attributes such as `radius.Service-Type` etc.
+
+.Return: _string_
+
+.String interpolation using the raw octets value of Tmp-Octets-0, and the stringified version
+====
+[source,unlang]
+----
+update control {
+    &Tmp-Octets-0 := 0x7465737431
+}
+update reply {
+    &Reply-Message := "The string value of %{control.Tmp-Octets-0} is %{string:%{control.Tmp-Octets-0}}"
+}
+----
+====
+
+.Output
+
+```
+The string value of 0x7465737431 is test1
+```
+
+== Server Manipulation
+
+=== %{config:<key>}
+
+Refers to a variable in the configuration file. See the documentation
+on configuration file references.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+"Server installed in %{config:prefix}"
+"Module rlm_exec.shell_escape = %{config:modules.exec.shell_escape}"
+----
+
+.Output
+
+```
+Server installed in /opt/freeradius
+Module rlm_exec.shell_escape = yes
+```
+
+=== %{client:<key>}
+
+Refers to a variable that was defined in the client section for the
+current client. See the sections `client { ... }` in `clients.conf`.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+"The client ipaddr is %{client:ipaddr}"
+----
+
+.Output
+
+```
+The client ipaddr is 192.168.5.9
+```
+
+=== %{debug:<level>}
+
+Dynamically change the debug level to something high, recording the old level.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+recv Access-Request {
+    if (&request.User-Name == "bob") {
+        "%{debug:4}"
+    } else {
+        "%{debug:0}"
+    }
+    ...
+}
+----
+
+.Output (_extra informations only for that condition_)
+
+```
+...
+(0)  recv Access-Request {
+(0)    if (&request.User-Name == "bob") {
+(0)      EXPAND %{debug:4}
+(0)        --> 2
+(0)    } # if (&request.User-Name == "bob") (...)
+(0)    filter_username {
+(0)      if (&State) {
+(0)        ...
+(0)      }
+...
+```
+
+=== %{debug_attr:<list:[index]>}
+
+Print to debug output all instances of current attribute, or all attributes in a list.
+expands to a zero-length string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+recv Access-Request {
+    if (&request.User-Name == "bob") {
+        "%{debug_attr:request[*]}"
+    }
+    ...
+}
+----
+
+.Output
+
+```
+...
+(0)  recv Access-Request {
+(0)    if (&request.User-Name == "bob") {
+(0)      Attributes matching "request[*]"
+(0)        &request.User-Name = bob
+(0)        &request.User-Password = hello
+(0)        &request.NAS-IP-Address = 127.0.1.1
+(0)        &request.NAS-Port = 1
+(0)        &request.Message-Authenticator = 0x9210ee447a9f4c522f5300eb8fc15e14
+(0)      EXPAND %{debug_attr:request[*]}
+(0)    } # if (&request.User-Name == "bob") (...)
+...
+```
+
+=== %{interpreter:<state>}
+
+Get information about the interpreter state.
+
+[options="header,autowidth"]
+|===
+| State      | Description
+| `name`     | Name of the instruction.
+| `type`     | Unlang type.
+| `depth`    | How deep the current stack is.
+| `line`     | Line number of the current section.
+| `filename` | Filename of the current section.
+|===
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+"Failure in test at line %{interpreter:...filename}:%{interpreter:...line}"
+----
+
+.Output
+
+```
+Failure in test at line /path/raddb/sites-enaled/default:231
+```
+
+== String manipulation
+
+=== %{concat:<delim> <&ref:[idx]>}
+
+Used to join two or more attributes, separated by a delimiter.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update {
+    &control.Tmp-String-0 := "aaa"
+    &control.Tmp-String-0 += "bb"
+    &control.Tmp-String-0 += "c"
+}
+
+update reply {
+    &Reply-Message += "%{concat:, %{control.Tmp-String-0[*]}}"
+    &Reply-Message += "%{concat:,%{control.Tmp-String-0[*]}}"
+}
+----
+
+.Output
+
+```
+aaa, bb, c
+aaa,bb,c
+```
+
+=== %{explode:<&ref> <delim>}
+
+Split an attribute into multiple new attributes based on a delimiter.
+The original input attribute is removed, and is replaced with multiple
+attributes of the same name, but which contain the "exploded" values.
+
+This expansion is the opposite of `%{concat: ... }`.
+
+.Return: _the number of total new attributes_.
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "bob.toba@domain.com"
+}
+
+"%{explode:&control.Tmp-String-0 @}"
+
+update reply {
+    &Reply-Message := "Welcome %{control.Tmp-String-0[0]}"
+}
+----
+
+.Output
+
+```
+Welcome bob.toba
+```
+
+=== %{lpad:<&ref> <val> <char>}
+
+Left-pad a string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "123"
+}
+update reply {
+    &Reply-Message := "Maximum should be %{lpad:&control.Tmp-String-0 11 0}"
+}
+----
+
+.Output
+
+```
+Maximum should be 00000000123
+```
+
+=== %{rpad:<&ref> <val> <char>}
+
+Right-pad a string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "123"
+}
+update reply {
+    &Reply-Message := "Maximum should be %{rpad:&control.Tmp-String-0 11 0}"
+}
+----
+
+.Output
+
+```
+Maximum should be 12300000000
+```
+
+=== %{pairs:<&list:[*]>}
+
+Serialize attributes as comma-delimited string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update {
+    &control.Tmp-String-0 := "This is a string"
+    &control.Tmp-String-0 += "This is another one"
+}
+
+update reply {
+    &Reply-Message := "Serialize output: %{pairs:&control[*]}"
+}
+----
+
+.Output
+
+```
+Serialize output: Tmp-String-0 = \"This is a string\"Tmp-String-0 = \"This is another one\"
+```
+
+=== %{randstr: ...}
+
+Get random string built from character classes.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update reply {
+    &Reply-Message := "The random string output is %{randstr:aaaaaaaa}"
+}
+----
+
+.Output
+
+```
+The random string output is 4Uq0gPyG
+```
+
+=== %{strlen: ... }
+
+Length of given string.
+
+.Return: _integer_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "Caipirinha"
+}
+update reply {
+    &Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control.Tmp-String-0}"
+}
+----
+
+.Output
+
+```
+The length of Caipirinha is 21
+```
+
+=== %{tolower: ... }
+
+Dynamically expands the string and returns the lowercase version of
+it. This definition is only available in version 2.1.10 and later.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "CAIPIRINHA"
+}
+update reply {
+    &Reply-Message := "tolower of %{control.Tmp-String-0} is %{tolower:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+tolower of CAIPIRINHA is caipirinha
+```
+
+=== %{toupper: ... }
+
+Dynamically expands the string and returns the uppercase version of
+it. This definition is only available in version 2.1.10 and later.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "caipirinha"
+}
+update reply {
+    &Reply-Message := "toupper of %{control.Tmp-String-0} is %{toupper:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+toupper of caipirinha is CAIPIRINHA
+```
+
+== String Conversion
+
+=== %{base64: ... }
+
+Encode a string using Base64.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "Caipirinha"
+}
+update reply {
+    &Reply-Message := "The base64 of %{control.Tmp-String-0} is %{base64:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+The base64 of foo is Q2FpcGlyaW5oYQ==
+```
+
+=== %{base64decode: ... }
+
+Decode a string previously encoded using Base64.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
+}
+update reply {
+    &Reply-Message := "The base64decode of %{control.Tmp-String-0} is %{base64decode:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+The base64decode of Q2FpcGlyaW5oYQ== is Caipirinha
+```
+
+=== %{bin: ... }
+
+Convert string to binary.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "10"
+}
+update reply {
+    &Reply-Message := "The %{control.Tmp-String-0} in binary is %{bin:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+The 10 in binary is \020
+```
+
+=== %{hex: ... }
+
+Convert to hex.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "12345"
+}
+update reply {
+    &Reply-Message := "The value of %{control.Tmp-String-0} in hex is %{hex:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+The value of 12345 in hex is 3132333435
+```
+
+=== %{urlquote: ... }
+
+Quote URL special characters.
+
+.Return: _string_.
+
+.Example
+
+[source,unlang]
+----
+update {
+    &control.Tmp-String-0 := "http://example.org/"
+}
+update reply {
+    &Reply-Message += "The urlquote of %{control.Tmp-String-0} is %{urlquote:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
+```
+
+=== %{urlunquote: ... }
+
+Unquote URL special characters.
+
+.Return: _string_.
+
+.Example
+
+[source,unlang]
+----
+update {
+    &control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
+}
+update reply {
+    &Reply-Message += "The urlunquote of %{control.Tmp-String-0} is %{urlunquote:%{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+The urlunquote of http%3A%2F%2Fexample.org%2F is http://example.org/
+```
+
+== Hashing and Encryption
+
+=== %{hmacmd5:<shared_key> <string>}
+
+Generate `HMAC-MD5` of string.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+update {
+    &control.Tmp-String-0 := "mykey"
+    &control.Tmp-String-1 := "Caipirinha"
+}
+update {
+    &control.Tmp-Octets-0 := "%{hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+}
+
+update reply {
+    &Reply-Message := "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+}
+----
+
+.Output
+
+```
+The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\376\341\203
+The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
+
+=== %{hmacsha1:<shared_key> <string>}
+
+Generate `HMAC-SHA1` of string.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+update {
+    &control.Tmp-String-0 := "mykey"
+    &control.Tmp-String-1 := "Caipirinha"
+}
+update {
+    &control.Tmp-Octets-0 := "%{hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+}
+
+update reply {
+    &Reply-Message := "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+}
+----
+
+.Output
+
+```
+The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\372ʙ>R\"\341\351O)
+The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
+
+=== %{md5: ... }
+
+Dynamically expands the string and performs an MD5 hash on it. The
+result is binary data.
+
+.Return: _binary data_
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "Caipirinha"
+}
+update reply {
+    &Reply-Message := "md5 of %{control.Tmp-String-0} is octal=%{md5:%{control.Tmp-String-0}}"
+    &Reply-Message := "md5 of %{control.Tmp-String-0} is hex=%{hex:%{md5:%{control.Tmp-String-0}}}"
+}
+----
+
+.Output
+
+```
+md5 of Caipirinha is octal=\024\204\013md||\230\243\3472\3703\330n\251
+md5 of Caipirinha is hex=14840b6d647c7c98a3e732f833d86ea9
+```
+
+=== Other Hashing Functions
+
+The following hashes are supported for all versions of OpenSSL.
+
+* `%{md2: ... }`
+* `%{md4: ... }`
+* `%{md5: ... }`
+* `%{sha1: ... }`
+* `%{sha224: ... }`
+* `%{sha256: ... }`
+* `%{sha384: ... }`
+* `%{sha512: ... }`
+
+The following hashes are supported for when OpenSSL 1.1.1 or greater
+is installed.  This version adds support for the `sha3` and `blake`
+families of digest functions.
+
+* `%{blake2s_256: ... }`
+* `%{blake2b_512: ... }`
+* `%{sha2_224: ... }`
+* `%{sha2_256: ... }`
+* `%{sha2_384: ... }`
+* `%{sha2_512: ... }`
+* `%{sha3_224: ... }`
+* `%{sha3_256: ... }`
+* `%{sha3_384: ... }`
+* `%{sha3_512: ... }`
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+update {
+    &control.Tmp-String-0 := "Caipirinha"
+}
+update reply {
+    &Reply-Message := "The md5 of %{control.Tmp-String-0} in octal is %{md5:%{control.Tmp-String-0}}"
+    &Reply-Message += "The md5 of %{control.Tmp-String-0} in hex is %{hex:%{md5:%{control.Tmp-String-0}}}"
+}
+----
+
+.Output
+
+```
+The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
+The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
+```
+
+== Miscellaneous Expansions
+
+=== +%{0}+..+%{32}+
+
+`%{0}` expands to the portion of the subject that matched the last regular
+expression evaluated. `%{1}`..`%{32}` expand to the contents of any capture
+groups in the pattern.
+
+Every time a regular expression is evaluated, whether it matches or not,
+the numbered capture group values will be cleared.
+
+=== +%{regex:<named capture group>}+
+
+Return named subcapture value from the last regular expression evaluated.
+
+Results of named capture groups are available using the `%{regex:<named capture
+group>}` expansion. They will also be accessible using the numbered expansions
+described xref:builtin.adoc#_0_32[above].
+
+Every time a regular expression is evaluated, whether it matches or not,
+the named capture group values will be cleared.
+
+[NOTE]
+====
+This expansion is only available if the server is built with libpcre or libpcre2.
+Use the output of `radiusd -Xxv` to determine which regular expression library in use.
+
+....
+...
+Debug :   regex-pcre               : no
+Debug :   regex-pcre2              : yes
+Debug :   regex-posix              : no
+Debug :   regex-posix-extended     : no
+Debug :   regex-binsafe            : yes
+...
+Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build time
+....
+====
+
+=== +%{nexttime:<time>}+
+
+Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).
+
+.Return: _string_
+
+.Example:
+
+With the current time at 16:18, `%{nexttime:1h}` will expand to `2520`.
+
+[source,unlang]
+----
+update reply {
+    &Reply-Message := "You should wait for %{nexttime:1h}s"
+}
+----
+
+.Output
+
+```
+You should wait for 2520s
+```
+
+=== +%{pack:%{Attribute-Name}%{Attribute-Name}...}+
+
+Pack multiple multiple attributes and/or literals into a binary string.
+For best results, each attribute passed to `pack` should be fixed size.
+That is, not data type `octets` or `string` as the length of those values
+will not be encoded.
+
+See also the `unpack` module, which is the inverse to `pack`.
+
+.Return: _octets_
+
+.Example:
+
+[source,unlang]
+----
+update reply {
+    &Class := "%{pack:%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
+}
+----
+
+.Output
+
+```
+You should wait for 2520s
+```
+
+=== +%{Packet-Type}+
+
+The packet type (`Access-Request`, etc.)
+
+=== +%{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}+
+
+The source IPv4 or IPv6 address of the packet. See also the expansions
+`%{client:ipaddr}` and `%{client:ipv6addr}`. The two expansions
+should be identical, unless `%{client:ipaddr}` contains a DNS hostname.
+
+=== +%{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}+
+
+The destination IPv4 or IPv6 address of the packet. See also the
+expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
+is listening on a "wildcard" address, then these two expansions will be
+different, as follows: the `%{listen:ipaddr}` will be the wildcard
+address and `%{Packet-DST-IP-Address}` will be the unicast address to
+which the packet was sent.
+
+=== +%{Packet-SRC-Port} and %{Packet-DST-Port}+
+
+The source/destination ports associated with the packet.
+
+.Return: _string_.
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "user@example.com"
+}
+
+if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
+    update reply {
+        &Reply-Message := "The %{control.Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
+    }
+}
+----
+
+.Output
+
+```
+The user@example.com { login=user, domain=example.com }
+```
+
+### %{sub:/<regex>/[flags] <replace> <subject>}
+
+Substitute text just as easily as it can match it, even using regex patterns.
+
+.Return: _string_.
+
+.Example
+
+[source,unlang]
+----
+update control {
+    &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
+}
+update reply {
+    &Reply-Message := "%{sub:/ / , %{control.Tmp-String-0}}"
+}
+----
+
+.Output
+
+```
+Caipirinha,is,a,light,and,refreshing,drink!
+```
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

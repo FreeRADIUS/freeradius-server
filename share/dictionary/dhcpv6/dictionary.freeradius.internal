@@ -52,4 +52,9 @@ VALUE	Packet-Type			Disconnect		33
 VALUE	Packet-Type			State			34
 VALUE	Packet-Type			Contact			35
 
+VALUE	Packet-Type			Do-Not-Respond		256
+
 ATTRIBUTE	Transaction-ID				65537	octets		# Actually 24 bits
+ATTRIBUTE	Hop-Count				65538	uint8
+ATTRIBUTE	Relay-Link-Address			65539	ipv6addr
+ATTRIBUTE	Relay-Peer-Address			65540	ipv6addr

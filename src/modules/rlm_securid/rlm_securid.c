@@ -78,21 +78,21 @@ static SD_CHAR empty_pin[] = "";
 /* comparison function to find session in the tree */
 static int securid_session_cmp(void const *a, void const *b)
 {
-	int rcode;
+	int ret;
 	SECURID_SESSION const *one = a;
 	SECURID_SESSION const *two = b;
 
-	rad_assert(one != NULL);
-	rad_assert(two != NULL);
+	fr_assert(one != NULL);
+	fr_assert(two != NULL);
 
-	rcode = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
+	if (ret != 0) return ret;
 
 	return memcmp(one->state, two->state, sizeof(one->state));
 }
 
 
-static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
+static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 				   char const *username,
 				   char const *passcode,
 				   char *replyMsgBuffer, size_t replyMsgBufferSize)
@@ -451,7 +451,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	 *	Lookup sessions in the tree.  We don't free them in
 	 *	the tree, as that's taken care of elsewhere...
 	 */
-	inst->session_tree = rbtree_talloc_create(NULL, securid_session_cmp, SECURID_SESSION NULL, 0);
+	inst->session_tree = rbtree_talloc_alloc(NULL, securid_session_cmp, SECURID_SESSION NULL, 0);
 	if (!inst->session_tree) {
 		ERROR("Cannot initialize session tree");
 		return -1;
@@ -465,16 +465,16 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	int		rcode;
-	rlm_securid_t	const *inst = instance;
-	char		 buffer[FR_MAX_STRING_LEN]="";
-	VALUE_PAIR	*username, *password;
-	VALUE_PAIR	*vp;
+	int			rcode;
+	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_securid_t);
+	char		 	buffer[FR_MAX_STRING_LEN]="";
+	fr_pair_t		*username, *password;
+	fr_pair_t		*vp;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -482,12 +482,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -495,7 +495,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("Password should not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (RDEBUG_ENABLED3) {
@@ -535,9 +535,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 	if (*buffer) {
 		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
-		fr_pair_value_strcpy(vp, buffer);
+		fr_pair_value_strdup(vp, buffer);
 	}
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 

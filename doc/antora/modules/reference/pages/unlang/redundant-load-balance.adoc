@@ -1,0 +1,49 @@
+= The redundant-load-balance Statement
+
+.Syntax
+[source,unlang]
+----
+redundant-load-balance [ <key> ] {
+    [ statements ]
+}
+----
+
+The `redundant-load-balance` section operates as a combination of the
+xref:unlang/redundant.adoc[redundant] and xref:unlang/load-balance.adoc[load-balance]
+sections.
+
+<key>:: An attribute reference or expansion which will be hashed in
+order to select the statement to execute.
++
+The hash will be used to pick a particular statement within the
+`load-balance` section.  This "keyed" load-balance can be used to
+deterministically shard requests across multiple modules.
++
+When the `<key>` field is omitted, the module is chosen randomly, in a
+"load balanced" manner.
+
+[ statements ]:: One or more `unlang` commands.
++
+If the selected statement succeeds, then the server stops processing
+the `redundant-load-balance` section. If, however, that statement fails,
+then the next statement in the list is chosen (wrapping around to the
+top).  This process continues until either one statement succeeds or all
+of the statements have failed.
++
+All of the statements in the list should be modules, and of the same
+type (e.g., `ldap` or `sql`). All of the statements in the list should
+behave identically, otherwise different requests will be processed
+through different modules and will give different results.
+
+.Example
+[source,unlang]
+----
+redundant-load-balance &User-Name {
+    sql1
+    sql2
+    sql3
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

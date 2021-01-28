@@ -25,7 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/exfile.h>
 
 #ifdef HAVE_FCNTL_H
@@ -59,11 +59,11 @@ typedef enum {
 } linefr_log_dst_t;
 
 static fr_table_num_sorted_t const linefr_log_dst_table[] = {
-	{ "file",	LINELOG_DST_FILE	},
-	{ "syslog",	LINELOG_DST_SYSLOG	},
-	{ "tcp",	LINELOG_DST_TCP		},
-	{ "udp",	LINELOG_DST_UDP		},
-	{ "unix",	LINELOG_DST_UNIX	}
+	{ L("file"),	LINELOG_DST_FILE	},
+	{ L("syslog"),	LINELOG_DST_SYSLOG	},
+	{ L("tcp"),	LINELOG_DST_TCP		},
+	{ L("udp"),	LINELOG_DST_UDP		},
+	{ L("unix"),	LINELOG_DST_UNIX	}
 };
 static size_t linefr_log_dst_table_len = NUM_ELEMENTS(linefr_log_dst_table);
 
@@ -77,19 +77,19 @@ typedef struct {
 /** linelog module instance
  */
 typedef struct {
-	char const			*name;			//!< Module instance name.
-	fr_pool_t			*pool;			//!< Connection pool instance.
+	char const		*name;			//!< Module instance name.
+	fr_pool_t		*pool;			//!< Connection pool instance.
 
-	char const			*delimiter;		//!< Line termination string (usually \n).
-	size_t				delimiter_len;		//!< Length of line termination string.
+	char const		*delimiter;		//!< Line termination string (usually \n).
+	size_t			delimiter_len;		//!< Length of line termination string.
 
-	vp_tmpl_t			*log_src;		//!< Source of log messages.
+	tmpl_t			*log_src;		//!< Source of log messages.
 
-	vp_tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
-								///< log messages).
+	tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
+							///< log messages).
 
-	linefr_log_dst_t		log_dst;		//!< Logging destination.
-	char const			*log_dst_str;		//!< Logging destination string.
+	linefr_log_dst_t	log_dst;		//!< Logging destination.
+	char const		*log_dst_str;		//!< Logging destination string.
 
 	struct {
 		char const		*facility;		//!< Syslog facility string.
@@ -104,7 +104,7 @@ typedef struct {
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_t		escape_func;		//!< Escape function.
+		xlat_escape_legacy_t	escape_func;		//!< Escape function.
 	} file;
 
 	struct {
@@ -116,7 +116,7 @@ typedef struct {
 	linelog_net_t		udp;			//!< UDP server.
 
 	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
-} linelog_instance_t;
+} rlm_linelog_t;
 
 typedef struct {
 	int			sockfd;			//!< File descriptor associated with socket
@@ -124,21 +124,21 @@ typedef struct {
 
 
 static const CONF_PARSER file_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, linelog_instance_t, file.permissions), .dflt = "0600" },
-	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, linelog_instance_t, file.group_str) },
-	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, linelog_instance_t, file.escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, rlm_linelog_t, file.name) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_linelog_t, file.permissions), .dflt = "0600" },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_linelog_t, file.group_str) },
+	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, rlm_linelog_t, file.escape), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER syslog_config[] = {
-	{ FR_CONF_OFFSET("facility", FR_TYPE_STRING, linelog_instance_t, syslog.facility) },
-	{ FR_CONF_OFFSET("severity", FR_TYPE_STRING, linelog_instance_t, syslog.severity), .dflt = "info" },
+	{ FR_CONF_OFFSET("facility", FR_TYPE_STRING, rlm_linelog_t, syslog.facility) },
+	{ FR_CONF_OFFSET("severity", FR_TYPE_STRING, rlm_linelog_t, syslog.severity), .dflt = "info" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER unix_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, linelog_instance_t, unix_sock.path) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, rlm_linelog_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -157,11 +157,11 @@ static const CONF_PARSER tcp_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING | FR_TYPE_REQUIRED, linelog_instance_t, log_dst_str) },
+	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_linelog_t, log_dst_str) },
 
-	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, linelog_instance_t, delimiter), .dflt = "\n" },
-	{ FR_CONF_OFFSET("format", FR_TYPE_TMPL, linelog_instance_t, log_src) },
-	{ FR_CONF_OFFSET("reference", FR_TYPE_TMPL, linelog_instance_t, log_ref) },
+	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_linelog_t, delimiter), .dflt = "\n" },
+	{ FR_CONF_OFFSET("format", FR_TYPE_TMPL, rlm_linelog_t, log_src) },
+	{ FR_CONF_OFFSET("reference", FR_TYPE_TMPL, rlm_linelog_t, log_ref) },
 
 	/*
 	 *	Log destinations
@@ -169,18 +169,18 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("file", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) file_config },
 	{ FR_CONF_POINTER("syslog", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) syslog_config },
 	{ FR_CONF_POINTER("unix", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) unix_config },
-	{ FR_CONF_OFFSET("tcp", FR_TYPE_SUBSECTION, linelog_instance_t, tcp), .subcs= (void const *) tcp_config },
-	{ FR_CONF_OFFSET("udp", FR_TYPE_SUBSECTION, linelog_instance_t, udp), .subcs = (void const *) udp_config },
+	{ FR_CONF_OFFSET("tcp", FR_TYPE_SUBSECTION, rlm_linelog_t, tcp), .subcs= (void const *) tcp_config },
+	{ FR_CONF_OFFSET("udp", FR_TYPE_SUBSECTION, rlm_linelog_t, udp), .subcs = (void const *) udp_config },
 
 	/*
 	 *	Deprecated config items
 	 */
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_DEPRECATED, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32 | FR_TYPE_DEPRECATED, linelog_instance_t, file.permissions) },
-	{ FR_CONF_OFFSET("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, file.group_str) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_DEPRECATED, rlm_linelog_t, file.name) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32 | FR_TYPE_DEPRECATED, rlm_linelog_t, file.permissions) },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, rlm_linelog_t, file.group_str) },
 
-	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, syslog.facility) },
-	{ FR_CONF_OFFSET("syslog_severity", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, syslog.severity) },
+	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING | FR_TYPE_DEPRECATED, rlm_linelog_t, syslog.facility) },
+	{ FR_CONF_OFFSET("syslog_severity", FR_TYPE_STRING | FR_TYPE_DEPRECATED, rlm_linelog_t, syslog.severity) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -195,7 +195,7 @@ static int _mod_conn_free(linelog_conn_t *conn)
 
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	linelog_instance_t const	*inst = instance;
+	rlm_linelog_t const	*inst = instance;
 	linelog_conn_t			*conn;
 	int				sockfd = -1;
 
@@ -235,7 +235,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	case LINELOG_DST_INVALID:
 	case LINELOG_DST_FILE:
 	case LINELOG_DST_SYSLOG:
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
@@ -271,7 +271,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 
 static int mod_detach(void *instance)
 {
-	linelog_instance_t *inst = instance;
+	rlm_linelog_t *inst = instance;
 
 	fr_pool_free(inst->pool);
 
@@ -284,7 +284,7 @@ static int mod_detach(void *instance)
  */
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	linelog_instance_t	*inst = instance;
+	rlm_linelog_t	*inst = instance;
 	char			prefix[100];
 
 	/*
@@ -395,7 +395,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		break;
 
 	case LINELOG_DST_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 		break;
 	}
 
@@ -420,7 +420,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Escape unprintable characters.
  */
-static size_t linelog_escape_func(UNUSED REQUEST *request,
+static size_t linelog_escape_func(UNUSED request_t *request,
 		char *out, size_t outlen, char const *in,
 		UNUSED void *arg)
 {
@@ -439,32 +439,30 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
  *
  * Write a log message to syslog or a flat file.
  *
- * @param[in] instance	of rlm_linelog.
- * @param[in] thread	Thread specific data.
+ * @param[in] p_result	the result of the module call:
+ *			- #RLM_MODULE_NOOP if no message to log.
+ *			- #RLM_MODULE_FAIL if we failed writing the message.
+ *			- #RLM_MODULE_OK on success.
+ * @param[in] mctx	module calling context.
  * @param[in] request	The current request.
- * @return
- *	- #RLM_MODULE_NOOP if no message to log.
- *	- #RLM_MODULE_FAIL if we failed writing the message.
- *	- #RLM_MODULE_OK on success.
  */
-static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	linelog_conn_t		*conn;
-	fr_time_delta_t		timeout = 0;
-	char			buff[4096];
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
+	linelog_conn_t			*conn;
+	fr_time_delta_t			timeout = 0;
+	char				buff[4096];
 
-	char			*p = buff;
-	linelog_instance_t	*inst = instance;
-	char const		*value;
-	vp_tmpl_t		empty, *vpt = NULL, *vpt_p = NULL;
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	ssize_t			slen;
+	char				*p = buff;
+	char const			*value;
+	tmpl_t				empty, *vpt = NULL, *vpt_p = NULL;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
+	ssize_t				slen;
 
-	struct iovec		vector_s[2];
-	struct iovec		*vector = NULL, *vector_p;
-	size_t			vector_len;
-	bool			with_delim;
+	struct iovec			vector_s[2];
+	struct iovec			*vector = NULL, *vector_p;
+	size_t				vector_len;
+	bool				with_delim;
 
 	buff[0] = '.';	/* force to be in current section (by default) */
 	buff[1] = '\0';
@@ -482,7 +480,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 
 		if (tmpl_expand(&path, buff + 1, sizeof(buff) - 1,
 				request, inst->log_ref, linelog_escape_func, NULL) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (path != buff + 1) strlcpy(buff + 1, path, sizeof(buff) - 1);
@@ -494,7 +492,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 		 */
 		if (buff[2] == '.') {
 			REDEBUG("Invalid path \"%s\"", p);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ci = cf_reference_item(NULL, inst->cs, p);
@@ -505,14 +503,16 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 
 		if (!cf_item_is_pair(ci)) {
 			REDEBUG("Path \"%s\" resolves to a section (should be a pair)", p);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		cp = cf_item_to_pair(ci);
 		tmpl_str = cf_pair_value(cp);
 		if (!tmpl_str || (tmpl_str[0] == '\0')) {
 			RDEBUG2("Path \"%s\" resolves to an empty config pair", p);
-			vpt_p = tmpl_init(&empty, TMPL_TYPE_UNPARSED, "", 0, T_DOUBLE_QUOTED_STRING);
+			vpt_p = tmpl_init_shallow(&empty, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
+			fr_value_box_init_null(&empty.data.literal);
+			fr_value_box_strdup_shallow(&empty.data.literal, NULL, "", false);
 			goto build_vector;
 		}
 
@@ -520,12 +520,19 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 		 *	Alloc a template from the value of the CONF_PAIR
 		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
-		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
-				      cf_pair_value_quote(cp),
-				      &(vp_tmpl_rules_t){ .allow_unknown = true, .allow_undefined = true }, true);
-		if (slen <= 0) {
+		slen = tmpl_afrom_substr(request, &vpt,
+					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
+					 cf_pair_value_quote(cp),
+					 NULL,
+					 &(tmpl_rules_t){
+					 	.dict_def = request->dict,
+					 	.allow_unknown = true,
+					 	.allow_unresolved = false,
+					 	.at_runtime = true
+					 });
+		if (!vpt) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		vpt_p = vpt;
 	} else {
@@ -535,7 +542,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 		 */
 		if (!inst->log_src) {
 			RDEBUG2("No default message configured");
-			return RLM_MODULE_NOOP;
+			RETURN_MODULE_NOOP;
 		}
 		/*
 		 *	Use the pre-parsed format template
@@ -555,14 +562,15 @@ build_vector:
 	case TMPL_TYPE_LIST:
 	{
 		#define VECTOR_INCREMENT 20
-		fr_cursor_t	cursor;
-		VALUE_PAIR	*vp;
-		int		alloced = VECTOR_INCREMENT, i;
+		fr_dcursor_t		cursor;
+		tmpl_cursor_ctx_t	cc;
+		fr_pair_t		*vp;
+		int			alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));
-		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt_p), i = 0;
+		for (vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt_p), i = 0;
 		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
+		     vp = fr_dcursor_next(&cursor), i++) {
 		     	/* need extra for line terminator */
 			if ((with_delim && ((i + 1) >= alloced)) ||
 			    (i >= alloced)) {
@@ -573,14 +581,13 @@ build_vector:
 			switch (vp->vp_type) {
 			case FR_TYPE_OCTETS:
 			case FR_TYPE_STRING:
-				vector[i].iov_base = vp->vp_ptr;
 				vector[i].iov_len = vp->vp_length;
+				vector[i].iov_base = vp->vp_ptr;
 				break;
 
 			default:
-				p = fr_pair_value_asprint(vector, vp, '\0');
+				vector[i].iov_len = fr_value_box_aprint(vector, &p, &vp->data, NULL);
 				vector[i].iov_base = p;
-				vector[i].iov_len = talloc_array_length(p) - 1;
 				break;
 			}
 
@@ -593,6 +600,7 @@ build_vector:
 				vector[i].iov_len = inst->delimiter_len;
 			}
 		}
+		tmpl_cursor_clear(&cc);
 		vector_p = vector;
 		vector_len = i;
 	}
@@ -639,7 +647,7 @@ build_vector:
 		char path[2048];
 
 		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		/* check path and eventually create subdirs */
@@ -662,7 +670,7 @@ build_vector:
 		}
 
 		if (inst->file.group_str && (chown(path, -1, inst->file.group) == -1)) {
-			RWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
+			RPWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
 		}
 
 		if (writev(fd, vector_p, vector_len) < 0) {
@@ -670,9 +678,9 @@ build_vector:
 			exfile_close(inst->file.ef, request, fd);
 
 			/* Assert on the extra fatal errors */
-			rad_assert((errno != EINVAL) && (errno != EFAULT));
+			fr_assert((errno != EINVAL) && (errno != EFAULT));
 
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		exfile_close(inst->file.ef, request, fd);
@@ -732,8 +740,8 @@ build_vector:
 			/* Assert on the extra fatal errors */
 			case EINVAL:
 			case EFAULT:
-				rad_assert(0);
-				/* FALL-THROUGH */
+				fr_assert(0);
+				FALL_THROUGH;
 
 			/* Normal errors that just cause the module to fail */
 			default:
@@ -764,7 +772,7 @@ build_vector:
 		break;
 #endif
 	case LINELOG_DST_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 		rcode = RLM_MODULE_FAIL;
 		break;
 	}
@@ -774,7 +782,7 @@ finish:
 	talloc_free(vector);
 
 	/* coverity[missing_unlock] */
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 
@@ -785,7 +793,7 @@ extern module_t rlm_linelog;
 module_t rlm_linelog = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "linelog",
-	.inst_size	= sizeof(linelog_instance_t),
+	.inst_size	= sizeof(rlm_linelog_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
@@ -794,12 +802,6 @@ module_t rlm_linelog = {
 		[MOD_AUTHORIZE]		= mod_do_linelog,
 		[MOD_PREACCT]		= mod_do_linelog,
 		[MOD_ACCOUNTING]	= mod_do_linelog,
-		[MOD_PRE_PROXY]		= mod_do_linelog,
-		[MOD_POST_PROXY]	= mod_do_linelog,
 		[MOD_POST_AUTH]		= mod_do_linelog,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_do_linelog,
-		[MOD_SEND_COA]		= mod_do_linelog
-#endif
 	},
 };

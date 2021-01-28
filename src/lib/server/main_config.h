@@ -85,14 +85,15 @@ struct main_config_s {
 	bool		log_line_number;		//!< Log src file/line the message was generated on.
 
 	bool		log_dates_utc;
-	bool		*log_timestamp;
+	bool		log_timestamp;
 	bool		log_timestamp_is_set;
 
 	int32_t		syslog_facility;
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
 
-	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
+	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #request_t.
+	uint32_t	max_requests;			//!< maximum number of requests outstanding
 
 	bool		write_pid;			//!< write the PID file
 

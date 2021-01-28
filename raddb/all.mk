@@ -10,7 +10,7 @@ LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
 DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
 			delay detail detail.log digest dhcpv4 eap \
 			eap_inner echo escape exec expiration expr files linelog logintime \
-			mschap ntlm_auth pap passwd radius radutmp \
+			mschap ntlm_auth pap passwd radutmp \
 			soh sradutmp stats unix unpack utf8
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
@@ -137,53 +137,67 @@ $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 endif
 
 ifeq ("$(PACKAGE)","")
-ifeq ("$(TEST_CERTS)","yes")
 #
-#  Using test certs: just copy them over.
-#  See src/tests/certs/README.md for further information.
+#  Always create the test certs for normal development.
 #
 build.raddb: $(GENERATED_CERT_FILES)
 
-#
-#  Make certs/{rsa,ecc}/ directories
-#
-.PHONY: ${top_srcdir}/src/tests/certs/rsa/
-${top_srcdir}/src/tests/certs/rsa/:
-	${Q}mkdir -p $@
 
-.PHONY: ${top_srcdir}/src/tests/certs/ecc/
-${top_srcdir}/src/tests/certs/ecc/:
-	${Q}mkdir -p $@
+.PHONY: ${top_srcdir}/raddb/certs/rsa
+${top_srcdir}/raddb/certs/rsa:
+	@mkdir -p $@
 
-.PHONY: ${top_srcdir}/raddb/certs/rsa/
-${top_srcdir}/raddb/certs/rsa/:
-	${Q}mkdir -p $@
+.PHONY: ${top_srcdir}/raddb/certs/ecc
+${top_srcdir}/raddb/certs/ecc:
+	@mkdir -p $@
 
-.PHONY: ${top_srcdir}/raddb/certs/ecc/
-${top_srcdir}/raddb/certs/ecc/:
-	${Q}mkdir -p $@
+${top_srcdir}/raddb/certs/passwords.mk: $(wildcard ${top_srcdir}/raddb/certs/*cnf)
+	${Q}$(MAKE) -C $(dir $@) $(notdir $@)
 
-#
-#  Copy the generated certs to the test directory.
-#
-define CP_FILE
-${top_srcdir}/raddb/certs/${1}: | $(dir ${top_srcdir}/raddb/certs/${1})
+define BUILD_CERT
+${1}/${2}/${3}.key: ${1}/${3}.cnf ${1}/passwords.mk | ${1}/${2}
+	$${Q}echo CERT-KEY ${2}/${3}
+#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.key
+	$${Q}cp src/tests/certs/${2}/${3}.key $$@
+	@touch $$@
 
-${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1} | $(dir ${top_srcdir}/src/tests/certs/${1})
-	${Q}echo TEST_CERTS cp src/tests/certs/${1} raddb/certs/${1}
-	${Q}cp src/tests/certs/${1} raddb/certs/${1}
+${1}/${2}/${3}.csr: ${1}/${2}/${3}.key
+	$${Q}echo CERT-CSR ${2}/${3}
+#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.csr
+	$${Q}cp src/tests/certs/${2}/${3}.csr $$@
+	@touch $$@
+
+${1}/${2}/${3}.pem: ${1}/${2}/${3}.key
+	$${Q}echo CERT-PEM$= ${2}/${3}
+#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.pem
+	$${Q}cp src/tests/certs/${2}/${3}.pem $$@
+	@touch $$@
+
+${1}/${2}/${3}.crt: ${1}/${2}/${3}.pem
+	$${Q}echo CERT-CRT ${2}/${3}
+#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.crt
+	$${Q}cp src/tests/certs/${2}/${3}.crt $$@
+	@touch $$@
+
+ifneq "${3}" "ca"
+#  client, server, and OCSP certs need the CA cert.
+${1}/${2}/${3}.crt: ${1}/${2}/ca.crt
+
+${1}/${2}/${3}.crt: ${1}/${2}/${3}.csr
+endif
+
 endef
 
-$(foreach x,$(LOCAL_CERT_FILES),$(eval $(call CP_FILE,${x})))
-else
 #
 #  Generate local certificate products when doing a non-package
-#  (i.e. developer) build.  This takes a LONG time!
+#  (i.e. developer) build.
 #
-$(GENERATED_CERT_FILES): $(wildcard raddb/certs/*cnf)
-	${Q}echo BOOTSTRAP raddb/certs/
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
-endif
+$(foreach dir,rsa ecc,$(foreach file,ca server client ocsp,$(eval $(call BUILD_CERT,${top_srcdir}/raddb/certs,${dir},${file}))))
+
+${top_srcdir}/raddb/certs/dh: ${top_srcdir}/raddb/certs/passwords.mk
+	${Q}echo CERT-DH $@
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ $(notdir $@)
+	${Q}touch $@
 
 #
 #  If we're not packaging the server, install the various
@@ -193,8 +207,7 @@ INSTALL_RADDB += $(INSTALL_CERT_PRODUCTS)
 
 else
 #
-#  If we are packaging, don't generate any certs,
-#  and don't copy the testing certs over.
+#  If we are creating packages, then don't generate any local testing certs.
 #
 endif
 

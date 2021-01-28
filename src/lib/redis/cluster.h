@@ -76,7 +76,7 @@ typedef enum {
 extern fr_table_num_sorted_t const fr_redis_cluster_rcodes_table[];
 extern size_t fr_redis_cluster_rcodes_table_len;
 
-fr_redis_cluster_rcode_t fr_redis_cluster_remap(REQUEST *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn);
+fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn);
 
 /*
  *	Callback for the connection pool to create a new connection
@@ -86,7 +86,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_t ti
 /*
  *	Functions to resolve a key to a cluster node
  */
-fr_redis_cluster_key_slot_t const	*fr_redis_cluster_slot_by_key(fr_redis_cluster_t *cluster, REQUEST *request,
+fr_redis_cluster_key_slot_t const	*fr_redis_cluster_slot_by_key(fr_redis_cluster_t *cluster, request_t *request,
 								      uint8_t const *key, size_t key_len);
 
 fr_redis_cluster_node_t const	*fr_redis_cluster_master(fr_redis_cluster_t *cluster,
@@ -107,11 +107,11 @@ int fr_redis_cluster_port(uint16_t *out, fr_redis_cluster_node_t const *node);
  *	connections implement retry delays.
  */
 fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr_redis_conn_t **conn,
-					     fr_redis_cluster_t *cluster, REQUEST *request,
+					     fr_redis_cluster_t *cluster, request_t *request,
 					     uint8_t const *key, size_t key_len, bool read_only);
 
 fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr_redis_conn_t **conn,
-					     fr_redis_cluster_t *cluster, REQUEST *request,
+					     fr_redis_cluster_t *cluster, request_t *request,
 					     fr_redis_rcode_t status, redisReply **reply);
 
 /*
@@ -119,8 +119,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
  *	or KEYS.
  */
 int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *cluster,
-				       fr_socket_addr_t *node, bool create);
-ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_addr_t *out[],
+				       fr_socket_t *node, bool create);
+ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 					   fr_redis_cluster_t *cluster, bool is_master, bool is_slave);
 
 /*
@@ -134,7 +134,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   bool enable_triggers,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
-					   VALUE_PAIR *trigger_args);
+					   fr_pair_list_t *trigger_args);
 
 #ifdef __cplusplus
 }

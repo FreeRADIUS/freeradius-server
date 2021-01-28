@@ -1,8 +1,4 @@
 /*
- * proto_tacacs.c	TACACS+ processing.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,648 +12,568 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * @copyright 2017 The FreeRADIUS server project
- * @copyright 2017 Network RADIUS SARL (legal@networkradius.com)
  */
+
+/**
+ * $Id$
+ * @file proto_tacacs.c
+ * @brief TACACS+ module.
+ * @author Jorge Pereira <jpereira@freeradius.org>
+ *
+ * @copyright 2020 The FreeRADIUS server project.
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
+ */
+
+#include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/master.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/tacacs/tacacs.h>
 
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include "proto_tacacs.h"
 
-typedef struct {
-	uint32_t	session_timeout;		//!< Maximum time between rounds.
-	uint32_t	max_sessions;			//!< Maximum ongoing sessions.
+extern fr_app_t proto_tacacs;
 
-	fr_state_tree_t	*state_tree;
-} proto_tacacs_t;
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static const CONF_PARSER sessions_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, proto_tacacs_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, proto_tacacs_t, max_sessions), .dflt = "4096" },
+static const CONF_PARSER priority_config[] = {
+	{ FR_CONF_OFFSET("Authentication-Start", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
+	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
+	{ FR_CONF_OFFSET("Authentication-Continue", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
+	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
+	{ FR_CONF_OFFSET("Authorization-Request", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHOR]),
+	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_tacacs_t, priorities[FR_TAC_PLUS_ACCT]),
+	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER proto_tacacs_config[] = {
-	{ FR_CONF_POINTER("sessions", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) sessions_config },
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_tacacs_t, type_submodule),
+	  .func = type_parse },
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_tacacs_t, io.submodule),
+	  .func = transport_parse },
+	{ FR_CONF_POINTER("priority", FR_TYPE_SUBSECTION, NULL),
+	  .subcs = (void const *) priority_config },
 
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 static fr_dict_t const *dict_tacacs;
 
 extern fr_dict_autoload_t proto_tacacs_dict[];
 fr_dict_autoload_t proto_tacacs_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
-	{ .out = &dict_tacacs, .proto = "tacacs" },
-
+ 	{ .out = &dict_tacacs, .proto = "tacacs" },
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_tacacs_accounting_status;
-static fr_dict_attr_t const *attr_tacacs_authentication_status;
-static fr_dict_attr_t const *attr_tacacs_authorization_status;
-static fr_dict_attr_t const *attr_tacacs_sequence_number;
-static fr_dict_attr_t const *attr_state;
+
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_tacacs_user_name;
 
 extern fr_dict_attr_autoload_t proto_tacacs_dict_attr[];
 fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
-	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_tacacs_accounting_status, .name = "TACACS-Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authentication_status, .name = "TACACS-Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_authorization_status, .name = "TACACS-Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
-	{ .out = &attr_tacacs_sequence_number, .name = "TACACS-Sequence-Number", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs},
+	{ .out = &attr_tacacs_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ NULL }
 };
 
-static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
-		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
-{
-	rad_assert(0 == 1);
-	return NULL;
-}
-
-/*
- *	Debug the packet if requested - cribbed from common_packet_debug
- */
-static void fr_tacacs_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
-{
-	char src_ipaddr[FR_IPADDR_STRLEN];
-	char dst_ipaddr[FR_IPADDR_STRLEN];
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	RDEBUG("%s %s Id %u from %s%s%s:%i to %s%s%s:%i "
-	       "length %zu",
-	       received ? "Received" : "Sending",
-	       tacacs_packet_code(request->packet),
-	       tacacs_session_id(request->packet),
-	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-	       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->src_port,
-	       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->dst_port,
-	       packet->data_len);
-
-	log_request_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
-}
-
-static void tacacs_status(REQUEST * const request, rlm_rcode_t rcode)
-{
-	VALUE_PAIR *vp;
-
-	switch (tacacs_type(request->packet)) {
-	default:
-		return;
-
-	case TAC_PLUS_AUTHEN:
-		switch (rcode) {
-		case RLM_MODULE_OK:
-			MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-			fr_pair_value_from_str(vp, "Pass", -1, '\0', false);
-			break;
-
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_DISALLOW:
-			MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-			fr_pair_value_from_str(vp, "Fail", -1, '\0', false);
-			break;
-
-		case RLM_MODULE_INVALID:
-			MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-			fr_pair_value_from_str(vp, "Error", -1, '\0', false);
-			break;
-
-		case RLM_MODULE_HANDLED:	/* unlang set status */
-			return;
-
-		default:
-noop:
-			WARN("ignoring request to add TACACS status with code %d", rcode);
-			return;
-		}
-		break;
-
-	case TAC_PLUS_AUTHOR:
-		switch (rcode) {
-		case RLM_MODULE_OK:
-			MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
-			fr_pair_value_from_str(vp, "Pass-Repl", -1, '\0', false);
-			break;
-
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_DISALLOW:
-			MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
-			fr_pair_value_from_str(vp, "Fail", -1, '\0', false);
-			break;
-
-		case RLM_MODULE_INVALID:
-			MEM(pair_update_reply(&vp, attr_tacacs_authorization_status) >= 0);
-			fr_pair_value_from_str(vp, "Error", -1, '\0', false);
-			break;
-
-		default:
-			goto noop;
-		}
-		break;
-
-	case TAC_PLUS_ACCT:
-		switch (rcode) {
-		case RLM_MODULE_OK:
-			MEM(pair_update_reply(&vp, attr_tacacs_accounting_status) >= 0);
-			fr_pair_value_from_str(vp, "Success", -1, '\0', false);
-			break;
-
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_DISALLOW:
-		case RLM_MODULE_INVALID:
-			MEM(pair_update_reply(&vp, attr_tacacs_accounting_status) >= 0);
-			fr_pair_value_from_str(vp, "Error", -1, '\0', false);
-			break;
-
-		default:
-			goto noop;
-		}
-		break;
-	}
-}
-
-static void state_add(REQUEST *request, RADIUS_PACKET *packet)
-{
-	VALUE_PAIR *vp;
-	uint32_t session_id;
-	uint8_t buf[16] = { 0 };	/* FIXME state.c:sizeof(struct state_comp) */
-
-	rad_assert(sizeof(request->listener) + sizeof(vp->vp_uint32) <= sizeof(buf));		//-V568
-
-	/* session_id is per TCP connection */
-	memcpy(&buf[0], &request->listener, sizeof(request->listener));				//-V568
-
-	session_id = tacacs_session_id(request->packet);
-	memcpy(&buf[sizeof(buf) - sizeof(session_id)], &session_id, sizeof(session_id));
-
-	MEM(vp = fr_pair_afrom_da(packet, attr_state));
-	fr_pair_value_memcpy(vp, (uint8_t const *)buf, sizeof(buf), true);
-	fr_pair_add(&packet->vps, vp);
-}
-
-static void tacacs_running(REQUEST *request, fr_state_signal_t action)
-{
-	rlm_rcode_t		rcode;
-	CONF_SECTION		*unlang;
-	fr_dict_enum_t const	*dv = NULL;
-	VALUE_PAIR *vp,		*auth_type;
-	fr_cursor_t		cursor;
-	int			rc;
-
-	REQUEST_VERIFY(request);
-
-	switch (action) {
-	case FR_SIGNAL_CANCEL:
-		goto done;
-
-	default:
-		break;
-	}
-
-	switch (request->request_state) {
-	case REQUEST_INIT:
-		rc = fr_tacacs_packet_decode(request->packet);
-		if (rc == -2)	/* client abort no reply */
-			goto done;
-		else if (rc < 0) {
-			fr_strerror_printf("Failed decoding TACACS+ packet");
-			goto setup_send;
-		}
-
-		if (RDEBUG_ENABLED) fr_tacacs_packet_debug(request, request->packet, true);
-
-		request->server_cs = request->listener->server_cs;
-		request->component = "tacacs";
-
-		unlang = cf_section_find(request->server_cs, "recv", tacacs_packet_code(request->packet));
-		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
-		if (!unlang) {
-			REDEBUG("Failed to find 'recv' section");
-			goto setup_send;
-		}
-
-		/* FIXME only for seq_id greater than 1 */
-		if (tacacs_type(request->packet) == TAC_PLUS_AUTHEN) {
-			state_add(request, request->packet);
-#ifdef TACACS_HAS_BEEN_MIGRATED
-			fr_state_to_request(inst->state_tree, request);
-#endif
-		}
-
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_REJECT, UNLANG_TOP_FRAME);
-
-		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
-
-	case REQUEST_RECV:
-		rcode = unlang_interpret(request);
-
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-stop_processing:
-#ifdef TACACS_HAS_BEEN_MIGRATED
-			if (tacacs_type(request->packet) == TAC_PLUS_AUTHEN)
-				fr_state_discard(inst->state_tree, request);
-#endif
-			goto done;
-		}
-
-		if (rcode == RLM_MODULE_YIELD) return;
-
-		rad_assert(request->log.unlang_indent == 0);
-
-		switch (rcode) {
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_NOTFOUND:
-		case RLM_MODULE_OK:
-		case RLM_MODULE_UPDATED:
-			break;
-
-		case RLM_MODULE_HANDLED:
-			goto setup_send;
-
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_INVALID:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_DISALLOW:
-		default:
-			tacacs_status(request, rcode);
-			goto setup_send;
-		}
-
-		/*
-		 *	Find Auth-Type, and complain if they have too many.
-		 */
-		auth_type = NULL;
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, attr_auth_type);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			if (!auth_type) {
-				auth_type = vp;
-				continue;
-			}
-
-			RWDEBUG("Ignoring extra Auth-Type = %s",
-				fr_dict_enum_name_by_value(auth_type->da, &vp->data));
-		}
-
-		/*
-		 *	No Auth-Type, force it to reject.
-		 */
-		if (!auth_type) {
-			REDEBUG2("No Auth-Type available: rejecting the user.");
-			tacacs_status(request, RLM_MODULE_REJECT);
-			goto setup_send;
-		}
-
-		/*
-		 *	Handle hard-coded Accept and Reject.
-		 */
-		if (auth_type->vp_uint32 == FR_AUTH_TYPE_VALUE_ACCEPT) {
-			RDEBUG2("Auth-Type = Accept, allowing user");
-			tacacs_status(request, RLM_MODULE_OK);
-			goto setup_send;
-		}
-
-		if (auth_type->vp_uint32 == FR_AUTH_TYPE_VALUE_REJECT) {
-			RDEBUG2("Auth-Type = Reject, rejecting user");
-			tacacs_status(request, RLM_MODULE_REJECT);
-			goto setup_send;
-		}
-
-		/*
-		 *	Find the appropriate Auth-Type by name.
-		 */
-		vp = auth_type;
-		dv = fr_dict_enum_by_value(vp->da, &vp->data);
-		if (!dv) {
-			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
-			tacacs_status(request, RLM_MODULE_FAIL);
-			goto setup_send;
-		}
-
-		unlang = cf_section_find(request->server_cs, "process", dv->name);
-		if (!unlang) {
-			REDEBUG2("No 'process %s' section found: rejecting the user.", dv->name);
-			tacacs_status(request, RLM_MODULE_FAIL);
-			goto setup_send;
-		}
-
-		RDEBUG("Running 'process %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME);
-
-		request->request_state = REQUEST_PROCESS;
-		/* FALL-THROUGH */
-
-	case REQUEST_PROCESS:
-		rcode = unlang_interpret(request);
-
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
-
-		if (rcode == RLM_MODULE_YIELD) return;
-
-		rad_assert(request->log.unlang_indent == 0);
-
-		switch (rcode) {
-			/*
-			 *	An authentication module FAIL
-			 *	return code, or any return code that
-			 *	is not expected from authentication,
-			 *	is the same as an explicit REJECT!
-			 */
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_INVALID:
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_NOTFOUND:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_DISALLOW:
-		default:
-			RDEBUG2("Failed to authenticate the user");
-			tacacs_status(request, RLM_MODULE_FAIL);
-			goto setup_send;
-
-		case RLM_MODULE_OK:
-			tacacs_status(request, RLM_MODULE_OK);
-			break;
-
-		case RLM_MODULE_HANDLED:
-			goto setup_send;
-		}
-
-setup_send:
-		unlang = NULL;
-		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", tacacs_packet_code(request->packet));
-		}
-		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
-		if (!unlang) goto send_reply;
-
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
-
-		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
-
-	case REQUEST_SEND:
-		rcode = unlang_interpret(request);
-
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
-
-		if (rcode == RLM_MODULE_YIELD) return;
-
-		rad_assert(request->log.unlang_indent == 0);
-
-send_reply:
-		request->reply->timestamp = fr_time();
-
-		if (tacacs_type(request->packet) == TAC_PLUS_AUTHEN) {
-			vp = fr_pair_find_by_da(request->reply->vps, attr_tacacs_authentication_status, TAG_ANY);
-			if (vp) {
-				switch ((tacacs_authen_reply_status_t)vp->vp_uint8) {
-				case TAC_PLUS_AUTHEN_STATUS_PASS:
-				case TAC_PLUS_AUTHEN_STATUS_FAIL:
-				case TAC_PLUS_AUTHEN_STATUS_RESTART:
-				case TAC_PLUS_AUTHEN_STATUS_ERROR:
-				case TAC_PLUS_AUTHEN_STATUS_FOLLOW:
-#ifdef TACACS_HAS_BEEN_MIGRATED
-					fr_state_discard(inst->state_tree, request);
-#endif
-					break;
-				default:
-					vp = fr_pair_find_by_da(request->packet->vps,
-								attr_tacacs_sequence_number, TAG_ANY);
-					if (!vp) {
-						REDEBUG("No sequence number found");
-						goto done;
-					}
-
-					/* authentication would continue but seq_no cannot continue */
-					if (vp->vp_uint8 == 253) {
-						RWARN("Sequence number would wrap, restarting authentication");
-#ifdef TACACS_HAS_BEEN_MIGRATED
-						fr_state_discard(inst->state_tree, request);
-#endif
-						fr_pair_list_free(&request->reply->vps);
-
-						MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-						vp->vp_uint8 = TAC_PLUS_AUTHEN_STATUS_RESTART;
-					} else {
-						state_add(request, request->reply);
-						request->reply->code = 1;	/* FIXME: util.c:request_verify() */
-#ifdef TACACS_HAS_BEEN_MIGRATED
-						fr_request_to_state(inst->state_tree, request);
-#endif
-					}
-				}
-
-			}
-#ifdef TACACS_HAS_BEEN_MIGRATED
-			else {
-				fr_state_discard(inst->state_tree, request);
-			}
-#endif
-		}
-
-		if (RDEBUG_ENABLED) fr_tacacs_packet_debug(request, request->reply, false);
-
-		if (fr_tacacs_packet_send(request->reply, request->packet,
-					  request->client->secret, talloc_array_length(request->client->secret) - 1) < 0) {
-			RPEDEBUG("Failed sending TACACS reply");
-			goto done;
-		}
-
-		/* FALL-THROUGH */
-
-done:
-	default:
-		(void) fr_heap_extract(request->backlog, request);
-		//request_delete(request);
-		break;
-	}
-}
-
-static void tacacs_queued(REQUEST *request, fr_state_signal_t action)
-{
-	REQUEST_VERIFY(request);
-
-	switch (action) {
-	case FR_SIGNAL_RUN:
-		request->process = tacacs_running;
-		request->process(request, action);
-		break;
-
-	case FR_SIGNAL_CANCEL:
-		(void) fr_heap_extract(request->backlog, request);
-		//request_delete(request);
-		break;
-
-	default:
-		break;
-	}
-}
-
-/*
- *	Check if an incoming request is "ok"
+/** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
+ * If we found a Packet-Type = Authentication-Start CONF_PAIR for example, here's we'd load
+ * the proto_tacacs_auth module.
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static int tacacs_socket_recv(rad_listen_t *listener)
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	int		rcode;
-	RADIUS_PACKET	*packet;
-	TALLOC_CTX	*ctx;
-	REQUEST		*request;
-	listen_socket_t *sock = listener->data;
-	RADCLIENT	*client = sock->client;
+	static char const *type_lib_table[FR_PACKET_TYPE_MAX] = {
+		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "auth",
+		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "auth",
+ 		[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "autz",
+ 		[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "acct",
+	};
+	proto_tacacs_t		*inst = talloc_get_type_abort(parent, proto_tacacs_t);
 
-	if (!fr_cond_assert(client != NULL)) return 0;
-
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-
-	ctx = talloc_pool(listener, main_config->talloc_pool_size);
-	if (!ctx) return 0;
-	talloc_set_name_const(ctx, "tacacs_listener_pool");
-
-	/*
-	 *	Allocate a packet for partial reads.
-	 */
-	if (!sock->packet) {
-		sock->packet = fr_radius_alloc(ctx, false);
-		if (!sock->packet) return 0;
-
-		sock->packet->sockfd = listener->fd;
-		sock->packet->src_ipaddr = sock->other_ipaddr;
-		sock->packet->src_port = sock->other_port;
-		sock->packet->dst_ipaddr = sock->my_ipaddr;
-		sock->packet->dst_port = sock->my_port;
-		sock->packet->proto = sock->proto;
-	}
-
-	/*
-	 *	Grab the packet currently being processed.
-	 */
-	packet = sock->packet;
-
-	rcode = fr_tacacs_packet_recv(packet, client->secret, talloc_array_length(client->secret) - 1);
-	if (rcode == 0) return 0;	/* partial packet */
-	if (rcode == -1) {		/* error reading packet */
-		char buffer[256];
-
-		PERROR("Invalid packet from %s port %d, closing socket",
-		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)), packet->src_port);
-	}
-	if (rcode < 0) {		/* error or connection reset */
-		DEBUG("Client has closed connection");
-
-		listener->status = RAD_LISTEN_STATUS_EOL;
-		//radius_update_listener(listener);
-
-		return 0;
-	}
-
-	request = request_setup(ctx, listener, packet, client, NULL);
-	if (!request) {
-		talloc_free(ctx);
-		return 0;
-	}
-
-	request->process = tacacs_queued;
-//	request_enqueue(request);
-
-	sock->packet = NULL;	/* we have no need for more partial reads */
-	return 1;
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_tacacs",
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
+					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 
-static int tacacs_socket_error(rad_listen_t *listener, UNUSED int fd)
+/** Wrapper around dl_instance
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	listener->status = RAD_LISTEN_STATUS_EOL;
-	//radius_update_listener(listener);
+	char const	*name = cf_pair_value(cf_item_to_pair(ci));
+	dl_module_inst_t	*parent_inst;
+	proto_tacacs_t	*inst;
+	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION	*transport_cs;
 
-	return 1;
+	transport_cs = cf_section_find(listen_cs, name, NULL);
+
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_tacacs"));
+	fr_assert(parent_inst);
+
+	/*
+	 *	Set the allowed codes so that we can compile them as
+	 *	necessary.
+	 */
+	inst = talloc_get_type_abort(parent_inst->data, proto_tacacs_t);
+	inst->io.transport = name;
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!transport_cs) {
+		transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
+		cf_section_add(listen_cs, transport_cs);
+		inst->io.app_io_conf = transport_cs;
+	}
+
+	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
 
-static int tacacs_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
+/** Decode the packet
+ *
+ */
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	CONF_SECTION *cs;
-	int ret;
+	proto_tacacs_t const	*inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const  	*address = track->address;
+	RADCLIENT const		*client;
+	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *)data;
+	fr_dcursor_t		cursor;
 
-	cs = cf_section_find(server_cs, name1, name2);
-	if (!cs) {
-		cf_log_err(server_cs, "Failed finding '%s %s { ... }' section of virtual server %s",
-			name1, name2, cf_section_name2(server_cs));
+	RHEXDUMP3(data, data_len, "proto_tacacs decode packet");
+
+	/*
+	 *	Set the request dictionary so that we can do
+	 *	generic->protocol attribute conversions as
+	 *	the request runs through the server.
+	 */
+	request->dict = dict_tacacs;
+
+	client = address->radclient;
+
+	/*
+	 *	Decode the header, etc.
+	 *
+	 *	The "type = ..." loader ensures that we only get request packets
+	 */
+	switch (pkt->hdr.type) {
+	case FR_TAC_PLUS_AUTHEN:
+		if (packet_is_authen_start_request(pkt)) {
+			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
+		} else {
+			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
+		}
+		break;
+
+		case FR_TAC_PLUS_AUTHOR:
+			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+			break;
+
+	case FR_TAC_PLUS_ACCT:
+		request->packet->code = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
+		break;
+
+	default:
+		fr_assert(0);
 		return -1;
 	}
 
-	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
+	request->packet->id   = data[2]; // seq_no
+	request->reply->id    = data[2]; // seq_no
+	memcpy(request->packet->vector, &pkt->hdr.session_id, sizeof(pkt->hdr.session_id));
 
-	ret = unlang_compile(cs, component, NULL, NULL);
-	if (ret < 0) {
-		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+	request->packet->data = talloc_memdup(request->packet, data, data_len);
+	request->packet->data_len = data_len;
+
+	/*
+	 *	Note that we don't set a limit on max_attributes here.
+	 *	That MUST be set and checked in the underlying
+	 *	transport, via a call to ???
+	 */
+	fr_dcursor_init(&cursor, &request->request_pairs);
+	if (fr_tacacs_decode(request->request_ctx, request->packet->data, request->packet->data_len,
+			     NULL, client->secret, talloc_array_length(client->secret) - 1,
+			     &cursor) < 0) {
+		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
 
-	return 0;
-}
+	/*
+	 *	Set the rest of the fields.
+	 */
+	memcpy(&request->client, &client, sizeof(client)); /* const issues */
 
-static int tacacs_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
-{
-	int rcode;
-	CONF_SECTION *subcs = NULL;
+	request->packet->socket = address->socket;
+	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
-	rcode = tacacs_compile_section(server_cs, "recv", "Authentication", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
+	request->config = main_config;
+	REQUEST_VERIFY(request);
 
-	rcode = tacacs_compile_section(server_cs, "send", "Authentication", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
+	/*
+	 *	If we're defining a dynamic client, this packet is
+	 *	fake.  We don't have a secret, so we mash all of the
+	 *	encrypted attributes to sane (i.e. non-hurtful)
+	 *	values.
+	 */
+	if (!client->active) {
+		fr_pair_t *vp;
 
-	rcode = tacacs_compile_section(server_cs, "recv", "Authorization", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
+		fr_assert(client->dynamic);
 
-	rcode = tacacs_compile_section(server_cs, "send", "Authorization", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
+		for (vp = fr_pair_list_head(&request->request_pairs);
+		     vp != NULL;
+		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
+			if (!vp->da->flags.subtype) {
+				switch (vp->da->type) {
+				default:
+					break;
 
-	rcode = tacacs_compile_section(server_cs, "recv", "Accounting", MOD_PREACCT);
-	if (rcode < 0) return rcode;
+				case FR_TYPE_UINT32:
+					vp->vp_uint32 = 0;
+					break;
 
-	rcode = tacacs_compile_section(server_cs, "send", "Accounting", MOD_ACCOUNTING);
-	if (rcode < 0) return rcode;
+				case FR_TYPE_IPV4_ADDR:
+					vp->vp_ipv4addr = INADDR_ANY;
+					break;
 
-	while ((subcs = cf_section_find_next(server_cs, subcs, "process", NULL))) {
-		char const *name2;
+				case FR_TYPE_OCTETS:
+					fr_pair_value_memdup(vp, (uint8_t const *) "", 1, true);
+					break;
 
-		name2 = cf_section_name2(subcs);
-		rcode = tacacs_compile_section(server_cs, "process", name2, MOD_AUTHENTICATE);
-		if (rcode < 0) return rcode;
+				case FR_TYPE_STRING:
+					fr_pair_value_strdup(vp, "");
+					break;
+				}
+			}
+		}
 	}
 
-	return 0;
+	if (RDEBUG_ENABLED) {
+		fr_pair_t *vp;
+
+		RDEBUG("Received %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
+		       fr_tacacs_packet_codes[request->packet->code],
+		       request->packet->id,
+		       fr_box_ipaddr(request->packet->socket.inet.src_ipaddr),
+		       request->packet->socket.inet.src_port,
+		       fr_box_ipaddr(request->packet->socket.inet.dst_ipaddr),
+		       request->packet->socket.inet.dst_port,
+		       request->packet->data_len,
+		       request->async->listen->name);
+
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
+
+		/*
+		 *	Maybe the shared secret is wrong?
+		 */
+		if (client->active &&
+		    ((pkt->hdr.flags & FR_FLAGS_VALUE_UNENCRYPTED) == 0) &&
+		    RDEBUG_ENABLED2 &&
+		    ((vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_user_name)) != NULL) &&
+		    (fr_utf8_str((uint8_t const *) vp->vp_strvalue, vp->vp_length) < 0)) {
+			RWDEBUG("Unprintable characters in the %s. "
+				"Double-check the shared secret on the server "
+				"and the TACACS+ Client!", attr_tacacs_user_name->name);
+		}
+	}
+
+	if (!inst->io.app_io->decode) return 0;
+
+	/*
+	 *	Let the app_io do anything it needs to do.
+	 */
+	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
+}
+
+static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
+{
+	proto_tacacs_t const	*inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
+	fr_io_track_t 		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const  	*address = track->address;
+	ssize_t			data_len;
+	RADCLIENT const		*client;
+
+	/*
+	 *	Process layer NAK, or "Do not respond".
+	 */
+	if ((buffer_len == 1) ||
+	    (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_PACKET_TYPE_MAX)) {
+		track->do_not_respond = true;
+		return 1;
+	}
+
+	client = address->radclient;
+	fr_assert(client);
+
+	/*
+	 *	Dynamic client stuff
+	 */
+	if (client->dynamic && !client->active) {
+		RADCLIENT *new_client;
+
+		fr_assert(buffer_len >= sizeof(client));
+
+		/*
+		 *	Allocate the client.  If that fails, send back a NAK.
+		 *
+		 *	@todo - deal with NUMA zones?  Or just deal with this
+		 *	client being in different memory.
+		 *
+		 *	Maybe we should create a CONF_SECTION from the client,
+		 *	and pass *that* back to mod_write(), which can then
+		 *	parse it to create the actual client....
+		 */
+		new_client = client_afrom_request(NULL, request);
+		if (!new_client) {
+			PERROR("Failed creating new client");
+			buffer[0] = true;
+			return 1;
+		}
+
+		memcpy(buffer, &new_client, sizeof(new_client));
+		return sizeof(new_client);
+	}
+
+	/*
+	 *	If the app_io encodes the packet, then we don't need
+	 *	to do that.
+	 */
+	if (inst->io.app_io->encode) {
+		data_len = inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
+		if (data_len > 0) return data_len;
+	}
+
+	data_len = fr_tacacs_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
+				    client->secret, talloc_array_length(client->secret) - 1,
+				    &request->reply_pairs);
+	if (data_len < 0) {
+		RPEDEBUG("Failed encoding TACACS+ reply");
+		return -1;
+	}
+
+	if (RDEBUG_ENABLED) {
+		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
+		       fr_tacacs_packet_codes[request->reply->code],
+		       request->reply->id,
+		       fr_box_ipaddr(request->reply->socket.inet.src_ipaddr),
+		       request->reply->socket.inet.src_port,
+		       fr_box_ipaddr(request->reply->socket.inet.dst_ipaddr),
+		       request->reply->socket.inet.dst_port,
+		       data_len,
+		       request->async->listen->name);
+
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
+	}
+
+	RHEXDUMP3(buffer, data_len, "proto_tacacs encode packet");
+
+	return data_len;
+}
+
+static void mod_entry_point_set(void const *instance, request_t *request)
+{
+	proto_tacacs_t const	*inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
+	dl_module_inst_t	*type_submodule;
+	fr_io_track_t		*track = request->async->packet_ctx;
+
+	fr_assert(request->packet->code != 0);
+	fr_assert(request->packet->code < FR_PACKET_TYPE_MAX);
+
+	request->server_cs = inst->io.server_cs;
+
+	/*
+	 *	'track' can be NULL when there's no network listener.
+	 */
+	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
+		fr_app_worker_t const	*app_process;
+
+		app_process = (fr_app_worker_t const *) inst->io.dynamic_submodule->module->common;
+
+		request->async->process = app_process->entry_point;
+		request->async->process_inst = inst->io.dynamic_submodule;
+		track->dynamic = 0;
+		return;
+	}
+
+	type_submodule = inst->type_submodule_by_code[request->packet->code];
+	if (!type_submodule) {
+		REDEBUG("The server is not configured to accept 'type = %s'", fr_tacacs_packet_codes[request->packet->code]);
+		return;
+	}
+
+	request->async->process = ((fr_app_worker_t const *)type_submodule->module->common)->entry_point;
+	request->async->process_inst = type_submodule->data;
+}
+
+static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+{
+	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
+
+	fr_assert(buffer[1] != FR_TAC_PLUS_INVALID);
+	fr_assert(buffer[1] < FR_TAC_PLUS_MAX);
+
+	/*
+	 *	Disallowed packet
+	 */
+	if (!inst->priorities[buffer[1]]) return 0;
+
+	/*
+	 *	@todo - if we cared, we could also return -1 for "this
+	 *	is a bad packet".  But that's really only for
+	 *	mod_inject, as we assume that app_io->read() always
+	 *	returns good packets.
+	 */
+
+	/*
+	 *	Return the configured priority.
+	 */
+	return inst->priorities[buffer[1]];
+}
+
+/** Open listen sockets/connect to external event source
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] sc	to add our file descriptor to.
+ * @param[in] conf	Listen section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf)
+{
+	proto_tacacs_t 	*inst = talloc_get_type_abort(instance, proto_tacacs_t);
+
+	inst->io.app = &proto_tacacs;
+	inst->io.app_instance = instance;
+
+	/*
+	 *	io.app_io should already be set
+	 */
+	return fr_master_io_listen(inst, &inst->io, sc, inst->max_packet_size, inst->num_messages);
+}
+
+/** Instantiate the application
+ *
+ * Instantiate I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] conf	Listen section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	proto_tacacs_t		*inst = talloc_get_type_abort(instance, proto_tacacs_t);
+
+	/*
+	 *	No IO module, it's an empty listener.
+	 */
+	if (!inst->io.submodule) return 0;
+
+	/*
+	 *	These configuration items are not printed by default,
+	 *	because normal people shouldn't be touching them.
+	 */
+	if (!inst->max_packet_size && inst->io.app_io) inst->max_packet_size = inst->io.app_io->default_message_size;
+
+	if (!inst->num_messages) inst->num_messages = 256;
+
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
+
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
+
+	/*
+	 *	Instantiate the master io submodule
+	 */
+	return fr_master_app_io.instantiate(&inst->io, conf);
+}
+
+
+/** Bootstrap the application
+ *
+ * Bootstrap I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] conf	Listen section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	proto_tacacs_t 		*inst = talloc_get_type_abort(instance, proto_tacacs_t);
+
+	/*
+	 *	Ensure that the server CONF_SECTION is always set.
+	 */
+	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
+
+	fr_assert(dict_tacacs != NULL);
+
+	/*
+	 *	No IO module, it's an empty listener.
+	 */
+	if (!inst->io.submodule) return 0;
+
+	/*
+	 *	These timers are usually protocol specific.
+	 */
+	FR_TIME_DELTA_BOUND_CHECK("idle_timeout", inst->io.idle_timeout, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("idle_timeout", inst->io.idle_timeout, <=, fr_time_delta_from_sec(600));
+
+	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, <=, fr_time_delta_from_sec(600));
+
+ 	/*
+	 *	Tell the master handler about the main protocol instance.
+	 */
+	inst->io.app = &proto_tacacs;
+	inst->io.app_instance = inst;
+
+	/*
+	 *	We will need this for dynamic clients and connected sockets.
+	 */
+	inst->io.dl_inst = dl_module_instance_by_data(inst);
+	fr_assert(inst != NULL);
+
+	/*
+	 *	Bootstrap the master IO handler.
+	 */
+	return fr_master_app_io.bootstrap(&inst->io, conf);
 }
 
 static int mod_load(void)
@@ -675,25 +591,20 @@ static void mod_unload(void)
 	fr_tacacs_free();
 }
 
-extern rad_protocol_t proto_tacacs;
-rad_protocol_t proto_tacacs = {
-	.name		= "tacacs",
-	.magic		= RLM_MODULE_INIT,
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.config		= proto_tacacs_config,
-	.inst_size	= sizeof(proto_tacacs_t),
+fr_app_t proto_tacacs = {
+	.magic			= RLM_MODULE_INIT,
+	.name			= "tacacs",
+	.config			= proto_tacacs_config,
+	.inst_size		= sizeof(proto_tacacs_t),
+	.dict			= &dict_tacacs,
 
-	.transports	= TRANSPORT_TCP,
-	.tls		= false,
-	.compile	= tacacs_listen_compile,
-	.parse		= common_socket_parse,
-	.open		= common_socket_open,
-	.recv		= tacacs_socket_recv,
-	.send		= NULL,
-	.error		= tacacs_socket_error,
-	.print		= common_socket_print,
-	.debug		= fr_tacacs_packet_debug,
-	.encode		= NULL,
-	.decode		= NULL,
+	.onload			= mod_load,
+	.unload			= mod_unload,
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.open			= mod_open,
+	.decode			= mod_decode,
+	.encode			= mod_encode,
+	.entry_point_set	= mod_entry_point_set,
+	.priority		= mod_priority_set
 };

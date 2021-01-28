@@ -32,13 +32,11 @@ RCSIDH(libradius_h, "$Id$")
 
 #include <freeradius-devel/missing.h>
 
-#include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/radius/radius.h>
-
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dlist.h>
@@ -56,8 +54,8 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/md4.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/packet.h>
-#include <freeradius-devel/util/pair_cursor.h>
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>

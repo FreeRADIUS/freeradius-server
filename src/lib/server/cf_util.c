@@ -29,7 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_priv.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/thread_local.h>
 
 #include <freeradius-devel/util/cursor.h>
 
@@ -95,7 +96,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 		break;
 
 	case CONF_ITEM_PAIR:
-		rad_assert((ident2 == NULL) || IS_WILDCARD(ident2));
+		fr_assert((ident2 == NULL) || IS_WILDCARD(ident2));
 
 		memset(&cp_find, 0, sizeof(cp_find));
 		cp_find.item.type = CONF_ITEM_PAIR;
@@ -186,7 +187,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		break;
 
 	case CONF_ITEM_PAIR:
-		rad_assert((ident2 == NULL) || IS_WILDCARD(ident2));
+		fr_assert((ident2 == NULL) || IS_WILDCARD(ident2));
 
 		memset(&cp_find, 0, sizeof(cp_find));
 		cp_find.item.type = CONF_ITEM_PAIR;
@@ -221,7 +222,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		for (ci = prev->next;
 		     ci && (_cf_ident1_cmp(ci, find) != 0);
 		     ci = ci->next) {
-			rad_assert(ci->next != ci);
+			fr_assert(ci->next != ci);
 		}
 
 		return ci;
@@ -374,15 +375,15 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	fr_cursor_t	to_merge;
 	CONF_ITEM	*ci;
 
-	rad_assert(parent != child);
+	fr_assert(parent != child);
 
 	if (!parent || !child) return;
 
 	/*
 	 *	New child, add child trees.
 	 */
-	if (!parent->ident1) parent->ident1 = rbtree_create(parent, _cf_ident1_cmp, NULL, RBTREE_FLAG_NONE);
-	if (!parent->ident2) parent->ident2 = rbtree_create(parent, _cf_ident2_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!parent->ident1) parent->ident1 = rbtree_alloc(parent, _cf_ident1_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!parent->ident2) parent->ident2 = rbtree_alloc(parent, _cf_ident2_cmp, NULL, RBTREE_FLAG_NONE);
 
 	fr_cursor_init(&to_merge, &child);
 
@@ -425,13 +426,13 @@ CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 
 	in_ident1 = (rbtree_finddata(parent->ident1, child) == child);
 	if (in_ident1 && (!rbtree_deletebydata(parent->ident1, child))) {
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
 	in_ident2 = (rbtree_finddata(parent->ident2, child) == child);
 	if (in_ident2 && (!rbtree_deletebydata(parent->ident2, child))) {
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
@@ -580,6 +581,8 @@ bool cf_item_is_data(CONF_ITEM const *ci)
  * @return
  *	- #CONF_PAIR.
  *	- NULL if ci was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
 {
@@ -587,7 +590,7 @@ CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
 
 	if (ci == NULL) return NULL;
 
-	rad_assert(ci->type == CONF_ITEM_PAIR);
+	fr_assert(ci->type == CONF_ITEM_PAIR);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
@@ -601,6 +604,8 @@ CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
  * @return
  *	- #CONF_SECTION.
  *	- NULL if ci was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
 {
@@ -608,7 +613,7 @@ CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
 
 	if (ci == NULL) return NULL;
 
-	rad_assert(ci->type == CONF_ITEM_SECTION);
+	fr_assert(ci->type == CONF_ITEM_SECTION);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
@@ -622,6 +627,8 @@ CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
  * @return
  *	- #CONF_DATA.
  *	- NULL if ci was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
 {
@@ -629,7 +636,7 @@ CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
 
 	if (ci == NULL) return NULL;
 
-	rad_assert(ci->type == CONF_ITEM_DATA);
+	fr_assert(ci->type == CONF_ITEM_DATA);
 
 	memcpy(&out, &ci, sizeof(out));
 	return out;
@@ -641,6 +648,8 @@ CONF_DATA *cf_item_to_data(CONF_ITEM const *ci)
  * @return
  *	- The common #CONF_ITEM header.
  *	- NULL if cp was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp)
 {
@@ -658,6 +667,8 @@ CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp)
  * @return
  *	- The common #CONF_ITEM header.
  *	- NULL if cs was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs)
 {
@@ -675,6 +686,8 @@ CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs)
  * @return
  *	- The common #CONF_ITEM header.
  *	- NULL if cd was NULL.
+ *
+ * @hidecallergraph
  */
 CONF_ITEM *cf_data_to_item(CONF_DATA const *cd)
 {
@@ -903,7 +916,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 			break;
 
 		case CONF_ITEM_INVALID:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -914,6 +927,8 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
  *
  * @param[in] parent	section we're adding to.
  * @param[in] cs	we're adding.
+ *
+ * @hidecallergraph
  */
 void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
 {
@@ -943,6 +958,8 @@ CONF_SECTION *cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev)
  * @return
  *	- The first matching subsection.
  *	- NULL if no subsections match.
+ *
+ * @hidecallergraph
  */
 CONF_SECTION *cf_section_find(CONF_SECTION const *cs,
 			      char const *name1, char const *name2)
@@ -962,6 +979,8 @@ CONF_SECTION *cf_section_find(CONF_SECTION const *cs,
  * @return
  *	- The next CONF_SECTION.
  *	- NULL if there are no more CONF_SECTIONs
+ *
+ * @hidecallergraph
  */
 CONF_SECTION *cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *prev,
 				   char const *name1, char const *name2)
@@ -1019,6 +1038,8 @@ char const *cf_section_value_find(CONF_SECTION const *cs, char const *attr)
  * @return
  *	- The first identifier.
  *	- NULL if cs was NULL or no name1 set.
+ *
+ * @hidecallergraph
  */
 char const *cf_section_name1(CONF_SECTION const *cs)
 {
@@ -1031,6 +1052,8 @@ char const *cf_section_name1(CONF_SECTION const *cs)
  * @return
  *	- The second identifier.
  *	- NULL if cs was NULL or no name2 set.
+ *
+ * @hidecallergraph
  */
 char const *cf_section_name2(CONF_SECTION const *cs)
 {
@@ -1041,6 +1064,8 @@ char const *cf_section_name2(CONF_SECTION const *cs)
  *
  * @param[in] cs	to return identifiers for.
  * @return name1 or name2 identifier.
+ *
+ * @hidecallergraph
  */
 char const *cf_section_name(CONF_SECTION const *cs)
 {
@@ -1075,7 +1100,7 @@ char const *cf_section_argv(CONF_SECTION const *cs, int argc)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if cs was NULL.
  */
-FR_TOKEN cf_section_name2_quote(CONF_SECTION const *cs)
+fr_token_t cf_section_name2_quote(CONF_SECTION const *cs)
 {
 	if (!cs) return T_INVALID;
 
@@ -1093,7 +1118,7 @@ FR_TOKEN cf_section_name2_quote(CONF_SECTION const *cs)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if cs was NULL or the index was invalid.
  */
-FR_TOKEN cf_section_argv_quote(CONF_SECTION const *cs, int argc)
+fr_token_t cf_section_argv_quote(CONF_SECTION const *cs, int argc)
 {
 	if (!cs || !cs->argv_quote || (argc < 0) || (argc > cs->argc)) return T_INVALID;
 
@@ -1113,11 +1138,11 @@ FR_TOKEN cf_section_argv_quote(CONF_SECTION const *cs, int argc)
  *	- A new #CONF_SECTION parented by parent.
  */
 CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
-			 FR_TOKEN op, FR_TOKEN lhs_quote, FR_TOKEN rhs_quote)
+			 fr_token_t op, fr_token_t lhs_quote, fr_token_t rhs_quote)
 {
 	CONF_PAIR *cp;
 
-	rad_assert(fr_equality_op[op] || fr_assignment_op[op]);
+	fr_assert(fr_equality_op[op] || fr_assignment_op[op]);
 	if (!attr) return NULL;
 
 	cp = talloc_zero(parent, CONF_PAIR);
@@ -1158,8 +1183,8 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 {
 	CONF_PAIR *new;
 
-	rad_assert(parent);
-	rad_assert(cp);
+	fr_assert(parent);
+	fr_assert(cp);
 
 	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp), cp->op, cp->lhs_quote, cp->rhs_quote);
 	if (!new) return NULL;
@@ -1329,6 +1354,8 @@ int cf_pair_count(CONF_SECTION const *cs)
  * @return
  *	- NULL if the pair was NULL.
  *	- The attribute name of the pair.
+ *
+ * @hidecallergraph
  */
 char const *cf_pair_attr(CONF_PAIR const *pair)
 {
@@ -1343,6 +1370,8 @@ char const *cf_pair_attr(CONF_PAIR const *pair)
  * @return
  *	- NULL if pair was NULL or the pair has no value.
  *	- The string value of the pair.
+ *
+ * @hidecallergraph
  */
 char const *cf_pair_value(CONF_PAIR const *pair)
 {
@@ -1355,8 +1384,10 @@ char const *cf_pair_value(CONF_PAIR const *pair)
  * @return
  *	- T_INVALID if pair was NULL.
  *	- T_OP_* (one of the operator constants).
+ *
+ * @hidecallergraph
  */
-FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
+fr_token_t cf_pair_operator(CONF_PAIR const *pair)
 {
 	return (pair ? pair->op : T_INVALID);
 }
@@ -1371,7 +1402,7 @@ FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if the pair is NULL.
  */
-FR_TOKEN cf_pair_attr_quote(CONF_PAIR const *pair)
+fr_token_t cf_pair_attr_quote(CONF_PAIR const *pair)
 {
 	return (pair ? pair->lhs_quote : T_INVALID);
 }
@@ -1386,7 +1417,7 @@ FR_TOKEN cf_pair_attr_quote(CONF_PAIR const *pair)
  *	- #T_DOUBLE_QUOTED_STRING.
  *	- #T_INVALID if the pair is NULL.
  */
-FR_TOKEN cf_pair_value_quote(CONF_PAIR const *pair)
+fr_token_t cf_pair_value_quote(CONF_PAIR const *pair)
 {
 	return (pair ? pair->rhs_quote : T_INVALID);
 }
@@ -1650,7 +1681,7 @@ typedef struct {
 	void		*ctx;		//!< to pass to cb.
 } cf_data_walk_ctx_t;
 
-/** Wrap a cf_walker_t in an rb_walker_t
+/** Wrap a cf_walker_t in an fr_rb_walker_t
  *
  * @param[in] data	A CONF_DATA entry.
  * @param[in] uctx	A cf_data_walk_ctx_t.
@@ -1699,7 +1730,7 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 	return rbtree_walk(ci->ident2, RBTREE_IN_ORDER, _cf_data_walk_cb, &cd_ctx);
 }
 
-static inline void truncate_filename(char const **e, char const **p, int *len, char const *filename)
+static inline CC_HINT(nonnull) void truncate_filename(char const **e, char const **p, int *len, char const *filename)
 {
 	size_t flen;
 	char const *q;
@@ -1708,11 +1739,6 @@ static inline void truncate_filename(char const **e, char const **p, int *len, c
 
 	*p = filename;
 	*e = "";
-
-	if (!filename || !*filename) {
-		*len = 0;
-		return;
-	}
 
 	flen = talloc_array_length(filename) - 1;
 	if (flen <= FILENAME_TRUNCATE) {
@@ -1757,7 +1783,7 @@ int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t ta
 		return 0;
 	}
 
-	for (i = 0; i < table_len; i++) MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", table[i].name));
+	for (i = 0; i < table_len; i++) MEM(list = talloc_asprintf_append_buffer(list, "'%s', ", table[i].name.str));
 
 	if (!list) {
 		cf_log_err(cp, "Internal error parsing %s: Table was empty", cf_pair_attr(cp));
@@ -1843,35 +1869,84 @@ void _cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line
  * @param[in] file	src file the log message was generated in.
  * @param[in] line	number the log message was generated on.
  * @param[in] ci	#CONF_ITEM to print file/lineno for.
+ * @param[in] f_rules	Additional optional formatting controls.
  * @param[in] fmt	of the message.
  * @param[in] ...	Message args.
  */
-void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...)
+void _cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
+		  fr_log_perror_format_t const *f_rules, char const *fmt, ...)
 {
-	va_list	ap;
+	va_list			ap;
 
 	if ((type == L_DBG) && !DEBUG_ENABLED) return;
 
 	if (!ci || !ci->filename) {
 		va_start(ap, fmt);
-		fr_vlog_perror(LOG_DST, type, file, line, fmt, ap);
+		fr_vlog_perror(LOG_DST, type, file, line, f_rules, fmt, ap);
 		va_end(ap);
 		return;
 	}
 
 	{
-		char const	*e, *p;
-		int		len;
-		char		*msg;
+		char const		*e, *p;
+		int			len;
+		char			*prefix;
+		TALLOC_CTX		*thread_log_pool;
+		TALLOC_CTX		*pool;
+		fr_log_perror_format_t	our_f_rules;
+
+		if (f_rules) {
+			our_f_rules = *f_rules;
+		} else {
+			our_f_rules = (fr_log_perror_format_t){};
+		}
+
+		/*
+		 *	Get some scratch space from the logging code
+		 */
+		thread_log_pool = fr_log_pool_init();
+		pool = talloc_new(thread_log_pool);
 
 		truncate_filename(&e, &p, &len, ci->filename);
 
+		/*
+		 *	Create the file location string
+		 */
+		prefix = fr_asprintf(pool, "%s%.*s[%d]: ", e, len, p, ci->lineno);
+
+		/*
+		 *	Prepend it to an existing first prefix
+		 */
+		if (f_rules && f_rules->first_prefix) {
+			char *first;
+
+			first = talloc_bstrdup(pool, prefix);
+			talloc_buffer_append_buffer(pool, first, f_rules->first_prefix);
+
+			our_f_rules.first_prefix = first;
+		} else {
+			our_f_rules.first_prefix = prefix;
+		}
+
+		/*
+		 *	Prepend it to an existing subsq prefix
+		 */
+		if (f_rules && f_rules->subsq_prefix) {
+			char *subsq;
+
+			subsq = talloc_bstrdup(pool, prefix);
+			talloc_buffer_append_buffer(pool, subsq, f_rules->subsq_prefix);
+
+			our_f_rules.subsq_prefix = subsq;
+		} else {
+			our_f_rules.subsq_prefix = prefix;
+		}
+
 		va_start(ap, fmt);
-		msg = fr_vasprintf(NULL, fmt, ap);
+		fr_vlog_perror(LOG_DST, type, file, line, &our_f_rules, fmt, ap);
 		va_end(ap);
 
-		fr_log_perror(LOG_DST, type, file, line, "%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
-		talloc_free(msg);
+		talloc_free(pool);
 	}
 }
 

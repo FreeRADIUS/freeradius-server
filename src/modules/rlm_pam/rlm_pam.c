@@ -52,7 +52,7 @@ typedef struct {
 } rlm_pam_t;
 
 typedef struct {
-	REQUEST		*request;	//!< The current request.
+	request_t		*request;	//!< The current request.
 	char const	*username;	//!< Username to provide to PAM when prompted.
 	char const	*password;	//!< Password to provide to PAM when prompted.
 	bool		error;		//!< True if pam_conv failed.
@@ -103,7 +103,7 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
 {
 	int		count;
 	struct		pam_response *reply;
-	REQUEST		*request;
+	request_t		*request;
 	rlm_pam_data_t	*pam_config = (rlm_pam_data_t *) appdata_ptr;
 
 	request = pam_config->request;
@@ -162,7 +162,7 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int do_pam(REQUEST *request, char const *username, char const *passwd, char const *pamauth)
+static int do_pam(request_t *request, char const *username, char const *passwd, char const *pamauth)
 {
 	pam_handle_t *handle = NULL;
 	int ret;
@@ -211,16 +211,17 @@ static int do_pam(REQUEST *request, char const *username, char const *passwd, ch
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	int		ret;
-	VALUE_PAIR	*pair;
-	rlm_pam_t const	*data = instance;
-	char const *pam_auth_string = data->pam_auth_name;
-	VALUE_PAIR *username, *password;
+	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->instance, rlm_pam_t);
+	int			ret;
+	fr_pair_t		*pair;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	char const		*pam_auth_string = data->pam_auth_name;
+	fr_pair_t		*username, *password;
+
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -228,12 +229,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -241,7 +242,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -257,13 +258,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Let control list over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
-	pair = fr_pair_find_by_da(request->control, attr_pam_auth, TAG_ANY);
+	pair = fr_pair_find_by_da(&request->control_pairs, attr_pam_auth);
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, username->vp_strvalue, password->vp_strvalue, pam_auth_string);
-	if (ret < 0) return RLM_MODULE_REJECT;
+	if (ret < 0) RETURN_MODULE_REJECT;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 extern module_t rlm_pam;

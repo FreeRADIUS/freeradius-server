@@ -1,0 +1,37 @@
+= Operands
+
+.Syntax
+[source,unlang]
+----
+string
+integer
+"double-quoted string"
+'single-quoted string'
+`back-quoted string`
+----
+
+Any text not matching xref:attr.adoc[&Attribute-Name] or
+xref:condition/return_code.adoc[Return Code] is interpreted as a value for a
+particular xref:type/index.adoc[data type].
+
+Double-quoted strings and back-quoted strings are dynamically expanded
+before the condition is evaluated.  Single-quoted strings are static
+literals and are not dynamically expanded.
+
+When used as an existence check, the condition evaluates to `true` if
+the data is non-zero.  Otherwise, the condition evaluates to `false`.
+
+For integer existence checks, `0` is `false`; all other values are `true`.
+
+For string existence checks, an empty string is `false`.  All other
+strings are `true`.
+
+All other data types are disallowed in existence checks.
+
+.Examples
+
+`"hello there"` +
+`5`
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

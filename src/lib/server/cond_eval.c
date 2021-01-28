@@ -29,170 +29,253 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/regex.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/print.h>
 
 #include <ctype.h>
 
-#ifdef WITH_UNLANG
 #ifdef WITH_EVAL_DEBUG
-#  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");fr_fprintf(stdout, fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
 #  define EVAL_DEBUG(...)
 #endif
 
-static bool all_digits(char const *string)
+static int cond_realize_tmpl(request_t *request,
+			     fr_value_box_t **out, fr_value_box_t **to_free,
+			     tmpl_t *in, tmpl_t *other);
+
+/** Map keywords to #pair_list_t values
+ */
+static fr_table_num_sorted_t const cond_type_table[] = {
+	{ L("child"),		COND_TYPE_CHILD		},
+	{ L("tmpl"),		COND_TYPE_TMPL		},
+	{ L("false"),		COND_TYPE_FALSE		},
+	{ L("invalid"),		COND_TYPE_INVALID	},
+	{ L("map"),		COND_TYPE_MAP		},
+	{ L("true"),		COND_TYPE_TRUE		},
+};
+static size_t cond_type_table_len = NUM_ELEMENTS(cond_type_table);
+
+static fr_table_num_sorted_t const cond_pass2_table[] = {
+	{ L("none"),		PASS2_FIXUP_NONE	},
+	{ L("attr"),		PASS2_FIXUP_ATTR	},
+	{ L("type"),		PASS2_FIXUP_TYPE	},
+	{ L("paircompre"),	PASS2_PAIRCOMPARE	},
+};
+static size_t cond_pass2_table_len = NUM_ELEMENTS(cond_pass2_table);
+
+
+/** Debug function to dump a cond structure
+ *
+ */
+void cond_debug(fr_cond_t const *cond)
 {
-	char const *p = string;
+	fr_cond_t const *c;
 
-	rad_assert(p != NULL);
+	for (c = cond; c; c =c->next) {
+		INFO("cond %s (%p)", fr_table_str_by_value(cond_type_table, c->type, "<INVALID>"), cond);
+		INFO("\tnegate : %s", c->negate ? "true" : "false");
+		INFO("\tfixup  : %s", fr_table_str_by_value(cond_pass2_table, c->pass2_fixup, "<INVALID>"));
 
-	if (*p == '\0') return false;
+		switch (c->type) {
+		case COND_TYPE_MAP:
+			INFO("lhs (");
+			tmpl_debug(c->data.map->lhs);
+			INFO(")");
+			INFO("rhs (");
+			tmpl_debug(c->data.map->rhs);
+			INFO(")");
+			break;
 
-	if (*p == '-') p++;
+		case COND_TYPE_RCODE:
+			INFO("\trcode  : %s", fr_table_str_by_value(rcode_table, c->data.rcode, ""));
+			break;
 
-	while (isdigit((int) *p)) p++;
+		case COND_TYPE_TMPL:
+			tmpl_debug(c->data.vpt);
+			break;
 
-	return (*p == '\0');
+		case COND_TYPE_CHILD:
+			INFO("child (");
+			cond_debug(c->data.child);
+			INFO(")");
+			break;
+
+		case COND_TYPE_AND:
+			INFO("&& ");
+			break;
+
+		case COND_TYPE_OR:
+			INFO("|| ");
+			break;
+
+		default:
+			break;
+		}
+	}
 }
 
 /** Evaluate a template
  *
- * Converts a vp_tmpl_t to a boolean value.
+ * Converts a tmpl_t to a boolean value.
  *
- * @param[in] request the REQUEST
- * @param[in] modreturn the previous module return code
+ * @param[in] request the request_t
  * @param[in] depth of the recursion (only used for debugging)
- * @param[in] vpt the template to evaluate
+ * @param[in] in the template to evaluate
  * @return
- *	- -1 on failure.
- *	- 0 for "no match".
+ *	- <0 for failure
+ *	- 0 for "no match"
  *	- 1 for "match".
  */
-int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
+int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *in)
 {
 	int rcode = -1;
-	int modcode;
-	fr_value_box_t data;
+	fr_pair_t *vp = NULL;
+	fr_value_box_t *box, *box_free;
+	tmpl_t *vpt;
+
+	box = box_free = NULL;
+	memcpy(&vpt, &in, sizeof(in)); /* const issues */
 
 	switch (vpt->type) {
-	case TMPL_TYPE_UNPARSED:
-		modcode = fr_table_value_by_str(rcode_table, vpt->name, RLM_MODULE_UNKNOWN);
-		if (modcode != RLM_MODULE_UNKNOWN) {
-			rcode = (modcode == modreturn);
-			break;
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_LIST:
+		/*
+		 *	No cast means that it's an existence check.
+		 */
+		if (vpt->cast == FR_TYPE_INVALID) {
+			return (tmpl_find_vp(NULL, request, vpt) == 0);
 		}
 
 		/*
-		 *	Else it's a literal string.  Empty string is
-		 *	false, non-empty string is true.
-		 *
-		 *	@todo: Maybe also check for digits?
-		 *
-		 *	The VPT *doesn't* have a "bare word" type,
-		 *	which arguably it should.
+		 *	Cast means that we cast the attribute to a
+		 *	particular type.
 		 */
-		rcode = (*vpt->name != '\0');
-		break;
-
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
-		if (tmpl_find_vp(NULL, request, vpt) == 0) {
-			rcode = true;
-		} else {
-			rcode = false;
-		}
-		break;
-
-	case TMPL_TYPE_XLAT_STRUCT:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_EXEC:
-	{
-		char *p;
-
-		if (!*vpt->name) return false;
-		rcode = tmpl_aexpand(request, &p, request, vpt, NULL, NULL);
-		if (rcode < 0) {
-			EVAL_DEBUG("FAIL %d", __LINE__);
+		if (tmpl_find_vp(&vp, request, vpt) < 0) {
 			return -1;
 		}
-		data.vb_strvalue = p;
-		rcode = (data.vb_strvalue && (*data.vb_strvalue != '\0'));
-		talloc_free(data.datum.ptr);
-	}
+
+		MEM(box = fr_value_box_alloc_null(request));
+		box_free = box;
+
+		if (fr_value_box_cast(box, box, vpt->cast, NULL, &vp->data) < 0) {
+			if (request) RPEDEBUG("Failed casting %pV to type %s", box,
+					      fr_table_str_by_value(fr_value_box_type_table,
+								    vpt->cast, "??"));
+			goto done;
+		}
 		break;
+
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_EXEC:
+		/*
+		 *	Realize and cast the tmpl.
+		 */
+		if (cond_realize_tmpl(request, &box, &box_free, vpt, NULL) < 0) {
+			fr_strerror_const("Failed evaluating condition");
+			return -1;
+		}
+
+		/*
+		 *	Old-style: zero length strings are false.
+		 *	Other strings are true.
+		 *
+		 *	We don't yet have xlats returning lists of
+		 *	value boxes, so there's an assert.
+		 */
+		if (vpt->cast == FR_TYPE_INVALID) {
+			switch (box->type) {
+			case FR_TYPE_STRING:
+			case FR_TYPE_OCTETS:
+				rcode = (box->vb_length > 0);
+				goto done;
+
+				/*
+				 *	Not yet handled.
+				 */
+			default:
+				fr_assert(0);
+				return -1;
+			}
+		}
+		break;
+
+		/*
+		 *	Everything else MUST have been forbidden, or
+		 *	already realized to a COND_TYPE_TRUE/FALSE.
+		 */
+	default:
+		fr_assert(0);
+		EVAL_DEBUG("FAIL %d", __LINE__);
+		goto done;
+	}
 
 	/*
-	 *	Can't have a bare ... (/foo/) ...
+	 *	If it's already a bool, just use that.
+	 *
+	 *	Otherwise cast the data to bool.  This cast lets the
+	 *	value code figure out what is false and what is true.
 	 */
-	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_REGEX_STRUCT:
-		rad_assert(0 == 1);
-		/* FALL-THROUGH */
+	if (box->type == FR_TYPE_BOOL) {
+		rcode = box->vb_bool;
 
-	default:
-		EVAL_DEBUG("FAIL %d", __LINE__);
-		rcode = -1;
-		break;
+	} else {
+		fr_value_box_t out;
+
+		fr_value_box_init_null(&out);
+		if (fr_value_box_cast(request, &out, FR_TYPE_BOOL, NULL, box) < 0) {
+			talloc_free(box_free);
+			return -1;
+		}
+
+		rcode = out.vb_bool;
+		fr_value_box_clear(&out);
 	}
 
+done:
+	talloc_free(box_free);
 	return rcode;
 }
 
 #ifdef HAVE_REGEX
 /** Perform a regular expressions comparison between two operands
  *
+ * @param[in] request		The current request.
+ * @param[in] subject		to executed regex against.
+ * @param[in,out] preg		Pointer to pre-compiled or runtime-compiled
+ *				regular expression.  In the case of runtime-compiled
+ *				the pattern may be stolen by the `regex_sub_to_request`
+ *				function as the original pattern is needed to resolve
+ *				capture groups.
+ *				The caller should only free the `regex_t *` if it
+ *				compiled it, and the pointer has not been set to NULL
+ *				when this function returns.
  * @return
  *	- -1 on failure.
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         fr_value_box_t const *lhs,
-		         fr_value_box_t const *rhs)
+static int cond_do_regex(request_t *request, fr_value_box_t const *subject, regex_t **preg)
 {
-	vp_map_t const *map = c->data.map;
-
-	ssize_t		slen;
 	uint32_t	subcaptures;
 	int		ret;
 
-	regex_t		*preg, *rreg = NULL;
 	fr_regmatch_t	*regmatch;
 
-	if (!fr_cond_assert(lhs != NULL)) return -1;
-	if (!fr_cond_assert(lhs->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(subject != NULL)) return -1;
+	if (!fr_cond_assert(subject->type == FR_TYPE_STRING)) return -1;
 
 	EVAL_DEBUG("CMP WITH REGEX");
 
-	switch (map->rhs->type) {
-	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
-		preg = map->rhs->tmpl_preg;
-		break;
-
-	default:
-		if (!fr_cond_assert(rhs && rhs->type == FR_TYPE_STRING)) return -1;
-		if (!fr_cond_assert(rhs && rhs->vb_strvalue)) return -1;
-		slen = regex_compile(request, &rreg, rhs->vb_strvalue, rhs->datum.length,
-				     &map->rhs->tmpl_regex_flags, true, true);
-		if (slen <= 0) {
-			REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
-			EVAL_DEBUG("FAIL %d", __LINE__);
-
-			return -1;
-		}
-		preg = rreg;
-		break;
-	}
-
-	subcaptures = regex_subcapture_count(preg);
+	subcaptures = regex_subcapture_count(*preg);
 	if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
 	MEM(regmatch = regex_match_data_alloc(NULL, subcaptures));
 
 	/*
 	 *	Evaluate the expression
 	 */
-	ret = regex_exec(preg, lhs->vb_strvalue, lhs->datum.length, regmatch);
+	ret = regex_exec(*preg, subject->vb_strvalue, subject->vb_length, regmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -201,7 +284,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, &preg, &regmatch);
+		regex_sub_to_request(request, preg, &regmatch);
 		break;
 
 	case -1:
@@ -214,108 +297,12 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	}
 
 	talloc_free(regmatch);	/* free if not consumed */
-	if (preg) talloc_free(rreg);
 
 	return ret;
 }
 #endif
 
-#ifdef WITH_EVAL_DEBUG
-static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const *rhs)
-{
-	if (lhs) {
-		if (lhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%pV\" (%zu)" , &lhs->datum, lhs->datum.length);
-		} else {
-			EVAL_DEBUG("LHS: 0x%pH (%zu)", &lhs->datum, lhs->datum.length);
-		}
-	} else {
-		EVAL_DEBUG("LHS: VIRTUAL");
-	}
-
-	if (rhs) {
-		if (rhs->type == FR_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%pV\" (%zu)", &rhs->datum, rhs->datum.length);
-		} else {
-			EVAL_DEBUG("RHS: 0x%pH (%zu)", &rhs->datum, rhs->datum.length);
-		}
-	} else {
-		EVAL_DEBUG("RHS: COMPILED");
-	}
-}
-#endif
-
-/** Call the correct data comparison function for the condition
- *
- * Deals with regular expression comparisons, virtual attribute
- * comparisons, and data comparisons.
- *
- * @return
- *	- -1 on failure.
- *	- 0 for "no match".
- *	- 1 for "match".
- */
-static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t const *lhs, fr_value_box_t const *rhs)
-{
-	vp_map_t const *map = c->data.map;
-	int rcode;
-
-#ifdef WITH_EVAL_DEBUG
-	EVAL_DEBUG("CMP OPERANDS");
-	cond_print_operands(lhs, rhs);
-#endif
-
-#ifdef HAVE_REGEX
-	/*
-	 *	Regex comparison
-	 */
-	if (map->op == T_OP_REG_EQ) {
-		rcode = cond_do_regex(request, c, lhs, rhs);
-		goto finish;
-	}
-#endif
-	/*
-	 *	Virtual attribute comparison.
-	 */
-	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
-		VALUE_PAIR *vp;
-
-		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
-		rad_assert(tmpl_is_attr(map->lhs));
-
-		MEM(vp = fr_pair_afrom_da(request, map->lhs->tmpl_da));
-		vp->op = c->data.map->op;
-
-		fr_value_box_copy(vp, &vp->data, rhs);
-
-		rcode = paircmp(request, request->packet->vps, vp, NULL);
-		rcode = (rcode == 0) ? 1 : 0;
-		talloc_free(vp);
-		goto finish;
-	}
-
-	EVAL_DEBUG("CMP WITH VALUE DATA");
-	rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
-finish:
-	switch (rcode) {
-	case 0:
-		EVAL_DEBUG("FALSE");
-		break;
-
-	case 1:
-		EVAL_DEBUG("TRUE");
-		break;
-
-	default:
-		EVAL_DEBUG("ERROR %i", rcode);
-		break;
-	}
-
-	return rcode;
-}
-
-
-static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+static size_t regex_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char *p = out;
 
@@ -336,7 +323,7 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 
 			*(p++) = '\\';
 			outlen--;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		default:
 			*(p++) = *(in++);
@@ -350,232 +337,252 @@ done:
 	return p - out;
 }
 
-/** Convert both operands to the same type
+/** Turn a raw #tmpl_t into #fr_value_data_t, mostly.
  *
- * If casting is successful, we call cond_cmp_values to do the comparison
+ *  It does nothing for lists, attributes, and precompiled regexes.
  *
- * @return
- *	- -1 on failure.
- *	- 0 for "no match".
- *	- 1 for "match".
+ *  For #TMPL_TYPE_DATA, it returns the raw data, which MUST NOT have
+ *  a cast, and which MUST have the correct data type.
+ *
+ *  For everything else (exec, xlat, regex-xlat), it evaluates the
+ *  tmpl, and returns a "realized" #fr_value_box_t.  That box can then
+ *  be used for comparisons, with minimal extra processing.
  */
-static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value_box_t const *lhs)
+static int cond_realize_tmpl(request_t *request,
+			     fr_value_box_t **out, fr_value_box_t **to_free,
+			     tmpl_t *in, tmpl_t *other) /* both really should be 'const' */
 {
-	vp_map_t const		*map = c->data.map;
+	fr_value_box_t		*box;
+	xlat_escape_legacy_t	escape = NULL;
 
-	int			rcode;
+	*out = *to_free = NULL;
 
-	fr_value_box_t		*rhs = NULL;
-
-	fr_dict_attr_t const	*cast = NULL;
-	fr_type_t		cast_type = FR_TYPE_INVALID;
-
-	fr_value_box_t		lhs_cast = { .type = FR_TYPE_INVALID };
-	fr_value_box_t		rhs_cast = { .type = FR_TYPE_INVALID };
-
-	xlat_escape_t		escape = NULL;
-
+	switch (in->type) {
 	/*
-	 *	Cast operand to correct type.
-	 *
-	 *	With hack for strings that look like integers, to cast them
-	 *	to 64 bit unsigned integers.
-	 *
-	 * @fixme For things like this it'd be useful to have a 64bit signed type.
+	 *	These are handled elsewhere.
 	 */
-#define CAST(_s) \
-do {\
-	if ((cast_type != FR_TYPE_INVALID) && _s && (_s ->type != FR_TYPE_INVALID) && (cast_type != _s->type)) {\
-		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
-			   fr_table_str_by_value(fr_value_box_type_table, _s->type, "<INVALID>"),\
-			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));\
-		if (fr_value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
-			RPEDEBUG("Failed casting " #_s " operand");\
-			rcode = -1;\
-			goto finish;\
-		}\
-		_s = &_s ## _cast;\
-	}\
-} while (0)
-
-#define CHECK_INT_CAST(_l, _r) \
-do {\
-	if ((cast_type == FR_TYPE_INVALID) &&\
-	    _l && (_l->type == FR_TYPE_STRING) &&\
-	    _r && (_r->type == FR_TYPE_STRING) &&\
-	    all_digits(lhs->vb_strvalue) && all_digits(rhs->vb_strvalue)) {\
-	    	cast_type = FR_TYPE_UINT64;\
-	    	EVAL_DEBUG("OPERANDS ARE NUMBER STRINGS, SETTING CAST TO uint64");\
-	}\
-} while (0)
-
-	/*
-	 *	Regular expressions need both operands to be strings
-	 */
+	case TMPL_TYPE_LIST:
 #ifdef HAVE_REGEX
-	if (map->op == T_OP_REG_EQ) {
-		cast_type = FR_TYPE_STRING;
-
-		if (tmpl_is_xlat_struct(map->rhs)) escape = regex_escape;
-	}
-	else
+	case TMPL_TYPE_REGEX:
 #endif
-	/*
-	 *	If it's a pair comparison, data gets cast to the
-	 *	type of the pair comparison attribute.
-	 *
-	 *	Magic attribute is always the LHS.
-	 */
-	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
-		rad_assert(!c->cast);
-		rad_assert(tmpl_is_attr(map->lhs));
-		rad_assert(!tmpl_is_attr(map->rhs) || !paircmp_find(map->rhs->tmpl_da)); /* expensive assert */
+		return 0;
 
-		cast = map->lhs->tmpl_da;
-
-		EVAL_DEBUG("NORMALISATION TYPE %s (PAIRCMP TYPE)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
-	/*
-	 *	Otherwise we use the explicit cast, or implicit
-	 *	cast (from an attribute reference).
-	 *	We already have the data for the lhs, so we convert
-	 *	it here.
-	 */
-	} else if (c->cast) {
-		cast = c->cast;
-		EVAL_DEBUG("NORMALISATION TYPE %s (EXPLICIT CAST)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
-	} else if (tmpl_is_attr(map->lhs)) {
-		cast = map->lhs->tmpl_da;
-		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS REF)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
-	} else if (tmpl_is_attr(map->rhs)) {
-		cast = map->rhs->tmpl_da;
-		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS REF)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast->type, "<INVALID>"));
-	} else if (tmpl_is_data(map->lhs)) {
-		cast_type = map->lhs->tmpl_value_type;
-		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS DATA)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
-	} else if (tmpl_is_data(map->rhs)) {
-		cast_type = map->rhs->tmpl_value_type;
-		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS DATA)",
-			   fr_table_str_by_value(fr_value_box_type_table, cast_type, "<INVALID>"));
-	}
-
-	if (cast) cast_type = cast->type;
-
-	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
-	{
-		VALUE_PAIR *vp;
-		fr_cursor_t cursor;
-
-		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->rhs);
-		     vp;
-	     	     vp = fr_cursor_next(&cursor)) {
-			rhs = &vp->data;
-
-			CHECK_INT_CAST(lhs, rhs);
-			CAST(lhs);
-			CAST(rhs);
-
-			rcode = cond_cmp_values(request, c, lhs, rhs);
-			if (rcode != 0) break;
-
-			fr_value_box_clear(&rhs_cast);
-		}
-	}
-		break;
-
-	case TMPL_TYPE_DATA:
-		rhs = &map->rhs->tmpl_value;
-
-		CHECK_INT_CAST(lhs, rhs);
-		CAST(lhs);
-		CAST(rhs);
-
-		rcode = cond_cmp_values(request, c, lhs, rhs);
-		break;
+		/*
+		 *	fast path?  If there's only one attribute, AND
+		 *	tmpl_num is a simple number, then just find
+		 *	that attribute.  This fast path should ideally
+		 *	avoid all of the cost of setting up the
+		 *	cursors?
+		 */
+		return 0;
 
 	/*
-	 *	Expanded types start as strings, then get converted
-	 *	to the type of the attribute or the explicit cast.
+	 *	Return the raw data, which MUST already have been
+	 *	converted to the correct thing.
 	 */
-	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_DATA:
+		fr_assert((in->cast == FR_TYPE_INVALID) || (in->cast == tmpl_value_type(in)));
+		*out = tmpl_value(in);
+		return 0;
+
+#ifdef HAVE_REGEX
+	case TMPL_TYPE_REGEX_XLAT:
+		escape = regex_escape;
+		FALL_THROUGH;
+#endif
+
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
 	{
-		ssize_t ret;
-		fr_value_box_t data;
+		ssize_t		ret;
+		fr_type_t	cast_type;
+		fr_dict_attr_t const *da = NULL;
 
-		memset(&data, 0, sizeof(data));
+		box = NULL;
+		ret = tmpl_aexpand(request, &box, request, in, escape, NULL);
+		if (ret < 0) return ret;
 
-		if (!tmpl_is_unparsed(map->rhs)) {
-			char *p;
+		fr_assert(box != NULL);
 
-			ret = tmpl_aexpand(request, &p, request, map->rhs, escape, NULL);
-			if (ret < 0) {
-				EVAL_DEBUG("FAIL [%i]", __LINE__);
-				rcode = -1;
-				goto finish;
-			}
-			data.vb_strvalue = p;
-			data.datum.length = ret;
+		/*
+		 *	We can't be TMPL_TYPE_ATTR or TMPL_TYPE_DATA,
+		 *	because that was caught above.
+		 *
+		 *	So we look for an explicit cast, and if we
+		 *	don't find that, then the *other* side MUST
+		 *	have an explicit data type.
+		 */
+		if (in->cast != FR_TYPE_INVALID) {
+			cast_type = in->cast;
+
+		} else if (!other) {
+			cast_type = FR_TYPE_STRING;
+
+		} else if (other->cast) {
+			cast_type = other->cast;
+
+		} else if (tmpl_is_attr(other)) {
+			da = tmpl_da(other);
+			cast_type = da->type;
+
+		} else if (tmpl_is_data(other)) {
+			cast_type = tmpl_value_type(other);
 
 		} else {
-			data.vb_strvalue = map->rhs->name;
-			data.datum.length = map->rhs->len;
+			cast_type = FR_TYPE_STRING;
 		}
-		data.type = FR_TYPE_STRING;
 
-		rad_assert(data.vb_strvalue);
+		if (cast_type != box->type) {
+			if (fr_value_box_cast_in_place(box, box, cast_type, da) < 0) {
+				RPEDEBUG("Failed casting!");
+				return -1;
+			}
+		}
 
-		rhs = &data;
+		*out = *to_free = box;
+		return 0;
+	}
 
-		CHECK_INT_CAST(lhs, rhs);
-		CAST(lhs);
-		CAST(rhs);
-
-		rcode = cond_cmp_values(request, c, lhs, rhs);
-		if (!tmpl_is_unparsed(map->rhs)) talloc_free(data.datum.ptr);
-
+	default:
 		break;
 	}
 
 	/*
-	 *	RHS is a compiled regex, we don't need to do anything with it.
+	 *	Other tmpl type, return an error.
 	 */
-	case TMPL_TYPE_REGEX_STRUCT:
-		CAST(lhs);
-		rcode = cond_cmp_values(request, c, lhs, NULL);
-		break;
-	/*
-	 *	Unsupported types (should have been parse errors)
-	 */
-	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_UNKNOWN:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_REGEX:	/* Should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
-		rad_assert(0);
-		rcode = -1;
-		break;
-	}
-
-finish:
-	fr_value_box_clear(&lhs_cast);
-	fr_value_box_clear(&rhs_cast);
-
-	return rcode;
+	fr_assert(0);
+	return -1;
 }
 
 
+static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_value_box_t *box,
+			     tmpl_t *vpt, fr_pair_t *vp, fr_dict_attr_t const *da)
+{
+	fr_type_t cast_type;
+
+	/*
+	 *	Sometimes we're casting to a type with enums.  If so,
+	 *	use that.
+	 */
+	if (da) {
+		cast_type = da->type;
+
+	} else if (vpt->cast != FR_TYPE_INVALID) {
+		/*
+		 *	If there's an explicit cast, use that.
+		 */
+		cast_type = vpt->cast;
+
+	} else {
+		/*
+		 *	Otherwise the VP is already of the correct type.
+		 */
+		goto dont_cast;
+	}
+
+	/*
+	 *	No casting needed.  Just return the data.
+	 */
+	if (cast_type == vp->da->type) {
+	dont_cast:
+		*realized = &vp->data;
+		return 0;
+	}
+
+	fr_value_box_init_null(box);
+	if (fr_value_box_cast(request, box, cast_type, da, &vp->data) < 0) {
+		if (request) RPEDEBUG("Failed casting %pV to type %s", &vp->data,
+				      fr_table_str_by_value(fr_value_box_type_table,
+							    vpt->cast, "??"));
+		return -1;
+	}
+
+	*realized = box;
+	return 0;
+}
+
+static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t const *map)
+{
+	int	       		rcode;
+	fr_pair_t		*vp;
+	fr_dcursor_t		cursor;
+	tmpl_cursor_ctx_t	cc;
+	fr_value_box_t		*rhs, rhs_cast;
+	fr_dict_attr_t const	*da = NULL;
+
+	if (tmpl_is_attr(map->lhs) && (map->lhs->cast == FR_TYPE_INVALID)) da = tmpl_da(map->lhs);
+
+	rhs = NULL;		/* shut up clang scan */
+	fr_value_box_clear(&rhs_cast);
+
+	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
+	     vp;
+	     vp = fr_dcursor_next(&cursor)) {
+		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, da) < 0) {
+			RPEDEBUG("Failed realizing RHS %pV", &vp->data);
+			if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
+			rcode = -1;
+			break;
+		}
+
+		fr_assert(lhs->type == rhs->type);
+
+		rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
+
+		if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
+		if (rcode != 0) break;
+	}
+
+	tmpl_cursor_clear(&cc);
+	return rcode;
+}
+
+static int cond_compare_virtual(request_t *request, map_t const *map)
+{
+	int	       		rcode;
+	fr_pair_t		*virt, *vp;
+	fr_value_box_t		*rhs, rhs_cast;
+	fr_dcursor_t		cursor;
+	tmpl_cursor_ctx_t	cc;
+
+	fr_assert(tmpl_is_attr(map->lhs));
+	fr_assert(tmpl_is_attr(map->rhs));
+
+	rhs = NULL;		/* shut up clang scan */
+	fr_value_box_clear(&rhs_cast);
+
+	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
+	     vp;
+	     vp = fr_dcursor_next(&cursor)) {
+		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, NULL) < 0) {
+			RPEDEBUG("Failed realizing RHS %pV", &vp->data);
+			if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
+			rcode = -1;
+			break;
+		}
+
+		/*
+		 *	Create the virtual check item.
+		 */
+		MEM(virt = fr_pair_afrom_da(request->request_ctx, tmpl_da(map->lhs)));
+		virt->op = map->op;
+		fr_value_box_copy(virt, &virt->data, rhs);
+
+		rcode = paircmp_virtual(request, &request->request_pairs, virt);
+		talloc_free(virt);
+		rcode = (rcode == 0) ? 1 : 0;
+		if (rhs == &rhs_cast) fr_value_box_clear(&rhs_cast);
+		if (rcode != 0) break;
+	}
+
+	tmpl_cursor_clear(&cc);
+	return rcode;
+}
+
 /** Evaluate a map
  *
- * @param[in] request the REQUEST
- * @param[in] modreturn the previous module return code
+ * @param[in] request the request_t
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
  * @return
@@ -583,18 +590,142 @@ finish:
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_cond_t const *c)
+int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 {
-	int rcode = 0;
+	int		rcode = 0;
+	map_t const	*map = c->data.map;
 
-	vp_map_t const *map = c->data.map;
+	fr_value_box_t *lhs, *lhs_free;
+	fr_value_box_t *rhs, *rhs_free;
+	regex_t		*preg, *preg_free;
+
+#ifndef NDEBUG
+	/*
+	 *	At this point, all tmpls MUST have been resolved.
+	 */
+	fr_assert(!tmpl_is_unresolved(c->data.map->lhs));
+	fr_assert(!tmpl_is_unresolved(c->data.map->rhs));
+#endif
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
 		   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "???"),
 		   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
 
 	MAP_VERIFY(map);
+	preg = preg_free = NULL;
 
+	/*
+	 *	Realize the LHS of a condition.
+	 */
+	if (cond_realize_tmpl(request, &lhs, &lhs_free, map->lhs, map->rhs) < 0) {
+		fr_strerror_const("Failed evaluating left side of condition");
+		return -1;
+	}
+
+	/*
+	 *	Realize the RHS of a condition.
+	 */
+	if (cond_realize_tmpl(request, &rhs, &rhs_free, map->rhs, map->lhs) < 0) {
+		fr_strerror_const("Failed evaluating right side of condition");
+		return -1;
+	}
+
+	/*
+	 *	Precompile the regular expressions.
+	 */
+	if (map->op == T_OP_REG_EQ) {
+		if (tmpl_is_regex(map->rhs)) {
+			if (!fr_cond_assert(!rhs)) goto done;
+
+			preg = tmpl_regex(map->rhs);
+		} else {
+			ssize_t slen;
+
+			if (!fr_cond_assert(rhs && tmpl_contains_regex(map->rhs))) goto done;
+
+			slen = regex_compile(request, &preg_free, rhs->vb_strvalue, rhs->vb_length,
+					     tmpl_regex_flags(map->rhs), true, true);
+			if (slen <= 0) {
+				REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
+				EVAL_DEBUG("FAIL %d", __LINE__);
+				return -1;
+			}
+			preg = preg_free;
+		}
+
+		/*
+		 *	We have a value on the LHS.  Just go do that.
+		 */
+		if (lhs) {
+			rcode = cond_do_regex(request, lhs, &preg);
+			goto done;
+		}
+
+		/*
+		 *	Otherwise loop over the LHS attribute / list.
+		 */
+		goto check_attrs;
+	}
+
+	/*
+	 *	We have both left and right sides as #fr_value_box_t,
+	 *	we can just evaluate the comparison here.
+	 *
+	 *	This is largely just cond_cmp_values() ...
+	 */
+	if (lhs && rhs) {
+		rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
+		goto done;
+	}
+
+	/*
+	 *	LHS is a virtual attribute.  The RHS MUST be data, not
+	 *	an attribute or a list.
+	 */
+	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
+		fr_pair_t *vp;
+
+		fr_assert(tmpl_is_attr(map->lhs));
+
+		if (map->op == T_OP_REG_EQ) {
+			fr_strerror_const("Virtual attributes cannot be used with regular expressions");
+			return -1;
+		}
+
+		/*
+		 *	&LDAP-Group == &Filter-Id
+		 */
+		if (tmpl_is_attr(map->rhs)) {
+			fr_assert(!lhs);
+			fr_assert(!rhs);
+
+			rcode = cond_compare_virtual(request, map);
+			goto done;
+		}
+
+		/*
+		 *	Forbid bad things.
+		 */
+		if (!rhs) {
+			fr_strerror_const("Invalid comparison for virtual attribute");
+			return -1;
+		}
+
+		MEM(vp = fr_pair_afrom_da(request->request_ctx, tmpl_da(map->lhs)));
+		vp->op = c->data.map->op;
+		fr_value_box_copy(vp, &vp->data, rhs);
+
+		/*
+		 *	Do JUST the virtual attribute comparison.
+		 *	Skip all of the rest of the complexity of paircmp().
+		 */
+		rcode = paircmp_virtual(request, &request->request_pairs, vp);
+		talloc_free(vp);
+		rcode = (rcode == 0) ? 1 : 0;
+		goto done;
+	}
+
+check_attrs:
 	switch (map->lhs->type) {
 	/*
 	 *	LHS is an attribute or list
@@ -602,89 +733,101 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_ATTR:
 	{
-		VALUE_PAIR *vp;
-		fr_cursor_t cursor;
-		/*
-		 *	Legacy paircmp call, skip processing the magic attribute
-		 *	if it's the LHS and cast RHS to the same type.
-		 */
-		if ((c->pass2_fixup == PASS2_PAIRCOMPARE) && (map->op != T_OP_REG_EQ)) {
-#ifndef NDEBUG
-			rad_assert(paircmp_find(map->lhs->tmpl_da)); /* expensive assert */
-#endif
-			rcode = cond_normalise_and_cmp(request, c, NULL);
-			break;
-		}
-		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
+		fr_pair_t		*vp;
+		fr_dcursor_t		cursor;
+		tmpl_cursor_ctx_t	cc;
+
+		fr_assert(!lhs);
+
+		for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->lhs);
 		     vp;
-	     	     vp = fr_cursor_next(&cursor)) {
+	     	     vp = fr_dcursor_next(&cursor)) {
+			fr_value_box_t lhs_cast;
+
 			/*
-			 *	Evaluate all LHS values, condition evaluates to true
-			 *	if we get at least one set of operands that
-			 *	evaluates to true.
+			 *	Take the value box directly from the
+			 *	attribute, _unless_ there's a cast.
 			 */
-	     		rcode = cond_normalise_and_cmp(request, c, &vp->data);
-	     		if (rcode != 0) break;
-		}
-	}
-		break;
-
-	case TMPL_TYPE_DATA:
-		rcode = cond_normalise_and_cmp(request, c, &map->lhs->tmpl_value);
-		break;
-
-	case TMPL_TYPE_UNPARSED:
-	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
-	{
-		char *p = NULL;
-		ssize_t ret;
-		fr_value_box_t data;
-
-		if (!tmpl_is_unparsed(map->lhs)) {
-			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
-			if (ret < 0) {
-				EVAL_DEBUG("FAIL [%i]", __LINE__);
-				return ret;
+			if (cond_realize_attr(request, &lhs, &lhs_cast, map->lhs, vp, NULL) < 0) {
+				rcode = -1;
+				goto done;
 			}
-			data.vb_strvalue = p;
-			data.datum.length = (size_t)ret;
-		} else {
-			data.vb_strvalue = map->lhs->name;
-			data.datum.length = map->lhs->len;
-		}
-		rad_assert(data.vb_strvalue);
-		data.type = FR_TYPE_STRING;
 
-		rcode = cond_normalise_and_cmp(request, c, &data);
-		if (p) talloc_free(p);
+			/*
+			 *	Now that we have a realized LHS, we
+			 *	can do a regex comparison, using the
+			 *	precompiled regex.
+			 */
+			if (map->op == T_OP_REG_EQ) {
+				rcode = cond_do_regex(request, lhs, &preg);
+				goto next;
+			}
+
+			/*
+			 *	We have a realized RHS.  Just do the
+			 *	comparisons with the value boxes.
+			 *
+			 *	Realizing the LHS means that we've
+			 *	either used the VP data as-is, or cast
+			 *	it to the correct data type.
+			 */
+			if (rhs) {
+				fr_assert(lhs->type == rhs->type);
+				rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
+				goto next;
+			}
+
+			/*
+			 *	And we're left with attribute
+			 *	comparisons.  We've got to find the
+			 *	attribute on the RHS, and do the
+			 *	comparisons.
+			 *
+			 *	This comparison means looping over all
+			 *	matching attributes.  We're already
+			 *	many layers deep of indentation, so
+			 *	just dump this code into a separate
+			 *	function.
+			 */
+			fr_assert(tmpl_is_attr(map->rhs));
+
+			rcode = cond_compare_attrs(request, lhs, map);
+
+		next:
+			if (lhs == &lhs_cast) fr_value_box_clear(&lhs_cast);
+			lhs = NULL;
+			if (rcode != 0) goto done;
+			continue;
+		}
+
+		tmpl_cursor_clear(&cc);
 	}
 		break;
 
-	/*
-	 *	Unsupported types (should have been parse errors)
-	 */
-	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_UNKNOWN:
-	case TMPL_TYPE_REGEX:		/* should now be a TMPL_TYPE_REGEX_STRUCT or TMPL_TYPE_XLAT_STRUCT */
-	case TMPL_TYPE_REGEX_STRUCT:	/* not allowed as LHS */
-		rad_assert(0);
+	default:
+		fr_assert(0);
 		rcode = -1;
 		break;
 	}
 
 	EVAL_DEBUG("<<<");
 
+done:
+	talloc_free(lhs_free);
+	talloc_free(rhs_free);
+
+	/*
+	 *	Capture groups may have grabbed preg and put it into
+	 *	request data, in which case we don't free it.
+	 */
+	if (preg) talloc_free(preg_free);
 	return rcode;
 }
 
 /** Evaluate a fr_cond_t;
  *
- * @param[in] request the REQUEST
+ * @param[in] request the request_t
  * @param[in] modreturn the previous module return code
- * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
  * @return
  *	- -1 on failure.
@@ -692,31 +835,36 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
+int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 {
 	int rcode = -1;
+	int depth = 0;
+
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
 
-	cond_snprint(NULL, buffer, sizeof(buffer), c);
+	cond_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), c);
 	EVAL_DEBUG("%s", buffer);
 #endif
 
 	while (c) {
 		switch (c->type) {
-		case COND_TYPE_EXISTS:
-			rcode = cond_eval_tmpl(request, modreturn, depth, c->data.vpt);
-			/* Existence checks are special, because we expect them to fail */
-			if (rcode < 0) rcode = 0;
+		case COND_TYPE_TMPL:
+			rcode = cond_eval_tmpl(request, depth, c->data.vpt);
+			break;
+
+		case COND_TYPE_RCODE:
+			rcode = (c->data.rcode == modreturn);
 			break;
 
 		case COND_TYPE_MAP:
-			rcode = cond_eval_map(request, modreturn, depth, c);
+			rcode = cond_eval_map(request, depth, c);
 			break;
 
 		case COND_TYPE_CHILD:
-			rcode = cond_eval(request, modreturn, depth + 1, c->data.child);
-			break;
+			depth++;
+			c = c->data.child;
+			continue;
 
 		case COND_TYPE_TRUE:
 			rcode = true;
@@ -730,23 +878,49 @@ int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 			return -1;
 		}
 
+		/*
+		 *	Errors cause failures.
+		 */
 		if (rcode < 0) return rcode;
 
 		if (c->negate) rcode = !rcode;
 
-		if (!c->next) break;
+		/*
+		 *	We've fallen off of the end of this evaluation
+		 *	string.  Go back up to the parent, and then to
+		 *	the next sibling of the parent.
+		 *
+		 *	Do this repeatedly until we have a c->next
+		 */
+		while (!c->next) {
+return_to_parent:
+			c = c->parent;
+			if (!c) return rcode;
+
+			depth--;
+			fr_assert(depth >= 0);
+		}
 
 		/*
-		 *	FALSE && ... = FALSE
+		 *	Do short-circuit evaluations.
 		 */
-		if (!rcode && (c->next_op == COND_AND)) return false;
+		switch (c->next->type) {
+		case COND_TYPE_AND:
+			if (!rcode) goto return_to_parent;
 
-		/*
-		 *	TRUE || ... = TRUE
-		 */
-		if (rcode && (c->next_op == COND_OR)) return true;
+			c = c->next->next; /* skip the && */
+			break;
 
-		c = c->next;
+		case COND_TYPE_OR:
+			if (rcode) goto return_to_parent;
+
+			c = c->next->next; /* skip the || */
+			break;
+
+		default:
+			c = c->next;
+			break;
+		}
 	}
 
 	if (rcode < 0) {
@@ -754,4 +928,3 @@ int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 	}
 	return rcode;
 }
-#endif

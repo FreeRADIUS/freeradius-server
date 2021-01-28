@@ -108,6 +108,11 @@ back to sending at the "pps" rate.
 
 
 
+repeat:: whether or not to start again after
+we reach max_pps
+
+
+
 Put any logic here.
 
 
@@ -131,6 +136,7 @@ server load {
 			step		= 20
 			parallel	= 1
 			max_backlog	= 1000
+			repeat = no
 		}
 	}
 recv Access-Request {

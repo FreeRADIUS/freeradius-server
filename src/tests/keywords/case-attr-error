@@ -2,7 +2,7 @@
 #
 test_fail
 
-switch &reply:Filter-Id {
+switch &reply.Filter-Id {
 	# deliberately empty
 	case "filter" {
 	}

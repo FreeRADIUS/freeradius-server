@@ -28,7 +28,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -38,8 +39,8 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	vp_tmpl_t	*tmpl;
-	vp_tmpl_t	**tmpl_m;
+	tmpl_t		*tmpl;
+	tmpl_t		**tmpl_m;
 	char const	*string;
 	char const	**string_m;
 
@@ -77,13 +78,25 @@ typedef struct {
 	uint8_t		*byte_m;
 
 	uint8_t		ifid[8];
-	uint8_t		*ifid_m[8];
-
+	/*
+	 *	clang correctly performs type compatibility checks between
+	 *	arrays with a specific length, but for pointers to pointers
+	 *	to arrays of specific length
+	 *	(which is what FR_TYPE_CONF_CHECK receives) the check doesn't
+	 *	seem to work.
+	 *
+	 *	So the "multi" variants of ethernet and ifid buffers, must
+	 *	be a **.
+	 */
+	uint8_t		**ifid_m;
 	uint16_t	shortint;
-	uint16_t	shortint_m;
+	uint16_t	*shortint_m;
 
 	uint8_t		ethernet[6];
-	uint8_t		ethernet_m[6];
+	/*
+	 *	See above...
+	 */
+	uint8_t		**ethernet_m;
 
 	int32_t		int32;
 	int32_t		*int32_m;
@@ -176,10 +189,9 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 	{ NULL }
 };
 
-static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
-			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int rlm_test_cmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
 {
-	rad_assert(check->vp_type == FR_TYPE_STRING);
+	fr_assert(check->vp_type == FR_TYPE_STRING);
 
 	RINFO("Test-Paircmp called with \"%pV\"", &check->data);
 
@@ -204,7 +216,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 	INFO("Performing detach for thread %p", (void *)t->value);
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return -1;
 
 	return 0;
 }
@@ -240,6 +252,21 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	DEBUG3("Debug3 message");
 	DEBUG4("Debug4 message");
 
+	/*
+	 *	Output parsed tmpls
+	 */
+	if (inst->tmpl) {
+		INFO("%s", inst->tmpl->name);
+	} else {
+		INFO("inst->tmpl is NULL");
+	}
+
+	if (inst->tmpl_m) {
+		talloc_foreach(inst->tmpl_m,  item) INFO("%s", item->name);
+	} else {
+		INFO("inst->tmpl_m is NULL");
+	}
+
 	return 0;
 }
 
@@ -249,9 +276,9 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
 	RINFO("RINFO message");
 	RDEBUG("RDEBUG message");
@@ -274,55 +301,53 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *t
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
-#endif
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 static int mod_detach(UNUSED void *instance)
@@ -355,17 +380,13 @@ module_t rlm_test = {
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 	.method_names = (module_method_names_t[]){
-		{ "recv",	"Access-Challenge", mod_return },
-		{ "recv",	CF_IDENT_ANY,	mod_return },
-		{ "name1_null",	NULL,		mod_return },
-		{ "send",	CF_IDENT_ANY,	mod_return },
-		{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
+		{ .name1 = "recv",		.name2 = "Access-Challenge",	.method = mod_return },
+		{ .name1 = "name1_null",	.name2 = NULL,			.method = mod_return },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_return },
 
 		MODULE_NAME_TERMINATOR
 	}

@@ -1,5 +1,1 @@
-update control {
-       &Cleartext-Password := 'hello'
-}
-
 success

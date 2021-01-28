@@ -1,6 +1,0 @@
-#!/bin/sh
-
-. src/tests/bin/lib.sh
-
-do_test $TESTBIN/radict -h
-do_test $TESTBIN/radict -D $DICT_DIR User-Name

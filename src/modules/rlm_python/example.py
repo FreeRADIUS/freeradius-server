@@ -1,11 +1,11 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Python module example file
 # Miguel A.L. Paraz <mparaz@mparaz.com>
 #
 # $Id$
 
-import radiusd
+import freeradius
 
 def instantiate(p):
   print("*** instantiate ***")
@@ -15,51 +15,51 @@ def instantiate(p):
 def authorize(p):
   print("*** authorize ***")
   print("")
-  radiusd.log(radiusd.L_INFO, '*** log call in authorize ***')
+  freeradius.log(freeradius.L_INFO, '*** log call in authorize ***')
   print("")
   print(p)
   print("")
-  print(radiusd.config)
+  print(freeradius.config)
   print("")
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def preacct(p):
   print("*** preacct ***")
   print(p)
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def accounting(p):
   print("*** accounting ***")
-  radiusd.log(radiusd.L_INFO, '*** log call in accounting (0) ***')
+  freeradius.log(freeradius.L_INFO, '*** log call in accounting (0) ***')
   print("")
   print(p)
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def pre_proxy(p):
   print("*** pre_proxy ***")
   print(p)
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def post_proxy(p):
   print("*** post_proxy ***")
   print(p)
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def post_auth(p):
   print("*** post_auth ***")
   print(p)
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def recv_coa(p):
   print("*** recv_coa ***")
   print(p)
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def send_coa(p):
   print("*** send_coa ***")
   print(p)
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK
 
 def detach():
   print("*** goodbye from example.py ***")
-  return radiusd.RLM_MODULE_OK
+  return freeradius.RLM_MODULE_OK

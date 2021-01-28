@@ -78,7 +78,7 @@ static inline CC_HINT(nonnull) void fr_dlist_entry_unlink(fr_dlist_t *entry)
  *
  * This works because the fr_dlist_head_t has an entry in the list.
  * So if next and prev both point to the entry for the object being
- * passed in, then it can't be part of a list with a fr_flist_head_t.
+ * passed in, then it can't be part of a list with a fr_dlist_head_t.
  *
  * @return
  *	- True if in a list.
@@ -86,7 +86,8 @@ static inline CC_HINT(nonnull) void fr_dlist_entry_unlink(fr_dlist_t *entry)
  */
 static inline CC_HINT(nonnull) bool fr_dlist_entry_in_list(fr_dlist_t const *entry)
 {
-	if ((entry->prev == entry) && (entry->next == entry)) return false;
+	if (((entry->prev == entry) && (entry->next == entry)) ||
+	    ((entry->prev == NULL) && (entry->next == NULL))) return false;
 
 	return true;
 }
@@ -141,6 +142,16 @@ static inline void _fr_dlist_init(fr_dlist_head_t *list_head, size_t offset, cha
 	fr_dlist_entry_init(&list_head->entry);
 	list_head->offset = offset;
 	list_head->type = type;
+	list_head->num_elements = 0;
+}
+
+/** Efficiently remove all elements in a dlist
+ *
+ * @param[in] list_head	to clear.
+ */
+static inline void fr_dlist_clear(fr_dlist_head_t *list_head)
+{
+	fr_dlist_entry_init(&list_head->entry);
 	list_head->num_elements = 0;
 }
 
@@ -210,6 +221,80 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *lis
 	list_head->num_elements++;
 }
 
+/** Insert an item after an item already in the list
+ *
+ * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
+ *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
+ *
+ * @param[in] list_head	to insert ptr into.
+ * @param[in] pos	to insert ptr after.
+ * @param[in] ptr	to insert.
+ */
+static inline CC_HINT(nonnull(1)) void fr_dlist_insert_after(fr_dlist_head_t *list_head, void *pos, void *ptr)
+{
+	fr_dlist_t *entry, *pos_entry;
+
+	if (!ptr) return;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
+#endif
+
+	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	if (!pos) {
+		pos_entry = &(list_head->entry);
+	} else {
+		pos_entry = (fr_dlist_t *) (((uint8_t *) pos) + list_head->offset);
+	}
+
+	if (!fr_cond_assert(pos_entry->next != NULL)) return;
+	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
+
+	entry->prev = pos_entry;
+	entry->next = pos_entry->next;
+	pos_entry->next->prev = entry;
+	pos_entry->next = entry;
+
+	list_head->num_elements++;
+}
+
+/** Insert an item before an item already in the list
+ *
+ * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
+ *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
+ *
+ * @param[in] list_head	to insert ptr into.
+ * @param[in] pos	to insert ptr before.
+ * @param[in] ptr	to insert.
+ */
+static inline CC_HINT(nonnull(1)) void fr_dlist_insert_before(fr_dlist_head_t *list_head, void *pos, void *ptr)
+{
+	fr_dlist_t *entry, *pos_entry;
+
+	if (!pos || !ptr) return;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
+#endif
+
+	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	if (!pos) {
+		pos_entry = &(list_head->entry);
+	} else {
+		pos_entry = (fr_dlist_t *) (((uint8_t *) pos) + list_head->offset);
+	}
+
+	if (!fr_cond_assert(pos_entry->next != NULL)) return;
+	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
+
+	entry->next = pos_entry;
+	entry->prev = pos_entry->prev;
+	pos_entry->prev->next = entry;
+	pos_entry->prev = entry;
+
+	list_head->num_elements++;
+}
+
 /** Return the HEAD item of a list or NULL if the list is empty
  *
  * @param[in] list_head		to return the HEAD item from.
@@ -235,7 +320,6 @@ static inline CC_HINT(nonnull) void *fr_dlist_head(fr_dlist_head_t const *list_h
 static inline CC_HINT(nonnull) bool fr_dlist_empty(fr_dlist_head_t const *list_head)
 {
 	fr_dlist_t const *head = &(list_head->entry);
-
 	return (head->prev == head);
 }
 
@@ -286,22 +370,27 @@ static inline CC_HINT(nonnull) void *fr_dlist_tail(fr_dlist_head_t const *list_h
  *	- The head of the list if ptr is NULL.
  *	- NULL if ptr is the tail of the list (no more items).
  */
-static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *list_head, void const *ptr)
 {
-	fr_dlist_t *entry;
-	fr_dlist_t const *head;
+	fr_dlist_t const	*entry;
+	fr_dlist_t const	*head;
+	fr_dlist_t		*m_entry;
 
 	if (!ptr) return fr_dlist_head(list_head);
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
-	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	entry = (fr_dlist_t const *)(((uint8_t const *) ptr) + list_head->offset);
 	head = &(list_head->entry);
 
 	if (entry->next == head) return NULL;
+	if (!entry->next) return NULL;
 	entry = entry->next;
-	return (void *) (((uint8_t *) entry) - list_head->offset);
+
+	memcpy(&m_entry, &entry, sizeof(m_entry));
+
+	return (void *) (((uint8_t *) m_entry) - list_head->offset);
 }
 
 /** Get the previous item in a list
@@ -310,17 +399,18 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_next(fr_dlist_head_t const *lis
  *	 ptr must be a talloced chunk of the type passed to #fr_dlist_talloc_init.
  *
  * @param[in] list_head		containing ptr.
- * @param[in] ptr		to retrieve the next item from.
+ * @param[in] ptr		to retrieve the previous item to.
  *				If ptr is NULL, the TAIL of the list will be returned.
  * @return
  *	- The previous item in the list if ptr is not NULL.
  *	- The tail of the list if ptr is NULL.
  *	- NULL if ptr is the head of the list (no more items).
  */
-static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t const *list_head, void const *ptr)
 {
-	fr_dlist_t *entry;
-	fr_dlist_t *head;
+	fr_dlist_t const	*entry;
+	fr_dlist_t const	*head;
+	fr_dlist_t		*m_entry;
 
 	if (!ptr) return fr_dlist_tail(list_head);
 
@@ -328,12 +418,15 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_prev(fr_dlist_head_t *list_head
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
 
-	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	entry = (fr_dlist_t const *)(((uint8_t const *) ptr) + list_head->offset);
 	head = &(list_head->entry);
 
 	if (entry->prev == head) return NULL;
 	entry = entry->prev;
-	return (void *) (((uint8_t *) entry) - list_head->offset);
+
+	memcpy(&m_entry, &entry, sizeof(m_entry));
+
+	return (void *) (((uint8_t *)m_entry) - list_head->offset);
 }
 
 /** Remove an item from the list
@@ -373,15 +466,13 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 	if (!ptr || fr_dlist_empty(list_head)) return NULL;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
+	if (list_head->type) (void)_talloc_get_type_abort(ptr, list_head->type, __location__);
 #endif
 
-	entry = (fr_dlist_t *) (((uint8_t *) ptr) + list_head->offset);
+	entry = (fr_dlist_t *)(((uint8_t *)ptr) + list_head->offset);
+	if (!fr_dlist_entry_in_list(entry)) return NULL;
+
 	head = &(list_head->entry);
-
-	if (!fr_cond_assert(entry->next != NULL)) return NULL;
-	if (!fr_cond_assert(entry->prev != NULL)) return NULL;
-
 	entry->prev->next = entry->next;
 	entry->next->prev = prev = entry->prev;
 	entry->prev = entry->next = entry;
@@ -391,6 +482,74 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 	if (prev == head) return NULL;	/* Works with fr_dlist_next so that the next item is the list HEAD */
 
 	return (void *) (((uint8_t *) prev) - list_head->offset);
+}
+
+/** Remove the head item in a list
+ *
+ * @param[in] list_head to remove head item from.
+ * @return
+ *	- The item removed.
+ *	- NULL if not items in dlist.
+ */
+static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_head(fr_dlist_head_t *list_head)
+{
+	void *item = fr_dlist_head(list_head);
+
+	(void)fr_dlist_remove(list_head, item);
+
+	return item;	/* fr_dlist_remove returns the previous item */
+}
+
+/** Remove the tail item in a list
+ *
+ * @param[in] list_head to remove tail item from.
+ * @return
+ *	- The item removed.
+ *	- NULL if not items in dlist.
+ */
+static inline CC_HINT(nonnull(1)) void *fr_dlist_pop_tail(fr_dlist_head_t *list_head)
+{
+	void *item = fr_dlist_tail(list_head);
+
+	(void)fr_dlist_remove(list_head, item);
+
+	return item;	/* fr_dlist_remove returns the previous item */
+}
+
+/** Replace an item in a dlist
+ *
+ * @param list_head in which the original item is.
+ * @param item to replace.
+ * @param ptr replacement item.
+ * @return
+ *	- The item replaced
+ *	- NULL if nothing replaced
+ */
+static inline void *fr_dlist_replace(fr_dlist_head_t *list_head, void *item, void *ptr)
+{
+	fr_dlist_t *item_entry;
+	fr_dlist_t *ptr_entry;
+
+	if (!item || !ptr) return NULL;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (list_head->type) (void)_talloc_get_type_abort(ptr, list_head->type, __location__);
+#endif
+
+	item_entry = (fr_dlist_t *)(((uint8_t *)item) + list_head->offset);
+	if (!fr_dlist_entry_in_list(item_entry)) return NULL;
+
+	ptr_entry = (fr_dlist_t *)(((uint8_t *)ptr) + list_head->offset);
+
+	/* Link replacement item into list */
+	item_entry->prev->next = ptr_entry;
+	ptr_entry->prev = item_entry->prev;
+	item_entry->next->prev = ptr_entry;
+	ptr_entry->next = item_entry->next;
+
+	/* Reset links on replaced item */
+	item_entry->prev = item_entry->next = item_entry;
+	return item;
 }
 
 /** Check all items in the list are valid
@@ -448,8 +607,28 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 	dst->prev->next = src->next;
 	dst->prev = src->prev;
 
+	list_dst->num_elements += list_src->num_elements;
+
 	fr_dlist_entry_init(src);
 	list_src->num_elements = 0;
+}
+
+/** Free the first item in the list
+ *
+ * @param[in] list_head		to free head item in.
+ */
+static inline void fr_dlist_talloc_free_head(fr_dlist_head_t *list_head)
+{
+	talloc_free(fr_dlist_pop_head(list_head));
+}
+
+/** Free the last item in the list
+ *
+ * @param[in] list_head		to free tail item in.
+ */
+static inline void fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
+{
+	talloc_free(fr_dlist_pop_head(list_head));
 }
 
 /** Free all items in a doubly linked list (with talloc)
@@ -465,6 +644,21 @@ static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
 		talloc_free(e);
 		e = p;
 	}
+}
+
+/** Free all items in a doubly linked list from the tail backwards
+ *
+ * @param[in] head of list to free.
+ */
+static inline void fr_dlist_talloc_reverse_free(fr_dlist_head_t *head)
+{
+	void *e = NULL;
+
+	e = fr_dlist_tail(head);
+	do {
+		e = fr_dlist_remove(head, e);
+		talloc_free(e);
+	} while (e);
 }
 
 /** Return the number of elements in the dlist

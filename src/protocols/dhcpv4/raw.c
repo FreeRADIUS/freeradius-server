@@ -36,10 +36,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <talloc.h>
-
-#ifndef __MINGW32__
-#  include <sys/ioctl.h>
-#endif
+#include <sys/ioctl.h>
 
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
@@ -53,21 +50,19 @@
 #  include <linux/if_ether.h>
 #endif
 
-#ifndef __MINGW32__
-#  include <net/if_arp.h>
-#endif
+#include <net/if_arp.h>
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 /** Open a raw socket to read/write packets from/to
  *
  * @param[out] link_layer	A sockaddr_ll struct to populate.  Must be passed to other raw
  *				functions.
- * @param[in] if_index		of the interface we're binding to.
+ * @param[in] ifindex		of the interface we're binding to.
  * @return
  *	- >= 0 a file descriptor to read/write packets on.
  *	- <0 an error ocurred.
  */
-int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int if_index)
+int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int ifindex)
 {
 	int fd;
 
@@ -86,7 +81,7 @@ int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int if_index)
 
 	link_layer->sll_family = AF_PACKET;
 	link_layer->sll_protocol = htons(ETH_P_ALL);
-	link_layer->sll_ifindex = if_index;
+	link_layer->sll_ifindex = ifindex;
 	link_layer->sll_hatype = ARPHRD_ETHER;
 	link_layer->sll_pkttype = PACKET_OTHERHOST;
 	link_layer->sll_halen = 6;
@@ -105,11 +100,13 @@ int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int if_index)
  * @param[in] sockfd		to write to.
  * @param[in] link_layer	information, as returned by fr_dhcpv4_raw_socket_open.
  * @param[in] packet		to write.
+ * @param[in] list		to send.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *packet)
+int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer,
+			      fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
 	uint8_t			dhcp_packet[1518] = { 0 };
 	ethernet_header_t	*eth_hdr = (ethernet_header_t *)dhcp_packet;
@@ -118,17 +115,17 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 	dhcp_packet_t		*dhcp = (dhcp_packet_t *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 
 	uint16_t		l4_len = (UDP_HDR_SIZE + packet->data_len);
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
-	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
+	/* set ethernet source address to our MAC address (Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
-	if ((vp = fr_pair_find_by_da(packet->vps, attr_dhcp_client_hardware_address, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_da(list, attr_dhcp_client_hardware_address))) {
 		if (vp->vp_type == FR_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
 	}
 
 	/* fill in Ethernet layer (L2) */
-	memcpy(eth_hdr->ether_dst, eth_bcast, ETH_ADDR_LEN);
-	memcpy(eth_hdr->ether_src, dhmac, ETH_ADDR_LEN);
+	memcpy(eth_hdr->dst_addr, eth_bcast, ETH_ADDR_LEN);
+	memcpy(eth_hdr->src_addr, dhmac, ETH_ADDR_LEN);
 	eth_hdr->ether_type = htons(ETH_TYPE_IP);
 
 	/* fill in IP layer (L3) */
@@ -142,16 +139,16 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 	ip_hdr->ip_sum = 0; /* Filled later */
 
 	/* saddr: Packet-Src-IP-Address (default: 0.0.0.0). */
-	ip_hdr->ip_src.s_addr = packet->src_ipaddr.addr.v4.s_addr;
+	ip_hdr->ip_src.s_addr = packet->socket.inet.src_ipaddr.addr.v4.s_addr;
 
 	/* daddr: packet destination IP addr (should be 255.255.255.255 for broadcast). */
-	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.addr.v4.s_addr;
+	ip_hdr->ip_dst.s_addr = packet->socket.inet.dst_ipaddr.addr.v4.s_addr;
 
 	/* IP header checksum */
 	ip_hdr->ip_sum = fr_ip_header_checksum((uint8_t const *)ip_hdr, 5);
 
-	udp_hdr->src = htons(packet->src_port);
-	udp_hdr->dst = htons(packet->dst_port);
+	udp_hdr->src = htons(packet->socket.inet.src_port);
+	udp_hdr->dst = htons(packet->socket.inet.dst_port);
 
 	udp_hdr->len = htons(l4_len);
 	udp_hdr->checksum = 0; /* UDP checksum will be done after dhcp header */
@@ -164,7 +161,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
 	/* UDP checksum is done here */
 	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE),
 					    ntohs(udp_hdr->len), udp_hdr->checksum,
-					    packet->src_ipaddr.addr.v4, packet->dst_ipaddr.addr.v4);
+					    packet->socket.inet.src_ipaddr.addr.v4, packet->socket.inet.dst_ipaddr.addr.v4);
 
 	return sendto(sockfd, dhcp_packet, (ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE + packet->data_len),
 		      0, (struct sockaddr *) link_layer, sizeof(struct sockaddr_ll));
@@ -176,10 +173,11 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS
  *
  *	FIXME: split this into two, recv_raw_packet, and verify(packet, original)
  */
-RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *request)
+fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_layer,
+					     fr_radius_packet_t *request, fr_pair_list_t *list)
 {
-	VALUE_PAIR		*vp;
-	RADIUS_PACKET		*packet;
+	fr_pair_t		*vp;
+	fr_radius_packet_t		*packet;
 	uint8_t const		*code;
 	uint32_t		magic, xid;
 	ssize_t			data_len;
@@ -194,20 +192,20 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	size_t			dhcp_data_len;
 	socklen_t		sock_len;
 
-	packet = fr_radius_alloc(NULL, false);
+	packet = fr_radius_packet_alloc(NULL, false);
 	if (!packet) {
-		fr_strerror_printf("Failed allocating packet");
+		fr_strerror_const("Failed allocating packet");
 		return NULL;
 	}
 
 	raw_packet = talloc_zero_array(packet, uint8_t, MAX_PACKET_SIZE);
 	if (!raw_packet) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
-	packet->sockfd = sockfd;
+	packet->socket.fd = sockfd;
 
 	/* a packet was received (but maybe it is not for us) */
 	sock_len = sizeof(struct sockaddr_ll);
@@ -228,15 +226,15 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 
 	/*
 	 *	If Ethernet destination is not broadcast (ff:ff:ff:ff:ff:ff)
-	 *	Check if it matches the source HW address used (DHCP-Client-Hardware-Address = 267)
+	 *	Check if it matches the source HW address used (Client-Hardware-Address = 267)
 	 */
-	if ((memcmp(&eth_bcast, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) &&
-	    (vp = fr_pair_find_by_da(request->vps, attr_dhcp_client_hardware_address, TAG_ANY)) &&
-	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0))) {
+	if ((memcmp(&eth_bcast, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0) &&
+	    (vp = fr_pair_find_by_da(list, attr_dhcp_client_hardware_address)) &&
+	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0))) {
 
 		/* No match. */
 		DISCARD_RP("Ethernet destination (%pV) is not broadcast and doesn't match request source (%pV)",
-			   fr_box_ether(eth_hdr->ether_dst), &vp->data);
+			   fr_box_ether(eth_hdr->dst_addr), &vp->data);
 	}
 
 	/*
@@ -302,13 +300,13 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data,
 					   packet->data_len, attr_dhcp_message_type);
 	if (!code) {
-		fr_strerror_printf("No message-type option was found in the packet");
+		fr_strerror_const("No message-type option was found in the packet");
 		fr_radius_packet_free(&packet);
 		return NULL;
 	}
 
 	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
-		fr_strerror_printf("Unknown value for message-type option");
+		fr_strerror_const("Unknown value for message-type option");
 		fr_radius_packet_free(&packet);
 		return NULL;
 	}
@@ -330,13 +328,13 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	memcpy(packet->vector, packet->data + 28, packet->data[2]);
 	packet->vector[packet->data[2]] = packet->code & 0xff;
 
-	packet->src_port = udp_src_port;
-	packet->dst_port = udp_dst_port;
+	packet->socket.inet.src_port = udp_src_port;
+	packet->socket.inet.dst_port = udp_dst_port;
 
-	packet->src_ipaddr.af = AF_INET;
-	packet->src_ipaddr.addr.v4.s_addr = ip_hdr->ip_src.s_addr;
-	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.addr.v4.s_addr = ip_hdr->ip_dst.s_addr;
+	packet->socket.inet.src_ipaddr.af = AF_INET;
+	packet->socket.inet.src_ipaddr.addr.v4.s_addr = ip_hdr->ip_src.s_addr;
+	packet->socket.inet.dst_ipaddr.af = AF_INET;
+	packet->socket.inet.dst_ipaddr.addr.v4.s_addr = ip_hdr->ip_dst.s_addr;
 
 	return packet;
 }

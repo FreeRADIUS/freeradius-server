@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	A heap entry is made of a pointer to the object, which
@@ -59,7 +60,7 @@ struct fr_heap_s {
 
 static void fr_heap_bubble(fr_heap_t *hp, int32_t child);
 
-fr_heap_t *_fr_heap_create(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset)
+fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset)
 {
 	fr_heap_t *fh;
 
@@ -82,27 +83,31 @@ fr_heap_t *_fr_heap_create(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type,
 	return fh;
 }
 
-/*
- *	Insert element in heap. Normally, p != NULL, we insert p in a
- *	new position and bubble up. If p == NULL, then the element is
- *	already in place, and key is the position where to start the
- *	bubble-up.
- *
- *	Returns 1 on failure (cannot allocate new heap entry)
- *
- *	If offset > 0 the position (index, int) of the element in the
- *	heap is also stored in the element itself at the given offset
- *	in bytes.
- */
-#define SET_OFFSET(_heap, _node) *((int32_t *)(((uint8_t *)_heap->p[_node]) + _heap->offset)) = _node
+static inline CC_HINT(always_inline) CC_HINT(nonnull) int32_t index_get(fr_heap_t *hp, void *data)
+{
+	return *((int32_t const *)(((uint8_t const *)data) + hp->offset));
+}
 
-/*
- *	RESET_OFFSET is used for sanity checks. It sets offset to an
- *	invalid value.
- */
-#define RESET_OFFSET(_heap, _node) *((int32_t *)(((uint8_t *)_heap->p[_node]) + _heap->offset)) = -1
+static inline CC_HINT(always_inline) CC_HINT(nonnull) void index_set(fr_heap_t *hp, void *data, int32_t idx)
+{
+	*((int32_t *)(((uint8_t *)data) + hp->offset)) = idx;
+}
+
+#define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
+#define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], -1);
 
 /** Insert a new element into the heap
+ *
+ * Insert element in heap. Normally, p != NULL, we insert p in a
+ * new position and bubble up. If p == NULL, then the element is
+ * already in place, and key is the position where to start the
+ * bubble-up.
+ *
+ * Returns -1 on failure (cannot allocate new heap entry)
+ *
+ * If offset > 0 the position (index, int) of the element in the
+ * heap is also stored in the element itself at the given offset
+ * in bytes.
  *
  * @param[in] hp	The heap to insert an element into.
  * @param[in] data	Data to insert into the heap.
@@ -112,7 +117,23 @@ fr_heap_t *_fr_heap_create(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type,
  */
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
-	int32_t child = hp->num_elements;
+	int32_t child;
+
+	/*
+	 *	On insert, the heap_id MUST be either:
+	 *
+	 *	-1 = the node was added / removed from the heap
+	 *	     and the heap code set the ID to -1
+	 *	0  = the node was just allocated via an "alloc_zero"
+	 *	     function
+	 */
+	child = index_get(hp, data);
+	if ((child > 0) || ((child == 0) && (hp->num_elements > 0) && (data == hp->p[0]))) {
+		fr_strerror_const("Node is already in the heap");
+		return -1;
+	}
+
+	child = hp->num_elements;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (hp->type) (void)_talloc_get_type_abort(data, hp->type, __location__);
@@ -132,13 +153,18 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		 *	happen.
 		 */
 		if (n_size > INT32_MAX) {
-			fr_strerror_printf("Heap is full");
-			return -1;
+			if (hp->size == INT32_MAX) {
+				fr_strerror_const("Heap is full");
+				return -1;
+			} else {
+				n_size = INT32_MAX;
+			}
 		}
 
 		n = talloc_realloc(hp, hp->p, void *, n_size);
 		if (!n) {
-			fr_strerror_printf("Failed expanding heap");
+			fr_strerror_printf("Failed expanding heap to %zu elements (%zu bytes)",
+					   n_size, (n_size * sizeof(void *)));
 			return -1;
 		}
 		hp->size = n_size;
@@ -170,17 +196,17 @@ static void fr_heap_bubble(fr_heap_t *hp, int32_t child)
 		 *	Child is smaller than the parent, repeat.
 		 */
 		HEAP_SWAP(hp->p[child], hp->p[parent]);
-		SET_OFFSET(hp, child);
+		OFFSET_SET(hp, child);
 		child = parent;
 	}
-	SET_OFFSET(hp, child);
+	OFFSET_SET(hp, child);
 }
 
 
-/** Remove the top element, or object
+/** Remove a node from the heap
  *
- * @param[in] hp	The heap to insert an element into.
- * @param[in] data	Data to insert into the heap.
+ * @param[in] hp	The heap to extract an element from.
+ * @param[in] data	Data to extract from the heap.
  * @return
  *	- 0 on success.
  *	- -1 on failure (no elements or data not found).
@@ -189,26 +215,35 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 {
 	int32_t parent, child, max;
 
-	if (!hp || (hp->num_elements == 0)) return -1;
-
-	max = hp->num_elements - 1;
-
 	/*
 	 *	Extract element.  Default is the first one (pop)
 	 */
 	if (!data) {
+		if (unlikely((hp->num_elements == 0) || !hp->p[0])) {
+			fr_strerror_const("Tried to extract element from empty heap");
+			return -1;
+		}
 		parent = 0;
-
 	} else {		/* extract from the middle */
-		parent = *((int32_t *)(((uint8_t *)data) + hp->offset));
+		parent = index_get(hp, data);
 
 		/*
 		 *	Out of bounds.
 		 */
-		if ((parent < 0) || (parent >= hp->num_elements)) return -1;
-	}
+		if (unlikely((parent < 0) || (parent >= hp->num_elements))) {
+			fr_strerror_printf("Heap parent (%i) out of bounds (0-%i)", parent, hp->num_elements);
+			return -1;
+		}
 
-	RESET_OFFSET(hp, parent);
+		if (unlikely(data != hp->p[parent])) {
+			fr_strerror_printf("Invalid heap index.  Expected data %p at offset %i, got %p", data,
+					   parent, hp->p[parent]);
+			return -1;
+		}
+	}
+	max = hp->num_elements - 1;
+
+	OFFSET_RESET(hp, parent);
 	child = HEAP_LEFT(parent);
 	while (child <= max) {
 		/*
@@ -219,7 +254,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 			child = child + 1;
 		}
 		hp->p[parent] = hp->p[child];
-		SET_OFFSET(hp, parent);
+		OFFSET_SET(hp, parent);
 		parent = child;
 		child = HEAP_LEFT(child);
 	}
@@ -237,7 +272,6 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		hp->p[parent] = hp->p[max];
 
 		fr_heap_bubble(hp, parent);
-		return 0;
 	}
 
 	return 0;
@@ -248,9 +282,6 @@ void *fr_heap_peek(fr_heap_t *hp)
 {
 	if (!hp || (hp->num_elements == 0)) return NULL;
 
-	/*
-	 *	If this is NULL, we have a problem.
-	 */
 	return hp->p[0];
 }
 
@@ -261,7 +292,7 @@ void *fr_heap_pop(fr_heap_t *hp)
 	if (hp->num_elements == 0) return NULL;
 
 	data = hp->p[0];
-	(void) fr_heap_extract(hp, NULL);
+	(void) fr_heap_extract(hp, data);
 
 	return data;
 }
@@ -324,131 +355,3 @@ void *fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter)
 
 	return hp->p[*iter];
 }
-
-#ifdef TESTING
-static bool fr_heap_check(fr_heap_t *hp, void *data)
-{
-	int i;
-
-	if (!hp || (hp->num_elements == 0)) return false;
-
-	for (i = 0; i < hp->num_elements; i++) {
-		if (hp->p[i] == data) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-typedef struct {
-	int	data;
-	int32_t	heap;		/* for the heap */
-} heap_thing;
-
-
-/*
- *  cc -g -DTESTING -I .. heap.c -o heap
- *
- *  ./heap
- */
-static int heap_cmp(void const *one, void const *two)
-{
-	heap_thing const *a = one, *b = two;
-
-	return a->data - b->data;
-}
-
-#define ARRAY_SIZE (1024)
-
-int main(int argc, char **argv)
-{
-	fr_heap_t *hp;
-	int i;
-	heap_thing array[ARRAY_SIZE];
-	int skip = 0;
-	int left;
-
-	if (argc > 1) {
-		skip = atoi(argv[1]);
-	}
-
-	hp = fr_heap_create(NULL, heap_cmp, offsetof(heap_thing, heap_id));
-	if (!hp) {
-		fprintf(stderr, "Failed creating heap!\n");
-		fr_exit(1);
-	}
-
-	for (i = 0; i < ARRAY_SIZE; i++) {
-		array[i].data = rand() % 65537;
-		if (fr_heap_insert(hp, &array[i]) < 0) {
-			fprintf(stderr, "Failed inserting %d\n", i);
-			fr_exit(1);
-		}
-
-		if (!fr_heap_check(hp, &array[i])) {
-			fprintf(stderr, "Inserted but not in heap %d\n", i);
-			fr_exit(1);
-		}
-	}
-
-#if 0
-	for (i = 0; i < ARRAY_SIZE; i++) {
-		printf("Array %d has value %d at offset %d\n",
-		       i, array[i].data, array[i].heap);
-	}
-#endif
-
-	if (skip) {
-		int32_t entry;
-
-		printf("%d elements to remove\n", ARRAY_SIZE / skip);
-
-		for (i = 0; i < ARRAY_SIZE / skip; i++) {
-			entry = i * skip;
-
-			if (fr_heap_extract(hp, &array[entry]) < 0) {
-				fprintf(stderr, "Failed removing %d\n", entry);
-			}
-
-			if (fr_heap_check(hp, &array[entry])) {
-				fprintf(stderr, "Deleted but still in heap %d\n", entry);
-				fr_exit(1);
-			}
-
-			if (array[entry].heap != -1) {
-				fprintf(stderr, "heap offset is wrong %d\n", entry);
-				fr_exit(1);
-			}
-		}
-	}
-
-	left = fr_heap_num_elements(hp);
-	printf("%d elements left in the heap\n", left);
-
-	for (i = 0; i < left; i++) {
-		heap_thing *t = fr_heap_peek(hp);
-
-		if (!t) {
-			fprintf(stderr, "Failed peeking %d\n", i);
-			fr_exit(1);
-		}
-
-		printf("%d\t%d\n", i, t->data);
-
-		if (fr_heap_extract(hp, NULL) < 0) {
-			fprintf(stderr, "Failed extracting %d\n", i);
-			fr_exit(1);
-		}
-	}
-
-	if (fr_heap_num_elements(hp) > 0) {
-		fprintf(stderr, "%d elements left at the end", fr_heap_num_elements(hp));
-		fr_exit(1);
-	}
-
-	talloc_free(hp);
-
-	return 0;
-}
-#endif

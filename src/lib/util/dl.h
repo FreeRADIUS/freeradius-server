@@ -113,10 +113,13 @@ char const		*dl_search_path(dl_loader_t *dl_loader);
 
 int			dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
 
+int			dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir);
+
+int			dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir);
+
 void			*dl_loader_uctx(dl_loader_t *dl_loader);
 
-dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir,
-					void *uctx, bool uctx_free, bool defer_symbol_init);
+dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool defer_symbol_init);
 #ifdef __cplusplus
 }
 #endif

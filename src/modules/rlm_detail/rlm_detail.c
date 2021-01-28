@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/exfile.h>
 
 #include <ctype.h>
@@ -55,14 +55,14 @@ typedef struct {
 	uint32_t	perm;		//!< Permissions to use for new files.
 	char const	*group;		//!< Group to use for new files.
 
-	char const	*header;	//!< Header format.
+	tmpl_t		*header;	//!< Header format.
 	bool		locking;	//!< Whether the file should be locked.
 
 	bool		log_srcdst;	//!< Add IP src/dst attributes to entries.
 
 	bool		escape;		//!< do filename escaping, yes / no
 
-	xlat_escape_t	escape_func; //!< escape function
+	xlat_escape_legacy_t	escape_func; //!< escape function
 
 	exfile_t    	*ef;		//!< Log file handler
 
@@ -71,7 +71,8 @@ typedef struct {
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Packet-Src-IP-Address}/detail" },
-	{ FR_CONF_OFFSET("header", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
+	{ FR_CONF_OFFSET("header", FR_TYPE_TMPL | FR_TYPE_XLAT | FR_TYPE_NON_BLOCKING, rlm_detail_t, header),
+	  .dflt = "%t", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_detail_t, perm), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_detail_t, group) },
 	{ FR_CONF_OFFSET("locking", FR_TYPE_BOOL, rlm_detail_t, locking), .dflt = "no" },
@@ -98,7 +99,6 @@ static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_protocol;
 
-static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
@@ -111,23 +111,10 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
-
-/*
- *	Clean up.
- */
-static int mod_detach(void *instance)
-{
-	rlm_detail_t *inst = instance;
-
-	if (inst->ht) fr_hash_table_free(inst->ht);
-	return 0;
-}
-
 
 static uint32_t detail_hash(void const *data)
 {
@@ -173,7 +160,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (cs) {
 		CONF_ITEM	*ci;
 
-		inst->ht = fr_hash_table_create(NULL, detail_hash, detail_cmp, NULL);
+		inst->ht = fr_hash_table_create(inst, detail_hash, detail_cmp, NULL);
 
 		for (ci = cf_item_next(cs, NULL);
 		     ci != NULL;
@@ -186,7 +173,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			attr = cf_pair_attr(cf_item_to_pair(ci));
 			if (!attr) continue; /* pair-anoia */
 
-			if (fr_dict_attr_by_qualified_name(&da, dict_radius, attr, false) != FR_DICT_ATTR_OK) {
+			da = fr_dict_attr_search_by_qualified_oid(NULL, dict_radius, attr, false);
+			if (!da) {
 				cf_log_perr(conf, "Failed resolving attribute");
 				return -1;
 			}
@@ -194,7 +182,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Be kind to minor mistakes.
 			 */
-			if (fr_hash_table_finddata(inst->ht, da)) {
+			if (fr_hash_table_find_by_data(inst->ht, da)) {
 				WARN("Ignoring duplicate entry '%s'", attr);
 				continue;
 			}
@@ -212,8 +200,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	If we didn't suppress anything, delete the hash table.
 		 */
 		if (fr_hash_table_num_elements(inst->ht) == 0) {
-			fr_hash_table_free(inst->ht);
-			inst->ht = NULL;
+			TALLOC_FREE(inst->ht);
+		} else {
+			fr_hash_table_fill(inst->ht);
 		}
 	}
 
@@ -223,16 +212,16 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Wrapper for VPs allocated on the stack.
  */
-static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacked)
+static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *stacked)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
-	vp = talloc(ctx, VALUE_PAIR);
+	vp = talloc(ctx, fr_pair_t);
 	if (!vp) return;
 
 	memcpy(vp, stacked, sizeof(*vp));
 	vp->op = T_OP_EQ;
-	fr_pair_fprint(out, vp);
+	fr_pair_fprint(out, NULL, vp);
 	talloc_free(vp);
 }
 
@@ -242,19 +231,21 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *
  * @param[in] out Where to write entry.
  * @param[in] inst Instance of rlm_detail.
  * @param[in] request The current request.
- * @param[in] packet associated with the request (request, reply, proxy-request, proxy-reply...).
+ * @param[in] packet associated with the request (request, reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
-static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
+static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
+			fr_radius_packet_t *packet, fr_pair_list_t *list, bool compat)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	char timestamp[256];
+	char *header;
 
-	if (xlat_eval(timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
+	if (tmpl_expand(&header, timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
 		return -1;
 	}
 
-	if (!packet->vps) {
+	if (fr_pair_list_empty(list)) {
 		RWDEBUG("Skipping empty packet");
 		return 0;
 	}
@@ -272,39 +263,44 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 	 *	Write the information to the file.
 	 */
 	if (!compat) {
+		fr_dict_attr_t const *da;
+		char const *name = NULL;
+
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), "Packet-Type");
+		if (da) name = fr_dict_enum_name_by_value(da, fr_box_uint32(packet->code));
+
 		/*
 		 *	Print out names, if they're OK.
 		 *	Numbers, if not.
 		 */
-		if (is_radius_code(packet->code)) {
-			WRITE("\tPacket-Type = %s\n",
-			      fr_dict_enum_name_by_value(attr_packet_type, fr_box_uint32(packet->code)));
+		if (name) {
+			WRITE("\tPacket-Type = %s\n", name);
 		} else {
 			WRITE("\tPacket-Type = %u\n", packet->code);
 		}
 	}
 
 	if (inst->log_srcdst) {
-		VALUE_PAIR src_vp, dst_vp;
+		fr_pair_t src_vp, dst_vp;
 
 		memset(&src_vp, 0, sizeof(src_vp));
 		memset(&dst_vp, 0, sizeof(dst_vp));
 
-		switch (packet->src_ipaddr.af) {
+		switch (packet->socket.inet.src_ipaddr.af) {
 		case AF_INET:
 			src_vp.da = attr_packet_src_ipv4_address;
-			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
+			fr_value_box_shallow(&src_vp.data, &packet->socket.inet.src_ipaddr, true);
 
 			dst_vp.da = attr_packet_dst_ipv4_address;
-			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
+			fr_value_box_shallow(&dst_vp.data, &packet->socket.inet.dst_ipaddr, true);
 			break;
 
 		case AF_INET6:
 			src_vp.da = attr_packet_src_ipv6_address;
-			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
+			fr_value_box_shallow(&src_vp.data, &packet->socket.inet.src_ipaddr, true);
 
 			dst_vp.da = attr_packet_dst_ipv6_address;
-			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
+			fr_value_box_shallow(&dst_vp.data, &packet->socket.inet.dst_ipaddr, true);
 			break;
 
 		default:
@@ -315,24 +311,23 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = attr_packet_src_port;
-		fr_value_box_shallow(&src_vp.data, packet->src_port, true);
+		fr_value_box_shallow(&src_vp.data, packet->socket.inet.src_port, true);
 
 		dst_vp.da = attr_packet_dst_port;
-		fr_value_box_shallow(&dst_vp.data, packet->dst_port, true);
+		fr_value_box_shallow(&dst_vp.data, packet->socket.inet.dst_port, true);
 
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);
 	}
 
 	{
-		fr_cursor_t cursor;
 		/* Write each attribute/value to the log file */
-		for (vp = fr_cursor_init(&cursor, &packet->vps);
+		for (vp = fr_pair_list_head(list);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			FR_TOKEN op;
+		     vp = fr_pair_list_next(list, vp)) {
+			fr_token_t op;
 
-			if (inst->ht && fr_hash_table_finddata(inst->ht, vp->da)) continue;
+			if (inst->ht && fr_hash_table_find_by_data(inst->ht, vp->da)) continue;
 
 			/*
 			 *	Don't print passwords in old format...
@@ -344,24 +339,9 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 			 */
 			op = vp->op;
 			vp->op = T_OP_EQ;
-			fr_pair_fprint(out, vp);
+			fr_pair_fprint(out, NULL, vp);
 			vp->op = op;
 		}
-	}
-
-	/*
-	 *	Add non-protocol attributes.
-	 */
-	if (compat) {
-#ifdef WITH_PROXY
-		if (request->proxy) {
-			char proxy_buffer[INET6_ADDRSTRLEN];
-
-			inet_ntop(request->proxy->packet->dst_ipaddr.af, &request->proxy->packet->dst_ipaddr.addr,
-				  proxy_buffer, sizeof(proxy_buffer));
-			WRITE("\tFreeradius-Proxied-To = %s\n", proxy_buffer);
-		}
-#endif
 	}
 
 	/*
@@ -380,8 +360,9 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 /*
  *	Do detail, compatible with old accounting
  */
-static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *request,
-					      RADIUS_PACKET *packet, bool compat)
+static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
+						  fr_radius_packet_t *packet, fr_pair_list_t *list,
+						  bool compat)
 {
 	int		outfd, dupfd;
 	char		buffer[DIRLEN];
@@ -393,7 +374,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	char		*endptr;
 #endif
 
-	rlm_detail_t const *inst = instance;
+	rlm_detail_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_detail_t);
 
 	/*
 	 *	Generate the path for the detail file.  Use the same
@@ -401,7 +382,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	 *	through xlat_eval() to expand the variables.
 	 */
 	if (xlat_eval(buffer, sizeof(buffer), request, inst->filename, inst->escape_func, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
@@ -410,7 +391,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %s", buffer);
 		/* coverity[missing_unlock] */
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (inst->group != NULL) {
@@ -443,10 +424,10 @@ skip_group:
 	fail:
 		if (outfp) fclose(outfp);
 		exfile_close(inst->ef, request, outfd);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	if (detail_write(outfp, inst, request, packet, compat) < 0) goto fail;
+	if (detail_write(outfp, inst, request, packet, list, compat) < 0) goto fail;
 
 	/*
 	 *	Flush everything
@@ -457,86 +438,33 @@ skip_group:
 	/*
 	 *	And everything is fine.
 	 */
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Accounting - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return detail_do(instance, request, request->packet, true);
+	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs, true);
 }
 
 /*
  *	Incoming Access Request - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return detail_do(instance, request, request->packet, false);
+	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs, false);
 }
 
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return detail_do(instance, request, request->reply, false);
+	return detail_do(p_result, mctx, request, request->reply, &request->reply_pairs, false);
 }
 
-#ifdef WITH_COA
-/*
- *	Incoming CoA - write the detail files.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	return detail_do(instance, request, request->packet, false);
-}
-
-/*
- *	Outgoing CoA - write the detail files.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	return detail_do(instance, request, request->reply, false);
-}
-#endif
-
-/*
- *	Outgoing Access-Request to home server - write the detail files.
- */
-#ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	return detail_do(instance, request, request->proxy->packet, false);
-}
-
-
-/*
- *	Outgoing Access-Request Reply - write the detail files.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, void *thread, REQUEST *request)
-{
-	/*
-	 *	No reply: we must be doing Post-Proxy-Type = Fail.
-	 *
-	 *	Note that we just call the normal accounting function,
-	 *	to minimize the amount of code, and to highlight that
-	 *	it's doing normal accounting.
-	 */
-	if (!request->proxy->reply) {
-		rlm_rcode_t rcode;
-
-		rcode = mod_accounting(instance, thread, request);
-		if (rcode == RLM_MODULE_OK) {
-			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
-		}
-		return rcode;
-	}
-
-	return detail_do(instance, request, request->proxy->reply, false);
-}
-#endif
 
 /* globally exported name */
 extern module_t rlm_detail;
@@ -546,20 +474,11 @@ module_t rlm_detail = {
 	.inst_size	= sizeof(rlm_detail_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_accounting,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	},
 };
 

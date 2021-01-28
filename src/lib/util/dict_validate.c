@@ -43,7 +43,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	int bit;
 	uint32_t all_flags;
 	uint32_t shift_is_root, shift_internal;
-	uint32_t shift_has_tag, shift_array, shift_has_value, shift_concat;
+	uint32_t shift_array, shift_has_value;
 	uint32_t shift_virtual, shift_subtype, shift_extra;
 	fr_dict_attr_t const *v;
 
@@ -57,10 +57,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 #define SET_FLAG(_flag) do { shift_ ## _flag = 1 << bit; if (flags->_flag) {all_flags |= (1 << bit); } bit++; } while (0)
 	SET_FLAG(is_root);
 	SET_FLAG(internal);
-	SET_FLAG(has_tag);
 	SET_FLAG(array);
 	SET_FLAG(has_value);
-	SET_FLAG(concat);
 	SET_FLAG(virtual);
 	SET_FLAG(extra);
 
@@ -76,10 +74,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	// is_unknown
 	// is_raw
 	// internal
-	// has_tag
 	// array
 	// has_value
-	// concat
 	// virtual
 	// extra
 	// encrypt
@@ -91,46 +87,13 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	if (flags->is_unknown) {
-		fr_strerror_printf("The 'unknown' flag cannot be set for attributes in the dictionary.");
-		return -1;
+		fr_strerror_const("The 'unknown' flag cannot be set for attributes in the dictionary.");
+		return false;
 	}
 
 	if (flags->is_raw) {
-		fr_strerror_printf("The 'raw' flag cannot be set for attributes in the dictionary.");
-		return -1;
-	}
-
-	/*
-	 *	Tags can only be used in a few limited situations.
-	 */
-	if (flags->has_tag) {
-		/*
-		 *	0 is internal, 1 is RADIUS, everything else is disallowed.
-		 */
-		if (dict->root->attr > FR_PROTOCOL_RADIUS) {
-			fr_strerror_printf("The 'has_tag' flag can only be used in the RADIUS dictionary");
-			return false;
-		}
-
-		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
-			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
-					   "or 'string'");
-			return false;
-		}
-
-		if (!(parent->flags.is_root ||
-		      ((parent->type == FR_TYPE_VENDOR) &&
-		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
-			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
-			return false;
-		}
-
-		/*
-		 *	"has_tag" can also be used with "encrypt=", and "internal" (for testing)
-		 */
-		ALLOW_FLAG(subtype);
-		ALLOW_FLAG(internal);
-		FORBID_OTHER_FLAGS(has_tag);
+		fr_strerror_const("The 'raw' flag cannot be set for attributes in the dictionary.");
+		return false;
 	}
 
 	/*
@@ -180,33 +143,16 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	/*
-	 *	'concat' can only be used in a few limited situations.
-	 */
-	if (flags->concat) {
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
-			return false;
-		}
-
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			return false;
-		}
-
-		FORBID_OTHER_FLAGS(concat);
-	}
-
-	/*
 	 *	virtual attributes are special.
 	 */
 	if (flags->virtual) {
 		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'virtual' flag can only be used for normal attributes");
+			fr_strerror_const("The 'virtual' flag can only be used for normal attributes");
 			return false;
 		}
 
 		if (attr && !flags->internal && (*attr <= (1 << (8 * parent->flags.type_size)))) {
-			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
+			fr_strerror_const("The 'virtual' flag can only be used for non-protocol attributes");
 			return false;
 		}
 
@@ -221,21 +167,23 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	if (flags->extra) {
 		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_LENGTH_UINT16) &&
 		    (flags->subtype != FLAG_BIT_FIELD)) {
-			fr_strerror_printf("The 'key' and 'length' flags cannot be used with any other flags.");
+			fr_strerror_const("The 'key' and 'length' flags cannot be used with any other flags.");
 			return false;
 		}
 
 		switch (type) {
+		case FR_TYPE_BOOL:
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
+		case FR_TYPE_UINT64:
 			if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_BIT_FIELD)) {
-				fr_strerror_printf("Invalid type for extra flag.");
+				fr_strerror_const("Invalid type for extra flag.");
 				return false;
 			}
 
 			if (parent->type != FR_TYPE_STRUCT) {
-				fr_strerror_printf("The 'key' flag can only be used inside of a 'struct'.");
+				fr_strerror_const("The 'key' flag can only be used inside of a 'struct'.");
 				return false;
 			}
 
@@ -245,14 +193,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		case FR_TYPE_OCTETS:
 			if (flags->length != 0) {
-				fr_strerror_printf("Cannot use [..] and length=uint16");
+				fr_strerror_const("Cannot use [..] and length=uint16");
 				return false;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_TYPE_STRING:
 			if (flags->subtype != FLAG_LENGTH_UINT16) {
-				fr_strerror_printf("Invalid type for extra flag.");
+				fr_strerror_const("Invalid type for extra flag.");
 				return false;
 			}
 
@@ -263,7 +211,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		case FR_TYPE_STRUCT:
 			if (flags->subtype != FLAG_LENGTH_UINT16) {
-				fr_strerror_printf("Invalid type for extra flag.");
+				fr_strerror_const("Invalid type for extra flag.");
 				return false;
 			}
 
@@ -272,15 +220,23 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			ALLOW_FLAG(subtype);
 			break;
 
+		case FR_TYPE_TLV:
+			ALLOW_FLAG(extra);
+			/* @todo - allow arrays of struct? */
+			ALLOW_FLAG(subtype);
+			break;
+
 		default:
-			return -1;
+			fr_strerror_printf("Type %s cannot hold extra flags",
+					   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
+			return false;
 		}
 
 		if ((flags->subtype == FLAG_LENGTH_UINT16) &&
 		    ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT))) {
 			fr_strerror_printf("The 'length' flag cannot be used used with type %s",
 					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-			return -1;
+			return false;
 		}
 
 		FORBID_OTHER_FLAGS(extra);
@@ -345,15 +301,10 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		flags->length = 16;
 		break;
 
-		/*
-		 *	The length of a "struct" is calculated from
-		 *	the children.  It is not input in the flags.
-		 */
 	case FR_TYPE_STRUCT:
-		flags->length = 0;
-
+		ALLOW_FLAG(internal);
 		if (all_flags) {
-			fr_strerror_printf("Invalid flag for attribute of type 'struct'");
+			fr_strerror_const("Invalid flag for attribute of type 'struct'");
 			return false;
 		}
 		break;
@@ -370,7 +321,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			if ((flags->length != 1) &&
 			    (flags->length != 2) &&
 			    (flags->length != 4)) {
-				fr_strerror_printf("The 'length' flag can only be used for attributes of type 'vendor' with lengths of 1,2 or 4");
+				fr_strerror_const("The 'length' flag can only be used for attributes of type 'vendor' with lengths of 1,2 or 4");
 				return false;
 			}
 
@@ -399,7 +350,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			if ((flags->length != 1) &&
 			    (flags->length != 2) &&
 			    (flags->length != 4)) {
-				fr_strerror_printf("The 'length' flag can only be used for attributes of type 'tlv' with lengths of 1,2 or 4");
+				fr_strerror_const("The 'length' flag can only be used for attributes of type 'tlv' with lengths of 1,2 or 4");
 				return false;
 			}
 
@@ -448,50 +399,20 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			ALLOW_FLAG(array);
 
 			if (all_flags) {
-				fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
+				fr_strerror_const("The 'octets[...]' syntax cannot be used any other flag");
 				return false;
 			}
 
 			if (flags->length > 253) {
 				fr_strerror_printf("Invalid length %d", flags->length);
-				return NULL;
-			}
-		}
-		break;
-
-	case FR_TYPE_EXTENDED:
-		if (strcasecmp(dict->root->name, "RADIUS") != 0) {
-			fr_strerror_printf("The 'extended' type can only be used in the RADIUS dictionary.");
-			return false;
-		}
-
-		if (attr && (!parent->flags.is_root || (*attr < 241))) {
-			fr_strerror_printf("Attributes of type 'extended' MUST be "
-					   "RFC attributes with value >= 241.");
-			return false;
-		}
-		break;
-
-	case FR_TYPE_VSA:
-		if (parent->flags.is_root) break;
-
-		if (parent->type == FR_TYPE_EXTENDED) {
-			if (*attr != 26) {
-				fr_strerror_printf("Attributes of type 'vsa' with parent of type 'extended' "
-						   "MUST have number 26, instead of '%d'", *attr);
 				return false;
 			}
-
-			break;
 		}
-
-		fr_strerror_printf("Attributes of type '%s' can only be used in the root of the dictionary",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
-		return false;
+		break;
 
 	case FR_TYPE_COMBO_IP_ADDR:
 		if (strcasecmp(dict->root->name, "RADIUS") != 0) {
-			fr_strerror_printf("The 'combo-ip' type can only be used in the RADIUS dictionary.");
+			fr_strerror_const("The 'combo-ip' type can only be used in the RADIUS dictionary.");
 			return false;
 		}
 
@@ -505,7 +426,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		if (!v) {
-			fr_strerror_printf("Attributes of type 'combo-ip' can only be used in VSA dictionaries");
+			fr_strerror_const("Attributes of type 'combo-ip' can only be used in VSA dictionaries");
 			return false;
 		}
 		break;
@@ -536,14 +457,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 		} else if (!flags->extra) {
 			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
-				fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
+				fr_strerror_const("The 'format=' flag can only be used with attributes of type 'tlv'");
 				return false;
 			}
 
 			if ((flags->type_size != 1) &&
 			    (flags->type_size != 2) &&
 			    (flags->type_size != 4)) {
-				fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+				fr_strerror_const("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
 				return false;
 			}
 		}
@@ -557,7 +478,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
 		if (all_flags) {
-			fr_strerror_printf("Invalid flag for attribute inside of a 'struct'");
+			fr_strerror_const("Invalid flag for attribute inside of a 'struct'");
 			return false;
 		}
 
@@ -585,10 +506,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			 *	@todo - allow dns_label encoding as
 			 *	the first member.
 			 */
-			if ((dict_attr_sizes[sibling->type][1] == ~(size_t) 0) &&
-			    !((sibling->type == FR_TYPE_OCTETS) &&
-			      (sibling->flags.length > 0))) {
-				fr_strerror_printf("Only the last child of a 'struct' attribute can have variable length");
+			if (sibling->flags.length == 0) switch (sibling->type) {
+			case FR_TYPE_VALUE:
+				break;
+
+			default:
+				fr_strerror_const("Only the last child of a 'struct' attribute can have variable length");
 				return false;
 			}
 
@@ -606,7 +529,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 						return false;
 					}
 
-					if (!da_is_key_field(sibling)) continue;
+					if (!fr_dict_attr_is_key_field(sibling)) continue;
 
 					fr_strerror_printf("Duplicate key attributes '%s' and '%s' in 'struct' type attribute %s are forbidden",
 							   name, sibling->name, parent->name);
@@ -619,7 +542,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_TLV:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_EXTENDED:
 		break;
 
 		/*
@@ -629,8 +551,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
-		if (da_is_key_field(parent)) break;
-		/* FALL-THROUGH */
+		if (fr_dict_attr_is_key_field(parent)) break;
+		FALL_THROUGH;
 
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",
@@ -672,9 +594,22 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		static unsigned int max_attr = UINT8_MAX + 1;
 
 		if (*attr == -1) {
-			if (fr_dict_attr_by_name(dict, name)) return false; /* exists, don't add it again */
-			*attr = ++max_attr;
 			flags->internal = 1;
+
+			v = fr_dict_attr_by_name(NULL, fr_dict_root(dict), name);
+			if (v) {
+				/*
+				 *	Exact duplicates are allowed.  The caller will take care of
+				 *	not inserting the duplicate attribute.
+				 */
+				if ((v->type == type) && (memcmp(&v->flags, flags, sizeof(*flags)) == 0)) {
+					return true;
+				}
+
+				fr_strerror_printf("Conflicting definition for attribute %s", name);
+				return false;
+			}
+			*attr = ++max_attr;
 
 		} else if (*attr <= 0) {
 			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
@@ -707,6 +642,31 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Check the flags, data types, and parent data types and flags.
 	 */
 	if (!dict_attr_flags_valid(dict, parent, name, attr, type, flags)) return false;
+
+#if 0
+	if (parent->type == FR_TYPE_STRUCT) {
+		/*
+		 *	@todo - check PREVIOUS element.  if it's non-fixed size, then error out.
+		 *	Move validation code from dict_read_process_member() to here
+		 */
+		switch (type) {
+		case FR_TYPE_FIXED_SIZE:
+			break;
+
+		case FR_TYPE_TLV:
+		case FR_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+			if (flags->length != 0) {
+				fr_strerror_const("The 'octets' type MUST be fixed-width when used inside of a 'struct'");
+				return false;
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+#endif
 
 	/*
 	 *	If attributes have number greater than 255, do sanity

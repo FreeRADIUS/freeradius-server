@@ -2,8 +2,8 @@ server eap-aka-prime {
 	namespace = eap-aka-prime
 
 	recv Identity-Response {
-		"%{debug_attr:&session-state:}"
-		if (!&session-state:Tmp-String-0) {
+		"%{debug_attr:&session-state.}"
+		if (!&session-state.Tmp-String-0) {
 			update reply {
 				&Any-ID-Req := yes
 			}
@@ -25,8 +25,8 @@ server eap-aka-prime {
                         &Sim-SQN := 3
                 }
 		update reply {
-			&Next-Reauth-Id := ""
-			&Next-Pseudonym := ""
+			&Encr-Data.Next-Reauth-Id := ""
+			&Encr-Data.Next-Pseudonym := ""
 		}
 	}
 

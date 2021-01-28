@@ -52,7 +52,7 @@ To perform a CoA update of all active sessions belonging to a user:
 
   $ cat <<EOF | radclient -t 15 127.0.0.1 coa testing123
     User-Name = bob
-    Cisco-AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
+    Vendor-Specific.Cisco.AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
     EOF
 
 In addition to configuring and activating this site, instances of the radius
@@ -229,8 +229,8 @@ server coa {
 #			&Tmp-String-0 := "%{sql:SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
 			&Tmp-Integer-0 := 0
 		}
-		if ("%{explode:&control:Tmp-String-0 |}") {
-			foreach &control:Tmp-String-0 {
+		if ("%{explode:&control.Tmp-String-0 |}") {
+			foreach &control.Tmp-String-0 {
 				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
 					update control {
 						&Tmp-IP-Address-0 := "%{1}"
@@ -238,8 +238,8 @@ server coa {
 					}
 					subrequest CoA-Request {
 						update request {
-							&request := &parent.request:[*]
-							&Acct-Session-Id := &parent.control:Tmp-String-1
+							&request := &parent.request[*]
+							&Acct-Session-Id := &parent.control.Tmp-String-1
 							&Event-Timestamp := "%l"
 							&Message-Authenticator := 0x00
 						}
@@ -248,16 +248,16 @@ server coa {
 							&Acct-Delay-Time !* ANY
 							&Proxy-State !* ANY
 						}
-						switch &parent.control:Tmp-IP-Address-0 {
+						switch &parent.control.Tmp-IP-Address-0 {
 							case "192.0.2.1" {
 								update parent.control {
-									&Tmp-Integer-0 := %{expr: %{parent.control:Tmp-Integer-0} + 1}
+									&Tmp-Integer-0 := %{expr: %{parent.control.Tmp-Integer-0} + 1}
 								}
 								radius-originate-coa-192.0.2.1
 							}
 							case {
 								update parent.control {
-									&Reply-Message += "Missing map for NAS: %{parent.control:Tmp-IP-Address-0}"
+									&Reply-Message += "Missing map for NAS: %{parent.control.Tmp-IP-Address-0}"
 								}
 							}
 						}  # subrequest
@@ -265,9 +265,9 @@ server coa {
 				}
 			}  # foreach session
 		}
-		if (&control:Tmp-Integer-0) {
+		if (&control.Tmp-Integer-0) {
 			update reply {
-				&Reply-Message += "Sent updates for %{control:Tmp-Integer-0} active sessions"
+				&Reply-Message += "Sent updates for %{control.Tmp-Integer-0} active sessions"
 			}
 			ok
 		} else {

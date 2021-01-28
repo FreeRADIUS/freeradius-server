@@ -17,8 +17,6 @@
 
 /** Types of values contained within an #fr_value_box_t
  *
- * These are in a separate header file to avoid circular dependencies.
- *
  * @file src/lib/util/types.h
  *
  * @copyright 2017 The FreeRADIUS server project
@@ -29,8 +27,9 @@ RCSIDH(types_h, "$Id$")
 extern "C" {
 #endif
 
-/** Internal data types used within libfreeradius
- *
+#include <stdbool.h>
+
+/** Internal data types
  */
 typedef enum {
 	FR_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
@@ -54,6 +53,7 @@ typedef enum {
 	FR_TYPE_UINT32,				//!< 32 Bit unsigned integer.
 	FR_TYPE_UINT64,				//!< 64 Bit unsigned integer.
 
+
 	FR_TYPE_INT8,				//!< 8 Bit signed integer.
 	FR_TYPE_INT16,				//!< 16 Bit signed integer.
 	FR_TYPE_INT32,				//!< 32 Bit signed integer.
@@ -62,19 +62,15 @@ typedef enum {
 	FR_TYPE_FLOAT32,			//!< Single precision floating point.
 	FR_TYPE_FLOAT64,			//!< Double precision floating point.
 
-	FR_TYPE_DATE,				//!< 32 Bit Unix timestamp.
+	FR_TYPE_DATE,				//!< Unix time stamp, always has value >2^31
+
+	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
 
 	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
 						//!< address on the local system.
 
-	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
-
-	FR_TYPE_ABINARY,			//!< Ascend binary format a packed data structure.
-
 	FR_TYPE_TLV,				//!< Contains nested attributes.
 	FR_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
-
-	FR_TYPE_EXTENDED,			//!< Extended attribute space attribute.
 
 	FR_TYPE_VSA,				//!< Vendor-Specific, for RADIUS attribute 26.
 	FR_TYPE_VENDOR,				//!< Attribute that represents a vendor in the attribute tree.
@@ -91,30 +87,15 @@ typedef enum {
  *	functions that need to deal with all types representing values
  */
 #define FR_TYPE_FIXED_SIZE \
-	     FR_TYPE_UINT8: \
-	case FR_TYPE_UINT16: \
-	case FR_TYPE_UINT32: \
-	case FR_TYPE_UINT64: \
-	case FR_TYPE_SIZE: \
-	case FR_TYPE_DATE: \
-	case FR_TYPE_IFID: \
-	case FR_TYPE_ETHERNET: \
-	case FR_TYPE_IPV4_ADDR: \
+	FR_TYPE_IPV4_ADDR: \
 	case FR_TYPE_IPV4_PREFIX: \
 	case FR_TYPE_IPV6_ADDR: \
 	case FR_TYPE_IPV6_PREFIX: \
+	case FR_TYPE_IFID: \
 	case FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
-	case FR_TYPE_INT32: \
-	case FR_TYPE_TIME_DELTA: \
+	case FR_TYPE_ETHERNET: \
 	case FR_TYPE_BOOL: \
-	case FR_TYPE_FLOAT64
-
-/** Naturally numeric types
- *
- */
-#define FR_TYPE_NUMERIC \
-	FR_TYPE_BOOL: \
 	case FR_TYPE_UINT8: \
 	case FR_TYPE_UINT16: \
 	case FR_TYPE_UINT32: \
@@ -129,6 +110,34 @@ typedef enum {
 	case FR_TYPE_TIME_DELTA: \
 	case FR_TYPE_SIZE
 
+#define FR_TYPE_INTEGER_EXCEPT_BOOL \
+	FR_TYPE_UINT8: \
+	case FR_TYPE_UINT16: \
+	case FR_TYPE_UINT32: \
+	case FR_TYPE_UINT64: \
+	case FR_TYPE_INT8: \
+	case FR_TYPE_INT16: \
+	case FR_TYPE_INT32: \
+	case FR_TYPE_INT64: \
+	case FR_TYPE_DATE: \
+	case FR_TYPE_TIME_DELTA: \
+	case FR_TYPE_SIZE
+
+/** Signed or unsigned integers
+ *
+ */
+#define FR_TYPE_INTEGER \
+	FR_TYPE_BOOL: \
+	case FR_TYPE_INTEGER_EXCEPT_BOOL \
+
+/** Naturally numeric types
+ *
+ */
+#define FR_TYPE_NUMERIC \
+	FR_TYPE_INTEGER: \
+	case FR_TYPE_FLOAT32: \
+	case FR_TYPE_FLOAT64 \
+
 /** Match all variable length types in case statements
  *
  * @note This should be used for switch statements in printing and casting
@@ -136,8 +145,7 @@ typedef enum {
  */
 #define FR_TYPE_VARIABLE_SIZE \
 	     FR_TYPE_STRING: \
-	case FR_TYPE_OCTETS: \
-	case FR_TYPE_ABINARY \
+	case FR_TYPE_OCTETS
 
 
 #define FR_TYPE_BAD \
@@ -150,7 +158,8 @@ typedef enum {
  *	functions that need to deal with all types representing values
  */
 #define FR_TYPE_STRUCTURAL_EXCEPT_VSA \
-	     FR_TYPE_EXTENDED: \
+	FR_TYPE_GROUP: \
+	case FR_TYPE_VENDOR: \
 	case FR_TYPE_TLV: \
 	case FR_TYPE_STRUCT
 
@@ -161,8 +170,8 @@ typedef enum {
  */
 #define FR_TYPE_STRUCTURAL \
 	FR_TYPE_STRUCTURAL_EXCEPT_VSA: \
-	case FR_TYPE_VSA: \
-	case FR_TYPE_VENDOR
+	case FR_TYPE_VSA \
+
 
 /** Types which do not represent concrete values
  *
@@ -171,14 +180,13 @@ typedef enum {
 	FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
 	case FR_TYPE_STRUCTURAL: \
-	case FR_TYPE_GROUP: \
 	case FR_TYPE_VALUE_BOX: \
 	case FR_TYPE_BAD
 
-/** Types which do represent concrete values
+/** Types which represent concrete values
  *
  */
-#define FR_TYPE_VALUES \
+#define FR_TYPE_VALUE \
 	FR_TYPE_NUMERIC: \
 	case FR_TYPE_STRING: \
 	case FR_TYPE_OCTETS: \
@@ -187,8 +195,7 @@ typedef enum {
 	case FR_TYPE_IPV6_ADDR: \
 	case FR_TYPE_IPV6_PREFIX: \
 	case FR_TYPE_ETHERNET: \
-	case FR_TYPE_IFID: \
-	case FR_TYPE_ABINARY
+	case FR_TYPE_IFID
 
 /** Types which can fit in an #fr_ipaddr_t
  *
@@ -204,8 +211,10 @@ typedef enum {
  */
 #define FR_TYPE_QUOTED \
 	FR_TYPE_STRING: \
-	case FR_TYPE_DATE: \
-	case FR_TYPE_ABINARY
+	case FR_TYPE_DATE
+
+bool		fr_type_cast(fr_type_t dst, fr_type_t src);
+fr_type_t	fr_type_promote(fr_type_t a, fr_type_t b);
 
 #ifdef __cplusplus
 }

@@ -36,7 +36,7 @@ from from v4.0.
 Individual attributes from the outer request may be
 accessed with:
 
-    &outer.request:<attribute>
+    &outer.request.<attribute>
 
 The following policy in raddb/policy.d/eap can be used
 to copy attributes over.
@@ -306,7 +306,7 @@ send Access-Reject {
 	-sql
 	attr_filter.access_reject
 	update outer.session-state {
-		&Module-Failure-Message := &request:Module-Failure-Message
+		&Module-Failure-Message := &request.Module-Failure-Message
 	}
 }
 } # inner-tunnel server block

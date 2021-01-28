@@ -107,7 +107,7 @@ static inline void fr_redis_connection_ignore_response(fr_redis_handle_t *h, fr_
 {
 	fr_redis_sqn_ignore_t *ignore;
 
-	rad_assert(sqn <= h->rsp_sqn);
+	fr_assert(sqn <= h->rsp_sqn);
 
 	MEM(ignore = talloc_zero(h, fr_redis_sqn_ignore_t));
 	ignore->sqn = sqn;
@@ -126,11 +126,11 @@ static inline bool fr_redis_connection_process_response(fr_redis_handle_t *h)
 	fr_redis_sqn_t		check = h->rsp_sqn++;
 	fr_redis_sqn_ignore_t	*head;
 
-	rad_assert(h->rsp_sqn <= h->req_sqn);		/* Can't have more responses than requests */
+	fr_assert(h->rsp_sqn <= h->req_sqn);		/* Can't have more responses than requests */
 
 	head = fr_dlist_head(&h->ignore);
 	if (!head || (head->sqn > check)) return true;	/* First response to ignore is some time after this one */
-	rad_assert(head->sqn == check);
+	fr_assert(head->sqn == check);
 
 	fr_dlist_remove(&h->ignore, head);
 	talloc_free(head);

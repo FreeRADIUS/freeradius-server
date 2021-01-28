@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map_proc_priv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 static rbtree_t *map_proc_root = NULL;
 
@@ -112,10 +112,10 @@ int map_proc_register(void *mod_inst, char const *name,
 {
 	map_proc_t *proc;
 
-	rad_assert(name && name[0]);
+	fr_assert(name && name[0]);
 
 	if (!map_proc_root) {
-		map_proc_root = rbtree_talloc_create(NULL, map_proc_cmp, map_proc_t,
+		map_proc_root = rbtree_talloc_alloc(NULL, map_proc_cmp, map_proc_t,
 						     _map_proc_tree_free, RBTREE_FLAG_REPLACE);
 		if (!map_proc_root) {
 			DEBUG("map_proc: Failed to create tree");
@@ -128,7 +128,7 @@ int map_proc_register(void *mod_inst, char const *name,
 	 */
 	proc = map_proc_find(name);
 	if (!proc) {
-		rbnode_t *node;
+		fr_rb_node_t *node;
 
 		proc = talloc_zero(mod_inst, map_proc_t);
 		strlcpy(proc->name, name, sizeof(proc->name));
@@ -167,7 +167,7 @@ int map_proc_register(void *mod_inst, char const *name,
  *	- NULL on error.
  */
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
-				      CONF_SECTION *cs, vp_tmpl_t const *src, vp_map_t const *maps)
+				      CONF_SECTION *cs, tmpl_t const *src, map_t const *maps)
 {
 	map_proc_inst_t *inst;
 
@@ -201,7 +201,7 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
  * @param[in,out] result	Result of expanding the map input.  May be consumed
  *				by the map processor.
  */
-rlm_rcode_t map_proc(REQUEST *request, map_proc_inst_t const *inst, fr_value_box_t **result)
+rlm_rcode_t map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_box_t **result)
 {
 	return inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, result, inst->maps);
 }

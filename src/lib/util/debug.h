@@ -32,7 +32,7 @@ extern "C" {
 #ifdef NO_ASSERT
 # define MEM(x) error "Use of MEM() not allowed in this source file.  Deal with memory allocation failure gracefully"
 #else
-# define MEM(x) do { if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, EXIT_FAILURE); } } while (0)
+# define MEM(x) do { if (!(x)) { fr_cond_assert_msg((x), "OUT OF MEMORY"); _fr_exit(__FILE__, __LINE__, EXIT_FAILURE, true); } } while (0)
 #endif
 
 typedef enum {
@@ -45,8 +45,8 @@ typedef enum {
 
 extern fr_debug_state_t fr_debug_state;
 
-#define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
-typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+#define FR_FAULT_LOG(_fmt, ...)			fr_fault_log(_fmt "\n", ## __VA_ARGS__)
+#define FR_FAULT_LOG_HEX(_data, _data_len)	fr_fault_log_hex(_data, _data_len)
 
 /** Optional callback passed to fr_fault_setup
  *
@@ -62,28 +62,63 @@ typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 
 typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
-int		fr_get_lsan_state(void);
-int		fr_get_debug_state(void);
-void		fr_debug_state_store(void);
-char const	*fr_debug_state_to_msg(fr_debug_state_t state);
-void		fr_debug_break(bool always);
-void		backtrace_print(fr_fring_t *fring, void *obj);
-int		fr_backtrace_do(fr_bt_marker_t *marker);
-fr_bt_marker_t	*fr_backtrace_attach(fr_fring_t **fring, TALLOC_CTX *obj);
+int			fr_get_lsan_state(void);
 
-void		fr_panic_on_free(TALLOC_CTX *ctx);
-int		fr_set_dumpable_init(void);
-int		fr_set_dumpable(bool allow_core_dumps);
-int		fr_reset_dumpable(void);
-int		fr_log_talloc_report(TALLOC_CTX const *ctx);
-void		fr_fault(int sig);
-void		fr_talloc_fault_setup(void);
-int		fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program);
-void		fr_fault_set_cb(fr_fault_cb_t func);
-void		fr_fault_set_log_fd(int fd);
-void		fr_fault_log(char const *msg, ...) CC_HINT(format (printf, 1, 2));
-bool		fr_cond_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
-		CC_HINT(format (printf, 4, 5));
+int			fr_get_debug_state(void);
+
+void			fr_debug_state_store(void);
+
+char const		*fr_debug_state_to_msg(fr_debug_state_t state);
+
+void			fr_debug_break(bool always);
+
+void			backtrace_print(fr_fring_t *fring, void *obj);
+
+int			fr_backtrace_do(fr_bt_marker_t *marker);
+
+fr_bt_marker_t		*fr_backtrace_attach(fr_fring_t **fring, TALLOC_CTX *obj);
+
+void			fr_panic_on_free(TALLOC_CTX *ctx);
+
+int			fr_set_dumpable_init(void);
+
+int			fr_set_dumpable(bool allow_core_dumps);
+
+int			fr_reset_dumpable(void);
+
+int			fr_log_talloc_report(TALLOC_CTX const *ctx);
+
+void			fr_fault(int sig);
+
+void			fr_talloc_fault_setup(void);
+
+void			fr_disable_null_tracking_on_free(TALLOC_CTX *ctx);
+
+int			fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program);
+
+void			fr_fault_set_cb(fr_fault_cb_t func);
+
+void			fr_fault_set_log_fd(int fd);
+
+void			fr_fault_log(char const *msg, ...) CC_HINT(format (printf, 1, 2));
+
+void			fr_fault_log_hex(uint8_t const *data, size_t data_len);
+
+/** @name Assertion support functions
+ * @{
+ */
+bool			_fr_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
+			CC_HINT(format (printf, 4, 5));
+
+void NEVER_RETURNS	_fr_assert_fatal(char const *file, int line, char const *expr, char const *msg, ...)
+			CC_HINT(format (printf, 4, 5));
+
+void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
+/** @} */
+
+/** @name Assertion and exit macros
+ * @{
+ */
 
 /** Calls panic_action ifndef NDEBUG, else logs error and evaluates to value of _x
  *
@@ -96,16 +131,9 @@ bool		fr_cond_assert_fail(char const *file, int line, char const *expr, char con
    if (!fr_cond_assert(request)) return -1
  @endverbatim
  *
- * @param _x expression to test (should evaluate to true)
+ * @param[in] _x expression to test (should evaluate to true)
  */
-#define		fr_cond_assert(_x) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x, NULL) && false)))
-
-/** Calls panic_action ifndef NDEBUG, else logs error
- *
- * @param[in] _msg	to log.
- * @param[in] ...	args.
- */
-#define		fr_assert_fail(_msg, ...) fr_cond_assert_fail(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
+#define		fr_cond_assert(_x) likely((bool)((_x) ? true : (_fr_assert_fail(__FILE__, __LINE__, #_x, NULL) && false)))
 
 /** Calls panic_action ifndef NDEBUG, else logs error and evaluates to value of _x
  *
@@ -118,23 +146,90 @@ bool		fr_cond_assert_fail(char const *file, int line, char const *expr, char con
    if (!fr_cond_assert_msg(request, "Bad stuff happened: %s", fr_syserror(errno)))) return -1
  @endverbatim
  *
- * @param _x	expression to test (should evaluate to true)
- * @param _fmt	of message to log.
- * @param ...	fmt arguments.
+ * @param[in] _x	expression to test (should evaluate to true)
+ * @param[in] _fmt	of message to log.
+ * @param[in] ...	fmt arguments.
  */
-#define		fr_cond_assert_msg(_x, _fmt, ...) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__) && false)))
+#define		fr_cond_assert_msg(_x, _fmt, ...) likely((bool)((_x) ? true : (_fr_assert_fail(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__) && false)))
 
-#ifndef NDEBUG
-bool		fr_assert_exit(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
+/** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
+ *
+ * Example:
+ @verbatim
+   fr_fatal_assert(<extremely_unlikely_and_fatal_condition>);
+ @endverbatim
+ *
+ * @param _x expression to test (should evaluate to true)
+ */
+#define		fr_fatal_assert(_x) if (unlikely(!((bool)(_x)))) _fr_assert_exit(__FILE__, __LINE__, #_x, NULL))
+
+/** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
+ *
+ * Should be wrapped in a condition, and if false, should cause function to return
+ * an error code.  This allows control to return to the caller if a precondition is
+ * not satisfied and we're not debugging.
+ *
+ * Example:
+ @verbatim
+   fr_fatal_assert(<extremely_unlikely_and_fatal_condition>);
+ @endverbatim
+ *
+ * @param[in] _x	expression to test (should evaluate to true)
+ * @param[in] _fmt	of message to log.
+ * @param[in] ...	fmt arguments.
+ */
+#define		fr_fatal_assert_msg(_x, _fmt, ...) if (unlikely(!((bool)(_x)))) _fr_assert_fatal(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__)
+
+/** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
+ *
+ * @param[in] _msg	to log.
+ * @param[in] ...	args.
+ */
+#define		fr_fatal_assert_fail(_msg, ...) _fr_assert_fatal(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
+
+#ifdef NDEBUG
+#  define fr_assert(_x)
+#  define fr_assert_msg(_x, _msg, ...)
+#  define fr_assert_fail(_msg, ...)
+#elif !defined(__clang_analyzer__)
+/** Calls panic_action ifndef NDEBUG, else logs error
+ *
+ * @param[in] _x	expression to test (should evaluate to true)
+ */
+#  define	fr_assert(_x) if (unlikely(!((bool)(_x)))) _fr_assert_fail(__FILE__, __LINE__, #_x, NULL)
+
+/** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
+ *
+ * @param[in] _x	expression to test (should evaluate to true)
+ * @param[in] _msg	to log.
+ * @param[in] ...	args.
+ */
+#  define	fr_assert_msg(_x, _msg, ...) if (unlikely(!((bool)(_x)))) _fr_assert_fail(__FILE__, __LINE__, #_x, _msg, ## __VA_ARGS__)
+/** Calls panic_action ifndef NDEBUG, else logs error
+ *
+ * @param[in] _msg	to log.
+ * @param[in] ...	args.
+ */
+#define		fr_assert_fail(_msg, ...) _fr_assert_fail(__FILE__, __LINE__, "false", _msg,  ## __VA_ARGS__)
 #else
-bool		fr_assert_exit(char const *file, unsigned int line, char const *expr);
+#  include <assert.h>
+#  define fr_assert(_x) assert(_x)
+#  define fr_assert_msg(_x, _msg, ...) assert(_x)
+#  define fr_assert_fail(_msg ...) assert(0)
 #endif
 
-void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
-#  define	fr_exit(_x) _fr_exit(__FILE__, __LINE__, (_x))
+/** Exit, producing a log message in debug builds
+ *
+ * @param[in] _x	code to exit with.
+ */
+#  define	fr_exit(_x) _fr_exit(__FILE__, __LINE__, (_x), false)
 
-void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
-#  define	fr_exit_now(_x) _fr_exit_now(__FILE__, __LINE__, (_x))
+/** Exit without calling atexit() handlers, producing a log message in debug builds
+ *
+ * @param[in] _x	code to exit with.
+ */
+#  define	fr_exit_now(_x) _fr_exit(__FILE__, __LINE__, (_x), true)
+/** @} */
 
 void fr_sign_struct(void *ptr, size_t size, size_t offset);
 void fr_verify_struct(void const *ptr, size_t size, size_t offset);

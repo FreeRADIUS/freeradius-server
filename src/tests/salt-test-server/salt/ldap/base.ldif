@@ -4,7 +4,7 @@ objectClass: olcDatabaseConfig
 objectClass: olcMdbConfig
 olcDatabase: {1}mdb
 olcSuffix: dc=example,dc=com
-olcDbDirectory: /var/lib/ldap
+olcDbDirectory: /tmp/ldap/db
 olcRootDN: cn=admin,dc=example,dc=com
 olcRootPW: {SSHA}SgCZuAcGQA5HlgKi+g5xwVyI2NhXRFYh
 olcDbIndex: objectClass eq
@@ -75,8 +75,8 @@ uidNumber: 100
 gidNumber: 100
 homeDirectory: /home/john
 radiusIdleTimeout: 3600
-radiusAttribute: reply:Session-Timeout := 7200
-radiusAttribute: control:NAS-IP-Address := 1.2.3.4
+radiusAttribute: reply.Session-Timeout := 7200
+radiusAttribute: control.NAS-IP-Address := 1.2.3.4
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
 
 dn: ou=clients,dc=example,dc=com

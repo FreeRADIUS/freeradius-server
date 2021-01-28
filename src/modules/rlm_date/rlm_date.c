@@ -42,18 +42,22 @@ static const CONF_PARSER module_config[] = {
 };
 
 DIAG_OFF(format-nonliteral)
-static ssize_t date_convert_string(REQUEST *request, char **out, size_t outlen,
-				   const char *str, const char *fmt)
+static ssize_t date_convert_string(request_t *request, char **out, size_t outlen,
+				   const char *str, rlm_date_t const *inst)
 {
 	struct tm tminfo;
 	time_t date = 0;
 
-	if (strptime(str, fmt, &tminfo) == NULL) {
-		REDEBUG("Failed to parse time string \"%s\" as format '%s'", str, fmt);
+	if (strptime(str, inst->fmt, &tminfo) == NULL) {
+		REDEBUG("Failed to parse time string \"%s\" as format '%s'", str, inst->fmt);
 		return -1;
 	}
 
-	date = mktime(&tminfo);
+	if (inst->utc) {
+		date = timegm(&tminfo);
+	} else {
+		date = mktime(&tminfo);
+	}
 	if (date < 0) {
 		REDEBUG("Failed converting parsed time into unix time");
 		return -1;
@@ -63,7 +67,7 @@ static ssize_t date_convert_string(REQUEST *request, char **out, size_t outlen,
 }
 
 static ssize_t date_encode_strftime(char **out, size_t outlen, rlm_date_t const *inst,
-				    REQUEST *request, time_t date)
+				    request_t *request, time_t date)
 {
 	struct tm tminfo;
 
@@ -83,13 +87,38 @@ static ssize_t date_encode_strftime(char **out, size_t outlen, rlm_date_t const 
 }
 DIAG_ON(format-nonliteral)
 
+/** Get or convert time and date
+ *
+ * Using the format in the module instance configuration, get
+ * various timestamps, or convert strings to date format.
+ *
+ * When the request arrived:
+@verbatim
+%{date:request}
+@endverbatim
+ *
+ * Now:
+@verbatim
+%{date:now}
+@endverbatim
+ *
+ * Examples (Tmp-Integer-0 = 1506101100):
+@verbatim
+update request {
+  &Tmp-String-0 := "%{date:&Tmp-Integer-0}" ("Fri 22 Sep 18:25:00 BST 2017")
+  &Tmp-Integer-1 := "%{date:&Tmp-String-0}" (1506101100)
+}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
-				 REQUEST *request, char const *fmt)
+				 request_t *request, char const *fmt)
 {
 	rlm_date_t const *inst = mod_inst;
 	struct tm tminfo;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	memset(&tminfo, 0, sizeof(tminfo));
 
@@ -126,7 +155,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	unix timestamp.
 	 */
 	case FR_TYPE_STRING:
-		return date_convert_string(request, out, outlen, vp->vp_strvalue, inst->fmt);
+		return date_convert_string(request, out, outlen, vp->vp_strvalue, inst);
 
 	default:
 		REDEBUG("Can't convert type %s into date", fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"));
@@ -144,7 +173,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst, inst->xlat_name, xlat_date_convert, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, inst->xlat_name, xlat_date_convert, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

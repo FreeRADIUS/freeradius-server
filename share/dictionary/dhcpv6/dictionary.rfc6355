@@ -10,11 +10,10 @@
 #
 ##############################################################################
 
-STRUCT	Client-ID-DUID-UUID			Client-ID-DUID	4
-MEMBER		Client-ID-DUID-UUID-Value		octets[16]
+STRUCT	UUID			Client-ID.DUID			4
+MEMBER		Value					octets[16]
 
 #
-#  Duplicate sub-struct as the server cannot (yet) reference structs
+#  Defining DUID for the Client-ID will automatically
+#  clone that definition for Server-ID.  See dictionary.rfc3315
 #
-STRUCT	Server-ID-DUID-UUID			Server-ID-DUID	4
-MEMBER		Server-ID-DUID-UUID-Value		octets[16]

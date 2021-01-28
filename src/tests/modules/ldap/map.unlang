@@ -9,21 +9,21 @@ if (updated) {
 	test_fail
 }
 
-if (&request:Tmp-String-0 == '255.255.255.0') {
+if (&request.Tmp-String-0 == '255.255.255.0') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&request:Tmp-String-1[0] == 'cn=radprofile,ou=profiles,dc=example,dc=com') {
+if (&request.Tmp-String-1[0] == 'cn=radprofile,ou=profiles,dc=example,dc=com') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&request:Tmp-String-1[1] == 'cn=profile1,ou=profiles,dc=example,dc=com') {
+if (&request.Tmp-String-1[1] == 'cn=profile1,ou=profiles,dc=example,dc=com') {
 	test_pass
 }
 else {

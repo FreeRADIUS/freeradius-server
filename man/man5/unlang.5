@@ -285,11 +285,11 @@ request).  Attributes in the child can be copied from the parent via
 an "update" block.
 
 The packet type and protocol can be changed in a subrequest, by
-changing the second paramater to the subrequest.  That parameter can
+changing the second parameter to the subrequest.  That parameter can
 be:
 
 * packet name, e.g. "Access-Request"
-* protocol followed by packet name, e.g. "dhcpv4.DHCP-Discover".
+* protocol followed by packet name, e.g. "dhcpv4.Discover".
 
 This configuration allows the server to receive one type of packet,
 and then create another.  For example, the server can receive an
@@ -301,7 +301,7 @@ by the subrequest should be manually copied from the parent request.
 
 The subrequest can also be used to change protocols.  For example, the
 server can receive a RADIUS Access-Request, and then create a DHCPv4
-packet of type DHCP-Discover.  Note that when the protocol changes,
+packet of type Discover.  Note that when the protocol changes,
 the attributes in the "subrequest" section are parsed in the context
 of the new protocol.
 
@@ -313,7 +313,7 @@ parent.
 .br
 		update request {
 .br
-			&User-Name = &parent.request:User-Name
+			&User-Name = &parent.request.User-Name
 .br
 			...
 .br
@@ -324,7 +324,7 @@ parent.
 	}
 .DE
 The purpose of a "subrequest" section is to create a child request
-which can be edited and upated independently of the parent.
+which can be edited and updated independently of the parent.
 
 The return value of the subrequest is taken from the return value of
 the subsection being run.
@@ -416,7 +416,7 @@ The <list> can be one of "request", "reply", "session-state", or
 "control".  As of Version 3, the <list> can be omitted, in which case
 "request" is assumed.
 
-The "control" list is the list of attributes maintainted internally by
+The "control" list is the list of attributes maintained internally by
 the server that controls how the server processes the request.  Any
 attribute that does not go in a packet on the network will generally
 be placed in the "control" list.
@@ -442,16 +442,14 @@ ATTRIBUTE REFERENCE and ATTRIBUTE ASSIGNMENT sections below.
 Attributes may be referenced via the following syntax:
 .DS
 	&Attribute-Name
-	&Attribute-Name:TAG
 	&Attribute-Name[NUM]
-	&<list>:Attribute-Name
-	&<list>:Attribute-Name:TAG[NUM]
+	&<list>.Attribute-Name
 .DE
-Where <list> is one of "request", "reply", "control", "proxy-request",
-"proxy-reply", or "outer.request", "outer.reply", "outer.control",
-"outer.proxy-request", or "outer.proxy-reply". just as with the
-"update" section, above.  The "<list>:" prefix is optional, and if
-omitted, is assumed to refer to the "request" list.
+Where <list> is one of "request", "reply", "control",
+or "outer.request", "outer.reply", "outer.control",
+just as with the "update" section, above.  The "<list>."
+prefix is optional, and if omitted, is assumed to refer to the
+"request" list.
 
 The TAG portion is a decimal integer between 1 and 31.  Please see RFC
 2868 for more information about tags.  Tags can only be used for
@@ -473,15 +471,15 @@ an attribute of the given name.  Some examples are:
 .DS
 	User-Name
 .br
-	request:User-Name # same as above
+	request.User-Name # same as above
 .br
-	reply:User-Name
+	reply.User-Name
 .br
 	Tunnel-Password:1
 .br
 	Cisco-AVPAir[2]
 .br
-	outer.request:User-Name # from inside of a TTLS/PEAP tunnel
+	outer.request.User-Name # from inside of a TTLS/PEAP tunnel
 .DE
 Note that unlike C, there is no way to define new attributes at
 run-time.  They MUST be declared in a dictionary file, and loaded when
@@ -513,7 +511,7 @@ Evaluates to true if 'foo' is a non-empty string (single quotes, double
 quotes, or back-quoted).  Also evaluates to true if 'foo' is a
 non-zero number.  Note that the language is poorly typed, so the
 string "0000" can be interpreted as a numerical zero.  This issue can
-be avoided by comparings strings to an empty string, rather than by
+be avoided by comparing strings to an empty string, rather than by
 evaluating the string by itself.
 
 If the word 'foo' is not a quoted string, then it can be taken as a
@@ -842,7 +840,7 @@ as the separator. Use the %{pairs:} xlat to get a list of attributes and
 values.
 
 e.g. If a response contains "Reply-Message = 'Hello', Reply-Message = 'bob'
-the expansion of "%{reply:Reply-Message[*]} will yield "Hello\\nbob"
+the expansion of "%{reply.Reply-Message[*]} will yield "Hello\\nbob"
 .RE
 .PP
 Other built in expansions
@@ -965,10 +963,10 @@ Generate HMAC-SHA1 of input data.
 
 "%{hmacsha1:foo bar}" == "85d155c55ed286a300bd1cf124de08d87e914f3a"
 
-.IP %{pairs:<list_or_attr_ref>}
+.IP %{pairs:<list_or_attr>}
 Serialize attributes as comma-delimited string
 
-e.g. "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar', ..."
+e.g. "%{pairs:request.}" == "User-Name = 'foo', User-Password = 'bar', ..."
 
 .IP %{base64:<string>}
 Encode string as base64.
@@ -1067,7 +1065,7 @@ the list.
 .IP ==
 Keep only those attributes which have values matching the given one.
 
-Note that this operator (eqaulity filtering) is very different than
+Note that this operator (equality filtering) is very different than
 the '=' operator (set if not already existing) described above!
 .IP !=
 Keep only those attributes which have values not equal to the
@@ -1095,7 +1093,7 @@ string.
 When the value is an an attribute reference, it must take the form of
 "&Attribute-Name".  The leading "&" signifies that the value is a
 reference.  The "Attribute-Name" is an attribute name, such as
-"User-Name" or "request:User-Name".  When an attribute reference is
+"User-Name" or "request.User-Name".  When an attribute reference is
 used, both attributes must have the same data type.  For example,
 "User-Name := &NAS-Port" is invalid, because "User-Name" is a string,
 and "NAS-Port" is an integer.
@@ -1143,7 +1141,7 @@ failover tracking that nothing was done in the current section.
 .IP ok
 Instructs the server that the request was processed properly.  This
 keyword can be used to over-ride earlier failures, if the local
-administrator determines that the faiures are not catastrophic.
+administrator determines that the failures are not catastrophic.
 .IP reject
 Causes the request to be immediately rejected
 .SH MODULE RETURN CODES

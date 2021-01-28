@@ -164,7 +164,7 @@ server abfab-idp {
 	}
 	send Access-Accept {
 		update {
-			&reply: += &session-state:
+			&reply += &session-state
 		}
 #		cui
 #		reply_log
@@ -177,7 +177,7 @@ server abfab-idp {
 	send Access-Reject {
 		-sql
 		attr_filter.access_reject
-		if (&reply:Eap-Message) {
+		if (&reply.Eap-Message) {
 			eap
 		}
 		remove_reply_message_if_eap

@@ -58,7 +58,7 @@ server foo {
 
     recv Access-Request {
         update control {
-            Cleartext-Password := "bob"
+            Password.Cleartext := "bob"
         }
         pap
     }

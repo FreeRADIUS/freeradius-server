@@ -19,6 +19,6 @@ BEGIN-VENDOR	Zeus
 #
 # ZXTM Group Attributes
 #
-ATTRIBUTE	Zeus-ZXTM-Group				1	string
+ATTRIBUTE	ZXTM-Group				1	string
 
 END-VENDOR Zeus

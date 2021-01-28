@@ -28,7 +28,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/base.h>
 
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 
@@ -76,30 +76,30 @@ static int64_t fr_pow(int64_t base, int64_t exp)
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 5:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 4:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 3:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 2:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	case 1:
 		if (exp & 1) result *= base;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	default:
 		return result;
 	}
@@ -154,15 +154,30 @@ static expr_map_t map[] =
 	{0,	TOKEN_LAST}
 };
 
-static bool get_expression(REQUEST *request, char const **string, int64_t *answer, expr_token_t prev);
+static bool get_expression(request_t *request, char const **string, int64_t *answer, expr_token_t prev);
 
-static bool get_number(REQUEST *request, char const **string, int64_t *answer)
+static bool get_number(request_t *request, char const **string, int64_t *answer)
 {
-	int64_t x;
-	bool invert = false;
-	bool negative = false;
-	char const *p = *string;
-	vp_tmpl_t *vpt = NULL;
+	fr_sbuff_term_t const 		bareword_terminals =
+					FR_SBUFF_TERMS(
+						L("\t"),
+						L("\n"),
+						L(" "),
+						L("%"),
+						L("&"),
+						L(")"),
+						L("+"),
+						L("-"),
+						L("/"),
+						L("^"),
+						L("|")
+					);
+	fr_sbuff_parse_rules_t const	p_rules = { .terminals = &bareword_terminals };
+	int64_t				x;
+	bool				invert = false;
+	bool				negative = false;
+	char const			*p = *string;
+	tmpl_t				*vpt = NULL;
 
 	/*
 	 *	Look for a number.
@@ -200,12 +215,16 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	 *	Look for an attribute.
 	 */
 	if (*p == '&') {
-		int		i, max, err;
-		ssize_t		slen;
-		VALUE_PAIR	*vp;
-		fr_cursor_t	cursor;
+		int			i, max, err;
+		ssize_t			slen;
+		fr_pair_t		*vp;
+		fr_dcursor_t		cursor;
+		tmpl_cursor_ctx_t	cc;
 
-		slen = tmpl_afrom_attr_substr(request, NULL, &vpt, p, -1, &(vp_tmpl_rules_t){ .dict_def = request->dict });
+		slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
+					      &FR_SBUFF_IN(p, strlen(p)),
+					      &p_rules,
+					      &(tmpl_rules_t){ .dict_def = request->dict });
 		if (slen <= 0) {
 			RPEDEBUG("Failed parsing attribute name '%s'", p);
 			return false;
@@ -213,21 +232,21 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 		p += slen;
 
-		if (vpt->tmpl_num == NUM_COUNT) {
+		if (tmpl_num(vpt) == NUM_COUNT) {
 			REDEBUG("Attribute count is not supported");
 			return false;
 		}
 
-		if (vpt->tmpl_num == NUM_ALL) {
+		if (tmpl_num(vpt) == NUM_ALL) {
 			max = 65535;
 		} else {
 			max = 1;
 		}
 
 		x = 0;
-		for (i = 0, vp = tmpl_cursor_init(&err, &cursor, request, vpt);
+		for (i = 0, vp = tmpl_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
-		     i++, vp = fr_cursor_next(&cursor)) {
+		     i++, vp = fr_dcursor_next(&cursor)) {
 			int64_t		y;
 			fr_value_box_t	value;
 
@@ -235,6 +254,8 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 				if (fr_value_box_cast(vp, &value, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
 					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
 						 vpt->name);
+				error:
+					tmpl_cursor_clear(&cc);
 					return false;
 				}
 				if (value.vb_uint64 > INT64_MAX) {
@@ -242,7 +263,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 					talloc_free(vpt);
 					REDEBUG("Value of &%.*s (%pV) would overflow a signed 64bit integer "
 						"(our internal arithmetic type)", (int)vpt->len, vpt->name, &value);
-					return false;
+					goto error;
 				}
 				y = (int64_t)value.vb_uint64;
 
@@ -270,6 +291,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 			x += y;
 		} /* loop over all found VPs */
+		tmpl_cursor_clear(&cc);
 
 		if (err != 0) {
 			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt->len, vpt->name);
@@ -322,13 +344,13 @@ done:
 	return true;
 }
 
-static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t rhs, int64_t *answer)
+static bool calc_result(request_t *request, int64_t lhs, expr_token_t op, int64_t rhs, int64_t *answer)
 {
 	switch (op) {
 	default:
 	case TOKEN_SUBTRACT:
 		rhs = -rhs;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case TOKEN_ADD:
 		if ((rhs > 0) && (lhs > (int64_t) INT64_MAX - rhs)) {
@@ -408,7 +430,7 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 	return true;
 }
 
-static bool get_operator(REQUEST *request, char const **string, expr_token_t *op)
+static bool get_operator(request_t *request, char const **string, expr_token_t *op)
 {
 	int		i;
 	char const	*p = *string;
@@ -442,7 +464,7 @@ static bool get_operator(REQUEST *request, char const **string, expr_token_t *op
 }
 
 
-static bool get_expression(REQUEST *request, char const **string, int64_t *answer, expr_token_t prev)
+static bool get_expression(request_t *request, char const **string, int64_t *answer, expr_token_t prev)
 {
 	int64_t		lhs, rhs;
 	char const 	*p, *op_p;
@@ -502,12 +524,18 @@ redo:
 	goto redo;
 }
 
-/*
- *  Do xlat of strings!
+/** Xlat expressions
+ *
+ * Example (NAS-Port = 1):
+@verbatim
+"%{expr:2 + 3 + &NAS-Port}" == 6
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	int64_t		result;
 	char const 	*p;
@@ -546,7 +574,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

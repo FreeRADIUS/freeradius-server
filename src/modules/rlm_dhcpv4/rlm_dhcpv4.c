@@ -50,25 +50,38 @@ typedef struct {
 	int nothing;
 } rlm_dhcpv4_t;
 
+/** Decode DHCP option data
+ *
+ * Creates DHCP attributes based on the given binary option data
+ *
+ * Example:
+@verbatim
+%{dhcpv4_decode:%{Tmp-Octets-0}}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				        REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				        request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				        fr_value_box_t **in)
 {
-	fr_cursor_t	in_cursor, cursor;
+	fr_cursor_t	in_cursor;
 	fr_value_box_t	*vb, *vb_decoded;
-	VALUE_PAIR	*vp, *head = NULL;
+	fr_pair_t	*vp;
+	fr_pair_list_t	head;
 	int		decoded = 0;
 
-	fr_cursor_init(&cursor, &head);
+	fr_pair_list_init(&head);
 
 	for (vb = fr_cursor_talloc_init(&in_cursor, in, fr_value_box_t);
 	     vb;
 	     vb = fr_cursor_next(&in_cursor)) {
 		uint8_t const	*p, *end;
 		ssize_t		len;
-		VALUE_PAIR	*vps = NULL;
-		fr_cursor_t	options_cursor;
+		fr_pair_list_t	vps;
+		fr_dcursor_t	options_cursor;
 
+		fr_pair_list_init(&vps);
 		if (vb->type != FR_TYPE_OCTETS) {
 			RWDEBUG("Skipping value \"%pV\", expected value of type %s, got type %s",
 				vb,
@@ -77,7 +90,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			continue;
 		}
 
-		fr_cursor_init(&options_cursor, &vps);
+		fr_dcursor_init(&options_cursor, &vps);
 
 		p = vb->vb_octets;
 		end = vb->vb_octets + vb->vb_length;
@@ -86,27 +99,26 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(request->packet, &options_cursor, dict_dhcpv4,
+			len = fr_dhcpv4_decode_option(request->request_ctx, &options_cursor, dict_dhcpv4,
 						      p, end - p, NULL);
 			if (len <= 0) {
-				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
+				RPERROR("DHCP option decoding failed");
 				fr_pair_list_free(&head);
 				return XLAT_ACTION_FAIL;
 			}
 			p += len;
 		}
-		fr_cursor_head(&options_cursor);
-		fr_cursor_merge(&cursor, &options_cursor);
+		fr_tmp_pair_list_move(&head, &vps);
 	}
 
-	for (vp = fr_cursor_head(&cursor);
+	for (vp = fr_pair_list_head(&head);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&head, vp)) {
 		RDEBUG2("dhcp_option: &%pP", vp);
 		decoded++;
 	}
 
-	fr_pair_list_move(&(request->packet->vps), &head);
+	fr_pair_list_move(&request->request_pairs, &head);
 
 	/* Free any unmoved pairs */
 	fr_pair_list_free(&head);
@@ -119,14 +131,24 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/** Encode DHCP option data
+ *
+ * Returns octet string created from the provided DHCP attributes
+ *
+ * Example:
+@verbatim
+%{dhcpv4_encode:&request[*]}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_t **in)
 {
-	fr_cursor_t	*cursor;
+	fr_dcursor_t	*cursor;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
-	VALUE_PAIR	*vp;
 
 	uint8_t		binbuf[2048];
 	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
@@ -141,10 +163,10 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	if (xlat_fmt_to_cursor(NULL, &cursor, &tainted, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
 
-	if (!fr_cursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
+	if (!fr_dcursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
 
-	while ((vp = fr_cursor_current(cursor))) {
-		len = fr_dhcpv4_encode_option(p, end - p, cursor,
+	while (fr_dcursor_filter_current(cursor, fr_dhcpv4_is_encodable, NULL)) {
+		len = fr_dhcpv4_encode_option(&FR_DBUFF_TMP(p, end), cursor,
 					      &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
 		if (len < 0) {
 			RPEDEBUG("DHCP option encoding failed");
@@ -159,7 +181,7 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	Pass the options string back
 	 */
 	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
+	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
 	fr_cursor_append(out, encoded);
 
 	return XLAT_ACTION_DONE;
@@ -172,8 +194,8 @@ static int dhcp_load(void)
 		return -1;
 	}
 
-	xlat_async_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat);
-	xlat_async_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat);
+	xlat_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat, false);
+	xlat_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat, false);
 
 	return 0;
 }

@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 struct mypasswd {
 	struct mypasswd *next;
@@ -131,11 +131,11 @@ static void destroy_password (struct mypasswd * pass)
 
 static unsigned int hash(char const * username, unsigned int tablesize)
 {
-	int h=1;
-	while (*username) {
-		h = h * 7907 + *username++;
-	}
-	return h%tablesize;
+	uint64_t h = 1;
+
+	while (*username) h = fr_multiply_mod(h, (7907 + *username++), tablesize);
+
+	return (unsigned int)h;
 }
 
 static void release_hash_table(struct hashtable * ht){
@@ -300,7 +300,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
 	int h;
 	struct mypasswd * hashentry;
 
-	if (!ht || !name || *name == '\0') return NULL;
+	if (!ht || !name || (*name == '\0')) return NULL;
 	*last_found = NULL;
 	if (ht->tablesize > 0) {
 		h = hash (name, ht->tablesize);
@@ -397,8 +397,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	fr_dict_attr_t const	*da;
 	rlm_passwd_t		*inst = instance;
 
-	rad_assert(inst->filename && *inst->filename);
-	rad_assert(inst->format && *inst->format);
+	fr_assert(inst->filename && *inst->filename);
+	fr_assert(inst->format && *inst->format);
 
 	if (inst->hash_size == 0) {
 		cf_log_err(conf, "Invalid value '0' for hash_size");
@@ -479,8 +479,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (fr_dict_attr_by_qualified_name(&da, dict_freeradius,
-					   inst->pwd_fmt->field[key_field], true) != FR_DICT_ATTR_OK) {
+	da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius,
+					   inst->pwd_fmt->field[key_field], true);
+	if (!da) {
 		PERROR("Unable to resolve attribute");
 		release_ht(inst->ht);
 		inst->ht = NULL;
@@ -511,11 +512,11 @@ static int mod_detach (void *instance) {
 #undef inst
 }
 
-static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *request,
-		       VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
+static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *request,
+		       fr_pair_list_t *vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	for (i = 0; i < inst->num_fields; i++) {
 		if (inst->pwd_fmt->field[i] && *inst->pwd_fmt->field[i] && pw->field[i] &&
@@ -532,33 +533,40 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *reque
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_passwd_t const	*inst = instance;
+	rlm_passwd_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_passwd_t);
 
 	char			buffer[1024];
-	VALUE_PAIR		*key, *i;
+	fr_pair_t		*key, *i;
 	struct mypasswd		*pw, *last_found;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	int			found = 0;
 
-	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
-	if (!key) return RLM_MODULE_NOTFOUND;
+	key = fr_pair_find_by_da(&request->request_pairs, inst->keyattr);
+	if (!key) RETURN_MODULE_NOTFOUND;
 
-	for (i = fr_cursor_iter_by_da_init(&cursor, &key, inst->keyattr);
+	for (i = fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, inst->keyattr);
 	     i;
-	     i = fr_cursor_next(&cursor)) {
+	     i = fr_dcursor_next(&cursor)) {
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
-		fr_pair_value_snprint(buffer, sizeof(buffer), i, 0);
+#ifdef __clang_analyzer__
+		/*
+		 *	clang scan misses that fr_pair_print_value_quoted
+		 *	always terminates the buffer.
+		 */
+		buffer[0] = '\0';
+#endif
+		fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), i, T_BARE_WORD);
 		pw = get_pw_nam(buffer, inst->ht, &last_found);
 		if (!pw) continue;
 
 		do {
-			result_add(request, inst, request, &request->control, pw, 0, "config");
-			result_add(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
-			result_add(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
+			result_add(request->control_ctx, inst, request, &request->control_pairs, pw, 0, "config");
+			result_add(request->reply_ctx, inst, request, &request->reply_pairs, pw, 1, "reply_items");
+			result_add(request->request_ctx, inst, request, &request->request_pairs, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
 
 		found++;
@@ -566,9 +574,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *
 		if (!inst->allow_multiple) break;
 	}
 
-	if (!found) return RLM_MODULE_NOTFOUND;
+	if (!found) RETURN_MODULE_NOTFOUND;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 extern module_t rlm_passwd;
@@ -583,12 +591,6 @@ module_t rlm_passwd = {
 		[MOD_AUTHORIZE]		= mod_passwd_map,
 		[MOD_ACCOUNTING]	= mod_passwd_map,
 		[MOD_POST_AUTH]		= mod_passwd_map,
-		[MOD_PRE_PROXY]		= mod_passwd_map,
-		[MOD_POST_PROXY]  	= mod_passwd_map,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_passwd_map,
-		[MOD_SEND_COA]		= mod_passwd_map
-#endif
 	},
 };
 #endif /* TEST */

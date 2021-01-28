@@ -1,0 +1,36 @@
+#
+#  Correctly truncate encoded attributes / packets
+#
+proto radius
+proto-dictionary radius
+
+#
+#  Torture tests for various types
+#
+encode-pair truncate User-Name = "0123456789"
+match 01 0c 30 31 32 33 34 35 36 37 38 39
+returned
+match 12
+
+max-buffer-size 32
+match 32
+
+# Need 63 bytes, we have 32 so we should get back -31
+encode-pair User-Name = "0123456789a123456789b123456789c123456789d123456789e123456789f"
+match
+returned
+match -31
+
+# Need 63 bytes, we have 32 so we should get back -31
+encode-pair User-Password = "0123456789a123456789b123456789c123456789d123456789e123456789f"
+match
+returned
+match -31
+
+encode-pair User-Name = "bob", Filter-Id = "0123456789a123456789b123456789c123456789d123456789e123456789f"
+match
+returned
+match -36
+
+count
+match 20

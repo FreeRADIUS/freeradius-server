@@ -27,7 +27,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;
@@ -121,7 +121,7 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[FR_RADIUS_MAX_PACKET_CODE] = {
 		[FR_CODE_ACCESS_REQUEST]	= "auth",
@@ -131,99 +131,11 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 		[FR_CODE_STATUS_SERVER]		= "status",
 	};
 
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
-	CONF_SECTION		*process_app_cs;
-	proto_radius_t		*inst;
-	dl_module_inst_t		*parent_inst;
-	char const		*name = NULL;
-	fr_dict_enum_t const	*type_enum;
-	uint32_t		code;
+	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
 
-	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
-
-	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.
-	 */
-	type_enum = fr_dict_enum_by_name(attr_packet_type, type_str, -1);
-	if (!type_enum) {
-		size_t i;
-
-		for (i = 0; i < (NUM_ELEMENTS(type_lib_table)); i++) {
-			name = type_lib_table[i];
-			if (name && (strcmp(name, type_str) == 0)) {
-				type_enum = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(i));
-				break;
-			}
-		}
-
-		if (!type_enum) {
-			cf_log_err(ci, "Invalid type \"%s\"", type_str);
-			return -1;
-		}
-	}
-
-	cf_data_add(ci, type_enum, NULL, false);
-
-	code = type_enum->value->vb_uint32;
-	if (code >= FR_RADIUS_MAX_PACKET_CODE) {
-	invalid_type:
-		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
-		return -1;
-	}
-
-	if (!fr_request_packets[code]) {
-		cf_log_err(ci, "Cannot listen for 'type = %s'.  The packet MUST be a request.", type_str);
-		return -1;
-	}
-
-	/*
-	 *	Setting 'type = foo' means you MUST have at least a
-	 *	'recv foo' section.
-	 */
-	if (!cf_section_find(server, "recv", type_enum->name)) {
-		cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
-			   type_enum->name, cf_section_name2(server));
-		return -1;
-	}
-
-	name = type_lib_table[code];
-	if (!name) goto invalid_type;
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
-	rad_assert(parent_inst);
-
-	/*
-	 *	Set the allowed codes so that we can compile them as
-	 *	necessary.
-	 */
-	inst = talloc_get_type_abort(parent_inst->data, proto_radius_t);
-	inst->code_allowed[code] = true;
-
-	/*
-	 *	Hacks for CoA, which also means Disconnect.  And
-	 *	they're both processed by the same handler.
-	 */
-	if (code == FR_CODE_COA_REQUEST) {
-		inst->code_allowed[FR_CODE_DISCONNECT_REQUEST] = true;
-	}
-
-	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!process_app_cs) {
-		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
-	}
-
-	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
-	 */
-	return dl_module_instance(ctx, out, process_app_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
+	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_radius",
+					 type_lib_table, NUM_ELEMENTS(type_lib_table),
+					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
 }
 
 /** Wrapper around dl_instance
@@ -248,7 +160,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	transport_cs = cf_section_find(listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
@@ -273,14 +185,15 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 /** Decode the packet
  *
  */
-static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t		*address = track->address;
+	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
+	fr_dcursor_t		cursor;
 
-	rad_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -307,8 +220,10 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_radius_ok().
 	 */
-	if (fr_radius_packet_decode(request->packet, NULL, 0,
-				    inst->tunnel_password_zeros, client->secret) < 0) {
+	fr_dcursor_init(&cursor, &request->request_pairs);
+	if (fr_radius_decode(request->request_ctx, request->packet->data, request->packet->data_len,
+			     NULL, client->secret, talloc_array_length(client->secret) - 1,
+			     &cursor) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -318,17 +233,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 */
 	memcpy(&request->client, &client, sizeof(client)); /* const issues */
 
-	request->packet->if_index = address->if_index;
-	request->packet->src_ipaddr = address->src_ipaddr;
-	request->packet->src_port = address->src_port;
-	request->packet->dst_ipaddr = address->dst_ipaddr;
-	request->packet->dst_port = address->dst_port;
-
-	request->reply->if_index = address->if_index;
-	request->reply->src_ipaddr = address->dst_ipaddr;
-	request->reply->src_port = address->dst_port;
-	request->reply->dst_ipaddr = address->src_ipaddr;
-	request->reply->dst_port = address->src_port;
+	request->packet->socket = address->socket;
+	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
 	request->config = main_config;
 	REQUEST_VERIFY(request);
@@ -340,15 +246,14 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	 *	values.
 	 */
 	if (!client->active) {
-		fr_cursor_t cursor;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
-		rad_assert(client->dynamic);
+		fr_assert(client->dynamic);
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp != NULL;
-		     vp = fr_cursor_next(&cursor)) {
-			if (vp->da->flags.subtype != FLAG_ENCRYPT_NONE) {
+		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
+			if (!flag_encrypted(&vp->da->flags)) {
 				switch (vp->da->type) {
 				default:
 					break;
@@ -362,11 +267,11 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 					break;
 
 				case FR_TYPE_OCTETS:
-					fr_pair_value_memcpy(vp, (uint8_t const *) "", 1, true);
+					fr_pair_value_memdup(vp, (uint8_t const *) "", 1, true);
 					break;
 
 				case FR_TYPE_STRING:
-					fr_pair_value_strcpy(vp, "");
+					fr_pair_value_strdup(vp, "");
 					break;
 				}
 			}
@@ -377,14 +282,14 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		RDEBUG("Received %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
 		       fr_packet_codes[request->packet->code],
 		       request->packet->id,
-		       fr_box_ipaddr(request->packet->src_ipaddr),
-		       request->packet->src_port,
-		       fr_box_ipaddr(request->packet->dst_ipaddr),
-		       request->packet->dst_port,
+		       fr_box_ipaddr(request->packet->socket.inet.src_ipaddr),
+		       request->packet->socket.inet.src_port,
+		       fr_box_ipaddr(request->packet->socket.inet.dst_ipaddr),
+		       request->packet->socket.inet.dst_port,
 		       request->packet->data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 	}
 
 	if (!inst->io.app_io->decode) return 0;
@@ -395,33 +300,26 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t		*address = track->address;
+	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const  	*address = track->address;
 	ssize_t			data_len;
 	RADCLIENT const		*client;
 
 	/*
-	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 *	Process layer NAK, or "Do not respond".
 	 */
-	if (buffer_len == 1) {
-		*buffer = true;
-		return 1;
-	}
-
-	/*
-	 *	"Do not respond"
-	 */
-	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	if ((buffer_len == 1) ||
+	    (request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
 	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
-		*buffer = false;
+		track->do_not_respond = true;
 		return 1;
 	}
 
 	client = address->radclient;
-	rad_assert(client);
+	fr_assert(client);
 
 	/*
 	 *	Dynamic client stuff
@@ -429,7 +327,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	if (client->dynamic && !client->active) {
 		RADCLIENT *new_client;
 
-		rad_assert(buffer_len >= sizeof(client));
+		fr_assert(buffer_len >= sizeof(client));
 
 		/*
 		 *	We don't accept the new client, so don't do
@@ -470,7 +368,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		if (data_len > 0) return data_len;
 	}
 
-#ifdef WITH_UDPFROMTO
 	/*
 	 *	Overwrite the src ip address on the outbound packet
 	 *	with the one specified by the client.  This is useful
@@ -478,13 +375,12 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	routing issues.
 	 */
 	if (client->src_ipaddr.af != AF_UNSPEC) {
-		request->reply->src_ipaddr = client->src_ipaddr;
+		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
 	}
-#endif
 
 	data_len = fr_radius_encode(buffer, buffer_len, request->packet->data,
 				    client->secret, talloc_array_length(client->secret) - 1,
-				    request->reply->code, request->reply->id, request->reply->vps);
+				    request->reply->code, request->reply->id, &request->reply_pairs);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding RADIUS reply");
 		return -1;
@@ -500,27 +396,27 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
 		       fr_packet_codes[request->reply->code],
 		       request->reply->id,
-		       fr_box_ipaddr(request->reply->src_ipaddr),
-		       request->reply->src_port,
-		       fr_box_ipaddr(request->reply->dst_ipaddr),
-		       request->reply->dst_port,
+		       fr_box_ipaddr(request->reply->socket.inet.src_ipaddr),
+		       request->reply->socket.inet.src_port,
+		       fr_box_ipaddr(request->reply->socket.inet.dst_ipaddr),
+		       request->reply->socket.inet.dst_port,
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	return data_len;
 }
 
-static void mod_entry_point_set(void const *instance, REQUEST *request)
+static void mod_entry_point_set(void const *instance, request_t *request)
 {
 	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	dl_module_inst_t	*type_submodule;
 	fr_io_track_t		*track = request->async->packet_ctx;
 
-	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code <= FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(request->packet->code != 0);
+	fr_assert(request->packet->code <= FR_RADIUS_MAX_PACKET_CODE);
 
 	request->server_cs = inst->io.server_cs;
 
@@ -553,8 +449,8 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 {
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 
-	rad_assert(buffer[0] > 0);
-	rad_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(buffer[0] > 0);
+	fr_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
 	 *	Disallowed packet
@@ -614,15 +510,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
 
 	/*
-	 *	Instantiate the process modules
-	 */
-	if (fr_app_process_instantiate(inst->io.server_cs, inst->type_submodule, inst->type_submodule_by_code,
-				       NUM_ELEMENTS(inst->type_submodule_by_code),
-				       conf) < 0) {
-		return -1;
-	}
-
-	/*
 	 *	No IO module, it's an empty listener.
 	 */
 	if (!inst->io.submodule) return 0;
@@ -668,11 +555,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
-	 *	Bootstrap the app_process modules.
-	 */
-	if (fr_app_process_bootstrap(inst->io.server_cs, inst->type_submodule, conf) < 0) return -1;
-
-	/*
 	 *	No IO module, it's an empty listener.
 	 */
 	if (!inst->io.submodule) return 0;
@@ -687,13 +569,16 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, <=, fr_time_delta_from_sec(600));
 
 	FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->io.cleanup_delay, <=, fr_time_delta_from_sec(30));
+	FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->io.cleanup_delay, >, fr_time_delta_from_sec(0));
 
+#if 0
 	/*
 	 *	No Access-Request packets, then no cleanup delay.
 	 */
-	if (!inst->code_allowed[FR_CODE_ACCESS_REQUEST]) {
+	if (!inst->type_submodule_by_code[FR_CODE_ACCESS_REQUEST]) {
 		inst->io.cleanup_delay = 0;
 	}
+#endif
 
 	/*
 	 *	Tell the master handler about the main protocol instance.
@@ -705,7 +590,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
 	inst->io.dl_inst = dl_module_instance_by_data(inst);
-	rad_assert(inst != NULL);
+	fr_assert(inst != NULL);
 
 	/*
 	 *	Bootstrap the master IO handler.

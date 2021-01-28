@@ -1,0 +1,29 @@
+= The if Statement
+
+.Syntax
+[source,unlang]
+----
+if (condition) {
+    [ statements ]
+}
+----
+
+.Description
+The `if` statement evaluates a xref:condition/index.adoc[condition].  When the
+_condition_ evaluates to `true`, the statements within the subsection
+are executed.  When the _condition_ evaluates to `false`, those
+statements are skipped.
+
+An `if` statement can optionally be followed by an xref:unlang/else.adoc[else] or
+an xref:unlang/elsif.adoc[elsif] statement.
+
+.Example
+[source,unlang]
+----
+if (&User-Name == "bob") {
+    reject
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

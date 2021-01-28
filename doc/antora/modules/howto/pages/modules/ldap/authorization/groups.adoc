@@ -82,8 +82,8 @@ ldap {
 		# example - 'cn'
 		name_attribute = '<group_name_attribute>'  <3>
 
-		# example - "(member=%{control:Ldap-UserDn})"
-		membership_filter = "(<group_membership_dn_attribute>=%{control:Ldap-UserDn})"  <4>
+		# example - "(member=%{control.Ldap-UserDn})"
+		membership_filter = "(<group_membership_dn_attribute>=%{control.Ldap-UserDn})"  <4>
 	}
 }
 ----
@@ -107,8 +107,8 @@ ldap {
 		# example - 'cn'
 		name_attribute = '<group_name_attribute>'  <3>
 
-		# example - "(memberUid=%{control:Ldap-UserDn})"
-		membership_filter = "(<group_membership_uid_attribute>=%{control:Ldap-UserDn})"  <4>
+		# example - "(memberUid=%{control.Ldap-UserDn})"
+		membership_filter = "(<group_membership_uid_attribute>=%{control.Ldap-UserDn})"  <4>
 	}
 }
 ----

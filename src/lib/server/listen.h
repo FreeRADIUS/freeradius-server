@@ -66,12 +66,12 @@ typedef struct rad_protocol_s rad_protocol_t;
 typedef struct rad_listen rad_listen_t;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
-typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
+typedef int (*rad_listen_send_t)(rad_listen_t *, request_t *);
 typedef int (*rad_listen_error_t)(rad_listen_t *, int);
 typedef int (*rad_listen_print_t)(rad_listen_t const *, char *, size_t);
-typedef void (*rad_listen_debug_t)(REQUEST *, RADIUS_PACKET *, bool received);
-typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
+typedef void (*rad_listen_debug_t)(request_t *, fr_radius_packet_t *, fr_pair_list_t *, bool received);
+typedef int (*rad_listen_encode_t)(rad_listen_t *, request_t *);
+typedef int (*rad_listen_decode_t)(rad_listen_t *, request_t *);
 
 struct rad_listen {
 	rad_listen_t		*next; /* should be rbtree stuff */
@@ -103,10 +103,6 @@ struct rad_listen {
 
 	CONF_SECTION const	*cs;
 	void			*data;
-
-#ifdef WITH_STATS
-	fr_stats_t		stats;
-#endif
 };
 
 #ifdef HAVE_LIBPCAP
@@ -158,12 +154,12 @@ typedef struct {
 	struct listen_socket_t	*parent;
 	RADCLIENT		*client;
 
-	RADIUS_PACKET  	 	*packet; /* for reading partial packets */
+	fr_radius_packet_t  	 	*packet; /* for reading partial packets */
 
 #if 0
-	tls_session_t		*tls_session;
-	REQUEST			*request; /* horrible hacks */
-	VALUE_PAIR		*cert_vps;
+	fr_tls_session_t		*tls_session;
+	request_t			*request; /* horrible hacks */
+	fr_pair_list_t		cert_vps;
 	pthread_mutex_t		mutex;
 	uint8_t			*data;
 	size_t			partial;

@@ -3,13 +3,13 @@
 #
 
 update {
-	&control:Tmp-String-0 := '0'
-	&control:Tmp-String-0 += '1'
-	&control:Tmp-String-0 += '2'
-	&control:Tmp-String-0 += '3'
+	&control.Tmp-String-0 := '0'
+	&control.Tmp-String-0 += '1'
+	&control.Tmp-String-0 += '2'
+	&control.Tmp-String-0 += '3'
 }
 
-foreach &control:Tmp-String-0 {
+foreach &control.Tmp-String-0 {
 	update control {
 		&Tmp-String-0 -= "%{expr:%{Foreach-Variable-0} + 1}"
 	}
@@ -26,7 +26,7 @@ if ((&Tmp-String-0[0] != '0') || (&Tmp-String-0[1] != '1') || (&Tmp-String-0[2] 
 	test_fail
 }
 
-if (!&control:Tmp-String-0[0] || &control:Tmp-String-0[1] || &control:Tmp-String-0[2] || &control:Tmp-String-0[3]) {
+if (!&control.Tmp-String-0[0] || &control.Tmp-String-0[1] || &control.Tmp-String-0[2] || &control.Tmp-String-0[3]) {
 	test_fail
 }
 

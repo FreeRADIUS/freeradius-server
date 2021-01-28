@@ -31,7 +31,7 @@ redis_ippool {
 	#
 	#  pool_name:: Name of the pool from which leases are allocated.
 	#
-	pool_name = &control:Pool-Name
+	pool_name = &control.IP-Pool.Name
 
 	#
 	#  offer_time:: How long a lease is reserved for after making an offer.
@@ -66,19 +66,43 @@ redis_ippool {
 #	gateway = &NAS-Identifier
 
 	#
-	#  device:: The device identifier.
+	#  owner:: The unique owner identifier to which an IP is assigned.
 	#
-	#  This is usually the MAC address.  It could be a combination
-	#  of attributes, a `User-Name` or a certificate serial number
-	#  (if the number of sessions were limited to one per
-	#  user/serial).
+	#  This is used as the lookup key to determine the IP address that has
+	#  been allocated to a owner. It MUST therefore be something unique to
+	#  each "owner" to which an IP address may be assigned.
 	#
-	device = &DHCP-Client-Hardware-Address
+	#  For DHCP it is often simply the MAC address of the owner.
+	#
+	owner = &Client-Hardware-Address
+
+	#
+	#  RFC 2132 specifies that the DHCP client may supply a unique
+	#  identifier ("uid") using Option 61 (Client-Identifier) in which
+	#  case it must be used as the lookup key for configuration data.
+	#  Otherwise the client hardware address must be used. To comply with
+	#  this requirement use the following:
+	#
+#	owner = "%{%{Client-Identifier}:-%{Client-Hardware-Address}}"
+
+	#
+	#  For purposes such as IP assignment using a RADIUS Framed-IP-Address
+	#  attribute the "owner" identifier could be a `User-Name` or a
+	#  certificate serial number provided that the number of sessions is
+	#  limited to one per user/serial.
+	#
+	#  On a hostile network it SHOULD include a component that you trust,
+	#  arranged such that the overall key cannot be spoofed by manipulation
+	#  of the user-controlled data. For example you might determine that
+	#  Vendor-Specific.ADSL-Forum.Agent-Circuit-ID is trusted but that Calling-Station-Id is
+	#  formatted as a user-controlled MAC address:
+	#
+#	owner = "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID} %{Calling-Station-Id}"
 
 	#
 	#  requested_address:: The IP address being renewed or released.
 	#
-	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+	requested_address = "%{%{Requested-IP-Address}:-%{Client-IP-Address}}"
 
 	#
 	#  ipv4_integer:: Whether IPv4 addresses should be cast to integers, for renew operations.
@@ -89,19 +113,19 @@ redis_ippool {
 	#
 	#  allocated_address_attr:: List and attribute where the allocated address is written to.
 	#
-	allocated_address_attr = &reply:DHCP-Your-IP-Address
+	allocated_address_attr = &reply.Your-IP-Address
 
 	#
-	#  range_attr:: List and attribute where the `Pool-Range` ID (if set) is written to.
+	#  range_attr:: List and attribute where the `IP-Pool.Range` ID (if set) is written to.
 	#
-	#  The idea of the `Pool-Range` is that it provides a key into other datastores
+	#  The idea of the `IP-Pool.Range` is that it provides a key into other datastores
 	#  or caches, which store the additional options associated with the range an
 	#  IP address belongs to.
 	#
 	#  There may be multiple ranges of IP address contained within any given pool,
 	#  which is why this is provided in addition to the pool name.
 	#
-	range_attr = &reply:Pool-Range
+	range_attr = &reply.IP-Pool.Range
 
 	#
 	#  expiry_attr:: If set - the list and attribute to write the remaining lease time to.
@@ -109,14 +133,14 @@ redis_ippool {
 	#  This attribute can be populated on alloc, or renew, if an
 	#  IP address was available for the alloc.
 	#
-	expiry_attr = &reply:DHCP-IP-Address-Lease-Time
+	expiry_attr = &reply.IP-Address-Lease-Time
 
 	#
 	#  copy_on_update:: If true - Copy the value of ip_address to the attribute specified by
 	#  `allocated_address_attr` when performing an update/renew.
 	#
 	#  This behavior is needed for DHCP where we need to send back
-	#  `DHCP-Your-IP-Address` in ACKs.
+	#  `Your-IP-Address` in ACKs.
 	#
 	copy_on_update = yes
 

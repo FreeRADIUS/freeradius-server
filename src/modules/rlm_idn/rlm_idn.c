@@ -87,9 +87,17 @@ static const CONF_PARSER mod_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Convert domain name to ASCII punycode
+ *
+@verbatim
+%{idn:<domain>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_idna(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	rlm_idn_t const *inst = mod_inst;
 	char *idna = NULL;
@@ -144,7 +152,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	inst->xlat_name = xlat_name;
 
-	xlat_register(inst, inst->xlat_name, xlat_idna, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, inst->xlat_name, xlat_idna, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

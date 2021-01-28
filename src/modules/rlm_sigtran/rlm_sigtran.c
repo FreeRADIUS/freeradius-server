@@ -44,7 +44,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "sigtran.h"
 #include "attrs.h"
@@ -65,9 +65,9 @@ static uint32_t	sigtran_instances = 0;
 unsigned int __hack_opc, __hack_dpc;
 
 static fr_table_num_sorted_t const m3ua_traffic_mode_table[] = {
-	{ "broadcast", 3 },
-	{ "loadshare", 2 },
-	{ "override",  1 }
+	{ L("broadcast"), 3 },
+	{ L("loadshare"), 2 },
+	{ L("override"),  1 }
 };
 static size_t m3ua_traffic_mode_table_len = NUM_ELEMENTS(m3ua_traffic_mode_table);
 
@@ -156,7 +156,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-fr_dict_t *dict_eap_aka_sim;
+fr_dict_t const *dict_eap_aka_sim;
 
 /*
  *	UMTS vector
@@ -198,11 +198,12 @@ fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sigtran_t const	*inst = instance;
+	rlm_sigtran_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sigtran_t);
+	rlm_sigtran_thread_t const	*t = talloc_get_type_abort_const(mctx->thread, rlm_sigtran_thread_t);
 
-	return sigtran_client_map_send_auth_info(inst, request, inst->conn, *(int *)thread);
+	return sigtran_client_map_send_auth_info(p_result, inst, request, inst->conn, t->fd);
 }
 
 /** Convert our sccp address config structure into sockaddr_sccp
@@ -305,11 +306,14 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 	return 0;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance,
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 				  fr_event_list_t *el, void *thread)
 {
-	rlm_sigtran_t	*inst = instance;
-	int		fd;
+	rlm_sigtran_t		*inst = instance;
+	rlm_sigtran_thread_t	*t = thread;
+	int			fd;
+
+	t->inst = instance;
 
 	fd = sigtran_client_thread_register(el);
 	if (fd < 0) {
@@ -317,14 +321,16 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *in
 		return -1;
 	}
 
-	*((int *)thread) = fd;
+	t->fd = fd;
 
 	return 0;
 }
 
-static int mod_thread_detach(fr_event_list_t *el, UNUSED void *thread)
+static int mod_thread_detach(fr_event_list_t *el, void *thread)
 {
-	sigtran_client_thread_unregister(el, *(int *)thread);	/* Also closes our side */
+	rlm_sigtran_thread_t	*t = thread;
+
+	sigtran_client_thread_unregister(el, t->fd);	/* Also closes our side */
 
 	return 0;
 }
@@ -429,7 +435,7 @@ module_t rlm_sigtran = {
 	.name			= "sigtran",
 	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
 	.inst_size		= sizeof(rlm_sigtran_t),
-	.thread_inst_size	= sizeof(int),
+	.thread_inst_size	= sizeof(rlm_sigtran_thread_t),
 	.config			= module_config,
 	.instantiate		= mod_instantiate,
 	.detach			= mod_detach,

@@ -73,7 +73,7 @@ typedef struct {
 /** Thread local storage for pcre2
  *
  */
-fr_thread_local_setup(fr_pcre2_tls_t *, fr_pcre2_tls); /* macro */
+static _Thread_local fr_pcre2_tls_t *fr_pcre2_tls;
 
 /** Talloc wrapper for pcre2 memory allocation
  *
@@ -131,13 +131,13 @@ static int fr_pcre2_tls_init(void)
 
 	tls->gcontext = pcre2_general_context_create(_pcre2_talloc, _pcre2_talloc_free, NULL);
 	if (!tls->gcontext) {
-		fr_strerror_printf("Failed allocating general context");
+		fr_strerror_const("Failed allocating general context");
 		return -1;
 	}
 
 	tls->ccontext = pcre2_compile_context_create(tls->gcontext);
 	if (!tls->ccontext) {
-		fr_strerror_printf("Failed allocating compile context");
+		fr_strerror_const("Failed allocating compile context");
 	error:
 		fr_pcre2_tls = NULL;
 		_pcre2_tls_free(tls);
@@ -146,7 +146,7 @@ static int fr_pcre2_tls_init(void)
 
 	tls->mcontext = pcre2_match_context_create(tls->gcontext);
 	if (!tls->mcontext) {
-		fr_strerror_printf("Failed allocating match context");
+		fr_strerror_const("Failed allocating match context");
 		goto error;
 	}
 
@@ -155,7 +155,7 @@ static int fr_pcre2_tls_init(void)
 	if (tls->do_jit) {
 		tls->jit_stack = pcre2_jit_stack_create(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX, tls->gcontext);
 		if (!tls->jit_stack) {
-			fr_strerror_printf("Failed allocating JIT stack");
+			fr_strerror_const("Failed allocating JIT stack");
 			goto error;
 		}
 		pcre2_jit_stack_assign(tls->mcontext, NULL, tls->jit_stack);
@@ -220,10 +220,10 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (len == 0) {
-		fr_strerror_printf("Empty expression");
+		fr_strerror_const("Empty expression");
 		return 0;
 	}
 
@@ -309,7 +309,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return -1;
 
 	if (regmatch) {
 #ifdef PCRE2_COPY_MATCHED_SUBJECT
@@ -348,7 +348,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 			 */
 			subject = our_subject = talloc_bstrndup(regmatch, subject, len);
 			if (!subject) {
-				fr_strerror_printf("Out of memory");
+				fr_strerror_const("Out of memory");
 				return -1;
 			}
 #ifndef NDEBUG
@@ -365,7 +365,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	if (!regmatch) {
 		match_data = pcre2_match_data_create_from_pattern(preg->compiled, fr_pcre2_tls->gcontext);
 		if (!match_data) {
-			fr_strerror_printf("Failed allocating temporary match data");
+			fr_strerror_const("Failed allocating temporary match data");
 			return -1;
 		}
 	} else {
@@ -439,7 +439,7 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return -1;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return -1;
 
 	/*
 	 *	Internally pcre2_substitute just calls pcre2_match to
@@ -456,7 +456,7 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 		 */
 		subject = our_subject = talloc_bstrndup(regmatch, subject, subject_len);
 		if (!subject) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 #else
@@ -485,7 +485,7 @@ int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg,
 #ifndef PCRE2_COPY_MATCHED_SUBJECT
 		talloc_free(our_subject);
 #endif
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
@@ -527,7 +527,7 @@ again:
 			 *	an actual error.
 			 */
 			if (actual_len == buff_len) {
-				fr_strerror_printf("libpcre2 out of memory");
+				fr_strerror_const("libpcre2 out of memory");
 				return -1;
 			}
 
@@ -556,7 +556,7 @@ again:
 	if (actual_len < (buff_len - 1)) {
 		buff = talloc_bstr_realloc(ctx, buff, actual_len);
 		if (!buff) {
-			fr_strerror_printf("reallocing pcre2_substitute result buffer failed");
+			fr_strerror_const("reallocing pcre2_substitute result buffer failed");
 			return -1;
 		}
 	}
@@ -579,7 +579,7 @@ uint32_t regex_subcapture_count(regex_t const *preg)
 	uint32_t count;
 
 	if (pcre2_pattern_info(preg->compiled, PCRE2_INFO_CAPTURECOUNT, &count) != 0) {
-		fr_strerror_printf("Error determining subcapture group count");
+		fr_strerror_const("Error determining subcapture group count");
 		return 0;
 	}
 
@@ -611,12 +611,12 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 	/*
 	 *	Thread local initialisation
 	 */
-	if (!fr_pcre2_tls && (fr_pcre2_tls_init() < 0)) return NULL;
+	if (unlikely(!fr_pcre2_tls) && (fr_pcre2_tls_init() < 0)) return NULL;
 
 	regmatch = talloc(ctx, fr_regmatch_t);
 	if (!regmatch) {
 	oom:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
@@ -646,7 +646,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 #endif
 
 #ifdef HAVE_PCRE_JIT_EXEC
-fr_thread_local_setup(pcre_jit_stack *, fr_pcre_jit_stack); /* macro */
+static _Thread_local pcre_jit_stack *fr_pcre_jit_stack;
 #endif
 
 /** Free regex_t structure
@@ -740,7 +740,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	*out = NULL;
 
 	if (len == 0) {
-		fr_strerror_printf("Empty expression");
+		fr_strerror_const("Empty expression");
 		return 0;
 	}
 
@@ -749,7 +749,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	 */
 	if (flags) {
 		if (flags->global) {
-			fr_strerror_printf("g - Global matching/substitution not supported with libpcre");
+			fr_strerror_const("g - Global matching/substitution not supported with libpcre");
 			return 0;
 		}
 		if (flags->ignore_case) cflags |= PCRE_CASELESS;
@@ -805,43 +805,41 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 }
 
 static fr_table_num_ordered_t const regex_pcre_error_str[] = {
-	{ "PCRE_ERROR_NOMATCH",		PCRE_ERROR_NOMATCH },
-	{ "PCRE_ERROR_NULL",		PCRE_ERROR_NULL },
-	{ "PCRE_ERROR_BADOPTION",	PCRE_ERROR_BADOPTION },
-	{ "PCRE_ERROR_BADMAGIC",	PCRE_ERROR_BADMAGIC },
-	{ "PCRE_ERROR_UNKNOWN_OPCODE",	PCRE_ERROR_UNKNOWN_OPCODE },
-	{ "PCRE_ERROR_NOMEMORY",	PCRE_ERROR_NOMEMORY },
-	{ "PCRE_ERROR_NOSUBSTRING",	PCRE_ERROR_NOSUBSTRING },
-	{ "PCRE_ERROR_MATCHLIMIT",	PCRE_ERROR_MATCHLIMIT },
-	{ "PCRE_ERROR_CALLOUT",		PCRE_ERROR_CALLOUT },
-	{ "PCRE_ERROR_BADUTF8",		PCRE_ERROR_BADUTF8 },
-	{ "PCRE_ERROR_BADUTF8_OFFSET",	PCRE_ERROR_BADUTF8_OFFSET },
-	{ "PCRE_ERROR_PARTIAL",		PCRE_ERROR_PARTIAL },
-	{ "PCRE_ERROR_BADPARTIAL",	PCRE_ERROR_BADPARTIAL },
-	{ "PCRE_ERROR_INTERNAL",	PCRE_ERROR_INTERNAL },
-	{ "PCRE_ERROR_BADCOUNT",	PCRE_ERROR_BADCOUNT },
-	{ "PCRE_ERROR_DFA_UITEM",	PCRE_ERROR_DFA_UITEM },
-	{ "PCRE_ERROR_DFA_UCOND",	PCRE_ERROR_DFA_UCOND },
-	{ "PCRE_ERROR_DFA_UMLIMIT",	PCRE_ERROR_DFA_UMLIMIT },
-	{ "PCRE_ERROR_DFA_WSSIZE",	PCRE_ERROR_DFA_WSSIZE },
-	{ "PCRE_ERROR_DFA_RECURSE",	PCRE_ERROR_DFA_RECURSE },
-	{ "PCRE_ERROR_RECURSIONLIMIT",	PCRE_ERROR_RECURSIONLIMIT },
-	{ "PCRE_ERROR_NULLWSLIMIT",	PCRE_ERROR_NULLWSLIMIT },
-	{ "PCRE_ERROR_BADNEWLINE",	PCRE_ERROR_BADNEWLINE },
-	{ "PCRE_ERROR_BADOFFSET",	PCRE_ERROR_BADOFFSET },
-	{ "PCRE_ERROR_SHORTUTF8",	PCRE_ERROR_SHORTUTF8 },
-	{ "PCRE_ERROR_RECURSELOOP",	PCRE_ERROR_RECURSELOOP },
-	{ "PCRE_ERROR_JIT_STACKLIMIT",	PCRE_ERROR_JIT_STACKLIMIT },
-	{ "PCRE_ERROR_BADMODE",		PCRE_ERROR_BADMODE },
-	{ "PCRE_ERROR_BADENDIANNESS",	PCRE_ERROR_BADENDIANNESS },
-	{ "PCRE_ERROR_DFA_BADRESTART",	PCRE_ERROR_DFA_BADRESTART },
-	{ "PCRE_ERROR_JIT_BADOPTION",	PCRE_ERROR_JIT_BADOPTION },
-	{ "PCRE_ERROR_BADLENGTH",	PCRE_ERROR_BADLENGTH },
+	{ L("PCRE_ERROR_NOMATCH"),		PCRE_ERROR_NOMATCH },
+	{ L("PCRE_ERROR_NULL"),			PCRE_ERROR_NULL },
+	{ L("PCRE_ERROR_BADOPTION"),		PCRE_ERROR_BADOPTION },
+	{ L("PCRE_ERROR_BADMAGIC"),		PCRE_ERROR_BADMAGIC },
+	{ L("PCRE_ERROR_UNKNOWN_OPCODE"),	PCRE_ERROR_UNKNOWN_OPCODE },
+	{ L("PCRE_ERROR_NOMEMORY"),		PCRE_ERROR_NOMEMORY },
+	{ L("PCRE_ERROR_NOSUBSTRING"),		PCRE_ERROR_NOSUBSTRING },
+	{ L("PCRE_ERROR_MATCHLIMIT"),		PCRE_ERROR_MATCHLIMIT },
+	{ L("PCRE_ERROR_CALLOUT"),		PCRE_ERROR_CALLOUT },
+	{ L("PCRE_ERROR_BADUTF8"),		PCRE_ERROR_BADUTF8 },
+	{ L("PCRE_ERROR_BADUTF8_OFFSET"),	PCRE_ERROR_BADUTF8_OFFSET },
+	{ L("PCRE_ERROR_PARTIAL"),		PCRE_ERROR_PARTIAL },
+	{ L("PCRE_ERROR_BADPARTIAL"),		PCRE_ERROR_BADPARTIAL },
+	{ L("PCRE_ERROR_INTERNAL"),		PCRE_ERROR_INTERNAL },
+	{ L("PCRE_ERROR_BADCOUNT"),		PCRE_ERROR_BADCOUNT },
+	{ L("PCRE_ERROR_DFA_UITEM"),		PCRE_ERROR_DFA_UITEM },
+	{ L("PCRE_ERROR_DFA_UCOND"),		PCRE_ERROR_DFA_UCOND },
+	{ L("PCRE_ERROR_DFA_UMLIMIT"),		PCRE_ERROR_DFA_UMLIMIT },
+	{ L("PCRE_ERROR_DFA_WSSIZE"),		PCRE_ERROR_DFA_WSSIZE },
+	{ L("PCRE_ERROR_DFA_RECURSE"),		PCRE_ERROR_DFA_RECURSE },
+	{ L("PCRE_ERROR_RECURSIONLIMIT"),	PCRE_ERROR_RECURSIONLIMIT },
+	{ L("PCRE_ERROR_NULLWSLIMIT"),		PCRE_ERROR_NULLWSLIMIT },
+	{ L("PCRE_ERROR_BADNEWLINE"),		PCRE_ERROR_BADNEWLINE },
+	{ L("PCRE_ERROR_BADOFFSET"),		PCRE_ERROR_BADOFFSET },
+	{ L("PCRE_ERROR_SHORTUTF8"),		PCRE_ERROR_SHORTUTF8 },
+	{ L("PCRE_ERROR_RECURSELOOP"),		PCRE_ERROR_RECURSELOOP },
+	{ L("PCRE_ERROR_JIT_STACKLIMIT"),	PCRE_ERROR_JIT_STACKLIMIT },
+	{ L("PCRE_ERROR_BADMODE"),		PCRE_ERROR_BADMODE },
+	{ L("PCRE_ERROR_BADENDIANNESS"),	PCRE_ERROR_BADENDIANNESS },
+	{ L("PCRE_ERROR_DFA_BADRESTART"),	PCRE_ERROR_DFA_BADRESTART },
+	{ L("PCRE_ERROR_JIT_BADOPTION"),	PCRE_ERROR_JIT_BADOPTION },
+	{ L("PCRE_ERROR_BADLENGTH"),		PCRE_ERROR_BADLENGTH },
 #ifdef PCRE_ERROR_UNSET
-	{ "PCRE_ERROR_UNSET",		PCRE_ERROR_UNSET },
+	{ L("PCRE_ERROR_UNSET"),		PCRE_ERROR_UNSET },
 #endif
-
-	{ NULL, 0 }
 };
 static size_t regex_pcre_error_str_len = NUM_ELEMENTS(regex_pcre_error_str);
 
@@ -883,7 +881,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		fr_thread_local_set_destructor(fr_pcre_jit_stack, _pcre_jit_stack_free,
 					       pcre_jit_stack_alloc(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX));
 		if (!fr_pcre_jit_stack) {
-			fr_strerror_printf("Allocating JIT stack failed");
+			fr_strerror_const("Allocating JIT stack failed");
 			return -1;
 		}
 	}
@@ -932,7 +930,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		if (regmatch->subject) talloc_const_free(regmatch->subject);
 		regmatch->subject = talloc_bstrndup(regmatch, subject, len);
 		if (!regmatch->subject) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 	}
@@ -951,7 +949,7 @@ uint32_t regex_subcapture_count(regex_t const *preg)
 	int count;
 
 	if (pcre_fullinfo(preg->compiled, preg->extra, PCRE_INFO_CAPTURECOUNT, &count) != 0) {
-		fr_strerror_printf("Error determining subcapture group count");
+		fr_strerror_const("Error determining subcapture group count");
 		return 0;
 	}
 
@@ -1014,7 +1012,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	regex_t *preg;
 
 	if (len == 0) {
-		fr_strerror_printf("Empty expression");
+		fr_strerror_const("Empty expression");
 		return 0;
 	}
 
@@ -1023,19 +1021,19 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	 */
 	if (flags) {
 		if (flags->global) {
-			fr_strerror_printf("g - Global matching/substitution not supported with posix-regex");
+			fr_strerror_const("g - Global matching/substitution not supported with posix-regex");
 			return 0;
 		}
 		if (flags->dot_all) {
-			fr_strerror_printf("s - Single line matching is not supported with posix-regex");
+			fr_strerror_const("s - Single line matching is not supported with posix-regex");
 			return 0;
 		}
 		if (flags->unicode) {
-			fr_strerror_printf("u - Unicode matching not supported with posix-regex");
+			fr_strerror_const("u - Unicode matching not supported with posix-regex");
 			return 0;
 		}
 		if (flags->extended) {
-			fr_strerror_printf("x - Whitespace and comments not supported with posix-regex");
+			fr_strerror_const("x - Whitespace and comments not supported with posix-regex");
 			return 0;
 		}
 
@@ -1163,7 +1161,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		if (regmatch->subject) talloc_const_free(regmatch->subject);
 		regmatch->subject = talloc_bstrndup(regmatch, subject, len);
 		if (!regmatch->subject) {
-			fr_strerror_printf("Out of memory");
+			fr_strerror_const("Out of memory");
 			return -1;
 		}
 	}
@@ -1201,7 +1199,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 	regmatch = talloc_zero_pooled_object(ctx, fr_regmatch_t, 2, (sizeof(regmatch_t) * count) + 128);
 	if (unlikely(!regmatch)) {
 	error:
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		talloc_free(regmatch);
 		return NULL;
 	}
@@ -1231,26 +1229,29 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
  * @param[out] out		Flag structure to populate.  Must be initialised to zero
  *				if this is the first call to regex_flags_parse.
  * @param[in] in		Flag string to parse.
- * @param[in] len		Length of input string.
+ * @param[in] terminals		Terminal characters. If parsing ends before the buffer
+ *				is exhausted, and is pointing to one of these chars
+ *				it's not considered an error.
  * @param[in] err_on_dup	Error if the flag is already set.
  * @return
  *      - > 0 on success.  The number of flag bytes parsed.
  *	- <= 0 on failure.  Negative offset of first unrecognised flag.
  */
-ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, char const *in, size_t len, bool err_on_dup)
+ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
+			  fr_sbuff_term_t const *terminals, bool err_on_dup)
 {
-	char const *p = in, *end = p + len;
+	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
 
 	if (err) *err = 0;
 
-	while (p < end) {
-		switch (*p) {
+	while (fr_sbuff_extend(&our_in)) {
+		switch (*our_in.p) {
 #define DO_REGEX_FLAG(_f, _c) \
 		case _c: \
 			if (err_on_dup && out->_f) { \
-				fr_strerror_printf("Duplicate regex flag '%c'", *p); \
+				fr_strerror_printf("Duplicate regex flag '%c'", *our_in.p); \
 				if (err) *err = -2; \
-				return -(p - in); \
+				return -fr_sbuff_used(&our_in); \
 			} \
 			out->_f = 1; \
 			break
@@ -1264,38 +1265,31 @@ ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, char const *in, size_
 #undef DO_REGEX_FLAG
 
 		default:
-			fr_strerror_printf("Unsupported regex flag '%c'", *p);
+			if (fr_sbuff_is_terminal(&our_in, terminals)) return fr_sbuff_set(in, &our_in);
+
+			fr_strerror_printf("Unsupported regex flag '%c'", *our_in.p);
 			if (err) *err = -1;
-			return -(p - in);
+			return -(fr_sbuff_used_total(&our_in));
 		}
-		p++;
+		fr_sbuff_advance(&our_in, 1);
 	}
-	return len;
+	return fr_sbuff_set(in, &our_in);
 }
 
 /** Print the flags
  *
- * @param[out] out	where to write flags.
- * @param[in] outlen	Space in output buffer.
+ * @param[out] sbuff	where to write flags.
  * @param[in] flags	to print.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const *flags)
+ssize_t regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const flags[static REGEX_FLAG_BUFF_SIZE])
 {
-	char *p = out, *end = p + outlen;
+	fr_sbuff_t our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
 
 #define DO_REGEX_FLAG(_f, _c) \
-	do { \
-		if (flags->_f) { \
-			if ((end - p) <= 1) { \
-				*end = '\0'; \
-				return outlen + 1; \
-			} \
-			*p++ = _c; \
-		} \
-	} while(0)
+	if (flags->_f) FR_SBUFF_IN_CHAR_RETURN(&our_sbuff, _c)
 
 	DO_REGEX_FLAG(global, 'g');
 	DO_REGEX_FLAG(ignore_case, 'i');
@@ -1305,6 +1299,6 @@ size_t regex_flags_snprint(char *out, size_t outlen, fr_regex_flags_t const *fla
 	DO_REGEX_FLAG(extended, 'x');
 #undef DO_REGEX_FLAG
 
-	return p - out;
+	return fr_sbuff_set(sbuff, &our_sbuff);
 }
 #endif

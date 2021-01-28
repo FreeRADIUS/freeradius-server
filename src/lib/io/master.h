@@ -41,9 +41,14 @@ typedef struct fr_io_client_s fr_io_client_t;
 typedef struct {
 	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
+	fr_time_t			expires;	//!< when this packet expires
 	int				packets;     	//!< number of packets using this entry
 	uint8_t				*reply;		//!< reply packet (if any)
 	size_t				reply_len;	//!< length of reply, or 1 for "do not reply"
+
+	bool				discard;	//!< whether or not we discard the packet
+	bool				do_not_respond;	//!< don't respond
+	bool				finished;	//!< are we finished the request?
 
 	/*
 	 *	We can't set the "process" function here, because a
@@ -53,13 +58,9 @@ typedef struct {
 	 *	definition.
 	 */
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
-	fr_io_address_t   		*address;	//!< of this packet.. shared between multiple packets
+	fr_io_address_t const  		*address;	//!< of this packet.. shared between multiple packets
 	fr_io_client_t			*client;	//!< client handling this packet.
-
-	union {
-		uint8_t				packet[20];	//!< original request packet
-		fr_dlist_t		entry;
-	};
+	uint8_t				*packet;	//!< really a tracking structure, not a packet
 } fr_io_track_t;
 
 /** The master IO instance

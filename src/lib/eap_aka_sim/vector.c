@@ -37,18 +37,18 @@ RCSID("$Id$")
 #include "base.h"
 #include "attrs.h"
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
-static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
-			      VALUE_PAIR *list, uint8_t const ki[MILENAGE_KI_SIZE])
+static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
+			      fr_pair_list_t *list, uint8_t const ki[MILENAGE_KI_SIZE])
 {
-	VALUE_PAIR	*opc_vp;
-	VALUE_PAIR	*op_vp;
+	fr_pair_t	*opc_vp;
+	fr_pair_t	*op_vp;
 
-	opc_vp = fr_pair_find_by_da(list, attr_sim_opc, TAG_ANY);
+	opc_vp = fr_pair_find_by_da(list, attr_sim_opc);
 	if (opc_vp) {
 		if (opc_vp->vp_length != MILENAGE_OPC_SIZE) {
-			REDEBUG("&control:%s has incorrect length, expected %u bytes got %zu bytes",
+			REDEBUG("&control.%s has incorrect length, expected %u bytes got %zu bytes",
 				attr_sim_opc->name, MILENAGE_OPC_SIZE, opc_vp->vp_length);
 			return -1;
 		}
@@ -56,10 +56,10 @@ static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc
 		return 0;
 	}
 
-	op_vp = fr_pair_find_by_da(list, attr_sim_op, TAG_ANY);
+	op_vp = fr_pair_find_by_da(list, attr_sim_op);
 	if (op_vp) {
 		if (op_vp->vp_length != MILENAGE_OP_SIZE) {
-			REDEBUG("&control:%s has incorrect length, expected %u bytes got %zu bytes",
+			REDEBUG("&control.%s has incorrect length, expected %u bytes got %zu bytes",
 				attr_sim_op->name, MILENAGE_OP_SIZE, op_vp->vp_length);
 			return -1;
 		}
@@ -75,9 +75,9 @@ static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc
 	return 1;
 }
 
-static int vector_gsm_from_ki(REQUEST *request, VALUE_PAIR *vps, int idx, fr_aka_sim_keys_t *keys)
+static int vector_gsm_from_ki(request_t *request, fr_pair_list_t *vps, int idx, fr_aka_sim_keys_t *keys)
 {
-	VALUE_PAIR	*ki_vp, *version_vp;
+	fr_pair_t	*ki_vp, *version_vp;
 	uint8_t		opc_buff[MILENAGE_OPC_SIZE];
 	uint8_t	const	*opc_p;
 	uint32_t	version;
@@ -86,12 +86,12 @@ static int vector_gsm_from_ki(REQUEST *request, VALUE_PAIR *vps, int idx, fr_aka
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	ki_vp = fr_pair_find_by_da(vps, attr_sim_ki, TAG_ANY);
+	ki_vp = fr_pair_find_by_da(vps, attr_sim_ki);
 	if (!ki_vp) {
-		RDEBUG3("No &control:%sfound, not generating triplets locally", attr_sim_ki->name);
+		RDEBUG3("No &control.%sfound, not generating triplets locally", attr_sim_ki->name);
 		return 1;
 	} else if (ki_vp->vp_length != MILENAGE_KI_SIZE) {
-		REDEBUG("&control:%s has incorrect length, expected 16 bytes got %zu bytes",
+		REDEBUG("&control.%s has incorrect length, expected 16 bytes got %zu bytes",
 			attr_sim_ki->name, ki_vp->vp_length);
 		return -1;
 	}
@@ -100,7 +100,7 @@ static int vector_gsm_from_ki(REQUEST *request, VALUE_PAIR *vps, int idx, fr_aka
 	 *	Check to see if we have a Ki for the IMSI, this allows us to generate the rest
 	 *	of the triplets.
 	 */
-	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version, TAG_ANY);
+	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version);
 	if (!version_vp) {
 		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
 		version = opc_p ? FR_SIM_ALGO_VERSION_VALUE_COMP128_4 : FR_SIM_ALGO_VERSION_VALUE_COMP128_3;
@@ -113,7 +113,7 @@ static int vector_gsm_from_ki(REQUEST *request, VALUE_PAIR *vps, int idx, fr_aka
 		if (version == FR_SIM_ALGO_VERSION_VALUE_COMP128_4) {
 			if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
 			if (!opc_p) {
-				RPEDEBUG2("No &control:%s or &control:%s found, "
+				RPEDEBUG2("No &control.%s or &control.%s found, "
 					  "can't run Milenage (COMP128-4)", attr_sim_op->name, attr_sim_opc->name);
 				return -1;
 			}
@@ -173,51 +173,51 @@ static int vector_gsm_from_ki(REQUEST *request, VALUE_PAIR *vps, int idx, fr_aka
 	return 0;
 }
 
-static int vector_gsm_from_triplets(REQUEST *request, VALUE_PAIR *vps,
+static int vector_gsm_from_triplets(request_t *request, fr_pair_list_t *vps,
 				    int idx, fr_aka_sim_keys_t *keys)
 {
-	VALUE_PAIR	*rand = NULL, *sres = NULL, *kc = NULL;
-	fr_cursor_t	cursor;
+	fr_pair_t	*rand = NULL, *sres = NULL, *kc = NULL;
+	fr_dcursor_t	cursor;
 	int		i;
 
-	for (i = 0, (kc = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_kc));
-	     (i < idx) && (kc = fr_cursor_next(&cursor));
+	for (i = 0, (kc = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_kc));
+	     (i < idx) && (kc = fr_dcursor_next(&cursor));
 	     i++);
 	if (!kc) {
-		RDEBUG3("No &control:%s[%i] attribute found, not using GSM triplets",
+		RDEBUG3("No &control.%s[%i] attribute found, not using GSM triplets",
 			attr_eap_aka_sim_kc->name, idx);
 		return 1;
 	}
 	if (kc->vp_length != AKA_SIM_VECTOR_GSM_KC_SIZE) {
-		REDEBUG("&control:%s[%i] is not " STRINGIFY(AKA_SIM_VECTOR_GSM_KC_SIZE) " bytes, got %zu bytes",
+		REDEBUG("&control.%s[%i] is not " STRINGIFY(AKA_SIM_VECTOR_GSM_KC_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_kc->name, idx, kc->vp_length);
 		return -1;
 	}
 
-	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_rand));
-	     (i < idx) && (rand = fr_cursor_next(&cursor));
+	for (i = 0, (rand = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
+	     (i < idx) && (rand = fr_dcursor_next(&cursor));
 	     i++);
 	if (!rand) {
-		RDEBUG3("No &control:%s[%i] attribute found, not using GSM triplets",
+		RDEBUG3("No &control.%s[%i] attribute found, not using GSM triplets",
 			attr_eap_aka_sim_rand->name, idx);
 		return 1;
 	}
 	if (rand->vp_length != AKA_SIM_VECTOR_GSM_RAND_SIZE) {
-		REDEBUG("&control:EAP-SIM-Rand[%i] is not " STRINGIFY(SIM_RAND_SIZE) " bytes, got %zu bytes",
+		REDEBUG("&control.EAP-SIM-Rand[%i] is not " STRINGIFY(SIM_RAND_SIZE) " bytes, got %zu bytes",
 			idx, rand->vp_length);
 		return -1;
 	}
 
-	for (i = 0, (sres = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_sres));
-	     (i < idx) && (sres = fr_cursor_next(&cursor));
+	for (i = 0, (sres = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_sres));
+	     (i < idx) && (sres = fr_dcursor_next(&cursor));
 	     i++);
 	if (!sres) {
-		RDEBUG3("No &control:%s[%i] attribute found, not using GSM triplets",
+		RDEBUG3("No &control.%s[%i] attribute found, not using GSM triplets",
 			attr_eap_aka_sim_sres->name, idx);
 		return 1;
 	}
 	if (sres->vp_length != AKA_SIM_VECTOR_GSM_SRES_SIZE) {
-		REDEBUG("&control:%s[%i] is not " STRINGIFY(AKA_SIM_VECTOR_GSM_SRES_SIZE) " bytes, got %zu bytes",
+		REDEBUG("&control.%s[%i] is not " STRINGIFY(AKA_SIM_VECTOR_GSM_SRES_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_sres->name, idx, sres->vp_length);
 		return -1;
 	}
@@ -233,23 +233,23 @@ static int vector_gsm_from_triplets(REQUEST *request, VALUE_PAIR *vps,
 /** Derive triplets from quintuplets
  *
  */
-static int vector_gsm_from_quintuplets(REQUEST *request, VALUE_PAIR *vps,
+static int vector_gsm_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 				       int idx, fr_aka_sim_keys_t *keys)
 {
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 
-	VALUE_PAIR	*ck = NULL, *ik = NULL, *rand = NULL, *xres = NULL;
+	fr_pair_t	*ck = NULL, *ik = NULL, *rand = NULL, *xres = NULL;
 
 	int		i;
 
 	/*
 	 *	Fetch CK
 	 */
-	for (i = 0, (ck = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_ck));
-	     (i < idx) && (ck = fr_cursor_next(&cursor));
+	for (i = 0, (ck = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_ck));
+	     (i < idx) && (ck = fr_dcursor_next(&cursor));
 	     i++);
 	if (!ck) {
-		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
+		RDEBUG3("No &control.%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_sim_ck->name, idx);
 		return 1;
 	}
@@ -257,11 +257,11 @@ static int vector_gsm_from_quintuplets(REQUEST *request, VALUE_PAIR *vps,
 	/*
 	 *	Fetch IK
 	 */
-	for (i = 0, (ik = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_ik));
-	     (i < idx) && (ik = fr_cursor_next(&cursor));
+	for (i = 0, (ik = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_ik));
+	     (i < idx) && (ik = fr_dcursor_next(&cursor));
 	     i++);
 	if (!ik) {
-		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
+		RDEBUG3("No &control.%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_sim_ik->name, idx);
 		return 1;
 	}
@@ -269,17 +269,17 @@ static int vector_gsm_from_quintuplets(REQUEST *request, VALUE_PAIR *vps,
 	/*
 	 *	Fetch RAND
 	 */
-	for (i = 0, (rand = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_rand));
-	     (i < idx) && (rand = fr_cursor_next(&cursor));
+	for (i = 0, (rand = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
+	     (i < idx) && (rand = fr_dcursor_next(&cursor));
 	     i++);
 	if (!rand) {
-		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
+		RDEBUG3("No &control.%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_sim_rand->name, idx);
 		return 1;
 	}
 
 	if (rand->vp_length != AKA_SIM_VECTOR_UMTS_RAND_SIZE) {
-		REDEBUG("&control:%s[%i] incorrect length.  Expected "
+		REDEBUG("&control.%s[%i] incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_VECTOR_UMTS_RAND_SIZE) " bytes, "
 			"got %zu bytes", attr_eap_aka_sim_rand->name, idx, rand->vp_length);
 		return -1;
@@ -288,11 +288,11 @@ static int vector_gsm_from_quintuplets(REQUEST *request, VALUE_PAIR *vps,
 	/*
 	 *	Fetch XRES
 	 */
-	for (i = 0, (xres = fr_cursor_iter_by_da_init(&cursor, &vps, attr_eap_aka_sim_xres));
-	     (i < idx) && (xres = fr_cursor_next(&cursor));
+	for (i = 0, (xres = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_xres));
+	     (i < idx) && (xres = fr_dcursor_next(&cursor));
 	     i++);
 	if (!xres) {
-		RDEBUG3("No &control:%s[%i] attribute found, not using quintuplet derivation",
+		RDEBUG3("No &control.%s[%i] attribute found, not using quintuplet derivation",
 			attr_eap_aka_sim_xres->name, idx);
 		return 1;
 	}
@@ -326,13 +326,13 @@ static int vector_gsm_from_quintuplets(REQUEST *request, VALUE_PAIR *vps,
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
-int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, VALUE_PAIR *vps,
+int fr_aka_sim_vector_gsm_from_attrs(request_t *request, fr_pair_list_t *vps,
 				     int idx, fr_aka_sim_keys_t *keys, fr_aka_sim_vector_src_t *src)
 {
 	int		ret;
 
-	rad_assert(idx >= 0 && idx < 3);
-	rad_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_GSM));
+	fr_assert(idx >= 0 && idx < 3);
+	fr_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_GSM));
 
 	switch (*src) {
 	default:
@@ -344,7 +344,7 @@ int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 		}
 		if (ret < 0) return -1;
 		if (*src != AKA_SIM_VECTOR_SRC_AUTO) return 1;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_TRIPLETS:
 		ret = vector_gsm_from_triplets(request, vps, idx, keys);
@@ -354,7 +354,7 @@ int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 		}
 		if (ret < 0) return -1;
 		if (*src != AKA_SIM_VECTOR_SRC_AUTO) return 1;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_QUINTUPLETS:
 		ret = vector_gsm_from_quintuplets(request, vps, idx, keys);
@@ -392,9 +392,9 @@ int fr_aka_sim_vector_gsm_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 	return 0;
 }
 
-static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_keys_t *keys)
+static int vector_umts_from_ki(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
-	VALUE_PAIR	*ki_vp, *amf_vp, *sqn_vp, *version_vp;
+	fr_pair_t	*ki_vp, *amf_vp, *sqn_vp, *version_vp;
 
 	size_t		ki_size, amf_size;
 	uint32_t	version = FR_SIM_ALGO_VERSION_VALUE_MILENAGE;
@@ -403,7 +403,7 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_key
 	/*
 	 *	Select the algorithm (default to Milenage)
 	 */
-	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version, TAG_ANY);
+	version_vp = fr_pair_find_by_da(vps, attr_sim_algo_version);
 	if (version_vp) version = version_vp->vp_uint32;
 
 	/*
@@ -438,12 +438,12 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_key
 	/*
 	 *	Find the Ki VP and check its length
 	 */
-	ki_vp = fr_pair_find_by_da(vps, attr_sim_ki, TAG_ANY);
+	ki_vp = fr_pair_find_by_da(vps, attr_sim_ki);
 	if (!ki_vp) {
-		RDEBUG3("No &control:%s found, not generating quintuplets locally", attr_sim_ki->name);
+		RDEBUG3("No &control.%s found, not generating quintuplets locally", attr_sim_ki->name);
 		return 1;
 	} else if (ki_vp->vp_length != ki_size) {
-		REDEBUG("&control:%s has incorrect length, expected %zu bytes got %zu bytes",
+		REDEBUG("&control.%s has incorrect length, expected %zu bytes got %zu bytes",
 			attr_sim_ki->name, ki_size, ki_vp->vp_length);
 		return -1;
 	}
@@ -451,16 +451,16 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_key
 	/*
 	 *	Find the Sequence Number VP or default to SQN = 2
 	 */
-	sqn_vp = fr_pair_find_by_da(vps, attr_sim_sqn, TAG_ANY);
+	sqn_vp = fr_pair_find_by_da(vps, attr_sim_sqn);
 	keys->sqn = sqn_vp ? sqn_vp->vp_uint64 : 2;	/* 2 is the lowest valid SQN on our side */
 
 	/*
 	 *	Check if we have an AMF value
 	 */
-	amf_vp = fr_pair_find_by_da(vps, attr_sim_amf, TAG_ANY);
+	amf_vp = fr_pair_find_by_da(vps, attr_sim_amf);
 	if (amf_vp) {
 		if (amf_vp->vp_length != amf_size) {
-			REDEBUG("&control:%s has incorrect length, expected %zu bytes got %zu bytes",
+			REDEBUG("&control.%s has incorrect length, expected %zu bytes got %zu bytes",
 				attr_sim_amf->name, amf_size, amf_vp->vp_length);
 			return -1;
 		}
@@ -581,7 +581,7 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_key
 		return 0;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 }
@@ -589,22 +589,22 @@ static int vector_umts_from_ki(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_key
 /** Get one set of quintuplets from the request
  *
  */
-static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_keys_t *keys)
+static int vector_umts_from_quintuplets(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
-	VALUE_PAIR	*rand_vp = NULL, *xres_vp = NULL, *ck_vp = NULL, *ik_vp = NULL;
-	VALUE_PAIR	*autn_vp = NULL, *sqn_vp = NULL, *ak_vp = NULL;
+	fr_pair_t	*rand_vp = NULL, *xres_vp = NULL, *ck_vp = NULL, *ik_vp = NULL;
+	fr_pair_t	*autn_vp = NULL, *sqn_vp = NULL, *ak_vp = NULL;
 
 	/*
 	 *	Fetch AUTN
 	 */
-	autn_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_autn, TAG_ANY);
+	autn_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_autn);
 	if (!autn_vp) {
-		RDEBUG3("No &control:%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_autn->name);
+		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_autn->name);
 		return 1;
 	}
 
 	if (autn_vp->vp_length > AKA_SIM_VECTOR_UMTS_AUTN_SIZE) {
-		REDEBUG("&control:%s incorrect length.  Expected "
+		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_VECTOR_UMTS_AUTN_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_autn->name, autn_vp->vp_length);
 		return -1;
@@ -613,14 +613,14 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_ak
 	/*
 	 *	Fetch CK
 	 */
-	ck_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ck, TAG_ANY);
+	ck_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ck);
 	if (!ck_vp) {
-		RDEBUG3("No &control:%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_ck->name);
+		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_ck->name);
 		return 1;
 	}
 
 	if (ck_vp->vp_length > AKA_SIM_VECTOR_UMTS_CK_SIZE) {
-		REDEBUG("&control:%s incorrect length.  Expected "
+		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(EAP_AKA_XRES_MAX_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_ck->name, ck_vp->vp_length);
 		return -1;
@@ -629,14 +629,14 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_ak
 	/*
 	 *	Fetch IK
 	 */
-	ik_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ik, TAG_ANY);
+	ik_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ik);
 	if (!ik_vp) {
-		RDEBUG3("No &control:%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_ik->name);
+		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_ik->name);
 		return 1;
 	}
 
 	if (ik_vp->vp_length > AKA_SIM_VECTOR_UMTS_IK_SIZE) {
-		REDEBUG("&control:%s incorrect length.  Expected "
+		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_VECTOR_UMTS_IK_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_ik->name, ik_vp->vp_length);
 		return -1;
@@ -645,14 +645,14 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_ak
 	/*
 	 *	Fetch RAND
 	 */
-	rand_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_rand, TAG_ANY);
+	rand_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_rand);
 	if (!rand_vp) {
-		RDEBUG3("No &control:%s attribute found, not using quintuplet derivation", attr_eap_aka_sim_rand->name);
+		RDEBUG3("No &control.%s attribute found, not using quintuplet derivation", attr_eap_aka_sim_rand->name);
 		return 1;
 	}
 
 	if (rand_vp->vp_length != AKA_SIM_VECTOR_UMTS_RAND_SIZE) {
-		REDEBUG("&control:%s incorrect length.  Expected " STRINGIFY(AKA_SIM_VECTOR_UMTS_RAND_SIZE) " bytes, "
+		REDEBUG("&control.%s incorrect length.  Expected " STRINGIFY(AKA_SIM_VECTOR_UMTS_RAND_SIZE) " bytes, "
 			"got %zu bytes", attr_eap_aka_sim_rand->name, rand_vp->vp_length);
 		return -1;
 	}
@@ -660,14 +660,14 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_ak
 	/*
 	 *	Fetch XRES
 	 */
-	xres_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_xres, TAG_ANY);
+	xres_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_xres);
 	if (!xres_vp) {
-		RDEBUG3("No &control:%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_xres->name);
+		RDEBUG3("No &control.%s attribute found, not using UMTS quintuplets", attr_eap_aka_sim_xres->name);
 		return 1;
 	}
 
 	if (xres_vp->vp_length > AKA_SIM_VECTOR_UMTS_XRES_MAX_SIZE) {
-		REDEBUG("&control:%s incorrect length.  Expected < "
+		REDEBUG("&control.%s incorrect length.  Expected < "
 			STRINGIFY(EAP_AKA_XRES_MAX_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_xres->name, xres_vp->vp_length);
 		return -1;
@@ -676,9 +676,9 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_ak
 	/*
 	 *	Fetch (optional) AK
 	 */
-	ak_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ak, TAG_ANY);
+	ak_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_ak);
 	if (ak_vp && (ak_vp->vp_length != MILENAGE_AK_SIZE)) {
-		REDEBUG("&control:%s incorrect length.  Expected "
+		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(MILENAGE_AK_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_ak->name, ak_vp->vp_length);
 		return -1;
@@ -687,9 +687,9 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_ak
 	/*
 	 *	Fetch (optional) SQN
 	 */
-	sqn_vp = fr_pair_find_by_da(vps, attr_sim_sqn, TAG_ANY);
+	sqn_vp = fr_pair_find_by_da(vps, attr_sim_sqn);
 	if (sqn_vp && (sqn_vp->vp_length != MILENAGE_SQN_SIZE)) {
-		REDEBUG("&control:%s incorrect length.  Expected "
+		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(MILENAGE_AK_SIZE) " bytes, got %zu bytes",
 			attr_sim_sqn->name, sqn_vp->vp_length);
 		return -1;
@@ -751,12 +751,12 @@ static int vector_umts_from_quintuplets(REQUEST *request, VALUE_PAIR *vps, fr_ak
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
-int fr_aka_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
+int fr_aka_sim_vector_umts_from_attrs(request_t *request, fr_pair_list_t *vps,
 				      fr_aka_sim_keys_t *keys, fr_aka_sim_vector_src_t *src)
 {
 	int		ret;
 
-	rad_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_UMTS));
+	fr_assert((keys->vector_type == AKA_SIM_VECTOR_NONE) || (keys->vector_type == AKA_SIM_VECTOR_UMTS));
 
 	switch (*src) {
 	default:
@@ -768,7 +768,7 @@ int fr_aka_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
 		}
 		if (ret < 0) return -1;
 		if (*src != AKA_SIM_VECTOR_SRC_AUTO) return 1;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case AKA_SIM_VECTOR_SRC_QUINTUPLETS:
 		ret = vector_umts_from_quintuplets(request, vps, keys);
@@ -820,33 +820,33 @@ int fr_aka_sim_vector_umts_from_attrs(REQUEST *request, VALUE_PAIR *vps,
  *	- 0 on success.
  *	- -1 on validation failure.
  */
-int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_keys_t *keys)
+int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
-	VALUE_PAIR *counter_vp;
-	VALUE_PAIR *mk_vp;
+	fr_pair_t *counter_vp;
+	fr_pair_t *mk_vp;
 
 	/*
 	 *	This is the *old* counter value increment
 	 *	by 1 to get the *new* counter value
 	 */
-	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_counter, TAG_ANY);
+	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_counter);
 	if (!counter_vp) {
-		RDEBUG2("No &session-state:%s attribute found, can't calculate re-auth keys",
+		RDEBUG2("No &session-state.%s attribute found, can't calculate re-auth keys",
 			attr_eap_aka_sim_counter->name);
 		return 1;
 	}
 	counter_vp->vp_uint16++;
 
-	mk_vp = fr_pair_find_by_da(vps, attr_session_data, TAG_ANY);
-	if (!mk_vp) mk_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_mk, TAG_ANY);
+	mk_vp = fr_pair_find_by_da(vps, attr_session_data);
+	if (!mk_vp) mk_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_mk);
 	if (!mk_vp) {
-		RDEBUG2("Neither &session-state:%s or &session-state:%s attributes found, "
+		RDEBUG2("Neither &session-state.%s or &session-state.%s attributes found, "
 			"can't calculate re-auth keys", attr_session_data->name, attr_eap_aka_sim_mk->name);
 		return 1;
 	}
 
 	if (mk_vp->vp_length != AKA_SIM_MK_SIZE) {
-		REDEBUG("&session-state:%s incorrect length.  Expected "
+		REDEBUG("&session-state.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_MK_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_mk->name, mk_vp->vp_length);
 		return -1;
@@ -870,33 +870,33 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(REQUEST *request, VALUE_P
  *	- 0 on success.
  *	- -1 on validation failure.
  */
-int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(REQUEST *request, VALUE_PAIR *vps, fr_aka_sim_keys_t *keys)
+int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
-	VALUE_PAIR *counter_vp;
-	VALUE_PAIR *k_re_vp;
+	fr_pair_t *counter_vp;
+	fr_pair_t *k_re_vp;
 
 	/*
 	 *	This is the *old* counter value increment
 	 *	by 1 to get the *new* counter value
 	 */
-	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_counter, TAG_ANY);
+	counter_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_counter);
 	if (!counter_vp) {
-		RDEBUG2("No &session-state:%s attribute found, can't calculate re-auth keys",
+		RDEBUG2("No &session-state.%s attribute found, can't calculate re-auth keys",
 			attr_eap_aka_sim_counter->name);
 		return 1;
 	}
 	counter_vp->vp_uint16++;
 
-	k_re_vp = fr_pair_find_by_da(vps, attr_session_data, TAG_ANY);
-	if (!k_re_vp) k_re_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_k_re, TAG_ANY);
+	k_re_vp = fr_pair_find_by_da(vps, attr_session_data);
+	if (!k_re_vp) k_re_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_k_re);
 	if (!k_re_vp) {
-		RDEBUG2("Neither &session-state:%s or &session-sate:%s attributes found, "
+		RDEBUG2("Neither &session-state.%s or &session-sate:%s attributes found, "
 			"can't calculate re-auth keys", attr_session_data->name, attr_eap_aka_sim_k_re->name);
 		return 1;
 	}
 
 	if (k_re_vp->vp_length != AKA_SIM_K_RE_SIZE) {
-		REDEBUG("&session-state:%s incorrect length.  Expected "
+		REDEBUG("&session-state.%s incorrect length.  Expected "
 			STRINGIFY(AKA_SIM_K_RE_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_mk->name, k_re_vp->vp_length);
 		return -1;
@@ -933,7 +933,7 @@ void fr_aka_sim_vector_umts_reauth_clear(fr_aka_sim_keys_t *keys)
  *	- -1 on validation failure.
  */
 int fr_aka_sim_umts_resync_from_attrs(uint64_t *new_sqn,
-				      REQUEST *request, VALUE_PAIR *auts_vp, fr_aka_sim_keys_t *keys)
+				      request_t *request, fr_pair_t *auts_vp, fr_aka_sim_keys_t *keys)
 {
 	if (keys->vector_src != AKA_SIM_VECTOR_SRC_KI) {
 		RDEBUG2("Original vectors were not generated locally, cannot perform AUTS validation");
@@ -941,7 +941,7 @@ int fr_aka_sim_umts_resync_from_attrs(uint64_t *new_sqn,
 	}
 
 	if (auts_vp->vp_length != MILENAGE_AUTS_SIZE) {
-		REDEBUG("&control:%s incorrect length.  Expected "
+		REDEBUG("&control.%s incorrect length.  Expected "
 			STRINGIFY(MILENAGE_AUTS_SIZE) " bytes, got %zu bytes",
 			attr_eap_aka_sim_auts->name, auts_vp->vp_length);
 		return -1;

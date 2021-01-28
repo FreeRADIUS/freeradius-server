@@ -53,6 +53,8 @@ ssize_t		fr_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mo
 
 int 		fr_unlink(char const *filename);
 
+char const	*fr_cwd_strip(char const *filename);
+
 #ifdef __cplusplus
 }
 #endif

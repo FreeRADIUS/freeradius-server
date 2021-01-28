@@ -4,11 +4,16 @@
 
 PORT := 12340
 SECRET := testing123
+DICT_PATH := $(top_srcdir)/share/dictionary
 
 #
-#  To work around OpenSSL issues with travis.
+#	We need the 'git-lfs' installed to fetch some binary files.
 #
-.PHONY:
+GIT_HAS_LFS = $(shell git lfs 1> /dev/null 2>&1 && echo yes || echo no)
+
+#
+#  To work around OpenSSL issues encountered with old OpenSSL within CI.
+#
 raddb/test.conf:
 	${Q}echo 'security {' >> $@
 	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
@@ -20,24 +25,26 @@ raddb/test.conf:
 #
 # Only redirect STDOUT, which should contain details of why the test failed.
 # Don't molest STDERR as this may be used to receive output from a debugger.
-radiusd-c $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
+$(BUILD_DIR)/tests/radiusd-c:
 	@printf "radiusd -C... "
-	${Q}if ! ${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
-		rm -f raddb/test.conf; \
+	${Q}if ! ${TEST_BIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
-		echo "${TESTBIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
+		echo "${TEST_BIN}/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test"; \
 		exit 1; \
 	fi
 	${Q}rm -f raddb/test.conf
 	@echo "ok"
 	${Q}touch $@
 
+.PHONY: test.radiusd-c
+test.radiusd-c: raddb/test.conf $(BUILD_DIR)/tests/radiusd-c ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | $(BUILD_DIR)/tests build.raddb
+
 #
 #  The tests are manually ordered for now, as it's a PITA to fix all
 #  of the dependencies.
 #
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
+test: \
 		test.bin	\
 		test.trie	\
 		test.dict	\
@@ -46,19 +53,23 @@ test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient \
 		test.xlat	\
 		test.map	\
 		test.modules	\
-		$(BUILD_DIR)/tests/radiusd-c \
+		test.radiusd-c	\
+		test.radclient	\
+		test.radsniff	\
 		test.auth	\
 		test.digest	\
 		test.radmin	\
 		test.eap	\
+		test.tacacs	\
+		test.vmps	\
 		| build.raddb
 
 clean: clean.test
 .PHONY: clean.test
 
-#  Tests specifically for Travis. We do a LOT more than just
+#  Tests specifically for CI. We do a LOT more than just
 #  the above tests
-travis-test: raddb/test.conf test
+ci-test: raddb/test.conf test
 	${Q}FR_LIBRARY_PATH=${BUILD_DIR}/lib/local/.libs/ ${BUILD_DIR}/make/jlibtool --mode=execute ${BUILD_DIR}/bin/local/radiusd -xxxv -n test
 	${Q}rm -f raddb/test.conf
 	${Q}$(MAKE) install
@@ -79,13 +90,6 @@ endif
 $(BUILD_DIR)/tests:
 	${Q}mkdir -p $@
 
-#
-#  Include all of the autoconf definitions into the Make variable space
-#
-$(BUILD_DIR)/tests/autoconf.h.mk: src/include/autoconf.h | $(BUILD_DIR)/tests
-	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
--include $(BUILD_DIR)/tests/autoconf.h.mk
-
 ######################################################################
 #
 #  Generic rules to set up the tests
@@ -98,7 +102,7 @@ define TEST_BOOTSTRAP
 #
 #  The test files are files without extensions.
 #
-OUTPUT.$(TEST) := $(patsubst %/,%,$(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
+OUTPUT.$(TEST) := $(patsubst %/,%,$(subst $(top_srcdir)/src,$(BUILD_DIR),$(abspath $(DIR))))
 OUTPUT := $$(OUTPUT.$(TEST))
 
 #
@@ -110,13 +114,21 @@ $$(OUTPUT.$(TEST)):
 #
 #  All of the output files depend on the input files
 #
-FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(FILES))
+FILES.$(TEST) := $(addprefix $$(OUTPUT.$(TEST))/,$(sort $(FILES)))
 
 #
 #  The output files also depend on the directory
 #  and on the previous test.
 #
 $$(FILES.$(TEST)): | $$(OUTPUT.$(TEST))
+
+#
+#  Make sure that the output files depend on the input.
+#  This way if the input file doesn't exist, we get a
+#  build error.  Without this rule, the test target
+#  would just get re-built every time, no matter what.
+#
+$(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(DIR)/$x))
 
 #
 #  We have a real file that's created if all of the tests pass.
@@ -136,6 +148,7 @@ $(TEST): $(BUILD_DIR)/tests/$(TEST)
 .PHONY: clean.$(TEST)
 clean.$(TEST):
 	$${Q}rm -rf $$(OUTPUT.$(TEST))
+	$${Q}rm -f $$(BUILD_DIR)/tests/$(TEST)
 
 clean.test: clean.$(TEST)
 endef

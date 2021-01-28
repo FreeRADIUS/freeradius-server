@@ -1,0 +1,57 @@
+This file gives an outline for the overall Antora documentation.  We
+are in the process of making the docs match this outline.
+
+* Introduction
+ * Documentation overview
+ * What is FreeRADIUS
+ * Getting Help
+  * mailing lists
+  * support
+ * concepts and background
+   * changes from v3
+   * what is proxying, etc.
+   * this is mainly a "grab bag" collection of things, so that we don't explain concepts _elsewhere_ in the docs
+
+* The Software
+ * Installing the software (source / packages)
+   * Configuring it
+   * testing
+ * maintaining it for the "long haul"
+  * monitoring and performance
+  * accounting and logs
+  * interoperability
+  * upgrades
+
+* Common Issues and Fixes
+ * debugging
+ * radiusd-X - how to read it
+ * common error messages and what to do about them
+
+* How-to guides
+ * modules (configure SQL, LDAP, etc)
+ * technology (WiFi, 802.1X)
+
+* Reference documentation
+ * unlang
+ * guide to configuration files
+ * module documentation
+ * xlat expansions
+ * dictionaries
+ * "man" pages for binaries
+
+* Project - who we are and what we do
+ * about FreeRADIUS
+ * versions
+ * security
+ * comparisons with other products
+ * Developer information
+
+If you're in the "wrong" place, then that documentation can link to
+the "right" one.  i.e. documentation for the LDAP module syntax can
+link to a "howto" for configuring LDAP, and vice versa.
+
+Each page should also be answering the question of "if this _isn't_
+what the user wanted to see, quickly direct them to the _correct_
+place".  This is usually done with in-line links, instead of explicit
+text.  For example, "this is the _LDAP_ Howto".  Where "LDAP" is a
+link to the LDAP module reference documentation.

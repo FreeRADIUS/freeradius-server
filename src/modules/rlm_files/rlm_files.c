@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 typedef struct {
-	vp_tmpl_t *key;
+	tmpl_t *key;
 
 	char const *filename;
 	rbtree_t *common;
@@ -50,16 +50,6 @@ typedef struct {
 	/* preacct */
 	char const *acct_usersfile;
 	rbtree_t *acct_users;
-
-#ifdef WITH_PROXY
-	/* pre-proxy */
-	char const *preproxy_usersfile;
-	rbtree_t *preproxy_users;
-
-	/* post-proxy */
-	char const *postproxy_usersfile;
-	rbtree_t *postproxy_users;
-#endif
 
 	/* post-authenticate */
 	char const *postauth_usersfile;
@@ -85,25 +75,11 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ NULL }
 };
 
-/*
- *     See if a VALUE_PAIR list contains Fall-Through = Yes
- */
-static int fall_through(VALUE_PAIR *vp)
-{
-	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_da(vp, attr_fall_through, TAG_ANY);
-
-	return tmp ? tmp->vp_uint32 : 0;
-}
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, usersfile) },
 	{ FR_CONF_OFFSET("acctusersfile", FR_TYPE_FILE_INPUT, rlm_files_t, acct_usersfile) },
-#ifdef WITH_PROXY
-	{ FR_CONF_OFFSET("preproxy_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, preproxy_usersfile) },
-	{ FR_CONF_OFFSET("postproxy_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postproxy_usersfile) },
-#endif
 	{ FR_CONF_OFFSET("auth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
@@ -119,7 +95,6 @@ static int pairlist_cmp(void const *a, void const *b)
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 {
 	int rcode;
-	VALUE_PAIR *vp;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
 	PAIR_LIST *user_list, *default_list, **default_tail;
@@ -140,6 +115,8 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 	 */
 	entry = users;
 	while (entry) {
+		map_t *map;
+		fr_dict_attr_t const *da;
 		fr_cursor_t cursor;
 
 		/*
@@ -149,14 +126,22 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	and probably ':=' for server
 		 *	configuration items.
 		 */
-		for (vp = fr_cursor_init(&cursor, &entry->check);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		for (map = fr_cursor_init(&cursor, &entry->check);
+		     map;
+		     map = fr_cursor_next(&cursor)) {
+			if (!tmpl_is_attr(map->lhs)) {
+				ERROR("%s[%d] Left side of check item %s is not an attribute",
+				      entry->filename, entry->lineno, map->lhs->name);
+				return -1;
+
+			}
+			da = tmpl_da(map->lhs);
+
 			/*
 			 *	Ignore attributes which are set
 			 *	properly.
 			 */
-			if (vp->op != T_OP_EQ) {
+			if (map->op != T_OP_EQ) {
 				continue;
 			}
 
@@ -165,13 +150,13 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	or it's a wire protocol,
 			 *	ensure it has '=='.
 			 */
-			if ((fr_dict_vendor_num_by_da(vp->da) != 0) ||
-			    (vp->da->attr < 0x100)) {
-				WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-				     filename, entry->lineno,
-				     vp->da->name, vp->da->name,
+			if ((fr_dict_vendor_num_by_da(da) != 0) ||
+			    (da->attr < 0x100)) {
+				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+				     entry->filename, entry->lineno,
+				     da->name, da->name,
 				     entry->name);
-				vp->op = T_OP_CMP_EQ;
+				map->op = T_OP_CMP_EQ;
 				continue;
 			}
 		} /* end of loop over check items */
@@ -183,9 +168,16 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	It's a common enough mistake, that it's
 		 *	worth doing.
 		 */
-		for (vp = fr_cursor_init(&cursor, &entry->reply);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		for (map = fr_cursor_init(&cursor, &entry->reply);
+		     map;
+		     map = fr_cursor_next(&cursor)) {
+			if (!tmpl_is_attr(map->lhs)) {
+				ERROR("%s[%d] Left side of reply item %s is not an attribute",
+				      entry->filename, entry->lineno, map->rhs->name);
+				return -1;
+			}
+			da = tmpl_da(map->lhs);
+
 			/*
 			 *	If it's NOT a vendor attribute,
 			 *	and it's NOT a wire protocol
@@ -193,19 +185,28 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	then bitch about it, giving a
 			 *	good warning message.
 			 */
-			 if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
-				WARN("[%s]:%d Check item \"%s\"\n"
-				       "\tfound in reply item list for user \"%s\".\n"
-				       "\tThis attribute MUST go on the first line"
-				       " with the other check items", filename, entry->lineno, vp->da->name,
-				       entry->name);
+			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
+				WARN("%s[%d] Check item \"%s\"\n"
+				     "\tfound in reply item list for user \"%s\".\n"
+				     "\tThis attribute MUST go on the first line"
+				     " with the other check items", entry->filename, entry->lineno, da->name,
+				     entry->name);
 			}
+
+			/*
+			 *	If we allow list qualifiers in
+			 *	users_file.c, then this module also
+			 *	needs to be updated.  Ensure via an
+			 *	assertion that they do not get out of
+			 *	sync.
+			 */
+			fr_assert(tmpl_list(map->lhs) == PAIR_LIST_REPLY);
 		}
 
 		entry = entry->next;
 	}
 
-	tree = rbtree_create(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+	tree = rbtree_alloc(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;
@@ -225,6 +226,17 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 */
 		next = entry->next;
 		entry->next = NULL;
+
+		/*
+		 *	@todo - loop over entry->reply, calling
+		 *	unlang_fixup_update() or unlang_fixup_filter()
+		 *	to double-check the maps.
+		 *
+		 *	Those functions do normalization and sanity
+		 *	checks which are needed if this module is
+		 *	going to call an unlang function to *apply*
+		 *	the maps.
+		 */
 
 		/*
 		 *	DEFAULT entries get their own list.
@@ -269,6 +281,11 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			/*
 			 *	Find the tail of this list, and add it
 			 *	there.
+			 *
+			 *	@todo - maybe use dlists here to avoid
+			 *	O(N^2) issues?  But people who put 10K
+			 *	entries for the same username should
+			 *	really re-think their approach.
 			 */
 			while (user_list->next) user_list = user_list->next;
 
@@ -296,12 +313,6 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	READFILE(filename, common);
 	READFILE(usersfile, users);
 	READFILE(acct_usersfile, acct_users);
-
-#ifdef WITH_PROXY
-	READFILE(preproxy_usersfile, preproxy_users);
-	READFILE(postproxy_usersfile, postproxy_users);
-#endif
-
 	READFILE(auth_usersfile, auth_users);
 	READFILE(postauth_usersfile, postauth_users);
 
@@ -311,23 +322,21 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char const *filename, rbtree_t *tree,
-			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
+static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
+				   request_t *request, char const *filename, rbtree_t *tree)
 {
-	char const	*name;
-	VALUE_PAIR	*check_tmp = NULL;
-	VALUE_PAIR	*reply_tmp = NULL;
-	PAIR_LIST const *user_pl, *default_pl;
-	bool		found = false;
-	PAIR_LIST	my_pl;
-	char		buffer[256];
+	char const		*name;
+	PAIR_LIST const 	*user_pl, *default_pl;
+	bool			found = false;
+	PAIR_LIST		my_pl;
+	char			buffer[256];
 
 	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
 		REDEBUG("Failed expanding key %s", inst->key->name);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	if (!tree) return RLM_MODULE_NOOP;
+	if (!tree) RETURN_MODULE_NOOP;
 
 	my_pl.name = name;
 	user_pl = rbtree_finddata(tree, &my_pl);
@@ -338,9 +347,12 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	 *	Find the entry for the user.
 	 */
 	while (user_pl || default_pl) {
-		fr_cursor_t cursor;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
+		map_t *map;
 		PAIR_LIST const *pl;
+		fr_pair_list_t list;
+		fr_cursor_t cursor;
+		bool fall_through = false;
 
 		/*
 		 *	Figure out which entry to match on.
@@ -363,49 +375,86 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			default_pl = default_pl->next;
 		}
 
-		MEM(fr_pair_list_copy(request, &check_tmp, pl->check) >= 0);
-		for (vp = fr_cursor_init(&cursor, &check_tmp);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			if (xlat_eval_pair(request, vp) < 0) {
-				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
-				fr_pair_list_free(&check_tmp);
-				continue;
+		fr_pair_list_init(&list);
+
+		/*
+		 *	Realize the map to a list of VPs
+		 *
+		 *	@todo convert the pl->check to fr_cond_t, and just use that!
+		 */
+		for (map = fr_cursor_init(&cursor, &pl->check);
+		     map;
+		     map = fr_cursor_next(&cursor)) {
+			fr_pair_list_t tmp_list;
+			fr_pair_list_init(&tmp_list);
+			if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
+				fr_pair_list_free(&list);
+				RPWARN("Failed parsing map for check item, skipping entry");
+				break;
+			}
+			LIST_VERIFY(&tmp_list);
+
+			fr_tmp_pair_list_move(&list, &tmp_list);
+		}
+
+		if (paircmp(request, &request->request_pairs, &list) != 0) {
+			fr_pair_list_free(&list);
+			continue;
+		}
+
+		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, filename);
+		found = true;
+		fall_through = false;
+
+		/*
+		 *	Move the control items over, too.
+		 */
+		fr_pair_list_move(&request->control_pairs, &list);
+		fr_pair_list_free(&list);
+
+		/* ctx may be reply */
+		if (pl->reply) {
+			for (map = fr_cursor_init(&cursor, &pl->reply);
+			     map;
+			     map = fr_cursor_next(&cursor)) {
+				fr_pair_list_t tmp_list;
+				fr_pair_list_init(&tmp_list);
+				if (map->op == T_OP_CMP_FALSE) continue;
+
+				if (map_to_vp(request->reply_ctx, &tmp_list, request, map, NULL) < 0) {
+					RPWARN("Failed parsing map for reply item %s, skipping it", map->rhs->name);
+					break;
+				}
+
+				/*
+				 *	Check for Fall-Through in the
+				 *	reply list.  If so, don't copy
+				 *	the attribute over to the reply
+				 */
+				vp = fr_pair_list_head(&tmp_list);
+				if (vp->da == attr_fall_through) {
+					fall_through = vp->vp_bool;
+					fr_pair_list_free(&tmp_list);
+					continue;
+				}
+
+				radius_pairmove(request, &request->reply_pairs, &tmp_list, true);
 			}
 		}
 
-		if (paircmp(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
-			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
-			found = true;
-
-			/* ctx may be reply or proxy */
-			MEM(fr_pair_list_copy(reply_packet, &reply_tmp, pl->reply) >= 0);
-
-			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
-			fr_pair_list_move(&request->control, &check_tmp);
-
-			reply_tmp = NULL;	/* radius_pairmove() frees input attributes */
-			fr_pair_list_free(&check_tmp);
-
-			/*
-			 *	Fallthrough?
-			 */
-			if (!fall_through(pl->reply)) break;
-		}
+		/*
+		 *	Fallthrough?
+		 */
+		if (!fall_through) break;
 	}
-
-	/*
-	 *	Remove server internal parameters.
-	 */
-	fr_pair_delete_by_da(&reply_packet->vps, attr_fall_through);
 
 	/*
 	 *	See if we succeeded.
 	 */
 	if (!found)
-		return RLM_MODULE_NOOP; /* on to the next module */
+		RETURN_MODULE_NOOP; /* on to the next module */
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 
 }
 
@@ -416,13 +465,12 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->filename,
-			   inst->users ? inst->users : inst->common,
-			   request->packet, request->reply);
+	return file_common(p_result, inst, request, inst->filename,
+			   inst->users ? inst->users : inst->common);
 }
 
 
@@ -431,51 +479,28 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->acct_usersfile,
-			   inst->acct_users ? inst->acct_users : inst->common,
-			   request->packet, request->reply);
+	return file_common(p_result, inst, request, inst->acct_usersfile,
+			   inst->acct_users ? inst->acct_users : inst->common);
 }
 
-#ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->preproxy_usersfile,
-			   inst->preproxy_users ? inst->preproxy_users : inst->common,
-			   request->packet, request->proxy->packet);
+	return file_common(p_result, inst, request, inst->auth_usersfile,
+			   inst->auth_users ? inst->auth_users : inst->common);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->postproxy_usersfile,
-			   inst->postproxy_users ? inst->postproxy_users : inst->common,
-			   request->proxy->reply, request->reply);
-}
-#endif
-
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_files_t const *inst = instance;
-
-	return file_common(inst, request, inst->auth_usersfile,
-			   inst->auth_users ? inst->auth_users : inst->common,
-			   request->packet, request->reply);
-}
-
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_files_t const *inst = instance;
-
-	return file_common(inst, request, inst->postauth_usersfile,
-			   inst->postauth_users ? inst->postauth_users : inst->common,
-			   request->packet, request->reply);
+	return file_common(p_result, inst, request, inst->postauth_usersfile,
+			   inst->postauth_users ? inst->postauth_users : inst->common);
 }
 
 
@@ -491,12 +516,20 @@ module_t rlm_files = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
-
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
-};
+	.method_names = (module_method_names_t[]){
+		/*
+		 * Use mod_authorize for all DHCP processing - for consistent
+		 * use of data in the file referenced by "filename"
+		 */
+		{ .name1 = "recv",	.name2 = "Discover",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Request",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Inform",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Release",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Decline",	.method = mod_authorize },
 
+		MODULE_NAME_TERMINATOR
+	}
+
+};

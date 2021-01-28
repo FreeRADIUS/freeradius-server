@@ -1,6 +1,6 @@
 update {
-	&control:Auth-Type = 'Accept'
-	&reply:Reply-Message = 'pass'
+	&control.Auth-Type = 'Accept'
+	&reply.Reply-Message = 'pass'
 }
 
 # Section should exit after this statement
@@ -9,5 +9,5 @@ ok {
 }
 
 update {
-	&reply:Reply-Message := 'fail'
+	&reply.Reply-Message := 'fail'
 }

@@ -11,6 +11,7 @@
 PROTOCOL	TACACS		5
 BEGIN-PROTOCOL TACACS
 
+$INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.tacacs
 
 END-PROTOCOL TACACS

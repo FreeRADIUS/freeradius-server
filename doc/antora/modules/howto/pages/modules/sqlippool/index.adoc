@@ -46,7 +46,7 @@ One downside is that there is no method to perform actions at a
 particular time.  We suggust using "cron" for periodic cleanups,
 analysis, etc.
 
-xAnother downside is that FreeRADIUS does not "know" the state of a
+Another downside is that FreeRADIUS does not "know" the state of a
 particular IP address.  The `sqlippool` module simply runs SQL
 queries, which either return an IP address, or return "failed to
 allocate IP".  Since the entire state of the pool is in the SQL
@@ -56,32 +56,35 @@ an individual IP address, MAC address, etc.
 === `Access-Request`: A device connects to the NAS with correct credentials
 
 . FreeRADIUS receives an `Access-Request` from the NAS.  After some
-processing (modules. `unlang`, etc.), the `Pool-Name` attribute is
+processing (modules. `unlang`, etc.), the `IP-Pool.Name` attribute is
 added to the `control` list.  This attribute indicates that the IP
 address should be allocated from the named pool.  This attribute can
 be added from any module, database, `unlang`, etc.
 
 . When the `sqlippool` module is eventually run, it looks for the
-`Pool-Name` attribute, and runs the various SQL queries in order to
+`IP-Pool.Name` attribute, and runs the various SQL queries in order to
 perform IP address allocation.  If the module is configured to place
 address into the `Framed-IP-Address` attribute (as it is by default),
 and that attribute already exists, the module does nothing, and
 returns `noop`.
 
-. Otherwise, the module runs the `allocate_clear` query in order to
-clear expired leases.  This process frees up expired leases, and
-performs any additional cleanup that is necessarty.
+. The module then runs the `alloc_existing` query, which looks for
+the IP address last assigned to the device from the pool indicated by
+`IP-Pool.Name`.  The device is identified using the `pool_key`
+configuration item (typically `NAS-Port`) and a NAS identifier (the
+`NAS-IP-Address`).
 
-. The module then runs the `allocate_find` query, which chooses a free
-IP address from the pool indicated by `Pool-Name`.  If `allocate_find`
-does not return an IP address, the `pool_check` query is run in order
-to determine why the allocation failed.  For example, either the
-requested pool is empty (i.e.  no free addresses), or it is
-non-existent.  This information is returned in the `sqlippool` module
-return code, as `notfound`, or one of the other return codes.
+. If no address was found using `alloc_existing`, the module then
+runs the `alloc_find` query, which chooses a free IP address from
+the pool indicated by `IP-Pool.Name`.  If `alloc_find` does not return
+an IP address, the `pool_check` query is run in order to determine
+why the allocation failed.  For example, either the requested pool is
+empty (i.e.  no free addresses), or it is non-existent.  This
+information is returned in the `sqlippool` module return code, as
+`notfound`, or one of the other return codes.
 
 . If an IP address has been found, the module runs the
-`allocate_update` query.  This query assigns the IP address to the
+`alloc_update` query.  This query assigns the IP address to the
 device by updating the `radippool` row for the IP address with
 information about the lease.  The default information includes `expiry
 time` based on the configured `lease_duration`, a unique identifier
@@ -90,7 +93,10 @@ for the device as specified by the `pool_key` configuration item
 Additionally, the default schema and queries record the user
 identifier (`User-Name`) and device identifier (`Calling-Station-Id`).
 This information can be used to assign the same IP to the same user or
-device, on subsequent allocation requests.
+device, on subsequent allocation requests.  With some database backends
+(PostgreSQL and MS SQLServer) the update can be incorporated into the
+`alloc_existing` and `alloc_find` queries, reducing round trips
+to the database and improving performance.
 
 . The module returns `updated` to indicate that it was successfull in
 allocating an IP address.
@@ -105,7 +111,7 @@ attribute holding the allocated IP address to the NAS.
 . The NAS sends an `Accounting Start` request to FreeRADIUS.  After some
 processing (modules. `unlang`, etc.), the `sqlippool` module is run.
 
-. The `sqlippol` module runs the `start_update` query.  This query
+. The `sqlippol` module runs the `update_update` query.  This query
 uses the configured `pool_key` and NAS identifier in order to identify
 which entry in the `radippool` table to update.  The `expiry_time` is
 updated based on the configured `lease_duration`. This update extends
@@ -125,7 +131,7 @@ FreeRADIUS sends an Accounting-Response to the NAS.
 After some processing (modules. `unlang`, etc.), the `sqlippool`
 module is run.
 
-. The `sqlippol` module runs the `alive_update` query.  This query
+. The `sqlippol` module runs the `update_update` query.  This query
 uses the configured `pool_key` and NAS identifier in order to identify
 which entry in the `radippool` table to update.  The `expiry_time` is
 updated based on the configured `lease_duration`.
@@ -142,7 +148,7 @@ FreeRADIUS sends an Accounting-Response to the NAS.
 some processing (modules. `unlang`, etc.), the `sqlippool` module is
 run.
 
-. The `sqlippol` module runs the `stop_clear` query.  This query uses
+. The `sqlippol` module runs the `release_clear` query.  This query uses
 the configured `pool_key` and NAS identifier in order to identify
 which entry in the `radippool` table to update.  The update "clears"
 the IP address, and marks it as free for later allocation.  Note that
@@ -164,8 +170,7 @@ FreeRADIUS sends an Accounting-Response to the NAS.
 FreeRADIUS.  After some processing (modules. `unlang`, etc.), the
 `sqlippool` module is run.
 
-. The `sqlippol` module runs the `on_clear` or `off_clear` query,
-depending on the `Acct-Status-Type` attribute on/off.  This query
+. The `sqlippol` module runs the `bulk_release_clear` query.  This query
 uses the `NAS-IP-Address` in order to identify all leases in the
 `radippool` table which belong to the NAS in question.  The leases are
 cleared, and the IP addresses are immediately released for further
@@ -268,7 +273,7 @@ send Access-Accept {
                 }
                 # On failure for any reason, reject
                 update {
-                        &reply:Reply-Message += Module-Failure-Message
+                        &reply.Reply-Message += Module-Failure-Message
                 }
                 reject
         }
@@ -350,7 +355,7 @@ For performance reasons, if you are using a database that supports `SELECT ...
 FOR UPDATE SKIP LOCKED` then you should edit the
 `[raddb]/mods-config/sql/ippools/<dialect>/queries.conf` file corresponding to
 your database dialect to select the `SKIP LOCKED` variant of the
-`allocate_find` query. This will allow the database to remain responsive under
+`alloc_find` query. This will allow the database to remain responsive under
 concurrent load.
 
 
@@ -410,7 +415,7 @@ a concern, especially if sticky IPs are not enabled and a device that is
 repeatedly failing to establish a connection is able to continue to consume IP
 addresses. With some consideration, this initial lease could be amended to a
 short, fixed interval rather than the full lease duration. Replace
-`lease_duration` with a fixed value in seconds in the `allocate_update` query
+`lease_duration` with a fixed value in seconds in the `alloc_update` query
 in `queries.conf` or in the stored procedure in `procedure.sql`, whichever is
 in use. This fixed interval should be greater than the maximum time it could
 take for an Accounting Start to be received for successful connections.
@@ -452,6 +457,11 @@ Framed-IPv6-Prefix RADIUS attribute then you can put the IPv6 prefixes into the
 
 Populate the pool either manually using a text editor or database tool, or via a script.
 
+See xref:modules/sqlippool/generating.adoc[Generating IPs for the
+pools] for instructions on how to create lists of IPs for a pool.  And
+then xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
+
+
 .Example shell command for populating the `radacct` table
 =============================================
  for i in `seq 10 250`; do
@@ -483,27 +493,26 @@ CoA/Disconnect) or reintroduce the IP address with a future expiry date beyond
 which any existing session will have closed (or at least beyond the accounting
 interval).
 
-
 === 7. Enable a pool user
 
-For a request to acquire an address from the pool you must set a `Pool-Name`
+For a request to acquire an address from the pool you must set a `IP-Pool.Name`
 check attribute, either directly in the virtual server configuration or via a
 data source such as `sql` (for example using the `radcheck` table).
 
-.Example of setting a Pool-Name attribute using the `radcheck` table
+.Example of setting a IP-Pool.Name attribute using the `radcheck` table
 =============================================
 
 [source,shell]
 ----
 echo "INSERT INTO radcheck (username,attribute,op,value)   \
-      VALUES ('bob','Pool-Name',':=','internet');"         \
+      VALUES ('bob','IP-Pool.Name',':=','internet');"         \
      | mysql radius
 ----
 
 =============================================
 
 
-.Example of setting a Pool-Name attribute using in the server config
+.Example of setting a IP-Pool.Name attribute using in the server config
 =============================================
 
 .[raddb]/sites-enabled/default
@@ -512,7 +521,7 @@ echo "INSERT INTO radcheck (username,attribute,op,value)   \
 send Access-Accept {
 ...
         update control {
-                &Pool-Name := 'internet'
+                &IP-Pool.Name := 'internet'
         }
 
         sqlippool
@@ -522,7 +531,7 @@ send Access-Accept {
 
 =============================================
 
-NOTE: Recall that if `sqlippool` is invoked without a `Pool-Name` check
+NOTE: Recall that if `sqlippool` is invoked without a `IP-Pool.Name` check
 attribute then no action is taken. Also recall that if `sqlippool` is invoked
 whilst the attribute configured in the `attribute_name` configuration item
 (e.g. `Framed-IP-Address`) already exists then no action is taken.
@@ -614,7 +623,7 @@ Send the Access Request to FreeRADIUS.
 ----
 cat access-request.rad | radclient -x 127.0.0.1 auth testing123
 Sent Access-Request Id 1 from 0.0.0.0:2000 to 127.0.0.1:1812 length 81
-	Cleartext-Password = "testing123"
+	Password.Cleartext = "testing123"
 	User-Name = "bob"
 	User-Password = "testing123"
 	Calling-Station-Id = "00:53:00:11:22:33"
@@ -761,11 +770,11 @@ mysql radius < /etc/raddb/mods-config/sql/ippool/mysql/procedure.sql
 NOTE: The above command assumes that passwordless login has been configured via
 the user’s `~/.my.cnf` file, or otherwise.
 
-Read the comments in the `procedure.sql` file which explain how to use the
-stored procedure, then amend the `allocate_find`, `allocate_update` and
-possibly `allocate_clear` queries (as well as the corresponding start/end
-transaction query-parts) in the dialect's `queries.conf` file, *exactly as
-described*.
+Read the comments in the `procedure.sql` file which explain how to use
+the stored procedure, then amend the `alloc_find`, and
+`allocate_update` queries (as well as the corresponding start/end
+transaction query-parts) in the dialect's `queries.conf` file,
+*exactly as described*.
 
 
 .Example queries.conf configuration to use the stored procedure with MySQL
@@ -777,9 +786,9 @@ described*.
 ...
 allocate_begin = ""
 
-allocate_find = "\
+alloc_find = "\
       CALL fr_allocate_previous_or_new_framedipaddress( \
-              '%{control:${pool_name}}', \
+              '%{control.${pool_name}}', \
               '%{User-Name}', \
               '%{Calling-Station-Id}', \
               '%{NAS-IP-Address}', \
@@ -802,7 +811,7 @@ your configuration.
 
 === Customise the IP allocation policy
 
-The IP allocation policy is mainly configured by modifying the `allocate_find`
+The IP allocation policy is mainly configured by modifying the `alloc_find`
 query, however it is likely that the other queries will also need to be
 modified to get the results you want.
 
@@ -816,7 +825,7 @@ address, sometimes referred to as a "sticky IPs" policy.
 
 If you are using the base queries (rather than the recommended stored
 procedure) then the `queries.conf` file for your database dialect contains
-several example `allocate_find` queries for choosing either a dynamic or sticky
+several example `alloc_find` queries for choosing either a dynamic or sticky
 IP policy.
 
 If you are using the recommended stored procedure then the `procedure.sql` file
@@ -824,11 +833,11 @@ which contains the definition of the stored procedure for your database dialect
 has comments that explain how to amend the procedure to choose either a dynamic
 or sticky IP policy.
 
-With a sticky IP policy it is necessary to disable the `allocate_clear` query
-and amend the default actions of the `stop_clear`, `on_clear` and `off_clear`
-queries.  By default, each of these queries clobbers the `User-Name` and
-`Calling-Station-Id` attributes when sessions expire therefore erasing the
-affinity information.
+With a sticky IP policy it is necessary to amend the default actions
+of the `release_clear` and `bulk_release_clear` queries.  By default,
+each of these queries clobbers the `User-Name` and
+`Calling-Station-Id` attributes when sessions expire therefore erasing
+the affinity information.
 
 TIP: A performance benefit of sticky IP addresses derived from the fact that
 reallocation of an existing IP address is generally much quicker than
@@ -848,21 +857,20 @@ any RADIUS attribute that is available during authentication can be used.
 [source,config]
 ----
 ...
-allocate_begin = ""
-allocate_clear = ""
-allocate_find = "\
+alloc_begin = ""
+alloc_find = "\
         CALL fr_allocate_previous_or_new_framedipaddress( \
-                '%{control:${pool_name}}', \
+                '%{control.${pool_name}}', \
                 '%{User-Name}', \
                 '%{Calling-Station-Id}', \
                 '%{NAS-IP-Address}', \
                 '${pool_key}', \
                 ${lease_duration} \
         )"
-allocate_update = ""
-allocate_commit = ""
+alloc_update = ""
+alloc_commit = ""
 ...
-stop_clear = "\
+release_clear = "\
         UPDATE ${ippool_table} \
         SET \
                 nasipaddress = '', \
@@ -874,7 +882,7 @@ stop_clear = "\
         AND callingstationid = '%{Calling-Station-Id}' \
         AND framedipaddress = '%{${attribute_name}}'"
 
-on_clear = "\
+bulk_release_clear = "\
         UPDATE ${ippool_table} \
         SET \
                 nasipaddress = '', \
@@ -882,13 +890,6 @@ on_clear = "\
                 expiry_time = NOW() \
         WHERE nasipaddress = '%{%{Nas-IP-Address}:-%{Nas-IPv6-Address}}'"
 
-off_clear = "\
-        UPDATE ${ippool_table} \
-        SET \
-                nasipaddress = '', \
-                pool_key = 0, \
-                expiry_time = NOW() \
-        WHERE nasipaddress = '%{%{Nas-IP-Address}:-%{Nas-IPv6-Address}}'"
 ...
 ----
 
@@ -983,19 +984,20 @@ UPDATE SKIP LOCKED` statement which means that it is a very efficient backend
 for `sqlippool`.
 
 MySQL::
-Since version 8 the InnoDB storage enging provides a direct implementation of
-the `SELECT ... FOR UPDATE SKIP LOCKED` statement which means that it is a very
-efficient backend for `sqlippool`. Previous versions do not implement the `SKIP
-LOCKED` pragma and therefore may have poor performance under concurrent load.
-Ensure that you use a storage engine what supports transactions. Do not use
-MyISAM.
+Ensure that you use a storage engine what supports transactions such as InnoDB.
+Do not use MyISAM. Since version 8 the InnoDB storage engine provides a direct
+implementation of the `SELECT ... FOR UPDATE SKIP LOCKED` statement which means
+that it is a very efficient backend for `sqlippool`. Previous versions do not
+implement the `SKIP LOCKED` pragma and will therefore have poor performance
+under concurrent load, _but see the tip concerning the alternative stored
+procedure below_.
 
 MariaDB::
-Current versions lack `SKIP LOCKED` and therefore may have poor performance
-under concurrent load. For this reason, given the choice between MariaDB and
-a recent version of MySQL you should use MySQL for SQL IP Pools. Ensure that
-you use a storage engine what supports transactions such as InnoDB: Do not use
-MyISAM or Aria.
+Ensure that you use a storage engine what supports transactions such as InnoDB.
+Do not use MyISAM or Aria. All versions of MariaDB lack `SKIP LOCKED` and
+therefore will have poor performance under concurrent load, _but see the tip
+concerning the alternative stored procedure below_. Given the choice between
+MariaDB and a recent version of MySQL you should use MySQL for SQL IP Pools.
 
 MS SQL Server::
 Does not provide a `SELECT ... FOR UPDATE` implementation nor a direct means to
@@ -1018,6 +1020,30 @@ Does not provide a `SELECT ... FOR UPDATE` implementation due to its simplified
 locking characteristics. The only locking that is available for this purpose is
 an exclusive lock taken over the entire database. This makes it unsuitable for
 anything other than managing a small number of devices.
+
+[TIP]
+.Alternative stored procedure for MariaDB and MySQL < 8.0
+===================================================================================
+
+The file `procedure_no_skip_locked.sql` contains an alternative stored
+procedure that is intended exclusively for MySQL variants that do not support
+the `SKIP LOCKED` pragma, i.e. all MariaDB versions and versions of MySQL prior
+to 8.0.
+
+It should be a lot faster than using the default stored procedure under highly
+concurrent workloads and should not result in thread starvation. It can best be
+described as a useful hack that should not be used except when the
+better-performing `SKIP LOCKED` method is unavailable.
+
+This procedure works by using "user locks" to provide skippable, row-level
+locking that facilitates non-blocking selection of unique IP addresses from the
+pool. We pay a performance penalty for managing the locks, however it is
+nowhere near as bad as serialising all concurrent pool access.
+
+Since user locks are local to the database server instance this procedure is
+not suitable for a multi-master cluster.
+
+===================================================================================
 
 [#database-clusters]
 [NOTE]
@@ -1075,7 +1101,7 @@ In many fixed-line configurations a unique identifier for a device may be the
 `NAS-Port` or `NAS-Port-Id`. In other scenarios identifiers based on the NAS
 port may be shared by several devices and are unsuitable for uniquely
 identifying devices. In some cases a circuit-specific identifier such as
-`ADSL-Agent-Circuit-Id` may be present.
+`Vendor-Specific.ADSL-Forum.Agent-Circuit-ID` may be present.
 
 CAUTION: However, a circuit-specific identifier is unsuitable if there are
 multiple hosts on the circuit with which you issue individual addresses (for
@@ -1087,7 +1113,7 @@ The `Calling-Station-Id` attribute may contain host specific information (such
 as a hardware address). You should consider the provenance of the data and
 whether you trust it, e.g. does it report a MAC address that is under an
 untrusted user's control.  Sometimes a combination of attributes including one
-that you trust (such as "%{ADSL-Agent-Circuit-Id}:%{Calling-Station-Id}") may
+that you trust (such as "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}:%{Calling-Station-Id}") may
 be appropriate.
 
 The `pool_key` is used to issue indexed lookups into the `radippool` table so for

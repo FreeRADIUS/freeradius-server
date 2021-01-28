@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <ctype.h>
 
 #define LOG_PREFIX "rlm_ldap (%s) - "
@@ -54,13 +54,13 @@ USES_APPLE_DEPRECATED_API
  * @param[out] rcode The status of the operation, one of the RLM_MODULE_* codes.
  * @return The user's DN or NULL on error.
  */
-char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode)
 {
 	static char const *tmp_attrs[] = { NULL };
 
 	fr_ldap_rcode_t	status;
-	VALUE_PAIR	*vp = NULL;
+	fr_pair_t	*vp = NULL;
 	LDAPMessage	*tmp_msg = NULL, *entry = NULL;
 	int		ldap_errno;
 	int		cnt;
@@ -90,7 +90,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
 	if (!force) {
-		vp = fr_pair_find_by_da(request->control, attr_ldap_userdn, TAG_ANY);
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_ldap_userdn);
 		if (vp) {
 			RDEBUG2("Using user DN from request \"%pV\"", &vp->data);
 			*rcode = RLM_MODULE_OK;
@@ -110,7 +110,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 			return NULL;
 		}
 
-		rad_assert(*pconn);
+		fr_assert(*pconn);
 
 		(*pconn)->rebound = false;
 	}
@@ -149,7 +149,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 		return NULL;
 	}
 
-	rad_assert(*pconn);
+	fr_assert(*pconn);
 
 	/*
 	 *	Forbid the use of unsorted search results that
@@ -197,7 +197,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap
 	RDEBUG2("User object found at DN \"%s\"", dn);
 
 	MEM(pair_update_control(&vp, attr_ldap_userdn) >= 0);
-	fr_pair_value_strcpy(vp, dn);
+	fr_pair_value_strdup(vp, dn);
 	*rcode = RLM_MODULE_OK;
 
 	ldap_memfree(dn);
@@ -221,7 +221,7 @@ finish:
  *	- #RLM_MODULE_DISALLOW if the user was denied access.
  *	- #RLM_MODULE_OK otherwise.
  */
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request,
 				  fr_ldap_connection_t const *conn, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -257,7 +257,7 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
  * @param request Current request.
  * @param conn the connection handle
  */
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t const *conn)
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t const *conn)
 {
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.
@@ -267,11 +267,11 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 	*/
 	if (!inst->expect_password || !RDEBUG_ENABLED2) return;
 
-	if (!fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->control, attr_nt_password, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->control, attr_user_password, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->control, attr_password_with_header, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->control, attr_crypt_password, TAG_ANY)) {
+	if (!fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password) &&
+	    !fr_pair_find_by_da(&request->control_pairs, attr_nt_password) &&
+	    !fr_pair_find_by_da(&request->control_pairs, attr_user_password) &&
+	    !fr_pair_find_by_da(&request->control_pairs, attr_password_with_header) &&
+	    !fr_pair_find_by_da(&request->control_pairs, attr_crypt_password)) {
 		switch (conn->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
@@ -282,7 +282,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 				 inst->name);
-			RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 				 inst->name);
 			RWDEBUG2("!!!    (pap only)");
 
@@ -292,12 +292,12 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG2("!!! eDirectory does not allow passwords to be retrieved via LDAP search");
 			RWDEBUG2("!!! Remove the password map and either:");
-			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your ");
+			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your");
 			RWDEBUG2("!!!    eDir server (recommended)");
 			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 				 inst->name);
-			RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 				 inst->name);
 			RWDEBUG("!!!    (pap only)");
 			break;
@@ -307,24 +307,24 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn
 				RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 				RWDEBUG2("!!! but no password attribute found in search result");
 				RWDEBUG2("!!! Either:");
-				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
 				RWDEBUG2("!!!    \"%s\" has permission to read that password attribute (recommended)",
 					 conn->config->admin_identity);
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 					 inst->name);
-				RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 					 inst->name);
 				RWDEBUG2("!!!    (pap only)");
 			} else {
 				RWDEBUG2("!!! No \"known good\" password added");
 				RWDEBUG2("!!! but no password attribute found in search result");
 				RWDEBUG2("!!! Either:");
-				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
 				RWDEBUG2("!!!    'identity' is set to the DN of an account that has permission to read");
 				RWDEBUG2("!!!    that password attribute");
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 					 inst->name);
-				RWDEBUG2("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
 					 inst->name);
 				RWDEBUG2("!!!    (pap only)");
 			}

@@ -39,7 +39,7 @@
 #include <osmocom/core/talloc.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/utils.h>
 
@@ -49,6 +49,7 @@
 
 #include "libosmo-m3ua/include/cellmgr_debug.h"
 #include "libosmo-m3ua/include/mtp_data.h"
+#include "libosmo-m3ua/include/sctp_m3ua.h"
 
 static uint32_t	last_txn_id = 0;	//!< Global transaction ID
 static rbtree_t *txn_tree = NULL;	//!< Global transaction tree... Should really be per module.
@@ -132,7 +133,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	struct mtp_m3ua_client_link 	*m3ua_client = talloc_get_type_abort(conn->mtp3_link->data,
 									     struct mtp_m3ua_client_link);
 
-	rad_assert(req->imsi);
+	fr_assert(req->imsi);
 
 	if (!mtp_m3ua_link_is_up(m3ua_client)) {
 		ERROR("Link not yet active, dropping the request");
@@ -257,7 +258,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 	}
 	if (!rbtree_deletebydata(txn_tree, found)) {		/* Remove the outstanding transaction */
 		ERROR("Failed removing transaction");
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	txn = talloc_get_type_abort(found, sigtran_transaction_t);
@@ -378,7 +379,7 @@ int sigtran_sccp_global_init(void)
 		return 0;
 	}
 
-	txn_tree = rbtree_talloc_create(NULL, sigtran_txn_cmp, sigtran_transaction_t, false, 0);
+	txn_tree = rbtree_talloc_alloc(NULL, sigtran_txn_cmp, sigtran_transaction_t, false, 0);
 	if (!txn_tree) return -1;
 
 	txn_tree_inst++;

@@ -81,7 +81,7 @@ define ADD_CLEAN_RULE
     .PHONY: clean.$(notdir ${1})
     clean.$(notdir ${1}):
 	$(Q)$(strip rm -f ${${1}_BUILD}/${1} $${${1}_OBJS} $${${1}_DEPS} $${${1}_OBJS:%.${OBJ_EXT}=%.[do]}) $(if ${TARGET_DIR},$${TARGET_DIR}/$(notdir ${1}))
-	$${${1}_POSTCLEAN}
+	${Q}$${${1}_POSTCLEAN}
 
 endef
 
@@ -203,6 +203,15 @@ endif
 define ADD_TARGET_TO_ALL
     all: ${1}
 
+endef
+
+# ADD_TARGET_TO_ALL - Parameterized "function" that adds the target,
+#   and makes "all" depend on it.
+#
+#   USE WITH EVAL
+#
+define ADD_DEPENDS_MK
+    ALL_DEPENDS_MK += ${1}
 endef
 
 # ADD_TARGET_RULE.* - Parameterized "functions" that adds a new target to the
@@ -375,6 +384,7 @@ define INCLUDE_SUBMAKEFILE
     MAN :=
     FILES :=
     OUTPUT :=
+    DEPENDS_MK :=
 
     SUBMAKEFILES :=
 
@@ -507,6 +517,10 @@ define INCLUDE_SUBMAKEFILE
            $$(eval $$(call INCLUDE_SUBMAKEFILE,\
                       $$(call CANONICAL_PATH,\
                          $$(call QUALIFY_PATH,$${DIR},$${MK})))))
+    endif
+
+    ifneq "$${DEPENDS_MK}" ""
+        $$(eval $$(call ADD_DEPENDS_MK,$${DEPENDS_MK}))
     endif
 
     # Reset the "current" target to it's previous value.
@@ -678,6 +692,8 @@ ifneq "${CPPCHECK}" ""
 CHECKFLAGS := -DCPPCHECK $(filter -isystem%,$(CPPFLAGS) $(CFLAGS)) $(filter -I%,$(CPPFLAGS) $(CFLAGS)) $(filter -D%,$(CPPFLAGS) $(CFLAGS))
 endif
 
+$(eval $(call INCLUDE_SUBMAKEFILE,${top_builddir}/scripts/build/all.mk))
+
 # Include the main user-supplied submakefile. This also recursively includes
 # all other user-supplied submakefiles.
 $(eval $(call INCLUDE_SUBMAKEFILE,${top_builddir}/main.mk))
@@ -707,9 +723,23 @@ ifneq "$(MAKECMDGOALS)" "clean"
       $(eval -include ${${TGT}_DEPS}))
 endif
 
+#
+#  Install binaries
+#
+$(foreach B,$(INSTALL_BIN),\
+  $(eval $(call ADD_INSTALL_RULE.bin,${B})))
+
 # Build rules for installation subdirectories
-$(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
+$(foreach D,$(patsubst %/,%,$(sort $(subst //,/,$(dir ${ALL_INSTALL})))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))
+
+#
+#  Now that all of the targets have been defined, include auto-build
+#  dependency files.
+#
+ifneq "$(ALL_DEPENDS_MK)" ""
+-include $(ALL_DEPENDS_MK)
+endif
 
 scan: ${ALL_PLISTS}
 

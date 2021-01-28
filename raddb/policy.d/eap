@@ -7,7 +7,7 @@ Xeap.authorize {
 		#
 		#	Expire previous cache entry
 		#
-		if (&control:State) {
+		if (&control.State) {
 			update control {
 				&Cache-TTL := 0
 			}
@@ -60,7 +60,7 @@ permit_only_eap {
 		#  PEAP and EAP-FAST require EAP inside of
 		#  the tunnel, so this check is OK.
 		#  If so, then there MUST be an outer EAP message.
-		if (!&outer.request || !&outer.request:EAP-Message) {
+		if (!&outer.request || !&outer.request.EAP-Message) {
 			reject
 		}
 	}
@@ -73,7 +73,7 @@ permit_only_eap {
 #  not be present in the same response.
 #
 remove_reply_message_if_eap {
-	if (&reply:EAP-Message && &reply:Reply-Message) {
+	if (&reply.EAP-Message && &reply.Reply-Message) {
 		update reply {
 			&Reply-Message !* ANY
 		}
@@ -92,8 +92,8 @@ remove_reply_message_if_eap {
 #
 copy_request_to_tunnel {
 	update request {
-		Calling-Station-Id = &outer.request:Calling-Station-Id
-		Called-Station-Id = &outer.request:Called-Station-Id
+		Calling-Station-Id = &outer.request.Calling-Station-Id
+		Called-Station-Id = &outer.request.Called-Station-Id
 	}
 }
 
@@ -130,7 +130,7 @@ use_tunneled_reply {
 	#  copy the outer session-state list to the final reply.
 	#
 	update {
-		&outer.session-state: += &reply:
+		&outer.session-state: += &reply
 	}
 }
 

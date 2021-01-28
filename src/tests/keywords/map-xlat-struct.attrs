@@ -1,0 +1,5 @@
+Packet-Type = Solicit
+
+
+Packet-Type == Advertise
+Result-Status == "success"

@@ -24,19 +24,13 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/dlist.h>
 
 #include <string.h>
 #include <unistd.h>
-
-typedef struct fr_talloc_link  fr_talloc_link_t;
-
-struct fr_talloc_link {			//!< Allocated in the context of the parent.
-	fr_talloc_link_t **self;	//!< Allocated in the context of the child.
-	TALLOC_CTX *child;		//!< Allocated in the context of the child.
-};
 
 /** Retrieve the current talloc NULL ctx
  *
@@ -57,49 +51,97 @@ void *talloc_null_ctx(void)
 	return null_ctx;
 }
 
-/** Called when the parent CTX is freed
+/** Called with the fire_ctx is freed
  *
  */
-static int _link_ctx_link_free(fr_talloc_link_t *link)
+static int _talloc_destructor_fire(fr_talloc_destructor_t *d)
 {
-	/*
-	 *	This hasn't been freed yet.  Mark it as "about to be
-	 *	freed", and then free it.
-	 */
-	if (link->self) {
-		fr_talloc_link_t **self = link->self;
-
-		link->self = NULL;
-		talloc_free(self);
+	if (d->ds) {
+		talloc_set_destructor(d->ds, NULL);	/* Disarm the disarmer */
+		TALLOC_FREE(d->ds);			/* Free the disarm trigger ctx */
 	}
-	talloc_free(link->child);
 
-	/* link is freed by talloc when this function returns */
-	return 0;
+	return d->func(d->fire, d->uctx);
 }
 
-/** Called when the child CTX is freed
+/** Called when the disarm_ctx ctx is freed
  *
  */
-static int _link_ctx_self_free(fr_talloc_link_t **link_p)
+static int _talloc_destructor_disarm(fr_talloc_destructor_disarm_t *ds)
 {
-	fr_talloc_link_t *link = *link_p;
+	talloc_set_destructor(ds->d, NULL);		/* Disarm the destructor */
+	return talloc_free(ds->d);			/* Free memory allocated to the destructor */
+}
 
-	/*
-	 *	link->child is freed by talloc at some other point,
-	 *	which results in this destructor being called.
-	 */
+/** Add an additional destructor to a talloc chunk
+ *
+ * @param[in] fire_ctx		When this ctx is freed the destructor function
+ *				will be called.
+ * @param[in] disarm_ctx	When this ctx is freed the destructor will be
+ *				disarmed. May be NULL.  #talloc_destructor_disarm
+ *				may be used to disarm the destructor too.
+ * @param[in] func		to call when the fire_ctx is freed.
+ * @param[in] uctx		data to pass to the above function.
+ * @return
+ *	- A handle to access the destructor on success.
+ *	- NULL on failure.
+ */
+fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *disarm_ctx,
+					      fr_talloc_free_func_t func, void const *uctx)
+{
+	fr_talloc_destructor_t *d;
 
-	/* link->self is freed by talloc when this function returns */
-
-	/*
-	 *	If link->self is still pointing to us, the link is
-	 *	still valid.  Mark it as "about to be freed", and free the link.
-	 */
-	if (link->self) {
-		link->self = NULL;
-		talloc_free(link);
+	if (!fire_ctx) {
+		fr_strerror_const("No firing ctx provided when setting destructor");
+		return NULL;
 	}
+
+	d = talloc(fire_ctx, fr_talloc_destructor_t);
+	if (!d) {
+	oom:
+		fr_strerror_const("Out of Memory");
+		return NULL;
+	}
+
+	d->fire = fire_ctx;
+	d->func = func;
+	memcpy(&d->uctx, &uctx, sizeof(d->uctx));
+
+	if (disarm_ctx) {
+		fr_talloc_destructor_disarm_t *ds;
+
+		ds = talloc(disarm_ctx, fr_talloc_destructor_disarm_t);
+		if (!ds) {
+			talloc_free(d);
+			goto oom;
+		}
+		ds->d = d;
+		d->ds = ds;
+		talloc_set_destructor(ds, _talloc_destructor_disarm);
+	}
+
+	talloc_set_destructor(d, _talloc_destructor_fire);
+
+	return d;
+}
+
+/** Disarm a destructor and free all memory allocated in the trigger ctxs
+ *
+ */
+void talloc_destructor_disarm(fr_talloc_destructor_t *d)
+{
+	if (d->ds) {
+		talloc_set_destructor(d->ds, NULL);	/* Disarm the disarmer */
+		TALLOC_FREE(d->ds);			/* Free the disarmer ctx */
+	}
+
+	talloc_set_destructor(d, NULL);			/* Disarm the destructor */
+	talloc_free(d);					/* Free the destructor ctx */
+}
+
+static int _talloc_link_ctx_free(UNUSED void *parent, void *child)
+{
+	talloc_free(child);
 
 	return 0;
 }
@@ -117,43 +159,54 @@ static int _link_ctx_self_free(fr_talloc_link_t **link_p)
  */
 int talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
 {
-	fr_talloc_link_t *link;
-
-	/*
-	 *	Don't link to a NULL context.
-	 */
-	if (!parent) return 0;
-
-#if 0
-	/*
-	 *	Commented out for debugging.
-	 */
-	{
-		TALLOC_CTX *check;
-
-		check = talloc_parent(child);
-		if (fr_cond_assert(parent != check)) {
-			return -1;
-		}
-	}
-#endif
-
-	link = talloc(parent, fr_talloc_link_t);
-	if (!link) return -1;
-
-	link->self = talloc(child, fr_talloc_link_t *);
-	if (!link->self) {
-		talloc_free(link);
-		return -1;
-	}
-
-	link->child = child;
-	*(link->self) = link;
-
-	talloc_set_destructor(link, _link_ctx_link_free);
-	talloc_set_destructor(link->self, _link_ctx_self_free);
+	if (!talloc_destructor_add(parent, child, _talloc_link_ctx_free, child)) return -1;
 
 	return 0;
+}
+
+/** Return a page aligned talloc memory array
+ *
+ * Because we can't intercept talloc's malloc() calls, we need to do some tricks
+ * in order to get the first allocation in the array page aligned, and to limit
+ * the size of the array to a multiple of the page size.
+ *
+ * The reason for wanting a page aligned talloc array, is it allows us to
+ * mprotect() the pages that belong to the array.
+ *
+ * Talloc chunks appear to be allocated within the protected region, so this should
+ * catch frees too.
+ *
+ * @param[in] ctx	to allocate array memory in.
+ * @param[out] start	The first aligned address in the array.
+ * @param[in] alignment	What alignment the memory chunk should have.
+ * @param[in] size	How big to make the array.  Will be corrected to a multiple
+ *			of the page size.  The actual array size will be size
+ *			rounded to a multiple of the (page_size), + page_size
+ * @return
+ *	- A talloc chunk on success.
+ *	- NULL on failure.
+ */
+TALLOC_CTX *talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment, size_t size)
+{
+	size_t		rounded;
+	size_t		array_size;
+	void		*next;
+	TALLOC_CTX	*array;
+
+	rounded = ROUND_UP(size, alignment);		/* Round up to a multiple of the page size */
+	if (rounded == 0) rounded = alignment;
+
+	array_size = rounded + alignment;
+	array = talloc_array(ctx, uint8_t, array_size);		/* Over allocate */
+	if (!array) {
+		fr_strerror_const("Out of memory");
+		return NULL;
+	}
+
+	next = (void *)ROUND_UP((uintptr_t)array, alignment);		/* Round up address to the next multiple */
+	*start = next;
+
+	return array;
 }
 
 /** Return a page aligned talloc memory pool
@@ -183,21 +236,19 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 	void		*next, *chunk;
 	TALLOC_CTX	*pool;
 
-#define ROUND_UP(_num, _mul) (((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
-
 	rounded = ROUND_UP(size, page_size);			/* Round up to a multiple of the page size */
 	if (rounded == 0) rounded = page_size;
 
 	pool_size = rounded + page_size;
 	pool = talloc_pool(ctx, pool_size);			/* Over allocate */
 	if (!pool) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
 	chunk = talloc_size(pool, 1);				/* Get the starting address */
 	if (!fr_cond_assert((chunk > pool) && ((uintptr_t)chunk < ((uintptr_t)pool + rounded)))) {
-		fr_strerror_printf("Initial allocation outside of pool memory");
+		fr_strerror_const("Initial allocation outside of pool memory");
 	error:
 		talloc_free(pool);
 		return NULL;
@@ -225,7 +276,7 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 
 		padding = talloc_size(pool, pad_size);
 		if (!fr_cond_assert(((uintptr_t)padding + (uintptr_t)pad_size) >= (uintptr_t)next)) {
-			fr_strerror_printf("Failed padding pool memory");
+			fr_strerror_const("Failed padding pool memory");
 			goto error;
 		}
 	}
@@ -233,7 +284,11 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 	*start = next;						/* This is the address we feed into mprotect */
 	*end = (void *)((uintptr_t)next + (uintptr_t)rounded);
 
-	if (talloc_set_memlimit(pool, pool_size) < 0) goto error; /* Don't allow allocations outside of the pool */
+	/*
+	 *	Disabled until samba fixes upstream issue
+	 *	with memlimits on pools.
+	 */
+//	if (talloc_set_memlimit(pool, pool_size) < 0) goto error; /* Don't allow allocations outside of the pool */
 
 	return pool;
 }
@@ -242,13 +297,15 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
  *
  * For some bizarre reason the talloc string functions don't set the
  * memory chunk type to char, which causes all kinds of issues with
- * verifying VALUE_PAIRs.
+ * verifying fr_pair_ts.
  *
  * @param[in] ctx	The talloc context to hang the result off.
  * @param[in] p		The string you want to duplicate.
  * @return
  *	- Duplicated string.
  *	- NULL on error.
+ *
+ * @hidecallergraph
  */
 char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
 {
@@ -265,7 +322,7 @@ char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
  *
  * For some bizarre reason the talloc string functions don't set the
  * memory chunk type to char, which causes all kinds of issues with
- * verifying VALUE_PAIRs.
+ * verifying fr_pair_ts.
  *
  * @param[in] ctx	The talloc context to hang the result off.
  * @param[in] fmt	The format string.
@@ -291,7 +348,7 @@ char *talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
  *
  * For some bizarre reason the talloc string functions don't set the
  * memory chunk type to char, which causes all kinds of issues with
- * verifying VALUE_PAIRs.
+ * verifying fr_pair_ts.
  *
  * @param[in] ctx	The talloc context to hang the result off.
  * @param[in] fmt	The format string.
@@ -311,6 +368,32 @@ char *talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	return n;
 }
 
+/** Binary safe strdup function
+ *
+ * @param[in] ctx 	he talloc context to allocate new buffer in.
+ * @param[in] in	String to dup, may contain embedded '\0'.
+ * @return duped string.
+ */
+char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
+{
+	char	*p;
+	size_t	inlen = talloc_array_length(in);
+
+	if (inlen == 0) inlen = 1;
+
+	p = talloc_array(ctx, char, inlen);
+	if (!p) return NULL;
+
+	/*
+	 * C99 (7.21.1/2) - Length zero results in noop
+	 *
+	 * But ubsan still flags this, grrr.
+	 */
+	if (inlen > 0) memcpy(p, in, inlen - 1);
+	p[inlen - 1] = '\0';
+
+	return p;
+}
 
 /** Binary safe strndup function
  *
@@ -328,8 +411,10 @@ char *talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen)
 
 	/*
 	 * C99 (7.21.1/2) - Length zero results in noop
+	 *
+	 * But ubsan still flags this, grrr.
 	 */
-	memcpy(p, in, inlen);
+	if (inlen > 0) memcpy(p, in, inlen);
 	p[inlen] = '\0';
 
 	return p;
@@ -348,13 +433,18 @@ char *talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen)
 char *talloc_bstr_append(TALLOC_CTX *ctx, char *to, char const *from, size_t from_len)
 {
 	char	*n;
-	size_t	to_len;
+	size_t	to_len = 0;
 
-	to_len = talloc_array_length(to);
-	if (to[to_len - 1] == '\0') to_len--;	/* Inlen should be length of input string */
+	if (to) {
+		to_len = talloc_array_length(to);
+		if (to[to_len - 1] == '\0') to_len--;	/* Inlen should be length of input string */
+	}
 
 	n = talloc_realloc_size(ctx, to, to_len + from_len + 1);
-	if (!n) return NULL;
+	if (!n) {
+		fr_strerror_printf("Extending bstr buffer to %zu bytes failed", to_len + from_len + 1);
+		return NULL;
+	}
 
 	memcpy(n + to_len, from, from_len);
 	n[to_len + from_len] = '\0';

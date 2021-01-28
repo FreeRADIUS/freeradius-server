@@ -30,7 +30,7 @@ RCSIDH(time_tracking_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/time.h>
 
 typedef enum {
@@ -84,11 +84,11 @@ struct fr_time_tracking_s {
  */
 #define ASSERT_ON_TIME_TRAVEL(_tt, _now) \
 do { \
-	rad_assert((_tt)->last_changed <= (_now)); \
-	rad_assert((_tt)->started <= (_now)); \
-	rad_assert((_tt)->ended <= (_now)); \
-	rad_assert((_tt)->last_yielded <= (_now)); \
-	rad_assert((_tt)->last_resumed <= (_now)); \
+	fr_assert((_tt)->last_changed <= (_now)); \
+	fr_assert((_tt)->started <= (_now)); \
+	fr_assert((_tt)->ended <= (_now)); \
+	fr_assert((_tt)->last_yielded <= (_now)); \
+	fr_assert((_tt)->last_resumed <= (_now)); \
 } while(0);
 
 /** Set the last time a tracked entity started in its list of parents
@@ -148,8 +148,8 @@ static inline CC_HINT(nonnull) void fr_time_tracking_init(fr_time_tracking_t *tt
 static inline CC_HINT(nonnull) void fr_time_tracking_start(fr_time_tracking_t *parent,
 							   fr_time_tracking_t *tt, fr_time_t now)
 {
-	rad_assert(tt->state == FR_TIME_TRACKING_STOPPED);
-	rad_assert(!tt->parent);
+	fr_assert(tt->state == FR_TIME_TRACKING_STOPPED);
+	fr_assert(!tt->parent);
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
@@ -173,9 +173,9 @@ static inline CC_HINT(nonnull) void fr_time_tracking_push(fr_time_tracking_t *pa
 {
 	fr_time_delta_t		run_time;
 
-	rad_assert(parent->parent = tt->parent);
+	fr_assert(parent->parent = tt->parent);
 
-	rad_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
 	run_time = now - tt->last_changed;
 	tt->last_changed = parent->started = now;
 
@@ -195,7 +195,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_pop(fr_time_tracking_t *tt,
 {
 	fr_time_delta_t		run_time;
 
-	rad_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
 	run_time = now - tt->last_changed;
 	tt->last_changed = tt->parent->ended = now;
 
@@ -216,7 +216,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_yield(fr_time_tracking_t *t
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
-	rad_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
 	tt->state = FR_TIME_TRACKING_YIELDED;
 	tt->last_yielded = tt->last_changed = now;
 
@@ -236,7 +236,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_resume(fr_time_tracking_t *
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
-	rad_assert(tt->state == FR_TIME_TRACKING_YIELDED);
+	fr_assert(tt->state == FR_TIME_TRACKING_YIELDED);
 	tt->state = FR_TIME_TRACKING_RUNNING;
 	tt->last_resumed = tt->last_changed = now;
 
@@ -259,7 +259,7 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 {
 	fr_time_delta_t		run_time;
 
-	rad_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
 	tt->state = FR_TIME_TRACKING_STOPPED;

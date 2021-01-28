@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_mysql - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -78,9 +78,9 @@ typedef enum {
 } rlm_sql_mysql_warnings;
 
 static fr_table_num_sorted_t const server_warnings_table[] = {
-	{ "auto",	SERVER_WARNINGS_AUTO	},
-	{ "no",		SERVER_WARNINGS_NO	},
-	{ "yes",	SERVER_WARNINGS_YES	}
+	{ L("auto"),	SERVER_WARNINGS_AUTO	},
+	{ L("no"),		SERVER_WARNINGS_NO	},
+	{ L("yes"),	SERVER_WARNINGS_YES	}
 };
 static size_t server_warnings_table_len = NUM_ELEMENTS(server_warnings_table);
 
@@ -709,8 +709,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	char const		*error;
 	size_t			i = 0;
 
-	rad_assert(conn && conn->sock);
-	rad_assert(outlen > 0);
+	fr_assert(conn && conn->sock);
+	fr_assert(outlen > 0);
 
 	error = mysql_error(conn->sock);
 
@@ -741,7 +741,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 				break;
 			}
 
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 		case SERVER_WARNINGS_YES:
 			ret = sql_warnings(ctx, out, outlen - 1, handle, config);
 			if (ret > 0) i += ret;
@@ -751,7 +751,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -824,7 +824,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return mysql_affected_rows(conn->sock);
 }
 
-static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen;
 	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);

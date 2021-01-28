@@ -1,0 +1,6 @@
+#
+#  SC2223: This default assignment may cause DoS due to globbing. Quote it.
+#
+#  Easy to trigger and rarely a concern.
+#
+disable=SC2223

@@ -55,13 +55,13 @@ typedef struct fr_redis_trunk_s fr_redis_trunk_t;
  *
  * Should mark the request as runnable, if there's a request.
  */
-typedef void (*fr_redis_command_set_complete_t)(REQUEST *request, fr_dlist_head_t *completed, void *rctx);
+typedef void (*fr_redis_command_set_complete_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
 /** Write a failure result to the rctx so that the module is aware that the request failed
  *
  * Should mark the request as runnable, if there's a request.
  */
-typedef void (*fr_redis_command_set_fail_t)(REQUEST *request, fr_dlist_head_t *completed, void *rctx);
+typedef void (*fr_redis_command_set_fail_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
 fr_redis_pipeline_status_t	fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds,
 							     	  char const *cmd_str, size_t cmd_len);
@@ -74,7 +74,7 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd);
 
 fr_redis_command_set_t		*fr_redis_command_set_alloc(TALLOC_CTX *ctx,
-							    REQUEST *request,
+							    request_t *request,
 							    fr_redis_command_set_complete_t complete,
 							    fr_redis_command_set_fail_t fail,
 							    void *rctx);

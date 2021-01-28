@@ -1,4 +1,4 @@
-import radiusd
+import freeradius
 
-def authorize(p):   
-    return radiusd.RLM_MODULE_OK
+def authorize(p):
+    return freeradius.RLM_MODULE_OK

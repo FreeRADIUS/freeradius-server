@@ -38,8 +38,18 @@ typedef struct {
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
 
-	bool				code_allowed[FR_DHCP_MAX];     	//!< Allowed packet codes.
-
 	uint32_t			priorities[FR_DHCP_MAX];       	//!< priorities for individual packets
 } proto_dhcpv4_t;
 
+/*
+ *	Shorter version of the packet for deduping
+ */
+typedef struct {
+	int				message_type;
+	uint32_t			xid;
+	fr_ethernet_t			chaddr;
+	bool				broadcast;
+	uint8_t				hops;
+	uint32_t			ciaddr;
+	uint32_t			giaddr;
+} proto_dhcpv4_track_t;

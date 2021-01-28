@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
 
 #include <freeradius-devel/util/dict.h>
@@ -91,7 +91,7 @@ static char *readline(char const *prompt)
 	p = strchr(line, '\n');
 	if (!p) {
 		fprintf(stderr, "Input line too long\n");
-		fr_exit_now(EXIT_FAILURE);
+		return NULL;
 	}
 
 	*p = '\0';
@@ -192,10 +192,10 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 	rl_attempted_completion_over = 1;
 
-	rad_assert(radmin_buffer != NULL);
-	rad_assert(radmin_partial_line != NULL);
-	rad_assert(radmin_partial_line >= radmin_buffer);
-	rad_assert(radmin_partial_line < (radmin_buffer + 8192));
+	fr_assert(radmin_buffer != NULL);
+	fr_assert(radmin_partial_line != NULL);
+	fr_assert(radmin_partial_line >= radmin_buffer);
+	fr_assert(radmin_partial_line < (radmin_buffer + 8192));
 
 	offset = (radmin_partial_line - radmin_buffer);
 
@@ -239,7 +239,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	context = 0;
 	prompt = "radmin> ";
 
-	ctx = talloc_init("radmin");
+	ctx = talloc_init_const("radmin");
 
 	size = 8192;
 	radmin_buffer = talloc_zero_array(ctx, char, size);
@@ -261,8 +261,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	while (true) {
 		char *line;
 
-		rad_assert(context >= 0);
-		rad_assert(context_offset[context] >= 0);
+		fr_assert(context >= 0);
+		fr_assert(context_offset[context] >= 0);
 		radmin_partial_line = radmin_buffer + context_offset[context];
 		line = readline(prompt);
 		if (stop) break;
@@ -324,7 +324,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Parse error!  Oops..
 		 */
 		if (argc < 0) {
-			fprintf(stderr, "Failed parsing line: %s\n", fr_strerror());
+			fr_perror("Failed parsing line");
 			add_history(line); /* let them up-arrow and retype it */
 			goto next;
 		}
@@ -344,7 +344,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		if (!info->runnable) {
 			size_t len;
 
-			rad_assert(argc > 0);
+			fr_assert(argc > 0);
 			len = strlen(line);
 
 			/*
@@ -398,7 +398,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Reset this to the current context.
 		 */
 		if (fr_command_clear(context, info) < 0) {
-			fprintf(stderr, "Failing clearing buffers: %s\n", fr_strerror());
+			fr_perror("Failing clearing buffers");
 			break;
 		}
 
@@ -422,7 +422,7 @@ static fr_time_delta_t start_time;
 
 static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 	stop = true;
 
 	return 0;
@@ -450,7 +450,7 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 
 static int cmd_terminate(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 	return 0;
 }
 
@@ -703,7 +703,7 @@ static int cmd_show_config_section(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_
 {
 	CONF_ITEM *item;
 
-	rad_assert(info->argc > 0);
+	fr_assert(info->argc > 0);
 
 	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
 				 info->box[0]->vb_strvalue);
@@ -730,11 +730,11 @@ static int tab_expand_config_item(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info
 
 static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	FR_TOKEN token;
+	fr_token_t token;
 	CONF_ITEM *item;
 	CONF_PAIR *cp;
 
-	rad_assert(info->argc > 0);
+	fr_assert(info->argc > 0);
 
 	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
 				 info->box[0]->vb_strvalue);
@@ -1062,7 +1062,7 @@ static fr_cmd_table_t cmd_table[] = {
 
 int fr_radmin_start(main_config_t *config, bool cli)
 {
-	radmin_ctx = talloc_init("radmin");
+	radmin_ctx = talloc_init_const("radmin");
 	if (!radmin_ctx) return -1;
 
 	start_time = fr_time();
@@ -1133,7 +1133,7 @@ int fr_radmin_register(UNUSED TALLOC_CTX *talloc_ctx, char const *name, void *ct
  */
 int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool read_only)
 {
-	int argc, rcode;
+	int argc, ret;
 
 	argc = fr_command_str_to_argv(radmin_cmd, info, str);
 	if (argc < 0) {
@@ -1145,7 +1145,7 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 		return 0;
 	}
 
-	rcode = fr_command_run(fp, fp_err, info, read_only);
+	ret = fr_command_run(fp, fp_err, info, read_only);
 	fflush(fp);
 	fflush(fp_err);
 
@@ -1154,7 +1154,7 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 	 */
 	(void) fr_command_clear(0, info);
 
-	if (rcode < 0) return rcode;
+	if (ret < 0) return ret;
 
 	return 1;
 }

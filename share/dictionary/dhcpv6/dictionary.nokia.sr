@@ -1,0 +1,26 @@
+# -*- text -*-
+# Copyright (C) 2020 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+##############################################################################
+#
+#	Nokia (Formerly Alcatel-Lucent) Service Router dictionary.
+#       i.e. the 7750SR and friends.
+#
+#	$Id$
+#
+# https://documentation.nokia.com/cgi-bin/dbaccessfilename.cgi/3HE09835AAAATQZZA01_V1_7750%20SR%20RADIUS%20Attributes%20Reference%20Guide%20R13.0.R1.pdf
+# https://documentation.nokia.com/html/0_add-h-f/93-0267-HTML/7X50_Advanced_Configuration_Guide/Raw_DHCP_Parameters.html
+#
+##############################################################################
+
+VENDOR		Nokia-SR		6527
+BEGIN-VENDOR	Nokia-SR
+
+ATTRIBUTE	WAN-Pool				1	string
+ATTRIBUTE	PFX-Pool				2	string
+ATTRIBUTE	PFX-Len					3	uint8
+ATTRIBUTE	Reserved-NA-Len				4	uint8
+
+END-VENDOR Nokia-SR

@@ -24,6 +24,7 @@
  * @copyright 2018 The FreeRADIUS project
  */
 
+#include <freeradius-devel/util/socket.h>
 
 /** Public structure describing an I/O path for a protocol
  *
@@ -53,8 +54,8 @@ typedef struct {
 
 	fr_io_data_vnode_t		vnode;		//!< Handle notifications that the VNODE has changed
 
-	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
-	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.
+	fr_io_decode_t			decode;		//!< Translate raw bytes into fr_pair_ts and metadata.
+	fr_io_encode_t			encode;		//!< Pack fr_pair_ts back into a byte array.
 
 	fr_io_signal_t			flush;		//!< Flush the data when the socket is ready for writing.
 
@@ -63,13 +64,8 @@ typedef struct {
 
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
 
-	/*
-	 *	@todo - this should compare two sets of track
-	 *	information, not packets.  We also want a function
-	 *	that converts a packet to a tracking structure.
-	 *	Either in a buffer, or in a newly-allocated memory.
-	 */
-	fr_io_data_cmp_t		compare;	//!< compare two packets
+	fr_io_track_create_t		track;		//!< create a tracking structure
+	fr_io_track_cmp_t		compare;	//!< compare two tracking structures
 
 	fr_io_connection_set_t		connection_set;	//!< set src/dst IP/port of a connection
 	fr_io_network_get_t		network_get;	//!< get dynamic network information
@@ -86,7 +82,3 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 				  fr_ipaddr_t const *src_ipaddr, int src_port,
 				  fr_ipaddr_t const *dst_ipaddr, int dst_port,
 				  char const *interface);
-/*
- *	A common function to get a machine readable socket name
- */
-fr_socket_addr_t *fr_app_io_socket_addr(TALLOC_CTX *ctx, int proto, fr_ipaddr_t const *ipaddr, int port);

@@ -47,13 +47,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /** Generate keys according to RFC 2716 and add to the reply
  *
  */
-int eap_crypto_mppe_keys(REQUEST *request, SSL *ssl, char const *prf_label, size_t prf_label_len)
+int eap_crypto_mppe_keys(request_t *request, SSL *ssl, char const *prf_label, size_t prf_label_len)
 {
 	uint8_t		out[4 * EAP_TLS_MPPE_KEY_LEN];
 	uint8_t		*p;
 
 	if (SSL_export_keying_material(ssl, out, sizeof(out), prf_label, prf_label_len, NULL, 0, 0) != 1) {
-		tls_log_error(request, "Failed generating MPPE keys");
+		fr_tls_log_error(request, "Failed generating MPPE keys");
 		return -1;
 	}
 
@@ -91,7 +91,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 #if OPENSSL_VERSION_NUMBER < 0x10101000L
 			      UNUSED
 #endif
-			      REQUEST *request, SSL *ssl,
+			      request_t *request, SSL *ssl,
 			      uint8_t **out, uint8_t eap_type,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 			      UNUSED
@@ -138,7 +138,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + 64));
 		*p++ = eap_type;
 		if (SSL_export_keying_material(ssl, p, 64, prf_label, prf_label_len, NULL, 0, 0) != 1) {
-			tls_log_error(request, "Failed generating TLS session ID");
+			fr_tls_log_error(request, "Failed generating TLS session ID");
 			return -1;
 		}
 	}

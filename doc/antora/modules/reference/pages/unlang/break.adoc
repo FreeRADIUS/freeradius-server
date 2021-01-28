@@ -1,0 +1,28 @@
+= The break statement
+
+.Syntax
+[source,unlang]
+----
+break
+----
+
+The `break` statement is used to exit an enclosing
+xref:unlang/foreach.adoc[foreach] loop.  The `break` statement only be used
+inside of a xref:unlang/foreach.adoc[foreach] loop.
+
+.Example
+[source,unlang]
+----
+foreach &Class {
+    if (&Foreach-Variable-0 == 0xabcdef) {
+        break
+    }
+
+    update reply {
+        Reply-Message += "Contains %{Foreach-Variable-0}"
+    }
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

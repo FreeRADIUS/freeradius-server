@@ -36,71 +36,12 @@
 #include <stddef.h>
 #include <talloc.h>
 
-#ifndef __MINGW32__
-#  include <sys/ioctl.h>
-#endif
 
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
 #  include <sys/types.h>
-#endif
-
-#ifdef HAVE_LINUX_IF_PACKET_H
-#  include <linux/if_packet.h>
-#  include <linux/if_ether.h>
-#endif
-
-#ifndef __MINGW32__
-#  include <net/if_arp.h>
-#endif
-
-#ifdef SIOCSARP
-/** Forcibly add an ARP entry so we can send unicast packets to hosts that don't have IP addresses yet
- *
- * @param[in] fd	to add arp entry on.
- * @param[in] interface	to add arp entry on.
- * @param[in] ip	to insert into ARP table.
- * @param[in] macaddr	to insert into ARP table.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const *ip, uint8_t macaddr[static 6])
-{
-	struct sockaddr_in *sin;
-	struct arpreq req;
-
-	if (!interface) {
-		fr_strerror_printf("No interface specified.  Cannot update ARP table");
-		return -1;
-	}
-
-	memset(&req, 0, sizeof(req));
-	sin = (struct sockaddr_in *) &req.arp_pa;
-	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = ip->addr.v4.s_addr;
-
-	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
-
-	memcpy(&req.arp_ha.sa_data, macaddr, 6);
-
-	req.arp_flags = ATF_COM;
-	if (ioctl(fd, SIOCSARP, &req) < 0) {
-		fr_strerror_printf("Failed to add entry in ARP cache: %s (%d)", fr_syserror(errno), errno);
-		return -1;
-	}
-
-	return 0;
-}
-#else
-int fr_dhcpv4_udp_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
-				UNUSED fr_ipaddr_t const *ip, UNUSED uint8_t macaddr[static 6])
-{
-	fr_strerror_printf("Adding ARP entry is unsupported on this system");
-	return -1;
-}
 #endif
 
 /** Send DHCP packet using a connectionless UDP socket
@@ -110,7 +51,7 @@ int fr_dhcpv4_udp_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
  *	- >= 0 if successful.
  *	- < 0 if failed.
  */
-int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet)
+int fr_dhcpv4_udp_packet_send(fr_radius_packet_t *packet)
 {
 	int ret;
 	struct sockaddr_storage	dst;
@@ -118,17 +59,19 @@ int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet)
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src;
 
-	fr_ipaddr_to_sockaddr(&packet->src_ipaddr, packet->src_port, &src, &sizeof_src);
-	fr_ipaddr_to_sockaddr(&packet->dst_ipaddr, packet->dst_port, &dst, &sizeof_dst);
+	fr_ipaddr_to_sockaddr(&src, &sizeof_src, &packet->socket.inet.src_ipaddr, packet->socket.inet.src_port);
+	fr_ipaddr_to_sockaddr(&dst, &sizeof_dst, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port);
 	if (packet->data_len == 0) {
-		fr_strerror_printf("No data to send");
+		fr_strerror_const("No data to send");
 		return -1;
 	}
 
 	errno = 0;
 
-	ret = sendfromto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
-			 (struct sockaddr *)&dst, sizeof_dst, packet->if_index);
+	ret = sendfromto(packet->socket.fd, packet->data, packet->data_len, 0,
+			 packet->socket.inet.ifindex,
+			 (struct sockaddr *)&src, sizeof_src,
+			 (struct sockaddr *)&dst, sizeof_dst);
 	if ((ret < 0) && errno) fr_strerror_printf("dhcp_send_socket: %s", fr_syserror(errno));
 
 	return ret;
@@ -138,34 +81,35 @@ int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet)
  *
  * @param sockfd handle.
  * @return
- *	- pointer to RADIUS_PACKET if successful.
+ *	- pointer to fr_radius_packet_t if successful.
  *	- NULL if failed.
  */
-RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
+fr_radius_packet_t *fr_dhcpv4_udp_packet_recv(int sockfd)
 {
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src;
 	socklen_t		sizeof_dst;
-	RADIUS_PACKET		*packet;
+	fr_radius_packet_t		*packet;
 	uint8_t			*data;
 	ssize_t			data_len;
 	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
 	uint16_t		src_port, dst_port;
-	int			if_index = 0;
+	int			ifindex = 0;
 	fr_time_t		when;
 
 	data = talloc_zero_array(NULL, uint8_t, MAX_PACKET_SIZE);
 	if (!data) {
-		fr_strerror_printf("Out of memory");
+		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
 	sizeof_src = sizeof(src);
 	sizeof_dst = sizeof(dst);
 	data_len = recvfromto(sockfd, data, MAX_PACKET_SIZE, 0,
+	 		      &ifindex,
 			      (struct sockaddr *)&src, &sizeof_src,
-			      (struct sockaddr *)&dst, &sizeof_dst, &if_index, &when);
+			      (struct sockaddr *)&dst, &sizeof_dst, &when);
 
 	if (data_len <= 0) {
 		fr_strerror_printf("Failed reading data from DHCP socket: %s", fr_syserror(errno));
@@ -188,24 +132,20 @@ RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd)
 		return NULL;
 	}
 
-	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
-	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
+	fr_ipaddr_from_sockaddr(&dst_ipaddr, &dst_port, &dst, sizeof_dst);
+	fr_ipaddr_from_sockaddr(&src_ipaddr, &src_port, &src, sizeof_src);
 
 	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return NULL;
 
 	packet = fr_dhcpv4_packet_alloc(data, data_len);
 	if (!packet) return NULL;
 
-	packet->dst_port = dst_port;
-	packet->src_port = src_port;
-
-	packet->src_ipaddr = src_ipaddr;
-	packet->dst_ipaddr = dst_ipaddr;
+	fr_socket_addr_init_inet(&packet->socket, IPPROTO_UDP, ifindex, &src_ipaddr, src_port, &dst_ipaddr, dst_port);
 
 	talloc_steal(packet, data);
 	packet->data = data;
-	packet->sockfd = sockfd;
-	packet->if_index = if_index;
+	packet->socket.fd = sockfd;
+
 	packet->timestamp = when;
 	return packet;
 }

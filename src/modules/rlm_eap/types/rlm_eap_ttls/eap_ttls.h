@@ -26,6 +26,8 @@
 RCSIDH(eap_ttls_h, "$Id$")
 
 #include <freeradius-devel/eap/tls.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/radius/defs.h>
 
 extern fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 extern fr_dict_attr_t const *attr_proxy_to_realm;
@@ -41,7 +43,7 @@ extern fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_t const *attr_vendor_specific;
 
 typedef struct {
-	VALUE_PAIR	*username;
+	fr_pair_t	*username;
 	bool		authenticated;
 	char const	*virtual_server;
 } ttls_tunnel_t;
@@ -49,4 +51,4 @@ typedef struct {
 /*
  *	Process the TTLS portion of an EAP-TTLS request.
  */
-FR_CODE eap_ttls_process(REQUEST *request, eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
+FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);

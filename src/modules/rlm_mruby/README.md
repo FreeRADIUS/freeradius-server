@@ -18,7 +18,7 @@ There are a lot of possible improvements here:
 * Is using a module really the best solution? We merely use it as a namespace, maybe something more OO would be nicer?
 * Can we simplify the getter methods? Simulating something like `attr_reader` would be perfect here
 * Use more suitable data types for the values passed to the method. We have data types like Integer and DateTime, so use those instead of stringifying everything
-* Add methods on the request object to modify the lists. The current return value is a bit ridiculous, a call like `request.config.add_vp('Cleartext-Password', 'hello')` looks a lot cleaner
+* Add methods on the request object to modify the lists. The current return value is a bit ridiculous, a call like `request.config.add_vp('Password.Cleartext', 'hello')` looks a lot cleaner
 * In a similar fashion: methods to get the attributes: `request.request.get_attribute('User-Name')`
 * Add a xlat callback, similar to `rlm_perl` `radius_xlat`
 * Unit tests

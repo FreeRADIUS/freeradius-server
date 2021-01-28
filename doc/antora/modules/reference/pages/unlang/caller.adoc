@@ -1,0 +1,56 @@
+= The caller Statement
+
+.Syntax
+[source,unlang]
+----
+caller <protocol> {
+    [ statements ]
+}
+----
+
+The `caller` keyword checks the parent request to see if it matches a
+particular protocol.  If so, it executes the given _[statements]_, If
+the parent does not exist, or the parent protocol does not match, the
+statements are ignored.
+
+<protocol>::  The name of the protocol used by the virtual server which `call`ed this policy.
+
+[ statements ]:: If the protocol matches, the _[
+statements]_ from inside of the `caller` section will be executed.
+These statements will be executed in the context of the current request.
+
+A virtual server may the the target of multiple xref:unlang/call.adoc[call]
+keywords, each of which uses a different protocol.  For example, a
+policy which handles RADIUS `Access-Request` packets may create a DHCP
+`Discover` packet in order to perform IP address allocation.  The DHCP
+`Discover` packet will typically be processed through `DHCPv4` virtual
+server.  However, that virtual server may need to handle requests
+differently based on whether the original packet was RADIUS, or
+DHCPv4.
+
+The `caller` keyword allows a virtual server to check where it is
+called from, and to apply different policies based on that
+information.  The `caller` keywords is in some senses the counter-part
+to the xref:unlang/call.adoc[call] keyword.
+
+It may have been possible to use `if` conditions to perform this
+check.  However, doing so would involve creating additional syntax
+which would not have been as clear as using `caller`.
+
+.Example
+
+This example copies the `Client-Identifer` from the parent DHCPv4
+request to the current RADIUS reply packet, as the contents of the
+`Filter-Id` attribute.
+
+[source,unlang]
+----
+caller dhcpv4 {
+    update reply {
+        &Filter-Id := &parent.request:Client-Identifier
+    }
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

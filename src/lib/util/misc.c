@@ -22,8 +22,10 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
@@ -40,27 +42,6 @@ RCSID("$Id$")
 #include <sys/uio.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#ifdef HAVE_DIRENT_H
-#  include <dirent.h>
-/*
- *	Some versions of Linux don't have closefrom(), but they will
- *	have /proc.
- *
- *	BSD systems will generally have closefrom(), but not proc.
- *
- *	OSX doesn't have closefrom() or /proc/self/fd, but it does
- *	have /dev/fd
- */
-#  ifdef __linux__
-#    define CLOSEFROM_DIR "/proc/self/fd"
-#  elif defined(__APPLE__)
-#    define CLOSEFROM_DIR "/dev/fd"
-#  else
-#    undef HAVE_DIRENT_H
-#  endif
-#endif
-
 
 #define FR_PUT_LE16(a, val)\
 	do {\
@@ -179,86 +160,6 @@ int rad_unlockfd(int fd, int lock_len)
 	return rad_lock(fd, lock_len, F_SETLK, F_UNLCK);
 }
 
-static char const hextab[] = "0123456789abcdef";
-
-/** Convert hex strings to binary data
- *
- * @param bin Buffer to write output to.
- * @param outlen length of output buffer (or length of input string / 2).
- * @param hex input string.
- * @param inlen length of the input string
- * @return length of data written to buffer.
- */
-size_t fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen)
-{
-	size_t i;
-	size_t len;
-	char *c1, *c2;
-
-	/*
-	 *	Smartly truncate output, caller should check number of bytes
-	 *	written.
-	 */
-	len = inlen >> 1;
-	if (len > outlen) len = outlen;
-
-	for (i = 0; i < len; i++) {
-		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), sizeof(hextab))) ||
-		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), sizeof(hextab))))
-			break;
-		bin[i] = ((c1-hextab)<<4) + (c2-hextab);
-	}
-
-	return i;
-}
-
-/** Convert binary data to a hex string
- *
- * Ascii encoded hex string will not be prefixed with '0x'
- *
- * @warning If the output buffer isn't long enough, we have a buffer overflow.
- *
- * @param[out] hex Buffer to write hex output.
- * @param[in] bin input.
- * @param[in] inlen of bin input.
- * @return length of data written to buffer.
- */
-size_t fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen)
-{
-	size_t i;
-
-	for (i = 0; i < inlen; i++) {
-		hex[0] = hextab[((*bin) >> 4) & 0x0f];
-		hex[1] = hextab[*bin & 0x0f];
-		hex += 2;
-		bin++;
-	}
-
-	*hex = '\0';
-	return inlen * 2;
-}
-
-/** Convert binary data to a hex string
- *
- * Ascii encoded hex string will not be prefixed with '0x'
- *
- * @param[in] ctx to alloc buffer in.
- * @param[in] bin input.
- * @param[in] inlen of bin input.
- * @return length of data written to buffer.
- */
-char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
-{
-	char *buff;
-
-	buff = talloc_array(ctx, char, (inlen << 2));
-	if (!buff) return NULL;
-
-	fr_bin2hex(buff, bin, inlen);
-
-	return buff;
-}
-
 /** Consume the integer (or hex) portion of a value string
  *
  * Allows integer or hex representations of integers (but not octal,
@@ -335,80 +236,6 @@ char *fr_trim(char const *str, size_t size)
 	return q;
 }
 
-/*
- *	So we don't have ifdef's in the rest of the code
- */
-#ifndef HAVE_CLOSEFROM
-int closefrom(int fd)
-{
-	int i;
-	int maxfd = 256;
-#ifdef HAVE_DIRENT_H
-	DIR *dir;
-#endif
-
-#ifdef F_CLOSEM
-	if (fcntl(fd, F_CLOSEM) == 0) {
-		return 0;
-	}
-#endif
-
-#ifdef F_MAXFD
-	maxfd = fcntl(fd, F_F_MAXFD);
-	if (maxfd >= 0) goto do_close;
-#endif
-
-#ifdef _SC_OPEN_MAX
-	maxfd = sysconf(_SC_OPEN_MAX);
-	if (maxfd < 0) {
-		maxfd = 256;
-	}
-#endif
-
-#ifdef HAVE_DIRENT_H
-	/*
-	 *	Use /proc/self/fd directory if it exists.
-	 */
-	dir = opendir(CLOSEFROM_DIR);
-	if (dir != NULL) {
-		long my_fd;
-		char *endp;
-		struct dirent *dp;
-
-		while ((dp = readdir(dir)) != NULL) {
-			my_fd = strtol(dp->d_name, &endp, 10);
-			if (my_fd <= 0) continue;
-
-			if (*endp) continue;
-
-			if (my_fd == dirfd(dir)) continue;
-
-			if ((my_fd >= fd) && (my_fd <= maxfd)) {
-				(void) close((int) my_fd);
-			}
-		}
-		(void) closedir(dir);
-		return 0;
-	}
-#endif
-
-#ifdef F_MAXFD
-do_close:
-#endif
-
-	if (fd > maxfd) return 0;
-
-	/*
-	 *	FIXME: return EINTR?
-	 */
-	for (i = fd; i < maxfd; i++) {
-		close(i);
-	}
-
-	return 0;
-}
-#endif
-
 #ifdef O_NONBLOCK
 /** Set O_NONBLOCK on a socket
  *
@@ -470,12 +297,12 @@ int fr_blocking(int fd)
 #else
 int fr_nonblock(UNUSED int fd)
 {
-	fr_strerror_printf("Non blocking sockets are not supported");
+	fr_strerror_const("Non blocking sockets are not supported");
 	return -1;
 }
 int fr_blocking(UNUSED int fd)
 {
-	fr_strerror_printf("Non blocking sockets are not supported");
+	fr_strerror_const("Non blocking sockets are not supported");
 	return -1;
 }
 #endif
@@ -552,7 +379,7 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 
 			/* Select returned 0 which means it reached the timeout */
 			if (ret == 0) {
-				fr_strerror_printf("Write timed out");
+				fr_strerror_const("Write timed out");
 				return -1;
 			}
 
@@ -756,7 +583,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	char		*f[4];
 	char		*tail = NULL;
 	fr_time_delta_t	gmtoff = 0;
-
+	
 	/*
 	 *	Test for unix timestamp, which is just a number and
 	 *	nothing else.
@@ -800,7 +627,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 			p++;
 			subseconds = strtoul(p, &tail, 10);
 			if (subseconds > NSEC) {
-				fr_strerror_printf("Invalid nanosecond specifier");
+				fr_strerror_const("Invalid nanosecond specifier");
 				return -1;
 			}
 
@@ -860,7 +687,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		if (*tail == '-') tz *= -1;
 
 	done:
-		t = timegm(tm);
+		t = fr_time_from_utc(tm);
 		if (t == (time_t) -1) {
 			fr_strerror_printf("Failed calling system function to parse time - %s",
 					   fr_syserror(errno));
@@ -878,6 +705,20 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		return 0;
 	}
 
+	/*
+	 *	Try to parse dates via locale-specific names,
+	 *	using the same format string as strftime().
+	 *
+	 *	If that fails, then we fall back to our parsing
+	 *	routine, which is much more forgiving.
+	 */
+	p = strptime(date_str, "%b %e %Y %H:%M:%S %Z", tm);
+	if (p && (*p == '\0')) {
+		t = mktime(tm);
+		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		return 0;
+	}
+
 	strlcpy(buf, date_str, sizeof(buf));
 
 	p = buf;
@@ -886,7 +727,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	f[2] = mystrtok(&p, " \t");
 	f[3] = mystrtok(&p, " \t"); /* may, or may not, be present */
 	if (!f[0] || !f[1] || !f[2]) {
-		fr_strerror_printf("Too few fields");
+		fr_strerror_const("Too few fields");
 		return -1;
 	}
 
@@ -942,7 +783,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 
 	/* month not found? */
 	if (tm->tm_mon == 12) {
-		fr_strerror_printf("No month found");
+		fr_strerror_const("No month found");
 		return -1;
 	}
 
@@ -961,7 +802,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		 *  impossible to tell what's the day, and what's the year.
 		 */
 		if (tm->tm_mday < 1900) {
-			fr_strerror_printf("Invalid year < 1900");
+			fr_strerror_const("Invalid year < 1900");
 			return -1;
 		}
 
@@ -977,7 +818,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	 *  If the day is out of range, die.
 	 */
 	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
-		fr_strerror_printf("Invalid day of month");
+		fr_strerror_const("Invalid day of month");
 		return -1;
 	}
 
@@ -988,7 +829,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 		f[0] = f[3];	/* HH */
 		f[1] = strchr(f[0], ':'); /* find : separator */
 		if (!f[1]) {
-			fr_strerror_printf("No ':' after hour");
+			fr_strerror_const("No ':' after hour");
 			return -1;
 		}
 
@@ -1007,7 +848,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	/*
 	 *  Returns -1 on failure.
 	 */
-	t = timegm(tm);
+	t = fr_time_from_utc(tm);
 	if (t == (time_t) -1) {
 		fr_strerror_printf("Failed calling system function to parse time - %s",
 				   fr_syserror(errno));
@@ -1039,7 +880,7 @@ int fr_size_from_str(size_t *out, char const *str)
 	switch (tolower(q[0])) {
 	case 'n':		/* nibble */
 		if (size & 0x01) {
-			fr_strerror_printf("Sizes specified in nibbles must be an even number");
+			fr_strerror_const("Sizes specified in nibbles must be an even number");
 			return -1;
 		}
 		size /= 2;
@@ -1091,7 +932,9 @@ int fr_size_from_str(size_t *out, char const *str)
 	return 0;
 }
 
-/** Multiple checking for overflow
+/** Multiply, checking for overflow
+ *
+ * Multiplication will only occur if it would not overflow.
  *
  * @param[out] result	of multiplication.
  * @param[in] lhs	First operand.
@@ -1103,9 +946,37 @@ int fr_size_from_str(size_t *out, char const *str)
  */
 bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
 {
-        *result = lhs * rhs;
+	if (rhs > 0 && (UINT64_MAX / rhs) < lhs) return true;
 
-        return rhs > 0 && (UINT64_MAX / rhs) < lhs;
+	*result = lhs * rhs;	/* ubsan would flag this */
+
+	return false;
+}
+
+/** Multiply with modulo wrap
+ *
+ * Avoids multiplication overflow.
+ *
+ * @param[in] lhs	First operand.
+ * @param[in] rhs	Second operand.
+ * @param[in] mod	Modulo.
+ * @return
+ *	- Result.
+ */
+uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod)
+{
+	uint64_t res = 0;
+
+	lhs %= mod;
+
+	while (rhs > 0) {
+		if (rhs & 0x01) res = (res + lhs) % mod;
+
+		lhs = (lhs * 2) % mod;
+		rhs /= 2;
+	}
+
+	return res % mod;
 }
 
 /** Compares two pointers

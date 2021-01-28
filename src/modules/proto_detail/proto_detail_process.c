@@ -28,7 +28,7 @@
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/radius.h>
 
 #include "proto_detail.h"
@@ -47,12 +47,12 @@ fr_dict_attr_autoload_t proto_detail_process_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	VALUE_PAIR			*vp;
+	proto_detail_process_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_detail_process_t);
+	fr_pair_t			*vp;
 	rlm_rcode_t			rcode;
 	CONF_SECTION			*unlang;
-	proto_detail_process_t const	*inst = instance;
 
 	REQUEST_VERIFY(request);
 
@@ -61,30 +61,33 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		RDEBUG("Received %s ID %i",
 		       fr_dict_enum_name_by_value(inst->attr_packet_type, fr_box_uint32(request->packet->code)),
 		       request->packet->id);
-		log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 		request->component = "radius";
 
 		unlang = cf_section_find(request->server_cs, "recv", NULL);
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		RDEBUG("Running 'recv' from file %s", cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		/*
@@ -109,7 +112,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 				request->reply->code = 0;
 				break;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case RLM_MODULE_HANDLED:
 			unlang = cf_section_find(request->server_cs, "send", "ok");
@@ -134,7 +137,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, inst->attr_packet_type, TAG_ANY);
+		vp = fr_pair_find_by_da(&request->reply_pairs, inst->attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
@@ -144,19 +147,22 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -184,18 +190,18 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 			       request->reply->id);
 		}
 
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{ "recv", NULL,			MOD_AUTHORIZE },
 	{ "send", "ok",			MOD_POST_AUTH },
 	{ "send", "fail",		MOD_POST_AUTH },
@@ -204,11 +210,11 @@ static virtual_server_compile_t compile_list[] = {
 };
 
 
-static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_detail_process_t *inst = talloc_get_type_abort(instance, proto_detail_process_t);
 	CONF_SECTION		*server_cs;
-	vp_tmpl_rules_t		parse_rules;
+	tmpl_rules_t		parse_rules;
 
 	/*
 	 *	The detail file reader gets its dictionary from the
@@ -218,10 +224,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 	memset(&parse_rules, 0, sizeof(parse_rules));
 	parse_rules.dict_def = inst->dict;
 
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+	/*
+	 *	We are passed a CONF_SECTION for our configuration.
+	 *	The parent is the listener, and it's parent is the
+	 *	virtual server.
+	 */
+	server_cs = cf_item_to_section(cf_parent(cf_parent(conf)));
+	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	return virtual_server_compile_sections(server_cs, compile_list, &parse_rules, inst);
 }

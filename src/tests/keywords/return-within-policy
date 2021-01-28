@@ -3,10 +3,12 @@
 #
 group {
 	# Return must stop after the policy, otherwise we don't setup the test for success
+	accept
 	policy_return
 	success
 }
 
 # Return must stop after the policy, otherwise we don't setup the test for success
+accept
 policy_return
 success

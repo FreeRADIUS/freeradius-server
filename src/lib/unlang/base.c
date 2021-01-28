@@ -60,7 +60,7 @@ bool unlang_section(CONF_SECTION *cs)
  */
 void unlang_register(int type, unlang_op_t *op)
 {
-	rad_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+	fr_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
 
 	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
 }
@@ -71,6 +71,11 @@ void unlang_register(int type, unlang_op_t *op)
  */
 int unlang_init(void)
 {
+	/*
+	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
+	 */
+	if (xlat_init() < 0) return -1;
+
 	unlang_interpret_init();
 	/* Register operations for the default keywords */
 	unlang_condition_init();
@@ -85,6 +90,8 @@ int unlang_init(void)
 	if (unlang_subrequest_op_init() < 0) return -1;
 	unlang_switch_init();
 	unlang_call_init();
+	unlang_caller_init();
+	unlang_tmpl_init_shallow();
 
 	return 0;
 }

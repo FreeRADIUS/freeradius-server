@@ -30,7 +30,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request.h>
 
@@ -69,11 +69,9 @@ static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_prefix;
 static fr_dict_attr_t const *attr_request_processing_stage;
 static fr_dict_attr_t const *attr_strip_user_name;
 static fr_dict_attr_t const *attr_stripped_user_name;
-static fr_dict_attr_t const *attr_suffix;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_virtual_server;
@@ -81,18 +79,16 @@ static fr_dict_attr_t const *attr_virtual_server;
 extern fr_dict_attr_autoload_t paircmp_dict_attr[];
 fr_dict_attr_autoload_t paircmp_dict_attr[] = {
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
-	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_crypt_password, .name = "Password.Crypt", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_prefix, .name = "Prefix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_request_processing_stage, .name = "Request-Processing-Stage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_strip_user_name, .name = "Strip-User-Name", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_suffix, .name = "Suffix", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_virtual_server, .name = "Virtual-Server", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
@@ -105,93 +101,16 @@ static paircmp_t *cmp;
 
 
 /*
- *	Compare prefix/suffix.
- *
- *	If they compare:
- *	- if FR_STRIP_USER_NAME is present in check_list,
- *	  strip the username of prefix/suffix.
- *	- if FR_STRIP_USER_NAME is not present in check_list,
- *	  add a FR_STRIPPED_USER_NAME to the request.
- */
-static int prefix_suffix_cmp(UNUSED void *instance,
-			     REQUEST *request,
-			     VALUE_PAIR *req,
-			     VALUE_PAIR *check,
-			     VALUE_PAIR *check_list,
-			     UNUSED VALUE_PAIR **reply_list)
-{
-	VALUE_PAIR	*vp;
-	char const	*name;
-	char		rest[FR_MAX_STRING_LEN];
-	int		len, namelen;
-	int		ret = -1;
-	VALUE_PAIR	*username;
-
-	if (!request) return -1;
-
-	username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name, TAG_ANY);
-	if (!username) username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	if (!username) return -1;
-
-	VP_VERIFY(check);
-
-	name = username->vp_strvalue;
-
-	RDEBUG3("Comparing name \"%s\" and check value \"%pV\"", name, &check->data);
-
-	len = strlen(check->vp_strvalue);
-
-	if (check->da == attr_prefix) {
-		ret = strncmp(name, check->vp_strvalue, len);
-		if (ret == 0)
-			strlcpy(rest, name + len, sizeof(rest));
-	} else if (check->da == attr_suffix) {
-		namelen = strlen(name);
-		if (namelen >= len) {
-			ret = strcmp(name + namelen - len, check->vp_strvalue);
-			if (ret == 0) strlcpy(rest, name, namelen - len + 1);
-		}
-	}
-
-	if (ret != 0) return ret;
-
-	/*
-	 *	If Strip-User-Name == No, then don't do any more.
-	 */
-	vp = fr_pair_find_by_da(check_list, attr_strip_user_name, TAG_ANY);
-	if (vp && !vp->vp_uint32) return ret;
-
-	/*
-	 *	See where to put the stripped user name.
-	 */
-	vp = fr_pair_find_by_da(check_list, attr_stripped_user_name, TAG_ANY);
-	if (!vp) {
-		/*
-		 *	If "request" is NULL, then the memory will be
-		 *	lost!
-		 */
-		MEM(vp = fr_pair_afrom_da(request->packet, attr_stripped_user_name));
-		fr_pair_add(&req, vp);
-	}
-	fr_pair_value_strcpy(vp, rest);
-
-	return ret;
-}
-
-
-/*
  *	Compare the request packet type.
  */
 static int packet_cmp(UNUSED void *instance,
-		      REQUEST *request,
-		      UNUSED VALUE_PAIR *req,
-		      VALUE_PAIR *check,
-		      UNUSED VALUE_PAIR *check_list,
-		      UNUSED VALUE_PAIR **reply_list)
+		      request_t *request,
+		      UNUSED fr_pair_list_t *request_list,
+		      fr_pair_t *check_item)
 {
-	VP_VERIFY(check);
+	VP_VERIFY(check_item);
 
-	if (request->packet->code == check->vp_uint32) return 0;
+	if (request->packet->code == check_item->vp_uint32) return 0;
 
 	return 1;
 }
@@ -200,32 +119,30 @@ static int packet_cmp(UNUSED void *instance,
  *	Generic comparisons, via xlat.
  */
 static int generic_cmp(UNUSED void *instance,
-		       REQUEST *request,
-		       VALUE_PAIR *req,
-		       VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_list,
-		       UNUSED VALUE_PAIR **reply_list)
+		       request_t *request,
+		       UNUSED fr_pair_list_t *request_list,
+		       fr_pair_t *check_item)
 {
-	VP_VERIFY(check);
+	VP_VERIFY(check_item);
 
-	if ((check->op != T_OP_REG_EQ) && (check->op != T_OP_REG_NE)) {
+	if ((check_item->op != T_OP_REG_EQ) && (check_item->op != T_OP_REG_NE)) {
 		int rcode;
 		char name[1024];
 		char value[1024];
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
-		snprintf(name, sizeof(name), "%%{%s}", check->da->name);
+		snprintf(name, sizeof(name), "%%{%s}", check_item->da->name);
 
 		if (xlat_eval(value, sizeof(value), request, name, NULL, NULL) < 0) return 0;
 
-		MEM(vp = fr_pair_afrom_da(req, check->da));
-		vp->op = check->op;
+		MEM(vp = fr_pair_afrom_da(request->request_ctx, check_item->da));
+		vp->op = check_item->op;
 		fr_pair_value_from_str(vp, value, -1, '"', false);
 
 		/*
 		 *	Paircmp returns 0 for failed comparison, 1 for succeeded -1 for error.
 		 */
-		rcode = fr_pair_cmp(check, vp);
+		rcode = fr_pair_cmp(check_item, vp);
 
 		/*
 		 *	We're being called from paircmp_func,
@@ -245,7 +162,7 @@ static int generic_cmp(UNUSED void *instance,
 		 *	returns 0 for matched, and 1 for didn't match.
 		 */
 		rcode = !rcode;
-		fr_pair_list_free(&vp);
+		talloc_free(vp);
 
 		return rcode;
 	}
@@ -253,7 +170,7 @@ static int generic_cmp(UNUSED void *instance,
 	/*
 	 *	Will do the xlat for us
 	 */
-	return paircmp_pairs(request, check, NULL);
+	return paircmp_pairs(request, check_item, NULL);
 }
 
 /** See what attribute we want to compare with.
@@ -296,9 +213,9 @@ static bool other_attr(fr_dict_attr_t const *da, fr_dict_attr_t const **from)
  *	- -2 on error.
  */
 #ifdef HAVE_REGEX
-int paircmp_pairs(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+int paircmp_pairs(request_t *request, fr_pair_t *check, fr_pair_t *vp)
 #else
-int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
 #endif
 {
 	int ret = 0;
@@ -327,13 +244,15 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		if (check->vp_type == FR_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
-			expr_p = expr = fr_pair_value_asprint(check, check, '\0');
+			fr_value_box_aprint(check, &expr, &check->data, NULL);
+			expr_p = expr;
 		}
 
 		if (vp->vp_type == FR_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
-			value_p = value = fr_pair_value_asprint(vp, vp, '\0');
+			fr_value_box_aprint(vp, &value, &vp->data, NULL);
+			value_p = value;
 		}
 
 		if (!expr_p || !value_p) {
@@ -394,32 +313,16 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 *	Attributes must be of the same type.
 	 *
 	 *	FIXME: deal with type mismatch properly if one side contain
-	 *	ABINARY, OCTETS or STRING by converting the other side to
+	 *	OCTETS or STRING by converting the other side to
 	 *	a string
 	 *
 	 */
 	if (vp->vp_type != check->vp_type) return -1;
 
 	/*
-	 *	Tagged attributes are equal if and only if both the
-	 *	tag AND value match.
-	 */
-	if (check->da->flags.has_tag && !TAG_EQ(check->tag, vp->tag)) {
-		ret = ((int) vp->tag) - ((int) check->tag);
-		if (ret != 0) goto finish;
-	}
-
-	/*
 	 *	Not a regular expression, compare the types.
 	 */
 	switch (check->vp_type) {
-#ifdef WITH_ASCEND_BINARY
-		/*
-		 *	Ascend binary attributes can be treated
-		 *	as opaque objects, I guess...
-		 */
-		case FR_TYPE_ABINARY:
-#endif
 		case FR_TYPE_OCTETS:
 			if (vp->vp_length != check->vp_length) {
 				ret = 1; /* NOT equal */
@@ -482,7 +385,14 @@ int paircmp_pairs(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 
 		case FR_TYPE_IPV4_PREFIX:
 		case FR_TYPE_IPV6_PREFIX:
-			ret = memcmp(&vp->vp_ip, &check->vp_ip, sizeof(vp->vp_ip));
+			ret = fr_pair_cmp_op(check->op, vp, check);
+			if (ret == -1) return -2;   // error
+			if (check->op == T_OP_LT || check->op == T_OP_LE)
+				ret = (ret == 1) ? -1 : 1;
+			else if (check->op == T_OP_GT || check->op == T_OP_GE)
+				ret = (ret == 1) ? 1 : -1;
+			else if (check->op == T_OP_CMP_EQ)
+				ret = (ret == 1) ? 0 : -1;
 			break;
 
 		case FR_TYPE_IFID:
@@ -499,36 +409,36 @@ finish:
 	return 0;
 }
 
-/** Compare check and vp. May call the attribute comparison function.
+/** Compare check_item and vp. May call the attribute comparison function.
  *
  * Unlike paircmp_pairs() this function will call any attribute-specific
- * comparison functions registered.
+ * comparison functions registered.  vp to be matched is request_item or
+ * found in check_list or looked up from external sources depending on the
+ * comparison function called.
  *
  * @param[in] request		Current request.
+ * @param[in] request_item	item to compare.
  * @param[in] request_list	list pairs.
- * @param[in] check		item to compare.
- * @param[in] check_list	list.
- * @param[in] reply_list	list.
+ * @param[in] check_item	item to compare.
  * @return
- *	- 0 if check and vp are equal.
- *	- -1 if vp value is less than check value.
- *	- 1 is vp value is more than check value.
+ *	- 0 if check_item and vp are equal.
+ *	- -1 if vp value is less than check_item value.
+ *	- 1 is vp value is more than check_item value.
  */
-static int paircmp_func(REQUEST *request,
-			VALUE_PAIR *request_list,
-			VALUE_PAIR *check,
-			VALUE_PAIR *check_list,
-			VALUE_PAIR **reply_list)
+static int paircmp_func(request_t *request,
+			fr_pair_t *request_item,
+			fr_pair_list_t *request_list,
+			fr_pair_t *check_item)
 {
 	paircmp_t *c;
 
-	VP_VERIFY(check);
+	VP_VERIFY(check_item);
 
 	/*
 	 *      Check for =* and !* and return appropriately
 	 */
-	if (check->op == T_OP_CMP_TRUE)  return 0;
-	if (check->op == T_OP_CMP_FALSE) return 1;
+	if (check_item->op == T_OP_CMP_TRUE)  return 0;
+	if (check_item->op == T_OP_CMP_FALSE) return 1;
 
 	/*
 	 *	See if there is a special compare function.
@@ -536,44 +446,73 @@ static int paircmp_func(REQUEST *request,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next) {
-		if (c->da == check->da) {
-			return (c->compare)(c->instance, request, request_list, check, check_list, reply_list);
+		if (c->da == check_item->da) {
+			return (c->compare)(c->instance, request, request_list, check_item);
 		}
 	}
 
 	if (!request) return -1; /* doesn't exist, don't compare it */
 
-	return paircmp_pairs(request, check, request_list);
+	return paircmp_pairs(request, check_item, request_item);
 }
+
+
+/** Compare check_item and request
+ *
+ * Unlike paircmp_pairs() this function will call any
+ * attribute-specific comparison functions registered.  vp to be
+ * matched is looked up from external sources depending on the
+ * comparison function called.
+ *
+ * @param[in] request		Current request.
+ * @param[in] request_list	list pairs.
+ * @param[in] check_item	item to compare.
+ * @return
+ *	- 0 if check_item matches
+ *	- -1 if check_item is smaller
+ *	- 1 if check_item is larger
+ */
+int paircmp_virtual(request_t *request,
+		    fr_pair_list_t *request_list,
+		    fr_pair_t *check_item)
+{
+	paircmp_t *c;
+
+	for (c = cmp; c; c = c->next) {
+		if (c->da == check_item->da) {
+			return (c->compare)(c->instance, request, request_list, check_item);
+		}
+	}
+
+	return -1;
+}
+
 
 /** Compare two pair lists except for the password information.
  *
- * For every element in "check" at least one matching copy must be present
- * in "reply".
+ * For every element in "check_list" at least one matching copy must be present
+ * in "request_list".
  *
  * @param[in] request		Current request.
  * @param[in] request_list	request valuepairs.
- * @param[in] check		Check/control valuepairs.
- * @param[in,out] reply_list	Reply value pairs.
+ * @param[in] check_list	Check/control valuepairs.
  * @return 0 on match.
  */
-int paircmp(REQUEST *request,
-	    VALUE_PAIR *request_list,
-	    VALUE_PAIR *check,
-	    VALUE_PAIR **reply_list)
+int paircmp(request_t *request,
+	    fr_pair_list_t *request_list,
+	    fr_pair_list_t *check_list)
 {
-	fr_cursor_t		cursor;
-	VALUE_PAIR		*check_item;
-	VALUE_PAIR		*auth_item;
+	fr_pair_t		*check_item;
+	fr_pair_t		*auth_item;
 	fr_dict_attr_t const	*from;
 
 	int			result = 0;
 	int			compare;
 	bool			first_only;
 
-	for (check_item = fr_cursor_init(&cursor, &check);
+	for (check_item = fr_pair_list_head(check_list);
 	     check_item;
-	     check_item = fr_cursor_next(&cursor)) {
+	     check_item = fr_pair_list_next(check_list, check_item)) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -606,10 +545,10 @@ int paircmp(REQUEST *request,
 		if (check_item->da == attr_user_password) {
 			if (check_item->op == T_OP_CMP_EQ) {
 				WARN("Found User-Password == \"...\"");
-				WARN("Are you sure you don't mean Cleartext-Password?");
+				WARN("Are you sure you don't mean Password.Cleartext?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (fr_pair_find_by_num(request_list, 0, FR_USER_PASSWORD, TAG_ANY) == NULL) continue;
+			if (fr_pair_find_by_num(request_list, 0, FR_USER_PASSWORD) == NULL) continue;
 		}
 
 		/*
@@ -617,14 +556,14 @@ int paircmp(REQUEST *request,
 		 */
 		first_only = other_attr(check_item->da, &from);
 
-		auth_item = request_list;
+		auth_item = fr_pair_list_head(request_list);
 
 	try_again:
 		if (!first_only) {
 			while (auth_item != NULL) {
 				if ((auth_item->da == from) || (!from)) break;
 
-				auth_item = auth_item->next;
+				auth_item = fr_pair_list_next(request_list, auth_item);
 			}
 		}
 
@@ -658,13 +597,13 @@ int paircmp(REQUEST *request,
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircmp_func(request, auth_item, check_item, check, reply_list);
+		compare = paircmp_func(request, auth_item, request_list, check_item);
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:
 			RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
 				fr_table_str_by_value(fr_tokens_table, check_item->op, "<INVALID>"), check_item->da->name);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		case T_OP_CMP_TRUE:
 		case T_OP_CMP_FALSE:
 		case T_OP_CMP_EQ:
@@ -704,7 +643,7 @@ int paircmp(REQUEST *request,
 		 *	another of the same attribute, which DOES match.
 		 */
 		if ((result != 0) && (!first_only)) {
-			auth_item = auth_item->next;
+			auth_item = fr_pair_list_next(request_list, auth_item);
 			result = 0;
 			goto try_again;
 		}
@@ -754,7 +693,7 @@ int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
 
 	memset(&flags, 0, sizeof(flags));
 
-	da = fr_dict_attr_by_name(fr_dict_internal(), name);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), name);
 	if (da) {
 		if (paircmp_find(da)) {
 			fr_strerror_printf_push("Cannot register two comparions for attribute %s",
@@ -768,7 +707,7 @@ int paircmp_register_by_name(char const *name, fr_dict_attr_t const *from,
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(fr_dict_internal(), name);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), name);
 		if (!da) {
 			fr_strerror_printf("Failed finding attribute '%s'", name);
 			return -1;
@@ -799,7 +738,7 @@ int paircmp_register(fr_dict_attr_t const *da, fr_dict_attr_t const *from,
 {
 	paircmp_t *c;
 
-	rad_assert(da != NULL);
+	fr_assert(da != NULL);
 
 	paircmp_unregister(da, func);
 
@@ -878,8 +817,6 @@ int paircmp_init(void)
 		return -1;
 	}
 
-	paircmp_register(attr_prefix, attr_user_name, false, prefix_suffix_cmp, NULL);
-	paircmp_register(attr_suffix, attr_user_name, false, prefix_suffix_cmp, NULL);
 	paircmp_register(attr_packet_type, NULL, true, packet_cmp, NULL);
 
 	paircmp_register(attr_client_ip_address, NULL, true, generic_cmp, NULL);
@@ -897,8 +834,6 @@ int paircmp_init(void)
 
 void paircmp_free(void)
 {
-	paircmp_unregister(attr_prefix, prefix_suffix_cmp);
-	paircmp_unregister(attr_suffix, prefix_suffix_cmp);
 	paircmp_unregister(attr_packet_type, packet_cmp);
 
 	paircmp_unregister(attr_client_ip_address, generic_cmp);

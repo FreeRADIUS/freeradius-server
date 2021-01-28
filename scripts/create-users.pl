@@ -53,7 +53,7 @@ for ($num=0; $num<$numusers; $num++) {
 	printf SHAD "$username:%s:1000:0:99999:7:::\n", crypt($password, $password);
 	printf RAD  "User-Name=$username, User-Password=$password,NAS-IP-Address=127.0.0.1,NAS-Port-Id=0\n\n";
 	print NOCRYPT "$username:$password\n";
-	print USERS "$username  Cleartext-Password := \"$password\"\n\tClass=\"0x$num\"\n\n";
+	print USERS "$username  Password.Cleartext := \"$password\"\n\tClass=\"0x$num\"\n\n";
 }
 
 close(PASS);

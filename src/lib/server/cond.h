@@ -39,18 +39,24 @@ extern "C" {
 typedef struct fr_cond_s fr_cond_t;
 #endif
 
-typedef enum {
-	COND_NONE = 0,
-	COND_AND = '&',
-	COND_OR = '|'
-} fr_cond_op_t;
+extern fr_table_num_sorted_t const cond_logical_op_table[];
+extern size_t cond_logical_op_table_len;
+
+extern fr_table_num_sorted_t const cond_cmp_op_table[];
+extern size_t cond_cmp_op_table_len;
+
+extern fr_table_num_sorted_t const cond_quote_table[];
+extern size_t cond_quote_table_len;
 
 typedef enum {
 	COND_TYPE_INVALID = 0,
 	COND_TYPE_TRUE,
 	COND_TYPE_FALSE,
-	COND_TYPE_EXISTS,
+	COND_TYPE_TMPL,
+	COND_TYPE_RCODE,
 	COND_TYPE_MAP,
+	COND_TYPE_AND,
+	COND_TYPE_OR,
 	COND_TYPE_CHILD
 } fr_cond_type_t;
 
@@ -73,27 +79,30 @@ typedef enum {
 struct fr_cond_s {
 	fr_cond_type_t		type;
 
-	CONF_ITEM const		*ci;
 	union {
-		vp_map_t		*map;
-		vp_tmpl_t		*vpt;
-		fr_cond_t  		*child;
+		map_t			*map;		//!< Binary expression.
+		tmpl_t			*vpt;		//!< Unary expression.
+		fr_cond_t  		*child;		//!< Nested condition.
+		rlm_rcode_t		rcode;		//!< Rcode check.   We handle this outside of
+							///< tmpls as it doesn't apply anywhere else.
 	} data;
 
-	bool			negate;
+	bool			negate;		//!< Invert the result of the expression.
 	fr_cond_pass2_t		pass2_fixup;
 
-	fr_dict_attr_t const	*cast;
-
-	fr_cond_op_t		next_op;
+	fr_cond_t		*parent;
 	fr_cond_t		*next;
 };
 
-ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, char const **error,
-			 fr_dict_t const *dict, char const *start) CC_HINT(nonnull);
-size_t cond_snprint(size_t *need, char *buffer, size_t bufsize, fr_cond_t const *c);
+ssize_t	fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const *rules, fr_sbuff_t *in) CC_HINT(nonnull(1,2,4));
+
+int	fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs, fr_sbuff_marker_t *m_rhs) CC_HINT(nonnull(1));
+
+ssize_t	cond_print(fr_sbuff_t *out, fr_cond_t const *c);
 
 bool fr_cond_walk(fr_cond_t *head, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx);
+
+int fr_cond_from_map(TALLOC_CTX *ctx, fr_cond_t **head, map_t *map);
 
 #ifdef __cplusplus
 }

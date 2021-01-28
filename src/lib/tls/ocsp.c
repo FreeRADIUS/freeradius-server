@@ -31,7 +31,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 
@@ -99,7 +99,7 @@ static int ocsp_cert_url_parse(X509 *cert, char **host_out, char **port_out, cha
  *	- -1 on error.
  *	- 0 on success.
  */
-static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, VALUE_PAIR *vp)
+static int ocsp_staple_from_pair(request_t *request, SSL *ssl, fr_pair_t *vp)
 {
 	uint8_t *p;
 
@@ -122,7 +122,7 @@ static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, VALUE_PAIR *vp)
 
 /** Store OCSP response as a TLS-OCSP-Response attribute
  *
- * @note Adds &request:TLS-OCSP-Response to the current request, and adds
+ * @note Adds &request.TLS-OCSP-Response to the current request, and adds
  *	stapling data to the current SSL session.
  *
  * @param out		Where to write the TLS-OCSP-Response attribute.  Will also
@@ -133,11 +133,11 @@ static int ocsp_staple_from_pair(REQUEST *request, SSL *ssl, VALUE_PAIR *vp)
  *	- -1 on error.
  *	- 0 on success.
  */
-static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE *resp)
+static int ocsp_staple_to_pair(fr_pair_t **out, request_t *request, OCSP_RESPONSE *resp)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	size_t		len;
-	uint8_t		*buff, *p;
+	uint8_t		*p;
 
 	if (!resp) {
 		REDEBUG("No OCSP response available");
@@ -150,14 +150,14 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
 		return -1;
 	}
 
-	MEM(p = buff = talloc_array(request, uint8_t, len));	/* Alloc in context of request - steal later */
+	MEM(pair_update_request(&vp, attr_tls_ocsp_response) >= 0);
+	MEM(fr_pair_value_mem_alloc(vp, &p, len, true));
 	len = i2d_OCSP_RESPONSE(resp, &p);
 	if (len <= 0) {
 		REDEBUG("Failed serialising OCSP response");
+		pair_delete_request(vp);
 		return -1;
 	}
-	MEM(pair_update_request(&vp, attr_tls_ocsp_response) >= 0);
-	fr_pair_value_memsteal(vp, buff, true);
 
 	RDEBUG2("Serializing OCSP response");
 	RINDENT();
@@ -174,10 +174,10 @@ static int ocsp_staple_to_pair(VALUE_PAIR **out, REQUEST *request, OCSP_RESPONSE
  * @param ssl	Current SSL session.
  * @param data	OCSP configuration.
  */
-int tls_ocsp_staple_cb(SSL *ssl, void *data)
+int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 {
 	fr_tls_ocsp_conf_t	*conf = data;	/* Alloced as part of fr_tls_conf_t (not talloced) */
-	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	request_t			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	X509			*cert;
 	X509			*issuer_cert;
@@ -190,7 +190,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 	cert = SSL_get_certificate(ssl);
 	if (!cert) {
-		tls_log_error(request, "No server certificate found in SSL session");
+		fr_tls_log_error(request, "No server certificate found in SSL session");
 	error:
 		X509_STORE_CTX_free(server_store_ctx);
 		X509_STORE_free(server_store);
@@ -200,7 +200,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 	server_store = SSL_CTX_get_cert_store(SSL_get_SSL_CTX(ssl));
 	if (!server_store) {
-		tls_log_error(request, "Failed retrieving SSL session cert store");
+		fr_tls_log_error(request, "Failed retrieving SSL session cert store");
 		goto error;
 	}
 
@@ -216,7 +216,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	(void)SSL_get0_chain_certs(ssl, &our_chain);
 	if (!our_chain) {
 #endif
-		tls_log_error(request, "Failed retrieving chain certificates from current SSL session");
+		fr_tls_log_error(request, "Failed retrieving chain certificates from current SSL session");
 		goto error;
 	}
 
@@ -228,7 +228,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Current SSL session cert store contents");
 		RINDENT();
-		tls_log_certificate_chain(request, our_chain, cert);
+		fr_tls_log_certificate_chain(request, our_chain, cert);
 		REXDENT();
 	}
 
@@ -246,7 +246,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 		for (i = 0; i < num; i++) {
 			if (X509_STORE_add_cert(server_store, sk_X509_value(our_chain, i)) != 1) {
-				tls_log_error(request, "Failed adding certificate to trusted store");
+				fr_tls_log_error(request, "Failed adding certificate to trusted store");
 				goto error;
 			}
 		}
@@ -259,7 +259,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 	 */
 	MEM(server_store_ctx = X509_STORE_CTX_new());
 	if (X509_STORE_CTX_init(server_store_ctx, server_store, NULL, NULL) == 0) {
-		tls_log_error(request, "Failed initialising SSL session cert store ctx");
+		fr_tls_log_error(request, "Failed initialising SSL session cert store ctx");
 		goto error;
 	}
 
@@ -272,14 +272,14 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 
  		subject = X509_get_subject_name(cert);
 		if (!subject) {
-			tls_log_error(request, "Couldn't retrieve subject name of SSL session cert");
+			fr_tls_log_error(request, "Couldn't retrieve subject name of SSL session cert");
 			goto error;
 		}
 		MEM(subject_str = X509_NAME_oneline(subject, NULL, 0));
 
 		issuer = X509_get_issuer_name(cert);
 		if (!issuer) {
-			tls_log_error(request, "Couldn't retrieve issuer name of SSL session cert");
+			fr_tls_log_error(request, "Couldn't retrieve issuer name of SSL session cert");
 			OPENSSL_free(subject_str);
 			goto error;
 		}
@@ -287,11 +287,11 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 
 		switch (ret) {
 		case 0:
-			tls_log_error(request, "Issuer \"%s\" of \"%s\" not found in certificate store",
+			fr_tls_log_error(request, "Issuer \"%s\" of \"%s\" not found in certificate store",
 				      issuer_str, subject_str);
 			break;
 		default:
-			tls_log_error(request, "Error retrieving issuer \"%s\" of \"%s\" from certificate store",
+			fr_tls_log_error(request, "Error retrieving issuer \"%s\" of \"%s\" from certificate store",
 				      issuer_str, subject_str);
 			break;
 		}
@@ -301,9 +301,9 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-	rad_assert(issuer_cert);
+	fr_assert(issuer_cert);
 
-	ret = tls_ocsp_check(request, ssl, server_store, issuer_cert, cert, conf, true);
+	ret = fr_tls_ocsp_check(request, ssl, server_store, issuer_cert, cert, conf, true);
 	switch (ret) {
 	default:
 	case 0:	/* server cert is invalid */
@@ -329,7 +329,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 /** Sends a OCSP request to a defined OCSP responder
  *
  */
-int tls_ocsp_check(REQUEST *request, SSL *ssl,
+int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 		   X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		   fr_tls_ocsp_conf_t *conf, bool staple_response)
 {
@@ -352,48 +352,53 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 	int		rc;
 
 	fr_time_t	start;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
-	if (conf->cache_server) switch (tls_cache_process(request, conf->cache.load)) {
-	case RLM_MODULE_REJECT:
-		REDEBUG("Told to force OCSP validation failure from cached response");
-		return OCSP_STATUS_FAILED;
+	if (conf->cache_server) {
+		rlm_rcode_t rcode;
 
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	/*
-	 *	These are fine for OCSP too, we don't *expect* to always
-	 *	have a cached OCSP status.
-	 */
-	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_NOOP:
-		break;
+		fr_tls_cache_process(&rcode, request, conf->cache.load);
+		switch (rcode) {
+		case RLM_MODULE_REJECT:
+			REDEBUG("Told to force OCSP validation failure from cached response");
+			return OCSP_STATUS_FAILED;
 
-	default:
-		RWDEBUG("Failed retrieving cached OCSP status");
-		break;
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+		/*
+		 *	These are fine for OCSP too, we don't *expect* to always
+		 *	have a cached OCSP status.
+		 */
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_NOOP:
+			break;
+
+		default:
+			RWDEBUG("Failed retrieving cached OCSP status");
+			break;
+		}
 	}
 
 	/*
 	 *	Allow us to cache the OCSP verified state externally
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_cert_valid, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_tls_ocsp_cert_valid);
 	if (vp) switch (vp->vp_uint32) {
 	case 0:	/* no */
-		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
+		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
 		return OCSP_STATUS_FAILED;
 
 	case 1: /* yes */
-		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = yes, forcing OCSP success");
+		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = yes, forcing OCSP success");
 
 		/*
 		 *	If this fails, and an OCSP stapled response is required,
 		 *	we need to run the full OCSP check.
 		 */
 		if (staple_response) {
-			vp = fr_pair_find_by_da(request->control, attr_tls_ocsp_response, TAG_ANY);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_tls_ocsp_response);
 			if (!vp) {
-				RDEBUG2("No &control:TLS-OCSP-Response attribute found, performing full OCSP check");
+				RDEBUG2("No &control.TLS-OCSP-Response attribute found, performing full OCSP check");
 				break;
 			}
 			if (ocsp_staple_from_pair(request, ssl, vp) < 0) {
@@ -405,7 +410,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		return OCSP_STATUS_OK;
 
 	case 2: /* skipped */
-		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
+		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
 		return conf->softfail ? OCSP_STATUS_OK : OCSP_STATUS_FAILED;
 
 	case 3: /* unknown */
@@ -470,7 +475,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 			goto skipped;
 
 		case 1:
-			rad_assert(host && port && path);
+			fr_assert(host && port && path);
 			break;
 		}
 	}
@@ -534,7 +539,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 
 	if (rc == 0) {
 		REDEBUG("Couldn't get OCSP response");
-		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
+		FR_OPENSSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
 		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto finish;
 	}
@@ -575,29 +580,29 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 *	We want this to show up in the global log
 		 *	so someone will fix it...
 		 */
-		RATE_LIMIT(RERROR("Delta +/- between OCSP response time and our time is greater than %li "
+		RATE_LIMIT_GLOBAL(RERROR, "Delta +/- between OCSP response time and our time is greater than %li "
 				  "seconds.  Check servers are synchronised to a common time source",
-				  this_fudge));
-		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
+				  this_fudge);
+		FR_OPENSSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
 		goto finish;
 	}
 
 	/*
 	 *	Print any messages we may have accumulated
 	 */
-	SSL_DRAIN_ERROR_QUEUE(RDEBUG2, "", ssl_log);
+	FR_OPENSSL_DRAIN_ERROR_QUEUE(RDEBUG2, "", ssl_log);
 	if (RDEBUG_ENABLED) {
 		RDEBUG2("OCSP response valid from:");
 		ASN1_GENERALIZEDTIME_print(ssl_log, this_update);
 		RINDENT();
-		SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
+		FR_OPENSSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
 		REXDENT();
 
 		if (next_update) {
 			RDEBUG2("New information available at:");
 			ASN1_GENERALIZEDTIME_print(ssl_log, next_update);
 			RINDENT();
-			SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
+			FR_OPENSSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
 			REXDENT();
 		}
 	}
@@ -616,7 +621,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 */
 		now = fr_time();
 
-		if (tls_utils_asn1time_to_epoch(&next, next_update) < 0) {
+		if (fr_tls_utils_asn1time_to_epoch(&next, next_update) < 0) {
 			RPEDEBUG("Failed parsing next_update time");
 			ocsp_status = OCSP_STATUS_SKIPPED;
 			goto finish;
@@ -650,12 +655,12 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		/*
 		 *	Print any messages we may have accumulated
 		 */
-		SSL_DRAIN_LOG_QUEUE(RDEBUG, "", ssl_log);
+		FR_OPENSSL_DRAIN_LOG_QUEUE(RDEBUG, "", ssl_log);
 		if (RDEBUG_ENABLED2) {
 			RDEBUG2("Revocation time:");
 			ASN1_GENERALIZEDTIME_print(ssl_log, rev);
 			RINDENT();
-			SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
+			FR_OPENSSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
 			REXDENT();
 		}
 		break;
@@ -668,7 +673,7 @@ finish:
 
 		if (staple_response) {
 			/*
-			 *	Convert the OCSP response to a VALUE_PAIR
+			 *	Convert the OCSP response to a fr_pair_t
 			 *	and add it to the current request.
 			 */
 			if (ocsp_staple_to_pair(&vp, request, resp) < 0) goto skipped;
@@ -689,7 +694,7 @@ finish:
 
 	case OCSP_STATUS_SKIPPED:
 	skipped:
-		SSL_DRAIN_ERROR_QUEUE(RWDEBUG, "", ssl_log);
+		FR_OPENSSL_DRAIN_ERROR_QUEUE(RWDEBUG, "", ssl_log);
 		MEM(pair_update_request(&vp, attr_tls_ocsp_cert_valid) >= 0);
 		vp->vp_uint32 = 2;	/* skipped */
 		if (conf->softfail) {
@@ -709,23 +714,27 @@ finish:
 		break;
 
 	default:
-		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
+		FR_OPENSSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
 		MEM(pair_update_request(&vp, attr_tls_ocsp_cert_valid) >= 0);
 		vp->vp_uint32 = 0;	/* no */
 		REDEBUG("Failed to validate certificate");
 		break;
 	}
 
-	if (conf->cache_server) switch (tls_cache_process(request, conf->cache.store)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-		break;
+	if (conf->cache_server) {
+		rlm_rcode_t rcode;
 
-	default:
-		RWDEBUG("Failed writing cached OCSP status");
-		break;
+		fr_tls_cache_process(&rcode, request, conf->cache.store);
+		switch (rcode) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			break;
+
+		default:
+			RWDEBUG("Failed writing cached OCSP status");
+			break;
+		}
 	}
-
 	/* Free OCSP Stuff */
 	OCSP_REQUEST_free(req);
 	OCSP_BASICRESP_free(bresp);
@@ -758,7 +767,7 @@ do { \
  *	- -1 on failure.
  *	- 0 on success.
  */
-int tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
+int fr_tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
 {
 	bool found = false;
 
@@ -786,7 +795,7 @@ int tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_c
  *	- -1 on failure.
  *	- 0 on success.
  */
-int tls_ocsp_staple_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
+int fr_tls_ocsp_staple_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
 {
 	bool found = false;
 

@@ -12,7 +12,7 @@
 
 *`man` page:* `radiusd.conf`
 
-*documentation page:* xref:unlang:xlat/index.adoc[String expansions]
+*documentation page:* xref:reference:unlang/xlat/index.adoc[String expansions]
 
 There are two kinds of variables within the server. The first is within
 `radiusd.conf` and related files. These variables are referenced via the
@@ -73,7 +73,7 @@ may also be used to create values for reply attributes. Stop the server,
 and edit the users file to add the following entry at the top:
 
 -----------------------------------------------------------------------------
-bob Cleartext-Password := "hello"
+bob Password.Cleartext := "hello"
         Reply-Message = "Hello %{User-Name}, your NAS port is %{NAS-Port}",
         Reply-Message += "at time %T"
 -----------------------------------------------------------------------------
@@ -91,5 +91,5 @@ bad idea?
 3.  How would you create an entry in the users file that matched users when
 their `Class` was the same as their `NAS-Port`?
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

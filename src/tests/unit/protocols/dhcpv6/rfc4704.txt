@@ -39,18 +39,18 @@ proto-dictionary dhcpv6
 #                    (with length option-len - 1)
 #
 
-encode-pair Client-FQDN-Flag-No-Server-Update = no, Client-FQDN-Flag-Server-Override = yes, Client-FQDN-Flag-Server-Update = yes, Client-FQDN-Domain-Name = "tapioca01"
+encode-pair Client-FQDN.No-Server-Update = no, Client-FQDN.Server-Override = yes, Client-FQDN.Server-Update = yes, Client-FQDN.Domain-Name = "tapioca01"
 match 00 27 00 0b 03 09 74 61 70 69 6f 63 61 30 31
 
 decode-pair -
-match Client-FQDN-Flag-Reserved = 0, Client-FQDN-Flag-No-Server-Update = no, Client-FQDN-Flag-Server-Override = yes, Client-FQDN-Flag-Server-Update = yes, Client-FQDN-Domain-Name = "tapioca01"
+match Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = no, Client-FQDN.Server-Override = yes, Client-FQDN.Server-Update = yes, Client-FQDN.Domain-Name = "tapioca01"
 
 # let's try another combination
-encode-pair Client-FQDN-Flag-No-Server-Update = yes, Client-FQDN-Flag-Server-Override = no, Client-FQDN-Flag-Server-Update = no, Client-FQDN-Domain-Name = "tapioca01"
+encode-pair Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01"
 match 00 27 00 0b 04 09 74 61 70 69 6f 63 61 30 31
 
 decode-pair -
-match Client-FQDN-Flag-Reserved = 0, Client-FQDN-Flag-No-Server-Update = yes, Client-FQDN-Flag-Server-Override = no, Client-FQDN-Flag-Server-Update = no, Client-FQDN-Domain-Name = "tapioca01"
+match Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01"
 
 count
 match 10

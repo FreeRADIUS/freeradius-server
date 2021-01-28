@@ -353,68 +353,8 @@ void dependency_features_init(CONF_SECTION *cs)
 {
 	default_feature_cs = cs;
 
-	dependency_feature_add(cs, "accounting",
-#ifdef WITH_ACCOUNTING
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "authentication", true);
-
-	dependency_feature_add(cs, "ascend-binary-attributes",
-#ifdef WITH_ASCEND_BINARY
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "coa",
-#ifdef WITH_COA
-				true
-#else
-				false
-#endif
-				);
-
-
-	dependency_feature_add(cs, "control-socket",
-#ifdef WITH_COMMAND_SOCKET
-				true
-#else
-				false
-#endif
-				);
-
-
-	dependency_feature_add(cs, "detail",
-#ifdef WITH_DETAIL
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "dhcp",
-#ifdef WITH_DHCP
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "dynamic-clients",
-#ifdef WITH_DYNAMIC_CLIENTS
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "proxy",
-#ifdef WITH_PROXY
+	dependency_feature_add(cs, "cap",
+#ifdef HAVE_CAPABILITY_H
 				true
 #else
 				false
@@ -451,11 +391,13 @@ void dependency_features_init(CONF_SECTION *cs)
 	dependency_feature_add(cs, "regex-posix-extended", false);
 #endif
 
+	dependency_feature_add(cs, "regex-binsafe",
 #if defined(HAVE_REGNEXEC) || defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	dependency_feature_add(cs, "regex-binsafe", true);
+				true
 #else
-	dependency_feature_add(cs, "regex-binsafe", false);
+				false
 #endif
+				);
 
 	dependency_feature_add(cs, "stats",
 #ifdef WITH_STATS
@@ -475,31 +417,6 @@ void dependency_features_init(CONF_SECTION *cs)
 
 	dependency_feature_add(cs, "tls",
 #ifdef WITH_TLS
-				true
-#else
-				false
-#endif
-				);
-
-
-	dependency_feature_add(cs, "tls-key-agility",
-#ifdef WITH_TLS
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "unlang",
-#ifdef WITH_UNLANG
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "vmps",
-#ifdef WITH_VMPS
 				true
 #else
 				false
@@ -602,7 +519,7 @@ void dependency_version_print(void)
 		MEM(versions = cf_section_alloc(NULL, NULL, "version", NULL));
 		dependency_version_numbers_init(versions);
 
-		DEBUG2("Server was built with: ");
+		DEBUG2("Server was built with:");
 
 		for (ci = cf_item_next(features, NULL);
 		     ci;
@@ -691,7 +608,7 @@ void dependency_version_print(void)
 		DEBUG2("  ");
 	}
 	INFO("FreeRADIUS Version " RADIUSD_VERSION_STRING);
-	INFO("Copyright 1999-2019 The FreeRADIUS server project and contributors");
+	INFO("Copyright 1999-2021 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");

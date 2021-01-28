@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/util/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
@@ -56,8 +56,8 @@ typedef enum {
 
 #ifdef DEBUG_CHANNEL
 static fr_table_num_sorted_t const channel_direction[] = {
-	{ "to responder",	TO_RESPONDER },
-	{ "to requestor",	TO_REQUESTOR },
+	{ L("to responder"),	TO_RESPONDER },
+	{ L("to requestor"),	TO_REQUESTOR },
 };
 size_t channel_direction_len = NUM_ELEMENTS(channel_direction);
 #endif
@@ -150,24 +150,22 @@ struct fr_channel_s {
 	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 };
 
-#ifdef DEBUG_CHANNEL
-static fr_table_num_sorted_t const channel_signals[] = {
-	{ "error",			FR_CHANNEL_ERROR			},
-	{ "data-to-responder",		FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
-	{ "data-to-requestor",		FR_CHANNEL_DATA_READY_REQUESTOR		},
-	{ "open",			FR_CHANNEL_OPEN				},
-	{ "close",			FR_CHANNEL_CLOSE			},
-	{ "data-done-responder",	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
-	{ "responder-sleeping",		FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
+fr_table_num_sorted_t const channel_signals[] = {
+	{ L("error"),			FR_CHANNEL_ERROR			},
+	{ L("data-to-responder"),		FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
+	{ L("data-to-requestor"),		FR_CHANNEL_DATA_READY_REQUESTOR		},
+	{ L("open"),			FR_CHANNEL_OPEN				},
+	{ L("close"),			FR_CHANNEL_CLOSE			},
+	{ L("data-done-responder"),	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
+	{ L("responder-sleeping"),		FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
 };
-size_t const channel_signals_len = NUM_ELEMENTS(channel_signals);
-#endif
+size_t channel_signals_len = NUM_ELEMENTS(channel_signals);
 
 fr_table_num_sorted_t const channel_packet_priority[] = {
-	{ "high",	PRIORITY_HIGH		},
-	{ "low",	PRIORITY_LOW		},
-	{ "normal",	PRIORITY_NORMAL		},
-	{ "now",	PRIORITY_NOW		}
+	{ L("high"),	PRIORITY_HIGH		},
+	{ L("low"),	PRIORITY_LOW		},
+	{ L("normal"),	PRIORITY_NORMAL		},
+	{ L("now"),	PRIORITY_NOW		}
 };
 size_t channel_packet_priority_len = NUM_ELEMENTS(channel_packet_priority);
 
@@ -190,7 +188,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch = talloc_zero(ctx, fr_channel_t);
 	if (!ch) {
 	nomem:
-		fr_strerror_printf("Failed allocating memory");
+		fr_strerror_const("Failed allocating memory");
 		return NULL;
 	}
 
@@ -199,13 +197,13 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_RESPONDER].direction = TO_RESPONDER;
 	ch->end[TO_REQUESTOR].direction = TO_REQUESTOR;
 
-	ch->end[TO_RESPONDER].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_RESPONDER].aq = fr_atomic_queue_alloc(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_RESPONDER].aq) {
 		talloc_free(ch);
 		goto nomem;
 	}
 
-	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
+	ch->end[TO_REQUESTOR].aq = fr_atomic_queue_alloc(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_REQUESTOR].aq) {
 		talloc_free(ch);
 		goto nomem;
@@ -221,7 +219,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *requestor, fr_con
 	ch->end[TO_RESPONDER].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!ch->end[TO_RESPONDER].rb) {
 	rb_nomem:
-		fr_strerror_printf_push("Failed allocating ring buffer");
+		fr_strerror_const_push("Failed allocating ring buffer");
 		talloc_free(ch);
 		return NULL;
 	}
@@ -310,13 +308,8 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t sequence;
 	fr_time_t when, message_interval;
 	fr_channel_end_t *requestor;
-	bool active;
 
-	active = atomic_load(&ch->end[TO_RESPONDER].active);
-	if (!active) {
-		fr_strerror_printf("Channel not active");
-		return -1;
-	}
+	if (!fr_cond_assert_msg(atomic_load(&ch->end[TO_RESPONDER].active), "Channel not active")) return -1;
 
 	/*
 	 *	Same thread?  Just call the "recv" function directly.
@@ -338,7 +331,8 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(requestor->aq, cd)) {
-		fr_strerror_printf("Failed pushing to atomic queue");
+		fr_strerror_printf("Failed pushing to atomic queue - full.  Queue contains %zu items",
+				   fr_atomic_queue_size(requestor->aq));
 		while (fr_channel_recv_reply(ch));
 		return -1;
 	}
@@ -352,7 +346,9 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 		requestor->stats.message_interval = RTT(requestor->stats.message_interval, message_interval);
 	}
 
-	rad_assert(requestor->stats.last_write <= when);
+	fr_assert_msg(requestor->stats.last_write <= when,
+		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
+		      when, requestor->stats.last_write);
 	requestor->stats.last_write = when;
 
 	requestor->stats.outstanding++;
@@ -414,7 +410,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	fr_channel_end_t *requestor;
 	fr_atomic_queue_t *aq;
 
-	rad_assert(ch->end[TO_RESPONDER].recv != NULL);
+	fr_assert(ch->end[TO_RESPONDER].recv != NULL);
 
 	aq = ch->end[TO_REQUESTOR].aq;
 	requestor = &(ch->end[TO_RESPONDER]);
@@ -448,15 +444,15 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	 *	we've received one more reply, and with the responders
 	 *	ACK.
 	 */
-	rad_assert(requestor->stats.outstanding > 0);
-	rad_assert(cd->live.sequence > requestor->ack);
-	rad_assert(cd->live.sequence <= requestor->sequence); /* must have fewer replies than requests */
+	fr_assert(requestor->stats.outstanding > 0);
+	fr_assert(cd->live.sequence > requestor->ack);
+	fr_assert(cd->live.sequence <= requestor->sequence); /* must have fewer replies than requests */
 
 	requestor->stats.outstanding--;
 	requestor->ack = cd->live.sequence;
 	requestor->their_view_of_my_sequence = cd->live.ack;
 
-	rad_assert(requestor->stats.last_read_other <= cd->m.when);
+	fr_assert(requestor->stats.last_read_other <= cd->m.when);
 	requestor->stats.last_read_other = cd->m.when;
 
 	ch->end[TO_RESPONDER].recv(ch->end[TO_RESPONDER].recv_uctx, ch, cd);
@@ -486,14 +482,14 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 	 */
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return false;
 
-	rad_assert(cd->live.sequence > responder->ack);
-	rad_assert(cd->live.sequence >= responder->sequence); /* must have more requests than replies */
+	fr_assert(cd->live.sequence > responder->ack);
+	fr_assert(cd->live.sequence >= responder->sequence); /* must have more requests than replies */
 
 	responder->stats.outstanding++;
 	responder->ack = cd->live.sequence;
 	responder->their_view_of_my_sequence = cd->live.ack;
 
-	rad_assert(responder->stats.last_read_other <= cd->m.when);
+	fr_assert(responder->stats.last_read_other <= cd->m.when);
 	responder->stats.last_read_other = cd->m.when;
 
 	ch->end[TO_REQUESTOR].recv(ch->end[TO_REQUESTOR].recv_uctx, ch, cd);
@@ -516,13 +512,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	uint64_t		sequence;
 	fr_time_t		when, message_interval;
 	fr_channel_end_t	*responder;
-	bool			active;
 
-	active = atomic_load(&ch->end[TO_REQUESTOR].active);
-	if (!active) {
-		fr_strerror_printf("Channel not active");
-		return -1;
-	}
+	if (!fr_cond_assert_msg(atomic_load(&ch->end[TO_REQUESTOR].active), "Channel not active")) return -1;
 
 	/*
 	 *	Same thread?  Just call the "recv" function directly.
@@ -541,12 +532,13 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	cd->live.ack = responder->ack;
 
 	if (!fr_atomic_queue_push(responder->aq, cd)) {
-		fr_strerror_printf("Failed pushing to atomic queue");
+		fr_strerror_printf("Failed pushing to atomic queue - full.  Queue contains %zu items",
+				   fr_atomic_queue_size(responder->aq));
 		while (fr_channel_recv_request(ch));
 		return -1;
 	}
 
-	rad_assert(responder->stats.outstanding > 0);
+	fr_assert(responder->stats.outstanding > 0);
 	responder->stats.outstanding--;
 	responder->stats.packets++;
 
@@ -556,7 +548,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	message_interval = when - responder->stats.last_write;
 	responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
 
-	rad_assert(responder->stats.last_write <= when);
+	fr_assert_msg(responder->stats.last_write <= when,
+		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
+		      when, responder->stats.last_write);
 	responder->stats.last_write = when;
 
 	/*
@@ -600,7 +594,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	FIXME: make these limits configurable, or include
 	 *	predictions about packet processing time?
 	 */
-	rad_assert(responder->their_view_of_my_sequence <= responder->sequence);
+	fr_assert(responder->their_view_of_my_sequence <= responder->sequence);
 #if 0
 	if (((responder->sequence - their_view_of_my_sequence) <= 1000) &&
 	    ((when - responder->stats.last_read_other < SIGNAL_INTERVAL) ||
@@ -698,7 +692,7 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	fr_channel_end_t *requestor;
 	fr_channel_t *ch;
 
-	rad_assert(data_size == sizeof(cc));
+	fr_assert(data_size == sizeof(cc));
 	memcpy(&cc, data, data_size);
 
 	cs = cc.signal;
@@ -756,7 +750,7 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 *	The responder is sleeping or done.  There are more
 	 *	packets available, so we signal it to wake up again.
 	 */
-	rad_assert(ack <= requestor->sequence);
+	fr_assert(ack <= requestor->sequence);
 #endif
 
 	/*

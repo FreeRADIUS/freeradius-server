@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "return_priv.h"
 
-unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult)
+unlang_action_t unlang_return(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -35,7 +35,7 @@ unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult)
 
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
-	*presult = frame->result;
+	*p_result = frame->result;
 
 	/*
 	 *	Stop at the next return point, or if we hit

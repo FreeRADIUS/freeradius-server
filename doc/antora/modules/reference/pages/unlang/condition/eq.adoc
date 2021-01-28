@@ -1,0 +1,30 @@
+= The == Operator
+
+.Syntax
+`(data-1 == data-2)`
+
+The `==` operator compares the result of evaluating `data-1` and
+`data-2`. As discussed in xref:type/index.adoc[Data Types], the `data-1`
+field may be interpreted as a reference to an attribute.
+
+The `data-2` field is interpreted in a type-specific manner. For
+example, if `data-1` refers to an attribute of type `ipaddr`, then
+`data-2` is evaluated as an IP address. If `data-1` refers to an
+attribute of type `integer`, then `data-2` is evaluated as an integer
+or as a named enumeration defined by a `VALUE` statement in a
+dictionary. Similarly, if `data-1` refers to an attribute of type
+`date`, then `data-2` will be interpreted as a date string.
+
+If the resulting data evaluates to be the same, then the operator
+returns `true`; otherwise, it returns `false`.
+
+.Example
+[source,unlang]
+----
+if (User-Name == "bob") {
+    ...
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

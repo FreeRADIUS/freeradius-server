@@ -32,6 +32,7 @@ RCSIDH(radsniff_h, "$Id$")
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/radius/radius.h>
 
 #ifdef HAVE_COLLECTDC_H
 #  include <collectd/client.h>
@@ -75,7 +76,8 @@ typedef enum {
 	RS_LOST		= 0x20
 } rs_status_t;
 
-typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle, RADIUS_PACKET *packet,
+typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle,
+				   fr_radius_packet_t *packet, fr_pair_list_t *list,
 				   struct timeval *elapsed, struct timeval *latency, bool response, bool body);
 typedef enum {
 #ifdef HAVE_COLLECTDC_H
@@ -95,6 +97,14 @@ typedef struct rs_stats_value_tmpl rs_stats_value_tmpl_t;
 typedef struct {
 	uint64_t type[FR_CODE_RADIUS_MAX + 1];
 } rs_counters_t;
+
+typedef struct CC_HINT(__packed__) {
+	uint8_t		code;
+	uint8_t		id;
+	uint8_t		length[2];
+	uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];
+	uint8_t		data[];
+} radius_packet_t;
 
 /** Stats for a single interval
  *
@@ -167,7 +177,7 @@ typedef struct {
 	uint8_t			*data;			//!< PCAP packet data.
 } rs_capture_t;
 
-/** Wrapper for RADIUS_PACKET
+/** Wrapper for fr_radius_packet_t
  *
  * Allows an event to be associated with a request packet.  This is required because we need to disarm
  * the event timer when a response is received, so we don't erroneously log the response as lost.
@@ -181,11 +191,13 @@ typedef struct {
 	struct timeval		when;			//!< Time when the packet was received, or next time an event
 							//!< is scheduled.
 	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
-	RADIUS_PACKET		*packet;		//!< The original packet.
-	RADIUS_PACKET		*expect;		//!< Request/response.
-	RADIUS_PACKET		*linked;		//!< The subsequent response or forwarded request the packet
+	fr_radius_packet_t	*packet;		//!< The original packet.
+	fr_pair_list_t		packet_vps;
+	fr_radius_packet_t	*expect;		//!< Request/response.
+	fr_pair_list_t		expect_vps;
+	fr_radius_packet_t	*linked;		//!< The subsequent response or forwarded request the packet
 							//!< was linked against.
-
+	fr_pair_list_t		link_vps;		//!< fr_pair_ts used to link retransmissions.
 
 	rs_capture_t		capture[RS_RETRANSMIT_MAX];	//!< Buffered request packets (if a response filter
 								//!< has been applied).
@@ -200,7 +212,7 @@ typedef struct {
 	bool			silent_cleanup;		//!< Cleanup was forced before normal expiry period,
 							//!< ignore stats about packet loss.
 
-	VALUE_PAIR		*link_vps;		//!< VALUE_PAIRs used to link retransmissions.
+
 
 	bool			in_request_tree;	//!< Whether the request is currently in the request tree.
 	bool			in_link_tree;		//!< Whether the request is currently in the linked tree.
@@ -279,8 +291,8 @@ struct rs {
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.
 
-	VALUE_PAIR 		*filter_request_vps;	//!< Sorted filter vps.
-	VALUE_PAIR 		*filter_response_vps;	//!< Sorted filter vps.
+	fr_pair_list_t 		filter_request_vps;	//!< Sorted filter vps.
+	fr_pair_list_t 		filter_response_vps;	//!< Sorted filter vps.
 	FR_CODE			filter_request_code;	//!< Filter request packets by code.
 	FR_CODE			filter_response_code;	//!< Filter response packets by code.
 

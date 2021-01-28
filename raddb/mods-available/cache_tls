@@ -54,7 +54,7 @@ cache cache_tls_session {
 	#  update <section> { ... }::
 	#
 	update {
-		&session-state:Session-Data := &session-state:Session-Data
+		&session-state.Session-Data := &session-state.Session-Data
 
 		#
 		#  NOTE: If you want to store authorization attributes too, consider
@@ -67,7 +67,7 @@ cache cache_tls_session {
 		#  Policies run in `post-auth` then have access to the same data
 		#  irrespective of whether the session is being resumed.
 		#
-#		&session-state: += &session-state:
+#		&session-state += &session-state
 	}
 }
 
@@ -85,13 +85,13 @@ cache cache_ocsp {
 	#
 	#  key:: `cache` key.
 	#
-	key = &session-state:TLS-Client-Cert-Serial
+	key = &session-state.TLS-Client-Cert-Serial
 
 	#
 	#  update <section> { ... }::
 	#
 	update {
-		&control:TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
-		&control:TLS-OCSP-Response := &TLS-OCSP-Response
+		&control.TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
+		&control.TLS-OCSP-Response := &TLS-OCSP-Response
 	}
 }

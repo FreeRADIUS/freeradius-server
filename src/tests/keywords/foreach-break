@@ -27,35 +27,35 @@ foreach &Filter-Id {
 # Adding attribute during request and immediately breaking
 #
 update {
-	&request:Filter-Id += "1"
-	&request:Filter-Id += "2"
+	&request.Filter-Id += "1"
+	&request.Filter-Id += "2"
 }
 
-foreach &request:Reply-Message {
+foreach &request.Reply-Message {
 	if("%{Foreach-Variable-0}" == "1") {
 		update {
-			&request:Filter-Id += "3"
+			&request.Filter-Id += "3"
 		}
 		break
 	}
 }
 
 update {
-	&request:Filter-Id !* ANY
+	&request.Filter-Id !* ANY
 }
 
 #
 # Adding attribute during request and continuing
 #
 update {
-	&request:Filter-Id += "1"
-	&request:Filter-Id += "2"
+	&request.Filter-Id += "1"
+	&request.Filter-Id += "2"
 }
 
-foreach &request:Reply-Message {
+foreach &request.Reply-Message {
 	if("%{Foreach-Variable-0}" == "1") {
 		update {
-			&request:Filter-Id += "3"
+			&request.Filter-Id += "3"
 		}
 	}
 

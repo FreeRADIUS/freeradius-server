@@ -82,12 +82,12 @@ sleeping... the network always sets it, I guess..
   little weird, but it should work.
 
 * needs helper functions in virtual_server.c to do it.. and to create
-  child REQUEST async stuff with listen, protocol handler, etc.
+  child request_t async stuff with listen, protocol handler, etc.
 
 * fork also needs to do this sanity check on compile, so that it knows
   it can dereference sections which exist...
 
-### clean up REQUEST structure
+### clean up request_t structure
 
 many fields are essentially unused.  request->proxy is no longer used,
 but is referenced all over the place.

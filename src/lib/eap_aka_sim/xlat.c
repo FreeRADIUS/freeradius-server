@@ -22,7 +22,6 @@
  */
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.eap.h>
 #include "base.h"
 #include "attrs.h"
 
@@ -31,14 +30,18 @@ static int aka_sim_xlat_refs = 0;
 
 /** Returns the SIM method EAP-SIM or EAP-AKA hinted at by the user identifier
  *
- *	%{aka_sim_id_method:&id_attr}
+@verbatim
+%{aka_sim_id_method:&id_attr}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					   REQUEST *request, char const *fmt)
+					   request_t *request, char const *fmt)
 {
-	vp_tmpl_t			*vpt;
-	TALLOC_CTX			*our_ctx = talloc_init("aka_sim_xlat");
+	tmpl_t				*vpt;
+	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len;
 	char const			*p = fmt, *id, *method;
 	fr_aka_sim_id_type_t		type_hint;
@@ -49,10 +52,11 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 	 */
 	fr_skip_whitespace(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, &FR_SBUFF_IN(p, strlen(p)),
+				      NULL,
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
@@ -102,14 +106,18 @@ static ssize_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, char **out, UNUSED s
 
 /** Returns the type of identity used
  *
- *	%{aka_sim_id_type:&id_attr}
+@verbatim
+%{aka_sim_id_type:&id_attr}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				REQUEST *request, char const *fmt)
+				request_t *request, char const *fmt)
 {
-	vp_tmpl_t			*vpt;
-	TALLOC_CTX			*our_ctx = talloc_init("aka_sim_xlat");
+	tmpl_t			*vpt;
+	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len;
 	char const			*p = fmt, *id, *type;
 	fr_aka_sim_id_type_t		type_hint;
@@ -120,10 +128,11 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 	 */
 	fr_skip_whitespace(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, &FR_SBUFF_IN(p, strlen(p)),
+				      NULL,
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
@@ -173,15 +182,18 @@ static ssize_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, char **out, UNUSED siz
 
 /** Returns the key index from a 3gpp pseudonym
  *
- *	%{3gpp_pseudonym_key_index:&id_attr}
+@verbatim
+%{3gpp_pseudonym_key_index:&id_attr}
+@endverbatim
  *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 						 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-						 REQUEST *request, char const *fmt)
+						 request_t *request, char const *fmt)
 {
-	vp_tmpl_t	*vpt;
-	TALLOC_CTX	*our_ctx = talloc_init("aka_sim_xlat");
+	tmpl_t	*vpt;
+	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t		slen, id_len;
 	char const	*p = fmt, *id;
 
@@ -190,10 +202,11 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
 	 */
 	fr_skip_whitespace(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &vpt, &FR_SBUFF_IN(p, strlen(p)),
+				      NULL,
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid attribute reference");
@@ -220,12 +233,20 @@ static ssize_t aka_sim_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, char **out
 	return talloc_array_length(*out) - 1;
 }
 
+/** Decrypt a 3gpp pseudonym
+ *
+@verbatim
+%{3gpp_pseudonym_decrypt:&id_attr &key_attr}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					       REQUEST *request, char const *fmt)
+					       request_t *request, char const *fmt)
 {
-	vp_tmpl_t	*id_vpt, *key_vpt;
-	TALLOC_CTX	*our_ctx = talloc_init("aka_sim_xlat");
+	tmpl_t	*id_vpt, *key_vpt;
+	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t		slen, id_len, key_len;
 	uint8_t		tag;
 	char		out_tag;
@@ -238,10 +259,11 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	 */
 	fr_skip_whitespace(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, &FR_SBUFF_IN(p, strlen(p)),
+				      NULL,
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid ID attribute reference");
@@ -257,10 +279,11 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	}
 	p++;
 
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, &FR_SBUFF_IN(p, strlen(p)),
+				      NULL,
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key attribute reference");
@@ -327,15 +350,18 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 
 /** Encrypts a 3gpp pseudonym
  *
- *	%{3gpp_pseudonym_encrypt:&id_attr &key_attr key_index}
+@verbatim
+%{3gpp_pseudonym_encrypt:&id_attr &key_attr key_index}
+@endverbatim
  *
+ * @ingroup xlat_functions
  */
 static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					       REQUEST *request, char const *fmt)
+					       request_t *request, char const *fmt)
 {
-	vp_tmpl_t			*id_vpt, *key_vpt;
-	TALLOC_CTX			*our_ctx = talloc_init("aka_sim_xlat");
+	tmpl_t			*id_vpt, *key_vpt;
+	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t				slen, id_len, key_len;
 	uint8_t				*key, tag = 0;
 	unsigned long			key_index;
@@ -350,10 +376,11 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	 */
 	fr_skip_whitespace(p);
 
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, &FR_SBUFF_IN(p, strlen(p)),
+				      NULL,
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid ID attribute reference");
@@ -369,10 +396,11 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	}
 	p++;
 
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, p, -1,
-				      &(vp_tmpl_rules_t){
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, &FR_SBUFF_IN(p, strlen(p)),
+				      NULL,
+				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
-				      		.prefix = VP_ATTR_REF_PREFIX_AUTO
+				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key attribute reference");
@@ -454,34 +482,26 @@ static ssize_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, char **out, 
 		id_p = id + 1;
 		id_end = (id_p + id_len) - 1;
 	/*
-	 *	ID lacks a hint byte, figure it out from &control:EAP-Type
+	 *	ID lacks a hint byte, figure it out from &control.EAP-Type
 	 */
 	} else if ((id_len >= AKA_SIM_IMSI_MIN_LEN) && (id_len <= AKA_SIM_IMSI_MAX_LEN)) {
-		VALUE_PAIR *eap_type;
+		fr_pair_t *eap_type;
 
-		eap_type = fr_pair_find_by_da(request->packet->vps, attr_eap_type, TAG_ANY);
+		eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type);
 		if (!eap_type) {
-			REDEBUG("SIM ID does not contain method hint, and no &control:EAP-Type found.  "
+			REDEBUG("SIM ID does not contain method hint, and no &control.EAP-Type found.  "
 				"Don't know what tag to prepend to encrypted identity");
 			goto error;
 		}
 
-		switch (eap_type->vp_uint32) {
-		case FR_EAP_TYPE_VALUE_SIM:
+		if (eap_type->vp_uint32 == enum_eap_type_sim->vb_uint32) {
 			tag = ID_TAG_SIM_PSEUDONYM_B64;
-			break;
-
-		case FR_EAP_TYPE_VALUE_AKA:
+		} else if (eap_type->vp_uint32 == enum_eap_type_aka->vb_uint32) {
 			tag = ID_TAG_AKA_PSEUDONYM_B64;
-			break;
-
-		case FR_EAP_TYPE_VALUE_AKA_PRIME:
+		} else if (eap_type->vp_uint32 == enum_eap_type_aka_prime->vb_uint32) {
 			tag = ID_TAG_AKA_PRIME_PSEUDONYM_B64;
-			break;
-
-		default:
-			REDEBUG("&control:EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
-			break;
+		} else {
+			REDEBUG("&control.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
 		}
 
 		id_p = id;
@@ -516,14 +536,14 @@ void fr_aka_sim_xlat_register(void)
 		return;
 	}
 
-	xlat_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_key_index",
-		      aka_sim_3gpp_pseudonym_key_index_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_decrypt",
-		      aka_sim_3gpp_pseudonym_decrypt_xlat, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_encrypt",
-		      aka_sim_3gpp_pseudonym_encrypt_xlat, NULL, NULL, 0, 0, true);
+	xlat_register_legacy(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "3gpp_pseudonym_key_index",
+		      aka_sim_3gpp_pseudonym_key_index_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "3gpp_pseudonym_decrypt",
+		      aka_sim_3gpp_pseudonym_decrypt_xlat, NULL, NULL, 0, 0);
+	xlat_register_legacy(NULL, "3gpp_pseudonym_encrypt",
+		      aka_sim_3gpp_pseudonym_encrypt_xlat, NULL, NULL, 0, 0);
 	aka_sim_xlat_refs = 1;
 }
 

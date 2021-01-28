@@ -146,7 +146,7 @@ static int rrlabels_tostr(char *out, char *rr, size_t left)
 	return offset;
 }
 
-static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request,
+static int ub_common_wait(rlm_unbound_t const *inst, request_t *request,
 			  char const *name, struct ub_result **ub, int async_id)
 {
 	useconds_t iv, waited;
@@ -188,7 +188,7 @@ static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request,
 	return 0;
 }
 
-static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *ub)
+static int ub_common_fail(request_t *request, char const *name, struct ub_result *ub)
 {
 	if (ub->bogus) {
 		RWDEBUG("%s - Bogus DNS response", name);
@@ -208,9 +208,13 @@ static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *
 	return 0;
 }
 
+/** Perform a DNS lookup for an A record
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
 		      void const *mod_inst, UNUSED void const *xlat_inst,
-		      REQUEST *request, char const *fmt)
+		      request_t *request, char const *fmt)
 {
 	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
@@ -255,9 +259,13 @@ static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
 	return -1;
 }
 
+/** Perform a DNS lookup for an AAAA record
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_aaaa(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
@@ -306,7 +314,7 @@ typedef struct {
 
 /*
 static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
-			      REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+			      request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 			      fr_value_box_t **in)
 {
 	if (!*in) return XLAT_ACTION_DONE;
@@ -321,9 +329,13 @@ static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 */
 
+/** Perform a DNS lookup for a PTR record
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t xlat_ptr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+			request_t *request, char const *fmt)
 {
 	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
@@ -434,9 +446,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
 	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
 
-	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
-	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
-	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false)) {
+	if (xlat_register_legacy(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
+	    xlat_register_legacy(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
+	    xlat_register_legacy(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN)) {
 		cf_log_err(conf, "Failed registering xlats");
 		return -1;
 	}

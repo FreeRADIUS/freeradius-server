@@ -291,6 +291,20 @@ while (@ARGV) {
 	}
 
 	#
+	#  Get ALIAS
+	#
+	if (/^ALIAS\s+([-\w]+)\s+(\w+)(.*)/) {
+	    $name=$1;
+	    $tabs = tabs(40, $name);
+
+	    $ref = $2;
+	    $stuff = $3;
+
+	    push @output, "ALIAS\t\t$name$tabs$ref$stuff\n";
+	    next;
+	}
+
+	#
 	#  VALUE attr name value
 	#
 	if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {

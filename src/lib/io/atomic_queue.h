@@ -39,6 +39,7 @@ RCSIDH(atomic_queue_h, "$Id$")
  */
 #define atomic_int64_t _Atomic(int64_t)
 #define atomic_uint32_t _Atomic(uint32_t)
+#define atomic_uint64_t _Atomic(uint64_t)
 
 #define cas_incr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var + 1, memory_order_release, memory_order_relaxed)
 #define cas_decr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var - 1, memory_order_release, memory_order_relaxed)
@@ -52,9 +53,15 @@ extern "C" {
 
 typedef struct fr_atomic_queue_s fr_atomic_queue_t;
 
-fr_atomic_queue_t	*fr_atomic_queue_create(TALLOC_CTX *ctx, int size);
+fr_atomic_queue_t	*fr_atomic_queue_alloc(TALLOC_CTX *ctx, size_t size);
+void			fr_atomic_queue_free(fr_atomic_queue_t **aq);
 bool			fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data);
 bool			fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data);
+size_t			fr_atomic_queue_size(fr_atomic_queue_t *aq);
+
+#ifdef WITH_VERIFY_PTR
+void			fr_atomic_queue_verify(fr_atomic_queue_t *aq);
+#endif
 
 #ifndef NDEBUG
 void			fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp);

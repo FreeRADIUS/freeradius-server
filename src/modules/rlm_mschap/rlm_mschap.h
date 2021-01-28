@@ -70,8 +70,8 @@ typedef struct {
 	bool			allow_retry;
 	char const		*retry_msg;
 	MSCHAP_AUTH_METHOD	method;
-	vp_tmpl_t		*wb_username;
-	vp_tmpl_t		*wb_domain;
+	tmpl_t		*wb_username;
+	tmpl_t		*wb_domain;
 #ifdef WITH_AUTH_WINBIND
 	fr_pool_t		*wb_pool;
 	bool			wb_retry_with_normalised_username;

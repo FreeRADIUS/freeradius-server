@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/server/base.h>
 #include	<freeradius-devel/server/module.h>
-#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/debug.h>
 #include	<freeradius-devel/server/users_file.h>
 
 #include	<sys/stat.h>
@@ -43,7 +43,7 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const	*filename;
-	vp_tmpl_t	*key;
+	tmpl_t	*key;
 	bool		relaxed;
 	PAIR_LIST	*attrs;
 } rlm_attr_filter_t;
@@ -81,7 +81,7 @@ fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
 	{ NULL }
 };
 
-static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *reply_item, int *pass, int *fail)
+static void check_pair(request_t *request, fr_pair_t *check_item, fr_pair_t *reply_item, int *pass, int *fail)
 {
 	int compare;
 
@@ -107,7 +107,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
-	VALUE_PAIR *vp;
+	map_t *map;
 
 	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1);
 	if (rcode < 0) {
@@ -115,30 +115,40 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	}
 
 	/*
-	 * Walk through the 'attrs' file list.
+	 *	Walk through the 'attrs' file list.
 	 */
-
-	entry = attrs;
-	while (entry) {
-		entry->check = entry->reply;
-		entry->reply = NULL;
-
-		for (vp = fr_cursor_init(&cursor, &entry->check);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-		    /*
-		     * If it's NOT a vendor attribute,
-		     * and it's NOT a wire protocol
-		     * and we ignore Fall-Through,
-		     * then bitch about it, giving a good warning message.
-		     */
-		     if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
-			WARN("[%s]:%d Check item \"%s\"\n\tfound in filter list for realm \"%s\".\n",
-			       filename, entry->lineno, vp->da->name, entry->name);
-		    }
+	for (entry = attrs; entry != NULL; entry = entry->next) {
+		/*
+		 *	We apply the rules in the reply items.
+		 */
+		if (entry->check) {
+			WARN("%s[%d] Check list is not empty for entry \"%s\".\n",
+			     filename, entry->lineno, entry->name);
 		}
 
-		entry = entry->next;
+		for (map = fr_cursor_init(&cursor, &entry->reply);
+		     map;
+		     map = fr_cursor_next(&cursor)) {
+			fr_dict_attr_t const *da;
+
+			if (!tmpl_is_attr(map->lhs)) {
+				ERROR("%s[%d] Left side of filter %s is not an attribute",
+				      filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
+			da = tmpl_da(map->lhs);
+
+			/*
+			 * If it's NOT a vendor attribute,
+			 * and it's NOT a wire protocol
+			 * and we ignore Fall-Through,
+			 * then bitch about it, giving a good warning message.
+			 */
+			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
+				WARN("%s[%d] Check item \"%s\" was found in filter list for entry \"%s\".\n",
+				     filename, entry->lineno, da->name, entry->name);
+			}
+		}
 	}
 
 	*pair_list = attrs;
@@ -168,13 +178,12 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Common attr_filter checks
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance, REQUEST *request,
-							    RADIUS_PACKET *packet)
+static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_result,
+								void const *instance, request_t *request,
+								fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
-	rlm_attr_filter_t const *inst = instance;
-	VALUE_PAIR	*vp;
-	fr_cursor_t	input, check, out;
-	VALUE_PAIR	*input_item, *check_item, *output;
+	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
+	fr_pair_list_t	output;
 	PAIR_LIST	*pl;
 	int		found = 0;
 	int		pass, fail = 0;
@@ -182,20 +191,23 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	char		buffer[256];
 	ssize_t		slen;
 
-	if (!packet) return RLM_MODULE_NOOP;
+	if (!packet) {
+		RETURN_MODULE_NOOP;
+	}
 
 	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key, NULL, NULL);
-	if (slen < 0) return RLM_MODULE_FAIL;
+	if (slen < 0) {
+		RETURN_MODULE_FAIL;
+	}
 	if ((keyname == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
 		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
 	 *	Head of the output list
 	 */
-	output = NULL;
-	fr_cursor_init(&out, &output);
+	fr_pair_list_init(&output);
 
 	/*
 	 *      Find the attr_filter profile entry for the entry.
@@ -203,7 +215,13 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	for (pl = inst->attrs; pl; pl = pl->next) {
 		int fall_through = 0;
 		int relax_filter = inst->relaxed;
+		map_t *map;
+		fr_pair_list_t tmp_list;
+		fr_pair_t *check_item, *input_item;
+		fr_pair_list_t check_list;
+		fr_cursor_t cursor;
 
+		fr_pair_list_init(&tmp_list);
 		/*
 		 *  If the current entry is NOT a default,
 		 *  AND the realm does NOT match the current entry,
@@ -211,18 +229,27 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		 */
 		if ((strcmp(pl->name, "DEFAULT") != 0) &&
 		    (strcmp(keyname, pl->name) != 0))  {
-		    continue;
+			continue;
 		}
 
 		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = fr_cursor_init(&check, &pl->check);
-		     check_item;
-		     check_item = fr_cursor_next(&check)) {
+		fr_pair_list_init(&check_list);
+
+		for (map = fr_cursor_init(&cursor, &pl->reply);
+		     map;
+		     map = fr_cursor_next(&cursor)) {
+			if (map_to_vp(packet, &tmp_list, request, map, NULL) < 0) {
+				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
+				continue;
+			}
+
+			check_item = fr_pair_list_head(&tmp_list);
 		     	if (check_item->da == attr_fall_through) {
 				if (check_item->vp_uint32 == 1) {
 					fall_through = 1;
+					fr_pair_list_free(&tmp_list);
 					continue;
 				}
 		     	} else if (check_item->da == attr_relax_filter) {
@@ -230,16 +257,24 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		     	}
 
 			/*
+			 *	Remove pair from temporary list ready to
+			 *	add to the correct destination
+			 */
+			fr_pair_remove(&tmp_list, check_item);
+
+			/*
 			 *    If it is a SET operator, add the attribute to
 			 *    the output list without checking it.
 			 */
 			if (check_item->op == T_OP_SET ) {
-				vp = fr_pair_copy(packet, check_item);
-				if (!vp) goto error;
-
-				xlat_eval_pair(request, vp);
-				fr_cursor_append(&out, vp);
+				fr_pair_add(&output, check_item);
+				continue;
 			}
+
+			/*
+			 *	Append the realized VP to the check list.
+			 */
+			fr_pair_add(&check_list, check_item);
 		}
 
 		/*
@@ -250,17 +285,17 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = fr_cursor_init(&input, &packet->vps);
+		for (input_item = fr_pair_list_head(list);
 		     input_item;
-		     input_item = fr_cursor_next(&input)) {
+		     input_item = fr_pair_list_next(list, input_item)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
 			 *  Reset the check_item pointer to beginning of the list
 			 */
-			for (check_item = fr_cursor_head(&check);
+			for (check_item = fr_pair_list_head(&check_list);
 			     check_item;
-			     check_item = fr_cursor_next(&check)) {
+			     check_item = fr_pair_list_next(&check_list, check_item)) {
 				/*
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
@@ -284,14 +319,15 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 			 *  should copy unmatched attributes ('relaxed' mode).
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
+				fr_pair_t *prev = fr_pair_list_prev(list, input_item);
+
 				if (!pass) {
 					RDEBUG3("Attribute \"%s\" allowed by relaxed mode", input_item->da->name);
 				}
-				vp = fr_pair_copy(packet, input_item);
-				if (!vp) {
-					goto error;
-				}
-				fr_cursor_append(&out, vp);
+				fr_pair_remove(list, input_item);
+				fr_assert(input_item != NULL);
+				fr_pair_add(&output, input_item);
+				input_item = prev; /* Set input_item to previous in the list for outer loop */
 			}
 		}
 
@@ -305,43 +341,29 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	 *	No entry matched.  We didn't do anything.
 	 */
 	if (!found) {
-		rad_assert(!output);
-		return RLM_MODULE_NOOP;
+		fr_assert(fr_pair_list_empty(&output));
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	Replace the existing request list with our filtered one
 	 */
-	fr_pair_list_free(&packet->vps);
-	packet->vps = output;
+	fr_pair_list_free(list);
+	fr_tmp_pair_list_move(list, &output);
 
-	return RLM_MODULE_UPDATED;
-
-error:
-	fr_pair_list_free(&output);
-	return RLM_MODULE_FAIL;
+	RETURN_MODULE_UPDATED;
 }
 
-#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, UNUSED void *thread, REQUEST *request) \
+#define RLM_AF_FUNC(_x, _y, _z) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
-		return attr_filter_common(instance, request, request->_y); \
+		return attr_filter_common(p_result, mctx->instance, request, request->_y, &request->_z##_pairs); \
 	}
 
-RLM_AF_FUNC(authorize, packet)
-RLM_AF_FUNC(post_auth, reply)
+RLM_AF_FUNC(authorize, packet, request)
+RLM_AF_FUNC(post_auth, reply, reply)
 
-RLM_AF_FUNC(preacct, packet)
-RLM_AF_FUNC(accounting, reply)
-
-#ifdef WITH_PROXY
-RLM_AF_FUNC(pre_proxy, proxy->packet)
-RLM_AF_FUNC(post_proxy, proxy->reply)
-#endif
-
-#ifdef WITH_COA
-RLM_AF_FUNC(recv_coa, packet)
-RLM_AF_FUNC(send_coa, reply)
-#endif
+RLM_AF_FUNC(preacct, packet, request)
+RLM_AF_FUNC(accounting, reply, reply)
 
 /* globally exported name */
 extern module_t rlm_attr_filter;
@@ -355,15 +377,7 @@ module_t rlm_attr_filter = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	},
 };
 

@@ -1,0 +1,236 @@
+= The parallel Statement
+
+.Syntax
+[source,unlang]
+----
+parallel [ empty | detach ] {
+    [ statements ]
+}
+----
+
+The `parallel` section runs multiple child subsections in parallel.
+Once all of the statements in the `parallel` section have finished
+execution, the parallel section exits.  The return code of the
+parallel section is the same as if each subsection was run
+sequentially.
+
+The `parallel` section is most useful for running modules which call
+external systems and wait for a reply.  When modules are run in
+series, the first module must run to completion, and only then can the
+second and subsequent modules be executed.  With parallel, the first
+module is run, and then as soon as that module yeilds in order to wait
+for an event, the second module can immediately run.
+
+Each child subsection is executed using a
+xref:unlang/subrequest.adoc[subrequest].  Please see the next subsection for
+more information about subrequests.
+
+Despite the "parallel" name, the section will only run one module at a
+time.  This limitation ensures that there are no issues with
+multi-threaded race conditions, locking, etc. The "parallel" name is
+used in order to highlight the fact that multiple events are being
+handled at the "same time" inside of a `parallel` section.  The name
+does not indicate that there are multiple threads of execution.
+
+There are no limits as to the number of subsections which can be
+placed inside of a `parallel` section.
+
+.Example
+
+The following section sends a RADIUS packet to `radius1`, and then
+immediately another RADIUS packet to `radius2`.  The parallel section
+returns only when both modules have returned.  i.e. Either via
+timeouts, or by receiving replies to the requests.
+
+Each module `radius` and `radius2` is handed a child request which is
+an identical copy of the parent request.
+
+[source,unlang]
+----
+parallel {
+    radius1
+    radius2
+}
+----
+
+== Child Requests are Independent
+
+Each module or subsection runs as a new child request, i.e. a
+xref:unlang/subrequest.adoc[subrequest].  Each child request is an identical
+copy of the parent request.  Policies in the child can update the
+original parent by using `update parent.request`, or `update
+parent.reply`.  Please see the xref:unlang/list.adoc[list] syntax for a
+more complete description of how to refer to parent requests.
+
+The child requests are required because each subsection is run
+independently, with independent events, timers, etc.  That is, each
+child request has its own state, independent of any other request.
+This independence is required in order to fully implement the
+"parallel" nature of this keyword.
+
+Once the child requests are finished, they are freed.  Any information
+stored in them is discarded.  Information that is needed after the
+`parallel` section is run should be saved in the parent request.
+
+.Example
+
+When using complex policies inside of a `parallel` section, each
+subsection should be enclosed in a xref:unlang/group.adoc[group] keyword.
+
+[source,unlang]
+----
+parallel {
+    group {
+        radius1
+        if (fail) {
+           linelog1
+           update parent.reply {
+               &Reply-Message += "radius1 failed"
+           }
+        }
+    }
+    group {
+        radius2
+        if (fail) {
+           linelog2
+           update parent.reply {
+               &Reply-Message += "radius2 failed"
+           }
+        }
+    }
+}
+----
+
+== Subrequests are Synchronous
+
+Execution of the parent request is paused while each child request is
+running.  The parent request continues execution once all of the the
+child requests have finished.
+
+Unlike the xref:unlang/subrequest.adoc[subrequest] keyword, the child
+requests of a `parallel` section cannot be made asynchronous via the
+xref:unlang/detach.adoc[detach] keyword.
+
+== parallel empty
+
+The `parallel empty { ... }` syntax creates empty child requests.
+These requests contain no attributes.  Attributes in the child request
+must be added manually via an xref:unlang/update.adoc[update] statement.
+
+The `empty` keyword is most useful when it is necessary to manually
+determine which attributes go into a child request.
+
+The `empty` keyword cannot be used with the `detach` keyword.  There
+is no purpose to creating independent child requests which contain
+nothing.
+
+.Example
+
+In this example, the `radius1` module sees a `User-Name` which is
+modified from the parent `User-Name`, and a `User-Password` which is
+static.  The `radius1` module sees a `User-Name` which is modified in
+a different way from the parent `User-Name`, and it sees a
+`User-Password` which is a copy of the parents `User-Password`.
+
+[source,unlang]
+----
+parallel empty {
+    group {
+        update request {
+            &User-Name := "%{&parent.request.User-Name}@example.org"
+            &User-Password := "hello"
+        }
+        radius1
+    }
+    group {
+        update request {
+            &User-Name := "%{&parent.request.User-Name}@example.com"
+            &User-Password := &parent.request.User-Password
+        }
+        radius2
+    }
+}
+----
+
+== parallel detach
+
+The `parallel detach { ... }` syntax creates child requests which are
+immediately detached from the parent request.  Each child request
+contains copies of all attributes in the parent request.
+
+The parent request continues immediately, and independently of the
+child requests.
+
+The `detach` keyword cannot be used with the `empty` keyword.  There
+is no purpose to creating independent child requests which contain
+nothing.
+
+The return code from the `parallel detach { ... }` section is `noop`.
+Since all of the child requests are independent of the parent, they
+cannot convey any information back to the parent.  Therefore, the
+return code is always `noop`.
+
+The `detach` keyword is most useful when it is necessary to send
+packets to multiple destinations, but where there is no need to wait
+for an answer.
+
+.Example
+
+In this example, the `parallel detach { ... }` syntax is used to send
+packets to four different destinations at the same time, in a "fire
+and forget" manner.
+
+[source,unlang]
+----
+parallel detach {
+    radius1
+    radius2
+    radius3
+    radius4
+}
+----
+
+== Exiting Early from a Parallel Section
+
+In some situations, it may be useful to exit early from a parallel
+section.  For example, to proxy a packet to multiple destinations, and
+then return as soon as any one of the destinations returns a reply.
+
+The xref:unlang/return.adoc[return] keyword in a child is used to return from
+the `parallel` section, and to stop the execution of all children.
+
+.Example
+
+[source,unlang]
+----
+parallel {
+    group {
+        radius1
+        if (ok) {
+            return
+        }
+    }
+    group {
+        radius2
+        if (ok) {
+            return
+        }
+    }
+    group {
+        radius3
+        if (ok) {
+            return
+        }
+    }
+    group {
+        radius4
+        if (ok) {
+            return
+        }
+    }
+}
+----
+
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -27,7 +27,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/radius/radius.h>
 
 #include <freeradius-devel/protocol/radius/freeradius.h>
 
@@ -39,6 +40,11 @@ RCSID("$Id$")
  */
 
 #include <pthread.h>
+
+/*
+ *	@todo - MULTI_PROTOCOL - make this protocol agnostic.
+ *	Perhaps keep stats in a hash table by (request->dict, request->code) ?
+ */
 
 typedef struct {
 	pthread_mutex_t		mutex;
@@ -89,9 +95,9 @@ static fr_dict_attr_t const *attr_freeradius_stats4_type;
 
 extern fr_dict_attr_autoload_t rlm_stats_dict_attr[];
 fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
-	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "FreeRADIUS-Stats4-IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "FreeRADIUS-Stats4-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_type, .name = "FreeRADIUS-Stats4-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -144,15 +150,16 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_MAX_PACKET_CODE], rlm_stats_
 /*
  *	Do the statistics
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	int i;
-	uint32_t stats_type;
-	rlm_stats_thread_t *t = thread;
-	rlm_stats_t *inst = instance;
-	VALUE_PAIR *vp;
+	rlm_stats_t		*inst = talloc_get_type_abort(mctx->instance, rlm_stats_t);
+	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
+	int			i;
+	uint32_t		stats_type;
+
+
+	fr_pair_t *vp;
 	rlm_stats_data_t mydata, *stats;
-	fr_cursor_t cursor;
 	char buffer[64];
 	uint64_t local_stats[NUM_ELEMENTS(inst->stats)];
 
@@ -176,12 +183,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		/*
 		 *	Update source statistics
 		 */
-		mydata.ipaddr = request->packet->src_ipaddr;
+		mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
 		stats = rbtree_finddata(t->src, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
-			stats->ipaddr = request->packet->src_ipaddr;
+			stats->ipaddr = request->packet->socket.inet.src_ipaddr;
 			stats->created = request->async->recv_time;
 
 			(void) rbtree_insert(t->src, stats);
@@ -194,12 +201,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		/*
 		 *	Update destination statistics
 		 */
-		mydata.ipaddr = request->packet->dst_ipaddr;
+		mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
 		stats = rbtree_finddata(t->dst, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
-			stats->ipaddr = request->packet->dst_ipaddr;
+			stats->ipaddr = request->packet->socket.inet.dst_ipaddr;
 			stats->created = request->async->recv_time;
 
 			(void) rbtree_insert(t->dst, stats);
@@ -214,7 +221,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		 */
 
 		if ((t->last_global_update + NSEC) > request->async->recv_time) {
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 		}
 
 		t->last_global_update = request->async->recv_time;
@@ -226,7 +233,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		}
 		pthread_mutex_unlock(&inst->mutex);
 
-		return RLM_MODULE_UPDATED;
+		RETURN_MODULE_UPDATED;
 	}
 
 	/*
@@ -234,12 +241,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	 */
 	if ((request->request_state != REQUEST_RECV) ||
 	    (request->packet->code != FR_CODE_STATUS_SERVER)) {
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_type, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_type);
 	if (!vp) {
-		stats_type = FR_FREERADIUS_STATS4_TYPE_VALUE_GLOBAL;
+		stats_type = FR_STATS4_TYPE_VALUE_GLOBAL;
 	} else {
 		stats_type = vp->vp_uint32;
 	}
@@ -247,13 +254,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	/*
 	 *	Create attributes based on the statistics.
 	 */
-	fr_cursor_init(&cursor, &request->reply->vps);
-
 	MEM(pair_update_reply(&vp, attr_freeradius_stats4_type) >= 0);
 	vp->vp_uint32 = stats_type;
 
 	switch (stats_type) {
-	case FR_FREERADIUS_STATS4_TYPE_VALUE_GLOBAL:			/* global */
+	case FR_STATS4_TYPE_VALUE_GLOBAL:			/* global */
 		/*
 		 *	Merge our stats with the global stats, and then copy
 		 *	the global stats to a thread-local variable.
@@ -270,19 +275,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		vp = NULL;
 		break;
 
-	case FR_FREERADIUS_STATS4_TYPE_VALUE_CLIENT:			/* src */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address, TAG_ANY);
-		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address, TAG_ANY);
-		if (!vp) return RLM_MODULE_NOOP;
+	case FR_STATS4_TYPE_VALUE_CLIENT:			/* src */
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv4_address);
+		if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv6_address);
+		if (!vp) RETURN_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, src), &mydata);
 		break;
 
-	case FR_FREERADIUS_STATS4_TYPE_VALUE_LISTENER:			/* dst */
-		vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv4_address, TAG_ANY);
-		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, attr_freeradius_stats4_ipv6_address, TAG_ANY);
-		if (!vp) return RLM_MODULE_NOOP;
+	case FR_STATS4_TYPE_VALUE_LISTENER:			/* dst */
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv4_address);
+		if (!vp) vp = fr_pair_find_by_da(&request->request_pairs, attr_freeradius_stats4_ipv6_address);
+		if (!vp) RETURN_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, dst), &mydata);
@@ -290,14 +295,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 
 	default:
 		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type", stats_type);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (vp ) {
-		vp = fr_pair_copy(request->reply, vp);
+		vp = fr_pair_copy(request->reply_ctx, vp);
 		if (vp) {
-			fr_cursor_append(&cursor, vp);
-			(void) fr_cursor_tail(&cursor);
+			fr_pair_add(&request->reply_pairs, vp);
 		}
 	}
 
@@ -309,17 +313,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		if (!local_stats[i]) continue;
 
 		strlcpy(buffer + 18, fr_packet_codes[i], sizeof(buffer) - 18);
-		da = fr_dict_attr_by_name(dict_radius, buffer);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), buffer);
 		if (!da) continue;
 
-		MEM(vp = fr_pair_afrom_da(request->reply, da));
+		MEM(vp = fr_pair_afrom_da(request->reply_ctx, da));
 		vp->vp_uint64 = local_stats[i];
 
-		fr_cursor_append(&cursor, vp);
-		(void) fr_cursor_tail(&cursor);
+		fr_pair_add(&request->reply_pairs, vp);
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
@@ -343,8 +346,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->inst = inst;
 
-	t->src = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
-	t->dst = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
+	t->src = rbtree_talloc_alloc(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
+	t->dst = rbtree_talloc_alloc(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_LOCK);
 
 	pthread_mutex_lock(&inst->mutex);
 	fr_dlist_insert_head(&inst->list, t);
@@ -422,6 +425,5 @@ module_t rlm_stats = {
 		[MOD_AUTHORIZE]		= mod_stats, /* @mod_stats_query */
 		[MOD_POST_AUTH]		= mod_stats,
 		[MOD_ACCOUNTING]	= mod_stats,
-		[MOD_SEND_COA]		= mod_stats,
 	},
 };

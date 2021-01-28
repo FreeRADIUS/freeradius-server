@@ -64,15 +64,15 @@ typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary da
  */
 #define CF_TO_ITEM(_cf) \
 _Generic((_cf), \
-	CONF_SECTION *: cf_section_to_item((CONF_SECTION const *)_cf), \
-	CONF_SECTION const *: cf_section_to_item((CONF_SECTION const *)_cf), \
-	CONF_SECTION const * const: cf_section_to_item((CONF_SECTION const * const)_cf), \
-	CONF_PAIR *: cf_pair_to_item((CONF_PAIR const *)_cf), \
-	CONF_PAIR const *: cf_pair_to_item((CONF_PAIR const *)_cf), \
-	CONF_PAIR const * const: cf_pair_to_item((CONF_PAIR const * const)_cf), \
-	CONF_DATA *: cf_data_to_item((CONF_DATA const *)_cf), \
-	CONF_DATA const *: cf_data_to_item((CONF_DATA const *)_cf), \
-	CONF_DATA const * const: cf_data_to_item((CONF_DATA const * const)_cf), \
+	CONF_SECTION *			: cf_section_to_item((CONF_SECTION const *)_cf), \
+	CONF_SECTION const *		: cf_section_to_item((CONF_SECTION const *)_cf), \
+	CONF_SECTION const * const	: cf_section_to_item((CONF_SECTION const * const)_cf), \
+	CONF_PAIR *			: cf_pair_to_item((CONF_PAIR const *)_cf), \
+	CONF_PAIR const *		: cf_pair_to_item((CONF_PAIR const *)_cf), \
+	CONF_PAIR const * const		: cf_pair_to_item((CONF_PAIR const * const)_cf), \
+	CONF_DATA *			: cf_data_to_item((CONF_DATA const *)_cf), \
+	CONF_DATA const *		: cf_data_to_item((CONF_DATA const *)_cf), \
+	CONF_DATA const * const		: cf_data_to_item((CONF_DATA const * const)_cf), \
 	default: _cf \
 )
 
@@ -105,12 +105,18 @@ bool		cf_item_is_section(CONF_ITEM const *ci);
 bool		cf_item_is_pair(CONF_ITEM const *ci);
 bool		cf_item_is_data(CONF_ITEM const *ci);
 
+/** @hidecallergraph */
 CONF_PAIR	*cf_item_to_pair(CONF_ITEM const *ci);
+/** @hidecallergraph */
 CONF_SECTION	*cf_item_to_section(CONF_ITEM const *ci);
+/** @hidecallergraph */
 CONF_DATA	*cf_item_to_data(CONF_ITEM const *ci);
 
+/** @hidecallergraph */
 CONF_ITEM	*cf_pair_to_item(CONF_PAIR const *cp);
+/** @hidecallergraph */
 CONF_ITEM	*cf_section_to_item(CONF_SECTION const *cs);
+/** @hidecallergraph */
 CONF_ITEM	*cf_data_to_item(CONF_DATA const *cs);
 
 #define		cf_filename_set(_ci, _filename) _cf_filename_set(CF_TO_ITEM(_ci), _filename)
@@ -135,8 +141,11 @@ CONF_SECTION	*_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 CONF_SECTION	*cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
+/** @hidecallergraph */
 CONF_SECTION	*cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev);
+/** @hidecallergraph */
 CONF_SECTION	*cf_section_find(CONF_SECTION const *cs, char const *name1, char const *name2);
+/** @hidecallergraph */
 CONF_SECTION	*cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *subcs,
 				      char const *name1, char const *name2);
 CONF_SECTION	*cf_section_find_in_parent(CONF_SECTION const *cs,
@@ -144,18 +153,21 @@ CONF_SECTION	*cf_section_find_in_parent(CONF_SECTION const *cs,
 
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 
+/** @hidecallergraph */
 char const	*cf_section_name1(CONF_SECTION const *cs);
+/** @hidecallergraph */
 char const	*cf_section_name2(CONF_SECTION const *cs);
+/** @hidecallergraph */
 char const	*cf_section_name(CONF_SECTION const *cs);
 char const	*cf_section_argv(CONF_SECTION const *cs, int argc);
-FR_TOKEN	cf_section_name2_quote(CONF_SECTION const *cs);
-FR_TOKEN	cf_section_argv_quote(CONF_SECTION const *cs, int argc);
+fr_token_t	cf_section_name2_quote(CONF_SECTION const *cs);
+fr_token_t	cf_section_argv_quote(CONF_SECTION const *cs, int argc);
 
 /*
  *	Pair manipulation and searching
  */
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
-			       FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type);
+			       fr_token_t op, fr_token_t lhs_type, fr_token_t rhs_type);
 CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 void		cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp);
@@ -166,12 +178,15 @@ CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *cs, CONF_PAIR const *prev, char
 CONF_PAIR	*cf_pair_find_in_parent(CONF_SECTION const *cs, char const *attr);
 int		cf_pair_count(CONF_SECTION const *cs);
 
+/** @hidecallergraph */
 char const	*cf_pair_attr(CONF_PAIR const *pair);
+/** @hidecallergraph */
 char const	*cf_pair_value(CONF_PAIR const *pair);
-FR_TOKEN	cf_pair_operator(CONF_PAIR const *pair);
+/** @hidecallergraph */
+fr_token_t	cf_pair_operator(CONF_PAIR const *pair);
 
-FR_TOKEN	cf_pair_attr_quote(CONF_PAIR const *pair);
-FR_TOKEN	cf_pair_value_quote(CONF_PAIR const *pair);
+fr_token_t	cf_pair_attr_quote(CONF_PAIR const *pair);
+fr_token_t	cf_pair_value_quote(CONF_PAIR const *pair);
 
 /*
  *	Data manipulation and searching
@@ -215,8 +230,10 @@ int		cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t t
 void		_cf_vlog(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, va_list ap) CC_HINT(format (printf, 5, 0));
 void		_cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));
 
-#define		cf_log_perr(_cf, _fmt, ...) _cf_log_perr(L_ERR, CF_TO_ITEM(_cf),  __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
-void		_cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));
+#define		cf_log_perr(_cf, _fmt, ...) _cf_log_perr(L_ERR, CF_TO_ITEM(_cf),  __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
+void		_cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
+			     fr_log_perror_format_t const *f_rules, char const *fmt, ...)
+		CC_HINT(format (printf, 6, 7));
 
 #define		cf_log_debug_prefix(_cf, _fmt, ...) _cf_log_with_filename(L_DBG, CF_TO_ITEM(_cf),  __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
 void		_cf_log_with_filename(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));

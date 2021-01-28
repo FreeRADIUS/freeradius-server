@@ -25,48 +25,58 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cond.h>
-#include "unlang_priv.h"
-#include "group_priv.h"
 
-static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presult)
+#include "group_priv.h"
+#include "switch_priv.h"
+#include "unlang_priv.h"
+
+static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_t		*this, *found, *null_case;
-	unlang_group_t		*g, *h;
-	fr_cond_t		cond;
-	fr_value_box_t		data;
-	vp_map_t		map;
-	vp_tmpl_t		vpt;
 
-	g = unlang_generic_to_group(instruction);
+	unlang_group_t		*switch_g;
+	unlang_switch_t		*switch_gext;
+
+	fr_cond_t		cond;
+	map_t			map;
+	tmpl_t			vpt, *switch_vpt;
+
+	switch_g = unlang_generic_to_group(instruction);
+	switch_gext = unlang_group_to_switch(switch_g);
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
+	memset(&vpt, 0, sizeof(vpt));
 
 	cond.type = COND_TYPE_MAP;
 	cond.data.map = &map;
 
 	map.op = T_OP_CMP_EQ;
-	map.ci = cf_section_to_item(g->cs);
+	map.ci = cf_section_to_item(switch_g->cs);
 
-	rad_assert(g->vpt != NULL);
+	fr_assert(switch_gext->vpt != NULL);
 
 	null_case = found = NULL;
-	data.datum.ptr = NULL;
+	switch_vpt = switch_gext->vpt;
 
 	/*
 	 *	The attribute doesn't exist.  We can skip
 	 *	directly to the default 'case' statement.
 	 */
-	if (tmpl_is_attr(g->vpt) && (tmpl_find_vp(NULL, request, g->vpt) < 0)) {
+	if (tmpl_is_attr(switch_gext->vpt) && (tmpl_find_vp(NULL, request, switch_gext->vpt) < 0)) {
 	find_null_case:
-		for (this = g->children; this; this = this->next) {
-			rad_assert(this->type == UNLANG_TYPE_CASE);
+		for (this = switch_g->children; this; this = this->next) {
+			unlang_group_t		*case_g;
+			unlang_case_t	*case_gext;
 
-			h = unlang_generic_to_group(this);
-			if (h->vpt) continue;
+			fr_assert(this->type == UNLANG_TYPE_CASE);
+
+			case_g = unlang_generic_to_group(this);
+			case_gext = unlang_group_to_case(case_g);
+			if (case_gext->vpt) continue;
 
 			found = this;
 			break;
@@ -80,76 +90,67 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	 *	is evaluated once instead of for each 'case'
 	 *	statement.
 	 */
-	if (tmpl_is_xlat_struct(g->vpt) ||
-	    tmpl_is_xlat(g->vpt) ||
-	    tmpl_is_exec(g->vpt)) {
+	if (tmpl_is_xlat(switch_gext->vpt) ||
+	    tmpl_is_xlat_unresolved(switch_gext->vpt) ||
+	    tmpl_is_exec(switch_gext->vpt)) {
 		char *p;
 		ssize_t len;
 
-		len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
+		len = tmpl_aexpand(request, &p, request, switch_gext->vpt, NULL, NULL);
 		if (len < 0) goto find_null_case;
-		data.vb_strvalue = p;
-		tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.vb_strvalue, len, T_SINGLE_QUOTED_STRING);
+
+		tmpl_init_shallow(&vpt, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, p, len);
+		fr_value_box_bstrndup_shallow(&vpt.data.literal, NULL, p, len, false);
+		switch_vpt = &vpt;
 	}
 
 	/*
 	 *	Find either the exact matching name, or the
 	 *	"case {...}" statement.
 	 */
-	for (this = g->children; this; this = this->next) {
-		rad_assert(this->type == UNLANG_TYPE_CASE);
+	for (this = switch_g->children; this; this = this->next) {
+		unlang_group_t	*case_g;
+		unlang_case_t	*case_gext;
 
-		h = unlang_generic_to_group(this);
+		fr_assert(this->type == UNLANG_TYPE_CASE);
+
+		case_g = unlang_generic_to_group(this);
+		case_gext = unlang_group_to_case(case_g);
 
 		/*
 		 *	Remember the default case
 		 */
-		if (!h->vpt) {
+		if (!case_gext->vpt) {
 			if (!null_case) null_case = this;
 			continue;
 		}
 
 		/*
-		 *	If we're switching over an attribute
-		 *	AND we haven't pre-parsed the data for
-		 *	the case statement, then cast the data
-		 *	to the type of the attribute.
+		 *	Create the map for comparisons.
+		 *
+		 *	Try to ensure that any attribute is on the
+		 *	LHS, as that's what cond_eval() expects to
+		 *	see.
 		 */
-		if (tmpl_is_attr(g->vpt) &&
-		    !tmpl_is_data(h->vpt)) {
-			map.rhs = g->vpt;
-			map.lhs = h->vpt;
-			cond.cast = g->vpt->tmpl_da;
+		if (tmpl_is_attr(switch_vpt)) {
+			map.lhs = switch_vpt;
+			map.rhs = case_gext->vpt;
 
-			/*
-			 *	Remove unnecessary casting.
-			 */
-			if (tmpl_is_attr(h->vpt) &&
-			    (g->vpt->tmpl_da->type == h->vpt->tmpl_da->type)) {
-				cond.cast = NULL;
-			}
+		} else if (tmpl_is_attr(case_gext->vpt)) {
+			map.lhs = case_gext->vpt;
+			map.rhs = switch_vpt;
 
-			/*
-			 *	Use the pre-expanded string.
-			 */
-		} else if (tmpl_is_xlat_struct(g->vpt) ||
-			   tmpl_is_xlat(g->vpt) ||
-			   tmpl_is_exec(g->vpt)) {
-			map.rhs = h->vpt;
-			map.lhs = &vpt;
-			cond.cast = NULL;
-
-			/*
-			 *	Else evaluate the 'switch' statement.
-			 */
 		} else {
-			map.rhs = h->vpt;
-			map.lhs = g->vpt;
-			cond.cast = NULL;
+			map.lhs = switch_vpt;
+			map.rhs = case_gext->vpt;
 		}
 
-		if (cond_eval_map(request, RLM_MODULE_UNKNOWN, 0,
-					&cond) == 1) {
+		/*
+		 *	Evaluate the 'switch' statement.
+		 *
+		 *	Note that we don't need to do any casting of the RHS
+		 */
+		if (cond_eval_map(request, 0, &cond) == 1) {
 			found = this;
 			break;
 		}
@@ -158,7 +159,7 @@ static unlang_action_t unlang_switch(REQUEST *request, UNUSED rlm_rcode_t *presu
 	if (!found) found = null_case;
 
 do_null_case:
-	talloc_free(data.datum.ptr);
+	if (vpt.type == TMPL_TYPE_DATA) fr_value_box_clear_value(&vpt.data.literal);
 
 	/*
 	 *	Nothing found.  Just continue, and ignore the "switch"
@@ -166,12 +167,16 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
-	unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 
-static unlang_action_t unlang_case(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_case(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -181,11 +186,11 @@ static unlang_action_t unlang_case(REQUEST *request, rlm_rcode_t *presult)
 	g = unlang_generic_to_group(instruction);
 
 	if (!g->children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_group(request, presult);
+	return unlang_group(p_result, request);
 }
 
 void unlang_switch_init(void)

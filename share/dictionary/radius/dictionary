@@ -35,7 +35,6 @@
 #	FreeRADIUS includes data types which are not defined
 #	in the RFC's.  These data types are:
 #
-#	abinary - Ascend's binary filter format.
 #	byte    - 8 bit unsigned integer
 #	ether   - 6 octets of hh:hh:hh:hh:hh:hh
 #		  where 'h' is hex digits, upper or lowercase.
@@ -144,7 +143,6 @@ $INCLUDE dictionary.actelis
 $INCLUDE dictionary.adtran
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
-$INCLUDE dictionary.alcatel.sr
 $INCLUDE dictionary.alcatel-lucent.aaa
 $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
@@ -246,6 +244,8 @@ $INCLUDE dictionary.networkphysics
 $INCLUDE dictionary.nexans
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nokia
+$INCLUDE dictionary.nokia.sr
+
 #
 #  Commented out because of attribute conflicts.
 #
@@ -304,6 +304,7 @@ $INCLUDE dictionary.unix
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
+$INCLUDE dictionary.vasexperts
 $INCLUDE dictionary.versanet
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi

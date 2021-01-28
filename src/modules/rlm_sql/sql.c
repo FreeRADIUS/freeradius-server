@@ -30,7 +30,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->name
 
 #include	<freeradius-devel/server/base.h>
-#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/debug.h>
 
 #include	<sys/file.h>
 #include	<sys/stat.h>
@@ -44,22 +44,22 @@ RCSID("$Id$")
  *	readable reason strings.
  */
 fr_table_num_sorted_t const sql_rcode_description_table[] = {
-	{ "need alt query",	RLM_SQL_ALT_QUERY	},
-	{ "no connection",	RLM_SQL_RECONNECT	},
-	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
-	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
-	{ "server error",	RLM_SQL_ERROR		},
-	{ "success",		RLM_SQL_OK		}
+	{ L("need alt query"),	RLM_SQL_ALT_QUERY	},
+	{ L("no connection"),	RLM_SQL_RECONNECT	},
+	{ L("no more rows"),	RLM_SQL_NO_MORE_ROWS	},
+	{ L("query invalid"),	RLM_SQL_QUERY_INVALID	},
+	{ L("server error"),	RLM_SQL_ERROR		},
+	{ L("success"),		RLM_SQL_OK		}
 };
 size_t sql_rcode_description_table_len = NUM_ELEMENTS(sql_rcode_description_table);
 
 fr_table_num_sorted_t const sql_rcode_table[] = {
-	{ "alternate",		RLM_SQL_ALT_QUERY	},
-	{ "empty",		RLM_SQL_NO_MORE_ROWS	},
-	{ "error",		RLM_SQL_ERROR		},
-	{ "invalid",		RLM_SQL_QUERY_INVALID	},
-	{ "ok",			RLM_SQL_OK		},
-	{ "reconnect",		RLM_SQL_RECONNECT	}
+	{ L("alternate"),		RLM_SQL_ALT_QUERY	},
+	{ L("empty"),		RLM_SQL_NO_MORE_ROWS	},
+	{ L("error"),		RLM_SQL_ERROR		},
+	{ L("invalid"),		RLM_SQL_QUERY_INVALID	},
+	{ L("ok"),			RLM_SQL_OK		},
+	{ L("reconnect"),		RLM_SQL_RECONNECT	}
 };
 size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 
@@ -108,18 +108,19 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 
 /*************************************************************************
  *
- *	Function: sql_fr_pair_list_afrom_str
+ *	Function: sql_pair_list_afrom_str
  *
- *	Purpose: Read entries from the database and fill VALUE_PAIR structures
+ *	Purpose: Read entries from the database and fill fr_pair_t structures
  *
  *************************************************************************/
-int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_row_t row)
+int sql_pair_list_afrom_str(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *out, rlm_sql_row_t row)
 {
-	VALUE_PAIR *vp;
-	char const *ptr, *value;
-	char buf[FR_MAX_STRING_LEN];
-	char do_xlat = 0;
-	FR_TOKEN token, op = T_EOL;
+	fr_pair_t		*vp;
+	char const		*ptr, *value;
+	char			buf[FR_MAX_STRING_LEN];
+	char			do_xlat = 0;
+	fr_dict_attr_t const	*da;
+	fr_token_t		token, op = T_EOL;
 
 	/*
 	 *	Verify the 'Attribute' field
@@ -174,7 +175,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		 */
 		case T_BACK_QUOTED_STRING:
 			do_xlat = 1;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		/*
 		 *	Take the unquoted string.
@@ -194,13 +195,20 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	}
 
 	/*
-	 *	Create the pair
+	 *	Search in our local dictionary
+	 *	falling back to internal.
 	 */
-	vp = fr_pair_make(ctx, request->dict, NULL, row[2], NULL, op);
-	if (!vp) {
-		RPEDEBUG("Failed to create the pair");
-		return -1;
+	da = fr_dict_attr_by_oid(NULL, fr_dict_root(request->dict), row[2]);
+	if (!da) {
+		da = fr_dict_attr_by_oid(NULL, fr_dict_root(fr_dict_internal()), row[2]);
+		if (!da) {
+			RPEDEBUG("Failed creating pair from SQL data");
+			return -1;
+		}
 	}
+
+	MEM(vp = fr_pair_afrom_da(ctx, da));
+	vp->op = op;
 
 	if (do_xlat) {
 		if (fr_pair_mark_xlat(vp, value) < 0) {
@@ -221,7 +229,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	/*
 	 *	Add the pair into the packet
 	 */
-	fr_pair_add(head, vp);
+	fr_pair_add(out, vp);
 	return 0;
 }
 
@@ -238,7 +246,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
  *	- #RLM_SQL_OK on success.
  *	- other #sql_rcode_t constants on error.
  */
-sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle)
+sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle)
 {
 	sql_rcode_t ret;
 
@@ -252,11 +260,11 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
 	ret = (inst->driver->sql_fetch_row)(out, *handle, inst->config);
 	switch (ret) {
 	case RLM_SQL_OK:
-		rad_assert(*out != NULL);
+		fr_assert(*out != NULL);
 		return ret;
 
 	case RLM_SQL_NO_MORE_ROWS:
-		rad_assert(*out == NULL);
+		fr_assert(*out == NULL);
 		return ret;
 
 	default:
@@ -276,7 +284,7 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
  * @param handle Handle to retrieve errors for.
  * @param force_debug Force all errors to be logged as debug messages.
  */
-void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug)
+void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug)
 {
 	char const	*driver;
 	sql_log_entry_t	log[20];
@@ -333,13 +341,13 @@ void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  *	- #RLM_SQL_ALT_QUERY on constraints violation.
  */
-sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
+sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;
 
 	/* Caller should check they have a valid handle */
-	rad_assert(*handle);
+	fr_assert(*handle);
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
@@ -399,7 +407,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 				break;
 			}
 			ret = RLM_SQL_ALT_QUERY;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		/*
 		 *	Driver suggested using an alternative query
@@ -434,13 +442,13 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
  *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  */
-sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
+sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;
 
 	/* Caller should check they have a valid handle */
-	rad_assert(*handle);
+	fr_assert(*handle);
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
@@ -500,20 +508,20 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
-		  VALUE_PAIR **pair, char const *query)
+int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
+		  fr_pair_list_t *out, char const *query)
 {
 	rlm_sql_row_t	row;
 	int		rows = 0;
 	sql_rcode_t	rcode;
 
-	rad_assert(request);
+	fr_assert(request);
 
 	rcode = rlm_sql_select_query(inst, request, handle, query);
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
+		if (sql_pair_list_afrom_str(ctx, request, out, row) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
 			(inst->driver->sql_finish_select_query)(*handle, inst->config);
@@ -530,7 +538,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 /*
  *	Log the query to a file.
  */
-void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query)
+void rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section, char const *query)
 {
 	int fd;
 	char const *filename = NULL;

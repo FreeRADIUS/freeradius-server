@@ -29,22 +29,25 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	Define a structure for our module configuration.
  */
 typedef struct {
-	char const	*name;
-	bool		wait;
-	char const	*program;
-	char const	*input;
-	char const	*output;
-	pair_list_t	input_list;
-	pair_list_t	output_list;
-	bool		shell_escape;
-	fr_time_delta_t	timeout;
-	bool		timeout_is_set;
+	char const		*name;
+	bool			wait;
+	char const		*program;
+	char const		*input;
+	char const		*output;
+	tmpl_pair_list_t	input_list;
+	tmpl_pair_list_t	output_list;
+	bool			shell_escape;
+	fr_time_delta_t		timeout;
+	bool			timeout_is_set;
+
+	tmpl_t	*tmpl;
 } rlm_exec_t;
 
 static const CONF_PARSER module_config[] = {
@@ -62,7 +65,7 @@ static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
 /*
  *	Escape special characters
  */
-static size_t rlm_exec_shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in,
+static size_t rlm_exec_shell_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in,
 				    UNUSED void *inst)
 {
 	char *q, *end;
@@ -85,72 +88,23 @@ static size_t rlm_exec_shell_escape(UNUSED REQUEST *request, char *out, size_t o
 	return q - out;
 }
 
-/** Process the exit code returned by one of the exec functions
+
+/** Exec programs from an xlat
  *
- * @param request Current request.
- * @param answer Output string from exec call.
- * @param len length of data in answer.
- * @param status code returned by exec call.
- * @return One of the RLM_MODULE_* values.
- */
-static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t len, int status)
-{
-	if (status < 0) {
-		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	Exec'd programs are meant to return exit statuses that correspond
-	 *	to the standard RLM_MODULE_* + 1.
-	 *
-	 *	This frees up 0, for success where it'd normally be reject.
-	 */
-	if (status == 0) {
-		RDEBUG2("Program executed successfully");
-
-		return RLM_MODULE_OK;
-	}
-
-	if (status > RLM_MODULE_NUMCODES) {
-		REDEBUG("Program returned invalid code (greater than max rcode) (%i > %i): %s",
-			status, RLM_MODULE_NUMCODES, answer);
-		goto fail;
-	}
-
-	status--;	/* Lets hope no one ever re-enumerates RLM_MODULE_* */
-
-	if (status == RLM_MODULE_FAIL) {
-		fail:
-
-		if (len > 0) {
-			char *p = &answer[len - 1];
-
-			/*
-			 *	Trim off trailing returns
-			 */
-			while((p > answer) && ((*p == '\r') || (*p == '\n'))) {
-				*p-- = '\0';
-			}
-
-			log_module_failure_msg(request, "%s", answer);
-		}
-
-		return RLM_MODULE_FAIL;
-	}
-
-	return status;
-}
-
-/*
- *	Do xlat of strings.
+ * Example:
+@verbatim
+"%{exec:/bin/echo hello}" == "hello"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
 	int			result;
 	rlm_exec_t const	*inst = mod_inst;
-	VALUE_PAIR		**input_pairs = NULL;
+	fr_pair_list_t		*input_pairs = NULL;
 	char *p;
 
 	if (!inst->wait) {
@@ -159,7 +113,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	if (inst->input_list) {
-		input_pairs = radius_list(request, inst->input_list);
+		input_pairs = tmpl_list_head(request, inst->input_list);
 		if (!input_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
 			return -1;
@@ -170,7 +124,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? *input_pairs : NULL,
+	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? input_pairs : NULL,
 				     inst->wait, inst->shell_escape, inst->timeout);
 	if (result != 0) return -1;
 
@@ -201,11 +155,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
+	xlat_register_legacy(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	if (inst->input) {
 		p = inst->input;
-		p += radius_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
+		p += tmpl_pair_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err(conf, "Invalid input list '%s'", inst->input);
 			return -1;
@@ -214,7 +168,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	if (inst->output) {
 		p = inst->output;
-		p += radius_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
+		p += tmpl_pair_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err(conf, "Invalid output list '%s'", inst->output);
 			return -1;
@@ -258,81 +212,234 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 }
 
 
-/*
- *  Dispatch an exec method
+/** Instantiate the module
+ *
+ * Creates a new instance of the module reading parameters from a configuration section.
+ *
+ * @param conf to parse.
+ * @param instance configuration data.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED void *thread, REQUEST *request)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	rlm_exec_t const	*inst = instance;
-	rlm_rcode_t		rcode;
-	int			status;
+	rlm_exec_t		*inst = instance;
+	ssize_t			slen;
 
-	VALUE_PAIR		**input_pairs = NULL, **output_pairs = NULL;
-	VALUE_PAIR		*answer = NULL;
-	TALLOC_CTX		*ctx = NULL;
-	char			out[1024];
+	if (!inst->program) return 0;
+
+	slen = tmpl_afrom_substr(inst, &inst->tmpl,
+				 &FR_SBUFF_IN(inst->program, strlen(inst->program)),
+				 T_BACK_QUOTED_STRING, NULL,
+				 &(tmpl_rules_t) {
+				 	.allow_foreign = true,
+				 	.allow_unresolved = false,
+				 	.allow_unknown = false
+				 });
+	if (!inst->tmpl) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(inst, &spaces, &text, slen, inst->program);
+
+		cf_log_err(conf, "%s", text);
+		cf_log_perr(conf, "%s^", spaces);
+
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Resume a request after xlat expansion.
+ *
+ */
+static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					      request_t *request, void *rctx)
+{
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
+	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
+	fr_pair_list_t		env_pairs;
+
+	fr_pair_list_init(&env_pairs);
+	/*
+	 *	Decide what input/output the program takes.
+	 */
+	if (inst->input) {
+		fr_pair_list_t *input_pairs;
+
+		input_pairs = tmpl_list_head(request, inst->input_list);
+		if (!input_pairs) {
+			RETURN_MODULE_INVALID;
+		}
+
+		env_pairs = *input_pairs;
+	}
+
+	if (fr_exec_nowait(request, box, &env_pairs) < 0) {
+		RPEDEBUG("Failed executing program");
+		RETURN_MODULE_FAIL;
+	}
+
+	RETURN_MODULE_OK;
+}
+
+typedef struct {
+	fr_value_box_t	*box;
+	int		status;
+} rlm_exec_ctx_t;
+
+static const rlm_rcode_t status2rcode[] = {
+	[0] = RLM_MODULE_OK,
+	[1] = RLM_MODULE_REJECT,
+	[2] = RLM_MODULE_FAIL,
+	[3] = RLM_MODULE_OK,
+	[4] = RLM_MODULE_HANDLED,
+	[5] = RLM_MODULE_INVALID,
+	[6] = RLM_MODULE_DISALLOW,
+	[7] = RLM_MODULE_NOTFOUND,
+	[8] = RLM_MODULE_NOOP,
+	[9] = RLM_MODULE_UPDATED,
+};
+
+
+/** Process the exit code returned by one of the exec functions
+ *
+ * @param request Current request.
+ * @param box Output string from exec call.
+ * @param status code returned by exec call.
+ * @return One of the RLM_MODULE_* values.
+ */
+static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box, int status)
+{
+	rlm_rcode_t rcode;
+
+	if (status < 0) return RLM_MODULE_FAIL;
 
 	/*
-	 *	This needs to be a runtime check for now as
-	 *	rlm_exec is often called via xlat instead
-	 *	of with a static program.
+	 *	Exec'd programs are meant to return exit statuses that correspond
+	 *	to the standard RLM_MODULE_* + 1.
+	 *
+	 *	This frees up 0, for success where it'd normally be reject.
 	 */
-	if (!inst->program) {
-		REDEBUG("You must specify 'program' to execute");
+	if (status == 0) {
+		RDEBUG("Program executed successfully");
+
+		return RLM_MODULE_OK;
+	}
+
+	if (status > 9) {
+		REDEBUG("Program returned invalid code (greater than max rcode) (%i > 9): %pV",
+			status, box);
+		goto fail;
+	}
+
+	rcode = status2rcode[status];
+
+	if (rcode == RLM_MODULE_FAIL) {
+	fail:
+
+		if (box) log_module_failure_msg(request, "%pV", box);
+
 		return RLM_MODULE_FAIL;
+	}
+
+	return rcode;
+}
+
+static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
+{
+	int			status;
+	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
+	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
+
+	if (inst->output && m->box) {
+		TALLOC_CTX *ctx;
+		fr_pair_list_t *vps, *output_pairs;
+
+		RDEBUG("EXEC GOT -- %pV", m->box);
+
+		output_pairs = tmpl_list_head(request, inst->output_list);
+		fr_assert(output_pairs != NULL);
+
+		ctx = tmpl_list_ctx(request, inst->output_list);
+
+		vps = fr_pair_list_afrom_box(ctx, request->dict, m->box);
+		if (!fr_pair_list_empty(vps)) fr_pair_list_move(output_pairs, vps);
+
+		m->box = NULL;	/* has been consumed */
+	}
+
+	status = m->status;
+
+	if (status < 0) {
+		REDEBUG("Program exited with signal %d", -status);
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	The status rcodes aren't quite the same as the rcode
+	 *	enumeration.
+	 */
+	RETURN_MODULE_RCODE(rlm_exec_status2rcode(request, m->box, status));
+}
+
+/*
+ *  Dispatch an async exec method
+ */
+static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
+	rlm_exec_ctx_t		*m;
+	fr_pair_list_t		env_pairs;
+	TALLOC_CTX		*ctx;
+
+	fr_pair_list_init(&env_pairs);
+	if (!inst->tmpl) {
+		RDEBUG("This module requires 'program' to be set.");
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	Get frame-local talloc ctx
+	 */
+	ctx = unlang_interpret_frame_talloc_ctx(request);
+
+	/*
+	 *	Do the asynchronous xlat expansion.
+	 */
+	if (!inst->wait) {
+		fr_value_box_t *box;
+
+		MEM(box = talloc_zero(ctx, fr_value_box_t));
+
+		return unlang_module_yield_to_xlat(request, &box, request, tmpl_xlat(inst->tmpl), mod_exec_nowait_resume, NULL, box);
 	}
 
 	/*
 	 *	Decide what input/output the program takes.
 	 */
 	if (inst->input) {
-		input_pairs = radius_list(request, inst->input_list);
-		if (!input_pairs) {
-			return RLM_MODULE_INVALID;
-		}
+		fr_pair_list_t *input_pairs;
+
+		input_pairs = tmpl_list_head(request, inst->input_list);
+		if (!input_pairs) RETURN_MODULE_INVALID;
+
+		env_pairs = *input_pairs;
 	}
 
 	if (inst->output) {
-		output_pairs = radius_list(request, inst->output_list);
-		if (!output_pairs) {
-			return RLM_MODULE_INVALID;
+		if (!tmpl_list_head(request, inst->output_list)) {
+			RETURN_MODULE_INVALID;
 		}
-
-		ctx = radius_list_ctx(request, inst->output_list);
 	}
 
-	/*
-	 *	async changes:
-	 *
-	 *	- create rlm_exec_thread_t, with inst->el
-	 *	  - or for the short term, just use request->el
-	 *	- do our own xlat of inst->program
-	 *	- call radius_start_program()
-	 *	- call event loop to add callback for EVFILT_PROC, NOTE_EXIT | NOTE_EXITSTATUS, pid
-	 *	- call event loop to add callback for reading from the pipe
-	 *	- return YIELD
-	 */
+	m = talloc_zero(ctx, rlm_exec_ctx_t);
 
-	/*
-	 *	This function does it's own xlat of the input program
-	 *	to execute.
-	 */
-	status = radius_exec_program(ctx, out, sizeof(out), inst->output ? &answer : NULL, request,
-				     inst->program, inst->input ? *input_pairs : NULL,
-				     inst->wait, inst->shell_escape, inst->timeout);
-	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
-
-	/*
-	 *	Move the answer over to the output pairs.
-	 *
-	 *	If we're not waiting, then there are no output pairs.
-	 */
-	if (inst->output) {
-		fr_pair_list_move(output_pairs, &answer);
-	}
-	fr_pair_list_free(&answer);
-
-	return rcode;
+	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, &env_pairs, mod_exec_wait_resume, NULL, m);
 }
 
 
@@ -353,17 +460,12 @@ module_t rlm_exec = {
 	.inst_size	= sizeof(rlm_exec_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_exec_dispatch,
 		[MOD_AUTHORIZE]		= mod_exec_dispatch,
 		[MOD_PREACCT]		= mod_exec_dispatch,
 		[MOD_ACCOUNTING]	= mod_exec_dispatch,
-		[MOD_PRE_PROXY]		= mod_exec_dispatch,
-		[MOD_POST_PROXY]	= mod_exec_dispatch,
 		[MOD_POST_AUTH]		= mod_exec_dispatch,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_exec_dispatch,
-		[MOD_SEND_COA]		= mod_exec_dispatch
-#endif
 	},
 };

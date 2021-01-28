@@ -27,12 +27,11 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/protocol/vmps/vmps.h>
 
@@ -130,12 +129,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->src_ipaddr, &address->src_port,
-			     &address->dst_ipaddr, &address->dst_port,
-			     &address->if_index, recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
-		DEBUG2("proto_vmps_udp got read error %zd: %s", data_size, fr_strerror());
+		PDEBUG2("proto_vmps_udp got read error %zd", data_size);
 		return data_size;
 	}
 
@@ -146,7 +142,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	packet_len = data_size;
 
-	if (data_size < 8) {
+	if (data_size < FR_VQP_HDR_LEN) {
 		DEBUG2("proto_vmps_udp got 'too short' packet size %zd", data_size);
 		thread->stats.total_malformed_requests++;
 		return 0;
@@ -158,9 +154,15 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		return 0;
 	}
 
+	if (buffer[0] != FR_VQP_VERSION) {
+		DEBUG("proto_vmps_udp got invalid packet version %d", buffer[0]);
+		thread->stats.total_unknown_types++;
+		return 0;
+	}
+
 	if ((buffer[1] != FR_PACKET_TYPE_VALUE_JOIN_REQUEST) &&
 	    (buffer[1] != FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST)) {
-		DEBUG("proto_vmps_udp got invalid packet code %d", buffer[0]);
+		DEBUG("proto_vmps_udp got invalid packet code %d", buffer[1]);
 		thread->stats.total_unknown_types++;
 		return 0;
 	}
@@ -168,7 +170,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *      If it's not a VMPS packet, ignore it.
 	 */
-	if (!fr_vqp_ok(buffer, &packet_len)) {
+	if (!fr_vmps_ok(buffer, &packet_len)) {
 		/*
 		 *      @todo - check for F5 load balancer packets.  <sigh>
 		 */
@@ -200,7 +202,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 {
 	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			*address = track->address;
+	fr_socket_t			socket;
 
 	int				flags;
 	ssize_t				data_size;
@@ -213,6 +215,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	thread->stats.total_responses++;
 
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
+
+	fr_socket_addr_swap(&socket, &track->address->socket);
 
 	/*
 	 *	This handles the race condition where we get a DUP,
@@ -230,10 +234,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
-			(void) udp_send(thread->sockfd, packet, track->reply_len, flags,
-					&address->dst_ipaddr, address->dst_port,
-					address->if_index,
-					&address->src_ipaddr, address->src_port);
+			(void) udp_send(&socket, flags, packet, track->reply_len);
 		}
 
 		return buffer_len;
@@ -242,29 +243,18 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	We only write VMPS packets.
 	 */
-	rad_assert(buffer_len >= 8);
+	fr_assert(buffer_len >= 8);
 
 	/*
 	 *	Only write replies if they're VMPS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address->dst_ipaddr, address->dst_port,
-			     address->if_index,
-			     &address->src_ipaddr, address->src_port);
+	data_size = udp_send(&socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...
 	 */
 	if (data_size <= 0) return data_size;
-
-	/*
-	 *	Root through the reply to determine any
-	 *	connection-level negotiation data.
-	 */
-	if (track->packet[0] == FR_CODE_STATUS_SERVER) {
-//		status_check_reply(inst, buffer, buffer_len);
-	}
 
 	return data_size;
 }
@@ -299,8 +289,6 @@ static int mod_open(fr_listen_t *li)
 
 	int				sockfd;
 	uint16_t			port = inst->port;
-	CONF_SECTION			*server_cs;
-	CONF_ITEM			*ci;
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -309,13 +297,13 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &inst->ipaddr, port);
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_UDP, 0, &inst->ipaddr, port);
 
 	/*
 	 *	Set SO_REUSEPORT before bind, so that all packets can
 	 *	listen on the same destination IP address.
 	 */
-	if (1) {
+	{
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
@@ -332,22 +320,12 @@ static int mod_open(fr_listen_t *li)
 
 	thread->sockfd = sockfd;
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
-	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
-
-	server_cs = cf_item_to_section(ci);
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
 	thread->name = fr_app_io_socket_name(thread, &proto_vmps_udp,
 					     NULL, 0,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
-
-	// @todo - also print out auth / acct / coa, etc.
-	DEBUG("Listening on vmps address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
-
 	return 0;
 }
 
@@ -363,30 +341,52 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	thread->sockfd = fd;
 
 	thread->name = fr_app_io_socket_name(thread, &proto_vmps_udp,
-					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &thread->connection->socket.inet.src_ipaddr, thread->connection->socket.inet.src_port,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 
 	return 0;
 }
 
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len)
+{
+	proto_vmps_track_t  *track;
+
+	if (buffer_len < 4) {
+		ERROR("VMPS packet is too small. (%zu < 4)", buffer_len);
+		return NULL;
+	}
+
+	track = talloc_zero(ctx, proto_vmps_track_t);
+
+	if (!track) return NULL;
+
+	talloc_set_name_const(track, "proto_vmps_track_t");
+
+	memcpy(&track->transaction_id, buffer, sizeof(track->transaction_id));
+
+	track->opcode = buffer[1];
+
+	return track;
+}
+
 static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
-	int rcode;
-	uint8_t const *a = one;
-	uint8_t const *b = two;
+	proto_vmps_track_t const *a = talloc_get_type_abort_const(one, proto_vmps_track_t);
+	proto_vmps_track_t const *b = talloc_get_type_abort_const(two, proto_vmps_track_t);
+	int ret;
 
 	/*
 	 *	Order by transaction ID
 	 */
-	rcode = memcmp(a + 4, b + 4, 4);
-	if (rcode != 0) return rcode;
+	ret = (a->transaction_id < b->transaction_id) - (a->transaction_id > b->transaction_id);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Then ordered by opcode, which is usally the same.
 	 */
-	return (a[1] < b[1]) - (a[1] > b[1]);
+	return (a->opcode < b->opcode) - (a->opcode > b->opcode);
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
@@ -448,15 +448,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
 		if (!inst->trie) {
-			cf_log_err(cs, "Failed creating list of networks - %s", fr_strerror());
+			cf_log_perr(cs, "Failed creating list of networks");
 			return -1;
 		}
 	}
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 
@@ -496,6 +496,13 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 	return client_find(NULL, ipaddr, ipproto);
 }
 
+static char const *mod_name(fr_listen_t *li)
+{
+	proto_vmps_udp_thread_t		*thread = talloc_get_type_abort(li->thread_instance, proto_vmps_udp_thread_t);
+
+	return thread->name;
+}
+
 fr_app_io_t proto_vmps_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "vmps_udp",
@@ -511,8 +518,10 @@ fr_app_io_t proto_vmps_udp = {
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
+	.track			= mod_track_create,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
+	.get_name		= mod_name,
 };

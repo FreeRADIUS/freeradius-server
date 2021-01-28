@@ -1,9 +1,6 @@
 #
 #  PRE: update unknown
 #
-update control {
-       &Cleartext-Password := 'hello'
-}
 
 #
 #  This delayed binding should result in a parse error

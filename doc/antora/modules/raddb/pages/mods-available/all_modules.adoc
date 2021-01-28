@@ -7,6 +7,7 @@
 | xref:mods-available/digest.adoc[digest]	| The digest module performs HTTP digest authentication, usually for a SIP server. See draft-sterman-aaa-sip-00.txt for
 details. The module does not support RFC 5090.
 | xref:mods-available/eap.adoc[eap]	| Implements the base protocol for EAP (Extensible Authentication Protocol).
+| xref:mods-available/imap.adoc[imap]	| Allows users to be authenticated against an IMAP server.
 | xref:mods-available/krb5.adoc[krb5]	| Implements kerberos authentication, using the result of decrypting the TGT as an indication that the provided
 password was correct.
 | xref:mods-available/ldap.adoc[ldap]	| Allows LDAP directory entries to be retrieved, modified, inserted and deleted.
@@ -23,6 +24,16 @@ to match the copy of the password the server has retrieved.
 Active-Directory to retrieve group information and the user's NT-Password.
 | xref:mods-available/yubikey.adoc[yubikey]	| Supports authentication of yubikey tokens where the PSK is known to FreeRADIUS, and integrates with the Yubico
 cloud-based authentication service.
+|=====
+
+== Authorization Modules
+[options="header"]
+[cols="20%,80%"]
+|=====
+| Module | Description
+| xref:mods-available/smtp.adoc[smtp]	| Allows users to submit smtp formatted, mime-encoded emails to a server
+Supports User-Name User-Password authentication
+Supports file attachments, size limited by the MTA.
 |=====
 
 == Datastore Modules
@@ -47,7 +58,7 @@ allocation, and implements pre-allocation for use with DHCPv4.
 who has current sessions.
 | xref:mods-available/sql.adoc[sql]	| Provides an abstraction over multiple SQL backends, via database specific drivers.
 | xref:mods-available/sqlippool.adoc[sqlippool]	| SQL based IP allocation module.
-| xref:mods-available/unix.adoc[unix]	| Retrieves a user's encrypted password from the local system and places it into the ``control:Crypt-Password`` attribute.
+| xref:mods-available/unix.adoc[unix]	| Retrieves a user's encrypted password from the local system and places it into the ``control.Crypt-Password`` attribute.
 The password is retrieved via the ``getpwent()`` and ``getspwent()`` system calls.
 |=====
 
@@ -59,6 +70,7 @@ The password is retrieved via the ``getpwent()`` and ``getspwent()`` system call
 | xref:mods-available/detail.adoc[detail]	| Writes attributes from a request list to a flat file in 'detail' format.
 | xref:mods-available/dhcpv4.adoc[dhcpv4]	| Implements DHCPv4 (Dynamic Host Configuration Protocol for IPv4) client and relay.
 | xref:mods-available/files.adoc[files]	| Implements a traditional Livingston-style users file.
+| xref:mods-available/icmp.adoc[icmp]	| Sends an ICMP "echo request" message to a particular IP address.
 | xref:mods-available/linelog.adoc[linelog]	| Creates log entries from attributes, string expansions, or static strings, and writes them to a variety of backends,
 including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/logtee.adoc[logtee]	| Tee's request logging at runtime, sending it to additional log destinations.
@@ -91,7 +103,6 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | xref:mods-available/cui.adoc[cui]	| CUI
 | xref:mods-available/detail.example.com.adoc[detail.example.com]	| Detail (Sample)
 | xref:mods-available/detail.log.adoc[detail.log]	| Detail (Log Sample)
-| xref:mods-available/dhcp_sqlippool.adoc[dhcp_sqlippool]	| DHCP SQL-IP-Pool
 | xref:mods-available/eap_inner.adoc[eap_inner]	| EAP/Inner
 | xref:mods-available/echo.adoc[echo]	| Echo
 | xref:mods-available/etc_group.adoc[etc_group]	| etc_group
@@ -111,10 +122,10 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | Module | Description
 | xref:mods-available/always.adoc[always]	| Returns a pre-configured result code such as 'ok', 'noop', 'reject' etc...
 | xref:mods-available/attr_filter.adoc[attr_filter]	| Filters attributes in a request. Can delete attributes or permit them to have only certain values.
+| xref:mods-available/cipher.adoc[cipher]	| Cipher
 | xref:mods-available/date.adoc[date]	| Converts date strings between user configurable formats.
 | xref:mods-available/delay.adoc[delay]	| Introduces an artificial non-blocking delay when processing a request.
 | xref:mods-available/escape.adoc[escape]	| Escapes and unescapes strings using the MIME escape format
-| xref:mods-available/example.adoc[example]	| An example module to use as a template when writing new modules.
 | xref:mods-available/expiration.adoc[expiration]	| Determines whether a user account has expired, with the expiration time set by another module.
 | xref:mods-available/expr.adoc[expr]	| Registers a string expansion "%{expr:}" that allows basic arithmetic and binary operations.
 | xref:mods-available/idn.adoc[idn]	| Converts internationalized domain names to ASCII.

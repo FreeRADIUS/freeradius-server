@@ -26,7 +26,7 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 
@@ -50,9 +50,9 @@ fr_dict_attr_autoload_t proto_radius_coa_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
@@ -63,7 +63,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	case REQUEST_INIT:
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-			log_request_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+			log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 		}
 
 		request->component = "radius";
@@ -73,8 +73,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		 */
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
-			REDEBUG("Failed to find value for &request:Packet-Type");
-			return RLM_MODULE_FAIL;
+			REDEBUG("Failed to find value for &request.Packet-Type");
+			RETURN_MODULE_FAIL;
 		}
 
 		/*
@@ -82,8 +82,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		 *	re-authorization requests.
 		 */
 		if (request->packet->code == FR_CODE_COA_REQUEST) {
-			vp = fr_pair_find_by_da(request->reply->vps, attr_service_type, TAG_ANY);
-			if (vp && !fr_pair_find_by_da(request->reply->vps, attr_state, TAG_ANY)) {
+			vp = fr_pair_find_by_da(&request->reply_pairs, attr_service_type);
+			if (vp && !fr_pair_find_by_da(&request->reply_pairs, attr_state)) {
 				REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 				request->reply->code = FR_CODE_COA_NAK;
 				goto nak;
@@ -93,23 +93,26 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		unlang = cf_section_find(request->server_cs, "recv", dv->name);
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv %s' section", dv->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", dv->name, cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -135,7 +138,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_da(request->reply->vps, attr_packet_type, TAG_ANY);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 		if (vp) request->reply->code = vp->vp_uint32;
 
 	nak:
@@ -153,20 +156,21 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		 */
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
-		rad_assert(request->log.unlang_indent == 0);
-
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 			/*
@@ -226,46 +230,46 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 		if (request->parent && RDEBUG_ENABLED) {
 			RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
-			log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 		}
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
-		.name2 = "CoA-Request",\
-		.component = MOD_RECV_COA,
+		.name2 = "CoA-Request",
+		.component = MOD_AUTHORIZE,
 	},
 	{
 		.name = "send",
 		.name2 = "CoA-ACK",
-		.component = MOD_SEND_COA,
+		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",.name2 = "CoA-NAK",
-		.component = MOD_SEND_COA,
+		.component = MOD_AUTHORIZE,
 	},
 	{
 		.name = "recv",
 		.name2 = "Disconnect-Request",
-		.component = MOD_RECV_COA,
+		.component = MOD_AUTHORIZE,
 	},
 	{
 		.name = "send",
 		.name2 = "Disconnect-ACK",
-		.component = MOD_SEND_COA,
+		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",
 		.name2 = "Disconnect-NAK",
-		.component = MOD_SEND_COA,
+		.component = MOD_POST_AUTH,
 	},
 	{
 		.name = "send",

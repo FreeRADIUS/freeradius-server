@@ -2,20 +2,19 @@
 # PRE: update if
 #
 update {
-	&control:Cleartext-Password := 'hello'
-	&request:Tmp-String-0 := "This is a string\n"
-	&request:Tmp-Octets-0 := 0x000504030201
-	&request:Tmp-String-1 := "what do ya want for nothing?"
-	&request:Tmp-String-2 := "Jefe"
-	&request:Tmp-String-3 := ""
+	&request.Tmp-String-0 := "This is a string\n"
+	&request.Tmp-Octets-0 := 0x000504030201
+	&request.Tmp-String-1 := "what do ya want for nothing?"
+	&request.Tmp-String-2 := "Jefe"
+	&request.Tmp-String-3 := ""
 }
 
 
 update request {
         &Tmp-Octets-1           := "%{md5:This is a string\n}"
         &Tmp-Octets-2           := "%{md5:%{Tmp-String-0}}"
-        &Tmp-Octets-3           := "%{md5:%{request:Tmp-String-0}}"
-        &Tmp-Octets-4           := "%{md5:%{request:Tmp-Octets-0}}"
+        &Tmp-Octets-3           := "%{md5:%{request.Tmp-String-0}}"
+        &Tmp-Octets-4           := "%{md5:%{request.Tmp-Octets-0}}"
         &Tmp-Octets-5           := "%{md5:%{Tmp-String-9}}"
         &Tmp-Octets-6           := "%{hmacmd5:%{Tmp-String-1} %{Tmp-String-2}}"
         &Tmp-Octets-7           := "%{hmacmd5:%{Tmp-String-3} %{Tmp-String-3}}"

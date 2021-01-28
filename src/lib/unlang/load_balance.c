@@ -24,17 +24,20 @@
  */
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rand.h>
-#include "unlang_priv.h"
+
+#include "load_balance_priv.h"
 #include "module_priv.h"
+#include "unlang_priv.h"
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_redundant_t	*redundant;
+
 	unlang_group_t			*g;
 
 	g = unlang_generic_to_group(instruction);
@@ -43,7 +46,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 
 #ifdef __clang_analyzer__
 	if (!redundant->found) {
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 #endif
@@ -59,7 +62,7 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 		 *	back to the found one, then we're done.
 		 */
 		if (redundant->child == redundant->found) {
-			/* DON'T change presult, as it is taken from the child */
+			/* DON'T change p_result, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
@@ -71,14 +74,14 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 		 *	process again.
 		 */
 
-		rad_assert(instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
+		fr_assert(instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
 
 		/*
 		 *	If the current child says "return", then do
 		 *	so.
 		 */
-		if (redundant->child->actions[*presult] == MOD_ACTION_RETURN) {
-			/* DON'T change presult, as it is taken from the child */
+		if (redundant->child->actions[*p_result] == MOD_ACTION_RETURN) {
+			/* DON'T change p_result, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
@@ -86,7 +89,10 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_interpret_push(request, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
 
 	/*
 	 *	Now that we've pushed this child, make the next call
@@ -106,27 +112,31 @@ static unlang_action_t unlang_load_balance_next(REQUEST *request, rlm_rcode_t *p
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_redundant_t	*redundant;
+
 	unlang_group_t			*g;
+	unlang_load_balance_t	*gext = NULL;
 
 	uint32_t count = 0;
 
 	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+
+	gext = unlang_group_to_load_balance(g);
 
 	RDEBUG4("%s setting up", frame->instruction->debug_name);
 
 	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
-	if (g->vpt) {
+	if (gext && gext->vpt) {
 		uint32_t hash, start;
 		ssize_t slen;
 		char const *p = NULL;
@@ -136,20 +146,20 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 		 *	Integer data types let the admin
 		 *	select which frame is being used.
 		 */
-		if (tmpl_is_attr(g->vpt) &&
-		    ((g->vpt->tmpl_da->type == FR_TYPE_UINT8) ||
-		     (g->vpt->tmpl_da->type == FR_TYPE_UINT16) ||
-		     (g->vpt->tmpl_da->type == FR_TYPE_UINT32) ||
-		     (g->vpt->tmpl_da->type == FR_TYPE_UINT64))) {
-			VALUE_PAIR *vp;
+		if (tmpl_is_attr(gext->vpt) &&
+		    ((tmpl_da(gext->vpt)->type == FR_TYPE_UINT8) ||
+		     (tmpl_da(gext->vpt)->type == FR_TYPE_UINT16) ||
+		     (tmpl_da(gext->vpt)->type == FR_TYPE_UINT32) ||
+		     (tmpl_da(gext->vpt)->type == FR_TYPE_UINT64))) {
+			fr_pair_t *vp;
 
-			slen = tmpl_find_vp(&vp, request, g->vpt);
+			slen = tmpl_find_vp(&vp, request, gext->vpt);
 			if (slen < 0) {
-				REDEBUG("Failed finding attribute %s", g->vpt->name);
+				REDEBUG("Failed finding attribute %s", gext->vpt->name);
 				goto randomly_choose;
 			}
 
-			switch (g->vpt->tmpl_da->type) {
+			switch (tmpl_da(gext->vpt)->type) {
 			case FR_TYPE_UINT8:
 				start = ((uint32_t) vp->vp_uint8) % g->num_children;
 				break;
@@ -171,7 +181,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 			}
 
 		} else {
-			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
+			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, gext->vpt, NULL, NULL);
 			if (slen < 0) {
 				REDEBUG("Failed expanding template");
 				goto randomly_choose;
@@ -228,8 +238,11 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 	 *	Plain "load-balance".  Just do one child.
 	 */
 	if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-		unlang_interpret_push(request, redundant->found,
-				      frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+		if (unlang_interpret_push(request, redundant->found,
+					  frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -240,8 +253,8 @@ static unlang_action_t unlang_load_balance(REQUEST *request, rlm_rcode_t *presul
 	 */
 	redundant->child = NULL;
 
-	frame->interpret = unlang_load_balance_next;
-	return unlang_load_balance_next(request, presult);
+	frame->process = unlang_load_balance_next;
+	return unlang_load_balance_next(p_result, request);
 }
 
 void unlang_load_balance_init(void)

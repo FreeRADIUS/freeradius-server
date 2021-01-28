@@ -32,7 +32,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_radius.h"
 
 extern fr_app_io_t proto_radius_tcp;
@@ -106,7 +106,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	proto_radius_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_tcp_t);
 	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 	ssize_t				data_size;
-	size_t				packet_len;
+	size_t				packet_len, in_buffer;
 	decode_fail_t			reason;
 
 	/*
@@ -114,7 +114,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 */
 	data_size = read(thread->sockfd, buffer + *leftover, buffer_len - *leftover);
 	if (data_size < 0) {
-		DEBUG2("proto_radius_tcp got read error %zd: %s", data_size, fr_strerror());
+		PDEBUG2("proto_radius_tcp got read error %zd", data_size);
 		return data_size;
 	}
 
@@ -141,11 +141,13 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		return -1;
 	}
 
+	in_buffer = data_size + *leftover;
+
 	/*
 	 *	Not enough for one packet.  Tell the caller that we need to read more.
 	 */
-	if (data_size < 20) {
-		*leftover = data_size;
+	if (in_buffer < 20) {
+		*leftover = in_buffer;
 		return 0;
 	}
 
@@ -158,8 +160,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 *	We don't have a complete RADIUS packet.  Tell the
 	 *	caller that we need to read more.
 	 */
-	if ((size_t) data_size < packet_len) {
-		*leftover = data_size;
+	if (in_buffer < packet_len) {
+		*leftover = in_buffer;
 		return 0;
 	}
 
@@ -167,8 +169,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 *	We've read more than one packet.  Tell the caller that
 	 *	there's more data available, and return only one packet.
 	 */
-	if ((size_t) data_size > packet_len) {
-		*leftover = data_size - packet_len;
+	if (in_buffer > packet_len) {
+		*leftover = in_buffer - packet_len;
 	}
 
 	/*
@@ -184,6 +186,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	}
 
 	*recv_time_p = fr_time();
+	thread->stats.total_requests++;
 
 	/*
 	 *	proto_radius sets the priority
@@ -212,7 +215,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	put the stats in the listener, so that proto_radius
 	 *	can update them, too.. <sigh>
 	 */
-	thread->stats.total_responses++;
+	if (!written) thread->stats.total_responses++;
 
 	/*
 	 *	This handles the race condition where we get a DUP,
@@ -231,8 +234,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	/*
 	 *	We only write RADIUS packets.
 	 */
-	rad_assert(buffer_len >= 20);
-	rad_assert(written < buffer_len);
+	fr_assert(buffer_len >= 20);
+	fr_assert(written < buffer_len);
 
 	/*
 	 *	Only write replies if they're RADIUS packets.
@@ -290,10 +293,8 @@ static int mod_open(fr_listen_t *li)
 
 	int				sockfd;
 	uint16_t			port = inst->port;
-	CONF_SECTION			*server_cs;
-	CONF_ITEM			*ci;
 
-	rad_assert(!thread->connection);
+	fr_assert(!thread->connection);
 
 	li->fd = sockfd = fr_socket_server_tcp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -316,21 +317,12 @@ static int mod_open(fr_listen_t *li)
 
 	thread->sockfd = sockfd;
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
-	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
-
-	server_cs = cf_item_to_section(ci);
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
 	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
 					     NULL, 0,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
-
-	// @todo - also print out auth / acct / coa, etc.
-	DEBUG("Listening on radius address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
 
 	return 0;
 }
@@ -346,7 +338,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	thread->sockfd = fd;
 
 	thread->name = fr_app_io_socket_name(thread, &proto_radius_tcp,
-					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &thread->connection->socket.inet.src_ipaddr, thread->connection->socket.inet.src_port,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 
@@ -356,7 +348,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
 		       void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	proto_radius_tcp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_tcp_t);
 
 	uint8_t const *a = one;
@@ -366,16 +358,16 @@ static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSE
 	 *	Do a better job of deduping input packet.
 	 */
 	if (inst->dedup_authenticator) {
-		rcode = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
-		if (rcode != 0) return rcode;
+		ret = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
+		if (ret != 0) return ret;
 	}
 
 	/*
 	 *	The tree is ordered by IDs, which are (hopefully)
 	 *	pseudo-randomly distributed.
 	 */
-	rcode = (a[1] < b[1]) - (a[1] > b[1]);
-	if (rcode != 0) return rcode;
+	ret = (a[1] < b[1]) - (a[1] > b[1]);
+	if (ret != 0) return ret;
 
 	/*
 	 *	Then ordered by code, which is usally the same.
@@ -597,7 +589,6 @@ fr_app_io_t proto_radius_tcp = {
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
-	.track_duplicates	= true,
 
 	.open			= mod_open,
 	.read			= mod_read,

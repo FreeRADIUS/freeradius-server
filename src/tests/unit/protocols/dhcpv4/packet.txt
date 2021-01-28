@@ -1,0 +1,14 @@
+#
+#  Test vectors for DHCP packets
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+
+encode-proto Opcode = Client-Message, Hardware-Type = Ethernet, Hardware-Address-Length = 6, Hop-Count = 0, Transaction-Id = 0, Number-of-Seconds = 0, Flags = 0, Client-IP-Address = 0.0.0.0, Your-IP-Address = 0.0.0.0, Server-IP-Address = 0.0.0.0, Gateway-IP-Address = 10.11.19.3, Client-Hardware-Address = 44:48:42:66:00:5a, Message-Type = Discover, Network-Subnet = 10.11.19.3/32
+match 01 01 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0a 0b 13 03 44 48 42 66 00 5a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 63 82 53 63 35 01 01 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+decode-proto -
+match Opcode = Client-Message, Hardware-Type = Ethernet, Hardware-Address-Length = 6, Hop-Count = 0, Transaction-Id = 0, Number-of-Seconds = 0, Flags = 0, Client-IP-Address = 0.0.0.0, Your-IP-Address = 0.0.0.0, Server-IP-Address = 0.0.0.0, Gateway-IP-Address = 10.11.19.3, Client-Hardware-Address = 44:48:42:66:00:5a, Message-Type = Discover, Network-Subnet = 10.11.19.3/32
+
+count
+match 6

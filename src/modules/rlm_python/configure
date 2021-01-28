@@ -638,6 +638,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_python
 with_rlm_python_config_bin
 '
       ac_precious_vars='build_alias
@@ -1255,6 +1256,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_python    build without module
+
   --with-rlm-python-config-bin=PATH   Path to python-config binary
 
 Some influential environment variables:
@@ -1774,6 +1777,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_python was given.
+if test "${with_rlm_python+set}" = set; then :
+  withval=$with_rlm_python;
+fi
 
 
 if test x$with_rlm_python != xno; then
@@ -2724,7 +2734,7 @@ fi
 
 
 	if test "x$PYTHON_CONFIG_BIN" = x; then
-		for ac_prog in  python-config python3-config python2.7-config
+		for ac_prog in  python3-config
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
@@ -2776,23 +2786,32 @@ test -n "$PYTHON_CONFIG_BIN" || PYTHON_CONFIG_BIN="not-found"
 								old_CFLAGS="$CFLAGS"
 		unset CFLAGS
 
-		python_cflags=`${PYTHON_CONFIG_BIN} --cflags`
+												if ${PYTHON_CONFIG_BIN} --help 2>&1 | grep '\-\-embed'; then
+			PYTHON_CONFIG_EMBED="--embed"
+		else
+			PYTHON_CONFIG_EMBED=""
+		fi
+
+		python_cflags=`${PYTHON_CONFIG_BIN} --cflags ${PYTHON_CONFIG_EMBED}`
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"" >&6;}
 
-																mod_cflags=`echo $python_cflags | sed -e '\
-			s/-I/-isystem/g;\
-			s/-isysroot[ =]\{0,1\}[^-]*//g;\
-			s/-O[^[[:blank:]]]*//g;\
-			s/-Wp,-D_FORTIFY_SOURCE=[[:digit:]]//g;\
-			s/-g[^ ]*//g;\
-			s/-W[^ ]*//g;\
-			s/-DNDEBUG[[:blank:]]*//g;
+																										mod_cflags=`echo " $python_cflags" | sed -e '\
+			s/ -I/ -isystem/g;\
+			s/ -isysroot[ =]\{0,1\}[^-]*/ /g;\
+			s/ -O[^[[:blank:]]]*/ /g;\
+			s/ -Wp,-D_FORTIFY_SOURCE=[[:digit:]]/ /g;\
+			s/ -g[^ ]*/ /g;\
+			s/ -W[^ ]*/ /g;\
+			s/ -DNDEBUG[[:blank:]]*/ /g;\
+			s/ -frecord-gcc-switches/ /g;\
+			s/ -fstack-clash-protection[[:blank:]]*/ /g;
+			s/ -specs=[^ ]*/ /g;
 			'`
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized cflags were \"${mod_cflags}\"" >&6;}
 
-		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags`
+		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags ${PYTHON_CONFIG_EMBED}`
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&5
 $as_echo "$as_me: ${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"" >&6;}
 

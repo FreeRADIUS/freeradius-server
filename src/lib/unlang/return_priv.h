@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-unlang_action_t unlang_return(REQUEST *request, UNUSED rlm_rcode_t *result);
+unlang_action_t unlang_return(UNUSED rlm_rcode_t *result, request_t *request);
 
 #ifdef __cplusplus
 }

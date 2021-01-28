@@ -38,7 +38,7 @@ RCSID("$Id$")
 static ssize_t _unbound_log_write(void *cookie, char const *buf, size_t size)
 {
 	unbound_log_t	*u_log = talloc_get_type_abort(cookie, unbound_log_t);
-	REQUEST		*request = u_log->request;
+	request_t		*request = u_log->request;
 	size_t		len = size;
 
 	if (len == 0) return len;
@@ -99,7 +99,7 @@ static int unbound_log_lvl_set(struct ub_ctx *ub, fr_log_lvl_t lvl)
 /** Switch thread-specific libunbound output to the request log destination(s)
  *
  */
-int unbound_log_to_request(unbound_log_t *u_log, struct ub_ctx *ub, REQUEST *request)
+int unbound_log_to_request(unbound_log_t *u_log, struct ub_ctx *ub, request_t *request)
 {
 	u_log->request = request;
 	return unbound_log_lvl_set(ub, request->log.lvl);
@@ -108,7 +108,7 @@ int unbound_log_to_request(unbound_log_t *u_log, struct ub_ctx *ub, REQUEST *req
 /** Switch thread-specific libunbound output to the global log
  *
  * Must be called before a function that previously called #unbound_log_to_request
- * yields, or can no longer be certain that the REQUEST * set in t->request
+ * yields, or can no longer be certain that the request_t * set in t->request
  * is still valid.
  */
 int unbound_log_to_global(unbound_log_t *u_log, struct ub_ctx *ub)

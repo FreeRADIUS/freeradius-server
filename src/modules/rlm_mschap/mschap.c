@@ -32,7 +32,7 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/server/base.h>
 #include	<freeradius-devel/server/module.h>
-#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/debug.h>
 #include	<freeradius-devel/util/md5.h>
 #include	<freeradius-devel/util/sha1.h>
 
@@ -159,27 +159,24 @@ void mschap_auth_response(char const *username, size_t username_len,
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
  *	attribute to reply packet
  */
-void mschap_add_reply(REQUEST *request, uint8_t ident,
+void mschap_add_reply(request_t *request, uint8_t ident,
 		      fr_dict_attr_t const *da, char const *value, size_t len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_update_reply(&vp, da) >= 0);
 	if (vp->vp_type == FR_TYPE_STRING) {
 		char *p;
 
-		p = talloc_array(vp, char, len + 1 + 1);	/* Account for the ident byte */
-		p[len + 1] = '\0';				/* Always \0 terminate */
+		MEM(fr_pair_value_bstr_alloc(vp, &p, len + 1, vp->vp_tainted) == 0);	/* Account for the ident byte */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
-		fr_pair_value_strsteal(vp, p);
 	} else {
 		uint8_t *p;
 
-		p = talloc_array(vp, uint8_t, len + 1);		/* Account for the ident byte */
+		MEM(fr_pair_value_mem_alloc(vp, &p, len + 1, vp->vp_tainted) == 0);	/* Account for the ident byte */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
-		fr_pair_value_memsteal(vp, p, false);
 	}
 }
 

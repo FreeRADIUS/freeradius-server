@@ -1,0 +1,25 @@
+#
+#  PRE: if update
+#
+update request {
+	&Framed-IP-Address := 127.0.0.1
+}
+
+update request {
+	&Tmp-Octets-0 := &Framed-IP-Address
+}
+
+update request {
+	&Tmp-String-0 := "%{unpack: &Tmp-Octets-0 0 ipaddr}"
+	&Tmp-IP-Address-0 := "%{unpack: &Tmp-Octets-0 0 ipaddr}"
+}
+
+if (&Tmp-String-0 != "127.0.0.1") {
+	test_fail
+}
+
+if (&Tmp-IP-Address-0 != 127.0.0.1) {
+	test_fail
+}
+
+success

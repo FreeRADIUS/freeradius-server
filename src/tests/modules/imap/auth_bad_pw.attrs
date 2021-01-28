@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'user2'
+User-Password = 'test_fail'
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Reject
+

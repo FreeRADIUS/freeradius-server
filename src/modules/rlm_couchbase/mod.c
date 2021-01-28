@@ -155,7 +155,7 @@ int mod_build_api_opts(CONF_SECTION *conf, void *instance)
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	rlm_couchbase_t const *inst = instance;           /* module instance pointer */
+	rlm_couchbase_t const *inst = talloc_get_type_abort_const(instance, rlm_couchbase_t);           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     	  /* connection handle pointer */
 	cookie_t *cookie = NULL;                          /* couchbase cookie */
 	lcb_t cb_inst;                                    /* couchbase connection instance */
@@ -373,7 +373,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
  *	- 0 on success.
  *	- <0 on error.
  */
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, json_object *json, pair_list_t list)
+int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, json_object *json, pair_list_t list)
 {
 	json_object	*list_obj;
 	char const	*list_name = fr_table_str_by_value(pair_list_table, list, "<INVALID>");
@@ -409,7 +409,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 	json_object_object_foreach(list_obj, attr_name, attr_value_obj) {
 	 	json_object		*value_obj, *op_obj;
 	 	fr_dict_attr_t const	*da;
-		FR_TOKEN		op;
+		fr_token_t		op;
 
 		if (!fr_json_object_is_type(attr_value_obj, json_type_object)) {
 			REDEBUG("Invalid json type for \"%s\" key - Attributes must be json objects", attr_name);
@@ -457,7 +457,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 		 *	Lookup the string attr_name in the
 		 *	request dictionary.
 		 */
-		da = fr_dict_attr_by_name(request->dict, attr_name);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr_name);
 		if (!da) {
 			RPERROR("Invalid attribute \"%s\"", attr_name);
 			goto error;
@@ -468,7 +468,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 		 */
 		{
 			fr_value_box_t	tmp = { .type = FR_TYPE_INVALID };
-			vp_map_t	*map;
+			map_t	*map;
 
 			if (fr_json_object_to_value_box(ctx, &tmp, value_obj, da, true) < 0) {
 			bad_value:
@@ -483,7 +483,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
 
 			if (map_afrom_value_box(ctx, &map,
 						attr_name, T_BARE_WORD,
-						&(vp_tmpl_rules_t){
+						&(tmpl_rules_t){
 							.dict_def = request->dict,
 							.list_def = list,
 						},
@@ -510,12 +510,12 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, 
  * @param  vp      The value pair to convert.
  * @return A JSON object.
  */
-json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
+json_object *mod_value_pair_to_json_object(request_t *request, fr_pair_t *vp)
 {
 	char value[255];    /* radius attribute value */
 
 	/* add this attribute/value pair to our json output */
-	if (!vp->da->flags.has_tag) {
+	{
 		unsigned int i;
 
 		switch (vp->vp_type) {
@@ -587,7 +587,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 		/* debug */
 		RDEBUG3("assigning unhandled '%s' as string", vp->da->name);
 		/* get standard value */
-		fr_pair_value_snprint(value, sizeof(value), vp, 0);
+		fr_pair_print_value_quoted(&FR_SBUFF_OUT(value, sizeof(value)), vp, T_BARE_WORD);
 		/* return string value from above */
 		return json_object_new_string(value);
 	}
@@ -604,12 +604,12 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
+int mod_ensure_start_timestamp(json_object *json, fr_pair_list_t *vps)
 {
 	json_object *j_value;      /* json object value */
 	struct tm tm;           /* struct to hold event time */
 	time_t ts = 0;          /* values to hold time in seconds */
-	VALUE_PAIR *vp;         /* values to hold value pairs */
+	fr_pair_t *vp;         /* values to hold value pairs */
 	char value[255];        /* store radius attribute values and our timestamp */
 
 	/* get our current start timestamp from our json body */
@@ -627,7 +627,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	}
 
 	/* get current event timestamp */
-	if ((vp = fr_pair_find_by_da(vps, attr_event_timestamp, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_da(vps, attr_event_timestamp)) != NULL) {
 		/* get seconds value from attribute */
 		ts = fr_time_to_sec(vp->vp_date);
 	} else {
@@ -641,7 +641,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	memset(value, 0, sizeof(value));
 
 	/* get elapsed session time */
-	if ((vp = fr_pair_find_by_da(vps, attr_acct_session_time, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_da(vps, attr_acct_session_time)) != NULL) {
 		/* calculate diff */
 		ts = (ts - vp->vp_uint32);
 		/* calculate start time */

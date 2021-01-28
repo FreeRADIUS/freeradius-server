@@ -1,0 +1,30 @@
+= The else Statement
+
+.Syntax
+[source,unlang]
+----
+if (condition) {
+    [ statements ]
+}
+else {
+    [ statements ]
+}
+----
+
+An xref:unlang/if.adoc[if] statement can have an `else` clause. If _condition_
+evaluates to `false`, the statements in the xref:unlang/if.adoc[if] subsection are skipped
+and the statements within the `else` subsection are executed.
+
+.Example
+[source,unlang]
+----
+if (&User-Name == "bob") {
+    reject
+}
+else {
+    ok
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

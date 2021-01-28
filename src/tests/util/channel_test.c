@@ -24,7 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_GETOPT_H
@@ -51,14 +51,14 @@ static int			max_outstanding = 1;
 static bool			touch_memory = false;
 
 /**********************************************************************/
-typedef struct fr_request_s REQUEST;
+typedef struct request_s request_t;
 
-REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
+request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args)
 {
 	return NULL;
 }
 
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST const *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t const *request)
 {
 }
 
@@ -81,7 +81,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -t                     Touch memory for fake packets.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_FAILURE);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 static void *channel_master(void *arg)
@@ -97,12 +97,12 @@ static void *channel_master(void *arg)
 	fr_channel_event_t	ce;
 	struct kevent		events[MAX_KEVENTS];
 
-	MEM(ctx = talloc_init("channel_master"));
+	MEM(ctx = talloc_init_const("channel_master"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	MPRINT1("Master started.\n");
@@ -113,7 +113,7 @@ static void *channel_master(void *arg)
 	rcode = fr_channel_signal_open(channel);
 	if (rcode < 0) {
 		fprintf(stderr, "Failed signaling open: %s\n", fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -158,7 +158,7 @@ static void *channel_master(void *arg)
 
 		for (i = 0; i < num_to_send; i++) {
 			cd = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
-			rad_assert(cd != NULL);
+			fr_assert(cd != NULL);
 
 			num_outstanding++;
 			num_messages++;
@@ -182,7 +182,7 @@ static void *channel_master(void *arg)
 			if (rcode < 0) {
 				fprintf(stderr, "Failed sending request: %s\n", fr_syserror(errno));
 			}
-			rad_assert(rcode == 0);
+			fr_assert(rcode == 0);
 			if (reply) {
 				num_replies++;
 				num_outstanding--;
@@ -202,14 +202,14 @@ check_close:
 			rcode = fr_channel_signal_responder_close(channel);
 			if (rcode < 0) {
 				fprintf(stderr, "Failed signaling close: %s\n", fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 
 			signaled_close = true;
 		}
 
 		MPRINT1("Master waiting on events.\n");
-		rad_assert(num_messages <= max_messages);
+		fr_assert(num_messages <= max_messages);
 
 		num_events = kevent(kq_master, NULL, 0, events, MAX_KEVENTS, NULL);
 		MPRINT1("Master kevent returned %d\n", num_events);
@@ -218,7 +218,7 @@ check_close:
 			if (num_events == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -242,7 +242,7 @@ check_close:
 			data_size = fr_control_message_pop(aq_master, &id, data, sizeof(data));
 			if (!data_size) break;
 
-			rad_assert(id == FR_CONTROL_ID_CHANNEL);
+			fr_assert(id == FR_CONTROL_ID_CHANNEL);
 
 			ce = fr_channel_service_message(now, &new_channel, data, data_size);
 			MPRINT1("Master got channel event %d\n", ce);
@@ -250,7 +250,7 @@ check_close:
 			switch (ce) {
 			case FR_CHANNEL_DATA_READY_REQUESTOR:
 				MPRINT1("Master got data ready signal\n");
-				rad_assert(new_channel == channel);
+				fr_assert(new_channel == channel);
 
 				reply = fr_channel_recv_reply(channel);
 				if (!reply) {
@@ -269,8 +269,8 @@ check_close:
 
 			case FR_CHANNEL_CLOSE:
 				MPRINT1("Master received close signal\n");
-				rad_assert(new_channel == channel);
-				rad_assert(signaled_close == true);
+				fr_assert(new_channel == channel);
+				fr_assert(signaled_close == true);
 				running = false;
 				break;
 
@@ -284,7 +284,7 @@ check_close:
 				/*
 				 *	Not written yet!
 				 */
-				rad_assert(0 == 1);
+				fr_assert(0 == 1);
 				break;
 			} /* switch over signal returned */
 		} /* drain the control plane */
@@ -305,7 +305,7 @@ check_close:
 	 */
 	rcode = fr_message_set_messages_used(ms);
 	MPRINT2("Master messages used = %d\n", rcode);
-	rad_assert(rcode == 0);
+	fr_assert(rcode == 0);
 
 	talloc_free(ctx);
 
@@ -323,12 +323,12 @@ static void *channel_worker(void *arg)
 	fr_channel_event_t ce;
 	struct kevent events[MAX_KEVENTS];
 
-	MEM(ctx = talloc_init("channel_worker"));
+	MEM(ctx = talloc_init_const("channel_worker"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	MPRINT1("\tWorker started.\n");
@@ -347,7 +347,7 @@ static void *channel_worker(void *arg)
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -369,7 +369,7 @@ static void *channel_worker(void *arg)
 			data_size = fr_control_message_pop(aq_worker, &id, data, sizeof(data));
 			if (!data_size) break;
 
-			rad_assert(id == FR_CONTROL_ID_CHANNEL);
+			fr_assert(id == FR_CONTROL_ID_CHANNEL);
 
 			ce = fr_channel_service_message(now, &new_channel, data, data_size);
 			MPRINT1("\tWorker got channel event %d\n", ce);
@@ -378,12 +378,12 @@ static void *channel_worker(void *arg)
 
 			case FR_CHANNEL_OPEN:
 				MPRINT1("\tWorker received a new channel\n");
-				rad_assert(new_channel == channel);
+				fr_assert(new_channel == channel);
 				break;
 
 			case FR_CHANNEL_CLOSE:
 				MPRINT1("\tWorker requested to close the channel.\n");
-				rad_assert(new_channel == channel);
+				fr_assert(new_channel == channel);
 				running = false;
 
 				/*
@@ -400,7 +400,7 @@ static void *channel_worker(void *arg)
 
 			case FR_CHANNEL_DATA_READY_RESPONDER:
 				MPRINT1("\tWorker got data ready signal\n");
-				rad_assert(new_channel == channel);
+				fr_assert(new_channel == channel);
 
 				cd = fr_channel_recv_request(channel);
 				if (!cd) {
@@ -413,12 +413,12 @@ static void *channel_worker(void *arg)
 
 					worker_messages++;
 
-					rad_assert(cd->m.data != NULL);
+					fr_assert(cd->m.data != NULL);
 					memcpy(&message_id, cd->m.data, sizeof(message_id));
 					MPRINT1("\tWorker got message %d (says %d)\n", worker_messages, message_id);
 
 					reply = (fr_channel_data_t *) fr_message_alloc(ms, NULL, 100);
-					rad_assert(reply != NULL);
+					fr_assert(reply != NULL);
 
 					reply->m.when = fr_time();
 					fr_message_done(&cd->m);
@@ -439,13 +439,13 @@ static void *channel_worker(void *arg)
 					if (rcode < 0) {
 						fprintf(stderr, "Failed sending reply: %s\n", fr_syserror(errno));
 					}
-					rad_assert(rcode == 0);
+					fr_assert(rcode == 0);
 				}
 				break;
 
 			case FR_CHANNEL_NOOP:
 				MPRINT1("\tWorker got NOOP\n");
-				rad_assert(new_channel == channel);
+				fr_assert(new_channel == channel);
 				break;
 
 			default:
@@ -454,7 +454,7 @@ static void *channel_worker(void *arg)
 				/*
 				 *	Not written yet!
 				 */
-				rad_assert(0 == 1);
+				fr_assert(0 == 1);
 				break;
 			} /* switch over signals */
 
@@ -537,27 +537,27 @@ int main(int argc, char *argv[])
 #endif
 
 	kq_master = kqueue();
-	rad_assert(kq_master >= 0);
+	fr_assert(kq_master >= 0);
 
 	kq_worker = kqueue();
-	rad_assert(kq_worker >= 0);
+	fr_assert(kq_worker >= 0);
 
-	aq_master = fr_atomic_queue_create(autofree, max_control_plane);
-	rad_assert(aq_master != NULL);
+	aq_master = fr_atomic_queue_alloc(autofree, max_control_plane);
+	fr_assert(aq_master != NULL);
 
-	aq_worker = fr_atomic_queue_create(autofree, max_control_plane);
-	rad_assert(aq_worker != NULL);
+	aq_worker = fr_atomic_queue_alloc(autofree, max_control_plane);
+	fr_assert(aq_worker != NULL);
 
 	control_master = fr_control_create(autofree, kq_master, aq_master, 1024);
-	rad_assert(control_master != NULL);
+	fr_assert(control_master != NULL);
 
 	control_worker = fr_control_create(autofree, kq_worker, aq_worker, 1025);
-	rad_assert(control_worker != NULL);
+	fr_assert(control_worker != NULL);
 
 	channel = fr_channel_create(autofree, control_master, control_worker, false);
 	if (!channel) {
 		fprintf(stderr, "channel_test: Failed to create channel\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -577,5 +577,5 @@ int main(int argc, char *argv[])
 
 	fr_channel_debug(channel, stdout);
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }

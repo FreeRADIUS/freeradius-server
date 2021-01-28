@@ -1,0 +1,6 @@
+User-Name = "testuser"
+User-Password = "supersecret"
+Service-Type = Framed-User
+#Tunnel-Password = "supersecret"
+Called-Station-Id = "scald_pega_pilha"
+Class = 0x69616D616E6F706171756576616C756569616D616E6F706171756576616C7565

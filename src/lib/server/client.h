@@ -104,13 +104,7 @@ struct rad_client {
 
 #ifdef WITH_STATS
 	fr_stats_t		auth;			//!< Authentication stats.
-#  ifdef WITH_ACCOUNTING
 	fr_stats_t		acct;			//!< Accounting stats.
-#  endif
-#  ifdef WITH_COA
-	fr_stats_t		coa;			//!< Change of Authorization stats.
-	fr_stats_t		dsc;			//!< Disconnect-Request stats.
-#  endif
 #endif
 
 	fr_time_delta_t		response_window;	//!< How long the client has to respond.
@@ -129,11 +123,9 @@ void		client_free(RADCLIENT *client);
 
 bool		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 
-#ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 
-RADCLIENT	*client_afrom_request(TALLOC_CTX *ctx, REQUEST *request);
-#endif
+RADCLIENT	*client_afrom_request(TALLOC_CTX *ctx, request_t *request);
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 

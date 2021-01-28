@@ -28,8 +28,9 @@ RCSIDH(cache_h, "$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/map.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-typedef struct cache_driver cache_driver_t;
+typedef struct rlm_cache_driver_s rlm_cache_driver_t;
 
 typedef void rlm_cache_handle_t;
 
@@ -50,7 +51,7 @@ typedef enum {
 typedef struct {
 	char const		*name;			//!< Name of xlat function to register.
 	char const		*driver_name;		//!< Driver name.
-	vp_tmpl_t		*key;			//!< What to expand to get the value of the key.
+	tmpl_t		*key;			//!< What to expand to get the value of the key.
 	uint32_t		ttl;			//!< How long an entry is valid for.
 	uint32_t		max_entries;		//!< Maximum entries allowed.
 	int32_t			epoch;			//!< Time after which entries are considered valid.
@@ -68,9 +69,9 @@ typedef struct {
 	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
 	module_instance_t	*driver_inst;		//!< Driver's instance data.
-	cache_driver_t const	*driver;		//!< Driver's exported interface.
+	rlm_cache_driver_t const	*driver;		//!< Driver's exported interface.
 
-	vp_map_t		*maps;			//!< Attribute map applied to users.
+	map_t		*maps;			//!< Attribute map applied to users.
 							//!< and profiles.
 	CONF_SECTION		*cs;
 } rlm_cache_t;
@@ -82,13 +83,13 @@ typedef struct {
 	fr_unix_time_t		created;		//!< When the entry was created.
 	fr_unix_time_t		expires;		//!< When the entry expires.
 
-	vp_map_t		*maps;			//!< Head of the maps list.
+	map_t		*maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
 /** Allocate a new cache entry
  *
  */
-typedef rlm_cache_entry_t *(*cache_entry_alloc_t)(rlm_cache_config_t const *config, void *instance, REQUEST *request);
+typedef rlm_cache_entry_t *(*cache_entry_alloc_t)(rlm_cache_config_t const *config, void *instance, request_t *request);
 
 /** Free a cache entry
  *
@@ -127,7 +128,7 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  *	- #CACHE_MISS - No cached entry was found.
  */
 typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_config_t const *config,
-					      void *instance, REQUEST *request, void *handle,
+					      void *instance, request_t *request, void *handle,
 					      uint8_t const *key, size_t key_len);
 
 /** Insert an entry into the cache
@@ -158,7 +159,7 @@ typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_
  *	- #CACHE_OK - If the insert was successful.
  */
 typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config, void *instance,
-						REQUEST *request, void *handle,
+						request_t *request, void *handle,
 						rlm_cache_entry_t const *c);
 
 /** Remove an entry from the cache
@@ -179,7 +180,7 @@ typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config,
  *	- #CACHE_MISS - If the entry didn't exist, so couldn't be expired.
  */
 typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config, void *instance,
-						REQUEST *request, void *handle,
+						request_t *request, void *handle,
 						uint8_t const *key, size_t key_len);
 
 /** Update the ttl of an entry in the cace
@@ -202,7 +203,7 @@ typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config,
  *	- #CACHE_OK - If the entry's TTL was updated.
  */
 typedef cache_status_t	(*cache_entry_set_ttl_t)(rlm_cache_config_t const *config, void *instance,
-						 REQUEST *request, void *handle,
+						 request_t *request, void *handle,
 						 rlm_cache_entry_t *c);
 
 /** Get the number of entries in the cache
@@ -217,7 +218,7 @@ typedef cache_status_t	(*cache_entry_set_ttl_t)(rlm_cache_config_t const *config
  * @return number of entries in the cache.
  */
 typedef uint32_t	(*cache_entry_count_t)(rlm_cache_config_t const *config, void *instance,
-					       REQUEST *request, void *handle);
+					       request_t *request, void *handle);
 
 /** Acquire a handle to access the cache
  *
@@ -233,7 +234,7 @@ typedef uint32_t	(*cache_entry_count_t)(rlm_cache_config_t const *config, void *
  *	- -1 on failure.
  */
 typedef int		(*cache_acquire_t)(void **handle, rlm_cache_config_t const *config, void *instance,
-					   REQUEST *request);
+					   request_t *request);
 
 /** Release a previously acquired handle
  *
@@ -244,7 +245,7 @@ typedef int		(*cache_acquire_t)(void **handle, rlm_cache_config_t const *config,
  * @param[in] request The current request.
  * @param[in] handle to release.
  */
-typedef void		(*cache_release_t)(rlm_cache_config_t const *config, void *instance, REQUEST *request,
+typedef void		(*cache_release_t)(rlm_cache_config_t const *config, void *instance, request_t *request,
 					   rlm_cache_handle_t *handle);
 
 /** Reconnect a previously acquired handle
@@ -261,9 +262,9 @@ typedef void		(*cache_release_t)(rlm_cache_config_t const *config, void *instanc
  *	- -1 on failure.
  */
 typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_t const *config,
-					     void *instance, REQUEST *request);
+					     void *instance, request_t *request);
 
-struct cache_driver {
+struct rlm_cache_driver_s {
 	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
 	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
 	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.

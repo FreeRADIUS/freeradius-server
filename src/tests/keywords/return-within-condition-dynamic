@@ -2,6 +2,7 @@
 #  PRE: update if
 #
 if (&User-Name == 'bob') {
+	accept
 	success
 	return
 }

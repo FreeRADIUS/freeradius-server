@@ -11,10 +11,10 @@
 ##############################################################################
 VENDOR		IEC				41912
 BEGIN-VENDOR	IEC
-ATTRIBUTE	IEC62351-8-RoleID			1	integer
-ATTRIBUTE	IEC62351-8-RoleDefinition		2	string
-ATTRIBUTE	IEC62351-8-AoR				3	string
-ATTRIBUTE	IEC62351-8-Revision			4	integer
-ATTRIBUTE	IEC62351-8-ValidFrom			5	string
-ATTRIBUTE	IEC62351-8-ValidTo			6	string
+ATTRIBUTE	62351-8-RoleID				1	integer
+ATTRIBUTE	62351-8-RoleDefinition			2	string
+ATTRIBUTE	62351-8-AoR				3	string
+ATTRIBUTE	C62351-8-Revision			4	integer
+ATTRIBUTE	62351-8-ValidFrom			5	string
+ATTRIBUTE	62351-8-ValidTo				6	string
 END-VENDOR IEC

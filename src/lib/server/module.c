@@ -68,14 +68,7 @@ const char *section_type_value[MOD_COUNT] = {
 	"authorize",
 	"preacct",
 	"accounting",
-	"pre-proxy",
-	"post-proxy",
 	"post-auth"
-#ifdef WITH_COA
-	,
-	"recv-coa",
-	"send-coa"
-#endif
 };
 
 
@@ -83,7 +76,7 @@ static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 {
 	module_instance_t *mi = ctx;
 
-	rad_assert(mi->dl_inst->conf != NULL);
+	fr_assert(mi->dl_inst->conf != NULL);
 
 	(void) cf_section_write(fp, mi->dl_inst->conf, 0);
 
@@ -318,7 +311,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 			     uint32_t max_idle,
 			     bool locking,
 			     char const *trigger_prefix,
-			     VALUE_PAIR *trigger_args)
+			     fr_pair_list_t *trigger_args)
 {
 	char		trigger_prefix_buff[128];
 	exfile_t	*handle;
@@ -474,7 +467,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 				       fr_pool_connection_alive_t a,
 				       char const *log_prefix,
 				       char const *trigger_prefix,
-				       VALUE_PAIR *trigger_args)
+				       fr_pair_list_t *trigger_args)
 {
 	CONF_SECTION *cs, *mycs;
 	char log_prefix_buff[128];
@@ -618,19 +611,19 @@ char const *module_state_method_to_str(module_state_func_table_t const *table,
  * @param[in] type_da		to use.  Usually attr_auth_type.
  * @param[in] enumv		Enumeration value of the specified type_da.
  */
-bool module_section_type_set(REQUEST *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv)
+bool module_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	switch (pair_update_control(&vp, type_da)) {
 	case 0:
 		fr_value_box_copy(vp, &vp->data, enumv->value);
 		vp->data.enumv = vp->da;	/* So we get the correct string alias */
-		RDEBUG2("Setting &control:%pP", vp);
+		RDEBUG2("Setting &control.%pP", vp);
 		return true;
 
 	case 1:
-		RDEBUG2("&control:%s already set.  Not setting to %s", vp->da->name, enumv->name);
+		RDEBUG2("&control.%s already set.  Not setting to %s", vp->da->name, enumv->name);
 		return false;
 
 	default:
@@ -713,13 +706,13 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 					     char const **name1, char const **name2,
 					     char const *name)
 {
-	char			*p, *q, *inst_name;
-	size_t			len;
-	int			j;
-	rlm_components_t	i;
-	module_instance_t	*mi;
+	char				*p, *q, *inst_name;
+	size_t				len;
+	int				j;
+	rlm_components_t		i;
+	module_instance_t		*mi;
 	module_method_names_t const	*methods;
-	char const		*method_name1, *method_name2;
+	char const			*method_name1, *method_name2;
 
 	if (method) *method = NULL;
 
@@ -739,29 +732,16 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	 */
 	mi = module_by_name(NULL, name);
 	if (mi) {
-		virtual_server_method_t *allowed_list;
+		virtual_server_method_t const *allowed_list;
 
 		if (!method) return mi;
 
 		/*
-		 *	For now, prefer existing methods over named
-		 *	sections.  That is because modules can now
-		 *	export both old-style methods and new
-		 *	"wildcard" methods, which may do different
-		 *	things.
+		 *	We're not searching for a named method, OR the
+		 *	module has no named methods.  Try to return a
+		 *	method based on the component.
 		 */
-		if (component && mi->module->methods[*component]) {
-			*method = mi->module->methods[*component];
-			return mi;
-		}
-
-		/*
-		 *	We weren't asked to search for specific names,
-		 *	OR the module has no specific names, return.
-		 */
-		if (!method_name1 || !mi->module->method_names) {
-			return mi;
-		}
+		if (!method_name1 || !mi->module->method_names) goto return_component;
 
 		/*
 		 *	Walk through the module, finding a matching
@@ -813,13 +793,17 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 *	the section has a list of allowed methods.
 		 */
 		allowed_list = virtual_server_section_methods(method_name1, method_name2);
-		if (!allowed_list) return mi;
+		if (!allowed_list) goto return_component;
 
 		/*
 		 *	Walk over allowed methods for this section,
 		 *	(implicitly ordered by priority), and see if
 		 *	the allowed method matches any of the module
-		 *	methods.
+		 *	methods.  This process lets us reference a
+		 *	module as "foo" in the configuration.  If the
+		 *	module exports a "recv bar" method, and the
+		 *	virtual server has a "recv bar" processing
+		 *	section, then they shoul match.
 		 *
 		 *	Unfortunately, this process is O(N*M).
 		 *	Luckily, we only do it if all else fails, so
@@ -833,12 +817,12 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		 */
 		for (j = 0; allowed_list[j].name != NULL; j++) {
 			int k;
-			virtual_server_method_t *allowed = &allowed_list[j];
+			virtual_server_method_t const *allowed = &allowed_list[j];
 
 			for (k = 0; mi->module->method_names[k].name1 != NULL; k++) {
 				methods = &mi->module->method_names[k];
 
-				rad_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
+				fr_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
 
 				if (strcmp(methods->name1, allowed->name) != 0) continue;
 
@@ -864,6 +848,15 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 
 				if (strcmp(methods->name2, allowed->name2) == 0) goto found_allowed;
 			}
+		}
+
+	return_component:
+		/*
+		 *	No matching method.  Just return a method
+		 *	based on the component.
+		 */
+		if (component && mi->module->methods[*component]) {
+			*method = mi->module->methods[*component];
 		}
 
 		/*
@@ -1070,6 +1063,9 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 		break;
 	}
 
+	*name1 = name + (p - inst_name);
+	*name2 = NULL;
+
 	talloc_free(inst_name);
 	return mi;
 }
@@ -1111,7 +1107,7 @@ module_thread_instance_t *module_thread(module_instance_t *mi)
 
 	if (!mi) return NULL;
 
-	rad_assert(mi->number < talloc_array_length(array));
+	fr_assert(mi->number < talloc_array_length(array));
 
 	return array[mi->number];
 }
@@ -1132,7 +1128,7 @@ module_thread_instance_t *module_thread_by_data(void const *data)
 
 	if (!mi) return NULL;
 
-	rad_assert(mi->number < talloc_array_length(array));
+	fr_assert(mi->number < talloc_array_length(array));
 
 	return array[mi->number];
 }
@@ -1172,8 +1168,8 @@ void modules_free(void)
 
 int modules_init(void)
 {
-	MEM(module_instance_name_tree = rbtree_create(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(module_instance_data_tree = rbtree_create(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(module_instance_name_tree = rbtree_alloc(NULL, module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(module_instance_data_tree = rbtree_alloc(NULL, module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
 	instance_ctx = talloc_init("module instance context");
 
 	return 0;
@@ -1246,12 +1242,12 @@ static int _module_thread_instantiate(void *instance, void *uctx)
 		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
 						     thread_inst_ctx->el, ti->data);
 		if (ret < 0) {
-			ERROR("Thread instantiation failed for module \"%s\"", mi->name);
+			PERROR("Thread instantiation failed for module \"%s\"", mi->name);
 			return -1;
 		}
 	}
 
-	rad_assert(mi->number < talloc_array_length(thread_inst_ctx->array));
+	fr_assert(mi->number < talloc_array_length(thread_inst_ctx->array));
 	thread_inst_ctx->array[mi->number] = ti;
 
 	return 0;
@@ -1287,6 +1283,17 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 	return 0;
 }
 
+/** Explicitly call thread_detach and free any module thread instances
+ *
+ * Call this function if the module thread instances need to be free explicitly before
+ * another resource like the even loop is freed.
+ */
+void modules_thread_detach(void)
+{
+	if (!module_thread_inst_array) return;
+	TALLOC_FREE(module_thread_inst_array);
+}
+
 /** Complete module setup by calling its instantiate function
  *
  * @param[in] instance	of module to complete instantiation for.
@@ -1302,8 +1309,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	if (mi->instantiated) return 0;
 
 	if (fr_command_register_hook(NULL, mi->name, mi, cmd_module_table) < 0) {
-		ERROR("Failed registering radmin commands for module %s - %s",
-		      mi->name, fr_strerror());
+		PERROR("Failed registering radmin commands for module %s", mi->name);
 		return -1;
 	}
 
@@ -1451,7 +1457,7 @@ static size_t module_instance_name(TALLOC_CTX *ctx, char **out, module_instance_
 	 *	...because recursive code still makes
 	 *	my head hurt.
 	 */
-	rad_assert((size_t)(p - (*out)) == (talloc_array_length(*out) - 1));
+	fr_assert((size_t)(p - (*out)) == (talloc_array_length(*out) - 1));
 
 	return (p - (*out));
 
@@ -1551,7 +1557,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 		talloc_free(inst_name);
 		return NULL;
 	}
-	rad_assert(mi->dl_inst);
+	fr_assert(mi->dl_inst);
 
 	mi->name = talloc_typed_strdup(mi, inst_name);
 	talloc_free(inst_name);	/* Avoid stealing */
@@ -1684,7 +1690,7 @@ static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
 	/*
 	 *	Register a redundant xlat
 	 */
-	if (all_same && (xlat_register_redundant(vm_cs) < 0)) return -1;
+	if (all_same && (xlat_register_legacy_redundant(vm_cs) < 0)) return -1;
 
 	return 0;
 }
@@ -1803,8 +1809,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	cf_log_debug(modules, " } # modules");
 
 	if (fr_command_register_hook(NULL, NULL, modules, cmd_table) < 0) {
-		ERROR("Failed registering radmin commands for modules - %s",
-		      fr_strerror());
+		PERROR("Failed registering radmin commands for modules");
 		return -1;
 	}
 
@@ -1814,13 +1819,9 @@ int modules_bootstrap(CONF_SECTION *root)
 	 */
 	cs = cf_section_find(root, "policy", NULL);
 	if (cs) {
-		bool fail = false;
-
-		/*
-		 *  Loop over the items in the 'instantiate' section.
-		 */
 		while ((ci = cf_item_next(cs, ci))) {
 			CONF_SECTION *subcs, *problemcs;
+			char const *name1;
 
 			/*
 			 *	Skip anything that isn't a section.
@@ -1828,16 +1829,25 @@ int modules_bootstrap(CONF_SECTION *root)
 			if (!cf_item_is_section(ci)) continue;
 
 			subcs = cf_item_to_section(ci);
-			problemcs = cf_section_find_next(cs, subcs,
-							 cf_section_name1(subcs), CF_IDENT_ANY);
+			name1 = cf_section_name1(subcs);
+
+			if (unlang_compile_is_keyword(name1)) {
+				cf_log_err(subcs, "Policy name '%s' cannot be an unlang keyword", name1);
+				return -1;
+			}
+
+			if (cf_section_name2(subcs)) {
+				cf_log_err(subcs, "Policies cannot have two names");
+				return -1;
+			}
+
+			problemcs = cf_section_find_next(cs, subcs, name1, CF_IDENT_ANY);
 			if (!problemcs) continue;
 
 			cf_log_err(problemcs, "Duplicate policy '%s' is forbidden.",
 				   cf_section_name1(subcs));
-			fail = true;
+			return -1;
 		}
-
-		if (fail) return -1;
 	}
 
 	return 0;

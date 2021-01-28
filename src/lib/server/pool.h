@@ -56,10 +56,6 @@ struct fr_pool_state_s {
 	fr_time_t	last_released;		//!< Last time a connection was released.
 	fr_time_t	last_closed;		//!< Last time a connection was closed.
 
-#ifdef WITH_STATS
-	fr_stats_t	held_stats;		//!< How long connections were held for.
-#endif
-
 	fr_time_t	last_held_min;		//!< Last time we warned about a low latency event.
 	fr_time_t	last_held_max;		//!< Last time we warned about a high latency event.
 
@@ -147,7 +143,7 @@ fr_pool_t	*fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque);
  *	Pool get/set
  */
 void	fr_pool_enable_triggers(fr_pool_t *pool,
-					   char const *trigger_prefix, VALUE_PAIR *vp);
+					   char const *trigger_prefix, fr_pair_list_t *trigger_args);
 
 fr_time_delta_t fr_pool_timeout(fr_pool_t *pool);
 
@@ -164,20 +160,20 @@ void	fr_pool_reconnect_func(fr_pool_t *pool, fr_pool_reconnect_t reconnect);
 /*
  *	Pool management
  */
-int	fr_pool_reconnect(fr_pool_t *pool, REQUEST *request);
+int	fr_pool_reconnect(fr_pool_t *pool, request_t *request);
 
 void	fr_pool_free(fr_pool_t *pool);
 
 /*
  *	Connection lifecycle
  */
-void	*fr_pool_connection_get(fr_pool_t *pool, REQUEST *request);
+void	*fr_pool_connection_get(fr_pool_t *pool, request_t *request);
 
-void	fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn);
+void	fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn);
 
-void	*fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn);
+void	*fr_pool_connection_reconnect(fr_pool_t *pool, request_t *request, void *conn);
 
-int	fr_pool_connection_close(fr_pool_t *pool, REQUEST *request, void *conn);
+int	fr_pool_connection_close(fr_pool_t *pool, request_t *request, void *conn);
 
 #ifdef __cplusplus
 }

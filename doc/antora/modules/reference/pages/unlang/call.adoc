@@ -1,0 +1,44 @@
+= The call Statement
+
+.Syntax
+[source,unlang]
+----
+call <server> {
+    [ statements ]
+}
+----
+
+The `call` statement will run the current request through another
+virtual server.  Once that virtual server is complete, the request
+will continue being processed in the original virtual server.
+
+<server>::  The virtual server which wil process the request.
++
+The called virtual server must have the same `namespace` value as the
+calling virtual server.
++
+The called virtual server will execute the request as if it had
+been received from the network.  For example, if the packet is a
+RADIUS `Access-Request`, then the called virtual server will process
+the `recv Access-Request` section, followed by the `authenticate
+<type>` section, followed by the `send Access-Accept` section.
+
+[ statements ]:: Once the called virtual server has finished, the _[
+statements]_ from inside of the `call` section will be executed.
+
+The return code of the `call` statement is taken from the final return
+code of the called virtual server.
+
+.Example
+
+Processing the contents of a DHCPv6 relay-message by using a
+subrequest and recursively calling the DHCPv6 virtual server.
+[source,unlang]
+----
+subrequest &Packet-Type &Relay-Message &reply.Relay-Message {
+    call dhcpv6 {}
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

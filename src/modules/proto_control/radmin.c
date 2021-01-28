@@ -78,8 +78,10 @@ DIAG_ON(strict-prototypes)
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/socket.h>
 
+#ifdef USE_READLINE_HISTORY
 #ifndef READLINE_MAX_HISTORY_LINES
 #	define READLINE_MAX_HISTORY_LINES 1000
+#endif
 #endif
 
 #include "conduit.h"
@@ -131,7 +133,7 @@ typedef struct {
 //static radmin_state_t state;
 
 static bool echo = false;
-static char const *secret = NULL;
+static char const *secret = "";
 static bool unbuffered = false;
 static bool use_readline = true;
 
@@ -155,6 +157,7 @@ static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};
 static int stack_depth;
 static char cmd_buffer[65536];
 static char *stack[MAX_STACK];
+
 static fr_cmd_t *local_cmds = NULL;
 
 static void NEVER_RETURNS usage(int status)
@@ -174,7 +177,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -s <server>     Look in named server for name of control socket.\n");
 	fprintf(output, "  -S <secret>     Use argument as shared secret for authentication to the server.\n");
 	fprintf(output, "  -x              Increase output verbosity\n");
-	exit(status);
+	fr_exit_now(status);
 }
 
 static int client_socket(char const *server)
@@ -197,14 +200,14 @@ static int client_socket(char const *server)
 	if (fr_inet_hton(&ipaddr, AF_INET, buffer, false) < 0) {
 		fprintf(stderr, "%s: Failed looking up host %s: %s\n",
 			progname, buffer, fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fd = fr_socket_client_tcp(NULL, &ipaddr, port, false);
 	if (fd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
 			progname, server, fr_syserror(errno));
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	return fd;
@@ -227,7 +230,7 @@ static ssize_t do_challenge(int fd)
 	if ((r != 16) || (conduit != FR_CONDUIT_AUTH_CHALLENGE)) {
 		fprintf(stderr, "%s: Failed to read challenge.\n",
 			progname);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_hmac_md5(challenge, (uint8_t const *) secret, strlen(secret),
@@ -251,7 +254,9 @@ static ssize_t do_challenge(int fd)
 static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 {
 	ssize_t r;
+#ifdef USE_READLINE
 	char *p, *str;
+#endif
 	uint32_t status;
 	fr_conduit_type_t conduit;
 
@@ -290,6 +295,7 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 
 			break;
 
+#ifdef USE_READLINE
 		case FR_CONDUIT_COMPLETE:
 			str = buffer;
 
@@ -310,6 +316,7 @@ static ssize_t flush_conduits(int fd, char *buffer, size_t bufsize)
 				if (radmin_num_expansions >= CMD_MAX_EXPANSIONS) break;
 			}
 			break;
+#endif
 
 		default:
 			fprintf(stderr, "Unexpected response %02x\n", conduit);
@@ -458,7 +465,7 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 	p = strchr(line, '\n');
 	if (!p) {
 		fprintf(stderr, "Input line too long\n");
-		fr_exit_now(EXIT_FAILURE);
+		return NULL;
 	}
 	*p = '\0';
 
@@ -486,19 +493,24 @@ static char *my_readline(char const *prompt, FILE *fp_in, FILE *fp_out)
 	return line;
 }
 
+#ifdef USE_READLINE
 static void radmin_free(char *line)
 {
-#ifdef USE_READLINE
 	/*
 	 *	Was read from stdin, so "line" == "readline_buffer"
 	 */
 	if (!use_readline) return;
-#endif
 
 	free(line);
 }
+#else
+#define radmin_free(_x)
+#endif
 
-#ifdef USE_READLINE
+/*
+ *	Copies the (possible partial) command to the command buffer,
+ *	so that we can send the full command over to the server.
+ */
 static ssize_t cmd_copy(char const *cmd)
 {
 	size_t len;
@@ -533,6 +545,7 @@ static ssize_t cmd_copy(char const *cmd)
 	return p - cmd_buffer;
 }
 
+#ifdef USE_READLINE
 static int radmin_help(UNUSED int count, UNUSED int key)
 {
 	ssize_t len;
@@ -643,8 +656,6 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 #ifndef USE_READLINE_HISTORY
 #	define add_history(line)
-#	define stifle_history(line)
-#	define read_history()
 #	define write_history(history_file)
 #endif
 
@@ -783,11 +794,11 @@ static fr_cmd_info_t local_info;
 
 static int local_command(char *line)
 {
-	int argc, rcode;
+	int argc, ret;
 
 	argc = fr_command_str_to_argv(local_cmds, &local_info, line);
 	if (argc < 0) {
-		fprintf(stderr, "Failed parsing local command: %s\n", fr_strerror());
+		fr_perror("Failed parsing local command");
 		return -1;
 	}
 
@@ -795,7 +806,7 @@ static int local_command(char *line)
 		return 0;
 	}
 
-	rcode = fr_command_run(stderr, stdout, &local_info, false);
+	ret = fr_command_run(stderr, stdout, &local_info, false);
 	fflush(stdout);
 	fflush(stderr);
 
@@ -804,7 +815,7 @@ static int local_command(char *line)
 	 */
 	(void) fr_command_clear(0, &local_info);
 
-	if (rcode < 0) return rcode;
+	if (ret < 0) return ret;
 
 	return 1;
 
@@ -828,9 +839,11 @@ int main(int argc, char **argv)
 
 	char const	*raddb_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;
+#ifdef USE_READLINE_HISTORY
 	char 		history_file[PATH_MAX];
+#endif
 
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree;
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -840,10 +853,17 @@ int main(int argc, char **argv)
 	char const *prompt = "radmin> ";
 	char prompt_buffer[1024];
 
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
+
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radmin");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -856,12 +876,13 @@ int main(int argc, char **argv)
 	}
 
 	fr_debug_lvl = L_DBG_LVL_1;
+	secret = NULL;
 
 	while ((c = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:S:x")) != -1) switch (c) {
 		case 'd':
 			if (file) {
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			raddb_dir = optarg;
 			break;
@@ -874,7 +895,7 @@ int main(int argc, char **argv)
 			num_commands++; /* starts at -1 */
 			if (num_commands >= MAX_COMMANDS) {
 				fprintf(stderr, "%s: Too many '-e'\n", progname);
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 
 			commands[num_commands] = optarg;
@@ -936,7 +957,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radmin");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (raddb_dir) {
@@ -956,26 +977,26 @@ int main(int argc, char **argv)
 		 */
 		if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
 			fr_perror("radmin");
-			exit(64);
+			fr_exit_now(64);
 		}
 
 		if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 			fr_perror("radmin");
-			exit(64);
+			fr_exit_now(64);
 		}
 
 		if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
 			fr_perror("radmin");
-			exit(64);
+			fr_exit_now(64);
 		}
 
 		cs = cf_section_alloc(autofree, NULL, "main", NULL);
-		if (!cs) exit(EXIT_FAILURE);
+		if (!cs) fr_exit_now(EXIT_FAILURE);
 
 		if ((cf_file_read(cs, io_buffer) < 0) || (cf_section_pass2(cs) < 0)) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, io_buffer);
 		error:
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		uid = getuid();
@@ -1080,7 +1101,7 @@ int main(int argc, char **argv)
 	 */
 	signal(SIGPIPE, SIG_IGN);
 
-	if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
+	if (do_connect(&sockfd, file, server) < 0) fr_exit_now(EXIT_FAILURE);
 
 	/*
 	 *	Register local commands.
@@ -1101,7 +1122,7 @@ int main(int argc, char **argv)
 
 		for (i = 0; i <= num_commands; i++) {
 			result = run_command(sockfd, commands[i], io_buffer, sizeof(io_buffer));
-			if (result < 0) exit(EXIT_FAILURE);
+			if (result < 0) fr_exit_now(EXIT_FAILURE);
 
 			if (result == FR_CONDUIT_FAIL) {
 				exit_status = EXIT_FAILURE;
@@ -1156,7 +1177,7 @@ int main(int argc, char **argv)
 		if (strcmp(line, "reconnect") == 0) {
 			if (do_connect(&sockfd, file, server) < 0) {
 				radmin_free(line);
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			goto next;
 		}
@@ -1242,7 +1263,7 @@ int main(int argc, char **argv)
 
 			if (do_connect(&sockfd, file, server) < 0) {
 				radmin_free(line);
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 
 			retries++;
@@ -1250,7 +1271,7 @@ int main(int argc, char **argv)
 
 			fprintf(stderr, "Failed to connect to server\n");
 			radmin_free(line);
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 
 		} else if (result == FR_CONDUIT_FAIL) {
 			fprintf(stderr, "Failed running command\n");

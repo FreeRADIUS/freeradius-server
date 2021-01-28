@@ -1,0 +1,50 @@
+= The foreach Statement
+
+.Syntax
+[source,unlang]
+----
+foreach <attribute-reference> {
+    [ statements ]
+}
+----
+
+The `foreach` statement loops over a set of attributes as given by
+`<attribute-reference>`.  The loop can be exited early by using the
+xref:unlang/break.adoc[break] keyword.
+
+<attribute-reference>::
+
+The xref:unlang/attr.adoc[attribute reference] which will will be looped
+over.  The reference can be to one attribute, to an array, a child, or
+be a subset.
+
+Inside of the `foreach` block, the attribute that is being looped over
+can be referenced as `Foreach-Variable-0`, through
+`Foreach-Variable-9`.  The last digit is the depth of the loop,
+starting at "0".  The loops can be nested up to eight (8) deep, though
+this is not recommended.
+
+The attributes being looped over cannot be modified or deleted.
+
+.Example
+[source,unlang]
+----
+foreach &Class {
+    update reply {
+        Reply-Message += "Contains %{Foreach-Variable-0}"
+    }
+}
+----
+
+.Example
+[source,unlang]
+----
+foreach &TLV[*].Child-1 {
+    update reply {
+        Reply-Message += "TLV contains %{Foreach-Variable-0}"
+    }
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

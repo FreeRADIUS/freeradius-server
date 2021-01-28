@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = "bob"
 User-Password = "hello"
 
@@ -8,4 +9,4 @@ User-Password = "hello"
 #  Expected answer
 #
 Packet-Type == Access-Accept
-Filter-Id == 'filter'
+Result-Status == "success"

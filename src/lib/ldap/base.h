@@ -237,6 +237,8 @@ typedef struct {
 
 	int			tls_require_cert;	//!< OpenLDAP constant representing the require cert string.
 
+	char const		*tls_min_version_str;		//!< Minimum TLS version
+	int			tls_min_version;
 
 	/*
 	 *	For keep-alives.
@@ -317,7 +319,7 @@ typedef struct {
  * Used to store the array of attributes we'll be querying for.
  */
 typedef struct {
-	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
+	map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
 	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
 							//!< and NULL termination.
 	TALLOC_CTX	*ctx;				//!< Context to allocate new attributes in.
@@ -375,26 +377,24 @@ extern size_t fr_ldap_tls_require_cert_len;
  * @param[out] value	to write berval values to.
  * @param[in] berval	to copy pointers/lengths from.
  */
-static inline void fr_ldap_berval_to_value(fr_value_box_t *value, struct berval *berval)
+static inline void fr_ldap_berval_to_value_shallow(fr_value_box_t *value, struct berval *berval)
 {
-	value->datum.ptr = berval->bv_val;
-	value->datum.length = berval->bv_len;
-	value->type = FR_TYPE_OCTETS;
+	fr_value_box_memdup_shallow(value, NULL, (uint8_t *)berval->bv_val, berval->bv_len, true);
 }
 
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
-void		fr_ldap_timeout_debug(REQUEST *request, fr_ldap_connection_t const *conn,
+void		fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 				      fr_time_delta_t timeout, char const *prefix);
 
-size_t		fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
+size_t		fr_ldap_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
 
-size_t		fr_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
+size_t		fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
 
-ssize_t		fr_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
+ssize_t		fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
-fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
+fr_ldap_rcode_t	fr_ldap_bind(request_t *request,
 			     fr_ldap_connection_t **pconn,
 			     char const *dn, char const *password,
 #ifdef WITH_SASL
@@ -407,17 +407,17 @@ fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
 
 char const	*fr_ldap_error_str(fr_ldap_connection_t const *conn);
 
-fr_ldap_rcode_t	fr_ldap_search(LDAPMessage **result, REQUEST *request,
+fr_ldap_rcode_t	fr_ldap_search(LDAPMessage **result, request_t *request,
 			       fr_ldap_connection_t **pconn,
 			       char const *dn, int scope, char const *filter, char const * const * attrs,
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, REQUEST *request,
+fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
 				     fr_ldap_connection_t **pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
+fr_ldap_rcode_t	fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
@@ -452,7 +452,7 @@ int		fr_ldap_control_add_client(fr_ldap_connection_t *conn, LDAPControl *ctrl, b
 
 void		fr_ldap_control_clear(fr_ldap_connection_t *conn);
 
-int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *request);
+int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *request);
 
 /*
  *	directory.c - Get directory capabilities from the remote server
@@ -470,21 +470,21 @@ char const	*fr_ldap_edir_errstr(int code);
 /*
  *	map.c - Attribute mapping code.
  */
-int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-				     vp_map_t const *map, void *uctx);
+int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
+				     map_t const *map, void *uctx);
 
-int		fr_ldap_map_verify(vp_map_t *map, void *instance);
+int		fr_ldap_map_verify(map_t *map, void *instance);
 
-int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
+int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_t const *maps);
 
-int		fr_ldap_map_do(REQUEST *request, fr_ldap_connection_t *conn,
+int		fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
 			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 /*
  *	sasl_s.c - SASL synchronous bind functions
  */
 #ifdef WITH_SASL
-fr_ldap_rcode_t	 fr_ldap_sasl_interactive(REQUEST *request,
+fr_ldap_rcode_t	 fr_ldap_sasl_interactive(request_t *request,
 					  fr_ldap_connection_t *pconn, char const *dn,
 					  char const *password, fr_ldap_sasl_t const *sasl,
 					  LDAPControl **serverctrls, LDAPControl **clientctrls,
@@ -552,5 +552,5 @@ char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
 uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
-int		fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request,
+int		fr_ldap_parse_url_extensions(LDAPControl **sss, request_t *request,
 					     fr_ldap_connection_t *conn, char **extensions);

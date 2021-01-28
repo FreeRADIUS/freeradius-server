@@ -10,10 +10,10 @@ BEGIN-VENDOR	Adtran
 
 # Managed WiFi attributes
 
-ATTRIBUTE	Adtran-AP-Name				100	string
-ATTRIBUTE	Adtran-AP-IP				101	ipaddr
-ATTRIBUTE	Adtran-AP-Template			102	string
-ATTRIBUTE	Adtran-SSID				103	string
-ATTRIBUTE	Adtran-Role				104	string
+ATTRIBUTE	AP-Name					100	string
+ATTRIBUTE	AP-IP					101	ipaddr
+ATTRIBUTE	AP-Template				102	string
+ATTRIBUTE	SSID					103	string
+ATTRIBUTE	Role					104	string
 
 END-VENDOR Adtran

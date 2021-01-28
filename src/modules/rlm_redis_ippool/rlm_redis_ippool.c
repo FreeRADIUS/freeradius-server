@@ -29,7 +29,7 @@
  *	with priority set by expiry time.
  * - @verbatim {<pool name>:<pool type>}:ip:<address> @endverbatim (hash) contains four keys
  *     * range   - Range identifier, used to lookup attributes associated with a range within a pool.
- *     * device  - Device identifier for the device which last bound this address.
+ *     * device  - Lease owner identifier for the device which last bound this address.
  *     * gateway - Gateway of device which last bound this address.
  *     * counter - How many times this IP address has been bound.
  * - @verbatim {<pool name>:<pool type>}:device:<client id> @endverbatim (string) contains last
@@ -44,15 +44,15 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
 #include "redis_ippool.h"
 
-#ifdef WITH_DHCP
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
-#endif
 
 /** rlm_redis module instance
  *
@@ -63,33 +63,33 @@ typedef struct {
 
 	char const		*name;		//!< Instance name.
 
-	vp_tmpl_t		*pool_name;	//!< Name of the pool we're allocating IP addresses from.
+	tmpl_t			*pool_name;	//!< Name of the pool we're allocating IP addresses from.
 
-	vp_tmpl_t		*offer_time;	//!< How long we should reserve a lease for during
+	tmpl_t			*offer_time;	//!< How long we should reserve a lease for during
 						//!< the pre-allocation stage (typically responding
 						//!< to DHCP discover).
-	vp_tmpl_t		*lease_time;	//!< How long an IP address should be allocated for.
+	tmpl_t			*lease_time;	//!< How long an IP address should be allocated for.
 
 	uint32_t		wait_num;	//!< How many slaves we want to acknowledge allocations
 						//!< or updates.
 
 	fr_time_delta_t		wait_timeout;	//!< How long we wait for slaves to acknowledge writing.
 
-	vp_tmpl_t		*device_id;	//!< Unique device identifier.  Could be mac-address
+	tmpl_t			*owner;	//!< Unique Lease owner identifier.  Could be mac-address
 						//!< or a combination of User-Name and something
 						//!< unique to the device.
 
-	vp_tmpl_t		*gateway_id;	//!< Gateway identifier, usually
+	tmpl_t			*gateway_id;	//!< Gateway identifier, usually
 						//!< NAS-Identifier or the actual Option 82 gateway.
 						//!< Used for bulk lease cleanups.
 
-	vp_tmpl_t		*requested_address;		//!< Attribute to read the IP for renewal from.
+	tmpl_t			*requested_address;		//!< Attribute to read the IP for renewal from.
 
-	vp_tmpl_t		*allocated_address_attr;	//!< IP attribute and destination.
+	tmpl_t			*allocated_address_attr;	//!< IP attribute and destination.
 
-	vp_tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
+	tmpl_t			*range_attr;	//!< Attribute to write the range ID to.
 
-	vp_tmpl_t		*expiry_attr;	//!< Time at which the lease will expire.
+	tmpl_t			*expiry_attr;	//!< Time at which the lease will expire.
 
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
@@ -108,7 +108,7 @@ static CONF_PARSER redis_config[] = {
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("pool_name", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, pool_name) },
 
-	{ FR_CONF_OFFSET("device", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, device_id) },
+	{ FR_CONF_OFFSET("owner", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, owner) },
 	{ FR_CONF_OFFSET("gateway", FR_TYPE_TMPL, rlm_redis_ippool_t, gateway_id) },\
 
 	{ FR_CONF_OFFSET("offer_time", FR_TYPE_TMPL, rlm_redis_ippool_t, offer_time) },
@@ -117,13 +117,13 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{Requested-IP-Address}:-%{Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_DEPRECATED("ip_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, allocated_address_attr), .dflt = "&reply:DHCP-Your-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, allocated_address_attr), .dflt = "&reply.Your-IP-Address", .quote = T_BARE_WORD },
 	{ FR_CONF_DEPRECATED("reply_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_OFFSET("range_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply:Pool-Range", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("range_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply.IP-Pool.Range", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("expiry_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_redis_ippool_t, expiry_attr) },
 
 	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOL, rlm_redis_ippool_t, ipv4_integer) },
@@ -139,33 +139,41 @@ static CONF_PARSER module_config[] = {
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
-#ifdef WITH_DHCP
 static fr_dict_t const *dict_dhcpv4;
-#endif
 
 extern fr_dict_autoload_t rlm_redis_ippool_dict[];
 fr_dict_autoload_t rlm_redis_ippool_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-#ifdef WITH_DHCP
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-#endif
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_pool_action;
 static fr_dict_attr_t const *attr_acct_status_type;
-#ifdef WITH_DHCP
 static fr_dict_attr_t const *attr_message_type;
-#endif
 
 extern fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
-	{ .out = &attr_pool_action, .name = "Pool-Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_pool_action, .name = "IP-Pool.Action", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-#ifdef WITH_DHCP
-	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-#endif
+	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ NULL }
+};
+
+static fr_value_box_t const	*enum_acct_status_type_start;
+static fr_value_box_t const	*enum_acct_status_type_interim_update;
+static fr_value_box_t const	*enum_acct_status_type_stop;
+static fr_value_box_t const	*enum_acct_status_type_on;
+static fr_value_box_t const	*enum_acct_status_type_off;
+
+extern fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[];
+fr_dict_enum_autoload_t rlm_redis_ippool_dict_enum[] = {
+	{ .out = &enum_acct_status_type_start, .name = "Start", .attr = &attr_acct_status_type },
+	{ .out = &enum_acct_status_type_interim_update, .name = "Interim-Update", .attr = &attr_acct_status_type },
+	{ .out = &enum_acct_status_type_interim_update, .name = "Stop", .attr = &attr_acct_status_type},
+	{ .out = &enum_acct_status_type_on, .name = "Accounting-On", .attr = &attr_acct_status_type },
+	{ .out = &enum_acct_status_type_off, .name = "Accounting-Off", .attr = &attr_acct_status_type},
 	{ NULL }
 };
 
@@ -176,7 +184,7 @@ fr_dict_attr_autoload_t rlm_redis_ippool_dict_attr[] = {
  * - KEYS[1] The pool name.
  * - ARGV[1] Wall time (seconds since epoch).
  * - ARGV[2] Expires in (seconds).
- * - ARGV[3] Device identifier (administratively configured).
+ * - ARGV[3] Lease owner identifier (administratively configured).
  * - ARGV[4] (optional) Gateway identifier.
  *
  * Returns @verbatim { <rcode>[, <ip>][, <range>][, <lease time>][, <counter>] } @endverbatim
@@ -189,10 +197,10 @@ static char lua_alloc_cmd[] =
 
 	"local pool_key" EOL										/* 3 */
 	"local address_key" EOL										/* 4 */
-	"local device_key" EOL										/* 5 */
+	"local owner_key" EOL										/* 5 */
 
 	"pool_key = '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"'" EOL					/* 6 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[3]" EOL			/* 7 */
+	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL			/* 7 */
 
 	/*
 	 *	Check to see if the client already has a lease,
@@ -201,7 +209,7 @@ static char lua_alloc_cmd[] =
 	 *	The additional sanity checks are to allow for the record
 	 *	of device/ip binding to persist for longer than the lease.
 	 */
-	"exists = redis.call('GET', device_key);" EOL							/* 8 */
+	"exists = redis.call('GET', owner_key);" EOL							/* 8 */
 	"if exists then" EOL										/* 9 */
 	"  local expires_in = tonumber(redis.call('ZSCORE', pool_key, exists) - ARGV[1])" EOL		/* 10 */
 	"  if expires_in > 0 then" EOL									/* 11 */
@@ -233,8 +241,8 @@ static char lua_alloc_cmd[] =
 	 */
 	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ip[1]" EOL			/* 30 */
 	"redis.call('HMSET', address_key, 'device', ARGV[3], 'gateway', ARGV[4])" EOL			/* 31 */
-	"redis.call('SET', device_key, ip[1])" EOL							/* 32 */
-	"redis.call('EXPIRE', device_key, ARGV[2])" EOL							/* 33 */
+	"redis.call('SET', owner_key, ip[1])" EOL							/* 32 */
+	"redis.call('EXPIRE', owner_key, ARGV[2])" EOL							/* 33 */
 	"return { " EOL											/* 34 */
 	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL							/* 35 */
 	"  ip[1], " EOL											/* 36 */
@@ -250,7 +258,7 @@ static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
  * - ARGV[1] Wall time (seconds since epoch).
  * - ARGV[2] Expires in (seconds).
  * - ARGV[3] IP address to update.
- * - ARGV[4] Device identifier.
+ * - ARGV[4] Lease owner identifier.
  * - ARGV[5] (optional) Gateway identifier.
  *
  * Returns @verbatim array { <rcode>[, <range>] } @endverbatim
@@ -265,7 +273,7 @@ static char lua_update_cmd[] =
 
 	"local pool_key" EOL								/* 3 */
 	"local address_key" EOL								/* 4 */
-	"local device_key" EOL								/* 5 */
+	"local owner_key" EOL								/* 5 */
 
 	/*
 	 *	We either need to know that the IP was last allocated to the
@@ -295,10 +303,10 @@ static char lua_update_cmd[] =
 	 *	of a lease being expired, it may have been
 	 *	removed.
 	 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[4]" EOL	/* 16 */
-	"if redis.call('EXPIRE', device_key, ARGV[2]) == 0 then" EOL			/* 17 */
-	"  redis.call('SET', device_key, ARGV[3])" EOL					/* 18 */
-	"  redis.call('EXPIRE', device_key, ARGV[2])" EOL				/* 19 */
+	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[4]" EOL	/* 16 */
+	"if redis.call('EXPIRE', owner_key, ARGV[2]) == 0 then" EOL			/* 17 */
+	"  redis.call('SET', owner_key, ARGV[3])" EOL					/* 18 */
+	"  redis.call('EXPIRE', owner_key, ARGV[2])" EOL				/* 19 */
 	"end" EOL									/* 20 */
 
 	/*
@@ -331,7 +339,7 @@ static char lua_release_cmd[] =
 
 	"local pool_key" EOL								/* 3 */
 	"local address_key" EOL								/* 4 */
-	"local device_key" EOL								/* 5 */
+	"local owner_key" EOL								/* 5 */
 
 	/*
 	 *	Check that the device releasing was the one
@@ -355,8 +363,8 @@ static char lua_release_cmd[] =
 	/*
 	 *	Remove the association between the device and a lease
 	 */
-	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[3]" EOL	/* 17 */
-	"redis.call('DEL', device_key)" EOL						/* 18 */
+	"owner_key = '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. ARGV[3]" EOL	/* 17 */
+	"redis.call('DEL', owner_key)" EOL						/* 18 */
 	"return { " EOL
 	"  " STRINGIFY(_IPPOOL_RCODE_SUCCESS) "," EOL					/* 19 */
 	"  redis.call('HINCRBY', address_key, 'counter', 1) - 1" EOL			/* 20 */
@@ -372,7 +380,7 @@ static char lua_release_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
  *	- 0 if enough slaves replicated the data.
  *	- -1 if too few slaves replicated the data, or another error.
  */
-static inline int ippool_wait_check(REQUEST *request, uint32_t wait_num, redisReply *reply)
+static inline int ippool_wait_check(request_t *request, uint32_t wait_num, redisReply *reply)
 {
 	if (!wait_num) return 0;
 
@@ -389,11 +397,11 @@ static inline int ippool_wait_check(REQUEST *request, uint32_t wait_num, redisRe
 	return 0;
 }
 
-static void ippool_action_print(REQUEST *request, ippool_action_t action,
+static void ippool_action_print(request_t *request, ippool_action_t action,
 				fr_log_lvl_t lvl,
 				uint8_t const *key_prefix, size_t key_prefix_len,
 				char const *ip_str,
-				uint8_t const *device_id, size_t device_id_len,
+				uint8_t const *owner, size_t owner_len,
 				uint8_t const *gateway_id, size_t gateway_id_len,
 				uint32_t expires)
 {
@@ -401,7 +409,7 @@ static void ippool_action_print(REQUEST *request, ippool_action_t action,
 
 	key_prefix_str = fr_asprint(request, (char const *)key_prefix, key_prefix_len, '"');
 	if (gateway_id) gateway_str = fr_asprint(request, (char const *)gateway_id, gateway_id_len, '"');
-	if (device_id) device_str = fr_asprint(request, (char const *)device_id, device_id_len, '"');
+	if (owner) device_str = fr_asprint(request, (char const *)owner, owner_len, '"');
 
 	switch (action) {
 	case POOL_ACTION_ALLOCATE:
@@ -465,7 +473,7 @@ static void ippool_action_print(REQUEST *request, ippool_action_t action,
  * @param[in] ...		Arguments for the eval command.
  * @return status of the command.
  */
-static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_redis_cluster_t *cluster,
+static fr_redis_rcode_t ippool_script(redisReply **out, request_t *request, fr_redis_cluster_t *cluster,
 				      uint8_t const *key, size_t key_len,
 				      uint32_t wait_num, fr_time_delta_t wait_timeout,
 				      char const digest[], char const *script,
@@ -579,7 +587,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 	case 5: /* LOADSCRIPT + EVALSHA + WAIT */
 		if (ippool_wait_check(request, wait_num, replies[4]) < 0) goto error;
 		fr_redis_reply_free(&replies[4]);	/* Free the wait response */
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case 4: /* LOADSCRIPT + EVALSHA */
 		fr_redis_reply_free(&replies[2]);	/* Free the queued cmd response*/
@@ -602,9 +610,9 @@ finish:
 /** Allocate a new IP address from a pool
  *
  */
-static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, request_t *request,
 					    uint8_t const *key_prefix, size_t key_prefix_len,
-					    uint8_t const *device_id, size_t device_id_len,
+					    uint8_t const *owner, size_t owner_len,
 					    uint8_t const *gateway_id, size_t gateway_id_len,
 					    uint32_t expires)
 {
@@ -614,8 +622,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	rad_assert(key_prefix);
-	rad_assert(device_id);
+	fr_assert(key_prefix);
+	fr_assert(owner);
 
 	now = fr_time_to_timeval(fr_time());
 
@@ -632,14 +640,14 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 		       lua_alloc_digest,
 			       key_prefix, key_prefix_len,
 			       (unsigned int)now.tv_sec, expires,
-			       device_id, device_id_len,
+			       owner, owner_len,
 			       gateway_id, gateway_id_len);
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;
 		goto finish;
 	}
 
-	rad_assert(reply);
+	fr_assert(reply);
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Expected result to be array got \"%s\"",
 			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
@@ -669,16 +677,14 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 *	Process IP address
 	 */
 	if (reply->elements > 1) {
-		vp_tmpl_t ip_rhs = {
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING
-		};
-		vp_map_t ip_map = {
+		tmpl_t ip_rhs;
+		map_t ip_map = {
 			.lhs = inst->allocated_address_attr,
 			.op = T_OP_SET,
 			.rhs = &ip_rhs
 		};
 
+		tmpl_init_shallow(&ip_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0);
 		switch (reply->element[1]->type) {
 		/*
 		 *	Destination attribute may not be IPv4, in which case
@@ -688,32 +694,27 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		 */
 		case REDIS_REPLY_INTEGER:
 		{
-			if (ip_map.lhs->tmpl_da->type != FR_TYPE_IPV4_ADDR) {
+			if (tmpl_da(ip_map.lhs)->type != FR_TYPE_IPV4_ADDR) {
 				fr_value_box_t tmp;
 
-				memset(&tmp, 0, sizeof(tmp));
-
-				tmp.vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
-				tmp.type = FR_TYPE_UINT32;
-
-				if (fr_value_box_cast(NULL, &ip_map.rhs->tmpl_value, FR_TYPE_IPV4_ADDR,
+				fr_value_box_shallow(&tmp,
+						     (uint32_t)ntohl((uint32_t)reply->element[1]->integer), true);
+				if (fr_value_box_cast(NULL, tmpl_value(ip_map.rhs), FR_TYPE_IPV4_ADDR,
 						      NULL, &tmp)) {
 					RPEDEBUG("Failed converting integer to IPv4 address");
 					ret = IPPOOL_RCODE_FAIL;
 					goto finish;
 				}
 			} else {
-				ip_map.rhs->tmpl_value.vb_uint32 = ntohl((uint32_t)reply->element[1]->integer);
-				ip_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
+				fr_value_box_shallow(&ip_map.rhs->data.literal,
+						     (uint32_t)ntohl((uint32_t)reply->element[1]->integer), true);
 			}
 		}
 			goto do_ip_map;
 
 		case REDIS_REPLY_STRING:
-			ip_map.rhs->tmpl_value.vb_strvalue = reply->element[1]->str;
-			ip_map.rhs->tmpl_value_length = reply->element[1]->len;
-			ip_map.rhs->tmpl_value_type = FR_TYPE_STRING;
-
+			fr_value_box_bstrndup_shallow(&ip_map.rhs->data.literal,
+						      NULL, reply->element[1]->str, reply->element[1]->len, false);
 		do_ip_map:
 			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
 				ret = IPPOOL_RCODE_FAIL;
@@ -739,21 +740,16 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		 */
 		case REDIS_REPLY_STRING:
 		{
-			vp_tmpl_t range_rhs = {
-				.name = "",
-				.type = TMPL_TYPE_DATA,
-				.tmpl_value_type = FR_TYPE_STRING,
-				.quote = T_DOUBLE_QUOTED_STRING
-			};
-			vp_map_t range_map = {
+			tmpl_t range_rhs;
+			map_t range_map = {
 				.lhs = inst->range_attr,
 				.op = T_OP_SET,
 				.rhs = &range_rhs
 			};
 
-			range_map.rhs->tmpl_value.vb_strvalue = reply->element[2]->str;
-			range_map.rhs->tmpl_value_length = reply->element[2]->len;
-			range_map.rhs->tmpl_value_type = FR_TYPE_STRING;
+			tmpl_init_shallow(&range_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
+			fr_value_box_bstrndup_shallow(&range_map.rhs->data.literal,
+						      NULL, reply->element[2]->str, reply->element[2]->len, true);
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
 				ret = IPPOOL_RCODE_FAIL;
 				goto finish;
@@ -776,18 +772,14 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 	 *	Process Expiry time
 	 */
 	if (inst->expiry_attr && (reply->elements > 3)) {
-		vp_tmpl_t expiry_rhs = {
-			.name = "",
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING,
-			.quote = T_DOUBLE_QUOTED_STRING
-		};
-		vp_map_t expiry_map = {
+		tmpl_t expiry_rhs;
+		map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
 			.rhs = &expiry_rhs
 		};
 
+		tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
 		if (reply->element[3]->type != REDIS_REPLY_INTEGER) {
 			REDEBUG("Server returned unexpected type \"%s\" for expiry element (result[3])",
 				fr_table_str_by_value(redis_reply_types, reply->element[3]->type, "<UNKNOWN>"));
@@ -795,8 +787,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			goto finish;
 		}
 
-		expiry_map.rhs->tmpl_value.vb_uint32 = reply->element[3]->integer;
-		expiry_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
+		fr_value_box_shallow(&expiry_map.rhs->data.literal, (uint32_t)reply->element[3]->integer, true);
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
@@ -810,10 +801,10 @@ finish:
 /** Update an existing IP address in a pool
  *
  */
-static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, request_t *request,
 					  uint8_t const *key_prefix, size_t key_prefix_len,
 					  fr_ipaddr_t *ip,
-					  uint8_t const *device_id, size_t device_id_len,
+					  uint8_t const *owner, size_t owner_len,
 					  uint8_t const *gateway_id, size_t gateway_id_len,
 					  uint32_t expires)
 {
@@ -823,15 +814,17 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	vp_tmpl_t		range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_value_type = FR_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
-	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
+	tmpl_t		range_rhs;
+	map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
+
+	tmpl_init_shallow(&range_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
 
 	now = fr_time_to_timeval(fr_time());
 
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
 	 */
-	if (!device_id) device_id = (uint8_t const *)"";
+	if (!owner) owner = (uint8_t const *)"";
 	if (!gateway_id) gateway_id = (uint8_t const *)"";
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
@@ -844,7 +837,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
 				       htonl(ip->addr.v4.s_addr),
-				       device_id, device_id_len,
+				       owner, owner_len,
 				       gateway_id, gateway_id_len);
 	} else {
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
@@ -859,7 +852,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
 				       ip_buff,
-				       device_id, device_id_len,
+				       owner, owner_len,
 				       gateway_id, gateway_id_len);
 	}
 	if (status != REDIS_RCODE_SUCCESS) {
@@ -901,9 +894,8 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		 *	Add range ID to request
 		 */
 		case REDIS_REPLY_STRING:
-			range_map.rhs->tmpl_value.vb_strvalue = reply->element[1]->str;
-			range_map.rhs->tmpl_value_length = reply->element[1]->len;
-			range_map.rhs->tmpl_value_type = FR_TYPE_STRING;
+			fr_value_box_bstrndup_shallow(&range_map.rhs->data.literal, NULL,
+						      reply->element[1]->str, reply->element[1]->len, true);
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
 				ret = IPPOOL_RCODE_FAIL;
 				goto finish;
@@ -925,20 +917,17 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 	 *	Copy expiry time to expires attribute (if set)
 	 */
 	if (inst->expiry_attr) {
-		vp_tmpl_t expiry_rhs = {
-			.name = "",
-			.type = TMPL_TYPE_DATA,
-			.tmpl_value_type = FR_TYPE_STRING,
-			.quote = T_DOUBLE_QUOTED_STRING
-		};
-		vp_map_t expiry_map = {
+		tmpl_t expiry_rhs;
+		map_t expiry_map = {
 			.lhs = inst->expiry_attr,
 			.op = T_OP_SET,
 			.rhs = &expiry_rhs
 		};
 
-		expiry_map.rhs->tmpl_value.vb_uint32 = expires;
-		expiry_map.rhs->tmpl_value_type = FR_TYPE_UINT32;
+
+		tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0);
+
+		fr_value_box_shallow(&expiry_map.rhs->data.literal, expires, false);
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
@@ -954,10 +943,10 @@ finish:
 /** Release an existing IP address in a pool
  *
  */
-static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, request_t *request,
 					   uint8_t const *key_prefix, size_t key_prefix_len,
 					   fr_ipaddr_t *ip,
-					   uint8_t const *device_id, size_t device_id_len)
+					   uint8_t const *owner, size_t owner_len)
 {
 	struct			timeval now;
 	redisReply		*reply = NULL;
@@ -970,7 +959,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 	/*
 	 *	hiredis doesn't deal well with NULL string pointers
 	 */
-	if (!device_id) device_id = (uint8_t const *)"";
+	if (!owner) owner = (uint8_t const *)"";
 
 	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = ippool_script(&reply, request, inst->cluster,
@@ -982,7 +971,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
 				       htonl(ip->addr.v4.s_addr),
-				       device_id, device_id_len);
+				       owner, owner_len);
 	} else {
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
@@ -996,7 +985,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
 				       ip_buff,
-				       device_id, device_id_len);
+				       owner, owner_len);
 	}
 	if (status != REDIS_RCODE_SUCCESS) {
 		ret = IPPOOL_RCODE_FAIL;
@@ -1047,7 +1036,7 @@ finish:
  *	- > 0 on success (length of data written to out).
  */
 static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size_t bufflen,
-				       rlm_redis_ippool_t const *inst, REQUEST *request)
+				       rlm_redis_ippool_t const *inst, request_t *request)
 {
 	ssize_t slen;
 
@@ -1073,11 +1062,11 @@ static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size
 	return slen;
 }
 
-static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, ippool_action_t action)
+static unlang_action_t mod_action(rlm_rcode_t *p_result, rlm_redis_ippool_t const *inst, request_t *request, ippool_action_t action)
 {
-	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
-	uint8_t const	*key_prefix, *device_id = NULL, *gateway_id = NULL;
-	size_t		key_prefix_len, device_id_len = 0, gateway_id_len = 0;
+	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], owner_buff[256], gateway_id_buff[256];
+	uint8_t const	*key_prefix, *owner = NULL, *gateway_id = NULL;
+	size_t		key_prefix_len, owner_len = 0, gateway_id_len = 0;
 	ssize_t		slen;
 	fr_ipaddr_t	ip;
 	char		expires_buff[20];
@@ -1086,20 +1075,20 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 	char		*q;
 
 	slen = ippool_pool_name(&key_prefix, (uint8_t *)&key_prefix_buff, sizeof(key_prefix_len), inst, request);
-	if (slen < 0) return RLM_MODULE_FAIL;
-	if (slen == 0) return RLM_MODULE_NOOP;
+	if (slen < 0) RETURN_MODULE_FAIL;
+	if (slen == 0) RETURN_MODULE_NOOP;
 
 	key_prefix_len = (size_t)slen;
 
-	if (inst->device_id) {
-		slen = tmpl_expand((char const **)&device_id,
-				   (char *)&device_id_buff, sizeof(device_id_buff),
-				   request, inst->device_id, NULL, NULL);
+	if (inst->owner) {
+		slen = tmpl_expand((char const **)&owner,
+				   (char *)&owner_buff, sizeof(owner_buff),
+				   request, inst->owner, NULL, NULL);
 		if (slen < 0) {
-			REDEBUG("Failed expanding device (%s)", inst->device_id->name);
-			return RLM_MODULE_FAIL;
+			REDEBUG("Failed expanding device (%s)", inst->owner->name);
+			RETURN_MODULE_FAIL;
 		}
-		device_id_len = (size_t)slen;
+		owner_len = (size_t)slen;
 	}
 
 	if (inst->gateway_id) {
@@ -1108,7 +1097,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 				   request, inst->gateway_id, NULL, NULL);
 		if (slen < 0) {
 			REDEBUG("Failed expanding gateway (%s)", inst->gateway_id->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 		gateway_id_len = (size_t)slen;
 	}
@@ -1118,30 +1107,30 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		if (tmpl_expand(&expires_str, expires_buff, sizeof(expires_buff),
 				request, inst->offer_time, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding offer_time (%s)", inst->offer_time->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		expires = strtoul(expires_str, &q, 10);
 		if (q != (expires_str + strlen(expires_str))) {
 			REDEBUG("Invalid offer_time.  Must be an integer value");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len, NULL,
-				    device_id, device_id_len, gateway_id, gateway_id_len, expires);
+				    owner, owner_len, gateway_id, gateway_id_len, expires);
 		switch (redis_ippool_allocate(inst, request, key_prefix, key_prefix_len,
-					      device_id, device_id_len,
+					      owner, owner_len,
 					      gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address lease allocated");
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 
 		case IPPOOL_RCODE_POOL_EMPTY:
 			RWDEBUG("Pool contains no free addresses");
-			return RLM_MODULE_NOTFOUND;
+			RETURN_MODULE_NOTFOUND;
 
 		default:
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 	case POOL_ACTION_UPDATE:
@@ -1152,29 +1141,29 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		if (tmpl_expand(&expires_str, expires_buff, sizeof(expires_buff),
 				request, inst->lease_time, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding lease_time (%s)", inst->lease_time->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		expires = strtoul(expires_str, &q, 10);
 		if (q != (expires_str + strlen(expires_str))) {
 			REDEBUG("Invalid expires.  Must be an integer value");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->requested_address, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding requested_address (%s)", inst->requested_address->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
 			RPEDEBUG("Failed parsing address");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
-				    ip_str, device_id, device_id_len, gateway_id, gateway_id_len, expires);
+				    ip_str, owner, owner_len, gateway_id, gateway_id_len, expires);
 		switch (redis_ippool_update(inst, request, key_prefix, key_prefix_len,
-					    &ip, device_id, device_id_len,
+					    &ip, owner, owner_len,
 					    gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("Requested IP address' \"%s\" lease updated", ip_str);
@@ -1183,24 +1172,22 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 			 *	Copy over the input IP address to the reply attribute
 			 */
 			if (inst->copy_on_update) {
-				vp_tmpl_t ip_rhs = {
+				tmpl_t ip_rhs = {
 					.name = "",
 					.type = TMPL_TYPE_DATA,
 					.quote = T_BARE_WORD,
 				};
-				vp_map_t ip_map = {
+				map_t ip_map = {
 					.lhs = inst->allocated_address_attr,
 					.op = T_OP_SET,
 					.rhs = &ip_rhs
 				};
 
-				ip_rhs.tmpl_value_length = strlen(ip_str);
-				ip_rhs.tmpl_value.vb_strvalue = ip_str;
-				ip_rhs.tmpl_value_type = FR_TYPE_STRING;
+				fr_value_box_strdup_shallow(&ip_rhs.data.literal, NULL, ip_str, false);
 
-				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) return RLM_MODULE_FAIL;
+				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_MODULE_FAIL;
 			}
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 
 		/*
 		 *	It's useful to be able to identify the 'not found' case
@@ -1209,18 +1196,18 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		 */
 		case IPPOOL_RCODE_NOT_FOUND:
 			REDEBUG("Requested IP address \"%s\" is not a member of the specified pool", ip_str);
-			return RLM_MODULE_NOTFOUND;
+			RETURN_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_EXPIRED:
 			REDEBUG("Requested IP address' \"%s\" lease already expired at time of renewal", ip_str);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
 			REDEBUG("Requested IP address' \"%s\" lease allocated to another device", ip_str);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 
 		default:
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
@@ -1231,21 +1218,21 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 
 		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->requested_address, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding requested_address (%s)", inst->requested_address->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
 			RPEDEBUG("Failed parsing address");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
-				    ip_str, device_id, device_id_len, gateway_id, gateway_id_len, 0);
+				    ip_str, owner, owner_len, gateway_id, gateway_id_len, 0);
 		switch (redis_ippool_release(inst, request, key_prefix, key_prefix_len,
-					     &ip, device_id, device_id_len)) {
+					     &ip, owner, owner_len)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address \"%s\" released", ip_str);
-			return RLM_MODULE_UPDATED;
+			RETURN_MODULE_UPDATED;
 
 		/*
 		 *	It's useful to be able to identify the 'not found' case
@@ -1254,110 +1241,133 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		 */
 		case IPPOOL_RCODE_NOT_FOUND:
 			REDEBUG("Requested IP address \"%s\" is not a member of the specified pool", ip_str);
-			return RLM_MODULE_NOTFOUND;
+			RETURN_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
 			REDEBUG("Requested IP address' \"%s\" lease allocated to another device", ip_str);
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 
 		default:
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
 	case POOL_ACTION_BULK_RELEASE:
 		RDEBUG2("Bulk release not yet implemented");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 
 	default:
-		rad_assert(0);
-		return RLM_MODULE_FAIL;
+		fr_assert(0);
+		RETURN_MODULE_FAIL;
 	}
 }
 
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_redis_ippool_t const	*inst = instance;
-	VALUE_PAIR			*vp;
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
+	fr_pair_t			*vp;
 
 	/*
-	 *	Pool-Action override
+	 *	IP-Pool.Action override
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
-	if (vp) return mod_action(inst, request, vp->vp_uint32);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
+	if (vp) return mod_action(p_result, inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
 	if (!vp) {
-		RDEBUG2("Couldn't find &request:Acct-Status-Type or &control:Pool-Action, doing nothing...");
-		return RLM_MODULE_NOOP;
+		RDEBUG2("Couldn't find &request.Acct-Status-Type or &control.IP-Pool.Action, doing nothing...");
+		RETURN_MODULE_NOOP;
 	}
 
-	switch (vp->vp_uint32) {
-	case FR_STATUS_START:
-	case FR_STATUS_ALIVE:
-		return mod_action(inst, request, POOL_ACTION_UPDATE);
+	if ((vp->vp_uint32 == enum_acct_status_type_start->vb_uint32) ||
+	    (vp->vp_uint32 == enum_acct_status_type_interim_update->vb_uint32)) {
+		return mod_action(p_result, inst, request, POOL_ACTION_UPDATE);
 
-	case FR_STATUS_STOP:
-		return mod_action(inst, request, POOL_ACTION_RELEASE);
+	} else if (vp->vp_uint32 == enum_acct_status_type_stop->vb_uint32) {
+		return mod_action(p_result, inst, request, POOL_ACTION_RELEASE);
 
-	case FR_STATUS_ACCOUNTING_OFF:
-	case FR_STATUS_ACCOUNTING_ON:
-		return mod_action(inst, request, POOL_ACTION_BULK_RELEASE);
+	} else if ((vp->vp_uint32 == enum_acct_status_type_on->vb_uint32) ||
+		   (vp->vp_uint32 == enum_acct_status_type_off->vb_uint32)) {
+		return mod_action(p_result, inst, request, POOL_ACTION_BULK_RELEASE);
 
-	default:
-		return RLM_MODULE_NOOP;
 	}
+
+	RETURN_MODULE_NOOP;
 }
 
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_redis_ippool_t const	*inst = instance;
-	VALUE_PAIR			*vp;
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
+	fr_pair_t			*vp;
 
 	/*
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
-	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
+	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_redis_ippool_t const	*inst = instance;
-	VALUE_PAIR			*vp;
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
+	fr_pair_t			*vp;
 	ippool_action_t			action = POOL_ACTION_ALLOCATE;
 
 	/*
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_pool_action, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
 	if (vp) {
 		if ((vp->vp_uint32 > 0) && (vp->vp_uint32 <= POOL_ACTION_BULK_RELEASE)) {
 			action = vp->vp_uint32;
 
 		} else {
 			RWDEBUG("Ignoring invalid action %d", vp->vp_uint32);
-			return RLM_MODULE_NOOP;
+			RETURN_MODULE_NOOP;
 		}
-#ifdef WITH_DHCP
+
 	} else if (request->dict == dict_dhcpv4) {
-		vp = fr_pair_find_by_da(request->control, attr_message_type, TAG_ANY);
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_message_type);
 		if (!vp) goto run;
 
 		if (vp->vp_uint8 == FR_DHCP_REQUEST) action = POOL_ACTION_UPDATE;
-#endif
 	}
 
 run:
-	return mod_action(inst, request, action);
+	return mod_action(p_result, inst, request, action);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_request(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
+	fr_pair_t			*vp;
+
+	/*
+	 *	Unless it's overridden the default action is to update
+	 *	when called by DHCP request
+	 */
+
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
+	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_UPDATE);
+}
+
+static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_redis_ippool_t);
+	fr_pair_t			*vp;
+
+	/*
+	 *	Unless it's overridden the default action is to release
+	 *	when called by DHCP release
+	 */
+
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_pool_action);
+	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_RELEASE);
 }
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
@@ -1367,8 +1377,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	rlm_redis_ippool_t		*inst = instance;
 
-	rad_assert(tmpl_is_attr(inst->allocated_address_attr));
-	rad_assert(subcs);
+	fr_assert(tmpl_is_attr(inst->allocated_address_attr));
+	fr_assert(subcs);
 
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
@@ -1388,17 +1398,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		fr_sha1_init(&sha1_ctx);
 		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_alloc_cmd, sizeof(lua_alloc_cmd) - 1);
 		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(lua_alloc_digest, digest, sizeof(digest));
+		fr_bin2hex(&FR_SBUFF_OUT(lua_alloc_digest, sizeof(lua_alloc_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)), SIZE_MAX);
 
 		fr_sha1_init(&sha1_ctx);
 		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_update_cmd, sizeof(lua_update_cmd) - 1);
 		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(lua_update_digest, digest, sizeof(digest));
+		fr_bin2hex(&FR_SBUFF_OUT(lua_update_digest, sizeof(lua_update_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)), SIZE_MAX);
 
 		fr_sha1_init(&sha1_ctx);
 		fr_sha1_update(&sha1_ctx, (uint8_t const *)lua_release_cmd, sizeof(lua_release_cmd) - 1);
 		fr_sha1_final(digest, &sha1_ctx);
-		fr_bin2hex(lua_release_digest, digest, sizeof(digest));
+		fr_bin2hex(&FR_SBUFF_OUT(lua_release_digest, sizeof(lua_release_digest)), &FR_DBUFF_TMP(digest, sizeof(digest)), SIZE_MAX);
 	}
 
 	/*
@@ -1431,4 +1441,12 @@ module_t rlm_redis_ippool = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_POST_AUTH]		= mod_post_auth,
 	},
+	.method_names = (module_method_names_t[]) {
+		{ .name1 = "recv",	.name2 = "Request",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Confirm",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Renew",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Rebind",	.method = mod_request },
+		{ .name1 = "recv",	.name2 = "Release",	.method = mod_release },
+		MODULE_NAME_TERMINATOR
+	}
 };

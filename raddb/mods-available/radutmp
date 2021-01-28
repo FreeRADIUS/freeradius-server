@@ -42,16 +42,6 @@ radutmp {
 	username = %{User-Name}
 
 	#
-	#  case_sensitive:: Whether or not we want to treat `user` the same
-	#  as `USER`, or `User`.
-	#
-	#  Some systems have problems with case sensitivity, so this should be
-	#  set to `no` to enable the comparisons of the key attribute to be
-	#  case insensitive.
-	#
-	case_sensitive = yes
-
-	#
 	#  check_with_nas:: Accounting information may be lost, so the user MAY
 	#  have logged off of the NAS, but we haven't noticed.
 	#

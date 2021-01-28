@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/request_data.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_REGEX
 
@@ -54,7 +54,7 @@ typedef struct {
  * @param[in,out] regmatch	Pointers into value. May be set to NULL if
  *				reparented to the regcapture struct.
  */
-void regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regmatch)
+void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch)
 {
 	fr_regcapture_t *old_rc, *new_rc;	/* lldb doesn't like bare new *sigh* */
 
@@ -71,8 +71,8 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regm
 
 	if (!regmatch || ((*regmatch)->used == 0)) return;
 
-	rad_assert(preg && *preg);
-	rad_assert(regmatch);
+	fr_assert(preg && *preg);
+	fr_assert(regmatch);
 
 	DEBUG4("Adding %zu matches", (*regmatch)->used);
 
@@ -115,7 +115,7 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, fr_regmatch_t **regm
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t		*rc;
 	char			*buff;
@@ -127,7 +127,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 	match_data = talloc_get_type_abort(rc->regmatch->match_data, pcre2_match_data);
 
@@ -135,17 +135,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	switch (ret) {
 	case PCRE2_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
 
 	/*
 	 *	Not finding a substring is fine
@@ -186,7 +176,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
+int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name)
 {
 	fr_regcapture_t		*rc;
 	char			*buff;
@@ -198,7 +188,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 	match_data = rc->regmatch->match_data;
 
@@ -206,17 +196,8 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 	switch (ret) {
 	case PCRE2_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
+
 	/*
 	 *	Not finding a substring is fine
 	 */
@@ -256,7 +237,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t	*rc;
 	char const	*p;
@@ -266,7 +247,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 
 	ret = pcre_get_substring(rc->regmatch->subject,
@@ -274,17 +255,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
 
 	/*
 	 *	Not finding a substring is fine
@@ -325,35 +296,28 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
+int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name)
 {
 	fr_regcapture_t	*rc;
+	void		*rd;
 	char const	*p;
 	int		ret;
 
-	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
-	if (!rc) {
+	rd = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!rd) {
 		RDEBUG4("No subcapture data found");
 		*out = NULL;
-		return 1;
+		return -1;
 	}
 
+	rc = talloc_get_type_abort(rd, fr_regcapture_t);
 	ret = pcre_get_named_substring(rc->preg->compiled, rc->regmatch->subject,
 				       (int *)rc->regmatch->match_data, (int)rc->regmatch->used, name, &p);
 	switch (ret) {
 	case PCRE_ERROR_NOMEMORY:
 		MEM(NULL);
-		/*
-		 *	We can't really fall through, but GCC 7.3 is
-		 *	too stupid to realise that we can never get
-		 *	here despite _fr_exit_now being marked as
-		 *	NEVER_RETURNS.
-		 *
-		 *	If we did anything else, compilers and static
-		 *	analysis tools would probably complain about
-		 *	code that could never be executed *sigh*.
-		 */
-		/* FALL-THROUGH */
+		break;
+
 	/*
 	 *	Not finding a substring is fine
 	 */
@@ -398,7 +362,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t	*rc;
 	char 		*buff;
@@ -428,8 +392,8 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 	/*
 	 *	Sanity checks on the offsets
 	 */
-	rad_assert(match_data[num].rm_eo <= (regoff_t)talloc_array_length(rc->regmatch->subject));
-	rad_assert(match_data[num].rm_so <= (regoff_t)talloc_array_length(rc->regmatch->subject));
+	fr_assert(match_data[num].rm_eo <= (regoff_t)talloc_array_length(rc->regmatch->subject));
+	fr_assert(match_data[num].rm_so <= (regoff_t)talloc_array_length(rc->regmatch->subject));
 
 	start = rc->regmatch->subject + match_data[num].rm_so;
 	len = match_data[num].rm_eo - match_data[num].rm_so;

@@ -1,0 +1,82 @@
+= The switch Statement
+
+.Syntax
+[source,unlang]
+----
+switch <expansion> {
+    case <match-1> {
+        [ statements-1 ]
+    }
+    case <match-2> {
+        [ statements-2 ]
+    }
+    default {
+        [ statements-3 ]
+    }
+}
+----
+
+A `switch` statement causes the server to evaluate _expansion_, which
+can be an xref:unlang/attr.adoc[&Attribute-Name] or
+xref:condition/operands.adoc[data].  The result is compared against _match-1_
+and _match-2_ to find a match. If no string matches, then the server
+looks for the default xref:unlang/case.adoc[case] statement, which has no
+associated match.
+
+The matching is done via equality.  The `switch` statement is mostly
+syntactic sugar and is used to simplify the visual form of the
+configuration.  It is mostly equivalent to the following use of
+xref:unlang/if.adoc[if] statements:
+
+.Nearly equivalent syntax
+[source,unlang]
+----
+if (<expansion> == <match-1>) {
+    [ statements-1 ]
+}
+elsif (<expansion> == <match-2>) {
+    [ statements-2 ]
+}
+else {
+    [ statements-3 ]
+}
+----
+
+The only difference between the two forms is that for a `switch`
+statement, the _expansion_ is evaluated only once.  For the equivalent
+xref:unlang/if.adoc[if] statement, the _expansion_ is evaluated again for every
+xref:unlang/if.adoc[if].
+
+If a matching xref:unlang/case.adoc[case] is found, the statements within
+that xref:unlang/case.adoc[case] are evaluated. If no matching
+xref:unlang/case.adoc[case] is found, the `default` section is evaluated. The
+`default` section must not have any _match_ text.  If there is no
+`default`, then the `switch` statement behaves as if the `default`
+section was empty.
+
+For compatibility with version 3, and empty `case` statement can also
+be used instead of `default`.
+
+The _match_ text for the xref:unlang/case.adoc[case] statement can be an
+xref:unlang/attr.adoc[&Attribute-Name] or xref:type/index.adoc[data].
+
+No statement other than xref:unlang/case.adoc[case] can appear in a `switch`
+statement, and the xref:unlang/case.adoc[case] statement cannot appear outside of a
+`switch` statement.
+
+.Example
+[source,unlang]
+----
+switch &User-Name {
+    case "bob" {
+        reject
+    }
+
+    case {
+        ok
+    }
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

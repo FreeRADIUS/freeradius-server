@@ -17,7 +17,7 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/util/md4.h>
 
-fr_thread_local_setup(fr_md4_ctx_t *, md4_ctx); /* macro */
+static _Thread_local fr_md4_ctx_t *md4_ctx;
 
 /*
  *	If we have OpenSSL's EVP API available, then build wrapper functions.
@@ -76,7 +76,7 @@ static fr_md4_ctx_t *fr_md4_openssl_ctx_alloc(bool thread_local)
 			md_ctx = EVP_MD_CTX_new();
 			if (unlikely(!md_ctx)) {
 			oom:
-				fr_strerror_printf("Out of memory");
+				fr_strerror_const("Out of memory");
 				return NULL;
 			}
 			fr_thread_local_set_destructor(md4_ctx, _md4_ctx_openssl_free_on_exit, md_ctx);
@@ -414,6 +414,14 @@ static void fr_md4_local_update(fr_md4_ctx_t *ctx, uint8_t const *in, size_t inl
 {
 	uint32_t		count;
 	fr_md4_ctx_local_t	*ctx_local = talloc_get_type_abort(ctx, fr_md4_ctx_local_t);
+
+	/*
+	 *	Needed so we can calculate the zero
+	 *	length md4 hash correctly.
+	 *	ubsan doesn't like arithmetic on
+	 *	NULL pointers.
+	 */
+	if (!in) in = (uint8_t[]){ 0x00 };
 
 	/* Bytes already stored in ctx_local->buffer */
 	count = (uint32_t)((ctx_local->count[0] >> 3) & 0x3f);

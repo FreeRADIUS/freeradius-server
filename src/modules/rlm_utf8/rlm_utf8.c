@@ -29,24 +29,23 @@ RCSID("$Id$")
 /*
  *	Reject any non-UTF8 data.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_utf8_clean(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t		i, len;
-	VALUE_PAIR	*vp;
-	fr_cursor_t	cursor;
+	fr_pair_t	*vp;
 
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		if (vp->vp_type != FR_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->vp_length; i += len) {
 			len = fr_utf8_char(&vp->vp_octets[i], -1);
-			if (len == 0) return RLM_MODULE_FAIL;
+			if (len == 0) RETURN_MODULE_FAIL;
 		}
 	}
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
 /*
@@ -66,8 +65,5 @@ module_t rlm_utf8 = {
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_utf8_clean,
 		[MOD_PREACCT]		= mod_utf8_clean,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_utf8_clean
-#endif
 	},
 };

@@ -31,25 +31,29 @@ extern "C" {
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/pair.h>
 
 #include <talloc.h>
 
 ssize_t		trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		     	     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt);
+			     request_t *request, char const *fmt);
 
 int		trigger_exec_init(CONF_SECTION const *cs);
 
-int		trigger_exec(REQUEST *request, CONF_SECTION const *cs,
-			     char const *name, bool quench, VALUE_PAIR *args)
+int		trigger_exec(request_t *request, CONF_SECTION const *cs,
+			     char const *name, bool quench, fr_pair_list_t *args)
 			     CC_HINT(nonnull (3));
 
 void		trigger_exec_free(void);
 
 bool		trigger_enabled(void);
 
-VALUE_PAIR	*trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
+void		trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const *server, uint16_t port);
+
+typedef int (*fr_trigger_worker_t)(request_t *request, module_method_t process, void *ctx);
+extern fr_trigger_worker_t trigger_worker_request_add;
 
 #ifdef __cplusplus
 }

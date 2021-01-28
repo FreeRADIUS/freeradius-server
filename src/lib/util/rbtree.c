@@ -28,48 +28,35 @@ RCSID("$Id$")
 
 #include <pthread.h>
 
-/* Red-Black tree description */
-typedef enum {
-	BLACK,
-	RED
-} node_colour_t;
-
-struct rbnode_s {
-	rbnode_t		*left;		//!< Left child
-	rbnode_t		*right;		//!< Right child
-	rbnode_t		*parent;	//!< Parent
-	node_colour_t		colour;		//!< Node colour (BLACK, RED)
-	bool			being_freed;	//!< Disable frees if we're currently calling
-						///< a free function.
-	void			*data;		//!< data stored in node
-};
-
 #define NIL &sentinel	   /* all leafs are sentinels */
-static rbnode_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
+static fr_rb_node_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
 
 struct rbtree_s {
 #ifndef NDEBUG
 	uint32_t		magic;
 #endif
-	rbnode_t		*root;
-	int			num_elements;
-	rb_comparator_t		compare;
-	rb_free_t		free;
-	bool			replace;
-	bool			lock;
-	pthread_mutex_t		mutex;
-	bool			being_freed;	//!< Prevent double frees in talloc_destructor.
+	fr_rb_node_t		*root;		//!< Root of the rbtree.
+
+	size_t			offset;		//!< Where's the fr_rb_node_t is located in
+						///< the structure being inserted.
 	char const		*type;		//!< Talloc type to check elements against.
 
-	TALLOC_CTX		*node_ctx;	//!< Freed last by the destructor, to ensure
-						//!< the tree is still functional.
+	uint64_t		num_elements;	//!< How many elements are inside the tree.
+	fr_rb_cmp_t	compare;	//!< The comparator.
+	fr_rb_free_t		free;		//!< Free function called when a node is freed.
+
+	bool			replace;	//!< Allow replacements.
+	bool			lock;		//!< Ensure exclusive access.
+	pthread_mutex_t		mutex;		//!< Mutex to ensure exclusive access.
+
+	bool			being_freed;	//!< Prevent double frees in talloc_destructor.
 };
 
 #ifndef NDEBUG
 #  define RBTREE_MAGIC (0x5ad09c42)
 #endif
 
-static inline void rbtree_free_data(rbtree_t *tree, rbnode_t *node)
+static inline void rbtree_free_data(rbtree_t *tree, fr_rb_node_t *node)
 {
 	if (!tree->free || unlikely(node->being_freed)) return;
 	node->being_freed = true;
@@ -80,9 +67,9 @@ static inline void rbtree_free_data(rbtree_t *tree, rbnode_t *node)
 /** Walks the tree to delete all nodes Does NOT re-balance it!
  *
  */
-static void free_walker(rbtree_t *tree, rbnode_t *x)
+static void free_walker(rbtree_t *tree, fr_rb_node_t *x)
 {
-	(void) talloc_get_type_abort(x, rbnode_t);
+	(void) talloc_get_type_abort(x, fr_rb_node_t);
 
 	if (x->left != NIL) free_walker(tree, x->left);
 	if (x->right != NIL) free_walker(tree, x->right);
@@ -91,7 +78,7 @@ static void free_walker(rbtree_t *tree, rbnode_t *x)
 	talloc_free(x);
 }
 
-/** Wrapper function for rbtree_create to allow talloc node data to be freed
+/** Wrapper function for rbtree_alloc to allow talloc node data to be freed
  *
  * @param[in] data	Talloced data to free.
  */
@@ -152,24 +139,26 @@ static int _tree_free(rbtree_t *tree)
  *
  * @note Due to the node memory being allocated from a different pool to the main
  */
-rbtree_t *_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
-			 char const *type, rb_free_t node_free, int flags)
+rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx, fr_rb_cmp_t compare,
+			 char const *type, fr_rb_free_t node_free, int flags)
 {
 	rbtree_t *tree;
 
-	if (!compare) return NULL;
-
-	tree = talloc_zero(ctx, rbtree_t);
+	tree = talloc(ctx, rbtree_t);
 	if (!tree) return NULL;
 
+	*tree = (rbtree_t) {
 #ifndef NDEBUG
-	tree->magic = RBTREE_MAGIC;
+		.magic = RBTREE_MAGIC,
 #endif
-	tree->root = NIL;
-	tree->compare = compare;
-	tree->replace = (flags & RBTREE_FLAG_REPLACE) != 0 ? true : false;
-	tree->lock = (flags & RBTREE_FLAG_LOCK) != 0 ? true : false;
-	tree->node_ctx = talloc_new(tree);
+		.root = NIL,
+//		.offset = offset,
+		.type = type,
+		.compare = compare,
+		.replace = ((flags & RBTREE_FLAG_REPLACE) != 0),
+		.lock = ((flags & RBTREE_FLAG_LOCK) != 0),
+		.free = node_free
+	};
 	if (tree->lock) pthread_mutex_init(&tree->mutex, NULL);
 
 	talloc_set_destructor(tree, _tree_free);
@@ -182,10 +171,10 @@ rbtree_t *_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
 /** Rotate Node x to left
  *
  */
-static void rotate_left(rbtree_t *tree, rbnode_t *x)
+static void rotate_left(rbtree_t *tree, fr_rb_node_t *x)
 {
 
-	rbnode_t *y = x->right;
+	fr_rb_node_t *y = x->right;
 
 	/* establish x->right link */
 	x->right = y->left;
@@ -211,9 +200,9 @@ static void rotate_left(rbtree_t *tree, rbnode_t *x)
 /** Rotate Node x to right
  *
  */
-static void rotate_right(rbtree_t *tree, rbnode_t *x)
+static void rotate_right(rbtree_t *tree, fr_rb_node_t *x)
 {
-	rbnode_t *y = x->left;
+	fr_rb_node_t *y = x->left;
 
 	/* establish x->left link */
 	x->left = y->right;
@@ -239,13 +228,13 @@ static void rotate_right(rbtree_t *tree, rbnode_t *x)
 /** Maintain red-black tree balance after inserting node x
  *
  */
-static void insert_fixup(rbtree_t *tree, rbnode_t *x)
+static void insert_fixup(rbtree_t *tree, fr_rb_node_t *x)
 {
 	/* check RED-BLACK properties */
 	while ((x != tree->root) && (x->parent->colour == RED)) {
 		/* we have a violation */
 		if (x->parent == x->parent->parent->left) {
-			rbnode_t *y = x->parent->parent->right;
+			fr_rb_node_t *y = x->parent->parent->right;
 			if (y->colour == RED) {
 
 				/* uncle is RED */
@@ -270,7 +259,7 @@ static void insert_fixup(rbtree_t *tree, rbnode_t *x)
 		} else {
 
 			/* mirror image of above code */
-			rbnode_t *y = x->parent->parent->left;
+			fr_rb_node_t *y = x->parent->parent->left;
 			if (y->colour == RED) {
 
 				/* uncle is RED */
@@ -299,9 +288,9 @@ static void insert_fixup(rbtree_t *tree, rbnode_t *x)
 /** Insert an element into the tree
  *
  */
-rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
+fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
 {
-	rbnode_t *current, *parent, *x;
+	fr_rb_node_t *current, *parent, *x;
 
 	if (unlikely(tree->being_freed)) return NULL;
 
@@ -344,9 +333,9 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	}
 
 	/* setup new node */
-	x = talloc_zero(tree->node_ctx, rbnode_t);
+	x = talloc_zero(tree, fr_rb_node_t);
 	if (!x) {
-		fr_strerror_printf("No memory for new rbtree node");
+		fr_strerror_const("No memory for new rbtree node");
 		if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 		return NULL;
 	}
@@ -391,12 +380,12 @@ bool rbtree_insert(rbtree_t *tree, void const *data)
 /** Maintain RED-BLACK tree balance after deleting node x
  *
  */
-static void delete_fixup(rbtree_t *tree, rbnode_t *x, rbnode_t *parent)
+static void delete_fixup(rbtree_t *tree, fr_rb_node_t *x, fr_rb_node_t *parent)
 {
 
 	while (x != tree->root && x->colour == BLACK) {
 		if (x == parent->left) {
-			rbnode_t *w = parent->right;
+			fr_rb_node_t *w = parent->right;
 			if (w->colour == RED) {
 				w->colour = BLACK;
 				parent->colour = RED; /* parent != NIL? */
@@ -423,7 +412,7 @@ static void delete_fixup(rbtree_t *tree, rbnode_t *x, rbnode_t *parent)
 				x = tree->root;
 			}
 		} else {
-			rbnode_t *w = parent->left;
+			fr_rb_node_t *w = parent->left;
 			if (w->colour == RED) {
 				w->colour = BLACK;
 				parent->colour = RED; /* parent != NIL? */
@@ -457,10 +446,10 @@ static void delete_fixup(rbtree_t *tree, rbnode_t *x, rbnode_t *parent)
 /** Delete an element (z) from the tree
  *
  */
-static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
+static void rbtree_delete_internal(rbtree_t *tree, fr_rb_node_t *z, bool skiplock)
 {
-	rbnode_t *x, *y;
-	rbnode_t *parent;
+	fr_rb_node_t *x, *y;
+	fr_rb_node_t *parent;
 
 	if (!z || z == NIL) return;
 
@@ -508,7 +497,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 		}
 
 		/*
-		 *	The user structure in y->data MAy include a
+		 *	The user structure in y->data May include a
 		 *	pointer to y.  In that case, we CANNOT delete
 		 *	y.  Instead, we copy z (which is now in the
 		 *	tree) to y, and fix up the parent/child
@@ -542,7 +531,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 	}
 }
 
-void rbtree_delete(rbtree_t *tree, rbnode_t *z)
+void rbtree_delete(rbtree_t *tree, fr_rb_node_t *z)
 {
 	if (unlikely(tree->being_freed) || unlikely(z->being_freed)) return;
 
@@ -555,7 +544,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *z)
  */
 bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 {
-	rbnode_t *node;
+	fr_rb_node_t *node;
 
 	if (unlikely(tree->being_freed)) return false;
 
@@ -571,9 +560,9 @@ bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 /* Find user data, returning the node
  *
  */
-rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
+fr_rb_node_t *rbtree_find(rbtree_t *tree, void const *data)
 {
-	rbnode_t *current;
+	fr_rb_node_t *current;
 
 	if (unlikely(tree->being_freed)) return NULL;
 
@@ -598,10 +587,11 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 
 /** Find an element in the tree, returning the data, not the node
  *
+ * @hidecallergraph
  */
 void *rbtree_finddata(rbtree_t *tree, void const *data)
 {
-	rbnode_t *x;
+	fr_rb_node_t *x;
 
 	if (unlikely(tree->being_freed)) return NULL;
 
@@ -616,51 +606,51 @@ void *rbtree_finddata(rbtree_t *tree, void const *data)
  * We call ourselves recursively for each function, but that's OK,
  * as the stack is only log(N) deep, which is ~12 entries deep.
  */
-static int walk_node_pre_order(rbnode_t *x, rb_walker_t compare, void *uctx)
+static int walk_node_pre_order(fr_rb_node_t *x, fr_rb_walker_t compare, void *uctx)
 {
-	int rcode;
-	rbnode_t *left, *right;
+	int		ret;
+	fr_rb_node_t	*left, *right;
 
 	left = x->left;
 	right = x->right;
 
-	rcode = compare(x->data, uctx);
-	if (rcode != 0) return rcode;
+	ret = compare(x->data, uctx);
+	if (ret != 0) return ret;
 
 	if (left != NIL) {
-		rcode = walk_node_pre_order(left, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_pre_order(left, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	if (right != NIL) {
-		rcode = walk_node_pre_order(right, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_pre_order(right, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
-	return 0;		/* we know everything returned zero */
+	return 0;/* we know everything returned zero */
 }
 
 /** rbtree_in_order
  *
  */
-static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *uctx)
+static int walk_node_in_order(fr_rb_node_t *x, fr_rb_walker_t compare, void *uctx)
 {
-	int rcode;
-	rbnode_t *right;
+	int ret;
+	fr_rb_node_t *right;
 
 	if (x->left != NIL) {
-		rcode = walk_node_in_order(x->left, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_in_order(x->left, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	right = x->right;
 
-	rcode = compare(x->data, uctx);
-	if (rcode != 0) return rcode;
+	ret = compare(x->data, uctx);
+	if (ret != 0) return ret;
 
 	if (right != NIL) {
-		rcode = walk_node_in_order(right, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_in_order(right, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	return 0;		/* we know everything returned zero */
@@ -670,26 +660,25 @@ static int walk_node_in_order(rbnode_t *x, rb_walker_t compare, void *uctx)
 /** rbtree_post_order
  *
  */
-static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *uctx)
+static int walk_node_post_order(fr_rb_node_t *x, fr_rb_walker_t compare, void *uctx)
 {
-	int rcode;
+	int ret;
 
 	if (x->left != NIL) {
-		rcode = walk_node_post_order(x->left, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_post_order(x->left, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
 	if (x->right != NIL) {
-		rcode = walk_node_post_order(x->right, compare, uctx);
-		if (rcode != 0) return rcode;
+		ret = walk_node_post_order(x->right, compare, uctx);
+		if (ret != 0) return ret;
 	}
 
-	rcode = compare(x->data, uctx);
-	if (rcode != 0) return rcode;
+	ret = compare(x->data, uctx);
+	if (ret != 0) return ret;
 
 	return 0;		/* we know everything returned zero */
 }
-
 
 /** rbtree_delete_order
  *
@@ -704,10 +693,10 @@ static int walk_node_post_order(rbnode_t *x, rb_walker_t compare, void *uctx)
  *		1    - delete the node and stop walking
  *		2    - delete the node and continue walking
  */
-static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
+static int walk_delete_order(rbtree_t *tree, fr_rb_walker_t compare, void *uctx)
 {
-	rbnode_t *solid, *x;
-	int rcode = 0;
+	fr_rb_node_t *solid, *x;
+	int ret = 0;
 
 	/* Keep track of last node that refused deletion. */
 	solid = NIL;
@@ -719,14 +708,14 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
 			x = x->left;
 		}
 	visit:
-		rcode = compare(x->data, uctx);
-		if (rcode < 0) {
-			return rcode;
+		ret = compare(x->data, uctx);
+		if (ret < 0) {
+			return ret;
 		}
-		if (rcode) {
+		if (ret) {
 			rbtree_delete_internal(tree, x, true);
-			if (rcode != 2) {
-				return rcode;
+			if (ret != 2) {
+				return ret;
 			}
 		} else {
 			solid = x;
@@ -746,7 +735,7 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
 			x = x->parent;
 		}
 	}
-	return rcode;
+	return ret;
 }
 
 
@@ -757,9 +746,9 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *uctx)
  *	The compare function should return 0 to continue walking.
  *	Any other value stops the walk, and is returned.
  */
-int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *uctx)
+int rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, void *uctx)
 {
-	int rcode;
+	int ret;
 
 	if (tree->root == NIL) return 0;
 
@@ -767,28 +756,28 @@ int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *uct
 
 	switch (order) {
 	case RBTREE_PRE_ORDER:
-		rcode = walk_node_pre_order(tree->root, compare, uctx);
+		ret = walk_node_pre_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_IN_ORDER:
-		rcode = walk_node_in_order(tree->root, compare, uctx);
+		ret = walk_node_in_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_POST_ORDER:
-		rcode = walk_node_post_order(tree->root, compare, uctx);
+		ret = walk_node_post_order(tree->root, compare, uctx);
 		break;
 
 	case RBTREE_DELETE_ORDER:
-		rcode = walk_delete_order(tree, compare, uctx);
+		ret = walk_delete_order(tree, compare, uctx);
 		break;
 
 	default:
-		rcode = -1;
+		ret = -1;
 		break;
 	}
 
 	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
-	return rcode;
+	return ret;
 }
 
 uint32_t rbtree_num_elements(rbtree_t *tree)
@@ -819,7 +808,7 @@ static int _flatten_cb(void *data, void *uctx)
  * @return
  *	- The number of elements in the tree.
  */
-uint32_t rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, rb_order_t order)
+uint32_t rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, fr_rb_order_t order)
 {
 	uint32_t		num = rbtree_num_elements(tree);
 	rbtree_flatten_ctx_t	uctx;
@@ -841,7 +830,7 @@ uint32_t rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, rb_order_
 /*
  *	Given a Node, return the data.
  */
-void *rbtree_node2data(UNUSED rbtree_t *tree, rbnode_t *node)
+void *rbtree_node2data(UNUSED rbtree_t *tree, fr_rb_node_t *node)
 {
 	if (!node) return NULL;
 

@@ -1,0 +1,19 @@
+
+#
+#  Tests for parsing conditional expressions.
+#
+#  $Id$
+#
+
+proto-dictionary dhcpv6
+tmpl-rules allow_unresolved=no allow_unknown=no
+
+condition &IA-NA.Options.Tmp-String-0 == 'foo'
+match &IA-NA.Options.Tmp-String-0 == 'foo'
+
+# Seen in the wild.  Array subscript on child produces an error
+condition &IA-NA.Options.IA-Addr[0].IPv6-Address == ::
+match &IA-NA.Options.IA-Addr[0].IPv6-Address == ::
+
+count
+match 6

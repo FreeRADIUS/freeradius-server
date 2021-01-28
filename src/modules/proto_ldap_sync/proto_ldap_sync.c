@@ -32,7 +32,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/main_loop.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <sys/socket.h>
 
 #include "sync.h"
@@ -93,12 +93,12 @@ typedef enum {
 } ldap_sync_packet_code_t;
 
 static fr_table_num_sorted_t const ldap_sync_code_table[] = {
-	{ "cookie-load",	LDAP_SYNC_CODE_COOKIE_LOAD	},
-	{ "cookie-store",	LDAP_SYNC_CODE_COOKIE_STORE	},
-	{ "entry-add",		LDAP_SYNC_CODE_ADD		},
-	{ "entry-delete",	LDAP_SYNC_CODE_DELETE		},
-	{ "entry-modify",	LDAP_SYNC_CODE_MODIFY		},
-	{ "entry-present",	LDAP_SYNC_CODE_PRESENT		}
+	{ L("cookie-load"),	LDAP_SYNC_CODE_COOKIE_LOAD	},
+	{ L("cookie-store"),	LDAP_SYNC_CODE_COOKIE_STORE	},
+	{ L("entry-add"),		LDAP_SYNC_CODE_ADD		},
+	{ L("entry-delete"),	LDAP_SYNC_CODE_DELETE		},
+	{ L("entry-modify"),	LDAP_SYNC_CODE_MODIFY		},
+	{ L("entry-present"),	LDAP_SYNC_CODE_PRESENT		}
 };
 static size_t ldap_sync_code_table_len = NUM_ELEMENTS(ldap_sync_code_table);
 
@@ -228,10 +228,10 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ NULL }
 };
 
-static REQUEST *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
+static request_t *request_setup(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED fr_radius_packet_t *packet,
 		       UNUSED RADCLIENT *client, UNUSED RAD_REQUEST_FUNP fun)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return NULL;
 }
 
@@ -248,9 +248,9 @@ static int fr_dict_enum_from_name_number(fr_dict_attr_t const *da, fr_table_num_
 	fr_table_num_sorted_t const	*p;
 	fr_value_box_t		value = { .type = FR_TYPE_INT32 };
 
-	for (p = table; p->name; p++) {
+	for (p = table; p->name.str; p++) {
 		value.vb_int32 = p->value;
-		if (fr_dict_enum_add_name(fr_dict_attr_unconst(da), p->name, &value, true, false) < 0) return -1;
+		if (fr_dict_attr_enum_add_name(fr_dict_attr_unconst(da), p->name.str, &value, true, false) < 0) return -1;
 	}
 
 	return 0;
@@ -298,38 +298,38 @@ static int proto_ldap_socket_print(rad_listen_t const *listen, char *buffer, siz
  *
  * @param[in] request	The current request.
  * @param[in] packet	containing attributes from the entry we received.
+ * @param[in] list	of pairs to print.
  * @param[in] received	Should always be true.
  */
-static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+static void proto_ldap_packet_debug(request_t *request,
+				    fr_radius_packet_t *packet, UNUSED fr_pair_list_t *list, bool received)
 {
-	char src_ipaddr[FR_IPADDR_STRLEN];
-	char dst_ipaddr[FR_IPADDR_STRLEN];
-
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
 
-	RDEBUG("%s %s Sync Id %i from %s%s%s:%i to %s%s%s:%i",
+	RDEBUG("%s %s Sync Id %i from %s%pV%s:%i to %s%pV%s:%i",
 	       received ? "Received" : "Sent",
 	       fr_table_str_by_value(ldap_sync_code_table, packet->code, "<INVALID>"),
 	       packet->id,
-	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-	       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->src_port,
-	       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-	       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-	       packet->dst_port);
+	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+	       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
+	       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->socket.inet.src_port,
+	       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+	       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
+	       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->socket.inet.dst_port);
 
 	return;
 }
 
+#if 0
 /** Very simple state machine to process requests
  *
  * Unlike normal protocol requests which may have multiple distinct states,
  * we really only have REQUEST_INIT and REQUEST_RECV phases.
  *
- * Conversion of LDAPMessage to VALUE_PAIR structs is done in the listener
+ * Conversion of LDAPMessage to fr_pair_t structs is done in the listener
  * because we cannot easily duplicate the LDAPMessage to send it across to
  * the worker for parsing.
  *
@@ -340,7 +340,7 @@ static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, boo
  * @param[in] action	If something has signalled that the request should stop
  *			being processed.
  */
-static void request_running(REQUEST *request, fr_state_signal_t action)
+static void request_running(request_t *request, fr_state_signal_t action)
 {
 	CONF_SECTION	*unlang;
 	char const	*verb;
@@ -361,8 +361,8 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, true);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, &request->request_pairs, true);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 
 		request->server_cs = request->listener->server_cs;
 		request->component = "ldap";
@@ -399,7 +399,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			return;
 		}
 		unlang = cf_section_find(request->server_cs, verb, state);
@@ -414,10 +414,12 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 
 		RDEBUG("Running '%s %s' from file %s", cf_section_name1(unlang),
 		       cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
@@ -425,26 +427,25 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 
 		if (rcode == RLM_MODULE_YIELD) return;
+		FALL_THROUGH;
 
-		/* FALL-THROUGH */
 	default:
 	done:
 		switch (rcode) {
 		case RLM_MODULE_UPDATED:
 		case RLM_MODULE_OK:
-		{
-
-		}
+			break;
 
 		default:
 			break;
 		}
-		rad_assert(request->log.unlang_indent == 0);
 		//request_delete(request);
 		break;
 	}
 }
+#endif
 
+#if 0
 /** Process events while the request is queued.
  *
  *  \dot
@@ -458,14 +459,14 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
  * @param[in] action	If something has signalled that the request should stop
  *			being processed.
  */
-static void request_queued(REQUEST *request, fr_state_signal_t action)
+static void request_queued(request_t *request, fr_state_signal_t action)
 {
 	REQUEST_VERIFY(request);
 
 	switch (action) {
 	case FR_SIGNAL_RUN:
-		request->process = request_running;
-		request->process(request, action);
+//		request->process = request_running;
+//		request->process(request, action);
 		break;
 
 	case FR_SIGNAL_CANCEL:
@@ -477,6 +478,7 @@ static void request_queued(REQUEST *request, fr_state_signal_t action)
 		break;
 	}
 }
+#endif
 
 /** Setup an LDAP sync request
  *
@@ -492,30 +494,30 @@ static void request_queued(REQUEST *request, fr_state_signal_t action)
  *	- A new request on success.
  *	- NULL on error.
  */
-static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t *inst, int sync_id)
+static request_t *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t *inst, int sync_id)
 {
 	TALLOC_CTX		*ctx;
-	RADIUS_PACKET		*packet;
-	REQUEST			*request;
+	fr_radius_packet_t		*packet;
+	request_t			*request;
 
 	ctx = talloc_pool(NULL, main_config->talloc_pool_size);
 	if (!ctx) return NULL;
 	talloc_set_name_const(ctx, "ldap_inst_pool");
 
-	packet = fr_radius_alloc(ctx, false);
-	packet->sockfd = listen->fd;
+	packet = fr_radius_packet_alloc(ctx, false);
+	packet->socket.fd = listen->fd;
 	packet->id = sync_id;
-	packet->src_ipaddr = inst->dst_ipaddr;
-	packet->src_port = inst->dst_port;
-	packet->dst_ipaddr = inst->src_ipaddr;
-	packet->dst_port = inst->src_port;
+	packet->socket.inet.src_ipaddr = inst->dst_ipaddr;
+	packet->socket.inet.src_port = inst->dst_port;
+	packet->socket.inet.dst_ipaddr = inst->src_ipaddr;
+	packet->socket.inet.dst_port = inst->src_port;
 
 	packet->timestamp = fr_time();
 
 	request = request_setup(ctx, listen, packet, inst->client, NULL);
 	if (!request) return NULL;
 
-	request->process = request_queued;
+//	request->process = request_queued;
 
 	return request;
 }
@@ -533,23 +535,23 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int proto_ldap_attributes_add(REQUEST *request, sync_config_t const *config)
+static int proto_ldap_attributes_add(request_t *request, sync_config_t const *config)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	MEM(pair_add_request(&vp, attr_ldap_sync_dn) == 0);
-	fr_pair_value_strcpy(vp, config->base_dn);
+	fr_pair_value_strdup(vp, config->base_dn);
 
 	if (config->filter) {
 		MEM(pair_update_request(&vp, attr_ldap_sync_filter) >= 0);
-		fr_pair_value_strcpy(vp, config->filter);
+		fr_pair_value_strdup(vp, config->filter);
 	}
 	if (config->attrs) {
 		char const *attrs_p;
 
 		for (attrs_p = *config->attrs; *attrs_p; attrs_p++) {
 			MEM(pair_add_request(&vp, attr_ldap_sync_attr) == 0);
-			fr_pair_value_strcpy(vp, attrs_p);
+			fr_pair_value_strdup(vp, attrs_p);
 		}
 	}
 
@@ -682,8 +684,8 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_connection_t *conn, sync_conf
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
-	REQUEST			*request;
-	VALUE_PAIR		*vp;
+	request_t			*request;
+	fr_pair_t		*vp;
 
 	request = proto_ldap_request_setup(listen, inst, sync_id);
 	if (!request) return -1;
@@ -691,7 +693,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_connection_t *conn, sync_conf
 	proto_ldap_attributes_add(request, config);
 
 	MEM(pair_update_request(&vp, attr_ldap_sync_cookie) >= 0);
-	fr_pair_value_memcpy(vp, cookie, talloc_array_length(cookie), true);
+	fr_pair_value_memdup(vp, cookie, talloc_array_length(cookie), true);
 
 	request->packet->code = LDAP_SYNC_CODE_COOKIE_STORE;
 
@@ -725,7 +727,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
 	fr_ldap_map_exp_t	expanded;
-	REQUEST			*request;
+	request_t			*request;
 
 	request = proto_ldap_request_setup(listen, inst, sync_id);
 	if (!request) return -1;
@@ -738,7 +740,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 	 */
 	if (msg) {
 		char *entry_dn;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		entry_dn = ldap_get_dn(conn->handle, msg);
 
@@ -746,7 +748,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 		ldap_memfree(entry_dn);
 
 		MEM(pair_update_request(&vp, attr_ldap_sync_entry_uuid) >= 0);
-		fr_pair_value_memcpy(vp, uuid, SYNC_UUID_LENGTH, true);
+		fr_pair_value_memdup(vp, uuid, SYNC_UUID_LENGTH, true);
 	}
 
 	/*
@@ -817,7 +819,7 @@ static RADCLIENT *proto_ldap_fake_client_alloc(proto_ldap_inst_t *inst)
 static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_t *listen, sync_config_t const *config)
 {
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
-	REQUEST			*request;
+	request_t			*request;
 	CONF_SECTION		*unlang;
 	int			ret = 0;
 
@@ -838,16 +840,16 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 
 	*cookie = NULL;
 
-	rcode = unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP);
+	rcode = unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, true);
 	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	{
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
-		vp = fr_pair_find_by_da(request->reply->vps, attr_ldap_sync_cookie, TAG_ANY);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_ldap_sync_cookie);
 		if (!vp) {
-			if (config->allow_refresh) RDEBUG2("No &reply:Cookie attribute found.  All entries matching "
+			if (config->allow_refresh) RDEBUG2("No &reply.Cookie attribute found.  All entries matching "
 							   "sync configuration will be returned");
 			ret = 1;
 			goto finish;
@@ -1045,7 +1047,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 		ERROR("Failed getting socket information: %s", fr_syserror(errno));
 		goto error;
 	}
-	fr_ipaddr_from_sockaddr(&addr, len, &inst->src_ipaddr, &inst->src_port);
+	fr_ipaddr_from_sockaddr(&inst->src_ipaddr, &inst->src_port, &addr, len);
 
 	if (getpeername(listen->fd, (struct sockaddr *)&addr, &len) < 0) {
 		ERROR("Failed getting socket information: %s", fr_syserror(errno));
@@ -1055,7 +1057,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Allocate a fake client to use in requests
 	 */
-	fr_ipaddr_from_sockaddr(&addr, len, &inst->dst_ipaddr, &inst->dst_port);
+	fr_ipaddr_from_sockaddr(&inst->dst_ipaddr, &inst->dst_port, &addr, len);
 	inst->client = proto_ldap_fake_client_alloc(inst);
 
 	DEBUG2("Starting sync(s)");
@@ -1105,7 +1107,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 
 	talloc_set_type(inst, proto_ldap_inst_t);
 
-	rad_assert(inst->handle_config.server_str[0]);
+	fr_assert(inst->handle_config.server_str[0]);
 	inst->handle_config.name = talloc_typed_asprintf(inst, "proto_ldap_conn (%s)", listen->server);
 
 	memcpy(&inst->handle_config.server, &inst->handle_config.server_str[0], sizeof(inst->handle_config.server));
@@ -1205,32 +1207,32 @@ static int ldap_compile_section(CONF_SECTION *server_cs, char const *name1, char
  */
 static int proto_ldap_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
-	int rcode;
+	int ret;
 	int found = 0;
 
-	rcode = ldap_compile_section(server_cs, "load", "Cookie", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "load", "Cookie", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "store", "Cookie", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "store", "Cookie", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Add", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Add", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Present", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Present", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Delete", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Delete", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
-	rcode = ldap_compile_section(server_cs, "recv", "Modify", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-	if (rcode > 0) found++;
+	ret = ldap_compile_section(server_cs, "recv", "Modify", MOD_AUTHORIZE);
+	if (ret < 0) return ret;
+	if (ret > 0) found++;
 
 	if (found == 0) {
 		cf_log_err(server_cs, "At least one of 'recv [Present|Add|Delete|Modify] { ... }' "

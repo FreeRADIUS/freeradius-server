@@ -465,7 +465,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 
 	if (CRYPTO_memcmp(mac_a, autn + 8, 8) != 0) {
 		FR_PROTO_HEX_DUMP(autn + 8, 8, "Received MAC_A");
-		fr_strerror_printf("MAC mismatch");
+		fr_strerror_const("MAC mismatch");
 		return -1;
 	}
 

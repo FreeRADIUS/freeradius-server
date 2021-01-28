@@ -210,7 +210,7 @@ typedef struct {
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	xlat_escape_t	sql_escape_func;
+	xlat_escape_legacy_t	sql_escape_func;
 } rlm_sql_driver_t;
 
 struct sql_inst {
@@ -226,11 +226,11 @@ struct sql_inst {
 	dl_module_inst_t		*driver_inst;		//!< Driver's instance data.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
-	int (*sql_set_user)(rlm_sql_t const *inst, REQUEST *request, char const *username);
-	xlat_escape_t sql_escape_func;
-	sql_rcode_t (*sql_query)(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
-	sql_rcode_t (*sql_select_query)(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
-	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
+	int (*sql_set_user)(rlm_sql_t const *inst, request_t *request, char const *username);
+	xlat_escape_legacy_t sql_escape_func;
+	sql_rcode_t (*sql_query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t (*sql_select_query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
@@ -243,16 +243,16 @@ struct rlm_sql_grouplist_s {
 };
 
 void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
-int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
+int		sql_pair_list_afrom_str(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *out, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
-int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
+int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, fr_pair_list_t *out, char const *query);
 int		sql_dict_init(rlm_sql_handle_t *handle);
-void 		rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
-sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
-sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
-int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
-void		rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
-int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username);
+void 		rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
+sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
+void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
+int		sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username);
 
 /*
  *	sql_state.c

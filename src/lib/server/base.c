@@ -39,14 +39,15 @@ RCSID("$Id$")
 int server_init(CONF_SECTION *cs)
 {
 	/*
+	 *	Load dictionary attributes used
+	 *	for requests.
+	 */
+	if (request_global_init() < 0) return -1;
+
+	/*
 	 *	Initialise the trigger rate limiting tree
 	 */
 	if (trigger_exec_init(cs) < 0) return -1;
-
-	/*
-	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
-	 */
-	if (xlat_init() < 0) return -1;
 
 	/*
 	 *	Instantiate "permanent" paircmps
@@ -97,10 +98,6 @@ int server_init(CONF_SECTION *cs)
  */
 void server_free(void)
 {
-	/*
-	 *	Free password dictionaries
-	 */
-	password_free();
 
 	/*
 	 *	Free xlat instance data, and call any detach methods
@@ -123,6 +120,11 @@ void server_free(void)
 	xlat_free();
 
 	/*
+	 *	Free password dictionaries
+	 */
+	password_free();
+
+	/*
 	 *	The only maps remaining are the ones registered by the server core.
 	 */
 	map_proc_free();
@@ -131,4 +133,15 @@ void server_free(void)
 	 *	Free information associated with the virtual servers.
 	 */
 	virtual_servers_free();
+
+	/*
+	 *	Now we're sure no more triggers can fire, free the
+	 * 	trigger tree.
+	 */
+	trigger_exec_free();
+
+	/*
+	 *	Free the internal dictionaries the request uses
+	 */
+	request_global_free();
 }

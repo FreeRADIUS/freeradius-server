@@ -23,7 +23,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/md5.h>
 
 #include "eap_md5.h"
@@ -40,33 +40,33 @@ static fr_dict_attr_t const *attr_cleartext_password;
 
 extern fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
-	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ NULL }
 };
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	MD5_PACKET		*packet;
 	MD5_PACKET		*reply;
-	VALUE_PAIR		*known_good;
+	fr_pair_t		*known_good;
 	fr_dict_attr_t	const	*allowed_passwords[] = { attr_cleartext_password };
 	bool			ephemeral;
 
 	/*
-	 *	Get the Cleartext-Password for this user.
+	 *	Get the Password.Cleartext for this user.
 	 */
-	rad_assert(eap_session->request != NULL);
+	fr_assert(eap_session->request != NULL);
 
 	known_good = password_find(&ephemeral, request, request->parent,
 				   allowed_passwords, NUM_ELEMENTS(allowed_passwords),
 				   false);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -74,8 +74,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	 */
 	packet = eap_md5_extract(eap_session->this_round);
 	if (!packet) {
-		if (ephemeral) talloc_list_free(&known_good);
-		return RLM_MODULE_INVALID;
+		if (ephemeral) TALLOC_FREE(known_good);
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -102,21 +102,21 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	eap_md5_compose(eap_session->this_round, reply);
 	talloc_free(packet);
 
-	if (ephemeral) talloc_list_free(&known_good);
+	if (ephemeral) TALLOC_FREE(known_good);
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	MD5_PACKET	*reply;
 	int		i;
 
-	rad_assert(eap_session != NULL);
+	fr_assert(eap_session != NULL);
 
 	/*
 	 *	Allocate an EAP-MD5 packet.
@@ -161,7 +161,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, 
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*

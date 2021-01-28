@@ -59,7 +59,7 @@ AC_DEFUN([AX_CC_STD_C11],[
 ])
 
 dnl #
-dnl #  Check if we have the choose expr builtin
+dnl #  Check if we have the _Generic construct
 dnl #
 AC_DEFUN([AX_CC_HAVE_C11_GENERIC],
 [
@@ -290,7 +290,7 @@ fi
 dnl #
 dnl #  Check if we have the bwsap64 builtin
 dnl #
-AC_DEFUN([AX_CC_HAVE_BUILTIN_BSWAP64],
+AC_DEFUN([AX_CC_BUILTIN_BSWAP64],
 [
 AC_CACHE_CHECK([for __builtin_bswap64 support in compiler], [ax_cv_cc_builtin_bswap64],[
   AC_RUN_IFELSE(
@@ -307,7 +307,31 @@ AC_CACHE_CHECK([for __builtin_bswap64 support in compiler], [ax_cv_cc_builtin_bs
   )
 ])
 if test "x$ax_cv_cc_builtin_bswap64" = "xyes"; then
-  AC_DEFINE([HAVE_BUILTIN_BSWAP_64],1,[Define if the compiler supports __builtin_bswap64])
+  AC_DEFINE([HAVE_BUILTIN_BSWAP64],1,[Define if the compiler supports __builtin_bswap64])
+fi
+])
+
+dnl #
+dnl #  Check if we have the clzll builtin
+dnl #
+AC_DEFUN([AX_CC_BUILTIN_CLZLL],
+[
+AC_CACHE_CHECK([for __builtin_clzll support in compiler], [ax_cv_cc_builtin_clzll],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE([
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return (__builtin_clzll(0) - (sizeof(unsigned long long) * 8));
+        }
+      ])
+    ],
+    [ax_cv_cc_builtin_clzll=yes],
+    [ax_cv_cc_builtin_clzll=no]
+  )
+])
+if test "x$ax_cv_cc_builtin_clzll" = "xyes"; then
+  AC_DEFINE([HAVE_BUILTIN_CLZLL],1,[Define if the compiler supports __builtin_clzll])
 fi
 ])
 

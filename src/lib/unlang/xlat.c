@@ -26,19 +26,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
-#include <freeradius-devel/server/xlat_priv.h>
+#include <freeradius-devel/unlang/xlat_priv.h>
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
-
-/** Hold the result of an inline xlat expansion
- *
- */
-typedef struct {
-	fr_value_box_t		*result;			//!< Where to store the result of the
-								///< xlat expansion. This is usually discarded.
-} unlang_frame_state_xlat_inline_t;
 
 /** State of an xlat expansion
  *
@@ -46,6 +38,7 @@ typedef struct {
  */
 typedef struct {
 	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
+	TALLOC_CTX		*event_ctx;			//!< for temporary events
 	xlat_exp_t const	*exp;
 	fr_cursor_t		values;				//!< Values aggregated so far.
 
@@ -65,7 +58,7 @@ typedef struct {
  *
  */
 typedef struct {
-	REQUEST				*request;			//!< Request this event pertains to.
+	request_t				*request;			//!< Request this event pertains to.
 	int				fd;				//!< File descriptor to wait on.
 	fr_unlang_xlat_timeout_t	timeout;			//!< Function to call on timeout.
 	fr_unlang_xlat_fd_event_t	fd_read;			//!< Function to call when FD is readable.
@@ -138,11 +131,22 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_tim
 	ev->timeout(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
 
 	/* Remove old references from the request */
-	if (!fr_cond_assert(request_data_get(ev->request, ev->ctx, -1) == ev)) return;
 	talloc_free(ev);
 }
 
-int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
+/** Add a timeout for an xlat handler
+ *
+ * @note The timeout is automatically removed when the xlat is cancelled or resumed.
+ *
+ * @param[in] request	the request
+ * @param[in] callback	to run when the timeout hits
+ * @param[in] ctx	passed to the callback
+ * @param[in] when	when the timeout fires
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 				  void const *ctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -150,16 +154,18 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 	unlang_xlat_event_t		*ev;
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
-	rad_assert(stack->depth > 0);
-	rad_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
+	fr_assert(stack->depth > 0);
+	fr_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
 
-	ev = talloc_zero(request, unlang_xlat_event_t);
+	if (!state->event_ctx) MEM(state->event_ctx = talloc_zero(state, bool));
+
+	ev = talloc_zero(state->event_ctx, unlang_xlat_event_t);
 	if (!ev) return -1;
 
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout = callback;
-	ev->inst = state->exp->inst;
+	ev->inst = state->exp->call.inst;
 	ev->thread = xlat_thread_instance_find(state->exp);
 	ev->ctx = ctx;
 
@@ -169,31 +175,9 @@ int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t cal
 		return -1;
 	}
 
-	(void) request_data_talloc_add(request, ctx, -1, unlang_xlat_event_t, ev, true, false, false);
-
 	talloc_set_destructor(ev, _unlang_xlat_event_free);
 
 	return 0;
-}
-
-/** Remove a pending timer
- *
- * @param[in] request	The current request.
- * @param[in] ctx	that was provided to #unlang_xlat_event_timeout_add.
- * @return
- *	- 0 if there was a pending timer and it was removed.
- *      - -1 if there was no pending timer.
- */
-int unlang_xlat_event_timeout_delete(REQUEST *request, void *ctx)
-{
-	unlang_xlat_event_t *xev = request_data_get(request, ctx, -1);
-
-	if (xev) {
-		talloc_free(xev);
-		return 0;
-	}
-
-	return -1;
 }
 
 /** Push a pre-compiled xlat onto the stack for evaluation
@@ -204,9 +188,12 @@ int unlang_xlat_event_timeout_delete(REQUEST *request, void *ctx)
  * @param[in] exp		node to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
-		      REQUEST *request, xlat_exp_t const *exp, bool top_frame)
+int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+		     request_t *request, xlat_exp_t const *exp, bool top_frame)
 {
 
 	unlang_frame_state_xlat_t	*state;
@@ -216,7 +203,9 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push a new xlat eval frame onto the stack
 	 */
-	unlang_interpret_push(request, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	if (unlang_interpret_push(request, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+		return -1;
+	}
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -228,6 +217,8 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	fr_cursor_talloc_init(&state->values, out, fr_value_box_t);
 
 	state->ctx = ctx;
+
+	return 0;
 }
 
 /** Stub function for calling the xlat interpreter
@@ -235,7 +226,7 @@ void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -252,7 +243,7 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 
 	switch (xa) {
 	case XLAT_ACTION_PUSH_CHILD:
-		rad_assert(child);
+		fr_assert(child);
 
 		repeatable_set(frame);
 
@@ -262,7 +253,10 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 		 *	multiple sibling nodes.
 		 */
 		talloc_list_free(&state->rhead);
-		unlang_xlat_push(state->ctx, &state->rhead, request, child, false);
+		if (unlang_xlat_push(state->ctx, &state->rhead, request, child, false) < 0) {
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
@@ -273,17 +267,17 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
-		*presult = RLM_MODULE_OK;
+		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 		fail:
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	rad_assert(0);
-	*presult = RLM_MODULE_FAIL;
+	fr_assert(0);
+	*p_result = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -297,11 +291,18 @@ static unlang_action_t unlang_xlat(REQUEST *request, rlm_rcode_t *presult)
  * @param[in] request		The current request.
  * @param[in] action		What the request should do (the type of signal).
  */
-static void unlang_xlat_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_xlat_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+
+	/*
+	 *	Delete timers, etc. when the xlat is cancelled.
+	 */
+	if (action == FR_SIGNAL_CANCEL) {
+		TALLOC_FREE(state->event_ctx);
+	}
 
 	if (!state->signal) return;
 
@@ -310,24 +311,29 @@ static void unlang_xlat_signal(REQUEST *request, fr_state_signal_t action)
 
 /** Called when we're ready to resume processing the request
  *
- * @param[in] request	to resume processing.
- * @param[in] presult	the result of the xlat function.
+ * @param[in] p_result	the result of the xlat function.
  *			  - RLM_MODULE_OK on success.
  *			  - RLM_MODULE_FAIL on failure.
  *			  - RLM_MODULE_YIELD if additional asynchronous
  *			    operations need to be performed.
+ * @param[in] request	to resume processing.
  * @return
  *	- UNLANG_ACTION_YIELD	if yielding.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
-static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 
-	rad_assert(state->resume != NULL);
+	fr_assert(state->resume != NULL);
+
+	/*
+	 *	Delete timers, etc. when the xlat is resumed.
+	 */
+	TALLOC_FREE(state->event_ctx);
 
 	xa = xlat_frame_eval_resume(state->ctx, &state->values,
 				    state->resume, state->exp,
@@ -337,22 +343,22 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
-		*presult = RLM_MODULE_OK;
+		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_PUSH_CHILD:
-		rad_assert(0);
-		/* FALL-THROUGH */
+		fr_assert(0);
+		FALL_THROUGH;
 
 	case XLAT_ACTION_FAIL:
-		*presult = RLM_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	/* DON'T SET DEFAULT */
 	}
 
-	rad_assert(0);		/* Garbage xlat action */
+	fr_assert(0);		/* Garbage xlat action */
 
-	*presult = RLM_MODULE_FAIL;
+	*p_result = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -367,12 +373,12 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
  *	A common pattern is to use ``return unlang_xlat_yield(...)``.
  *
  * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_interpret_resumable().
+ * @param[in] resume		Called on unlang_interpret_mark_resumable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] rctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
  */
-xlat_action_t unlang_xlat_yield(REQUEST *request,
+xlat_action_t unlang_xlat_yield(request_t *request,
 				xlat_func_resume_t resume, xlat_func_signal_t signal,
 				void *rctx)
 {
@@ -380,44 +386,18 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
-	frame->interpret = unlang_xlat_resume;
+	frame->process = unlang_xlat_resume;
 
 	/*
 	 *	Over-ride whatever functions were there before.
 	 */
 	state->resume = resume;
-	state->signal =signal;
+	state->signal = signal;
 	state->rctx = rctx;
 
 	return XLAT_ACTION_YIELD;
 }
 
-/** Evaluates "naked" xlats in the config
- *
- */
-static unlang_action_t unlang_xlat_inline(REQUEST *request, UNUSED rlm_rcode_t *presult)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
-
-	if (!mx->exec) {
-		TALLOC_CTX *pool;
-		unlang_frame_state_xlat_inline_t *state;
-
-		MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_inline_t));
-		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
-
-		unlang_xlat_push(pool, &state->result, request, mx->exp, false);
-		return UNLANG_ACTION_PUSHED_CHILD;
-	} else {
-		RDEBUG2("`%s`", mx->xlat_name);
-		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
-				    false, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
-		return UNLANG_ACTION_EXECUTE_NEXT;
-	}
-}
 
 /** Register xlat operation with the interpreter
  *
@@ -432,13 +412,5 @@ void unlang_xlat_init(void)
 				.debug_braces = false,
 				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
 				.frame_state_name = "unlang_frame_state_xlat_t",
-			   });
-
-
-	unlang_register(UNLANG_TYPE_XLAT_INLINE,
-			   &(unlang_op_t){
-				.name = "xlat_inline",
-				.interpret = unlang_xlat_inline,
-				.debug_braces = false
 			   });
 }

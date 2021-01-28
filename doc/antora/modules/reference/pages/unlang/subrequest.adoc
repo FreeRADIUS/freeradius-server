@@ -1,0 +1,124 @@
+= The subrequest Statement
+
+.Syntax
+[source,unlang]
+----
+subrequest <type> {
+    [ statements ]
+}
+----
+
+The `subrequest` keyword creates a child request.  The child request
+is empty, and contains no attributes.  Attributes in the child can be
+copied from the parent via the xref:unlang/update.adoc[update] keyword.
+Please see the xref:unlang/list.adoc[list] syntax for a description of how to
+refer to parent requests.
+
+<type>:: The type of the child request being created.
++
+The _<type>_ field is a either a packet name such as `Access-Request`,
+or a protocol name followed by a packet name, such as
+`dhcpv4.Discover`.  Please see the protocol dictionaries for a
+complete list of packet types for each protocol.
++
+The _<type>_ field cannot be a dynamic expansion.
++
+The _<type> field can, however, be an attribute reference.  When an
+attribute reference is used, the attribute must be of an integer type
+(8, 16, 32, or 64-bit), or of type `string`.  Integer types are
+resolved to known / allowed values of the `Packet-Type` attribute.
+String types are resolved to named values for the `Packet-Type`
+attribute.
++
+When the _<type>_ field is an attribute reference, it is not
+possible to change the dictionary.
+
+[ statements ]:: The `unlang` commands which will be executed.
+
+The child request executes the statements inside of the `subrequest`
+section.  When the child request has finished execution, it is freed.
+The return code of the `subrequest` section is the return code from
+the last statement that was executed.
+
+The `subrequest` keyword allows the server to receive one type of
+packet, and then to create a different type of packet.  For example,
+the server can receive an `Accounting-Request` packet, and then create
+a child request that is a `Disconnect-Request`.  That child request can then
+be sent to a NAS in order to disconnect a user.
+
+In previous versions of the server, child requests could be created only
+via the `update coa` syntax.  The `subrequest` keyword is much more
+powerful than the previous functionality.  It can be used anywhere,
+and can create any kind of packet.
+
+.Example
+[source,unlang]
+----
+subrequest Disconnect-Request {
+    update request {
+        &User-Name := &parent.request.User-Name
+        &NAS-IP-Address := &parent.request.NAS-IP-Address
+        &NAS-Port := &parent.request.NAS-Port
+        &Acct-Session-Id := &parent.request.Acct-Session-Id
+    }
+
+    radius
+}
+----
+
+== Changing Protocols
+
+The `subrequest` keyword can also be used to change protocols.  For
+example, the server can receive a RADIUS `Access-Request`, and then
+create a DHCPv4 packet of type `Discover`.  Note that when the
+protocol changes, the attributes in the `subrequest` section are
+parsed in the context of the new protocol.
+
+.Example
+[source,unlang]
+----
+subrequest dhcpv4.Discover {
+    update request {
+        &Your-IP-Address := &parent.request.Framed-IP-Address
+        ...
+    }
+
+    ...
+}
+----
+
+== Subrequests are Synchronous
+
+Execution of the parent request is paused while the child request is
+running.  The parent request continues execution once the child request
+has finished.
+
+In some cases, it is useful to let the child request continue execution
+independently of the parent request.  In the example given above,
+sending a `Disconnect-Request` packet may result in a multiple-second
+delay the NAS does not respond quickly, due to retransmits.
+
+A child request can be made asynchronous by using the
+xref:unlang/detach.adoc[detach] keyword.  Once a child request is detached
+from the parent, the parent can continue execution independently of
+the child.  However, once a child request is detached from the parent
+request, the child can no longer access any attributes in the parent.
+
+.Example
+[source,unlang]
+----
+subrequest Disconnect-Request {
+    update request {
+        &User-Name := &parent.request.User-Name
+        &NAS-IP-Address := &parent.request.NAS-IP-Address
+        &NAS-Port := &parent.request.NAS-Port
+        &Acct-Session-Id := &parent.request.Acct-Session-Id
+    }
+
+    detach
+    radius
+}
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

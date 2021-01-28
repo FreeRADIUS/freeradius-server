@@ -12,7 +12,7 @@
 VENDOR		Big-Switch-Networks		37538
 BEGIN-VENDOR	Big-Switch-Networks
 
-ATTRIBUTE	BSN-User-Role				1	string
-ATTRIBUTE	BSN-AVPair				2	string
+ATTRIBUTE	User-Role				1	string
+ATTRIBUTE	AVPair					2	string
 
 END-VENDOR	Big-Switch-Networks

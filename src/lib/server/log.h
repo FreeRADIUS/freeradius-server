@@ -57,7 +57,7 @@ typedef struct log_dst log_dst_t;
  * @param[in] ap	Arguments for the fmt string.
  * @param[in] uctx	Context data for the log function.  Usually an #fr_log_t for vlog_request.
  */
-typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line,
 			   char const *fmt, va_list ap, void *uctx);
 
@@ -76,43 +76,47 @@ extern size_t log_str2dst_len;
 
 #define debug_enabled(_type, _lvl) (((_type & L_DBG) != 0) && (_lvl <= fr_debug_lvl))
 
-bool	log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request) CC_HINT(nonnull);
+bool	log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request) CC_HINT(nonnull);
 
-void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		     char const *file, int line,
 		     char const *fmt, va_list ap, void *uctx)
 	CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 4));
 
-void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		    char const *file, int line,
 		    char const *fmt, ...)
 		    CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3, 6));
 
-void	log_module_failure_msg(REQUEST *request, char const *fmt, ...)
+void	log_module_failure_msg(request_t *request, char const *fmt, ...)
 	CC_HINT(format (printf, 2, 3));
 
-void	vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+void	vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 2, 0));
 
-void	log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			  char const *file, int line,
 			  char const *fmt, ...)
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3, 6));
 
-void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3));
 
-void	log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
+void	log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
+			      fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
+			      CC_HINT(nonnull(2));
 
-void	log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
+void	log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
+				    fr_pair_t const *parent, fr_pair_list_t const *vp, char const *prefix)
+			      	    CC_HINT(nonnull(2));
 
-void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			   char const *file, int line,
-			   char const *str, size_t idx,
-			   char const *fmt, ...) CC_HINT(format (printf, 8, 9)) CC_HINT(nonnull);
+			   char const *str, size_t str_len,
+			   ssize_t marker_idx, char const *marker, ...) CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull);
 
-void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
 			uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
@@ -130,8 +134,22 @@ void	log_global_free(void);
 #  define LOG_DST &default_log
 #endif
 #define _FR_LOG_DST(_lvl, _fmt, ...) fr_log(LOG_DST, _lvl, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
-#define _FR_LOG_DST_PERROR(_lvl, _fmt, ...) fr_log_perror(LOG_DST, _lvl, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
+#define _FR_LOG_DST_PERROR(_lvl, _fmt, ...) fr_log_perror(LOG_DST, _lvl, __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
 #define _FR_LOG_DST_FATAL(_fmt, ...) log_fatal(LOG_DST, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
+
+/** Write a log message with marker
+ *
+ * @param[in] _lvl		log level.
+ * @param[in] _str		to markup.
+ * @param[in] _str_len		length of subject string. May be SIZE_MAX
+ *				to print the entire string.
+ * @param[in] _marker_idx	Where to place the marker.  May be negative.
+ * @param[in] _marker		text to print at marker_marker_idx.
+ * @param[in] _line_prefix_fmt	Prefix to add to all log lines.
+ * @param[in] ...		Arguments for _line_prefix_fmt.
+ */
+#define _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _line_prefix_fmt, ...) \
+	fr_log_marker(LOG_DST, _lvl, __FILE__, __LINE__, _str, _str_len, _marker_idx, _line_prefix_fmt, ## __VA_ARGS__)
 
 /*
  *  Adds a default prefix to all messages in a source file
@@ -146,10 +164,12 @@ void	log_global_free(void);
 #  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL(LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, LOG_PREFIX, LOG_PREFIX_ARGS)
 #else
 #  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, LOG_PREFIX _fmt, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, LOG_PREFIX _fmt, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL(LOG_PREFIX _fmt, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, LOG_PREFIX)
 #endif
 
 /** @name Log global messages
@@ -158,7 +178,7 @@ void	log_global_free(void);
  *
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
- * @warning If a REQUEST * is **NOT** available, these macros **MUST** be used.
+ * @warning If a request_t * is **NOT** available, these macros **MUST** be used.
  *
  * @note These macros should only be used for important global events.
  *
@@ -174,9 +194,15 @@ void	log_global_free(void);
 #define INFO(_fmt, ...)		_FR_LOG_PREFIX(L_INFO, _fmt, ## __VA_ARGS__)
 #define WARN(_fmt, ...)		_FR_LOG_PREFIX(L_WARN, _fmt, ## __VA_ARGS__)
 #define ERROR(_fmt, ...)	_FR_LOG_PREFIX(L_ERR, _fmt, ## __VA_ARGS__)
-#define PERROR(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_ERR, _fmt, ## __VA_ARGS__)
-#define PWARN(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_WARN, _fmt, ## __VA_ARGS__)
 #define FATAL(_fmt, ...)	_FR_LOG_PREFIX_FATAL(_fmt, ## __VA_ARGS__)
+
+#define PINFO(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_INFO, _fmt, ## __VA_ARGS__)
+#define PWARN(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_WARN, _fmt, ## __VA_ARGS__)
+#define PERROR(_fmt, ...)	_FR_LOG_PREFIX_PERROR(L_ERR, _fmt, ## __VA_ARGS__)
+
+#define IMARKER(_str, _marker_idx, _marker)	_FR_LOG_PREFIX_MARKER(L_INFO, _str, SIZE_MAX, _marker_idx, _marker)
+#define WMARKER(_str, _marker_idx, _marker)	_FR_LOG_PREFIX_MARKER(L_WARN, _str, SIZE_MAX, _marker_idx, _marker)
+#define EMARKER(_str, _marker_idx, _marker)	_FR_LOG_PREFIX_MARKER(L_ERR, _str, SIZE_MAX, _marker_idx, _marker)
 /** @} */
 
 /** @name Log global debug messages (DEBUG*)
@@ -213,6 +239,13 @@ void	log_global_free(void);
 #define DEBUG3(_fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
 #define DEBUG4(_fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
 #define DEBUGX(_lvl, _fmt, ...)		_DEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
+
+#define _PDEBUG_LOG(_type, _lvl, _fmt, ...)	if (fr_debug_lvl >= _lvl) _FR_LOG_PREFIX_PERROR(_type, _fmt, ## __VA_ARGS__)
+#define PDEBUG(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_1, _fmt, ## __VA_ARGS__)
+#define PDEBUG2(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_2, _fmt, ## __VA_ARGS__)
+#define PDEBUG3(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_3, _fmt, ## __VA_ARGS__)
+#define PDEBUG4(_fmt, ...)		_PDEBUG_LOG(L_DBG, L_DBG_LVL_MAX, _fmt, ## __VA_ARGS__)
+#define PDEBUGX(_lvl, _fmt, ...)	_PDEBUG_LOG(L_DBG, _lvl, _fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
@@ -222,7 +255,7 @@ void	log_global_free(void);
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
  * @note Automatically prepends date (at lvl >= 3), request number, and module, to the log message.
- * @note If a REQUEST * is available, these macros should be used.
+ * @note If a request_t * is available, these macros should be used.
  * @note These macros should only be used for important global events.
  *
  * **Debug categories**
@@ -236,6 +269,9 @@ void	log_global_free(void);
 #define RINFO(fmt, ...)		log_request(L_INFO, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define RWARN(fmt, ...)		log_request(L_DBG_WARN, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define RERROR(fmt, ...)	log_request_error(L_DBG_ERR, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+
+#define RPINFO(fmt, ...)	log_request_perror(L_DBG_INFO, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define RPWARN(fmt, ...)	log_request_perror(L_DBG_WARN, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define RPERROR(fmt, ...)	log_request_perror(L_DBG_ERR, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 /** @} */
 
@@ -279,10 +315,20 @@ void	log_global_free(void);
 #define RDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
+#define RPDEBUG(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+
 #define RIDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RIDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RIDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RIDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_INFO, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+
+#define RPIDEBUG(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPIDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPIDEBUG3(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_3, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
+#define RPIDEBUG4(fmt, ...)	do { if (request->log.lvl) log_request_perror(L_DBG_INFO, L_DBG_LVL_4, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 
 #define RWDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RWDEBUG2(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG_WARN, L_DBG_LVL_2, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
@@ -368,24 +414,24 @@ void	log_global_free(void);
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
- * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
- * @param[in] _type	log category, a #fr_log_type_t value.
- * @param[in] _lvl	log priority, a #fr_log_lvl_t value.
- * @param[in] _str	to mark e.g. "my pet kitty".
- * @param[in] _idx	index e.g. 3 (starts from 0).
- * @param[in] _fmt	error message e.g. "kitties are not pets, are nature devouring hell beasts".
- * @param[in] ...	arguments for error string.
+ * @param[in] _type		log category, a #fr_log_type_t value.
+ * @param[in] _lvl		log priority, a #fr_log_lvl_t value.
+ * @param[in] _str		to mark e.g. "my pet kitty".
+ * @param[in] _marker_idx	index e.g. 3 (starts from 0).
+ * @param[in] _marker		error message e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param[in] ...		arguments for error string.
  */
 #ifndef DEBUG_INDENT
-#define RMARKER(_type, _lvl, _str, _idx, _fmt, ...) \
+#define RMARKER(_type, _lvl, _str, _marker_idx, _marker, ...) \
 	log_request_marker(_type, _lvl, request, \
 			   __FILE__, __LINE__, \
-			   _str, _idx, _fmt, ## __VA_ARGS__)
+			   _str, SIZE_MAX, _marker_idx, _marker, ## __VA_ARGS__)
 #else
-#define RMARKER(_type, _lvl, _str, _idx, _fmt, ...) do { \
+#define RMARKER(_type, _lvl, _str, _marker_idx, _marker, ...) do { \
 		RDEBUG4("== (0) at %s[%u]", __FILE__, __LINE__); \
-		log_request_marker(_type, _lvl, request, __FILE__, __LINE__, _str, _idx, _fmt, ## __VA_ARGS__); \
+		log_request_marker(_type, _lvl, request, __FILE__, __LINE__, _str, _marker_idx, _marker, ## __VA_ARGS__); \
 	} while (0)
 #endif
 
@@ -398,14 +444,14 @@ void	log_global_free(void);
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
- * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
  * @param[in] _str	to mark e.g. "my pet kitty".
- * @param[in] _idx	index e.g. 3 (starts from 0).
- * @param[in] _fmt	error message e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param[in] _marker_idx	index e.g. 3 (starts from 0).
+ * @param[in] _marker	error message e.g. "kitties are not pets, are nature devouring hell beasts".
  * @param[in] ...	arguments for error string.
  */
-#define REMARKER(_str, _idx, _fmt, ...)	RMARKER(L_DBG_ERR, L_DBG_LVL_1, _str, _idx, _fmt, ## __VA_ARGS__)
+#define REMARKER(_str, _marker_idx, _marker, ...)	RMARKER(L_DBG_ERR, L_DBG_LVL_1, _str, _marker_idx, _marker, ## __VA_ARGS__)
 
 /** Output string with error marker, showing where format error occurred
  *
@@ -416,14 +462,14 @@ void	log_global_free(void);
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
- * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ * @warning If a request_t * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
  * @param[in] _str	to mark e.g. "my pet kitty".
- * @param[in] _idx	index e.g. 3 (starts from 0).
- * @param[in] _fmt	error message e.g. "kitties are not pets, are nature devouring hell beasts".
+ * @param[in] _marker_idx	index e.g. 3 (starts from 0).
+ * @param[in] _marker	error message e.g. "kitties are not pets, are nature devouring hell beasts".
  * @param[in] ...	arguments for error string.
  */
-#define RDMARKER(_str, _idx, _fmt, ...)	RMARKER(L_DBG, L_DBG_LVL_1, _str, _idx, _fmt, ## __VA_ARGS__)
+#define RDMARKER(_str, _marker_idx, _marker, ...)	RMARKER(L_DBG, L_DBG_LVL_1, _str, _marker_idx, _marker, ## __VA_ARGS__)
 
 /** Use different logging functions depending on whether request is NULL or not.
  *
@@ -444,31 +490,129 @@ do {\
  	}\
 } while (0)
 
-#define RATE_LIMIT_ENABLED fr_rate_limit_enabled()		//!< True if rate limiting is enabled.
+/** Track when a log message was last repeated
+ *
+ */
+typedef struct {
+	time_t		now;			//!< Current time - Here because it avoids repeated stack allocation.
+	time_t		last_complained;	//!< Last time we emitted a log message.
+	unsigned int	repeated;		//!< Number of "skipped" messages.
+} fr_rate_limit_t;
 
-/** Rate limit messages
+/** Rate limit messages using a local limiting entry
  *
  * Rate limit log messages so they're written a maximum of once per second.
  *
  @code{.c}
-   RATE_LIMIT(RERROR("Home servers alive in pool %s", pool->name));
+   RATE_LIMIT(&inst->home_server_alive_rate_limit, RERROR, "Home servers alive in pool %s", pool->name));
  @endcode
  * @note Rate limits the macro, not the message. If five different messages are
  *	 produced using the same macro in the same second, only the first will
  *	 be written to the log.
  *
- * @param _x Logging macro to limit.
+ * @param[in] _entry		Used to track rate limiting.
+ * @param[in] _log		Logging macro.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
  */
-#define RATE_LIMIT(_x) \
+#define RATE_LIMIT_LOCAL(_entry, _log, _fmt, ...) \
 do {\
-	if (RATE_LIMIT_ENABLED) {\
-		static time_t _last_complained = 0;\
-		time_t _now = time(NULL);\
-		if (_now != _last_complained) {\
-			_last_complained = _now;\
-			_x;\
-		}\
-	} else _x;\
+	if (fr_rate_limit_enabled()) {\
+		(_entry)->now = time(NULL);\
+		if ((_entry)->now != (_entry)->last_complained) {\
+			(_entry)->last_complained = (_entry)->now;\
+			if (((_entry)->repeated > 0) && (((_entry)->now - (_entry)->last_complained) == 1)) { \
+				_log(_fmt " - repeated %u time(s)", ##__VA_ARGS__, (_entry)->repeated); \
+			} else { \
+				_log(_fmt, ##__VA_ARGS__); \
+			}\
+			(_entry)->repeated = 0; \
+		} else { \
+			(_entry)->repeated++; \
+		} \
+	} else (_log(_fmt, ##__VA_ARGS__));\
+} while (0)
+
+/** Rate limit messages using a local limiting entry
+ *
+ * Rate limit log messages so they're written a maximum of once per second.
+ * The ROPTIOANL variant allows different logging macros to be used based on whether a request is
+ * available.
+ *
+ @code{.c}
+   RATE_LIMIT(&inst->home_server_alive_rate_limit, RERROR, "Home servers alive in pool %s", pool->name));
+ @endcode
+ * @note Rate limits the macro, not the message. If five different messages are
+ *	 produced using the same macro in the same second, only the first will
+ *	 be written to the log.
+ *
+ * @param[in] _entry		Used to track rate limiting.
+ * @param[in] _l_request	The name of a R* logging macro e.g. RDEBUG3.
+ * @param[in] _l_global		The name of a global logging macro e.g. DEBUG3.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
+ */
+#define RATE_LIMIT_LOCAL_ROPTIONAL(_entry, _l_request, _l_global, _fmt, ...) \
+do {\
+	if (fr_rate_limit_enabled()) {\
+		(_entry)->now = time(NULL);\
+		if ((_entry)->now != (_entry)->last_complained) {\
+			(_entry)->last_complained = (_entry)->now;\
+			if (((_entry)->repeated > 0) && (((_entry)->now - (_entry)->last_complained) == 1)) { \
+				ROPTIONAL(_l_request, _l_global, _fmt " - repeated %u time(s)", ##__VA_ARGS__, (_entry)->repeated); \
+			} else { \
+				ROPTIONAL(_l_request, _l_global, _fmt, ##__VA_ARGS__); \
+			}\
+			(_entry)->repeated = 0; \
+		} else { \
+			(_entry)->repeated++; \
+		} \
+	} else { \
+		ROPTIONAL(_l_request, _l_global, _fmt, ##__VA_ARGS__);\
+	} \
+} while (0)
+
+/** Rate limit messages using a global limiting entry
+ *
+ * Rate limit log messages so they're written a maximum of once per second.
+ *
+ @code{.c}
+   RATE_LIMIT(RERROR, "Home servers alive in pool %s", pool->name));
+ @endcode
+ * @note Rate limits the macro, not the message. If five different messages are
+ *	 produced using the same macro in the same second, only the first will
+ *	 be written to the log.
+ *
+ * @param[in] _log		Logging macro.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
+ */
+#define RATE_LIMIT_GLOBAL(_log, _fmt, ...) \
+do {\
+	static fr_rate_limit_t	_rate_limit; \
+	RATE_LIMIT_LOCAL(&_rate_limit, _log, _fmt, ##__VA_ARGS__); \
+} while (0)
+
+/** Rate limit messages using a global limiting entry
+ *
+ * Rate limit log messages so they're written a maximum of once per second.
+ *
+ @code{.c}
+   RATE_LIMIT(RERROR, "Home servers alive in pool %s", pool->name));
+ @endcode
+ * @note Rate limits the macro, not the message. If five different messages are
+ *	 produced using the same macro in the same second, only the first will
+ *	 be written to the log.
+ *
+ * @param[in] _l_request	The name of a R* logging macro e.g. RDEBUG3.
+ * @param[in] _l_global		The name of a global logging macro e.g. DEBUG3.
+ * @param[in] _fmt		printf style format string.
+ * @param[in] ...		printf arguments.
+ */
+#define RATE_LIMIT_GLOBAL_ROPTIONAL(_l_request, _l_global, _fmt, ...) \
+do {\
+	static fr_rate_limit_t _rate_limit; \
+	RATE_LIMIT_LOCAL_ROPTIONAL(&_rate_limit, _l_request, _l_global, _fmt, ##__VA_ARGS__); \
 } while (0)
 
 /** Pretty print binary data, with hex output inline with message
@@ -518,7 +662,32 @@ do {\
  * @param[in] _fmt	Message to prefix hex output with.
  * @param[in] ...	Additional arguments to print.
  */
-#define HEXDUMP(_lvl, _data, _len, _fmt, ...) \
+#define _HEXDUMP(_lvl, _data, _len, _fmt, ...) \
 	if (debug_enabled(L_DBG, _lvl)) do { \
 		fr_log_hex(LOG_DST, L_DBG, __FILE__, __LINE__, _data, _len, _fmt, ## __VA_ARGS__); \
 	} while (0)
+
+#define HEXDUMP1(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_1, _data, _len, _fmt, ## __VA_ARGS__)
+#define HEXDUMP2(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_2, _data, _len, _fmt, ## __VA_ARGS__)
+#define HEXDUMP3(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_3, _data, _len, _fmt, ## __VA_ARGS__)
+#define HEXDUMP4(_data, _len, _fmt, ...) _HEXDUMP(L_DBG_LVL_4, _data, _len, _fmt, ## __VA_ARGS__)
+
+/** Pretty print binary data as hex, with output as a wrapped block with addresses and a marker
+ *
+ * @param[in] _lvl	Debug level at which we start emitting the log message.
+ * @param[in] _data	Binary data to print.
+ * @param[in] _len	Length of binary data.
+ * @param[in] _slen	Where the marker should be placed.
+ * @param[in] _error	to print after the marker.
+ * @param[in] _fmt	Message to prefix hex output with.
+ * @param[in] ...	Additional arguments to print.
+ */
+#define _HEX_MARKER(_lvl, _data, _len, _slen, _error, _fmt, ...) \
+	if (debug_enabled(L_DBG, _lvl)) do { \
+		fr_log_hex_marker(LOG_DST, L_DBG, __FILE__, __LINE__, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__); \
+	} while (0)
+
+#define HEX_MARKER1(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_1, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
+#define HEX_MARKER2(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_2, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
+#define HEX_MARKER3(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_3, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)
+#define HEX_MARKER4(_data, _len, _slen, _error, _fmt, ...) _HEX_MARKER(L_DBG_LVL_4, _data, _len, _slen, _error, _fmt, ## __VA_ARGS__)

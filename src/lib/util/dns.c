@@ -23,7 +23,6 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
@@ -484,13 +483,38 @@ static bool dns_label_compress(uint8_t const *start, uint8_t const *end, uint8_t
 
 
 /** Encode a single value box of type string, serializing its contents to a dns label
+ *  in a dbuff
+ *
+ * @param[in] dbuff	Buffer where labels are written
+ * @param[in] compression Whether or not to do DNS label compression.
+ * @param[in] value	to encode.
+ * @return
+ *	- >0 the number of bytes written to the dbuff
+ *	- 0 could not encode anything, an error has occurred.
+ *	- <0 the number of bytes the dbuff should have had, instead of "remaining".
+ */
+ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, fr_value_box_t const *value)
+{
+	ssize_t			slen;
+	size_t			need = 0;
+
+	slen = fr_dns_label_from_value_box(&need, dbuff->p, fr_dbuff_remaining(dbuff), dbuff->p, compression, value);
+	if (slen < 0) return 0;
+
+	if (slen == 0) return -need;
+
+	fr_dbuff_advance(dbuff, (size_t)slen);
+	return slen;
+}
+
+/** Encode a single value box of type string, serializing its contents to a dns label
  *
  * This functions takes a large buffer and encodes the label in part
  * of the buffer.  This API is necessary in order to allow DNS label
  * compression.
  *
- * @param[out] need	if not NULL, how many bytes are required to serialize
- *			the remainder of the boxed data.
+ * @param[out] need	if not NULL, how long "buf_len" should be to
+ *			serialize the rest of the data.
  *			Note: Only variable length types will be partially
  *			encoded. Fixed length types will not be partially encoded.
  * @param[out] buf	Buffer where labels are stored
@@ -507,13 +531,12 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 				    fr_value_box_t const *value)
 {
 	uint8_t *label;
-	uint8_t *end = buf + buf_len;
-	uint8_t const *q, *strend;
+	uint8_t const *end = buf + buf_len;
+	uint8_t const *q, *strend, *last;
 	uint8_t *data;
-	int namelen = 0;
 
 	if (!buf || !buf_len || !where || !value) {
-		fr_strerror_printf("Invalid input");
+		fr_strerror_const("Invalid input");
 		return -1;
 	}
 
@@ -521,7 +544,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	Don't allow stupidities
 	 */
 	if (!((where >= buf) && (where < (buf + buf_len)))) {
-		fr_strerror_printf("Label is outside of buffer");
+		fr_strerror_const("Label to write is outside of buffer");
 		return -1;
 	}
 
@@ -529,12 +552,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	We can only encode strings.
 	 */
 	if (value->type != FR_TYPE_STRING) {
-		fr_strerror_printf("Asked to encode non-string type");
-		return -1;
-	}
-
-	if (value->vb_length > 255) {
-		fr_strerror_printf("Label is too long");
+		fr_strerror_const("Asked to encode non-string type");
 		return -1;
 	}
 
@@ -551,6 +569,57 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	}
 
 	/*
+	 *	Sanity check the name before writing anything to the
+	 *	buffer.
+	 *
+	 *	Only encode [-0-9a-zA-Z].  Anything else is forbidden.
+	 *	Dots at the start are forbidden.  Double dots are
+	 *	forbidden.
+	 */
+	q = (uint8_t const *) value->vb_strvalue;
+	strend = q + value->vb_length;
+	last = q;
+
+	if (*q == '.') {
+		fr_strerror_const("Empty labels are invalid");
+		return -1;
+	}
+
+	while (q < strend) {
+		if (*q == '.') {
+			/*
+			 *	Don't count final dot as an
+			 *	intermediate dot, and don't bother
+			 *	encoding it.
+			 */
+			if ((q + 1) == strend) {
+				strend--;
+				break;
+			}
+
+			if (q[1] == '.') {
+				fr_strerror_const("Double dots '..' are forbidden");
+				return -1;
+			}
+			last = q;
+
+		} else if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
+			     ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
+			fr_strerror_printf("Invalid character %02x in label", *q);
+			return -1;
+		}
+
+		q++;
+
+		if ((q - last) > 63) {
+			fr_strerror_const("Label is larger than 63 characters");
+			return -1;
+		}
+	}
+
+	q = (uint8_t const *) value->vb_strvalue;
+
+	/*
 	 *	For now, just encode the value as-is.  We do
 	 *	compression as a second step.
 	 *
@@ -558,14 +627,11 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	+ trailing zero.  Intermediate '.' are converted to
 	 *	length bytes.
 	 */
-	if ((where + value->vb_length + 2) > end) {
-	need_more:
-		if (need) *need = value->vb_length + 2;
+	if ((where + (strend - q) + 2) > end) {
+		if (need) *need = (where + (strend - q) + 2) - buf;
 		return 0;
 	}
 
-	q = (uint8_t const *) value->vb_strvalue;
-	strend = q + value->vb_length;
 	label = where;
 	*label = 0;
 	data = label + 1;
@@ -576,32 +642,19 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	 *	the output buffer can be a little bit smaller.
 	 */
 	while (q < strend) {
-		/*
-		 *	Just for pairanoia
-		 */
-		if (data >= end) goto need_more;
+		fr_assert(data < end);
+		fr_assert((data - where) < 255);
 
 		/*
 		 *	'.' is a label delimiter.
 		 *
-		 *	'..' is disallowed.  '.' at the start of a
-		 *	string is disallowed.
+		 *	We've already checked above for '.' at the
+		 *	start, for double dots, and have already
+		 *	suppressed '.' at the end of the string.
+		 *
+		 *	Start a new label.
 		 */
 		if (*q == '.') {
-			if (*label == 0) {
-				fr_strerror_printf("Empty labels are invalid");
-				return -1;
-			}
-
-			/*
-			 *	'.' at the end of a non-zero label is
-			 *	allowed.
-			 */
-			if ((q + 1) == strend) break;
-
-			/*
-			 *	Start a new label.
-			 */
 			label = data;
 			*label = 0;
 			data = label + 1;
@@ -610,34 +663,9 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 			continue;
 		}
 
-		/*
-		 *	Label lengths can be 1..63
-		 */
-		if (*label >= 63) {
-			fr_strerror_printf("Label is larger than 63 characters");
-			return -1;
-		}
-
-		/*
-		 *	Name lengths can be 1..255
-		 */
-		if (namelen >= 255) {
-			fr_strerror_printf("Name is larger than 255 characters");
-			return -1;
-		}
-
-		/*
-		 *	Only encode [-0-9a-zA-Z].  Anything else is forbidden.
-		 */
-		if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
-		      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
-			fr_strerror_printf("Invalid character %02x in label", *q);
-			return -1;
-		}
-
 		*(data++) = *(q++);
 		(*label)++;
-		namelen++;
+		fr_assert(*label <= 63);
 	}
 
 	*(data++) = 0;		/* end of label */
@@ -654,7 +682,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	(void) dns_label_compress(buf, where, NULL, where, &data);
 
 done:
-	if (need) *need = 0;
+	fr_assert(data > where);
 	return data - where;
 }
 
@@ -672,7 +700,7 @@ done:
  *	- <=0 on error, offset from buf where the invalid label is located.
  *	- > 0 decoded size of this particular DNS label
  */
-ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **next)
+ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uint8_t const **next)
 {
 	uint8_t const *p, *q, *end;
 	uint8_t const *current, *start;
@@ -722,12 +750,12 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 
 			break;
 		}
-		
+
 		/*
 		 *	0b10 and 0b10 are forbidden
 		 */
 		if ((*p > 63) && (*p < 0xc0)) {
-			fr_strerror_printf("Data with invalid high bits");
+			fr_strerror_const("Data with invalid high bits");
 			return -(p - buf);
 		}
 
@@ -739,7 +767,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 
 			if ((p + 2) > end) {
 			overflow:
-				fr_strerror_printf("Label overflows buffer");
+				fr_strerror_const("Label overflows buffer");
 				return -(p - buf);
 			}
 
@@ -816,7 +844,7 @@ ssize_t fr_dns_label_length(uint8_t const *buf, size_t buf_len, uint8_t const **
 		 *	DNS names can be no more than 255 octets.
 		 */
 		if (length > 255) {
-			fr_strerror_printf("Total length of labels is > 255");
+			fr_strerror_const("Total length of labels is > 255");
 			return -(p - buf);
 		}
 
@@ -857,7 +885,7 @@ ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
 	uint8_t const *end = buf + buf_len;
 
 	for (label = buf; label < end; /* nothing */) {
-		slen = fr_dns_label_length(buf, buf_len, &label);
+		slen = fr_dns_label_uncompressed_length(buf, buf_len, &label);
 		if (slen <= 0) return slen; /* already is offset from 'buf' and not 'label' */
 	}
 
@@ -928,31 +956,25 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	Get the uncompressed length of the label, and the
 	 *	label after this one.
 	 */
-	slen = fr_dns_label_length(src, len, &after);
+	slen = fr_dns_label_uncompressed_length(src, len, &after);
 	if (slen <= 0) return slen;
 
-	dst->type = FR_TYPE_STRING;
-	dst->tainted = tainted;
-	dst->enumv = NULL;
-	dst->next = NULL;
+	fr_value_box_init_null(dst);
 
 	/*
 	 *	An empty label is a 0x00 byte.  Just create an empty
 	 *	string.
 	 */
 	if (slen == 1) {
-		dst->vb_strvalue = q = talloc_array(ctx, char, 2);
+		if (fr_value_box_bstr_alloc(ctx, &q, dst, NULL, 1, tainted) < 0) return -1;
 		q[0] = '.';
-		q[1] = '\0';
-		dst->datum.length = 1;
 		return after - label;
 	}
 
 	/*
 	 *	Allocate the string and set up the value_box
 	 */
-	dst->vb_strvalue = q = talloc_array(ctx, char, slen + 1);
-	dst->datum.length = slen;
+	if (fr_value_box_bstr_alloc(ctx, &q, dst, NULL, slen, tainted) < 0) return -1;
 
 	current = label;
 	p = (uint8_t *) q;
@@ -1018,6 +1040,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 }
 
 /** Get the *network* length of a DNS label in a buffer
+ *  i.e. the number of bytes in the encoded representation of the dns label.
  *
  * @param[in] buf	buffer holding one or more DNS labels
  * @param[in] buf_len	total length of the buffer
@@ -1025,7 +1048,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *	- <=0 on error, offset from buf where the invalid label is located.
  *	- > 0 network length of this particular DNS label
  */
-ssize_t fr_dns_label_network_network_length(uint8_t const *buf, size_t buf_len)
+ssize_t fr_dns_label_network_length(uint8_t const *buf, size_t buf_len)
 {
 	uint8_t const *p = buf;
 	uint8_t const *end = buf + buf_len;

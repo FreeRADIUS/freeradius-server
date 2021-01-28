@@ -1,6 +1,6 @@
 # PRE: switch
 #
-switch &reply:Filter-Id {
+switch &reply.Filter-Id {
 	# deliberately empty
 	case "filter" {
 	}

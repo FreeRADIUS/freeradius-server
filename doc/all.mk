@@ -6,7 +6,50 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,doc html pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,install doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+
+#
+#  Convert adoc to man, and then let "install.man" deal with things.
+#  This means a bare "make install.man" after "configure" won't get the
+#  right things, but oh well.
+#
+ADOC2MAN_FILES := $(filter-out %/index.adoc,$(wildcard doc/antora/modules/reference/pages/man/*.adoc))
+$(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
+	@rm -f $@
+	${Q}for x in $^; do \
+		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
+		z=$$(basename $$x | sed 's/.adoc//'); \
+		echo "AUTO_MAN_FILES += man/man$$y/$$z.$$y" >> $@; \
+		echo "man/man$$y/$$z.$$y: $$x" >> $@; \
+		printf "\t"'@echo AUTO-MAN $$(notdir $$@)'"\n" >> $@; \
+		printf "\t"'@mkdir -p $$(dir $$@)'"\n" >> $@; \
+		printf "\t"'@asciidoctor -b manpage $$< -o $$@'"\n" >> $@; \
+		echo "" >> $@; \
+	done
+
+-include $(BUILD_DIR)/make/man.mk
+ALL_INSTALL += $(AUTO_MAN_FILES)
+
+#
+#  We're installing the documentation, but there's no "docdir".
+#
+ifneq "$(findstring install,$(WITH_DOC))" ""
+ifeq "$(docdir)" "no"
+$(error 'docdir' is required to do 'make install')
+endif
+
+#
+#  Skip "make install*" if asciidoctor and pandoc are missing.
+#
+ifeq "$(ASCIIDOCTOR)" ""
+WITH_DOC=
+endif
+ifeq "$(PANDOC)" ""
+WITH_DOC=
+endif
+
+endif
+
 ifneq "$(WITH_DOC)" ""
 
 #
@@ -34,20 +77,11 @@ endif
 endif
 
 #
-#  We're installing the documentation, but there's no "docdir".
-#
-ifeq "$(docdir)" "no"
-ifneq "$(findstring install,$(WITH_DOC))" ""
-$(error 'docdir' is required to do 'make install')
-endif
-endif
-
-#
 #	TODO: The 'pdf' target is broken. we should enable here soon.
 #
 all.doc: html docsite
 
-install: install.doc install.doc.man
+install: install.doc
 
 clean: clean.doc
 
@@ -90,35 +124,17 @@ DOC_FILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/develope
 #  We remove the "doc/" prefix, because the documentation files are
 #  installed into $(docdir)/foo, and not $(docdir)/doc/.
 #
-ALL_DOC_FILES	:= $(patsubst doc/%,%,$(sort $(DOC_FILES) $(ADOC_FILES) $(HTML_FILES)))
+ALL_DOC_FILES	:= $(patsubst doc/%,%,$(sort $(DOC_FILES) $(ADOC_FILES)))
 
 #
-#  Install doc/FOO into $(R)/$(docdir)/FOO
+#  Install doc/FOO into $(R)$(docdir)/FOO
 #
-$(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},$(R)/$(docdir)/${FILE})))
+$(foreach FILE,$(ALL_DOC_FILES),$(eval $(call ADD_INSTALL_RULE.file,doc/${FILE},$(R)$(docdir)/${FILE})))
 
 #
 #  Have a "doc" install target for testing.
 #
-install.doc: $(addprefix $(R)/$(docdir)/,$(ALL_DOC_FILES))
-
-#
-#  For now, list each "man" page individually.  They are all generated from source
-#  "adoc" files.  And "make" isn't smart enough to figure that out.
-#
-#  We install doc/man/foo.? into $(R)/$(mandir)/man?/foo.?
-#
-#  Because GNU Make sucks at string substitution, we have stupid rules to do that.
-#
-#  Not all of the "man" files have been converted to asciidoc, so we have a "install.doc.man"
-#  rule here, instead of overloading the "install.man" rule.
-#
-MAN_FILES := doc/man/radclient.1 doc/man/radiusd.8
-INSTALL_MAN_FILES := $(join $(patsubst .%,$(R)/$(mandir)/man%/,$(suffix $(MAN_FILES))),$(patsubst doc/man/%,%,$(MAN_FILES)))
-
-$(foreach FILE,$(MAN_FILES),$(eval $(call ADD_INSTALL_RULE.file,${FILE},$(R)/$(mandir)/$(join $(patsubst .%,man%/,$(suffix ${FILE})),$(patsubst doc/man/%,%,${FILE})))))
-
-install.doc.man: $(INSTALL_MAN_FILES)
+install.doc: $(addprefix $(R)$(docdir)/,$(ALL_DOC_FILES))
 
 .PHONY: clean.doc
 clean.doc:
@@ -166,7 +182,7 @@ test.doc:
 ifneq "$(DOXYGEN)" ""
 ifneq "$(GRAPHVIZ_DOT)" ""
 .PHONY: doxygen
-doxygen:
+doxygen doc/doxygen/html/index.html:
 	@echo DOXYGEN $(DOXYGEN_DIR)
 	${Q}mkdir -p $(DOXYGEN_HTML_DIR)
 	${Q}(cd $(DOXYGEN_DIR) && $(DOXYGEN))
@@ -174,14 +190,14 @@ doxygen:
 #
 #  Ensure that the installation directory gets created
 #
-$(eval $(call ADD_INSTALL_RULE.file,doc/doxygen/html/index.html,$(R)/$(docdir)/doxygen/html/index.html))
+$(eval $(call ADD_INSTALL_RULE.file,doc/doxygen/html/index.html,$(R)$(docdir)/doxygen/html/index.html))
 
 #
 #  Make sure that the base directory is build, and then just copy all
 #  of the files over manually.
 #
-install.doxygen: $(R)/$(docdir)/doxygen/html/index.html
-	${Q}cp -RP doc/doxygen/html $(R)/$(docdir)/doc/doxygen/html
+install.doxygen: $(R)$(docdir)/doxygen/html/index.html
+	${Q}cp -RP doc/doxygen/html $(R)$(docdir)/doc/doxygen/html
 
 #
 #  Add the doxygen files to the install targt
@@ -206,7 +222,7 @@ endif
 #
 build/docsite/sitemap.xml: $(ADOC_FILES)
 	@echo ANTORA site.yml
-	${Q}$(ANTORA) site.yml
+	${Q}$(ANTORA) $(ANTORA_FLAGS) site.yml
 
 #
 #  Markdown files get converted to asciidoc via pandoc.
@@ -238,7 +254,7 @@ doc/raddb/%.adoc: raddb/%
 #
 #  Filter out test modules, and ones we don't care about.
 #
-IGNORE_MODULES := $(patsubst %,src/modules/%/README.md,rlm_dict rlm_example rlm_securid rlm_sigtran rlm_test)
+IGNORE_MODULES := $(patsubst %,src/modules/%/README.md,rlm_dict rlm_securid rlm_sigtran rlm_test)
 README_MODULES := $(filter-out $(IGNORE_MODULES), $(wildcard src/modules/rlm_*/README.md))
 doc/raddb/mods-available/all_modules.adoc: $(README_MODULES)
 	@echo ADOC mods-available/all_modules.adoc
@@ -297,5 +313,7 @@ asciidoc: $(ADOC_FILES)
 docsite: build/docsite/sitemap.xml
 html: $(HTML_FILES)
 pdf: $(PDF_FILES)
+
+doc: build/docsite/sitemap.xml $(HTML_FILES)
 
 endif

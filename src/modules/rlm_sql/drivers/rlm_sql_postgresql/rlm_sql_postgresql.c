@@ -42,7 +42,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_postgresql - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -485,7 +485,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	char const		*p, *q;
 	size_t			i = 0;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	p = PQerrorMessage(conn->db);
 	while ((q = strchr(p, '\n'))) {
@@ -510,7 +510,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-static size_t sql_escape_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen, ret;
 	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);

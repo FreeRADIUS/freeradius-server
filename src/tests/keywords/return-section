@@ -1,10 +1,6 @@
 #
 #  PRE: update if return
 #
-update control {
-	&Cleartext-Password := 'hello'
-}
-
 if (&User-Name == "bob") {
 	ok
 

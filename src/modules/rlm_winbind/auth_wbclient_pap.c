@@ -27,7 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <wbclient.h>
 #include <core/ntstatus.h>
@@ -47,9 +47,9 @@ RCSID("$Id$")
  *	- -648	Password expired
  *
  */
-int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, VALUE_PAIR *password)
+int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_t *password)
 {
-	int rcode = -1;
+	int ret = -1;
 	struct wbcContext *wb_ctx;
 	struct wbcAuthUserParams authparams;
 	wbcErr err;
@@ -69,7 +69,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, VALUE_PAIR
 	/*
 	 * wb_username must be set for this function to be called
 	 */
-	rad_assert(inst->wb_username);
+	fr_assert(inst->wb_username);
 
 	/*
 	 * Get the username and domain from the configuration
@@ -130,7 +130,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, VALUE_PAIR
 	 */
 	switch (err) {
 	case WBC_ERR_SUCCESS:
-		rcode = 0;
+		ret = 0;
 		RDEBUG2("Authenticated successfully");
 		break;
 
@@ -151,11 +151,11 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request, VALUE_PAIR
 		}
 
 		/*
-		 * The password needs to be changed, set rcode appropriately.
+		 * The password needs to be changed, set ret appropriately.
 		 */
 		if (error->nt_status == NT_STATUS_PASSWORD_EXPIRED ||
 		    error->nt_status == NT_STATUS_PASSWORD_MUST_CHANGE) {
-			rcode = -648;
+			ret = -648;
 		}
 
 		/*
@@ -188,6 +188,6 @@ done:
 	if (info) wbcFreeMemory(info);
 	if (error) wbcFreeMemory(error);
 
-	return rcode;
+	return ret;
 }
 

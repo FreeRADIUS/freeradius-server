@@ -61,7 +61,7 @@
 #include <osmocom/core/talloc.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/io/schedule.h>
 #include <unistd.h>
 #include <semaphore.h>
@@ -230,11 +230,11 @@ static int event_link_up(TALLOC_CTX *ctx, sigtran_conn_t **out, sigtran_conn_con
 	/*
 	 *	Setup SCTP src/dst address
 	 */
-	fr_ipaddr_to_sockaddr(&conf->sctp_dst_ipaddr, conf->sctp_dst_port,
-			      &m3ua_client->remote, &salen);
+	fr_ipaddr_to_sockaddr(&m3ua_client->remote, &salen,
+			      &conf->sctp_dst_ipaddr, conf->sctp_dst_port);
 	if (conf->sctp_src_ipaddr.af != AF_UNSPEC) {
-		fr_ipaddr_to_sockaddr(&conf->sctp_src_ipaddr, conf->sctp_src_port,
-				      &m3ua_client->local, &salen);
+		fr_ipaddr_to_sockaddr(&m3ua_client->local, &salen,
+				      &conf->sctp_src_ipaddr, conf->sctp_src_port);
 	}
 
 	/*
@@ -453,7 +453,7 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
 #endif
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		goto fatal_error;
 	}
 
@@ -468,9 +468,9 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
  */
 static void *sigtran_event_loop(UNUSED void *instance)
 {
-	TALLOC_CTX	*ctx = talloc_init("sigtran_event_ctx");
+	TALLOC_CTX	*ctx = talloc_init_const("sigtran_event_ctx");
 
-	rad_assert((ctrl_pipe[0] < 0) && (ctrl_pipe[1] < 0));	/* Ensure only one instance exists */
+	fr_assert((ctrl_pipe[0] < 0) && (ctrl_pipe[1] < 0));	/* Ensure only one instance exists */
 
 	/*
 	 *	Patch in libosmo's logging system to ours

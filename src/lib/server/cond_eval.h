@@ -35,9 +35,12 @@ extern "C" {
 
 /* evaluate.c */
 typedef struct fr_cond_s fr_cond_t;
-int	cond_eval_tmpl(REQUEST *request, int modreturn, int depth, vp_tmpl_t const *vpt);
-int	cond_eval_map(REQUEST *request, int modreturn, int depth, fr_cond_t const *c);
-int	cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c);
+
+void	cond_debug(fr_cond_t const *cond);
+
+int	cond_eval_tmpl(request_t *request, int depth, tmpl_t const *vpt);
+int	cond_eval_map(request_t *request, int depth, fr_cond_t const *c);
+int	cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c);
 
 #ifdef __cplusplus
 }

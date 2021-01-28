@@ -679,6 +679,7 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+LIBRARY_EXT
 TARGET_SYSTEM
 target_os
 target_vendor
@@ -743,10 +744,13 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_developer
+enable_verify_ptr
 enable_largefile
 enable_strict_dependencies
 enable_werror
+enable_llvm_fuzzer
 enable_llvm_address_sanitizer
+enable_llvm_leak_sanitizer
 enable_llvm_undefined_behaviour_sanitizer
 enable_openssl_version_check
 enable_reproducible_builds
@@ -759,12 +763,6 @@ with_logdir
 with_radacctdir
 with_raddbdir
 with_dictdir
-with_ascend_binary
-with_tcp
-with_vmps
-with_dhcp
-with_tacacs
-with_udpfromto
 with_cap
 with_cap_lib_dir
 with_cap_include_dir
@@ -777,6 +775,9 @@ with_execinfo_include_dir
 with_gperftools
 with_gperftools_lib_dir
 with_gperftools_include_dir
+with_gnumake
+with_gnumake_lib_dir
+with_gnumake_include_dir
 with_openssl
 with_openssl_lib_dir
 with_openssl_include_dir
@@ -1422,11 +1423,17 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-developer      enables features of interest to developers.
+  --disable-verify-ptr    disables WITH_VERIFY_PTR developer build option.
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
+  --enable-llvm-fuzzer    build with support for LLVM's fuzzer (if building
+                          with clang).
   --enable-llvm-address-sanitizer
                           build with support for LLVM's address sanitizer (if
+                          building with clang).
+  --enable-llvm-leak-sanitizer
+                          build with support for LLVM's leak sanitizer (if
                           building with clang).
   --enable-llvm-undefined-behaviour-sanitizer
                           build with support for LLVM's undefined behaviour
@@ -1455,12 +1462,6 @@ Optional Packages:
   --with-radacctdir=DIR   directory for detail files LOGDIR/radacct
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
-  --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
-  --with-tcp              compile in support for tcp (default=yes)
-  --with-vmps             compile in support for vmps (default=yes)
-  --with-dhcp             compile in support for dhcp (default=yes)
-  --with-tacacs           compile in support for tacacs (default=yes)
-  --with-udpfromto        compile in support for udpfromto (default=yes)
   --with-cap              build with cap if available (default=yes)
   --with-cap-lib-dir=DIR  directory in which to look for cap library files
   --with-cap-include-dir=DIR
@@ -1486,6 +1487,11 @@ Optional Packages:
   --with-gperftools-include-dir=DIR
                           directory in which to look for gperftools include
                           files
+  --with-gnumake          build with gnumake if available (default=yes)
+  --with-gnumake-lib-dir=DIR
+                          directory in which to look for gnumake library files
+  --with-gnumake-include-dir=DIR
+                          directory in which to look for gnumake include files
   --with-openssl          build with openssl if available (default=yes)
   --with-openssl-lib-dir=DIR
                           directory in which to look for openssl library files
@@ -2485,6 +2491,8 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
 #
 # SYNOPSIS
 #
@@ -2982,7 +2990,7 @@ $as_echo "$RADIUSD_VERSION_RELEASE" >&6; }
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
 $as_echo_n "checking build commit... " >&6; }
-    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_COMMIT" >&5
 $as_echo "$RADIUSD_VERSION_COMMIT" >&6; }
   fi
@@ -3013,6 +3021,20 @@ fi
 if test "x$developer" = "xyes"; then
   : ${CFLAGS=-g3}
 fi
+
+# Check whether --enable-verify-ptr was given.
+if test "${enable_verify_ptr+set}" = set; then :
+  enableval=$enable_verify_ptr;  case "$enableval" in
+  no)
+    verify_ptr=""
+    ;;
+  *)
+    verify_ptr="-DWITH_VERIFY_PTR=1"
+  esac
+else
+   verify_ptr="-DWITH_VERIFY_PTR=1"
+fi
+
 
 
 ac_aux_dir=
@@ -3156,6 +3178,19 @@ test -n "$target_alias" &&
   program_prefix=${target_alias}-
 
 TARGET_SYSTEM="$target"
+
+
+case "$target" in
+  *-darwin*)
+    library_ext="dylib"
+    ;;
+
+  *)
+    library_ext="so"
+    ;;
+esac
+
+LIBRARY_EXT="$library_ext"
 
 
 ac_ext=c
@@ -5771,6 +5806,19 @@ if test "${enable_werror+set}" = set; then :
 fi
 
 
+# Check whether --enable-llvm-fuzzer was given.
+if test "${enable_llvm_fuzzer+set}" = set; then :
+  enableval=$enable_llvm_fuzzer;  case "$enableval" in
+  no)
+    llvm_fuzzer=no
+    ;;
+  *)
+    llvm_fuzzer=yes
+  esac
+
+fi
+
+
 # Check whether --enable-llvm-address-sanitizer was given.
 if test "${enable_llvm_address_sanitizer+set}" = set; then :
   enableval=$enable_llvm_address_sanitizer;  case "$enableval" in
@@ -5782,6 +5830,20 @@ if test "${enable_llvm_address_sanitizer+set}" = set; then :
   esac
 
 fi
+
+
+# Check whether --enable-llvm-leak-sanitizer was given.
+if test "${enable_llvm_leak_sanitizer+set}" = set; then :
+  enableval=$enable_llvm_leak_sanitizer;  case "$enableval" in
+  no)
+    llvm_leak_sanitizer=no
+    ;;
+  *)
+    llvm_leak_sanitizer=yes
+  esac
+
+fi
+
 
 
 # Check whether --enable-llvm-undefined-behaviour-sanitizer was given.
@@ -6029,167 +6091,6 @@ modconfdir='${raddbdir}/mods-config'
 
 
 
-WITH_ASCEND_BINARY=yes
-
-# Check whether --with-ascend-binary was given.
-if test "${with_ascend_binary+set}" = set; then :
-  withval=$with_ascend_binary;  case "$withval" in
-  yes)
-    ;;
-  *)
-    WITH_ASCEND_BINARY=no
-  esac
-
-fi
-
-if test "x$WITH_ASCEND_BINARY" = "xyes"; then
-
-$as_echo "#define WITH_ASCEND_BINARY 1" >>confdefs.h
-
-fi
-
-
-    WITH_TCP=yes
-
-
-# Check whether --with-tcp was given.
-if test "${with_tcp+set}" = set; then :
-  withval=$with_tcp; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-tcp expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_TCP 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_TCP /**/" >>confdefs.h
-
-    fi
-
-
-    WITH_VMPS=yes
-
-
-# Check whether --with-vmps was given.
-if test "${with_vmps+set}" = set; then :
-  withval=$with_vmps; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-vmps expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_VMPS 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_VMPS /**/" >>confdefs.h
-
-    fi
-
-
-    WITH_DHCP=yes
-
-
-# Check whether --with-dhcp was given.
-if test "${with_dhcp+set}" = set; then :
-  withval=$with_dhcp; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-dhcp expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_DHCP 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_DHCP /**/" >>confdefs.h
-
-    fi
-
-
-    WITH_TACACS=yes
-
-
-# Check whether --with-tacacs was given.
-if test "${with_tacacs+set}" = set; then :
-  withval=$with_tacacs; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-tacacs expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_TACACS 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_TACACS /**/" >>confdefs.h
-
-    fi
-
-
-    WITH_UDPFROMTO=yes
-
-
-# Check whether --with-udpfromto was given.
-if test "${with_udpfromto+set}" = set; then :
-  withval=$with_udpfromto; case "$withval" in
-            yes|no|'')
-                ;;
-            no|'')
-                ;;
-            *)
-                as_fn_error $? "--with[out]-udpfromto expects yes|no" "$LINENO" 5
-                ;;
-        esac
-fi
-
-
-    if test x"$withval" == x"yes"; then
-
-$as_echo "#define WITH_UDPFROMTO 1" >>confdefs.h
-
-    else
-
-$as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
-
-    fi
-
-
-
 
     WITH_CAP=yes
 
@@ -6376,6 +6277,54 @@ if test "${with_gperftools_include_dir+set}" = set; then :
 
             *)
                 gperftools_include_dir="$withval"
+                ;;
+    esac
+fi
+
+
+
+
+    WITH_GNUMAKE=yes
+
+
+# Check whether --with-gnumake was given.
+if test "${with_gnumake+set}" = set; then :
+  withval=$with_gnumake; case "$withval" in
+            yes|no|'')
+                WITH_GNUMAKE="$withval"
+                ;;
+            *)
+                as_fn_error $? "--with[out]-gnumake expects yes|no|''" "$LINENO" 5
+                ;;
+        esac
+fi
+
+
+
+
+# Check whether --with-gnumake-lib-dir was given.
+if test "${with_gnumake_lib_dir+set}" = set; then :
+  withval=$with_gnumake_lib_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-gnumake-lib=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+            *)
+                gnumake_lib_dir="$withval"
+                ;;
+        esac
+fi
+
+
+
+# Check whether --with-gnumake-include-dir was given.
+if test "${with_gnumake_include_dir+set}" = set; then :
+  withval=$with_gnumake_include_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-gnumake-include=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+
+            *)
+                gnumake_include_dir="$withval"
                 ;;
     esac
 fi
@@ -7454,51 +7403,6 @@ _ACEOF
 
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for htonl in -lws2_32" >&5
-$as_echo_n "checking for htonl in -lws2_32... " >&6; }
-if ${ac_cv_lib_ws2_32_htonl+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lws2_32  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char htonl ();
-int
-main ()
-{
-return htonl ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_ws2_32_htonl=yes
-else
-  ac_cv_lib_ws2_32_htonl=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ws2_32_htonl" >&5
-$as_echo "$ac_cv_lib_ws2_32_htonl" >&6; }
-if test "x$ac_cv_lib_ws2_32_htonl" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBWS2_32 1
-_ACEOF
-
-  LIBS="-lws2_32 $LIBS"
-
-fi
-
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for clock_gettime in -lrt" >&5
 $as_echo_n "checking for clock_gettime in -lrt... " >&6; }
@@ -7926,6 +7830,7 @@ for ac_header in \
   sys/event.h \
   sys/fcntl.h \
   sys/prctl.h \
+  sys/procctl.h \
   sys/ptrace.h \
   sys/resource.h \
   sys/security.h \
@@ -7940,8 +7845,7 @@ for ac_header in \
   utime.h \
   utmp.h \
   utmpx.h \
-  valgrind.h \
-  winsock.h
+  valgrind.h
 
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -12081,6 +11985,239 @@ $as_echo "$as_me: WARNING: systemd headers not found.  Use --with-systemd-includ
   fi
 fi
 
+smart_try_dir="$gnumake_include_dir"
+
+
+ac_safe=`echo "gnumake.h" | sed 'y%./+-%__pm%'`
+old_CPPFLAGS="$CPPFLAGS"
+smart_include=
+smart_include_dir="/usr/local/include /opt/include"
+
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+for _dir in $smart_try_dir; do
+  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+done
+
+for _dir in $smart_include_dir; do
+  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+for try in $_smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gnumake.h in $try" >&5
+$as_echo_n "checking for gnumake.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+for _prefix in $smart_prefix; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/gnumake.h" >&5
+$as_echo_n "checking for ${_prefix}/gnumake.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+fi
+
+if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gnumake.h" >&5
+$as_echo_n "checking for gnumake.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file="${_prefix}/${1}"
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+done
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file=gnumake.h
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+
+for try in $_smart_include_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gnumake.h in $try" >&5
+$as_echo_n "checking for gnumake.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <gnumake.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+eval "ac_cv_header_$ac_safe=yes"
+CPPFLAGS="$smart_include $old_CPPFLAGS"
+SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+fi
+
+smart_prefix=
+
+if test "x$ac_cv_header_gnumake_h" != "xyes"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: gnumake.h not found. Use --with-gnumake-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: gnumake.h not found. Use --with-gnumake-include-dir=<path>." >&2;}
+  as_fn_error $? "FreeRADIUS build system requires gnumake.h (the public interface for GNU Make C extensions)" "$LINENO" 5
+fi
+
 
 ac_fn_c_check_type "$LINENO" "off_t" "ac_cv_type_off_t" "$ac_includes_default"
 if test "x$ac_cv_type_off_t" = xyes; then :
@@ -12517,6 +12654,8 @@ for ac_func in \
   mkdirat \
   openat \
   pthread_sigmask \
+  recvmmsg \
+  sendmmsg \
   setlinebuf \
   setresuid \
   setsid \
@@ -13006,24 +13145,26 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
 	-W \
 	-Weverything \
 	-Wformat=2 \
-	-DWITH_VERIFY_PTR=1 \
-	-Wno-disabled-macro-expansion \
-	-Wno-missing-field-initializers \
 	-Wno-date-time \
-    	-Wno-padded \
+	-Wno-disabled-macro-expansion \
+	-Wno-format-pedantic \
+	-Wno-missing-field-initializers \
+    	-Wno-cast-align \
+    	-Wno-conversion \
+    	-Wno-covered-switch-default \
+    	-Wno-documentation-unknown-command \
+    	-Wno-extended-offsetof \
+    	-Wno-gnu-empty-initializer \
+    	-Wno-gnu-statement-expression \
     	-Wno-gnu-zero-variadic-macro-arguments \
+    	-Wno-packed \
+    	-Wno-padded \
+    	-Wno-reserved-id-macro \
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
-    	-Wno-conversion \
     	-Wno-switch-enum \
-    	-Wno-gnu-statement-expression \
-    	-Wno-extended-offsetof \
-    	-Wno-cast-align \
-    	-Wno-documentation-unknown-command \
-    	-Wno-covered-switch-default \
-    	-Wno-packed \
-    	-Wno-reserved-id-macro \
-    	-Wno-format-pedantic"
+    	-Wno-vla \
+        $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
       devcflags="$devcflags \
@@ -13047,7 +13188,7 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
       	-Wformat-nonliteral \
       	-Wformat-security \
       	-Wformat=2 \
-      	-DWITH_VERIFY_PTR=1"
+	$verify_ptr"
       INSTALLSTRIP=""
     fi
   fi
@@ -13103,8 +13244,14 @@ $as_echo "$ax_cv_cc_wimplicit_fallthrough_flag" >&6; }
     devcflags="$devcflags -Wimplicit-fallthrough"
   fi
 
+          fsanitizeflags=
+
+        if test "x$llvm_fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+                fsanitizeflags="$fsanitizeflags,fuzzer"
+  fi
+
         if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-                        devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+                        devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-fsanitize-address-use-after-scope\"" >&5
@@ -13169,13 +13316,23 @@ fi
 
 done
 
+    fsanitizeflags="$fsanitizeflags,address"
+  fi
 
-    devldflags="$devldflags -fsanitize=address"
+        if test "x$llvm_leak_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+                fsanitizeflags="$fsanitizeflags,leak"
   fi
 
         if test "x$llvm_undefined_behaviour_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
                     devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
     devldflags="$devldflags -fno-sanitize-recover=undefined"
+    fsanitizeflags="$fsanitizeflags,undefined"
+  fi
+
+  if test "x$fsanitizeflags" != "x"; then
+    fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
+    devcflags="-fsanitize=$fsanitizeflags $devcflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
   fi
 
         devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
@@ -13445,7 +13602,51 @@ fi
 $as_echo "$ax_cv_cc_builtin_bswap64" >&6; }
 if test "x$ax_cv_cc_builtin_bswap64" = "xyes"; then
 
-$as_echo "#define HAVE_BUILTIN_BSWAP_64 1" >>confdefs.h
+$as_echo "#define HAVE_BUILTIN_BSWAP64 1" >>confdefs.h
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_clzll support in compiler" >&5
+$as_echo_n "checking for __builtin_clzll support in compiler... " >&6; }
+if ${ax_cv_cc_builtin_clzll+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return (__builtin_clzll(0) - (sizeof(unsigned long long) * 8));
+        }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  ax_cv_cc_builtin_clzll=yes
+else
+  ax_cv_cc_builtin_clzll=no
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_builtin_clzll" >&5
+$as_echo "$ax_cv_cc_builtin_clzll" >&6; }
+if test "x$ax_cv_cc_builtin_clzll" = "xyes"; then
+
+$as_echo "#define HAVE_BUILTIN_CLZLL 1" >>confdefs.h
 
 fi
 

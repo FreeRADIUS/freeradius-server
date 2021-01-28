@@ -27,7 +27,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/base.h>
 
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 
@@ -48,22 +48,28 @@ static char const hextab[] = "0123456789abcdef";
 
 /** Equivalent to the old safe_characters functionality in rlm_sql but with utf8 support
  *
- * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
+ * Example:
+@verbatim
+"%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   void const *mod_inst, UNUSED void const *xlat_inst,
-			   UNUSED REQUEST *request, char const *fmt)
+			   UNUSED request_t *request, char const *fmt)
 {
 	rlm_escape_t const	*inst = mod_inst;
 	char const		*p = fmt;
 	char			*out_p = *out;
 	size_t			freespace = outlen;
+	size_t			len = talloc_array_length(inst->allowed_chars) - 1;
 
 	while (p[0]) {
 		int chr_len = 1;
 		int ret = 1;	/* -Werror=uninitialized */
 
-		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, p) == NULL) {
+		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, len, p) == NULL) {
 			/*
 			 *	'=' 1 + ([hex]{2}) * chr_len)
 			 */
@@ -115,11 +121,16 @@ static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 /** Equivalent to the old safe_characters functionality in rlm_sql
  *
- * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
+ * Example:
+@verbatim
+"%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     UNUSED REQUEST *request, char const *fmt)
+			     UNUSED request_t *request, char const *fmt)
 {
 	char const *p;
 	char *out_p = *out;
@@ -173,8 +184,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	MEM(unescape = talloc_asprintf(NULL, "un%s", inst->xlat_name));
-	xlat_register(inst, inst->xlat_name, escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(inst, unescape, unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(inst, inst->xlat_name, escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register_legacy(inst, unescape, unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	talloc_free(unescape);
 
 	return 0;

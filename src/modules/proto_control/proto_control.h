@@ -33,11 +33,6 @@
 typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
-	dl_module_inst_t			**type_submodule;		//!< Instance of the various types
-	dl_module_inst_t			*dynamic_submodule;		//!< proto_control_dynamic_client
-									//!< only one instance per type allowed.
-	module_method_t			process;			//!< process function
-
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
 } proto_control_t;

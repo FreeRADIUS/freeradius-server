@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dlist.h>
 
@@ -37,7 +37,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static CONF_PARSER const status_checks_config[] = {
+static CONF_PARSER const status_check_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, rlm_radius_t, status_check),
 	  .func = status_check_type_parse },
 
@@ -48,6 +48,7 @@ static CONF_PARSER const status_check_update_config[] = {
 	{ FR_CONF_OFFSET("update", FR_TYPE_SUBSECTION | FR_TYPE_REQUIRED, rlm_radius_t, status_check_map),
 	  .ident2 = CF_IDENT_ANY,
 	  .func = status_check_update_parse },
+	{ FR_CONF_OFFSET("num_answers_to_alive", FR_TYPE_UINT32, rlm_radius_t, num_answers_to_alive), .dflt = STRINGIFY(3) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -56,42 +57,42 @@ static CONF_PARSER const status_check_update_config[] = {
  *	Retransmission intervals for the packets we support.
  */
 static CONF_PARSER auth_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCESS_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER acct_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER status_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(10) },
-	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER coa_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_COA_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER disconnect_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -110,17 +111,17 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_OFFSET("synchronous", FR_TYPE_BOOL, rlm_radius_t, synchronous) },
 
-	{ FR_CONF_OFFSET("no_connection_fail", FR_TYPE_BOOL, rlm_radius_t, no_connection_fail) },
-
 	{ FR_CONF_OFFSET("originate", FR_TYPE_BOOL, rlm_radius_t, originate) },
 
-	{ FR_CONF_POINTER("status_checks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_checks_config },
+	{ FR_CONF_POINTER("status_check", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
 
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
 	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, rlm_radius_t, zombie_period), .dflt = STRINGIFY(40) },
 
-	{ FR_CONF_OFFSET("trunk", FR_TYPE_SUBSECTION, rlm_radius_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
+	{ FR_CONF_OFFSET("revive_interval", FR_TYPE_TIME_DELTA, rlm_radius_t, revive_interval) },
+
+	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_radius_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -178,7 +179,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	/*
 	 *	Must be the RADIUS module
 	 */
-	rad_assert(cs && (strcmp(cf_section_name1(cs), "radius") == 0));
+	fr_assert(cs && (strcmp(cf_section_name1(cs), "radius") == 0));
 
 	/*
 	 *	Allow the process module to be specified by
@@ -244,7 +245,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	if (!transport_cs) transport_cs = cf_section_alloc(cs, cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(cs, dl_module_inst_t, "rlm_radius"));
-	rad_assert(parent_inst);
+	fr_assert(parent_inst);
 
 	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
 }
@@ -325,9 +326,9 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	int			rcode;
 	CONF_SECTION		*cs;
 	char const		*name2;
-	vp_map_t		*head = NULL;
+	map_t		*head = NULL;
 
-	rad_assert(cf_item_is_section(ci));
+	fr_assert(cf_item_is_section(ci));
 
 	cs = cf_item_to_section(ci);
 	name2 = cf_section_name2(cs);
@@ -340,7 +341,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	 *	Compile the "update" section.
 	 */
 	{
-		vp_tmpl_rules_t	parse_rules = {
+		tmpl_rules_t	parse_rules = {
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 
@@ -362,24 +363,10 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 }
 
 
-static void mod_radius_signal(void *instance, void *thread, REQUEST *request, void *rctx, fr_state_signal_t action)
+static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action)
 {
-	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-
-	/*
-	 *	We've been told we're done.  Clean up.
-	 *
-	 *	Note that the caller doesn't necessarily need to send
-	 *	us the signal, as he can just talloc_free(request).
-	 *	But it is more polite to send a signal, and it allows
-	 *	the IO modules to do additional debugging if
-	 *	necessary.
-	 */
-	if (action == FR_SIGNAL_CANCEL) {
-		talloc_free(rctx);
-		return;
-	}
+	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 
 	/*
 	 *	We received a duplicate packet, but we're not doing
@@ -390,37 +377,37 @@ static void mod_radius_signal(void *instance, void *thread, REQUEST *request, vo
 
 	if (!inst->io->signal) return;
 
-	inst->io->signal(request, inst->io_instance, t->thread_io_ctx, rctx, action);
+	inst->io->signal(&(module_ctx_t){.instance = inst->io_instance, .thread = t->io_thread }, request, rctx, action);
 }
 
 
-/** Continue after unlang_interpret_resumable()
+/** Continue after unlang_interpret_mark_resumable()
  *
  */
-static rlm_rcode_t mod_radius_resume(void *instance, void *thread, REQUEST *request, void *ctx)
+static unlang_action_t mod_radius_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *ctx)
 {
-	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 
-	return inst->io->resume(request, inst->io_instance, t->thread_io_ctx, ctx);
+	return inst->io->resume(p_result, &(module_ctx_t){.instance = inst->io_instance, .thread = t->io_thread }, request, ctx);
 }
 
 /** Do any RADIUS-layer fixups for proxying.
  *
  */
-static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
+static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	/*
 	 *	Check for proxy loops.
 	 */
 	if (RDEBUG_ENABLED) {
-		fr_cursor_t cursor;
+		fr_dcursor_t cursor;
 
-		for (vp = fr_cursor_iter_by_da_init(&cursor, &request->packet->vps, attr_proxy_state);
+		for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 			if (vp->vp_length != 4) continue;
 
 			if (memcmp(&inst->proxy_state, vp->vp_octets, 4) == 0) {
@@ -432,10 +419,10 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 
 	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return;
 
-	if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY) &&
-	    !fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY)) {
+	if (fr_pair_find_by_da(&request->request_pairs, attr_chap_password) &&
+	    !fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge)) {
 	    	MEM(pair_add_request(&vp, attr_chap_challenge) >= 0);
-		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector), true);
+		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 	}
 }
 
@@ -443,16 +430,17 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 /** Send packets outbound.
  *
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rcode_t rcode;
-	rlm_radius_t *inst = instance;
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	void *request_io_ctx;
+	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
+	rlm_radius_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
+	rlm_rcode_t		rcode;
+
+	void			*rctx = NULL;
 
 	if (!request->packet->code) {
 		REDEBUG("You MUST specify a packet code");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -461,36 +449,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
 		REDEBUG("Cannot proxy Status-Server packets");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if ((request->packet->code >= FR_RADIUS_MAX_PACKET_CODE) ||
 	    !inst->retry[request->packet->code].irt) { /* can't be zero */
 		REDEBUG("Invalid packet code %d", request->packet->code);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (!inst->allowed[request->packet->code]) {
 		REDEBUG("Packet code %s is disallowed by the configuration",
 		       fr_packet_codes[request->packet->code]);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (request->client->dynamic && !request->client->active) {
 		REDEBUG("Cannot proxy packets which define dynamic clients");
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
-
-	/*
-	 *	The submodule needs to track it's own data associated
-	 *	with the request.  Allocate that here.  Note that the
-	 *	IO submodule has to set the destructor if it so wishes.
-	 */
-	request_io_ctx = talloc_zero_array(request, uint8_t, inst->io->request_inst_size);
-	if (!request_io_ctx) {
-		return RLM_MODULE_FAIL;
-	}
-	if (inst->io->request_inst_type) talloc_set_name_const(request_io_ctx, inst->io->request_inst_type);
 
 	/*
 	 *	Do any necessary RADIUS level fixups
@@ -506,15 +483,87 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	return another code which indicates what happened to
 	 *	the request...b
 	 */
-	rcode = inst->io->push(inst->io_instance, request, request_io_ctx, t->thread_io_ctx);
+	inst->io->enqueue(&rcode, &rctx, inst->io_instance, t->io_thread, request);
 	if (rcode != RLM_MODULE_YIELD) {
-		talloc_free(request_io_ctx);
-		return rcode;
+		fr_assert(rctx == NULL);
+		RETURN_MODULE_RCODE(rcode);
 	}
 
-	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, request_io_ctx);
+	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, rctx);
 }
 
+/** Destroy thread data for the submodule.
+ *
+ */
+static int mod_thread_detach(fr_event_list_t *el, void *thread)
+{
+	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	rlm_radius_t const *inst = t->inst;
+
+	/*
+	 *	Tell the submodule to shut down all of its
+	 *	connections.
+	 */
+	if (inst->io->thread_detach &&
+	    (inst->io->thread_detach(el, t->io_thread) < 0)) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Instantiate thread data for the submodule.
+ *
+ */
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+{
+	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+
+	t->inst = instance;
+
+	/*
+	 *	Allocate thread-specific data.  The connections should
+	 *	live here.
+	 */
+	if (inst->io->thread_inst_size) {
+		MEM(t->io_thread = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size));
+
+		/*
+		 *	Set the name of the IO modules thread instance.
+		 */
+		if (inst->io->thread_inst_type) (void) talloc_set_name_const(t->io_thread,
+									     inst->io->thread_inst_type);
+	}
+
+	/*
+	 *	Instantiate the per-thread data.  This should open up
+	 *	sockets, set timers, etc.
+	 */
+	if (inst->io->thread_instantiate &&
+	    inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->io_thread) < 0) return -1;
+
+	return 0;
+}
+
+/** Instantiate the module
+ *
+ * Instantiate I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this module
+ * @param[in] conf	our configuration section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+{
+	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
+
+	if (inst->io->instantiate && inst->io->instantiate(inst->io_instance, inst->io_conf) < 0) return -1;
+
+	return 0;
+}
 
 /** Bootstrap the module
  *
@@ -544,8 +593,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("zombie_period", inst->zombie_period, <=, fr_time_delta_from_sec(120));
 
+	if (!inst->status_check) {
+		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, >=, fr_time_delta_from_sec(10));
+		FR_TIME_DELTA_BOUND_CHECK("revive_interval", inst->revive_interval, <=, fr_time_delta_from_sec(3600));
+	}
+
 	num_types = talloc_array_length(inst->types);
-	rad_assert(num_types > 0);
+	fr_assert(num_types > 0);
 
 	/*
 	 *	Allow for O(1) lookup later...
@@ -554,20 +608,36 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		uint32_t code;
 
 		code = inst->types[i];
-		rad_assert(code > 0);
-		rad_assert(code < FR_RADIUS_MAX_PACKET_CODE);
+		fr_assert(code > 0);
+		fr_assert(code < FR_RADIUS_MAX_PACKET_CODE);
 
-		inst->allowed[code] = 1;
+		inst->allowed[code] = true;
 	}
 
-	rad_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(inst->status_check < FR_RADIUS_MAX_PACKET_CODE);
 
 	/*
-	 *	If we have status_check = packet, then 'packet' MUST either be
-	 *	Status-Server, or it MUST be one of the allowed packet types for this connection.
+	 *	If we're replicating, we don't care if the other end
+	 *	is alive.
 	 */
-	if (inst->status_check && inst->status_check != FR_CODE_STATUS_SERVER) {
-		if (!inst->allowed[inst->status_check]) {
+	if (inst->replicate && inst->status_check) {
+		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'replicate = true'",
+			    fr_packet_codes[inst->status_check]);
+		inst->status_check = 0;
+	}
+
+
+	/*
+	 *	If we have status checks, then do some sanity checks.
+	 *	Status-Server is always allowed.  Otherwise, the
+	 *	status checks have to match one of the allowed
+	 *	packets.
+	 */
+	if (inst->status_check) {
+		if (inst->status_check == FR_CODE_STATUS_SERVER) {
+			inst->allowed[inst->status_check] = true;
+
+		} else if (!inst->allowed[inst->status_check]) {
 			cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
 				   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
 			return -1;
@@ -581,16 +651,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	If we're replicating, we don't care if the other end
-	 *	is alive.
-	 */
-	if (inst->replicate && inst->status_check) {
-		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'replicate = true'",
-			    fr_packet_codes[inst->status_check]);
-		inst->status_check = 0;
-	}
-
-	/*
 	 *	Don't sanity check the async timers if we're doing
 	 *	synchronous proxying.
 	 */
@@ -600,15 +660,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Set limits on retransmission timers
 	 */
 	if (inst->allowed[FR_CODE_ACCESS_REQUEST]) {
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, >=, fr_time_delta_from_sec(1));
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
-		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, >=, 1);
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_rtx_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
+		FR_INTEGER_BOUND_CHECK("Access-Request.max_rtx_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, >=, 1);
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, <=, fr_time_delta_from_sec(3));
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
-		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_rtx_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
+		FR_INTEGER_BOUND_CHECK("Access-Request.max_rtx_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
@@ -619,72 +679,72 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	max_request_time.
 	 */
 	if (inst->allowed[FR_CODE_ACCOUNTING_REQUEST]) {
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, >=, fr_time_delta_from_sec(1));
 #if 0
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, fr_time_delta_from_sec(0));
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.max_rtx_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, fr_time_delta_from_sec(0));
 #endif
 
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, <=, fr_time_delta_from_sec(3));
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.max_rtx_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
+		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.max_rtx_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
 	 *	Status-Server
 	 */
 	if (inst->allowed[FR_CODE_STATUS_SERVER]) {
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].irt, >=, fr_time_delta_from_sec(1));
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, >=, fr_time_delta_from_sec(5));
-		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_count", inst->retry[FR_CODE_STATUS_SERVER].mrc, >=, 1);
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, >=, fr_time_delta_from_sec(5));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_CODE_STATUS_SERVER].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, >=, fr_time_delta_from_sec(5));
+		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_CODE_STATUS_SERVER].mrc, >=, 1);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].irt, <=, fr_time_delta_from_sec(3));
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, <=, fr_time_delta_from_sec(30));
-		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_count", inst->retry[FR_CODE_STATUS_SERVER].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, <=, fr_time_delta_from_sec(30));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.initial_rtx_time", inst->retry[FR_CODE_STATUS_SERVER].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, <=, fr_time_delta_from_sec(30));
+		FR_INTEGER_BOUND_CHECK("Status-Server.max_rtx_count", inst->retry[FR_CODE_STATUS_SERVER].mrc, <=, 10);
+		FR_TIME_DELTA_BOUND_CHECK("Status-Server.max_rtx_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
 	 *	CoA
 	 */
 	if (inst->allowed[FR_CODE_COA_REQUEST]) {
-		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].irt, >=, fr_time_delta_from_sec(1));
-		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
-		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_count", inst->retry[FR_CODE_COA_REQUEST].mrc, >=, 1);
-		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_rtx_time", inst->retry[FR_CODE_COA_REQUEST].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_time", inst->retry[FR_CODE_COA_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
+		FR_INTEGER_BOUND_CHECK("CoA-Request.max_rtx_count", inst->retry[FR_CODE_COA_REQUEST].mrc, >=, 1);
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].irt, <=, fr_time_delta_from_sec(3));
-		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, <=, fr_time_delta_from_sec(60));
-		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_count", inst->retry[FR_CODE_COA_REQUEST].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.initial_rtx_time", inst->retry[FR_CODE_COA_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_time", inst->retry[FR_CODE_COA_REQUEST].mrt, <=, fr_time_delta_from_sec(60));
+		FR_INTEGER_BOUND_CHECK("CoA-Request.max_rtx_count", inst->retry[FR_CODE_COA_REQUEST].mrc, <=, 10);
+		FR_TIME_DELTA_BOUND_CHECK("CoA-Request.max_rtx_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 	/*
 	 *	Disconnect
 	 */
 	if (inst->allowed[FR_CODE_DISCONNECT_REQUEST]) {
-		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, >=, fr_time_delta_from_sec(1));
-		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_count", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
-		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_rtx_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, >=, fr_time_delta_from_sec(5));
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, <=, fr_time_delta_from_sec(3));
-		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_count", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.initial_rtx_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
+		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
 
 setup_io_submodule:
-	inst->io = (fr_radius_client_io_t const *) inst->io_submodule->module->common;
+	inst->io = (rlm_radius_io_t const *) inst->io_submodule->module->common;
 	inst->io_instance = inst->io_submodule->data;
 	inst->io_conf = inst->io_submodule->conf;
 
-	rad_assert(inst->io->thread_inst_size > 0);
-	rad_assert(inst->io->bootstrap != NULL);
-	rad_assert(inst->io->instantiate != NULL);
+	fr_assert(inst->io->thread_inst_size > 0);
+	fr_assert(inst->io->bootstrap != NULL);
+	fr_assert(inst->io->instantiate != NULL);
 
 	/*
 	 *	Get random Proxy-State identifier for this module.
@@ -694,94 +754,7 @@ setup_io_submodule:
 	/*
 	 *	Bootstrap the submodule.
 	 */
-	if (inst->io->bootstrap(inst->io_instance, inst->io_conf) < 0) {
-		cf_log_err(inst->io_conf, "Bootstrap failed for \"%s\"",
-			   inst->io->name);
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/** Instantiate the module
- *
- * Instantiate I/O and type submodules.
- *
- * @param[in] instance	Ctx data for this module
- * @param[in] conf	our configuration section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
-{
-	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
-
-	if (inst->io->instantiate(inst, inst->io_instance, inst->io_conf) < 0) {
-		cf_log_err(inst->io_conf, "Instantiate failed for \"%s\"",
-			   inst->io->name);
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Instantiate thread data for the submodule.
- *
- */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
-{
-	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-
-	(void) talloc_set_type(t, rlm_radius_thread_t);
-
-	t->inst = instance;
-	t->el = el;
-
-	/*
-	 *	Allocate thread-specific data.  The connections should
-	 *	live here.
-	 */
-	t->thread_io_ctx = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
-	if (!t->thread_io_ctx) {
-		return -1;
-	}
-
-	/*
-	 *	Set the name of the IO modules thread instance.
-	 */
-	(void) talloc_set_name_const(t->thread_io_ctx, inst->io->thread_inst_type);
-
-	/*
-	 *	Instantiate the per-thread data.  This should open up
-	 *	sockets, set timers, etc.
-	 */
-	if (inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->thread_io_ctx) < 0) {
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/** Destroy thread data for the submodule.
- *
- */
-static int mod_thread_detach(fr_event_list_t *el, void *thread)
-{
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	rlm_radius_t const *inst = t->inst;
-
-	/*
-	 *	Tell the submodule to shut down all of its
-	 *	connections.
-	 */
-	if (inst->io->thread_detach &&
-	    (inst->io->thread_detach(el, t->thread_io_ctx) < 0)) {
-		return -1;
-	}
+	if (inst->io->bootstrap(inst->io_instance, inst->io_conf) < 0) return -1;
 
 	return 0;
 }
@@ -816,12 +789,15 @@ module_t rlm_radius = {
 	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
 	.inst_size	= sizeof(rlm_radius_t),
 	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+
 	.onload		= mod_load,
 	.unload		= mod_unload,
 
+	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
+
 	.thread_inst_size = sizeof(rlm_radius_thread_t),
+	.thread_inst_type = "rlm_radius_thread_t",
 	.thread_instantiate = mod_thread_instantiate,
 	.thread_detach	= mod_thread_detach,
 	.methods = {
@@ -831,7 +807,7 @@ module_t rlm_radius = {
 		[MOD_AUTHENTICATE]     	= mod_process,
 	},
         .method_names = (module_method_names_t[]){
-                { CF_IDENT_ANY,       CF_IDENT_ANY,   mod_process },
+                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },
                 MODULE_NAME_TERMINATOR
         },
 };

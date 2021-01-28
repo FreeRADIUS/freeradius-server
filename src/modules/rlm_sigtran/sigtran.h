@@ -83,7 +83,7 @@ typedef struct sigtran_transaction {
 	} response;
 
 	struct {
-		REQUEST			*request;
+		request_t			*request;
 		struct osmo_fd		*ofd;				//!< The FD the txn was received on.
 		struct osmo_timer_list	timer;				//!< Timer data.
 
@@ -168,7 +168,7 @@ typedef struct sigtran_conn_conf {
 	sigtran_sccp_address_t		sccp_called;			//!< The calling SCCP address.
 	struct sockaddr_sccp		sccp_called_sockaddr;		//!< Parsed version of the above
 
-	vp_tmpl_t			*map_version;			//!< Application context version.
+	tmpl_t			*map_version;			//!< Application context version.
 } sigtran_conn_conf_t;
 
 /** Represents a connection to a remote SS7 entity
@@ -233,8 +233,13 @@ typedef struct rlm_sigtran {
 
 	sigtran_conn_conf_t	conn_conf;				//!< Connection configuration
 
-	vp_tmpl_t		*imsi;					//!< Subscriber identifier.
+	tmpl_t		*imsi;					//!< Subscriber identifier.
 } rlm_sigtran_t;
+
+typedef struct rlm_sigtran_thread {
+        rlm_sigtran_t const     *inst;                                  //!< Instance of rlm_sigtran
+        int                     fd;                                     //!< File descriptor
+} rlm_sigtran_thread_t;
 
 extern int ctrl_pipe[2];
 extern uint8_t const ascii_to_tbcd[];
@@ -253,8 +258,8 @@ int	sigtran_client_link_up(sigtran_conn_t const **out, sigtran_conn_conf_t const
 
 int	sigtran_client_link_down(sigtran_conn_t const **conn);
 
-rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST *request,
-					      sigtran_conn_t const *conn, int fd);
+unlang_action_t sigtran_client_map_send_auth_info(rlm_rcode_t *p_result, rlm_sigtran_t const *inst, request_t *request,
+				  		  sigtran_conn_t const *conn, int fd);
 
 /*
  *	event.c

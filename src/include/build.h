@@ -28,6 +28,15 @@
 extern "C" {
 #endif
 
+/** For systems with an old version libc, define static_assert.
+ *
+ */
+#ifndef static_assert
+#  define static_assert _Static_assert
+# else
+#  include <assert.h>
+#endif
+
 /*
  *	Reduce spurious errors from clang scan by having
  *	all paths that find the da to be NULL, result
@@ -50,11 +59,23 @@ extern "C" {
 #endif
 
 /*
+ *	GCC will sometimes define "unix" as well as "__unix",
+ *	which gets confusing and is unnecessary.
+ */
+#undef unix
+
+/*
  *	The ubiquitous stringify macros
  */
 #define XSTRINGIFY(x) #x
 #define STRINGIFY(x) XSTRINGIFY(x)
 #define JOINSTR(x,y) XSTRINGIFY(x ## y)
+
+/*
+ *	Helpers for initialising arrays
+ *	of string literals.
+ */
+#define L(_str)		{ _str, sizeof(_str) - 1 }
 
 /*
  *	HEX concatenation macros
@@ -74,6 +95,21 @@ extern "C" {
 #endif
 
 /*
+ *	Pass caller information to the function
+ */
+#ifndef NDEBUG
+#  define NDEBUG_LOCATION_ARGS			char const *file, int line,
+#  define NDEBUG_LOCATION_VALS			file, line,
+#  define NDEBUG_LOCATION_EXP			__FILE__, __LINE__,
+#  define NDEBUG_LOCATION_NONNULL(_num)		((_num) + 2)
+#else
+#  define NDEBUG_LOCATION_ARGS
+#  define NDEBUG_LOCATION_VALS
+#  define NDEBUG_LOCATION_EXP
+#  define NDEBUG_LOCATION_NONNULL(_num)		(_num)
+#endif
+
+/*
  *	Mark variables as unused
  */
 #define UNUSED_VAR(_x) ((void)_x)
@@ -83,9 +119,17 @@ extern "C" {
  */
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
-#define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
 #define NEVER_RETURNS		CC_HINT(noreturn)
 #define UNUSED			CC_HINT(unused)
+
+/** clang 10 doesn't recognised the FALL-THROUGH comment anymore
+ *
+ */
+#if (defined(__clang__) && (__clang_major__ >= 10)) || (defined(__GNUC__) && __GNUC__ >= 7)
+#  define FALL_THROUGH		CC_HINT(fallthrough)
+#else
+#  define FALL_THROUGH		((void)0)
+#endif
 
 #ifndef NDEBUG
 #  define NDEBUG_UNUSED
@@ -106,11 +150,11 @@ extern "C" {
  *	compiler.
  */
 #ifdef __GNUC__
-#  define CC_HINT(_x)	__attribute__ ((_x))
+#  define CC_HINT(...)	__attribute__ ((__VA_ARGS__))
 #  define likely(_x)	__builtin_expect((_x), 1)
 #  define unlikely(_x)	__builtin_expect((_x), 0)
 #else
-#  define CC_HINT(_x)
+#  define CC_HINT(...)
 #  define likely(_x)	_x
 #  define unlikely(_x)	_x
 #endif
@@ -123,31 +167,25 @@ extern "C" {
 /*
  *	Macros for controlling warnings in GCC >= 4.2 and clang >= 2.8
  */
-#if defined(__GNUC__) && ((__GNUC__ * 100) + __GNUC_MINOR__) >= 402
-#  define DIAG_PRAGMA(_x) PRAGMA(GCC diagnostic _x)
-#  if ((__GNUC__ * 100) + __GNUC_MINOR__) >= 406
-#    define DIAG_OFF(_x) DIAG_PRAGMA(push) DIAG_PRAGMA(ignored JOINSTR(-W,_x))
-#    define DIAG_ON(_x) DIAG_PRAGMA(pop)
-#  else
-#    define DIAG_OFF(_x) DIAG_PRAGMA(ignored JOINSTR(-W,_x))
-#    define DIAG_ON(_x)  DIAG_PRAGMA(warning JOINSTR(-W,_x))
-#  endif
-#elif defined(__clang__) && ((__clang_major__ * 100) + __clang_minor__ >= 208)
+#if defined(__clang__) && ((__clang_major__ * 100) + __clang_minor__ >= 208)
+#  define DIAG_UNKNOWN_PRAGMAS unknown-pragmas
 #  define DIAG_PRAGMA(_x) PRAGMA(clang diagnostic _x)
-#  define DIAG_OFF(_x) DIAG_PRAGMA(push) DIAG_PRAGMA(ignored JOINSTR(-W,_x))
-#  define DIAG_ON(_x) DIAG_PRAGMA(pop)
+#  define DIAG_OFF(_x) DIAG_PRAGMA(ignored JOINSTR(-W,_x))
+#  define DIAG_ON(_x) DIAG_PRAGMA(warning JOINSTR(-W,_x))
+#  define DIAG_PUSH() DIAG_PRAGMA(push)
+#  define DIAG_POP() DIAG_PRAGMA(pop)
+#elif !defined(__clang__) && defined(__GNUC__) && ((__GNUC__ * 100) + __GNUC_MINOR__) >= 402
+#  define DIAG_UNKNOWN_PRAGMAS pragmas
+#  define DIAG_PRAGMA(_x) PRAGMA(GCC diagnostic _x)
+#  define DIAG_OFF(_x) DIAG_PRAGMA(ignored JOINSTR(-W,_x))
+#  define DIAG_ON(_x)  DIAG_PRAGMA(warning JOINSTR(-W,_x))
+#  define DIAG_PUSH() DIAG_PRAGMA(push)
+#  define DIAG_POP() DIAG_PRAGMA(pop)
 #else
 #  define DIAG_OFF(_x)
 #  define DIAG_ON(_x)
-#endif
-
-/*
- *	GCC and clang use different macros
- */
-#ifdef __clang__
-# define DIAG_OPTIONAL DIAG_OFF(unknown-pragmas)
-#else
-# define DIAG_OPTIONAL DIAG_OFF(pragmas)
+#  define DIAG_PUSH()
+#  define DIAG_POP()
 #endif
 
 /*

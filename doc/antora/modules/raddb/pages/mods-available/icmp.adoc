@@ -1,0 +1,87 @@
+
+
+
+
+= ICMP Module
+
+The module `icmp` is used for sending ICMP Echo Request messages.
+
+This module is useful only for `xlat`.  Use it via the following expansion:
+
+
+The module will "ping" the given IP address.  If that IP address responds
+with an ICMP Echo Reply, then the result of the expansion will be `yes`.
+If that IP address does not respond within the timeout, then the result
+of the expansion will be `no`.
+
+The IP address does not have to be a fixed string.  It can be another
+expansion, such as:
+
+
+
+== Capabilities and Permissions
+
+On Linus, you may need to do:
+
+
+In order for the `icmp` module to bind to a "raw" socket.
+
+
+
+## Configuration Settings
+
+
+interface:: Which interface to use for sending ICMP packets.
+
+By default, packets are sent via the normal routing table.
+
+Specifying an interface forces the packets to be sent via
+that particular interface.
+
+
+
+src_ipaddr: Source address for ICMP messages.
+
+
+
+timeout:: How long to wait for the reply.
+
+Default is `1` seconds, which should be plenty for nearly
+anything. Range is `0.1s` to `10s`.
+
+WARNING: You are strongly encouraged to NOT increase this
+value.  In fact, you are much better off decreasing it to a
+lower value.  Doing so will improve network stability and
+responsiveness.
+
+
+
+## Ping for IPv4
+
+Copy of the `icmp` module, as it may be easier to remember `ping` than `icmp`.
+
+
+
+## A version for ICMPv6
+
+
+== Default Configuration
+
+```
+#	`%{icmp:192.0.2.1}`
+#	`%{icmp:%{NAS-IP-Address}}`
+#	$ setcap cap_net_raw+ep ${bindir}/radiusd
+icmp {
+#	interface = eth0
+	src_ipaddr = *
+	timeout = 1s
+}
+icmp ping {
+	timeout = 1s
+	src_ipaddr = *
+}
+icmp ping6 {
+	timeout = 1s
+	src_ipaddr = ::
+}
+```

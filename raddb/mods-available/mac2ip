@@ -28,6 +28,6 @@
 #
 passwd mac2ip {
 	filename = ${modconfdir}/${.:name}/${.:instance}
-	format = "*DHCP-Client-Hardware-Address:=DHCP-Your-IP-Address"
+	format = "*Client-Hardware-Address:=Your-IP-Address"
 	delimiter = ","
 }

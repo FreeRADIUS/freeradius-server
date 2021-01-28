@@ -4,60 +4,90 @@
 
 = ARP Virtual Server
 
-This is a virtual server that handles ARP.
+This is a virtual server which reads ARP packets
 
-It allows the administrator to log ARP packets on the
-local network.  The idea is that the ARP packets can be
-checked against a database (e.g. DHCP), or stored in
-an ARP-specific database.  If something funny is
-going on, it can produce syslog messages informing the
-administrator.
-
-See `arpwatch` for examples of what it should do.   For now,
-this is just a toy example.
-
-NOTE: It NEVER sends an ARP packet.
-
-
-
-## Example configuration
+It allows the administrator to log ARP packets on the local
+network.  The idea is that the ARP packets can be checked against a
+database (e.g. DHCP), or stored in an ARP-specific database.  If
+something funny is going on, this virtual server can produce syslog
+messages informing the administrator as to what happened.
 
 
 
 ## server arp { ... }
 
-This is the default `arp` virtual server.
+This is the `arp` virtual server.
 
 
-### listen { ... }
+namespace::
 
-Please see `listen` for more.
+In v4, all "server" sections MUST start with a "namespace"
+parameter.  This tells the server which protocol is being used.
 
-
-type:: ARP is type arp.
-
-
-
-interface:: The only configuration possible for ARP
-is the name of the interface.
+All of the "listen" sections in this virtual server will
+only accept packets for that protocol.
 
 
 
-### arp { ... }
+### The listen section
 
-If you need to know the interface, use `%{listen:interface}`
+The `listen` sections in v4 are very different from the
+`listen sections in v3.  The changes were necessary in
+order to make FreeRADIUS more flexible, and to make the
+configuration simpler and more consistent.
+
+
+interface:: The name of the interface.
+
+
+
+filter:: An optional PCAP filter.
+
+If we want to receive only ARPs for a particular
+IP address, then we list it here as `host foo`
+
+You can also filter on ethernet via
+`ether src foo` or `ether dst foo`.
+
+Or to accept only ARP Request packets, and filter
+out replies, use:
+
+`(arp[6] == 0) and (arp[7] == 1)`
+
+
+
+active:: Whether or not we response to ARP requests
+
+Generally we want an "arpwatch" style functionality,
+so the default is `active = no`
+
+When `active = no`, the virtual server will NEVER
+send an ARP reply.
+
+
+
+### Process an ARP request
+
+
+
+### Process an ARP reply before sending it
 
 
 == Default Configuration
 
 ```
 server arp {
+	namespace = arp
 	listen {
-		type = arp
-		interface = en1
+		interface = en0
+#		filter = "host 192.0.2.1"
+#		active = no
 	}
-	arp {
-		ok
-	}
+recv Request {
+	ok
+}
+send Reply {
+	ok
+}
 }
 ```

@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 /** Client field
  *
@@ -39,24 +39,24 @@ typedef struct {
 	char const	*field;		//!< Field name.
 } client_get_vp_ctx_t;
 
-static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-				   vp_map_t const *map, void *uctx)
+static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
+				   map_t const *map, void *uctx)
 {
 	client_get_vp_ctx_t	*client = uctx;
-	VALUE_PAIR		*head = NULL, *vp;
-	fr_cursor_t		cursor;
+	fr_pair_list_t		head;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*da;
 	CONF_PAIR const		*cp;
 
-	rad_assert(ctx != NULL);
+	fr_assert(ctx != NULL);
 
-	fr_cursor_init(&cursor, &head);
+	fr_pair_list_init(&head);
 
 	/*
 	 *	FIXME: allow multiple entries.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
-		da = map->lhs->tmpl_da;
+		da = tmpl_da(map->lhs);
 	} else {
 		char *attr;
 
@@ -67,7 +67,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(request->dict, attr);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			talloc_free(attr);
@@ -85,18 +85,18 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, '\0', false) < 0) {
 			RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue(value),
-				map->lhs->tmpl_da->name, fr_strerror());
+				tmpl_da(map->lhs)->name, fr_strerror());
 			talloc_free(vp);
 			goto error;
 		}
 
 		vp->op = map->op;
-		fr_cursor_append(&cursor, vp);
+		fr_pair_add(&head, vp);
 
 		if (map->op != T_OP_ADD) break;	/* Create multiple attribute for multiple CONF_PAIRs */
 	}
 
-	*out = head;
+	fr_tmp_pair_list_move(out, &head);
 
 	return 0;
 }
@@ -111,14 +111,14 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
  * @param[in] maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				   fr_value_box_t **client_override, vp_map_t const *maps)
+static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, request_t *request,
+				   fr_value_box_t **client_override, map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	vp_map_t const		*map;
+	map_t const		*map;
 	RADCLIENT		*client;
 	client_get_vp_ctx_t	uctx;
 
@@ -208,12 +208,18 @@ finish:
 	return rcode;
 }
 
-/*
- *	Xlat for %{client:[<ipaddr>.]foo}
+/** xlat to get client config data
+ *
+ * Example:
+@verbatim
+%{client:[<ipaddr>.]foo}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
 	char const	*value = NULL;
 	char		buffer[INET6_ADDRSTRLEN], *q;
@@ -265,7 +271,7 @@ static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 /*
  *	Find the client definition.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t length;
 	char const *value;
@@ -278,37 +284,37 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	 *	Ensure we're only being called from the main thread,
 	 *	with fake packets.
 	 */
-	if ((request->packet->src_port != 0) || (request->packet->vps != NULL) ||
+	if ((request->packet->socket.inet.src_port != 0) || (!fr_pair_list_empty(&request->request_pairs)) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	if (!request->client || !request->client->cs) {
 		REDEBUG("Unknown client definition");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	cp = cf_pair_find(request->client->cs, "directory");
 	if (!cp) {
 		REDEBUG("No directory configuration in the client");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	value = cf_pair_value(cp);
 	if (!value) {
 		REDEBUG("No value given for the directory entry in the client");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	length = strlen(value);
 	if (length > (sizeof(buffer) - 256)) {
 		REDEBUG("Directory name too long");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	memcpy(buffer, value, length + 1);
-	fr_inet_ntoh(&request->packet->src_ipaddr, buffer + length, sizeof(buffer) - length - 1);
+	fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, buffer + length, sizeof(buffer) - length - 1);
 
 	/*
 	 *	Read the buffer and generate the client.
@@ -319,11 +325,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	} else if (request->listener) {
 		server_cs = request->listener->server_cs;
 	} else {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	c = client_read(buffer, server_cs, true);
-	if (!c) return RLM_MODULE_FAIL;
+	if (!c) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Replace the client.  This is more than a bit of a
@@ -331,7 +337,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	 */
 	request->client = c;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -346,7 +352,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "client", xlat_client, NULL, NULL, 0, 0, true);
+	xlat_register_legacy(instance, "client", xlat_client, NULL, NULL, 0, 0);
 	map_proc_register(instance, "client", map_proc_client, NULL, 0);
 
 	return 0;

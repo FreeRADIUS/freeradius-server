@@ -106,12 +106,12 @@ use like so:
 
 ```
 server dhcp {
-	dhcp DHCP-Discover {
+	dhcp Discover {
 		soh # note - no SoH attributes are added here, the client hasn’t sent them yet
 	}
 
 	# other DHCP config
-	dhcp DHCP-Request {
+	dhcp Request {
 		soh
 		if () {
 			# SoH policy

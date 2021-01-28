@@ -25,14 +25,15 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
-/*
- *	Xlat for %{attr_by_num:<number>}
+/** Xlat for %{attr_by_num:\<number\>}
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     REQUEST *request, char const *fmt)
+				     request_t *request, char const *fmt)
 {
 	char			*q;
 	unsigned int		number;
@@ -57,19 +58,20 @@ static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 	return talloc_array_length(*out) - 1;
 }
 
-/*
- *	Xlat for %{attr_by_oid:<oid>}
+/** Xlat for %{attr_by_oid:\<oid\>}
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     REQUEST *request, char const *fmt)
+				     request_t *request, char const *fmt)
 {
 	unsigned int		attr = 0;
 	fr_dict_attr_t const	*parent = fr_dict_root(request->dict);
 	fr_dict_attr_t const	*da;
 	ssize_t		ret;
 
-	ret = fr_dict_attr_by_oid(fr_dict_internal(), &parent, &attr, fmt);
+	ret = fr_dict_attr_by_oid_legacy(fr_dict_internal(), &parent, &attr, fmt);
 	if (ret <= 0) {
 		REMARKER(fmt, -(ret), "%s", fr_strerror());
 		return ret;
@@ -84,12 +86,13 @@ static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t 
 
 /** Return the vendor of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	fr_dict_vendor_t const *vendor;
 
 	fr_skip_whitespace(fmt);
@@ -105,12 +108,13 @@ static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 /** Return the vendor number of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       REQUEST *request, char const *fmt)
+			       request_t *request, char const *fmt)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	fr_skip_whitespace(fmt);
 
@@ -122,12 +126,13 @@ static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 
 /** Return the attribute name of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
+			 request_t *request, char const *fmt)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	fr_skip_whitespace(fmt);
 
@@ -140,12 +145,13 @@ static ssize_t xlat_attr(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 /** Return the attribute number of an attribute reference
  *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt)
+			     request_t *request, char const *fmt)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	fr_skip_whitespace(fmt);
 
@@ -167,12 +173,12 @@ static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "attr_by_oid", xlat_dict_attr_by_oid, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "vendor", xlat_vendor, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "vendor_num", xlat_vendor_num, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "attr", xlat_attr, NULL, NULL, 0, 0, true);
-	xlat_register(instance, "attr_num", xlat_attr_num, NULL, NULL, 0, 0, true);
+	xlat_register_legacy(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "attr_by_oid", xlat_dict_attr_by_oid, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "vendor", xlat_vendor, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "vendor_num", xlat_vendor_num, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "attr", xlat_attr, NULL, NULL, 0, 0);
+	xlat_register_legacy(instance, "attr_num", xlat_attr_num, NULL, NULL, 0, 0);
 
 	return 0;
 }

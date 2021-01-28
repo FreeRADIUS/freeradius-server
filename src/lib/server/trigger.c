@@ -27,7 +27,15 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+
+/*
+ *	Public "thunk" API so that the various binaries can link to
+ *	libfreeradius-server.a, and don't need to be linked to libfreeradius-io.a
+ */
+fr_trigger_worker_t trigger_worker_request_add = NULL;
 
 /** Whether triggers are enabled globally
  *
@@ -53,11 +61,12 @@ typedef struct {
  */
 ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-		     REQUEST *request, char const *fmt)
+		     request_t *request, char const *fmt)
 {
-	VALUE_PAIR		*head;
+	fr_pair_list_t		*head = NULL;
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
+
 
 	if (!triggers_init) {
 		ERROR("Triggers are not enabled");
@@ -74,22 +83,21 @@ ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 	/*
 	 *	No arguments available.
 	 */
-	if (!head) return -1;
+	if (fr_pair_list_empty(head)) return -1;
 
-	da = fr_dict_attr_by_name(request->dict, fmt);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), fmt);
 	if (!da) {
 		ERROR("Unknown attribute \"%s\"", fmt);
 		return -1;
 	}
 
-	vp = fr_pair_find_by_da(head, da, TAG_ANY);
+	vp = fr_pair_find_by_da(head, da);
 	if (!vp) {
 		ERROR("Attribute \"%s\" is not valid for this trigger", fmt);
 		return -1;
 	}
-	*out = fr_pair_value_asprint(request, vp, '\0');
 
-	return talloc_array_length(*out) - 1;
+	return fr_value_box_aprint(request, out, &vp->data, NULL);
 }
 
 static int _mutex_free(pthread_mutex_t *mutex)
@@ -148,7 +156,7 @@ int trigger_exec_init(CONF_SECTION const *cs)
 		return 0;
 	}
 
-	MEM(trigger_last_fired_tree = rbtree_talloc_create(talloc_null_ctx(),
+	MEM(trigger_last_fired_tree = rbtree_talloc_alloc(talloc_null_ctx(),
 							   _trigger_last_fired_cmp, trigger_last_fired_t,
 							   _trigger_last_fired_free, 0));
 
@@ -178,6 +186,72 @@ bool trigger_enabled(void)
 	return triggers_init;
 }
 
+typedef struct {
+	char		*name;
+	xlat_exp_t	*xlat;
+	fr_pair_list_t	vps;
+	fr_value_box_t	*box;
+	bool		expanded;
+} fr_trigger_t;
+
+static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	fr_trigger_t	*ctx = talloc_get_type_abort(mctx->instance, fr_trigger_t);
+	rlm_rcode_t	rcode;
+
+	if (!ctx->expanded) {
+		RDEBUG("Running trigger %s", ctx->name);
+
+		/*
+		 *	Bootstrap these for simpliciy.
+		 */
+		(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &ctx->vps);
+
+		if (unlang_interpret_push_instruction(request, NULL,
+						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
+		if (unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true) < 0) {
+			RETURN_MODULE_FAIL;
+		}
+		ctx->expanded = true;
+
+		/*
+		 *	Run the interpreter.
+		 */
+		rcode = unlang_interpret(request);
+
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			RETURN_MODULE_HANDLED;
+		}
+
+		if (rcode == RLM_MODULE_YIELD) {
+			*p_result = RLM_MODULE_YIELD;
+			return UNLANG_ACTION_YIELD;
+		}
+
+		/*
+		 *	Always fall through, no matter what the return code is.
+		 */
+	}
+
+	if (!ctx->box) {
+		RERROR("Failed trigger %s - did not expand to anything", ctx->name);
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	Execute the program without waiting for results.
+	 */
+	if (fr_exec_nowait(request, ctx->box, NULL) < 0) {
+		RPERROR("Failed trigger %s", ctx->name);
+		RETURN_MODULE_FAIL;
+	}
+
+	RETURN_MODULE_OK;
+}
+
+
 /** Execute a trigger - call an executable to process an event
  *
  * @note Calls to this function will be ignored if #trigger_exec_init has not been called.
@@ -194,7 +268,7 @@ bool trigger_enabled(void)
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
-int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, bool rate_limit, VALUE_PAIR *args)
+int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_SECTION const	*subcs;
 
@@ -204,15 +278,14 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	char const		*attr;
 	char const		*value;
 
-	VALUE_PAIR		*vp;
-
-	REQUEST			*fake = NULL;
-	int			ret = 0;
+	request_t			*fake;
+	fr_trigger_t		*ctx;
+	ssize_t			slen;
 
 	/*
 	 *	noop if trigger_exec_init was never called
 	 */
-	if (!triggers_init) return 0;
+	if (!triggers_init || !trigger_worker_request_add) return 0;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
@@ -265,10 +338,11 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	}
 
 	/*
-	 *	May be called for Status-Server packets.
+	 *	Don't do any real work if we're checking the
+	 *	configuration.  i.e. don't run "start" or "stop"
+	 *	triggers on "radiusd -XC".
 	 */
-	vp = NULL;
-	if (request && request->packet) vp = request->packet->vps;
+	if (check_config) return 0;
 
 	/*
 	 *	Perform periodic rate_limiting.
@@ -302,17 +376,16 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	/*
 	 *	radius_exec_program always needs a request.
 	 */
-	if (!request) request = fake = request_alloc(NULL);
-
-	RDEBUG2("Trigger \"%s\": %s", name, value);
+	fake = request_alloc(NULL, NULL);
+	memcpy(&fake->server_cs, &subcs, sizeof(subcs)); /* completely wrong, but we need to use _something_ */
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the
-	 *	xlat_trigger function.
+	 *	trigger_xlat function.
 	 */
-	if (args && (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
+	if (args && (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
-		RERROR("Failed adding trigger request data");
+		talloc_free(fake);
 		return -1;
 	}
 
@@ -321,25 +394,59 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 
 		memcpy(&name_tmp, &name, sizeof(name_tmp));
 
-		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
+		if (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
-			RERROR("Failed marking request as inside trigger");
+			talloc_free(fake);
 			return -1;
 		}
 	}
 
+	MEM(ctx = talloc_zero(fake, fr_trigger_t));
+	fr_pair_list_init(&ctx->vps);
+	ctx->name = talloc_strdup(ctx, value);
+
+	if (request) {
+		if (!fr_pair_list_empty(&request->request_pairs)) {
+			(void) fr_pair_list_copy(ctx, &ctx->vps, &request->request_pairs);
+		}
+
+		fake->log = request->log;
+	} else {
+		fake->log.dst = talloc_zero(fake, log_dst_t);
+		fake->log.dst->func = vlog_request;
+		fake->log.dst->uctx = &default_log;
+		fake->log.lvl = fr_debug_lvl;
+	}
+
+	slen = xlat_tokenize_argv(ctx, &ctx->xlat, NULL,
+				  &FR_SBUFF_IN(ctx->name, talloc_array_length(ctx->name) - 1), NULL, NULL);
+	if (slen <= 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(ctx, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err(cp, "Syntax error");
+		cf_log_err(cp, "%s", ctx->name);
+		cf_log_err(cp, "%s^ %s", spaces, text);
+
+		talloc_free(fake);
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
 	/*
-	 *	Don't fire triggers if we're just testing
+	 *	Run the trigger asynchronously.
 	 */
-	if (!check_config) ret = radius_exec_program(request, NULL, 0, NULL,
-						     request, value, vp, false, true,
-						     fr_time_delta_from_sec(EXEC_TIMEOUT));
-	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
-	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
+	if (trigger_worker_request_add(fake, trigger_process, ctx) < 0) {
+		talloc_free(fake);
+		return -1;
+	}
 
-	if (fake) talloc_free(fake);
-
-	return ret;
+	/*
+	 *	Otherwise the worker cleans up the fake request.
+	 */
+	return 0;
 }
 
 /** Create trigger arguments to describe the server the pool connects to
@@ -347,41 +454,34 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
  * @note #trigger_exec_init must be called before calling this function,
  *	 else it will return NULL.
  *
- * @param[in] ctx	to allocate VALUE_PAIR s in.
+ * @param[in] ctx	to allocate fr_pair_t s in.
+ * @param[out] list	to append Pool-Server and Pool-Port pairs to
  * @param[in] server	we're connecting to.
  * @param[in] port	on that server.
- * @return
- *	- NULL on failure, or if triggers are not enabled.
- *	- list containing Pool-Server and Pool-Port
  */
-VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
+void trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const *server, uint16_t port)
 {
 	fr_dict_attr_t const	*server_da;
 	fr_dict_attr_t const	*port_da;
-	VALUE_PAIR		*out = NULL, *vp;
-	fr_cursor_t		cursor;
+	fr_pair_t		*vp;
 
 	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
-		return NULL;
+		return;
 	}
 
 	port_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_PORT);
 	if (!port_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Port\"");
-		return NULL;
+		return;
 	}
 
-	fr_cursor_init(&cursor, &out);
-
 	MEM(vp = fr_pair_afrom_da(ctx, server_da));
-	fr_pair_value_strcpy(vp, server);
-	fr_cursor_append(&cursor, vp);
+	fr_pair_value_strdup(vp, server);
+	fr_pair_add(list, vp);
 
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_uint16 = port;
-	fr_cursor_append(&cursor, vp);
-
-	return out;
+	fr_pair_add(list, vp);
 }

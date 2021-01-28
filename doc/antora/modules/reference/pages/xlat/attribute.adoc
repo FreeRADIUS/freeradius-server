@@ -1,0 +1,54 @@
+= Attribute References
+
+Attributes in a list may be referenced via one of the following two
+syntaxes:
+
+`%{Attribute-Name}` +
+`%{<list>.Attribute-Name}`
+
+The `<list>.` prefix is optional. If given, it must be a valid
+reference to an xref:list.adoc[attribute list].
+
+If the `<list>.` prefix is omitted, then the `request` list is
+assumed.
+
+For EAP methods with tunneled authentication sessions (i.e. PEAP and
+EAP-TTLS), the inner tunnel session can refer to a list for the outer
+session by prefixing the list name with `outer.` ; for example,
+`outer.request`.
+
+When a reference is encountered, the given list is examined for an
+attribute of the given name. If found, the variable reference in the
+string is replaced with the value of that attribute. Otherwise, the
+reference is replacedd with an empty string.
+
+.Examples
+
+`%{User-Name}` +
+`%{request.User-Name} # same as above` +
+`%{reply.User-Name}` +
+`%{outer.request.User-Name} # from inside of a TTLS/PEAP tunnel`
+
+Examples of using references inside of a string:
+
+`"Hello %{User-Name}"` +
+`"You, %{User-Name} are not allowed to use %{NAS-IP-Address}"`
+
+== Additional Variations
+
+`%{Attribute-Name[#]}`::
+Returns an integer containing the number of named attributes
+
+`%{Attribute-Name[0]}`::
+
+When an attribute appears multiple times in a list, this syntax allows
+you to address the attributes as with array entries.  `[0]` refers to
+the first attributes, `[1]` refers to the second attribute, etc.
+
+`%{Attribute-Name[*]}`::
+
+Returns a comma-separated string containing all values for the named
+attributes.
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

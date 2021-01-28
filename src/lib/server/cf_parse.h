@@ -39,41 +39,46 @@ extern "C" {
 #endif
 
 #ifdef HAVE_BUILTIN_CHOOSE_EXPR
-typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_vp_tmpl_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_char;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_char_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_bool;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_bool_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint32;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint32_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_fripaddr;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_fripaddr_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_time;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_time_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_abinary;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_abinary_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint8;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint8_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint8_m_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_ifid;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_ifid_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint16;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint16_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_ethernet;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_abinary;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_bool_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_bool;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_char_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_char;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_double_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_double;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_ethernet_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_int32;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_ethernet;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_float_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_float;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_fripaddr_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_fripaddr;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_ifid_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_ifid;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_int32_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint64;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_uint64_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_size;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_int32;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_size_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_time_delta;     	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_size;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_time_delta_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_void;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_time_delta;     	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_time_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_time;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint16_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint16;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint32_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint32;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint64_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint64;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint8_m_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint8_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint8;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_void_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_default;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_void;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_tmpl_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 
+
+typedef void _mismatch_default;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void conf_type_mismatch;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYPE_*.
 
@@ -84,7 +89,7 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
  * @param _x pointer to check.
  * @param _t type to check compatibility with.
  */
-#define is_compatible(_x, _t) _Generic((_x), _t:1, default: 0)
+#define is_compatible(_x, _t) _Generic(_x, _t:1, default: 0)
 
 /** Check the type #_t matches the destination data type
  *
@@ -101,7 +106,8 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
  * @param _p Pointer or offset.
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
-__builtin_choose_expr((_t) & FR_TYPE_SUBSECTION, _p, \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SUBSECTION), _p, \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID), _p, \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && !((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), size_t *), _p, (_mismatch_size) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && ((_t) & FR_TYPE_MULTI), \
@@ -114,11 +120,19 @@ __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && !((_t) & FR_TY
 	__builtin_choose_expr(is_compatible((_ct), fr_time_delta_t *), _p, (_mismatch_time_delta) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && ((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), fr_time_delta_t **), _p, (_mismatch_time_delta_m) 0), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), uint8_t(*)[6]), _p, (_mismatch_ethernet) 0), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), uint8_t ***), _p, (_mismatch_ethernet_m) 0), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && !((_t) & FR_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), uint8_t(*)[8]), _p, (_mismatch_ifid) 0), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), uint8_t ***), _p, (_mismatch_ifid_m) 0), \
 _Generic((_ct), \
-	vp_tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
+	tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
-	vp_tmpl_t ***	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_vp_tmpl_m) 0), \
+	tmpl_t ***	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_tmpl_m) 0), \
 	char const **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_char) 0), \
 	char const ***	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && ((_t) & FR_TYPE_MULTI), \
@@ -145,30 +159,18 @@ _Generic((_ct), \
 						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_PREFIX) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) && \
 						((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr_m) 0), \
-	size_t[32/sizeof(size_t)] : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ABINARY) && !((_t) & FR_TYPE_MULTI), \
-			(_mismatch_abinary) 0, (_mismatch_abinary) 0), \
-	size_t*[32/sizeof(size_t)] : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ABINARY) && ((_t) & FR_TYPE_MULTI), \
-		       (_mismatch_abinary) 0, (_mismatch_abinary_m) 0), \
-	uint8_t const *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
+	uint8_t const **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t const **: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t const ***: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
 	uint8_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT8) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
 	uint8_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT8) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint8_t[8]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && !(_t & FR_TYPE_MULTI), \
-			_p, (_mismatch_ifid) 0), \
-	uint8_t*[8]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_ifid_m) 0), \
 	uint16_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT16) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16) 0), \
 	uint16_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT16) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16_m) 0), \
-	uint8_t[6]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_ethernet) 0), \
-	uint8_t*[6]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_ethernet_m) 0), \
 	int32_t	*	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_INT32) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_int32) 0), \
 	int32_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_INT32) && ((_t) & FR_TYPE_MULTI), \
@@ -177,11 +179,15 @@ _Generic((_ct), \
 			_p, (_mismatch_uint64) 0), \
 	uint64_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	void *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && !((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_void) 0), \
-	void **		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && ((_t) & FR_TYPE_MULTI), \
-			_p, (_mismatch_void_m) 0), \
-	default: (conf_type_mismatch)0))))))))
+	float *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && !((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_float) 0), \
+	float **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_float_m) 0), \
+	double *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT64) && !((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_double) 0), \
+	double **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT64) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_double_m) 0), \
+	default: (conf_type_mismatch)0)))))))))))))
 
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
@@ -197,7 +203,7 @@ _Generic((_ct), \
 	.type = _t, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p)
 
-#  define FR_CONF_POINTER_ISSET(_n, _t, _p) \
+#  define FR_CONF_POINTER_IS_SET(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p), \
@@ -234,7 +240,7 @@ _Generic((_ct), \
 	.name = _n, \
 	.type = _t, \
 	.data = _p
-#  define FR_CONF_POINTER_ISSET(_n, _t, _p) \
+#  define FR_CONF_POINTER_IS_SET(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = _p, \
@@ -312,6 +318,7 @@ _Generic((_ct), \
 									//!< or is_set_ptr.
 #define FR_TYPE_OK_MISSING     		(1 << 22) 			//!< OK if it's missing
 #define FR_TYPE_ON_READ     		(1 << 23) 			//!< run the parse callback during the file read phase
+#define FR_TYPE_NON_BLOCKING  		(1 << 24) 			//!< require a non-blocking xlat expansion
 
 #define FR_BASE_TYPE(_t)		(0xff & (_t))
 /** @} */
@@ -447,7 +454,7 @@ struct CONF_PARSER {
 		};
 	};
 
-	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
+	fr_token_t	quote;			//!< Quoting around the default value.  Only used for templates.
 };
 
 typedef struct {
@@ -472,7 +479,7 @@ typedef struct {
 int		cf_pair_parse_value(TALLOC_CTX *ctx, void *out, void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 		CC_HINT(nonnull(2, 4, 5));
 int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
-			      unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote) CC_HINT(nonnull(2,3));
+			      unsigned int type, void *data, char const *dflt, fr_token_t dflt_quote) CC_HINT(nonnull(2,3));
 int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs);
 int		cf_section_parse_pass2(void *base, CONF_SECTION *cs);
 

@@ -25,13 +25,12 @@
 #include <netdb.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "proto_detail.h"
 
 #include <fcntl.h>
@@ -62,27 +61,23 @@ typedef struct {
 	uint8_t				*packet;		//!< for retransmissions
 	size_t				packet_len;		//!< for retransmissions
 
-	fr_time_delta_t			rt;
-	uint32_t       			count;			//!< number of retransmission tries
-
-	fr_time_t			start;			//!< when we started trying to send
-
+	fr_retry_t			retry;			//!< our retry timers
 	fr_event_timer_t const		*ev;			//!< retransmission timer
 	fr_dlist_t			entry;			//!< for the retransmission list
 } fr_detail_entry_t;
 
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.mrt), .dflt = STRINGIFY(16) },
 
 	/*
 	 *	Retransmit indefinitely, as v2 and v3 did.
 	 */
-	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, proto_detail_work_t, retry_config.mrc), .dflt = STRINGIFY(0) },
 	/*
 	 *	...again same as v2 and v3.
 	 */
-	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.mrd), .dflt = STRINGIFY(0) },
 	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
@@ -119,12 +114,12 @@ fr_dict_attr_autoload_t proto_detail_work_dict_attr[] = {
 /*
  *	All of the decoding is done by proto_detail.c
  */
-static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
 	proto_detail_work_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
 	fr_detail_entry_t const		*track = request->async->packet_ctx;
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 
 	request->config = main_config;
 	request->client = inst->client;
@@ -134,7 +129,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 	REQUEST_VERIFY(request);
 
 	MEM(pair_update_request(&vp, attr_packet_transmit_counter) >= 0);
-	vp->vp_uint32 = track->count;
+	vp->vp_uint32 = track->retry.count;
 
 	return 0;
 }
@@ -161,8 +156,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	uint8_t				*stopped_search;
 	off_t				done_offset;
 
-	rad_assert(*leftover < buffer_len);
-	rad_assert(thread->fd >= 0);
+	fr_assert(*leftover < buffer_len);
+	fr_assert(thread->fd >= 0);
 
 	MPRINT("AT COUNT %d offset %ld", thread->count, (long) thread->read_offset);
 
@@ -178,7 +173,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		 *	Don't over-write "leftover" bytes!
 		 */
 		if (*leftover) {
-			rad_assert(thread->leftover == 0);
+			fr_assert(thread->leftover == 0);
 			if (!thread->leftover_buffer) MEM(thread->leftover_buffer = talloc_array(thread, uint8_t, buffer_len));
 
 			memcpy(thread->leftover_buffer, buffer, *leftover);
@@ -186,10 +181,10 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 			*leftover = 0;
 		}
 
-		rad_assert(buffer_len >= track->packet_len);
+		fr_assert(buffer_len >= track->packet_len);
 		memcpy(buffer, track->packet, track->packet_len);
 
-		DEBUG("Retrying packet %d (retransmission %u)", track->id, track->count);
+		DEBUG("Retrying packet %d (retransmission %u)", track->id, track->retry.count);
 		*packet_ctx = track;
 		*recv_time_p = track->timestamp;
 		*priority = inst->parent->priority;
@@ -212,7 +207,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	we have to check this ourselves.
 	 */
 	if (thread->outstanding >= inst->max_outstanding) {
-		rad_assert(thread->paused);
+		fr_assert(thread->paused);
 		return 0;
 	}
 
@@ -221,8 +216,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	copy it back.
 	 */
 	if (thread->leftover) {
-		rad_assert(*leftover == 0);
-		rad_assert(thread->leftover < buffer_len);
+		fr_assert(*leftover == 0);
+		fr_assert(thread->leftover < buffer_len);
 
 		memcpy(buffer, thread->leftover_buffer, thread->leftover);
 		*leftover = thread->leftover;
@@ -281,7 +276,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		 *	We didn't read any more data from the file,
 		 *	but there should be data left in the buffer.
 		 */
-		rad_assert(*leftover > 0);
+		fr_assert(*leftover > 0);
 		end = buffer + *leftover;
 	}
 
@@ -296,7 +291,7 @@ redo:
 	 *	Note that all of the data MUST be printable, and raw
 	 *	LFs are forbidden in attribute contents.
 	 */
-	rad_assert((buffer + thread->last_search) <= end);
+	fr_assert((buffer + thread->last_search) <= end);
 
 	MPRINT("Starting search from offset %ld", thread->last_search);
 
@@ -454,7 +449,7 @@ redo:
 			goto redo;
 		}
 
-		rad_assert(*leftover == 0);
+		fr_assert(*leftover == 0);
 		goto done;
 	}
 
@@ -494,8 +489,6 @@ redo:
 	track->parent = thread;
 	track->timestamp = fr_time();
 	track->id = thread->count++;
-	track->rt = inst->irt;
-	track->rt *= NSEC;
 
 	track->done_offset = done_offset;
 	if (inst->retransmit) {
@@ -517,7 +510,7 @@ done:
 	 *	If we're at EOF, mark us as "closing".
 	 */
 	if (thread->eof) {
-		rad_assert(!thread->closing);
+		fr_assert(!thread->closing);
 		thread->closing = (*leftover == 0);
 		MPRINT("AT EOF, BUT CLOSING %d", thread->closing);
 	}
@@ -554,7 +547,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 	proto_detail_work_thread_t     	*thread = track->parent;
 
 	DEBUG("%s - retransmitting packet %d", thread->name, track->id);
-	track->count++;
+	track->retry.count++;
 
 	fr_dlist_insert_tail(&thread->list, track);
 
@@ -563,7 +556,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 		thread->paused = false;
 	}
 
-	rad_assert(thread->fd >= 0);
+	fr_assert(thread->fd >= 0);
 
 	/*
 	 *	Seek to the START of the file, so that the FD will
@@ -579,7 +572,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 #endif
 }
 
-static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_time,
+static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
 			 uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	proto_detail_work_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_work_t);
@@ -588,53 +581,36 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 
 	if (buffer_len < 1) return -1;
 
-	rad_assert(thread->outstanding > 0);
-	rad_assert(thread->fd >= 0);
+	fr_assert(thread->outstanding > 0);
+	fr_assert(thread->fd >= 0);
 
 	if (!buffer[0]) {
-		fr_time_t now;
-
-		/*
-		 *	Cap at MRC, if required.
-		 */
-		if (inst->mrc && (track->count >= inst->mrc)) {
-			DEBUG("%s - packet %d failed after %u retransmissions",
-			      thread->name, track->id, track->count);
-			goto fail;
-		}
-
-		now = fr_time();
-
-		if (track->count == 0) {
-			track->rt = inst->irt;
-			track->rt *= NSEC;
-			track->start = request_time;
-
+		if (track->retry.start == 0) {
+			fr_retry_init(&track->retry, fr_time(), &inst->retry_config);
 		} else {
-			/*
-			 *	Cap at MRD, if required.
-			 */
-			if (inst->mrd) {
-				fr_time_t end;
+			fr_retry_state_t state;
 
-				end = track->start;
-				end += ((fr_time_t) inst->mrd) * NSEC;
-				if (now >= end) {
-					DEBUG("%s - packet %d failed after %u seconds",
-					      thread->name, track->id, inst->mrd);
-					goto fail;
-				}
+			state = fr_retry_next(&track->retry, fr_time());
+			if (state == FR_RETRY_MRC) {
+				DEBUG("%s - packet %d failed after %u retransmissions",
+				      thread->name, track->id, track->retry.count);
+				goto fail;
+
 			}
 
-			// @todo - add random delays...
-
-		} /* we're on retransmission N */
+			if (state == FR_RETRY_MRD) {
+				DEBUG("%s - packet %d failed after %u seconds",
+				      thread->name, track->id,
+				      (unsigned int) fr_time_delta_to_sec(inst->retry_config.mrd));
+				goto fail;
+			}
+		}
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
-		      thread->name, track->id, (int) (track->rt / NSEC), (int) ((track->rt % NSEC) / 1000));
+			      thread->name, track->id, (int) (track->retry.rt / NSEC), (int) ((track->retry.rt % NSEC) / 1000));
 
 		if (fr_event_timer_at(thread, thread->el, &track->ev,
-				      now + track->rt, work_retransmit, track) < 0) {
+				      track->retry.next, work_retransmit, track) < 0) {
 			ERROR("%s - Failed inserting retransmission timeout", thread->name);
 		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
@@ -739,12 +715,9 @@ static int mod_open(fr_listen_t *li)
 		thread->file_size = 1;
 	}
 
-	rad_assert(thread->name == NULL);
-	rad_assert(thread->filename_work != NULL);
-	thread->name = talloc_typed_asprintf(thread, "proto_detail working file %s", thread->filename_work);
-
-	DEBUG("Listening on %s bound to virtual server %s",
-	      thread->name, cf_section_name2(inst->parent->server_cs));
+	fr_assert(thread->name == NULL);
+	fr_assert(thread->filename_work != NULL);
+	thread->name = talloc_typed_asprintf(thread, "detail_work from filename %s", thread->filename_work);
 
 	return 0;
 }
@@ -828,7 +801,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	memset(&funcs, 0, sizeof(funcs));
 	funcs.revoke = mod_revoke;
 
-	if (fr_event_filter_insert(thread, el, thread->fd, FR_EVENT_FILTER_VNODE, &funcs, NULL, thread) < 0) {
+	if (fr_event_filter_insert(thread, NULL, el, thread->fd, FR_EVENT_FILTER_VNODE, &funcs, NULL, thread) < 0) {
 		WARN("Failed to add event watching for unmounted file system");
 	}
 #endif
@@ -874,7 +847,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	was.
 	 */
 	dl_inst = dl_module_instance_by_data(instance);
-	rad_assert(dl_inst);
+	fr_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
@@ -886,20 +859,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	if (inst->retransmit) {
-		FR_INTEGER_BOUND_CHECK("limit.initial_retransmission_time", inst->irt, >=, 1);
-		FR_INTEGER_BOUND_CHECK("limit.initial_retransmission_time", inst->irt, <=, 60);
+		FR_TIME_DELTA_BOUND_CHECK("limit.initial_rtx_time", inst->retry_config.irt, >=, fr_time_delta_from_sec(1));
+		FR_TIME_DELTA_BOUND_CHECK("limit.initial_rtx_time", inst->retry_config.irt, <=, fr_time_delta_from_sec(60));
 
 		/*
 		 *	If you need more than this, just set it to
 		 *	"0", and check Packet-Transmit-Count manually.
 		 */
-		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_count", inst->mrc, <=, 20);
-		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_duration", inst->mrd, <=, 600);
+		FR_INTEGER_BOUND_CHECK("limit.max_rtx_count", inst->retry_config.mrc, <=, 20);
+		FR_TIME_DELTA_BOUND_CHECK("limit.max_rtx_duration", inst->retry_config.mrd, <=, fr_time_delta_from_sec(600));
 
 		/*
 		 *	This is a reasonable value.
 		 */
-		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_timer", inst->mrt, <=, 30);
+		FR_TIME_DELTA_BOUND_CHECK("limit.max_rtx_timer", inst->retry_config.mrt, <=, fr_time_delta_from_sec(30));
 	}
 
 	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, >=, 1);

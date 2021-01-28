@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 
@@ -60,10 +60,10 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	vp_tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
-	vp_tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
-	vp_tmpl_t	*reply_attr;  	//!< Session-Timeout.
-	vp_tmpl_t	*key;  		//!< User-Name
+	tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
+	tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
+	tmpl_t	*reply_attr;  	//!< Session-Timeout.
+	tmpl_t	*key;  		//!< User-Name
 
 	char const	*sqlmod_inst;	//!< Instance of SQL module to use, usually just 'sql'.
 	char const	*query;		//!< SQL query to retrieve current session time.
@@ -126,7 +126,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	rad_assert(inst->reset != NULL);
+	fr_assert(inst->reset != NULL);
 
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
@@ -197,7 +197,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	rad_assert(inst->reset != NULL);
+	fr_assert(inst->reset != NULL);
 
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
@@ -256,7 +256,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *	%S	sqlmod_inst
  *
  */
-static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED REQUEST *request, char const *fmt)
+static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED request_t *request, char const *fmt)
 {
 	int freespace;
 	char const *p;
@@ -340,10 +340,9 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req , VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list , fr_pair_t *check)
 {
-	rlm_sqlcounter_t const *inst = instance;
+	rlm_sqlcounter_t const *inst = talloc_get_type_abort_const(instance, rlm_sqlcounter_t);
 	uint64_t counter;
 
 	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
@@ -354,7 +353,7 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
 	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	/* Then combine that with the name of the module were using to do the query */
@@ -362,12 +361,12 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	/* Finally, xlat resulting SQL query */
 	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
@@ -386,12 +385,12 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sqlcounter_t	*inst = instance;
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->instance, rlm_sqlcounter_t);
 	uint64_t		counter, res;
-	VALUE_PAIR		*limit;
-	VALUE_PAIR		*reply_item;
+	fr_pair_t		*limit;
+	fr_pair_t		*reply_item;
 	char			msg[128];
 	int			ret;
 
@@ -414,14 +413,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
 		RWDEBUG2("Couldn't find limit attribute, %s, doing nothing...", inst->limit_attr->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* First, expand %k, %b and %e in query */
 	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Then combine that with the name of the module were using to do the query */
@@ -429,12 +428,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	if (len >= (sizeof(query) - 1)) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Finally, xlat resulting SQL query */
 	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 	talloc_free(expanded);
 
@@ -448,19 +447,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Check if check item > counter
 	 */
 	if (limit->vp_uint64 <= counter) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		/* User is denied access, send back a reply message */
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 
 		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
-		fr_pair_value_strcpy(vp, msg);
+		fr_pair_value_strdup(vp, msg);
 
 		REDEBUG2("Maximum %s usage time reached", inst->reset);
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
 			 inst->limit_attr->name, limit->vp_uint64, counter);
 
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	res = limit->vp_uint64 - counter;
@@ -479,7 +478,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	limit, so that the user will not need to login
 		 *	again.  Do this only for Session-Timeout.
 		 */
-		if ((inst->reply_attr->tmpl_da == attr_session_timeout) &&
+		if ((tmpl_da(inst->reply_attr) == attr_session_timeout) &&
 		    inst->reset_time &&
 		    (res >= (uint64_t)(inst->reset_time - fr_time_to_sec(request->packet->timestamp)))) {
 			uint64_t to_reset = inst->reset_time - fr_time_to_sec(request->packet->timestamp);
@@ -501,25 +500,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			if (reply_item->vp_uint64 <= res) {
 				RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
 					reply_item->vp_uint64);
-				return RLM_MODULE_OK;
+				RETURN_MODULE_OK;
 			}
 			break;
 
 		case -1:	/* alloc failed */
 			REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 
 		default:	/* request or list unavailable */
 			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
-			return RLM_MODULE_OK;
+			RETURN_MODULE_OK;
 		}
 		reply_item->vp_uint64 = res;
 		RDEBUG2("&%pP", reply_item);
 
-		return RLM_MODULE_UPDATED;
+		RETURN_MODULE_UPDATED;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -537,7 +536,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_sqlcounter_t	*inst = instance;
 	time_t			now;
 
-	rad_assert(inst->query && *inst->query);
+	fr_assert(inst->query && *inst->query);
 
 	now = time(NULL);
 	inst->reset_time = 0;
@@ -568,33 +567,33 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Create a new attribute for the counter.
 	 */
-	rad_assert(inst->paircmp_attr);
-	rad_assert(inst->limit_attr);
+	fr_assert(inst->paircmp_attr);
+	fr_assert(inst->limit_attr);
 
 	memset(&flags, 0, sizeof(flags));
-	if (tmpl_define_undefined_attr(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
 	}
 
-	if (tmpl_define_undefined_attr(fr_dict_unconst(dict_freeradius), inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_unresolved_add(fr_dict_unconst(dict_freeradius), inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining check attribute");
 		return -1;
 	}
 
-	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Counter attribute %s MUST be uint64", inst->paircmp_attr->tmpl_da->name);
+	if (tmpl_da(inst->paircmp_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_da(inst->paircmp_attr)->name);
 		return -1;
 	}
-	if (paircmp_register_by_name(inst->paircmp_attr->tmpl_da->name, NULL, true,
+	if (paircmp_register_by_name(tmpl_da(inst->paircmp_attr)->name, NULL, true,
 					counter_cmp, inst) < 0) {
 		cf_log_perr(conf, "Failed registering comparison function for counter attribute %s",
-			    inst->paircmp_attr->tmpl_da->name);
+			    tmpl_da(inst->paircmp_attr)->name);
 		return -1;
 	}
 
-	if (inst->limit_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Check attribute %s MUST be uint64", inst->limit_attr->tmpl_da->name);
+	if (tmpl_da(inst->limit_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Check attribute %s MUST be uint64", tmpl_da(inst->limit_attr)->name);
 		return -1;
 	}
 

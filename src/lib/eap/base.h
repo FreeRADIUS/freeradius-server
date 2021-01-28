@@ -28,7 +28,7 @@ RCSIDH(lib_eap_base_h, "$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/compose.h>
@@ -68,11 +68,11 @@ typedef struct {
 /*
  *	interfaces in eapcommon.c
  */
-VALUE_PAIR		*eap_packet_to_vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
-eap_packet_raw_t	*eap_packet_from_vp(TALLOC_CTX *ctx, VALUE_PAIR *vps);
-void			eap_add_reply(REQUEST *request, fr_dict_attr_t const *da, uint8_t const *value, int len);
+void			eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t const *reply);
+eap_packet_raw_t	*eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps);
+void			eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *value, int len);
 
-rlm_rcode_t		eap_virtual_server(REQUEST *request, eap_session_t *eap_session, char const *virtual_server);
+rlm_rcode_t		eap_virtual_server(request_t *request, eap_session_t *eap_session, char const *virtual_server);
 
 int			eap_base_init(void);
 

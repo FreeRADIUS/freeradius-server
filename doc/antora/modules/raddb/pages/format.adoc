@@ -11,7 +11,7 @@ management purpose.  However, the files are all part of the global
 is completely independent of the _file contents_.
 
 The configuration files also include the
-xref:unlang:index.adoc[unlang] policies.  While those policies have a
+xref:reference:unlang/index.adoc[unlang] policies.  While those policies have a
 similar format as described here, the formats ar not exactly the same.
 
 == Comments and Blank Lines

@@ -28,7 +28,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
@@ -43,7 +43,8 @@ RCSID("$Id$")
 #include <sys/file.h>
 #include <pthread.h>
 
-fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool); /* macro */
+static _Thread_local TALLOC_CTX *fr_vlog_request_pool;
+static _Thread_local fr_sbuff_t *fr_log_request_oid_buff;
 
 /** Syslog facility table
  *
@@ -55,79 +56,79 @@ fr_thread_local_setup(TALLOC_CTX *, fr_vlog_request_pool); /* macro */
  */
 fr_table_num_sorted_t const syslog_facility_table[] = {
 #ifdef LOG_AUTH
-	{ "auth",		LOG_AUTH	},
+	{ L("auth"),		LOG_AUTH	},
 #endif
 
 #ifdef LOG_AUTHPRIV
-	{ "authpriv",		LOG_AUTHPRIV	},
+	{ L("authpriv"),		LOG_AUTHPRIV	},
 #endif
 
 #ifdef LOG_CRON
-	{ "cron",		LOG_CRON	},
+	{ L("cron"),		LOG_CRON	},
 #endif
 
 #ifdef LOG_DAEMON
-	{ "daemon",		LOG_DAEMON	},
+	{ L("daemon"),		LOG_DAEMON	},
 #endif
 
 #ifdef LOG_FTP
-	{ "ftp",		LOG_FTP		},
+	{ L("ftp"),		LOG_FTP		},
 #endif
 
 #ifdef LOG_KERN
-	{ "kern",		LOG_KERN	},
+	{ L("kern"),		LOG_KERN	},
 #endif
 
 #ifdef LOG_LOCAL0
-	{ "local0",		LOG_LOCAL0	},
+	{ L("local0"),		LOG_LOCAL0	},
 #endif
 
 #ifdef LOG_LOCAL1
-	{ "local1",		LOG_LOCAL1	},
+	{ L("local1"),		LOG_LOCAL1	},
 #endif
 
 #ifdef LOG_LOCAL2
-	{ "local2",		LOG_LOCAL2	},
+	{ L("local2"),		LOG_LOCAL2	},
 #endif
 
 #ifdef LOG_LOCAL3
-	{ "local3",		LOG_LOCAL3	},
+	{ L("local3"),		LOG_LOCAL3	},
 #endif
 
 #ifdef LOG_LOCAL4
-	{ "local4",		LOG_LOCAL4	},
+	{ L("local4"),		LOG_LOCAL4	},
 #endif
 
 #ifdef LOG_LOCAL5
-	{ "local5",		LOG_LOCAL5	},
+	{ L("local5"),		LOG_LOCAL5	},
 #endif
 
 #ifdef LOG_LOCAL6
-	{ "local6",		LOG_LOCAL6	},
+	{ L("local6"),		LOG_LOCAL6	},
 #endif
 
 #ifdef LOG_LOCAL7
-	{ "local7",		LOG_LOCAL7	},
+	{ L("local7"),		LOG_LOCAL7	},
 #endif
 
 #ifdef LOG_LPR
-	{ "lpr",		LOG_LPR		},
+	{ L("lpr"),		LOG_LPR		},
 #endif
 
 #ifdef LOG_MAIL
-	{ "mail",		LOG_MAIL	},
+	{ L("mail"),		LOG_MAIL	},
 #endif
 
 #ifdef LOG_NEWS
-	{ "news",		LOG_NEWS	},
+	{ L("news"),		LOG_NEWS	},
 #endif
 
 #ifdef LOG_USER
-	{ "user",		LOG_USER	},
+	{ L("user"),		LOG_USER	},
 #endif
 
 #ifdef LOG_UUCP
-	{ "uucp",		LOG_UUCP	}
+	{ L("uucp"),		LOG_UUCP	}
 #endif
 };
 size_t syslog_facility_table_len = NUM_ELEMENTS(syslog_facility_table);
@@ -140,45 +141,45 @@ size_t syslog_facility_table_len = NUM_ELEMENTS(syslog_facility_table);
  */
 fr_table_num_sorted_t const syslog_severity_table[] = {
 #ifdef LOG_ALERT
-	{ "alert",		LOG_ALERT	},
+	{ L("alert"),		LOG_ALERT	},
 #endif
 
 #ifdef LOG_CRIT
-	{ "critical",		LOG_CRIT	},
+	{ L("critical"),		LOG_CRIT	},
 #endif
 
 #ifdef LOG_DEBUG
-	{ "debug",		LOG_DEBUG	},
+	{ L("debug"),		LOG_DEBUG	},
 #endif
 
 #ifdef LOG_EMERG
-	{ "emergency",		LOG_EMERG	},
+	{ L("emergency"),		LOG_EMERG	},
 #endif
 
 #ifdef LOG_ERR
-	{ "error",		LOG_ERR		},
+	{ L("error"),		LOG_ERR		},
 #endif
 
 #ifdef LOG_INFO
-	{ "info",		LOG_INFO	},
+	{ L("info"),		LOG_INFO	},
 #endif
 
 #ifdef LOG_NOTICE
-	{ "notice",		LOG_NOTICE	},
+	{ L("notice"),		LOG_NOTICE	},
 #endif
 
 #ifdef LOG_WARNING
-	{ "warning",		LOG_WARNING	},
+	{ L("warning"),		LOG_WARNING	},
 #endif
 };
 size_t syslog_severity_table_len = NUM_ELEMENTS(syslog_severity_table);
 
 fr_table_num_sorted_t const log_str2dst[] = {
-	{ "files",		L_DST_FILES	},
-	{ "null",		L_DST_NULL	},
-	{ "stderr",		L_DST_STDERR	},
-	{ "stdout",		L_DST_STDOUT	},
-	{ "syslog",		L_DST_SYSLOG	},
+	{ L("files"),		L_DST_FILES	},
+	{ L("null"),		L_DST_NULL	},
+	{ L("stderr"),		L_DST_STDERR	},
+	{ L("stdout"),		L_DST_STDOUT	},
+	{ L("syslog"),		L_DST_SYSLOG	},
 };
 size_t log_str2dst_len = NUM_ELEMENTS(log_str2dst);
 
@@ -234,7 +235,7 @@ static int log_always(fr_log_t const *log, fr_log_type_t type,
  *	- true if message should be logged.
  *	- false if message shouldn't be logged.
  */
-inline bool log_rdebug_enabled(fr_log_lvl_t lvl, REQUEST *request)
+inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request)
 {
 	if (!request->log.dst) return false;
 
@@ -262,7 +263,7 @@ static void _fr_vlog_request_pool_free(void *arg)
  * @param[in] ap	Substitution arguments.
  * @param[in] uctx	The #fr_log_t specifying the destination for log messages.
  */
-void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		  char const *file, int line,
 		  char const *fmt, va_list ap, void *uctx)
 {
@@ -524,21 +525,21 @@ finish:
 	talloc_free_children(pool);
 }
 
-/** Add a module failure message VALUE_PAIR to the request
+/** Add a module failure message fr_pair_t to the request
  *
  * @param[in] request	The current request.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
+void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 {
 	char		*p;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	va_list		aq;
 
 	if (!fmt || !request || !request->packet) return;
 
-	rad_assert(attr_module_failure_message);
+	fr_assert(attr_module_failure_message);
 
 	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
@@ -555,20 +556,21 @@ void vlog_module_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 
 	MEM(pair_add_request(&vp, attr_module_failure_message) >= 0);
 	if (request->module && (request->module[0] != '\0')) {
-		fr_pair_value_snprintf(vp, "%s: %s", request->module, p);
+		fr_pair_value_aprintf(vp, "%s: %s", request->module, p);
 	} else {
-		fr_pair_value_snprintf(vp, "%s", p);
+		fr_pair_value_strdup(vp, p);
 	}
+
 	talloc_free(p);
 }
 
-/** Add a module failure message VALUE_PAIRE to the request
+/** Add a module failure message fr_pair_tE to the request
  *
  * @param[in] request	The current request.
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_module_failure_msg(REQUEST *request, char const *fmt, ...)
+void log_module_failure_msg(request_t *request, char const *fmt, ...)
 {
 	va_list ap;
 
@@ -589,7 +591,7 @@ void log_module_failure_msg(REQUEST *request, char const *fmt, ...)
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		 char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
@@ -622,7 +624,7 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		       char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
@@ -634,7 +636,10 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
 		dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
 	}
-	vlog_module_failure_msg(request, fmt, ap);
+	if ((type == L_ERR) || (type == L_DBG_ERR) || (type == L_DBG_ERR_REQ)) {
+		vlog_module_failure_msg(request, fmt, ap);
+	}
+
 	va_end(ap);
 }
 
@@ -651,18 +656,18 @@ void log_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line, char const *fmt, ...)
 {
-	char const *strerror;
+	char const *error;
 
 	if (!request->log.dst) return;
 
 	/*
 	 *	No strerror gets us identical behaviour to log_request_error
 	 */
-	strerror = fr_strerror_pop();
-	if (!strerror) {
+	error = fr_strerror_pop();
+	if (!error) {
 		va_list		ap;
 		log_dst_t	*dst_p;
 
@@ -690,122 +695,199 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 
 		if (!tmp) return;
 
-		log_request_error(type, lvl, request, file, line, "%s: %s", tmp, strerror);
+		log_request_error(type, lvl, request, file, line, "%s: %s", tmp, error);
 		talloc_free(tmp);
 	} else {
-		log_request_error(type, lvl, request, file, line, "%s", strerror);
+		log_request_error(type, lvl, request, file, line, "%s", error);
 	}
 
 	/*
 	 *	Only the first message gets the prefix
 	 */
-	while ((strerror = fr_strerror_pop())) {
-		log_request_error(type, lvl, request, file, line, "%s", strerror);
-	}
+	while ((error = fr_strerror_pop())) log_request_error(type, lvl, request, file, line, "%s", error);
 }
 
-/** Print a list of VALUE_PAIRs.
+/** Cleanup the memory pool used by the OID sbuff
+ *
+ */
+static void _fr_log_request_oid_buff_free(void *arg)
+{
+	talloc_free(arg);
+}
+
+/** Allocate an extensible sbuff for printing OID strings
+ *
+ */
+static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
+{
+	fr_sbuff_t		*sbuff;
+	fr_sbuff_uctx_talloc_t	*tctx;
+
+	sbuff = fr_log_request_oid_buff;
+	if (unlikely(!sbuff)) {
+		sbuff = talloc(NULL, fr_sbuff_t);
+		if (!sbuff) {
+			fr_perror("Failed allocating memory for fr_log_request_oid_buff");
+			return NULL;
+		}
+		tctx = talloc(sbuff, fr_sbuff_uctx_talloc_t);
+		if (!tctx) {
+			fr_perror("Failed allocating memory for fr_sbuff_uctx_talloc_t");
+			talloc_free(sbuff);
+			return NULL;
+		}
+
+		fr_sbuff_init_talloc(sbuff, sbuff, tctx, 1024, (FR_DICT_ATTR_MAX_NAME_LEN + 1) * FR_DICT_MAX_TLV_STACK);
+
+		fr_thread_local_set_destructor(fr_log_request_oid_buff, _fr_log_request_oid_buff_free, sbuff);
+	} else {
+		fr_sbuff_set(sbuff, fr_sbuff_start(sbuff));	/* Reset position */
+	}
+
+	return sbuff;
+}
+
+/** Print a list of fr_pair_ts.
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
- * @param[in] vp	to print.
+ * @param[in] parent	of vps to print, may be NULL.
+ * @param[in] vps	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
+			   fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 {
-	fr_cursor_t cursor;
+	fr_pair_list_t		*m_vp;
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	*parent_da = NULL;
 
-	if (!vp || !request || !request->log.dst) return;
+	if (fr_pair_list_empty(vps) || !request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
+	memcpy(&m_vp, &vps, sizeof(m_vp));
+
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &vp);
+	for (vp = fr_pair_list_head(m_vp);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(m_vp, vp)) {
 		VP_VERIFY(vp);
 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
-		if (vp->da->type == FR_TYPE_GROUP) {
-			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
-			log_request_pair_list(lvl, request, (VALUE_PAIR *) vp->vp_group, prefix);
-			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+		{
+			fr_sbuff_t *oid_buff = log_request_oid_buff();
+
+			if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+			if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
+
+			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
+			log_request_pair_list(lvl, request, vp, &vp->vp_group, prefix);
+			RDEBUGX(lvl, "%s}", prefix ? prefix : "");	/* don't add extra space between closing brace and prefix */
 			continue;
 		}
-
-		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+		default:
+			RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+			break;
+		}
 	}
 	REXDENT();
 }
 
-/** Print a list of protocol VALUE_PAIRs.
+/** Print a list of protocol fr_pair_ts.
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
- * @param[in] vp	to print.
+ * @param[in] parent	of vps to print, may be NULL.
+ * @param[in] vps	to print.
  * @param[in] prefix	(optional).
  */
-void log_request_proto_pair_list(fr_log_lvl_t lvl, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
+				 fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 {
-	fr_cursor_t cursor;
+	fr_dict_attr_t const	*parent_da = NULL;
+	fr_pair_t		*vp;
 
-	if (!vp || !request || !request->log.dst) return;
+	if (fr_pair_list_empty(vps) || !request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &vp);
+	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(vps, vp)) {
 		VP_VERIFY(vp);
-		if (vp->da->flags.internal) continue;
+
+		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
-		if (vp->da->type == FR_TYPE_GROUP) {
-			RDEBUGX(lvl, "%s%s {", prefix ? prefix : "", vp->da->name);
-			log_request_proto_pair_list(lvl, request, (VALUE_PAIR *) vp->vp_group, prefix);
-			RDEBUGX(lvl, "%s }", prefix ? prefix : "");
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+		{
+			fr_sbuff_t *oid_buff = log_request_oid_buff();
+
+			if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+			if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
+
+			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
+			log_request_proto_pair_list(lvl, request, vp, &vp->vp_group, prefix);
+			RDEBUGX(lvl, "%s}", prefix ? prefix : "");
 			continue;
 		}
 
-		RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+		default:
+			RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+			break;
+		}
 	}
 	REXDENT();
 }
 
 /** Write the string being parsed, and a marker showing where the parse error occurred
  *
- * @param[in] type	the log category.
- * @param[in] lvl	of debugging this message should be logged at.
- * @param[in] request	The current request.
- * @param[in] file	src file the log message was generated in.
- * @param[in] line	number the log message was generated on.
- * @param[in] str	string we were parsing.
- * @param[in] idx	The position of the marker relative to the string.
- * @param[in] fmt	What the parse error was.
- * @param[in] ...	Arguments for fmt string.
+ * @param[in] type		the log category.
+ * @param[in] lvl		of debugging this message should be logged at.
+ * @param[in] request		The current request.
+ * @param[in] file		src file the log message was generated in.
+ * @param[in] line		number the log message was generated on.
+ * @param[in] str		Subject string we're printing a marker for.
+ * @param[in] str_len		Subject string length.  Use SIZE_MAX for the
+ *				length of the string.
+ * @param[in] marker_idx	The position of the marker relative to the string.
+ * @param[in] marker_fmt	What the parse error was.
+ * @param[in] ...		Arguments for fmt string.
  */
-void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
-			char const *str, size_t idx,
-			char const *fmt, ...)
+			char const *str, size_t str_len,
+			ssize_t marker_idx, char const *marker_fmt, ...)
 {
-	char const	*prefix = "";
-	uint8_t		unlang_indent;
-	uint8_t		module_indent;
-	va_list		ap;
-	char		*errstr;
+	char const		*ellipses = "";
+	uint8_t			unlang_indent;
+	uint8_t			module_indent;
+	va_list			ap;
+	char			*error;
+	static char const	marker_spaces[] = "                                                            "; /* 60 */
 
-	if (idx >= sizeof(spaces)) {
-		size_t offset = (idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
-		idx -= offset;
+	if (str_len == SIZE_MAX) str_len = strlen(str);
+
+	if (marker_idx < 0) marker_idx = marker_idx * -1;
+
+	if ((size_t)marker_idx >= sizeof(marker_spaces)) {
+		size_t offset = (marker_idx - (sizeof(marker_spaces) - 1)) + (sizeof(marker_spaces) * 0.75);
+		marker_idx -= offset;
 		str += offset;
+		str_len -= offset;
 
-		prefix = "... ";
+		ellipses = "... ";
 	}
 
 	/*
@@ -816,19 +898,19 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 	request->log.unlang_indent = 0;
 	request->log.module_indent = 0;
 
-	log_request(type, lvl, request, file, line, "%s%s", prefix, str);
-
-	va_start(ap, fmt);
-	errstr = fr_vasprintf(request, fmt, ap);
+	va_start(ap, marker_fmt);
+	error = fr_vasprintf(request, marker_fmt, ap);
 	va_end(ap);
-	log_request(type, lvl, request, file, line, "%s%.*s^ %s", prefix, (int) idx, spaces, errstr);
-	talloc_free(errstr);
+
+	log_request(type, lvl, request, file, line, "%s%.*s", ellipses, (int)str_len, str);
+	log_request(type, lvl, request, file, line, "%s%.*s^ %s", ellipses, (int) marker_idx, marker_spaces, error);
+	talloc_free(error);
 
 	request->log.unlang_indent = unlang_indent;
 	request->log.module_indent = module_indent;
 }
 
-void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
+void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		     char const *file, int line,
 		     uint8_t const *data, size_t data_len)
 {
@@ -856,7 +938,7 @@ void log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt,
 	fr_vlog(log, L_ERR, file, line, fmt, ap);
 	va_end(ap);
 
-	fr_exit_now(1);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 /** Initialises the server logging functionality, and the underlying libfreeradius log

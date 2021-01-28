@@ -11,7 +11,6 @@ update request {
 	&Tmp-IP-Address-0    := 57.56.55.50
 	&Tmp-Date-0          := 959985459
 	&Tmp-Integer-0       := 959985460
-	&Tmp-Cast-Abinary    := 'ip out forward srcip 57.56.55.53/32 udp dstport = 1812'
 	&Tmp-Cast-IfId       := '0000:0000:3938:3737'
 	&Tmp-Cast-IPv6Addr   := '::3938:3738'
 	&Tmp-Cast-IPv6Prefix := '::3938:3739/128'
@@ -83,7 +82,6 @@ update request {
 	&Tmp-String-2        := "%{integer:Tmp-IP-Address-0}"
 	&Tmp-String-3        := "%{integer:Tmp-Date-0}"
 	&Tmp-String-4        := "%{integer:Tmp-Integer-0}"
-	&Tmp-String-5        := "%{integer:Tmp-Cast-Abinary}"
 	&Tmp-String-6        := "%{integer:Tmp-Cast-Ifid}"
 	&Tmp-String-7        := "%{integer:Tmp-Cast-IPv6Addr}"
 	&Tmp-String-8        := "%{integer:Tmp-Cast-IPv6Prefix}"
@@ -105,11 +103,6 @@ if (&Tmp-String-3 != '959985459') {
 
 # Integer
 if (&Tmp-String-4 != '959985460') {
-	test_fail
-}
-
-# Abinary - Can't convert ascend binary to an integer
-if (&Tmp-String-5 != '') {
 	test_fail
 }
 

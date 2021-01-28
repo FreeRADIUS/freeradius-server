@@ -37,7 +37,7 @@ RCSID("$Id$")
 #  include <openssl/hmac.h>
 #  include <freeradius-devel/tls/missing.h>
 
-fr_thread_local_setup(HMAC_CTX *, md5_hmac_ctx); /* macro */
+static _Thread_local HMAC_CTX *md5_hmac_ctx;
 
 static void _hmac_md5_ctx_free_on_exit(void *arg)
 {
@@ -200,11 +200,10 @@ int main(int argc, char **argv)
 	fr_hmac_md5(digest, text, text_len, key, key_len);
 
 	for (i = 0; i < 16; i++) {
-	printf("%02x", digest[i]);
+		printf("%02x", digest[i]);
 	}
 	printf("\n");
 
-	exit(0);
 	return 0;
 }
 

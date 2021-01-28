@@ -33,7 +33,7 @@ RCSID("$Id$")
  *
  * This is a shim function added to 'fake' requests by the subrequest and parallel keywords.
  */
-rlm_rcode_t unlang_io_process_interpret(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+unlang_action_t unlang_io_process_interpret(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
 
@@ -46,7 +46,8 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED void *instance, UNUSED void *thre
 	 */
 	if ((rcode == RLM_MODULE_YIELD) &&
 	    (request->master_state != REQUEST_STOP_PROCESSING)) {
-		return RLM_MODULE_YIELD;
+		*p_result = RLM_MODULE_YIELD;
+		return UNLANG_ACTION_YIELD;
 	}
 
 	/*
@@ -55,12 +56,12 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED void *instance, UNUSED void *thre
 	 *	If we have a parent, then we're running synchronously
 	 *	with it.  Allow the parent to resume.
 	 */
-	if (request->parent) unlang_interpret_resumable(request->parent);
+	if (request->parent) unlang_interpret_mark_resumable(request->parent);
 
 	/*
 	 *	Don't bother setting request->reply->code.
 	 */
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /** Allocate a child request based on the parent.
@@ -72,15 +73,16 @@ rlm_rcode_t unlang_io_process_interpret(UNUSED void *instance, UNUSED void *thre
  *      - The new child request.
  *	- NULL on error.
  */
-REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable)
+request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable)
 {
-	REQUEST			*child;
+	request_t			*child;
 
-	if (!detachable) {
-		child = request_alloc_fake(parent, namespace);
-	} else {
-		child = request_alloc_detachable(parent, namespace);
-	}
+	child = request_alloc(detachable ? NULL : parent,
+			      (&(request_init_args_t){
+			      		.parent = parent,
+			      		.namespace = namespace,
+			      		.detachable = detachable
+			      }));
 	if (!child) return NULL;
 
 	/*
@@ -116,6 +118,8 @@ REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace,
 	 *	"unlang", and doesn't send replies or anything else.
 	 */
 	child->async->process = unlang_io_process_interpret;
+
+	REQUEST_VERIFY(child);
 
 	return child;
 }

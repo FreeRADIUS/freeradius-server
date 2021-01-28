@@ -1,0 +1,109 @@
+= &Attribute References
+
+.Syntax
+[source,unlang]
+----
+&Attribute-Name
+----
+
+The `&Attribute-Name` operator returns a reference to the named
+attribute.
+
+When used as an existence check in a condition, the condition
+evaluates to `true` if the attribute exists.  Otherwise, the condition
+evaluates to `false`.
+
+When used elsewhere, such as in xref:unlang/switch.adoc[switch], it returns
+the value of the named attribute.
+
+.Examples
+[source,unlang]
+----
+&User-Name
+&NAS-IP-Address
+----
+
+== Lists
+
+The attribute reference can also be qualified with a
+xref:unlang/list.adoc[list] reference.  When no list is given, the server
+looks in the input packet list for the named attribute.
+
+.Examples
+
+[source,unlang]
+----
+&request.User-Name
+&reply.NAS-IP-Address
+----
+
+== Array References
+
+.Syntax
+[source,unlang]
+----
+&Attribute-Name[<integer]
+----
+
+When an attribute appears multiple times in a list, this syntax allows
+you to address the attributes as if they were array entries.  The
+`<integer>` value defines which attribute to address.  The `[0]` value
+refers to the first attributes, `[1]` refers to the second attribute,
+etc.
+
+.Examples
+[source,unlang]
+----
+&EAP-Message[1]
+&reply.NAS-IP-Address[2]
+----
+
+== Parent / child references
+
+.Syntax
+[source,unlang]
+----
+&Attribute-Name.Attribute-Name
+----
+
+In some cases, attributes are nested or grouped.  The child reference
+syntax is used to address a particular child attribute.  Multiple
+levels of parent / child nesting can be performed by simply appending
+the name of another child attribute, separated by the `.` character.
+
+.Examples
+
+[source,unlang]
+----
+&TLV-One.Child-one
+&TLV-One.Child-one.Child-Three
+&reply.TLV[3].Child-Two
+----
+
+== Putting it All Together
+
+All of the above syntaxes can be used interchangeably, at any nesting level.  The examples are presented
+
+.Examples
+[source,unlang]
+----
+&TLV-One.Child-one[3].Child-Three
+&reply.TLV[3].Child-Two
+----
+
+== Compatibility with Older Versions of FreeRADIUS
+
+Older versions of the server did not use the `&` character to
+distinguish attribute names from other strings.  Version 4 requires
+the use of the `&` character before attribute names.
+
+Without the `&`, the server could interpret a string as `hello-there`
+either as a literal string "hello-there", or as a reference to an
+attribute named `hello-there`.  This ambiguity made it difficult to
+parse the configuration files correctly in all cases.
+
+Adding the leading `&` character means that attribute references are
+now easily distinguishable from literal strings.
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

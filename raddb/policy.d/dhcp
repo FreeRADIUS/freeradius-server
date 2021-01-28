@@ -1,17 +1,15 @@
-#  Assign compatibility data to request for sqlippool
-dhcp_sqlippool.post-auth {
-
-
-	#  Do some minor hacks to the request so that it looks
-	#  like a RADIUS request to the SQL IP Pool module.
-	update request {
-		&User-Name = "DHCP-%{DHCP-Client-Hardware-Address}"
-		&Calling-Station-Id = "%{DHCP-Client-Hardware-Address}"
-		&NAS-IP-Address = "%{%{DHCP-Gateway-IP-Address}:-127.0.0.1}"
-		&Acct-Status-Type = Start
+#  A policy to set options required in all DHCP replies
+dhcp_common {
+	#  The contents here are invented.  Change them!
+	#  Lease time is referencing the lease time set in the
+	#  named module instance configuration
+	update reply {
+		&Domain-Name-Server = 127.0.0.1
+		&Domain-Name-Server = 127.0.0.2
+		&Subnet-Mask = 255.255.255.0
+		&Router-Address = 192.0.2.1
+		&IP-Address-Lease-Time = 7200
+#		&IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
+		&Server-Identifier = &control.Server-Identifier
 	}
-
-	#  Call the actual module
-	dhcp_sqlippool
 }
-

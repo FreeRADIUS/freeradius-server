@@ -53,7 +53,7 @@ recv Access-Request {
 	#  Individual attributes from the outer request may be
 	#  accessed with:
 	#
-	#      &outer.request:<attribute>
+	#      &outer.request.<attribute>
 	#
 	#  The following policy in raddb/policy.d/eap can be used
 	#  to copy attributes over.
@@ -308,7 +308,7 @@ send Access-Reject {
 	#  Let the outer session know which module failed, and why.
 	#
 	update outer.session-state {
-		&Module-Failure-Message := &request:Module-Failure-Message
+		&Module-Failure-Message := &request.Module-Failure-Message
 	}
 }
 } # inner-tunnel server block

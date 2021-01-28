@@ -7,7 +7,7 @@
 The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 
 MS-CHAP authentication requires access to either the
-Cleartext-Password or NT-Password attribute for the user.  Due to
+Password.Cleartext or NT-Password attribute for the user.  Due to
 the limitations of MS-CHAP, no other password "encryption" methods
 are possible.
 
@@ -342,7 +342,7 @@ mschap {
 #		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
 #		ntlm_auth_username = "username: %{mschap:User-Name}"
 #		ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
-#		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Cleartext-Password}}"
+#		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Password.Cleartext}}"
 #		local_cpw = "%{sql:UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='NT-Password'}"
 	}
 #	use_open_directory = yes

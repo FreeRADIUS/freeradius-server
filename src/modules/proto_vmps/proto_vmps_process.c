@@ -27,8 +27,8 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/vqp/vqp.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/vmps/vmps.h>
 
 #include <freeradius-devel/protocol/vmps/vmps.h>
 
@@ -48,7 +48,7 @@ fr_dict_attr_autoload_t proto_vmps_process_dict_attr[] = {
 	{ NULL }
 };
 
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t		rcode;
 	CONF_SECTION		*unlang;
@@ -59,14 +59,14 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %08x", fr_vmps_codes[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 		request->component = "vmps";
 
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
-			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
-			return RLM_MODULE_FAIL;
+			REDEBUG("Failed to find value for &request.VMPS-Packet-Type");
+			RETURN_MODULE_FAIL;
 		}
 
 		unlang = cf_section_find(request->server_cs, "recv", dv->name);
@@ -77,19 +77,22 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -122,19 +125,22 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -175,11 +181,9 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		 */
 		if (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client.");
-			return RLM_MODULE_HANDLED;
+			RETURN_MODULE_HANDLED;
 		}
 
-#if 0
-#ifdef WITH_UDPFROMTO
 		/*
 		 *	Overwrite the src ip address on the outbound packet
 		 *	with the one specified by the client.
@@ -187,23 +191,21 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		 *	and other routing issues.
 		 */
 		if (request->client && (request->client->src_ipaddr.af != AF_UNSPEC)) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
+			request->reply->socket.inet.src_ipaddr = request->client->src_ipaddr;
 		}
-#endif
-#endif
 
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
+		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, &request->reply_pairs, false);
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
 		.name2 = "Join-Request",

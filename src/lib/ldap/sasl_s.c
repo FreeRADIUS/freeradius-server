@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/ldap/base.h>
 
@@ -40,7 +40,7 @@ USES_APPLE_DEPRECATED_API
  *
  */
 typedef struct {
-	REQUEST			*request;	//!< The current request.
+	request_t			*request;	//!< The current request.
 
 	char const		*identity;	//!< User's DN or identity.
 	char const		*password;	//!< Bind password.
@@ -61,7 +61,7 @@ typedef struct {
 static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx, void *sasl_callbacks)
 {
 	fr_ldap_sasl_ctx_t		*this = ctx;
-	REQUEST				*request = this->request;
+	request_t				*request = this->request;
 	fr_ldap_config_t const	*handle_config = this->conn->config;
 	sasl_interact_t			*cb = sasl_callbacks;
 	sasl_interact_t			*cb_p;
@@ -108,7 +108,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @param[in] timeout		Maximum time bind is allowed to take.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t  fr_ldap_sasl_interactive(REQUEST *request,
+fr_ldap_rcode_t  fr_ldap_sasl_interactive(request_t *request,
 					  fr_ldap_connection_t *conn, char const *identity,
 					  char const *password, fr_ldap_sasl_t const *sasl,
 					  LDAPControl **serverctrls, LDAPControl **clientctrls,

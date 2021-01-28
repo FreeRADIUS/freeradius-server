@@ -37,7 +37,7 @@ typedef struct {
 
 void fr_sha1_transform(uint32_t state[static 5], uint8_t const buffer[static 64]);
 void fr_sha1_init(fr_sha1_ctx *context);
-void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *data, size_t len);
+void fr_sha1_update(fr_sha1_ctx *context, uint8_t const *in, size_t len);
 void fr_sha1_final(uint8_t digest[static SHA1_DIGEST_LENGTH], fr_sha1_ctx *context);
 
 /*

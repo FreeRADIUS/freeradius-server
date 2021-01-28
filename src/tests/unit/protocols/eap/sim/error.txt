@@ -38,7 +38,7 @@ match Unknown (non-skippable) attribute 99
 # Unknown skippable attribute (150) - Ensure the 'reserved bytes' in a normal octets
 # attribute are not skipped.
 decode-pair.sim_tp_decode 97 02 00 00 ff ff ff ff
-match Attr-151 = 0x0000ffffffff
+match 151 = 0x0000ffffffff
 
 # Array missing length field
 decode-pair.sim_tp_decode 0f 01

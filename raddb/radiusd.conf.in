@@ -190,9 +190,10 @@ pidfile = ${run_dir}/${name}.pid
 max_request_time = 30
 
 #
-#  max_requests:: The maximum number of requests which the server keeps
-#  track of.  This should be `256` multiplied by the number of clients.
-#  e.g. With `4` clients, this number should be `1024`.
+#  max_requests:: The maximum number of requests which the server
+#  keeps track of.  This should be at least `256` multiplied by the
+#  number of clients.  e.g. With `4` clients, this number should be
+#  `1024`.
 #
 #  If this number is too low, then when the server becomes busy,
 #  it will not respond to any new requests, until the 'cleanup_delay'
@@ -204,6 +205,9 @@ max_request_time = 30
 #  If you aren't sure what it should be set to, it's better to set it
 #  too high than too low.  Setting it to `1000` per client is probably
 #  the highest it should be.
+#
+#  Unlike v3, this setting is per worker thread, and is not global to
+#  the server.
 #
 #  Useful range of values: `256` to `infinity`
 #
@@ -623,7 +627,7 @@ instantiate {
 	#  the check_name attribute before any module which sets
 	#  it.
 	#
-#	daily
+#	dailycounter
 
 	#
 	#  subsections here can be thought of as `virtual` modules.

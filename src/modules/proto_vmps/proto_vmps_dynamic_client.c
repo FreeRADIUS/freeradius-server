@@ -27,8 +27,8 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/vqp/vqp.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/vmps/vmps.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_vmps;
@@ -57,7 +57,7 @@ fr_dict_attr_autoload_t proto_vmps_dynamic_client_dict_attr[] = {
 #define CLIENT_ADD	(1)
 #define CLIENT_NAK	(257)
 
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -67,7 +67,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		RDEBUG("Received %s ID %i", fr_vmps_codes[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 		request->component = "vmps";
 
@@ -79,19 +79,22 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		}
 
 		RDEBUG("Running 'new client' from file %s", cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_RECV;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_RECV:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_OK:
@@ -115,19 +118,22 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 
 	rerun_nak:
 		RDEBUG("Running '%s client' from file %s", cf_section_name1(unlang), cf_filename(unlang));
-		unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
+		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+			RETURN_MODULE_FAIL;
+		}
 
 		request->request_state = REQUEST_SEND;
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case REQUEST_SEND:
 		rcode = unlang_interpret(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_HANDLED;
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			*p_result = RLM_MODULE_HANDLED;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 
-		if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
-
-		rad_assert(request->log.unlang_indent == 0);
+		if (rcode == RLM_MODULE_YIELD) RETURN_MODULE_YIELD;
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -157,12 +163,12 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		}
 
 		if (request->reply->code == CLIENT_ADD) {
-			VALUE_PAIR *vp;
+			fr_pair_t *vp;
 
-			vp = fr_pair_find_by_da(request->control, attr_freeradius_client_ip_address, TAG_ANY);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_address, TAG_ANY);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ip_prefix, TAG_ANY);
-			if (!vp) fr_pair_find_by_da(request->control, attr_freeradius_client_ipv6_prefix, TAG_ANY);
+			vp = fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_address);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ip_prefix);
+			if (!vp) fr_pair_find_by_da(&request->control_pairs, attr_freeradius_client_ipv6_prefix);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
 				goto deny;
@@ -178,18 +184,18 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 		} else {
 			RDEBUG("Denying client");
 		}
-		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
+		if (RDEBUG_ENABLED) log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 		break;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
-static virtual_server_compile_t compile_list[] = {
+static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "new",
 		.name2 = "client",

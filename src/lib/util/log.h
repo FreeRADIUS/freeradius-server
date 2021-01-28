@@ -112,9 +112,28 @@ typedef struct {
 	ssize_t			(*cookie_write)(void *, char const *, size_t);	//!< write function
 } fr_log_t;
 
+typedef struct {
+	char const		*first_prefix;	//!< Prefix for the first line printed.
+	char const		*subsq_prefix;	//!< Prefix for subsequent lines.
+} fr_log_perror_format_t;
+
 extern fr_log_t default_log;
+extern bool fr_log_rate_limit;
+
+
+/** Whether rate limiting is enabled
+ *
+ */
+static inline bool fr_rate_limit_enabled(void)
+{
+	if (fr_log_rate_limit || (fr_debug_lvl < 1)) return true;
+
+	return false;
+}
 
 int	fr_log_init(fr_log_t *log, bool daemonize);
+
+TALLOC_CTX	*fr_log_pool_init(void);
 
 int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1,3));
@@ -122,19 +141,27 @@ int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, 
 int	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1,3));
 
-int	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
-	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1));
+int	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type,
+		       char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, va_list ap)
+	CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (1));
 
-int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
-	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1));
+int	fr_log_perror(fr_log_t const *log, fr_log_type_t type,
+		      char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, ...)
+	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (1));
 
-void	fr_log_hex(fr_log_t const *log, fr_log_type_t type,
-		   char const *file, int line,
-		   uint8_t const *data, size_t data_len, char const *fmt, ...)
+void	fr_log_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		      char const *str, size_t str_len,
+		      ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
+		      CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull (1,3,5,8));
+
+void	fr_log_hex(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		   uint8_t const *data, size_t data_len, char const *line_prefix_fmt, ...)
 		   CC_HINT(format (printf, 7, 8)) CC_HINT(nonnull (1,3,5));
 
-bool	fr_rate_limit_enabled(void);
-
+void	fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+			  uint8_t const *data, size_t data_len,
+			  ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
+			  CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull (1, 3, 5, 8));
 #ifdef __cplusplus
 }
 #endif

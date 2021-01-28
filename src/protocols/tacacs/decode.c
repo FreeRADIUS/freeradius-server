@@ -23,356 +23,690 @@
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Network RADIUS SARL (legal@networkradius.com)
  */
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/net.h>
+
+#include <freeradius-devel/io/test_point.h>
+#include <freeradius-devel/protocol/tacacs/tacacs.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/protocol/tacacs/dictionary.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/struct.h>
 
 #include "tacacs.h"
 #include "attrs.h"
 
-static int tacacs_decode_field(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
-			       char const *field_name, uint8_t **field_data, size_t field_len, size_t *remaining)
-{
-	uint8_t *p;
-	VALUE_PAIR *vp;
+#define PACKET_HEADER_CHECK(_msg) do { \
+	if (p > end) { \
+		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - (uint8_t const *) pkt, p - (uint8_t const *) pkt); \
+		goto fail; \
+	} \
+} while (0)
 
-	p = *field_data;
+#define ARG_COUNT_CHECK(_msg, _arg_cnt) do { \
+	if ((p + _arg_cnt) > end) { \
+		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", _arg_cnt); \
+		goto fail; \
+	} \
+	p += _arg_cnt; \
+} while (0)
+
+#define DECODE_FIELD_UINT8(_da, _field) do { \
+	vp = fr_pair_afrom_da(ctx, _da); \
+	if (!vp) goto fail; \
+	vp->vp_uint8 = _field; \
+	fr_dcursor_append(cursor, vp); \
+} while (0)
+
+#define DECODE_FIELD_STRING8(_da, _field) do { \
+	if (tacacs_decode_field(ctx, cursor, _da, &p, \
+	    _field, end) < 0) goto fail; \
+} while (0)
+
+#define DECODE_FIELD_STRING16(_da, _field) do { \
+	if (tacacs_decode_field(ctx, cursor, _da, &p, \
+	    ntohs(_field), end) < 0) goto fail; \
+} while (0)
+
+#define BODY(_x) (((uint8_t const *) pkt) + sizeof(pkt->hdr) + sizeof(pkt->_x))
+
+/**
+ *	Decode a TACACS+ 'arg_N' fields.
+ */
+static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *da,
+			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const **data, uint8_t const *end)
+{
+	uint8_t i;
+	uint8_t const *p = *data;
+	fr_pair_t *vp;
 
 	/*
-	 *	This field doesn't exist.  Ignore it.
+	 *	No one? Just get out!
 	 */
-	if (!field_len) return 0;
+	if (!arg_cnt) return 0;
 
-	if (*remaining < field_len) {
-		fr_strerror_printf("%s length overflows the remaining data in the packet: %zu > %zu",
-				   field_name, field_len, *remaining);
+	if ((p + arg_cnt) > end) {
+		fr_strerror_printf("Argument count %u overflows the remaining data in the packet", arg_cnt);
+		return -1;
+	}
+
+	/*
+	 *	Then, do the dirty job...
+	 */
+	for (i = 0; i < arg_cnt; i++) {
+		if ((p + arg_list[i]) > end) {
+			fr_strerror_printf("'%s' argument %u length %u overflows the remaining data in the packet",
+					   da->name, i, arg_list[i]);
+			return -1;
+		}
+
+		vp = fr_pair_afrom_da(ctx, da);
+		if (!vp) {
+			fr_strerror_const("Out of Memory");
+			return -1;
+		}
+
+		fr_pair_value_bstrndup(vp, (char const *) p, arg_list[i], true);
+		fr_dcursor_append(cursor, vp);
+		p += arg_list[i];
+		*data  = p;
+	}
+
+	return 0;
+}
+
+/**
+ *	Decode a TACACS+ field.
+ */
+static int tacacs_decode_field(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *da,
+				uint8_t const **field_data, uint16_t field_len, uint8_t const *end)
+{
+	uint8_t const *p = *field_data;
+	fr_pair_t *vp;
+
+	if ((p + field_len) > end) {
+		fr_strerror_printf("'%s' length %u overflows the remaining data in the packet",
+				   da->name, field_len);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-		fr_strerror_printf("Out of Memory");
+		fr_strerror_const("Out of Memory");
 		return -1;
 	}
 
-	fr_pair_value_bstrncpy(vp, p, field_len);
-	p += field_len;
-	*remaining -= field_len;
-	fr_cursor_append(cursor, vp);
+	if (field_len) {
+		if (da->type == FR_TYPE_STRING) {
+			fr_pair_value_bstrndup(vp, (char const *)p, field_len, true);
+		} else if (da->type == FR_TYPE_OCTETS) {
+			fr_pair_value_memdup(vp, p, field_len, true);
+		} else {
+			fr_assert(0);
+		}
+		p += field_len;
+		*field_data = p;
+	}
 
-	*field_data = p;
+	fr_dcursor_append(cursor, vp);
 
 	return 0;
 }
 
-int fr_tacacs_packet_decode(RADIUS_PACKET * const packet)
+/**
+ *	Decode a TACACS+ packet
+ */
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_dcursor_t *cursor)
 {
-	int i;
-	fr_tacacs_packet_t *pkt;
-	fr_cursor_t cursor;
-	VALUE_PAIR *vp;
-	uint8_t *p;
-	uint32_t session_id;
-	size_t remaining;
-
-	fr_cursor_init(&cursor, &packet->vps);
+	fr_tacacs_packet_t const *pkt;
+	fr_pair_t		*vp;
+	uint8_t const  		*p, *end;
+	uint8_t			*decrypted = NULL;
 
 	/*
-	 *	There MUST be at least a TACACS packert header, and
-	 *	packet->data_len == sizeof(pkt) + htonl(pkt->length),
-	 *	which is enforced in fr_tacacs_packet_recv().
+	 * 3.4. The TACACS+ Packet Header
+	 *
+	 * 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+	 * +----------------+----------------+----------------+----------------+
+	 * |major  | minor  |                |                |                |
+	 * |version| version|      type      |     seq_no     |   flags        |
+	 * +----------------+----------------+----------------+----------------+
+	 * |                                                                   |
+	 * |                            session_id                             |
+	 * +----------------+----------------+----------------+----------------+
+	 * |                                                                   |
+	 * |                              length                               |
+	 * +----------------+----------------+----------------+----------------+
 	 */
-	pkt = (fr_tacacs_packet_t *)packet->data;
+	pkt = (fr_tacacs_packet_t const *) buffer;
+	end = buffer + buffer_len;
 
-	remaining = ntohl(pkt->hdr.length);
-
-	vp = fr_pair_afrom_da(packet, attr_tacacs_version_minor);
-	if (!vp) {
-	oom:
-		fr_strerror_printf("Out of Memory");
+	/*
+	 *	Check that we have a full TACACS+ header before
+	 *	decoding anything.
+	 */
+	if (buffer_len < sizeof(pkt->hdr)) {
+		fr_strerror_printf("Packet is too small (%zu < 12) to be TACACS+.", buffer_len);
 		return -1;
 	}
-	vp->vp_uint8 = pkt->hdr.ver.minor;
-	fr_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_da(packet, attr_tacacs_packet_type);
-	if (!vp) goto oom;
-	vp->vp_uint8 = pkt->hdr.type;
-	fr_cursor_append(&cursor, vp);
+	/*
+	 *	TACACS major / minor version MUST be 12.0 or 12.1
+	 */
+	if (!((buffer[0] == 0xc0) || (buffer[0] == 0xc1))) {
+		fr_strerror_printf("Unsupported TACACS+ version %02x", buffer[0]);
+		return -1;
+	}
 
-	packet->code = pkt->hdr.type;
+	/*
+	 *	There's no reason to accept 64K TACACS+ packets.
+	 *
+	 *	In any case, the largest possible packet has the
+	 *	header, plus 2 16-bit fields, plus 255 8-bit fields,
+	 *	which is a bit under 2^18.
+	 */
+	if ((buffer[8] != 0) || (buffer[9] != 0)) {
+		fr_strerror_const("Packet is too large.  Our limit is 64K");
+		return -1;
+	}
 
-	vp = fr_pair_afrom_da(packet, attr_tacacs_sequence_number);
-	if (!vp) goto oom;
-	vp->vp_uint8 = pkt->hdr.seq_no;
-	fr_cursor_append(&cursor, vp);
+	/*
+	 *	As a stream protocol, the TACACS+ packet MUST fit
+	 *	exactly into however many bytes we read.
+	 */
+	if ((buffer + sizeof(pkt->hdr) + ntohl(pkt->hdr.length)) != end) {
+		fr_strerror_const("Packet does not exactly fill buffer");
+		return -1;
+	}
 
-	vp = fr_pair_afrom_da(packet, attr_tacacs_session_id);
-	if (!vp) goto oom;
-	vp->vp_uint32 = ntohl(pkt->hdr.session_id);
-	fr_cursor_append(&cursor, vp);
-	session_id = vp->vp_uint32;
+	/*
+	 *	There are only 3 types of packets which are supported.
+	 */
+	if (!((pkt->hdr.type == FR_TAC_PLUS_AUTHEN) ||
+	      (pkt->hdr.type == FR_TAC_PLUS_AUTHOR) ||
+	      (pkt->hdr.type == FR_TAC_PLUS_ACCT))) {
+		fr_strerror_printf("Unknown packet type %u", pkt->hdr.type);
+		return -1;
+	}
 
-	switch ((tacacs_type_t)pkt->hdr.type) {
-	case TAC_PLUS_AUTHEN:
-		switch (pkt->hdr.seq_no) {
-		case 1:
-			if (remaining < 8) {
-				fr_strerror_printf("Authentication START packet is too small: %zu < 8",
-						   remaining);
-				return -1;
+	/*
+	 *	Call the struct encoder to do the actual work.
+	 */
+	if (fr_struct_from_network(ctx, cursor, attr_tacacs_packet, buffer, buffer_len, NULL, NULL, NULL) < 0) {
+		fr_strerror_printf("Problems to decode %s using fr_struct_from_network()", attr_tacacs_packet->name);
+		return -1;
+	}
+
+	/*
+	 *	3.6. Encryption
+	 *
+	 *	Packets are encrypted if the unencrypted flag is clear.
+	 */
+	if ((pkt->hdr.flags & FR_TAC_PLUS_UNENCRYPTED_FLAG) == 0) {
+		size_t length;
+
+		if (!secret || secret_len < 1) {
+			fr_strerror_const("Packet is encrypted, but no secret is set.");
+			return -1;
+		}
+
+		length = ntohl(pkt->hdr.length);
+
+		/*
+		 *	We need that to decrypt the body content.
+		 */
+		decrypted = talloc_memdup(ctx, buffer, buffer_len);
+		if (!decrypted) {
+			fr_strerror_const("Out of Memory");
+			return -1;
+		}
+
+		pkt = (fr_tacacs_packet_t const *) decrypted;
+		end = decrypted + buffer_len;
+
+		if (fr_tacacs_body_xor(pkt, decrypted + sizeof(pkt->hdr), length, secret, secret_len) < 0) {
+		fail:
+			talloc_free(decrypted);
+			return -1;
+		}
+	}
+
+	switch (pkt->hdr.type) {
+	case FR_TAC_PLUS_AUTHEN:
+		if (packet_is_authen_start_request(pkt)) {
+			uint8_t want;
+
+			/**
+			 * 4.1. The Authentication START Packet Body
+			 *
+			 *  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * +----------------+----------------+----------------+----------------+
+			 * |    action      |    priv_lvl    |  authen_type   | authen_service |
+			 * +----------------+----------------+----------------+----------------+
+			 * |    user_len    |    port_len    |  rem_addr_len  |    data_len    |
+			 * +----------------+----------------+----------------+----------------+
+			 * |    user ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |    port ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |    rem_addr ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |    data...
+			 * +----------------+----------------+----------------+----------------+
+			 */
+			p = BODY(authen.start);
+			PACKET_HEADER_CHECK("Authentication Start");
+
+			if ((pkt->hdr.ver.minor == 0) &&
+			    (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII)) {
+				fr_strerror_const("TACACS+ minor version 1 MUST be used for non-ASCII authentication methods");
+				goto fail;
 			}
-			remaining -= 8;
+
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_START);
 
 			/*
 			 *	Decode 4 octets of various flags.
 			 */
-			vp = fr_pair_afrom_da(packet, attr_tacacs_action);
-			if (!vp) goto oom;
-			vp->vp_uint8 = pkt->authen.start.action;
-			fr_cursor_append(&cursor, vp);
-
-			vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level);
-			if (!vp) goto oom;
-			vp->vp_uint8 = pkt->authen.start.priv_lvl;
-			fr_cursor_append(&cursor, vp);
-
-			vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type);
-			if (!vp) goto oom;
-			vp->vp_uint8 = pkt->authen.start.authen_type;
-			fr_cursor_append(&cursor, vp);
-
-			vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service);
-			if (!vp) goto oom;
-			vp->vp_uint8 = pkt->authen.start.authen_service;
-			fr_cursor_append(&cursor, vp);
+			DECODE_FIELD_UINT8(attr_tacacs_action, pkt->authen.start.action);
+			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->authen.start.priv_lvl);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->authen.start.authen_type);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->authen.start.authen_service);
 
 			/*
 			 *	Decode 4 fields, based on their "length"
 			 */
-			p = pkt->authen.start.body;
-
-			if (tacacs_decode_field(packet, &cursor, attr_tacacs_user_name, "User",
-						&p, pkt->authen.start.user_len, &remaining) < 0) {
-				return -1;
-			}
-
-			if (tacacs_decode_field(packet, &cursor, attr_tacacs_client_port, "Port",
-						&p, pkt->authen.start.port_len, &remaining) < 0) {
-				return -1;
-			}
-
-			if (tacacs_decode_field(packet, &cursor, attr_tacacs_remote_address, "Remote address",
-						&p, pkt->authen.start.rem_addr_len, &remaining) < 0) {
-				return -1;
-			}
-
-			if (tacacs_decode_field(packet, &cursor, attr_tacacs_data, "Data",
-						&p, pkt->authen.start.data_len, &remaining) < 0) {
-				return -1;
-			}
-			break;
-
-		default:
-			if (remaining < 5) {
-				fr_strerror_printf("Authentication CONTINUE packet is too small: %zu < 5",
-						   remaining);
-				return -1;
-			}
-			remaining -= 5;
+			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->authen.start.user_len);
+			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->authen.start.port_len);
+			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->authen.start.rem_addr_len);
 
 			/*
-			 *	Decode 2 fields, based on their 'length'
+			 *	Check the length on the various
+			 *	authentication types.
 			 */
-			p = pkt->authen.cont.body;
+			switch (pkt->authen.start.authen_type) {
+			default:
+				want = 255;
+				break;
 
-			if (tacacs_decode_field(packet, &cursor, attr_tacacs_user_message, "User message",
-						&p, ntohs(pkt->authen.cont.user_msg_len), &remaining) < 0) {
-				return -1;
-			}
+			case FR_AUTHENTICATION_TYPE_VALUE_CHAP:
+				want = 1 + 8 + 16; /* id + 8 octets of challenge + 16 hash */
+				break;
 
-			if (tacacs_decode_field(packet, &cursor, attr_tacacs_data, "Data",
-						&p, ntohs(pkt->authen.cont.data_len), &remaining) < 0) {
-				return -1;
+			case FR_AUTHENTICATION_TYPE_VALUE_MSCHAP:
+				want = 1 + 8 + 49; /* id + 8 octets of challenge + 49 MS-CHAP stuff */
+				break;
+
+			case FR_AUTHENTICATION_TYPE_VALUE_MSCHAPV2:
+				want = 1 + 16 + 49; /* id + 16 octets of challenge + 49 MS-CHAP stuff */
+				break;
 			}
 
 			/*
-			 *	Look at the abort flag after decoding the fields.
+			 *	If we have enough data, decode it as
+			 *	the claimed authentication type.
+			 *	Otherwise, decode it as an unknown
+			 *	attribute.
 			 */
-			if (pkt->authen.cont.flags & TAC_PLUS_CONTINUE_FLAG_ABORT) {
-				if (!ntohs(pkt->authen.cont.data_len) ||
-				    !(vp = fr_cursor_tail(&cursor))) {
-					fr_strerror_printf("Client aborted authentication session %u "
-							   "with no message", session_id);
-					return -2;
+			if (pkt->authen.start.data_len <= want) {
+				DECODE_FIELD_STRING8(attr_tacacs_data, pkt->authen.start.data_len);
+			} else {
+				fr_dict_attr_t *da;
+
+				da = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
+				if (da) {
+					da->flags.is_raw = 1;
+					DECODE_FIELD_STRING8(da, pkt->authen.start.data_len);
+					talloc_free(da); /* the VP makes it's own copy */
 				}
 
-				if (ntohs(pkt->authen.cont.data_len) > 128) {
-					fr_strerror_printf("Client aborted authentication session %u "
-							   "with too long message", session_id);
-					return -2;
-				}
-
-				fr_strerror_printf("Client aborted authentication session %u with message %s",
-						   session_id, vp->vp_strvalue);
-				return -2;
 			}
+
+		} else if (packet_is_authen_continue(pkt)) {
+			/*
+			 * 4.3. The Authentication CONTINUE Packet Body
+			 *
+			 * This packet is sent from the client to the server following the receipt of
+			 * a REPLY packet.
+			 *
+			 *  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * +----------------+----------------+----------------+----------------+
+			 * |          user_msg len           |            data_len             |
+			 * +----------------+----------------+----------------+----------------+
+			 * |     flags      |  user_msg ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |    data ...
+			 * +----------------+
+			 */
+
+			/*
+			 *	Version 1 is ONLY used for PAP / CHAP
+			 *	/ MS-CHAP start and reply packets.
+			 */
+			if (pkt->hdr.ver.minor != 0) {
+			invalid_version:
+				fr_strerror_const("Invalid TACACS+ version");
+				goto fail;
+			}
+
+			p = BODY(authen.cont);
+			PACKET_HEADER_CHECK("Authentication Continue");
+
+			if (pkt->authen.start.authen_type != FR_AUTHENTICATION_TYPE_VALUE_ASCII) {
+				fr_strerror_const("Authentication-Continue packets MUST NOT be used for PAP, CHAP, MS-CHAP");
+				goto fail;
+			}
+
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_CONTINUE);
+
+			/*
+			 *	Decode 2 fields, based on their "length"
+			 */
+			DECODE_FIELD_STRING16(attr_tacacs_user_message, pkt->authen.cont.user_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen.cont.data_len);
+
+			/*
+			 *	And finally the flags.
+			 */
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_continue_flags, pkt->authen.cont.flags);
+
+		} else if (packet_is_authen_reply(pkt)) {
+			/*
+			 * 4.2. The Authentication REPLY Packet Body
+			 *
+			 * 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * +----------------+----------------+----------------+----------------+
+			 * |     status     |      flags     |        server_msg_len           |
+			 * +----------------+----------------+----------------+----------------+
+			 * |           data_len              |        server_msg ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |           data ...
+			 * +----------------+----------------+
+			 */
+
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
+			 */
+
+			p = BODY(authen.reply);
+			PACKET_HEADER_CHECK("Authentication Reply");
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
+
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_status, pkt->authen.reply.status);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_flags, pkt->authen.reply.flags);
+
+			/*
+			 *	Decode 2 fields, based on their "length"
+			 */
+			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->authen.reply.server_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->authen.reply.data_len);
+
+		} else {
+		unknown_packet:
+			fr_strerror_const("Unknown authentication packet");
+			goto fail;
 		}
 		break;
 
-	case TAC_PLUS_AUTHOR:
-		if (remaining < 8) {
-			fr_strerror_printf("Authorization REQUEST packet is too small: %zu < 8",
-					   remaining);
-			return -1;
-		}
-		remaining -= 8;
+	case FR_TAC_PLUS_AUTHOR:
+		if (packet_is_author_request(pkt)) {
+			/*
+			 * 5.1. The Authorization REQUEST Packet Body
+			 *
+			 *  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * +----------------+----------------+----------------+----------------+
+			 * |  authen_method |    priv_lvl    |  authen_type   | authen_service |
+			 * +----------------+----------------+----------------+----------------+
+			 * |    user_len    |    port_len    |  rem_addr_len  |    arg_cnt     |
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_1_len    |   arg_2_len    |      ...       |   arg_N_len    |
+			 * +----------------+----------------+----------------+----------------+
+			 * |   user ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   port ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   rem_addr ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_1 ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_2 ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_N ...
+			 * +----------------+----------------+----------------+----------------+
+			 */
 
-		if (remaining < pkt->author.req.arg_cnt) {
-			fr_strerror_printf("Authorization REQUEST packet arguments are smaller than arg_ctx: %zu < %u",
-					   remaining, pkt->author.req.arg_cnt);
-			return -1;
-		}
-		remaining -= pkt->author.req.arg_cnt;
+			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
-		/*
-		 *	Skip the header and the N arguments.
-		 */
-		p = pkt->author.req.body;
-		p += pkt->author.req.arg_cnt;
+			p = BODY(author.req);
+			PACKET_HEADER_CHECK("Authorization REQUEST");
+			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.req.arg_cnt);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
-		/*
-		 *	Decode 4 octets of various flags.
-		 */
-		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->author.req.authen_method;
-		fr_cursor_append(&cursor, vp);
+			/*
+			 *	Decode 4 octets of various flags.
+			 */
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_method, pkt->author.req.authen_method);
+			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->author.req.priv_lvl);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->author.req.authen_type);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->author.req.authen_service);
 
-		vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->author.req.priv_lvl;
-		fr_cursor_append(&cursor, vp);
+			/*
+			 *	Decode 3 fields, based on their "length"
+			 */
+			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->author.req.user_len);
+			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->author.req.port_len);
+			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->author.req.rem_addr_len);
 
-		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->author.req.authen_type;
-		fr_cursor_append(&cursor, vp);
+			/*
+			 *	Decode 'arg_N' arguments (horrible format)
+			 */
+			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
+					       pkt->author.req.arg_cnt, BODY(author.req), &p, end) < 0) goto fail;
 
-		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->author.req.authen_service;
-		fr_cursor_append(&cursor, vp);
+		} else if (packet_is_author_response(pkt)) {
+			/*
+			 * 5.2. The Authorization RESPONSE Packet Body
+			 *
+			 *  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * +----------------+----------------+----------------+----------------+
+			 * |    status      |     arg_cnt    |         server_msg len          |
+			 * +----------------+----------------+----------------+----------------+
+			 * +            data_len             |    arg_1_len   |    arg_2_len   |
+			 * +----------------+----------------+----------------+----------------+
+			 * |      ...       |   arg_N_len    |         server_msg ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   data ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_1 ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_2 ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_N ...
+			 * +----------------+----------------+----------------+----------------+
+			 */
 
-		/*
-		 *	Decode 3 fields, based on their "length"
-		 */
-		if (tacacs_decode_field(packet, &cursor, attr_tacacs_user_name, "User",
-					&p, pkt->author.req.user_len, &remaining) < 0) {
-			return -1;
-		}
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
+			 */
 
-		if (tacacs_decode_field(packet, &cursor, attr_tacacs_client_port, "Port",
-					&p, pkt->authen.start.port_len, &remaining) < 0) {
-			return -1;
-		}
+			p = BODY(author.res);
+			PACKET_HEADER_CHECK("Authorization RESPONSE");
+			ARG_COUNT_CHECK("Authorization REQUEST", pkt->author.res.arg_cnt);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_RESPONSE);
 
-		if (tacacs_decode_field(packet, &cursor, attr_tacacs_remote_address, "Remote address",
-					&p, pkt->authen.start.rem_addr_len, &remaining) < 0) {
-			return -1;
-		}
+			/*
+			 *	Decode 1 octets
+			 */
+			DECODE_FIELD_UINT8(attr_tacacs_authorization_status, pkt->author.res.status);
 
-		/* FIXME fully support arg */
-		p =  pkt->author.req.body;
-		for (i = 0; i < pkt->author.req.arg_cnt; i++) {
-			if (remaining < p[i]) {
-				fr_strerror_printf("Authorization REQUEST packet argument %d overflows the packet: %u > %zu",
-						   i, p[i], remaining);
-				return -1;
-			}
-			remaining -= p[i];
+			/*
+			 *	Decode 2 fields, based on their "length"
+			 */
+			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->author.res.server_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->author.res.data_len);
+
+			/*
+			 *	Decode 'arg_N' arguments (horrible format)
+			 */
+			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
+					pkt->author.res.arg_cnt, BODY(author.res), &p, end) < 0) goto fail;
+
+		} else {
+			goto unknown_packet;
 		}
 		break;
 
-	case TAC_PLUS_ACCT:
-		if (remaining < 9) {
-			fr_strerror_printf("Accounting REQUEST packet is too small: %zu < 9",
-					   remaining);
-			return -1;
-		}
-		remaining -= 9;
+	case FR_TAC_PLUS_ACCT:
+		if (packet_is_acct_request(pkt)) {
+			/**
+			 * 6.1. The Account REQUEST Packet Body
+			 *
+			 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * +----------------+----------------+----------------+----------------+
+			 * |      flags     |  authen_method |    priv_lvl    |  authen_type   |
+			 * +----------------+----------------+----------------+----------------+
+			 * | authen_service |    user_len    |    port_len    |  rem_addr_len  |
+			 * +----------------+----------------+----------------+----------------+
+			 * |    arg_cnt     |   arg_1_len    |   arg_2_len    |      ...       |
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_N_len    |    user ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   port ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   rem_addr ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_1 ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_2 ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |   arg_N ...
+			 * +----------------+----------------+----------------+----------------+
+			 */
 
-		if (remaining < pkt->author.req.arg_cnt) {
-			fr_strerror_printf("Accounting REQUEST packet arguments are smaller than arg_ctx: %zu < %u",
-					   remaining, pkt->author.req.arg_cnt);
-			return -1;
-		}
-		remaining -= pkt->author.req.arg_cnt;
+			if (pkt->hdr.ver.minor != 0) goto invalid_version;
 
-		/*
-		 *	Skip the header and the N arguments.
-		 */
-		p = pkt->acct.req.body;
-		p += pkt->acct.req.arg_cnt;
+			p = BODY(acct.req);
+			PACKET_HEADER_CHECK("Accounting REQUEST");
+			ARG_COUNT_CHECK("Accounting REQUEST", pkt->acct.req.arg_cnt);
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REQUEST);
 
-		/*
-		 *	Decode 8 octets of various fields.
-		 */
-		vp = fr_pair_afrom_da(packet, attr_tacacs_accounting_flags);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->acct.req.flags;
-		fr_cursor_append(&cursor, vp);
+			/*
+			 *	Decode 5 octets of various flags.
+			 */
+			DECODE_FIELD_UINT8(attr_tacacs_accounting_flags, pkt->acct.req.flags);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_method, pkt->acct.req.authen_method);
+			DECODE_FIELD_UINT8(attr_tacacs_privilege_level, pkt->acct.req.priv_lvl);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_type, pkt->acct.req.authen_type);
+			DECODE_FIELD_UINT8(attr_tacacs_authentication_service, pkt->acct.req.authen_service);
 
-		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_method);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->acct.req.authen_method;
-		fr_cursor_append(&cursor, vp);
+			/*
+			 *	Decode 3 fields, based on their "length"
+			 */
+			DECODE_FIELD_STRING8(attr_tacacs_user_name, pkt->acct.req.user_len);
+			DECODE_FIELD_STRING8(attr_tacacs_client_port, pkt->acct.req.port_len);
+			DECODE_FIELD_STRING8(attr_tacacs_remote_address, pkt->acct.req.rem_addr_len);
 
-		vp = fr_pair_afrom_da(packet, attr_tacacs_privilege_level);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->acct.req.priv_lvl;
-		fr_cursor_append(&cursor, vp);
+			/*
+			 *	Decode 'arg_N' arguments (horrible format)
+			 */
+			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
+					pkt->acct.req.arg_cnt, BODY(acct.req), &p, end) < 0) goto fail;
 
-		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_type);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->acct.req.authen_type;
-		fr_cursor_append(&cursor, vp);
+		} else if (packet_is_acct_reply(pkt)) {
+			/**
+			 * 6.2. The Accounting REPLY Packet Body
+			 *
+			 * 1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8  1 2 3 4 5 6 7 8
+			 * +----------------+----------------+----------------+----------------+
+			 * |         server_msg len          |            data_len             |
+			 * +----------------+----------------+----------------+----------------+
+			 * |     status     |         server_msg ...
+			 * +----------------+----------------+----------------+----------------+
+			 * |     data ...
+			 * +----------------+
+			 */
 
-		vp = fr_pair_afrom_da(packet, attr_tacacs_authentication_service);
-		if (!vp) goto oom;
-		vp->vp_uint8 = pkt->acct.req.authen_service;
-		fr_cursor_append(&cursor, vp);
+			/*
+			 *	We don't care about versions for replies.
+			 *	We just echo whatever was sent in the request.
+			 */
 
-		/*
-		 *	Decode 3 fields, based on their "length"
-		 */
-		if (tacacs_decode_field(packet, &cursor, attr_tacacs_user_name, "User",
-					&p, pkt->acct.req.user_len, &remaining) < 0) return -1;
+			p = BODY(acct.reply);
+			PACKET_HEADER_CHECK("Accounting REPLY");
+			DECODE_FIELD_UINT8(attr_tacacs_packet_body_type, FR_PACKET_BODY_TYPE_REPLY);
 
-		if (tacacs_decode_field(packet, &cursor, attr_tacacs_client_port, "Port",
-					&p, pkt->acct.req.port_len, &remaining) < 0) return -1;
+			/*
+			 *	Decode 2 fields, based on their "length"
+			 */
+			DECODE_FIELD_STRING16(attr_tacacs_server_message, pkt->acct.reply.server_msg_len);
+			DECODE_FIELD_STRING16(attr_tacacs_data, pkt->acct.reply.data_len);
 
-		if (tacacs_decode_field(packet, &cursor, attr_tacacs_remote_address, "Remote address",
-					&p, pkt->acct.req.rem_addr_len, &remaining) < 0) return -1;
-
-		/* FIXME fully support arg */
-		p =  pkt->acct.req.body;
-		for (i = 0; i < pkt->acct.req.arg_cnt; i++) {
-			if (remaining < p[i]) {
-				fr_strerror_printf("Accounting REQUEST packet argument %d overflows the packet: %u > %zu",
-						   i, p[i], remaining);
-				return -1;
-			}
-			remaining -= p[i];
+			/* Decode 1 octet */
+			DECODE_FIELD_UINT8(attr_tacacs_accounting_status, pkt->acct.reply.status);
+		} else {
+			goto unknown_packet;
 		}
 		break;
 	default:
-		fr_strerror_printf("Unsupported TACACS+ type %u", pkt->hdr.type);
-		return -1;
+		fr_strerror_printf("decode: Unsupported TACACS+ type %u", pkt->hdr.type);
+		goto fail;
 	}
+
+	talloc_free(decrypted);
+	return buffer_len;
+}
+
+/*
+ *	Test points for protocol decode
+ */
+static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, void *proto_ctx)
+{
+	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
+	fr_dcursor_t cursor;
+
+	fr_pair_list_init(list);
+	fr_dcursor_init(&cursor, list);
+
+	return fr_tacacs_decode(ctx, data, data_len, NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), &cursor);
+}
+
+static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
+{
+	talloc_const_free(proto_ctx->secret);
+
+	fr_tacacs_free();
 
 	return 0;
 }
+
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
+{
+	fr_tacacs_ctx_t *test_ctx;
+
+	if (fr_tacacs_init() < 0) return -1;
+
+	test_ctx = talloc_zero(ctx, fr_tacacs_ctx_t);
+	if (!test_ctx) return -1;
+
+	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
+	test_ctx->root = fr_dict_root(dict_tacacs);
+	talloc_set_destructor(test_ctx, _encode_test_ctx);
+
+	*out = test_ctx;
+
+	return 0;
+}
+
+extern fr_test_point_proto_decode_t tacacs_tp_decode_proto;
+fr_test_point_proto_decode_t tacacs_tp_decode_proto = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_tacacs_decode_proto
+};

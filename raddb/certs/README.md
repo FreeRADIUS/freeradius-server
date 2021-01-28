@@ -1,3 +1,3 @@
 # Certificates
 
-Please see the `doc/raddb/certs/index.adoc` for full documentation.
+Please see the `doc/raddb/certs/README.adoc` for full documentation.

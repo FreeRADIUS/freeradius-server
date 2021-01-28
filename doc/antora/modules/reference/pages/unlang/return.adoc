@@ -1,0 +1,36 @@
+= The return Statement
+
+.Syntax
+[source,unlang]
+----
+return
+----
+
+The `return` statement is used to exit a processing section such as
+`recv Access-Request`.  It behaves similarly to the
+xref:unlang/break.adoc[break] statement, except that it is not limited to
+being used inside of a xref:unlang/foreach.adoc[foreach] loop.
+
+The `return` statement is not strictly necessary.  It is mainly used
+to simplify the layout of `unlang` policies.  If the `return`
+statement did not exist, then every xref:unlang/if.adoc[if] statement might need
+to have a matching xref:unlang/else.adoc[else] statement.
+
+The `return` statement will also exit a policy which is defined in the
+`policy { ... } ` subsection.  This behavior allows policies to be
+treated as a function call.  Any `return` inside of the policy section
+will only return from that policy.  The `return` will _not_ return
+from the enclosing processing section which called the policy.
+
+.Example
+[source,unlang]
+----
+sql
+if (&reply.Filter-Id == "hello") {
+    return
+}
+...
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

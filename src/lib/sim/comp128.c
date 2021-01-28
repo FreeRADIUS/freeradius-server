@@ -398,7 +398,7 @@ static int hextoint(char x)
 
 	fprintf(stderr, "Bad input.\n");
 
-	exit(EXIT_FAILURE);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv)
@@ -411,9 +411,9 @@ int main(int argc, char **argv)
 	    (strlen(argv[1]) != 34) || (strlen(argv[2]) != 34) ||
 	    (strncmp(argv[1], "0x", 2) != 0) || (strncmp(argv[2], "0x", 2) != 0) ||
 	    !(version = atoi(argv[3]))) {
-		error:
+	error:
 		fprintf(stderr, "Usage: %s 0x<key> 0x<rand> [1|2|3]\n", argv[0]);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	for (i = 0; i < 16; i++) {

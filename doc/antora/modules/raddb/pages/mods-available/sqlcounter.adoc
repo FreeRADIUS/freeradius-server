@@ -130,8 +130,8 @@ sqlcounter dailycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 	counter_name = &Daily-Session-Time
-	check_name = &control:Max-Daily-Session
-	reply_name = &reply:Session-Timeout
+	check_name = &control.Max-Daily-Session
+	reply_name = &reply.Session-Timeout
 	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 	reset = daily
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
@@ -140,8 +140,8 @@ sqlcounter monthlycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 	counter_name = &Monthly-Session-Time
-	check_name = &control:Max-Monthly-Session
-	reply_name = &reply:Session-Timeout
+	check_name = &control.Max-Monthly-Session
+	reply_name = &reply.Session-Timeout
 	key = &User-Name
 	reset = monthly
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
@@ -150,7 +150,7 @@ sqlcounter noresetcounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 	counter_name = &Max-All-Session-Time
-	check_name = &control:Max-All-Session
+	check_name = &control.Max-All-Session
 	key = &User-Name
 	reset = never
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
@@ -159,7 +159,7 @@ sqlcounter expire_on_login {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 	counter_name = &Expire-After-Initial-Login
-	check_name = &control:Expire-After
+	check_name = &control.Expire-After
 	key = &User-Name
 	reset = never
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf

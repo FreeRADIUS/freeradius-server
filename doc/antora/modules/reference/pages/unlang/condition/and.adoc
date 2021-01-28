@@ -1,0 +1,21 @@
+= The && Operator
+
+.Syntax
+[source,unlang]
+----
+(condition-1 && condition-2)
+----
+
+The `&&` operator performs a short-circuit "and" evaluation of the
+two conditions. This operator evaluates _condition-1_ and returns
+`false` if _condition-1_ returns `false`. Only if _condition-1_
+returns `true` is _condition-2_ evaluated and its result returned.
+
+.Examples
+[source,unlang]
+----
+if (&User-Name && &EAP-Message) { ...
+----
+
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

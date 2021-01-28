@@ -25,10 +25,13 @@
 extern "C" {
 #endif
 
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/util/dl.h>
+#define _DICT_PRIVATE 1
+
 #include <freeradius-devel/protocol/base.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dict_ext_priv.h>
+#include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/hash.h>
 
 #define DICT_POOL_SIZE		(1024 * 1024 * 2)
 #define DICT_FIXUP_POOL_SIZE	(1024)
@@ -43,7 +46,7 @@ extern "C" {
 		if (!(_dict)) { \
 			_dict = dict_gctx ? dict_gctx->internal : NULL; \
 			if (unlikely(!(_dict))) { \
-				fr_strerror_printf("No dictionaries available for attribute resolution"); \
+				fr_strerror_const("No dictionaries available for attribute resolution"); \
 				return (_ret); \
 			} \
 		} \
@@ -72,12 +75,7 @@ struct fr_dict {
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
 	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
 
-	fr_hash_table_t		*attributes_by_name;	//!< Allow attribute lookup by unique name.
-
 	fr_hash_table_t		*attributes_combo;	//!< Lookup variants of polymorphic attributes.
-
-	fr_hash_table_t		*values_by_da;		//!< Lookup an attribute enum by its value.
-	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum by its name name.
 
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 
@@ -93,10 +91,13 @@ struct fr_dict {
 	int			default_type_size;	//!< for TLVs and VSAs
 	int			default_type_length;	//!< for TLVs and VSAs
 
-	fr_dict_attr_valid_func_t attr_valid;			//!< validation function for new attributes
-
 	dl_t			*dl;			//!< for validation
+
 	fr_dict_protocol_t const *proto;		//!< protocol-specific validation functions
+
+	fr_dict_attr_valid_func_t attr_valid;		//!< validation function for new attributes
+
+	fr_dict_attr_t		**fixups;		//!< Attributes that need fixing up.
 };
 
 struct fr_dict_gctx_s {
@@ -124,51 +125,28 @@ struct fr_dict_gctx_s {
 
 extern fr_dict_gctx_t *dict_gctx;
 
-extern fr_table_num_ordered_t const date_precision_table[];
-extern size_t date_precision_table_len;
+extern fr_table_num_ordered_t const	date_precision_table[];
+extern size_t				date_precision_table_len;
 
 fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
 
 int			dict_dlopen(fr_dict_t *dict, char const *name);
 
-/** Initialise fields in a dictionary attribute structure
- *
- * @param[in] da		to initialise.
- * @param[in] parent		of the attribute, if none, should be
- *				the dictionary root.
- * @param[in] attr		number.
- * @param[in] type		of the attribute.
- * @param[in] flags		to assign.
- */
-static inline void dict_attr_init(fr_dict_attr_t *da,
-				  fr_dict_attr_t const *parent, int attr,
-				  fr_type_t type, fr_dict_attr_flags_t const *flags)
-{
-	da->attr = attr;
-	da->type = type;
-	da->flags = *flags;
-	da->parent = parent;
-	da->depth = parent ? parent->depth + 1 : 0;
+fr_dict_attr_t 		*dict_attr_alloc_null(TALLOC_CTX *ctx);
 
-	/*
-	 *	Point to the vendor definition.  Since ~90% of
-	 *	attributes are VSAs, caching this pointer will help.
-	 */
-	if (parent) {
-		if (parent->type == FR_TYPE_VENDOR) {
-			da->vendor = parent;
-		} else if (parent->vendor) {
-			da->vendor = parent->vendor;
-		}
-	}
-}
-
-fr_dict_attr_t 		*dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name);
+int			dict_attr_init(fr_dict_attr_t **da_p,
+				       fr_dict_attr_t const *parent,
+				       char const *name, int attr,
+				       fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
 					 fr_dict_attr_t const *parent,
 					 char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags);
+
+fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
+
+int			dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
 int			dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 
@@ -176,7 +154,8 @@ int			dict_protocol_add(fr_dict_t *dict);
 
 int			dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num);
 
-int			dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da);
+int			dict_attr_add_to_namespace(fr_dict_t *dict,
+						   fr_dict_attr_t const *parent, fr_dict_attr_t *da) CC_HINT(nonnull);
 
 bool			dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					      UNUSED char const *name, int *attr, fr_type_t type,
@@ -186,9 +165,12 @@ bool			dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					       char const *name, int *attr, fr_type_t type,
 					       fr_dict_attr_flags_t *flags);
 
-fr_dict_attr_t		*dict_attr_by_name(fr_dict_t const *dict, char const *name);
+fr_dict_attr_t		*dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name);
 
 fr_dict_attr_t		*dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
+
+ssize_t			dict_by_protocol_substr(fr_dict_attr_err_t *err,
+						fr_dict_t **out, fr_sbuff_t *name, fr_dict_t const *dict_def);
 
 fr_dict_t		*dict_by_protocol_name(char const *name);
 
@@ -196,7 +178,10 @@ fr_dict_t		*dict_by_protocol_num(unsigned int num);
 
 fr_dict_t		*dict_by_da(fr_dict_attr_t const *da);
 
-fr_dict_t		*dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
+bool			dict_attr_can_have_children(fr_dict_attr_t const *da);
+
+int			dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name, fr_value_box_t const *value,
+					   bool coerce, bool replace, fr_dict_attr_t const *child_struct);
 
 #ifdef __cplusplus
 }

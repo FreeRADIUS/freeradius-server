@@ -1,0 +1,43 @@
+= Inserting IPs into SQL
+
+The `scripts/sql/align_sql_pools.pl` program is a helper script which
+generates the SQL commands to update the SQL IP pools in a database.
+
+The `radippool` table is updated is a way that preserves existing
+leases, provided that the corresponding IP addresses still exist in
+the pool.
+
+This script typically receives the output of the `generate_pool_addresses.pl`
+script, as follows:
+
+[source,shell]
+----
+generate_pool_addresses.pl <options> | align_sqlippools.pl <sql_dialect>
+----
+
+For example:
+
+[source,shell]
+----
+generate_pool_addresses.pl main_pool 10.0.1.0 10.0.1.255 | \
+        align_sqlippools.pl mariadb
+
+generate_pool_addresses.pl yaml pool_defs.yml existing_ips.txt | \
+        align_sqlippools.pl postgresql
+----
+
+For the latter example the `existing_ips.txt` file might be created as
+follows:
+
+[source,shell]
+----
+psql radius -qtAc 'SELECT framedipaddress FROM radippool' > existing_ips.txt
+----
+
+See the xref:modules/sqlippool/generating.adoc[Generating IPs for the
+pools] page for instructions on how to generate the list of IPs to
+modify.
+
+The output of this script is a sequence of SQL commands which update
+the pool to match with the definition provided. We recommending
+reviewing this file before running it against your database.

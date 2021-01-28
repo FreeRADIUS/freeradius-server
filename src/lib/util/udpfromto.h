@@ -29,7 +29,6 @@ RCSIDH(udpfromto_h, "$Id$")
 extern "C" {
 #endif
 
-#ifdef WITH_UDPFROMTO
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/time.h>
@@ -41,16 +40,15 @@ extern "C" {
 int	udpfromto_init(int s);
 
 int	recvfromto(int s, void *buf, size_t len, int flags,
+		   int *ifindex,
 	       	   struct sockaddr *from, socklen_t *fromlen,
 		   struct sockaddr *to, socklen_t *tolen,
-		   int *if_index, fr_time_t *when);
+		   fr_time_t *when);
 
 int	sendfromto(int s, void *buf, size_t len, int flags,
+		   int ifindex,
 		   struct sockaddr *from, socklen_t fromlen,
-		   struct sockaddr *to, socklen_t tolen,
-		   int if_index);
-#endif
-
+		   struct sockaddr *to, socklen_t tolen);
 #ifdef __cplusplus
 }
 #endif

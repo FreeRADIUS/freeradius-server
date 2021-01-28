@@ -36,9 +36,7 @@ typedef enum {
 	RADIUS_SIGNAL_SELF_HUP		= (1 << 0),
 	RADIUS_SIGNAL_SELF_TERM		= (1 << 1),
 	RADIUS_SIGNAL_SELF_EXIT		= (1 << 2),
-	RADIUS_SIGNAL_SELF_DETAIL	= (1 << 3),
-	RADIUS_SIGNAL_SELF_NEW_FD	= (1 << 4),
-	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
+	RADIUS_SIGNAL_SELF_MAX		= (1 << 3)
 } radius_signal_t;
 
 #include <freeradius-devel/server/client.h>
@@ -47,7 +45,7 @@ typedef enum {
 
 fr_event_list_t		*main_loop_event_list(void);
 
-void			main_loop_signal_self(int flag);
+void			main_loop_signal_raise(int flag);
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
 void			main_loop_set_sd_watchdog_interval(void);

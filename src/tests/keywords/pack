@@ -1,0 +1,15 @@
+update request {
+	&Framed-IP-Address := 127.0.0.1
+	&NAS-Port = 2112
+	&NAS-IP-Address := 127.0.0.2
+}
+
+update request {
+	&Tmp-Octets-0 := "%{pack:%{Framed-IP-Address}%{NAS-Port}%{NAS-IP-Address}}"
+}
+
+if (&Tmp-Octets-0 != 0x7f000001000008407f000002) {
+	fail
+}
+
+success

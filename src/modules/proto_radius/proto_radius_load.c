@@ -32,7 +32,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/load.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "proto_radius.h"
 
@@ -61,6 +61,7 @@ typedef struct {
 	fr_network_t			*nr;			//!< network handler
 
 	char const			*name;			//!< socket name
+	bool				done;
 
 	fr_time_t			recv_time;		//!< recv time of the last packet
 
@@ -89,7 +90,7 @@ struct proto_radius_load_s {
 	RADCLIENT			*client;		//!< static client
 
 	fr_load_config_t		load;			//!< load configuration
-
+	bool				repeat;			//!, do we repeat the load generation
 	char const     			*csv;			//!< where to write CSV stats
 };
 
@@ -107,6 +108,7 @@ static const CONF_PARSER load_listen_config[] = {
 	{ FR_CONF_OFFSET("step", FR_TYPE_UINT32, proto_radius_load_t, load.step) },
 	{ FR_CONF_OFFSET("max_backlog", FR_TYPE_UINT32, proto_radius_load_t, load.milliseconds) },
 	{ FR_CONF_OFFSET("parallel", FR_TYPE_UINT32, proto_radius_load_t, load.parallel) },
+	{ FR_CONF_OFFSET("repeat", FR_TYPE_BOOL, proto_radius_load_t, repeat) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -120,6 +122,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	size_t				packet_len;
 
+	if (thread->done) return -1;
+
 	*leftover = 0;		/* always for load generation */
 
 	/*
@@ -130,8 +134,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	address = *address_p;
 
 	memset(address, 0, sizeof(*address));
-	address->src_ipaddr.af = AF_INET;
-	address->dst_ipaddr.af = AF_INET;
+	address->socket.inet.src_ipaddr.af = AF_INET;
+	address->socket.inet.dst_ipaddr.af = AF_INET;
 	address->radclient = inst->client;
 
 	*recv_time_p = thread->recv_time;
@@ -185,8 +189,12 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 	 */
 	state = fr_load_generator_have_reply(thread->l, request_time);
 	if (state == FR_LOAD_DONE) {
-		fr_event_timer_delete(&thread->ev);
-		fr_exit_now(1);
+		if (!thread->inst->repeat) {
+			thread->done = true;
+		} else {
+			(void) fr_load_generator_stop(thread->l); /* ensure l->ev is gone */
+			(void) fr_load_generator_start(thread->l);
+		}
 	}
 
 	return buffer_len;
@@ -202,8 +210,6 @@ static int mod_open(fr_listen_t *li)
 	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
 
 	fr_ipaddr_t			ipaddr;
-	CONF_ITEM			*ci;
-	CONF_SECTION			*server_cs;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, (int *) &thread->sockets) < 0) {
 		PERROR("Failed opening /dev/null: %s", fr_syserror(errno));
@@ -214,20 +220,12 @@ static int mod_open(fr_listen_t *li)
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;
-	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &ipaddr, 0);
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_UDP, 0, &ipaddr, 0);
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
-	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
-	server_cs = cf_item_to_section(ci);
-
-	thread->name = talloc_typed_asprintf(thread, "load generation from file %s", inst->filename);
+	thread->name = talloc_typed_asprintf(thread, "radius_load from filename %s", inst->filename ? inst->filename : "none");
 	thread->parent = talloc_parent(li);
-
-	DEBUG("Listening on radius address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
 
 	return 0;
 }
@@ -241,8 +239,9 @@ static int mod_close(fr_listen_t *li)
 	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
 
 	/*
-	 *	Close the second socket.
+	 *	Close the socket pair.
 	 */
+	close(thread->sockets[0]);
 	close(thread->sockets[1]);
 	return 0;
 }
@@ -371,12 +370,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_load_t	*inst = talloc_get_type_abort(instance, proto_radius_load_t);
 	RADCLIENT		*client;
-	FILE			*fp;
+
 	bool			done;
-	VALUE_PAIR		*vp, *vps = NULL;
+	fr_pair_t		*vp;
+	fr_pair_list_t		vps;
 	ssize_t			packet_len;
 	int			code = FR_CODE_ACCESS_REQUEST;
 
+	fr_pair_list_init(&vps);
 	inst->client = client = talloc_zero(inst, RADCLIENT);
 	if (!inst->client) return 0;
 
@@ -388,25 +389,28 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	client->nas_type = talloc_strdup(client, "load");
 	client->use_connected = false;
 
-	fp = fopen(inst->filename, "r");
-	if (!fp) {
-		cf_log_err(cs, "Failed reading %s - %s",
-			   inst->filename, fr_syserror(errno));
-		return -1;
-	}
+	if (inst->filename) {
+		FILE *fp;
 
-	if (fr_pair_list_afrom_file(inst, dict_radius, &vps, fp, &done) < 0) {
-		cf_log_err(cs, "Failed reading %s - %s",
-			   inst->filename, fr_strerror());
+		fp = fopen(inst->filename, "r");
+		if (!fp) {
+			cf_log_err(cs, "Failed reading %s - %s",
+				   inst->filename, fr_syserror(errno));
+			return -1;
+		}
+
+		if (fr_pair_list_afrom_file(inst, dict_radius, &vps, fp, &done) < 0) {
+			cf_log_perr(cs, "Failed reading %s", inst->filename);
+			fclose(fp);
+			return -1;
+		}
+
 		fclose(fp);
-		return -1;
 	}
-
-	fclose(fp);
 
 	MEM(inst->packet = talloc_zero_array(inst, uint8_t, inst->max_packet_size));
 
-	vp = fr_pair_find_by_da(vps, attr_packet_type, TAG_ANY);
+	vp = fr_pair_find_by_da(&vps, attr_packet_type);
 	if (vp) code = vp->vp_uint32;
 
 	/*
@@ -414,10 +418,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 */
 	packet_len = fr_radius_encode(inst->packet, inst->max_packet_size, NULL,
 				      client->secret, talloc_array_length(client->secret),
-				      code, 0, vps);
+				      code, 0, &vps);
 	if (packet_len <= 0) {
-		cf_log_err(cs, "Failed encoding packet from %s - %s",
-			   inst->filename, fr_strerror());
+		cf_log_perr(cs, "Failed encoding packet from %s",
+			    inst->filename);
 		return -1;
 	}
 

@@ -52,15 +52,15 @@ abfab_client_check {
 #  A policy which is used to validate channel-bindings.
 #
 abfab_channel_bindings {
-	if (&GSS-Acceptor-Service-Name && (&outer.request:GSS-Acceptor-Service-Name != &GSS-Acceptor-Service-Name)) {
+	if (&GSS-Acceptor-Service-Name && (&outer.request.GSS-Acceptor-Service-Name != &GSS-Acceptor-Service-Name)) {
 		reject
 	}
 
-	if (&GSS-Acceptor-Host-Name && &outer.request:GSS-Acceptor-Host-Name != &GSS-Acceptor-Host-Name) {
+	if (&GSS-Acceptor-Host-Name && &outer.request.GSS-Acceptor-Host-Name != &GSS-Acceptor-Host-Name) {
 		reject
 	}
 
-	if (&GSS-Acceptor-Realm-Name && &outer.request:GSS-Acceptor-Realm-Name != &GSS-Acceptor-Realm-Name) {
+	if (&GSS-Acceptor-Realm-Name && &outer.request.GSS-Acceptor-Realm-Name != &GSS-Acceptor-Realm-Name) {
 		reject
 	}
 

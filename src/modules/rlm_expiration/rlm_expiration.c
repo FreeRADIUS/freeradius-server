@@ -55,11 +55,11 @@ fr_dict_attr_autoload_t rlm_expiration_dict_attr[] = {
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	VALUE_PAIR *vp, *check_item = NULL;
+	fr_pair_t *vp, *check_item = NULL;
 
-	check_item = fr_pair_find_by_da(request->control, attr_expiration, TAG_ANY);
+	check_item = fr_pair_find_by_da(&request->control_pairs, attr_expiration);
 	if (check_item != NULL) {
 		uint32_t left;
 
@@ -73,7 +73,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		if (check_item->vp_date <= fr_time_to_unix_time(request->packet->timestamp)) {
 			REDEBUG("Account expired at '%pV'", &check_item->data);
 
-			return RLM_MODULE_DISALLOW;
+			RETURN_MODULE_DISALLOW;
 		}
 		RDEBUG2("Account will expire at '%pV'", &check_item->data);
 
@@ -88,30 +88,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 			/* just update... */
 			if (vp->vp_uint32 > (uint32_t)left) {
 				vp->vp_uint32 = (uint32_t)left;
-				RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+				RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 			}
 			break;
 
 		case 0:	/* no pre-existing */
 			vp->vp_uint32 = (uint32_t)left;
-			RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+			RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 			break;
 
 		default: /* malloc failure */
 			MEM(NULL);
 		}
 	} else {
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *      Compare the expiration date.
  */
-static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
-		     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int expirecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
 {
 	time_t now = 0;
 

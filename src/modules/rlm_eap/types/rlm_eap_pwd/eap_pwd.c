@@ -54,21 +54,21 @@ static void pwd_hmac_final(HMAC_CTX *hmac_ctx, uint8_t *digest)
 
 /* a counter-based KDF based on NIST SP800-108 */
 static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
-			int label_len, uint8_t *retult, int retult_bit_len)
+			int label_len, uint8_t *result, int result_bit_len)
 {
 	HMAC_CTX	*hmac_ctx;
 	uint8_t		digest[SHA256_DIGEST_LENGTH];
 	uint16_t	i, ctr, L;
-	int		retult_byte_len, len = 0;
+	int		result_byte_len, len = 0;
 	unsigned int	mdlen = SHA256_DIGEST_LENGTH;
 	uint8_t		mask = 0xff;
 
 	MEM(hmac_ctx = HMAC_CTX_new());
-	retult_byte_len = (retult_bit_len + 7) / 8;
+	result_byte_len = (result_bit_len + 7) / 8;
 
 	ctr = 0;
-	L = htons(retult_bit_len);
-	while (len < retult_byte_len) {
+	L = htons(result_bit_len);
+	while (len < result_byte_len) {
 		ctr++; i = htons(ctr);
 
 		HMAC_Init_ex(hmac_ctx, key, keylen, EVP_sha256(), NULL);
@@ -77,19 +77,19 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 		HMAC_Update(hmac_ctx, (uint8_t const *)label, label_len);
 		HMAC_Update(hmac_ctx, (uint8_t *) &L, sizeof(uint16_t));
 		HMAC_Final(hmac_ctx, digest, &mdlen);
-		if ((len + (int) mdlen) > retult_byte_len) {
-			memcpy(retult + len, digest, retult_byte_len - len);
+		if ((len + (int) mdlen) > result_byte_len) {
+			memcpy(result + len, digest, result_byte_len - len);
 		} else {
-			memcpy(retult + len, digest, mdlen);
+			memcpy(result + len, digest, mdlen);
 		}
 		len += mdlen;
 		HMAC_CTX_reset(hmac_ctx);
 	}
 
 	/* since we're expanding to a bit length, mask off the excess */
-	if (retult_bit_len % 8) {
-		mask <<= (8 - (retult_bit_len % 8));
-		retult[retult_byte_len - 1] &= mask;
+	if (result_bit_len % 8) {
+		mask <<= (8 - (result_bit_len % 8));
+		result[result_byte_len - 1] &= mask;
 	}
 
 	HMAC_CTX_free(hmac_ctx);
@@ -228,7 +228,7 @@ static int is_quadratic_residue(BIGNUM *val, BIGNUM *p, BIGNUM *qr, BIGNUM *qnr,
 	check = const_time_select_int(mask, -1, 1);
 
 	if ((ret = legendre(res, p, bnctx)) == -2) {
-		ret = -1;       /* just say no it's not */
+		ret = -1;	/* just say no it's not */
 		goto fail;
 	}
 	mask = const_time_eq(ret, check);
@@ -246,7 +246,7 @@ fail:
 	return ret;
 }
 
-int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t grp_num,
+int compute_password_element (request_t *request, pwd_session_t *session, uint16_t grp_num,
 			      char const *password, int password_len,
 			      char const *id_server, int id_server_len,
 			      char const *id_peer, int id_peer_len,
@@ -256,8 +256,8 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	HMAC_CTX *ctx = NULL;
 	uint8_t pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, ctr;
 	int nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
-        int save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
-        unsigned int skip;
+	int save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
+	unsigned int skip;
 
 	ctx = HMAC_CTX_new();
 	if (ctx == NULL) {
@@ -307,7 +307,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	    ((qr = consttime_BN()) == NULL) ||
 	    ((qnr = consttime_BN()) == NULL) ||
 	    ((x_candidate = consttime_BN()) == NULL) ||
-            ((y_sqrd = consttime_BN()) == NULL)) {
+	    ((y_sqrd = consttime_BN()) == NULL)) {
 		DEBUG("unable to create bignums");
 		goto fail;
 	}
@@ -362,8 +362,8 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 
 		/*
 		 * compute counter-mode password value and stretch to prime
-		 *    pwd-seed = H(token | peer-id | server-id | password |
-		 *		   counter)
+		 *	pwd-seed = H(token | peer-id | server-id | password |
+		 *		     counter)
 		 */
 		HMAC_Init_ex(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(),NULL);
 		HMAC_Update(ctx, (uint8_t *)token, sizeof(*token));
@@ -375,7 +375,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 
 		BN_bin2bn(pwe_digest, SHA256_DIGEST_LENGTH, rnd);
 		eap_pwd_kdf(pwe_digest, SHA256_DIGEST_LENGTH, "EAP-pwd Hunting And Pecking",
-                            strlen("EAP-pwd Hunting And Pecking"), prfbuf, primebitlen);
+			    strlen("EAP-pwd Hunting And Pecking"), prfbuf, primebitlen);
 
 		/*
 		 * eap_pwd_kdf() returns a string of bits 0..primebitlen but
@@ -449,7 +449,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	*/
 	BN_bin2bn(xbuf, primebytelen, x_candidate);
 	if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
-	                                     x_candidate, save_is_odd, NULL)) {
+						     x_candidate, save_is_odd, NULL)) {
 		goto fail;
 	}
 
@@ -475,7 +475,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	return ret;
 }
 
-int compute_scalar_element(REQUEST *request, pwd_session_t *session, BN_CTX *bn_ctx)
+int compute_scalar_element(request_t *request, pwd_session_t *session, BN_CTX *bn_ctx)
 {
 	BIGNUM *mask = NULL;
 	int ret = -1;
@@ -515,7 +515,7 @@ error:
 	return ret;
 }
 
-int process_peer_commit(REQUEST *request, pwd_session_t *session, uint8_t *in, size_t in_len, BN_CTX *bn_ctx)
+int process_peer_commit(request_t *request, pwd_session_t *session, uint8_t *in, size_t in_len, BN_CTX *bn_ctx)
 {
 	uint8_t		*ptr;
 	size_t		data_len;
@@ -641,7 +641,7 @@ finish:
 	return ret;
 }
 
-int compute_server_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
+int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
 	HMAC_CTX	*hmac_ctx = NULL;
@@ -741,7 +741,7 @@ finish:
 	return req;
 }
 
-int compute_peer_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
+int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
 	HMAC_CTX	*hmac_ctx = NULL;
@@ -840,7 +840,7 @@ finish:
 	return req;
 }
 
-int compute_keys(UNUSED REQUEST *request, pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
+int compute_keys(UNUSED request_t *request, pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
 {
 	HMAC_CTX	*hmac_ctx;
 	uint8_t		mk[SHA256_DIGEST_LENGTH], *cruft;

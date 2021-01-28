@@ -42,7 +42,7 @@ unsigned int sha1_data_problems = 0;
 #  include <openssl/hmac.h>
 #  include <freeradius-devel/tls/missing.h>
 
-fr_thread_local_setup(HMAC_CTX *, sha1_hmac_ctx); /* macro */
+static _Thread_local HMAC_CTX *sha1_hmac_ctx;
 
 static void _hmac_sha1_ctx_free_on_exit(void *arg)
 {
@@ -232,28 +232,27 @@ Test Vectors (Trailing '\0' of a character string not included in test):
  */
 int main(int argc, char **argv)
 {
-  uint8_t digest[20];
-  char *key;
-  int key_len;
-  char *text;
-  int text_len;
-  int i;
+	uint8_t digest[20];
+	char *key;
+	int key_len;
+	char *text;
+	int text_len;
+	int i;
 
-  key = argv[1];
-  key_len = strlen(key);
+	key = argv[1];
+	key_len = strlen(key);
 
-  text = argv[2];
-  text_len = strlen(text);
+	text = argv[2];
+	text_len = strlen(text);
 
-  fr_hmac_sha1(digest, text, text_len, key, key_len);
+	fr_hmac_sha1(digest, text, text_len, key, key_len);
 
-  for (i = 0; i < 20; i++) {
-    printf("%02x", digest[i]);
-  }
-  printf("\n");
+	for (i = 0; i < 20; i++) {
+		printf("%02x", digest[i]);
+	}
+	printf("\n");
 
-  exit(0);
-  return 0;
+	return 0;
 }
 
 #endif

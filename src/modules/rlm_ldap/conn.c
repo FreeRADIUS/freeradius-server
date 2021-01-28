@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "%s - "
 #define LOG_PREFIX_ARGS handle_config->name
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "rlm_ldap.h"
 
@@ -41,13 +41,13 @@ USES_APPLE_DEPRECATED_API
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-fr_ldap_connection_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
+fr_ldap_connection_t *mod_conn_get(rlm_ldap_t const *inst, request_t *request)
 {
 	fr_ldap_connection_t *conn;
 
 	conn = fr_pool_connection_get(inst->pool, request);
 
-	rad_assert(!conn || conn->config);
+	fr_assert(!conn || conn->config);
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
 	/*
@@ -74,7 +74,7 @@ fr_ldap_connection_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
  * @param request The current request.
  * @param conn to release.
  */
-void ldap_mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn)
+void ldap_mod_conn_release(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.

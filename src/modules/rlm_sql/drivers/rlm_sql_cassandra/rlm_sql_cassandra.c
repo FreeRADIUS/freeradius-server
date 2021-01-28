@@ -36,7 +36,7 @@
 #define LOG_PREFIX "rlm_sql_cassandra - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <cassandra.h>
 
@@ -132,7 +132,7 @@ typedef struct {
 								//!< dc hosts are available and the consistency level
 								//!< is LOCAL_ONE or LOCAL_QUORUM.
 
-	fr_time_delta_t		lar_exclusion_threshold;	//!< How much worse the latency me be, compared to
+	double			lar_exclusion_threshold;	//!< How much worse the latency me be, compared to
 								//!< the average latency of the best performing node
 								//!< before it's penalized.
 								//!< This gets mangled to a double.
@@ -166,22 +166,22 @@ typedef struct {
 } rlm_sql_cassandra_t;
 
 static fr_table_num_sorted_t const consistency_levels[] = {
-	{ "all",		CASS_CONSISTENCY_ALL		},
-	{ "any",		CASS_CONSISTENCY_ANY		},
-	{ "each_quorum",	CASS_CONSISTENCY_EACH_QUORUM	},
-	{ "local_one",		CASS_CONSISTENCY_LOCAL_ONE	},
-	{ "local_quorum",	CASS_CONSISTENCY_LOCAL_QUORUM	},
-	{ "one",		CASS_CONSISTENCY_ONE		},
-	{ "quorum",		CASS_CONSISTENCY_QUORUM		},
-	{ "three",		CASS_CONSISTENCY_THREE		},
-	{ "two",		CASS_CONSISTENCY_TWO		}
+	{ L("all"),		CASS_CONSISTENCY_ALL		},
+	{ L("any"),		CASS_CONSISTENCY_ANY		},
+	{ L("each_quorum"),	CASS_CONSISTENCY_EACH_QUORUM	},
+	{ L("local_one"),		CASS_CONSISTENCY_LOCAL_ONE	},
+	{ L("local_quorum"),	CASS_CONSISTENCY_LOCAL_QUORUM	},
+	{ L("one"),		CASS_CONSISTENCY_ONE		},
+	{ L("quorum"),		CASS_CONSISTENCY_QUORUM		},
+	{ L("three"),		CASS_CONSISTENCY_THREE		},
+	{ L("two"),		CASS_CONSISTENCY_TWO		}
 };
 static size_t consistency_levels_len = NUM_ELEMENTS(consistency_levels);
 
 static fr_table_num_sorted_t const verify_cert_table[] = {
-	{ "identity",		CASS_SSL_VERIFY_PEER_IDENTITY	},
-	{ "no",			CASS_SSL_VERIFY_NONE		},
-	{ "yes",		CASS_SSL_VERIFY_PEER_CERT	}
+	{ L("identity"),		CASS_SSL_VERIFY_PEER_IDENTITY	},
+	{ L("no"),			CASS_SSL_VERIFY_NONE		},
+	{ L("yes"),		CASS_SSL_VERIFY_PEER_CERT	}
 };
 static size_t verify_cert_table_len = NUM_ELEMENTS(verify_cert_table);
 

@@ -42,27 +42,38 @@ ATTRIBUTE	Relax-Filter				501	bool
 
 #
 #	Range:	1 - 10
-#		Section codes
+#		Attribute lists
 #
-ATTRIBUTE	Protocol				1	integer
-ATTRIBUTE	Auth-Type				2	integer
-#ATTRIBUTE	Autz-Type				3	integer
-#ATTRIBUTE	Acct-Type				4	integer
-#ATTRIBUTE	Session-Type				5	integer
-#ATTRIBUTE	Post-Auth-Type				6	integer
-#ATTRIBUTE	Pre-Proxy-Type				7	integer
-#ATTRIBUTE	Post-Proxy-Type				8	integer
-#ATTRIBUTE	Pre-Acct-Type				9	integer
+ATTRIBUTE	Root					1	group
+ATTRIBUTE	Request					2	group
+ATTRIBUTE	Reply					3	group
+ATTRIBUTE	Control					4	group
+ATTRIBUTE	Session-State				5	group
+
 
 #
-#	Range:	10 - 49
+#	Range:	11 - 19
+#		Section codes
+#
+ATTRIBUTE	Protocol				11	integer
+ATTRIBUTE	Auth-Type				12	integer
+#ATTRIBUTE	Autz-Type				13	integer
+#ATTRIBUTE	Acct-Type				14	integer
+#ATTRIBUTE	Session-Type				15	integer
+#ATTRIBUTE	Post-Auth-Type				16	integer
+#ATTRIBUTE	Pre-Proxy-Type				17	integer
+#ATTRIBUTE	Post-Proxy-Type				18	integer
+#ATTRIBUTE	Pre-Acct-Type				19	integer
+
+#
+#	Range:	20 - 49
 #		Unlang attributes
 #
-ATTRIBUTE	Load-Balance-Key			10	string
-ATTRIBUTE	Proxy-To-Realm				11	string
-ATTRIBUTE	Replicate-To-Realm			12	string
-ATTRIBUTE	Virtual-Server				13	string virtual
-ATTRIBUTE	Module-Return-Code			14	integer virtual
+ATTRIBUTE	Load-Balance-Key			20	string
+ATTRIBUTE	Proxy-To-Realm				21	string
+ATTRIBUTE	Replicate-To-Realm			22	string
+ATTRIBUTE	Virtual-Server				23	string virtual
+ATTRIBUTE	Module-Return-Code			24	integer virtual
 
 VALUE	Module-Return-Code		reject			0
 VALUE	Module-Return-Code		fail			1
@@ -74,7 +85,7 @@ VALUE	Module-Return-Code		notfound		6
 VALUE	Module-Return-Code		noop			7
 VALUE	Module-Return-Code		updated			8
 
-ATTRIBUTE	Request-Processing-Stage		15	string virtual
+ATTRIBUTE	Request-Processing-Stage		25	string virtual
 
 #
 #	Range:	50 - 99
@@ -93,7 +104,7 @@ ATTRIBUTE	Packet-Original-Timestamp		56	date
 #	Range:	100-200
 #		Module Control attributes
 #
-ATTRIBUTE	Group-Name				100	string
+## 100 was Group-Name
 ATTRIBUTE	Huntgroup-Name				101	string
 ATTRIBUTE	Simultaneous-Use			102	integer
 ATTRIBUTE	Strip-User-Name				103	integer
@@ -114,19 +125,13 @@ VALUE	Send-CoA-Request		Yes			1
 ATTRIBUTE	Stripped-User-Name			1000	string
 ATTRIBUTE	Stripped-User-Domain			1001	string
 
-ATTRIBUTE	Menu					1002	string
-ATTRIBUTE	Termination-Menu			1003	string
-ATTRIBUTE	Prefix					1004	string
-ATTRIBUTE	Suffix					1005	string
-ATTRIBUTE	Group					1006	string
-ATTRIBUTE	Connect-Rate				1007	integer
-ATTRIBUTE	Add-Prefix				1008	string
-ATTRIBUTE	Add-Suffix				1009	string
+# 1002..1009 were Menu, Termination-Menu, Prefix, Suffix, Group,
+# Connext-Rate, Add-Prefix, Add-Suffix
 ATTRIBUTE	Expiration				1010	date
 
 ATTRIBUTE	Client-Shortname			1011	string virtual
 
-ATTRIBUTE	Raw-Attribute				1012	octets
+# Was Raw-Attribute.  No longer supported
 ATTRIBUTE	User-Category				1013	string
 
 ATTRIBUTE	Pam-Auth				1014	string
@@ -134,7 +139,7 @@ ATTRIBUTE	Login-Time				1015	string
 
 ATTRIBUTE	Current-Time				1016	string
 ATTRIBUTE	Realm					1017	string
-ATTRIBUTE	No-Such-Attribute			1018	string
+# 1018 was No-Such-Attribute
 
 ATTRIBUTE	Acct-Session-Start-Time			1019	date
 ATTRIBUTE	Acct-Unique-Session-Id			1020	string
@@ -168,7 +173,7 @@ ATTRIBUTE	Time-Of-Day				1089	string
 ATTRIBUTE	Inner-Tunnel-User-Name			1102	string
 ATTRIBUTE	SQL-Table-Name				1110	string
 ATTRIBUTE	Home-Server-Pool			1111	string
-ATTRIBUTE	Attribute-Map				1112	string
+ATTRIBUTE	Result-Status				1112	string
 
 #
 #  Attributes for dynamic clients 1120 - 1126
@@ -226,21 +231,30 @@ ATTRIBUTE	Cache-Allow-Insert			1177	bool
 
 # 1178 unused
 
+ATTRIBUTE	SMTP-Mail-Header			1179	string
+ATTRIBUTE	SMTP-Mail-Body				1180	string
+ATTRIBUTE	SMTP-Sender-Address			1181	string
+ATTRIBUTE	SMTP-Recipients				1182	string
+ATTRIBUTE	SMTP-TO					1183	string
+ATTRIBUTE	SMTP-CC					1184	string
+ATTRIBUTE	SMTP-BCC				1185	string
+ATTRIBUTE	SMTP-Attachments			1186	string
+
 ATTRIBUTE	Session-State-User-Name			1189	string
 
 ATTRIBUTE	Exec-Export				1190	string
 
-ATTRIBUTE	LDAP-Sync-TLV				1193	tlv
-BEGIN-TLV	LDAP-Sync-TLV
-ATTRIBUTE	LDAP-Sync-Cookie			1	octets
-ATTRIBUTE	LDAP-Sync-DN				2	string
-ATTRIBUTE	LDAP-Sync-Filter			3	string
-ATTRIBUTE	LDAP-Sync-Attr				4	string
-ATTRIBUTE	LDAP-Sync-Scope				5	integer
-ATTRIBUTE	LDAP-Sync-Entry-State			6	integer
-ATTRIBUTE	LDAP-Sync-Entry-DN			7	string
-ATTRIBUTE	LDAP-Sync-Entry-UUID			8	octets
-END-TLV		LDAP-Sync-TLV
+ATTRIBUTE	LDAP-Sync				1193	tlv
+BEGIN-TLV	LDAP-Sync
+ATTRIBUTE	Cookie					1	octets
+ATTRIBUTE	DN					2	string
+ATTRIBUTE	Filter					3	string
+ATTRIBUTE	Attr					4	string
+ATTRIBUTE	Scope					5	integer
+ATTRIBUTE	Entry-State				6	integer
+ATTRIBUTE	Entry-DN				7	string
+ATTRIBUTE	Entry-UUID				8	octets
+END-TLV		LDAP-Sync
 
 #
 #  Server-side "listen type = foo"
@@ -336,103 +350,108 @@ ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets
 ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets
 
 #
-#	Range: 1800-1899
-#	       Temporary attributes, for local storage.
+#	Range: 1700-1899
+#		Temporary attributes, for local storage.
 #
-ATTRIBUTE	Tmp-String-0				1800	string
-ATTRIBUTE	Tmp-String-1				1801	string
-ATTRIBUTE	Tmp-String-2				1802	string
-ATTRIBUTE	Tmp-String-3				1803	string
-ATTRIBUTE	Tmp-String-4				1804	string
-ATTRIBUTE	Tmp-String-5				1805	string
-ATTRIBUTE	Tmp-String-6				1806	string
-ATTRIBUTE	Tmp-String-7				1807	string
-ATTRIBUTE	Tmp-String-8				1808	string
-ATTRIBUTE	Tmp-String-9				1809	string
+ATTRIBUTE	Tmp-Group-0				1700	group
+ATTRIBUTE	Tmp-Group-1				1701	group
+ATTRIBUTE	Tmp-Group-2				1702	group
+ATTRIBUTE	Tmp-Group-3				1703	group
+ATTRIBUTE	Tmp-Group-4				1704	group
+ATTRIBUTE	Tmp-Group-5				1705	group
+ATTRIBUTE	Tmp-Group-6				1706	group
+ATTRIBUTE	Tmp-Group-7				1707	group
+ATTRIBUTE	Tmp-Group-8				1708	group
+ATTRIBUTE	Tmp-Group-9				1709	group
 
-ATTRIBUTE	Tmp-Integer-0				1810	integer
-ATTRIBUTE	Tmp-Integer-1				1811	integer
-ATTRIBUTE	Tmp-Integer-2				1812	integer
-ATTRIBUTE	Tmp-Integer-3				1813	integer
-ATTRIBUTE	Tmp-Integer-4				1814	integer
-ATTRIBUTE	Tmp-Integer-5				1815	integer
-ATTRIBUTE	Tmp-Integer-6				1816	integer
-ATTRIBUTE	Tmp-Integer-7				1817	integer
-ATTRIBUTE	Tmp-Integer-8				1818	integer
-ATTRIBUTE	Tmp-Integer-9				1819	integer
+ATTRIBUTE	Tmp-String-0				1710	string
+ATTRIBUTE	Tmp-String-1				1711	string
+ATTRIBUTE	Tmp-String-2				1712	string
+ATTRIBUTE	Tmp-String-3				1713	string
+ATTRIBUTE	Tmp-String-4				1714	string
+ATTRIBUTE	Tmp-String-5				1715	string
+ATTRIBUTE	Tmp-String-6				1716	string
+ATTRIBUTE	Tmp-String-7				1717	string
+ATTRIBUTE	Tmp-String-8				1718	string
+ATTRIBUTE	Tmp-String-9				1719	string
 
-ATTRIBUTE	Tmp-IP-Address-0			1820	ipaddr
-ATTRIBUTE	Tmp-IP-Address-1			1821	ipaddr
-ATTRIBUTE	Tmp-IP-Address-2			1822	ipaddr
-ATTRIBUTE	Tmp-IP-Address-3			1823	ipaddr
-ATTRIBUTE	Tmp-IP-Address-4			1824	ipaddr
-ATTRIBUTE	Tmp-IP-Address-5			1825	ipaddr
-ATTRIBUTE	Tmp-IP-Address-6			1826	ipaddr
-ATTRIBUTE	Tmp-IP-Address-7			1827	ipaddr
-ATTRIBUTE	Tmp-IP-Address-8			1828	ipaddr
-ATTRIBUTE	Tmp-IP-Address-9			1829	ipaddr
+ATTRIBUTE	Tmp-Integer-0				1720	integer
+ATTRIBUTE	Tmp-Integer-1				1721	integer
+ATTRIBUTE	Tmp-Integer-2				1722	integer
+ATTRIBUTE	Tmp-Integer-3				1723	integer
+ATTRIBUTE	Tmp-Integer-4				1724	integer
+ATTRIBUTE	Tmp-Integer-5				1725	integer
+ATTRIBUTE	Tmp-Integer-6				1726	integer
+ATTRIBUTE	Tmp-Integer-7				1727	integer
+ATTRIBUTE	Tmp-Integer-8				1728	integer
+ATTRIBUTE	Tmp-Integer-9				1729	integer
 
-ATTRIBUTE	Tmp-Octets-0				1830	octets
-ATTRIBUTE	Tmp-Octets-1				1831	octets
-ATTRIBUTE	Tmp-Octets-2				1832	octets
-ATTRIBUTE	Tmp-Octets-3				1833	octets
-ATTRIBUTE	Tmp-Octets-4				1834	octets
-ATTRIBUTE	Tmp-Octets-5				1835	octets
-ATTRIBUTE	Tmp-Octets-6				1836	octets
-ATTRIBUTE	Tmp-Octets-7				1837	octets
-ATTRIBUTE	Tmp-Octets-8				1838	octets
-ATTRIBUTE	Tmp-Octets-9				1839	octets
+ATTRIBUTE	Tmp-IP-Address-0			1730	ipaddr
+ATTRIBUTE	Tmp-IP-Address-1			1731	ipaddr
+ATTRIBUTE	Tmp-IP-Address-2			1732	ipaddr
+ATTRIBUTE	Tmp-IP-Address-3			1733	ipaddr
+ATTRIBUTE	Tmp-IP-Address-4			1734	ipaddr
+ATTRIBUTE	Tmp-IP-Address-5			1735	ipaddr
+ATTRIBUTE	Tmp-IP-Address-6			1736	ipaddr
+ATTRIBUTE	Tmp-IP-Address-7			1737	ipaddr
+ATTRIBUTE	Tmp-IP-Address-8			1738	ipaddr
+ATTRIBUTE	Tmp-IP-Address-9			1739	ipaddr
 
-ATTRIBUTE	Tmp-Date-0				1840	date
-ATTRIBUTE	Tmp-Date-1				1841	date
-ATTRIBUTE	Tmp-Date-2				1842	date
-ATTRIBUTE	Tmp-Date-3				1843	date
-ATTRIBUTE	Tmp-Date-4				1844	date
-ATTRIBUTE	Tmp-Date-5				1845	date
-ATTRIBUTE	Tmp-Date-6				1846	date
-ATTRIBUTE	Tmp-Date-7				1847	date
-ATTRIBUTE	Tmp-Date-8				1848	date
-ATTRIBUTE	Tmp-Date-9				1849	date
+ATTRIBUTE	Tmp-Octets-0				1740	octets
+ATTRIBUTE	Tmp-Octets-1				1741	octets
+ATTRIBUTE	Tmp-Octets-2				1742	octets
+ATTRIBUTE	Tmp-Octets-3				1743	octets
+ATTRIBUTE	Tmp-Octets-4				1744	octets
+ATTRIBUTE	Tmp-Octets-5				1745	octets
+ATTRIBUTE	Tmp-Octets-6				1746	octets
+ATTRIBUTE	Tmp-Octets-7				1747	octets
+ATTRIBUTE	Tmp-Octets-8				1748	octets
+ATTRIBUTE	Tmp-Octets-9				1749	octets
+
+ATTRIBUTE	Tmp-Date-0				1750	date
+ATTRIBUTE	Tmp-Date-1				1751	date
+ATTRIBUTE	Tmp-Date-2				1752	date
+ATTRIBUTE	Tmp-Date-3				1753	date
+ATTRIBUTE	Tmp-Date-4				1754	date
+ATTRIBUTE	Tmp-Date-5				1755	date
+ATTRIBUTE	Tmp-Date-6				1756	date
+ATTRIBUTE	Tmp-Date-7				1757	date
+ATTRIBUTE	Tmp-Date-8				1758	date
+ATTRIBUTE	Tmp-Date-9				1759	date
 
 #
 #  Attributes 1850 through 1850 + FR_TYPE_MAX are reserved.
 #
 
-ATTRIBUTE	Tmp-Integer64-0				1850	integer64
-ATTRIBUTE	Tmp-Integer64-1				1851	integer64
-ATTRIBUTE	Tmp-Integer64-2				1852	integer64
-ATTRIBUTE	Tmp-Integer64-3				1853	integer64
-ATTRIBUTE	Tmp-Integer64-4				1854	integer64
-ATTRIBUTE	Tmp-Integer64-5				1855	integer64
-ATTRIBUTE	Tmp-Integer64-6				1856	integer64
-ATTRIBUTE	Tmp-Integer64-7				1857	integer64
-ATTRIBUTE	Tmp-Integer64-8				1858	integer64
-ATTRIBUTE	Tmp-Integer64-9				1859	integer64
+ATTRIBUTE	Tmp-Integer64-0				1760	integer64
+ATTRIBUTE	Tmp-Integer64-1				1761	integer64
+ATTRIBUTE	Tmp-Integer64-2				1762	integer64
+ATTRIBUTE	Tmp-Integer64-3				1763	integer64
+ATTRIBUTE	Tmp-Integer64-4				1764	integer64
+ATTRIBUTE	Tmp-Integer64-5				1765	integer64
+ATTRIBUTE	Tmp-Integer64-6				1766	integer64
+ATTRIBUTE	Tmp-Integer64-7				1767	integer64
+ATTRIBUTE	Tmp-Integer64-8				1768	integer64
+ATTRIBUTE	Tmp-Integer64-9				1769	integer64
 
-ATTRIBUTE	Tmp-Signed-0				1860	signed
-ATTRIBUTE	Tmp-Signed-1				1861	signed
-ATTRIBUTE	Tmp-Signed-2				1862	signed
-ATTRIBUTE	Tmp-Signed-3				1863	signed
-ATTRIBUTE	Tmp-Signed-4				1864	signed
-ATTRIBUTE	Tmp-Signed-5				1865	signed
-ATTRIBUTE	Tmp-Signed-6				1866	signed
-ATTRIBUTE	Tmp-Signed-7				1867	signed
-ATTRIBUTE	Tmp-Signed-8				1868	signed
-ATTRIBUTE	Tmp-Signed-9				1869	signed
+ATTRIBUTE	Tmp-Signed-0				1770	signed
+ATTRIBUTE	Tmp-Signed-1				1771	signed
+ATTRIBUTE	Tmp-Signed-2				1772	signed
+ATTRIBUTE	Tmp-Signed-3				1773	signed
+ATTRIBUTE	Tmp-Signed-4				1774	signed
+ATTRIBUTE	Tmp-Signed-5				1775	signed
+ATTRIBUTE	Tmp-Signed-6				1776	signed
+ATTRIBUTE	Tmp-Signed-7				1777	signed
+ATTRIBUTE	Tmp-Signed-8				1778	signed
+ATTRIBUTE	Tmp-Signed-9				1779	signed
 
-ATTRIBUTE	Tmp-Ethernet-0				1870	ether
-ATTRIBUTE	Tmp-Ethernet-1				1871	ether
-ATTRIBUTE	Tmp-Ethernet-2				1872	ether
-ATTRIBUTE	Tmp-Ethernet-3				1873	ether
-ATTRIBUTE	Tmp-Ethernet-4				1874	ether
+ATTRIBUTE	Tmp-Ethernet-0				1780	ether
+ATTRIBUTE	Tmp-Ethernet-1				1781	ether
+ATTRIBUTE	Tmp-Ethernet-2				1782	ether
+ATTRIBUTE	Tmp-Ethernet-3				1783	ether
+ATTRIBUTE	Tmp-Ethernet-4				1784	ether
 
 ATTRIBUTE	Tmp-Float-0				1880	float32
-
-#
-#  Mostly for testing
-#
-ATTRIBUTE	Tmp-String-Tagged-0			1891	string has_tag
-ATTRIBUTE	Tmp-String-Tagged-1			1892	string has_tag
 
 ATTRIBUTE	Log-Message				1894	string
 ATTRIBUTE	Log-Level				1895	integer
@@ -574,8 +593,8 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 ATTRIBUTE	Request-Authenticator			2201	octets
 
 #
-#       Range:  2220-2259
-#               Attributes used as trigger arguments
+#	Range:  2220-2259
+#		 Attributes used as trigger arguments
 #
 ATTRIBUTE	Connection-Pool-Server			2220	string
 ATTRIBUTE	Connection-Pool-Port			2221	short
@@ -614,55 +633,7 @@ ATTRIBUTE	Cast-Base				2300	byte
 #
 
 VALUE	Auth-Type			Reject			4
-
-#
-#	FreeRADIUS extensions (most originally from Cistron)
-#
 VALUE	Auth-Type			Accept			254
-
-#
-#	Authorization type, too.
-#
-#VALUE	Autz-Type			Local			1
-
-#
-#	And accounting
-#
-#VALUE	Acct-Type			Local			1
-
-#
-#	And Session handling
-#
-#VALUE	Session-Type			Local			1
-
-#
-#	And Post-Auth
-#VALUE	Post-Auth-Type			Local			1
-#VALUE	Post-Auth-Type			Reject			2
-#VALUE	Post-Auth-Type			Challenge		3
-
-#
-#	And Post-Proxy
-#VALUE	Post-Proxy-Type			Fail-Access-Request	1
-#VALUE	Post-Proxy-Type			Fail-Authentication	1
-
-#VALUE	Post-Proxy-Type			Access-Reject		3
-#VALUE	Post-Proxy-Type			Reject			3
-
-#VALUE	Post-Proxy-Type			Fail-Accounting-Request	4
-#VALUE	Post-Proxy-Type			Fail-Accounting		4
-
-#VALUE	Post-Proxy-Type			Fail-Disconnect-Request	40
-#VALUE	Post-Proxy-Type			Fail-Disconnect		40
-
-#VALUE	Post-Proxy-Type			Disconnect-NAK		42
-
-#VALUE	Post-Proxy-Type			Fail-CoA-Request	43
-#VALUE	Post-Proxy-Type			Fail-CoA		43
-
-#VALUE	Post-Proxy-Type			CoA-NAK			45
-
-#VALUE	Post-Proxy-Type			Fail			256
 
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS

@@ -28,11 +28,14 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/map.h>
-#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/tmpl.h>
 
 #include <freeradius-devel/server/map_proc_priv.h>
+
+#include "map_priv.h"
 #include "unlang_priv.h"
 
 typedef enum {
@@ -63,16 +66,16 @@ typedef struct {
 	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
-/** Apply a list of modifications on one or more VALUE_PAIR lists.
+/** Apply a list of modifications on one or more fr_pair_t lists.
  *
  * @param[in] request	The current request.
- * @param[out] presult	The rcode indicating what the result
+ * @param[out] p_result	The rcode indicating what the result
  *      		of the operation was.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t list_mod_apply(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t list_mod_apply(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -100,31 +103,31 @@ static unlang_action_t list_mod_apply(REQUEST *request, rlm_rcode_t *presult)
 		if (!fr_cond_assert(ret == 0)) {
 			TALLOC_FREE(frame->state);
 
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
 
 done:
-	*presult = RLM_MODULE_NOOP;
+	*p_result = RLM_MODULE_NOOP;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Create a list of modifications to apply to one or more VALUE_PAIR lists
+/** Create a list of modifications to apply to one or more fr_pair_t lists
  *
  * @param[in] request	The current request.
- * @param[out] presult	The rcode indicating what the result
+ * @param[out] p_result	The rcode indicating what the result
  *      		of the operation was.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_update_t	*update_state = frame->state;
-	vp_map_t			*map;
+	map_t			*map;
 
 	/*
 	 *	Iterate over the maps producing a set of modifications to apply.
@@ -136,42 +139,48 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 		case UNLANG_UPDATE_MAP_INIT:
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
 
-			rad_assert(!update_state->lhs_result);	/* Should have been consumed */
-			rad_assert(!update_state->rhs_result);	/* Should have been consumed */
+			fr_assert(!update_state->lhs_result);	/* Should have been consumed */
+			fr_assert(!update_state->rhs_result);	/* Should have been consumed */
 
 			switch (map->lhs->type) {
 			default:
 				break;
 
-			case TMPL_TYPE_XLAT_STRUCT:
-				unlang_xlat_push(update_state, &update_state->lhs_result,
-						 request, map->lhs->tmpl_xlat, false);
+			case TMPL_TYPE_EXEC:
+				if (unlang_tmpl_push(update_state, &update_state->lhs_result,
+						     request, map->lhs, NULL, NULL) < 0) {
+					*p_result = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
 				return UNLANG_ACTION_PUSHED_CHILD;
 
-			case TMPL_TYPE_REGEX:
-			case TMPL_TYPE_REGEX_STRUCT:
 			case TMPL_TYPE_XLAT:
-				rad_assert(0);
+				if (unlang_xlat_push(update_state, &update_state->lhs_result,
+						     request, tmpl_xlat(map->lhs), false) < 0) {
+					*p_result = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
+				return UNLANG_ACTION_PUSHED_CHILD;
+
+			case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+			case TMPL_TYPE_REGEX:
+			case TMPL_TYPE_REGEX_UNCOMPILED:
+			case TMPL_TYPE_REGEX_XLAT:
+			case TMPL_TYPE_XLAT_UNRESOLVED:
+				fr_assert(0);
 			error:
 				TALLOC_FREE(frame->state);
 
-				*presult = RLM_MODULE_FAIL;
+				*p_result = RLM_MODULE_FAIL;
 
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case UNLANG_UPDATE_MAP_EXPANDED_LHS:
 			/*
-			 *	Concat the top level results together
+			 *	map_to_list_mod() already concatentates the LHS, so we don't need to do it here.
 			 */
-			if (update_state->lhs_result &&
-			    (fr_value_box_list_concat(update_state, update_state->lhs_result, &update_state->lhs_result,
-						      FR_TYPE_STRING, true) < 0)) {
-				RPEDEBUG("Failed concatenating LHS expansion results");
-				goto error;
-			}
-
 			if (!map->rhs) goto next;
 
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_RHS;
@@ -180,18 +189,31 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 			default:
 				break;
 
-			case TMPL_TYPE_XLAT_STRUCT:
-				unlang_xlat_push(update_state, &update_state->rhs_result,
-						 request, map->rhs->tmpl_xlat, false);
+			case TMPL_TYPE_EXEC:
+				if (unlang_tmpl_push(update_state, &update_state->rhs_result,
+						     request, map->rhs, NULL, NULL) < 0) {
+					*p_result = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
+				return UNLANG_ACTION_PUSHED_CHILD;
+
+			case TMPL_TYPE_XLAT:
+				if (unlang_xlat_push(update_state, &update_state->rhs_result,
+						     request, tmpl_xlat(map->rhs), false) < 0) {
+					*p_result = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_STOP_PROCESSING;
+				}
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
-			case TMPL_TYPE_REGEX_STRUCT:
-			case TMPL_TYPE_XLAT:
-				rad_assert(0);
+			case TMPL_TYPE_REGEX_UNCOMPILED:
+			case TMPL_TYPE_REGEX_XLAT:
+			case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+			case TMPL_TYPE_XLAT_UNRESOLVED:
+				fr_assert(0);
 				goto error;
 			}
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case UNLANG_UPDATE_MAP_EXPANDED_RHS:
 			/*
@@ -222,7 +244,7 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
 		}
 	};
 
-	return list_mod_apply(request, presult);
+	return list_mod_apply(p_result, request);
 }
 
 
@@ -238,41 +260,46 @@ static unlang_action_t list_mod_create(REQUEST *request, rlm_rcode_t *presult)
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_update_state_init(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
+
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	unlang_map_t			*gext = unlang_group_to_map(g);
 	unlang_frame_state_update_t	*update_state;
 
 	/*
 	 *	Initialise the frame state
 	 */
 	MEM(frame->state = update_state = talloc_zero_pooled_object(stack, unlang_frame_state_update_t,
-								    (sizeof(vp_map_t) +
-								    (sizeof(vp_tmpl_t) * 2) + 128),
+								    (sizeof(map_t) +
+								    (sizeof(tmpl_t) * 2) + 128),
 								    g->num_children));	/* 128 is for string buffers */
 
-	fr_cursor_init(&update_state->maps, &g->map);
+	fr_cursor_init(&update_state->maps, &gext->map);
 	update_state->vlm_next = &update_state->vlm_head;
 	repeatable_set(frame);
 
 	/*
 	 *	Call list_mod_create
 	 */
-	frame->interpret = list_mod_create;
-	return list_mod_create(request, presult);
+	frame->process = list_mod_create;
+	return list_mod_create(p_result, request);
 }
 
 
-static unlang_action_t map_proc_apply(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
+
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	map_proc_inst_t			*inst = g->proc_inst;
+	unlang_map_t		*gext = unlang_group_to_map(g);
+
+	map_proc_inst_t			*inst = gext->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
 	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, map_proc_state->src_result);
@@ -283,21 +310,22 @@ static unlang_action_t map_proc_apply(REQUEST *request, rlm_rcode_t *presult)
 #ifndef NDEBUG
 	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
 #endif
-	*presult = map_proc(request, g->proc_inst, &map_proc_state->src_result);
+	*p_result = map_proc(request, gext->proc_inst, &map_proc_state->src_result);
 #ifndef NDEBUG
 	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
 #endif
 
-	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
+	return *p_result == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *presult)
+static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	map_proc_inst_t			*inst = g->proc_inst;
+	unlang_map_t		*gext = unlang_group_to_map(g);
+	map_proc_inst_t			*inst = gext->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
 	/*
@@ -309,7 +337,7 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 	 *	Set this BEFORE doing anything else, as we will be
 	 *	called again after unlang_xlat_push() returns.
 	 */
-	frame->interpret = map_proc_apply;
+	frame->process = map_proc_apply;
 
 	/*
 	 *	Expand the map source
@@ -320,24 +348,38 @@ static unlang_action_t unlang_map_state_init(REQUEST *request, rlm_rcode_t *pres
 				 request, inst->src, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding map src");
 		error:
-			*presult = RLM_MODULE_FAIL;
+			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 		break;
 
-	case TMPL_TYPE_XLAT_STRUCT:
-		unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
-				 request, inst->src->tmpl_xlat, false);
+	case TMPL_TYPE_EXEC:
+		if (unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
+				     request, inst->src, NULL, NULL) < 0) {
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
-	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_REGEX_STRUCT:
 	case TMPL_TYPE_XLAT:
-		rad_assert(0);
+		if (unlang_xlat_push(map_proc_state, &map_proc_state->src_result,
+				     request, tmpl_xlat(inst->src), false) < 0) {
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_STOP_PROCESSING;
+		}
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_REGEX_UNCOMPILED:
+	case TMPL_TYPE_REGEX_XLAT:
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
+		fr_assert(0);
 		goto error;
 	}
 
-	return map_proc_apply(request, presult);
+	return map_proc_apply(p_result, request);
 }
 
 void unlang_map_init(void)

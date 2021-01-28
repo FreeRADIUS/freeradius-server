@@ -81,7 +81,7 @@ radius {
 	#
 	#  In many cases, the module should do retransmissions of
 	#  proxied request on its own.  See the various
-	#  configurations for `initial_retransmission_time`,
+	#  configurations for `initial_rtx_time`,
 	#  etc. below.  This means setting `synchronous = no`.
 	#
 	#  However, in some cases, it is useful to retransmit only
@@ -102,12 +102,6 @@ radius {
 #	synchronous = no
 
 	#
-	#  no_connection_fail:: If no connections are available, then
-	#  the module will immediately return "fail".
-	#
-#	no_connection_fail = no
-
-	#
 	#  originate:: Whether or not we are creating the packet.
 	#
 	#  Sometimes we are creating a request that is not for the purpose of
@@ -119,12 +113,12 @@ radius {
 #	originate = no
 
 	#
-	#  status_checks { ... }:: For "are you alive?" queries.
+	#  status_check { ... }:: For "are you alive?" queries.
 	#
 	#  If the home server does not respond to proxied packets, the
 	#  module starts pinging the home server with these packets.
 	#
-	status_checks {
+	status_check {
 		#
 		#  type:: You can specify any type of packet here, though
 		#  Status-Server is recommended.
@@ -176,24 +170,63 @@ radius {
 	#
 	#  The connection is marked `zombie`, and isn't used to send new packets.
 	#  If there are no responses within `zombie_period`, the server either
-	#  closes the connection (no `status_check`), or starts pinging the
-	#  home server (`status_check = Status-Server`).
+	#  closes the connection (no `status_check` subsection), or starts pinging the
+	#  home server (`status_check.type = Status-Server`).
 	#
 	zombie_period = 10
+
+	#
+	#  revive_interval:: If there are no status checks, mark the
+	#  home server alive after `revive_interval` timeout.
+	#
+	#  Some home servers do not support status checks via the
+	#  `Status-Server` packet.  Others may not have a "test" user
+	#  configured that can be used to query the server, to see if
+	#  it is alive.  For those servers, we have NO WAY of knowing
+	#  when it becomes alive again.  Therefore, after the server
+	#  has been marked dead, we wait a period of time, and mark
+	#  it alive again, in the hope that it has come back to
+	#  life.
+	#
+	#  If it has NOT come back to life, then the module will wait
+	#  for `zombie_period` before marking it dead again.  During
+	#  the `zombie_period`, ALL AUTHENTICATIONS WILL FAIL, because
+	#  the home server is still dead.  There is NOTHING that can
+	#  be done about this, other than to enable the status checks,
+	#  as documented above.
+	#
+	#  e.g. if `zombie_period` is 40 seconds, and `revive_interval`
+	#  is 300 seconds, the for 40 seconds out of every 340, or about
+	#  10% of the time, all authentications will fail.
+	#
+	#  If the `zombie_period` and `revive_interval` configurations
+	#  are set smaller, than it is possible for up to 50% of
+	#  authentications to fail.
+	#
+	#  As a result, we recommend enabling status checks, and
+	#  we do NOT recommend using `revive_interval`.
+	#
+	#  The `revive_interval` configuration is used ONLY if the
+	#  `status_check` subsection is not used.  Otherwise,
+	#  `revive_interval` is not necessary, and should be deleted.
+	#
+	#  Useful range of values: 10 to 3600
+	#
+	revive_interval = 3600
 
 	#
 	#  ## Connection trunking
 	#
 	#  Each worker thread (see radiusd.conf, num_workers), has
 	#  it's own set of connections.  These connections are grouped
-	#  together into a "trunk".
+	#  together into a "pool".
 	#
 	#  Much of the configuration here is similar to the old
 	#  connection "pool" configuration in v3.  However, there are
 	#  more configuration parameters, and therefore more control
 	#  over the behavior.
 	#
-	trunk {
+	pool {
 		#
 		#  start:: Connections to create during module instantiation.
 		#
@@ -290,11 +323,12 @@ radius {
 
 			#
 			#  reconnect_delay:: If opening a connection
-			#  fails, we wait `reconnect_delay` seconds
-			#  before attempting to open another
+			#  fails, or an open connection fails,
+			#  we wait `reconnect_delay` seconds before
+			#  attempting to open another
 			#  connection.
 			#
-			reconnect_delay = 30
+			reconnect_delay = 5
 		}
 
 		#
@@ -330,7 +364,7 @@ radius {
 	}
 
 	#
-	# ## Protocols
+	#  ## Protocols
 	#
 	#  For now, only UDP is supported.
 	#
@@ -386,19 +420,19 @@ radius {
 	#
 	Access-Request {
 		#
-		#  initial_retransmission_time::  If there is no response within this time,
+		#  initial_rtx_time::  If there is no response within this time,
 		#  the module will retransmit the packet.
 		#
 		#  Value should be `1..5`.
 		#
-		initial_retransmission_time = 2
+		initial_rtx_time = 2
 
 		#
-		#  maximum_retransmission_time:: The maximum time between retransmissions.
+		#  max_rtx_time:: The maximum time between retransmissions.
 		#
 		#  Value should be `5..30`
 		#
-		maximum_retransmission_time = 16
+		max_rtx_time = 16
 
 		#
 		#  [NOTE]
@@ -410,20 +444,20 @@ radius {
 		#
 
 		#
-		#  maximum_retransmission_count:: How many times the module will send the packet
+		#  max_rtx_count:: How many times the module will send the packet
 		#  before giving up.
 		#
 		#  Value should be `1..20` _(0 == retransmit forever)_
 		#
-		maximum_retransmission_count = 2
+		max_rtx_count = 2
 
 		#
-		#  maximum_retransmission_duration:: The total length of time the module will
+		#  max_rtx_duration:: The total length of time the module will
 		#  try to retransmit the packet.
 		#
 		#  Value should be `5..60`
 		#
-		maximum_retransmission_duration = 30
+		max_rtx_duration = 30
 	}
 
 	#
@@ -431,34 +465,34 @@ radius {
 	#
 	#  i.e. If you want `retransmit forever`, you should set:
 	#
-	#    maximum_retransmission_time = 0
-	#    maximum_retransmission_count = 0
+	#    max_rtx_time = 0
+	#    max_rtx_count = 0
 	#
 	Accounting-Request {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 
 	#
 	#  ### CoA Packets
 	#
-	Coa-Request {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+	CoA-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 
 	#
 	#  ### Disconnect packets
 	#
 	Disconnect-Request {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 
 	#
@@ -470,9 +504,9 @@ radius {
 	#  WARNING: The `Status-Server` packets CANNOT be proxied.
 	#
 	Status-Server {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 5
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 }

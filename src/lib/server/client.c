@@ -26,14 +26,15 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/trie.h>
 
@@ -63,12 +64,12 @@ static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
 #ifndef WITH_TRIE
 static int client_cmp(void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	RADCLIENT const *a = one;
 	RADCLIENT const *b = two;
 
-	rcode = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
-	if (rcode != 0) return rcode;
+	ret = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+	if (ret != 0) return ret;
 
 	/*
 	 *	0 is "wildcard", or "both" protocols
@@ -162,7 +163,7 @@ static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const 
 		return clients->v4_udp;
 	}
 
-	rad_assert(ipaddr->af == AF_INET6);
+	fr_assert(ipaddr->af == AF_INET6);
 
 	if (proto == IPPROTO_TCP) return clients->v6_tcp;
 
@@ -207,7 +208,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	fr_inet_ntop_prefix(buffer, sizeof(buffer), &client->ipaddr);
@@ -285,7 +286,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #else  /* WITH_TRIE */
 
 	if (!clients->tree[client->ipaddr.prefix]) {
-		clients->tree[client->ipaddr.prefix] = rbtree_talloc_create(clients, client_cmp, RADCLIENT,
+		clients->tree[client->ipaddr.prefix] = rbtree_talloc_alloc(clients, client_cmp, RADCLIENT,
 									    NULL, RBTREE_FLAG_NONE);
 		if (!clients->tree[client->ipaddr.prefix]) {
 			return false;
@@ -338,7 +339,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 }
 
 
-#ifdef WITH_DYNAMIC_CLIENTS
 void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
 #ifdef WITH_TRIE
@@ -349,7 +349,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!clients) clients = root_clients;
 
-	rad_assert(client->ipaddr.prefix <= 128);
+	fr_assert(client->ipaddr.prefix <= 128);
 
 #ifdef WITH_TRIE
 	trie = clients_trie(clients, &client->ipaddr, client->proto);
@@ -365,7 +365,6 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 	(void) rbtree_deletebydata(clients->tree[client->ipaddr.prefix], client);
 #endif
 }
-#endif
 
 RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int number)
 {
@@ -592,7 +591,6 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, int proto, TLS_
 	return clients;
 }
 
-#ifdef WITH_DYNAMIC_CLIENTS
 /** Create a client CONF_SECTION using a mapping section to map values from a result set to client attributes
  *
  * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS too.
@@ -740,7 +738,9 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			hex_len = talloc_array_length(value) - 3;
 			bin_len = (hex_len / 2) + 1;
 			MEM(bin = talloc_array(c, uint8_t, bin_len));
-			converted = fr_hex2bin(bin, bin_len, value + 2, hex_len);
+			converted = fr_hex2bin(NULL,
+					       &FR_DBUFF_TMP(bin, bin_len),
+					       &FR_SBUFF_IN(value + 2, hex_len), false);
 			if (converted < (bin_len - 1)) {
 				cf_log_err(cs, "Invalide hex string in shared secret");
 				goto error;
@@ -833,7 +833,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	 *	request.
 	 */
 	if (cl_srcipaddr) {
-#ifdef WITH_UDPFROMTO
 		switch (c->ipaddr.af) {
 		case AF_INET:
 			if (fr_inet_pton4(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
@@ -852,9 +851,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			cf_log_err(cs, "ipaddr was not defined");
 			goto error;
 		}
-#else
-		WARN("Server not built with udpfromto, ignoring client src_ipaddr");
-#endif
 		cl_srcipaddr = NULL;
 	}
 
@@ -944,31 +940,28 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
  *	- New client on success.
  *	- NULL on error.
  */
-RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
+RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 {
 	static int	cnt;
 	CONF_SECTION	*cs;
 	char		src_buf[128], buffer[256];
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	RADCLIENT	*c;
 
 	if (!request) return NULL;
 
-	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(request->packet->src_ipaddr), 0);
+	fr_value_box_print(&FR_SBUFF_OUT(src_buf, sizeof(src_buf)), fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL);
 
 	snprintf(buffer, sizeof(buffer), "dynamic_%i_%s", cnt++, src_buf);
 
 	cs = cf_section_alloc(ctx, NULL, "client", buffer);
 
-	fr_cursor_init(&cursor, &request->control);
-
-	RDEBUG2("Converting &request:control to client {...} section");
+	RDEBUG2("Converting &request.control to client {...} section");
 	RINDENT();
 
-	for (vp = fr_cursor_init(&cursor, &request->control);
+	for (vp = fr_pair_list_head(&request->control_pairs);
 	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->control_pairs, vp)) {
 		CONF_PAIR	*cp = NULL;
 		char const	*value;
 		char const	*attr;
@@ -1110,5 +1103,3 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 
 	return c;
 }
-#endif
-

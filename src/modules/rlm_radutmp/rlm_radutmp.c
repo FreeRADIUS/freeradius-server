@@ -26,7 +26,8 @@ RCSID("$Id$")
 #include	<freeradius-devel/server/base.h>
 #include	<freeradius-devel/server/radutmp.h>
 #include	<freeradius-devel/server/module.h>
-#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/debug.h>
+#include	<freeradius-devel/radius/radius.h>
 
 #include	<fcntl.h>
 
@@ -51,7 +52,6 @@ typedef struct {
 	NAS_PORT	*nas_port_list;
 	char const	*filename;
 	char const	*username;
-	bool		case_sensitive;
 	bool		check_nas;
 	uint32_t	permission;
 	bool		caller_id_ok;
@@ -60,7 +60,6 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED, rlm_radutmp_t, filename), .dflt = RADUTMP },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_radutmp_t, username), .dflt = "%{User-Name}" },
-	{ FR_CONF_OFFSET("case_sensitive", FR_TYPE_BOOL, rlm_radutmp_t, case_sensitive), .dflt = "yes" },
 	{ FR_CONF_OFFSET("check_with_nas", FR_TYPE_BOOL, rlm_radutmp_t, check_nas), .dflt = "yes" },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_radutmp_t, permission), .dflt = "0644" },
 	{ FR_CONF_OFFSET("caller_id", FR_TYPE_BOOL, rlm_radutmp_t, caller_id_ok), .dflt = "no" },
@@ -103,11 +102,10 @@ fr_dict_attr_autoload_t rlm_radutmp_dict_attr[] = {
 	{ NULL }
 };
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t nasaddr, time_t t)
+static unlang_action_t radutmp_zap(rlm_rcode_t *p_result, request_t *request, char const *filename, uint32_t nasaddr, time_t t)
 {
 	struct radutmp	u;
 	int		fd;
@@ -117,7 +115,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
 		REDEBUG("Error accessing file %s: %s", filename, fr_syserror(errno));
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -126,7 +124,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 	if (rad_lockfd(fd, LOCK_LEN) < 0) {
 		REDEBUG("Failed to acquire lock on file %s: %s", filename, fr_syserror(errno));
 		close(fd);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -150,12 +148,12 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 			REDEBUG("Failed writing: %s", fr_syserror(errno));
 
 			close(fd);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 	close(fd);	/* and implicitely release the locks */
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -178,38 +176,39 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, uint16
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	struct radutmp	ut, u;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
-	int		status = -1;
-	int		protocol = -1;
-	time_t		t;
-	int		fd = -1;
-	bool		port_seen = false;
-	int		off;
-	rlm_radutmp_t	*inst = instance;
-	char		ip_name[INET_ADDRSTRLEN]; /* 255.255.255.255 */
-	char const	*nas;
-	NAS_PORT	*cache;
-	int		r;
+	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->instance, rlm_radutmp_t);
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
+	struct radutmp		ut, u;
+	fr_pair_t		*vp;
+	int			status = -1;
+	int			protocol = -1;
+	time_t			t;
+	int			fd = -1;
+	bool			port_seen = false;
+	int			off;
+	char			ip_name[INET_ADDRSTRLEN]; /* 255.255.255.255 */
+	char const		*nas;
+	NAS_PORT		*cache;
+	int			r;
 
-	char		*filename = NULL;
-	char		*expanded = NULL;
+	char			*filename = NULL;
+	char			*expanded = NULL;
 
-	if (request->packet->src_ipaddr.af != AF_INET) {
+	if (request->dict != dict_radius) RETURN_MODULE_NOOP;
+
+	if (request->packet->socket.inet.src_ipaddr.af != AF_INET) {
 		RDEBUG2("IPv6 not supported!");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type)) == NULL) {
 		RDEBUG2("No Accounting-Status-Type record");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 	status = vp->vp_uint32;
 
@@ -230,10 +229,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		int check1 = 0;
 		int check2 = 0;
 
-		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_time, TAG_ANY))
+		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_time))
 		     == NULL || vp->vp_uint32 == 0)
 			check1 = 1;
-		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_session_id, TAG_ANY))
+		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_id))
 		     != NULL && vp->vp_length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
@@ -253,9 +252,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		if ((vp->da == attr_login_ip_host) ||
 		    (vp->da == attr_framed_ip_address)) {
 			ut.framed_address = vp->vp_ipv4addr;
@@ -295,10 +294,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	originator's IP address.
 	 */
 	if (ut.nas_address == htonl(INADDR_NONE)) {
-		ut.nas_address = request->packet->src_ipaddr.addr.v4.s_addr;
+		ut.nas_address = request->packet->socket.inet.src_ipaddr.addr.v4.s_addr;
 		nas = request->client->shortname;
 
-	} else if (request->packet->src_ipaddr.addr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
+	} else if (request->packet->socket.inet.src_ipaddr.addr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
 		nas = request->client->shortname;
 
 	/*
@@ -328,7 +327,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 */
 	filename = NULL;
 	if (xlat_aeval(request, &filename, request, inst->filename, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -339,14 +338,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 */
 	if (status == FR_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s restarted (Accounting-On packet seen)", nas);
-		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
+		radutmp_zap(&rcode, request, filename, ut.nas_address, ut.time);
 
 		goto finish;
 	}
 
 	if (status == FR_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s rebooted (Accounting-Off packet seen)", nas);
-		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
+		radutmp_zap(&rcode, request, filename, ut.nas_address, ut.time);
 
 		goto finish;
 	}
@@ -547,9 +546,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		close(fd);	/* and implicitely release the locks */
 	}
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
-#endif
 
 /* globally exported name */
 extern module_t rlm_radutmp;
@@ -560,9 +558,7 @@ module_t rlm_radutmp = {
 	.inst_size	= sizeof(rlm_radutmp_t),
 	.config		= module_config,
 	.methods = {
-#ifdef WITH_ACCOUNTING
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 };
 

@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
@@ -190,6 +190,7 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("pidfile", FR_TYPE_STRING, main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
 	{ FR_CONF_OFFSET("debug_level", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, main_config_t, debug_level), .dflt = "0" },
+	{ FR_CONF_OFFSET("max_requests", FR_TYPE_UINT32, main_config_t, max_requests), .dflt = "0" },
 
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
@@ -344,7 +345,7 @@ static int lib_dir_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
 	char const	*value;
 
-	rad_assert(main_config != NULL);
+	fr_assert(main_config != NULL);
 	value = cf_pair_value(cp);
 	if (value) {
 		main_config_t *config;
@@ -359,8 +360,7 @@ static int lib_dir_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *
 	 *	config file parser.  And also add in the search path.
 	 */
 	if (!dl_module_loader_init(main_config->lib_dir)) {
-		cf_log_err(ci, "Failed initializing 'lib_dir': %s",
-			   fr_strerror());
+		cf_log_perr(ci, "Failed initializing 'lib_dir'");
 		return -1;
 	}
 
@@ -462,7 +462,7 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 
-static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+static size_t config_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t len = 0;
 	static char const disallowed[] = "%{}\\'\"`";
@@ -514,12 +514,17 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 	return len;
 }
 
-/*
- *	Xlat for %{config:section.subsection.attribute}
+/** xlat to get config values
+ *
+@verbatim
+%{config:section.subsection.attribute}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+			   request_t *request, char const *fmt)
 {
 	char const *value;
 	CONF_PAIR *cp;
@@ -790,14 +795,6 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		rad_suid_down();
 	}
 
-	/*
-	 *	This also clears the dumpable flag if core dumps
-	 *	aren't allowed.
-	 */
-	if (fr_set_dumpable(config->allow_core_dumps) < 0) PERROR("Failed enabling core dumps");
-
-	if (config->allow_core_dumps) INFO("Core dumps are enabled");
-
 	return 0;
 }
 #endif	/* HAVE_SETUID */
@@ -862,7 +859,7 @@ main_config_t *main_config_alloc(TALLOC_CTX *ctx)
 
 	config = talloc_zero(ctx, main_config_t);
 	if (!config) {
-		fr_strerror_printf("Failed allocating main config");
+		fr_strerror_const("Failed allocating main config");
 		return NULL;
 	}
 
@@ -894,6 +891,7 @@ int main_config_init(main_config_t *config)
 	char const		*p = NULL;
 	CONF_SECTION		*cs = NULL, *subcs;
 	struct stat		statbuf;
+	bool			can_colourise = false;
 	char			buffer[1024];
 
 	if (stat(config->raddb_dir, &statbuf) < 0) {
@@ -919,7 +917,7 @@ int main_config_init(main_config_t *config)
 	INFO("Starting - reading configuration files ...");
 
 	/*
-	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
+	 *	About sizeof(request_t) + sizeof(fr_radius_packet_t) * 2 + sizeof(fr_pair_t) * 400
 	 *
 	 *	Which should be enough for many configurations.
 	 */
@@ -959,9 +957,9 @@ do {\
 	 */
 	p = getenv("TERM");
 	if (p && isatty(default_log.fd) && strstr(p, "xterm") && fr_debug_lvl) {
-		default_log.colourise = true;
+		can_colourise = default_log.colourise = true;
 	} else {
-		default_log.colourise = false;
+		can_colourise = default_log.colourise = false;
 	}
 	default_log.line_number = config->log_line_number;
 
@@ -1175,6 +1173,13 @@ do {\
 #endif
 
 	/*
+	 *	This also clears the dumpable flag if core dumps
+	 *	aren't allowed.
+	 */
+	if (fr_set_dumpable(config->allow_core_dumps) < 0) PERROR("Failed enabling core dumps");
+	if (config->allow_core_dumps) INFO("Core dumps are enabled");
+
+	/*
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
@@ -1185,9 +1190,15 @@ do {\
 	if (cf_section_parse(config, config, cs) < 0) goto failure;
 
 	/*
-	 *	Reset the colourisation state.
+	 *	Reset the colourisation state.  The configuration
+	 *	files can disable colourisation if the terminal
+	 *	supports it.  The configation files *cannot* enable
+	 *	colourisation if the terminal window doesn't support
+	 *	it.
 	 */
-	default_log.colourise = config->do_colourise;
+	if (can_colourise && !config->do_colourise) {
+		default_log.colourise = false;
+	}
 
 	/*
 	 *	Starting the server, WITHOUT "-x" on the
@@ -1205,7 +1216,7 @@ do {\
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	rad_assert(config->root_cs == NULL);
+	fr_assert(config->root_cs == NULL);
 
 	DEBUG2("%s: #### Loading Clients ####", config->name);
 	if (!client_list_parse_section(cs, 0, false)) goto failure;
@@ -1213,7 +1224,7 @@ do {\
 	/*
 	 *	Register the %{config:section.subsection} xlat function.
 	 */
-	xlat_register(NULL, "config", xlat_config, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register_legacy(NULL, "config", xlat_config, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	/*
 	 *	Ensure cwd is inside the chroot.
@@ -1228,7 +1239,7 @@ do {\
 	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
 
 	/* Clear any unprocessed configuration errors */
-	(void) fr_strerror();
+	fr_strerror_clear();
 
 	return 0;
 }

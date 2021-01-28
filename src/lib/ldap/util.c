@@ -28,6 +28,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
+#include <freeradius-devel/util/hex.h>
 
 #include <stdarg.h>
 #include <ctype.h>
@@ -54,7 +55,7 @@ static const char hextab[] = "0123456789abcdef";
  * @param in Raw unescaped string.
  * @param arg Any additional arguments (unused).
  */
-size_t fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_ldap_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 
 	size_t left = outlen;
@@ -110,7 +111,7 @@ size_t fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, ch
  * @param in Escaped string string.
  * @param arg Any additional arguments (unused).
  */
-size_t fr_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *p;
 	char *c1, *c2, c3;
@@ -215,7 +216,7 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
 			/*
 			 *	Hex encoding, consume three chars
 			 */
-			if (fr_hex2bin((uint8_t *) &c, 1, p + 1, 2) == 1) {
+			if (fr_hex2bin(NULL, &FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2), false) == 1) {
 				inlen -= 2;
 				p += 2;
 				continue;
@@ -269,7 +270,7 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, fr_ldap_connection_t *conn, char **extensions)
+int fr_ldap_parse_url_extensions(LDAPControl **sss, request_t *request, fr_ldap_connection_t *conn, char **extensions)
 {
 	int i;
 
@@ -416,7 +417,7 @@ size_t fr_ldap_util_normalise_dn(char *out, char const *in)
 			 *	special encoding, get rewritten to the
 			 *	special encoding.
 			 */
-			if (fr_hex2bin((uint8_t *) &c, 1, p + 1, 2) == 1) {
+			if (fr_hex2bin(NULL, &FR_DBUFF_TMP((uint8_t *) &c, 1), &FR_SBUFF_IN(p + 1, 2), false) == 1) {
 				switch (c) {
 				case ' ':
 				case '#':
@@ -484,7 +485,7 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
  * @param sublen Number of potential subfilters in array.
  * @return length of expanded data.
  */
-ssize_t fr_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen)
+ssize_t fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen, char *out, size_t outlen)
 {
 	char buffer[LDAP_MAX_FILTER_STR_LEN + 1];
 	char const *in = NULL;

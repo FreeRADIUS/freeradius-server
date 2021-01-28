@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** RADIUS_PACKET alloc/free functions
+/** fr_radius_packet_t alloc/free functions
  *
  * @file src/lib/util/packet.c
  *
@@ -29,124 +29,75 @@ RCSID("$Id$")
 
 #include <talloc.h>
 
-/** Allocate a new RADIUS_PACKET
+/** Allocate a new fr_radius_packet_t
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
- *	the packet is not associated with a REQUEST.
+ *	the packet is not associated with a request_t.
  * @param new_vector if true a new request authenticator will be generated.
  * @return
- *	- New RADIUS_PACKET.
+ *	- New fr_radius_packet_t.
  *	- NULL on error.
  */
-RADIUS_PACKET *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
+fr_radius_packet_t *fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector)
 {
-	RADIUS_PACKET	*rp;
+	fr_radius_packet_t	*rp;
 
-	rp = talloc_zero(ctx, RADIUS_PACKET);
+	rp = talloc_zero(ctx, fr_radius_packet_t);
 	if (!rp) {
-		fr_strerror_printf("out of memory");
+		fr_strerror_const("out of memory");
 		return NULL;
 	}
 	rp->id = -1;
 
-	if (new_vector) {
-		fr_rand_buffer(rp->vector, sizeof(rp->vector));
-	}
+	if (new_vector) fr_rand_buffer(rp->vector, sizeof(rp->vector));
 
 	return rp;
 }
 
-/** Allocate a new RADIUS_PACKET response
+/** Allocate a new fr_radius_packet_t response
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
- *	the packet is not associated with a REQUEST.
+ *	the packet is not associated with a request_t.
  * @param packet The request packet.
  * @return
- *	- New RADIUS_PACKET.
+ *	- New fr_radius_packet_t.
  *	- NULL on error.
  */
-RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
+fr_radius_packet_t *fr_radius_packet_alloc_reply(TALLOC_CTX *ctx, fr_radius_packet_t *packet)
 {
-	RADIUS_PACKET *reply;
+	fr_radius_packet_t *reply;
 
 	if (!packet) return NULL;
 
-	reply = fr_radius_alloc(ctx, false);
+	reply = fr_radius_packet_alloc(ctx, false);
 	if (!reply) return NULL;
 
 	/*
 	 *	Initialize the fields from the request.
 	 */
-	reply->sockfd = packet->sockfd;
-	reply->dst_ipaddr = packet->src_ipaddr;
-	reply->src_ipaddr = packet->dst_ipaddr;
-	reply->dst_port = packet->src_port;
-	reply->src_port = packet->dst_port;
-	reply->if_index = packet->if_index;
+	fr_socket_addr_swap(&reply->socket, &packet->socket);
 	reply->id = packet->id;
 	reply->code = 0; /* UNKNOWN code */
-	memset(reply->vector, 0,
-	       sizeof(reply->vector));
-	reply->vps = NULL;
+	memset(reply->vector, 0, sizeof(reply->vector));
 	reply->data = NULL;
 	reply->data_len = 0;
-	reply->proto = packet->proto;
 
 	return reply;
 }
 
 
-/** Free a RADIUS_PACKET
+/** Free a fr_radius_packet_t
  *
  */
-void fr_radius_packet_free(RADIUS_PACKET **radius_packet_ptr)
+void fr_radius_packet_free(fr_radius_packet_t **packet_p)
 {
-	RADIUS_PACKET *radius_packet;
+	fr_radius_packet_t *packet;
 
-	if (!radius_packet_ptr || !*radius_packet_ptr) return;
-	radius_packet = *radius_packet_ptr;
+	if (!packet_p || !*packet_p) return;
+	packet = *packet_p;
 
-	PACKET_VERIFY(radius_packet);
+	PACKET_VERIFY(packet);
 
-	fr_pair_list_free(&radius_packet->vps);
-
-	talloc_free(radius_packet);
-	*radius_packet_ptr = NULL;
-}
-
-/** Duplicate a RADIUS_PACKET
- *
- * @param ctx the context in which the packet is allocated. May be NULL if
- *	the packet is not associated with a REQUEST.
- * @param in The packet to copy
- * @return
- *	- New RADIUS_PACKET.
- *	- NULL on error.
- */
-RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
-{
-	RADIUS_PACKET *out;
-
-	out = fr_radius_alloc(ctx, false);
-	if (!out) return NULL;
-
-	/*
-	 *	Bootstrap by copying everything.
-	 */
-	memcpy(out, in, sizeof(*out));
-
-	/*
-	 *	Then reset necessary fields
-	 */
-	out->sockfd = -1;
-
-	out->data = NULL;
-	out->data_len = 0;
-
-	if (fr_pair_list_copy(out, &out->vps, in->vps) < 0) {
-		talloc_free(out);
-		return NULL;
-	}
-
-	return out;
+	talloc_free(packet);
+	*packet_p = NULL;
 }

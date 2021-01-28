@@ -27,16 +27,15 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <ctype.h>
 #include <unistd.h>
 
-#define DL_INIT_CHECK rad_assert(dl_module_loader)
+#define DL_INIT_CHECK fr_assert(dl_module_loader)
 
 /** Wrapper struct around dl_loader_t
  *
@@ -63,9 +62,9 @@ static _Thread_local dl_module_inst_cache_t	dl_inst_cache;
 /** Name prefixes matching the types of loadable module
  */
 static fr_table_num_sorted_t const dl_module_type_prefix[] = {
-	{ "",		DL_MODULE_TYPE_SUBMODULE	},
-	{ "proto",	DL_MODULE_TYPE_PROTO		},
-	{ "rlm",	DL_MODULE_TYPE_MODULE		}
+	{ L(""),		DL_MODULE_TYPE_SUBMODULE	},
+	{ L("proto"),	DL_MODULE_TYPE_PROTO		},
+	{ L("rlm"),	DL_MODULE_TYPE_MODULE		}
 };
 static size_t dl_module_type_prefix_len = NUM_ELEMENTS(dl_module_type_prefix);
 
@@ -73,8 +72,8 @@ static int dl_module_inst_data_cmp(void const *one, void const *two)
 {
 	dl_module_inst_t const *a = one, *b = two;
 
-	rad_assert(a->data);
-	rad_assert(b->data);
+	fr_assert(a->data);
+	fr_assert(b->data);
 
 	return (a->data > b->data) - (a->data < b->data);
 }
@@ -83,8 +82,8 @@ static int dl_module_cmp(void const *one, void const *two)
 {
 	dl_module_t const *a = one, *b = two;
 
-	rad_assert(a->dl);
-	rad_assert(b->dl);
+	fr_assert(a->dl);
+	fr_assert(b->dl);
 
 	return strcmp(a->dl->name, b->dl->name);
 }
@@ -102,9 +101,24 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 {
 	dl_module_t *dl_module = talloc_get_type_abort(dl->uctx, dl_module_t);
 
-	if (dl_module->common->onload && (dl_module->common->onload() < 0)) {
-		ERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
-		return -1;
+	/*
+	 *	Clear pre-existing errors.
+	 */
+	fr_strerror_clear();
+
+	if (dl_module->common->onload) {
+		int ret;
+
+		ret = dl_module->common->onload();
+		if (ret < 0) {
+#ifndef NDEBUG
+			PERROR("Initialisation failed for module \"%s\" - onload() returned %i",
+			       dl_module->common->name, ret);
+#else
+			PERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
+#endif
+			return -1;
+		}
 	}
 
 	return 0;
@@ -275,7 +289,7 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
          *      destructor can find the dl_module_inst_t associated
          *      with the data.
          */
-	rad_assert(dl_module_loader != NULL);
+	fr_assert(dl_module_loader != NULL);
 	rbtree_insert(dl_module_loader->inst_data_tree, dl_inst);	/* Duplicates not possible */
 
 	talloc_set_destructor(data, _dl_module_instance_data_free);
@@ -401,7 +415,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	DEBUG3("%s validated.  Handle address %p, symbol address %p", module_name, dl, common);
 
 	if (dl_symbol_init(dl_module_loader->dl_loader, dl) < 0) {
-		cf_log_err(conf, "Failed calling initializers for module \"%s\": %s", module_name, fr_strerror());
+		cf_log_perr(conf, "Failed calling initializers for module \"%s\"", module_name);
 		goto error;
 	}
 
@@ -447,7 +461,7 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
         /*
          *	Remove this instance from the tracking tree.
          */
-        rad_assert(dl_module_loader != NULL);
+        fr_assert(dl_module_loader != NULL);
         rbtree_deletebydata(dl_module_loader->inst_data_tree, dl_inst);
 
         /*
@@ -479,7 +493,6 @@ void *dl_module_instance_symbol(dl_module_inst_t const *dl_inst, char const *sym
 }
 
 /** Load a module and parse its #CONF_SECTION in one operation
- *
  *
  * When this instance is no longer needed, it should be freed with talloc_free().
  * When all instances of a particular module are unloaded, the dl handle will be closed,
@@ -632,22 +645,23 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 		return NULL;
 	}
 
-	dl_module_loader->dl_loader = dl_loader_init(NULL, lib_dir, dl_module_loader, false, true);
+	dl_module_loader->dl_loader = dl_loader_init(NULL, dl_module_loader, false, true);
 	if (!dl_module_loader) {
 		PERROR("Failed initialising dl_loader");
 	error:
 		TALLOC_FREE(dl_module_loader);
 		return NULL;
 	}
+	dl_search_path_prepend(dl_module_loader->dl_loader, lib_dir);
 
-	dl_module_loader->inst_data_tree = rbtree_talloc_create(dl_module_loader,
+	dl_module_loader->inst_data_tree = rbtree_talloc_alloc(dl_module_loader,
 							        dl_module_inst_data_cmp, dl_module_inst_t, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {
 		ERROR("Failed initialising dl->inst_data_tree");
 		goto error;
 	}
 
-	dl_module_loader->module_tree = rbtree_talloc_create(dl_module_loader,
+	dl_module_loader->module_tree = rbtree_talloc_alloc(dl_module_loader,
 							     dl_module_cmp, dl_module_t, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {
 		ERROR("Failed initialising dl->module_tree");
@@ -669,6 +683,8 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	/*
 	 *	Register dictionary autoload callbacks
 	 */
+	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
+				   DL_PRIORITY_DICT_ATTR, "dict_enum", fr_dl_dict_enum_autoload, NULL);
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
 				   DL_PRIORITY_DICT_ATTR, "dict_attr", fr_dl_dict_attr_autoload, NULL);
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,

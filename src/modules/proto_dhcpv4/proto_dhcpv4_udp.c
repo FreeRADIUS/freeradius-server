@@ -22,17 +22,18 @@
  * @copyright 2018 The FreeRADIUS server project.
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
+#define LOG_PREFIX "proto_dhcpv4_udp - "
+
 #include <netdb.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/dhcpv4/freeradius.internal.h>
 #include "proto_dhcpv4.h"
 
@@ -88,9 +89,8 @@ static const CONF_PARSER networks_config[] = {
 
 
 static const CONF_PARSER udp_listen_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_dhcpv4_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, proto_dhcpv4_udp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_dhcpv4_udp_t, ipaddr) },
-	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_dhcpv4_udp_t, ipaddr) },
 
 	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_dhcpv4_udp_t, src_ipaddr) },
 
@@ -124,12 +124,13 @@ static fr_dict_attr_t const *attr_dhcp_server_identifier;
 
 extern fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
-	{ .out = &attr_message_type, .name = "DHCP-Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
-	{ .out = &attr_dhcp_server_identifier, .name = "DHCP-DHCP-Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
+	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
+	{ .out = &attr_dhcp_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ NULL }
 };
 
-static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
+static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,
+			 size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 	fr_io_address_t			*address, **address_p;
@@ -155,17 +156,14 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	data_size = udp_recv(thread->sockfd, buffer, buffer_len, flags,
-			     &address->src_ipaddr, &address->src_port,
-			     &address->dst_ipaddr, &address->dst_port,
-			     &address->if_index, recv_time_p);
+	data_size = udp_recv(thread->sockfd, flags, &address->socket, buffer, buffer_len, recv_time_p);
 	if (data_size < 0) {
-		DEBUG2("proto_dhvpv4_udp got read error %zd: %s", data_size, fr_strerror());
+		RATE_LIMIT_GLOBAL(PERROR, "Read error (%zd)", data_size);
 		return data_size;
 	}
 
 	if (!data_size) {
-		DEBUG2("proto_dhcpv4_udp got no data: ignoring");
+		RATE_LIMIT_GLOBAL(WARN, "Got no data - ignoring");
 		return 0;
 	}
 
@@ -174,8 +172,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	packet may be smaller than the parent UDP packet.
 	 */
 	if (!fr_dhcpv4_ok(buffer, data_size, &message_type, &xid)) {
-		DEBUG2("proto_dhcpv4_udp got invalid packet, ignoring it - %s",
-			fr_strerror());
+		RATE_LIMIT_GLOBAL(PWARN, "Invalid packet - ignoring");
 		return 0;
 	}
 
@@ -187,9 +184,9 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	packet = (dhcp_packet_t *) buffer;
 	memcpy(&ipaddr, &packet->giaddr, 4);
-	if ((packet->opcode == 2) && (ipaddr != address->dst_ipaddr.addr.v4.s_addr)) {
-		DEBUG2("Ignoring server reply which was not meant for us (was for 0x%x).",
-			ntohl(address->dst_ipaddr.addr.v4.s_addr));
+	if ((packet->opcode == 2) && (ipaddr != address->socket.inet.dst_ipaddr.addr.v4.s_addr)) {
+		DEBUG2("Ignoring server reply which was not meant for us (was for %pV).",
+		       fr_box_ipaddr(address->socket.inet.dst_ipaddr));
 		return 0;
 	}
 
@@ -200,8 +197,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_dhcpv4_udp - Received %s XID %08x length %d %s",
-	       dhcp_message_types[message_type], xid,
+	DEBUG2("Received %s XID %08x length %d %s", dhcp_message_types[message_type], xid,
 	       (int) packet_len, thread->name);
 
 	return packet_len;
@@ -215,7 +211,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	proto_dhcpv4_udp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_dhcpv4_udp_thread_t);
 
 	fr_io_track_t			*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
-	fr_io_address_t			address;
+	proto_dhcpv4_track_t		*request = talloc_get_type_abort(track->packet, proto_dhcpv4_track_t);
+	fr_socket_t			socket;
 
 	int				flags;
 	ssize_t				data_size;
@@ -229,25 +226,17 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 	flags = UDP_FLAGS_CONNECTED * (thread->connection != NULL);
 
-	rad_assert(track->reply_len == 0);
-
 	/*
 	 *	Swap src/dst IP/port
 	 */
-	address.src_ipaddr = track->address->dst_ipaddr;
-	address.src_port = track->address->dst_port;
-	address.dst_ipaddr = track->address->src_ipaddr;
-	address.dst_port = track->address->src_port;
-	address.if_index = track->address->if_index;
+	fr_socket_addr_swap(&socket, &track->address->socket);
 
 	/*
 	 *	Figure out which kind of packet we're sending.
 	 */
 	if (!thread->connection) {
 		uint8_t const *code, *sid;
-		uint32_t ipaddr;
 		dhcp_packet_t *packet = (dhcp_packet_t *) buffer;
-		dhcp_packet_t *request = (dhcp_packet_t *) track->packet; /* only 20 bytes tho! */
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 		fr_ipaddr_t primary;
 #endif
@@ -257,35 +246,43 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 */
 		code = fr_dhcpv4_packet_get_option(packet, buffer_len, attr_message_type);
 		if (!code || (code[1] < 1) || (code[2] == 0) || (code[2] > FR_DHCP_LEASE_ACTIVE)) {
-			DEBUG("WARNING - silently discarding reply due to invalid or missing message type");
+			WARN("Silently discarding reply due to invalid or missing message type");
 			return 0;
 		}
 
 		/*
-		 *	Set the source IP of the packet.
+		 *	Set the source IP we'll use for sending the packets.
 		 *
 		 *	- if src_ipaddr is unicast, use that
 		 *	- else if socket wasn't bound to *, then use that
-		 *	- else if we have if_index, get main IP from that interface and use that.
+		 *	- else if we have ifindex, get main IP from that interface and use that.
 		 *	- else for offer/ack, look at option 54, for Server Identification and use that
-		 *	- else leave source IP as whatever is already in "address.src_ipaddr".
+		 *	- else leave source IP as whatever is already in "socket.inet.src_ipaddr".
 		 */
-		if (inst->src_ipaddr.addr.v4.s_addr != INADDR_ANY) {
-			address.src_ipaddr = inst->src_ipaddr;
-
-		} else if (inst->ipaddr.addr.v4.s_addr != INADDR_ANY) {
-			address.src_ipaddr = inst->ipaddr;
-
+		if (!fr_ipaddr_is_inaddr_any(&inst->src_ipaddr)) {
+			socket.inet.src_ipaddr = inst->src_ipaddr;
+		} else if (!fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+			socket.inet.src_ipaddr = inst->ipaddr;
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
-		} else if ((address->if_index > 0) &&
-			   (fr_ipaddr_from_ifindex(&primary, thread->sockfd, &address.dst_ipaddr.af,
-						   &address.if_index) == 0)) {
-			address.src_ipaddr = primary;
+		} else if ((address->socket.inet.ifindex > 0) &&
+			   (fr_ipaddr_from_ifindex(&primary, thread->sockfd, &socket.inet.dst_ipaddr.af,
+						   &socket.inet.ifindex) == 0)) {
+			socket.inet.src_ipaddr = primary;
 #endif
 		} else if (((code[2] == FR_DHCP_OFFER) || (code[2] == FR_DHCP_ACK)) &&
 			   ((sid = fr_dhcpv4_packet_get_option(packet, buffer_len, attr_dhcp_server_identifier)) != NULL) &&
 			   (sid[1] == 4)) {
-			memcpy(&address.src_ipaddr.addr.v4.s_addr, sid + 2, 4);
+			memcpy(&socket.inet.src_ipaddr.addr.v4.s_addr, sid + 2, 4);
+		}
+
+		/*
+		 *	If we're forwarding the Discover or Request,
+		 *	then we need to figure out where to forward it
+		 *	to?
+		 */
+		if ((code[2] == FR_DHCP_DISCOVER) || (code[2] == FR_DHCP_REQUEST)) {
+			WARN("Silently discarding client request, as we do not know where to send it");
+			return 0;
 		}
 
 		/*
@@ -293,13 +290,20 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	there.  The packet is FROM our IP address and
 		 *	port, TO the destination IP address, at the
 		 *	same (i.e. server) port.
+		 *
+		 *	RFC 2131 page 23
+		 *
+		 *	"If the 'giaddr' field in a DHCP message from
+		 *	a client is non-zero, the server sends any
+		 *	return messages to the 'DHCP server' port on
+		 *	the BOOTP relay agent whose address appears in
+		 *	'giaddr'.
 		 */
-		memcpy(&ipaddr, &packet->giaddr, 4);
-		if (ipaddr != INADDR_ANY) {
+		if (packet->giaddr != INADDR_ANY) {
 			DEBUG("Reply will be sent to giaddr.");
-			address.dst_ipaddr.addr.v4.s_addr = ipaddr;
-			address.dst_port = inst->port;
-			address.src_port = inst->port;
+			socket.inet.dst_ipaddr.addr.v4.s_addr = packet->giaddr;
+			socket.inet.dst_port = inst->port;
+			socket.inet.src_port = inst->port;
 
 			/*
 			 *	Increase the hop count for client
@@ -316,36 +320,53 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			goto send_reply;
 		}
 
-		/*
-		 *	If there's no GIADDR, we don't know where to
-		 *	send client packets.
-		 */
-		if ((code[2] == FR_DHCP_DISCOVER) || (code[2] == FR_DHCP_REQUEST)) {
-			DEBUG("WARNING - silently discarding client reply, as there is no GIADDR to send it to.");
-			return 0;
-		}
-
 		packet->opcode = 2; /* server message */
 
 		/*
-		 *	The original packet requested a broadcast
-		 *	reply, and CIADDR is empty, go broadcast the
-		 *	reply.  RFC 2131 page 23.
+		 *	NAKs are broadcast when there's no giaddr.
+		 *
+		 *	RFC 2131 page 23.
+		 *
+		 *	"In all cases, when 'giaddr' is zero, the server
+		 *	broadcasts any DHCPNAK messages to 0xffffffff."
 		 */
-		if (((request->flags & FR_DHCP_FLAGS_VALUE_BROADCAST) != 0) &&
-		    (request->ciaddr == INADDR_ANY)) {
-			DEBUG("Reply will be broadcast due to client request.");
-			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+		if (code[2] == FR_DHCP_NAK) {
+			DEBUG("Reply will be broadcast due to NAK.");
+			socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			goto send_reply;
 		}
 
 		/*
 		 *	The original packet has CIADDR, so we unicast
-		 *	the reply there.  RFC 2131 page 23.
+		 *	the reply there.
+		 *
+		 *	RFC 2131 page 23.
+		 *
+		 *	"If the 'giaddr' field is zero and the
+		 *	'ciaddr' field is nonzero, then the server
+		 *	unicasts DHCPOFFER and DHCPACK messages to the
+		 *	address in 'ciaddr'."
 		 */
 		if (request->ciaddr != INADDR_ANY) {
 			DEBUG("Reply will be unicast to CIADDR from original packet.");
-			memcpy(&address.dst_ipaddr.addr.v4.s_addr, &request->ciaddr, 4);
+			memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &request->ciaddr, 4);
+			goto send_reply;
+		}
+
+		/*
+		 *	The original packet requested a broadcast
+		 *	reply, so we broadcast the reply.
+		 *
+		 *	RFC 2131 page 23.
+		 *
+		 *	"If 'giaddr' is zero and 'ciaddr' is zero, and
+		 *	the broadcast bit is set, then the server
+		 *	broadcasts DHCPOFFER and DHCPACK messages to
+		 *	0xffffffff."
+		 */
+		if (request->broadcast) {
+			DEBUG("Reply will be broadcast due to client request.");
+			socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			goto send_reply;
 		}
 
@@ -353,16 +374,27 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		 *	The original packet was unicast to us, such as
 		 *	via a relay.  We have a unicast destination
 		 *	address, so we just use that.
+		 *
+		 *	This extension isn't in the RFC, but we find it useful.
 		 */
 		if ((packet->yiaddr == htonl(INADDR_ANY)) &&
-		    (address.dst_ipaddr.addr.v4.s_addr != htonl(INADDR_BROADCAST))) {
+		    (socket.inet.dst_ipaddr.addr.v4.s_addr != htonl(INADDR_BROADCAST))) {
 			DEBUG("Reply will be unicast to source IP from original packet.");
 			goto send_reply;
 		}
 
+		/*
+		 *	RFC 2131 page 23.
+		 *
+		 *	"If the broadcast bit is not set and 'giaddr'
+		 *	is zero and 'ciaddr' is zero, then the server
+		 *	unicasts DHCPOFFER and DHCPACK messages to the
+		 *	client's hardware address and 'yiaddr'
+		 *	address."
+		 */
 		switch (code[2]) {
 			/*
-			 *	Offers are sent to YIADDR if we
+			 *	OFFERs are sent to YIADDR if we
 			 *	received a unicast packet from YIADDR.
 			 *	Otherwise, they are unicast to YIADDR
 			 *	(if we can update ARP), otherwise they
@@ -371,25 +403,48 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		case FR_DHCP_OFFER:
 			/*
 			 *	If the packet was unicast from the
-			 *	client, unicast it back.
+			 *	client, unicast it back without
+			 *	updating the ARP table.  We presume
+			 *	that the ARP table has been updated by
+			 *	the OS, since we received a unicast
+			 *	packet.
+			 *
+			 *	This check simply makes sure that we
+			 *	don't needlessly update the ARP table.
 			 */
-			if (memcmp(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4) == 0) {
+			if (memcmp(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4) == 0) {
 				DEBUG("Reply will be unicast to YIADDR.");
 
 #ifdef SIOCSARP
 			} else if (inst->broadcast && inst->interface) {
-				if (fr_dhcpv4_udp_add_arp_entry(thread->sockfd, inst->interface,
-								&packet->yiaddr, &packet->chaddr) < 0) {
-					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
-					address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+				uint8_t macaddr[6];
+				uint8_t ipaddr[4];
+
+				memcpy(&ipaddr, &packet->yiaddr, 4);
+				memcpy(&macaddr, &packet->chaddr, 6);
+
+				/*
+				 *	Else the OFFER was broadcast.
+				 *	This socket is listening for
+				 *	broadcast packets on a
+				 *	particular interface.  We're
+				 *	too lazy to write raw UDP
+				 *	packets, so we update our
+				 *	local ARP table and then
+				 *	unicast the reply.
+				 */
+				if (fr_arp_entry_add(thread->sockfd, inst->interface, ipaddr, macaddr) == 0) {
+					DEBUG("Reply will be unicast to YIADDR, done ARP table updates.");
+					memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 				} else {
-					DEBUG("Reply will be unicast to YIADDR after ARP table updates.");
+					DEBUG("Failed adding ARP entry.  Reply will be broadcast.");
+					socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 				}
 
 #endif
 			} else {
-				DEBUG("Reply will be broadcast due to OFFER.");
-				address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+				DEBUG("Reply will be broadcast as we do not create raw UDP sockets.");
+				socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			}
 			break;
 
@@ -398,19 +453,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			 */
 		case FR_DHCP_ACK:
 			DEBUG("Reply will be unicast to YIADDR.");
-			memcpy(&address.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
-			break;
-
-			/*
-			 *	NAKs are broadcast.
-			 */
-		case FR_DHCP_NAK:
-			DEBUG("Reply will be broadcast due to NAK.");
-			address.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+			memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 			break;
 
 		default:
-			DEBUG("WARNING - silently discarding reply due to invalid message type %d", code[2]);
+			WARN("Silently discarding reply due to unimplemented message type %d", code[2]);
 			return 0;
 		}
 	}
@@ -419,10 +466,7 @@ send_reply:
 	/*
 	 *	proto_dhcpv4 takes care of suppressing do-not-respond, etc.
 	 */
-	data_size = udp_send(thread->sockfd, buffer, buffer_len, flags,
-			     &address.src_ipaddr, address.src_port,
-			     address.if_index,
-			     &address.dst_ipaddr, address.dst_port);
+	data_size = udp_send(&socket, flags, buffer, buffer_len);
 
 	/*
 	 *	This socket is dead.  That's an error...
@@ -462,8 +506,6 @@ static int mod_open(fr_listen_t *li)
 
 	int				sockfd, rcode;
 	uint16_t			port = inst->port;
-	CONF_SECTION			*server_cs;
-	CONF_ITEM			*ci;
 
 	li->fd = sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -472,13 +514,13 @@ static int mod_open(fr_listen_t *li)
 		return -1;
 	}
 
-	li->app_io_addr = fr_app_io_socket_addr(li, IPPROTO_UDP, &inst->ipaddr, port);
+	li->app_io_addr = fr_socket_addr_alloc_inet_src(li, IPPROTO_UDP, 0, &inst->ipaddr, port);
 
 	/*
 	 *	Set SO_REUSEPORT before bind, so that all packets can
 	 *	listen on the same destination IP address.
 	 */
-	if (1) {
+	{
 		int on = 1;
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
@@ -498,12 +540,7 @@ static int mod_open(fr_listen_t *li)
 		}
 	}
 
-	/*
-	 *	SUID up is really only needed if interface is set, OR port <1024.
-	 */
-	rad_suid_up();
 	rcode = fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface);
-	rad_suid_down();
 	if (rcode < 0) {
 		close(sockfd);
 		PERROR("Failed binding socket");
@@ -512,20 +549,12 @@ static int mod_open(fr_listen_t *li)
 
 	thread->sockfd = sockfd;
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
-	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
-
-	server_cs = cf_item_to_section(ci);
+	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
 					     NULL, 0,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
-
-	DEBUG("Listening on dhcpv4 address %s bound to virtual server %s",
-	      thread->name, cf_section_name2(server_cs));
 
 	return 0;
 }
@@ -542,13 +571,81 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	thread->sockfd = fd;
 
 	thread->name = fr_app_io_socket_name(thread, &proto_dhcpv4_udp,
-					     &thread->connection->src_ipaddr, thread->connection->src_port,
+					     &thread->connection->socket.inet.src_ipaddr,
+					     thread->connection->socket.inet.src_port,
 					     &inst->ipaddr, inst->port,
 					     inst->interface);
 
 	return 0;
 }
 
+
+static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len)
+{
+	proto_dhcpv4_track_t *track;
+	dhcp_packet_t const *dhcp = (dhcp_packet_t const *) packet;
+	uint8_t const  *option;
+
+	option = fr_dhcpv4_packet_get_option(dhcp, packet_len, attr_message_type);
+	if (!option || (option[1] == 0)) {
+		DEBUG("No %s in the packet - ignoring", attr_message_type->name);
+		return NULL;
+	}
+
+	track = talloc_zero(ctx, proto_dhcpv4_track_t);
+	if (!track) return NULL;
+
+	memcpy(&track->xid, &dhcp->xid, sizeof(track->xid));
+
+	track->message_type = option[2];
+
+	/*
+	 *	Track most packets by chaddr.  For lease queries, that
+	 *	field can be the client address being queried, not the
+	 *	address of the system which sent the packet.  So
+	 *	instead for lease queries, we use giaddr, which MUST
+	 *	exist according to RFC 4388 Section 6.3
+	 */
+	if (option[2] != FR_DHCP_LEASE_QUERY) {
+		if (dhcp->hlen == 6) memcpy(&track->chaddr, &dhcp->chaddr, 6);
+	}
+
+	track->broadcast = ((dhcp->flags & FR_FLAGS_VALUE_BROADCAST) != 0);
+	track->hops = dhcp->hops;
+	memcpy(&track->ciaddr, &dhcp->ciaddr, sizeof(track->ciaddr));
+	memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));
+
+	return track;
+}
+
+static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+		       void const *one, void const *two)
+{
+	int ret;
+	proto_dhcpv4_track_t const *a = one;
+	proto_dhcpv4_track_t const *b = two;
+
+	/*
+	 *	The tree is ordered by XIDs, which are (hopefully)
+	 *	pseudo-randomly distributed.
+	 */
+	ret = memcmp(&a->xid, &b->xid, sizeof(a->xid));
+	if (ret != 0) return ret;
+
+	/*
+	 *	Hardware addresses should also be randomly distributed.
+	 */
+	ret = memcmp(&a->chaddr, &b->chaddr, sizeof(a->chaddr));
+	if (ret != 0) return ret;
+
+	/*
+	 *	Compare giaddr, but not ciaddr
+	 */
+	ret = memcmp(&a->giaddr, &b->giaddr, sizeof(a->giaddr));
+	if (ret != 0) return ret;
+
+	return (a->message_type < b->message_type) - (a->message_type > b->message_type);
+}
 
 static char const *mod_name(fr_listen_t *li)
 {
@@ -628,8 +725,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	If we're listening for broadcast requests, we MUST
 	 */
 	if (inst->broadcast && !inst->interface) {
-		cf_log_warn("You SHOULD set 'interface' if you have set 'broadcast = yes'.");
-		cf_log_warn("All replies will be broadcast, as ARP updates require 'interface' to be set.")
+		cf_log_warn(cs, "You SHOULD set 'interface' if you have set 'broadcast = yes'.");
+		cf_log_warn(cs, "All replies will be broadcast, as ARP updates require 'interface' to be set.");
 	}
 #endif
 
@@ -646,15 +743,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
 		if (!inst->trie) {
-			cf_log_err(cs, "Failed creating list of networks - %s", fr_strerror());
+			cf_log_perr(cs, "Failed creating list of networks");
 			return -1;
 		}
 	}
 
 	ci = cf_parent(inst->cs); /* listen { ... } */
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
-	rad_assert(ci != NULL);
+	fr_assert(ci != NULL);
 
 	server_cs = cf_item_to_section(ci);
 
@@ -714,11 +811,14 @@ fr_app_io_t proto_dhcpv4_udp = {
 	.bootstrap		= mod_bootstrap,
 
 	.default_message_size	= 4096,
+	.track_duplicates	= true,
 
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
+	.track			= mod_track_create,
+	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,

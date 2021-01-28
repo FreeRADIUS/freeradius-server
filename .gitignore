@@ -6,8 +6,6 @@
 *.la
 *.so
 *.lai
-*.bz2
-*.gz
 *.sig
 *.orig
 *.rej
@@ -25,6 +23,7 @@
 *.orig
 *.dSYM
 *.patch
+*.sock
 .pc
 
 # Editor projects
@@ -76,3 +75,6 @@ run.sh
 # rpm packages
 rpmbuild/
 /install
+
+# fuzzer output files
+crash-*

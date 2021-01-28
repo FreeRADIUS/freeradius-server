@@ -26,10 +26,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/time.h>
 
 /*
  *	Avoid too many ifdef's later in the code.
@@ -171,6 +172,8 @@ int fr_time_start(void)
  *  Human (i.e. printable) time is something else.
  *
  * @returns fr_time_t time in nanoseconds since the server our_epoch.
+ *
+ * @hidecallergraph
  */
 fr_time_t fr_time(void)
 {
@@ -203,7 +206,6 @@ fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
 {
 	return when + atomic_load_explicit(&our_realtime, memory_order_consume);
 }
-
 
 /** Convert an fr_time_t (internal time) to number of usec since the unix epoch (wallclock time)
  *
@@ -251,6 +253,45 @@ fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
  *	- <0 number of nanoseconds before the server started.
  */
 fr_time_t fr_time_from_sec(time_t when)
+{
+	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert msec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_msec(int64_t when)
+{
+	return (((fr_time_t) when) * MSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert usec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_usec(int64_t when)
+{
+	return (((fr_time_t) when) * USEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert a nsec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+fr_time_t fr_time_from_nsec(int64_t when)
 {
 	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
@@ -307,7 +348,6 @@ int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
 	return -1;
 }
 
-
 /** Create fr_time_delta_t from a string
  *
  * @param[out] out	Where to write fr_time_delta_t
@@ -361,7 +401,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 */
 		while ((*p >= '0') && (*p <= '9')) {
 			if (len > 9) {
-				fr_strerror_printf("Too much precision for time_delta");
+				fr_strerror_const("Too much precision for time_delta");
 			}
 
 			sec *= 10;
@@ -501,6 +541,56 @@ done:
 	return 0;
 }
 
+DIAG_OFF(format-nonliteral)
+/** Copy a time string (local timezone) to an sbuff
+ *
+ * @param[in] out	Where to write the formatted time string.
+ * @param[in] time	Internal server time to convert to wallclock
+ *			time and copy out as formatted string.
+ * @param[in] fmt	Time format string.
+ * @return
+ *	- >0 the number of bytes written to the sbuff.
+ *	- 0 if there's insufficient space in the sbuff.
+ */
+size_t fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt)
+{
+	struct tm	tm;
+	time_t		utime = fr_time_to_sec(time);
+	size_t		len;
+
+	localtime_r(&utime, &tm);
+
+	len = strftime(fr_sbuff_current(out), fr_sbuff_remaining(out), fmt, &tm);
+	if (len == 0) return 0;
+
+	return fr_sbuff_advance(out, len);
+}
+
+/** Copy a time string (UTC) to an sbuff
+ *
+ * @param[in] out	Where to write the formatted time string.
+ * @param[in] time	Internal server time to convert to wallclock
+ *			time and copy out as formatted string.
+ * @param[in] fmt	Time format string.
+ * @return
+ *	- >0 the number of bytes written to the sbuff.
+ *	- 0 if there's insufficient space in the sbuff.
+ */
+size_t fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)
+{
+	struct tm	tm;
+	time_t		utime = fr_time_to_sec(time);
+	size_t		len;
+
+	gmtime_r(&utime, &tm);
+
+	len = strftime(fr_sbuff_current(out), fr_sbuff_remaining(out), fmt, &tm);
+	if (len == 0) return 0;
+
+	return fr_sbuff_advance(out, len);
+}
+DIAG_ON(format-nonliteral)
+
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
 {
 	fr_time_t delay;
@@ -577,4 +667,24 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 				prefix, names[i], tabs, tab_string, elapsed->array[i]);
 		}
 	}
+}
+
+/*
+ *	Based on https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html
+ */
+time_t fr_time_from_utc(struct tm *tm)
+{
+	static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
+						181, 212, 243, 273, 304, 334};
+
+	uint32_t year_adj = tm->tm_year + 4800 + 1900;  /* Ensure positive year, multiple of 400. */
+	uint32_t febs = year_adj - (tm->tm_mon <= 2 ? 1 : 0);  /* Februaries since base. */
+	uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
+	uint32_t days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
+
+	/*
+	 *	2472692 adjusts the days for Unix epoch.  It is calculated as
+	 *	(365.2425 * (4800 + 1970))
+	 */
+	return (days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec;
 }

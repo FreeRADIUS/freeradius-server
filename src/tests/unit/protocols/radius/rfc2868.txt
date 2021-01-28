@@ -1,0 +1,111 @@
+# Load libfreeradius-radius
+proto radius
+proto-dictionary radius
+
+#
+#  The salt is taken from fr_fast_rand(), with a seed set
+#  in src/protocols/radius/encode.c, of { 6809, 2112 }
+#
+#  In normal operation, the seed is taken from fr_rand()
+#
+encode-pair Tunnel-Password := "foo"
+match 45 15 00 8e 93 e4 f7 68 1f 3d b7 b9 25 10 83 2a 9b 19 90 33 0a
+
+decode-pair -
+match Tunnel-Password = "foo"
+
+#
+#  Note that the first tunnel password is encoded exactly the same as above.
+#
+#  The second one has it's own salt, which includes a counter to guarantee uniqueness.
+#
+encode-pair Tunnel-Password := "foo", Tunnel-Password := "bar"
+match 45 15 00 8e 93 e4 f7 68 1f 3d b7 b9 25 10 83 2a 9b 19 90 33 0a 45 15 00 94 b0 ca bf ee 00 05 c7 b8 95 4c ef 14 d5 8a d2 d1 db
+
+decode-pair -
+match Tunnel-Password = "foo", Tunnel-Password = "bar"
+
+#
+#  A different password results in the salt staying the same, but a
+#  different encoded password.  Note that the entire encoded string
+#  is different.
+#
+encode-pair Tunnel-Password := "barbar"
+match 45 15 00 86 04 91 2d e8 4f 18 62 f8 2e a8 d3 09 99 e8 35 cc 7c
+
+decode-pair -
+match Tunnel-Password = "barbar"
+
+#
+#  Integer attributes
+#
+encode-pair Tunnel-Type = PPTP
+match 40 06 00 00 00 01
+
+decode-pair -
+match Tunnel-Type = PPTP
+
+decode-pair 40 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = PPTP }
+
+encode-pair -
+match 40 06 01 00 00 01
+
+#
+#  Two of the same tags, they're grouped together.
+#
+decode-pair 40 06 01 00 00 01 41 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }
+
+encode-pair -
+match 40 06 01 00 00 01 41 06 01 00 00 01
+
+#
+# tag1, tag2, tag1 --> { tag1, tag1 }, tag2
+#
+decode-pair 40 06 01 00 00 01 40 06 02 00 00 01 41 06 01 00 00 01
+match Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }, Tag-2 = { Tunnel-Type = PPTP }
+
+#
+#  The "encode" will group attributes by tag value, unlike the input packet.
+#
+encode-pair -
+match 40 06 01 00 00 01 41 06 01 00 00 01 40 06 02 00 00 01
+
+#
+#  Tags are aggregated across the entire packet, too.
+#
+decode-proto 01 01 00 26 00000000000000000000000000000000 40 06 01 00 00 01 40 06 02 00 00 01 41 06 01 00 00 01
+match Packet-Type = Access-Request, Packet-Authentication-Vector = 0x00000000000000000000000000000000, Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }, Tag-2 = { Tunnel-Type = PPTP }
+
+#
+#  and we encode the tags in order in the packet.
+#
+encode-proto -
+match 01 00 00 26 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 40 06 01 00 00 01 41 06 01 00 00 01 40 06 02 00 00 01
+
+# Invalid tag on decoding
+decode-pair 40 06 20 00 00 01
+match raw.Tunnel-Type = 0x20000001
+
+#
+#  String attributes
+#
+encode-pair Tunnel-Client-Endpoint = "foo"
+match 42 05 66 6f 6f
+
+decode-pair -
+match Tunnel-Client-Endpoint = "foo"
+
+#
+# The first byte of the string looks like a tag.  In order to avoid
+# confusion, we encode a zero tag.
+#
+encode-pair Tunnel-Client-Endpoint = "\001\002\003"
+match 42 06 00 01 02 03
+
+decode-pair -
+match Tunnel-Client-Endpoint = "\001\002\003"
+
+count
+match 44

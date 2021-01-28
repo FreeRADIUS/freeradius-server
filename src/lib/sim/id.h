@@ -94,13 +94,13 @@ ssize_t		fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 int		fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
 			       char const *id, size_t id_len);
 
-int		fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
+int		fr_sim_id_3gpp_pseudonym_encrypt(char out[static SIM_3GPP_PSEUDONYM_LEN + 1],
 						 char const *imsi, size_t imsi_len,
 						 uint8_t tag,  uint8_t key_ind, uint8_t const key[16]);
 
-uint8_t		fr_sim_id_3gpp_pseudonym_tag(char const encr_id[SIM_3GPP_PSEUDONYM_LEN]);
+uint8_t		fr_sim_id_3gpp_pseudonym_tag(char const encr_id[static SIM_3GPP_PSEUDONYM_LEN]);
 
-uint8_t		fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[SIM_3GPP_PSEUDONYM_LEN]);
+uint8_t		fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[static SIM_3GPP_PSEUDONYM_LEN]);
 
 int		fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN],
-				     		 char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[16]);
+				     		 char const encr_id[static SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[16]);

@@ -95,7 +95,7 @@ fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
 	{ .out = &attr_soh_supported, .name = "SoH-Supported", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_freeradius_proxied_to, .name = "FreeRADIUS-Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
@@ -117,6 +117,7 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	t->soh = inst->soh;
 	t->soh_virtual_server = inst->soh_virtual_server;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
+	fr_pair_list_init(&t->soh_reply_vps);
 
 	return t;
 }
@@ -124,16 +125,16 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request);
-static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	rlm_eap_peap_t		*inst = talloc_get_type(mctx->instance, rlm_eap_peap_t);
+
 	rlm_rcode_t		rcode;
 	eap_tls_status_t	status;
 
-	rlm_eap_peap_t		*inst = talloc_get_type(instance, rlm_eap_peap_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 	peap_tunnel_t		*peap = NULL;
 
 	if (tls_session->opaque) {
@@ -176,7 +177,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		 *	and EAP id from the inner tunnel, and update it with
 		 *	the expected EAP id!
 		 */
-		return RLM_MODULE_HANDLED;
+		RETURN_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -189,7 +190,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	 *	Anything else: fail.
 	 */
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -207,7 +208,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	rcode = eap_peap_process(request, eap_session, tls_session);
+	eap_peap_process(&rcode, request, eap_session, tls_session);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(request, eap_session);
@@ -226,7 +227,7 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		 */
 		if (eap_tls_success(request, eap_session,
 				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    NULL, 0) < 0) return 0;
+				    NULL, 0) < 0) RETURN_MODULE_RCODE(rcode);
 	}
 		break;
 
@@ -244,19 +245,19 @@ static rlm_rcode_t mod_process(void *instance, UNUSED void *thread, REQUEST *req
 		break;
 	}
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_peap_t		*inst = talloc_get_type_abort(instance, rlm_eap_peap_t);
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_peap_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session;
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	bool			client_cert;
 
 	eap_session->tls = true;
@@ -265,7 +266,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_da(request->control, attr_eap_tls_require_client_cert, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_tls_require_client_cert);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {
@@ -273,7 +274,7 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	}
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return RLM_MODULE_FAIL;
+	if (!eap_tls_session) RETURN_MODULE_FAIL;
 
 	/*
 	 *	As it is a poorly designed protocol, PEAP uses
@@ -299,12 +300,12 @@ static rlm_rcode_t mod_session_init(void *instance, UNUSED void *thread, REQUEST
 	 */
 	if (eap_tls_start(request, eap_session) < 0) {
 		talloc_free(eap_tls_session);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*

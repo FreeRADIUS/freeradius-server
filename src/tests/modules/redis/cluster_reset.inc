@@ -22,7 +22,7 @@ update control {
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 	update control {
-		&Tmp-String-8 := 'scripts/travis/redis-setup.sh'
+		&Tmp-String-8 := 'scripts/ci/redis-setup.sh'
 	}
 } else {
 	update control {
@@ -34,10 +34,10 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 #  Reset the cluster
 #
 update control {
-	&Tmp-String-0 = `%{control:Tmp-String-8} stop`
-	&Tmp-String-0 = `%{control:Tmp-String-8} clean`
-	&Tmp-String-0 = `%{control:Tmp-String-8} start`
-	&Tmp-String-0 = `%{control:Tmp-String-8} create`
+	&Tmp-String-0 = `%{control.Tmp-String-8} stop`
+	&Tmp-String-0 = `%{control.Tmp-String-8} clean`
+	&Tmp-String-0 = `%{control.Tmp-String-8} start`
+	&Tmp-String-0 = `%{control.Tmp-String-8} create`
 }
 
 #
@@ -59,23 +59,23 @@ if (!&Tmp-String-0 || (&Tmp-String-0 == '')) {
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-foreach &control:Tmp-Integer-0 {
+foreach &control.Tmp-Integer-0 {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
 	if ("%{redis_remap:%{Tmp-String-0}:30001}" == 'success') {
 		#  Hashes to Redis cluster node master 0 (1)
-		if (("%{redis:SET b '%{control:Tmp-String-0}'}" == 'OK') && \
-		    ("%{redis:SET c '%{control:Tmp-String-1}'}" == 'OK') && \
-		    ("%{redis:SET d '%{control:Tmp-String-2}'}" == 'OK')) {
+		if (("%{redis:SET b '%{control.Tmp-String-0}'}" == 'OK') && \
+		    ("%{redis:SET c '%{control.Tmp-String-1}'}" == 'OK') && \
+		    ("%{redis:SET d '%{control.Tmp-String-2}'}" == 'OK')) {
 			#
 			#  The actual node to keyslot mapping seems to be somewhat random
 			#  so we now need to figure out which slave each of those keys
 			#  ended up on.
 			#
-			if (("%{redis:-@%{redis_node:b 1} GET b}" == "%{control:Tmp-String-0}") && \
-			    ("%{redis:-@%{redis_node:c 1} GET c}" == "%{control:Tmp-String-1}") && \
-			    ("%{redis:-@%{redis_node:d 1} GET d}" == "%{control:Tmp-String-2}")) {
+			if (("%{redis:-@%{redis_node:b 1} GET b}" == "%{control.Tmp-String-0}") && \
+			    ("%{redis:-@%{redis_node:c 1} GET c}" == "%{control.Tmp-String-1}") && \
+			    ("%{redis:-@%{redis_node:d 1} GET d}" == "%{control.Tmp-String-2}")) {
 				break
 			}
 		}

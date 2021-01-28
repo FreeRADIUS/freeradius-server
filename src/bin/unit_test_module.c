@@ -28,19 +28,16 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/server/state.h>
-
-#include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/radius/radius.h>
-
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/tls/base.h>
 
 #include <freeradius-devel/unlang/base.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/radius/radius.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -58,32 +55,22 @@ do { \
  *  Global variables.
  */
 static bool filedone = false;
+static int my_debug_lvl = 0;
 
-char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
+char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unit_test_module");
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
+static fr_dict_t const *dict_protocol;
+
+#define PROTOCOL_NAME unit_test_module_dict[1].proto
 
 extern fr_dict_autoload_t unit_test_module_dict[];
 fr_dict_autoload_t unit_test_module_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_protocol, .proto = "radius" }, /* hacked in-place with '-p protocol' */
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_chap_password;
-static fr_dict_attr_t const *attr_digest_algorithm;
-static fr_dict_attr_t const *attr_digest_attributes;
-static fr_dict_attr_t const *attr_digest_body_digest;
-static fr_dict_attr_t const *attr_digest_cnonce;
-static fr_dict_attr_t const *attr_digest_method;
-static fr_dict_attr_t const *attr_digest_nonce_count;
-static fr_dict_attr_t const *attr_digest_nonce;
-static fr_dict_attr_t const *attr_digest_qop;
-static fr_dict_attr_t const *attr_digest_realm;
-static fr_dict_attr_t const *attr_digest_uri;
-static fr_dict_attr_t const *attr_digest_user_name;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_dst_port;
@@ -91,36 +78,17 @@ static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_ipv6_address;
 static fr_dict_attr_t const *attr_packet_src_port;
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_state;
-static fr_dict_attr_t const *attr_user_name;
-static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t unit_test_module_dict_attr[];
 fr_dict_attr_autoload_t unit_test_module_dict_attr[] = {
-	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_digest_algorithm, .name = "Digest-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_body_digest, .name = "Digest-Body-Digest", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_cnonce, .name = "Digest-CNonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_method, .name = "Digest-Method", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce, .name = "Digest-Nonce", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_nonce_count, .name = "Digest-Nonce-Count", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_qop, .name = "Digest-QOP", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_realm, .name = "Digest-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_uri, .name = "Digest-URI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_digest_user_name, .name = "Digest-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ip_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_protocol },
 
-	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_digest_attributes, .name = "Digest-Attributes", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -161,51 +129,49 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	client = client_afrom_cs(ctx, cs, NULL);
 	if (!client) {
 		PERROR("Failed creating test client");
-		rad_assert(0);
+		fr_assert(0);
 	}
 	talloc_steal(client, cs);
-	rad_assert(client);
+	fr_assert(client);
 
 	return client;
 }
 
-static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
+static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
 {
-	VALUE_PAIR	*vp;
-	REQUEST		*request;
-	fr_cursor_t	cursor;
+	fr_pair_t	*vp;
+	request_t	*request;
+	fr_dcursor_t	cursor;
 
 	static int	number = 0;
 
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc(ctx);
-
+	request = request_local_alloc(ctx, NULL);
 	/*
 	 *	FIXME - Should be less RADIUS centric, but everything
 	 *	else assumes RADIUS at the moment so we can fix this later.
 	 */
-	request->dict = fr_dict_by_protocol_name("radius");
+	request->dict = fr_dict_by_protocol_name(PROTOCOL_NAME);
 	if (!request->dict) {
-		ERROR("RADIUS dictionary failed to load");
+		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
+	error:
 		talloc_free(request);
 		return NULL;
 	}
 
-	request->packet = fr_radius_alloc(request, false);
+	request->packet = fr_radius_packet_alloc(request, false);
 	if (!request->packet) {
-		ERROR("No memory");
-		talloc_free(request);
-		return NULL;
+		fr_strerror_const("No memory");
+		goto error;
 	}
 	request->packet->timestamp = fr_time();
 
-	request->reply = fr_radius_alloc(request, false);
+	request->reply = fr_radius_packet_alloc(request, false);
 	if (!request->reply) {
-		ERROR("No memory");
-		talloc_free(request);
-		return NULL;
+		fr_strerror_const("No memory");
+		goto error;
 	}
 
 	request->client = client;
@@ -215,40 +181,63 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 
 	request->master_state = REQUEST_ACTIVE;
 	request->server_cs = virtual_server_find("default");
-	rad_assert(request->server_cs != NULL);
+	fr_assert(request->server_cs != NULL);
 
 	request->config = main_config;
 
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->packet, dict_radius, &request->packet->vps, fp, &filedone) < 0) {
-		fr_perror("%s", main_config->name);
-		talloc_free(request);
-		return NULL;
+	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
+		goto error;
 	}
 
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_packet_type);
+	if (!vp) {
+		fr_strerror_printf("Input packet does not specify a Packet-Type");
+		goto error;
+	}
 	/*
 	 *	Set the defaults for IPs, etc.
 	 */
-	request->packet->code = FR_CODE_ACCESS_REQUEST;
-
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.prefix = 32;
-	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->src_port = 18120;
-
-	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_ipaddr.prefix = 32;
-	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->dst_port = 1812;
+	request->packet->code = vp->vp_uint32;
 
 	/*
-	 *	Fix up Digest-Attributes issues
+	 *	Now delete the packet-type to ensure
+	 *	the virtual attribute gets used in
+	 *	the tests.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	fr_pair_delete_by_da(&request->request_pairs, attr_packet_type);
+
+	request->packet->socket = (fr_socket_t){
+		.proto = IPPROTO_UDP,
+		.inet = {
+			.src_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.src_port = 18120,
+			.dst_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.dst_port = 1812
+		}
+	};
+
+	for (vp = fr_dcursor_init(&cursor, &request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		/*
 		 *	Double quoted strings get marked up as xlat expansions,
 		 *	but we don't support that here.
@@ -262,105 +251,30 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 		if (vp->da == attr_packet_type) {
 			request->packet->code = vp->vp_uint32;
 		} else if (vp->da == attr_packet_dst_port) {
-			request->packet->dst_port = vp->vp_uint16;
+			request->packet->socket.inet.dst_port = vp->vp_uint16;
 		} else if ((vp->da == attr_packet_dst_ip_address) ||
 			   (vp->da == attr_packet_dst_ipv6_address)) {
-			memcpy(&request->packet->dst_ipaddr, &vp->vp_ip, sizeof(request->packet->dst_ipaddr));
+			memcpy(&request->packet->socket.inet.dst_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.dst_ipaddr));
 		} else if (vp->da == attr_packet_src_port) {
-			request->packet->src_port = vp->vp_uint16;
+			request->packet->socket.inet.src_port = vp->vp_uint16;
 		} else if ((vp->da == attr_packet_src_ip_address) ||
 			   (vp->da == attr_packet_src_ipv6_address)) {
-			memcpy(&request->packet->src_ipaddr, &vp->vp_ip, sizeof(request->packet->src_ipaddr));
-		} else if (vp->da == attr_chap_password) {
-			int i, already_hex = 0;
-
-			/*
-			 *	If it's 17 octets, it *might* be already encoded.
-			 *	Or, it might just be a 17-character password (maybe UTF-8)
-			 *	Check it for non-printable characters.  The odds of ALL
-			 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
-			 *	or 1/(2^51), which is pretty much zero.
-			 */
-			if (vp->vp_length == 17) {
-				for (i = 0; i < 17; i++) {
-					if (vp->vp_octets[i] < 32) {
-						already_hex = 1;
-						break;
-					}
-				}
-			}
-
-			/*
-			 *	Allow the user to specify ASCII or hex CHAP-Password
-			 */
-			if (!already_hex) {
-				uint8_t *p;
-				size_t len, len2;
-
-				len = len2 = vp->vp_length;
-				if (len2 < 17) len2 = 17;
-
-				p = talloc_zero_array(vp, uint8_t, len2);
-
-				memcpy(p, vp->vp_strvalue, len);
-
-				fr_radius_encode_chap_password(p, request->packet, fr_rand() & 0xff, vp);
-				vp->vp_octets = p;
-				vp->vp_length = 17;
-			}
-		} else if ((vp->da == attr_digest_realm) ||
-			   (vp->da == attr_digest_nonce) ||
-			   (vp->da == attr_digest_method) ||
-			   (vp->da == attr_digest_uri) ||
-			   (vp->da == attr_digest_qop) ||
-			   (vp->da == attr_digest_algorithm) ||
-			   (vp->da == attr_digest_body_digest) ||
-			   (vp->da == attr_digest_cnonce) ||
-			   (vp->da == attr_digest_user_name)) {
-			uint8_t *p, *q;
-
-			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
-
-			memcpy(p + 2, vp->vp_octets, vp->vp_length);
-			p[0] = vp->da->attr - attr_digest_realm->attr + 1;
-			vp->vp_length += 2;
-			p[1] = vp->vp_length;
-
-			vp->da = attr_digest_attributes;
-
-			/*
-			 *	Re-do fr_pair_value_memsteal ourselves,
-			 *	because we play games with
-			 *	vp->da, and fr_pair_value_memsteal goes
-			 *	to GREAT lengths to sanitize
-			 *	and fix and change and
-			 *	double-check the various
-			 *	fields.
-			 */
-			memcpy(&q, &vp->vp_octets, sizeof(q));
-			talloc_free(q);
-
-			vp->vp_octets = talloc_steal(vp, p);
-			vp->data.type = FR_TYPE_OCTETS;
-			vp->data.enumv = NULL;
-			vp->type = VT_DATA;
-
-			VP_VERIFY(vp);
+			memcpy(&request->packet->socket.inet.src_ipaddr, &vp->vp_ip, sizeof(request->packet->socket.inet.src_ipaddr));
 		}
 	} /* loop over the VP's we read in */
 
 	if (fr_debug_lvl) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_dcursor_init(&cursor, &request->request_pairs);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_dcursor_next(&cursor)) {
 			/*
-			 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
+			 *	Take this opportunity to verify all the fr_pair_ts are still valid.
 			 */
-			if (!talloc_get_type(vp, VALUE_PAIR)) {
-				ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+			if (!talloc_get_type(vp, fr_pair_t)) {
+				ERROR("Expected fr_pair_t pointer got \"%s\"", talloc_get_name(vp));
 
 				fr_log_talloc_report(vp);
-				rad_assert(0);
+				fr_assert(0);
 			}
 
 			fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
@@ -368,32 +282,14 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 	}
 
 	/*
-	 *	FIXME: set IPs, etc.
-	 */
-	request->packet->code = FR_CODE_ACCESS_REQUEST;
-
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.prefix = 32;
-	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->src_port = 18120;
-
-	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_ipaddr.prefix = 32;
-	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
-	request->packet->dst_port = 1812;
-
-	/*
 	 *	Build the reply template from the request.
 	 */
-	request->reply->sockfd = request->packet->sockfd;
-	request->reply->dst_ipaddr = request->packet->src_ipaddr;
-	request->reply->src_ipaddr = request->packet->dst_ipaddr;
-	request->reply->dst_port = request->packet->src_port;
-	request->reply->src_port = request->packet->dst_port;
+	fr_socket_addr_swap(&request->reply->socket, &request->packet->socket);
+
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
 	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
-	request->reply->vps = NULL;
+	fr_pair_list_init(&request->reply_pairs);
 	request->reply->data = NULL;
 	request->reply->data_len = 0;
 
@@ -411,29 +307,31 @@ static REQUEST *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el
 }
 
 
-static void print_packet(FILE *fp, RADIUS_PACKET *packet)
+static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
-	VALUE_PAIR *vp;
-	fr_cursor_t cursor;
+	fr_pair_t *vp;
+	fr_dcursor_t cursor;
+	fr_dict_enum_t *dv;
 
-	if (!packet) {
+	if (fr_pair_list_empty(list)) {
 		fprintf(fp, "\n");
 		return;
 	}
 
-	fprintf(fp, "%s\n", fr_packet_codes[packet->code]);
+	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(packet->code));
+	if (dv) fprintf(fp, "%s\n", dv->name);
 
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_dcursor_init(&cursor, list);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		/*
-		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
+		 *	Take this opportunity to verify all the fr_pair_ts are still valid.
 		 */
-		if (!talloc_get_type(vp, VALUE_PAIR)) {
-			ERROR("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+		if (!talloc_get_type(vp, fr_pair_t)) {
+			ERROR("Expected fr_pair_t pointer got \"%s\"", talloc_get_name(vp));
 
 			fr_log_talloc_report(vp);
-			rad_assert(0);
+			fr_assert(0);
 		}
 
 		fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pP", vp);
@@ -452,16 +350,22 @@ static bool do_xlats(char const *filename, FILE *fp)
 	char		*p;
 	char		input[8192];
 	char		output[8192];
-	REQUEST		*request;
+	request_t		*request;
 
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(NULL);
+	request = request_alloc(NULL, NULL);
 
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
+
+	request->master_state = REQUEST_ACTIVE;
+	request->server_cs = virtual_server_find("default");
+	fr_assert(request->server_cs != NULL);
+
+	request->config = main_config;
 
 	request->log.lvl = fr_debug_lvl;
 	output[0] = '\0';
@@ -494,20 +398,23 @@ static bool do_xlats(char const *filename, FILE *fp)
 		 *	Look for "xlat"
 		 */
 		if (strncmp(input, "xlat ", 5) == 0) {
-			ssize_t slen;
-			char *fmt = talloc_typed_strdup(NULL, input + 5);
-			xlat_exp_t *head;
+			ssize_t			slen;
+			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
+			char			*fmt = talloc_typed_strdup(xlat_ctx, input + 5);
+			xlat_exp_t		*head = NULL;
+			fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-			slen = xlat_tokenize_ephemeral(fmt, &head, request, fmt, NULL);
+			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, NULL,
+						       &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1), &p_rules, NULL);
 			if (slen <= 0) {
-				talloc_free(fmt);
+				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen,
 					 fr_strerror());
 				continue;
 			}
 
 			if (input[slen + 5] != '\0') {
-				talloc_free(fmt);
+				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR offset %d 'Too much text' ::%s::",
 					 (int) slen, input + slen + 5);
 				continue;
@@ -515,11 +422,12 @@ static bool do_xlats(char const *filename, FILE *fp)
 
 			len = xlat_eval_compiled(output, sizeof(output), request, head, NULL, NULL);
 			if (len < 0) {
+				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR expanding xlat: %s", fr_strerror());
 				continue;
 			}
 
-			TALLOC_FREE(fmt); /* also frees 'head' */
+			TALLOC_FREE(xlat_ctx); /* also frees 'head' */
 			continue;
 		}
 
@@ -549,7 +457,7 @@ static bool do_xlats(char const *filename, FILE *fp)
  *	Verify the result of the map.
  */
 static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+			   tmpl_t const *src, UNUSED map_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing source");
@@ -560,118 +468,110 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 	return 0;
 }
 
-static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED REQUEST *request,
-			      	UNUSED fr_value_box_t **src, UNUSED vp_map_t const *maps)
+static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED request_t *request,
+			      	UNUSED fr_value_box_t **src, UNUSED map_t const *maps)
 {
 	return RLM_MODULE_FAIL;
 }
 
-static void process(REQUEST *request)
+static void request_run(fr_event_list_t *el, request_t *request)
 {
-	CONF_SECTION		*unlang;
-	VALUE_PAIR		*vp;
-	char			*auth_type;
-	fr_dict_enum_t const	*dv = NULL;
-	/*
-	 *	Simulate an authorize section
-	 */
-	rad_assert(request->server_cs != NULL);
-	unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
-	if (!unlang) {
-		REDEBUG("Failed to find 'recv Access-Request' section");
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto send_reply;
-	}
+	rlm_rcode_t	rcode;
+	module_method_t	process;
+	void		*inst;
+	fr_dict_enum_t	*dv;
+	fr_heap_t	*backlog;
+	request_t	*child;
 
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_NOOP:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
-		break;
-
-	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto send_reply;
-	}
-
-	/*
-	 *	Simulate an authenticate section
-	 */
-	vp = fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY);
-	if (!vp) return;
-
-	switch (vp->vp_int32) {
-	case FR_AUTH_TYPE_VALUE_ACCEPT:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
-		goto send_reply;
-
-	case FR_AUTH_TYPE_VALUE_REJECT:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto send_reply;
-
-	default:
-		break;
-	}
-
-	auth_type = fr_pair_value_asprint(vp, vp, '\0');
-	unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
-	talloc_free(auth_type);
-	if (!unlang) {
-		REDEBUG("Failed to find 'recv %pV' section", &vp->data);
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		goto send_reply;
-	}
-
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_NOOP:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
-		break;
-
-	default:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		break;
-	}
-
-send_reply:
-	dv = fr_dict_dict_enum_by_value(dict_radius, attr_packet_type, fr_box_uint32(request->reply->code));
+	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!dv) return;
 
-	unlang = cf_section_find(request->server_cs, "send", dv->name);
-	if (!unlang) return;
-
-	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
-	default:
-		break;
-
-	case RLM_MODULE_REJECT:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		break;
+	if (virtual_server_get_process_by_name(request->server_cs, dv->name, &process, &inst) < 0) {
+		REDEBUG("Cannot run virtual server '%s' - %s", cf_section_name2(request->server_cs), fr_strerror());
+		return;
 	}
+
+	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, request_t, runnable_id));
+	request->backlog = backlog;
+	request->el = el;
+
+	if (process(&rcode, &(module_ctx_t){ .instance = inst }, request) != UNLANG_ACTION_YIELD) goto done;
+
+	while (true) {
+		bool wait_for_event;
+		int num_events;
+
+		wait_for_event = (fr_heap_num_elements(backlog) == 0);
+
+	corral:
+		num_events = fr_event_corral(el, fr_time(), wait_for_event);
+		if (num_events < 0) {
+			PERROR("Failed retrieving events");
+			break;
+		}
+
+		/*
+		 *	Service outstanding events.
+		 */
+		if (num_events > 0) fr_event_service(el);
+
+		/*
+		 *	The request is not runnable.  Wait for events.
+		 *
+		 *	Note that we do NOT run any child requests.
+		 *	There may be child requests in the backlog,
+		 *	but we just ignore them.
+		 */
+		if (request->runnable_id < 0) {
+			wait_for_event = true;
+			goto corral;
+		}
+
+		/*
+		 *	Run the parent request in preference to any
+		 *	child requests.
+		 */
+		(void) fr_heap_extract(backlog, request);
+
+		if (process(&rcode, &(module_ctx_t){ .instance = inst }, request) != UNLANG_ACTION_YIELD) break;
+	}
+
+done:
+	/*
+	 *	Parallel-detach creates detached, but runnable
+	 *	children.  We don't want to run them, so we just clean
+	 *	them up here.
+	 */
+	while ((child = fr_heap_pop(backlog)) != NULL) talloc_free(child);
+
+	/*
+	 *	We do NOT run detached child requests.  We just ignore
+	 *	them.
+	 */
+	talloc_free(backlog);
 }
 
-static REQUEST *request_clone(REQUEST *old)
+static request_t *request_clone(request_t *old)
 {
-	REQUEST *request;
+	request_t *request;
 
-	request = request_alloc(NULL);
+	request = request_alloc(NULL, NULL);
 	if (!request) return NULL;
 
-	if (!request->packet) request->packet = fr_radius_alloc(request, false);
-	if (!request->reply) request->reply = fr_radius_alloc(request, false);
+	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
+	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
-	(void) fr_pair_list_copy(request->packet, &request->packet->vps, old->packet->vps);
+	(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &old->request_pairs);
 	request->packet->timestamp = fr_time();
 	request->number = old->number++;
 
 	return request;
 }
 
-/*
- *	The main guy.
+/**
+ *
+ * @hidecallgraph
  */
 int main(int argc, char *argv[])
 {
@@ -682,27 +582,36 @@ int main(int argc, char *argv[])
 	const char		*output_file = NULL;
 	const char		*filter_file = NULL;
 	FILE			*fp;
-	REQUEST			*request = NULL;
-	VALUE_PAIR		*vp;
-	VALUE_PAIR		*filter_vps = NULL;
+	request_t			*request = NULL;
+	fr_pair_t		*vp;
+	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
-	fr_state_tree_t		*state = NULL;
 	fr_event_list_t		*el = NULL;
 	RADCLIENT		*client = NULL;
 	fr_dict_t		*dict = NULL;
+	fr_dict_t const		*dict_check;
 	char const 		*receipt_file = NULL;
 
-	TALLOC_CTX		*autofree = talloc_autofree_context();
-	TALLOC_CTX		*thread_ctx = talloc_new(autofree);
+	TALLOC_CTX		*autofree;
+	TALLOC_CTX		*thread_ctx;
 
 	char			*p;
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
 
+	fr_pair_list_init(&filter_vps);
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
+	thread_ctx = talloc_new(autofree);
+
 	config = main_config_alloc(autofree);
 	if (!config) {
 		fr_perror("unit_test_module");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	p = strrchr(argv[0], FR_DIR_SEP);
@@ -721,8 +630,10 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("%s", config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
+#else
+	fr_disable_null_tracking_on_free(autofree);
 #endif
 
 	fr_debug_lvl = 0;
@@ -741,7 +652,7 @@ int main(int argc, char *argv[])
 	default_log.print_level = true;
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "c:d:D:f:hi:mMn:o:O:r:xX")) != -1) {
+	while ((c = getopt(argc, argv, "c:d:D:f:hi:mMn:o:O:p:r:xXz")) != -1) {
 		switch (c) {
 			case 'c':
 				count = atoi(optarg);
@@ -786,7 +697,11 @@ int main(int argc, char *argv[])
 				}
 
 				fprintf(stderr, "Unknown option '%s'\n", optarg);
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
+
+			case 'p':
+				PROTOCOL_NAME = optarg;
+				break;
 
 			case 'r':
 				receipt_file = optarg;
@@ -800,6 +715,10 @@ int main(int argc, char *argv[])
 			case 'x':
 				fr_debug_lvl++;
 				if (fr_debug_lvl > 2) default_log.print_level = true;
+				break;
+
+			case 'z':
+				my_debug_lvl++;
 				break;
 
 			default:
@@ -824,10 +743,10 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 *
-	 *  tls_init() must be called before *ANY* OpenSSL functions are used, which is why
+	 *  fr_openssl_init() must be called before *ANY* OpenSSL functions are used, which is why
 	 *  it's called so early.
 	 */
-	if (tls_init() < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	if (fr_debug_lvl) dependency_version_print();
@@ -862,7 +781,7 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_dict_init() < 0) EXIT_WITH_FAILURE;
+	if (fr_tls_dict_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
 	/*
@@ -890,6 +809,19 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	/*
+	 *	Initialise the interpreter, registering operations.
+	 */
+	if (unlang_init() < 0) return -1;
+
+	/*
+	 *	Ensure that we load the correct virtual server for the
+	 *	protocol, if necessary.
+	 */
+	if (!getenv("PROTOCOL")) {
+		setenv("PROTOCOL", PROTOCOL_NAME, true);
+	}
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init(config) < 0) {
 		EXIT_WITH_FAILURE;
@@ -906,71 +838,42 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Create a dummy client on 127.0.0.1
+	 *	Create a dummy client on 127.0.0.1, if one doesn't already exist.
 	 */
-	{
-		fr_ipaddr_t	ip;
-		char const	*ip_str = "127.0.0.1";
-
-		if (fr_inet_pton(&ip, ip_str, strlen(ip_str), AF_UNSPEC, false, true) < 0) {
-			ret = EXIT_FAILURE;
-			goto cleanup;
-		}
-
-		client = client_find(NULL, &ip, IPPROTO_IP);
-		if (!client) {
-			client = client_alloc(NULL, ip_str, "test");
-			client_add(NULL, client);
-		}
+	client = client_find(NULL, &(fr_ipaddr_t) { .af = AF_INET, .prefix = 32, .addr.v4.s_addr = htonl(INADDR_LOOPBACK) },
+			     IPPROTO_IP);
+	if (!client) {
+		client = client_alloc(NULL, "127.0.0.1", "test");
+		client_add(NULL, client);
 	}
-
-	/*
-	 *	Setup dummy virtual server
-	 */
-	{
-		CONF_SECTION	*server;
-		CONF_PAIR	*namespace;
-		fr_dict_t	*ns_dict;
-		fr_dict_t	**dict_p;
-
-		server = cf_section_alloc(config->root_cs, config->root_cs, "server", "unit_test");
-		cf_section_add(config->root_cs, server);
-
-		namespace = cf_pair_alloc(server, "namespace", "radius",
-					  T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-		cf_pair_add(server, namespace);
-
-		if (fr_dict_protocol_afrom_file(&ns_dict, cf_pair_value(namespace), NULL) < 0) {
-			cf_log_perr(server, "Failed initialising namespace \"%s\"", cf_pair_value(namespace));
-			return -1;
-		}
-
-		dict_p = talloc_zero(NULL, fr_dict_t *);
-		*dict_p = ns_dict;
-
-		cf_data_add(server, dict_p, "dictionary", true);
-	}
-
-	/*
-	 *	Initialise the interpreter, registering operations.
-	 */
-	if (unlang_init() < 0) return -1;
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
+
+	if (!virtual_server_find("default")) {
+		ERROR("Cannot find virtual server 'default'");
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
+	 *	Do some sanity checking.
+	 */
+	dict_check = virtual_server_namespace("default");
+	if (!dict_check || (dict_check != dict_protocol)) {
+		ERROR("Virtual server namespace does not match requested namespace '%s'", PROTOCOL_NAME);
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *	Create a dummy event list
 	 */
 	el = fr_event_list_alloc(NULL, NULL, NULL);
-	rad_assert(el != NULL);
+	fr_assert(el != NULL);
 
 	/*
 	 *	Simulate thread specific instantiation
 	 */
 	if (modules_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
 	if (xlat_thread_instantiate(thread_ctx) < 0) EXIT_WITH_FAILURE;
-
-	state = fr_state_tree_init(autofree, attr_state, false, 256, 10, 0);
 
 	/*
 	 *  Set the panic action (if required)
@@ -1014,10 +917,9 @@ int main(int argc, char *argv[])
 	 */
 	request = request_from_file(autofree, fp, el, client);
 	if (!request) {
-		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
+		fr_perror("Failed reading input from %s", input_file);
 		EXIT_WITH_FAILURE;
 	}
-	request->el = el;
 
 	/*
 	 *	No filter file, OR there's no more input, OR we're
@@ -1047,18 +949,16 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (fr_pair_list_afrom_file(request, dict_radius, &filter_vps, fp, &filedone) < 0) {
-			fprintf(stderr, "Failed reading attributes from %s: %s\n",
-				filter_file, fr_strerror());
+		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone) < 0) {
+			fr_perror("Failed reading attributes from %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
 
 		/*
 		 *	Filter files can't be empty.
 		 */
-		if (!filter_vps) {
-			fprintf(stderr, "No attributes in filter file %s\n",
-				filter_file);
+		if (fr_pair_list_empty(&filter_vps)) {
+			fr_perror("No attributes in filter file %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
 
@@ -1069,15 +969,15 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		process(request);
+		request_run(el, request);
 	} else {
 		int i;
-		REQUEST *old = request_clone(request);
+		request_t *old = request_clone(request);
 		talloc_free(request);
 
 		for (i = 0; i < count; i++) {
 			request = request_clone(old);
-			process(request);
+			request_run(el, request);
 			talloc_free(request);
 		}
 	}
@@ -1092,22 +992,28 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	print_packet(fp, request->reply);
+	print_packet(fp, request->reply, &request->reply_pairs);
 
 	if (output_file) fclose(fp);
 
 	/*
-	 *	Update the list with the response type.
+	 *	Update the list with the response type, so that it can
+	 *	be matched in filters.
+	 *
+	 *	Some state machines already include a response Packet-Type
+	 *	so we need to try and update it, else we end up with two!
 	 */
-	MEM(pair_add_reply(&vp, attr_packet_type) >= 0);
-	vp->vp_uint32 = request->reply->code;
-	{
-		VALUE_PAIR const *failed[2];
+	if (!fr_pair_list_empty(&filter_vps)) {
+		fr_pair_t const *failed[2];
 
-		if (filter_vps && !fr_pair_validate(failed, filter_vps, request->reply->vps)) {
+		MEM(pair_update_reply(&vp, attr_packet_type) >= 0);
+		vp->vp_uint32 = request->reply->code;
+
+
+		if (!fr_pair_validate(failed, &filter_vps, &request->reply_pairs)) {
 			fr_pair_validate_debug(request, failed);
-			fr_perror("Output file %s does not match attributes in filter %s (%s)",
-				  output_file ? output_file : input_file, filter_file, fr_strerror());
+			fr_perror("Output file %s does not match attributes in filter %s",
+				  output_file ? output_file : "-", filter_file);
 			ret = EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -1117,7 +1023,6 @@ int main(int argc, char *argv[])
 
 cleanup:
 	talloc_free(request);
-	talloc_free(state);
 
 	/*
 	 *	Free thread data
@@ -1159,36 +1064,12 @@ cleanup:
 
 	if (dl_modules) talloc_free(dl_modules);
 
-	/*
-	 *  Now we're sure no more triggers can fire, free the
-	 *  trigger tree
-	 */
-	trigger_exec_free();
-
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_module");
 		ret = EXIT_FAILURE;
 	}
 
-	/*
-	 *	Explicitly cleanup the buffer used for storing syserror messages
-	 *	This cuts down on address sanitiser output on error.
-	 */
-	fr_syserror_free();
-
-	/*
-	 *	Call pthread destructors.  Which aren't normally
-	 *	called for the main thread.
-	 *
-	 *	Note that pthread_exit() never returns, and always
-	 *	causes the process to exit with status '0'.  So we
-	 *	check for test failure here, and if so, don't call the
-	 *	destructors.  If the tests fail, who cares about
-	 *	memory leaks...
-	 */
-	if (ret != 0) return ret;
-
-	pthread_exit(NULL);
+	return ret;
 }
 
 
@@ -1209,9 +1090,12 @@ static void NEVER_RETURNS usage(main_config_t const *config, int status)
 	fprintf(output, "  -i <file>          File containing request attributes.\n");
 	fprintf(output, "  -m                 On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
 	fprintf(output, "  -n <name>          Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -o <file>          Output file for the reply.\n");
+	fprintf(output, "  -p <radius|...>    Define which protocol namespace is used to read the file\n");
+	fprintf(output, "                     Use radius, dhcpv4, or dhcpv6\n");
 	fprintf(output, "  -X                 Turn on full debugging.\n");
 	fprintf(output, "  -x                 Turn on additional debugging. (-xx gives more debugging).\n");
 	fprintf(output, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
 
-	exit(status);
+	fr_exit_now(status);
 }

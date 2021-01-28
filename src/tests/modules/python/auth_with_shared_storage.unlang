@@ -1,5 +1,5 @@
 # Should return noop (no shared variable set)
-pmod_shared_storage
+pmod7_shared_storage
 if (noop) {
 	test_pass
 } else {
@@ -7,7 +7,7 @@ if (noop) {
 }
 
 # Should return ok (shared variable set)
-pmod_shared_storage
+pmod7_shared_storage
 if (ok) {
 	test_pass
 } else {

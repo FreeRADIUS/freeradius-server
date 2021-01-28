@@ -496,3 +496,141 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 	return NULL;		/* don't support IPv6 */
 }
 #endif
+
+#ifndef HAVE_SENDMMSG
+/** Emulates the real sendmmsg in userland
+ *
+ * The idea behind the proper sendmmsg in FreeBSD and Linux is that multiple
+ * datagram messages can be sent using a single system call.
+ *
+ * This function doesn't achieve that, but it does reduce ifdefs elsewhere
+ * and means we can batch encoding/sending operations.
+ *
+ * @param[in] sockfd	to write packets to.
+ * @param[in] msgvec	a pointer to an array of mmsghdr structures.
+ *			The size of this array is specified in vlen.
+ * @param[in] vlen	Length of msgvec.
+ * @param[in] flags	same as for sendmsg(2).
+ * @return
+ *	- >= 0 The number of messages sent.  Check against vlen to determine
+ *	  if overall operation was successful.
+ *	- < 0 on error.  Only returned if first operation errors.
+ */
+int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags)
+{
+	unsigned int i;
+
+	for (i = 0; i < vlen; i++) {
+     		ssize_t slen;
+
+		slen = sendmsg(sockfd, &msgvec[i].msg_hdr, flags);
+		if (slen < 0) {
+			msgvec[i].msg_len = 0;
+
+			/*
+			 * man sendmmsg - Errors are as for sendmsg(2).
+			 * An error is returned only if no datagrams could
+			 * be sent.  See also BUGS.
+			 */
+			if (i == 0) return -1;
+			return i;
+		}
+		msgvec[i].msg_len = (unsigned int)slen;	/* Number of bytes sent */
+	}
+
+	return i;
+}
+#endif
+
+/*
+ *	So we don't have ifdef's in the rest of the code
+ */
+#ifndef HAVE_CLOSEFROM
+ #include <stdlib.h>
+#ifdef HAVE_DIRENT_H
+#  include <dirent.h>
+/*
+ *	Some versions of Linux don't have closefrom(), but they will
+ *	have /proc.
+ *
+ *	BSD systems will generally have closefrom(), but not proc.
+ *
+ *	OSX doesn't have closefrom() or /proc/self/fd, but it does
+ *	have /dev/fd
+ */
+#  ifdef __linux__
+#    define CLOSEFROM_DIR "/proc/self/fd"
+#  elif defined(__APPLE__)
+#    define CLOSEFROM_DIR "/dev/fd"
+#  else
+#    undef HAVE_DIRENT_H
+#  endif
+#endif
+
+int closefrom(int fd)
+{
+	int i;
+	int maxfd = 256;
+#  ifdef HAVE_DIRENT_H
+	DIR *dir;
+#  endif
+
+#ifdef F_CLOSEM
+	if (fcntl(fd, F_CLOSEM) == 0) return 0;
+#  endif
+
+#  ifdef F_MAXFD
+	maxfd = fcntl(fd, F_F_MAXFD);
+	if (maxfd >= 0) goto do_close;
+#  endif
+
+#  ifdef _SC_OPEN_MAX
+	maxfd = sysconf(_SC_OPEN_MAX);
+	if (maxfd < 0) {
+		maxfd = 256;
+	}
+#  endif
+
+#  ifdef HAVE_DIRENT_H
+	/*
+	 *	Use /proc/self/fd directory if it exists.
+	 */
+	dir = opendir(CLOSEFROM_DIR);
+	if (dir != NULL) {
+		long my_fd;
+		char *endp;
+		struct dirent *dp;
+
+		while ((dp = readdir(dir)) != NULL) {
+			my_fd = strtol(dp->d_name, &endp, 10);
+			if (my_fd <= 0) continue;
+
+			if (*endp) continue;
+
+			if (my_fd == dirfd(dir)) continue;
+
+			if ((my_fd >= fd) && (my_fd <= maxfd)) {
+				(void) close((int) my_fd);
+			}
+		}
+		(void) closedir(dir);
+		return 0;
+	}
+#  endif
+
+#  ifdef F_MAXFD
+do_close:
+#  endif
+
+	if (fd > maxfd) return 0;
+
+	/*
+	 *	FIXME: return EINTR?
+	 */
+	for (i = fd; i < maxfd; i++) {
+		close(i);
+	}
+
+	return 0;
+}
+#endif

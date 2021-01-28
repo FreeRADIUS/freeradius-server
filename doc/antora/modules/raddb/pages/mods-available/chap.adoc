@@ -6,7 +6,7 @@
 
 This module authenticates requests containing a `link:https://freeradius.org/rfc/rfc2865.html#CHAP-Password[CHAP-Password]` attribute.
 
-CHAP authentication requires access to the Cleartext-Password for the user.
+CHAP authentication requires access to the Password.Cleartext for the user.
 
 Standard Unix system authentication or passwords encrypted via `crypt()`
 are not compatible with CHAP.

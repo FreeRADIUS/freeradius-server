@@ -170,17 +170,17 @@ server default {
 			idle_timeout = 60.0
 
 			#
-			#  nak_lifetime:: Time for which blacklisted
+			#  nak_lifetime:: Time for which blocked
 			#  clients are placed into a NAK cache.
 			#
 			#  If a dynamic client is disallowed, it is
-			#  placed onto a "NAK" blacklist for a period
-			#  of time.  This blacklist helps to prevent
+			#  placed onto a "NAK" list for a period
+			#  of time.  This process helps to prevent
 			#  DoS attacks.  When subsequent packets are
 			#  received from that IP address, they hit the
 			#  "NAK" cache, and are immediately discarded.
 			#
-			#  After `nak_timeout` seconds, the blacklist
+			#  After `nak_timeout` seconds, the blocked
 			#  entry will be removed, and the IP will be
 			#  allowed to try again to define a dynamic
 			#  client.
@@ -906,7 +906,7 @@ recv Access-Request {
 	#  Enforce daily limits on time spent logged in. This module
 	#  is a variant of the `counter` module.
 	#
-#	daily
+#	dailycounter
 
 	#
 	#  See if the account has expired: check the time in the
@@ -1009,7 +1009,7 @@ authenticate pap {
 #
 #  For users who are using CHAP authentication. A back-end database
 #  listed in the "recv Access-Request" section MUST supply a
-#  Cleartext-Password attribute. Encrypted passwords won't work.
+#  Password.Cleartext attribute. Encrypted passwords won't work.
 #
 authenticate chap {
 	chap
@@ -1020,7 +1020,7 @@ authenticate chap {
 #
 #  For users who are using MS-CHAP authentication. A back-end
 #  database listed in the "recv Access-Request" section MUST supply
-#  either a Cleartext-Password attribute, or an NT-Password
+#  either a Password.Cleartext attribute, or an NT-Password
 #  attribute. Encrypted passwords won't work.
 #
 authenticate mschap {
@@ -1163,7 +1163,7 @@ send Access-Accept {
 	#  here. e.g. for later CoA-Request with State, and
 	#  Service-Type = Authorize-Only.
 	#
-#	if (!&reply:State) {
+#	if (!&reply.State) {
 #		update reply {
 #			&State := "0x%{randstr:16h}"
 #		}
@@ -1179,7 +1179,7 @@ send Access-Accept {
 	#  `Access-Reject` or `Access-Accept` packet has been sent.
 	#
 	update {
-		&reply: += &session-state:
+		&reply += &session-state
 	}
 
 	#
@@ -1232,7 +1232,7 @@ send Access-Accept {
 	#  via:
 	#
 #	update request {
-#		WiMAX-MN-NAI = "%{User-Name}"
+#		&WiMAX-MN-NAI = "%{User-Name}"
 #	}
 
 	#  If you want various keys to be calculated, you will
@@ -1242,8 +1242,8 @@ send Access-Accept {
 	#  calculations, e.g.
 	#
 #	update reply {
-#		WiMAX-FA-RK-Key = 0x00
-#		WiMAX-MSK = "%{EAP-MSK}"
+#		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
+#		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
 #	}
 
 	#  You may want to delete the `MS-MPPE-*-Keys` from the
@@ -1268,19 +1268,19 @@ send Access-Accept {
 	#  available).
 	#
 #	update reply {
-#		&Reply-Message += "%{session-state:TLS-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Cert-Subject-Alt-Name-Email}"
 #
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Serial}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Expiration}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 
 	#
@@ -1305,9 +1305,9 @@ send Access-Accept {
 	#  Uncomment the next few lines to copy the required data
 	#  into the EAP-Key-Name attribute.
 #
-#	if (&reply:EAP-Session-Id) {
+#	if (&reply.EAP-Session-Id) {
 #		update reply {
-#			&EAP-Key-Name := &reply:EAP-Session-Id
+#			&EAP-Key-Name := &reply.EAP-Session-Id
 #		}
 #	}
 
@@ -1543,6 +1543,9 @@ send Accounting-Response {
 	#
 	#  Refresh leases when we see a start or alive. Return an address to
 	#  the IP Pool when we see a stop record.
+	#
+	#  Ensure that &control.IP-Pool.Name is set to determine which
+	#  pool of IPs are used.
 	#
 #	sqlippool
 

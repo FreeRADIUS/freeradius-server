@@ -12,5 +12,5 @@
 VENDOR		Cisco-BBSM			5263
 
 BEGIN-VENDOR	Cisco-BBSM
-ATTRIBUTE	CBBSM-Bandwidth				1	integer
+ATTRIBUTE	Bandwidth				1	integer
 END-VENDOR  Cisco-BBSM

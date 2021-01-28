@@ -101,8 +101,8 @@ sqlcounter dailycounter {
 	dialect = ${modules.sql.dialect}
 
 	counter_name = &Daily-Session-Time
-	check_name = &control:Max-Daily-Session
-	reply_name = &reply:Session-Timeout
+	check_name = &control.Max-Daily-Session
+	reply_name = &reply.Session-Timeout
 	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	reset = daily
@@ -118,8 +118,8 @@ sqlcounter monthlycounter {
 	dialect = ${modules.sql.dialect}
 
 	counter_name = &Monthly-Session-Time
-	check_name = &control:Max-Monthly-Session
-	reply_name = &reply:Session-Timeout
+	check_name = &control.Max-Monthly-Session
+	reply_name = &reply.Session-Timeout
 	key = &User-Name
 
 	reset = monthly
@@ -135,7 +135,7 @@ sqlcounter noresetcounter {
 	dialect = ${modules.sql.dialect}
 
 	counter_name = &Max-All-Session-Time
-	check_name = &control:Max-All-Session
+	check_name = &control.Max-All-Session
 	key = &User-Name
 
 	reset = never
@@ -156,7 +156,7 @@ sqlcounter expire_on_login {
 	dialect = ${modules.sql.dialect}
 
 	counter_name = &Expire-After-Initial-Login
-	check_name = &control:Expire-After
+	check_name = &control.Expire-After
 	key = &User-Name
 
 	reset = never

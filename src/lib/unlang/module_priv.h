@@ -33,26 +33,41 @@ extern "C" {
  *
  */
 typedef struct {
-	unlang_t			self;
-	module_instance_t		*module_instance;	//!< Instance of the module we're calling.
-	module_method_t			method;
+	unlang_t			self;			//!< Common fields in all #unlang_t tree nodes.
+	module_instance_t		*instance;		//!< Global instance of the module we're calling.
+	module_method_t			method;			//!< The entry point into the module.
 } unlang_module_t;
 
 /** A module stack entry
  *
- * Represents a single module
+ * Represents a single module call on the unlang stack.
  */
 typedef struct {
-	rlm_rcode_t			*presult;		//!< Where to store the result.
-	module_thread_instance_t	*thread;		//!< thread-local data for this module
+	module_thread_instance_t	*thread;		//!< thread-local data for this module.
+								///< Caching is necessary in the frame state
+								///< structure because the #unlang_t tree is
+								///< shared between all threads, so we can't
+								///< cache thread-specific data in the #unlang_t.
+
+	/** @name rcode output
+	 * @{
+ 	 */
+	rlm_rcode_t			*p_result;		//!< Where to store the result.
+	rlm_rcode_t			rcode;			//!< the result, only for unlang_module_resume_final.
+	/** @} */
+
+	/** @name Resumption and signalling
+	 * @{
+ 	 */
 	void				*rctx;			//!< for resume / signal
-	fr_unlang_module_resume_t	resume;			//!< resumption handler
-	fr_unlang_module_signal_t	signal;			//!< for signal handlers
+	unlang_module_resume_t		resume;			//!< resumption handler
+	unlang_module_signal_t		signal;			//!< for signal handlers
+	/** @} */
 } unlang_frame_state_module_t;
 
 static inline unlang_module_t *unlang_generic_to_module(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_MODULE);
+	fr_assert(p->type == UNLANG_TYPE_MODULE);
 	return talloc_get_type_abort(p, unlang_module_t);
 }
 

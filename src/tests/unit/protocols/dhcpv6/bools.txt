@@ -9,13 +9,20 @@ proto dhcpv6
 proto-dictionary dhcpv6
 
 #
-#  Bool
+#  True values are encoded by using an empty attribute.
 #
-encode-pair Rapid-Commit = 0x
+#  False values are encoded by nothing.
+#
+encode-pair Rapid-Commit = yes
 match 00 0e 00 00
 
 decode-pair -
-match Rapid-Commit = 0x
+match Rapid-Commit = yes
+
+encode-pair Rapid-Commit = no
+match 
+
+# And we can't decode nothing...
 
 count
-match 6
+match 8

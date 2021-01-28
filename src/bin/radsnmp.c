@@ -30,7 +30,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/radius/list.h>
+
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/uio.h>
@@ -62,11 +64,11 @@ typedef enum {
 } radsnmp_command_t;
 
 static fr_table_num_sorted_t const radsnmp_command_str[] = {
-	{ "",		RADSNMP_EXIT },			//!< Terminate radsnmp.
-	{ "PING", 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
-	{ "get",	RADSNMP_GET },			//!< Get the value of an OID.
-	{ "getnext", 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
-	{ "set",	RADSNMP_SET },			//!< Set the value of an OID.
+	{ L(""),		RADSNMP_EXIT },			//!< Terminate radsnmp.
+	{ L("PING"), 	RADSNMP_PING },			//!< Liveness command from Net-SNMP
+	{ L("get"),	RADSNMP_GET },			//!< Get the value of an OID.
+	{ L("getnext"), 	RADSNMP_GETNEXT },		//!< Get the next OID in the tree.
+	{ L("set"),	RADSNMP_SET },			//!< Set the value of an OID.
 };
 static size_t radsnmp_command_str_len = NUM_ELEMENTS(radsnmp_command_str);
 
@@ -111,7 +113,7 @@ static fr_dict_attr_t const *attr_vendor_specific;
 
 extern fr_dict_attr_autoload_t radsnmp_dict_attr[];
 fr_dict_attr_autoload_t radsnmp_dict_attr[] = {
-	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_EXTENDED, .dict = &dict_radius },
+	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius },
 	{ .out = &attr_freeradius_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_radius },
 	{ .out = &attr_freeradius_snmp_operation, .name = "FreeRADIUS-SNMP-Operation", .type = FR_TYPE_UINT8, .dict = &dict_radius },
 	{ .out = &attr_freeradius_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_radius },
@@ -139,7 +141,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Increase debug level.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 #define RESPOND_STATIC(_cmd) \
@@ -159,22 +161,22 @@ static void rs_signal_stop(UNUSED int sig)
  * @param fd the request will be sent on.
  * @return new request.
  */
-static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
+static fr_radius_packet_t *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 {
-	RADIUS_PACKET *request;
+	fr_radius_packet_t *packet;
 
-	request = fr_radius_alloc(conf, true);
+	packet = fr_radius_packet_alloc(conf, true);
 
-	request->code = conf->code;
+	packet->code = conf->code;
 
-	request->id = conf->last_used_id;
+	packet->id = conf->last_used_id;
 	conf->last_used_id = (conf->last_used_id + 1) & UINT8_MAX;
 
-	memcpy(&request->dst_ipaddr, &conf->server_ipaddr, sizeof(request->dst_ipaddr));
-	request->dst_port = conf->server_port;
-	request->sockfd = fd;
+	memcpy(&packet->socket.inet.dst_ipaddr, &conf->server_ipaddr, sizeof(packet->socket.inet.dst_ipaddr));
+	packet->socket.inet.dst_port = conf->server_port;
+	packet->socket.fd = fd;
 
-	return request;
+	return packet;
 }
 
 /** Builds attribute representing OID string and adds 'index' attributes where required
@@ -204,7 +206,7 @@ static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
  *	- >0 on success (how much of the OID string we parsed).
  *	- <=0 on failure (where format error occurred).
  */
-static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_cursor_t *cursor,
+static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_dcursor_t *cursor,
 				     char const *oid, int type, char const *value)
 {
 	ssize_t			slen;
@@ -212,12 +214,12 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	unsigned int		attr;
 	fr_dict_attr_t const	*index_attr, *da;
 	fr_dict_attr_t const	*parent = conf->snmp_root;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	int			ret;
 
 	if (!oid) return 0;
 
-	fr_cursor_tail(cursor);
+	fr_dcursor_tail(cursor);
 
 	/*
 	 *	Trim first.
@@ -233,11 +235,11 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	for (;;) {
 		unsigned int num = 0;
 
-		slen = fr_dict_attr_by_oid(conf->dict, &parent, &attr, p);
+		slen = fr_dict_attr_by_oid_legacy(conf->dict, &parent, &attr, p);
 		if (slen > 0) break;
 		p += -(slen);
 
-		if (fr_dict_oid_component(&num, &p) < 0) break;	/* Just advances the pointer */
+		if (fr_dict_oid_component_legacy(&num, &p) < 0) break;	/* Just advances the pointer */
 		assert(attr == num);
 		p++;
 
@@ -246,7 +248,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		 */
 		index_attr = fr_dict_attr_child_by_num(parent, 0);
 		if (!index_attr) {
-			fr_strerror_printf("Unknown OID component: No index attribute at this level");
+			fr_strerror_const("Unknown OID component: No index attribute at this level");
 			break;
 		}
 
@@ -260,7 +262,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		 */
 		parent = fr_dict_attr_child_by_num(parent, 1);
 		if (!parent) {
-			fr_strerror_printf("Unknown OID component: No entry attribute at this level");
+			fr_strerror_const("Unknown OID component: No entry attribute at this level");
 			break;
 		}
 
@@ -279,7 +281,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		MEM(vp = fr_pair_afrom_da(ctx, index_attr));
 		vp->vp_uint32 = attr;
 
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 	}
 
 	/*
@@ -287,11 +289,11 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	 */
 	if (slen <= 0) {
 	error:
-		fr_cursor_free_list(cursor);
+		fr_dcursor_free_list(cursor);
 		return slen;
 	}
 
-	fr_strerror();	/* Clear pending errors */
+	fr_strerror_clear();	/* Clear pending errors */
 
 	/*
 	 *	SNMP requests the leaf under the OID with .0.
@@ -309,7 +311,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	MEM(vp = fr_pair_afrom_da(ctx, da));
 
 	/*
-	 *	VALUE_PAIRs with no value need a 1 byte value buffer.
+	 *	fr_pair_ts with no value need a 1 byte value buffer.
 	 */
 	if (!value) {
 		switch (da->type) {
@@ -322,14 +324,14 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 		 */
 		case FR_TYPE_TLV:
 			fr_pair_to_unknown(vp);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		case FR_TYPE_OCTETS:
-			fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1, true);
+			fr_pair_value_memdup(vp, (uint8_t const *)"\0", 1, true);
 			break;
 
 		case FR_TYPE_STRING:
-			fr_pair_value_bstrncpy(vp, "\0", 1);
+			fr_pair_value_bstrndup(vp, "\0", 1, true);
 			break;
 
 		/*
@@ -339,12 +341,12 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 			break;
 		}
 
-		fr_cursor_append(cursor, vp);
+		fr_dcursor_append(cursor, vp);
 		return slen;
 	}
 
 	if (da->type == FR_TYPE_TLV) {
-		fr_strerror_printf("TLVs cannot hold values");
+		fr_strerror_const("TLVs cannot hold values");
 		return -(slen);
 	}
 
@@ -357,7 +359,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
 	MEM(vp = fr_pair_afrom_da(ctx, attr_freeradius_snmp_type));
 	vp->vp_uint32 = type;
 
-	fr_cursor_append(cursor, vp);
+	fr_dcursor_append(cursor, vp);
 
 	return slen;
 }
@@ -384,10 +386,10 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, fr_c
  */
 static int radsnmp_get_response(int fd,
 				fr_dict_attr_t const *root, fr_dict_attr_t const *type,
-				VALUE_PAIR *head)
+				fr_pair_list_t *head)
 {
-	fr_cursor_t		cursor;
-	VALUE_PAIR		*vp, *type_vp;
+	fr_dcursor_t		cursor;
+	fr_pair_t		*vp, *type_vp;
 	fr_dict_attr_t const	*parent = root;
 	unsigned int		written = 0;
 
@@ -412,7 +414,7 @@ static int radsnmp_get_response(int fd,
 	slen = snprintf(oid_buff, sizeof(oid_buff), "%u.", parent->attr);
 	if (is_truncated((size_t)slen, sizeof(oid_buff))) {
 	oob:
-		fr_strerror_printf("OID Buffer too small");
+		fr_strerror_const("OID Buffer too small");
 		return -1;
 	}
 	p += slen;
@@ -424,20 +426,20 @@ static int radsnmp_get_response(int fd,
 	 *	attribute grouping to coalesce all related index
 	 *	attributes under a single request OID.
 	 */
-	 for (vp = fr_cursor_init(&cursor, &head);
+	 for (vp = fr_dcursor_init(&cursor, head);
 	      vp;
-	      vp = fr_cursor_next(&cursor)) {
+	      vp = fr_dcursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
 	      	/*
 	      	 *	We only care about TLV attributes beneath our root
 	      	 */
-		if (!fr_dict_parent_common(root, vp->da, true)) continue;
+		if (!fr_dict_attr_common_parent(root, vp->da, true)) continue;
 
 		/*
 		 *	Sanity checks to ensure we're processing attributes
 		 *	in the right order.
 		 */
-		common = fr_dict_parent_common(parent, vp->da, true);
+		common = fr_dict_attr_common_parent(parent, vp->da, true);
 		if (!common) {
 			fr_strerror_printf("Out of order index attributes.  \"%s\" is not a child of \"%s\"",
 					   vp->da->name, parent->name);
@@ -452,8 +454,8 @@ static int radsnmp_get_response(int fd,
 			 *	Print OID from last index/root up to the parent of
 			 *	the index attribute.
 			 */
-			slen = fr_dict_print_attr_oid(NULL, p, end - p, parent, vp->da->parent);
-			if (slen < 0) return -1;
+			slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(p, end), parent, vp->da->parent);
+			if (slen <= 0) return -1;
 
 			if (vp->vp_type != FR_TYPE_UINT32) {
 				fr_strerror_printf("Index attribute \"%s\" is not of type \"integer\"", vp->da->name);
@@ -483,18 +485,21 @@ static int radsnmp_get_response(int fd,
 		/*
 		 *	Actual TLV attribute
 		 */
-		slen = fr_dict_print_attr_oid(NULL, p, end - p, parent, vp->da);
+		slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(p, end), parent, vp->da);
 		if (slen < 0) return -1;
 
 		/*
 		 *	Next attribute should be the type
 		 */
-		type_vp = fr_cursor_next(&cursor);
+		type_vp = fr_dcursor_next(&cursor);
 		if (!type_vp || (type_vp->da != type)) {
 			fr_strerror_printf("No %s found in response, or occurred out of order", type->name);
 			return -1;
 		}
-		type_len = fr_pair_value_snprint(type_buff, sizeof(type_buff), type_vp, '\0');
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(type_buff, sizeof(type_buff)), type_vp, T_BARE_WORD);
+		if (slen < 0) return -1;
+
+		type_len = (size_t)slen;
 
 		/*
 		 *	Build up the vector
@@ -523,17 +528,17 @@ static int radsnmp_get_response(int fd,
 
 		default:
 			/*
-			 *	We call fr_value_box_snprint with a NULL da pointer
+			 *	We call fr_value_box_print with a NULL da pointer
 			 *	because we always need return integer values not
 			 *	value aliases.
 			 */
-			len = fr_value_box_snprint(value_buff, sizeof(value_buff), &vp->data, '\0');
-			if (is_truncated(len, sizeof(value_buff))) {
-				fr_strerror_printf("Insufficient fixed value buffer");
+			slen = fr_value_box_print(&FR_SBUFF_OUT(value_buff, sizeof(value_buff)), &vp->data, NULL);
+			if (slen < 0) {
+				fr_strerror_const("Insufficient fixed value buffer");
 				return -1;
 			}
 			io_vector[4].iov_base = value_buff;
-			io_vector[4].iov_len = len;
+			io_vector[4].iov_len = (size_t)slen;
 			break;
 		}
 		io_vector[5].iov_base = newline;
@@ -577,15 +582,15 @@ static int radsnmp_get_response(int fd,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, VALUE_PAIR *head)
+static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, fr_pair_list_t *head)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	char		buffer[64];
-	size_t		len;
+	ssize_t		slen;
 	struct iovec	io_vector[2];
 	char		newline[] = "\n";
 
-	vp = fr_pair_find_by_da(head, error, TAG_NONE);
+	vp = fr_pair_find_by_da(head, error);
 	if (!vp) {
 		if (write(fd, "DONE\n", 5) < 0) {
 			fr_strerror_printf("Failed writing set response: %s", fr_syserror(errno));
@@ -594,14 +599,14 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, VALUE_PAIR 
 		return 0;
 	}
 
-	len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-	if (is_truncated(len, sizeof(buffer))) {
+	slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
+	if (slen < 0) {
 		assert(0);
 		return -1;
 	}
 
 	io_vector[0].iov_base = buffer;
-	io_vector[0].iov_len = len;
+	io_vector[0].iov_len = (size_t)slen;
 	io_vector[1].iov_base = newline;
 	io_vector[1].iov_len = 1;
 
@@ -617,7 +622,7 @@ static int radsnmp_set_response(int fd, fr_dict_attr_t const *error, VALUE_PAIR 
 
 static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 {
-	fr_strerror();
+	fr_strerror_clear();
 
 #define NEXT_LINE(_line, _buffer) \
 { \
@@ -641,20 +646,22 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		char			*line;
 		ssize_t			slen;
 
-		fr_cursor_t		cursor;
-		VALUE_PAIR		*vp;
-		RADIUS_PACKET		*request;
+		fr_dcursor_t		cursor;
+		fr_pair_t		*vp;
+		fr_radius_packet_t	*packet;
+		fr_pair_list_t		request_vps;
 
 		/*
-		 *	Alloc a new request so we can start adding
+		 *	Alloc a new packet so we can start adding
 		 *	new pairs to it.
 		 */
-		request = radsnmp_alloc(conf, fd);
-		if (!request) {
+		packet = radsnmp_alloc(conf, fd);
+		if (!packet) {
 			ERROR("Failed allocating request");
 			return EXIT_FAILURE;
 		}
-		fr_cursor_init(&cursor, &request->vps);
+		fr_pair_list_init(&request_vps);
+		fr_dcursor_init(&cursor, &request_vps);
 
 		NEXT_LINE(line, buffer);
 
@@ -717,7 +724,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		default:
 			ERROR("Unknown command \"%s\"", line);
 			RESPOND_STATIC("NONE");
-			talloc_free(request);
+			talloc_free(packet);
 			continue;
 		}
 
@@ -731,11 +738,11 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 			ERROR("Failed evaluating OID:");
 			ERROR("%s", text);
-			ERROR("%s^ %s", spaces, fr_strerror());
+			fr_perror("%s^", spaces);
 
 			talloc_free(spaces);
 			talloc_free(text);
-			talloc_free(request);
+			talloc_free(packet);
 			RESPOND_STATIC("NONE");
 			continue;
 		}
@@ -744,43 +751,46 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Now add an attribute indicating what the
 		 *	SNMP operation was
 		 */
-		MEM(vp = fr_pair_afrom_da(request, attr_freeradius_snmp_operation));
+		MEM(vp = fr_pair_afrom_da(packet, attr_freeradius_snmp_operation));
 		vp->vp_uint32 = (unsigned int)command;	/* Commands must match dictionary */
-		fr_cursor_append(&cursor, vp);
+		fr_dcursor_append(&cursor, vp);
 
 		/*
 		 *	Add message authenticator or the stats
 		 *	request will be rejected.
 		 */
-		MEM(vp = fr_pair_afrom_da(request, attr_message_authenticator));
-		fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1, true);
-		fr_cursor_append(&cursor, vp);
+		MEM(vp = fr_pair_afrom_da(packet, attr_message_authenticator));
+		fr_pair_value_memdup(vp, (uint8_t const *)"\0", 1, true);
+		fr_dcursor_append(&cursor, vp);
 
 		/*
 		 *	Send the packet
 		 */
 		{
-			RADIUS_PACKET	*reply = NULL;
-			ssize_t		rcode;
+			fr_radius_packet_t	*reply = NULL;
+			fr_pair_list_t		reply_vps;
+			ssize_t			rcode;
 
-			fd_set		set;
+			fd_set			set;
 
-			unsigned int	ret;
-			unsigned int	i;
+			unsigned int		ret;
+			unsigned int		i;
 
-			if (fr_radius_packet_encode(request, NULL, conf->secret) < 0) {
-				ERROR("Failed encoding request: %s", fr_strerror());
+			fr_pair_list_init(&reply_vps);
+
+			if (fr_radius_packet_encode(packet, &request_vps, NULL, conf->secret) < 0) {
+				fr_perror("Failed encoding packet");
 				return EXIT_FAILURE;
 			}
-			if (fr_radius_packet_sign(request, NULL, conf->secret) < 0) {
-				ERROR("Failed signing request: %s", fr_strerror());
+			if (fr_radius_packet_sign(packet, NULL, conf->secret) < 0) {
+				fr_perror("Failed signing packet");
 				return EXIT_FAILURE;
 			}
 
 			/*
 			 *	Print the attributes we're about to send
 			 */
-			fr_packet_log(&default_log, request, false);
+			fr_packet_log(&default_log, packet, &reply_vps, false);
 
 			FD_ZERO(&set); /* clear the set */
 			FD_SET(fd, &set);
@@ -791,7 +801,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			 *	next call.
 			 */
 			for (i = 0; i < conf->retries; i++) {
-				rcode = write(request->sockfd, request->data, request->data_len);
+				rcode = write(packet->socket.fd, packet->data, packet->data_len);
 				if (rcode < 0) {
 					ERROR("Failed sending: %s", fr_syserror(errno));
 					return EXIT_FAILURE;
@@ -808,18 +818,18 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					continue;	/* Timeout */
 
 				case 1:
-					reply = fr_radius_packet_recv(request, request->sockfd, UDP_FLAGS_NONE,
+					reply = fr_radius_packet_recv(packet, packet->socket.fd, UDP_FLAGS_NONE,
 								      RADIUS_MAX_ATTRIBUTES, false);
 					if (!reply) {
-						ERROR("Failed receiving reply: %s", fr_strerror());
+						fr_perror("Failed receiving reply");
 					recv_error:
 						RESPOND_STATIC("NONE");
-						talloc_free(request);
+						talloc_free(packet);
 						continue;
 					}
-					if (fr_radius_packet_decode(reply, request,
+					if (fr_radius_packet_decode(reply, &reply_vps, packet,
 								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
-						ERROR("Failed decoding reply: %s", fr_strerror());
+						fr_perror("Failed decoding reply");
 						goto recv_error;
 					}
 					break;
@@ -839,16 +849,16 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			/*
 			 *	Print the attributes we received in response
 			 */
-			fr_packet_log(&default_log, reply, true);
+			fr_packet_log(&default_log, reply, &reply_vps, true);
 
 			switch (command) {
 			case RADSNMP_GET:
 			case RADSNMP_GETNEXT:
 				ret = radsnmp_get_response(STDOUT_FILENO, conf->snmp_oid_root,
-							   attr_freeradius_snmp_type, reply->vps);
+							   attr_freeradius_snmp_type, &reply_vps);
 				switch (ret) {
 				case -1:
-					ERROR("Failed converting pairs to varbind response: %s", fr_strerror());
+					fr_perror("Failed converting pairs to varbind response");
 					return EXIT_FAILURE;
 
 				case 0:
@@ -862,8 +872,8 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				break;
 
 			case RADSNMP_SET:
-				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, reply->vps) < 0) {
-					ERROR("Failed writing SET response: %s", fr_strerror());
+				if (radsnmp_set_response(STDOUT_FILENO, attr_freeradius_snmp_failure, &reply_vps) < 0) {
+					fr_perror("Failed writing SET response");
 					return EXIT_FAILURE;
 				}
 				break;
@@ -874,13 +884,17 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			}
 
 
-			talloc_free(request);
+			talloc_free(packet);	/* Frees pairs */
 		}
 	}
 
 	return EXIT_SUCCESS;
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char **argv)
 {
 	int		c;
@@ -890,8 +904,14 @@ int main(int argc, char **argv)
 	radsnmp_conf_t *conf;
 	int		ret;
 	int		sockfd;
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree;
 
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_thread_local_atexit_setup();
+
+	autofree = talloc_autofree_context();
 	conf = talloc_zero(autofree, radsnmp_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
@@ -903,7 +923,7 @@ int main(int argc, char **argv)
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -941,7 +961,7 @@ int main(int argc, char **argv)
 			if (default_log.fd < 0) {
 				fprintf(stderr, "radsnmp: Failed to open log file %s: %s\n",
 					optarg, fr_syserror(errno));
-				exit(EXIT_FAILURE);
+				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
 
@@ -966,11 +986,11 @@ int main(int argc, char **argv)
 			fp = fopen(optarg, "r");
 			if (!fp) {
 			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			fclose(fp);
 
@@ -984,7 +1004,7 @@ int main(int argc, char **argv)
 
 			if (strlen(filesecret) < 2) {
 			       ERROR("Secret in %s is too short", optarg);
-			       exit(EXIT_FAILURE);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			talloc_free(conf->secret);
 			conf->secret = talloc_strdup(conf, filesecret);
@@ -993,14 +1013,14 @@ int main(int argc, char **argv)
 
 		case 't':
 			if (fr_time_delta_from_str(&conf->timeout, optarg, FR_TIME_RES_SEC) < 0) {
-				ERROR("Failed parsing timeout value %s", fr_strerror());
-				exit(EXIT_FAILURE);
+				fr_perror("Failed parsing timeout value");
+				fr_exit_now(EXIT_FAILURE);
 			}
 			break;
 
 		case 'v':
 			DEBUG("%s", radsnmp_version);
-			exit(0);
+			fr_exit_now(0);
 
 		case 'x':
 			fr_debug_lvl++;
@@ -1027,19 +1047,19 @@ int main(int argc, char **argv)
 
 	if (fr_dict_autoload(radsnmp_dict) < 0) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_attr_autoload(radsnmp_dict_attr) < 0) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(fr_dict_unconst(dict_freeradius), conf->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radsnmp");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
-	fr_strerror();	/* Clear the error buffer */
+	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
 	 *	Get the request type
@@ -1061,8 +1081,8 @@ int main(int argc, char **argv)
 	 *	Resolve hostname.
 	 */
 	if (fr_inet_pton_port(&conf->server_ipaddr, &conf->server_port, argv[1], -1, force_af, true, true) < 0) {
-		ERROR("%s", fr_strerror());
-		exit(EXIT_FAILURE);
+		fr_perror("Failed resolving hostname");
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -1082,7 +1102,7 @@ int main(int argc, char **argv)
 		      VENDORPEC_FREERADIUS);
 	dict_error:
 		talloc_free(conf);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	conf->snmp_oid_root = fr_dict_attr_child_by_num(conf->snmp_root, 1);

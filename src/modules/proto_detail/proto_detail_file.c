@@ -28,11 +28,9 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 
-#include <freeradius-devel/radius/radius.h>
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 
@@ -90,7 +88,7 @@ static const CONF_PARSER file_listen_config[] = {
 /*
  *	All of the decoding is done by proto_detail and proto_detail_work
  */
-static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
 	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
 
@@ -148,12 +146,9 @@ static int mod_open(fr_listen_t *li)
 	}
 
 	thread->inst = inst;
-	thread->name = talloc_typed_asprintf(thread, "detail polling for files matching %s", inst->filename);
+	thread->name = talloc_typed_asprintf(thread, "detail_file polling for files matching %s", inst->filename);
 	thread->vnode_fd = -1;
 	pthread_mutex_init(&thread->worker_mutex, NULL);
-
-	DEBUG("Listening on %s bound to virtual server %s",
-	      thread->name, cf_section_name2(inst->parent->server_cs));
 
 	return 0;
 }
@@ -347,7 +342,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	@todo - ensure that proto_detail_work is done the file...
 	 *	maybe by creating a new instance?
 	 */
-	if (fr_event_filter_insert(thread, thread->el, fd, FR_EVENT_FILTER_VNODE,
+	if (fr_event_filter_insert(thread, NULL, thread->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, thread) < 0) {
 		PERROR("Failed adding work socket to event loop");
 		close(fd);
@@ -387,7 +382,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	}
 	opened = true;
 
-	rad_assert(li->app_io->get_name);
+	fr_assert(li->app_io->get_name);
 	li->name = li->app_io->get_name(li);
 
 	if (!fr_schedule_listen_add(inst->parent->sc, li)) {
@@ -474,7 +469,7 @@ static void work_init(proto_detail_file_thread_t *thread)
 		goto delay;
 	}
 
-	rad_assert(thread->vnode_fd < 0);
+	fr_assert(thread->vnode_fd < 0);
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
@@ -621,7 +616,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	was.
 	 */
 	dl_inst = dl_module_instance_by_data(instance);
-	rad_assert(dl_inst);
+	fr_assert(dl_inst);
 
 #ifndef __linux__
 	/*

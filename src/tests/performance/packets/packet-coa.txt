@@ -1,0 +1,6 @@
+User-Name = "testuser"
+Acct-Session-ID = "0123456789"
+Service-Type = Framed-User
+NAS-IP-Address = 127.0.0.1
+NAS-Port-ID = 0
+Message-Authenticator = 0x

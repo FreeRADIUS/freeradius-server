@@ -36,11 +36,92 @@ extern "C" {
 #include <stdint.h>
 #include <talloc.h>
 
+/** Iterate over a talloced array of elements
+ *
+@verbatim
+talloc_foreach(vpt_m, vpt) {
+	tmpl_debug(vpt);
+}
+@endverbatim
+ *
+ * There seems to be a limitation in for loop initialiser arguments where they all
+ * must be the same type, though we can control the number of layers of pointer
+ * indirection on a per variable basis.
+ *
+ * We declare _p to be a pointer of the specified _type, and initialise it to the
+ * start of the array.  We declare _end to be a pointer of the specified type and
+ * initialise it to point to the end of the array using talloc_array_length().
+ *
+ * _iter is only updated in the condition to avoid de-referencing invalid memory.
+ *
+ * @param[in] _array	to iterate over.  May contain zero elements.
+ * @param[in] _iter	Name of iteration variable.
+ *			Will be declared in the scope of the loop.
+ */
+#define talloc_foreach(_array, _iter) \
+	for (__typeof__(_array[0]) _iter, *_p = (void *)(_array), *_end = (void *)((_array) + talloc_array_length(_array)); \
+	     (_p < _end) && (_iter = *((void **)(_p))); \
+	     _p = (__typeof__(_p))((__typeof__(_array))_p) + 1)
+
+typedef int(* fr_talloc_free_func_t)(void *fire_ctx, void *uctx);
+
+typedef struct fr_talloc_destructor_s fr_talloc_destructor_t;
+typedef struct fr_talloc_destructor_disarm_s fr_talloc_destructor_disarm_t;
+
+/** Structure to record a destructor operation on a specific talloc chunk
+ *
+ * Provided here so that additional memory can be allocated with talloc pool.
+ */
+struct fr_talloc_destructor_s {
+	void				*fire;			//!< Parent chunk.
+
+	fr_talloc_free_func_t		func;			//!< Free function.
+	void				*uctx;			//!< uctx to pass to free function.
+	fr_talloc_destructor_disarm_t	*ds;			//!< Chunk to free.
+};
+
+/** Structure to record a destructor to disarm if a child talloc chunk is freed
+ *
+ * Provided here so that additional memory can be allocated with talloc pool.
+ */
+struct fr_talloc_destructor_disarm_s {
+	fr_talloc_destructor_t		*d;	//!< Destructor to disarm.
+};
+
+/** Allocate a top level chunk with a constant name
+ *
+ * @param[in] name	Must be a string literal.
+ * @return
+ *	- NULL on allocation error.
+ *	- A new talloc chunk on success.
+ */
+static inline TALLOC_CTX *talloc_init_const(char const *name)
+{
+	TALLOC_CTX *ctx;
+
+	ctx = talloc_new(NULL);
+	if (unlikely(!ctx)) return NULL;
+
+	talloc_set_name_const(ctx, name);
+
+	return ctx;
+}
+
 void		*talloc_null_ctx(void);
+
+fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *disarm_ctx,
+					      fr_talloc_free_func_t func, void const *uctx);
+
+void		talloc_destructor_disarm(fr_talloc_destructor_t *d);
 
 int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
+fr_talloc_destructor_t *talloc_add_destructor(TALLOC_CTX *chunk, fr_talloc_free_func_t func, void const *uctx);
+
+void		talloc_disarm_destructor(fr_talloc_destructor_t *d);
+
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
+TALLOC_CTX	*talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment, size_t size);
 
 /*
  *	Add variant that zeroes out newly allocated memory
@@ -76,11 +157,14 @@ static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
 		talloc(_ctx, _type)
 #endif
 
+/** @hidecallergraph */
 char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
 
 char		*talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
 char		*talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull (2));
+
+char		*talloc_bstrdup(TALLOC_CTX *ctx, char const *in);
 
 char		*talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen);
 

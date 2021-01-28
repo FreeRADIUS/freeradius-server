@@ -62,7 +62,7 @@ again:
 			STATE_TRANSITION(FR_LDAP_STATE_START_TLS);
 			break;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	/*
 	 *	If we're successful in negotiating TLS,

@@ -67,6 +67,42 @@ VALUE	Packet-Type			Protocol-Error		52
 
 VALUE	Packet-Type			Do-Not-Respond		256
 
-# 1001 was Response-Packet-Type.  Now &reply:Packet-Type
+# 1001 was Response-Packet-Type.  Now &reply.Packet-Type
 
 ATTRIBUTE	Packet-Authentication-Vector		1002	octets virtual
+
+#
+#  v4 has tags as groups.
+#
+ATTRIBUTE	Tag-Base				1100	group
+ATTRIBUTE	Tag-1					1101	group
+ATTRIBUTE	Tag-2					1102	group
+ATTRIBUTE	Tag-3					1103	group
+ATTRIBUTE	Tag-4					1104	group
+ATTRIBUTE	Tag-5					1105	group
+ATTRIBUTE	Tag-6					1106	group
+ATTRIBUTE	Tag-7					1107	group
+ATTRIBUTE	Tag-8					1108	group
+ATTRIBUTE	Tag-9					1109	group
+ATTRIBUTE	Tag-10					1110	group
+ATTRIBUTE	Tag-11					1111	group
+ATTRIBUTE	Tag-12					1112	group
+ATTRIBUTE	Tag-13					1113	group
+ATTRIBUTE	Tag-14					1114	group
+ATTRIBUTE	Tag-15					1115	group
+ATTRIBUTE	Tag-16					1116	group
+ATTRIBUTE	Tag-17					1117	group
+ATTRIBUTE	Tag-18					1118	group
+ATTRIBUTE	Tag-19					1119	group
+ATTRIBUTE	Tag-20					1120	group
+ATTRIBUTE	Tag-21					1121	group
+ATTRIBUTE	Tag-22					1122	group
+ATTRIBUTE	Tag-23					1123	group
+ATTRIBUTE	Tag-24					1124	group
+ATTRIBUTE	Tag-25					1125	group
+ATTRIBUTE	Tag-26					1126	group
+ATTRIBUTE	Tag-27					1127	group
+ATTRIBUTE	Tag-28					1128	group
+ATTRIBUTE	Tag-29					1129	group
+ATTRIBUTE	Tag-30					1130	group
+ATTRIBUTE	Tag-31					1131	group

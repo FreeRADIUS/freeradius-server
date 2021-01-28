@@ -30,7 +30,7 @@
 
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
@@ -61,7 +61,7 @@
  *	certificate chain.
  *
  * @note As a byproduct of validation, various OIDs will be extracted from the
- *	certificates, and inserted into the session-state: list as VALUE_PAIR.
+ *	certificates, and inserted into the session-state: list as fr_pair_t.
  *
  * @param ok		preverify ok.  1 if true, 0 if false.
  * @param x509_ctx	containing certs to verify.
@@ -69,17 +69,16 @@
  *	- 0 if not valid.
  *	- 1 if valid.
  */
-int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
+int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 {
 	X509		*cert;
 	SSL		*ssl;
-	tls_session_t	*tls_session;
+	fr_tls_session_t	*tls_session;
 	int		err, depth;
 	fr_tls_conf_t	*conf;
 	int		my_ok = ok;
 
-	VALUE_PAIR	*cert_vps = NULL;
-	fr_cursor_t	cursor;
+	fr_pair_list_t	cert_vps;
 
 	char const	**identity_p;
 	char const	*identity = NULL;
@@ -88,8 +87,9 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	char		common_name[1024];
 	char		issuer[1024];
 
-	REQUEST		*request;
+	request_t		*request;
 
+	fr_pair_list_init(&cert_vps);
 	cert = X509_STORE_CTX_get_current_cert(x509_ctx);
 	err = X509_STORE_CTX_get_error(x509_ctx);
 	depth = X509_STORE_CTX_get_error_depth(x509_ctx);
@@ -100,8 +100,8 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
 	conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
-	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
-	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
+	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 
 	identity_p = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 	if (identity_p && *identity_p) identity = talloc_get_type_abort_const(*identity_p, char);
@@ -139,8 +139,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	client's cert in SSL_CTX's X509_STORE.
 	 */
 	if (identity && (depth <= 1) && !SSL_session_reused(ssl)) {
-		fr_cursor_init(&cursor, &cert_vps);
-		tls_session_pairs_from_x509_cert(&cursor, request, tls_session, cert, depth);
+		fr_tls_session_pairs_from_x509_cert(&cert_vps, request, tls_session, cert, depth);
 
 		/*
 		 *	Add a copy of the cert_vps to session state.
@@ -149,23 +148,22 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	below as logically dead code unless we explicitly
 		 *	set cert_vps.  This is because they're too dumb
 		 *	to realise that the cursor argument passed to
-		 *	tls_session_pairs_from_x509_cert contains a
+		 *	fr_tls_session_pairs_from_x509_cert contains a
 		 *	reference to cert_vps.
 		 */
-		cert_vps = fr_cursor_head(&cursor);
-		if (cert_vps) {
+		if (!fr_pair_list_empty(&cert_vps)) {
 			RDEBUG2("Adding certificate attributes to session-state");
 
 			/*
 			 *	Print out all the pairs we have so far
 			 */
-			log_request_pair_list(L_DBG_LVL_2, request, cert_vps, "&session-state:");
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &cert_vps, "&session-state.");
 
 			/*
 			 *	cert_vps have a different talloc parent, so we
 			 *	can't just reference them.
 			 */
-			MEM(fr_pair_list_copy(request->state_ctx, &request->state, cert_vps) >= 0);
+			MEM(fr_pair_list_copy(request->session_state_ctx, &request->session_state_pairs, &cert_vps) >= 0);
 			fr_pair_list_free(&cert_vps);
 		}
 	}
@@ -269,7 +267,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		char		filename[256];
 		int		fd;
 		FILE		*fp;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
 		snprintf(filename, sizeof(filename), "%s/client.XXXXXXXX", conf->verify_tmp_dir);
 
@@ -304,11 +302,11 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		fclose(fp);
 
 		MEM(pair_update_request(&vp, attr_tls_client_cert_filename) >= 0);
-		fr_pair_value_strcpy(vp, filename);
+		fr_pair_value_strdup(vp, filename);
 
 		RDEBUG2("Verifying client certificate with cmd");
 		if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,
-					request->packet->vps, true, true, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
+					&request->request_pairs, true, true, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 			REDEBUG("Client certificate CN \"%s\" failed external verification", common_name);
 			my_ok = 0;
 		} else {
@@ -335,11 +333,11 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		/*
 		 *	If we don't have an issuer, then we can't send
 		 *	and OCSP request, but pass the NULL issuer in
-		 *	so tls_ocsp_check can decide on the correct
+		 *	so fr_tls_ocsp_check can decide on the correct
 		 *	return code.
 		 */
 		issuer_cert = X509_STORE_CTX_get0_current_issuer(x509_ctx);
-		my_ok = tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
+		my_ok = fr_tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
 	}
 #endif
 
@@ -349,7 +347,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 /** Revalidates the client's certificate chain
  *
- * Wraps the tls_validate_cert_cb callback, allowing us to use the same
+ * Wraps the fr_tls_validate_cert_cb callback, allowing us to use the same
  * validation logic whenever we need to.
  *
  * @note Only use so far is forcing the chain to be re-validated on session
@@ -359,7 +357,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
  *	- 1 if the chain could be validated.
  *	- 0 if the chain failed validation.
  */
-int tls_validate_client_cert_chain(SSL *ssl)
+int fr_tls_validate_client_cert_chain(SSL *ssl)
 {
 	int		err;
 	int		verify;
@@ -370,9 +368,9 @@ int tls_validate_client_cert_chain(SSL *ssl)
 	X509_STORE	*store;
 	X509_STORE_CTX	*store_ctx;
 
-	REQUEST		*request;
+	request_t		*request;
 
-	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 
 	/*
 	 *	If there's no client certificate, we just return OK.
@@ -386,7 +384,7 @@ int tls_validate_client_cert_chain(SSL *ssl)
 
 	X509_STORE_CTX_init(store_ctx, store, cert, chain);
 	X509_STORE_CTX_set_ex_data(store_ctx, SSL_get_ex_data_X509_STORE_CTX_idx(), ssl);
-	X509_STORE_CTX_set_verify_cb(store_ctx, tls_validate_cert_cb);
+	X509_STORE_CTX_set_verify_cb(store_ctx, fr_tls_validate_cert_cb);
 
 	verify = X509_verify_cert(store_ctx);
 	if (verify != 1) {

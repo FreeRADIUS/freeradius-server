@@ -3,5 +3,5 @@
 Attributes in the `&control` list can control the behaviour of the server.
 Commonly used control attributes are:
 
-- `&control:Auth-Type` specifies the `authenticate <name> {}` section to run
+- `&control.Auth-Type` specifies the `authenticate <name> {}` section to run
 ****

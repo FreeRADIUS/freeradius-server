@@ -42,7 +42,7 @@ RCSIDH(mod_h, "$Id$")
  * This struct contains the core module configuration.
  */
 typedef struct {
-	vp_tmpl_t		*acct_key;		//!< Accounting document key.
+	tmpl_t		*acct_key;		//!< Accounting document key.
 	char const		*doctype;		//!< Value of accounting 'docType' element name.
 	uint32_t		expire;			//!< Accounting document expire time in seconds.
 
@@ -52,7 +52,7 @@ typedef struct {
 	char const		*username;       	//!< Couchbase bucket username.
 	char const		*password;       	//!< Couchbase bucket password.
 
-	vp_tmpl_t		*user_key;       	//!< User document key.
+	tmpl_t		*user_key;       	//!< User document key.
 
 	bool			read_clients;		//!< Toggle for loading client records.
 	const char		*client_view;    	//!< Couchbase view that returns client documents.
@@ -82,11 +82,11 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance);
 
 int mod_attribute_to_element(const char *name, json_object *map, void *buf);
 
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, json_object *json, pair_list_t list);
+int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, json_object *json, fr_pair_list_t list);
 
-json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp);
+json_object *mod_value_pair_to_json_object(request_t *request, fr_pair_t *vp);
 
-int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
+int mod_ensure_start_timestamp(json_object *json, fr_pair_list_t *vps);
 
 int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map, json_object *json, char const *docid);
 

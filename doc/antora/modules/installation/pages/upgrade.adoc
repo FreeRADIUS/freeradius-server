@@ -78,14 +78,14 @@ protocol was implemented (mostly) in the RADIUS state machine. In v4,
 each protocol is completely independent, and RADIUS is no longer welded
 into the server core.
 
-Each example virtual server in the `mods-enabled/` directory contains
+Each example virtual server in the `sites-enabled/` directory contains
 a `namespace` parameter.
 
 === Listen Sections
 
 The `listen` sections have changed. There is now a `type` entry,
-which lists the packet types (e.g. `Access-Request`) instead of
-`auth`. To accept multiple kinds of packets, just list `type`
+which lists the packet types (e.g._`Access-Request` instead of
+`auth`). To accept multiple kinds of packets, just list `type`
 multiple times:
 
 ```
@@ -150,7 +150,7 @@ for examples.
 The server also supports dynamic clients. See
 `sites-available/dynamic_clients` for a worked example. There are many
 changes from v3. First, there is no need to have a `client` definition
-that contains a network. Instead, there is a `network` section which
+which contains a network. Instead, there is a `network` section which
 has a number of `allow` and `deny` rules. Second, dynamic clients
 can be defined on a per-connection basis. Finally, the
 `sites-available/dynamic_clients` virtual server has full access to
@@ -158,7 +158,7 @@ the entire RADIUS packet.
 
 The result of these changes is that it is now possible to have multiple
 clients behind a NAT gateway, and to have different shared secrets for
-each client. e.g. by keying off of the `NAS-Identifier` attribute.
+each client. e.g._by keying off of the `NAS-Identifier` attribute.
 
 The dynamic client functionality behaves the same for all protocols
 supported by the server. e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
@@ -353,29 +353,77 @@ if (fail) {
 
 === CoA and Originate-Coa
 
-The `sites-available/originate-coa` virtual server has been removed.
-The functionality has been replaced with the `fork` keyword.
+The `sites-available/originate-coa` virtual server has been updated to
+use the new `subrequest` feature.  Please see that virtual server, and
+the `subrequest` keyword for details.
 
 == Dictionaries
 
 The `struct` data type is now supported. See `man dictionary`.
 
-There are many more sanity checks and helpful messages for people who
-create new dictionaries.
+Bit fields are now support via a data type such as `bit[3]`.  Not that
+bit fields are _only_ supported inside of a `struct` definition.
+
+The dictionary parser includes many more sanity checks and helpful
+messages for people who create new dictionaries.
+
+Dictionaries are now split up by protocol.
+e.g._`share/freeradius/radius/dictionary*`.  All protocol-specific
+data types have been removed, and replaced with attribute flags.
+
+The old `abinary` data type has been removed.  Attributes needing this
+functionality should instead be marked with a flag, e.g._`string abinary`.
+
+The old `extended` data type has been removed. Attributes needing this
+functionality should instead be marked with a flag, e.g._`tlv extended`.
+
+=== "Tagged" RADIUS attributes
+
+The old-style "tagged" RADIUS format has been removed.  Instead of using
+
+[source,unlang]
+----
+Tunnel-Type:1 = PPTP
+----
+
+you should use
+
+[source,unlang]
+----
+Tag-1.Tunnel-Type = PPTP
+----
+
+It is also possible to "group" tagged attributes together, as in the
+following example:
+
+[source,unlang]
+----
+Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }
+----
+
+There are 31 such attributes, `Tag-1` through `Tag-31`.  There is no
+`Tag-0` attribute, as it is not needed.
+
+After much effort, it was unfortunately impossible to continue
+supporting the `:tag` syntax for attributes.  This change requires
+modifications to all configuration files and databases which use tags.
+This change means also that `detail` files from v3 may not be
+readable by v4.
 
 == Attribute references
 
 In previous versions of the user attributes could be referred to by
 their name only e.g. `if (User-Name == 'foo')`.
 
-To allow for more thorough error checking, the requirement to prefix
-attribute references with `&` is now strictly enforced.
+To allow for more thorough error checking, it is not required to
+prefix attribute references with `&`.  Using bare names will result in
+an error, and a suggestion to use `&`.
 
 Common places which will need to be checked and corrected are the left
-and right hand side of `update {}` sections, and conditions.
+and right hand side of `update {}` sections, along with `if` conditions.
 
 The v3 server has warned about using non prefixed attribute references
-for some time. If users have paid attention to those warnings, few
+for some time. If users have addressed those warnings, few
 modifications will be required.
 
 Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
@@ -387,6 +435,11 @@ still parse (but not generate) attributes of the form
 `Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed
 in version 4. The server would never produce such names, and enabling
 them made attribute parsing significantly more complex.
+
+=== List references
+
+The old-style `request:` and `reply:` syntax for lists has been
+deprecated.  Please use `request.` and `reply.` instead.
 
 == Update sections
 
@@ -462,6 +515,11 @@ Some modules such as rlm_sql_postgresql can have their timeout set via
 an alternative configuration item (e.g. `radius_db` in the case of
 postgresql).
 
+== Xlat expansions
+
+The use of `%%` to escape `%` is no longer supported.  Just use `%`,
+and the parser is smart enough to figure things out.
+
 == New Modules
 
 The following modules are new in v4.
@@ -480,7 +538,7 @@ The module can send multiple packet types to one home server.
 e.g. Access-Request and Accounting-Request.
 
 This module also replaces the old `coa` and `originate-coa`
-configuration. See also `fork` for creating child requests that are
+configuration. See also `subrequest` for creating child requests that are
 different from the parent requests.
 
 Unlike v3, the module can do asynchronous proxying. That is, proxying
@@ -495,28 +553,29 @@ The following modules exhibit changed behaviour.
 
 === rlm_cache
 
-`&control:Cache-Merge` has been renamed to
-`&control:Cache-Merge-New` and controls whether new entries are merged
+`&control.Cache-Merge` has been renamed to
+`&control.Cache-Merge-New` and controls whether new entries are merged
 into the current request. It defaults to `no`. The primary use case,
 is if you’re using xlat expansions in the cache module itself to
 retrieve information for caching, and need the result of those
 expensions to be available immediately.
 
-Two new control attributes `&control:Cache-Allow-Merge` and
-`&control:Cache-Allow-Insert` have been added. These control whether
+Two new control attributes `&control.Cache-Allow-Merge` and
+`&control.Cache-Allow-Insert` have been added. These control whether
 existing entries are to be merged, and new entries created on the next
 call to a cache module instance. Both default to `yes`.
 
 === rlm_eap
 
-All certificate attributes are available in the `&session-state:`
-list, immediately after they’re parsed from their ASN1 form.
+All certificate attributes are available in the `&session-state.`
+list, immediately after they are parsed from their ASN1 form.
 
-The certificates are no longer added to the `&request:` list. You are
-advised to update any references during the upgrade to 4.0:
+The certificates are no longer added to the `&request.` list. Instead,
+they are added to the `session-state` list.  You are advised to update
+any references during the upgrade to 4.0:
 
 ```
-s/TLS-Cert-/session-state:TLS-Cert-/
+s/TLS-Cert-/session-state.TLS-Cert-/
 ```
 
 The `rlm_eap_ikev2` module was removed. It does not follow RFC 5106,
@@ -528,8 +587,8 @@ it.
 The in-memory SSL cache was removed. Changes in OpenSSL and FreeRADIUS
 made it difficult to continue using the OpenSSL implementation of a
 cache. See `raddb/sites-available/tls-cache` for a better replacement.
-The OpenSSL cache can now be placed on disk, in memory, in memcache, or
-in a redis cache. The result is higher performance, and is more
+The OpenSSL cache can now be placed on disk, in memory, in memcache,
+or in a redis cache. The result is both higher performance, and more
 configurable.
 
 The `use_tunneled_reply` and `copy_request_to_tunnel` configuration
@@ -546,7 +605,7 @@ preferable to having them hard-coded in C.
 === rlm_eap_pwd
 
 The `virtual_server` configuration has been removed from EAP-PWD. The
-module now looks for &request.control:Cleartext-Password.
+module now looks for &request.control.Password.Cleartext.
 
 === rlm_eap_leap
 
@@ -584,10 +643,26 @@ data, instead of as hex strings.
 
 All data received from the network is marked `tainted` by default.
 
+=== rlm_radutmp
+
+The `case_sensitive` option has been removed.  Administrators should
+not be permitting users to log in with multiple different user names.
+If your system needs to be case insensitive, we suggest changing all
+names to lowercase:
+
+```
+recv Access-Request {
+	update request {
+		&Stripped-User-Name := "%{tolower:%{User-Name}}"
+	}
+	...
+}
+```
+
 === rlm_rest
 
-`REST-HTTP-Code` is now inserted into the `&request:` list instead
-of the `&reply:` list, to be compliant with the
+`REST-HTTP-Code` is now inserted into the `&request.` list instead
+of the `&reply.` list, to be compliant with the
 http://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
 
 === rlm_sql
@@ -636,8 +711,8 @@ In v4 they must now be specified as::
 ```
 count_attribute = &Acct-Session-Time
 counter_name    = &Daily-Session-Time
-check_name      = &control:Max-Daily-Session
-reply_name      = &reply:Session-Timeout
+check_name      = &control.Max-Daily-Session
+reply_name      = &reply.Session-Timeout
 key             = "%{%{Stripped-User-Name}:-%{User-Name}}"
 ```
 
@@ -666,6 +741,11 @@ deprecated in 3.0.16.
 Instead, use `attribute-name`. See `mods-available/sqlippool` for
 more information.
 
+=== rlm_unix
+
+The `unix` module uses `Unix-Group` instead of `Group` or
+`Group-Name`.  Please rename those references.
+
 == Deleted Modules
 
 The following modules have been deleted
@@ -689,4 +769,4 @@ duplicate functionality.
 == Deleted Functionality
 
 The `Response-Packet-Type` attribute has been removed.  Please replace
-it with `&reply:Packet-Type`.
+it with `&reply.Packet-Type`.

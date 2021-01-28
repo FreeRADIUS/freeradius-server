@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/hash.h>
@@ -40,65 +41,26 @@ RCSID("$Id$")
 fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
 fr_table_num_ordered_t const date_precision_table[] = {
-	{ "microseconds",	FR_TIME_RES_USEC },
-	{ "us",			FR_TIME_RES_USEC },
+	{ L("microseconds"),	FR_TIME_RES_USEC },
+	{ L("us"),		FR_TIME_RES_USEC },
 
-	{ "nanoseconds",	FR_TIME_RES_NSEC },
-	{ "ns",			FR_TIME_RES_NSEC },
+	{ L("nanoseconds"),	FR_TIME_RES_NSEC },
+	{ L("ns"),		FR_TIME_RES_NSEC },
 
-	{ "milliseconds",	FR_TIME_RES_MSEC },
-	{ "ms",			FR_TIME_RES_MSEC },
+	{ L("milliseconds"),	FR_TIME_RES_MSEC },
+	{ L("ms"),		FR_TIME_RES_MSEC },
 
-	{ "seconds",		FR_TIME_RES_SEC },
-	{ "s",			FR_TIME_RES_SEC }
+	{ L("seconds"),		FR_TIME_RES_SEC },
+	{ L("s"),		FR_TIME_RES_SEC }
 
 };
 size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
 
-
-/** Map data types to min / max data sizes
- */
-size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
-
-	[FR_TYPE_STRING]	= {0, ~0},
-	[FR_TYPE_OCTETS]	= {0, ~0},
-
-	[FR_TYPE_IPV4_ADDR]	= {4, 4},
-	[FR_TYPE_IPV4_PREFIX]	= {6, 6},
-	[FR_TYPE_IPV6_ADDR]	= {16, 16},
-	[FR_TYPE_IPV6_PREFIX]	= {2, 18},
-	[FR_TYPE_COMBO_IP_ADDR]	= {4, 16},
-	[FR_TYPE_IFID]		= {8, 8},
-	[FR_TYPE_ETHERNET]	= {6, 6},
-
-	[FR_TYPE_BOOL]		= {1, 1},
-	[FR_TYPE_UINT8]		= {1, 1},
-	[FR_TYPE_UINT16]	= {2, 2},
-	[FR_TYPE_UINT32]	= {4, 4},
-	[FR_TYPE_UINT64]	= {8, 8},
-	[FR_TYPE_SIZE]		= {sizeof(size_t), sizeof(size_t)},
-	[FR_TYPE_INT32]		= {4, 4},
-
-	[FR_TYPE_DATE]		= {4, 4},
-	[FR_TYPE_TIME_DELTA]   	= {4, 4},
-	[FR_TYPE_ABINARY]	= {32, ~0},
-
-	[FR_TYPE_TLV]		= {2, ~0},
-	[FR_TYPE_STRUCT]	= {1, ~0},
-
-	[FR_TYPE_EXTENDED]	= {1, ~0},
-
-	[FR_TYPE_VSA]		= {4, ~0},
-
-	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
-};
-
 /** Characters allowed in dictionary names
  *
  */
-bool const fr_dict_attr_allowed_chars[UINT8_MAX] = {
-	['-'] = true, ['.'] = true, ['/'] = true, ['_'] = true,
+bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
+	['-'] = true, ['/'] = true, ['_'] = true,
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
 	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true,
@@ -119,11 +81,11 @@ bool const fr_dict_attr_allowed_chars[UINT8_MAX] = {
  *
  */
 bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
-	[FR_TYPE_TLV] = true,
+	[FR_TYPE_GROUP] = true,
 	[FR_TYPE_STRUCT] = true,
-	[FR_TYPE_EXTENDED] = true,
-	[FR_TYPE_VSA] = true,
-	[FR_TYPE_VENDOR] = true
+	[FR_TYPE_TLV] = true,
+	[FR_TYPE_VENDOR] = true,
+	[FR_TYPE_VSA] = true
 };
 
 /*
@@ -307,17 +269,14 @@ static int dict_vendor_pen_cmp(void const *one, void const *two)
 	return a->pen - b->pen;
 }
 
-/** Hash a dictionary name
+/** Hash a enumeration name
  *
  */
 static uint32_t dict_enum_name_hash(void const *data)
 {
-	uint32_t hash;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = dict_hash_name((void const *)enumv->name, enumv->name_len);
-
-	return fr_hash_update(&enumv->da, sizeof(enumv->da), hash);		//-V568
+	return dict_hash_name((void const *)enumv->name, enumv->name_len);
 }
 
 /** Compare two dictionary attribute enum values
@@ -325,12 +284,8 @@ static uint32_t dict_enum_name_hash(void const *data)
  */
 static int dict_enum_name_cmp(void const *one, void const *two)
 {
-	int rcode;
 	fr_dict_enum_t const *a = one;
 	fr_dict_enum_t const *b = two;
-
-	rcode = a->da - b->da;
-	if (rcode != 0) return rcode;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -340,11 +295,9 @@ static int dict_enum_name_cmp(void const *one, void const *two)
  */
 static uint32_t dict_enum_value_hash(void const *data)
 {
-	uint32_t hash = 0;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = fr_hash_update((void const *)&enumv->da, sizeof(void *), hash);	/* Cast to quiet static analysis */
-	return fr_hash_update((void const *)enumv->value, sizeof(void *), hash);
+	return fr_value_box_hash_update(enumv->value, 0);
 }
 
 /** Compare two dictionary enum values
@@ -358,32 +311,329 @@ static int dict_enum_value_cmp(void const *one, void const *two)
 	return fr_value_box_cmp(a->value, b->value);
 }
 
-/** Allocate a dictionary attribute and assign a name
+/** Set a dictionary attribute's name
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p	to set name for.
+ * @param[in] name	to set.  If NULL a name will be automatically generated.
+ */
+static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t **da_p, char const *name)
+{
+	char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	size_t		name_len;
+	char		*name_start, *name_end;
+	fr_dict_attr_t	*da = *da_p;
+
+	/*
+	 *	Generate a name if none is specified
+	 */
+	if (!name) {
+		fr_sbuff_t unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
+
+
+		fr_sbuff_in_sprintf(&unknown_name, "%u", da->attr);
+
+		name = fr_sbuff_buff(&unknown_name);
+		name_len = fr_sbuff_used(&unknown_name);
+	} else {
+		name_len = strlen(name);
+	}
+
+	/*
+	 *	Grow the structure to hold the name
+	 *
+	 *	We add the name as an extension because it makes
+	 *	the code less complex, and means the name value
+	 *	is copied automatically when if the fr_dict_attr_t
+	 *	is copied.
+	 *
+	 *	We do still need to fixup the da->name pointer
+	 *	though.
+	 */
+	name_start = dict_attr_ext_alloc_size(da_p, FR_DICT_ATTR_EXT_NAME, name_len + 1);
+	if (!name_start) return -1;
+
+	name_end = name_start + name_len;
+
+	memcpy(name_start, name, name_len);
+	*name_end = '\0';
+
+	(*da_p)->name = name_start;
+	(*da_p)->name_len = name_len;
+
+	return 0;
+}
+
+/** Add a child/nesting extension to an attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_children_init(fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_children_t	*ext;
+
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_CHILDREN);
+	if (unlikely(!ext)) return -1;
+
+	return 0;
+}
+
+/** Set a reference for a grouping attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_ref_init(fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_ref_t		*ext;
+
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) return -1;
+
+	return 0;
+}
+
+/** Cache the vendor pointer for an attribute
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to set a group reference for.
+ * @param[in] vendor		to set.
+ */
+static inline CC_HINT(always_inline) int dict_attr_vendor_set(fr_dict_attr_t **da_p, fr_dict_attr_t const *vendor)
+{
+	fr_dict_attr_ext_vendor_t	*ext;
+
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_VENDOR);
+	if (unlikely(!ext)) return -1;
+
+	ext->vendor = vendor;
+
+	return 0;
+}
+
+/** Initialise an attribute's da stack from its parent
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to populate the da_stack for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_da_stack_set(fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_da_stack_t	*ext, *p_ext;
+	fr_dict_attr_t			*da = *da_p;
+	fr_dict_attr_t const		*parent = da->parent;
+
+	if (!parent) return 1;
+	if (da->depth > FR_DICT_DA_STACK_CACHE_MAX) return 1;
+	if (fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_DA_STACK)) return 1;
+
+	p_ext = fr_dict_attr_ext(parent, FR_DICT_ATTR_EXT_DA_STACK);
+	if (!p_ext) return 1;
+
+	ext = dict_attr_ext_alloc_size(da_p, FR_DICT_ATTR_EXT_DA_STACK, sizeof(ext->da_stack[0]) * (da->depth + 1));
+	if (unlikely(!ext)) return -1;
+
+	memcpy(ext->da_stack, p_ext->da_stack, sizeof(ext->da_stack[0]) * parent->depth);
+
+	/*
+	 *	Always set the last stack entry to ourselves.
+	 */
+	ext->da_stack[da->depth] = da;
+
+	return 0;
+}
+
+/** Initialise a per-attribute enumeration table
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_enumv_init(fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_enumv_t	*ext;
+
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_ENUMV);
+	if (unlikely(!ext)) return -1;
+
+	return 0;
+}
+
+/** Initialise a per-attribute namespace
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to set a group reference for.
+ */
+static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t **da_p)
+{
+	fr_dict_attr_ext_namespace_t	*ext;
+
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_NAMESPACE);
+	if (unlikely(!ext)) return -1;
+
+	/*
+	 *	Create the table of attributes by name.
+	 *      There MAY NOT be multiple attributes of the same name.
+	 *
+	 *	If the attribute already has extensions
+	 *	then we don't want to leak the old
+	 *	namespace hash table.
+	 */
+	if (!ext->namespace) {
+		ext->namespace = fr_hash_table_create(*da_p, dict_attr_name_hash, dict_attr_name_cmp, NULL);
+		if (!ext->namespace) {
+			fr_strerror_printf("Failed allocating \"namespace\" table");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/** Initialise fields in a dictionary attribute structure
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] da_p		to initialise.
+ * @param[in] parent		of the attribute, if none, should be
+ *				the dictionary root.
+ * @param[in] name		of attribute.  Pass NULL for auto-generated name.
+ * @param[in] attr		number.
+ * @param[in] type		of the attribute.
+ * @param[in] flags		to assign.
+ */
+int dict_attr_init(fr_dict_attr_t **da_p,
+		   fr_dict_attr_t const *parent,
+		   char const *name, int attr,
+		   fr_type_t type, fr_dict_attr_flags_t const *flags)
+{
+	**da_p = (fr_dict_attr_t) {
+		.attr = attr,
+		.type = type,
+		.flags = *flags,
+		.parent = parent,
+	};
+
+	/*
+	 *	Record the parent
+	 */
+	if (parent) {
+		(*da_p)->dict = parent->dict;
+		(*da_p)->depth = parent->depth + 1;
+
+		/*
+		 *	Point to the vendor definition.  Since ~90% of
+		 *	attributes are VSAs, caching this pointer will help.
+		 */
+		if (parent->type == FR_TYPE_VENDOR) {
+			if (dict_attr_vendor_set(da_p, parent) < 0) return -1;
+		} else {
+			dict_attr_ext_copy(da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
+		}
+	} else {
+		(*da_p)->depth = 0;
+	}
+
+	/*
+	 *	Cache the da_stack so we don't need
+	 *	to generate it at runtime.
+	 */
+	dict_attr_da_stack_set(da_p);
+
+	/*
+	 *	Structural types can have children
+	 *	so add the extension for them.
+	 */
+	switch (type) {
+	case FR_TYPE_STRUCTURAL:
+	structural:
+		if (dict_attr_ref_init(da_p) < 0) return -1;
+
+		/*
+		 *	Groups don't have children or
+		 *	namespaces.
+		 */
+		if (type == FR_TYPE_GROUP) break;
+
+		if (dict_attr_children_init(da_p) < 0) return -1;
+		if (dict_attr_namespace_init(da_p) < 0) return -1;	/* Needed for all TLV style attributes */
+		break;
+
+	/*
+	 *	Keying types *sigh*
+	 */
+	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
+	case FR_TYPE_UINT16:	/* Same here */
+		if (dict_attr_enumv_init(da_p) < 0) return -1;
+		goto structural;
+
+	/*
+	 *	Leaf types
+	 */
+	default:
+		if (dict_attr_enumv_init(da_p) < 0) return -1;
+		break;
+	}
+
+	/*
+	 *	Name is a separate talloc chunk.  We allocate
+	 *	it last because we cache the pointer value.
+	 */
+	if (dict_attr_name_set(da_p, name) < 0) return -1;
+
+	DA_VERIFY(*da_p);
+
+	return 0;
+}
+
+static int _dict_attr_free(fr_dict_attr_t *da)
+{
+	fr_dict_attr_ext_enumv_t	*ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (ext) talloc_free(ext->value_by_name);		/* Ensure this is freed before the enumvs */
+
+	return 0;
+}
+/** Allocate a partially completed attribute
+ *
+ * This is useful in some instances where we need to pre-allocate the attribute
+ * for talloc hierarchy reasons, but want to finish initialising it
+ * with #dict_attr_init later.
  *
  * @param[in] ctx		to allocate attribute in.
- * @param[in] name		to set.
  * @return
  *	- 0 on success.
  *	- -1 on failure (memory allocation error).
  */
-fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
+fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
 {
 	fr_dict_attr_t *da;
 
-	if (!name) {
-		fr_strerror_printf("No attribute name provided");
-		return NULL;
-	}
+	/*
+	 *	Do not use talloc zero, the caller
+	 *	always initialises memory allocated
+	 *	here.
+	 */
+	da = talloc(ctx, fr_dict_attr_t);
+	if (unlikely(!da)) return NULL;
 
-	da = talloc_zero(ctx, fr_dict_attr_t);
-	if (!da) return NULL;
+	/*
+	 *	On error paths in the caller, the
+	 *	caller may free the attribute
+	 *	allocated here without initialising
+	 *	the ext array, which is then
+	 *	accessed in the destructor.
+	 */
+	memset(da->ext, 0, sizeof(da->ext));
 
-	da->name = talloc_typed_strdup(da, name);
-	if (!da->name) {
-		talloc_free(da);
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
+	talloc_set_destructor(da, _dict_attr_free);
 
 	return da;
 }
@@ -403,43 +653,19 @@ fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
  *	- NULL on failure.
  */
 fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
-				   fr_dict_attr_t const *parent,
-				   char const *name, int attr,
-				   fr_type_t type, fr_dict_attr_flags_t const *flags)
+				fr_dict_attr_t const *parent,
+				char const *name, int attr,
+				fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t	*n;
 
-	if (!fr_cond_assert(parent)) return NULL;
+	n = dict_attr_alloc_null(ctx);
+	if (unlikely(!n)) return NULL;
 
-	/*
-	 *	Allocate a new attribute
-	 */
-	if (!name) {
-		char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-		char		*p = buffer;
-		size_t		len;
-		size_t		need;
-		fr_dict_attr_t	tmp;
-
-		memset(&tmp, 0, sizeof(tmp));
-		dict_attr_init(&tmp, parent, attr, type, flags);
-
-		len = snprintf(p, sizeof(buffer), "Attr-");
-		p += len;
-
-		fr_dict_print_attr_oid(&need, p, sizeof(buffer) - (p - buffer), NULL, &tmp);
-		if (need > 0) {
-			fr_strerror_printf("OID string too long for unknown attribute");
-			return NULL;
-		}
-
-		n = dict_attr_alloc_name(ctx, buffer);
-	} else {
-		n = dict_attr_alloc_name(ctx, name);
+	if (dict_attr_init(&n, parent, name, attr, type, flags) < 0) {
+		talloc_free(n);
+		return NULL;
 	}
-
-	dict_attr_init(n, parent, attr, type, flags);
-	DA_VERIFY(n);
 
 	return n;
 }
@@ -448,21 +674,73 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
  *
  * @param[in] ctx		to allocate new attribute in.
  * @param[in] in		attribute to copy.
+ * @param[in] new_name		to assign to the attribute.
+ *				If NULL the existing name will be used.
  * @return
  *	- A copy of the input fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
+fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name)
 {
-	fr_dict_attr_t *n;
+	fr_dict_attr_t		*n;
 
-	n = dict_attr_alloc_name(ctx, in->name);
-	if (!n) return NULL;
+	n = dict_attr_alloc(ctx, in->parent, new_name ? new_name : in->name, in->attr, in->type, &in->flags);
+	if (unlikely(!n)) return NULL;
 
-	dict_attr_init(n, in->parent, in->attr, in->type, &in->flags);
+	if (dict_attr_ext_copy_all(&n, in) < 0) {
+		talloc_free(n);
+		return NULL;
+	}
 	DA_VERIFY(n);
 
 	return n;
+}
+
+/** Copy the children of an existing attribute
+ *
+ * @param[in] dict		to allocate the children in
+ * @param[in] dst		where to copy the children to
+ * @param[in] src		where to copy the children from
+ * @return
+ *	- 0 on success
+ *	- <0 on error
+ */
+int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src)
+{
+	fr_dict_attr_t const *child = NULL;
+	fr_dict_attr_t *copy;
+
+	if ((dst->type != FR_TYPE_TLV) && (dst->type != FR_TYPE_STRUCT) && !fr_dict_attr_is_key_field(src)) {
+		fr_strerror_printf_push("Invalid destination type %s",
+					fr_table_str_by_value(fr_value_box_type_table, dst->type, "<UNKNOWN>"));
+		return -1;
+	}
+
+	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
+	fr_assert(dst->type == src->type);
+	fr_assert(fr_dict_attr_is_key_field(src) == fr_dict_attr_is_key_field(dst));
+
+	for (child = fr_dict_attr_iterate_children(src, &child);
+	     child != NULL;
+	     child = fr_dict_attr_iterate_children(src, &child)) {
+		copy = dict_attr_acopy(dict->pool, child, NULL);
+		if (!copy) {
+			fr_strerror_printf("Failed cloning child %s", child->name);
+			return -1;
+		}
+
+		copy->parent = dst;
+
+		if (dict_attr_child_add(dst, copy) < 0) return -1;
+
+		if (dict_attr_add_to_namespace(dict, dst, copy) < 0) return -1;
+
+		if (!dict_attr_children(child)) continue;
+
+		if (dict_attr_acopy_children(dict, copy, child) < 0) return -1;
+	}
+
+	return 0;
 }
 
 /** Add a protocol to the global protocol table
@@ -482,7 +760,7 @@ int dict_protocol_add(fr_dict_t *dict)
 	if (!fr_hash_table_insert(dict_gctx->protocol_by_name, dict)) {
 		fr_dict_t *old_proto;
 
-		old_proto = fr_hash_table_finddata(dict_gctx->protocol_by_name, dict);
+		old_proto = fr_hash_table_find_by_data(dict_gctx->protocol_by_name, dict);
 		if (!old_proto) {
 			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
 			return -1;
@@ -534,11 +812,16 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	}
 
 	vendor = talloc_zero(dict, fr_dict_vendor_t);
+	if (!vendor) {
+	oom:
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
 	vendor->name = talloc_typed_strdup(vendor, name);
 	if (!vendor->name) {
 		talloc_free(vendor);
-		fr_strerror_printf("Out of memory");
-		return -1;
+		goto oom;
 	}
 	vendor->pen = num;
 	vendor->type = vendor->length = 1; /* defaults */
@@ -546,7 +829,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	if (!fr_hash_table_insert(dict->vendors_by_name, vendor)) {
 		fr_dict_vendor_t const *old_vendor;
 
-		old_vendor = fr_hash_table_finddata(dict->vendors_by_name, vendor);
+		old_vendor = fr_hash_table_find_by_data(dict->vendors_by_name, vendor);
 		if (!old_vendor) {
 			fr_strerror_printf("%s: Failed inserting vendor name %s", __FUNCTION__, name);
 			return -1;
@@ -581,6 +864,48 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	return 0;
 }
 
+/** See if a #fr_dict_attr_t can have children
+ *
+ *  The check for children is complicated by the need for "int" types
+ *  to have children, when they are `key` fields in a `struct`.  This
+ *  situation occurs when a struct has multiple sub-structures, which
+ *  are selected based on a `key` field.
+ *
+ *  There is no other place for the sub-structures to go.  In the
+ *  future, we may extend the functionality of the `key` field, by
+ *  allowing non-integer data types.  That would require storing keys
+ *  as #fr_dict_enum_t, and then placing the child (i.e. sub)
+ *  structures there.  But that would involve adding children to
+ *  enums, which is currently not supported.
+ *
+ * @param da the dictionary attribute to check.
+ */
+bool dict_attr_can_have_children(fr_dict_attr_t const *da)
+{
+	switch (da->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VSA:
+	case FR_TYPE_STRUCT:
+		return true;
+
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+		/*
+		 *	Children are allowed here, but ONLY if this
+		 *	attribute is a key field.
+		 */
+		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && fr_dict_attr_is_key_field(da)) return true;
+		break;
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
 /** Add a child to a parent.
  *
  * @param[in] parent	we're adding a child to.
@@ -593,47 +918,48 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 {
 	fr_dict_attr_t const * const *bin;
 	fr_dict_attr_t **this;
+	fr_dict_attr_t const **children;
 
 	/*
 	 *	Setup fields in the child
 	 */
-	child->parent = parent;
-	child->depth = parent->depth + 1;
+	fr_assert(child->parent == parent);
 
 	DA_VERIFY(child);
 
-	switch (parent->type) {
-	case FR_TYPE_TLV:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_VSA:
-	case FR_TYPE_STRUCT:
-	case FR_TYPE_EXTENDED:
-		break;
+	if (fr_dict_attr_ref(parent)) {
+		fr_strerror_printf("Cannot add children to attribute '%s' which has 'ref=%s'",
+				   parent->name, fr_dict_attr_ref(parent)->name);
+		return -1;
+	}
 
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-		/*
-		 *	Children are allowed here, but ONLY if this
-		 *	attribute is a key field.
-		 */
-		if (parent->parent && (parent->parent->type == FR_TYPE_STRUCT) && da_is_key_field(parent)) break;
-		/* FALL-THROUGH */
-
-	default:
+	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
-				   parent->name, fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
-		return false;
+				   parent->name,
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+		return -1;
+	}
+
+	if ((parent->type == FR_TYPE_VSA) && (child->type != FR_TYPE_VENDOR)) {
+		fr_strerror_printf("Cannot add non-vendor children to attribute '%s' of type %s",
+				   parent->name,
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+		return -1;
 	}
 
 	/*
 	 *	We only allocate the pointer array *if* the parent has children.
 	 */
-	if (!parent->children) parent->children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
-	if (!parent->children) {
-		fr_strerror_printf("Out of memory");
-		return -1;
+	children = dict_attr_children(parent);
+	if (!children) {
+		children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
+		if (!children) {
+			fr_strerror_const("Out of memory");
+			return -1;
+		}
+		if (dict_attr_children_set(parent, children) < 0) return -1;
 	}
+
 	/*
 	 *	Treat the array as a hash of 255 bins, with attributes
 	 *	sorted into bins using num % 255.
@@ -650,7 +976,7 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	 *	Attributes are inserted into the bin in order of their attribute
 	 *	numbers to allow slightly more efficient lookups.
 	 */
-	bin = &parent->children[child->attr & 0xff];
+	bin = &children[child->attr & 0xff];
 	for (;;) {
 		bool child_is_struct = false;
 		bool bin_is_struct = false;
@@ -693,21 +1019,43 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	return 0;
 }
 
-/** Add an attribute to the name table for the dictionary.
+/** Add an attribute to the name table for an attribute
  *
  * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
+ * @param[in] parent		containing the namespace to add this attribute to.
  * @param[in] da		to add to the name lookup tables.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
+int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 {
+	fr_hash_table_t		*namespace;
+
+	namespace = dict_attr_namespace(parent);
+	if (unlikely(!namespace)) {
+		fr_strerror_printf("Parent \"%s\" has no namespace", parent->name);
+	error:
+		return -1;
+	}
+
+	/*
+	 *	Sanity check to stop children of vendors ending
+	 *	up in the Vendor-Specific or root namespace.
+	 */
+	if ((fr_dict_vendor_num_by_da(da) != 0) && (da->type != FR_TYPE_VENDOR) &&
+	    ((parent->type == FR_TYPE_VSA) || parent->flags.is_root)) {
+		fr_strerror_printf("Cannot insert attribute '%s' of type %s into %s",
+				   da->name,
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+				   parent->name);
+		goto error;
+	}
+
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (!fr_hash_table_insert(dict->attributes_by_name, da)) {
+	if (!fr_hash_table_insert(namespace, da)) {
 		fr_dict_attr_t *a;
 
 		/*
@@ -715,12 +1063,11 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 		 *	but the parent, or number, or type are
 		 *	different, that's an error.
 		 */
-		a = fr_hash_table_finddata(dict->attributes_by_name, da);
+		a = fr_hash_table_find_by_data(namespace, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name \"%s\"", da->name);
-			error:
-				return -1;
+				goto error;
 			}
 		}
 
@@ -732,8 +1079,8 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 		 *	dictionary but entry in the name hash table is
 		 *	updated to point to the new definition.
 		 */
-		if (!fr_hash_table_replace(dict->attributes_by_name, da)) {
-			fr_strerror_printf("Internal error storing attribute");
+		if (!fr_hash_table_replace(namespace, da)) {
+			fr_strerror_const("Internal error storing attribute");
 			goto error;
 		}
 	}
@@ -751,21 +1098,23 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 	{
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = dict_attr_acopy(dict->pool, da);
+		fr_assert(dict->attributes_combo);
+
+		v4 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v4) goto error;
 		v4->type = FR_TYPE_IPV4_ADDR;
 
-		v6 = dict_attr_acopy(dict->pool, da);
+		v6 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v6) goto error;
 		v6->type = FR_TYPE_IPV6_ADDR;
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
-			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv4 version of combo attribute");
 			goto error;
 		}
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v6)) {
-			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv6 version of combo attribute");
 			goto error;
 		}
 		break;
@@ -775,21 +1124,23 @@ int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 	{
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = dict_attr_acopy(dict->pool, da);
+		fr_assert(dict->attributes_combo);
+
+		v4 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v4) goto error;
 		v4->type = FR_TYPE_IPV4_PREFIX;
 
-		v6 = dict_attr_acopy(dict->pool, da);
+		v6 = dict_attr_acopy(dict->pool, da, NULL);
 		if (!v6) goto error;
 		v6->type = FR_TYPE_IPV6_PREFIX;
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
-			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv4 version of combo attribute");
 			goto error;
 		}
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v6)) {
-			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
+			fr_strerror_const("Failed inserting IPv6 version of combo attribute");
 			goto error;
 		}
 		break;
@@ -838,34 +1189,35 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 #define FLAGS_EQUAL(_x) (old->flags._x == flags->_x)
 
-	old = fr_dict_attr_by_name(dict, name);
+	old = fr_dict_attr_by_name(NULL, parent, name);
 	if (old) {
-		if ((old->parent == parent) && (old->attr == (unsigned int) attr) && (old->type == type) &&
-		    FLAGS_EQUAL(has_tag) && FLAGS_EQUAL(array) && FLAGS_EQUAL(concat) && FLAGS_EQUAL(subtype)) {
+		if ((old->parent == parent)&& (old->type == type) &&
+		    FLAGS_EQUAL(array) && FLAGS_EQUAL(subtype)  &&
+		    ((old->attr == (unsigned int) attr) || ((attr < 0) && old->flags.internal))) {
 			return 0;
 		}
 
 		if (old->parent != parent) {
-			fr_strerror_printf_push("Cannot add duplicate name %s with different parent (old %s, new %s)",
+			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different parent (old %s, new %s)",
 						name, old->parent->name, parent->name);
 			return -1;
 		}
 
 		if (old->attr != (unsigned int) attr) {
-			fr_strerror_printf_push("Cannot add duplicate name %s with different number (old %u, new %d)",
+			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different number (old %u, new %d)",
 						name, old->attr, attr);
 			return -1;
 		}
 
 		if (old->type != type) {
-			fr_strerror_printf_push("Cannot add duplicate name %s with different type (old %s, new %s)",
+			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different type (old %s, new %s)",
 						name,
 						fr_table_str_by_value(fr_value_box_type_table, old->type, "?Unknown?"),
 						fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 			return -1;
 		}
 
-		fr_strerror_printf_push("Cannot add duplicate name %s with different flags",
+		fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different flags",
 					name);
 		return -1;
 	}
@@ -873,7 +1225,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &our_flags);
 	if (!n) return -1;
 
-	if (dict_attr_add_by_name(dict, n) < 0) {
+	if (dict_attr_add_to_namespace(dict, parent, n) < 0) {
 	error:
 		talloc_free(n);
 		return -1;
@@ -889,40 +1241,28 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (dict_attr_child_add(mutable, n) < 0) goto error;
 
+	/*
+	 *	If it's a group attribute, the default
+	 *	reference goes to the root of the
+	 *	dictionary as that's where the default
+	 *	name/numberspace is.
+	 *
+	 *	This may be updated by the caller.
+	 */
+	if (type == FR_TYPE_GROUP) dict_attr_ref_set(n, fr_dict_root(dict));
+
 	return 0;
 }
 
-/** Add a value name
- *
- * Aliases are textual (string) names for a given value.
- *
- * Value names are not limited to integers, and may be added for any non-structural
- * attribute type.
- *
- * @param[in] da		to add enumeration value to.
- * @param[in] name		Name of value name.
- * @param[in] value		to associate with name.
- * @param[in] coerce		if the type of the value does not match the
- *				type of the da, attempt to cast it to match
- *				the type of the da.  If this is false and there's
- *				a type mismatch, we fail.
- *				We also fail if the value cannot be coerced to
- *				the attribute type.
- * @param[in] takes_precedence	This name should take precedence over previous
- *				names for the same value, when resolving value
- *				to name.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
-			  fr_value_box_t const *value,
-			  bool coerce, bool takes_precedence)
+int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
+			    fr_value_box_t const *value,
+			    bool coerce, bool takes_precedence,
+			    fr_dict_attr_t const *child_struct)
 {
-	size_t			len;
-	fr_dict_t		*dict;
-	fr_dict_enum_t		*enumv = NULL;
-	fr_value_box_t		*enum_value = NULL;
+	size_t				len;
+	fr_dict_enum_t			*enumv = NULL;
+	fr_value_box_t			*enum_value = NULL;
+	fr_dict_attr_ext_enumv_t	*ext;
 
 	if (!da) {
 		fr_strerror_printf("%s: Dictionary attribute not specified", __FUNCTION__);
@@ -940,16 +1280,54 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 
-	dict = dict_by_da(da);
+	/*
+	 *	If the parent isn't a key field, then we CANNOT add a child struct.
+	 */
+	if (!fr_dict_attr_is_key_field(da) && child_struct) {
+		fr_strerror_const("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
+		return -1;
+	}
 
-	enumv = talloc_zero(dict->pool, fr_dict_enum_t);
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("VALUE cannot be defined for %s attributes",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Initialise enumv hash tables
+	 */
+	if (!ext->value_by_name || !ext->name_by_value) {
+		ext->value_by_name = fr_hash_table_create(da, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
+		if (!ext->value_by_name) {
+			fr_strerror_printf("Failed allocating \"value_by_name\" table");
+			return -1;
+		}
+
+		ext->name_by_value = fr_hash_table_create(da, dict_enum_value_hash, dict_enum_value_cmp, NULL);
+		if (!ext->name_by_value) {
+			fr_strerror_printf("Failed allocating \"name_by_value\" table");
+			return -1;
+		}
+	}
+
+	/*
+	 *	Allocate a structure to map between
+	 *	the name and value.
+	 */
+	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_t) + sizeof(enumv->child_struct[0]) * fr_dict_attr_is_key_field(da));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
 		return -1;
 	}
+	talloc_set_type(enumv, fr_dict_enum_t);
+
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = strlen(name);
+
+	if (child_struct) enumv->child_struct[0] = child_struct;
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
 	if (!enum_value) goto oom;
 
@@ -978,7 +1356,6 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 	}
 
 	enumv->value = enum_value;
-	enumv->da = da;
 
 	/*
 	 *	Add the value into the dictionary.
@@ -987,7 +1364,7 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 		fr_dict_attr_t *tmp;
 		memcpy(&tmp, &enumv, sizeof(tmp));
 
-		if (!fr_hash_table_insert(dict->values_by_name, tmp)) {
+		if (!fr_hash_table_insert(ext->value_by_name, tmp)) {
 			fr_dict_enum_t *old;
 
 			/*
@@ -1003,7 +1380,7 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 				return 0;
 			}
 
-			fr_strerror_printf("Duplicate VALUE name \"%s\" for attribute \"%s\". "
+			fr_strerror_printf("Duplicate VALUE name \"%s\" for Attribute '%s'. "
 					   "Old value was \"%pV\", new value was \"%pV\"", name, da->name,
 					   old->value, enumv->value);
 			talloc_free(enumv);
@@ -1016,12 +1393,12 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	take care of that here.
 	 */
 	if (takes_precedence) {
-		if (!fr_hash_table_replace(dict->values_by_da, enumv)) {
+		if (!fr_hash_table_replace(ext->name_by_value, enumv)) {
 			fr_strerror_printf("%s: Failed inserting value %s", __FUNCTION__, name);
 			return -1;
 		}
 	} else {
-		(void) fr_hash_table_insert(dict->values_by_da, enumv);
+		(void) fr_hash_table_insert(ext->name_by_value, enumv);
 	}
 
 	/*
@@ -1038,10 +1415,40 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 	return 0;
 }
 
+/** Add a value name
+ *
+ * Aliases are textual (string) names for a given value.
+ *
+ * Value names are not limited to integers, and may be added for any non-structural
+ * attribute type.
+ *
+ * @param[in] da		to add enumeration value to.
+ * @param[in] name		Name of value name.
+ * @param[in] value		to associate with name.
+ * @param[in] coerce		if the type of the value does not match the
+ *				type of the da, attempt to cast it to match
+ *				the type of the da.  If this is false and there's
+ *				a type mismatch, we fail.
+ *				We also fail if the value cannot be coerced to
+ *				the attribute type.
+ * @param[in] takes_precedence	This name should take precedence over previous
+ *				names for the same value, when resolving value
+ *				to name.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
+			       fr_value_box_t const *value,
+			       bool coerce, bool takes_precedence)
+{
+	return dict_attr_enum_add_name(da, name, value, coerce, takes_precedence, NULL);
+}
+
 /** Add an name to an integer attribute hashing the name for the integer value
  *
  */
-int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
+int fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 {
 	fr_value_box_t	v = {
 				.type = da->type
@@ -1100,14 +1507,14 @@ int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 	 */
 	if (!fr_dict_enum_by_value(da, &v)) {
 	add:
-		return fr_dict_enum_add_name(da, name, &v, false, false);
+		return fr_dict_attr_enum_add_name(da, name, &v, false, false);
 	}
 
 	for (;;) {
 		fr_value_box_increment(&v);
 
 		if (fr_value_box_cmp_op(T_OP_CMP_EQ, &v, &s) == 0) {
-			fr_strerror_printf("No free integer values for enumeration");
+			fr_strerror_const("No free integer values for enumeration");
 			return -1;
 		}
 
@@ -1125,14 +1532,14 @@ int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
  *	- Common ancestor if one exists.
  *	- NULL if no common ancestor exists.
  */
-fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor)
+fr_dict_attr_t const *fr_dict_attr_common_parent(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor)
 {
 	unsigned int i;
 	fr_dict_attr_t const *p_a, *p_b;
 
 	if (!a || !b) return NULL;
 
-	if (is_ancestor && (b->depth <= a->depth)) return NULL;
+	if (is_ancestor && (b->depth <= a->depth)) return NULL;	/* fast_path */
 
 	/*
 	 *	Find a common depth to work back from
@@ -1140,9 +1547,11 @@ fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
 	if (a->depth > b->depth) {
 		p_b = b;
 		for (p_a = a, i = a->depth - b->depth; p_a && (i > 0); p_a = p_a->parent, i--);
+		if (is_ancestor && (p_a != p_b)) return NULL;
 	} else if (a->depth < b->depth) {
 		p_a = a;
 		for (p_b = b, i = b->depth - a->depth; p_b && (i > 0); p_b = p_b->parent, i--);
+		if (is_ancestor && (p_a != p_b)) return NULL;
 	} else {
 		p_a = a;
 		p_b = b;
@@ -1166,7 +1575,7 @@ fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
  *	- 0 on success.
  *	- -1 on format error.
  */
-int fr_dict_oid_component(unsigned int *out, char const **oid)
+int fr_dict_oid_component_legacy(unsigned int *out, char const **oid)
 {
 	char const *p = *oid;
 	char *q;
@@ -1189,7 +1598,7 @@ int fr_dict_oid_component(unsigned int *out, char const **oid)
 		return 0;
 
 	default:
-		fr_strerror_printf("Unexpected text after OID component");
+		fr_strerror_const("Unexpected text after OID component");
 		*out = 0;
 		return -1;
 	}
@@ -1211,7 +1620,7 @@ int fr_dict_oid_component(unsigned int *out, char const **oid)
  *	- > 0 on success (number of bytes parsed).
  *	- <= 0 on parse error (negative offset of parse error).
  */
-ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
+ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
 {
 	char const		*p = oid;
 	unsigned int		num = 0;
@@ -1228,7 +1637,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 
 	*attr = 0;
 
-	if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
+	if (fr_dict_oid_component_legacy(&num, &p) < 0) return oid - p;
 
 	/*
 	 *	Record progress even if we error out.
@@ -1242,6 +1651,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 		break;
 
 	default:
+		if (dict_attr_can_have_children(*parent)) break;
 		fr_strerror_printf("Attribute %s (%i) is not a TLV, so cannot contain a child attribute.  "
 				   "Error at sub OID \"%s\"", (*parent)->name, (*parent)->attr, oid);
 		return 0;	/* We parsed nothing */
@@ -1254,7 +1664,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 	 */
 	if (((*parent)->type != FR_TYPE_VENDOR) && ((*parent)->type != FR_TYPE_VSA) && !(*parent)->flags.is_root &&
 	    (num > UINT8_MAX)) {
-		fr_strerror_printf("TLV attributes must be between 0..255 inclusive");
+		fr_strerror_const("TLV attributes must be between 0..255 inclusive");
 		return 0;
 	}
 
@@ -1282,7 +1692,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 		 */
 		*parent = child;
 
-		slen = fr_dict_attr_by_oid(dict, parent, attr, p);
+		slen = fr_dict_attr_by_oid_legacy(dict, parent, attr, p);
 		if (slen <= 0) return slen - (p - oid);
 		return slen + (p - oid);
 	}
@@ -1300,24 +1710,280 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t const *dict, fr_dict_attr_t const **parent
 	}
 }
 
+/** Parse an OID component, resolving it to a defined attribute
+ *
+ * @note Will leave the sbuff pointing at the component the error occurred at
+ *	 so that the caller can attempt to process the component in another way.
+ *
+ * @param[out] err		The parsing error that occurred.
+ * @param[out] out		The deepest attribute we resolved.
+ * @param[in] parent		Where to resolve relative attributes from.
+ * @param[in] in		string to parse.
+ * @param[in] tt		Terminal strings.
+ * @return
+ *	- >0 the number of bytes consumed.
+ *	- <= 0 Parse error occurred here.
+ */
+ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
+			      fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+			      fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+{
+	fr_sbuff_marker_t	start;
+	uint32_t		num = 0;
+	fr_sbuff_parse_error_t	sberr;
+	fr_dict_attr_t const	*child;
+
+	if (err) *err = FR_DICT_ATTR_OK;
+
+	*out = NULL;
+
+	fr_sbuff_marker(&start, in);
+
+	switch (parent->type) {
+	case FR_TYPE_STRUCTURAL:
+		break;
+
+	default:
+		if (dict_attr_can_have_children(parent)) break;
+		fr_strerror_printf("Attribute '%s' is type %s and cannot contain child attributes.  "
+				   "Error at OID \"%.*s\"",
+				   parent->name,
+				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<UNKNOWN>"),
+				   (int)fr_sbuff_remaining(in),
+				   fr_sbuff_current(in));
+		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
+		return -fr_sbuff_marker_release_behind(&start);
+	}
+
+	fr_sbuff_out(&sberr, &num, in);
+	switch (sberr) {
+	/*
+	 *	Lookup by number
+	 */
+	case FR_SBUFF_PARSE_OK:
+		if (!fr_sbuff_is_char(in, '.') && !fr_sbuff_is_terminal(in, tt)) {
+			fr_sbuff_set(in, &start);	/* Reset to the start */
+			goto oid_str;
+		}
+
+		child = dict_attr_child_by_num(parent, num);
+		if (!child) {
+			fr_strerror_printf("Failed resolving child %u in context %s",
+					   num, parent->name);
+			if (err) *err = FR_DICT_ATTR_NOTFOUND;
+			fr_sbuff_set(in, &start);		/* Reset to start of number */
+			fr_sbuff_marker_release(&start);
+
+			return 0;
+		}
+		break;
+
+	/*
+	 *	Lookup by name
+	 */
+	case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+	{
+		fr_dict_attr_err_t	our_err;
+		ssize_t			slen;
+
+	oid_str:
+		slen = fr_dict_attr_by_name_substr(&our_err, &child, parent, in, tt);
+		if (our_err != FR_DICT_ATTR_OK) {
+			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
+					   (int)fr_sbuff_remaining(in),
+					   fr_sbuff_current(in),
+					   parent->name);
+			if (err) *err = our_err;
+			return slen - fr_sbuff_marker_release_behind(&start);
+		}
+	}
+		break;
+
+	default:
+		fr_strerror_printf("Invalid OID component \"%.*s\"",
+				   (int)fr_sbuff_remaining(in), fr_sbuff_current(in));
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return -fr_sbuff_marker_release_behind(&start);
+	}
+
+	/*
+	 *	Follow references, unless this attribute is a grouping
+	 *	attribute.
+	 */
+	if (child->type != FR_TYPE_GROUP) {
+		fr_dict_attr_t const *ref;
+
+		ref = fr_dict_attr_ref(child);
+		if (ref) child = ref;
+	}
+
+	*out = child;
+
+	return fr_sbuff_marker_release_behind(&start);
+}
+
+/** Resolve an attribute using an OID string
+ *
+ * @note Will leave the sbuff pointing at the component the error occurred at
+ *	 so that the caller can attempt to process the component in another way.
+ *
+ * @param[out] err		The parsing error that occurred.
+ * @param[out] out		The deepest attribute we resolved.
+ * @param[in] parent		Where to resolve relative attributes from.
+ * @param[in] in		string to parse.
+ * @param[in] tt		Terminal strings.
+ * @return
+ *	- >0 the number of bytes consumed.
+ *	- <= 0 Parse error occurred here.
+ */
+ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
+				   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+				   fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+{
+	fr_sbuff_marker_t	start, c_s;
+	fr_dict_attr_t const	*our_parent = parent;
+
+	fr_sbuff_marker(&start, in);
+	fr_sbuff_marker(&c_s, in);
+
+	/*
+	 *	If the OID doesn't begin with '.' we
+	 *	resolve it from the root.
+	 */
+
+#if 0
+	if (!fr_sbuff_next_if_char(in, '.')) our_parent = fr_dict_root(fr_dict_by_da(parent));
+#else
+	fr_sbuff_next_if_char(in, '.');
+#endif
+	*out = NULL;
+
+	for (;;) {
+		ssize_t			slen;
+		fr_dict_attr_t const	*child;
+
+		slen = fr_dict_oid_component(err, &child, our_parent, in, tt);
+		if ((slen <= 0) || !child) {
+			ssize_t ret = slen - fr_sbuff_behind(&start);
+
+			fr_sbuff_set(in, &c_s);
+			fr_sbuff_marker_release(&start);
+
+			return ret;
+		}
+
+		our_parent = child;
+		*out = child;
+
+		fr_sbuff_set(&c_s, in);
+		if (!fr_sbuff_next_if_char(in, '.')) break;
+	}
+
+	return fr_sbuff_marker_release_behind(&start);
+}
+
+/** Resolve an attribute using an OID string
+ *
+ * @param[out] err		The parsing error that occurred.
+ * @param[in] parent		Where to resolve relative attributes from.
+ * @param[in] oid		string to parse.
+ * @return
+ *	- NULL if we couldn't resolve the attribute.
+ *	- The resolved attribute.
+ */
+fr_dict_attr_t const *fr_dict_attr_by_oid(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *oid)
+{
+	fr_sbuff_t		sbuff = FR_SBUFF_IN(oid, strlen(oid));
+	fr_dict_attr_t const	*da;
+
+	if (fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff, NULL) <= 0) return NULL;
+
+	return da;
+}
+
 /** Return the root attribute of a dictionary
  *
  * @param dict			to return root for.
  * @return the root attribute of the dictionary.
+ *
+ * @hidecallergraph
  */
 fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 {
-	if (!dict) {
-		if (!dict_gctx) return NULL;
+	return dict->root;
+}
 
-		return dict_gctx->internal->root;	/* Remove me when dictionaries are done */
+bool fr_dict_is_read_only(fr_dict_t const *dict)
+{
+	return dict->read_only;
+}
+
+ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
+				fr_dict_t **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
+{
+	fr_dict_attr_t		root;
+
+	fr_dict_t		*dict;
+	size_t			len;
+	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
+	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
+
+	if (!dict_gctx || !name || !out) {
+		if (err) *err = FR_DICT_ATTR_EINVAL;
+		return 0;
 	}
 
-	return dict->root;
+	memset(&root, 0, sizeof(root));
+
+	/*
+	 *	Advance p until we get something that's not part of
+	 *	the dictionary attribute name.
+	 */
+	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
+					    &our_name, SIZE_MAX,
+					    fr_dict_attr_allowed_chars);
+	if (len == 0) {
+		fr_strerror_const("Zero length attribute name");
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return 0;
+	}
+	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
+		fr_strerror_const("Attribute name too long");
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return -(FR_DICT_ATTR_MAX_NAME_LEN);
+	}
+
+	/*
+	 *	The remaining operations don't generate errors
+	 */
+	if (err) *err = FR_DICT_ATTR_OK;
+
+	/*
+	 *	If what we stopped at wasn't a '.', then there
+	 *	can't be a protocol name in this string.
+	 */
+	if (*(our_name.p) != '.') {
+		memcpy(out, &dict_def, sizeof(*out));
+		return 0;
+	}
+
+	root.name = buffer;
+	dict = fr_hash_table_find_by_data(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
+
+	if (!dict) {
+		fr_strerror_printf("Unknown protocol '%s'", root.name);
+		*out = NULL;
+		return 0;
+	}
+
+	*out = dict;
+
+	return (size_t)fr_sbuff_set(name, &our_name);
 }
 
 /** Look up a protocol name embedded in another string
  *
+ * @param[out] err		Parsing error.
  * @param[out] out		the resolve dictionary or NULL if the dictionary
  *				couldn't be resolved.
  * @param[in] name		string start.
@@ -1327,56 +1993,15 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  *	- <= 0 on error and (*out == NULL) (offset as negative integer)
  *	- > 0 on success (number of bytes parsed).
  */
-ssize_t fr_dict_by_protocol_substr(fr_dict_t const **out, char const *name, fr_dict_t const *dict_def)
+ssize_t fr_dict_by_protocol_substr(fr_dict_attr_err_t *err, fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
 {
-	fr_dict_attr_t		root;
+	ssize_t		slen;
+	fr_dict_t	*dict = NULL;
 
-	fr_dict_t		*dict;
-	char const		*p;
-	size_t			len;
-
-	if (!dict_gctx || !name || !*name || !out) return 0;
-
-	memset(&root, 0, sizeof(root));
-
-	/*
-	 *	Advance p until we get something that's not part of
-	 *	the dictionary attribute name.
-	 */
-	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p] && (*p != '.'); p++);
-
-	/*
-	 *	If what we stopped at wasn't a '.', then there
-	 *	can't be a protocol name in this string.
-	 */
-	if (*p != '.') {
-		memcpy(out, &dict_def, sizeof(*out));
-		return 0;
-	}
-
-	len = p - name;
-	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name too long");
-		return -(FR_DICT_ATTR_MAX_NAME_LEN);
-	}
-
-	root.name = talloc_bstrndup(NULL, name, len);
-	if (!root.name) {
-		fr_strerror_printf("Out of memory");
-		*out = NULL;
-		return 0;
-	}
-	dict = fr_hash_table_finddata(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
-	talloc_const_free(root.name);
-
-	if (!dict) {
-		fr_strerror_printf("Unknown protocol '%.*s'", (int) len, name);
-		*out = NULL;
-		return 0;
-	}
+	slen = dict_by_protocol_substr(err, &dict, name, dict_def);
 	*out = dict;
 
-	return p - name;
+	return slen;
 }
 
 /** Internal version of #fr_dict_by_protocol_name
@@ -1389,7 +2014,7 @@ fr_dict_t *dict_by_protocol_name(char const *name)
 {
 	if (!dict_gctx || !name) return NULL;
 
-	return fr_hash_table_finddata(dict_gctx->protocol_by_name,
+	return fr_hash_table_find_by_data(dict_gctx->protocol_by_name,
 				      &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
 }
 
@@ -1403,7 +2028,7 @@ fr_dict_t *dict_by_protocol_num(unsigned int num)
 {
 	if (!dict_gctx) return NULL;
 
-	return fr_hash_table_finddata(dict_gctx->protocol_by_num,
+	return fr_hash_table_find_by_data(dict_gctx->protocol_by_num,
 				      &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
 }
 
@@ -1415,85 +2040,34 @@ fr_dict_t *dict_by_protocol_num(unsigned int num)
  */
 fr_dict_t *dict_by_da(fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t const *da_p = da;
+#ifndef NDEBUG
+	{
+		fr_dict_attr_t const	*da_p = da;
+		fr_dict_t const		*dict;
 
-	while (da_p->parent) {
-		da_p = da_p->parent;
-		DA_VERIFY(da_p);
-	}
+		dict = da->dict;
+		while (da_p->parent) {
+			da_p = da_p->parent;
+			fr_cond_assert_msg(da_p->dict == dict, "Inconsistent dict membership.  "
+					   "Expected %s, got %s",
+					   !da_p->dict ? "(null)" : fr_dict_root(da_p->dict)->name,
+					   !dict ? "(null)" : fr_dict_root(dict)->name);
+			DA_VERIFY(da_p);
+		}
 
-	if (!da_p->flags.is_root) {
-		fr_strerror_printf("%s: Attribute %s has not been inserted into a dictionary", __FUNCTION__, da->name);
-		return NULL;
+		if (!da_p->flags.is_root) {
+			fr_strerror_printf("%s: Attribute %s has not been inserted into a dictionary",
+					   __FUNCTION__, da->name);
+			return NULL;
+		}
 	}
+#endif
 
 	/*
 	 *	Parent of the root attribute must
 	 *	be the dictionary.
 	 */
-	return talloc_get_type_abort(talloc_parent(da_p), fr_dict_t);
-}
-
-/** Dictionary/attribute ctx struct
- *
- */
-typedef struct {
-	fr_dict_t 		*found_dict;	//!< Dictionary attribute found in.
-	fr_dict_attr_t const	*found_da;	//!< Resolved attribute.
-	fr_dict_attr_t const	*find;		//!< Attribute to find.
-} dict_attr_search_t;
-
-/** Search for an attribute name in all dictionaries
- *
- * @param[in] ctx	Attribute to search for.
- * @param[in] data	Dictionary to search in.
- * @return
- *	- 0 if attribute not found in dictionary.
- *	- 1 if attribute found in dictionary.
- */
-static int _dict_attr_find_in_dicts(void *ctx, void *data)
-{
-	dict_attr_search_t	*search = ctx;
-	fr_dict_t		*dict;
-
-	if (!data) return 0;	/* We get called with NULL data */
-
-	dict = talloc_get_type_abort(data, fr_dict_t);
-
-	search->found_da = fr_hash_table_finddata(dict->attributes_by_name, search->find);
-	if (!search->found_da) return 0;
-
-	search->found_dict = data;
-
-	return 1;
-}
-
-/** Internal version of #fr_dict_by_attr_name
- *
- * @note For internal use by the dictionary API only.
- *
- * @copybrief fr_dict_by_attr_name
- */
-fr_dict_t *dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
-{
-	fr_dict_attr_t		find = {
-					.name = name
-				};
-	dict_attr_search_t	search = {
-					.find = &find
-				};
-	int			ret;
-
-	if (found) *found = NULL;
-
-	if (!name || !*name) return NULL;
-
-	ret = fr_hash_table_walk(dict_gctx->protocol_by_name, _dict_attr_find_in_dicts, &search);
-	if (ret == 0) return NULL;
-
-	if (found) *found = search.found_da;
-
-	return search.found_dict;
+	return talloc_get_type_abort(da->dict, fr_dict_t);
 }
 
 /** Lookup a protocol by its name
@@ -1539,21 +2113,6 @@ fr_dict_t const *fr_dict_by_da(fr_dict_attr_t const *da)
 	return dict_by_da(da);
 }
 
-/** Attempt to locate the protocol dictionary containing an attribute
- *
- * @note This is O(n) and will only return the first instance of the dictionary.
- *
- * @param[out] found	the attribute that was resolved from the name. May be NULL.
- * @param[in] name	the name of the attribute.
- * @return
- *	- the dictionary the attribute was found in.
- *	- NULL if an attribute with the specified name wasn't found in any dictionary.
- */
-fr_dict_t const *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
-{
-	return dict_by_attr_name(found, name);
-}
-
 /** Look up a vendor by one of its child attributes
  *
  * @param[in] da	The vendor attribute.
@@ -1571,7 +2130,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
 
 	dict = dict_by_da(da);
 
-	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
+	return fr_hash_table_find_by_data(dict->vendors_by_num, &dv);
 }
 
 /** Look up a vendor by its name
@@ -1591,7 +2150,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
 
 	if (!name) return 0;
 
-	found = fr_hash_table_finddata(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
+	found = fr_hash_table_find_by_data(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
 	if (!found) return 0;
 
 	return found;
@@ -1610,27 +2169,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t ve
 {
 	INTERNAL_IF_NULL(dict, NULL);
 
-	return fr_hash_table_finddata(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
-}
-
-/** Return the vendor that parents this attribute
- *
- * @note Uses the dictionary hierachy to determine the parent
- *
- * @param[in] da		The dictionary attribute to find parent for.
- * @return
- *	- NULL if the attribute has no vendor.
- *	- A fr_dict_attr_t representing this attribute's associated vendor.
- */
-fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
-{
-	DA_VERIFY(da);
-
-	if (da->type == FR_TYPE_VENDOR) return da;
-
-	if (!da->vendor) return NULL;
-
-	return da->vendor;
+	return fr_hash_table_find_by_data(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
 }
 
 /** Return vendor attribute for the specified dictionary and pen
@@ -1641,7 +2180,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
  *	- NULL if vendor does not exist.
  *	- A fr_dict_attr_t representing the vendor in the dictionary hierarchy.
  */
-fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen)
+fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root, uint32_t vendor_pen)
 {
 	fr_dict_attr_t const *vendor;
 
@@ -1672,6 +2211,290 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
 	return vendor;
 }
 
+/** Callback function for resolving dictionary attributes
+ *
+ * @param[out] err	Where to write error codes.  Any error
+ *			other than FR_DICT_ATTR_NOTFOUND will
+ *			prevent resolution from continuing.
+ * @param[in] parent	The dictionary root or other attribute to search from.
+ * @param[in] in	Contains the string to resolve.
+ * @param[in] tt	Terminal sequences to use to determine the portion
+ *			of in to search.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+typedef ssize_t (*dict_attr_resolve_func_t)(fr_dict_attr_err_t *err,
+				   	   fr_dict_attr_t const **out, fr_dict_attr_t const *parent,
+				   	   fr_sbuff_t *in, fr_sbuff_term_t const *tt);
+
+/** Internal function for searching for attributes in multiple dictionaries
+ *
+ */
+static inline CC_HINT(always_inline)
+ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+		         fr_dict_t const *dict_def,
+		         fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+		         bool fallback, dict_attr_resolve_func_t func)
+{
+	fr_dict_attr_err_t	our_err;
+	fr_hash_iter_t  	iter;
+	fr_dict_t		*dict = NULL;
+
+	ssize_t			slen;
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+
+	/*
+	 *	dict_def search in the specified dictionary
+	 */
+	if (dict_def) {
+		slen = func(&our_err, out, fr_dict_root(dict_def), &our_in, tt);
+		switch (our_err) {
+		case FR_DICT_ATTR_OK:
+			return fr_sbuff_set(in, &our_in);
+
+		case FR_DICT_ATTR_NOTFOUND:
+			if (!fallback) goto error;
+			break;
+
+		default:
+			goto error;
+		}
+	}
+
+	/*
+	 *	Next in the internal dictionary
+	 */
+	slen = func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
+	switch (our_err) {
+	case FR_DICT_ATTR_OK:
+		return fr_sbuff_set(in, &our_in);
+
+	case FR_DICT_ATTR_NOTFOUND:
+		if (!fallback) goto error;
+		break;
+
+	default:
+		goto error;
+	}
+
+	/*
+	 *	Now loop over the protocol dictionaries
+	 */
+	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
+		if (dict == dict_def) continue;
+		if (dict == dict_gctx->internal) continue;
+
+		(void)func(&our_err, out, fr_dict_root(dict), &our_in, tt);
+		switch (our_err) {
+		case FR_DICT_ATTR_OK:
+			return fr_sbuff_set(in, &our_in);
+
+		case FR_DICT_ATTR_NOTFOUND:
+			continue;
+
+		default:
+			break;
+		}
+	}
+
+error:
+	if (err) *err = our_err;
+	*out = NULL;
+
+	FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+}
+
+/** Internal function for searching for attributes in multiple dictionaries
+ *
+ * Unlike #dict_attr_search this function searches for a protocol name preceding
+ * the attribute identifier.
+ */
+static inline CC_HINT(always_inline)
+ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+				   fr_dict_t const *dict_def,
+				   fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+				   bool fallback, dict_attr_resolve_func_t func)
+{
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_dict_attr_err_t	our_err;
+	fr_dict_t 		*initial;
+	ssize_t			slen;
+
+	/*
+	 *	Check for dictionary prefix
+	 */
+	slen = dict_by_protocol_substr(&our_err, &initial, &our_in, dict_def);
+	if (our_err != FR_DICT_ATTR_OK) {
+	error:
+		if (err) *err = our_err;
+		*out = NULL;
+
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+	}
+
+	/*
+ 	 *	Has dictionary qualifier, can't fallback
+	 */
+	if (slen > 0) {
+		/*
+		 *	Next thing SHOULD be a '.'
+		 */
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {
+			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+			return 0;
+		}
+
+		fallback = false;
+	}
+
+	slen = dict_attr_search(&our_err, out, initial, &our_in, tt, fallback, func);
+	if (our_err != FR_DICT_ATTR_OK) goto error;
+
+	return fr_sbuff_set(in, &our_in);
+}
+
+/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
+ *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute in the top level namespace.
+ *
+ * This attribute may be qualified with `<protcol>.` to selection an attribute
+ * in a specific case.
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] name		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+						     fr_dict_t const *dict_def,
+						     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
+						     bool fallback)
+{
+	return dict_attr_search_qualified(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+}
+
+/** Locate a #fr_dict_attr_t by its name in the top level namespace of a dictionary
+ *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute in the top level namespace.
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] name		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					   fr_dict_t const *dict_def,
+					   fr_sbuff_t *name, fr_sbuff_term_t const *tt,
+					   bool fallback)
+{
+	return dict_attr_search_qualified(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+}
+
+/** Locate a qualified #fr_dict_attr_t by a dictionary qualified OID string
+ *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute.
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] in		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+						    fr_dict_t const *dict_def,
+						    fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
+{
+	return dict_attr_search_qualified(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
+}
+
+/** Locate a qualified #fr_dict_attr_t by a dictionary using a non-qualified OID string
+ *
+ * This function will search through all loaded dictionaries, or a subset of
+ * loaded dictionaries, for a matching attribute.
+ *
+ * @note If calling this function from the server any list or request qualifiers
+ *  should be stripped first.
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t
+ * @param[out] out		Dictionary found attribute.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] in		Dictionary/Attribute name.
+ * @param[in] tt		Terminal strings.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return
+ *	- <= 0 on failure.
+ *	- The number of bytes of name consumed on success.
+ */
+ssize_t fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
+					  fr_dict_t const *dict_def,
+					  fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
+{
+	return dict_attr_search_qualified(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
+}
+
+/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
+ *
+ * @param[out] err		Why parsing failed. May be NULL.
+ *				@see fr_dict_attr_err_t.
+ * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
+ * @param[in] name		Dictionary/Attribute name.
+ * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @return an #fr_dict_attr_err_t value.
+ */
+fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *err, fr_dict_t const *dict_def,
+							   char const *name, bool fallback)
+{
+	ssize_t			slen;
+	fr_sbuff_t		our_name;
+	fr_dict_attr_t const	*da;
+
+	fr_sbuff_init(&our_name, name, strlen(name) + 1);
+
+	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, fallback);
+	if (slen <= 0) return NULL;
+
+	if ((size_t)slen != fr_sbuff_len(&our_name)) {
+		fr_strerror_printf("Trailing garbage after attr string \"%s\"", name);
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		return NULL;
+	}
+
+	return da;
+}
+
 /** Look up a dictionary attribute by a name embedded in another string
  *
  * Find the first invalid attribute name char in the string pointed
@@ -1690,248 +2513,104 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_attr_t const *vendor_ro
  * @param[out] err		Why parsing failed. May be NULL.
  *				@see fr_dict_attr_err_t
  * @param[out] out		Where to store the resolve attribute.
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
+ * @param[in] parent		containing the namespace to search in.
  * @param[in] name		string start.
+ * @param[in] tt		Terminal sequences to use to determine the portion
+ *				of in to search.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-				    fr_dict_t const *dict, char const *name)
+				    fr_dict_attr_t const *parent, fr_sbuff_t *name, UNUSED fr_sbuff_term_t const *tt)
 {
 	fr_dict_attr_t const	*da;
-	char const		*p;
 	size_t			len;
-	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-
+	fr_dict_attr_t const	*ref;
+	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
+	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
+	fr_hash_table_t		*namespace;
 	*out = NULL;
 
-	INTERNAL_IF_NULL(dict, 0);
-
-	if (!*name) {
-		fr_strerror_printf("Zero length attribute name");
+	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
+					    &our_name, SIZE_MAX,
+					    fr_dict_attr_allowed_chars);
+	if (len == 0) {
+		fr_strerror_const("Zero length attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return 0;
 	}
-
-	/*
-	 *	Advance p until we get something that's not part of
-	 *	the dictionary attribute name.
-	 */
-	for (p = name; fr_dict_attr_allowed_chars[(uint8_t)*p]; p++);
-
-	len = p - name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name too long");
+		fr_strerror_const("Attribute name too long");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return -(FR_DICT_ATTR_MAX_NAME_LEN);
 	}
 
-	memcpy(buffer, name, len);
-	buffer[len] = '\0';
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
 
-	da = fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t){ .name = buffer });
+	namespace = dict_attr_namespace(parent);
+	if (!namespace) {
+		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		return -1;
+	}
+
+	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
-		fr_strerror_printf("Unknown attribute '%.*s'", (int) len, name);
+		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", buffer, parent->name);
 		return 0;
 	}
 
 	*out = da;
 	if (err) *err = FR_DICT_ATTR_OK;
 
-	return p - name;
+	return fr_sbuff_set(name, &our_name);
 }
 
 /* Internal version of fr_dict_attr_by_name
  *
  */
-fr_dict_attr_t *dict_attr_by_name(fr_dict_t const *dict, char const *name)
+fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name)
 {
-	INTERNAL_IF_NULL(dict, NULL);
+	fr_hash_table_t		*namespace;
+	fr_dict_attr_t		*da;
 
-	if (!name) return NULL;
+	namespace = dict_attr_namespace(parent);
+	if (!namespace) {
+		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
+		return NULL;
+	}
 
-	return fr_hash_table_finddata(dict->attributes_by_name, &(fr_dict_attr_t) { .name = name });
+	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t) { .name = name });
+	if (!da) {
+		if (err) *err = FR_DICT_ATTR_NOTFOUND;
+		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", name, parent->name);
+		return NULL;
+	}
+
+	if (err) *err = FR_DICT_ATTR_OK;
+
+	return da;
 }
-
 
 /** Locate a #fr_dict_attr_t by its name
  *
- * @note Unlike attribute numbers, attribute names are unique to the dictionary.
- *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
+ * @param[out] err		Why the lookup failed. May be NULL.
+ *				@see fr_dict_attr_err_t.
+ * @param[in] parent		containing the namespace we're searching in.
  * @param[in] name		of the attribute to locate.
  * @return
  * 	- Attribute matching name.
  * 	- NULL if no matching attribute could be found.
  */
-fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *name)
+fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name)
 {
-	return dict_attr_by_name(dict, name);
+	return dict_attr_by_name(err, parent, name);
 }
 
-/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
- *
- * @note If calling this function from the server any list or request qualifiers
- *  should be stripped first.
- *
- * @param[out] err		Why parsing failed. May be NULL.
- *				@see fr_dict_attr_err_t
- * @param[out] out		Dictionary found attribute.
- * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
- * @param[in] name		Dictionary/Attribute name.
- * @param[in] fallback		If true, fallback to the internal dictionary.
- * @return
- *	- <= 0 on failure.
- *	- The number of bytes of name consumed on success.
- */
-ssize_t fr_dict_attr_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
-					      fr_dict_t const *dict_def, char const *name, bool fallback)
-{
-	fr_dict_t const		*dict = NULL;
-	fr_dict_t const		*dict_iter = NULL;
-	char const		*p = name;
-	ssize_t			slen;
-	fr_dict_attr_err_t	aerr = FR_DICT_ATTR_OK;
-	bool			internal = false;
-	fr_hash_iter_t  	iter;
-
-	*out = NULL;
-
-	INTERNAL_IF_NULL(dict_def, -1);
-
-	/*
-	 *	Figure out if we should use the default dictionary
-	 *	or if the string was qualified.
-	 */
-	slen = fr_dict_by_protocol_substr(&dict, p, dict_def);
-	if (slen < 0) {
-		if (err) *err = FR_DICT_ATTR_PROTOCOL_NOTFOUND;
-		return 0;
-
-	/*
-	 *	Nothing was parsed, use the default dictionary
-	 */
-	} else if (slen == 0) {
-		dict = dict_def;
-
-	/*
-	 *	Has dictionary qualifier, can't fallback
-	 */
-	} else if (slen > 0) {
-		p += slen;
-
-		/*
-		 *	Next thing SHOULD be a '.'
-		 */
-		if (*p++ != '.') {
-			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
-			return 0;
-		}
-
-		fallback = false;
-	}
-
-again:
-	slen = fr_dict_attr_by_name_substr(&aerr, out, dict, p);
-
-	switch (aerr) {
-	case FR_DICT_ATTR_OK:
-		break;
-
-	case FR_DICT_ATTR_NOTFOUND:
-		/*
-		 *	Loop over all the dictionaries
-		 */
-		if (fallback) {
-			/*
-			 *	Haven't started yet, do so.
-			 */
-			if (!dict_iter) {
-				/*
-				 *	Check the internal dictionary
-				 *	first, unless it's alreaday
-				 *	been checked.
-				 */
-				if (!internal) {
-					internal = true;
-					if (dict_def != dict_gctx->internal) {
-						dict = dict_gctx->internal;
-						goto again;
-					}
-				}
-
-				/*
-				 *	Start the iteration over all dictionaries.
-				 */
-				dict_iter = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
-			} else {
-			redo:
-				dict_iter = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter);
-			}
-
-			if (!dict_iter) goto fail;
-			if (dict_iter == dict_def) goto redo;
-
-			dict = dict_iter;
-			goto again;
-		}
-
-	fail:
-		if (err) *err = aerr;
-		return -((p - name) + slen);
-
-	/*
-	 *	Other error codes are the same
-	 */
-	default:
-		if (err) *err = aerr;
-		return -((p - name) + slen);
-	}
-
-	p += slen;
-
-	/*
-	 *	If we're returning a success code indication,
-	 *	ensure we populated out
-	 */
-	if (!fr_cond_assert(*out)) {
-		if (err) *err = FR_DICT_ATTR_EINVAL;
-		return 0;
-	}
-
-	if (err) *err = FR_DICT_ATTR_OK;
-
-	return p - name;
-}
-
-/** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
- *
- * @param[out] out		Dictionary found attribute.
- * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
- * @param[in] attr		Dictionary/Attribute name.
- * @param[in] fallback		If true, fallback to the internal dictionary.
- * @return an #fr_dict_attr_err_t value.
- */
-fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr_dict_t const *dict_def,
-						  char const *attr, bool fallback)
-{
-	ssize_t			slen;
-	fr_dict_attr_err_t	err = FR_DICT_ATTR_PARSE_ERROR;
-
-	slen = fr_dict_attr_by_qualified_name_substr(&err, out, dict_def, attr, fallback);
-	if (slen <= 0) return err;
-
-	if ((size_t)slen != strlen(attr)) {
-		fr_strerror_printf("Trailing garbage after attr string \"%s\"", attr);
-		return FR_DICT_ATTR_PARSE_ERROR;
-	}
-
-	return FR_DICT_ATTR_OK;
-}
 
 /** Lookup a attribute by its its vendor and attribute numbers and data type
  *
@@ -1945,7 +2624,7 @@ fr_dict_attr_err_t fr_dict_attr_by_qualified_name(fr_dict_attr_t const **out, fr
  */
 fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
 {
-	return fr_hash_table_finddata(dict_by_da(da)->attributes_combo,
+	return fr_hash_table_find_by_data(dict_by_da(da)->attributes_combo,
 				      &(fr_dict_attr_t){
 				      		.parent = da->parent,
 				      		.attr = da->attr,
@@ -1964,29 +2643,31 @@ fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t t
 fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child)
 {
 	fr_dict_attr_t const *bin;
+	fr_dict_attr_t const **children;
+	fr_dict_attr_t const *ref;
 
-	DA_VERIFY(parent);
-
-	if (!parent->children) return NULL;
-
+#ifndef NDEBUG
 	/*
-	 *	Only some types can have children
+	 *	Asserts parent is not NULL in non-debug
+	 *	builds, but parent is marked as nonnull
+	 *	so we get complaints.
 	 */
-	switch (parent->type) {
-	default:
-		return NULL;
+	DA_VERIFY(parent);
+#endif
 
-	case FR_TYPE_STRUCTURAL:
-		break;
-	}
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
+
+	children = dict_attr_children(parent);
+	if (!children) return NULL;
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
 	 *	Check that so we don't SEGV.
 	 */
-	if ((child->attr & 0xff) > talloc_array_length(parent->children)) return NULL;
+	if ((child->attr & 0xff) > talloc_array_length(children)) return NULL;
 
-	bin = parent->children[child->attr & 0xff];
+	bin = children[child->attr & 0xff];
 	for (;;) {
 		if (!bin) return NULL;
 		if (bin == child) return bin;
@@ -1999,27 +2680,30 @@ fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 /** Internal version of fr_dict_attr_child_by_num
  *
  */
-inline fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
+fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *bin;
+	fr_dict_attr_t const **children;
+	fr_dict_attr_t const *ref;
 
 	DA_VERIFY(parent);
 
-	if (!parent->children) return NULL;
-
 	/*
-	 *	We return the child of the referenced attribute, and
-	 *	not of the "group" attribute.
+	 *	Do any necessary dereferencing
 	 */
-	if (parent->type == FR_TYPE_GROUP) parent = parent->ref;
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
+
+	children = dict_attr_children(parent);
+	if (!children) return NULL;
 
 	/*
 	 *	Child arrays may be trimmed back to save memory.
 	 *	Check that so we don't SEGV.
 	 */
-	if ((attr & 0xff) > talloc_array_length(parent->children)) return NULL;
+	if ((attr & 0xff) > talloc_array_length(children)) return NULL;
 
-	bin = parent->children[attr & 0xff];
+	bin = children[attr & 0xff];
 	for (;;) {
 		if (!bin) return NULL;
 		if (bin->attr == attr) {
@@ -2058,31 +2742,19 @@ fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, un
  */
 fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
-	fr_dict_t	*dict;
+	fr_dict_attr_ext_enumv_t	*ext;
 
-	if (!da) return NULL;
-
-	dict = dict_by_da(da);
-	if (!dict) {
-		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("VALUE cannot be defined for %s attributes",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return NULL;
 	}
 
-	return fr_dict_dict_enum_by_value(dict, da, value);
-}
-
-/** Lookup the structure representing an enum value in a #fr_dict_attr_t
- *
- * @param[in] dict		the dictionary root
- * @param[in] da		to search in.
- * @param[in] value		to search for.
- * @return
- * 	- Matching #fr_dict_enum_t.
- * 	- NULL if no matching #fr_dict_enum_t could be found.
- */
-fr_dict_enum_t *fr_dict_dict_enum_by_value(fr_dict_t const *dict, fr_dict_attr_t const *da, fr_value_box_t const *value)
-{
-	fr_dict_enum_t	enumv, *dv;
+	/*
+	 *	No values associated with this attribute
+	 */
+	if (!ext->name_by_value) return NULL;
 
 	/*
 	 *	Could be NULL or an unknown attribute, in which case
@@ -2090,23 +2762,7 @@ fr_dict_enum_t *fr_dict_dict_enum_by_value(fr_dict_t const *dict, fr_dict_attr_t
 	 */
 	if (value->type != da->type) return NULL;
 
-	/*
-	 *	First, look up names.
-	 */
-	enumv.da = da;
-	enumv.name = "";
-	enumv.name_len = 0;
-
-	/*
-	 *	Look up the attribute name target, and use
-	 *	the correct attribute number if found.
-	 */
-	dv = fr_hash_table_finddata(dict->values_by_name, &enumv);
-	if (dv) enumv.da = dv->da;
-
-	enumv.value = value;
-
-	return fr_hash_table_finddata(dict->values_by_da, &enumv);
+	return fr_hash_table_find_by_data(ext->name_by_value, &(fr_dict_enum_t){ .value = value });
 }
 
 /** Lookup the name of an enum value in a #fr_dict_attr_t
@@ -2120,18 +2776,9 @@ fr_dict_enum_t *fr_dict_dict_enum_by_value(fr_dict_t const *dict, fr_dict_attr_t
 char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_enum_t	*dv;
-	fr_dict_t	*dict;
-
-	if (!da) return NULL;
-
-	dict = dict_by_da(da);
-	if (!dict) {
-		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
-		return NULL;
-	}
 
 	dv = fr_dict_enum_by_value(da, value);
-	if (!dv) return "";
+	if (!dv) return NULL;
 
 	return dv->name;
 }
@@ -2141,32 +2788,25 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
  */
 fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
 {
-	fr_dict_enum_t	*found;
-	fr_dict_enum_t	find = {
-				.da = da,
-				.name = name
-			};
-	fr_dict_t	*dict;
+	fr_dict_attr_ext_enumv_t	*ext;
 
 	if (!name) return NULL;
 
-	dict = dict_by_da(da);
-	if (!dict) {
-		fr_strerror_printf("Attributes \"%s\" not present in any dictionaries", da->name);
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("VALUE cannot be defined for %s attributes",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return NULL;
 	}
 
-	if (len < 0) len = strlen(name);
-	find.name_len = (size_t)len;
-
 	/*
-	 *	Look up the attribute name target, and use
-	 *	the correct attribute number if found.
+	 *	No values associated with this attribute
 	 */
-	found = fr_hash_table_finddata(dict->values_by_name, &find);
-	if (found) find.da = found->da;
+	if (!ext->value_by_name) return NULL;
 
-	return fr_hash_table_finddata(dict->values_by_name, &find);
+	if (len < 0) len = strlen(name);
+
+	return fr_hash_table_find_by_data(ext->value_by_name, &(fr_dict_enum_t){ .name = name, .name_len = len});
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
@@ -2187,12 +2827,17 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	 *	a soft error if they don't exist.
 	 */
 	dict->dl = dl_by_name(dict_gctx->dict_loader, module_name, dict, false);
+	if (!dict->dl) {
+		fr_strerror_printf_push("Failed loading dictionary validation library \"%s\"", module_name);
+		talloc_free(module_name);
+		return -1;
+	}
 
 	talloc_free(module_name);
 	return 0;
 }
 
-static int _dict_free_autoref(UNUSED void *ctx, void *data)
+static int _dict_free_autoref(void *data, UNUSED void *uctx)
 {
 	fr_dict_t *dict = talloc_get_type_abort(data, fr_dict_t);
 
@@ -2211,6 +2856,14 @@ static int _dict_free(fr_dict_t *dict)
 		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
 		return -1;
 	}
+
+	/*
+	 *	Free the hash tables with free functions first
+	 *	so that the things the hash tables reference
+	 *	are still there.
+	 */
+	talloc_free(dict->vendors_by_name);
+	talloc_free(dict->attributes_combo);
 
 	if (dict->autoref &&
 	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, NULL) < 0)) {
@@ -2243,13 +2896,13 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	fr_dict_t *dict;
 
 	if (!dict_gctx) {
-		fr_strerror_printf("Initialise global dictionary ctx with fr_dict_global_ctx_init()");
+		fr_strerror_const("Initialise global dictionary ctx with fr_dict_global_ctx_init()");
 		return NULL;
 	}
 
 	dict = talloc_zero(ctx, fr_dict_t);
 	if (!dict) {
-		fr_strerror_printf("Failed allocating memory for dictionary");
+		fr_strerror_const("Failed allocating memory for dictionary");
 	error:
 		talloc_free(dict);
 		return NULL;
@@ -2264,7 +2917,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 */
 	dict->pool = talloc_pool(dict, DICT_POOL_SIZE);
 	if (!dict->pool) {
-		fr_strerror_printf("Failed allocating talloc pool for dictionary");
+		fr_strerror_const("Failed allocating talloc pool for dictionary");
 		goto error;
 	}
 
@@ -2289,16 +2942,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	}
 
 	/*
-	 *	Create the table of attributes by name.   There MAY NOT
-	 *	be multiple attributes of the same name.
-	 */
-	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, NULL);
-	if (!dict->attributes_by_name) {
-		fr_strerror_printf("Failed allocating \"attributes_by_name\" table");
-		goto error;
-	}
-
-	/*
 	 *	Inter-dictionary reference caching
 	 */
 	dict->autoref = fr_hash_table_create(dict, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
@@ -2316,18 +2959,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 		goto error;
 	}
 
-	dict->values_by_name = fr_hash_table_create(dict, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
-	if (!dict->values_by_name) {
-		fr_strerror_printf("Failed allocating \"values_by_name\" table");
-		goto error;
-	}
-
-	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
-	if (!dict->values_by_da) {
-		fr_strerror_printf("Failed allocating \"values_by_da\" table");
-		goto error;
-	}
-
 	/*
 	 *	Set default type size and length.
 	 */
@@ -2337,6 +2968,17 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	return dict;
 }
 
+/** Manually increase the reference count for a dictionary
+ *
+ * This is useful if a previously loaded dictionary needs to
+ * be bound to the lifetime of an additional object.
+ *
+ * @param[in] dict	to increase the reference count for.
+ */
+void fr_dict_reference(fr_dict_t *dict)
+{
+	talloc_increase_ref_count(dict);
+}
 
 /** Decrement the reference count on a previously loaded dictionary
  *
@@ -2355,6 +2997,65 @@ int fr_dict_free(fr_dict_t **dict)
 	return ret;
 }
 
+/** Decrement the reference count on a previously loaded dictionary
+ *
+ * @param[in] dict	to free.
+ * @return how many references to the dictionary remain.
+ */
+int fr_dict_const_free(fr_dict_t const **dict)
+{
+	int ret;
+	fr_dict_t *our_dict;
+
+	if (!*dict) return 0;
+
+	memcpy(&our_dict, dict, sizeof(our_dict));
+
+	ret = talloc_decrease_ref_count(our_dict);
+	*dict = NULL;
+
+	return ret;
+}
+
+/** Process a dict_attr_autoload element to load/verify a dictionary attribute
+ *
+ * @param[in] to_load	attribute definition
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load)
+{
+	fr_dict_enum_autoload_t const	*p = to_load;
+	fr_dict_enum_t const		*enumv;
+
+	for (p = to_load; p->out; p++) {
+		if (unlikely(!p->attr)) {
+			fr_strerror_const("Invalid autoload entry, missing attribute pointer");
+			return -1;
+		}
+
+		if (unlikely(!*p->attr)) {
+			fr_strerror_printf("Can't resolve value '%s', attribute not loaded", p->name);
+			fr_strerror_printf_push("Check fr_dict_attr_autoload_t struct has "
+						"an entry to load the attribute \"%s\" is located in, and that "
+						"the fr_dict_autoload_attr_t symbol name is correct", p->name);
+			return -1;
+		}
+
+		enumv = fr_dict_enum_by_name(*(p->attr), p->name, -1);
+		if (!enumv) {
+			fr_strerror_printf("Value '%s' not found in \"%s\" attribute",
+					   p->name, (*(p->attr))->name);
+			return -1;
+		}
+
+		if (p->out) *(p->out) = enumv->value;
+	}
+
+	return 0;
+}
+
 /** Process a dict_attr_autoload element to load/verify a dictionary attribute
  *
  * @param[in] to_load	attribute definition
@@ -2369,27 +3070,27 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 
 	for (p = to_load; p->out; p++) {
 		if (!p->dict) {
-			fr_strerror_printf("Invalid autoload entry, missing dictionary pointer");
+			fr_strerror_const("Invalid autoload entry, missing dictionary pointer");
 			return -1;
 		}
 
 		if (!*p->dict) {
-			fr_strerror_printf("Can't resolve attribute \"%s\", dictionary not loaded", p->name);
+			fr_strerror_printf("Can't resolve Attribute '%s', dictionary not loaded", p->name);
 			fr_strerror_printf_push("Check fr_dict_autoload_t struct has "
 						"an entry to load the dictionary \"%s\" is located in, and that "
 						"the fr_dict_autoload_t symbol name is correct", p->name);
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(*p->dict, p->name);
+		da = fr_dict_attr_by_oid(NULL, fr_dict_root(*p->dict), p->name);
 		if (!da) {
-			fr_strerror_printf("Attribute \"%s\" not found in \"%s\" dictionary", p->name,
+			fr_strerror_printf("Attribute '%s' not found in \"%s\" dictionary", p->name,
 					   *p->dict ? (*p->dict)->root->name : "internal");
 			return -1;
 		}
 
 		if (da->type != p->type) {
-			fr_strerror_printf("Attribute \"%s\" should be type %s, but defined as type %s", da->name,
+			fr_strerror_printf("Attribute '%s' should be type %s, but defined as type %s", da->name,
 					   fr_table_str_by_value(fr_value_box_type_table, p->type, "?Unknown?"),
 					   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 			return -1;
@@ -2416,7 +3117,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 		fr_dict_t *dict = NULL;
 
 		if (unlikely(!p->proto)) {
-			fr_strerror_printf("autoload missing parameter proto");
+			fr_strerror_const("autoload missing parameter proto");
 			return -1;
 		}
 
@@ -2435,6 +3136,7 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 	return 0;
 }
 
+
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] to_free	previously loaded dictionary to free.
@@ -2450,6 +3152,38 @@ void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 
 		fr_dict_free(dict);
 	}
+}
+
+/** Callback to automatically resolve enum values
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_enum_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dl_dict_enum_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	if (fr_dict_enum_autoload((fr_dict_enum_autoload_t *)symbol) < 0) return -1;
+
+	return 0;
+}
+
+/** Callback to automatically resolve attributes and check the types are correct
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_attr_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) return -1;
+
+	return 0;
 }
 
 /** Callback to automatically load dictionaries required by modules
@@ -2479,47 +3213,6 @@ void fr_dl_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *u
 	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
 
-/** Callback to automatically resolve attributes and check the types are correct
- *
- * @param[in] module	being loaded.
- * @param[in] symbol	An array of fr_dict_autoload_t to load.
- * @param[in] user_ctx	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dl_dict_attr_autoload(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
-{
-	if (fr_dict_attr_autoload((fr_dict_attr_autoload_t *)symbol) < 0) return -1;
-
-	return 0;
-}
-
-static void _fr_dict_dump(fr_dict_t const *dict, fr_dict_attr_t const *da, unsigned int lvl)
-{
-	unsigned int		i;
-	size_t			len;
-	fr_dict_attr_t const	*p;
-	char			flags[256];
-
-	fr_dict_snprint_flags(flags, sizeof(flags), dict, da->type, &da->flags);
-
-	printf("[%02i] 0x%016" PRIxPTR "%*s %s(%u) %s %s\n", lvl, (unsigned long)da, lvl * 2, " ",
-	       da->name, da->attr, fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"), flags);
-
-	len = talloc_array_length(da->children);
-	for (i = 0; i < len; i++) {
-		for (p = da->children[i]; p; p = p->next) {
-			_fr_dict_dump(dict, p, lvl + 1);
-		}
-	}
-}
-
-void fr_dict_dump(fr_dict_t const *dict)
-{
-	_fr_dict_dump(dict, dict->root, 0);
-}
-
 /** Callback to automatically load validation routines for dictionaries.
  *
  * @param[in] dl	the library we just loaded
@@ -2529,7 +3222,7 @@ void fr_dict_dump(fr_dict_t const *dict)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dict_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
+static int dict_validation_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 {
 	fr_dict_t *dict = talloc_get_type_abort(dl->uctx, fr_dict_t);
 	fr_dict_protocol_t const *proto = symbol;
@@ -2562,7 +3255,7 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	bool		still_loaded = false;
 
 	if (gctx->internal) {
-		fr_strerror_printf("Refusing to free dict gctx.  Internal dictionary is still loaded");
+		fr_strerror_const("Refusing to free dict gctx.  Internal dictionary is still loaded");
 		still_loaded = true;
 	}
 
@@ -2601,21 +3294,19 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	fr_dict_gctx_t *new_ctx;
 
 	if (!dict_dir) {
-		fr_strerror_printf("No dictionary location provided");
+		fr_strerror_const("No dictionary location provided");
 		return NULL;
 	}
 
 	new_ctx = talloc_zero(ctx, fr_dict_gctx_t);
 	if (!new_ctx) {
-	oom:
-		fr_strerror_printf("Out of Memory");
-		talloc_free(new_ctx);
+		fr_strerror_const("Out of Memory");
 		return NULL;
 	}
 
 	new_ctx->protocol_by_name = fr_hash_table_create(new_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
 	if (!new_ctx->protocol_by_name) {
-		fr_strerror_printf("Failed initializing protocol_by_name hash");
+		fr_strerror_const("Failed initializing protocol_by_name hash");
 	error:
 		talloc_free(new_ctx);
 		return NULL;
@@ -2623,18 +3314,18 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 
 	new_ctx->protocol_by_num = fr_hash_table_create(new_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
 	if (!new_ctx->protocol_by_num) {
-		fr_strerror_printf("Failed initializing protocol_by_num hash");
+		fr_strerror_const("Failed initializing protocol_by_num hash");
 		goto error;
 	}
 
 	new_ctx->dict_dir_default = talloc_strdup(new_ctx, dict_dir);
-	if (!new_ctx->dict_dir_default) goto oom;
+	if (!new_ctx->dict_dir_default) goto error;
 
-	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, NULL, false, false);
+	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, false, false);
 	if (!new_ctx->dict_loader) goto error;
 
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
-				       dict_onload_func, NULL) < 0) goto error;
+				       dict_validation_onload_func, NULL) < 0) goto error;
 
 	if (!dict_gctx) dict_gctx = new_ctx;	/* Set as the default */
 	talloc_set_destructor(dict_gctx, _dict_global_free);
@@ -2707,9 +3398,15 @@ void fr_dict_global_read_only(void)
 	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
+	     	dict_hash_tables_finalise(dict);
 		talloc_set_memlimit(dict, talloc_get_size(dict));
 		dict->read_only = true;
 	}
+
+	dict = dict_gctx->internal;
+	dict_hash_tables_finalise(dict);
+	talloc_set_memlimit(dict, talloc_get_size(dict));
+	dict->read_only = true;
 
 	talloc_set_memlimit(dict_gctx, talloc_get_size(dict_gctx));
 	dict_gctx->read_only = true;
@@ -2757,22 +3454,30 @@ fr_dict_t const *fr_dict_internal(void)
 }
 
 /*
- *	[a-zA-Z0-9_-:.]+
+ *	Check for the allowed characters.
  */
 ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 {
 	char const *p = name, *end;
+	bool unknown = false;
 
 	if (len < 0) len = strlen(name);
 
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name is too long");
+		fr_strerror_const("Attribute name is too long");
 		return -1;
 	}
 
 	end = p + len;
 
-	do {
+	/*
+	 *	Unknown attributes can have '.' in their name.
+	 */
+	if ((len > 5) && (memcmp(name, "Attr-", 5) == 0)) unknown = true;
+
+	while (p < end) {
+		if ((*p == '.') && unknown) p++;
+
 		if (!fr_dict_attr_allowed_chars[(uint8_t)*p]) {
 			fr_strerror_printf("Invalid character '%pV' in attribute name \"%pV\"",
 					   fr_box_strvalue_len(p, 1), fr_box_strvalue_len(name, len));
@@ -2780,7 +3485,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 			return -(p - name);
 		}
 		p++;
-	} while (p < end);
+	}
 
 	return len;
 }
@@ -2810,29 +3515,21 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 	int i;
 	fr_dict_attr_t const *da_p;
 
-	if (!da) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
-
-		if (!fr_cond_assert(0)) fr_exit_now(1);
-	}
+	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
 
 	(void) talloc_get_type_abort_const(da, fr_dict_attr_t);
 
 	if ((!da->flags.is_root) && (da->depth == 0)) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-			     "Is not root, but depth is 0",
-			     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
-
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+				     "Is not root, but depth is 0",
+				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
 	}
 
 	if (da->depth > FR_DICT_MAX_TLV_STACK) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-			     "Indicated depth (%u) greater than TLV stack depth (%u)",
-			     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
-			     da->depth, FR_DICT_MAX_TLV_STACK);
-
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+				     "Indicated depth (%u) greater than TLV stack depth (%u)",
+				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
+				     da->depth, FR_DICT_MAX_TLV_STACK);
 	}
 
 	for (da_p = da; da_p; da_p = da_p->next) {
@@ -2841,20 +3538,34 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 
 	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
 		if (i != (int)da_p->depth) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-				     "Depth out of sequence, expected %i, got %u",
-				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
-
-			if (!fr_cond_assert(0)) fr_exit_now(1);
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+					     "Depth out of sequence, expected %i, got %u",
+					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
 		}
 
 	}
 
 	if ((i + 1) < 0) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
-			     file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
+				     file, line);
+	}
 
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+	if (da->parent && (da->parent->type == FR_TYPE_VENDOR) && !fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_VENDOR)) {
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing 'vendor' extension", file, line);
+	}
+
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		if (da->type != FR_TYPE_GROUP) {
+			fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
+				      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'children' extension",
+				      file, line,
+				      fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+		}
+		break;
+
+	default:
+		break;
 	}
 }
 
@@ -2869,9 +3580,17 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent, fr_dict_attr_t const **prev)
 {
 	fr_dict_attr_t const * const *bin;
-	int i, start;
+	fr_dict_attr_t const **children;
+	fr_dict_attr_t const *ref;
+	size_t len, i, start;
 
-	if (!parent || !parent->children || !prev) return NULL;
+	if (!parent || !prev) return NULL;
+
+	ref = fr_dict_attr_ref(parent);
+	if (ref) parent = ref;
+
+	children = dict_attr_children(parent);
+	if (!children) return NULL;
 
 	if (!*prev) {
 		start = 0;
@@ -2901,11 +3620,45 @@ fr_dict_attr_t const *fr_dict_attr_iterate_children(fr_dict_attr_t const *parent
 	 *	Look for a non-empty bin, and return the first child
 	 *	from there.
 	 */
-	for (i = start; i < 256; i++) {
-		bin = &parent->children[i & 0xff];
+	len = talloc_array_length(children);
+	for (i = start; i < len; i++) {
+		bin = &children[i & 0xff];
 
 		if (*bin) return *bin;
 	}
 
 	return NULL;
+}
+
+/** Call the specified callback for da and then for all its children
+ *
+ */
+static int dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx)
+{
+	size_t i, len;
+	fr_dict_attr_t const **children;
+
+	children = dict_attr_children(da);
+
+	if (fr_dict_attr_ref(da) || !children) return callback(da, uctx);
+
+	len = talloc_array_length(children);
+	for (i = 0; i < len; i++) {
+		int ret;
+		fr_dict_attr_t const *bin;
+
+		if (!children[i]) continue;
+
+		for (bin = children[i]; bin; bin = bin->next) {
+			ret = dict_walk(bin, callback, uctx);
+			if (ret < 0) return ret;
+		}
+	}
+
+	return 0;
+}
+
+int fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx)
+{
+	return dict_walk(da, callback, uctx);
 }

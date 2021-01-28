@@ -4,9 +4,9 @@
 
 # Module should return NOOP if there's no result set to work with
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-0	:= 'username'
-	&control:Tmp-String-1	:= 'groupname'
-	&control:Tmp-Integer-0	:= 'priority'
+	&control.Tmp-String-0	:= 'username'
+	&control.Tmp-String-1	:= 'groupname'
+	&control.Tmp-Integer-0	:= 'priority'
 }
 if (noop) {
 	test_pass
@@ -15,21 +15,21 @@ else {
 	test_fail
 }
 
-if (!&control:Tmp-String-0) {
+if (!&control.Tmp-String-0) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (!&control:Tmp-String-1) {
+if (!&control.Tmp-String-1) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (!&control:Tmp-Integer-0) {
+if (!&control.Tmp-Integer-0) {
 	test_pass
 }
 else {
@@ -41,9 +41,9 @@ else {
 
 # Retrieve our test row
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-0	:= 'username'
-	&control:Tmp-String-1	:= 'groupname'
-	&control:Tmp-Integer-0	:= 'priority'
+	&control.Tmp-String-0	:= 'username'
+	&control.Tmp-String-1	:= 'groupname'
+	&control.Tmp-Integer-0	:= 'priority'
 }
 if (updated) {
 	test_pass
@@ -52,21 +52,21 @@ else {
 	test_fail
 }
 
-if (&control:Tmp-String-0 == 'bob') {
+if (&control.Tmp-String-0 == 'bob') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-String-1 == 'bar') {
+if (&control.Tmp-String-1 == 'bar') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-Integer-0 == 0) {
+if (&control.Tmp-Integer-0 == 0) {
 	test_pass
 }
 else {
@@ -75,9 +75,9 @@ else {
 
 # Clear the control list
 update {
-	&control:Tmp-String-0 !* ANY
-	&control:Tmp-String-1 !* ANY
-	&control:Tmp-Integer-0 !* ANY
+	&control.Tmp-String-0 !* ANY
+	&control.Tmp-String-1 !* ANY
+	&control.Tmp-Integer-0 !* ANY
 }
 
 # Insert our second test row
@@ -85,9 +85,9 @@ update {
 
 # Retrieve our test row(s) - With := we should get the values from the second row
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-0	:= 'username'
-	&control:Tmp-String-1	:= 'groupname'
-	&control:Tmp-Integer-0	:= 'priority'
+	&control.Tmp-String-0	:= 'username'
+	&control.Tmp-String-1	:= 'groupname'
+	&control.Tmp-Integer-0	:= 'priority'
 }
 
 if (updated) {
@@ -97,21 +97,21 @@ else {
 	test_fail
 }
 
-if (&control:Tmp-String-0 == 'oof') {
+if (&control.Tmp-String-0 == 'oof') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-String-1 == 'rab') {
+if (&control.Tmp-String-1 == 'rab') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-Integer-0 == 0) {
+if (&control.Tmp-Integer-0 == 0) {
 	test_pass
 }
 else {
@@ -120,16 +120,16 @@ else {
 
 # Clear the control list
 update {
-	&control:Tmp-String-0 !* ANY
-	&control:Tmp-String-1 !* ANY
-	&control:Tmp-Integer-0 !* ANY
+	&control.Tmp-String-0 !* ANY
+	&control.Tmp-String-1 !* ANY
+	&control.Tmp-Integer-0 !* ANY
 }
 
 # Retrieve our test row(s) - With = we should get the values from the first row
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-0	= 'username'
-	&control:Tmp-String-1	= 'groupname'
-	&control:Tmp-Integer-0	= 'priority'
+	&control.Tmp-String-0	= 'username'
+	&control.Tmp-String-1	= 'groupname'
+	&control.Tmp-Integer-0	= 'priority'
 }
 
 if (updated) {
@@ -139,21 +139,21 @@ else {
 	test_fail
 }
 
-if (&control:Tmp-String-0 == 'bob') {
+if (&control.Tmp-String-0 == 'bob') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-String-1 == 'bar') {
+if (&control.Tmp-String-1 == 'bar') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-Integer-0 == 0) {
+if (&control.Tmp-Integer-0 == 0) {
 	test_pass
 }
 else {
@@ -162,54 +162,54 @@ else {
 
 # Clear the control list
 update {
-	&control:Tmp-String-0 !* ANY
-	&control:Tmp-String-1 !* ANY
-	&control:Tmp-Integer-0 !* ANY
+	&control.Tmp-String-0 !* ANY
+	&control.Tmp-String-1 !* ANY
+	&control.Tmp-Integer-0 !* ANY
 }
 
 # Retrieve our test row(s) - With += we should get the values from both rows
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-0	+= 'username'
-	&control:Tmp-String-1	+= 'groupname'
-	&control:Tmp-Integer-0	+= 'priority'
+	&control.Tmp-String-0	+= 'username'
+	&control.Tmp-String-1	+= 'groupname'
+	&control.Tmp-Integer-0	+= 'priority'
 }
 
-if ("%{control:Tmp-String-0[#]}" == 2) {
+if ("%{control.Tmp-String-0[#]}" == 2) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ("%{control:Tmp-String-1[#]}" == 2) {
+if ("%{control.Tmp-String-1[#]}" == 2) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ("%{control:Tmp-Integer-0[#]}" == 2) {
+if ("%{control.Tmp-Integer-0[#]}" == 2) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ((&control:Tmp-String-0[0] == 'bob') && (&control:Tmp-String-0[1] == 'oof')) {
+if ((&control.Tmp-String-0[0] == 'bob') && (&control.Tmp-String-0[1] == 'oof')) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ((&control:Tmp-String-1[0] == 'bar') && (&control:Tmp-String-1[1] == 'rab')) {
+if ((&control.Tmp-String-1[0] == 'bar') && (&control.Tmp-String-1[1] == 'rab')) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ((&control:Tmp-Integer-0[0] == 0) && (&control:Tmp-Integer-0[1] == 0)) {
+if ((&control.Tmp-Integer-0[0] == 0) && (&control.Tmp-Integer-0[1] == 0)) {
 	test_pass
 }
 else {
@@ -218,15 +218,15 @@ else {
 
 # Clear the control list
 update {
-	&control:Tmp-String-0 !* ANY
-	&control:Tmp-String-1 !* ANY
-	&control:Tmp-Integer-0 !* ANY
+	&control.Tmp-String-0 !* ANY
+	&control.Tmp-String-1 !* ANY
+	&control.Tmp-Integer-0 !* ANY
 }
 
 # Retrieve the username column only (should result in noop because not in map)
 map sql 'SELECT username FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-1	+= 'groupname'
-	&control:Tmp-Integer-0	+= 'priority'
+	&control.Tmp-String-1	+= 'groupname'
+	&control.Tmp-Integer-0	+= 'priority'
 }
 
 if (noop) {
@@ -238,9 +238,9 @@ else {
 
 # Retrieve test row with specific username (using xlat'd query)
 map sql "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'" {
-	&control:Tmp-String-0	= 'username'
-	&control:Tmp-String-1	= 'groupname'
-	&control:Tmp-Integer-0	= 'priority'
+	&control.Tmp-String-0	= 'username'
+	&control.Tmp-String-1	= 'groupname'
+	&control.Tmp-Integer-0	= 'priority'
 }
 
 if (updated) {
@@ -250,21 +250,21 @@ else {
 	test_fail
 }
 
-if (&control:Tmp-String-0 == 'bob') {
+if (&control.Tmp-String-0 == 'bob') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-String-1 == 'bar') {
+if (&control.Tmp-String-1 == 'bar') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-Integer-0 == 0) {
+if (&control.Tmp-Integer-0 == 0) {
 	test_pass
 }
 else {
@@ -277,16 +277,16 @@ update request {
 
 # Clear the control list
 update {
-	&control:Tmp-String-0 !* ANY
-	&control:Tmp-String-1 !* ANY
-	&control:Tmp-Integer-0 !* ANY
+	&control.Tmp-String-0 !* ANY
+	&control.Tmp-String-1 !* ANY
+	&control.Tmp-Integer-0 !* ANY
 }
 
 # Retrieve test row with specific username (using ref'd query)
 map sql &Tmp-String-0 {
-	&control:Tmp-String-0	= 'username'
-	&control:Tmp-String-1	= 'groupname'
-	&control:Tmp-Integer-0	= 'priority'
+	&control.Tmp-String-0	= 'username'
+	&control.Tmp-String-1	= 'groupname'
+	&control.Tmp-Integer-0	= 'priority'
 }
 
 if (updated) {
@@ -296,21 +296,21 @@ else {
 	test_fail
 }
 
-if (&control:Tmp-String-0 == 'bob') {
+if (&control.Tmp-String-0 == 'bob') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-String-1 == 'bar') {
+if (&control.Tmp-String-1 == 'bar') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-Integer-0 == 0) {
+if (&control.Tmp-Integer-0 == 0) {
 	test_pass
 }
 else {
@@ -319,9 +319,9 @@ else {
 
 # Clear the control list
 update {
-	&control:Tmp-String-0 !* ANY
-	&control:Tmp-String-1 !* ANY
-	&control:Tmp-Integer-0 !* ANY
+	&control.Tmp-String-0 !* ANY
+	&control.Tmp-String-1 !* ANY
+	&control.Tmp-Integer-0 !* ANY
 }
 
 update request {
@@ -331,9 +331,9 @@ update request {
 
 # Retrieve our test row(s) - Using different RHS types
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-0	= &Tmp-String-0
-	&control:Tmp-String-1	= "group%{Tmp-String-1}"
-	&control:Tmp-Integer-0	= `/bin/echo priority`
+	&control.Tmp-String-0	= &Tmp-String-0
+	&control.Tmp-String-1	= "group%{Tmp-String-1}"
+	&control.Tmp-Integer-0	= `/bin/echo priority`
 }
 
 if (updated) {
@@ -343,21 +343,21 @@ else {
 	test_fail
 }
 
-if (&control:Tmp-String-0 == 'bob') {
+if (&control.Tmp-String-0 == 'bob') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-String-1 == 'bar') {
+if (&control.Tmp-String-1 == 'bar') {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if (&control:Tmp-Integer-0 == 0) {
+if (&control.Tmp-Integer-0 == 0) {
 	test_pass
 }
 else {

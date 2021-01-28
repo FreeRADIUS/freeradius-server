@@ -31,22 +31,43 @@ RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/atomic_queue.h>
+#include <freeradius-devel/util/talloc.h>
 
-typedef struct {
-	alignas(128) void *data;
-	atomic_int64_t seq;
+#define CACHE_LINE_SIZE	64
+
+/** Entry in the queue
+ *
+ * @note This structure is cache line aligned for modern AMD/Intel CPUs.
+ * This is to avoid contention when the producer and consumer are executing
+ * on different CPU cores.
+ */
+typedef struct CC_HINT(packed, aligned(CACHE_LINE_SIZE)) {
+	void						*data;
+	atomic_int64_t					seq;
 } fr_atomic_queue_entry_t;
 
+/** Structure to hold the atomic queue
+ *
+ */
 struct fr_atomic_queue_s {
-	alignas(128) atomic_int64_t head;
-	atomic_int64_t tail;
+	alignas(CACHE_LINE_SIZE) atomic_int64_t		head;		//!< Head, aligned bytes to ensure
+									///< it's in a different cache line to tail
+									///< to reduce memory contention.
+	atomic_int64_t					tail;
 
-	int	size;
+	size_t						size;
 
-	fr_atomic_queue_entry_t entry[1];
+	void						*chunk;		//!< To pass to free. The non-aligned address.
+
+	alignas(CACHE_LINE_SIZE) fr_atomic_queue_entry_t entry[];	//!< The entry array, also aligned
+									///< to ensure it's not in the same cache
+									///< line as tail and size.
 };
 
 /** Create fixed-size atomic queue
+ *
+ * @note the queue must be freed explicitly by the ctx being freed, or by using
+ * the #fr_atomic_queue_free function.
  *
  * @param[in] ctx	The talloc ctx to allocate the queue in.
  * @param[in] size	The number of entries in the queue.
@@ -54,13 +75,14 @@ struct fr_atomic_queue_s {
  *     - NULL on error.
  *     - fr_atomic_queue_t *, a pointer to the allocated and initialized queue.
  */
-fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
+fr_atomic_queue_t *fr_atomic_queue_alloc(TALLOC_CTX *ctx, size_t size)
 {
-	int i;
-	int64_t seq;
-	fr_atomic_queue_t *aq;
+	size_t			i;
+	int64_t			seq;
+	fr_atomic_queue_t	*aq;
+	TALLOC_CTX		*chunk;
 
-	if (size <= 0) return NULL;
+	if (size == 0) return NULL;
 
 	/*
 	 *	Allocate a contiguous blob for the header and queue.
@@ -69,10 +91,12 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	 *	Since we're allocating a blob, we should also set the
 	 *	name of the data, too.
 	 */
-	aq = talloc_size(ctx, sizeof(*aq) + (size - 1) * sizeof(aq->entry[0]));
-	if (!aq) return NULL;
+	chunk = talloc_aligned_array(ctx, (void **)&aq, CACHE_LINE_SIZE,
+				     sizeof(*aq) + (size) * sizeof(aq->entry[0]));
+	if (!chunk) return NULL;
+	aq->chunk = chunk;
 
-	talloc_set_name(aq, "fr_atomic_queue_t");
+	talloc_set_name_const(chunk, "fr_atomic_queue_t");
 
 	/*
 	 *	Initialize the array.  Data is NULL, and indexes are
@@ -98,6 +122,18 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	return aq;
 }
 
+/** Free an atomic queue if it's not freed by ctx
+ *
+ * This function is needed because the atomic queue memory
+ * must be cache line aligned.
+ */
+void fr_atomic_queue_free(fr_atomic_queue_t **aq)
+{
+	if (!*aq) return;
+
+	talloc_free((*aq)->chunk);
+	*aq = NULL;
+}
 
 /** Push a pointer into the atomic queue
  *
@@ -176,8 +212,8 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
  */
 bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 {
-	int64_t tail, seq;
-	fr_atomic_queue_entry_t *entry;
+	int64_t			tail, seq;
+	fr_atomic_queue_entry_t	*entry;
 
 	if (!p_data) return false;
 
@@ -224,12 +260,27 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 	return true;
 }
 
+size_t fr_atomic_queue_size(fr_atomic_queue_t *aq)
+{
+	return aq->size;
+}
+
+#ifdef WITH_VERIFY_PTR
+/** Check the talloc chunk is still valid
+ *
+ */
+void fr_atomic_queue_verify(fr_atomic_queue_t *aq)
+{
+	(void)talloc_get_type_abort(aq->chunk, fr_atomic_queue_t);
+}
+#endif
+
 #ifndef NDEBUG
 
 #if 0
 typedef struct {
 	int			status;		//!< status of this message
-	size_t				data_size;     	//!< size of the data we're sending
+	size_t			data_size;     	//!< size of the data we're sending
 
 	int			signal;		//!< the signal to send
 	uint64_t		ack;		//!< or the endpoint..
@@ -247,13 +298,13 @@ typedef struct {
  */
 void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 {
-	int i;
+	size_t i;
 	int64_t head, tail;
 
 	head = load(aq->head);
 	tail = load(aq->head);
 
-	fprintf(fp, "AQ %p size %d, head %" PRId64 ", tail %" PRId64 "\n",
+	fprintf(fp, "AQ %p size %zu, head %" PRId64 ", tail %" PRId64 "\n",
 		aq, aq->size, head, tail);
 
 	for (i = 0; i < aq->size; i++) {
@@ -261,7 +312,7 @@ void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 
 		entry = &aq->entry[i];
 
-		fprintf(fp, "\t[%d] = { %p, %" PRId64 " }",
+		fprintf(fp, "\t[%zu] = { %p, %" PRId64 " }",
 			i, entry->data, load(entry->seq));
 #if 0
 		if (entry->data) {

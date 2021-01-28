@@ -48,14 +48,14 @@ ATTRIBUTE	FreeRADIUS-Mib-2			.3.6.1.2.1	tlv
 #
 #  Everything below is defined in the context of MIB-2
 #
-BEGIN-TLV	FreeRADIUS-Mib-2
+BEGIN-TLV	1.3.6.1.2.FreeRADIUS-Mib-2
 ATTRIBUTE	Radius-Mib				67	tlv
 ATTRIBUTE	Radius-Authentication			.1	tlv
 ATTRIBUTE	Radius-Auth-Serv-Mib			.1.1	tlv
 ATTRIBUTE	Radius-Auth-Serv-Mib-Objects		.1.1.1	tlv
 ATTRIBUTE	Radius-Auth-Serv			.1.1.1.1	tlv
 
-BEGIN-TLV	Radius-Auth-Serv
+BEGIN-TLV	67.1.1.1.Radius-Auth-Serv
 ATTRIBUTE	Radius-Auth-Serv-Ident			1	string
 ATTRIBUTE	Radius-Auth-Serv-Up-Time		2	integer
 ATTRIBUTE	Radius-Auth-Serv-Reset-Time		3	integer
@@ -82,7 +82,7 @@ ATTRIBUTE	Radius-Auth-Client-Table-Index		.0	integer
 ATTRIBUTE	Radius-Auth-Client-Entry		.1	tlv
 
 # Client statistics
-BEGIN-TLV	Radius-Auth-Client-Entry
+BEGIN-TLV	15.Radius-Auth-Client-Entry
 ATTRIBUTE	Radius-Auth-Client-Index		1	integer
 ATTRIBUTE	Radius-Auth-Client-Address		2	ipaddr
 ATTRIBUTE	Radius-Auth-Client-ID			3	string
@@ -95,13 +95,13 @@ ATTRIBUTE	Radius-Auth-Serv-Malformed-Access-Requests 9	integer
 ATTRIBUTE	Radius-Auth-Serv-Bad-Authenticators	10	integer
 ATTRIBUTE	Radius-Auth-Serv-Packets-Dropped	11	integer
 ATTRIBUTE	Radius-Auth-Serv-Unknown-Types		12	integer
-END-TLV		Radius-Auth-Client-Entry
+END-TLV		15.Radius-Auth-Client-Entry
 
 ATTRIBUTE	Radius-Auth-Client-Ext-Table		16	tlv
 ATTRIBUTE	Radius-Auth-Client-Ext-Table-Index	.0	integer
 ATTRIBUTE	Radius-Auth-Client-Ext-Entry		.1	tlv
 
-BEGIN-TLV	Radius-Auth-Client-Ext-Entry
+BEGIN-TLV	16.Radius-Auth-Client-Ext-Entry
 ATTRIBUTE	Radius-Auth-Client-Ext-Index		1	integer
 ATTRIBUTE	Radius-Auth-Client-Inet-Address-Type	2	integer
 ATTRIBUTE	Radius-Auth-Client-Inet-Address		3	ipaddr
@@ -116,7 +116,7 @@ ATTRIBUTE	Radius-Auth-Serv-Ext-Bad-Authenticators	11	integer
 ATTRIBUTE	Radius-Auth-Serv-Ext-Packet-Dropped	12	integer
 ATTRIBUTE	Radius-Auth-Serv-Ext-Unknown-Types	13	integer
 ATTRIBUTE	Radius-Auth-Serv-Counter-Discontinuity	14	integer
-END-TLV		Radius-Auth-Client-Ext-Entry
+END-TLV		16.Radius-Auth-Client-Ext-Entry
 
-END-TLV		Radius-Auth-Serv
-END-TLV		FreeRADIUS-Mib-2
+END-TLV		67.1.1.1.Radius-Auth-Serv
+END-TLV		1.3.6.1.2.FreeRADIUS-Mib-2

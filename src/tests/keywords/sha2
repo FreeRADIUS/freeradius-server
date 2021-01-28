@@ -2,46 +2,45 @@
 # PRE: update if
 #
 update {
-	&control:Cleartext-Password := 'hello'
-	&request:Tmp-String-0 := "This is a string\n"
-	&request:Tmp-Octets-0 := 0x000504030201
+	&request.Tmp-String-0 := "This is a string\n"
+	&request.Tmp-Octets-0 := 0x000504030201
 }
 
 update {
-	&request:Tmp-Octets-1 := "%{sha2_256:This is a string\n}"
-	&request:Tmp-Octets-2 := "%{sha2_256:%{Tmp-String-0}}"
-	&request:Tmp-Octets-3 := "%{sha2_256:%{request:Tmp-String-0}}"
-	&request:Tmp-Octets-4 := "%{sha2_256:%{request:Tmp-Octets-0}}"
-	&request:Tmp-Octets-5 := "%{sha2_256:%{request:Tmp-Octets-9}}"
+	&request.Tmp-Octets-1 := "%{sha2_256:This is a string\n}"
+	&request.Tmp-Octets-2 := "%{sha2_256:%{Tmp-String-0}}"
+	&request.Tmp-Octets-3 := "%{sha2_256:%{request.Tmp-String-0}}"
+	&request.Tmp-Octets-4 := "%{sha2_256:%{request.Tmp-Octets-0}}"
+	&request.Tmp-Octets-5 := "%{sha2_256:%{request.Tmp-Octets-9}}"
 }
 
 #
 #  Put "This is a string" into a file and call "sha2_256sum" on it.
 #  You should get this string.
 #
-if (&request:Tmp-Octets-1 != 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124) {
+if (&request.Tmp-Octets-1 != 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124) {
 	test_fail
 }
 
-if (&request:Tmp-Octets-2 != 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124) {
+if (&request.Tmp-Octets-2 != 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124) {
 	test_fail
 }
 
-if (&request:Tmp-Octets-3 != 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124) {
+if (&request.Tmp-Octets-3 != 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124) {
 	test_fail
 }
 
 #
 #  SHA256 should also be able to cope with references to octet attributes
 #
-if (&request:Tmp-Octets-4 != 0xf307e202b881fded70e58017aa0c4d7b29c76ab25d02bf078301a5f6635187eb) {
+if (&request.Tmp-Octets-4 != 0xf307e202b881fded70e58017aa0c4d7b29c76ab25d02bf078301a5f6635187eb) {
 	test_fail
 }
 
 #
 # SHA256 of empty string
 #
-if (&request:Tmp-Octets-5 != 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855) {
+if (&request.Tmp-Octets-5 != 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855) {
 	test_fail
 }
 
@@ -50,20 +49,20 @@ if (&request:Tmp-Octets-5 != 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca
 #  as exhaustive.
 #
 update {
-	&request:Tmp-Octets-1 := "%{sha2_512:This is a string\n}"
-	&request:Tmp-Octets-2 := "%{sha2_512:%{Tmp-String-0}}"
-	&request:Tmp-Octets-3 := "%{sha2_512:%{request:Tmp-Octets-0}}"
+	&request.Tmp-Octets-1 := "%{sha2_512:This is a string\n}"
+	&request.Tmp-Octets-2 := "%{sha2_512:%{Tmp-String-0}}"
+	&request.Tmp-Octets-3 := "%{sha2_512:%{request.Tmp-Octets-0}}"
 }
 
-if (&request:Tmp-Octets-1 != 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f) {
+if (&request.Tmp-Octets-1 != 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f) {
 	test_fail
 }
 
-if (&request:Tmp-Octets-2 != 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f) {
+if (&request.Tmp-Octets-2 != 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f) {
 	test_fail
 }
 
-if (&request:Tmp-Octets-3 != 0xde80271eb5e03a1c24dd0cd823a22305a743ee3a54f1de5bf97adbf56984561154bfb6928b1da4ccc3f5dde9f4032ad461937b60b9ace4ad3898cf45c90596d7) {
+if (&request.Tmp-Octets-3 != 0xde80271eb5e03a1c24dd0cd823a22305a743ee3a54f1de5bf97adbf56984561154bfb6928b1da4ccc3f5dde9f4032ad461937b60b9ace4ad3898cf45c90596d7) {
 	test_fail
 }
 

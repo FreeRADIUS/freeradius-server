@@ -1,0 +1,58 @@
+radius radius_acct {
+	transport = udp
+	type = Accounting-Request
+
+	replicate = yes
+
+	status_check {
+		type = Status-Server
+
+	}
+
+	zombie_period = 2
+	revive_interval = 10
+
+	pool {
+		start = 1
+		min = 1
+		max = 8
+		connecting = 1
+		uses = 0
+
+		lifetime = 0
+		open_delay = 0.2
+		close_delay = 1.0
+		manage_interval = 0.2
+
+		connection {
+			connection_timeout = 1.0
+			reconnect_delay = 2
+		}
+
+		requests {
+			per_connection_max = 255
+			per_connection_target = 255
+			free_delay = 2
+		}
+	}
+
+	udp {
+		ipaddr = 127.0.0.1
+		port = 3001
+		secret = testing123
+	}
+
+	Accounting-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+
+	Status-Server {
+		initial_rtx_time = 2
+		max_rtx_time = 5
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+}

@@ -11,4 +11,20 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Geoconf-Civic				36	octets		# Complex struct see RFC 4776
+ATTRIBUTE	Geoconf-Civic				36	struct
+MEMBER		What					uint8
+VALUE	What				DHCP-Server-Location	0
+VALUE	What				Closest-Network-Element	1
+VALUE	What				Client-Location		2
+
+#
+#  2 letter ISO 3166 country code
+#
+MEMBER		Country-Code				string[2]
+
+#
+#  @todo - define this option for DHCPv4, and then have the option here
+#  be a "group" which references the DHCPv4 options.  That _should_ get
+#  everything encoded correctly.
+#
+MEMBER		Civic-Address-Elements			octets # really 8-bit DHCPv4 option

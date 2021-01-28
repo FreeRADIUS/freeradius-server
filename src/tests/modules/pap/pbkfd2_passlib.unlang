@@ -8,7 +8,7 @@ test_pass
 
 #if (&User-Name == 'pbkdf2_passlib') {
 #	update control {
-#		&PBKDF2-Password := '$pbkdf2-sha256$29000$9t7be09prfXee2/NOUeotQ$Y.RDnnq8vsezSZSKy1QNy6xhKPdoBIwc.0XDdRm9sJ8'
+#		&Password.PBKDF2 := '$pbkdf2-sha256$29000$9t7be09prfXee2/NOUeotQ$Y.RDnnq8vsezSZSKy1QNy6xhKPdoBIwc.0XDdRm9sJ8'
 #	}
 #	pap.authorize
 #	pap.authenticate

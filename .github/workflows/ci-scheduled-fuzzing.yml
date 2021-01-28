@@ -1,0 +1,161 @@
+name: Scheduled fuzzing
+
+#
+#  This workflow will normally run on a schedule.
+#
+#  It can also be invoked manually by pushing to a branch called
+#  run-fuzzer[-<timeout>], e.g.
+#
+#    - 'run-fuzzer':      Start fuzzing immediately
+#    - 'run-fuzzer-3600': Limit the runtime to one hour
+#
+
+on:
+  push:
+    branches:
+      - 'run-fuzzer**'
+
+  schedule:
+    - cron: '0 4 * * *'
+
+env:
+  ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
+  LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
+  KQUEUE_DEBUG: yes
+  M_PERTURB: "0x42"
+  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  ANALYZE_C_DUMP: 1
+  FR_GLOBAL_POOL: 4M
+  TEST_CERTS: yes
+  DO_BUILD: yes
+  CI: 1
+  GH_ACTIONS: 1
+  CC: clang
+
+jobs:
+  fuzzer:
+
+    runs-on: ubuntu-20.04
+
+    # TOTAL_RUNTIME: 20000 is just short of the 6 hours GH Actions limit
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - { PROTOCOL: radius, TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: dhcpv4, TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: dhcpv6, TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: vmps,   TOTAL_RUNTIME: 20000 }
+          - { PROTOCOL: tacacs, TOTAL_RUNTIME: 20000 }
+
+    env: ${{ matrix.env }}
+
+    name: Fuzzing ${{ matrix.env.PROTOCOL}}
+
+    steps:
+
+    - name: Stamp start time
+      run: date +%s > ~/start_timestamp
+
+    #  Checkout, but defer pulling LFS objects until we've restored the cache
+    #
+    #  We include a bit of depth since we will walk the tree until we find a
+    #  commit that builds.
+    #
+    - uses: actions/checkout@v2
+      with:
+        lfs: false
+        fetch-depth: 50
+
+    - name: Create LFS file list as cache key
+      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+    - name: Restore LFS cache
+      uses: actions/cache@v2
+      id: lfs-cache
+      with:
+        path: .git/lfs
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+
+    # Now the LFS pull will be local if we hit the cache, or remote otherwise
+    - name: Git LFS pull
+      run: git lfs pull
+
+    - name: Package manager performance improvements
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
+        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+
+    - name: Install build dependencies based on Debian packages plus extra CI packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+        debian/rules debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+
+    - name: Install tacacs_plus
+      run: |
+        pip3 install tacacs_plus
+
+    - name: Install LLVM snapshot
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+        sudo apt-get install -y --no-install-recommends clang llvm gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+        krb5-config --all || :
+        pcre-config --libs-posix --version 2>/dev/null || :
+        pcre2-config --libs-posix --version 2>/dev/null || :
+
+    # We walk up the tree if necessary to find a commit that builds so that we
+    # will fuzz something
+    - name: Find a commit that builds
+      id: pick_commit
+      run: |
+        while : ; do
+          CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3" ./configure -C \
+            --enable-werror \
+            --enable-llvm-address-sanitizer \
+            --enable-llvm-undefined-behaviour-sanitizer \
+            --enable-llvm-leak-sanitizer \
+            --enable-llvm-fuzzer \
+            --prefix=$HOME/freeradius \
+          || cat ./config.log
+          echo "Contents of src/include/autoconf.h"
+          cat "./src/include/autoconf.h"
+          mkdir -p build/tests/eapol_test
+          : > build/tests/eapol_test/eapol_test.mk
+          make -j `nproc` build/bin/fuzzer_$PROTOCOL && break || :
+          git reset --hard HEAD^
+          git clean -fxd
+        done
+        echo "::set-output name=commit_id::$(git rev-parse --short HEAD)"
+
+    - name: Run fuzzer tests
+      run: |
+        [[ "$GITHUB_REF" = refs/heads/run-fuzzer-* ]] && TOTAL_RUNTIME=${GITHUB_REF#refs/heads/run-fuzzer-}
+        REMAINING_TIME=$(( $TOTAL_RUNTIME + `cat ~/start_timestamp` - `date +%s` ))
+        echo "Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
+        [[ "$REMAINING_TIME" -lt 1 ]] && exit 1
+        timeout "$REMAINING_TIME" make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT=300 FUZZER_ARGUMENTS="-jobs=10000 -workers=`nproc`" || :
+        cp fuzz-*.log build/fuzzer
+        find build/fuzzer -type f ! -name 'fuzz-*.log' | grep . && exit 1 || :
+      env:
+        GITHUB_REF: "${{ github.ref }}"
+
+    - name: "Clang libFuzzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
+        path: build/fuzzer
+        retention_days: 30
+      if: ${{ failure() }}

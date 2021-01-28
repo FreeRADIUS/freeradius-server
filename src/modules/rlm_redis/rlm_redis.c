@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
@@ -67,7 +67,7 @@ typedef struct {
  *	- -2 failure that may leave the connection in a READONLY state.
  */
 static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **reply_out,
-				   REQUEST *request, fr_redis_conn_t *conn, int argc, char const **argv)
+				   request_t *request, fr_redis_conn_t *conn, int argc, char const **argv)
 {
 	bool			maybe_more = false;
 	redisReply		*reply;
@@ -148,21 +148,29 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
 	return 0;
 }
 
+/** Force a redis cluster remap
+ *
+@verbatim
+%{redis_remap:<redis server ip>:<redis server port>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, void const *xlat_inst,
+				      request_t *request, void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
 	rlm_redis_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_redis_t);
 
-	fr_socket_addr_t		node_addr;
+	fr_socket_t		node_addr;
 	fr_pool_t			*pool;
 	fr_redis_conn_t			*conn;
 	fr_redis_cluster_rcode_t	rcode;
 	fr_value_box_t			*vb;
 
-	if (!in) {
+	if (!*in) {
 		REDEBUG("Missing key");
 		return XLAT_ACTION_FAIL;
 	}
@@ -172,7 +180,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_inet_pton_port(&node_addr.ipaddr, &node_addr.port, (*in)->vb_strvalue, (*in)->vb_length,
+	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, (*in)->vb_strvalue, (*in)->vb_length,
 			      AF_UNSPEC, true, true) < 0) {
 		RPEDEBUG("Failed parsing node address");
 		return XLAT_ACTION_FAIL;
@@ -201,10 +209,10 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Return the node that is currently servicing a particular key
  *
- *
+ * @ingroup xlat_functions
  */
 static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				     REQUEST *request, void const *xlat_inst,
+				     request_t *request, void const *xlat_inst,
 				     UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
@@ -223,7 +231,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	unsigned long				idx = 0;
 	fr_value_box_t				*vb;
 
-	if (!in) {
+	if (!*in) {
 		REDEBUG("Missing key");
 		return XLAT_ACTION_FAIL;
 	}
@@ -271,9 +279,18 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+
+/** Xlat to make calls to redis
+ *
+@verbatim
+%{redis:<redis command>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
 static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
-			  REQUEST *request, char const *fmt)
+			  request_t *request, char const *fmt)
 {
 	rlm_redis_t const	*inst = mod_inst;
 	fr_redis_conn_t		*conn;
@@ -305,7 +322,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Hack to allow querying against a specific node for testing
 	 */
 	if (p[0] == '@') {
-		fr_socket_addr_t	node_addr;
+		fr_socket_t	node_addr;
 		fr_pool_t		*pool;
 
 		RDEBUG3("Overriding node selection");
@@ -317,7 +334,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			return -1;
 		}
 
-		if (fr_inet_pton_port(&node_addr.ipaddr, &node_addr.port, p, q - p, AF_UNSPEC, true, true) < 0) {
+		if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, p, q - p, AF_UNSPEC, true, true) < 0) {
 			RPEDEBUG("Failed parsing node address");
 			return -1;
 		}
@@ -482,18 +499,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat_register(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
+	xlat_register_legacy(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	/*
 	 *	%{redis_node:<key>[ idx]}
 	 */
 	name = talloc_asprintf(NULL, "%s_node", inst->name);
-	xlat = xlat_async_register(inst, name, redis_node_xlat);
+	xlat = xlat_register(inst, name, redis_node_xlat, false);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
 	name = talloc_asprintf(NULL, "%s_remap", inst->name);
-	xlat = xlat_async_register(inst, name, redis_remap_xlat);
+	xlat = xlat_register(inst, name, redis_remap_xlat, false);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 

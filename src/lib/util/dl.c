@@ -27,10 +27,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/paths.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <ctype.h>
@@ -81,7 +82,7 @@ struct dl_symbol_free_s {
  *
  */
 struct dl_loader_s {
-	char const		*lib_dir;	//!< Where the libraries live.
+	char			*lib_dir;	//!< Where the libraries live.
 
 	/** Linked list of symbol init callbacks
 	 *
@@ -113,7 +114,7 @@ static int dl_symbol_init_cmp(void const *one, void const *two)
 	dl_symbol_init_t const *a = one, *b = two;
 	int ret;
 
-	rad_assert(a && b);
+	fr_assert(a && b);
 
 	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
 	if (ret != 0) return ret;
@@ -135,7 +136,7 @@ static int dl_symbol_free_cmp(void const *one, void const *two)
 	dl_symbol_free_t const *a = one, *b = two;
 	int ret;
 
-	rad_assert(a && b);
+	fr_assert(a && b);
 
 	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
 	if (ret != 0) return ret;
@@ -476,7 +477,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 */
 #if defined(RTLD_DEEPBIND) && !defined(__SANITIZE_ADDRESS__)
 	flags |= RTLD_DEEPBIND;
-	fr_strerror();	/* clear error buffer */
+	fr_strerror_clear();	/* clear error buffer */
 #endif
 
 	/*
@@ -493,7 +494,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		char *ctx, *paths, *path;
 		char *p;
 
-		fr_strerror();
+		fr_strerror_clear();
 
 		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
@@ -681,12 +682,82 @@ char const *dl_search_path(dl_loader_t *dl_loader)
 
 /** Set the current library path
  *
+ * @param[in] dl_loader		to add search path component for.
+ * @param[in] lib_dir		A ":" separated list of paths to search for libraries in.
  */
 int dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir)
 {
-	if (dl_loader->lib_dir) return -1;
+	char const *old;
 
-	dl_loader->lib_dir = lib_dir;
+	old = dl_loader->lib_dir;
+
+	dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
+	if (!dl_loader->lib_dir) {
+		fr_strerror_const("Failed allocating memory for dl search path");
+		return -1;
+	}
+
+	talloc_const_free(old);
+
+	return 0;
+}
+
+/** Append a new search path component to the library search path
+ *
+ * @param[in] dl_loader		to add search path component for.
+ * @param[in] lib_dir		to add.  Does not require a ":" prefix.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir)
+{
+	char *new;
+
+	if (!dl_loader->lib_dir) {
+		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		if (!dl_loader->lib_dir) {
+		oom:
+			fr_strerror_const("Failed allocating memory for dl search path");
+			return -1;
+		}
+		return 0;
+	}
+
+	new = talloc_asprintf(dl_loader->lib_dir, "%s:%s", lib_dir, dl_loader->lib_dir);
+	if (!new) goto oom;
+
+	dl_loader->lib_dir = new;
+
+	return 0;
+}
+
+/** Append a new search path component to the library search path
+ *
+ * @param[in] dl_loader		to add search path component for.
+ * @param[in] lib_dir		to add.  Does not require a ":" prefix.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir)
+{
+	char *new;
+
+	if (!dl_loader->lib_dir) {
+		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		if (!dl_loader->lib_dir) {
+		oom:
+			fr_strerror_const("Failed allocating memory for dl search path");
+			return -1;
+		}
+		return 0;
+	}
+
+	new = talloc_asprintf_append_buffer(dl_loader->lib_dir, ":%s", lib_dir);
+	if (!new) goto oom;
+
+	dl_loader->lib_dir = new;
 
 	return 0;
 }
@@ -702,7 +773,6 @@ void *dl_loader_uctx(dl_loader_t *dl_loader)
 /** Initialise structures needed by the dynamic linker
  *
  * @param[in] ctx		To bind lifetime of dl_loader_t too.
- * @param[in] lib_dir		Where to search for modules.
  * @param[in] uctx		API client opaque data to store in dl_loader_t.
  * @param[in] uctx_free		Call talloc_free() on uctx when the dl_loader_t
  *				is freed.
@@ -712,19 +782,19 @@ void *dl_loader_uctx(dl_loader_t *dl_loader)
  *				from executing until #dl_symbol_init is
  *				called explicitly.
  */
-dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir, void *uctx, bool uctx_free, bool defer_symbol_init)
+dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool defer_symbol_init)
 {
 	dl_loader_t *dl_loader;
 
 	dl_loader = talloc_zero(NULL, dl_loader_t);
 	if (!dl_loader) {
-		fr_strerror_printf("Failed allocating dl_loader");
+		fr_strerror_const("Failed allocating dl_loader");
 		return NULL;
 	}
 
-	dl_loader->tree = rbtree_talloc_create(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
+	dl_loader->tree = rbtree_talloc_alloc(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
 	if (!dl_loader->tree) {
-		fr_strerror_printf("Failed initialising dl->tree");
+		fr_strerror_const("Failed initialising dl->tree");
 	error:
 		TALLOC_FREE(dl_loader);
 		return NULL;
@@ -732,12 +802,10 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir, void *uctx, bo
 
 	talloc_link_ctx(ctx, dl_loader);
 
-	if (lib_dir) {
-		dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
-		if (!dl_loader->lib_dir) {
-			fr_strerror_printf("Failed recording lb dir");
-			goto error;
-		}
+	dl_loader->lib_dir = talloc_strdup(dl_loader, fr_path_default_lib_dir());
+	if (!dl_loader->lib_dir) {
+		fr_strerror_const("Failed allocating memory for dl search path");
+		goto error;
 	}
 
 	talloc_set_destructor(dl_loader, _dl_loader_free);

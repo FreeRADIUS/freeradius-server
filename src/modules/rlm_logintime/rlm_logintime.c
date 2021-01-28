@@ -78,8 +78,7 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 /*
  *      Compare the current time to a range.
  */
-static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
-		   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int timecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
 {
 	/*
 	 *      If there's a request, use that timestamp.
@@ -93,9 +92,8 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
 /*
  *	Time-Of-Day support
  */
-static int time_of_day(UNUSED void *instance, REQUEST *request,
-		       UNUSED VALUE_PAIR *request_pairs, VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int time_of_day(UNUSED void *instance, request_t *request,
+		       UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
 {
 	int		scan;
 	int		hhmmss, when;
@@ -151,14 +149,14 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_logintime_t const	*inst = instance;
-	VALUE_PAIR		*ends, *vp;
+	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_logintime_t);
+	fr_pair_t		*ends, *vp;
 	int32_t			left;
 
-	ends = fr_pair_find_by_da(request->control, attr_login_time, TAG_ANY);
-	if (!ends) return RLM_MODULE_NOOP;
+	ends = fr_pair_find_by_da(&request->control_pairs, attr_login_time);
+	if (!ends) RETURN_MODULE_NOOP;
 
 	/*
 	 *      Authentication is OK. Now see if this user may login at this time of the day.
@@ -169,12 +167,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
 	left = timestr_match(ends->vp_strvalue, fr_time_to_sec(request->packet->timestamp));
-	if (left < 0) return RLM_MODULE_DISALLOW; /* outside of the allowed time */
+	if (left < 0) RETURN_MODULE_DISALLOW; /* outside of the allowed time */
 
 	/*
 	 *      Do nothing, login time is not controlled (unendsed).
 	 */
-	if (left == 0) return RLM_MODULE_OK;
+	if (left == 0) RETURN_MODULE_OK;
 
 	/*
 	 *      The min_time setting is to deal with NAS that won't allow Session-vp values below a certain value
@@ -186,7 +184,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, inst->min_time);
 
-		return RLM_MODULE_DISALLOW;
+		RETURN_MODULE_DISALLOW;
 	}
 
 	/* else left > inst->min_time */
@@ -202,20 +200,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		/* just update... */
 		if (vp->vp_uint32 > (uint32_t)left) {
 			vp->vp_uint32 = (uint32_t)left;
-			RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+			RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 		}
 		break;
 
 	case 0:	/* no pre-existing */
 		vp->vp_uint32 = (uint32_t)left;
-		RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+		RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 		break;
 
 	case -1: /* malloc failure */
 		MEM(NULL);
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 

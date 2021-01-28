@@ -19,41 +19,48 @@ server vmps {
 	namespace = vmps
 
 	listen {
+		#
+		#  transport::
+		#
 		transport = udp
 
-		#  Type of VMPS packets to listen for.
+		#
+		#  type:: Type of VMPS packets to listen for.
+		#
 		type = Join-Request
 		type = Reconfirm-Request
 
 		udp {
-			#  VMPS sockets only support IPv4 addresses.
+			#
+			#  ipaddr:: VMPS sockets only support IPv4 addresses.
+			#
 			ipaddr = *
 
-			#  Port on which to listen.
-			#  Allowed values are:
-			#	integer port number
-			#	1589 is the default VMPS port.
+			#
+			#  port:: Port on which to listen.
+			#
+			#  NOTE: 1589 is the default VMPS port.
+			#
 			port = 1589
 
+			#
 			#  Some systems support binding to an interface, in addition
 			#  to the IP address.  This feature isn't strictly necessary,
 			#  but for sites with many IP addresses on one interface,
-			#  it's useful to say "listen on all addresses for
-			#  eth0".
+			#  it's useful to say "listen on all addresses for eth0".
 			#
 			#  If your system does not support this feature, you will
 			#  get an error if you try to use it.
 			#
-			#	interface = eth0
+#			interface = eth0
 		}
 	}
 
-	#  If you have switches that are allowed to send VMPS, but NOT
-	#  RADIUS packets, then list them here as "client" sections.
 	#
-	#  Note that for compatibility with RADIUS, you still have to
-	#  list a "secret" for each client, though that secret will not
-	#  be used for anything.
+	#  You can list multiple "client" sections here in order to define
+	#  clients which apply only to this virtual server.  i.e. only for
+	#  the VMPS protocol.
+	#
 
 	#
 	#  This section is called when it receives a Join-Request.
@@ -75,25 +82,29 @@ server vmps {
 			}
 		}
 
+		#
 		#  Do a simple mapping of MAC to VLAN.
 		#
-		#  See radiusd.conf for the definition of the "mac2vlan"
+		#  See `raddb/mods-available/mac2vlan` for the definition of the "mac2vlan"
 		#  module.
 		#
-		#mac2vlan
+#		mac2vlan
 
+		#
 		#  required VMPS reply attributes
+		#
 		update reply {
 			&Packet-Type = Join-Response
+			&Error-Code = No-Error
 			&Cookie = &MAC-Address
 
 			&VLAN-Name = "please_use_real_vlan_here"
 
 			#
-			#  If you have VLAN's in a database, you can select
+			#  NOTE: If you have VLAN's in a database, you can `select`
 			#  the VLAN name based on the MAC address.
 			#
-			#&VLAN-Name = "%{sql:select ... where mac='%{Mac}'}"
+#			&VLAN-Name = "%{sql:select ... where mac='%{MAC-Address}'}"
 		}
 	}
 
@@ -101,7 +112,7 @@ server vmps {
 	#  This section is called when it sends a Join-Response.
 	#
 	send Join-Response {
-	     ok
+		ok
 	}
 
 	#
@@ -128,6 +139,6 @@ server vmps {
 	#  This section is called when not responding to packets.
 	#
 	send Do-Not-Respond {
-	     ok
+		ok
 	}
 }

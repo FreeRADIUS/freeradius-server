@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "base.h"
 
 /*
@@ -122,7 +122,7 @@ fr_dict_attr_autoload_t soh_dict_attr[] = {
 	{ NULL }
 };
 
-static int instance_count = 0;
+static uint32_t instance_count = 0;
 
 /** Read big-endian 2-byte unsigned from p
  *
@@ -166,7 +166,7 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
 	return r;
 }
 
-static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
+static int eap_peap_soh_mstlv(request_t *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
 
 /** Parses the MS-SOH type/value (note: NOT type/length/value) data and update the sohvp list
  *
@@ -182,9 +182,9 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
+static int eap_peap_soh_mstlv(request_t *request, uint8_t const *p, unsigned int data_len)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	uint8_t c;
 	int t;
 
@@ -289,7 +289,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 			p += 2;
 
 			MEM(pair_update_request(&vp, attr_soh_ms_machine_name) >= 0);
-			fr_pair_value_bstrncpy(vp, p, t);
+			fr_pair_value_bstrndup(vp, (char const *)p, t, true);
 
 			p += t;
 			data_len -= 2 + t;
@@ -304,7 +304,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 		 */
 		case 6:
 			MEM(pair_update_request(&vp, attr_soh_ms_correlation_id) >= 0);
-			fr_pair_value_memcpy(vp, p, 24, true);
+			fr_pair_value_memdup(vp, p, 24, true);
 			p += 24;
 			data_len -= 24;
 			break;
@@ -421,16 +421,16 @@ static char const *healthclass2str(uint8_t hc) {
  *	- 0 on success.
  *	- -1 on failure.
  */
-int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
+int soh_verify(request_t *request, uint8_t const *data, unsigned int data_len) {
 
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 	eap_soh			hdr;
 	soh_response		resp;
 	soh_mode_subheader	mode;
 	soh_tlv			tlv;
 	int			curr_shid =- 1, curr_shid_c =- 1, curr_hc =- 1;
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	hdr.tlv_type = soh_pull_be_16(data); data += 2;
 	hdr.tlv_len = soh_pull_be_16(data); data += 2;
@@ -588,39 +588,39 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 					s = "security-updates";
 					switch (hcstatus) {
 					case 0xff0005:
-						fr_pair_value_snprintf(vp, "%s ok all-installed", s);
+						fr_pair_value_aprintf(vp, "%s ok all-installed", s);
 						break;
 
 					case 0xff0006:
-						fr_pair_value_snprintf(vp, "%s warn some-missing", s);
+						fr_pair_value_aprintf(vp, "%s warn some-missing", s);
 						break;
 
 					case 0xff0008:
-						fr_pair_value_snprintf(vp, "%s warn never-started", s);
+						fr_pair_value_aprintf(vp, "%s warn never-started", s);
 						break;
 
 					case 0xc0ff000c:
-						fr_pair_value_snprintf(vp, "%s error no-wsus-srv", s);
+						fr_pair_value_aprintf(vp, "%s error no-wsus-srv", s);
 						break;
 
 					case 0xc0ff000d:
-						fr_pair_value_snprintf(vp, "%s error no-wsus-clid", s);
+						fr_pair_value_aprintf(vp, "%s error no-wsus-clid", s);
 						break;
 
 					case 0xc0ff000e:
-						fr_pair_value_snprintf(vp, "%s warn wsus-disabled", s);
+						fr_pair_value_aprintf(vp, "%s warn wsus-disabled", s);
 						break;
 
 					case 0xc0ff000f:
-						fr_pair_value_snprintf(vp, "%s error comm-failure", s);
+						fr_pair_value_aprintf(vp, "%s error comm-failure", s);
 						break;
 
 					case 0xc0ff0010:
-						fr_pair_value_snprintf(vp, "%s warn needs-reboot", s);
+						fr_pair_value_aprintf(vp, "%s warn needs-reboot", s);
 						break;
 
 					default:
-						fr_pair_value_snprintf(vp, "%s error %08x", s, hcstatus);
+						fr_pair_value_aprintf(vp, "%s error %08x", s, hcstatus);
 						break;
 					}
 					break;
@@ -630,35 +630,35 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 					s = "auto-updates";
 					switch (hcstatus) {
 					case 1:
-						fr_pair_value_snprintf(vp, "%s warn disabled", s);
+						fr_pair_value_aprintf(vp, "%s warn disabled", s);
 						break;
 
 					case 2:
-						fr_pair_value_snprintf(vp, "%s ok action=check-only", s);
+						fr_pair_value_aprintf(vp, "%s ok action=check-only", s);
 						break;
 
 					case 3:
-						fr_pair_value_snprintf(vp, "%s ok action=download", s);
+						fr_pair_value_aprintf(vp, "%s ok action=download", s);
 						break;
 
 					case 4:
-						fr_pair_value_snprintf(vp, "%s ok action=install", s);
+						fr_pair_value_aprintf(vp, "%s ok action=install", s);
 						break;
 
 					case 5:
-						fr_pair_value_snprintf(vp, "%s warn unconfigured", s);
+						fr_pair_value_aprintf(vp, "%s warn unconfigured", s);
 						break;
 
 					case 0xc0ff0003:
-						fr_pair_value_snprintf(vp, "%s warn service-down", s);
+						fr_pair_value_aprintf(vp, "%s warn service-down", s);
 						break;
 
 					case 0xc0ff0018:
-						fr_pair_value_snprintf(vp, "%s warn never-started", s);
+						fr_pair_value_aprintf(vp, "%s warn never-started", s);
 						break;
 
 					default:
-						fr_pair_value_snprintf(vp, "%s error %08x", s, hcstatus);
+						fr_pair_value_aprintf(vp, "%s error %08x", s, hcstatus);
 						break;
 					}
 					break;
@@ -675,12 +675,12 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 							 */
 							t = clientstatus2str(hcstatus);
 							if (t) {
-								fr_pair_value_snprintf(vp, "%s error %s", s, t);
+								fr_pair_value_aprintf(vp, "%s error %s", s, t);
 							} else {
-								fr_pair_value_snprintf(vp, "%s error %08x", s, hcstatus);
+								fr_pair_value_aprintf(vp, "%s error %08x", s, hcstatus);
 							}
 						} else {
-							fr_pair_value_snprintf(vp,
+							fr_pair_value_aprintf(vp,
 									"%s ok snoozed=%i microsoft=%i up2date=%i enabled=%i",
 									s,
 									(hcstatus & 0x8) ? 1 : 0,
@@ -690,7 +690,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 									);
 						}
 					} else {
-						fr_pair_value_snprintf(vp, "%i unknown %08x", curr_hc, hcstatus);
+						fr_pair_value_aprintf(vp, "%i unknown %08x", curr_hc, hcstatus);
 					}
 					break;
 				}
@@ -698,7 +698,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 				MEM(pair_update_request(&vp, attr_soh_ms_health_other) >= 0);
 
 				/* FIXME: what to do with the payload? */
-				fr_pair_value_snprintf(vp, "%08x/%i ?", curr_shid, curr_shid_c);
+				fr_pair_value_aprintf(vp, "%08x/%i ?", curr_shid, curr_shid_c);
 			}
 			break;
 

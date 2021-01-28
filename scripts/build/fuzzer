@@ -1,15 +1,33 @@
 #!/bin/sh
+#
+#  USAGE: ./scripts/fuzzer [lldb] FILENAME
+#
+#  To be run with ONE input file, in order to debug crashes, leaks,
+#  etc.
+#
 
-#
-#  Wrapper to run the fuzzer.  Run from the top-level source directory
-#
-#  ./scripts/build/fuzzer [radius|dhcpv4|dhcpv6]  
-#
+usage() {
+	echo "Usage: ./scripts/build/fuzzer [-l] filename"
+	echo "        -l - run the fuzzer under lldb"
+	echo ""
+	echo "  The fuzzer will automatically pick up the protocol"
+	echo "  from the filename.  Which should be DIR/PROTOCOL/leak-foo"
+	echo "  or DIR/PROTOCOL/crash-foo"
+	exit 1
+}
 
-if [ "$1" = "" ]; then
-  PROTOCOL=radius
-else
-  PROTOCOL=$1
+if [ "$#" = "0" ]; then
+	usage
 fi
 
-FR_LIBRARY_PATH=./build/lib/ FR_LIBRARY_FUZZ_PROTOCOL=$PROTOCOL FR_DICTIONARY_DIR=./share/dictionary/ ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_$PROTOCOL -max_len=1000 corp-$PROTOCOL/
+
+if [ "$1" = "-l" ]; then
+    shift
+    LLDB="lldb --"
+fi
+
+export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
+export LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
+PROTOCOL=$(basename $(dirname "$1" ))
+
+exec ./build/make/jlibtool --quiet --mode=execute $LLDB ./build/bin/local/fuzzer_${PROTOCOL} -artifact_prefix="build/fuzzer/$PROTOCOL/" -max_len=512   -D share/dictionary "$1"

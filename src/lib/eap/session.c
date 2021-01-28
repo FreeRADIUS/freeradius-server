@@ -30,7 +30,7 @@
 
 static int _eap_session_free(eap_session_t *eap_session)
 {
-	REQUEST *request = eap_session->request;
+	request_t *request = eap_session->request;
 
 	if (eap_session->identity) {
 		talloc_free(eap_session->identity);
@@ -76,7 +76,7 @@ static int _eap_session_free(eap_session_t *eap_session)
  *	- A new #eap_session_t on success.
  *	- NULL on failure.
  */
-static eap_session_t *eap_session_alloc(REQUEST *request)
+static eap_session_t *eap_session_alloc(request_t *request)
 {
 	eap_session_t	*eap_session;
 
@@ -124,7 +124,7 @@ void eap_session_destroy(eap_session_t **eap_session)
 		 *	associated with the request, or it matches the one we're
 		 *	about to free.
 		 */
-		rad_assert(!in_request || (*eap_session == in_request));
+		fr_assert(!in_request || (*eap_session == in_request));
 	}
 #else
 	(void) request_data_get((*eap_session)->request, NULL, REQUEST_DATA_EAP_SESSION);
@@ -154,7 +154,7 @@ void eap_session_freeze(eap_session_t **eap_session)
 {
 	if (!*eap_session) return;
 
-	rad_assert((*eap_session)->request);
+	fr_assert((*eap_session)->request);
 	(*eap_session)->request = NULL;
 	*eap_session = NULL;
 }
@@ -182,7 +182,7 @@ void eap_session_freeze(eap_session_t **eap_session)
  *	  continue when a future request is received.
  *	- NULL if no #eap_session_t associated with this request.
  */
-eap_session_t *eap_session_thaw(REQUEST *request)
+eap_session_t *eap_session_thaw(request_t *request)
 {
 	eap_session_t *eap_session;
 
@@ -191,7 +191,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
 
 	if (!fr_cond_assert(eap_session->inst)) return NULL;
 
-	rad_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
+	fr_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
 	eap_session->request = request;
 	eap_session->updated = request->packet->timestamp;
 
@@ -207,7 +207,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
  *	- The user's EAP-Identity.
  *	- or NULL on error.
  */
-static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
+static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
 {
 	uint16_t 	len;
 
@@ -285,11 +285,11 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
  *	  continue when a future request is received.
  *	- NULL on error.
  */
-eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packet_p, REQUEST *request)
+eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap_packet_p, request_t *request)
 {
 	eap_session_t		*eap_session = NULL;
 	eap_packet_raw_t	*eap_packet;
-	VALUE_PAIR		*user;
+	fr_pair_t		*user;
 
 	eap_packet = *eap_packet_p;
 
@@ -420,7 +420,7 @@ eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packe
 	 *	Type-Data field of the EAP-Response/Identity in the User-Name
 	 *	attribute in every subsequent Access-Request.
 	 */
-	user = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	user = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
 	if (!user) {
 		/*
 		 *	NAS did not set the User-Name
@@ -431,7 +431,7 @@ eap_session_t *eap_session_continue(void *instance, eap_packet_raw_t **eap_packe
 		 */
 		RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
 		MEM(pair_add_request(&user, attr_user_name) >= 0);
-		fr_pair_value_bstrncpy(user, eap_session->identity, talloc_array_length(eap_session->identity) - 1);
+		fr_pair_value_bstrdup_buffer(user, eap_session->identity, true);
 	/*
 	 *	The RFC 3579 is pretty unambiguous, the main issue is that the EAP Identity Response
 	 *	can be significantly longer than 253 bytes (the maximum RADIUS

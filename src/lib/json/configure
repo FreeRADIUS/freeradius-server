@@ -637,6 +637,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_libfreeradius_json
 with_jsonc_include_dir
 with_jsonc_lib_dir
 with_jsonc_dir
@@ -1256,6 +1257,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-libfreeradius-json
+                          build without JSON support from json-c
+
   --with-jsonc-include-dir=DIR
                           Directory where the json-c includes may be found
   --with-jsonc-lib-dir=DIR
@@ -1896,7 +1900,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 ac_config_headers="$ac_config_headers config.h"
 
 
-if test x$with_libfreeradius-json != xno; then
+
+# Check whether --with-libfreeradius-json was given.
+if test "${with_libfreeradius_json+set}" = set; then :
+  withval=$with_libfreeradius_json;
+fi
+
+
+if test x$with_libfreeradius_json != xno; then
 
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'

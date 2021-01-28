@@ -1,10 +1,6 @@
 # PRE: foreach foreach-break
 #
 
-update control {
-	&Cleartext-Password := 'hello'
-}
-
 #
 # Adding attribute during request and immediately returning should still work
 #

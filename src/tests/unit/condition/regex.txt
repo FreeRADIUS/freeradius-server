@@ -4,54 +4,54 @@ condition &User-Name !~ /^foo\nbar$/
 match !&User-Name =~ /^foo\nbar$/
 
 condition (ok =~ handled)
-match ERROR offset 7 Expected regular expression
+match ERROR offset 7: Expected regular expression
 
 condition (ok == /foo/)
-match ERROR offset 7 Unexpected regular expression
+match ERROR offset 7: Unexpected regular expression
 
-condition /foo/ =~ bar
-match ERROR offset 0 Unexpected regular expression
+#
+#  bare words are cast to strings
+#
+condition foo =~ /bar/
+match 'foo' =~ /bar/
 
 #
 #  Convert !~ to !(COND) for regex
 #
-condition foo =~ /bar/
-match foo =~ /bar/
-
 condition foo !~ /bar/
-match !foo =~ /bar/
+match !'foo' =~ /bar/
 
 condition !foo !~ /bar/
-match foo =~ /bar/
+match 'foo' =~ /bar/
 
 #
 #  Flags
 #
 condition foo =~ /bar/i
-match foo =~ /bar/i
+match 'foo' =~ /bar/i
 
 condition foo =~ /bar/m
-match foo =~ /bar/m
+match 'foo' =~ /bar/m
 
 condition foo =~ /bar/im
-match foo =~ /bar/im
-
-condition foo =~ /bar/gimsux
-match foo =~ /bar/gimsux
+match 'foo' =~ /bar/im
 
 condition foo =~ /bar/ima
-match ERROR offset 14 Unexpected text after condition
+match ERROR offset 14: Unsupported regex flag 'a'
 
 condition foo =~ /bar/ii
-match ERROR offset 13 Duplicate flag
+match ERROR offset 13: Duplicate regex flag 'i'
 
 condition foo =~ /bar/iia
-match ERROR offset 13 Duplicate flag
+match ERROR offset 13: Duplicate regex flag 'i'
 
 #
 #  Escape the backslashes correctly
 #  And print them correctly
 #
+
+condition &User-Name =~ /@|./
+match &User-Name =~ /@|./
 
 condition &User-Name =~ /@|\\/
 match &User-Name =~ /@|\\/
@@ -59,22 +59,30 @@ match &User-Name =~ /@|\\/
 condition &User-Name =~ /^([^\\]*)\\(.*)$/
 match &User-Name =~ /^([^\\]*)\\(.*)$/
 
+#
+#  Non-integer types get cast to string.
+#
+condition &Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
+match <string>&Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
+
+#
+#  Cannot add a bad cast
+#
+condition <integer>&Tmp-String-0 =~ /foo/
+match ERROR offset 9: Invalid cast used with regular expression
+
+condition &Tmp-String-0 =~ <integer>/foo/
+match ERROR offset 26: Invalid cast used with regular expression
+
+
 xlat %{1}
 match %{1}
 
 xlat %{33}
-match ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
+match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 condition &User-Name == /foo/
-match ERROR offset 14 Unexpected regular expression
-
-#
-#  Allow a match operator.  Which the user will
-#  hopefully *not* use with a special character
-#  like '=' or '{' or '}.  If they do, too bad.
-#
-condition &User-Name =~ m,foo,
-match &User-Name =~ /foo/
+match ERROR offset 14: Unexpected regular expression
 
 count
-match 41
+match 43

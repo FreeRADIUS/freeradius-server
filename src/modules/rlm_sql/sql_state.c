@@ -132,7 +132,7 @@ int sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const tabl
 		fr_trie_remove(states, entry->sql_state, len);	/* Remove any old entries */
 		ret = fr_trie_insert(states, entry->sql_state, len, entry);
 		if (ret < 0) {
-			DEBUG("Failed inserting state: %s", fr_strerror());
+			PERROR("Failed inserting state");
 		}
 		if (!fr_cond_assert(ret == 0)) return -1;
 	}

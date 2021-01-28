@@ -128,7 +128,7 @@ MD5_PACKET *eap_md5_extract(eap_round_t *eap_round)
 /*
  * verify = MD5(id+password+challenge_sent)
  */
-int eap_md5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
+int eap_md5_verify(MD5_PACKET *packet, fr_pair_t* password,
 		  uint8_t *challenge)
 {
 	char	*ptr;
@@ -190,7 +190,7 @@ int eap_md5_compose(eap_round_t *eap_round, MD5_PACKET *reply)
 	if (reply->code < 3) {
 		eap_round->request->type.num = FR_EAP_METHOD_MD5;
 
-		rad_assert(reply->length > 0);
+		fr_assert(reply->length > 0);
 
 		eap_round->request->type.data = talloc_array(eap_round->request,
 							  uint8_t,

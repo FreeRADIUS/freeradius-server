@@ -77,6 +77,6 @@ delay {
 #  received.
 #
 delay delay_reject {
-	delay = "%{%{reply:FreeRADIUS-Response-Delay}:-1}"
+	delay = "%{%{reply.FreeRADIUS-Response-Delay}:-1}"
 	relative = yes
 }

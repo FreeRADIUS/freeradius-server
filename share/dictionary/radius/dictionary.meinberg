@@ -14,6 +14,6 @@ VENDOR		Meinberg			5597
 
 BEGIN-VENDOR	Meinberg
 
-ATTRIBUTE	MBG-Management-Privilege-Level		1	integer
+ATTRIBUTE	Management-Privilege-Level		1	integer
 
 END-VENDOR     Meinberg

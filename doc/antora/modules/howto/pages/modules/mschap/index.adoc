@@ -7,7 +7,7 @@ If you want to support mschap, there are only 3 possibilities:
 
 [arabic]
 . You have access to the users plaintext password, and you configure
-FreeRADIUS to read this, and set the `Cleartext-Password` control
+FreeRADIUS to read this, and set the `Password.Cleartext` control
 attribute.
 . You have access to the NT (MS-CHAPv2) or LM (MS-CHAPv1) hashes, and
 you configure FreeRADIUS to read this and set the NT/LM-Password control
@@ -102,7 +102,7 @@ method.
 
 === Local
 
-If you are performing mschap locally with `Cleartext-Password/NT-Password`,
+If you are performing mschap locally with `Password.Cleartext/NT-Password`,
 you can decrypt and process the password change locally.
 To do this, you configure the `local_cpw` string:
 
@@ -160,7 +160,7 @@ text LANGUAGE plpgsql AS
 The local_cpw xlat has access to two variables:
 
 * MS-CHAP-New-NT-Password - the new value of NT-Password
-* MS-CHAP-New-Cleartext-PAssword - the new value of Cleartext-Password
+* MS-CHAP-New-Cleartext-PAssword - the new value of Password.Cleartext
 
 This allows you to do things like::
 
@@ -176,20 +176,20 @@ Or:
 . update via exec/script
 
 ```
-local_cpw = `%{exec:/my/script %{User-Name} %{MS-CHAP-New-Cleartext-Password}}`
+local_cpw = `%{exec:/my/script %{User-Name} %{MS-CHAP-New-Password.Cleartext}}`
 ```
 
 WARNING: Wherever possible, you should use `MS-CHAP-New-NT-Password`. The
 reason is that cleartext passwords have undergone unicode transformation
 from the client encoding (utf-16) to the server encoding (utf-8) and the
 current code does this in a very ad-hoc way. The reverse transformation
-is also not done - when the server reads Cleartext-Password out of
+is also not done - when the server reads Password.Cleartext out of
 files/database, it assumes US-ASCII and thus international characters
 will fail.
 
 N.B. this could be fixed, if we wanted to pull in something like iconv.
 
-In addition, you should beware of `Cleartext-Password` when using SQL; any
+In addition, you should beware of `Password.Cleartext` when using SQL; any
 password character not in safe_characters will be encoded as a hex
 number, e.g. =20.
 

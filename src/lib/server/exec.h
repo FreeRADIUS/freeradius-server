@@ -33,9 +33,6 @@ extern "C" {
 
 #define EXEC_TIMEOUT		10	//!< Default wait time for exec calls (in seconds).
 
-extern pid_t	(*rad_fork)(void);
-extern pid_t	(*rad_waitpid)(pid_t pid, int *status);
-
 #ifdef __cplusplus
 }
 #endif
@@ -49,16 +46,22 @@ extern pid_t	(*rad_waitpid)(pid_t pid, int *status);
 #ifdef __cplusplus
 extern "C" {
 #endif
-pid_t	radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
+pid_t	radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 			     int *input_fd, int *output_fd,
-			     VALUE_PAIR *input_pairs, bool shell_escape);
+			     fr_pair_list_t *input_pairs, bool shell_escape);
 
 int	radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
 				char *answer, int left);
 
-int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
-			    REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
+int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
+			    request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
 			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (5, 6));
+
+int	fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_pairs);
+
+int	fr_exec_wait_start(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd);
+
+void	fr_exec_waitpid(pid_t pid);
 
 #ifdef __cplusplus
 }

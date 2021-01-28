@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/lsan.h>
 
 #include <Python.h>
@@ -65,24 +65,13 @@ typedef struct {
 							///< in the python path.
 	PyObject	*module;		//!< Local, interpreter specific module.
 
-#if PY_MAJOR_VERSION == 2
-	bool		single_interpreter_mode;//!< Whether or not to create interpreters per module
-						//!< instance.
-#endif
-
 	python_func_def_t
 	instantiate,
 	authorize,
 	authenticate,
 	preacct,
 	accounting,
-	pre_proxy,
-	post_proxy,
 	post_auth,
-#ifdef WITH_COA
-	recv_coa,
-	send_coa,
-#endif
 	detach;
 
 	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
@@ -101,11 +90,8 @@ typedef struct {
 static void		*python_dlhandle;
 static PyThreadState	*global_interpreter;	//!< Our first interpreter.
 
-#if PY_MAJOR_VERSION == 3
 static rlm_python_t	*current_inst;		//!< Used for communication with inittab functions.
 static CONF_SECTION	*current_conf;		//!< Used for communication with inittab functions.
-#endif
-
 static char		*default_path;		//!< The default python path.
 
 /*
@@ -125,23 +111,6 @@ static char		*default_path;		//!< The default python path.
  *	issue, we only support using a global interpreter
  *	for Python 2.7 and below.
  */
-#if PY_MAJOR_VERSION == 2
-static PyObject		*global_module;		//!< Global radiusd Python module.
-
-/*
- *	Python 2.7 has its own versions of these which
- *	operate on UCS2 encoding *sigh*
- */
-#  undef PyUnicode_AsUTF8
-#  undef PyUnicode_FromString
-#  undef PyUnicode_CheckExact
-#  undef PyUnicode_FromFormat
-
-#  define PyUnicode_AsUTF8 PyString_AsString
-#  define PyUnicode_FromString PyString_FromString
-#  define PyUnicode_CheckExact PyString_CheckExact
-#  define PyUnicode_FromFormat PyString_FromFormat
-#endif
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -156,13 +125,7 @@ static CONF_PARSER module_config[] = {
 	A(authenticate)
 	A(preacct)
 	A(accounting)
-	A(pre_proxy)
-	A(post_proxy)
 	A(post_auth)
-#ifdef WITH_COA
-	A(recv_coa)
-	A(send_coa)
-#endif
 	A(detach)
 
 #undef A
@@ -171,17 +134,13 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("python_path_include_conf_dir", FR_TYPE_BOOL, rlm_python_t, python_path_include_conf_dir), .dflt = "yes" },
 	{ FR_CONF_OFFSET("python_path_include_default", FR_TYPE_BOOL, rlm_python_t, python_path_include_default), .dflt = "yes" },
 
-#if PY_MAJOR_VERSION == 2
-	{ FR_CONF_OFFSET("cext_compat", FR_TYPE_BOOL, rlm_python_t, single_interpreter_mode), .dflt = "no" },
-#endif
-
 	CONF_PARSER_TERMINATOR
 };
 
 static struct {
 	char const *name;
 	int  value;
-} radiusd_constants[] = {
+} freeradius_constants[] = {
 
 #define A(x) { #x, x },
 
@@ -233,9 +192,9 @@ static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
 
 static PyMethodDef module_methods[] = {
 	{ "log", &mod_log, METH_VARARGS,
-	  "radiusd.log(level, msg)\n\n" \
-	  "Print a message using radiusd logging system. level should be one of the\n" \
-	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
+	  "freeradius.log(level, msg)\n\n" \
+	  "Print a message using the freeradius daemon's logging system. level should be one of the\n" \
+	  "following constants L_DBG, L_WARN, L_INFO, L_ERR, L_DBG_WARN, L_DBG_ERR, L_DBG_WARN_REQ, L_DBG_ERR_REQ\n"
 	},
 	{ NULL, NULL, 0, NULL },
 };
@@ -244,7 +203,7 @@ static PyMethodDef module_methods[] = {
  *
  * Must be called with a valid thread state set
  */
-static void python_error_log(const rlm_python_t *inst, REQUEST *request)
+static void python_error_log(const rlm_python_t *inst, request_t *request)
 {
 	PyObject *p_type = NULL, *p_value = NULL, *p_traceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
@@ -260,7 +219,7 @@ static void python_error_log(const rlm_python_t *inst, REQUEST *request)
 		PyTracebackObject *ptb = (PyTracebackObject*)p_traceback;
 		size_t fnum = 0;
 
-		for(; ptb != NULL; ptb = ptb->tb_next, fnum++) {
+		while (ptb != NULL) {
 			PyFrameObject *cur_frame = ptb->tb_frame;
 
 			ROPTIONAL(RERROR, ERROR, "[%ld] %s:%d at %s()",
@@ -269,6 +228,9 @@ static void python_error_log(const rlm_python_t *inst, REQUEST *request)
 				PyFrame_GetLineNumber(cur_frame),
 				PyUnicode_AsUTF8(cur_frame->f_code->co_name)
 			);
+
+			ptb = ptb->tb_next;
+			fnum++;
 		}
 	}
 
@@ -280,15 +242,17 @@ failed:
 	Py_XDECREF(p_traceback);
 }
 
-static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *request,
-			VALUE_PAIR **vps, PyObject *p_value, char const *funcname, char const *list_name)
+static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *request,
+			fr_pair_list_t *vps, PyObject *p_value, char const *funcname, char const *list_name)
 {
 	int		i;
 	Py_ssize_t	tuple_len;
-	vp_tmpl_t	*dst;
-	VALUE_PAIR	*vp;
-	REQUEST		*current = request;
+	tmpl_t	*dst;
+	fr_pair_t	*vp;
+	request_t		*current = request;
+	fr_pair_list_t	tmp_list;
 
+	fr_pair_list_init(&tmp_list);
 	/*
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
@@ -309,7 +273,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 		Py_ssize_t	pair_len;
 		char const	*s1;
 		char const	*s2;
-		FR_TOKEN	op = T_OP_EQ;
+		fr_token_t	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(p_tuple_element)) {
 			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
@@ -339,7 +303,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 			p_op = PyTuple_GET_ITEM(p_tuple_element, 1);
 			if (PyUnicode_CheckExact(p_op)) {
 				if (!(op = fr_table_value_by_str(fr_tokens_table, PyUnicode_AsUTF8(p_op), 0))) {
-					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
+					ERROR("%s - Invalid operator %s.%s %s %s, falling back to '='",
 					      funcname, list_name, s1, PyUnicode_AsUTF8(p_op), s2);
 					op = T_OP_EQ;
 				}
@@ -348,48 +312,49 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
 
 				py_op = PyLong_AsLong(p_op);
 				if (!fr_table_str_by_value(fr_tokens_table, py_op, NULL)) {
-					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
+					ERROR("%s - Invalid operator %s.%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
 					op = T_OP_EQ;
 				} else {
-					op = (FR_TOKEN)py_op;
+					op = (fr_token_t)py_op;
 				}
 			} else {
-				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",
+				ERROR("%s - Invalid operator type for %s.%s ? %s, using default '='",
 				      funcname, list_name, s1, s2);
 			}
 		}
 
 		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
-					&(vp_tmpl_rules_t){
+					&(tmpl_rules_t){
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {
-			ERROR("%s - Failed to find attribute %s:%s", funcname, list_name, s1);
+			ERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);
 			continue;
 		}
 
-		if (radius_request(&current, dst->tmpl_request) < 0) {
-			ERROR("%s - Attribute name %s:%s refers to outer request but not in a tunnel, skipping...",
+		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
+			ERROR("%s - Attribute name %s.%s refers to outer request but not in a tunnel, skipping...",
 			      funcname, list_name, s1);
 			talloc_free(dst);
 			continue;
 		}
 
-		MEM(vp = fr_pair_afrom_da(ctx, dst->tmpl_da));
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
 		talloc_free(dst);
 
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, s2, -1, '\0', false) < 0) {
-			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
+			DEBUG("%s - Failed: '%s.%s' %s '%s'", funcname, list_name, s1,
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		} else {
-			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
+			DEBUG("%s - '%s.%s' %s '%s'", funcname, list_name, s1,
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		}
 
-		radius_pairmove(current, vps, vp, false);
+		fr_pair_add(&tmp_list, vp);
 	}
+	radius_pairmove(request, vps, &tmp_list, false);
 }
 
 
@@ -397,18 +362,13 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, REQUEST *requ
  *	This is the core Python function that the others wrap around.
  *	Pass the value-pair print strings in a tuple.
  */
-static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyObject *pp, VALUE_PAIR *vp)
+static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, PyObject *pp, fr_pair_t *vp)
 {
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
 
 	/* Look at the fr_pair_fprint_name? */
-	if (vp->da->flags.has_tag) {
-		attribute = PyUnicode_FromFormat("%s:%d", vp->da->name, vp->tag);
-	} else {
-		attribute = PyUnicode_FromString(vp->da->name);
-	}
-
+	attribute = PyUnicode_FromString(vp->da->name);
 	if (!attribute) return -1;
 
 	switch (vp->vp_type) {
@@ -469,34 +429,35 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 		break;
 
 	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_DATE:
-	case FR_TYPE_ABINARY:
 	case FR_TYPE_IFID:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_ETHERNET:
 	{
-		size_t len;
+		ssize_t slen;
 		char buffer[256];
 
-		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-		value = PyUnicode_FromStringAndSize(buffer, len);
+		slen = fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &vp->data, NULL);
+		if (slen < 0) {
+		error:
+			ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
+			python_error_log(inst, request);
+			Py_XDECREF(attribute);
+			return -1;
+		}
+		value = PyUnicode_FromStringAndSize(buffer, (size_t)slen);
 	}
 		break;
 
 	case FR_TYPE_NON_VALUES:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 
-	if (value == NULL) {
-		ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
-		python_error_log(inst, request);
-		Py_XDECREF(attribute);
-		return -1;
-	}
+	if (value == NULL) goto error;
 
 	PyTuple_SET_ITEM(pp, 0, attribute);
 	PyTuple_SET_ITEM(pp, 1, value);
@@ -504,10 +465,10 @@ static int mod_populate_vptuple(rlm_python_t const *inst, REQUEST *request, PyOb
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, PyObject *p_func, char const *funcname)
+static unlang_action_t do_python_single(rlm_rcode_t *p_result,
+					rlm_python_t const *inst, request_t *request, PyObject *p_func, char const *funcname)
 {
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	PyObject	*p_ret = NULL;
 	PyObject	*p_arg = NULL;
 	int		tuple_len;
@@ -523,9 +484,7 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 	 */
 	tuple_len = 0;
 	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) tuple_len++;
+		tuple_len = fr_pair_list_len(&request->request_pairs);
 	}
 
 	if (tuple_len == 0) {
@@ -538,9 +497,9 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
+		     vp = fr_pair_list_next(&request->request_pairs, vp), i++) {
 			PyObject *pp;
 
 			/* The inside tuple has two only: */
@@ -605,10 +564,10 @@ static rlm_rcode_t do_python_single(rlm_python_t const *inst, REQUEST *request, 
 		/* Now have the return value */
 		rcode = PyLong_AsLong(p_tuple_int);
 		/* Reply item tuple */
-		mod_vptuple(request->reply, inst, request, &request->reply->vps,
+		mod_vptuple(request->reply_ctx, inst, request, &request->reply_pairs,
 			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
 		/* Config item tuple */
-		mod_vptuple(request, inst, request, &request->control,
+		mod_vptuple(request->control_ctx, inst, request, &request->control_pairs,
 			    PyTuple_GET_ITEM(p_ret, 2), funcname, "config");
 
 	} else if (PyNumber_Check(p_ret)) {
@@ -630,49 +589,46 @@ finish:
 	Py_XDECREF(p_arg);
 	Py_XDECREF(p_ret);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Thread safe call to a python function
  *
  * Will swap in thread state specific to module/thread.
  */
-static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this_thread,
-			     REQUEST *request, PyObject *p_func, char const *funcname)
+static unlang_action_t do_python(rlm_rcode_t *p_result, rlm_python_t const *inst, rlm_python_thread_t *this_thread,
+			     	 request_t *request, PyObject *p_func, char const *funcname)
 {
 	rlm_rcode_t		rcode;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
-	if (!p_func) return RLM_MODULE_NOOP;
+	if (!p_func) RETURN_MODULE_NOOP;
 
 	RDEBUG3("Using thread state %p/%p", inst, this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	rcode = do_python_single(inst, request, p_func, funcname);
+	do_python_single(&rcode, inst, request, p_func, funcname);
 	(void)fr_cond_assert(PyEval_SaveThread() == this_thread->state);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 #define MOD_FUNC(x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, void *thread, REQUEST *request) { \
-	return do_python((rlm_python_t const *) instance, (rlm_python_thread_t *)thread, \
-			 request, ((rlm_python_t const *)instance)->x.function, #x);\
+static unlang_action_t CC_HINT(nonnull) mod_##x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
+{ \
+	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_python_t); \
+	rlm_python_thread_t *thread = talloc_get_type_abort(mctx->thread, rlm_python_thread_t); \
+	return do_python(p_result, inst, thread, request, inst->x.function, #x);\
 }
 
 MOD_FUNC(authenticate)
 MOD_FUNC(authorize)
 MOD_FUNC(preacct)
 MOD_FUNC(accounting)
-MOD_FUNC(pre_proxy)
-MOD_FUNC(post_proxy)
 MOD_FUNC(post_auth)
-#ifdef WITH_COA
-MOD_FUNC(recv_coa)
-MOD_FUNC(send_coa)
-#endif
+
 static void python_obj_destroy(PyObject **ob)
 {
 	if (*ob != NULL) {
@@ -849,8 +805,8 @@ static int python_module_import_constants(rlm_python_t *inst, PyObject *module)
 {
 	size_t i;
 
-	for (i = 0; radiusd_constants[i].name; i++) {
-		if ((PyModule_AddIntConstant(module, radiusd_constants[i].name, radiusd_constants[i].value)) < 0) {
+	for (i = 0; freeradius_constants[i].name; i++) {
+		if ((PyModule_AddIntConstant(module, freeradius_constants[i].name, freeradius_constants[i].value)) < 0) {
 			ERROR("Failed adding constant to module");
 			python_error_log(inst, NULL);
 			return -1;
@@ -890,26 +846,20 @@ static char *python_path_build(TALLOC_CTX *ctx, rlm_python_t *inst, CONF_SECTION
 /*
  *	Python 3 interpreter initialisation and destruction
  */
-#if PY_MAJOR_VERSION == 3
 static PyObject *python_module_init(void)
 {
 	rlm_python_t	*inst = current_inst;
-	CONF_SECTION	*conf = current_conf;
 	PyObject	*module;
 
 	static struct PyModuleDef py_module_def = {
 		PyModuleDef_HEAD_INIT,
-		"radiusd",			/* m_name */
-		"FreeRADIUS python module",	/* m_doc */
-		-1,				/* m_size */
-		module_methods,			/* m_methods */
-		NULL,				/* m_reload */
-		NULL,				/* m_traverse */
-		NULL,				/* m_clear */
-		NULL,				/* m_free */
+		.m_name = "freeradius",
+		.m_doc = "freeRADIUS python module",
+		.m_size = -1,
+		.m_methods = module_methods
 	};
 
-	rad_assert(inst && conf);
+	fr_assert(inst);
 
 	module = PyModule_Create(&py_module_def);
 	if (!module) {
@@ -959,9 +909,9 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 *	own copy which it can mutate as much as
 	 *      it wants.
 	 */
- 	module = PyImport_ImportModule("radiusd");
+ 	module = PyImport_ImportModule("freeradius");
  	if (!module) {
- 		ERROR("Failed importing \"radiusd\" module into interpreter %p", inst->interpreter);
+ 		ERROR("Failed importing \"freeradius\" module into interpreter %p", inst->interpreter);
  		return -1;
  	}
 	if ((python_module_import_config(inst, conf, module) < 0) ||
@@ -975,7 +925,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	return 0;
 }
 
-static void python_interpreter_free(UNUSED rlm_python_t *inst, PyThreadState *interp)
+static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 {
 	/*
 	 *	We incremented the reference count earlier
@@ -988,103 +938,6 @@ static void python_interpreter_free(UNUSED rlm_python_t *inst, PyThreadState *in
 	PyThreadState_Swap(global_interpreter);	/* Get a none-null thread state */
 	PyEval_SaveThread();		/* Unlock GIL */
 }
-/*
- *	Python 2 interpreter initialisation and destruction
- */
-#else
-static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
-{
-	char *path;
-
-	/*
-	 *	This sets up a separate environment for each python module instance
-	 *	These will be destroyed on Py_Finalize().
-	 */
-	if (!inst->single_interpreter_mode) {
-		PyEval_RestoreThread(global_interpreter);
-		LSAN_DISABLE(inst->interpreter = Py_NewInterpreter());
-		if (!inst->interpreter) {
-			ERROR("Failed creating new interpreter");
-			return -1;
-		}
-		PyEval_SaveThread();		/* Unlock GIL */
-		DEBUG3("Created new interpreter %p", inst->interpreter);
-	} else {
-		inst->interpreter = global_interpreter;
-		DEBUG3("Reusing global interpreter %p", inst->interpreter);
-	}
-
-	PyEval_RestoreThread(inst->interpreter);
-
-	/*
-	 *	Due to limitations in Python, sub-interpreters don't work well
-	 *	with Python C extensions if they use GIL lock functions.
-	 */
-	if (!inst->single_interpreter_mode || !global_module) {
-		PyObject	*module;
-
-		/*
-		 *	Initialise a new Python 2.7 module, with our default methods
-		 */
-		module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
-		if (!module) {
-			ERROR("Failed creating module");
-			python_error_log(inst, NULL);
-		error:
-			Py_XDECREF(module);
-			PyEval_SaveThread();
-			return -1;
-		}
-
-		/*
-		 *	Py_InitModule3 returns a borrowed ref, the actual
-		 *	module is owned by sys.modules, so we also need
-		 *	to own the module to prevent it being freed early.
-		 */
-		Py_INCREF(module);
-
-		if ((python_module_import_config(inst, conf, module) < 0) ||
-		    (python_module_import_constants(inst, module) < 0)) goto error;
-
-		if (inst->single_interpreter_mode) global_module = module;
-
-		inst->module = module;
-	} else {
-		inst->module = global_module;
-		Py_INCREF(inst->module);
-		inst->pythonconf_dict = PyObject_GetAttrString(inst->module, "config");
-		Py_INCREF(inst->pythonconf_dict);
-	}
-
-	path = python_path_build(inst, inst, conf);
-	DEBUG3("Setting python path to \"%s\"", path);
-	PySys_SetPath(path);
-	talloc_free(path);
-
-	PyEval_SaveThread();
-
-	return 0;
-}
-
-static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
-{
-	/*
-	 *	We incremented the reference count earlier
-	 *	during module initialisation.
-	 */
-	Py_XDECREF(inst->module);
-
-	/*
-	 *	Only destroy if it's a subinterpreter
-	 */
-	if (inst->single_interpreter_mode) return;
-
-	PyEval_AcquireLock();
-	PyThreadState_Swap(interp);
-	Py_EndInterpreter(interp);
-	PyEval_ReleaseLock();
-}
-#endif
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -1120,13 +973,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	PYTHON_FUNC_LOAD(authorize);
 	PYTHON_FUNC_LOAD(preacct);
 	PYTHON_FUNC_LOAD(accounting);
-	PYTHON_FUNC_LOAD(pre_proxy);
-	PYTHON_FUNC_LOAD(post_proxy);
 	PYTHON_FUNC_LOAD(post_auth);
-#ifdef WITH_COA
-	PYTHON_FUNC_LOAD(recv_coa);
-	PYTHON_FUNC_LOAD(send_coa);
-#endif
 	PYTHON_FUNC_LOAD(detach);
 
 	/*
@@ -1135,7 +982,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (inst->instantiate.function) {
 		rlm_rcode_t rcode;
 
-		rcode = do_python_single(inst, NULL, inst->instantiate.function, "instantiate");
+		do_python_single(&rcode, inst, NULL, inst->instantiate.function, "instantiate");
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
@@ -1177,7 +1024,11 @@ static int mod_detach(void *instance)
 	/*
 	 *	We don't care if this fails.
 	 */
-	if (inst->detach.function) (void)do_python_single(inst, NULL, inst->detach.function, "detach");
+	if (inst->detach.function) {
+		rlm_rcode_t rcode;
+
+		(void)do_python_single(&rcode, inst, NULL, inst->detach.function, "detach");
+	}
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1185,13 +1036,7 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(authenticate);
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
-	PYTHON_FUNC_DESTROY(pre_proxy);
-	PYTHON_FUNC_DESTROY(post_proxy);
 	PYTHON_FUNC_DESTROY(post_auth);
-#ifdef WITH_COA
-	PYTHON_FUNC_DESTROY(recv_coa);
-	PYTHON_FUNC_DESTROY(send_coa);
-#endif
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_XDECREF(inst->pythonconf_dict);
@@ -1240,9 +1085,14 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 static int mod_load(void)
 {
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
-#define LOAD_WARN(_fmt, ...) fr_log(LOG_DST, L_WARN, __FILE__, __LINE__, "rlm_python - " _fmt,  ## __VA_ARGS__)
+#define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, \
+					   &(fr_log_perror_format_t){ \
+					   	.first_prefix = "rlm_python - ", \
+					   	.subsq_prefix = "rlm_python - ", \
+					   }, \
+					   _fmt,  ## __VA_ARGS__)
 
-	rad_assert(!Py_IsInitialized());
+	fr_assert(!Py_IsInitialized());
 
 	LOAD_INFO("Python version: %s", Py_GetVersion());
 	dependency_version_number_add(NULL, "python", Py_GetVersion());
@@ -1253,28 +1103,21 @@ static int mod_load(void)
 	 *	can't find the symbols they need.
 	 */
 	python_dlhandle = dl_open_by_sym("Py_IsInitialized", RTLD_NOW | RTLD_GLOBAL);
-	if (!python_dlhandle) LOAD_WARN("Failed loading libpython symbols into global symbol table: %s", fr_strerror());
+	if (!python_dlhandle) LOAD_WARN("Failed loading libpython symbols into global symbol table");
 
-#if PY_MAJOR_VERSION == 3
 	/*
 	 *	Python 3 introduces the concept of a
 	 *	"inittab", i.e. a list of modules which
 	 *	are automatically created when the first
 	 *	interpreter is spawned.
 	 */
-	PyImport_AppendInittab("radiusd", python_module_init);
-#endif
-
+	PyImport_AppendInittab("freeradius", python_module_init);
 	LSAN_DISABLE(Py_InitializeEx(0));	/* Don't override signal handlers - noop on subs calls */
 
 	/*
 	 *	Get the default search path so we can append to it.
 	 */
-#if PY_MAJOR_VERSION == 3
 	default_path = Py_EncodeLocale(Py_GetPath(), NULL);
-#else
-	default_path = Py_GetPath();
-#endif
 
 	/*
 	 *	As of 3.7 this is called by Py_Initialize
@@ -1282,29 +1125,16 @@ static int mod_load(void)
 #if PY_VERSION_HEX < 0x03070000
 	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 #endif
-	rad_assert(PyEval_ThreadsInitialized());
 
 	/*
 	 *	Set program name (i.e. the software calling the interpreter)
 	 */
-#if PY_MAJOR_VERSION == 3
 	{
 		wchar_t *wide_name;
 		wide_name = Py_DecodeLocale(main_config->name, NULL);
 		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
 		PyMem_RawFree(wide_name);
 	}
-#else
-	{
-		char const *const_name;
-		char *name;
-
-		const_name = main_config->name;
-
-		memcpy(&name, &const_name, sizeof(name));
-		Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-	}
-#endif
 	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
 	return 0;
@@ -1313,13 +1143,15 @@ static int mod_load(void)
 static void mod_unload(void)
 {
 	PyThreadState_Swap(global_interpreter); /* Swap to the main thread */
+	if (default_path) PyMem_Free(default_path);
 
-	Py_Finalize();
+	/*
+	 *	PyImport_Cleanup - Leaks memory in python 3.6
+	 *	should check once we require 3.8 that this is
+	 *	still needed.
+	 */
+	LSAN_DISABLE(Py_Finalize());			/* Ignore leaks on exit, we don't reload modules so we don't care */
 	if (python_dlhandle) dlclose(python_dlhandle);	/* dlclose will SEGV on null handle */
-
-#if PY_MAJOR_VERSION == 3
-	if (default_path) PyMem_RawFree(default_path);
-#endif
 }
 
 /*
@@ -1355,12 +1187,6 @@ module_t rlm_python = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
 		[MOD_POST_AUTH]		= mod_post_auth,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_recv_coa,
-		[MOD_SEND_COA]		= mod_send_coa
-#endif
 	}
 };

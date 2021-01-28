@@ -21,21 +21,80 @@
  * @file io/pair.h
  * @brief Encoder/decoder library interface
  *
- * @copyright 2017 The FreeRADIUS project
+ * @copyright 2017-2020 The FreeRADIUS project
  */
+#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/value.h>
 
-#define PAIR_ENCODE_SKIP	SSIZE_MIN + 1
-#define PAIR_ENCODE_ERROR	SSIZE_MIN
+/** @name Encoder errors
+ * @{
+ */
 
-/** Generic interface for encoding one or more VALUE_PAIRs
+/** Encoder skipped encoding an attribute
+ */
+#define PAIR_ENCODE_SKIPPED	SSIZE_MIN + 1
+
+/** Skipped encoding attribute
+ */
+#define PAIR_ENCODE_FATAL_ERROR	SSIZE_MIN
+
+/** @} */
+
+/** @name Decode errors
+ * @{
+ */
+/** Fatal error - Out of memory
+ */
+#define PAIR_DECODE_OOM		FR_VALUE_BOX_NET_OOM
+
+/** Fatal error - Failed decoding the packet
+ */
+#define PAIR_DECODE_FATAL_ERROR	FR_VALUE_BOX_NET_ERROR
+
+/** Return the correct adjusted slen for errors
  *
- * An encoding function should consume at most, one top level VALUE_PAIR and encode
+ * @param[in] slen	returned from the function we called.
+ * @param[in] start	of the buffer.
+ * @param[in] p		offset passed to function which returned the slen.
+ */
+static inline ssize_t fr_pair_decode_slen(ssize_t slen, uint8_t const *start, uint8_t const *p)
+{
+	if (slen > 0) return slen;
+
+	switch (slen) {
+	case PAIR_DECODE_OOM:
+	case PAIR_DECODE_FATAL_ERROR:
+		return slen;
+
+	default:
+		return slen - (p - start);
+	}
+}
+
+/** Determine if the return code for an encoding function is a fatal error
+ *
+ */
+static inline bool fr_pair_encode_is_error(ssize_t slen)
+{
+	if (slen == PAIR_ENCODE_FATAL_ERROR) return true;
+	return false;
+}
+
+/** Checks if we have sufficient buffer space, and returns how much space we'd need as a negative integer
+ *
+ */
+#define FR_PAIR_ENCODE_HAVE_SPACE(_p, _end, _num) if (((_p) + (_num)) > (_end)) return (_end) - ((_p) + (_num));
+
+/** @} */
+
+/** Generic interface for encoding one or more fr_pair_ts
+ *
+ * An encoding function should consume at most, one top level fr_pair_t and encode
  * it in the appropriate wire format for the protocol, writing the encoded data to
  * out, and returning the encoded length.
  *
- * The exception to processing one VALUE_PAIR is if multiple VALUE_PAIRs can be aggregated
- * into a single TLV, in which case the encoder may consume as many VALUE_PAIRs as will
+ * The exception to processing one fr_pair_t is if multiple fr_pair_ts can be aggregated
+ * into a single TLV, in which case the encoder may consume as many fr_pair_ts as will
  * fit into that TLV.
  *
  * Outlen provides the length of the buffer to write the encoded data to.  The return
@@ -43,26 +102,23 @@
  *
  * The cursor is used to track how many pairs there are remaining.
  *
- * @param[out] out		Where to write encoded data.  The encoding function should
- *				not assume that this buffer has been initialised, and must
- *				zero out any portions used for padding.
- * @param[in] outlen		The length of the buffer provided.
+ * @param[out] out		Where to write the encoded data.
  * @param[in] cursor		Cursor containing the list of attributes to process.
  * @param[in] encoder_ctx	Any encoder specific data such as secrets or configurables.
  * @return
- *	- PAIR_ENCODE_SKIP - The current pair is not valid for encoding and should be skipped.
- *	- PAIR_ENCODE_ERROR - Encoding failed in a fatal way. Encoding the packet should be
+ *	- PAIR_ENCODE_SKIPPED - The current pair is not valid for encoding and should be skipped.
+ *	- PAIR_ENCODE_FATAL_ERROR - Encoding failed in a fatal way. Encoding the packet should be
  *	  aborted in its entirety.
  *	- <0 - The encoder ran out of space and returned the number of bytes as a negative
  *	  integer that would be required to encode the attribute.
  *	- >0 - The number of bytes written to out.
  */
-typedef ssize_t (*fr_pair_encode_t)(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
+typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void *encoder_ctx);
 
-/** A generic interface for decoding VALUE_PAIRs
+/** A generic interface for decoding fr_pair_ts
  *
- * A decoding function should decode a single top level VALUE_PAIR from wire format.
- * If this top level VALUE_PAIR is a TLV, multiple child attributes may also be decoded.
+ * A decoding function should decode a single top level fr_pair_t from wire format.
+ * If this top level fr_pair_t is a TLV, multiple child attributes may also be decoded.
  *
  * @param[in] ctx		to allocate new pairs in.
  * @param[in] cursor		to insert new pairs into.
@@ -74,5 +130,5 @@ typedef ssize_t (*fr_pair_encode_t)(uint8_t *out, size_t outlen, fr_cursor_t *cu
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
+typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
 				    uint8_t const *data, size_t data_len, void *decoder_ctx);

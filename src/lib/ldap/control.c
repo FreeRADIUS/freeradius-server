@@ -27,6 +27,9 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+#include <freeradius-devel/radius/radius.h>
+#endif
 
 /** Merge connection and call specific client and server controls
  *
@@ -162,7 +165,7 @@ void fr_ldap_control_clear(fr_ldap_connection_t *conn)
  * @param conn to add controls to.
  * @param request to draw attributes from.
  */
-int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *request)
+int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t *request)
 {
 	/*
 	 *	The OpenLDAP guys didn't declare the formatOID parameter to
@@ -185,18 +188,20 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *re
 	LDAPControl		*acctmultisessionid_control = NULL;
 	struct berval		tracking_id;
 
-	fr_cursor_t		cursor;
-	VALUE_PAIR const	*vp;
+	fr_pair_t const	*vp;
 
 	memcpy(&hostname, main_config->name, sizeof(hostname)); /* const / non-const issues */
 
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	/*
+	 *	@todo - MULTI_PROTOCOL - switch to auto-loaded dictionaries.
+	 */
+	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		case FR_NAS_IP_ADDRESS:
 		case FR_NAS_IPV6_ADDRESS:
-			fr_pair_value_snprint(ipaddress, sizeof(ipaddress), vp, '\0');
+			fr_pair_print_value_quoted(&FR_SBUFF_OUT(ipaddress, sizeof(ipaddress)), vp, T_BARE_WORD);
 			break;
 
 		case FR_USER_NAME:

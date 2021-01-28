@@ -3,7 +3,7 @@
 #
 subrequest Access-Request {
 	update request {
-		&User-Name := &parent.request:User-Name
+		&User-Name := &parent.request.User-Name
 	}
 
 	if (!&User-Name) {
@@ -11,7 +11,7 @@ subrequest Access-Request {
 	}
 
 	update parent.control {
-		&Cleartext-Password := 'hello'
+		&User-Name := 'bob'
 	}
 
 	success

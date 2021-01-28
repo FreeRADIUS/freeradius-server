@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/pairmove.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
@@ -42,21 +42,19 @@ RCSID("$Id$")
  *	only fr_pair_list_copy() those attributes that we're really going to
  *	use.
  */
-void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat)
+void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *from, bool do_xlat)
 {
-	int		i, j, count, from_count, to_count, tailto;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp, *next, **last;
-	VALUE_PAIR	**from_list, **to_list;
-	VALUE_PAIR	*append, **append_tail;
-	VALUE_PAIR 	*to_copy = NULL;
+	int		i, j, count, to_count, tailto;
+	fr_pair_t	*from_vp, *next_from, *to_vp, *next_to = NULL;
+	fr_pair_list_t	append;
 	bool		*edited = NULL;
-	TALLOC_CTX	*ctx;
+	bool		*deleted = NULL;
 
 	/*
 	 *	Set up arrays for editing, to remove some of the
-	 *	O(N^2) dependencies.  This also makes it easier to
-	 *	insert and remove attributes.
+	 *	O(N^2) dependencies.  These record which elements in
+	 *	the "to" list have been either edited or marked for
+	 *	deletion.
 	 *
 	 *	It also means that the operators apply ONLY to the
 	 *	attributes in the original list.  With the previous
@@ -74,66 +72,48 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 *	number were deleted.  With this implementation, only
 	 *	the matching attributes are deleted.
 	 */
-	count = 0;
-	for (vp = fr_cursor_init(&cursor, &from); vp; vp = fr_cursor_next(&cursor)) count++;
-	from_list = talloc_array(request, VALUE_PAIR *, count);
 
-	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
-	to_list = talloc_array(request, VALUE_PAIR *, count);
+	fr_pair_list_init(&append);
 
-	append = NULL;
-	append_tail = &append;
-
-	/*
-	 *	Move the lists to the arrays, and break the list
-	 *	chains.
-	 */
-	from_count = 0;
-	for (vp = from; vp != NULL; vp = next) {
-		next = vp->next;
-		from_list[from_count++] = vp;
-		vp->next = NULL;
-	}
-
-	to_count = 0;
-	ctx = talloc_parent(*to);
-	MEM(fr_pair_list_copy(ctx, &to_copy, *to) >= 0);
-	for (vp = to_copy; vp != NULL; vp = next) {
-		next = vp->next;
-		to_list[to_count++] = vp;
-		vp->next = NULL;
-	}
+	to_count = fr_dlist_num_elements(&to->head);
 	tailto = to_count;
 	edited = talloc_zero_array(request, bool, to_count);
+	deleted = talloc_zero_array(request, bool, to_count);
 
-	RDEBUG4("::: FROM %d TO %d MAX %d", from_count, to_count, count);
+	count = to_count + fr_dlist_num_elements(&from->head);
+
+	RDEBUG4("::: FROM %ld TO %d MAX %d", fr_dlist_num_elements(&from->head), to_count, count);
 
 	/*
 	 *	Now that we have the lists initialized, start working
 	 *	over them.
 	 */
-	for (i = 0; i < from_count; i++) {
+	for (i = 0, from_vp = fr_pair_list_head(from); from_vp; i++, from_vp = next_from) {
 		int found;
+		/* Find the next from pair before any manipulation happens */
+		next_from = fr_pair_list_next(from, from_vp);
 
-		RDEBUG4("::: Examining %s", from_list[i]->da->name);
+		RDEBUG4("::: Examining %s", from_vp->da->name);
 
-		if (do_xlat) xlat_eval_pair(request, from_list[i]);
+		if (do_xlat) xlat_eval_pair(request, from_vp);
 
 		/*
 		 *	Attribute should be appended, OR the "to" list
 		 *	is empty, and we're supposed to replace or
 		 *	"add if not existing".
 		 */
-		if (from_list[i]->op == T_OP_ADD) goto do_append;
+		if (from_vp->op == T_OP_ADD) goto do_append;
 
 		found = false;
-		for (j = 0; j < to_count; j++) {
-			if (edited[j] || !to_list[j] || !from_list[i]) continue;
+		j = 0;
+		for (to_vp = fr_pair_list_head(to); to_vp; to_vp = next_to, j++) {
+			next_to = fr_pair_list_next(to, to_vp);
+			if (edited[j] || deleted[j] || !from_vp) continue;
 
 			/*
 			 *	Attributes aren't the same, skip them.
 			 */
-			if (from_list[i]->da != to_list[j]->da) {
+			if (from_vp->da != to_vp->da) {
 				continue;
 			}
 
@@ -149,12 +129,14 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			 *	one in the "to" list, and move over
 			 *	the one in the "from" list.
 			 */
-			if (from_list[i]->op == T_OP_SET) {
+			if (from_vp->op == T_OP_SET) {
+				fr_pair_t *vp;
 				RDEBUG4("::: OVERWRITING %s FROM %d TO %d",
-				       to_list[j]->da->name, i, j);
-				fr_pair_list_free(&to_list[j]);
-				to_list[j] = from_list[i];
-				from_list[i] = NULL;
+				       to_vp->da->name, i, j);
+				fr_pair_remove(from, from_vp);
+				vp = fr_dlist_replace(&to->head, to_vp, from_vp);
+				talloc_free(vp);
+				from_vp = NULL;
 				edited[j] = true;
 				break;
 			}
@@ -164,7 +146,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			 *	exist... but it exists, so we stop
 			 *	looking.
 			 */
-			if (from_list[i]->op == T_OP_EQ) {
+			if (from_vp->op == T_OP_EQ) {
 				found = true;
 				break;
 			}
@@ -173,7 +155,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			 *	Delete every attribute, independent
 			 *	of its value.
 			 */
-			if (from_list[i]->op == T_OP_CMP_FALSE) {
+			if (from_vp->op == T_OP_CMP_FALSE) {
 				goto delete;
 			}
 
@@ -181,31 +163,30 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			 *	Delete all matching attributes from
 			 *	"to"
 			 */
-			if ((from_list[i]->op == T_OP_SUB) ||
-			    (from_list[i]->op == T_OP_CMP_EQ) ||
-			    (from_list[i]->op == T_OP_LE) ||
-			    (from_list[i]->op == T_OP_GE)) {
+			if ((from_vp->op == T_OP_SUB) ||
+			    (from_vp->op == T_OP_CMP_EQ) ||
+			    (from_vp->op == T_OP_LE) ||
+			    (from_vp->op == T_OP_GE)) {
 				int rcode;
-				int old_op = from_list[i]->op;
-
+				int old_op = from_vp->op;
 				/*
 				 *	Check for equality.
 				 */
-				from_list[i]->op = T_OP_CMP_EQ;
+				from_vp->op = T_OP_CMP_EQ;
 
 				/*
 				 *	If equal, delete the one in
 				 *	the "to" list.
 				 */
-				rcode = paircmp_pairs(NULL, from_list[i],
-							   to_list[j]);
+				rcode = paircmp_pairs(NULL, from_vp,
+							   to_vp);
 				/*
 				 *	We may want to do more
 				 *	subtractions, so we re-set the
 				 *	operator back to it's original
 				 *	value.
 				 */
-				from_list[i]->op = old_op;
+				from_vp->op = old_op;
 
 				switch (old_op) {
 				case T_OP_CMP_EQ:
@@ -216,9 +197,11 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 					if (rcode == 0) {
 					delete:
 						RDEBUG4("::: DELETING %s FROM %d TO %d",
-						       from_list[i]->da->name, i, j);
-						fr_pair_list_free(&to_list[j]);
-						to_list[j] = NULL;
+						       from_vp->da->name, i, j);
+						/*
+						 *	Mark that this will be deleted
+						 */
+						deleted[j] = true;
 					}
 					break;
 
@@ -228,22 +211,26 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 					 */
 				case T_OP_LE:
 					if (rcode > 0) {
+						fr_pair_t *vp;
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
-						       from_list[i]->da->name, i, j);
-						fr_pair_list_free(&to_list[j]);
-						to_list[j] = from_list[i];
-						from_list[i] = NULL;
+						       from_vp->da->name, i, j);
+						fr_pair_remove(from, from_vp);
+						vp = fr_dlist_replace(&to->head, to_vp, from_vp);
+						talloc_free(vp);
+						from_vp = NULL;
 						edited[j] = true;
 					}
 					break;
 
 				case T_OP_GE:
 					if (rcode < 0) {
+						fr_pair_t *vp;
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
-						       from_list[i]->da->name, i, j);
-						fr_pair_list_free(&to_list[j]);
-						to_list[j] = from_list[i];
-						from_list[i] = NULL;
+						       from_vp->da->name, i, j);
+						fr_pair_remove(from, from_vp);
+						vp = fr_dlist_replace(&to->head, to_vp, from_vp);
+						talloc_free(vp);
+						from_vp = NULL;
 						edited[j] = true;
 					}
 					break;
@@ -252,7 +239,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 				continue;
 			}
 
-			rad_assert(0 == 1); /* panic! */
+			fr_assert(0 == 1); /* panic! */
 		}
 
 		/*
@@ -261,45 +248,42 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		 *	tail of the "to" list, UNLESS it was already
 		 *	moved by another operator.
 		 */
-		if (!found && from_list[i]) {
-			if ((from_list[i]->op == T_OP_EQ) ||
-			    (from_list[i]->op == T_OP_LE) ||
-			    (from_list[i]->op == T_OP_GE) ||
-			    (from_list[i]->op == T_OP_SET)) {
+		if (!found && from_vp) {
+			if ((from_vp->op == T_OP_EQ) ||
+			    (from_vp->op == T_OP_LE) ||
+			    (from_vp->op == T_OP_GE) ||
+			    (from_vp->op == T_OP_SET)) {
 			do_append:
 				RDEBUG4("::: APPENDING %s FROM %d TO %d",
-				       from_list[i]->da->name, i, tailto);
-				*append_tail = from_list[i];
-				from_list[i]->op = T_OP_EQ;
-				from_list[i] = NULL;
-				append_tail = &(*append_tail)->next;
+				       from_vp->da->name, i, tailto++);
+				fr_pair_remove(from, from_vp);
+				fr_pair_add(&append, from_vp);
+				from_vp->op = T_OP_EQ;
 			}
 		}
 	}
 
 	/*
-	 *	Delete attributes in the "from" list.
+	 *	Delete remaining attributes in the "from" list.
 	 */
-	for (i = 0; i < from_count; i++) {
-		if (!from_list[i]) continue;
-
-		fr_pair_list_free(&from_list[i]);
-	}
-	talloc_free(from_list);
+	fr_pair_list_free(from);
 
 	RDEBUG4("::: TO in %d out %d", to_count, tailto);
 
 	/*
-	 *	Re-chain the "to" list.
+	 *	Delete any "to" items marked for deletion
 	 */
-	fr_pair_list_free(to);
-	last = to;
 
-	for (i = 0; i < tailto; i++) {
-		if (!to_list[i]) continue;
+	i = 0;
+	for (to_vp = fr_pair_list_head(to); to_vp; to_vp = next_to, i++) {
+		next_to = fr_pair_list_next(to, to_vp);
 
-		vp = to_list[i];
-		RDEBUG4("::: to[%d] = %s", i, vp->da->name);
+		if (deleted[i]) {
+			fr_pair_remove(to, to_vp);
+			continue;
+		}
+
+		RDEBUG4("::: to[%d] = %s", i, to_vp->da->name);
 
 		/*
 		 *	Mash the operator to a simple '='.  The
@@ -308,20 +292,17 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		 *	file and debug output, where we don't want to
 		 *	see the operators.
 		 */
-		vp->op = T_OP_EQ;
-
-		*last = vp;
-		last = &(*last)->next;
+		to_vp->op = T_OP_EQ;
 	}
 
 	/*
 	 *	And finally add in the attributes we're appending to
 	 *	the tail of the "to" list.
 	 */
-	*last = append;
+	fr_tmp_pair_list_move(to, &append);
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
-	talloc_free(to_list);
 	talloc_free(edited);
+	talloc_free(deleted);
 }

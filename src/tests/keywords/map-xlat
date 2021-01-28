@@ -4,20 +4,16 @@
 #  Test the map xlat
 #
 update {
-	&control:Cleartext-Password := 'hello'
-}
-
-update {
-	&Tmp-String-0 := '&control:Tmp-String-0 := \'testing123\''
-	&Tmp-String-1 := "request:Alc-MSAP-Interface = 'UNICAST_7360OLT3'"
-	&Tmp-String-1 += "request:Alc-MSAP-Interface += 'UNICAST_7360OLT4'"
+	&Tmp-String-0 := '&control.Tmp-String-0 := \'testing123\''
+	&Tmp-String-1 := "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
+	&Tmp-String-1 += "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
 }
 
 if ("%{map:%{Tmp-String-0}}" != 1) {
 	test_fail
 }
 
-if (&control:Tmp-String-0 != 'testing123') {
+if (&control.Tmp-String-0 != 'testing123') {
 	test_fail
 }
 
@@ -27,11 +23,11 @@ foreach &Tmp-String-1[*] {
 	}
 }
 
-if (&request:Alc-MSAP-Interface[0] != 'UNICAST_7360OLT3') {
+if (&request.Vendor-Specific.Nokia-SR.MSAP-Interface[0] != 'UNICAST_7360OLT3') {
 	test_fail
 }
 
-if (&request:Alc-MSAP-Interface[1] != 'UNICAST_7360OLT4') {
+if (&request.Vendor-Specific.Nokia-SR.MSAP-Interface[1] != 'UNICAST_7360OLT4') {
 	test_fail
 }
 

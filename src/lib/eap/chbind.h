@@ -33,6 +33,8 @@ RCSIDH(lib_eap_chbind_h, "$Id$")
 
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/radius/defs.h>
 
 /* Structure to represent eap channel binding packet format */
 typedef struct {
@@ -42,7 +44,7 @@ typedef struct {
 
 /* Structure to hold channel bindings req/resp information */
 typedef struct {
-	VALUE_PAIR	*username;		/* the username */
+	fr_pair_t	*username;		/* the username */
 	chbind_packet_t *request;		/* channel binding request buffer */
 	chbind_packet_t *response;		/* channel binding response buffer */
 } CHBIND_REQ;
@@ -55,7 +57,7 @@ typedef struct {
 #define CHBIND_CODE_FAILURE             3
 
 /* Channel binding function prototypes */
-FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind_req);
+FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind_req);
 
-VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind);
-chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
+fr_pair_t *eap_chbind_packet2vp(TALLOC_CTX *ctx, chbind_packet_t *chbind);
+chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps);

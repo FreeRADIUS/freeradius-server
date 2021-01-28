@@ -32,12 +32,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/util.h>
-
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -47,6 +46,10 @@ RCSID("$Id$")
 
 #ifdef HAVE_DIRENT_H
 #  include <dirent.h>
+#endif
+
+#ifdef HAVE_GLOB_H
+#  include <glob.h>
 #endif
 
 #ifdef HAVE_SYS_STAT_H
@@ -67,19 +70,48 @@ typedef enum conf_property {
 } CONF_PROPERTY;
 
 static fr_table_num_sorted_t const conf_property_name[] = {
-	{ "instance",	CONF_PROPERTY_INSTANCE	},
-	{ "name",	CONF_PROPERTY_NAME	}
+	{ L("instance"),	CONF_PROPERTY_INSTANCE	},
+	{ L("name"),	CONF_PROPERTY_NAME	}
 };
 static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
 
+typedef enum {
+	CF_STACK_FILE = 0,
+#ifdef HAVE_DIRENT_H
+	CF_STACK_DIR,
+#endif
+#ifdef HAVE_GLOB_H
+	CF_STACK_GLOB
+#endif
+} cf_stack_file_t;
+
 #define MAX_STACK (32)
 typedef struct {
-	FILE		*fp;			//!< FP we're reading
+	cf_stack_file_t type;
+
 	char const     	*filename;		//!< filename we're reading
 	int		lineno;			//!< line in that filename
 
-	DIR		*dir;			//!< Or we're reading a directory
-	char		*directory;		//!< directory name we're reading
+	union {
+		struct {
+			FILE		*fp;		//!< FP we're reading
+		};
+
+#ifdef HAVE_DIRENT_H
+		struct {
+			fr_heap_t	*heap;		//!< sorted heap of files
+			char		*directory;	//!< directory name we're reading
+		};
+#endif
+
+#ifdef HAVE_GLOB_H
+		struct {
+			size_t		gl_current;
+			glob_t		glob;		//! reading glob()
+			bool		required;
+		};
+#endif
+	};
 
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reading
@@ -412,7 +444,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			CONF_SECTION *subcs1, *subcs2;
 
 			subcs1 = cf_item_to_section(ci);
-			rad_assert(subcs1 != NULL);
+			fr_assert(subcs1 != NULL);
 
 			subcs2 = cf_section_find(cs, subcs1->name1, subcs1->name2);
 			if (subcs2) {
@@ -448,9 +480,9 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 }
 
 /*
- *	Functions for tracking filenames.
+ *	Functions for tracking files by inode
  */
-static int _filename_cmp(void const *a, void const *b)
+static int _inode_cmp(void const *a, void const *b)
 {
 	cf_file_t const *one = a, *two = b;
 	int ret;
@@ -471,7 +503,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 	top = cf_root(cs);
 	tree = cf_data_value(cf_data_find(top, rbtree_t, "filename"));
-	rad_assert(tree);
+	fr_assert(tree);
 
 	/*
 	 *	If we're including a wildcard directory, then ignore
@@ -650,7 +682,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 
 typedef struct {
 	int		rcode;
-	rb_walker_t	callback;
+	fr_rb_walker_t	callback;
 	CONF_SECTION	*modules;
 } cf_file_callback_t;
 
@@ -706,7 +738,7 @@ int cf_section_pass2(CONF_SECTION *cs)
 		cp = cf_item_to_pair(ci);
 		if (!cp->value || !cp->pass2) continue;
 
-		rad_assert((cp->rhs_quote == T_BARE_WORD) ||
+		fr_assert((cp->rhs_quote == T_BARE_WORD) ||
 			   (cp->rhs_quote == T_DOUBLE_QUOTED_STRING) ||
 			   (cp->rhs_quote == T_BACK_QUOTED_STRING));
 
@@ -752,45 +784,15 @@ static char const *cf_local_file(char const *base, char const *filename,
 	return buffer;
 }
 
-static bool invalid_location(CONF_SECTION *parent, char const *name, char const *filename, int lineno)
-{
-	/*
-	 *	if / elsif MUST be inside of a
-	 *	processing section, which MUST in turn
-	 *	be inside of a "server" directive.
-	 */
-	if (!parent || !parent->item.parent) {
-	invalid_location:
-		ERROR("%s[%d]: Invalid location for '%s'",
-		      filename, lineno, name);
-		return true;
-	}
-
-	/*
-	 *	Can only have "if" in 3 named sections.
-	 */
-	parent = cf_item_to_section(parent->item.parent);
-	while ((strcmp(parent->name1, "server") != 0) &&
-	       (strcmp(parent->name1, "policy") != 0) &&
-	       (strcmp(parent->name1, "instantiate") != 0)) {
-		parent = cf_item_to_section(parent->item.parent);
-		if (!parent) goto invalid_location;
-	}
-
-	return false;
-}
-
-
 /*
  *	Like gettoken(), but uses the new API which seems better for a
  *	host of reasons.
  */
-static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *token, char *buffer, size_t buflen,
+static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *token, char *buffer, size_t buflen,
 			char const *filename, int lineno)
 {
 	char const *ptr = *ptr_p;
 	ssize_t slen;
-	char const *error;
 	char const *out;
 	size_t outlen;
 
@@ -801,14 +803,14 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *toke
 	 *	Don't allow casts or regexes.  But do allow bare
 	 *	%{...} expansions.
 	 */
-	slen = tmpl_preparse(&out, &outlen, ptr, token, &error, NULL, false, true);
+	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token, NULL, false, true);
 	if (slen <= 0) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(parent, &spaces, &text, slen, ptr);
 
 		ERROR("%s[%d]: %s", filename, lineno, text);
-		ERROR("%s[%d]: %s^ - %s", filename, lineno, spaces, error);
+		ERROR("%s[%d]: %s^ - %s", filename, lineno, spaces, fr_strerror());
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -835,10 +837,26 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, FR_TOKEN *toke
 	return 0;
 }
 
+typedef struct cf_file_heap_t {
+	char const	*filename;
+	int		heap_id;
+} cf_file_heap_t;
 
-static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *ptr, bool required)
+static int8_t filename_cmp(void const *one, void const *two)
 {
-	bool relative = true;
+	int rcode;
+	cf_file_heap_t const *a = one;
+	cf_file_heap_t const *b = two;
+
+	rcode = strcmp(a->filename, b->filename);
+	if (rcode < 0) return -1;
+	if (rcode > 0) return +1;
+	return 0;
+}
+
+
+static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *ptr, bool required, bool relative)
+{
 	char const *value;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
@@ -891,6 +909,52 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		}
 	}
 
+	if (strchr(value, '*') != 0) {
+#ifndef HAVE_GLOB_H
+		ERROR("%s[%d]: Filename globbing is not supported.", frame->filename, frame->lineno);
+		return -1;
+#else
+		stack->depth++;
+		frame = &stack->frame[stack->depth];
+		memset(frame, 0, sizeof(*frame));
+
+		frame->type = CF_STACK_GLOB;
+		frame->required = required;
+		frame->parent = parent;
+		frame->current = parent;
+		frame->special = NULL;
+
+		/*
+		 *	For better debugging.
+		 */
+		frame->filename = frame[-1].filename;
+		frame->lineno = frame[-1].lineno;
+
+		if (glob(value, GLOB_ERR | GLOB_NOESCAPE, NULL, &frame->glob) < 0) {
+			stack->depth--;
+			ERROR("%s[%d]: Failed expanding '%s' - %s", frame->filename, frame->lineno,
+				value, fr_syserror(errno));
+			return -1;
+		}
+
+		/*
+		 *	If nothing matches, that may be an error.
+		 */
+		if (frame->glob.gl_pathc == 0) {
+			if (!required) {
+				stack->depth--;
+				return 0;
+			}
+
+			ERROR("%s[%d]: Failed expanding '%s' - No matchin files", frame->filename, frame->lineno,
+			      value);
+			return -1;
+		}
+
+		return 1;
+#endif
+	}
+
 	/*
 	 *	Allow $-INCLUDE for directories, too.
 	 */
@@ -915,6 +979,8 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		stack->depth++;
 		frame = &stack->frame[stack->depth];
 		memset(frame, 0, sizeof(*frame));
+
+		frame->type = CF_STACK_FILE;
 		frame->fp = NULL;
 		frame->parent = parent;
 		frame->current = parent;
@@ -931,9 +997,11 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	 *	careful!
 	 */
 	{
+		char		*directory;
 		DIR		*dir;
-		struct stat stat_buf;
-		char *directory;
+		struct dirent	*dp;
+		struct stat	stat_buf;
+		cf_file_heap_t	*h;
 
 		/*
 		 *	We need to keep a copy of parent while the
@@ -979,13 +1047,63 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 
 		stack->depth++;
 		frame = &stack->frame[stack->depth];
+		*frame = (cf_stack_frame_t){
+			.type = CF_STACK_DIR,
+			.directory = directory,
+			.parent = parent,
+			.current = parent,
+			.from_dir = true
+		};
 
-		memset(frame, 0, sizeof(*frame));
-		frame->dir = dir;
-		frame->directory = directory;
-		frame->parent = parent;
-		frame->current = parent;
-		frame->from_dir = true;
+		MEM(frame->heap = fr_heap_alloc(frame->directory, filename_cmp, cf_file_heap_t, heap_id));
+
+		/*
+		 *	Read the whole directory before loading any
+		 *	individual file.  We stat() files to ensure
+		 *	that they're readable.  We ignore
+		 *	subdirectories and files with odd filenames.
+		 */
+		while ((dp = readdir(dir)) != NULL) {
+			char const *p;
+
+			if (dp->d_name[0] == '.') continue;
+
+			/*
+			 *	Check for valid characters
+			 */
+			for (p = dp->d_name; *p != '\0'; p++) {
+				if (isalpha((int)*p) ||
+				    isdigit((int)*p) ||
+				    (*p == '-') ||
+				    (*p == '_') ||
+				    (*p == '.')) continue;
+				break;
+			}
+			if (*p != '\0') continue;
+
+			snprintf(stack->buff[1], stack->bufsize, "%s%s",
+				 frame->directory, dp->d_name);
+
+			if (stat(stack->buff[1], &stat_buf) != 0) {
+				ERROR("%s[%d]: Failed checking file %s: %s",
+				      (frame - 1)->filename, (frame - 1)->lineno,
+				      stack->buff[1], fr_syserror(errno));
+				continue;
+			}
+
+			if (S_ISDIR(stat_buf.st_mode)) {
+				WARN("%s[%d]: Ignoring directory %s",
+				     (frame - 1)->filename, (frame - 1)->lineno,
+				     stack->buff[1]);
+				continue;
+			}
+
+			MEM(h = talloc_zero(frame->heap, cf_file_heap_t));
+			MEM(h->filename = talloc_typed_strdup(h, stack->buff[1]));
+			h->heap_id = -1;
+			(void) fr_heap_insert(frame->heap, h);
+		}
+		closedir(dir);
 
 		/*
 		 *	No "$INCLUDE dir/" inside of update / map.  That's dumb.
@@ -1005,7 +1123,7 @@ static int process_template(cf_stack_t *stack)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *parent_cs, *templatecs;
-	FR_TOKEN token;
+	fr_token_t token;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 
@@ -1048,15 +1166,13 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
-static CONF_SECTION *process_if(cf_stack_t *stack)
+static CONF_ITEM *process_if(cf_stack_t *stack)
 {
-	ssize_t slen = 0;
-	char const *error = NULL;
-	fr_cond_t *cond = NULL;
-	CONF_DATA const *cd;
-	fr_dict_t const *dict = NULL;
-	CONF_SECTION *cs;
-	char *p;
+	ssize_t		slen = 0;
+	fr_cond_t	*cond = NULL;
+	fr_dict_t const	*dict = NULL;
+	CONF_SECTION	*cs;
+	char		*p;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
@@ -1068,17 +1184,7 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 
-	/*
-	 *	if / elsif
-	 */
-	if (invalid_location(parent, buff[1], frame->filename, frame->lineno)) return NULL;
-
-	cd = cf_data_find_in_parent(parent, fr_dict_t **, "dictionary");
-	if (!cd) {
-		dict = fr_dict_internal();	/* HACK - To fix policy sections */
-	} else {
-		dict = *((fr_dict_t **)cf_data_value(cd));
-	}
+	dict = virtual_server_namespace_by_ci(cf_section_to_item(parent));
 
 	/*
 	 *	fr_cond_tokenize needs the current section, so we
@@ -1097,7 +1203,13 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 	 *	Skip (...) to find the {
 	 */
 	while (true) {
-		slen = fr_cond_tokenize(cs, &cond, &error, dict, ptr);
+		slen = fr_cond_tokenize(cs, &cond,
+					&(tmpl_rules_t){
+			     			.dict_def = dict,
+			     			.allow_unresolved = true,
+			     			.allow_unknown = true,
+			     			.allow_foreign = (dict == NULL)	/* Allow foreign attributes if we have no dict */
+			    		}, &FR_SBUFF_IN(ptr, strlen(ptr)));
 		if (slen < 0) {
 			ssize_t end = -slen;
 
@@ -1141,7 +1253,7 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 
 		cf_log_err(cs, "Parse error in condition");
 		cf_log_err(cs, "%s", text);
-		cf_log_err(cs, "%s^ %s", spaces, error);
+		cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -1191,15 +1303,17 @@ static CONF_SECTION *process_if(cf_stack_t *stack)
 	 */
 	cf_data_add(cs, cond, NULL, false);
 	stack->ptr = ptr;
-	return cs;
+
+	cs->allow_unlang = true;
+	return cf_section_to_item(cs);
 }
 
-static CONF_SECTION *process_map(cf_stack_t *stack)
+static CONF_ITEM *process_map(cf_stack_t *stack)
 {
 	char const *mod;
 	char const *value = NULL;
 	CONF_SECTION *css;
-	FR_TOKEN token;
+	fr_token_t token;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
@@ -1210,11 +1324,6 @@ static CONF_SECTION *process_map(cf_stack_t *stack)
 	 */
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
-
-	if (invalid_location(frame->current, "map", frame->filename, frame->lineno)) {
-		ERROR("%s[%d]: Invalid syntax for 'map'", frame->filename, frame->lineno);
-		return NULL;
-	}
 
 	if (cf_get_token(parent, &ptr, &token, buff[1], stack->bufsize,
 			 frame->filename, frame->lineno) < 0) {
@@ -1228,9 +1337,9 @@ static CONF_SECTION *process_map(cf_stack_t *stack)
 	}
 	mod = buff[1];
 
-	/*
-	 *	Maps without an expansion string are allowed, tho I
-	 *	don't know why.
+        /*
+	 *      Maps without an expansion string are allowed, though
+	 *      it's not clear why.
 	 */
 	if (*ptr == '{') {
 		ptr++;
@@ -1258,10 +1367,10 @@ static CONF_SECTION *process_map(cf_stack_t *stack)
 	ptr++;
 	value = buff[2];
 
-alloc_section:
 	/*
 	 *	Allocate the section
 	 */
+alloc_section:
 	css = cf_section_alloc(parent, parent, "map", mod);
 	if (!css) {
 		ERROR("%s[%d]: Failed allocating memory for section",
@@ -1276,19 +1385,145 @@ alloc_section:
 	if (value) {
 		css->argv = talloc_array(css, char const *, 1);
 		css->argv[0] = talloc_typed_strdup(css->argv, value);
-		css->argv_quote = talloc_array(css, FR_TOKEN, 1);
+		css->argv_quote = talloc_array(css, fr_token_t, 1);
 		css->argv_quote[0] = token;
 		css->argc++;
 	}
 	stack->ptr = ptr;
 	frame->special = css;
 
-	return css;
+	return cf_section_to_item(css);
 }
 
 
+static CONF_ITEM *process_subrequest(cf_stack_t *stack)
+{
+	char const *mod = NULL;
+	CONF_SECTION *css;
+	fr_token_t token;
+	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+	char		*buff[4];
+	int		values = 0;
+
+	/*
+	 *	Short names are nicer.
+	 */
+	buff[1] = stack->buff[1];
+	buff[2] = stack->buff[2];
+	buff[3] = stack->buff[3];
+
+	/*
+	 *	subrequest { ... } is allowed.
+	 */
+	fr_skip_whitespace(ptr);
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
+
+	/*
+	 *	Get the name of the Packet-Type.
+	 */
+	if (cf_get_token(parent, &ptr, &token, buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: The first argument to 'subrequest' must be a name or an attribute reference",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	mod = buff[1];
+
+        /*
+	 *	subrequest Access-Request { ... } is allowed.
+	 */
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
+
+	/*
+	 *	subrequest Access-Request &foo { ... }
+	 */
+	if (cf_get_token(parent, &ptr, &token, buff[2], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: The second argument to 'subrequest' must be an attribute reference",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	values++;
+
+	if (*ptr == '{') {
+		ptr++;
+		goto alloc_section;
+	}
+
+	/*
+	 *	subrequest Access-Request &foo &bar { ... }
+	 */
+	if (cf_get_token(parent, &ptr, &token, buff[3], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+		ERROR("%s[%d]: The third argument to 'subrequest' must be an attribute reference",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	values++;
+
+	if (*ptr != '{') {
+		ERROR("%s[%d]: Expecting section start brace '{' in 'subrequest' definition",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	ptr++;
+
+	/*
+	 *	Allocate the section
+	 */
+alloc_section:
+	css = cf_section_alloc(parent, parent, "subrequest", mod);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	if (mod) css->name2_quote = T_BARE_WORD;
+
+	css->argc = values;
+	if (values) {
+		int i;
+
+		css->argv = talloc_array(css, char const *, values);
+		css->argv_quote = talloc_array(css, fr_token_t, values);
+
+		for (i = 0; i < values; i++) {
+			css->argv[i] = talloc_typed_strdup(css->argv, buff[2 + i]);
+			css->argv_quote[i] = T_BARE_WORD;
+		}
+	}
+
+	stack->ptr = ptr;
+	frame->special = css;
+
+	css->allow_unlang = true;
+	return cf_section_to_item(css);
+}
+
 static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
-		    FR_TOKEN name1_token, FR_TOKEN op_token, FR_TOKEN value_token,
+		    fr_token_t name1_token, fr_token_t op_token, fr_token_t value_token,
 		    char *buff, char const *filename, int lineno)
 {
 	CONF_DATA const *cd;
@@ -1343,17 +1578,18 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 }
 
 static fr_table_ptr_sorted_t unlang_keywords[] = {
-	{ "elsif",	(void *) process_if },
-	{ "if",		(void *) process_if },
-	{ "map",	(void *) process_map },
+	{ L("elsif"),		(void *) process_if },
+	{ L("if"),		(void *) process_if },
+	{ L("map"),		(void *) process_map },
+	{ L("subrequest"),	(void *) process_subrequest }
 };
 static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
-typedef CONF_SECTION *(*cf_process_func_t)(cf_stack_t *);
+typedef CONF_ITEM *(*cf_process_func_t)(cf_stack_t *);
 
 static int parse_input(cf_stack_t *stack)
 {
-	FR_TOKEN	name1_token, name2_token, value_token, op_token;
+	fr_token_t	name1_token, name2_token, value_token, op_token;
 	char const	*value;
 	CONF_SECTION	*css;
 	char const	*ptr = stack->ptr;
@@ -1389,7 +1625,7 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 
-		rad_assert(frame->braces > 0);
+		fr_assert(frame->braces > 0);
 		frame->braces--;
 
 		/*
@@ -1402,7 +1638,8 @@ static int parse_input(cf_stack_t *stack)
 
 		if (parent == frame->special) frame->special = NULL;
 
-		frame->current = parent = cf_item_to_section(parent->item.parent);
+		frame->current = cf_item_to_section(parent->item.parent);
+
 		ptr++;
 		stack->ptr = ptr;
 		return 1;
@@ -1419,14 +1656,39 @@ static int parse_input(cf_stack_t *stack)
 
 	/*
 	 *	See which unlang keywords are allowed
+	 *
+	 *	0 - no unlang keywords are allowed.
+	 *	1 - unlang keywords are allowed
+	 *	2 - unlang keywords are allowed only in sub-sections
+	 *	  i.e. policy { ... } doesn't allow "if".  But the "if"
+	 *	  keyword is allowed in children of "policy".
 	 */
-	process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
-	if (process) {
-		stack->ptr = ptr;
-		css = process(stack);
-		ptr = stack->ptr;
-		if (!css) return -1;
-		goto add_section;
+	if (parent->allow_unlang != 1) {
+		if ((strcmp(buff[1], "if") == 0) ||
+		    (strcmp(buff[1], "elsif") == 0)) {
+			ERROR("%s[%d]: Invalid location for '%s'",
+			      frame->filename, frame->lineno, buff[1]);
+			return -1;
+		}
+	} else {
+		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
+		if (process) {
+			CONF_ITEM *ci;
+
+			stack->ptr = ptr;
+			ci = process(stack);
+			ptr = stack->ptr;
+			if (!ci) return -1;
+			if (cf_item_is_section(ci)) {
+				css = cf_item_to_section(ci);
+				goto add_section;
+			}
+
+			/*
+			 *	Else the item is a pair, and it's already added to the section.
+			 */
+			goto added_pair;
+		}
 	}
 
 	/*
@@ -1501,13 +1763,34 @@ static int parse_input(cf_stack_t *stack)
 			frame->special = css;
 		}
 
+		/*
+		 *	Only a few top-level sections allow "unlang"
+		 *	statements.  And for those, "unlang"
+		 *	statements are only allowed in child
+		 *	subsection.
+		 *
+		 *	This isn't _strictly_ true for "instantiate",
+		 *	as we allow "group", "redundant", and a few
+		 *	more things there.  But only allow "if" as a
+		 *	keyword when it's inside of another grouping
+		 *	section.
+		 */
+		if (!parent->allow_unlang && !parent->item.parent) {
+			if (strcmp(css->name1, "instantiate") == 0) css->allow_unlang = 2;
+			if (strcmp(css->name1, "server") == 0) css->allow_unlang = 2;
+			if (strcmp(css->name1, "policy") == 0) css->allow_unlang = 2;
+
+		} else if (parent->allow_unlang) {
+			css->allow_unlang = 1;
+		}
+
 	add_section:
 		cf_item_add(parent, &(css->item));
 
 		/*
 		 *	The current section is now the child section.
 		 */
-		frame->current = parent = css;
+		frame->current = css;
 		frame->braces++;
 		css = NULL;
 		stack->ptr = ptr;
@@ -1546,7 +1829,7 @@ static int parse_input(cf_stack_t *stack)
 			      frame->filename, frame->lineno);
 			return -1;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	case T_OP_EQ:
 	case T_OP_SET:
@@ -1633,6 +1916,7 @@ static int parse_input(cf_stack_t *stack)
 do_set:
 	if (add_pair(parent, buff[1], value, name1_token, op_token, value_token, buff[3], frame->filename, frame->lineno) < 0) return -1;
 
+added_pair:
 	fr_skip_whitespace(ptr);
 
 	/*
@@ -1677,69 +1961,35 @@ do_set:
 static int frame_readdir(cf_stack_t *stack)
 {
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
-	struct dirent	*dp;
-	struct stat stat_buf;
 	CONF_SECTION *parent = frame->current;
+	cf_file_heap_t *h;
 
-	while ((dp = readdir(frame->dir)) != NULL) {
-		char const *p;
-
-		if (dp->d_name[0] == '.') continue;
-
+	h = fr_heap_pop(frame->heap);
+	if (!h) {
 		/*
-		 *	Check for valid characters
+		 *	Done reading the directory entry.  Close it, and go
+		 *	back up a stack frame.
 		 */
-		for (p = dp->d_name; *p != '\0'; p++) {
-			if (isalpha((int)*p) ||
-			    isdigit((int)*p) ||
-			    (*p == '-') ||
-			    (*p == '_') ||
-			    (*p == '.')) continue;
-			break;
-		}
-		if (*p != '\0') continue;
-
-		snprintf(stack->buff[1], stack->bufsize, "%s%s",
-			 frame->directory, dp->d_name);
-
-		if (stat(stack->buff[1], &stat_buf) != 0) {
-			ERROR("%s[%d]: Failed checking file %s: %s",
-			      (frame - 1)->filename, (frame - 1)->lineno,
-			      stack->buff[1], fr_syserror(errno));
-			continue;
-		}
-
-		if (S_ISDIR(stat_buf.st_mode)) {
-			WARN("%s[%d]: Ignoring directory %s",
-			     (frame - 1)->filename, (frame - 1)->lineno,
-			     stack->buff[1]);
-			continue;
-		}
-
-		/*
-		 *	Push the next filename onto the stack.
-		 */
-		stack->depth++;
-		frame = &stack->frame[stack->depth];
-		memset(frame, 0, sizeof(*frame));
-		frame->fp = NULL;
-		frame->parent = parent;
-		frame->current = parent;
-		frame->filename = talloc_strdup(frame->parent, stack->buff[1]);
-		frame->lineno = 0;
-		frame->from_dir = true;
-		frame->special = NULL; /* can't do includes inside of update / map */
+		talloc_free(frame->directory);
+		stack->depth--;
 		return 1;
 	}
 
 	/*
-	 *	Done reading the directory entry.  Close it, and go
-	 *	back up a stack frame.
+	 *	Push the next filename onto the stack.
 	 */
-	closedir(frame->dir);
-	frame->dir = NULL;
-	talloc_free(frame->directory);
-	stack->depth--;
+	stack->depth++;
+	frame = &stack->frame[stack->depth];
+	memset(frame, 0, sizeof(*frame));
+
+	frame->type = CF_STACK_FILE;
+	frame->fp = NULL;
+	frame->parent = parent;
+	frame->current = parent;
+	frame->filename = h->filename;
+	frame->lineno = 0;
+	frame->from_dir = true;
+	frame->special = NULL; /* can't do includes inside of update / map */
 	return 1;
 }
 
@@ -1860,12 +2110,32 @@ do_frame:
 	frame = &stack->frame[stack->depth];
 	parent = frame->current; /* add items here */
 
-	/*
-	 *	First try reading from the frame as a directory.  If
-	 *	so, we push a filename onto the stack and then load
-	 *	the filename.
-	 */
-	if (frame->dir) {
+	switch (frame->type) {
+#ifdef HAVE_GLOB_H
+	case CF_STACK_GLOB:
+		if (frame->gl_current == frame->glob.gl_pathc) {
+			globfree(&frame->glob);
+			goto pop_stack;
+		}
+
+		/*
+		 *	Process the filename as an include.
+		 */
+		if (process_include(stack, parent, frame->glob.gl_pathv[frame->gl_current++], frame->required, false) < 0) return -1;
+
+		/*
+		 *	Run the correct frame.  If the file is NOT
+		 *	required, then the call to process_include()
+		 *	may return 0, and we just process the next
+		 *	glob.  Otherwise, the call to
+		 *	process_include() may return a directory or a
+		 *	filename.  Go handle that.
+		 */
+		goto do_frame;
+#endif
+
+#ifdef HAVE_DIRENT_H
+	case CF_STACK_DIR:
 		rcode = frame_readdir(stack);
 		if (rcode == 0) goto do_frame;
 		if (rcode < 0) return -1;
@@ -1874,12 +2144,28 @@ do_frame:
 		 *	Reset which frame we're looking at.
 		 */
 		frame = &stack->frame[stack->depth];
+		fr_assert(frame->type == CF_STACK_FILE);
+		break;
+#endif
+
+	case CF_STACK_FILE:
+		break;
 	}
 
+#ifndef NDEBUG
 	/*
-	 *	Open the new file.  It either came from the first call
-	 *	to the function, or was pushed onto the stack by
-	 *	frame_readdir().
+	 *	One last sanity check.
+	 */
+	if (frame->type != CF_STACK_FILE) {
+		cf_log_err(frame->current, "Internal sanity check failed");
+		goto pop_stack;
+	}
+#endif
+
+	/*
+	 *	Open the new file if necessary.  It either came from
+	 *	the first call to the function, or was pushed onto the
+	 *	stack by another function.
 	 */
 	if (!frame->fp) {
 		rcode = cf_file_open(frame->parent, frame->filename, frame->from_dir, &frame->fp);
@@ -1893,7 +2179,7 @@ do_frame:
 				    frame->filename);
 			goto pop_stack;
 		}
-	}
+	};
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1921,14 +2207,14 @@ do_frame:
 			if (strncasecmp(ptr, "$INCLUDE", 8) == 0) {
 				ptr += 8;
 
-				if (process_include(stack, parent, ptr, true) < 0) return -1;
+				if (process_include(stack, parent, ptr, true, true) < 0) return -1;
 				goto do_frame;
 			}
 
 			if (strncasecmp(ptr, "$-INCLUDE", 9) == 0) {
 				ptr += 9;
 
-				rcode = process_include(stack, parent, ptr, false);
+				rcode = process_include(stack, parent, ptr, false, true);
 				if (rcode < 0) return -1;
 				if (rcode == 0) continue;
 				goto do_frame;
@@ -1966,7 +2252,7 @@ do_frame:
 		} while (rcode == 1);
 	}
 
-	rad_assert(frame->fp != NULL);
+	fr_assert(frame->fp != NULL);
 
 	/*
 	 *	See if EOF was unexpected.
@@ -1997,14 +2283,23 @@ static void cf_stack_cleanup(cf_stack_t *stack)
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 
 	while (stack->depth >= 0) {
-		if (frame->fp) {
-			fclose(frame->fp);
+		switch (frame->type) {
+		case CF_STACK_FILE:
+			if (frame->fp) fclose(frame->fp);
 			frame->fp = NULL;
-		}
-		if (frame->dir) {
-			closedir(frame->dir);
-			frame->dir = NULL;
+			break;
+
+#ifdef HAVE_DIRENT_H
+		case CF_STACK_DIR:
 			talloc_free(frame->directory);
+			break;
+#endif
+
+#ifdef HAVE_GLOB_H
+		case CF_STACK_GLOB:
+			globfree(&frame->glob);
+			break;
+#endif
 		}
 
 		frame--;
@@ -2034,7 +2329,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	cf_item_add(cs, &(cp->item));
 
-	MEM(tree = rbtree_talloc_create(cs, _filename_cmp, cf_file_t, NULL, 0));
+	MEM(tree = rbtree_talloc_alloc(cs, _inode_cmp, cf_file_t, NULL, 0));
 
 	cf_data_add(cs, tree, "filename", false);
 
@@ -2054,6 +2349,8 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	memset(frame, 0, sizeof(*frame));
 	frame->parent = frame->current = cs;
+
+	frame->type = CF_STACK_FILE;
 	frame->filename = talloc_strdup(frame->parent, filename);
 	cs->item.filename = frame->filename;
 
@@ -2100,7 +2397,7 @@ void cf_file_check_user(uid_t uid, gid_t gid)
 /*
  *	See if any of the files have changed.
  */
-int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
+int cf_file_changed(CONF_SECTION *cs, fr_rb_walker_t callback)
 {
 	CONF_SECTION		*top;
 	cf_file_callback_t	cb;
@@ -2122,7 +2419,7 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 
 static char const parse_tabs[] = "																																																																																																																																																																																																								";
 
-static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, FR_TOKEN t)
+static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, fr_token_t t)
 {
 	size_t	outlen;
 	char	c;
@@ -2198,7 +2495,7 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 		if (c) {
 			char buffer[1024];
 
-			cond_snprint(NULL, buffer, sizeof(buffer), c);
+			cond_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), c);
 			fprintf(fp, "(%s)", buffer);
 
 		} else {	/* dump the string as-is */

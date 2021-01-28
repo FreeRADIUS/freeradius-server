@@ -339,14 +339,14 @@ Don't log anything for other `link:https://freeradius.org/rfc/rfc2866.html#Acct-
 linelog {
 #	delimiter = "\n"
 	format = "This is a log message for %{User-Name}"
-	reference = "messages.%{%{reply:Packet-Type}:-default}"
+	reference = "messages.%{%{reply.Packet-Type}:-default}"
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 		Access-Accept = "Sent accept: %{User-Name}"
 		Access-Reject = "Sent reject: %{User-Name}"
 		Access-Challenge = "Sent challenge: %{User-Name}"
 	}
-	destination = 'file'
+	destination = file
 	file {
 		filename = ${logdir}/linelog
 		permissions = 0600

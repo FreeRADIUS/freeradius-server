@@ -60,5 +60,5 @@ All the information you need to create this policy is contained within
 2.  What are the main differences between a policy and a function in other
     languages?
 
-// Copyright (C) 2019 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

@@ -1,0 +1,188 @@
+name: CI DEB
+
+on:
+  push:
+    branches:
+      - packaging_test
+  schedule:
+    - cron: '0 20 * * *'
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  deb-build:
+
+    strategy:
+      matrix:
+        env:
+          - { NAME: "ubuntu-16.04", OS: "ubuntu:16.04" }
+          - { NAME: "ubuntu-18.04", OS: "ubuntu:18.04" }
+          - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
+          - { NAME: "debian-9",     OS: "debian:stretch" }
+          - { NAME: "debian-10",    OS: "debian:buster" }
+          - { NAME: "debian-sid",   OS: "debian:sid" }
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: ${{ matrix.env.OS }}
+
+    name: "DEB build"
+
+    steps:
+
+    - name: Package manager performance improvements
+      run: |
+        echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
+        echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+
+    #
+    #  Required so that the checkout action uses git protocol rather than the GitHub REST API.
+    #  make rpm requires the FR directory to be a git repository.
+    #
+    - name: Install recent git
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends git-core ca-certificates
+
+    - uses: actions/checkout@v2
+      with:
+        repository: mheily/libkqueue
+        path: libkqueue
+
+    - name: Install build tools
+      run: |
+        apt-get install -y --no-install-recommends cmake make gcc libc6-dev equivs file curl
+
+    - name: Build libkqueue
+      run: |
+        curl -f -o cmake.sh https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
+        [ "$(cat cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
+        sh cmake.sh --skip-license --prefix=/usr/local
+        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./
+        make
+        cpack -G DEB
+        dpkg -i --force-all ./libkqueue*.deb
+      working-directory: libkqueue
+
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Install build dependencies
+      run: |
+        apt-get install -y --no-install-recommends build-essential devscripts quilt
+        debian/rules debian/control
+        mk-build-deps -irt"apt-get -y" debian/control
+      working-directory: freeradius
+
+    - name: Build DEBs
+      run: |
+        make deb
+      working-directory: freeradius
+
+    - name: Collect DEBs
+      run: |
+        mkdir debs
+        mv libkqueue/*.deb debs
+        mv *.deb debs
+
+    - name: Build eapol_test
+      run: |
+        apt-get install -y libnl-3-dev libnl-genl-3-dev
+        ./configure
+        make -j `nproc` eapol_test
+        mv scripts/ci/eapol_test/eapol_test ../debs
+      working-directory: freeradius
+
+    - name: Store DEBs
+      uses: actions/upload-artifact@v2
+      with:
+        name: debs-${{ matrix.env.NAME }}
+        path: debs
+        retention-days: 1
+
+  deb-test:
+
+    needs:
+      - deb-build
+
+    strategy:
+      matrix:
+        env:
+          - { NAME: "ubuntu-16.04", OS: "ubuntu:16.04" }
+          - { NAME: "ubuntu-18.04", OS: "ubuntu:18.04" }
+          - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
+          - { NAME: "debian-9", OS: "debian:stretch" }
+          - { NAME: "debian-10", OS: "debian:buster" }
+          - { NAME: "debian-sid", OS: "debian:sid" }
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: ${{ matrix.env.OS }}
+
+    name: "DEB install test"
+
+    steps:
+
+    # For pkill
+    - name: Install procps
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends procps
+
+    - name: Load DEBs
+      uses: actions/download-artifact@v2
+      with:
+        name: debs-${{ matrix.env.NAME }}
+
+    - name: Package manager performance improvements
+      run: |
+        echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
+        echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+
+    - name: Install DEBs
+      run: |
+        find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y --no-install-recommends
+
+    - name: Config test
+      run: |
+        freeradius -XC
+
+    #
+    #  We now perform some post-install tests that depend on the availability
+    #  of the source tree
+    #
+    - name: Install pre-built eapol_test
+      run: |
+        apt-get install -y libssl1.? libdbus-1-? libnl-3-200 libnl-genl-3-200
+        mv eapol_test /usr/local/bin
+        chmod +x /usr/local/bin/eapol_test
+
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Run the post-install test target
+      run: |
+        make -C raddb/certs
+        touch Make.inc
+        mkdir -p build/tests/eapol_test
+        echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
+        make -f scripts/ci/package-test.mk package-test
+      working-directory: freeradius
+
+    - name: Upload radius logs on failure
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: radius-logs-${{ matrix.env.NAME }}
+        path: |
+          /var/log/freeradius
+          freeradius/build/tests/eapol_test
+        retention-days: 30
+

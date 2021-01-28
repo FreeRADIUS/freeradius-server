@@ -36,7 +36,7 @@ RCSID("$Id$")
 
 #define FR_SYSERROR_BUFSIZE (2048)
 
-fr_thread_local_setup(char *, fr_syserror_buffer); /* macro */
+static _Thread_local char *fr_syserror_buffer;
 static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get errors being
 					///< logged from within other thread local destructors
 					///< which cause a crash on exit if the logging buffer
@@ -166,6 +166,8 @@ static char const *fr_syserror_macro_names[] = {
  *
  * @param num errno as returned by function or from global errno.
  * @return local specific error string relating to errno.
+ *
+ * @hidecallergraph
  */
 char const *fr_syserror(int num)
 {
@@ -259,12 +261,3 @@ char const *fr_syserror(int num)
 	}
 #endif
 }
-
-/** Explicitly cleanup the thread specific buffer used
- *
- */
-void fr_syserror_free(void)
-{
-	_fr_logging_free(NULL);
-}
-

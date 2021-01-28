@@ -179,4 +179,4 @@ typedef struct {
 /*
  *	The main entry point
  */
-rlm_rcode_t aka_sim_state_machine_start(void *instance, UNUSED void *thread, REQUEST *request);
+unlang_action_t aka_sim_state_machine_start(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);

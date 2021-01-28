@@ -1,0 +1,50 @@
+#
+#  Tests for parsing nested expressions
+#
+#  $Id$
+#
+
+proto-dictionary radius
+
+# A nested attribute with partial path
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id
+match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id
+
+# A nested attribute with a full path (and no filters)
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id
+match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id
+
+# A nested attribute with an instance selector
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[5].Uplink-QOS-Id
+match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[5].Uplink-QOS-Id
+
+# A nested attribute with an instance selector at both levels
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[*].Uplink-QOS-Id[0]
+match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[*].Uplink-QOS-Id[0]
+
+# Unparsed child - We won't know this is an error until pass2
+
+tmpl-rules allow_unresolved=yes
+
+condition &Unparsed-Child.Uplink-QOS-Id[0]
+match &Unparsed-Child.Uplink-QOS-Id[0]
+
+tmpl-rules allow_unresolved=no
+
+#
+#  Errors
+#
+# Malformed filter
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor[*.Uplink-QOS-Id[0]
+match ERROR offset 47: No closing ']' for array index
+
+# Too many dots, point to the thing that's wrong
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor..Uplink-QOS-Id[0]
+match ERROR offset 46: Zero length attribute name: Unresolved attributes not allowed here
+
+# Trailing dots, point to the dot that's an error
+condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id[0].
+match ERROR offset 62: Parent type of nested attribute Uplink-QOS-Id must be of type "struct", "tlv", "vendor", "vsa" or "group", got "uint8"
+
+count
+match 19

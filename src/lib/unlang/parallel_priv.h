@@ -48,7 +48,7 @@ typedef enum {
  */
 typedef struct {
 	unlang_parallel_child_state_t	state;		//!< State of the child.
-	REQUEST				*child; 	//!< Child request.
+	request_t				*child; 	//!< Child request.
 	unlang_t			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 
@@ -63,6 +63,28 @@ typedef struct {
 
 	unlang_parallel_child_t children[];		//!< Array of children.
 } unlang_parallel_state_t;
+
+typedef struct {
+	unlang_group_t		group;
+	bool			detach;			//!< are we creating the child detached
+	bool			clone;
+} unlang_parallel_t;
+
+/** Cast a group structure to the parallel keyword extension
+ *
+ */
+static inline unlang_parallel_t *unlang_group_to_parallel(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_parallel_t);
+}
+
+/** Cast a parallel keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_parallel_to_group(unlang_parallel_t *parallel)
+{
+	return (unlang_group_t *)parallel;
+}
 
 #ifdef __cplusplus
 }

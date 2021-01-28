@@ -4,14 +4,14 @@
 $INCLUDE cluster_reset.inc
 
 update control {
-	&Pool-Name := 'test_update'
+	&IP-Pool.Name := 'test_update'
 }
 
 #
 #  Add IP addresses
 #
 update request {
-	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
+	&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
 }
 
 #
@@ -26,7 +26,7 @@ if (updated) {
 	test_fail
 }
 
-if (&reply:Framed-IP-Address == 192.168.0.1) {
+if (&reply.Framed-IP-Address == 192.168.0.1) {
 	test_pass
 } else {
 	test_fail
@@ -36,8 +36,8 @@ if (&reply:Framed-IP-Address == 192.168.0.1) {
 #  Release the IP address
 #
 update {
-	&request:Framed-IP-Address := &reply:Framed-IP-Address
-	&control:Pool-Action := Release
+	&request.Framed-IP-Address := &reply.Framed-IP-Address
+	&control.IP-Pool.Action := Release
 }
 redis_ippool {
 	invalid = 1
@@ -51,7 +51,7 @@ if (updated) {
 #
 #  Verify the association with the device has been removed
 #
-if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == '0') {
+if ("%{redis:EXISTS '{%{control.IP-Pool.Name}%}:device:%{Calling-Station-ID}'}" == '0') {
 	test_pass
 } else {
 	test_fail
@@ -60,19 +60,19 @@ if ("%{redis:EXISTS '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == 
 #
 #  Verify the hash information is retained
 #
-if ("%{redis:HGET '{%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address}' 'device'}" == '00:11:22:33:44:55') {
+if ("%{redis:HGET '{%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address}' 'device'}" == '00:11:22:33:44:55') {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} gateway}" == '127.0.0.1') {
+if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address} gateway}" == '127.0.0.1') {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:Framed-IP-Address} range}" == '192.168.0.0') {
+if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address} range}" == '192.168.0.0') {
 	test_pass
 } else {
 	test_fail
@@ -83,13 +83,13 @@ update request {
 	&Tmp-Date-0 := "%l"
 }
 
-if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" > 0) {
+if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" > 0) {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" < 10) {
+if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" < 10) {
 	test_pass
 } else {
 	test_fail
@@ -99,8 +99,8 @@ if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:Framed-IP-Add
 #  Release the IP address again (should still be fine)
 #
 update {
-	&request:Framed-IP-Address := &reply:Framed-IP-Address
-	&control:Pool-Action := Release
+	&request.Framed-IP-Address := &reply.Framed-IP-Address
+	&control.IP-Pool.Action := Release
 }
 redis_ippool {
 	invalid = 1
@@ -112,5 +112,5 @@ if (updated) {
 }
 
 update reply {
-	&reply: !* ANY
+	&reply !* ANY
 }

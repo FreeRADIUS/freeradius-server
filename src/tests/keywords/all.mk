@@ -13,7 +13,7 @@ TEST := test.keywords
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+FILES := $(filter-out %.ignore %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
 #  Don't run SSHA tests if there's no SSL
@@ -22,16 +22,14 @@ ifeq "$(OPENSSL_LIBS)" ""
 FILES := $(filter-out pap-ssha2 sha2,$(FILES))
 endif
 
-$(eval $(call TEST_BOOTSTRAP))
+#
+#  Some tests require PCRE or PCRE2
+#
+ifeq "$(AC_HAVE_REGEX_PCRE)$(AC_HAVE_REGEX_PCRE2)" ""
+FILES := $(filter-out if-regex-match-named,$(FILES))
+endif
 
-#
-#  Find which input files are needed by the tests
-#  strip out the ones which exist
-#  move the filenames to the build directory.
-#
-BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
-BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
-BOOTSTRAP	 := $(subst $(DIR),$(OUTPUT),$(BOOTSTRAP_NEEDS))
+$(eval $(call TEST_BOOTSTRAP))
 
 #
 #  For each file, look for precursor test.
@@ -41,7 +39,7 @@ BOOTSTRAP	 := $(subst $(DIR),$(OUTPUT),$(BOOTSTRAP_NEEDS))
 
 export OPENSSL_LIBS
 
-$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
+$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(sort $(FILES))) | $(OUTPUT)
 	${Q}rm -f $@
 	${Q}touch $@
 	${Q}for x in $^; do \
@@ -50,26 +48,14 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
 			echo "$$z: $$y" >> $@; \
 			echo "" >> $@; \
+		fi; \
+		y=`grep 'PROTOCOL: ' $$x | sed 's/.*://;s/  / /g'`; \
+		if [ "$$y" != "" ]; then \
+			z=`echo $$x | sed 's,src/tests/keywords/,,;s/-/_/g'`; \
+			echo "UNIT_TEST_KEYWORD_ARGS.$$z=-p $$y" >> $@; \
+			echo "" >> $@; \
 		fi \
 	done
-
-#
-#  These ones get copied over from the default input
-#
-$(BOOTSTRAP): $(DIR)/default-input.attrs | $(OUTPUT)
-	${Q}cp $< $@
-
-#
-#  These ones get copied over from their original files
-#
-$(OUTPUT)/%.attrs: $(DIR)/%.attrs $(DIR)/default-input.attrs | $(OUTPUT)
-	${Q}cp $< $@
-
-#
-#  Don't auto-remove the files copied by the rule just above.
-#  It's unnecessary, and it clutters the output with crap.
-#
-.PRECIOUS: $(OUTPUT)/%.attrs
 
 #
 #  Cache the list of modules which are enabled, so that we don't run
@@ -82,7 +68,7 @@ $(OUTPUT)/enabled.mk: src/tests/keywords/unit_test_module.conf | $(OUTPUT)
 -include $(OUTPUT)/enabled.mk
 
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
-KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_example.la rlm_cache.la rlm_csv.la
+KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 
 #
 #  Files in the output dir depend on the unit tests
@@ -100,18 +86,14 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
+$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
 	@echo "KEYWORD-TEST $(notdir $@)"
-	${Q}if [ -f $<.attrs ] ; then \
-		cp $<.attrs $(BUILD_DIR)/tests/keywords/; \
-	else \
-		cp $(dir $<)/default-input.attrs $(BUILD_DIR)/tests/keywords/$(notdir $<).attrs; \
-	fi
-	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}cp $(if $(wildcard $<.attrs),$<.attrs,$(dir $<)/default-input.attrs) $@.attrs
+	${Q}if ! KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			echo "KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		fi; \
@@ -120,10 +102,13 @@ $(OUTPUT)/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWOR
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			echo "KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		else \
 			touch "$@"; \
 		fi \
 	fi
+
+$(TEST):
+	@touch $(BUILD_DIR)/tests/$@

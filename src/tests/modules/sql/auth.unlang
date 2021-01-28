@@ -16,7 +16,7 @@ if (!&Tmp-String-0) {
 }
 
 update {
-	&Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('user_auth', 'Cleartext-Password', ':=', 'password')}"
+	&Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('user_auth', 'Password.Cleartext', ':=', 'password')}"
 }
 if (!&Tmp-String-0) {
 	test_fail

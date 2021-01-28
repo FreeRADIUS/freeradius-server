@@ -40,8 +40,6 @@ typedef struct {
 
 	bool				tunnel_password_zeros;		//!< check for trailing zeroes in Tunnel-Password.
 
-	bool				code_allowed[FR_CODE_RADIUS_MAX + 1];	//!< Allowed packet codes.
-
 	uint32_t			priorities[FR_RADIUS_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_t;
 

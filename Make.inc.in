@@ -56,6 +56,7 @@ INCLUDE		= -I. -Isrc \
 CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
+LIBRARY_EXT	= @LIBRARY_EXT@
 EXEEXT		= @EXEEXT@
 
 LIBTOOL		= JLIBTOOL
@@ -171,8 +172,8 @@ ANALYZE.c       := @clang_path@
 #
 #  Have wrappers for the test tools, so that they run.
 #
-TESTBINDIR = ./$(BUILD_DIR)/bin/local
-TESTBIN    =  $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
+TEST_BIN_DIR = ./$(BUILD_DIR)/bin/local
+TEST_BIN    =  $(JLIBTOOL) --quiet --mode=execute $(TEST_BIN_DIR)
 
 #
 #  For creating documentation via doc/all.mk

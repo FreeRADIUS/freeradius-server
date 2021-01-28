@@ -27,7 +27,7 @@
 RCSID("$Id$")
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "base.h"
 #include "cluster.h"
@@ -160,7 +160,7 @@ static char lua_release_cmd[] =
 	/*
 	 *	Remove the association between the device and a lease
 	 */
-	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. found)" EOL	/* 11 */
+	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1";									/* 12 */
 
 /** Lua script for removing a lease
@@ -194,7 +194,7 @@ static char lua_remove_cmd[] =
 	/*
 	 *	Remove the association between the device and a lease
 	 */
-	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. found)" EOL	/* 11 */
+	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1" EOL;									/* 12 */
 
 static void NEVER_RETURNS usage(int ret) {
@@ -230,7 +230,7 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO(" ");
 	INFO("<range> is range \"127.0.0.1-127.0.0.254\" or CIDR network \"127.0.0.1/24\" or host \"127.0.0.1\"");
 	INFO("CIDR host bits set start address, e.g. 127.0.0.200/24 -> 127.0.0.200-127.0.0.254");
-	exit(ret);
+	fr_exit_now(ret);
 }
 
 static uint32_t uint32_gen_mask(uint8_t bits)
@@ -255,7 +255,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 	switch (ipaddr->af) {
 	default:
 	case AF_UNSPEC:
-		rad_assert(0);
+		fr_assert(0);
 		return false;
 
 	case AF_INET6:
@@ -319,12 +319,12 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 
 	fr_ipaddr_t			ipaddr = op->start;
 	fr_redis_rcode_t		s_ret = REDIS_RCODE_SUCCESS;
-	REQUEST				*request;
+	request_t				*request;
 	redisReply			**replies = NULL;
 
 	unsigned int			pipelined = 0;
 
-	request = request_alloc(inst);
+	request = request_alloc(inst, NULL);
 	while (more) {
 		fr_ipaddr_t	acked = ipaddr; 	/* Record our progress */
 		size_t		reply_cnt = 0;
@@ -352,7 +352,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 			}
 
 			if (!replies) replies = talloc_zero_array(inst, redisReply *, pipelined);
-			if (!replies) return 0;
+			if (!replies) return -1;
 
 			reply_cnt = fr_redis_pipeline_result(&pipelined, &status, replies,
 							     talloc_array_length(replies), conn);
@@ -718,17 +718,17 @@ static int8_t pool_cmp(void const *a, void const *b)
  */
 static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance)
 {
-	fr_socket_addr_t	*master;
+	fr_socket_t	*master;
 	size_t			k;
 	ssize_t			ret, i, used = 0;
 	fr_redis_conn_t		*conn = NULL;
 	redis_driver_conf_t	*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
 	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t			*key_p = key;
-	REQUEST			*request;
+	request_t			*request;
 	uint8_t 		**result;
 
-	request = request_alloc(inst);
+	request = request_alloc(inst, NULL);
 
 	IPPOOL_BUILD_KEY(key, key_p, "*}:pool", 1);
 
@@ -911,7 +911,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 	fr_time_t			now;
 
 	int				s_ret = REDIS_RCODE_SUCCESS;
-	REQUEST				*request;
+	request_t				*request;
 	redisReply			**replies = NULL, *reply;
 	unsigned int			pipelined = 0;		/* Update if additional commands added */
 
@@ -919,7 +919,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 #define STATS_COMMANDS_TOTAL 8
 
-	request = request_alloc(inst);
+	request = request_alloc(inst, NULL);
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 
@@ -1226,7 +1226,7 @@ int main(int argc, char *argv[])
 
 	conf = talloc_zero(NULL, ippool_tool_t);
 	conf->cs = cf_section_alloc(conf, NULL, "main", NULL);
-	if (!conf->cs) exit(EXIT_FAILURE);
+	if (!conf->cs) fr_exit_now(EXIT_FAILURE);
 
 #define ADD_ACTION(_action) \
 do { \
@@ -1332,13 +1332,13 @@ do { \
 	 *	Read configuration files if necessary.
 	 */
 	if (filename && (cf_file_read(conf->cs, filename) < 0 || (cf_section_pass2(conf->cs) < 0))) {
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	cp = cf_pair_alloc(conf->cs, "server", argv[0], T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
 	if (!cp) {
 		ERROR("Failed creating server pair");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 	cf_pair_add(conf->cs, cp);
 
@@ -1346,35 +1346,34 @@ do { \
 	 *	Unescape sequences in the pool name
 	 */
 	if (argv[1] && (argv[1][0] != '\0')) {
-		uint8_t	*arg;
-		size_t	len;
+		size_t			len;
+		fr_sbuff_t		out;
+		fr_sbuff_uctx_talloc_t	tctx;
 
-		/*
-		 *	Be forgiving about zero length strings...
-		 */
-		len = strlen(argv[1]);
-		MEM(arg = talloc_array(conf, uint8_t, len));
-		len = fr_value_str_unescape(arg, argv[1], len, '"');
-		rad_assert(len);
-
-		MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
+		MEM(fr_sbuff_init_talloc(NULL, &out, &tctx, strlen(argv[1]), SIZE_MAX));
+		len = fr_value_str_unescape(&out,
+					    &FR_SBUFF_IN(argv[1], strlen(argv[1])), SIZE_MAX, '"');
+		fr_sbuff_trim_talloc(&out, fr_sbuff_used(&out));	/* We don't want a NULL terminating byte */
+		if (!fr_cond_assert(len)) fr_exit_now(EXIT_FAILURE);
+		pool_arg = (uint8_t *)fr_sbuff_start(&out);
 	}
 
 	if (argc >= 3 && (argv[2][0] != '\0')) {
-		uint8_t	*arg;
-		size_t	len;
+		size_t			len;
+		fr_sbuff_t		out;
+		fr_sbuff_uctx_talloc_t	tctx;
 
-		len = strlen(argv[2]);
-		MEM(arg = talloc_array(conf, uint8_t, len));
-		len = fr_value_str_unescape(arg, argv[2], len, '"');
-		rad_assert(len);
-
-		MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));
+		MEM(fr_sbuff_init_talloc(NULL, &out, &tctx, strlen(argv[1]), SIZE_MAX));
+		len = fr_value_str_unescape(&out,
+					    &FR_SBUFF_IN(argv[2], strlen(argv[2])), SIZE_MAX, '"');
+		fr_sbuff_trim_talloc(&out, fr_sbuff_used(&out));	/* We don't want a NULL terminating byte */
+		if (!fr_cond_assert(len)) fr_exit_now(EXIT_FAILURE);
+		range_arg = (uint8_t *)fr_sbuff_start(&out);
 	}
 
 	if (!do_import && !do_export && !list_pools && !print_stats && (p == ops)) {
 		ERROR("Nothing to do!");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -1402,7 +1401,7 @@ do { \
 
 	if (driver_init(conf, conf->cs, &conf->driver) < 0) {
 		ERROR("Driver initialisation failed");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (do_import) {
@@ -1425,7 +1424,7 @@ do { \
 			pools[0] = pool_arg;
 		} else {
 			slen = driver_get_pools(conf, &pools, conf->driver);
-			if (slen < 0) exit(EXIT_FAILURE);
+			if (slen < 0) fr_exit_now(EXIT_FAILURE);
 		}
 
 		for (i = 0; i < (size_t)slen; i++) {
@@ -1433,7 +1432,7 @@ do { \
 			uint64_t acum = 0;
 
 			if (driver_get_stats(&stats, conf->driver,
-					     pools[i], talloc_array_length(pools[i])) < 0) exit(EXIT_FAILURE);
+					     pools[i], talloc_array_length(pools[i])) < 0) fr_exit_now(EXIT_FAILURE);
 
 			pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
 			INFO("pool             : %s", pool_str);
@@ -1465,7 +1464,7 @@ do { \
 		uint8_t 	**pools;
 
 		slen = driver_get_pools(conf, &pools, conf->driver);
-		if (slen < 0) exit(EXIT_FAILURE);
+		if (slen < 0) fr_exit_now(EXIT_FAILURE);
 		if (slen > 0) {
 			for (i = 0; i < (size_t)slen; i++) {
 				char *pool_str;
@@ -1505,7 +1504,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_add_lease(&count, conf->driver, p) < 0) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 		INFO("Added %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1516,7 +1515,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_remove_lease(&count, conf->driver, p) < 0) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 		INFO("Removed %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1527,7 +1526,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_release_lease(&count, conf->driver, p) < 0) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 		INFO("Released %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1539,9 +1538,9 @@ do { \
 		size_t len, i;
 
 		if (driver_show_lease(&leases, conf->driver, p) < 0) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
-		rad_assert(leases);
+		if (!fr_cond_assert(leases)) continue;
 
 		len = talloc_array_length(leases);
 		INFO("Retrieved information for %zu address(es)/prefix(es)", len - 1);
@@ -1604,7 +1603,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_modify_lease(&count, conf->driver, p) < 0) {
-			exit(EXIT_FAILURE);
+			fr_exit_now(EXIT_FAILURE);
 		}
 		INFO("Modified %" PRIu64 " address(es)/prefix(es)", count);
 	}

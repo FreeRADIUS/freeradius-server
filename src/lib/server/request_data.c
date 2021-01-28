@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/request_data.h>
 
 /** Per-request opaque data, added by modules
@@ -35,7 +35,7 @@ struct request_data_s {
 
 	void const	*unique_ptr;		//!< Key to lookup request data.
 	int		unique_int;		//!< Alternative key to lookup request data.
-	char const	*type;			//!< Opaque type e.g. VALUE_PAIR, fr_dict_attr_t etc...
+	char const	*type;			//!< Opaque type e.g. fr_pair_t, fr_dict_attr_t etc...
 	void		*opaque;		//!< Opaque data.
 	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
 	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the request is freed
@@ -156,10 +156,10 @@ static inline request_data_t *request_data_alloc(TALLOC_CTX *ctx)
 	return rd;
 }
 
-/** Add opaque data to a REQUEST
+/** Add opaque data to a request_t
  *
  * The unique ptr is meant to be a module configuration, and the unique
- * integer allows the caller to have multiple opaque data associated with a REQUEST.
+ * integer allows the caller to have multiple opaque data associated with a request_t.
  *
  * @param[in] request		to associate data with.
  * @param[in] unique_ptr	Identifier for the data.
@@ -180,7 +180,7 @@ static inline request_data_t *request_data_alloc(TALLOC_CTX *ctx)
  *	- -1 on memory allocation error.
  *	- 0 on success.
  */
-int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
+int _request_data_add(request_t *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
 		      bool free_on_replace, bool free_on_parent, bool persist,
 #ifndef NDEBUG
 		      char const *file, int line
@@ -194,12 +194,12 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
 	/*
 	 *	Request must have a state ctx
 	 */
-	rad_assert(request);
-	rad_assert(!persist || request->state_ctx);
-	rad_assert(!persist ||
-		   (talloc_parent(opaque) == request->state_ctx) ||
+	fr_assert(request);
+	fr_assert(!persist || request->session_state_ctx);
+	fr_assert(!persist ||
+		   (talloc_parent(opaque) == request->session_state_ctx) ||
 		   (talloc_parent(opaque) == talloc_null_ctx()));
-	rad_assert(!free_on_parent || (talloc_parent(opaque) != request));
+	fr_assert(!free_on_parent || (talloc_parent(opaque) != request));
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (type) opaque = _talloc_get_type_abort(opaque, type, __location__);
@@ -243,8 +243,8 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
 	 */
 	if (!rd) {
 		if (persist) {
-			rad_assert(request->state_ctx);
-			rd = request_data_alloc(request->state_ctx);
+			fr_assert(request->session_state_ctx);
+			rd = request_data_alloc(request->session_state_ctx);
 		} else {
 			rd = request_data_alloc(request);
 		}
@@ -280,7 +280,7 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
 /** Get opaque data from a request
  *
  * @note The unique ptr is meant to be a module configuration, and the unique
- *	integer allows the caller to have multiple opaque data associated with a REQUEST.
+ *	integer allows the caller to have multiple opaque data associated with a request_t.
  *
  * @param[in] request		to retrieve data from.
  * @param[in] unique_ptr	Identifier for the data.
@@ -289,7 +289,7 @@ int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, 
  *	- NULL if no opaque data could be found.
  *	- the opaque data. The entry holding the opaque data is removed from the request.
  */
-void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
+void *request_data_get(request_t *request, void const *unique_ptr, int unique_int)
 {
 	request_data_t	*rd = NULL;
 
@@ -327,7 +327,7 @@ void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
 /** Get opaque data from a request without removing it
  *
  * @note The unique ptr is meant to be a module configuration, and the unique
- * 	integer allows the caller to have multiple opaque data associated with a REQUEST.
+ * 	integer allows the caller to have multiple opaque data associated with a request_t.
  *
  * @param request	to retrieve data from.
  * @param unique_ptr	Identifier for the data.
@@ -336,7 +336,7 @@ void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
  *	- NULL if no opaque data could be found.
  *	- the opaque data.
  */
-void *request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int)
+void *request_data_reference(request_t *request, void const *unique_ptr, int unique_int)
 {
 	request_data_t	*rd = NULL;
 
@@ -369,7 +369,7 @@ void *request_data_reference(REQUEST *request, void const *unique_ptr, int uniqu
  * @param[in] persist	Whether to pull persistable or non-persistable data.
  * @return number of request_data_t retrieved.
  */
-int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist)
+int request_data_by_persistance(fr_dlist_head_t *out, request_t *request, bool persist)
 {
 	int		count = 0;
 	request_data_t	*rd = NULL, *prev;
@@ -394,7 +394,7 @@ int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool per
  * @param[in] persist	Whether to pull persistable or non-persistable data.
  * @return number of request_data_t retrieved.
  */
-int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, REQUEST *request, bool persist)
+int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, request_t *request, bool persist)
 {
 	int			count = 0;
 	request_data_t		*rd = NULL, *new, *prev;
@@ -436,7 +436,7 @@ int request_data_by_persistance_reparent(TALLOC_CTX *ctx, fr_dlist_head_t *out, 
  * @param[in] persist	Whether to count persistable or non-persistable data.
  * @return number of request_data_t that exist in persistable or non-persistable form
  */
-int request_data_by_persistance_count(REQUEST *request, bool persist)
+int request_data_by_persistance_count(request_t *request, bool persist)
 {
 	int 		count = 0;
 	request_data_t	*rd = NULL;
@@ -458,7 +458,7 @@ int request_data_by_persistance_count(REQUEST *request, bool persist)
  * @param request	to add data to.
  * @param in		Data to add.
  */
-void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
+void request_data_restore(request_t *request, fr_dlist_head_t *in)
 {
 	fr_dlist_move(&request->data, in);
 }
@@ -467,7 +467,7 @@ void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
  *
  * @param[in] request	to remove persistable data from.
  */
-void request_data_persistable_free(REQUEST *request)
+void request_data_persistable_free(request_t *request)
 {
 	fr_dlist_head_t	head;
 
@@ -479,7 +479,7 @@ void request_data_persistable_free(REQUEST *request)
 }
 
 
-void request_data_list_dump(REQUEST *request, fr_dlist_head_t *head)
+void request_data_list_dump(request_t *request, fr_dlist_head_t *head)
 {
 	request_data_t	*rd = NULL;
 	int count = 0;
@@ -496,136 +496,9 @@ void request_data_list_dump(REQUEST *request, fr_dlist_head_t *head)
 	}
 }
 
-void request_data_dump(REQUEST *request)
+void request_data_dump(request_t *request)
 {
 	request_data_list_dump(request, &request->data);
-}
-
-
-/** Free any subrequest request data if the dlist head is freed
- *
- */
-static int _free_child_data(fr_dlist_head_t *head)
-{
-	request_data_t *rd = NULL, *prev;
-
-	while ((rd = fr_dlist_next(head, rd))) {
-		prev = fr_dlist_remove(head, rd);
-		talloc_free(rd);
-		rd = prev;
-	}
-
-	return 0;
-}
-
-/** Store persistable data from a subrequest in its parent
- *
- * @note #request_data_restore_to_child should have been called
- *	on the request before any request data is added to it,
- *	so that the state_ctx is set correctly.
- *
- * @param[in] request		The child request to retrieve state from.
- * @param[in] unique_ptr	A parent may have multiple subrequests spawned
- *				by different modules.  This identifies the module
- *      			or other facility that spawned the subrequest.
- * @param[in] unique_int	Further identification.
- * @return
- *	- 0 on success.
- *	- <0 on failure.
- */
-int request_data_store_in_parent(REQUEST *request, void const *unique_ptr, int unique_int)
-{
-	fr_dlist_head_t	*child_list;
-
-	if (!fr_cond_assert_msg((request->state_ctx == request->parent->state_ctx),
-	    "Child's state_ctx (%p), differs from parent's (%p). "
-	    "Unbalanced calls to request_data_restore_to_child/request_data_store_in_parent or "
-	    "request_data_restore_to_child never called",
-	    request->state_ctx, request->parent->state_ctx)) return -1;
-
-	/*
-	 *	Move child request data back into its
-	 *	parent.
-	 */
-	if (request_data_by_persistance_count(request, true) > 0) {
-		MEM(child_list = talloc_zero(request->parent->state_ctx, fr_dlist_head_t));
-		fr_dlist_talloc_init(child_list, request_data_t, list);
-		talloc_set_destructor(child_list, _free_child_data);
-
-		/*
-		 *	Pull everything out of the child,
-		 *	add it to our temporary list head...
-		 */
-		request_data_by_persistance(child_list, request, true);
-
-		/*
-		 *	...and add the request_data from
-		 *	the child back into the parent.
-		 */
-		request_data_talloc_add(request->parent, unique_ptr, unique_int,
-					fr_dlist_head_t, child_list, true, false, true);
-	}
-
-	/*
-	 *	Ensure request_data_restore_to_child
-	 *      can be called again if it's actually
-	 *	needed, by giving the child it's own
-	 *      unique state_ctx again.
-	 */
-	MEM(request->state_ctx = talloc_init("session-state"));
-
-	return 0;
-}
-
-/** Restore subrequest data from a parent request
- *
- * @param[in] request		The child request to restore state to.
- * @param[in] unique_ptr	A parent may have multiple subrequests spawned
- *				by different modules.  This identifies the module
- *      			or other facility that spawned the subrequest.
- * @param[in] unique_int	Further identification.
- * @return
- *	- 0 on success.
- *	- <0 on failure.
- */
-int request_data_restore_to_child(REQUEST *request, void const *unique_ptr, int unique_int)
-{
-	fr_dlist_head_t *head;
-
-	/*
-	 *	All requests are alloced with a state_ctx.
-	 *	In this case, nothing should be parented
-	 *	off it already, so we can just free it.
-	 */
-	if (!fr_cond_assert_msg((talloc_get_size(request->state_ctx) == 0),
-				"Child's state_ctx must contain no "
-				"allocations when restoring data from a parent")) return -1;
-
-	/*
-	 *	If the parent and child state_ctxs are the
-	 *	same, then it means this function has been
-	 *	called before, without request_data_store_in_parent
-	 *	being called afterwards.
-	 */
-	if (!fr_cond_assert_msg((request->state_ctx != request->parent->state_ctx),
-				"Child's state_ctx must not be equal to its parent's state_ctx.  "
-	    			"Unbalanced calls to request_data_restore_to_child/request_data_store_in_parent"))
-	    			return -1;
-
-	/*
-	 *	Destroy the child's state_ctx and have it
-	 *	use its parent's.
-	 */
-	TALLOC_FREE(request->state_ctx);
-	request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
-
-	head = request_data_get(request->parent, unique_ptr, unique_int);
-	if (!head) return 0;
-
-	request_data_restore(request, head);
-	talloc_free(head);
-
-	return 0;
 }
 
 #ifdef WITH_VERIFY_PTR

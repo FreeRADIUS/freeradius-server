@@ -1,0 +1,180 @@
+= Regular Expressions
+
+.Syntax
+====
+[source,unlang]
+----
+(<subject> =~ /<pattern>/)
+(<subject> =~ /<pattern>/[imsux])
+
+(<subject> !~ /<pattern>/)
+(<subject> !~ /<pattern>/[imsux])
+----
+====
+
+== Matching
+The regular expression operators perform regular expression matching
+on the data. The `<subject>` field can be an attribute reference or data,
+as with the other xref:condition/cmp.adoc[comparison] operators.  The `/<pattern>/`
+field must be a valid regular expression.
+
+The `=~` operator evaluates to `true` when `data` matches the
+`/<pattern>/`.  Otherwise, it evaluates to `false`.
+
+The `!~` operator evaluates to `true` when `data` does not match the
+`/<pattern>/`.  Otherwise, it evaluates to `true`.
+
+The regular expression comparison is performed on the _string representation_
+of the left side of the comparison.  That is, if the left side is an
+xref:type/numb.adoc[integer], the regular expression will behave is if the
+value `0` was the literal string `"0"`.  Similarly, if the left side is an
+xref:attr.adoc[&Attribute-Name], then the regular expression will behave is if
+the attribute was printed to a string, and the match was performed on the
+resulting string.
+
+.Checking if the `User-Name` attribute contains a realm of example.com
+====
+[source,unlang]
+----
+if (&User-Name =~ /@example\.com$/) {
+    ...
+}
+----
+====
+
+== Dialects
+
+The syntax of the regular expression is defined by the regular
+expression library available on the local system.
+
+FreeRADIUS currently supports:
+
+* link:https://www.pcre.org/original/doc/html/[libpcre] and
+link:https://www.pcre.org/current/doc/html/[libpcre2] both of which
+provide
+link:https://en.wikipedia.org/wiki/Perl_Compatible_Regular_Expressions[Perl
+Compatible Regular expressions].
+* Regex support provided by the local libc implementation, usually
+link:http://en.wikipedia.org/wiki/Regular_expression#POSIX_basic_and_extended[
+Posix regular expressions].
+
+[TIP]
+====
+Use the output of `radiusd -Xxv` to determine which regular expression library is in use.
+
+....
+...
+Debug :   regex-pcre               : no
+Debug :   regex-pcre2              : yes
+Debug :   regex-posix              : no
+Debug :   regex-posix-extended     : no
+Debug :   regex-binsafe            : yes
+...
+Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build time
+....
+====
+
+[WARNING]
+====
+Depending on the regular expression library or libc implementation the server
+was built against, the pattern matching function available may not be binary
+safe (see `regex-binsafe` in the output of `radiusd -Xxv`).
+
+If a binary safe regex match function is not available, and a match is
+attempted against a subject that contains one or more `NUL` ('\0') bytes, the
+match will be aborted, any condition that uses the result will evaluate to false,
+and a warning will be emitted.
+====
+
+== Flags
+
+The regular expression `/<pattern>/` may be followed by one or more flag
+characters. Again, which flags are available depends on the regular expression
+library the server was built with.  Multiple flags may be specified per
+`/pattern/`.
+
+.Flags and their uses
+
+[options="header"]
+|=====
+| Flag Character | Available with | Effect
+| `i`            | All            | Enable case-insensitive matching.
+| `m`            | All            | '^' and '$' match newlines within the subject.
+| `s`            | libpcre[2]     | '.' matches anything, including newlines.
+| `u`            | libpcre[2]     | Treats subjects as UTF8.  Invalid UTF8
+                                    sequences will result in the match failing.
+ |`x`            | libpcre[2]     | Allows comments in expressions by ignoring
+                                    whitespace, and text between '#' and the next
+                                    newline character.
+|=====
+
+== Subcapture groups
+
+When the `=~` or `!~` operators are used, then parentheses in the regular
+expression will sub capture groups, which contain part of the subject string.
+
+The special expansion `%{0}` expands to the portion of the subject that
+matched. The expansions +
+`%{1}`..`%{32}` expand to the contents of any subcapture groups.
+
+When using libpcre[2], named capture groups may also be accessed using the
+built-in expansion +
+`%{regex:<named capture group>}`.
+
+Please see the xref:xlat/builtin.adoc#_0_32[xlat documentation] for
+more information on regular expression matching.
+
+.Extracting the 'user' portion of a realm qualified string
+====
+[source,unlang]
+----
+if (&User-Name =~ /^(.*)@example\.com$/) {
+    update reply {
+        Reply-Message := "Hello %{1}"
+    }
+}
+----
+====
+
+== Pre-Compiled vs Runtime Compiled
+
+When the server starts any regular expressions comparisons it finds will be
+pre-compiled, and if support is available, JIT'd (converted to machine code)
+to ensure fast execution.
+
+If a pattern contains a xref:xlat/index.adoc[string expansion], the pattern
+cannot be compiled on startup, and will be compiled at runtime each time the
+expression is evaluated. The server will also turn off JITing for runtime
+compiled expressions, as the overhead is greater than the time that would be
+saved during evaluation.
+
+.A runtime compiled regular expression
+====
+[source,unlang]
+----
+if (&User-Name =~ /^@%{Tmp-String-0}$/) {
+    ...
+}
+----
+====
+
+To ensure optimal performance you should limit the number of patterns
+containing xref:xlat/index.adoc[string expansions], and if using PCRE, combine
+multiple expressions operating on the same subject into a single expression
+using the PCRE alternation '|' operator.
+
+.Using multiple string expansions and the PCRE alternation operator
+====
+[source,unlang]
+----
+if (&User-Name =~ /^@(%{Tmp-String-0}|%{Tmp-String-1})$/) {
+    ...
+}
+----
+====
+
+
+// Licenced under CC-by-NC 4.0.
+// Copyright (C) 2020 Network RADIUS SAS.
+// Copyright (C) 2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+// Development of this documentation was sponsored by Network RADIUS SAS.

@@ -34,7 +34,7 @@ server tls-cache {
 	#  This section is run whenever the server needs to read an
 	#  entry from the TLS session cache.
 	#
-	#  It should read the attribute &session-state:TLS-Session-Data
+	#  It should read the attribute &session-state.TLS-Session-Data
 	#  from the cache, along with any other attributes which
 	#  were in the cache
 	#
@@ -54,7 +54,7 @@ server tls-cache {
 	#  This section is run whenever the server needs to write an
 	#  entry to the TLS session cache.
 	#
-	#  It should write the attribute &session-state:Session-Data
+	#  It should write the attribute &session-state.Session-Data
 	#  to the cache, along with any other attributes which
 	#  need to be cached.
 	#
@@ -91,7 +91,7 @@ server tls-cache {
 	#  This section is run after certificate attributes are added
 	#  to the request list, and before performing OCSP validation.
 	#
-	#  It should read the attribute &control:TLS-OCSP-Cert-Valid
+	#  It should read the attribute &control.TLS-OCSP-Cert-Valid
 	#  from the cache.
 	#
 	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'
@@ -107,7 +107,7 @@ server tls-cache {
 	#
 	#  This section is run after OCSP validation has completed.
 	#
-	#  It should write the attribute &reply:TLS-OCSP-Cert-Valid
+	#  It should write the attribute &reply.TLS-OCSP-Cert-Valid
 	#  to the cache.
 	#
 	#  On success it should return 'ok' or 'updated'.
@@ -117,7 +117,7 @@ server tls-cache {
 	#
 	store ocsp-state {
 		update control {
-			Cache-TTL := "%{expr:&reply:TLS-OCSP-Next-Update * -1}"
+			Cache-TTL := "%{expr:&reply.TLS-OCSP-Next-Update * -1}"
 			Cache-Allow-Merge := no
 		}
 		cache_ocsp

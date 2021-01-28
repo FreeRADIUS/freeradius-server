@@ -2,7 +2,6 @@
 #  PRE: update if xlat-attr-index
 #
 update request {
-	&control:Cleartext-Password := 'hello'
 	&Tmp-Octets-0 := 0x69206861766520736361727920656d626564646564207468696e67730020696e73696465206d65
 	&Tmp-Octets-1 := 0x30783031013078303707307830410A307830440D222230786230b0C2b0
 	&Tmp-String-0 := "i have scary embedded things\000 inside me"

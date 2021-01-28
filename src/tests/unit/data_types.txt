@@ -104,6 +104,13 @@ match 03 66 6f 6f 03 63 6f 6d 00
 decode-dns-label -
 match foo.com
 
+#
+#  Trailing dots are suppressed.
+#
+encode-dns-label foo.com.
+match 03 66 6f 6f 03 63 6f 6d 00
+
+
 encode-dns-label foo.com,b.ca
 match 03 66 6f 6f 03 63 6f 6d 00 01 62 02 63 61 00
 
@@ -136,7 +143,26 @@ match 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 03 77
 decode-dns-label -
 match www.example.com,ftp.example.com,www.example.org,ftp.example.org,ns.example.org
 
+#
+#  Error cases
+#
 encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
 match Label is larger than 63 characters
+
+# same as above, but first element
+encode-dns-label it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
+match Label is larger than 63 characters
+
+# same as above, but last element
+encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234
+match Label is larger than 63 characters
+
+encode-dns-label .foo.com
+match Empty labels are invalid
+
+encode-dns-label www..foo.com
+match Double dots '..' are forbidden
+
+
 count
-match 68
+match 78

@@ -1,9 +1,5 @@
-TARGETNAME	:= proto_tacacs
-
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= proto_tacacs.c
-
-TGT_PREREQS	:= libfreeradius-tacacs.a
+SUBMAKEFILES := proto_tacacs.mk \
+		proto_tacacs_tcp.mk \
+		proto_tacacs_auth.mk \
+		proto_tacacs_autz.mk \
+		proto_tacacs_acct.mk

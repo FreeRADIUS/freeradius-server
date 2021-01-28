@@ -123,14 +123,14 @@ IGNORE_CLIENTS = [
 #
 # - Ignore mismatched AccessRejects with Reply-Message=Request Denied
 #   and arbitrary Cisco dns-servers in the sniffed packet, and
-#   no Reply-Message and Cisco-AVPair attrs in the response from the
+#   no Reply-Message and Vendor-Specific.Cisco.AVPair attrs in the response from the
 #   test RADIUS server.
 #    {
 #        'sniffed': {
 #            'code': packet.AccessReject,
 #            'attrs': [
 #                'Reply-Message=Request Denied',
-#                'regex:^Cisco-AVPair=ip:dns-servers=.*$',
+#                'regex:^Vendor-Specific.Cisco.AVPair=ip:dns-servers=.*$',
 #            ],
 #        },
 #        'test': {

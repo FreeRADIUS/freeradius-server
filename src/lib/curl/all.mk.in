@@ -1,0 +1,16 @@
+TARGETNAME	:= @targetname@
+VERSION		:= @version@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		:= $(TARGETNAME).a
+endif
+
+SOURCES		:= base.c io.c
+
+SRC_CFLAGS	:= @mod_cflags@
+
+# We add flags in case this file is being included, in which case
+# the including module also needs to link against libcurl
+TGT_LDLIBS	+= @mod_ldflags@
+
+TGT_PREREQS	+= $(LIBFREERADIUS_SERVER) libfreeradius-util.a

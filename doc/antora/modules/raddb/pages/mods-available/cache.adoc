@@ -133,7 +133,7 @@ You should never set the "epoch" configuration item in this file.
 add_stats::
 
 If `yes` the following attributes will be added to the request:
-  * `&request:Cache-Entry-Hits` - The number of times this entry
+  * `&request.Cache-Entry-Hits` - The number of times this entry
 has been retrieved.
 
 NOTE: Not supported by the `rlm_cache_memcached` module.
@@ -159,7 +159,7 @@ are available in cache entries. Attempting to store attributes
 in other lists *will raise an error* during config validation.
 
 
-<list>:<attribute> <op> <value>::
+<list>.<attribute> <op> <value>::
 
 
 Cache all instances of `Reply-Message in the reply list.
@@ -170,9 +170,9 @@ Add your own value for `link:https://freeradius.org/rfc/rfc2865.html#Class[Class
 
 
 This module supports a number of runtime configuration parameters
-represented by attributes in the `&control:` list.
+represented by attributes in the `&control.` list.
 
-&control:Cache-TTL:: Sets the TTL of an entry to be created, or
+&control.Cache-TTL:: Sets the TTL of an entry to be created, or
  modifies the TTL of an existing entry.
 
 [options="header,autowidth"]
@@ -185,7 +185,7 @@ represented by attributes in the `&control:` list.
 | `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
 |===
 
-&control:Cache-Status-Only:: If present and set to `yes` will
+&control.Cache-Status-Only:: If present and set to `yes` will
 prevent a new entry from being created, and existing entries from
 being merged. It will also alter the module's return codes.
 
@@ -195,25 +195,25 @@ being merged. It will also alter the module's return codes.
 NOTE: If this is set to `yes`, no other cache control attributes will
 be honoured, but they will still be cleared.
 
-&control:Cache-Allow-Insert:: If present and set to `no` will
+&control.Cache-Allow-Insert:: If present and set to `no` will
 prevent a new entry from being created. If not present or set
 to `yes`, and no entry exists, a new one will be created.
 This is evaluated after `Cache-TTL`, so expired entries may be
 recreated.
 
-&control:Cache-Allow-Merge:: If present and set to `no` will
+&control.Cache-Allow-Merge:: If present and set to `no` will
 prevent existing entries from being merged. If not present or
 set to `yes`, and an entry exists (and is valid), it will be
 merged with the current request.
 This is evaluated before `Cache-TTL`, so entries being expired
 may first be merged.
 
-&control:Cache-Merge-New:: If present and set to `yes` will merge new
+&control.Cache-Merge-New:: If present and set to `yes` will merge new
 cache entries into the current request. Useful if results of execs or
 expansions are stored directly in the cache.
 
 NOTE: All runtime configuration attributes will be removed from the
-`&control:` list after the cache module is called.
+`&control.` list after the cache module is called.
 
 
 == Default Configuration
@@ -253,9 +253,9 @@ cache {
 	add_stats = no
 #	max_entries = 0
 	update {
-		&reply:Reply-Message := &reply:Reply-Message
-		&reply:Reply-Message := "Cache last updated at %t"
-		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
+		&reply.Reply-Message := &reply.Reply-Message
+		&reply.Reply-Message := "Cache last updated at %t"
+		&reply.Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
 }
 ```
