@@ -1,4 +1,5 @@
 SUBMAKEFILES := \
+    pair_list_perf_test.mk \
     radclient.mk \
     radict.mk \
     radiusd.mk \
