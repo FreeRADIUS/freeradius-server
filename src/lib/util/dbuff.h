@@ -29,14 +29,14 @@ RCSIDH(dbuff_h, "$Id$")
 extern "C" {
 #  endif
 
+#include <errno.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/net.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <limits.h>
-#include <errno.h>
 
 /** A dbuff
  *
@@ -936,14 +936,12 @@ _fr_dbuff_set(\
 	fr_dbuff_set(_dbuff_or_marker, \
 		     (fr_dbuff_current(_dbuff_or_marker) + \
 		     (_Generic((_len), \
-		        uint8_t	: (size_t)(_len), \
-			uint16_t : (size_t)(_len), \
-			uint32_t : (size_t)(_len), \
-			uint64_t : (size_t)(_len), \
-			int : (size_t)(_len), \
-			long : (size_t)(_len), \
-			long long : (size_t)(_len), \
-			size_t : (_len) \
+			unsigned char : (size_t)(_len), \
+			unsigned short : (size_t)(_len), \
+			unsigned int : (size_t)(_len), \
+			unsigned long : (size_t)(_len), \
+			unsigned long long : (size_t)(_len), \
+			int : (fr_cond_assert((_len) >= 0) ? (size_t)(_len) : 0) \
 		     ))))
 
 /** Advance the 'current' position in dbuff or marker by _len bytes returning if _len is out of range

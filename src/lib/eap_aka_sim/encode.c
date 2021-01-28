@@ -706,8 +706,8 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 					      value_len, encoder_ctx);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 
-		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, (size_t) slen - value_len);
-		fr_dbuff_advance(&work_dbuff, slen - value_len);
+		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, (size_t)slen - value_len);
+		fr_dbuff_advance(&work_dbuff, (size_t)slen - value_len);
 	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV");
