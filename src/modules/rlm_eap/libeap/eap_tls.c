@@ -163,7 +163,6 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	if (tls_session->label) {
 		uint8_t const *context = NULL;
 		size_t context_size = 0;
-		char const *label2 = NULL;
 #ifdef TLS1_3_VERSION
 		uint8_t const context_tls13[] = { handler->type };
 #endif
@@ -173,8 +172,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 		case TLS1_3_VERSION:
 			context = context_tls13;
 			context_size = sizeof(context_tls13);
-			tls_session->label = "EXPORTER_EAP_TLS_MSK";
-			label2 = "EXPORTER_EAP_TLS_EMSK";
+			tls_session->label = "EXPORTER_EAP_TLS_Key_Material";
 			break;
 #endif
 		case TLS1_2_VERSION:
@@ -190,7 +188,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 			break;
 		}
 		eaptls_gen_mppe_keys(request,
-				     tls_session->ssl, tls_session->label, label2,
+				     tls_session->ssl, tls_session->label,
 				     context, context_size);
 	} else if (handler->type != PW_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");

@@ -165,7 +165,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 /*
  *	Generate keys according to RFC 2716 and add to reply
  */
-void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, char const *label2, uint8_t const *context, UNUSED size_t context_size)
+void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t const *context, UNUSED size_t context_size)
 {
 	uint8_t out[4 * EAPTLS_MPPE_KEY_LEN];
 	uint8_t *p;
@@ -174,31 +174,11 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, char cons
 	len = strlen(label);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	if (!label2) {
-		if (SSL_export_keying_material(s, out, sizeof(out), label, len, context, context_size, context != NULL) != 1) {
-			ERROR("Failed generating keying material");
-			return;
-		}
-	} else {
-		/*
-		 *	TLS 1.3 splits the label strings for MSK and EMSK.
-		 */
-		if (SSL_export_keying_material(s, out, 64, label, len, context, context_size, context != NULL) != 1) {
-			ERROR("Failed generating keying material");
-			return;
-		}
-
-		if (SSL_export_keying_material(s, out + 64, 64, label2, len, context, context_size, context != NULL) != 1) {
-			ERROR("Failed generating keying material");
-			return;
-		}
-	}
-#else
-	if (label2) {
-		ERROR("TLS 1.3 requires OpenSSL 1.0.1 or later");
+	if (SSL_export_keying_material(s, out, sizeof(out), label, len, context, context_size, context != NULL) != 1) {
+		ERROR("Failed generating keying material");
 		return;
 	}
-
+#else
 	{
 		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE) + (context ? 2 + context_size : 0)];
 		uint8_t buf[4 * EAPTLS_MPPE_KEY_LEN];
