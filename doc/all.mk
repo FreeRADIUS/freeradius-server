@@ -19,7 +19,7 @@ $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 	${Q}for x in $^; do \
 		y=$$(grep :manvolnum: $$x | awk '{print $$2}'); \
 		z=$$(basename $$x | sed 's/.adoc//'); \
-		echo "AUTO_MAN_FILES += $(R)$(mandir)/man$$y/$$z.$$y" >> $@; \
+		echo "AUTO_MAN_FILES += man/man$$y/$$z.$$y" >> $@; \
 		echo "man/man$$y/$$z.$$y: $$x" >> $@; \
 		printf "\t"'@echo AUTO-MAN $$(notdir $$@)'"\n" >> $@; \
 		printf "\t"'@mkdir -p $$(dir $$@)'"\n" >> $@; \
