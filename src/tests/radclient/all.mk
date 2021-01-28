@@ -59,6 +59,12 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 #
 	$(Q)if [ "$$(uname -s)" = "Darwin" ]; then sed -i .bak 's/via lo0/via lo/g' $(FOUND); fi
 #
+#	Remove all entries with "^_EXIT.*CALLED .*/"
+#	It is necessary to match all builds with/without -DNDEBUG
+#
+	$(Q)mv -f $(FOUND) $(FOUND).bak
+	$(Q)sed '/^_EXIT.*CALLED .*/d' $(FOUND).bak > $(FOUND)
+#
 #	Checking.
 #
 #	1. diff between src/test/radclient/$test.out & build/test/radclient/$test.out

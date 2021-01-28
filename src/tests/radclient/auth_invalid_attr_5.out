@@ -1,3 +1,2 @@
 (0) Error parsing "src/tests/radclient/auth_invalid_attr_5.txt": Unknown attribute  "This-Is-Invalid-Attribute" for parent "RADIUS"
 radclient: Failed parsing input files
-_EXIT(1) CALLED src/bin/radclient.c[1429]
