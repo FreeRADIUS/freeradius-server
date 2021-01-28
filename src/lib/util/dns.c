@@ -503,7 +503,7 @@ ssize_t fr_dns_label_from_value_box_dbuff(fr_dbuff_t *dbuff, bool compression, f
 
 	if (slen == 0) return -need;
 
-	fr_dbuff_advance(dbuff, slen);
+	fr_dbuff_advance(dbuff, (size_t)slen);
 	return slen;
 }
 

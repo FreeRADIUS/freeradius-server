@@ -926,12 +926,25 @@ _fr_dbuff_set(\
  *
  * @param[in] _dbuff_or_marker	to advance.
  * @param[in] _len		How much to advance dbuff by.
+ *				Must be a positive integer.
  * @return
  *	- 0	not advanced.
  *	- >0	the number of bytes the dbuff or marker was advanced by.
  *	- <0	the number of bytes required to complete the advancement
  */
-#define fr_dbuff_advance(_dbuff_or_marker, _len)  fr_dbuff_set(_dbuff_or_marker, (fr_dbuff_current(_dbuff_or_marker) + (_len)))
+#define fr_dbuff_advance(_dbuff_or_marker, _len)  \
+	fr_dbuff_set(_dbuff_or_marker, \
+		     (fr_dbuff_current(_dbuff_or_marker) + \
+		     (_Generic((_len), \
+		        uint8_t	: (size_t)(_len), \
+			uint16_t : (size_t)(_len), \
+			uint32_t : (size_t)(_len), \
+			uint64_t : (size_t)(_len), \
+			int : (size_t)(_len), \
+			long : (size_t)(_len), \
+			long long : (size_t)(_len), \
+			size_t : (_len) \
+		     ))))
 
 /** Advance the 'current' position in dbuff or marker by _len bytes returning if _len is out of range
  *

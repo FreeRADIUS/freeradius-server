@@ -50,7 +50,7 @@ size_t _fr_dbuff_move_##_in_type##_to_##_out_type(fr_##_out_type##_t *out, fr_##
 		if (to_copy == 0) break; \
 		to_copy = _fr_dbuff_safecpy(fr_dbuff_current(out), fr_dbuff_end(out), \
 					    fr_dbuff_current(in), fr_dbuff_current(in) + to_copy); \
-		fr_dbuff_advance(out, fr_dbuff_advance(in, to_copy)); \
+		fr_dbuff_advance(out, (size_t)fr_dbuff_advance(in, to_copy)); \
 		remaining -= to_copy; \
 	} \
 	return len - remaining; \
