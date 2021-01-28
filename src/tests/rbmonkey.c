@@ -133,7 +133,7 @@ int main(UNUSED int argc, UNUSED char *argv[])
 {
 	rbtree_t		*t;
 	int			i, j;
-	uint32_t		thresh;
+	fr_rb_test_node_t	thresh = {};
 	int			n, rep;
 	fr_rb_test_node_t	vals[MAXSIZE];
 
@@ -145,14 +145,14 @@ int main(UNUSED int argc, UNUSED char *argv[])
 again:
 	if (!--rep) return 0;
 
-	thresh = fr_rand();
+	thresh.num = fr_rand();
 	mask = 0xff >> (fr_rand() & 7);
-	thresh &= mask;
+	thresh.num &= mask;
 	n = (fr_rand() % MAXSIZE) + 1;
 
-	fprintf(stderr, "filter = %x mask = %x n = %i\n", thresh, mask, n);
+	fprintf(stderr, "filter = %x mask = %x n = %i\n", thresh.num, mask, n);
 
-	t = rbtree_alloc(NULL, comp, freenode, RBTREE_FLAG_LOCK);
+	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, comp, freenode, RBTREE_FLAG_LOCK);
 	for (i = 0; i < n; i++) {
 		fr_rb_test_node_t *p;
 
