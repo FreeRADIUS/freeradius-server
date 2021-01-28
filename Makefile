@@ -137,7 +137,7 @@ $(R)$(dictdir)/%: share/dictionary/%
 dictionary.format: $(DICTIONARIES)
 	@./scripts/dict/format.pl $(DICTIONARIES)
 
-MANFILES := $(wildcard man/man*/*.?)
+MANFILES := $(wildcard man/man*/*.?) $(AUTO_MAN_FILES)
 install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
 $(R)$(mandir)/%: man/%
