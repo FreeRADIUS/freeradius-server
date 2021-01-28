@@ -813,7 +813,9 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
 		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name) + ret;
 	}
 
-	if (!fr_pair_list_empty(vps)) LIST_VERIFY(vps);
+	if (!fr_pair_list_empty(vps)) {
+		LIST_VERIFY(vps);
+	}
 
 	return ret;
 }
