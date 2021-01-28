@@ -1,3 +1,21 @@
+operators
+	EAP-Message =* ANY,
+	State =* ANY,
+	Message-Authenticator =* ANY,
+	Error-Cause =* ANY,
+	Reply-Message =* ANY,
+	Vendor-Specific.Microsoft.CHAP-Error =* ANY,
+	Proxy-State =* ANY,
+	Error-Cause =* ANY,
+	User-Name =* ANY,
+	User-Password =* ANY,
+	NAS-Port < 99,
+	Idle-Timeout < 100,
+	Called-Station-Id == "bar",
+	Service-Type >= 5,
+	Framed-IP-Address > 192.168.0.0,
+	Calling-Station-Id <= "jim"
+
 DEFAULT
 	EAP-Message =* ANY,
 	State =* ANY,
