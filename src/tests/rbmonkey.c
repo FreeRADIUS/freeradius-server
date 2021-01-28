@@ -152,7 +152,7 @@ again:
 
 	fprintf(stderr, "filter = %x mask = %x n = %i\n", thresh.num, mask, n);
 
-	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, comp, freenode, RBTREE_FLAG_LOCK);
+	t = rbtree_alloc(NULL, comp, freenode, RBTREE_FLAG_LOCK);
 	for (i = 0; i < n; i++) {
 		fr_rb_test_node_t *p;
 
