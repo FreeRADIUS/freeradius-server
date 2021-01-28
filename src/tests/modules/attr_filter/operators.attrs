@@ -1,0 +1,24 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "operators"
+User-Password = "goodbye"
+NAS-Port = 10
+Idle-Timeout = 300
+Called-Station-Id = "foo"
+Called-Station-Id = "bar"
+Service-Type = 5
+Service-Type = 1
+Framed-IP-Address = 10.0.0.20
+Framed-IP-Address = 192.168.10.20
+Reply-Message = 'success'
+Calling-Station-Id = "bob"
+Calling-Station-Id = "jim"
+Calling-Station-Id = "ted"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'success'
