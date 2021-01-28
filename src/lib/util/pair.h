@@ -42,11 +42,7 @@ extern "C" {
  *	so we can add some sneaky soft asserts.
  */
 #  define VP_VERIFY(_x)		fr_cond_assert(_x)
-/*
- *	We don't assert the list head is non-NULL, as it's perfectly
- *	valid to have an empty list.
- */
-#  define LIST_VERIFY(_x)
+#  define LIST_VERIFY(_x)	fr_cond_assert(_x)
 #endif
 
 /** The type of value a fr_pair_t contains
