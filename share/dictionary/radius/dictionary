@@ -209,6 +209,7 @@ $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
 $INCLUDE dictionary.h3c
 $INCLUDE dictionary.hillstone
+$INCLUDE dictionary.hitron
 $INCLUDE dictionary.hp
 $INCLUDE dictionary.huawei
 $INCLUDE dictionary.iea
