@@ -388,6 +388,11 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 		goto finished;
 	}
 
+	if (!size) {
+		size = request->async->listen->app_io->default_reply_size;
+		if (!size) size = request->async->listen->app_io->default_message_size;
+	}
+
 	/*
 	 *	Allocate and send the reply.
 	 */
@@ -864,7 +869,6 @@ nak:
  */
 static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 {
-	ssize_t size;
 	rlm_rcode_t final;
 	request_t *request;
 	fr_time_t now;
@@ -957,11 +961,8 @@ redo:
 		(void) rbtree_deletebydata(worker->dedup, request);
 	}
 
-	size = request->async->listen->app_io->default_reply_size;
-	if (!size) size = request->async->listen->app_io->default_message_size;
-
 	now = fr_time();
-	worker_send_reply(worker, request, size, now);
+	worker_send_reply(worker, request, 0, now);
 	now = fr_time();
 
 keep_going:
