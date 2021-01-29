@@ -22,7 +22,9 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/value.h>
 
 #define O(_x) [FR_TYPE_ ## _x] = true
 
@@ -423,9 +425,20 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 	/*
 	 *	Otherwise bad things happen. :(
 	 */
-	if (unlikely(type_promote_table[a][b] != type_promote_table[b][a])) return FR_TYPE_INVALID;
+	if (unlikely(type_promote_table[a][b] != type_promote_table[b][a])) {
+		fr_strerror_printf("Inverse type mapping inconsistent for a = %s, b = %s",
+				   fr_table_str_by_value(fr_value_box_type_table, a, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, b, "<INVALID>"));
 
-	if (unlikely(type_promote_table[a][b] == FR_TYPE_INVALID)) return FR_TYPE_INVALID;
+		return FR_TYPE_INVALID;
+	}
+
+	if (unlikely(type_promote_table[a][b] == FR_TYPE_INVALID)) {
+		fr_strerror_printf("No type promotions for a = %s, b = %s",
+				   fr_table_str_by_value(fr_value_box_type_table, a, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, b, "<INVALID>"));
+		return FR_TYPE_INVALID;
+	}
 
 	/*
 	 *	That takes care of the simple cases.  :( Now to the

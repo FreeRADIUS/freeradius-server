@@ -468,7 +468,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	}
 
 	cast_type = fr_type_promote(lhs_type, rhs_type);
-	fr_assert(cast_type != FR_TYPE_INVALID);
+	if (!fr_cond_assert_msg(cast_type != FR_TYPE_INVALID, "%s", fr_strerror())) return -1;
 
 set_types:
 	/*
