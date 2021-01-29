@@ -181,9 +181,9 @@ void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
 void		fr_pair_list_free(fr_pair_list_t *list);
 
 /** @hidecallergraph */
-bool		fr_pair_list_empty(fr_pair_list_t const *list);
+bool		fr_pair_list_empty(fr_pair_list_t const *list) CC_HINT(nonnull);
 
-size_t		fr_pair_list_len(fr_pair_list_t const *list);
+size_t		fr_pair_list_len(fr_pair_list_t const *list) CC_HINT(nonnull);
 
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp);
