@@ -628,7 +628,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_p
 	/*
 	 *	Get the environment variables.
 	 */
-	if (!env_pairs || !fr_pair_list_empty(env_pairs)) {
+	if (env_pairs && !fr_pair_list_empty(env_pairs)) {
 		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
 		fr_exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
 	} else {
