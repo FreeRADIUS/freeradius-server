@@ -206,6 +206,7 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 	},
 
 	[FR_TYPE_UINT8] = {
+		[FR_TYPE_BOOL] = FR_TYPE_UINT8,
 		O(UINT16),
 		O(UINT32),
 		O(UINT64),
@@ -220,6 +221,7 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 	},
 
 	[FR_TYPE_UINT16] = {
+		[FR_TYPE_BOOL] = FR_TYPE_UINT16,
 		[FR_TYPE_UINT8] = FR_TYPE_UINT16,
 		O(UINT32),
 		O(UINT64),
@@ -233,6 +235,7 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 	},
 
 	[FR_TYPE_UINT32] = {
+		[FR_TYPE_BOOL] = FR_TYPE_UINT32,
 		O(IPV4_ADDR),
 		[FR_TYPE_UINT8] = FR_TYPE_UINT32,
 		[FR_TYPE_UINT16] = FR_TYPE_UINT32,
@@ -247,6 +250,7 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 	},
 
 	[FR_TYPE_UINT64] = {
+		[FR_TYPE_BOOL] = FR_TYPE_UINT64,
 		[FR_TYPE_UINT8] = FR_TYPE_UINT64,
 		[FR_TYPE_UINT16] = FR_TYPE_UINT64,
 		[FR_TYPE_UINT32] = FR_TYPE_UINT64,
@@ -262,23 +266,9 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 		O(DATE),
 	},
 
-	[FR_TYPE_SIZE] = {
-		[FR_TYPE_UINT8] = FR_TYPE_SIZE,
-		[FR_TYPE_UINT16] = FR_TYPE_SIZE,
-		[FR_TYPE_UINT32] = FR_TYPE_SIZE,
-		[FR_TYPE_UINT64] = FR_TYPE_SIZE,
-		[FR_TYPE_INT8] = FR_TYPE_SIZE,
-		[FR_TYPE_INT16] = FR_TYPE_SIZE,
-		[FR_TYPE_INT32] = FR_TYPE_SIZE,
-		[FR_TYPE_INT64] = FR_TYPE_SIZE,
-		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT64,
-		O(FLOAT64),
-		[FR_TYPE_TIME_DELTA] = FR_TYPE_SIZE,
-		O(DATE),
-	},
-
 	/* signed integers */
 	[FR_TYPE_INT8] = {
+		[FR_TYPE_BOOL] = FR_TYPE_INT8,
 		O(UINT8),
 		O(UINT16),
 		O(UINT32),
@@ -293,6 +283,7 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 	},
 
 	[FR_TYPE_INT16] = {
+		[FR_TYPE_BOOL] = FR_TYPE_INT16,
 		[FR_TYPE_UINT8] = FR_TYPE_INT16,
 		O(UINT16),
 		O(UINT32),
@@ -307,6 +298,7 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 	},
 
 	[FR_TYPE_INT32] = {
+		[FR_TYPE_BOOL] = FR_TYPE_INT32,
 		[FR_TYPE_UINT8] = FR_TYPE_INT32,
 		[FR_TYPE_UINT16] = FR_TYPE_INT32,
 		O(UINT32),
@@ -366,6 +358,22 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 		[FR_TYPE_FLOAT64] = FR_TYPE_DATE,
 		O(TIME_DELTA),
 	},
+
+	[FR_TYPE_SIZE] = {
+		[FR_TYPE_BOOL] = FR_TYPE_SIZE,
+		[FR_TYPE_UINT8] = FR_TYPE_SIZE,
+		[FR_TYPE_UINT16] = FR_TYPE_SIZE,
+		[FR_TYPE_UINT32] = FR_TYPE_SIZE,
+		[FR_TYPE_UINT64] = FR_TYPE_SIZE,
+		[FR_TYPE_INT8] = FR_TYPE_SIZE,
+		[FR_TYPE_INT16] = FR_TYPE_SIZE,
+		[FR_TYPE_INT32] = FR_TYPE_SIZE,
+		[FR_TYPE_INT64] = FR_TYPE_SIZE,
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT64,
+		O(FLOAT64),
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_SIZE,
+		O(DATE),
+	}
 };
 
 /** Return the promoted type
