@@ -31,6 +31,11 @@ do { \
 
 //#include <gperftools/profiler.h>
 
+/*
+ *	Type for a function with the internals of a test of fd flavored dbuffs.
+ */
+typedef void (*fr_dbuff_fd_test_body)(fr_dbuff_t *dbuff, uint8_t const data[]);
+
 static void test_dbuff_init(void)
 {
 	uint8_t const	in[] = { 0x01, 0x02, 0x03, 0x04 };
@@ -110,6 +115,10 @@ static void test_dbuff_net_encode(void)
 	float		float_out = 0;
 	double		double_in = 1.0 + DBL_EPSILON;
 	double		double_out = 0;
+	uint64_t	u64v_vals[] = {
+					0, 0x12, 0x3412, 0x563412, 0x78563412, 0x9a78563412,
+					0xbc9a78563412, 0xdebc9a78563412, 0xf0debc9a78563412
+	};
 
 	TEST_CASE("Generate wire format unsigned 16-bit value");
 	memset(buff, 0, sizeof(buff));
@@ -117,14 +126,12 @@ static void test_dbuff_net_encode(void)
 	fr_dbuff_marker(&marker, &dbuff);
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, u16val) == sizeof(uint16_t));
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
+	TEST_CHECK(*((uint16_t *)buff) == htons(u16val));
 
 	TEST_CASE("Generate wire format unsigned 16-bit value using marker");
 	fr_dbuff_set_to_start(&dbuff);
 	TEST_CHECK(fr_dbuff_in(&marker, u16val2) == sizeof(uint16_t));
-	TEST_CHECK(buff[0] == 0xcd);
-	TEST_CHECK(buff[1] == 0xef);
+	TEST_CHECK(*((uint16_t *)buff) == htons(u16val2));
 	TEST_CHECK(fr_dbuff_used(&marker) == sizeof(uint16_t));
 	TEST_CHECK(fr_dbuff_used(&dbuff) == 0);
 
@@ -133,125 +140,53 @@ static void test_dbuff_net_encode(void)
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, u32val) == sizeof(uint32_t));
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
+	TEST_CHECK(*((uint32_t *)buff) == htonl(u32val));
 
 	TEST_CASE("Generate wire format unsigned 64-bit value");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, u64val) == sizeof(uint64_t));
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
-	TEST_CHECK(buff[4] == 0x9a);
-	TEST_CHECK(buff[5] == 0xbc);
-	TEST_CHECK(buff[6] == 0xde);
-	TEST_CHECK(buff[7] == 0xf0);
+	TEST_CHECK(*((uint64_t *)buff) == htonll(u64val));
 
 	TEST_CASE("Generate wire format signed 16-bit value");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, i16val) == sizeof(int16_t));
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
+	TEST_CHECK(*((uint16_t *)buff) == htons((uint16_t) i16val));
 
 	TEST_CASE("Generate wire format signed 32-bit value");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, i32val) == sizeof(int32_t));
-	TEST_CHECK(buff[0] == 0x00);
-	TEST_CHECK(buff[1] == 0x00);
-	TEST_CHECK(buff[2] == 0xd3);
-	TEST_CHECK(buff[3] == 0x4d);
+	TEST_CHECK(*((uint32_t *)buff) == htonl((uint32_t) i32val));
 
 	TEST_CASE("Generate wire format signed 64-bit value");
 	memset(buff, 0, sizeof(buff));
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	TEST_CHECK(fr_dbuff_in(&dbuff, i64val) == sizeof(int64_t));
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
-	TEST_CHECK(buff[4] == 0x9a);
-	TEST_CHECK(buff[5] == 0xbc);
-	TEST_CHECK(buff[6] == 0xde);
-	TEST_CHECK(buff[7] == 0xf0);
+	TEST_CHECK(*((uint64_t *)buff) == htonll((uint64_t) i64val));
 
 	TEST_CASE("Generate wire format variable-width");
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x12) == 1);
-	TEST_CHECK(buff[0] == 0x12);
+	for (size_t i = 0; i < (sizeof(u64v_vals) / sizeof(uint64_t)); i++) {
+		uint64_t	val = u64v_vals[i];
+		int		num_bytes;
 
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x1234) == 2);
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
+		fr_dbuff_set_to_start(&dbuff);
+		for (num_bytes = 1; (val & ~((uint64_t) 0xff)) != 0; num_bytes++) val >>= 8;
+		TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, u64v_vals[i]) == num_bytes);
+		val = u64v_vals[i];
+		fr_dbuff_set_to_start(&dbuff);
+		for (int j = num_bytes; --j >= 0; ) {
+			uint8_t	byte = 0;
 
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456) == 3);
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x12345678) == 4);
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
-
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789a) == 5);
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
-	TEST_CHECK(buff[4] == 0x9a);
-
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789abc) == 6);
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
-	TEST_CHECK(buff[4] == 0x9a);
-	TEST_CHECK(buff[5] == 0xbc);
-
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789abcde) == 7);
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
-	TEST_CHECK(buff[4] == 0x9a);
-	TEST_CHECK(buff[5] == 0xbc);
-	TEST_CHECK(buff[6] == 0xde);
-
-	memset(buff, 0, sizeof(buff));
-	fr_dbuff_init(&dbuff, buff, sizeof(buff));
-	TEST_CHECK(fr_dbuff_in_uint64v(&dbuff, 0x123456789abcdef0) == 8);
-	TEST_CHECK(buff[0] == 0x12);
-	TEST_CHECK(buff[1] == 0x34);
-	TEST_CHECK(buff[2] == 0x56);
-	TEST_CHECK(buff[3] == 0x78);
-	TEST_CHECK(buff[4] == 0x9a);
-	TEST_CHECK(buff[5] == 0xbc);
-	TEST_CHECK(buff[6] == 0xde);
-	TEST_CHECK(buff[7] == 0xf0);
+			fr_dbuff_out(&byte, &dbuff);
+			TEST_CHECK(byte == (uint8_t) (val >> (8 * j)));
+		}
+	}
 
 	TEST_CASE("Generate wire-format float");
 	memset(buff, 0, sizeof(buff));
@@ -417,66 +352,80 @@ static void test_dbuff_talloc_extend_multi_level(void)
 	talloc_free(dbuff1.buff);
 }
 
+/*
+ *	test_dbuff_fd_shell() puts setup and teardown of a fd flavored dbuff in one place
+ *	so jscpd won't complain about copy/paste.
+ */
+static void test_dbuff_fd_shell(fr_dbuff_fd_test_body body, uint8_t const data[], size_t datasize,
+				uint8_t buff[], size_t buffsize, size_t max)
+{
+	int			fd[2];
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_fd_t	fctx;
+
+	TEST_CASE("Initial allocation");
+	TEST_CHECK(pipe(fd) == 0);
+	TEST_CHECK(write(fd[1], data, datasize) == (ssize_t) datasize);
+	close(fd[1]);
+	TEST_CHECK(fr_dbuff_init_fd(&dbuff, &fctx, buff, buffsize, fd[0], max) == &dbuff);
+
+	body(&dbuff, data);
+
+	close(fd[0]);
+}
+
+static void fd_body(fr_dbuff_t *dbuff, uint8_t const data[])
+{
+	uint8_t			output[8];
+
+	TEST_CASE("Initial extend");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 1) == 1);
+	TEST_CHECK(memcmp(output, data, 1) == 0);
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 2) == 2);
+	TEST_CHECK(memcmp(output, &data[1], 2) == 0);
+	TEST_CASE("Leftover byte plus data from next extend");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 4) == 4);
+	TEST_CHECK(memcmp(output, &data[3], 4) == 0);
+	TEST_CASE("Multiple extends");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 8) == 8);
+	TEST_CHECK(memcmp(output, &data[7], 8) == 0);
+	TEST_CASE("EOF");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 4) == -3);
+}
+
 static void test_dbuff_fd(void)
 {
 	uint8_t const		data[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
 					  0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
-	int			fd[2];
-	fr_dbuff_t		dbuff;
-	fr_dbuff_uctx_fd_t	fctx;
 	uint8_t			buff[4];
+
+	test_dbuff_fd_shell(fd_body, data, sizeof(data), buff, sizeof(buff), 24);
+}
+
+
+static void max_body(fr_dbuff_t *dbuff, uint8_t const data[])
+{
 	uint8_t			output[8];
 
-	/*
-	 *	buff is far smaller than one would ever use in practice;
-	 *	it's made that way to force multiple shift/extend operations.
-	 */
-	TEST_CASE("Initial allocation");
-	TEST_CHECK(pipe(fd) == 0);
-	TEST_CHECK(write(fd[1], data, sizeof(data)) == sizeof(data));
-	close(fd[1]);
-	TEST_CHECK(fr_dbuff_init_fd(&dbuff, &fctx, buff, sizeof(buff), fd[0], 24) == &dbuff);
 	TEST_CASE("Initial extend");
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 1) == 1);
-	TEST_CHECK(memcmp(output, data, 1) == 0);
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 2) == 2);
-	TEST_CHECK(memcmp(output, &data[1], 2) == 0);
-	TEST_CASE("Leftover byte plus data from next extend");
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == 4);
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 2) == 2);
+	TEST_CHECK(memcmp(output, data, 2) == 0);
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 1) == 1);
+	TEST_CHECK(memcmp(output, &data[2], 1) == 0);
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 4) == 4);
 	TEST_CHECK(memcmp(output, &data[3], 4) == 0);
-	TEST_CASE("Multiple extends");
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 8) == 8);
-	TEST_CHECK(memcmp(output, &data[7], 8) == 0);
-	TEST_CASE("EOF");
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == -3);
-	close(fd[0]);
+	TEST_CASE("Confirm that max precludes another shift/extend");
+	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 8) == -7);
 }
 
 static void test_dbuff_fd_max(void)
 {
 	uint8_t const		data[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
 					  0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
-	int			fd[2];
-	fr_dbuff_t		dbuff;
-	fr_dbuff_uctx_fd_t	fctx;
 	uint8_t			buff[4];
-	uint8_t			output[8];
 
-	TEST_CASE("Initial allocation");
-	TEST_CHECK(pipe(fd) == 0);
-	TEST_CHECK(write(fd[1], data, sizeof(data)) == sizeof(data));
-	close(fd[1]);
-	TEST_CHECK(fr_dbuff_init_fd(&dbuff, &fctx, buff, sizeof(buff), fd[0], 8) == &dbuff);
-	TEST_CASE("Initial extend");
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 1) == 1);
-	TEST_CHECK(memcmp(output, data, 1) == 0);
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 2) == 2);
-	TEST_CHECK(memcmp(output, &data[1], 2) == 0);
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == 4);
-	TEST_CHECK(memcmp(output, &data[3], 4) == 0);
-	TEST_CASE("Confirm that max precludes another shift/extend");
-	TEST_CHECK(fr_dbuff_out_memcpy(output, &dbuff, 4) == -3);
-	close(fd[0]);
+
+	test_dbuff_fd_shell(max_body, data, sizeof(data), buff, sizeof(buff), 8);
 }
 
 /** Test functions that read from dbuffs.
