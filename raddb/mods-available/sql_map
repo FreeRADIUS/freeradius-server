@@ -1,0 +1,46 @@
+#  Configuration for the SQL based Map (rlm_sql_map)
+sql_map {
+	# SQL instance to use (from mods-available/sql)
+	#
+	#  If you have multiple sql instances, such as "sql sql1 {...}",
+	#  use the *instance* name here: sql1.
+	sql_module_instance = "sql"
+
+	#  This is duplicative of info available in the SQL module, but
+	#  we have to list it here as we do not yet support nested
+	#  reference expansions.
+	dialect = "mysql"
+
+	# Name of the check item attribute to be used as a key in the SQL queries
+	query = "SELECT ... FROM ... "
+
+	#
+	#  Mapping of SQL columns to RADIUS dictionary attributes.
+	#
+
+	#  WARNING: Although this format is almost identical to the unlang
+	#  update section format, it does *NOT* mean that you can use other
+	#  unlang constructs in module configuration files.
+	#
+	#  Configuration items are in the format:
+	# 	<radius attr> <op> <sql column number>
+	#
+	#  Where:
+	#  	<radius attr>:	Is the destination RADIUS attribute
+	# 			with any valid list and request qualifiers.
+	#  	<op>: 		Is any assignment attribute (=, :=, +=, -=).
+	#  	<column num>:	The column number (not name)
+	#
+	#  Request and list qualifiers may also be placed after the 'update'
+	#  section name to set defaults destination requests/lists
+	#  for unqualified RADIUS attributes.
+	#
+	update {
+		control:Password-With-Header	+= 1
+#		control:NT-Password		:= 2
+#		reply:Reply-Message		:= 3
+#		reply:Tunnel-Type		:= 4
+#		reply:Tunnel-Medium-Type	:= 5
+#		reply:Tunnel-Private-Group-ID	:= 6
+	}
+}
