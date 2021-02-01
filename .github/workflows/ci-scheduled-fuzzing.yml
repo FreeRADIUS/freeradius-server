@@ -100,13 +100,21 @@ jobs:
       run: |
         pip3 install tacacs_plus
 
-    - name: Install LLVM snapshot
+#    - name: Install LLVM snapshot
+#      run: |
+#        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+#        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+#        sudo apt-get install -y --no-install-recommends clang llvm gdb
+#        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
+#        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+
+    - name: Install LLVM 10
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
         sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-        sudo apt-get install -y --no-install-recommends clang llvm gdb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
+        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
 
     - name: Show versions
       run: |
