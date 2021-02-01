@@ -22,7 +22,7 @@ ATTRIBUTE	BlockMac				7	string
 ATTRIBUTE	UnblockMac				8	string
 ATTRIBUTE	PortFlap				9	integer
 
-VALUE	WebAuth				start			0
-VALUE	WebAuth				complete		1
+VALUE	WebAuth				start			1
+VALUE	WebAuth				complete		2
 
 END-VENDOR   Arista
