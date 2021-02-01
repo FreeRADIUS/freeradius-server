@@ -323,9 +323,32 @@ fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
 			 *	Do replace the entry.
 			 */
 			rbtree_free_data(tree, current->data);
-			current->data = data;
+
+			x = talloc_zero(tree, fr_rb_node_t);
+			if (!x) {
+				fr_strerror_const("No memory for new rbtree node");
+				if (tree->lock) pthread_mutex_unlock(&tree->mutex);
+				return NULL;
+			}
+			memcpy(x, current, sizeof(*x));
+			x->data = data;
+
+			/*
+			 *	Replace old with new node
+			 */
+			if (current->parent->left == current) {
+				current->parent->left = x;
+			} else if (current->parent->right == current) {
+				current->parent->right = x;
+			}
+
+			if (x->left != NIL) x->left->parent = x;
+			if (x->right != NIL) x->right->parent = x;
+
+			talloc_free(current);
+
 			if (tree->lock) pthread_mutex_unlock(&tree->mutex);
-			return current;
+			return x;
 		}
 
 		parent = current;
@@ -339,12 +362,13 @@ fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
 		if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 		return NULL;
 	}
-
-	x->data = data;
-	x->parent = parent;
-	x->left = NIL;
-	x->right = NIL;
-	x->colour = RED;
+	*x = (fr_rb_node_t){
+		.data = data,
+		.parent = parent,
+		.left = NIL,
+		.right = NIL,
+		.colour = RED
+	};
 
 	/* insert node in tree */
 	if (parent) {
@@ -488,13 +512,9 @@ static void rbtree_delete_internal(rbtree_t *tree, fr_rb_node_t *z, bool skiploc
 	}
 
 	if (y != z) {
-		rbtree_free_data(tree, z);
-		z->data = y->data;
-		y->data = NULL;
+		void *y_data = y->data;
 
-		if ((y->colour == BLACK) && parent) {
-			delete_fixup(tree, x, parent);
-		}
+		if ((y->colour == BLACK) && parent) delete_fixup(tree, x, parent);
 
 		/*
 		 *	The user structure in y->data May include a
@@ -504,6 +524,7 @@ static void rbtree_delete_internal(rbtree_t *tree, fr_rb_node_t *z, bool skiploc
 		 *	pointers.
 		 */
 		memcpy(y, z, sizeof(*y));
+		y->data = y_data;
 
 		if (!y->parent) {
 			tree->root = y;
@@ -514,14 +535,12 @@ static void rbtree_delete_internal(rbtree_t *tree, fr_rb_node_t *z, bool skiploc
 		if (y->left->parent == z) y->left->parent = y;
 		if (y->right->parent == z) y->right->parent = y;
 
+		rbtree_free_data(tree, z);
 		talloc_free(z);
-
 	} else {
+		if (y->colour == BLACK) delete_fixup(tree, x, parent);
+
 		rbtree_free_data(tree, y);
-
-		if (y->colour == BLACK)
-			delete_fixup(tree, x, parent);
-
 		talloc_free(y);
 	}
 
