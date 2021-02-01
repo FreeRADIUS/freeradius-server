@@ -21,6 +21,7 @@ ATTRIBUTE	WebAuth					6	integer
 ATTRIBUTE	BlockMac				7	string
 ATTRIBUTE	UnblockMac				8	string
 ATTRIBUTE	PortFlap				9	integer
+ATTRIBUTE	Arista-Captive-Portal			10	string
 
 VALUE	WebAuth				start			1
 VALUE	WebAuth				complete		2
