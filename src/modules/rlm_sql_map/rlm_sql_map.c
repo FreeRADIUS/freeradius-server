@@ -344,6 +344,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_map(void *instance, REQUEST *request)
 	res = inst->sql_inst->sql_select_query(inst->sql_inst, request, &handle, query);
 	talloc_free(query);
 	if (res != RLM_SQL_OK) {
+		if (handle) fr_connection_release(inst->sql_inst->pool, handle);
+
 		return RLM_MODULE_FAIL;
 	}
 
