@@ -141,7 +141,7 @@
         }                                                                      \
         acutest_check_(exc_ok_, __FILE__, __LINE__, #code " throws " #exctype);\
         if(msg_ != NULL)                                                       \
-            acutest_message_("%s", msg_);                                      \
+            acutest_message_(false, "%s", msg_);                                      \
     } while(0)
 #define TEST_EXCEPTION_(code, exctype, ...)                                    \
     do {                                                                       \
@@ -157,7 +157,7 @@
         }                                                                      \
         acutest_check_(exc_ok_, __FILE__, __LINE__, __VA_ARGS__);              \
         if(msg_ != NULL)                                                       \
-            acutest_message_("%s", msg_);                                      \
+            acutest_message_(false, "%s", msg_);                                      \
     } while(0)
 #endif  /* #ifdef __cplusplus */
 
@@ -191,7 +191,6 @@
     #define TEST_CASE_MAXSIZE    64
 #endif
 
-
 /* printf-like macro for outputting an extra information about a failure.
  *
  * Intended use is to output some computed output versus the expected value,
@@ -213,8 +212,14 @@
  * The macro can deal with multi-line output fairly well. It also automatically
  * adds a final new-line if there is none present.
  */
-#define TEST_MSG(...)           acutest_message_(__VA_ARGS__)
+#define TEST_MSG(...)           TEST_MSG_FAIL(__VA_ARGS__)
+#define TEST_MSG_FAIL(...)      acutest_message_(false, __VA_ARGS__)
 
+
+/* Alternative version of TEST_MSG which outputs regardless of the
+ * failure status of the current test.
+ */
+#define TEST_MSG_ALWAYS(...)    acutest_message_(true, __VA_ARGS__)
 
 /* Maximal output per TEST_MSG call. Longer messages are cut.
  * You may define another limit prior including "acutest.h"
@@ -235,7 +240,13 @@
  *   TEST_DUMP("Expected:", addr_expected, size_expected);
  *   TEST_DUMP("Produced:", addr_produced, size_produced);
  */
-#define TEST_DUMP(title, addr, size)    acutest_dump_(title, addr, size)
+#define TEST_DUMP(title, addr, size)        TEST_DUMP_FAIL(title, addr, size)
+#define TEST_DUMP_FAIL(title, addr, size)   acutest_dump_(false, title, addr, size);
+
+/* Alternative version of TEST_DUMP which outputs regardless of the
+ * failure status of the current test
+ */
+#define TEST_DUMP_ALWAYS(title, addr, size) acutest_dump_(true, title, addr, size);
 
 /* Maximal output per TEST_DUMP call (in bytes to dump). Longer blocks are cut.
  * You may define another limit prior including "acutest.h"
@@ -244,6 +255,11 @@
     #define TEST_DUMP_MAXSIZE   1024
 #endif
 
+/* Maximal size of log entries passed between child test processes and parent
+ * process.  This allows for a memory block dump with a title up to TEST_MSG_MAXSIZE
+ * in length, plus ": " separator and NULL terminator.  Longer messages cause an error.
+ */
+#define TEST_LOG_MAXSIZE ((TEST_DUMP_MAXSIZE * 3) + TEST_MSG_MAXSIZE + 3)
 
 /* Common test initialiation/clean-up
  *
@@ -278,6 +294,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
+#include <stdbool.h>
 
 #if defined(unix) || defined(__unix__) || defined(__unix) || defined(__APPLE__)
     #define ACUTEST_UNIX_       1
@@ -344,9 +361,18 @@ struct acutest_test_ {
     void (*func)(void);
 };
 
+typedef struct acutest_data_log_s_ acutest_data_log_;
+
+struct acutest_data_log_s_ {
+    char* msg;
+    acutest_data_log_* next;
+};
+
 struct acutest_test_data_ {
     unsigned char flags;
     double duration;
+    acutest_data_log_* log_head;
+    acutest_data_log_* log_tail;
 };
 
 enum {
@@ -359,8 +385,9 @@ extern const struct acutest_test_ acutest_list_[];
 
 int acutest_check_(int cond, const char* file, int line, const char* fmt, ...);
 void acutest_case_(const char* fmt, ...);
-void acutest_message_(const char* fmt, ...);
-void acutest_dump_(const char* title, const void* addr, size_t size);
+void acutest_log_(const char* fmt, ...);
+void acutest_message_(bool always, const char* fmt, ...);
+void acutest_dump_(bool always, const char* title, const void* addr, size_t size);
 void acutest_abort_(void) ACUTEST_ATTRIBUTE_(noreturn);
 
 
@@ -396,10 +423,32 @@ static int acutest_timer_ = 0;
 static int acutest_abort_has_jmp_buf_ = 0;
 static jmp_buf acutest_abort_jmp_buf_;
 
+#if defined ACUTEST_WIN_
+HANDLE hChildWrite = NULL;
+#endif
 
 static void
 acutest_cleanup_(void)
 {
+    size_t i;
+    acutest_data_log_* log_entry;
+    acutest_data_log_* next;
+
+    for (i = 0; i < acutest_count_; i++) {
+        log_entry = acutest_test_data_[i].log_head;
+        while (log_entry) {
+            next = log_entry->next;
+#if defined ACUTEST_WIN_
+            if (hChildWrite) {
+                if (!WriteFile(hChildWrite, log_entry->msg, (strlen(log_entry->msg) + 1) * sizeof(char), NULL, NULL))
+                    fprintf(stderr, "Upable to write to pipe");
+            }
+#endif
+            free(log_entry->msg);
+            free(log_entry);
+                log_entry = next;
+        }
+    }
     free((void*) acutest_test_data_);
 }
 
@@ -714,6 +763,44 @@ acutest_check_(int cond, const char* file, int line, const char* fmt, ...)
 }
 
 void ACUTEST_ATTRIBUTE_(format (printf, 1, 2))
+acutest_log_(const char* fmt, ...)
+{
+    char buffer[TEST_LOG_MAXSIZE];
+    acutest_data_log_* log_entry;
+    va_list args;
+
+    log_entry = (acutest_data_log_*)calloc(1, sizeof(acutest_data_log_));
+    if (log_entry == NULL) {
+        fprintf(stderr, "Out of memory.\n");
+        acutest_exit_(2);
+    }
+
+    /* This is the first log entry for the current test, set the head */
+    if (!acutest_test_data_[acutest_current_index_].log_head)
+        acutest_test_data_[acutest_current_index_].log_head = log_entry;
+
+    /* There is something already at the tail of the list - append our new entry */
+    if (acutest_test_data_[acutest_current_index_].log_tail)
+        acutest_test_data_[acutest_current_index_].log_tail->next = log_entry;
+
+    /* Set the tail of the list ready for the next append */
+    acutest_test_data_[acutest_current_index_].log_tail = log_entry;
+
+    va_start(args, fmt);
+    vsnprintf(buffer, TEST_LOG_MAXSIZE - 1, fmt, args);
+    va_end(args);
+    buffer[TEST_LOG_MAXSIZE - 1] = '\0';
+
+    log_entry->msg = (char *)calloc(strlen(buffer) + 1, sizeof(char));
+    if (log_entry->msg == NULL) {
+        fprintf(stderr, "Out of memory.\n");
+        acutest_exit_(2);
+
+    }
+    strcpy(log_entry->msg, buffer);
+}
+
+void ACUTEST_ATTRIBUTE_(format (printf, 1, 2))
 acutest_case_(const char* fmt, ...)
 {
     va_list args;
@@ -742,8 +829,8 @@ acutest_case_(const char* fmt, ...)
     }
 }
 
-void ACUTEST_ATTRIBUTE_(format (printf, 1, 2))
-acutest_message_(const char* fmt, ...)
+void ACUTEST_ATTRIBUTE_(format (printf, 2, 3))
+acutest_message_(bool always, const char* fmt, ...)
 {
     char buffer[TEST_MSG_MAXSIZE];
     char* line_beg;
@@ -754,14 +841,16 @@ acutest_message_(const char* fmt, ...)
         return;
 
     /* We allow extra message only when something is already wrong in the
-     * current test. */
-    if(acutest_current_test_ == NULL  ||  !acutest_cond_failed_)
+     * current test or always is true. */
+    if((acutest_current_test_ == NULL  ||  !acutest_cond_failed_) && !always)
         return;
 
     va_start(args, fmt);
     vsnprintf(buffer, TEST_MSG_MAXSIZE, fmt, args);
     va_end(args);
     buffer[TEST_MSG_MAXSIZE-1] = '\0';
+
+    acutest_log_("%s", buffer); /* Add the message to the log */
 
     line_beg = buffer;
     while(1) {
@@ -779,18 +868,20 @@ acutest_message_(const char* fmt, ...)
 }
 
 void
-acutest_dump_(const char* title, const void* addr, size_t size)
+acutest_dump_(bool always, const char* title, const void* addr, size_t size)
 {
     static const size_t BYTES_PER_LINE = 16;
     size_t line_beg;
     size_t truncate = 0;
+    char* buffer;
+    char* p;
 
     if(acutest_verbose_level_ < 2)
         return;
 
     /* We allow extra message only when something is already wrong in the
-     * current test. */
-    if(acutest_current_test_ == NULL  ||  !acutest_cond_failed_)
+     * current test or always is true. */
+    if((acutest_current_test_ == NULL  ||  !acutest_cond_failed_) && !always)
         return;
 
     if(size > TEST_DUMP_MAXSIZE) {
@@ -798,8 +889,18 @@ acutest_dump_(const char* title, const void* addr, size_t size)
         size = TEST_DUMP_MAXSIZE;
     }
 
+    /* Allocate space for log copy of dump */
+    buffer = (char *)calloc((size * 3) + strlen(title) + 2, sizeof(char));
+
     acutest_line_indent_(acutest_case_name_[0] ? 3 : 2);
     printf((title[strlen(title)-1] == ':') ? "%s\n" : "%s:\n", title);
+
+    strcpy(buffer, title);
+    p = buffer + strlen(title);
+    if (title[strlen(title) - 1] != ':') {
+        *p = ':';
+        p++;
+    }
 
     for(line_beg = 0; line_beg < size; line_beg += BYTES_PER_LINE) {
         size_t line_end = line_beg + BYTES_PER_LINE;
@@ -808,9 +909,11 @@ acutest_dump_(const char* title, const void* addr, size_t size)
         acutest_line_indent_(acutest_case_name_[0] ? 4 : 3);
         printf("%08lx: ", (unsigned long)line_beg);
         for(off = line_beg; off < line_end; off++) {
-            if(off < size)
+            if(off < size) {
                 printf(" %02x", ((const unsigned char*)addr)[off]);
-            else
+                sprintf(p, " %02x", ((const unsigned char*)addr)[off]);
+                p += 3;
+            } else
                 printf("   ");
         }
 
@@ -830,6 +933,9 @@ acutest_dump_(const char* title, const void* addr, size_t size)
         acutest_line_indent_(acutest_case_name_[0] ? 4 : 3);
         printf("           ... (and more %u bytes)\n", (unsigned) truncate);
     }
+
+    acutest_log_("%s", buffer);
+    free(buffer);
 }
 
 /* This is called just before each test */
@@ -1062,7 +1168,7 @@ aborted:
         const char* what = e.what();
         acutest_check_(0, NULL, 0, "Threw std::exception");
         if(what != NULL)
-            acutest_message_("std::exception::what(): %s", what);
+            acutest_message_(false, "std::exception::what(): %s", what);
 
         if(acutest_verbose_level_ >= 3) {
             acutest_line_indent_(1);
@@ -1106,10 +1212,19 @@ acutest_run_(const struct acutest_test_* test, int index, int master_index)
 
         pid_t pid;
         int exit_code;
+        int fd[2];
+        char msg[TEST_LOG_MAXSIZE];
+        char *p;
+        size_t count;
 
         /* Make sure the child starts with empty I/O buffers. */
         fflush(stdout);
         fflush(stderr);
+
+        if (pipe(fd) == -1) {
+            fprintf(stderr, "Unable to create pipe.\n");
+            acutest_exit_(2);
+        }
 
         pid = fork();
         if(pid == (pid_t)-1) {
@@ -1117,10 +1232,25 @@ acutest_run_(const struct acutest_test_* test, int index, int master_index)
             failed = 1;
         } else if(pid == 0) {
             /* Child: Do the test. */
+            acutest_data_log_* log_entry;
+            close(fd[0]);  /* Child only uses the write pipe, close the read one */
             acutest_worker_ = 1;
             failed = (acutest_do_run_(test, index) != 0);
+
+            /* Write any log messages to the pipe.
+             * Send each log entry as a null terminated string */
+            log_entry = acutest_test_data_[index].log_head;
+            while (log_entry) {
+                if (write(fd[1], log_entry->msg, (strlen(log_entry->msg) + 1) * sizeof(char)) == -1) {
+                    fprintf(stderr, "Unable to write to pipe\n");
+                    acutest_exit_(2);
+                }
+                log_entry = log_entry->next;
+            }
+            close(fd[1]);
             acutest_exit_(failed ? 1 : 0);
         } else {
+            close(fd[1]); /* Parent only uses the read pipe, close the write one */
             /* Parent: Wait until child terminates and analyze its exit code. */
             waitpid(pid, &exit_code, 0);
             if(WIFEXITED(exit_code)) {
@@ -1147,6 +1277,27 @@ acutest_run_(const struct acutest_test_* test, int index, int master_index)
             } else {
                 acutest_error_("Test ended in an unexpected way [%d].", exit_code);
             }
+
+            /* Read log messages from the child, one character at a time to
+             * find the NULLs, then re-create the log entries in the parent */
+            p = msg;
+            count = 0;
+            acutest_current_index_ = index; /* acutest_log_() needs this set to know which entry to populate */
+            while (read(fd[0], p, sizeof(char))) {
+                if (*p == '\0') { /* Found a NULL terminator */
+                    acutest_log_("%s", msg); /* Create parent log entry */
+                    p = msg; /* reset pointer */
+                    count = 0;
+                } else {
+                    p++;
+                    count++;
+                }
+                if (count >= TEST_LOG_MAXSIZE) {
+                    fprintf(stderr, "Log message from child too large");
+                    acutest_exit_(2);
+                }
+            }
+            close(fd[0]);
         }
 
 #elif defined(ACUTEST_WIN_)
@@ -1155,22 +1306,61 @@ acutest_run_(const struct acutest_test_* test, int index, int master_index)
         STARTUPINFOA startupInfo;
         PROCESS_INFORMATION processInfo;
         DWORD exitCode;
+        HANDLE hRead = NULL;
+        HANDLE hWrite = NULL;
+        SECURITY_ATTRIBUTES lpPipeAttribute;
+        lpPipeAttribute.nLength = sizeof(lpPipeAttribute);
+        lpPipeAttribute.lpSecurityDescriptor = NULL;
+        lpPipeAttribute.bInheritHandle = TRUE;
+        char* p;
+        char msg[TEST_LOG_MAXSIZE];
+        size_t count;
+
+        /* Create pipe for receiveing log entries */
+        if (!CreatePipe(&hRead, &hWrite, &lpPipeAttribute, 0)) {
+            fprintf(stderr, "Error creating pipe\n");
+            acutest_exit_(2);
+        }
 
         /* Windows has no fork(). So we propagate all info into the child
          * through a command line arguments. */
         _snprintf(buffer, sizeof(buffer)-1,
-                 "%s --worker=%d %s --no-exec --no-summary %s --verbose=%d --color=%s -- \"%s\"",
+                 "%s --worker=%d %s --no-exec --no-summary %s --verbose=%d --color=%s --pipe=%I64d -- \"%s\"",
                  acutest_argv0_, index, acutest_timer_ ? "--time" : "",
                  acutest_tap_ ? "--tap" : "", acutest_verbose_level_,
-                 acutest_colorize_ ? "always" : "never",
+                 acutest_colorize_ ? "always" : "never", (ULONG64)(ULONG_PTR)hWrite,
                  test->name);
         memset(&startupInfo, 0, sizeof(startupInfo));
         startupInfo.cb = sizeof(STARTUPINFO);
-        if(CreateProcessA(NULL, buffer, NULL, NULL, FALSE, 0, NULL, NULL, &startupInfo, &processInfo)) {
+        if(CreateProcessA(NULL, buffer, NULL, NULL, TRUE, 0, NULL, NULL, &startupInfo, &processInfo)) {
             WaitForSingleObject(processInfo.hProcess, INFINITE);
             GetExitCodeProcess(processInfo.hProcess, &exitCode);
             CloseHandle(processInfo.hThread);
             CloseHandle(processInfo.hProcess);
+
+            /* Read log messages from the child, one character at a time to
+             * find the NULLs, then re-create the log entries in the parent */
+            p = msg;
+            count = 0;
+            acutest_current_index_ = index; /* acutest_log_() needs this set to know which entry to populate */
+            while (ReadFile(hRead, p, sizeof(char), NULL, NULL)) {
+                if (*p == '\0') { /* Found a NULL terminator */
+                    acutest_log_("%s", msg); /* Create parent log entry */
+                    p = msg; /* reset pointer */
+                    count = 0;
+                }
+                else {
+                    p++;
+                    count++;
+                }
+                if (count >= TEST_MSG_MAXSIZE) {
+                    fprintf(stderr, "Log message from child too large");
+                    acutest_exit_(2);
+                }
+            }
+
+            CloseHandle(hRead);
+            CloseHandle(hWrite);
             failed = (exitCode != 0);
             if(exitCode > 1) {
                 switch(exitCode) {
@@ -1213,8 +1403,8 @@ static LONG CALLBACK
 acutest_seh_exception_filter_(EXCEPTION_POINTERS *ptrs)
 {
     acutest_check_(0, NULL, 0, "Unhandled SEH exception");
-    acutest_message_("Exception code:    0x%08lx", ptrs->ExceptionRecord->ExceptionCode);
-    acutest_message_("Exception address: 0x%p", ptrs->ExceptionRecord->ExceptionAddress);
+    acutest_message_(false, "Exception code:    0x%08lx", ptrs->ExceptionRecord->ExceptionCode);
+    acutest_message_(false, "Exception address: 0x%p", ptrs->ExceptionRecord->ExceptionAddress);
 
     fflush(stdout);
     fflush(stderr);
@@ -1433,6 +1623,7 @@ static const ACUTEST_CMDLINE_OPTION_ acutest_cmdline_options_[] = {
 #if defined ACUTEST_WIN_
     { 't',  "time",         't', 0 },
     {  0,   "timer",        't', 0 },   /* kept for compatibility */
+    {  0,   "pipe",         'p', ACUTEST_CMDLINE_OPTFLAG_REQUIREDARG_},  /* internal */
 #elif defined ACUTEST_HAS_POSIX_TIMER_
     { 't',  "time",         't', ACUTEST_CMDLINE_OPTFLAG_OPTIONALARG_ },
     {  0,   "timer",        't', ACUTEST_CMDLINE_OPTFLAG_OPTIONALARG_ },  /* kept for compatibility */
@@ -1509,6 +1700,11 @@ acutest_cmdline_callback_(int id, const char* arg)
             acutest_verbose_level_ = (arg != NULL ? atoi(arg) : acutest_verbose_level_+1);
             break;
 
+#if defined ACUTEST_WIN_
+        case 'p':
+            hChildWrite = (HANDLE)(ULONG_PTR)_atoi64(arg);
+            break;
+#endif
         case 'q':
             acutest_verbose_level_ = 0;
             break;
@@ -1758,6 +1954,7 @@ main(int argc, char** argv)
 #else
         const char *suite_name = argv[0];
 #endif
+        acutest_data_log_* log_entry;
         fprintf(acutest_xml_output_, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         fprintf(acutest_xml_output_, "<testsuite name=\"%s\" tests=\"%d\" errors=\"%d\" failures=\"%d\" skip=\"%d\">\n",
             suite_name, (int)acutest_list_size_, acutest_stat_failed_units_, acutest_stat_failed_units_,
@@ -1769,6 +1966,11 @@ main(int argc, char** argv)
                 fprintf(acutest_xml_output_, "    <failure />\n");
             if (!(details->flags & ACUTEST_FLAG_FAILURE_) && !(details->flags & ACUTEST_FLAG_SUCCESS_))
                 fprintf(acutest_xml_output_, "    <skipped />\n");
+            log_entry = details->log_head;
+            while (log_entry) {
+                fprintf(acutest_xml_output_, "    <system-out>%s</system-out>\n", log_entry->msg);
+                log_entry = log_entry->next;
+            }
             fprintf(acutest_xml_output_, "  </testcase>\n");
         }
         fprintf(acutest_xml_output_, "</testsuite>\n");
