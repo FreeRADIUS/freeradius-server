@@ -112,7 +112,7 @@ static int _tree_free(rbtree_t *tree)
 	/*
 	 *	walk the tree, deleting the nodes...
 	 */
-	if (tree->root != NIL) free_walker(tree, tree->root);
+	if ((tree->root != NIL) && tree->free) free_walker(tree, tree->root);
 
 #ifndef NDEBUG
 	tree->magic = 0;
