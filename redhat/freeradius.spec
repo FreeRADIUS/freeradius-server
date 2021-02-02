@@ -646,6 +646,7 @@ fi
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 %{_libdir}/freeradius/rlm_sqlcounter.so
 %{_libdir}/freeradius/rlm_sqlippool.so
+%{_libdir}/freeradius/rlm_sql_map.so
 
 %if %{?_with_developer:1}%{!?_with_developer:0}
 %{_libdir}/freeradius/rlm_sqlhpwippool.so
