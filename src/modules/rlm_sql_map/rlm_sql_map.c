@@ -236,6 +236,8 @@ static int sql_map_do(const rlm_sql_map_t *inst, REQUEST *request, rlm_sql_handl
 	 *	Cache all of the rows in a simple array.
 	 */
 	while ((inst->sql_inst->module->sql_fetch_row)(*handle, inst->sql_inst->config) == RLM_SQL_OK) {
+		fr_assert(*handle != NULL);
+
 		ctx.row = (*handle)->row;
 		ctx.num_columns = (inst->sql_inst->module->sql_num_fields)(*handle, inst->sql_inst->config);
 
