@@ -49,7 +49,7 @@ BIN_PATH := $(BUILD_PATH)/bin/local
 RADIUSD_BIN := $(BIN_PATH)/radiusd
 
 ifeq "$(DICT_PATH)" "$(TEST_PATH)"
-LIB_PATH := $(BUILD_PATH)/lib/.libs/
+LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
 DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
 export DYLD_LIBRARY_PATH
 endif

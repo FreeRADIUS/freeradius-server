@@ -82,7 +82,7 @@ raddb/test.conf:
 $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.raddb
 	@$(MAKE) -C raddb/certs
 	@printf "radiusd -C... "
-	@if ! FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
+	@if ! $(TESTBIN)/radiusd -XCMd ./raddb -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
@@ -92,13 +92,13 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.r
 	@echo "ok"
 	@touch $@
 
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat tests.keywords tests.auth tests.modules $(BUILD_DIR)/tests/radiusd-c | build.raddb
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat tests.keywords tests.auth $(BUILD_DIR)/tests/radiusd-c | build.raddb
 	@$(MAKE) -C src/tests tests
 
 #  Tests specifically for CI.  We do a LOT more than just
 #  the above tests
 ci-test: raddb/test.conf test
-	@FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/radiusd -xxxv -n test
+	@$(TESTBIN)/radiusd -xxxv -n test
 	@rm -f raddb/test.conf
 	@$(MAKE) install
 	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
