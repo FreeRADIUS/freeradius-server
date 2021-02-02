@@ -202,9 +202,9 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 
 static const virtual_server_compile_t compile_list[] = {
-	{ "recv", NULL,			MOD_AUTHORIZE },
-	{ "send", "ok",			MOD_POST_AUTH },
-	{ "send", "fail",		MOD_POST_AUTH },
+	{ .name = "recv", .name2 = NULL,	.component = MOD_AUTHORIZE },
+	{ .name = "send", .name2 = "ok",	.component = MOD_POST_AUTH },
+	{ .name = "send", .name2 = "fail",	.component = MOD_POST_AUTH },
 
 	COMPILE_TERMINATOR
 };
