@@ -32,7 +32,7 @@ static fr_rb_test_node_t rvals[MAXSIZE];
 
 static int store_cb(void  *i, UNUSED void *uctx)
 {
-	rvals[cb_stored++].num = *(int const *)i;
+	rvals[cb_stored++].num = ((fr_rb_test_node_t const *)i)->num;
 	return 0;
 }
 
@@ -186,7 +186,7 @@ again:
 	rbtree_walk(t, RBTREE_IN_ORDER, &store_cb, NULL);
 
 	for (j = i = 0; i < n; i++) {
-		if (i && vals[i-1].num == vals[i].num) continue;
+		if (i && (vals[i-1].num == vals[i].num)) continue;
 		if (!filter_cb(&thresh, &vals[i])) {
 			if (vals[i].num != rvals[j].num) goto bad;
 			j++;
@@ -206,6 +206,6 @@ bad:
 			fprintf(stderr, "skipped %x\n", vals[i].num);
 		}
 	}
-	return -1;
+	return EXIT_FAILURE;
 }
 
