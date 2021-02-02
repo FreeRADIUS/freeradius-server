@@ -1,0 +1,250 @@
+#!/bin/bash
+
+#
+#  This script fetches the artifacts resulting from fuzzing within the
+#  GitHub Actions workflows.
+#
+
+
+set -e
+
+
+REPRODUCER_DIR=build/fuzzer
+
+
+usage() {
+
+ cat <<EOF
+Usage:
+
+  export GITHUB_TOKEN=<...>
+  $0 [ <git-repo> | <download-uri> | <artifact-zip> ]
+
+  git-repo     - Either the name of a git remote (default "origin"), or a repo
+                 slug such as "FreeRADIUS/freeradius-server".
+                 This mode will list the download-uris of the available fuzzer
+                 artifacts for the repo.
+
+  download-uri - "https://api.github.com/..."
+                 This mode will download the specified artifact and extract the
+                 reproducers that it contains.
+
+  artifact-zip - "path/to/downloaded/artifact/fuzzer-radius-701e5be.zip"
+                 This mode will extract the reproducers from a manually
+                 downloaded artifact ZIP file.
+
+  Fuzzer artifacts are identified by their name which starts "fuzzer-"
+
+  Reproducers are extracted to $REPRODUCER_DIR
+
+EOF
+
+}
+
+
+if [ ! -f VERSION ]; then
+  usage
+  exit 1
+fi
+
+if [ "$#" -gt 1 ]; then
+  usage
+  exit 1
+fi
+
+if [ -n "$GITHUB_TOKEN" ]; then
+  TOKEN_OPT="-H"
+  TOKEN_VAL="authorization: Bearer $GITHUB_TOKEN"
+else
+TOKEN_OPT="-s"
+TOKEN_VAL="-s"
+fi
+
+if [[ "$1" = https* ]]; then
+  DOWNLOAD_URL="$1"
+elif [[ "$1" = *.zip ]]; then
+  ARTIFACT_ZIP="$1"
+else
+  ARG=${1:-origin}
+  if [[ "$ARG" != */* ]]; then
+    if ! REMOTE_URL=$(git remote get-url "$ARG"); then
+      echo "Failed to get URL for the remote from git config: $ARG" >&2
+      echo
+      usage
+      exit 1
+    fi
+    REPO_SLUG="${REMOTE_URL%.git}"
+    REPO_SLUG="${REPO_SLUG##*@github.com:}"
+    REPO_SLUG="${REPO_SLUG#*//github.com/}"
+  else
+    REPO_SLUG="$1"
+  fi
+  OWNER="${REPO_SLUG%%/*}"
+  REPO="${REPO_SLUG#*/}"
+  ACTIONS_API=https://api.github.com/repos/$OWNER/$REPO/actions
+fi
+
+
+TMPDIR=
+TMPZIP=
+trap '[ -z "TMPDIR" ] || { rm -rf "$TMPDIR"; rm -f "$TMPZIP"; }' INT EXIT
+
+
+list_artifacts() {
+
+  local ACTIONS_API=$1
+
+  local RESULT
+
+  RESULT="$(curl -s -w "\n%{http_code}\n" "$TOKEN_OPT" "$TOKEN_VAL" "$ACTIONS_API/artifacts")"
+  if [ "$(echo "$RESULT" | tail -1)" != "200" ]; then
+    echo "Failed to fetch fuzzer artifacts from $ACTIONS_API/artifacts:" >&2
+    echo "" >&2
+    echo "$RESULT" >&2
+    exit 1
+  fi
+
+  echo "List of fuzzer artifacts from $ACTIONS_API:"
+  echo
+  RESULT=$(
+    echo "$RESULT" | sed '$d' | \
+    jq ".artifacts[]|select((.name|startswith(\"fuzzer-\")) and (.expired==false)) | \"$0 \(.archive_download_url)  # \(.created_at) \(.name)\"" --raw-output
+  )
+
+  if [ -z "$RESULT" ]; then
+    echo "<No artifacts available>"
+    return
+  fi
+
+  cat <<EOF
+$RESULT
+
+Run the above commands to download and extract the reproducers.
+
+EOF
+
+}
+
+
+broken_api() {
+
+  local REPO_SLUG=${API_URL#https://api.github.com/repos/}
+  REPO_SLUG=${REPO_SLUG%/actions/artifacts/*/zip}
+
+  local OWNER="${REPO_SLUG%%/*}"
+  local REPO="${REPO_SLUG#*/}"
+
+  cat <<EOF >&2
+NOTE: Download of artifacts isn't currently available without using a GitHub
+Personal Access Token with "repo:public_repo" scope, due to a Actions API
+permissions bug.
+
+Set GITHUB_TOKEN in the environment and try again, e.g.
+
+  umask 066
+  echo "export GITHUB_TOKEN=<...>" > ~/.github_token
+
+  . ~/.github_token
+  $0 $1
+
+Otherwise, manually fetch the artifact ZIP files from any failed fuzzer
+workflows, e.g. by browsing to the runs from this webpage, locating the assets
+and downloading them:
+
+  https://github.com/$OWNER/$REPO/actions?query=workflow%3A%22Scheduled+fuzzing%22+is%3Afailure
+
+Then run this script against the downloaded ZIP files instead, e.g.
+
+  $0 ~/Downloads/fuzzer-radius-701e5be.zip
+
+EOF
+
+  exit 1
+
+}
+
+
+fetch_artifact() {
+
+  local API_URL=$1
+
+  TMPZIP="$(mktemp /tmp/fuzzer.XXXXXX)"
+
+  echo "Downloading $API_URL to $TMPZIP..." >&2
+  echo "" >&2
+
+  RESULT="$(curl -L -w "\n%{http_code}\n" -o "$TMPZIP" "$TOKEN_OPT" "$TOKEN_VAL" "$API_URL")"
+  if [ "$(echo "$RESULT" | tail -1)" != "200" ]; then
+    echo "Failed to fetch fuzzer artifact $API_URL:" >&2
+    echo "$RESULT" >&2
+    echo "" >&2
+    [ -z "$GITHUB_TOKEN" ] && broken_api "$API_URL"
+    exit 1
+  fi
+
+  echo "$TMPZIP"
+
+}
+
+
+extract_artifact() {
+
+  local ARTIFACT_ZIP=$1
+  local REPRODUCER_DIR=$2
+
+  local FILES
+  local LINE
+
+  if [ ! -r "$ARTIFACT_ZIP" ]; then
+    echo "Cannot read given file: $ARTIFACT_ZIP"
+    exit 1
+  fi
+
+  mkdir -p "$REPRODUCER_DIR"
+
+  echo
+  echo "Extracting reproducers from $ARTIFACT_ZIP to $REPRODUCER_DIR..."
+
+  TMPDIR=$(mktemp -d /tmp/fuzzer.XXXXXX)
+  if ! unzip -q "$ARTIFACT_ZIP" -d "$TMPDIR" -x 'fuzz-*.log'; then
+    echo "Failed to extract $ARTIFACT_ZIP" >&2
+    exit 1
+  fi
+
+  echo
+
+  FILES="$(cp -rvf "$TMPDIR"/* "$REPRODUCER_DIR")"
+  echo "$FILES" | while read -r LINE; do
+    LINE="${LINE#*\' -> \'}"
+    LINE="${LINE%\'}"
+    echo "scripts/build/fuzzer $LINE"
+  done
+
+  echo
+  echo You should now be able to reproduce by running the above commands.
+
+}
+
+
+if [ -n "$ACTIONS_API" ]; then
+  list_artifacts "$ACTIONS_API"
+  exit 0
+fi
+
+if [ -n "$DOWNLOAD_URL" ]; then
+  ARTIFACT_ZIP=$(fetch_artifact "$DOWNLOAD_URL")
+  extract_artifact "$ARTIFACT_ZIP" "$REPRODUCER_DIR"
+  rm -f "$ARTIFACT_ZIP"
+  exit 0
+fi
+
+if [ -n "$ARTIFACT_ZIP" ]; then
+  extract_artifact "$ARTIFACT_ZIP" "$REPRODUCER_DIR"
+  exit 0
+fi
+
+
+# We arrived here with nothing to do, which shouldn't happen
+
+usage
+exit 1
