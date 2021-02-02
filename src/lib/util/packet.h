@@ -54,6 +54,9 @@ extern "C" {
  *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
  */
 typedef struct {
+	fr_rb_node_t		node;			//!< Allows insertion into the list.c
+							///< rbtree, may be removed in future.
+
 	fr_socket_t		socket;			//!< This packet was received on.
 
 	int			id;			//!< Packet ID (used to link requests/responses).

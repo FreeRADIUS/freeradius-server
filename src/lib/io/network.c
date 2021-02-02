@@ -73,6 +73,9 @@ typedef struct {
 } fr_network_worker_t;
 
 typedef struct {
+	fr_rb_node_t		listen_node;		//!< rbtree node for looking up by listener.
+	fr_rb_node_t		num_node;		//!< rbtree node for looking up by number.
+
 	fr_network_t		*nr;			//!< O(N) issues in talloc
 	int			number;			//!< unique ID
 	int			heap_id;		//!< for the sockets_by_num heap
@@ -1654,13 +1657,13 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = rbtree_talloc_alloc(nr, socket_listen_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	nr->sockets = rbtree_talloc_alloc(nr, fr_network_socket_t, listen_node, socket_listen_cmp, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
 		fr_strerror_const_push("Failed creating listen tree for sockets");
 		goto fail2;
 	}
 
-	nr->sockets_by_num = rbtree_talloc_alloc(nr, socket_num_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
+	nr->sockets_by_num = rbtree_talloc_alloc(nr, fr_network_socket_t, num_node, socket_num_cmp, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets_by_num) {
 		fr_strerror_const_push("Failed creating number tree for sockets");
 		goto fail2;

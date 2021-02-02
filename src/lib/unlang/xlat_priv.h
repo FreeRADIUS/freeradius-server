@@ -45,6 +45,7 @@ typedef enum {
 } xlat_func_legacy_type_t;
 
 typedef struct xlat_s {
+	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
 	char const		*name;			//!< Name of xlat function.
 
 	union {

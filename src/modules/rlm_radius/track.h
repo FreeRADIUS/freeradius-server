@@ -34,6 +34,8 @@ typedef struct radius_track_s radius_track_t;
  *
  */
 struct radius_track_entry_s {
+	fr_rb_node_t	node;			//!< Entry in the tracking tree.
+
 	radius_track_t	*tt;
 
 	radius_track_entry_t ***binding;	//!< Binding chunk we use to release the entry

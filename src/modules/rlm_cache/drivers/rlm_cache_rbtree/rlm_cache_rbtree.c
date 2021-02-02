@@ -35,7 +35,9 @@ typedef struct {
 
 typedef struct {
 	rlm_cache_entry_t	fields;		//!< Entry data.
-	int32_t			heap_id;	//!< Offset used for heap.
+
+	fr_rb_node_t		node;		//!< Entry used for lookups.
+	int32_t			heap_id;	//!< Offset used for expiry heap.
 } rlm_cache_rbtree_entry_t;
 
 /** Compare two entries by key
@@ -113,7 +115,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The cache.
 	 */
-	driver->cache = rbtree_talloc_alloc(NULL, cache_entry_cmp, rlm_cache_rbtree_entry_t, NULL, 0);
+	driver->cache = rbtree_talloc_alloc(NULL, rlm_cache_rbtree_entry_t, node, cache_entry_cmp, NULL, 0);
 	if (!driver->cache) {
 		ERROR("Failed to create cache");
 		return -1;

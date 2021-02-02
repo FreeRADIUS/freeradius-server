@@ -528,8 +528,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	#todo - unify the code with static clients?
 	 */
 	if (inst->app_io->track_duplicates) {
-		MEM(connection->client->table = rbtree_talloc_alloc(client, track_connected_cmp, fr_io_track_t,
-								    NULL, RBTREE_FLAG_NONE));
+		MEM(connection->client->table = rbtree_talloc_alloc(client, fr_io_track_t, node,
+								    track_connected_cmp, NULL, RBTREE_FLAG_NONE));
 	}
 
 	/*
@@ -1453,7 +1453,7 @@ do_read:
 		 */
 		if (inst->app_io->track_duplicates) {
 			fr_assert(inst->app_io->compare != NULL);
-			MEM(client->table = rbtree_talloc_alloc(client, track_cmp, fr_io_track_t,
+			MEM(client->table = rbtree_talloc_alloc(client, fr_io_track_t, node, track_cmp,
 								NULL, RBTREE_FLAG_NONE));
 		}
 

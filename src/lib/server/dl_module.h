@@ -31,9 +31,10 @@ RCSIDH(dl_module_h, "$Id$")
 #  include <dlfcn.h>
 #endif
 
-#include <freeradius-devel/util/version.h>
-#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/version.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,6 +122,8 @@ typedef struct {
  */
 typedef struct dl_module_s dl_module_t;
 struct dl_module_s {
+	fr_rb_node_t			node;		//!< Entry in the module tree.
+
 	dl_t				*dl;		//!< Dynamic loader handle.
 
 	dl_module_t const		*parent;	//!< of this module.
@@ -142,6 +145,7 @@ struct dl_module_s {
  */
 typedef struct dl_module_instance_s dl_module_inst_t;
 struct dl_module_instance_s {
+	fr_rb_node_t		node;			//!< Entry in the module instance tree.
 	char const		*name;			//!< Instance name.
 	dl_module_t const	*module;		//!< Module
 	void			*data;			//!< Module instance's parsed configuration.

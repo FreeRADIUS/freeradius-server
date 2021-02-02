@@ -100,7 +100,7 @@ fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
 bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
 
 int		fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
-					  CONF_ITEM *ci, fr_dict_attr_t const *packet_type,	
+					  CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
 					  char const *proto_name,
 					  char const **type_table, size_t type_table_len,
 					  dl_module_inst_t **type_submodule_by_code, uint32_t code_max);
@@ -117,6 +117,7 @@ typedef struct {
  *
  */
 typedef struct {
+	fr_rb_node_t		node;		//!< Entry into the tree of sections.
 	char const		*name;		//!< Name of the processing section, such as "recv" or "send"
 	char const		*name2;		//!< Second name, such as "Access-Request"
 	rlm_components_t	component;	//!< Sets the default list of actions for this section

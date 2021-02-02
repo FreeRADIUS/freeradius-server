@@ -43,6 +43,9 @@ typedef enum conf_type {
  *
  */
 struct cf_item {
+	fr_rb_node_t		ident1_node;	//!< Entry in the ident1 tree.
+	fr_rb_node_t		ident2_node;	//!< Entry in the ident2 tree.
+
 	CONF_ITEM_TYPE		type;		//!< Whether the config item is a config_pair, conf_section or cf_data.
 
 	CONF_ITEM		*next;		//!< Sibling.
@@ -115,6 +118,7 @@ struct cf_data {
 };
 
 typedef struct {
+	fr_rb_node_t		node;
 	char const		*filename;	//!< name of the file
 	CONF_SECTION		*cs;		//!< CONF_SECTION associated with the file
 	struct stat		buf;		//!< stat about the file

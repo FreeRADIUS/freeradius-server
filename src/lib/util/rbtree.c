@@ -138,9 +138,27 @@ static int _tree_free(rbtree_t *tree)
 /** Create a new RED-BLACK tree
  *
  * @note Due to the node memory being allocated from a different pool to the main
+ *
+ * @param[in] ctx		to allocate the tree in.
+ *				Only the tree is allocated in this context, the memory
+ *				for the #fr_rb_node_t is allocated as part of the data
+ *				being inserted into the tree.
+ * @param[in] offset		offsetof the #fr_rb_node_t field in the data being inserted.
+ * @param[in] type		Talloc type of structures being inserted, may be NULL.
+ * @param[in] compare		Comparator function for ordering data in the tree.
+ * @param[in] node_free		Free function to call whenever data is deleted or replaced.
+ * @param[in] flags		A bitfield of flags.
+ *				- RBTREE_FLAG_REPLACE - replace nodes if a duplicate is found.
+ *				- RBTREE_FLAG_LOCK - use a mutex to prevent concurrent access
+ *				to the tree.
+ * @return
+ *      - A new tree on success.
+ *	- NULL on failure.
  */
-rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx, fr_rb_cmp_t compare,
-			 char const *type, fr_rb_free_t node_free, int flags)
+rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx,
+			size_t offset, char const *type,
+			fr_rb_cmp_t compare, fr_rb_free_t node_free,
+			int flags)
 {
 	rbtree_t *tree;
 
@@ -152,7 +170,7 @@ rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx, fr_rb_cmp_t compare,
 		.magic = RBTREE_MAGIC,
 #endif
 		.root = NIL,
-//		.offset = offset,
+		.offset = offset,
 		.type = type,
 		.compare = compare,
 		.replace = ((flags & RBTREE_FLAG_REPLACE) != 0),
@@ -162,8 +180,6 @@ rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx, fr_rb_cmp_t compare,
 	if (tree->lock) pthread_mutex_init(&tree->mutex, NULL);
 
 	talloc_set_destructor(tree, _tree_free);
-	tree->free = node_free;
-	tree->type = type;
 
 	return tree;
 }

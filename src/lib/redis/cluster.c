@@ -200,6 +200,8 @@ typedef struct {
  * Passed as opaque data to pools which open connection to nodes.
  */
 struct fr_redis_cluster_node_s {
+	fr_rb_node_t		rbnode;			//!< Entry into the tree of redis nodes.
+
 	char			name[INET6_ADDRSTRLEN];	//!< Buffer to hold IP string.
 							//!< text for debug messages.
 	uint8_t			id;			//!< Node ID (index in node array).
@@ -2355,7 +2357,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	cluster->node = talloc_zero_array(cluster, fr_redis_cluster_node_t, conf->max_nodes + 1);
 	if (!cluster->node) goto oom;
 
-	cluster->used_nodes = rbtree_alloc(cluster, _cluster_node_cmp, NULL, 0);
+	cluster->used_nodes = rbtree_alloc(cluster, fr_redis_cluster_node_t, rbnode, _cluster_node_cmp, NULL, 0);
 	if (!cluster->used_nodes) goto oom;
 
 	cluster->free_nodes = fr_fifo_create(cluster, conf->max_nodes, NULL);

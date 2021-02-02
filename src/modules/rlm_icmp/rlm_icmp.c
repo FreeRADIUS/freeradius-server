@@ -62,6 +62,7 @@ typedef struct {
 } rlm_icmp_thread_t;
 
 typedef struct {
+	fr_rb_node_t	node;			//!< Entry in the outstanding list of echo requests.
 	bool		replied;		//!< do we have a reply?
 	fr_value_box_t	*ip;			//!< the IP we're pinging
 	uint32_t	counter;	       	//!< for pinging the same IP multiple times
@@ -429,7 +430,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
 	fr_ipaddr_t ipaddr, *src;
 
-	MEM(t->tree = rbtree_alloc(t, echo_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(t->tree = rbtree_alloc(t, rlm_icmp_echo_t, node, echo_cmp, NULL, RBTREE_FLAG_NONE));
 	t->inst = inst;
 	t->el = el;
 

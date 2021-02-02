@@ -655,14 +655,16 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	dl_search_path_prepend(dl_module_loader->dl_loader, lib_dir);
 
 	dl_module_loader->inst_data_tree = rbtree_talloc_alloc(dl_module_loader,
-							        dl_module_inst_data_cmp, dl_module_inst_t, NULL, 0);
+							       dl_module_inst_t, node,
+							       dl_module_inst_data_cmp, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {
 		ERROR("Failed initialising dl->inst_data_tree");
 		goto error;
 	}
 
 	dl_module_loader->module_tree = rbtree_talloc_alloc(dl_module_loader,
-							     dl_module_cmp, dl_module_t, NULL, 0);
+							    dl_module_t, node,
+							    dl_module_cmp, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {
 		ERROR("Failed initialising dl->module_tree");
 		goto error;

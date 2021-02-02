@@ -23,6 +23,8 @@
  */
 typedef struct fr_listen fr_listen_t;
 struct fr_listen {
+	fr_rb_node_t		virtual_server_node;	//!< Entry into the virtual server's tree of listeners.
+
 	int			fd;			//!< file descriptor for this socket - set by open
 	char const		*name;			//!< printable name for this socket - set by open
 
@@ -30,7 +32,7 @@ struct fr_listen {
 	void const    		*app_io_instance;	//!< I/O path configuration context.
 	void			*thread_instance;	//!< thread / socket context
 
-	fr_socket_t	*app_io_addr;		//!< for tracking duplicate sockets
+	fr_socket_t		*app_io_addr;		//!< for tracking duplicate sockets
 
 	fr_app_t const		*app;
 	void const		*app_instance;

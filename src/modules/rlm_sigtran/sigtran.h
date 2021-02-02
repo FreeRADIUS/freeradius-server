@@ -73,6 +73,8 @@ typedef enum {
  * and won't mind extra memory being allocated from this ctx.
  */
 typedef struct sigtran_transaction {
+	fr_rb_node_t			node;				//!< Entry in the tree of transactions.
+
 	struct {
 		sigtran_request_type_t		type;			//!< Type of request
 		void				*data;			//!< Data for the request.

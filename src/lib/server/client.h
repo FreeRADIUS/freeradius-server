@@ -75,6 +75,8 @@ typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
  *
  */
 struct rad_client {
+	fr_rb_node_t		node;			//!< Entry in the client tree.
+
 	fr_ipaddr_t		ipaddr;			//!< IPv4/IPv6 address of the host.
 	fr_ipaddr_t		src_ipaddr;		//!< IPv4/IPv6 address to send responses
 							//!< from (family must match ipaddr).

@@ -52,6 +52,7 @@ static pthread_mutex_t		*trigger_mutex;
  *
  */
 typedef struct {
+	fr_rb_node_t	node;		//!< Entry in the trigger last fired tree.
 	CONF_ITEM	*ci;		//!< Config item this rate limit counter is associated with.
 	time_t		last_fired;	//!< When this trigger last fired.
 } trigger_last_fired_t;
@@ -157,8 +158,8 @@ int trigger_exec_init(CONF_SECTION const *cs)
 	}
 
 	MEM(trigger_last_fired_tree = rbtree_talloc_alloc(talloc_null_ctx(),
-							   _trigger_last_fired_cmp, trigger_last_fired_t,
-							   _trigger_last_fired_free, 0));
+							  trigger_last_fired_t, node,
+							  _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
 
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
 	pthread_mutex_init(trigger_mutex, 0);

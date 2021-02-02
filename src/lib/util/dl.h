@@ -31,6 +31,7 @@ RCSIDH(dl_h, "$Id$")
 #  include <dlfcn.h>
 #endif
 #include <freeradius-devel/util/version.h>
+#include <freeradius-devel/util/rbtree.h>
 
 #include <talloc.h>
 #include <stdbool.h>
@@ -54,6 +55,8 @@ typedef struct dl_loader_s dl_loader_t;
  * Contains module's dlhandle, and the functions it exports.
  */
 typedef struct dl_s {
+	fr_rb_node_t		node;		//!< Entry in the rbtree module handles.
+
 	char const		*name;		//!< Name of the module e.g. sql.
 	void			*handle;	//!< Handle returned by dlopen.
 	dl_loader_t		*loader;	//!< Loader that owns this dl.

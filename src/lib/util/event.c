@@ -242,7 +242,7 @@ static fr_event_func_map_t vnode_func_map[] = {
 };
 
 static fr_table_num_sorted_t const fr_event_fd_type_table[] = {
-	{ L("directory"),		FR_EVENT_FD_DIRECTORY },
+	{ L("directory"),	FR_EVENT_FD_DIRECTORY },
 	{ L("file"),		FR_EVENT_FD_FILE },
 	{ L("pcap"),		FR_EVENT_FD_PCAP },
 	{ L("socket"),		FR_EVENT_FD_SOCKET }
@@ -253,6 +253,10 @@ static size_t fr_event_fd_type_table_len = NUM_ELEMENTS(fr_event_fd_type_table);
  *
  */
 struct fr_event_fd {
+	fr_rb_node_t		node;			//!< Entry in the tree of file descriptor handles.
+							///< this should really go away and we should pass around
+							///< handles directly.
+
 	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	fr_event_filter_t	filter;
 	int			fd;			//!< File descriptor we're listening for events on.
@@ -2281,7 +2285,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		return NULL;
 	}
 
-	el->fds = rbtree_talloc_alloc(el, fr_event_fd_cmp, fr_event_fd_t, NULL, 0);
+	el->fds = rbtree_talloc_alloc(el, fr_event_fd_t, node, fr_event_fd_cmp, NULL, 0);
 	if (!el->fds) {
 		fr_strerror_const("Failed allocating FD tree");
 		goto error;
@@ -2361,6 +2365,7 @@ static const char *decade_names[18] = {
 };
 
 typedef struct {
+	fr_rb_node_t	node;
 	char const	*file;
 	int		line;
 	uint32_t	count;
@@ -2409,7 +2414,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-		locations[i] = rbtree_alloc(tmp_ctx, event_timer_location_cmp, NULL, 0);
+		locations[i] = rbtree_alloc(tmp_ctx, fr_event_counter_t, node, event_timer_location_cmp, NULL, 0);
 		if (!locations[i]) goto oom;
 	}
 

@@ -35,19 +35,20 @@ typedef enum {
 
 #define SECURID_STATE_LEN 32
 typedef struct {
-	struct _securid_session_t *prev, *next;
-	SDI_HANDLE		  sdiHandle;
-	SECURID_SESSION_STATE	  securidSessionState;
+	struct _securid_session_t	*prev, *next;
+	fr_rb_node_t			node;
+	SDI_HANDLE		 	 sdiHandle;
+	SECURID_SESSION_STATE	  	securidSessionState;
 
-	char			  state[SECURID_STATE_LEN];
+	char			  	state[SECURID_STATE_LEN];
 
-	fr_ipaddr_t		  src_ipaddr;
-	time_t			  timestamp;
-	unsigned int		  session_id;
-	uint32_t		  trips;
+	fr_ipaddr_t			src_ipaddr;
+	time_t				timestamp;
+	unsigned int			session_id;
+	uint32_t			trips;
 
-	char			  *pin;	     /* previous pin if user entered it during NEW-PIN mode process */
-	char			  *identity; /* save user's identity name for future use */
+	char				*pin;	     /* previous pin if user entered it during NEW-PIN mode process */
+	char				 *identity; /* save user's identity name for future use */
 
 } SECURID_SESSION;
 

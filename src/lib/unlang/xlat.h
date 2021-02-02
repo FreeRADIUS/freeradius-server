@@ -57,6 +57,8 @@ typedef struct xlat_exp xlat_exp_t;
  *
  */
 struct xlat_inst {
+	fr_rb_node_t		inst_node;	//!< Entry in rbtree of thread instances.
+
 	xlat_exp_t const	*node;		//!< Node this data relates to.
 	void			*data;		//!< xlat node specific instance data.
 };
@@ -65,6 +67,8 @@ struct xlat_inst {
  *
  */
 struct xlat_thread_inst {
+	fr_rb_node_t		inst_node;	//!< Entry in rbtree of thread instances.
+
 	xlat_exp_t const	*node;		//!< Node this data relates to.
  	void			*data;		//!< Thread specific instance data.
 

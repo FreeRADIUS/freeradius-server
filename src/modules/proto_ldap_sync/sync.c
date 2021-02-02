@@ -37,7 +37,9 @@ USES_APPLE_DEPRECATED_API
 #include "sync.h"
 
 struct sync_state_s {
-	fr_ldap_connection_t 			*conn;
+	fr_rb_node_t			node;			//!< Entry in the tree of nodes.
+
+	fr_ldap_connection_t 		*conn;
 
 	sync_config_t const		*config;
 
@@ -992,7 +994,7 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 	 *	these are specific to the connection.
 	 */
 	if (!conn->uctx) {
-		MEM(tree = rbtree_talloc_alloc(conn, _sync_cmp, sync_state_t, NULL, RBTREE_FLAG_NONE));
+		MEM(tree = rbtree_talloc_alloc(conn, sync_state_t, node, _sync_cmp, NULL, RBTREE_FLAG_NONE));
 		conn->uctx = tree;
 	} else {
 		tree = talloc_get_type_abort(conn->uctx, rbtree_t);

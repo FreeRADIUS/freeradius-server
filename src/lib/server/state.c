@@ -60,7 +60,8 @@ RCSID("$Id$")
  *
  */
 typedef struct {
-	uint64_t		id;				//!< State number within state tree.
+	uint64_t		id;				//!< State number within state heap.
+	fr_rb_node_t		node;				//!< Entry in the state rbtree.
 	union {
 		/** Server ID components
 		 *
@@ -233,7 +234,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 	 *	are freed before it's destroyed.  Hence
 	 *	it being parented from the NULL ctx.
 	 */
-	state->tree = rbtree_talloc_alloc(NULL, state_entry_cmp, fr_state_entry_t, NULL, 0);
+	state->tree = rbtree_talloc_alloc(NULL, fr_state_entry_t, node, state_entry_cmp, NULL, 0);
 	if (!state->tree) {
 		talloc_free(state);
 		return NULL;

@@ -158,8 +158,8 @@ retry:
 	 *	If needed, allocate a subtree.
 	 */
 	if (!tt->subtree[tt->next_id]) {
-		MEM(tt->subtree[tt->next_id] = rbtree_talloc_alloc(tt, te_cmp, radius_track_entry_t,
-								    NULL, RBTREE_FLAG_NONE));
+		MEM(tt->subtree[tt->next_id] = rbtree_talloc_alloc(tt, radius_track_entry_t, node,
+								   te_cmp, NULL, RBTREE_FLAG_NONE));
 	}
 
 	/*

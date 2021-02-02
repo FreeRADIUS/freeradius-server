@@ -42,6 +42,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 
 typedef struct {
+	fr_rb_node_t		node;			//!< Entry in the namespace tree.
 	char const		*namespace;		//!< Namespace function is registered to.
 	fr_dict_t const		*dict;			//!< dictionary to use
 	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
@@ -881,8 +882,9 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 		 *	virtual_server_root.
 		 */
 		MEM(vns_tree = rbtree_talloc_alloc(NULL,
-						    _virtual_namespace_cmp, fr_virtual_namespace_t,
-						    _virtual_namespace_free, RBTREE_FLAG_REPLACE));
+						   fr_virtual_namespace_t, node,
+						   _virtual_namespace_cmp,
+						   _virtual_namespace_free, RBTREE_FLAG_REPLACE));
 
 		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
 			ERROR("Failed adding namespace tree data to config");
@@ -1007,8 +1009,10 @@ int virtual_servers_init(CONF_SECTION *config)
 		return -1;
 	}
 
-	MEM(listen_addr_root = rbtree_alloc(NULL, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(server_section_name_tree = rbtree_alloc(NULL, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(listen_addr_root = rbtree_alloc(NULL, fr_listen_t, virtual_server_node,
+					    listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(server_section_name_tree = rbtree_alloc(NULL, virtual_server_compile_t, node,
+						    server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
 
 	return 0;
 }

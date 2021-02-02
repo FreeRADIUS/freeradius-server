@@ -68,6 +68,8 @@ typedef enum bfd_auth_type_t {
 #define BFD_AUTH_INVALID (BFD_AUTH_MET_KEYED_SHA1 + 1)
 
 typedef struct {
+	fr_rb_node_t	node;		//!< Entry in the tree of sessions.
+
 	int		number;
 
 	fr_socket_t socket;
@@ -1710,7 +1712,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
-	sock->session_tree = rbtree_talloc_alloc(sock, bfd_session_cmp, bfd_state_t, bfd_session_free, 0);
+	sock->session_tree = rbtree_talloc_alloc(sock, bfd_state_t, node, bfd_session_cmp, bfd_session_free, 0);
 	if (!sock->session_tree) {
 		ERROR("Failed creating session tree!");
 		return -1;

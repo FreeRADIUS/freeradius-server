@@ -69,6 +69,7 @@ typedef struct {
 
 typedef struct rlm_csv_entry_s rlm_csv_entry_t;
 struct rlm_csv_entry_s {
+	fr_rb_node_t node;
 	rlm_csv_entry_t *next;
 	fr_value_box_t *key;
 	char *data[];
@@ -570,7 +571,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	    (inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
 		MEM(inst->trie = fr_trie_alloc(inst));
 	} else {
-		MEM(inst->tree = rbtree_talloc_alloc(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0));
+		MEM(inst->tree = rbtree_talloc_alloc(inst, rlm_csv_entry_t, node, csv_entry_cmp, NULL, 0));
 	}
 
 	if ((*inst->index_field_name == ',') || (*inst->index_field_name == *inst->delimiter)) {

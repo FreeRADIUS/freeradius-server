@@ -206,6 +206,7 @@ struct request_s {
 
 	fr_event_timer_t const	*ev;		//!< Event in event loop tied to this request.
 
+	fr_rb_node_t		dedup_node;	//!< entry in the deduplication tree.
 	int32_t			runnable_id;	//!< entry in the queue / heap of runnable packets
 	int32_t			time_order_id;	//!< entry in the queue / heap of time ordered packets
 

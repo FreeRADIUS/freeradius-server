@@ -88,8 +88,9 @@ typedef void (*fr_rb_free_t)(void *data);
  * @param[in] _ctx		to tie tree lifetime to.
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
+ * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
+ * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
  * @param[in] _cmp		Comparator used to compare nodes.
- * @param[in] _talloc_type	of elements.
  * @param[in] _node_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
  * @param[in] _flags		To modify tree behaviour.
@@ -97,14 +98,18 @@ typedef void (*fr_rb_free_t)(void *data);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_talloc_alloc(_ctx, _cmp, _talloc_type, _node_free, _flags) \
-		_rbtree_alloc(_ctx, _cmp, #_talloc_type, _node_free, _flags)
+#define		rbtree_talloc_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
+		_Generic((((_type *)0)->_field), \
+			fr_rb_node_t: _rbtree_alloc(_ctx, offsetof(_type, _field), #_type, _cmp, _node_free, _flags) \
+		)
 
 /** Creates a red black tree
  *
  * @param[in] _ctx		to tie tree lifetime to.
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
+ * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
+ * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
  * @param[in] _cmp		Comparator used to compare nodes.
  * @param[in] _node_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
@@ -113,11 +118,13 @@ typedef void (*fr_rb_free_t)(void *data);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_alloc(_ctx, _cmp, _node_free, _flags) \
-		_rbtree_alloc(_ctx, _cmp, NULL, _node_free, _flags)
+#define		rbtree_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
+		_Generic((((_type *)0)->_field), \
+			fr_rb_node_t: _rbtree_alloc(_ctx, offsetof(_type, _field), NULL, _cmp, _node_free, _flags) \
+		)
 
-rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, fr_rb_cmp_t compare,
-			       char const *type, fr_rb_free_t node_free, int flags);
+rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
+			       fr_rb_cmp_t compare, fr_rb_free_t node_free, int flags);
 
 void		rbtree_node_talloc_free(void *data);
 

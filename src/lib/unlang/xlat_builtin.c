@@ -3262,8 +3262,6 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-
-
 /** Global initialisation for xlat
  *
  * @note Free memory with #xlat_free
@@ -3289,7 +3287,7 @@ int xlat_init(void)
 	/*
 	 *	Create the function tree
 	 */
-	xlat_root = rbtree_talloc_alloc(NULL, xlat_cmp, xlat_t, _xlat_func_tree_free, RBTREE_FLAG_REPLACE);
+	xlat_root = rbtree_talloc_alloc(NULL, xlat_t, node, xlat_cmp, _xlat_func_tree_free, RBTREE_FLAG_REPLACE);
 	if (!xlat_root) {
 		ERROR("%s: Failed to create tree", __FUNCTION__);
 		return -1;

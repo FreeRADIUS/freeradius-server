@@ -36,6 +36,7 @@ extern "C" {
 /** Map processor registration
  */
 struct map_proc {
+	fr_rb_node_t		node;			//!< Entry in the map processor tree.
 	void			*mod_inst;		//!< Module instance.
 	char			name[FR_MAX_STRING_LEN];	//!< Name of the map function.
 	int			length;			//!< Length of name.

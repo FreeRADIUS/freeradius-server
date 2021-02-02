@@ -39,6 +39,7 @@ extern "C" {
 typedef struct fr_io_client_s fr_io_client_t;
 
 typedef struct {
+	fr_rb_node_t			node;		//!< rbtree node in the tracking tree.
 	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
 	fr_time_t			expires;	//!< when this packet expires

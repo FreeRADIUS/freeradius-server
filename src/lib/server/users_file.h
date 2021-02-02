@@ -36,6 +36,8 @@ extern "C" {
 #include <talloc.h>
 
 typedef struct pair_list {
+	fr_rb_node_t		node;		//!< Entry into the tree of pair lists.
+
 	char const		*name;
 	map_t			*check;
 	map_t			*reply;

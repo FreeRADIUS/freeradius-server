@@ -59,6 +59,7 @@ typedef struct {
 } rc_stats_t;
 
 typedef struct {
+	fr_rb_node_t		node;		//!< rbtree node data.
 	char const		*packets;	//!< The file containing the request packet
 	char const		*filters;	//!< The file containing the definition of the
 						//!< packet we want to match.

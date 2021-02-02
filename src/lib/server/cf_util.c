@@ -382,8 +382,10 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	/*
 	 *	New child, add child trees.
 	 */
-	if (!parent->ident1) parent->ident1 = rbtree_alloc(parent, _cf_ident1_cmp, NULL, RBTREE_FLAG_NONE);
-	if (!parent->ident2) parent->ident2 = rbtree_alloc(parent, _cf_ident2_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!parent->ident1) parent->ident1 = rbtree_alloc(parent, CONF_ITEM, ident1_node,
+							   _cf_ident1_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!parent->ident2) parent->ident2 = rbtree_alloc(parent, CONF_ITEM, ident2_node,
+							   _cf_ident2_cmp, NULL, RBTREE_FLAG_NONE);
 
 	fr_cursor_init(&to_merge, &child);
 

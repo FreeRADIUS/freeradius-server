@@ -187,6 +187,9 @@ struct module_s {
  * data structures.
  */
 struct module_instance_s {
+	fr_rb_node_t			name_node;	//!< Entry in the name tree.
+	fr_rb_node_t			data_node;	//!< Entry in the data tree.
+
 	char const			*name;		//!< Instance name e.g. user_database.
 
 	dl_module_inst_t		*dl_inst;	//!< Structure containing the module's instance data,

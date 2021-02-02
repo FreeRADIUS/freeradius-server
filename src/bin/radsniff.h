@@ -213,7 +213,8 @@ typedef struct {
 							//!< ignore stats about packet loss.
 
 
-
+	fr_rb_node_t		request_node;
+	fr_rb_node_t		link_node;
 	bool			in_request_tree;	//!< Whether the request is currently in the request tree.
 	bool			in_link_tree;		//!< Whether the request is currently in the linked tree.
 } rs_request_t;
