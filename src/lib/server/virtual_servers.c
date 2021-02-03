@@ -1544,45 +1544,6 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 	return 0;
 }
 
-
-/** Find the component for a section
- *
- */
-int virtual_server_section_component(rlm_components_t *component, char const *name1, char const *name2)
-{
-	virtual_server_compile_t *entry;
-
-	fr_assert(server_section_name_tree != NULL);
-
-	/*
-	 *	Look up the specific name first.  That way we can
-	 *	define both "accounting on", and "accounting *".
-	 */
-	if (name2 != CF_IDENT_ANY) {
-		entry = rbtree_finddata(server_section_name_tree,
-					&(virtual_server_compile_t) {
-						.name = name1,
-						.name2 = name2,
-					});
-		if (entry) goto done;
-	}
-
-	/*
-	 *	Then look up the wildcard, if we didn't find any matching name2.
-	 */
-	entry = rbtree_finddata(server_section_name_tree,
-				&(virtual_server_compile_t) {
-					.name = name1,
-					.name2 = CF_IDENT_ANY,
-				});
-	if (!entry) return -1;
-
-done:
-	*component = entry->component;
-
-	return 0;
-}
-
 /** Find the component for a section
  *
  */
