@@ -164,7 +164,7 @@ static int init_adhoc_attrs(fr_dict_adhoc_attr_t *dict_adhoc)
 
 			for (v = ctx->values;
 			     v->key != NULL;
-			     v++) fr_dict_attr_enum_add_name(fr_dict_attr_unconst(attr), v->key, &v->val, false, false);
+			     v++) fr_dict_enum_add_name(fr_dict_attr_unconst(attr), v->key, &v->val, false, false);
 		}
 
 		*ctx->da = attr;

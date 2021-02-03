@@ -1135,7 +1135,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		}
 	}
 
-	if (fr_dict_attr_enum_add_name(da, argv[1], &value, false, true) < 0) {
+	if (fr_dict_enum_add_name(da, argv[1], &value, false, true) < 0) {
 		fr_value_box_clear(&value);
 		return -1;
 	}

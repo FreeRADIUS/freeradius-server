@@ -181,7 +181,7 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
 		return -1;
 	}
 
-	ret = fr_dict_attr_enum_add_name(da, fixup->name, &value, false, false);
+	ret = fr_dict_enum_add_name(da, fixup->name, &value, false, false);
 	fr_value_box_clear(&value);
 
 	if (ret < 0) return -1;

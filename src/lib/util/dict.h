@@ -304,10 +304,10 @@ extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
 
-int			fr_dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
+int			fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 						   fr_value_box_t const *value, bool coerce, bool replace);
 
-int			fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_HINT(nonnull);
+int			fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_HINT(nonnull);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 /** @} */

@@ -1438,7 +1438,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
+int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 			       fr_value_box_t const *value,
 			       bool coerce, bool takes_precedence)
 {
@@ -1448,7 +1448,7 @@ int fr_dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 /** Add an name to an integer attribute hashing the name for the integer value
  *
  */
-int fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name)
+int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 {
 	fr_value_box_t	v = {
 				.type = da->type
@@ -1507,7 +1507,7 @@ int fr_dict_attr_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 	 */
 	if (!fr_dict_enum_by_value(da, &v)) {
 	add:
-		return fr_dict_attr_enum_add_name(da, name, &v, false, false);
+		return fr_dict_enum_add_name(da, name, &v, false, false);
 	}
 
 	for (;;) {
