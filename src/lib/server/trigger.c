@@ -377,7 +377,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	/*
 	 *	radius_exec_program always needs a request.
 	 */
-	fake = request_alloc(NULL, NULL);
+	fake = request_alloc(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
 	memcpy(&fake->server_cs, &subcs, sizeof(subcs)); /* completely wrong, but we need to use _something_ */
 
 	/*
@@ -406,17 +406,8 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	fr_pair_list_init(&ctx->vps);
 	ctx->name = talloc_strdup(ctx, value);
 
-	if (request) {
-		if (!fr_pair_list_empty(&request->request_pairs)) {
-			(void) fr_pair_list_copy(ctx, &ctx->vps, &request->request_pairs);
-		}
-
-		fake->log = request->log;
-	} else {
-		fake->log.dst = talloc_zero(fake, log_dst_t);
-		fake->log.dst->func = vlog_request;
-		fake->log.dst->uctx = &default_log;
-		fake->log.lvl = fr_debug_lvl;
+	if (request && !fr_pair_list_empty(&request->request_pairs)) {
+		(void) fr_pair_list_copy(ctx, &ctx->vps, &request->request_pairs);
 	}
 
 	slen = xlat_tokenize_argv(ctx, &ctx->xlat, NULL,
@@ -435,6 +426,13 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 		talloc_free(text);
 		return -1;
 	}
+
+
+	/*
+	 *	Ensure the trigger request is no longer associated
+	 *	with the parent.
+	 */
+	request_detach(fake);
 
 	/*
 	 *	Run the trigger asynchronously.
