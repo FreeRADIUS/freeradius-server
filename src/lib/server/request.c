@@ -97,13 +97,14 @@ static inline void CC_HINT(always_inline) request_log_init_child(request_t *chil
 
 static inline void CC_HINT(always_inline) request_log_init_detachable(request_t *child, request_t const *parent)
 {
+	request_log_init_child(child, parent);
+
 	/*
 	 *	Ensure that we use our own version of the logging
 	 *	information, and not the original request one.
 	 */
 	child->log.dst = talloc_zero(child, log_dst_t);
 	memcpy(child->log.dst, parent->log.dst, sizeof(*child->log.dst));
-	child->log.lvl = parent->log.lvl;
 }
 
 static inline CC_HINT(always_inline) int request_detachable_init(request_t *child, request_t *parent)
