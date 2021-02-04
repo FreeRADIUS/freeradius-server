@@ -432,7 +432,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	 *	Ensure the trigger request is no longer associated
 	 *	with the parent.
 	 */
-	request_detach(fake);
+	if (request) request_detach(fake);
 
 	/*
 	 *	Run the trigger asynchronously.
