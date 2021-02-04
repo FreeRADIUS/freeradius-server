@@ -85,7 +85,37 @@ VALUE	Module-Return-Code		notfound		6
 VALUE	Module-Return-Code		noop			7
 VALUE	Module-Return-Code		updated			8
 
-ATTRIBUTE	Request-Processing-Stage		25	string virtual
+#
+#	Cannonical definition of all available module methods
+#
+#	This is defined centrally to ensure that typos are
+#	caught early and that methods are reused.
+#
+#	Module may define additional methods in their "load"
+#	callbacks, but it is not recommended except for
+#	proprietary or extremely specialised modules.
+#
+ATTRIBUTE	Module-Method				25	integer
+
+# General packet processing
+VALUE	Module-Method			authorize		1
+VALUE	Module-Method			authenticate		2
+VALUE	Module-Method			preacct			3
+VALUE	Module-Method			accounting		4
+
+# Resource allocation
+VALUE	Module-Method			alloc			10
+VALUE	Module-Method			renew			11
+VALUE	Module-Method			release			12
+VALUE	Module-Method			bulk-release		13
+
+# Storage modules
+VALUE	Module-Method			load			21
+VALUE	Module-Method			store			22
+VALUE	Module-Method			clear			23
+VALUE	Module-Method			refresh			24
+
+ATTRIBUTE	Request-Processing-Stage		26	string virtual
 
 #
 #	Range:	50 - 99
