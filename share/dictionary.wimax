@@ -590,7 +590,15 @@ ATTRIBUTE	WiMAX-Visited-PLMN-ID			146	octets
 
 ATTRIBUTE	WiMAX-RAT-Type				150	integer
 
-ATTRIBUTE	WiMAX-Cancellation-Type		155	byte
+ATTRIBUTE	WiMAX-Terminal-Information		151	tlv
+ATTRIBUTE	WiMAX-IMEI				151.2	string
+ATTRIBUTE	WiMAX-Software-Version			151.2	string
+
+ATTRIBUTE	WiMAX-Subscription-Data			154	tlv
+ATTRIBUTE	WiMAX-UE-AMBR-DL			154.2	integer
+ATTRIBUTE	WiMAX-UE-AMBR-UL			154.3	integer
+
+ATTRIBUTE	WiMAX-Cancellation-Type			155	byte
 
 VALUE	WiMAX-Cancellation-Type	MME_UPDATE_PROCEDURE		0
 VALUE	WiMAX-Cancellation-Type	SUBSCRIPTION_WITHDRAWAL		2
