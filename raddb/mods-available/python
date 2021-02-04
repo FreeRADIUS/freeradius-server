@@ -66,7 +66,7 @@ python {
 	#  The search path for Python modules.  It must include the path to your
 	#  Python module.
 	#
-#	python_path = ${modconfdir}/${.:name}
+	python_path = ${modconfdir}/${.:name}
 
 	#
 	#  python_path_include_conf_dir::
@@ -104,7 +104,7 @@ python {
 	#
 #	func_detach = detach
 
-#	func_authorize = authorize
+	func_authorize = authorize
 #	func_authenticate = authenticate
 #	func_preacct = preacct
 #	func_accounting = accounting

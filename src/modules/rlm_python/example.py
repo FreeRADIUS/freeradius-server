@@ -12,12 +12,13 @@ def instantiate(p):
   print(p)
   # return 0 for success or -1 for failure
 
-def authorize(p):
+def authorize(request):
   print("*** authorize ***")
+  
+  freeradius.log('*** log call in authorize ***')
   print("")
-  freeradius.log(freeradius.L_INFO, '*** log call in authorize ***')
-  print("")
-  print(p)
+  print(request)
+  print(request.pairs.request)
   print("")
   print(freeradius.config)
   print("")
@@ -30,7 +31,7 @@ def preacct(p):
 
 def accounting(p):
   print("*** accounting ***")
-  freeradius.log(freeradius.L_INFO, '*** log call in accounting (0) ***')
+  freeradius.log('*** log call in accounting (0) ***')
   print("")
   print(p)
   return freeradius.RLM_MODULE_OK
