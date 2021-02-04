@@ -525,6 +525,11 @@ static void test_dbuff_out(void)
 	TEST_CHECK(fr_dbuff_out_memcpy(&dbuff2, &dbuff1, 4) == 4);
 	TEST_CHECK(memcmp(fr_dbuff_start(&dbuff2), fr_dbuff_start(&dbuff1), 2) == 0 &&
 		   memcmp(fr_dbuff_start(&dbuff2) + 2, fr_dbuff_start(&dbuff1) + 3, 4) == 0);
+	memset(buff3, 0, sizeof(buff3));
+	fr_dbuff_set_to_start(&marker1);
+	TEST_CHECK(fr_dbuff_out_memcpy(buff3, &marker1, 4) == 4);
+	TEST_CHECK(memcmp(buff3, buff1, 4) == 0);
+	TEST_CHECK(fr_dbuff_current(&marker1) - fr_dbuff_start(&dbuff1) == 4);
 }
 
 TEST_LIST = {

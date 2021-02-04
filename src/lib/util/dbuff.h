@@ -1507,7 +1507,7 @@ static inline ssize_t _fr_dbuff_out_memcpy_dbuff(uint8_t **out_p, fr_dbuff_t *ou
  */
 #define fr_dbuff_out_memcpy(_out, _in, _outlen) \
 	_Generic((_out), \
-		 uint8_t *		: _fr_dbuff_out_memcpy((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), _in, _outlen), \
+		 uint8_t *		: _fr_dbuff_out_memcpy((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen), \
 		 fr_dbuff_t *		: _fr_dbuff_out_memcpy_dbuff(_fr_dbuff_current_ptr((fr_dbuff_t *)_out), fr_dbuff_ptr((fr_dbuff_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen), \
 		 fr_dbuff_marker_t *	: _fr_dbuff_out_memcpy_dbuff(_fr_dbuff_current_ptr((fr_dbuff_marker_t *)_out), fr_dbuff_ptr((fr_dbuff_marker_t *)(_out)), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), _outlen) \
 	)
