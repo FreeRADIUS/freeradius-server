@@ -877,108 +877,97 @@ static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 
 	now = start;
 
-redo:
-	request = fr_heap_pop(worker->runnable);
-	if (!request) return;
+	while ((request = fr_heap_pop(worker->runnable))) {
+		REQUEST_VERIFY(request);
+		fr_assert(request->runnable_id < 0);
+		fr_time_tracking_resume(&request->async->tracking, now);
 
-	REQUEST_VERIFY(request);
-	fr_assert(request->runnable_id < 0);
-	fr_time_tracking_resume(&request->async->tracking, now);
+		fr_assert(request->parent == NULL);
+		fr_assert(request->async->process != NULL);
+		fr_assert(request->async->fake || (request->async->listen != NULL));
 
-	fr_assert(request->parent == NULL);
-	fr_assert(request->async->process != NULL);
-	fr_assert(request->async->fake || (request->async->listen != NULL));
-	fr_assert(request->runnable_id < 0); /* removed from the runnable heap */
+		RDEBUG("Running request");
 
-	RDEBUG("Running request");
-
-	/*
-	 *	For real requests, if the channel is gone, just stop
-	 *	the request and free it.
-	 */
-	if (!request->async->fake && !fr_channel_active(request->async->channel)) {
-		worker_stop_request(worker, request, now);
-		talloc_free(request);
-		return;
-	}
-
-	/*
-	 *	Everything else, run the request.
-	 */
-	request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
-
-	/*
-	 *	Figure out what to do next.
-	 */
-	switch (final) {
-	case RLM_MODULE_HANDLED:
 		/*
-		 *	Done: don't send a reply.
+		 *	For real requests, if the channel is gone, just stop
+		 *	the request and free it.
 		 */
-		break;
+		if (!request->async->fake && !fr_channel_active(request->async->channel)) {
+			worker_stop_request(worker, request, now);
+			talloc_free(request);
+			return;
+		}
 
-	case RLM_MODULE_FAIL:
-	default:
 		/*
-		 *	Something went wrong.  It's done, but we don't send a reply.
+		 *	Everything else, run the request.
 		 */
-		break;
+		request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
 
-	case RLM_MODULE_YIELD:
+		/*
+		 *	Figure out what to do next.
+		 */
+		switch (final) {
+		case RLM_MODULE_HANDLED:
+			/*
+			 *	Done: don't send a reply.
+			 */
+			break;
+
+		case RLM_MODULE_FAIL:
+		default:
+			/*
+			 *	Something went wrong.  It's done, but we don't send a reply.
+			 */
+			break;
+
+		case RLM_MODULE_YIELD:
+			now = fr_time();
+			fr_time_tracking_yield(&request->async->tracking, now);
+			goto keep_going;
+
+		case RLM_MODULE_OK:
+			break;
+		}
+
+		/*
+		 *	If we're running a real request, then the final
+		 *	indentation MUST be zero.  Otherwise we skipped
+		 *	something!
+		 *
+		 *	Also check that the request is NOT marked as
+		 *	"yielded", but is in fact done.
+		 *
+		 *	@todo - check that the stack is at frame 0, otherwise
+		 *	more things have gone wrong.
+		 */
+		fr_assert_msg(request->parent || (request->log.unlang_indent == 0),
+			      "Request %s bad log indentation - expected 0 got %u", request->name, request->log.unlang_indent);
+		fr_assert_msg(!unlang_interpret_is_resumable(request),
+			      "Request %s is marked as yielded at end of processing", request->name);
+
+		RDEBUG("Done request");
+
+		/*
+		 *	Only real packets are in the dedup tree.  And even
+		 *	then, only some of the time.
+		 */
+		if (!request->async->fake && request->async->listen->track_duplicates) {
+			(void) rbtree_deletebydata(worker->dedup, request);
+		}
+
 		now = fr_time();
-		fr_time_tracking_yield(&request->async->tracking, now);
-		goto keep_going;
+		worker_send_reply(worker, request, 0, now);
+		now = fr_time();
 
-	case RLM_MODULE_OK:
+	keep_going:
 		/*
-		 *	Don't reply to internally generated request.
+		 *	If this request ran for less than 0.1ms, then go run
+		 *	another request.  This change means that the worker
+		 *	checks the event loop only 10K times per second, which
+		 *	should be good enough.
 		 */
-		if (request->parent || request->async->fake) break;
-		break;
+		if ((now - start) > (NSEC / 100000)) break;
 	}
-
-	/*
-	 *	If we're running a real request, then the final
-	 *	indentation MUST be zero.  Otherwise we skipped
-	 *	something!
-	 *
-	 *	Also check that the request is NOT marked as
-	 *	"yielded", but is in fact done.
-	 *
-	 *	@todo - check that the stack is at frame 0, otherwise
-	 *	more things have gone wrong.
-	 */
-	fr_assert_msg(request->parent || (request->log.unlang_indent == 0),
-		      "Request %s bad log indentation - expected 0 got %u", request->name, request->log.unlang_indent);
-	fr_assert_msg(!unlang_interpret_is_resumable(request),
-		      "Request %s is marked as yielded at end of processing", request->name);
-
-	RDEBUG("Done request");
-
-	/*
-	 *	Only real packets are in the dedup tree.  And even
-	 *	then, only some of the time.
-	 */
-	if (!request->async->fake && request->async->listen->track_duplicates) {
-		(void) rbtree_deletebydata(worker->dedup, request);
-	}
-
-	now = fr_time();
-	worker_send_reply(worker, request, 0, now);
-	now = fr_time();
-
-keep_going:
-	/*
-	 *	If this request ran for less than 0.1ms, then go run
-	 *	another request.  This change means that the worker
-	 *	checks the event loop only 10K times per second, which
-	 *	should be good enough.
-	 */
-	if ((now - start) > (NSEC / 100000)) {
-		return;
-	}
-
-	goto redo;
 }
 
 
