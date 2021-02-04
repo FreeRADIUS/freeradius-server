@@ -424,13 +424,13 @@ static void m3ua_start(void *data)
 	struct sctp_event_subscribe events;
 
 	sctp = socket(PF_INET, SOCK_STREAM, IPPROTO_SCTP);
-	if (!sctp) {
-		LOGP(DINP, LOGL_ERROR, "Failed to create socket.\n");
+	if (sctp < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to create socket: %s (%i).\n", strerror(errno), errno);
 		return fail_link(link);
 	}
 
 	if (setsockopt(sctp, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed setting reuseaddr: %s (%i).\n", strerror(errno), errno);
+		LOGP(DINP, LOGL_ERROR, "Failed setting reuseaddr on FD %u: %s (%i).\n", sctp, strerror(errno), errno);
 	error:
 		close(sctp);
 		return fail_link(link);
