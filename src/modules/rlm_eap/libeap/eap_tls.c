@@ -770,7 +770,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 		fr_tls_server_conf_t *conf;
 
 		conf = (fr_tls_server_conf_t *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
-		fr_assert(conf != NULL);
+		rad_assert(conf != NULL);
 
 		if (conf->tls13_send_zero) {
 			RDEBUG("TLS send Commitment Message");
