@@ -764,33 +764,23 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	data to be sent. So this is done always for EAP-TLS but
 	 *	notibly not for PEAP even on resumption.
 	 */
-	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION)) {
-		switch (handler->type) {
-		case PW_EAP_PEAP:
-			break;
+	if ((tls_session->info.version == TLS1_3_VERSION) &&
+	    (handler->type == PW_EAP_TLS) &&
+	    (tls_session->client_cert_ok || SSL_session_reused(tls_session->ssl))) {
+		fr_tls_server_conf_t *conf;
 
-		default:
-			if (!SSL_session_reused(tls_session->ssl)) break;
-			/* FALL-THROUGH */
+		conf = (fr_tls_server_conf_t *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
+		fr_assert(conf != NULL);
 
-		case PW_EAP_TLS:
+		if (conf->tls13_send_zero) {
 			RDEBUG("TLS send Commitment Message");
 			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
 			tls_handshake_send(request, tls_session);
-			break;
+		} else {
+			RDEBUG("TLS sending close_notify");
+			SSL_shutdown(tls_session->ssl);
 		}
 	}
-
-	/*
-	 *	@todo - check for EAP-TLS.  And if
-	 *	tls_session->client_cert_ok, OR the session was
-	 *	resumed, then call:
-	 *
-	 *		SSL_shutdown(tls_session->ssl);
-	 *
-	 *	We should do that OR the 0x00 commitment message.  But
-	 *	not both.
-	 */
 #endif
 
 	/*

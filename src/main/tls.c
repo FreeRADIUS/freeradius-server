@@ -1,3 +1,4 @@
+
 /*
  * tls.c
  *
@@ -1369,6 +1370,11 @@ static CONF_PARSER tls_server_config[] = {
 	  "1.0"
 #endif
 	},
+
+#ifdef TLS1_3_VERSION
+	{ "tls13_enable", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_enable_magic), NULL },
+	{ "tls13_send_zero", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_send_zero), NULL },
+#endif
 
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
@@ -3601,7 +3607,7 @@ post_ca:
 		 *	time.
 		 */
 #if defined(TLS1_3_VERSION)
-		max_version = TLS1_2_VERSION;
+		max_version = TLS1_3_VERSION;
 #elif defined(TLS1_2_VERSION)
 		max_version = TLS1_2_VERSION;
 #elif defined(TLS1_1_VERSION)
@@ -3642,17 +3648,22 @@ post_ca:
 	 *	The IETF is endlessly waffling about TLS 1.3.  We
 	 *	don't want to have people deploy the *wrong* thing, so
 	 *	we just prevent them from using TLS 1.3 at all.
+	 *
+	 *	UNLESS they set the magic / undocumented flag saying
+	 *	"please, let me use TLS 1.3".
 	 */
-	if (min_version >= TLS1_3_VERSION) {
-		ERROR("tls_min_version '%s' MUST NOT be 1.3, as the standards have not been finalized.",
-		      conf->tls_min_version);
-		return NULL;
-	}
+	if (!conf->tls13_enable_magic) {
+		if (min_version >= TLS1_3_VERSION) {
+			ERROR("tls_min_version '%s' MUST NOT be 1.3, as the standards have not been finalized.",
+			      conf->tls_min_version);
+			return NULL;
+		}
 
-	if (max_version >= TLS1_3_VERSION) {
-		ERROR("tls_max_version '%s' MUST NOT be 1.3, as the standards have not been finalized.",
-		      conf->tls_min_version);
-		return NULL;
+		if (max_version >= TLS1_3_VERSION) {
+			ERROR("tls_max_version '%s' MUST NOT be 1.3, as the standards have not been finalized.",
+			      conf->tls_min_version);
+			return NULL;
+		}
 	}
 #endif
 
