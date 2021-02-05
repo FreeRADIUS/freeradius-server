@@ -56,6 +56,12 @@ extern "C" {
 	['>'] = true, \
 	['~'] = true
 
+/** Value pair map list
+ *
+ * Specifically define a type for lists of map_t to aid type checking
+ */
+typedef fr_dlist_head_t fr_map_list_t;
+
 /** Value pair map
  *
  * Value pair maps contain a pair of templates, that describe a src attribute
