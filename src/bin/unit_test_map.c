@@ -116,7 +116,7 @@ static int process_file(char const *filename)
 	/*
 	 *	Convert the update section to a list of maps.
 	 */
-	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(cs, &list, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) {
 		cf_log_perr(cs, "map_afrom_cs failed");
 		return EXIT_FAILURE; /* message already printed */

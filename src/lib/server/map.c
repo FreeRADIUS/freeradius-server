@@ -472,13 +472,10 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 	CONF_PAIR 	*cp;
 
 	unsigned int 	total = 0;
-	map_t	**tail, *map;
+	map_t		*map;
 	TALLOC_CTX	*parent;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
-
-	*out = NULL;
-	tail = out;
 
 	/*
 	 *	The first map has ctx as the parent.
@@ -512,7 +509,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		if (total++ == max) {
 			cf_log_err(ci, "Map size exceeded");
 		error:
-			TALLOC_FREE(*out);
+			fr_dlist_talloc_free(out);
 			return -1;
 		}
 
@@ -525,7 +522,9 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 			fr_token_t token;
 			ssize_t slen;
 			bool qualifiers = our_lhs_rules.disallow_qualifiers;
+			fr_map_list_t child_list;
 
+			fr_map_list_init(&child_list);
 			subcs = cf_item_to_section(ci);
 			token = cf_section_name2_quote(subcs);
 
@@ -591,11 +590,13 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 			 *	additional ones, but that might get
 			 *	complex and confusing.
 			 */
-			if (map_afrom_cs(map, &map->child, cf_item_to_section(ci),
+			if (map_afrom_cs(map, &child_list, cf_item_to_section(ci),
 					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
+				fr_dlist_talloc_free(&child_list);
 				talloc_free(map);
 				goto error;
 			}
+			fr_dlist_move(&map->child, &child_list);
 
 			our_lhs_rules.disallow_qualifiers = qualifiers;
 			MAP_VERIFY(map);
