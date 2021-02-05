@@ -2064,7 +2064,7 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) return NULL;
 
-	fr_assert(request);
+	rad_assert(request);
 
 	size = len;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
@@ -3074,7 +3074,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	if (lookup == 0) {
 		tls_session_t *ssn = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
-		fr_assert(ssn != NULL);
+		rad_assert(ssn != NULL);
 
 		ssn->client_cert_ok = true;
 	}
