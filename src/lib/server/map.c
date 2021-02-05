@@ -58,7 +58,10 @@ static void map_dump(request_t *request, map_t const *map)
 
 static inline map_t *map_alloc(TALLOC_CTX *ctx)
 {
-	return talloc_zero(ctx, map_t);
+	map_t *map;
+	map = talloc_zero(ctx, map_t);
+	fr_map_list_init(&map->child);
+	return map;
 }
 
 /** Convert CONFIG_PAIR (which may contain refs) to map_t.
@@ -93,7 +96,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	MEM(map = talloc_zero(ctx, map_t));
+	MEM(map = map_alloc(ctx));
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -303,7 +306,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 
 	*out = NULL;
-	MEM(map = talloc_zero(ctx, map_t));
+	MEM(map = map_alloc(ctx));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
@@ -656,7 +659,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 	ssize_t slen;
 	map_t *map;
 
-	map = talloc_zero(ctx, map_t);
+	map = map_alloc(ctx);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
 				 &FR_SBUFF_IN(lhs, strlen(lhs)),
