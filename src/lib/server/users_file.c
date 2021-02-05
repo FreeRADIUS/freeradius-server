@@ -361,6 +361,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	We MUST be either at a valid entry, OR at EOF.
 		 */
 		MEM(t = talloc_zero(ctx, PAIR_LIST));
+		fr_map_list_init(&t->check);
+		fr_map_list_init(&t->reply);
 		t->filename = filename;
 		t->lineno = lineno;
 		t->order = order++;

@@ -1571,6 +1571,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_ldap_t	*inst = instance;
 
 	inst->cs = conf;
+	fr_map_list_init(&inst->user_map);
 
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {

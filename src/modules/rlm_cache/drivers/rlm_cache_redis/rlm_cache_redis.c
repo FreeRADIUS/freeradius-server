@@ -138,12 +138,13 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	redisReply			*reply = NULL;
 	int				s_ret;
 
-	map_t			*head = NULL, **last = &head;
+	fr_map_list_t			head;
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	size_t				pool_size = 0;
 #endif
 	rlm_cache_entry_t		*c;
 
+	fr_map_list_init(&head);
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
@@ -203,6 +204,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 #else
 	c = talloc_zero(NULL, rlm_cache_entry_t);
 #endif
+	fr_map_list_init(&c->maps);
 	/*
 	 *	Convert the key/value pairs back into maps
 	 */

@@ -326,9 +326,10 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	int			rcode;
 	CONF_SECTION		*cs;
 	char const		*name2;
-	map_t		*head = NULL;
+	fr_map_list_t		*head = (fr_map_list_t *)out;
 
 	fr_assert(cf_item_is_section(ci));
+	fr_map_list_init(head);
 
 	cs = cf_item_to_section(ci);
 	name2 = cf_section_name2(cs);
@@ -357,8 +358,6 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	 *	Rely on "bootstrap" to do sanity checks between 'type
 	 *	= Access-Request', and 'update' containing passwords.
 	 */
-	memcpy(out, &head, sizeof(head));
-
 	return 0;
 }
 

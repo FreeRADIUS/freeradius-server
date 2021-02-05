@@ -989,6 +989,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->cs = conf;
 
+	fr_map_list_init(&inst->header_maps);
 	header = cf_section_find(inst->cs, "header", NULL);
 	if (!header) {
 		return 0;

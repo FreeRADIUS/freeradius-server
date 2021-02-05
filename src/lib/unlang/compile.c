@@ -1211,7 +1211,6 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	CONF_SECTION		*modules;
 	char const		*tmpl_str;
 
-	map_t		*head;
 	tmpl_t			*vpt = NULL;
 
 	map_proc_t		*proc;
@@ -1349,8 +1348,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
-	map_t		*head;
-
 	tmpl_rules_t		parse_rules;
 
 	static unlang_ext_t const update_ext = {
@@ -1408,8 +1405,6 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
-
-	map_t		*head;
 
 	tmpl_rules_t		parse_rules;
 

@@ -765,6 +765,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	};
 	char buffer[8192];
 
+	fr_map_list_init(&inst->map);
 	/*
 	 *	"update" without "key" is invalid, as we can't run the
 	 *	module.

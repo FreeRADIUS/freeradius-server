@@ -75,7 +75,7 @@ static int process_file(char const *filename)
 	char const	*name1, *name2;
 	CONF_SECTION	*cs;
 	fr_map_list_t	list;
-	map_t		*head, *map = NULL;
+	map_t		*map = NULL;
 	char		buffer[8192];
 
 	main_config_t	*config;
@@ -85,6 +85,7 @@ static int process_file(char const *filename)
 		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
 	};
 
+	fr_map_list_init(&list);
 	/*
 	 *	Must be called first, so the handler is called last
 	 */

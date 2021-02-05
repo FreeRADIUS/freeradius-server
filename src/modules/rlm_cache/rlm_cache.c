@@ -315,6 +315,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	if (!c) {
 		RETURN_MODULE_FAIL;
 	}
+	fr_map_list_init(&c->maps);
 	c->key = talloc_memdup(c, key, key_len);
 	c->key_len = key_len;
 
@@ -372,6 +373,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 
 			MEM(c_map = talloc_zero(c, map_t));
 			c_map->op = map->op;
+			fr_map_list_init(&c_map->child);
 
 			/*
 			 *	Now we turn the fr_pair_ts into maps.
@@ -999,6 +1001,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 
+		fr_map_list_init(&inst->maps);
 		if (map_afrom_cs(inst, &inst->maps, update,
 				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 			return -1;
