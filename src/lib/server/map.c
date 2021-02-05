@@ -783,88 +783,15 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	return 0;
 }
 
-static void map_sort_split(map_t *source, map_t **front, map_t **back)
-{
-	map_t *fast;
-	map_t *slow;
-
-	/*
-	 *	Stopping condition - no more elements left to split
-	 */
-	if (!source || !source->next) {
-		*front = source;
-		*back = NULL;
-
-		return;
-	}
-
-	/*
-	 *	Fast advances twice as fast as slow, so when it gets to the end,
-	 *	slow will point to the middle of the linked list.
-	 */
-	slow = source;
-	fast = source->next;
-
-	while (fast) {
-		fast = fast->next;
-		if (fast) {
-			slow = slow->next;
-			fast = fast->next;
-		}
-	}
-
-	*front = source;
-	*back = slow->next;
-	slow->next = NULL;
-}
-
-static map_t *map_sort_merge(map_t *a, map_t *b, fr_cmp_t cmp)
-{
-	map_t *result = NULL;
-
-	if (!a) return b;
-	if (!b) return a;
-
-	/*
-	 *	Compare things in the maps
-	 */
-	if (cmp(a, b) <= 0) {
-		result = a;
-		result->next = map_sort_merge(a->next, b, cmp);
-	} else {
-		result = b;
-		result->next = map_sort_merge(a, b->next, cmp);
-	}
-
-	return result;
-}
-
-/** Sort a linked list of #map_t using merge sort
+/** Sort a doubly linked list of #map_t using merge sort
  *
- * @param[in,out] maps List of #map_t to sort.
+ * @param[in,out] list of #map_t to sort.
  * @param[in] cmp to sort with
  */
-void map_sort(map_t **maps, fr_cmp_t cmp)
+void map_sort(fr_map_list_t *list, fr_cmp_t cmp)
 {
-	map_t *head = *maps;
-	map_t *a;
-	map_t *b;
+	fr_dlist_sort(list, cmp);
 
-	/*
-	 *	If there's 0-1 elements it must already be sorted.
-	 */
-	if (!head || !head->next) {
-		return;
-	}
-
-	map_sort_split(head, &a, &b);	/* Split into sublists */
-	map_sort(&a, cmp);		/* Traverse left */
-	map_sort(&b, cmp);		/* Traverse right */
-
-	/*
-	 *	merge the two sorted lists together
-	 */
-	*maps = map_sort_merge(a, b, cmp);
 }
 
 /** Process map which has exec as a src

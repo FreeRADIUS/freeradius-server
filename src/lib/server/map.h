@@ -134,7 +134,7 @@ ssize_t		map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 				fr_sbuff_parse_rules_t const *p_rules);
 
-void		map_sort(map_t **maps, fr_cmp_t cmp);
+void		map_sort(fr_map_list_t *list, fr_cmp_t cmp);
 
 int		map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 			  map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
