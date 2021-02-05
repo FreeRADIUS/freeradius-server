@@ -119,7 +119,7 @@ static int process_file(char const *filename)
 		cf_log_perr(cs, "map_afrom_cs failed");
 		return EXIT_FAILURE; /* message already printed */
 	}
-	if (!head) {
+	if (fr_dlist_empty(&list)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 		return EXIT_FAILURE;
 	}

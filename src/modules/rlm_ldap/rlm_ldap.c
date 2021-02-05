@@ -1164,7 +1164,7 @@ skip_edir:
 		}
 	}
 
-	if (inst->user_map || inst->valuepair_attr) {
+	if (!fr_dlist_empty(&inst->user_map) || inst->valuepair_attr) {
 		RDEBUG2("Processing user attributes");
 		RINDENT();
 		if (fr_ldap_map_do(request, conn, inst->valuepair_attr,

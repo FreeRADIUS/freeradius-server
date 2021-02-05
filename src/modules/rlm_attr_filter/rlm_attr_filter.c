@@ -121,7 +121,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 		/*
 		 *	We apply the rules in the reply items.
 		 */
-		if (entry->check) {
+		if (!fr_dlist_empty(&entry->check)) {
 			WARN("%s[%d] Check list is not empty for entry \"%s\".\n",
 			     filename, entry->lineno, entry->name);
 		}

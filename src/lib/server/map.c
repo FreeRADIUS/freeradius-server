@@ -1741,7 +1741,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	 *	If there's no child and no RHS then the
 	 *	map was invalid.
 	 */
-	if (!map->child && !fr_cond_assert(map->rhs != NULL)) {
+	if (fr_dlist_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
 		fr_sbuff_terminate(out);
 		return 0;
 	}

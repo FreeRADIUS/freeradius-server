@@ -53,7 +53,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 	/*
 	 *	It's valid to have an empty cache entry (save allocing the pairs pool)
 	 */
-	if (!c->maps) goto finish;
+	if (fr_dlist_empty(&c->maps)) goto finish;
 
 	value_pool = talloc_pool(ctx, 512);
 	if (!value_pool) {

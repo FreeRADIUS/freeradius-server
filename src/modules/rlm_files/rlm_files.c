@@ -413,7 +413,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		fr_pair_list_free(&list);
 
 		/* ctx may be reply */
-		if (pl->reply) {
+		if (!fr_dlist_empty(&pl->reply)) {
 			for (map = fr_cursor_init(&cursor, &pl->reply);
 			     map;
 			     map = fr_cursor_next(&cursor)) {

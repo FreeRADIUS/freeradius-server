@@ -1005,7 +1005,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-	if (!inst->maps) {
+	if (fr_dlist_empty(&inst->maps)) {
 		cf_log_err(inst->cs, "Cache config must contain an update section, and "
 			      "that section must not be empty");
 		return -1;

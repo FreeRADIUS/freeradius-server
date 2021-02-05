@@ -571,7 +571,7 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 	/*
 	 *	Sanity check sublists.
 	 */
-	if (map->child) {
+	if (!fr_dlist_empty(&map->child)) {
 		fr_dict_attr_t const *da;
 
 		if (!tmpl_is_attr(map->lhs)) {
@@ -1302,7 +1302,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	fr_map_list_init(&gext->map);
 	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
+	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'map' sections cannot be empty");
 		goto error;
 	}
@@ -1375,7 +1375,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	fr_map_list_init(&gext->map);
 	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
+	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 	error:
 		talloc_free(g);
@@ -1435,7 +1435,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	fr_map_list_init(&gext->map);
 	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
+	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'filter' sections cannot be empty");
 		return NULL;
 	}

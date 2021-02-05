@@ -809,7 +809,7 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 {
 	map_t	*mod;
 
-	fr_assert(vlm->mod);
+	fr_assert(!fr_dlist_empty(&vlm->mod));
 
 	/*
 	 *	Fast path...
@@ -942,7 +942,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	memset(&cc, 0, sizeof(cc));
 
 	MAP_VERIFY(map);
-	fr_assert(vlm->mod);
+	fr_assert(!fr_dlist_empty(&vlm->mod));
 
 	/*
 	 *	Print debug information for the mods being applied

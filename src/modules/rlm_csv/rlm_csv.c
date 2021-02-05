@@ -1003,7 +1003,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	ssize_t slen;
 	fr_value_box_t *key;
 
-	if (!inst->map || !inst->key) RETURN_MODULE_NOOP;
+	if (fr_dlist_empty(&inst->map) || !inst->key) RETURN_MODULE_NOOP;
 
 	/*
 	 *	Expand the key to whatever it is.  For attributes,
