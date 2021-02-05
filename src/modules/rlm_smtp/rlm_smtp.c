@@ -72,7 +72,7 @@ typedef struct {
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
 	char const		*name;			//!< Auth-Type value for this module instance.
 	fr_dict_enum_t		*auth_type;
-	map_t		*header_maps;		//!< Attribute map used to process header elements
+	fr_map_list_t		header_maps;		//!< Attribute map used to process header elements
 	CONF_SECTION		*cs;
 	bool 			set_date;
 } rlm_smtp_t;

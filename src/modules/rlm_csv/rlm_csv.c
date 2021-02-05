@@ -64,7 +64,7 @@ typedef struct {
 	tmpl_t		*key;
 	fr_type_t	key_data_type;
 
-	map_t	*map;		//!< if there is an "update" section in the configuration.
+	fr_map_list_t	map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 
 typedef struct rlm_csv_entry_s rlm_csv_entry_t;

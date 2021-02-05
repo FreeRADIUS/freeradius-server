@@ -319,7 +319,7 @@ typedef struct {
  * Used to store the array of attributes we'll be querying for.
  */
 typedef struct {
-	map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
+	fr_map_list_t	const *maps;			//!< Head of list of maps we expanded the RHS of.
 	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
 							//!< and NULL termination.
 	TALLOC_CTX	*ctx;				//!< Context to allocate new attributes in.

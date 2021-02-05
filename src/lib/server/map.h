@@ -93,7 +93,7 @@ struct vp_map_s {
 struct vp_list_mod_s {
 	map_t const		*map;		//!< Original map describing the change to be made.
 
-	map_t		*mod;		//!< New map containing the destination (LHS) and
+	fr_map_list_t		mod;		//!< New map containing the destination (LHS) and
 						///< values (RHS).
 	vp_list_mod_t		*next;
 };
