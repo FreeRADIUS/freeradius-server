@@ -69,10 +69,12 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 				.request_def = tmpl_request(map->lhs),
 				.list_def = tmpl_list(map->lhs),
 				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+				.at_runtime = true,
 			};
 
 			tmpl_rules_t rhs_rules = {
-				.dict_def = request->dict
+				.dict_def = request->dict,
+				.at_runtime = true,
 			};
 
 			RDEBUG3("Parsing valuepair string \"%pV\"",
