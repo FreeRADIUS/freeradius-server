@@ -262,7 +262,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_t **out, request_t *request,
+int fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out, request_t *request,
 			  redisReply *key, redisReply *op, redisReply *value)
 {
 	map_t	*map = NULL;

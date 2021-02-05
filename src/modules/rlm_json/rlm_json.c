@@ -308,7 +308,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
  * 	- -1 on failure.
  */
 static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
-				    tmpl_t const *src, map_t const *maps)
+				    tmpl_t const *src, fr_map_list_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
 	map_t const		*map;
@@ -441,7 +441,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
-			      	fr_value_box_t **json, map_t const *maps)
+			      	fr_value_box_t **json, fr_map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
