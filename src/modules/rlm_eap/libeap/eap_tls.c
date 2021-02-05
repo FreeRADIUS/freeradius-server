@@ -780,6 +780,17 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 			break;
 		}
 	}
+
+	/*
+	 *	@todo - check for EAP-TLS.  And if
+	 *	tls_session->client_cert_ok, OR the session was
+	 *	resumed, then call:
+	 *
+	 *		SSL_shutdown(tls_session->ssl);
+	 *
+	 *	We should do that OR the 0x00 commitment message.  But
+	 *	not both.
+	 */
 #endif
 
 	/*
