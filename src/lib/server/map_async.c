@@ -43,7 +43,10 @@ RCSID("$Id$")
 
 static inline vp_list_mod_t *list_mod_alloc(TALLOC_CTX *ctx)
 {
-	return talloc_zero(ctx, vp_list_mod_t);
+	vp_list_mod_t *mod;
+	mod = talloc_zero(ctx, vp_list_mod_t);
+	fr_map_list_init(&mod->mod);
+	return mod;
 }
 
 static inline map_t *map_alloc(TALLOC_CTX *ctx)
