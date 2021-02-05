@@ -268,8 +268,6 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out, request_t *reques
 	map_t	*map = NULL;
 	ssize_t		slen;
 
-	*out = NULL;
-
 	if (key->type != REDIS_REPLY_STRING) {
 		REDEBUG("Bad key type, expected string, got %s",
 			fr_table_str_by_value(redis_reply_types, key->type, "<UNKNOWN>"));
@@ -327,7 +325,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out, request_t *reques
 	}
 	MAP_VERIFY(map);
 
-	*out = map;
+	fr_dlist_insert_tail(out, map);
 
 	return 0;
 }

@@ -72,21 +72,23 @@ static inline vp_list_mod_t *list_mod_generic_afrom_map(TALLOC_CTX *ctx,
 							map_t const *original, map_t const *mutated)
 {
 	vp_list_mod_t *n;
+	map_t *mod;
 
 	n = list_mod_alloc(ctx);
 	if (!n) return NULL;
 
 	n->map = original;
 
-	n->mod = map_alloc(n);
-	if (!n->mod) return NULL;
-	n->mod->lhs = mutated->lhs;
-	n->mod->op = mutated->op;
-	n->mod->rhs = tmpl_alloc(n->mod, TMPL_TYPE_DATA, T_BARE_WORD, NULL, 0);
-	if (!n->mod->rhs) {
+	mod = map_alloc(n);
+	if (!mod) return NULL;
+	mod->lhs = mutated->lhs;
+	mod->op = mutated->op;
+	mod->rhs = tmpl_alloc(mod, TMPL_TYPE_DATA, T_BARE_WORD, NULL, 0);
+	if (!mod->rhs) {
 		talloc_free(n);
 		return NULL;
 	}
+	fr_dlist_insert_tail(&n->mod, mod);
 
 	return n;
 }
@@ -111,22 +113,24 @@ static inline vp_list_mod_t *list_mod_delete_afrom_map(TALLOC_CTX *ctx,
 						       map_t const *original, map_t const *mutated)
 {
 	vp_list_mod_t *n;
+	map_t *mod;
 
 	n = list_mod_alloc(ctx);
 	if (!n) return NULL;
 
 	n->map = original;
 
-	n->mod = map_alloc(n);
-	if (!n->mod) return NULL;
+	mod = map_alloc(n);
+	if (!mod) return NULL;
 
-	n->mod->lhs = mutated->lhs;
-	n->mod->op = T_OP_CMP_FALSE;	/* Means delete the LHS */
-	n->mod->rhs = tmpl_alloc(n->mod, TMPL_TYPE_NULL, T_BARE_WORD, NULL, 0);
-	if (!n->mod->rhs) {
+	mod->lhs = mutated->lhs;
+	mod->op = T_OP_CMP_FALSE;	/* Means delete the LHS */
+	mod->rhs = tmpl_alloc(mod, TMPL_TYPE_NULL, T_BARE_WORD, NULL, 0);
+	if (!mod->rhs) {
 		talloc_free(n);
 		return NULL;
 	}
+	fr_dlist_insert_tail(&n->mod, mod);
 
 	return n;
 }
@@ -149,6 +153,7 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
 							     map_t const *original, map_t const *mutated)
 {
 	vp_list_mod_t		*n;
+	map_t			*mod;
 	fr_value_box_t		empty_string = {
 					.type = FR_TYPE_STRING,
 					.datum = {
@@ -162,13 +167,13 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
 
 	n->map = original;
 
-	n->mod = map_alloc(n);
-	if (!n->mod) return NULL;
+	mod = map_alloc(n);
+	if (!mod) return NULL;
 
-	n->mod->lhs = mutated->lhs;
-	n->mod->op = mutated->op;
-	n->mod->rhs = tmpl_alloc(n->mod, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, NULL, -1);
-	if (!n->mod->rhs) {
+	mod->lhs = mutated->lhs;
+	mod->op = mutated->op;
+	mod->rhs = tmpl_alloc(mod, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, NULL, -1);
+	if (!mod->rhs) {
 		talloc_free(n);
 		return NULL;
 	}
@@ -179,12 +184,13 @@ static inline vp_list_mod_t *list_mod_empty_string_afrom_map(TALLOC_CTX *ctx,
 	 *	zero length string to the specified type and
 	 *	see what happens...
 	 */
-	if (fr_value_box_cast(n->mod->rhs, tmpl_value(n->mod->rhs),
+	if (fr_value_box_cast(mod->rhs, tmpl_value(mod->rhs),
 			      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
 			      tmpl_da(mutated->lhs), &empty_string) < 0) {
 		talloc_free(n);
 		return NULL;
 	}
+	fr_dlist_insert_tail(&n->mod, mod);
 
 	return n;
 }
@@ -338,14 +344,16 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
 	 */
 	if (mutated->op == T_OP_CMP_FALSE) {
+		map_t *mod;
 		n = list_mod_alloc(ctx);
 		if (!n) goto error;
 
 		n->map = original;
-		n->mod = map_alloc(n);	/* Need to duplicate input map, so next pointer is NULL */
-		n->mod->lhs = mutated->lhs;
-		n->mod->op = mutated->op;
-		n->mod->rhs = mutated->rhs;
+		mod = map_alloc(n);	/* Need to duplicate input map, so next pointer is NULL */
+		mod->lhs = mutated->lhs;
+		mod->op = mutated->op;
+		mod->rhs = mutated->rhs;
+		fr_dlist_insert_tail(&n->mod, mod);
 		goto finish;
 	}
 
@@ -353,7 +361,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	List to list copy.
 	 */
 	if (tmpl_is_list(mutated->lhs) && tmpl_is_list(mutated->rhs)) {
-		fr_cursor_t	to;
 		fr_pair_list_t	*list = NULL;
 		fr_pair_t	*vp = NULL;
 
@@ -378,7 +385,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		n = list_mod_alloc(ctx);
 		n->map = original;
-		fr_cursor_init(&to, &n->mod);
 
 		/*
 		 *	Iterate over all attributes in that list
@@ -418,7 +424,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	before this map is applied.
 			 */
 			if (fr_value_box_copy(n_mod->rhs, tmpl_value(n_mod->rhs), &vp->data) < 0) goto error;
-			fr_cursor_append(&to, n_mod);
+			fr_dlist_insert_tail(&n->mod, n_mod);
 
 			MAP_VERIFY(n_mod);
 		} while ((vp = fr_pair_list_next(list, vp)));
@@ -660,7 +666,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 */
 	case TMPL_TYPE_EXEC:
 	{
-		fr_cursor_t	to;
 		fr_dcursor_t	from;
 		fr_pair_list_t	vp_head;
 		fr_pair_t	*vp;
@@ -699,7 +704,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		if (!n) goto error;
 
 		n->map = original;
-		fr_cursor_init(&to, &n->mod);
 
 		/*
 		 *	Parse the VPs from the RHS.
@@ -743,7 +747,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			}
 
 			mod->op = vp->op;
-			fr_cursor_append(&to, mod);
+			fr_dlist_insert_tail(&n->mod, mod);
 		}
 
 	}

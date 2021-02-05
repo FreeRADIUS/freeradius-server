@@ -625,8 +625,8 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		if (validate && (validate(map, uctx) < 0)) goto error;
 
 	next:
-		parent = *tail = map;
-		tail = &(map->next);
+		parent = map;
+		fr_dlist_insert_tail(out, map);
 	}
 
 	return 0;

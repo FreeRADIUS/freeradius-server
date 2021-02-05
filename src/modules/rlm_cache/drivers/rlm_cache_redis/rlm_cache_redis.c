@@ -209,13 +209,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	Convert the key/value pairs back into maps
 	 */
 	for (i = 0; i < reply->elements; i += 3) {
-		if (fr_redis_reply_to_map(c, last, request,
+		if (fr_redis_reply_to_map(c, &head, request,
 					  reply->element[i], reply->element[i + 1], reply->element[i + 2]) < 0) {
 			talloc_free(c);
 			fr_redis_reply_free(&reply);
 			return CACHE_ERROR;
 		}
-		last = &(*last)->next;
 	}
 	fr_redis_reply_free(&reply);
 

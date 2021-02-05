@@ -297,7 +297,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				    uint8_t const *key, size_t key_len, int ttl)
 {
 	map_t			const *map = NULL;
-	map_t			**last, *c_map;
+	map_t			*c_map;
 
 	fr_pair_t		*vp;
 	bool			merge = false;
@@ -324,8 +324,6 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	 */
 	c->created = c->expires = fr_time_to_unix_time(request->packet->timestamp);
 	c->expires += fr_time_delta_from_sec(ttl);
-
-	last = &c->maps;
 
 	RDEBUG2("Creating new cache entry");
 
@@ -422,8 +420,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				fr_assert(0);
 			}
 			MAP_VERIFY(c_map);
-			*last = c_map;
-			last = &(*last)->next;
+			fr_dlist_insert_tail(&c->maps, c_map);
 		}
 		talloc_free_children(pool); /* reset pool state */
 	}

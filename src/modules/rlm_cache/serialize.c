@@ -102,7 +102,6 @@ finish:
  */
 int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssize_t inlen)
 {
-	map_t	**last = &c->maps;
 	char		*p, *q;
 
 	if (inlen < 0) inlen = strlen(in);
@@ -168,8 +167,7 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		MAP_VERIFY(map);
 
 		/* It's not a special attribute, add it to the map list */
-		*last = map;
-		last = &(*last)->next;
+		fr_dlist_insert_tail(&c->maps, map);
 
 	next:
 		p = q + 1;
