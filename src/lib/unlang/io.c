@@ -110,7 +110,7 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 #define COPY_FIELD(_x) child->async->_x = parent->async->_x
 	COPY_FIELD(listen);
 	COPY_FIELD(recv_time);
-	child->async->fake = true;
+	fr_assert(request_is_internal(child));
 
 	/*
 	 *	Always set the "process" function to the local

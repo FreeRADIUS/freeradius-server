@@ -62,7 +62,9 @@ struct fr_async_s {
 	fr_listen_t		*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
 	uint32_t		priority;	//!< higher == higher priority
-	bool			fake;		//!< is it a fake request
 };
+
+#define request_is_external(_x) (_x->async->listen != NULL)
+#define request_is_internal(_x) (!request_is_external(_x))
 
 int fr_io_listen_free(fr_listen_t *li);

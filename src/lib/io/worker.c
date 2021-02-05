@@ -380,10 +380,11 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	fr_assert(request->runnable_id < 0);
 
 	/*
-	 *	If it's a fake request, or we're exiting, don't send a
-	 *	real reply.  Just toss the request.
+	 *	If it's an internally generated request, or we're
+	 *	exiting, don't send a real reply.  Just toss the
+	 *	request.
 	 */
-	if (request->async->fake || worker->exiting) {
+	if (request_is_internal(request) || worker->exiting) {
 		fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
 		goto finished;
 	}
@@ -892,15 +893,14 @@ static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 
 		fr_assert(request->parent == NULL);
 		fr_assert(request->async->process != NULL);
-		fr_assert(request->async->fake || (request->async->listen != NULL));
 
 		RDEBUG("Running request");
 
 		/*
-		 *	For real requests, if the channel is gone, just stop
-		 *	the request and free it.
+		 *	For real requests, if the channel is gone,
+		 *	just stop the request and free it.
 		 */
-		if (!request->async->fake && !fr_channel_active(request->async->channel)) {
+		if (request->async->channel && !fr_channel_active(request->async->channel)) {
 			worker_stop_request(worker, request, now);
 			talloc_free(request);
 			return;
@@ -938,7 +938,7 @@ static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 			 *	Only real packets are in the dedup tree.  And even
 			 *	then, only some of the time.
 			 */
-			if (!request->async->fake && request->async->listen->track_duplicates) {
+			if (request_is_external(request) && request->async->listen->track_duplicates) {
 				(void) rbtree_deletebydata(worker->dedup, request);
 			}
 
@@ -1254,7 +1254,7 @@ int fr_worker_request_add(request_t *request, module_method_t process, void *ctx
 
 	worker_request_init(worker, request, now);
 
-	request->async->fake = true;
+	fr_assert(request_is_internal(request));
 	request->async->process = process;
 	request->async->process_inst = ctx;
 
