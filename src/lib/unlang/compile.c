@@ -603,9 +603,9 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 {
 	unlang_map_t	*gext = unlang_group_to_map(g);
-	map_t		*map;
+	map_t		*map = NULL;
 
-	for (map = gext->map; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(&gext->map, map))) {
 		if (!pass2_fixup_update_map(map, rules, NULL)) return false;
 	}
 
@@ -667,7 +667,8 @@ static void unlang_dump(unlang_t *instruction, int depth)
 
 			g = unlang_generic_to_group(c);
 			gext = unlang_group_to_map(g);
-			for (map = gext->map; map != NULL; map = map->next) {
+			map = NULL;
+			while ((map = fr_dlist_next(&gext->map, map))) {
 				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
 				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 			}

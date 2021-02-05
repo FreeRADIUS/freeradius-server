@@ -103,7 +103,6 @@ static void check_pair(request_t *request, fr_pair_t *check_item, fr_pair_t *rep
 
 static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char const *filename, PAIR_LIST **pair_list)
 {
-	fr_cursor_t cursor;
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
@@ -126,9 +125,8 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 			     filename, entry->lineno, entry->name);
 		}
 
-		for (map = fr_cursor_init(&cursor, &entry->reply);
-		     map;
-		     map = fr_cursor_next(&cursor)) {
+		map = NULL;
+		while ((map = fr_dlist_next(&entry->reply, map))) {
 			fr_dict_attr_t const *da;
 
 			if (!tmpl_is_attr(map->lhs)) {
@@ -215,11 +213,10 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	for (pl = inst->attrs; pl; pl = pl->next) {
 		int fall_through = 0;
 		int relax_filter = inst->relaxed;
-		map_t *map;
+		map_t *map = NULL;
 		fr_pair_list_t tmp_list;
 		fr_pair_t *check_item, *input_item;
 		fr_pair_list_t check_list;
-		fr_cursor_t cursor;
 
 		fr_pair_list_init(&tmp_list);
 		/*
@@ -237,9 +234,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 
 		fr_pair_list_init(&check_list);
 
-		for (map = fr_cursor_init(&cursor, &pl->reply);
-		     map;
-		     map = fr_cursor_next(&cursor)) {
+		while ((map = fr_dlist_next(&pl->reply, map))) {
 			if (map_to_vp(packet, &tmp_list, request, map, NULL) < 0) {
 				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
 				continue;

@@ -156,12 +156,12 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_
 static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_cache_entry_t *c)
 {
 	fr_pair_t	*vp;
-	map_t	*map;
+	map_t		*map = NULL;
 	int		merged = 0;
 
 	RDEBUG2("Merging cache entry into request");
 	RINDENT();
-	for (map = c->maps; map; map = map->next) {
+	while ((map = fr_dlist_next(&c->maps, map))) {
 		/*
 		 *	The only reason that the application of a map entry
 		 *	can fail, is if the destination list or request
@@ -296,8 +296,8 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				    rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle,
 				    uint8_t const *key, size_t key_len, int ttl)
 {
-	map_t		const *map;
-	map_t		**last, *c_map;
+	map_t			const *map = NULL;
+	map_t			**last, *c_map;
 
 	fr_pair_t		*vp;
 	bool			merge = false;
@@ -333,7 +333,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	 *	gathering fr_pair_ts to cache.
 	 */
 	pool = talloc_pool(NULL, 2048);
-	for (map = inst->maps; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(&inst->maps, map))) {
 		fr_pair_list_t	to_cache;
 
 		fr_pair_list_init(&to_cache);
@@ -860,7 +860,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 		return -1;
 	}
 
-	for (map = c->maps; map; map = map->next) {
+	while ((map = fr_dlist_next(&c->maps, map))) {
 		if ((tmpl_da(map->lhs) != tmpl_da(target)) ||
 		    (tmpl_list(map->lhs) != tmpl_list(target))) continue;
 

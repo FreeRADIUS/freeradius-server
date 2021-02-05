@@ -74,7 +74,8 @@ static int process_file(char const *filename)
 	int		rcode;
 	char const	*name1, *name2;
 	CONF_SECTION	*cs;
-	map_t	*head, *map;
+	fr_map_list_t	list;
+	map_t		*head, *map = NULL;
 	char		buffer[8192];
 
 	main_config_t	*config;
@@ -138,7 +139,7 @@ static int process_file(char const *filename)
 		printf("%s %s {\n", name1, name2);
 	}
 
-	for (map = head; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(&list, map))) {
 		map_print(&FR_SBUFF_OUT(buffer + 1, sizeof(buffer) - 1), map);
 		puts(buffer);
 	}

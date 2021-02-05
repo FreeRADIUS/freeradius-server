@@ -336,9 +336,9 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
 static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
 {
 	udp_request_t		*u;
-	request_t			*request;
+	request_t		*request;
 	rlm_radius_udp_t const	*inst = h->inst;
-	map_t		*map;
+	map_t			*map = NULL;
 
 	fr_assert(!h->status_u && !h->status_r && !h->status_request);
 
@@ -372,7 +372,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	Create the VPs, and ignore any errors
 	 *	creating them.
 	 */
-	for (map = inst->parent->status_check_map; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(inst->parent->status_check_map, map))) {
 		/*
 		 *	Skip things which aren't attributes.
 		 */

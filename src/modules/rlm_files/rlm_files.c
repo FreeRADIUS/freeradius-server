@@ -115,9 +115,8 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 	 */
 	entry = users;
 	while (entry) {
-		map_t *map;
+		map_t *map = NULL;
 		fr_dict_attr_t const *da;
-		fr_cursor_t cursor;
 
 		/*
 		 *	Look for improper use of '=' in the
@@ -126,9 +125,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	and probably ':=' for server
 		 *	configuration items.
 		 */
-		for (map = fr_cursor_init(&cursor, &entry->check);
-		     map;
-		     map = fr_cursor_next(&cursor)) {
+		while ((map = fr_dlist_next(&entry->check, map))) {
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of check item %s is not an attribute",
 				      entry->filename, entry->lineno, map->lhs->name);
@@ -168,9 +165,8 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	It's a common enough mistake, that it's
 		 *	worth doing.
 		 */
-		for (map = fr_cursor_init(&cursor, &entry->reply);
-		     map;
-		     map = fr_cursor_next(&cursor)) {
+		map = NULL;
+		while ((map = fr_dlist_next(&entry->reply, map))) {
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of reply item %s is not an attribute",
 				      entry->filename, entry->lineno, map->rhs->name);
@@ -348,10 +344,9 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 	 */
 	while (user_pl || default_pl) {
 		fr_pair_t *vp;
-		map_t *map;
+		map_t *map = NULL;
 		PAIR_LIST const *pl;
 		fr_pair_list_t list;
-		fr_cursor_t cursor;
 		bool fall_through = false;
 
 		/*
@@ -382,9 +377,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		 *
 		 *	@todo convert the pl->check to fr_cond_t, and just use that!
 		 */
-		for (map = fr_cursor_init(&cursor, &pl->check);
-		     map;
-		     map = fr_cursor_next(&cursor)) {
+		while ((map = fr_dlist_next(&pl->check, map))) {
 			fr_pair_list_t tmp_list;
 			fr_pair_list_init(&tmp_list);
 			if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
@@ -414,9 +407,8 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 		/* ctx may be reply */
 		if (!fr_dlist_empty(&pl->reply)) {
-			for (map = fr_cursor_init(&cursor, &pl->reply);
-			     map;
-			     map = fr_cursor_next(&cursor)) {
+			map = NULL;
+			while ((map = fr_dlist_next(&pl->reply, map))) {
 				fr_pair_list_t tmp_list;
 				fr_pair_list_init(&tmp_list);
 				if (map->op == T_OP_CMP_FALSE) continue;

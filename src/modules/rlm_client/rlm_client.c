@@ -118,7 +118,7 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 				   fr_value_box_t **client_override, fr_map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	map_t const		*map;
+	map_t const		*map = NULL;
 	RADCLIENT		*client;
 	client_get_vp_ctx_t	uctx;
 
@@ -169,9 +169,7 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 	uctx.cs = client->cs;
 
 	RINDENT();
-	for (map = maps;
-	     map != NULL;
-	     map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		char	*field = NULL;
 
 		if (tmpl_aexpand(request, &field, request, map->rhs, NULL, NULL) < 0) {

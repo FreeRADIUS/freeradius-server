@@ -311,7 +311,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 				    tmpl_t const *src, fr_map_list_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
-	map_t const		*map;
+	map_t const		*map = NULL;
 	ssize_t			slen;
 	rlm_json_jpath_cache_t	*cache = cache_inst, **tail = &cache->next;
 
@@ -321,7 +321,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		return -1;
 	}
 
-	for (map = maps; map; map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		CONF_PAIR	*cp = cf_item_to_pair(map->ci);
 		char const	*p;
 
@@ -372,7 +372,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		 *	list member was pre-allocated and passed to the
 		 *	instantiation callback.
 		 */
-		if (map->next) {
+		if (fr_dlist_next(maps, map)) {
 			*tail = cache = talloc_zero(cache, rlm_json_jpath_cache_t);
 			tail = &cache->next;
 		}
@@ -447,7 +447,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_
 	struct json_tokener		*tok;
 
 	rlm_json_jpath_cache_t		*cache = proc_inst;
-	map_t const			*map;
+	map_t const			*map = NULL;
 
 	rlm_json_jpath_to_eval_t	to_eval;
 
@@ -477,7 +477,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_
 		goto finish;
 	}
 
-	for (map = maps; map; map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		switch (map->rhs->type) {
 		/*
 		 *	Cached types

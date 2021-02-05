@@ -517,9 +517,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 		}
 
 		RINDENT();
-		for (map = maps, i = 0;
+		for (map = fr_dlist_head(maps), i = 0;
 		     map != NULL;
-		     map = map->next, i++) {
+		     map = fr_dlist_next(maps, map), i++) {
 			int			ret;
 			fr_ldap_result_t	attr;
 

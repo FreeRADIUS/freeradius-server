@@ -494,7 +494,7 @@ static int csv_map_verify(map_t *map, void *instance)
 static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
 			  tmpl_t const *src, fr_map_list_t const *maps)
 {
-	map_t const *map;
+	map_t const *map = NULL;
 
 	if (!src) {
 		cf_log_err(cs, "Missing key expansion");
@@ -502,7 +502,7 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
 		return -1;
 	}
 
-	for (map = maps; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		/*
 		 *	This function doesn't change the map, so it's OK.
 		 */
@@ -899,7 +899,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_csv_entry_t		*e;
-	map_t const		*map;
+	map_t const		*map = NULL;
 
 	e = find_entry(inst, key);
 	if (!e) {
@@ -909,9 +909,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 
 redo:
 	RINDENT();
-	for (map = maps;
-	     map != NULL;
-	     map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		int field;
 		char *field_name;
 

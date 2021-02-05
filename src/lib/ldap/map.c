@@ -255,14 +255,14 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
  */
 int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, fr_map_list_t const *maps)
 {
-	map_t const	*map;
+	map_t const	*map = NULL;
 	unsigned int	total = 0;
 
 	TALLOC_CTX	*ctx = NULL;
 	char const	*attr;
 	char		attr_buff[1024 + 1];	/* X.501 says we need to support at least 1024 chars for attr names */
 
-	for (map = maps; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
 			REDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
 			TALLOC_FREE(ctx);
@@ -307,14 +307,14 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, fr_map_l
 int fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
 		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
-	map_t const		*map;
+	map_t const		*map = NULL;
 	unsigned int		total = 0;
 	int			applied = 0;	/* How many maps have been applied to the current request */
 
 	fr_ldap_result_t	result;
 	char const		*name;
 
-	for (map = expanded->maps; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(expanded->maps, map))) {
 		int ret;
 
 		name = expanded->attrs[total++];

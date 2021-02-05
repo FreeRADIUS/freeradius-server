@@ -42,7 +42,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 {
 	TALLOC_CTX	*value_pool = NULL;
 	char		attr[256];	/* Attr name buffer */
-	map_t	*map;
+	map_t		*map = NULL;
 
 	char		*to_store = NULL;
 
@@ -63,7 +63,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		return -1;
 	}
 
-	for (map = c->maps; map; map = map->next) {
+	while ((map = fr_dlist_next(&c->maps, map))) {
 		char	*value;
 		ssize_t	slen;
 

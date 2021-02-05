@@ -824,9 +824,9 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 	/*
 	 *	Slow path.  This may generate multiple attributes.
 	 */
-	for (mod = vlm->mod;
+	for (;
 	     mod;
-	     mod = mod->next) {
+	     mod = fr_dlist_next(&vlm->mod, mod)) {
 		fr_value_box_t	*vb;
 		fr_pair_t	*vp;
 
@@ -930,7 +930,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 {
 	int			rcode = 0;
 
-	map_t const		*map = vlm->map, *mod;
+	map_t const		*map = vlm->map, *mod = NULL;
 	fr_pair_list_t		*vp_list;
 	fr_pair_t		*found;
 	request_t		*context;
@@ -947,9 +947,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	/*
 	 *	Print debug information for the mods being applied
 	 */
-	for (mod = vlm->mod;
-	     mod;
-	     mod = mod->next) {
+	while ((mod = fr_dlist_next(&vlm->mod, mod))) {
 	    	fr_value_box_t *vb;
 
 		MAP_VERIFY(mod);
@@ -972,7 +970,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			}
 		}
 	}
-	mod = vlm->mod;	/* Reset */
+	mod = fr_dlist_head(&vlm->mod);	/* Reset */
 
 	/*
 	 *	All this has been checked by #map_to_list_mod
@@ -1065,7 +1063,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		}
 	}
 
-	fr_assert(!mod->next);
+	fr_assert(!fr_dlist_next(&vlm->mod, mod));
 
 	/*
 	 *	Find the destination attribute.  We leave with either
