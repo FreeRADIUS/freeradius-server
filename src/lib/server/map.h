@@ -84,7 +84,7 @@ struct vp_map_s {
 						//!< logging validation errors.
 
 	map_t		*child;		//!< a child map.  If it exists, `rhs` MUST be NULL
-	map_t		*next;		//!< The next valuepair map.
+	fr_dlist_t	entry;		//!< List entry.
 };
 
 /** A list modification
@@ -158,6 +158,9 @@ extern size_t map_assignment_op_table_len;
 
 extern fr_sbuff_parse_rules_t const map_parse_rules_bareword_quoted;
 extern fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST];
+
+#define fr_map_list_init(_list) fr_dlist_talloc_init(_list, map_t, entry)
+#define fr_map_list_head(_list) ((map_t *)fr_dlist_head(_list))
 
 #ifdef __cplusplus
 }
