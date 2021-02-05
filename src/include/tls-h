@@ -139,6 +139,7 @@ typedef struct _tls_session_t {
 	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 	bool		connected;			//!< whether the outgoing socket is connected
 	bool		is_init_finished;		//!< whether or not init is finished
+	bool		client_cert_ok;			//!< whether or not we validated the client certificate
 
 	/*
 	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this

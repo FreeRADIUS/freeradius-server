@@ -3067,6 +3067,18 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		RDEBUG3("verify return : %d", my_ok);
 	}
 
+	/*
+	 *	Track if the client certificate was validated.  This
+	 *	flag is less an indication *that* it was validated,
+	 *	and instead more of a flag *when* it was validated.
+	 */
+	if (lookup == 0) {
+		tls_session_t *ssn = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+		fr_assert(ssn != NULL);
+
+		ssn->client_cert_ok = true;
+	}
+
 	return (my_ok != 0);
 }
 
