@@ -752,7 +752,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 	/*
 	 *	Apply the attribute map
 	 */
-	if (fr_ldap_map_expand(&expanded, request, config->entry_map) < 0) {
+	if (fr_ldap_map_expand(&expanded, request, &config->entry_map) < 0) {
 	error:
 		talloc_free(request);
 		return -1;

@@ -1035,7 +1035,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	RDEBUG2("Processing CVS map with key %pV", key);
 	RINDENT();
-	rcode = mod_map_apply(inst, request, key, inst->map);
+	rcode = mod_map_apply(inst, request, key, &inst->map);
 	REXDENT();
 
 	talloc_free(key);

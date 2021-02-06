@@ -963,7 +963,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	for many things besides searching for users.
 	 */
 
-	if (fr_ldap_map_expand(&expanded, request, inst->user_map) < 0) RETURN_MODULE_FAIL;
+	if (fr_ldap_map_expand(&expanded, request, &inst->user_map) < 0) RETURN_MODULE_FAIL;
 
 	conn = mod_conn_get(inst, request);
 	if (!conn) RETURN_MODULE_FAIL;

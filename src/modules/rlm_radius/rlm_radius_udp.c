@@ -372,7 +372,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	Create the VPs, and ignore any errors
 	 *	creating them.
 	 */
-	while ((map = fr_dlist_next(inst->parent->status_check_map, map))) {
+	while ((map = fr_dlist_next(&inst->parent->status_check_map, map))) {
 		/*
 		 *	Skip things which aren't attributes.
 		 */
