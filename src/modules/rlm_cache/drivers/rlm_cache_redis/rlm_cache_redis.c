@@ -226,8 +226,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 		c->created = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
-		map = head;
-		head = head->next;
+		map = fr_dlist_pop_head(&head);
 		talloc_free(map);
 	}
 
@@ -239,8 +238,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 		c->expires = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
-		map = head;
-		head = head->next;
+		map = fr_dlist_pop_head(&head);
 		talloc_free(map);
 	}
 
