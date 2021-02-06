@@ -221,10 +221,10 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache created date
 	 */
-	if (tmpl_da(head->lhs) == attr_cache_created) {
+	if (tmpl_da(fr_map_list_head(&head)->lhs) == attr_cache_created) {
 		map_t *map;
 
-		c->created = tmpl_value(head->rhs)->vb_date;
+		c->created = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
 		map = head;
 		head = head->next;
@@ -234,10 +234,10 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if (tmpl_da(head->lhs) == attr_cache_expires) {
+	if (tmpl_da(fr_map_list_head(&head)->lhs) == attr_cache_expires) {
 		map_t *map;
 
-		c->expires = tmpl_value(head->rhs)->vb_date;
+		c->expires = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
 		map = head;
 		head = head->next;
@@ -246,7 +246,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	c->key = talloc_memdup(c, key, key_len);
 	c->key_len = key_len;
-	c->maps = head;
+	fr_dlist_move(&c->maps, &head);
 	*out = c;
 
 	return CACHE_OK;

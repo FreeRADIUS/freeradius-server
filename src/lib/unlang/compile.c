@@ -591,7 +591,7 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 			return false;
 		}
 
-		return pass2_fixup_update_map(map->child, rules, da);
+		return pass2_fixup_update_map(fr_dlist_head(&map->child), rules, da);
 	}
 
 	return true;
@@ -629,7 +629,7 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	 */
 	if (!gext->vpt) return true;
 
-	return pass2_fixup_tmpl(gext->map->ci, cf_section_to_item(g->cs), &gext->vpt);
+	return pass2_fixup_tmpl(fr_map_list_head(&gext->map)->ci, cf_section_to_item(g->cs), &gext->vpt);
 }
 
 static void unlang_dump(unlang_t *instruction, int depth)
