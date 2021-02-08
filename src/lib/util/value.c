@@ -3359,7 +3359,7 @@ int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
 	if (!fr_cond_assert(vb->type == FR_TYPE_STRING)) return -1;
 
 	len = strlen(vb->vb_strvalue);
-	str = talloc_realloc(ctx, UNCONST(char *, &vb->vb_strvalue), char, len + 1);
+	str = talloc_realloc(ctx, UNCONST(char *, vb->vb_strvalue), char, len + 1);
 	if (!str) {
 		fr_strerror_const("Failed re-allocing string buffer");
 		return -1;
