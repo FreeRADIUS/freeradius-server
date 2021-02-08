@@ -3967,7 +3967,8 @@ int fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const 
 	if (!nptr) {
 		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
 				   __FUNCTION__,
-				   talloc_get_name(dst->datum.ptr), talloc_array_length(dst->datum.ptr), nlen);
+				   talloc_get_name(dst->datum.ptr),
+				   talloc_array_length((uint8_t const *)dst->datum.ptr), nlen);
 		return -1;
 	}
 
