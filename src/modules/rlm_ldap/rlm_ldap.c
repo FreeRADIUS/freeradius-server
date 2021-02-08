@@ -308,6 +308,7 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	int			ldap_errno;
 
 	char const		*url;
+	char const		**attrs;
 
 	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
@@ -338,10 +339,12 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	conn = mod_conn_get(inst, request);
 	if (!conn) goto free_urldesc;
 
+	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
+
 	if (fr_ldap_parse_url_extensions(&server_ctrls[0], request, conn, ldap_url->lud_exts) < 0) goto free_socket;
 
 	status = fr_ldap_search(&result, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
-				ldap_url->lud_filter, UNCONST(char **, ldap_url->lua_attr), server_ctrls, NULL);
+				ldap_url->lud_filter, attrs, server_ctrls, NULL);
 
 #ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (server_ctrls[0]) ldap_control_free(server_ctrls[0]);
