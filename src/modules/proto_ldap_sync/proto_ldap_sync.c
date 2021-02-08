@@ -907,7 +907,6 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 {
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);
 	int			sync_id;
- 	void			*ctx;
  	sync_config_t const	*config;
 
 	/*
