@@ -567,7 +567,7 @@ static int proto_ldap_attributes_add(request_t *request, sync_config_t const *co
  * @param[in] now	current time.
  * @param[in] user_ctx	Sync config.
  */
-static void proto_ldap_sync_reinit(fr_event_list_t *el, fr_time_t now, void const *user_ctx)
+static void proto_ldap_sync_reinit(fr_event_list_t *el, fr_time_t now, void *user_ctx)
 {
 	sync_config_t const	*config = talloc_get_type_abort_const(user_ctx, sync_config_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(config->user_ctx, proto_ldap_inst_t);
@@ -620,7 +620,7 @@ static void proto_ldap_connection_init(UNUSED fr_event_list_t *el, UNUSED fr_tim
  * @param[in] user_ctx	The listener.
  * @return 0.
  */
-static int _proto_ldap_refresh_required(fr_ldap_connection_t *conn, sync_config_t const *config,
+static int _proto_ldap_refresh_required(fr_ldap_connection_t *conn, UNUSED sync_config_t const *config,
 				        int sync_id, UNUSED sync_phases_t phase, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
