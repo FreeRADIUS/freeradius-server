@@ -825,13 +825,7 @@ static char *python_path_build(TALLOC_CTX *ctx, rlm_python_t *inst, CONF_SECTION
 		MEM(path = talloc_asprintf_append_buffer(path, "%s:", inst->python_path));
 	}
 	if (inst->python_path_include_conf_dir) {
-		char const *imutable;
-		char *mutable;
-
-		imutable = cf_filename(conf);
-		memcpy(&mutable, &imutable, sizeof(mutable));
-
-		MEM(path = talloc_asprintf_append_buffer(path, "%s:", dirname(mutable)));
+		MEM(path = talloc_asprintf_append_buffer(path, "%s:", dirname(UNCONST(char *, cf_filename(conf)))));
 	}
 	if (inst->python_path_include_default) {
 		MEM(path = talloc_asprintf_append_buffer(path, "%s:", default_path));

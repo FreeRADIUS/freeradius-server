@@ -567,9 +567,9 @@ static int proto_ldap_attributes_add(request_t *request, sync_config_t const *co
  * @param[in] now	current time.
  * @param[in] user_ctx	Sync config.
  */
-static void proto_ldap_sync_reinit(fr_event_list_t *el, fr_time_t now, void *user_ctx)
+static void proto_ldap_sync_reinit(fr_event_list_t *el, fr_time_t now, void const *user_ctx)
 {
-	sync_config_t		*config = talloc_get_type_abort(user_ctx, sync_config_t);
+	sync_config_t const	*config = talloc_get_type_abort_const(user_ctx, sync_config_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(config->user_ctx, proto_ldap_inst_t);
 
 	/*
@@ -625,14 +625,12 @@ static int _proto_ldap_refresh_required(fr_ldap_connection_t *conn, sync_config_
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
 	proto_ldap_inst_t	*inst = talloc_get_type_abort(listen->data, proto_ldap_inst_t);;
-	void 			*ctx;
 
 	sync_state_destroy(conn, sync_id);	/* Destroy the old state */
 
 	DEBUG2("Refresh required");
 
-	memcpy(&ctx, &config, sizeof(ctx));
-	proto_ldap_sync_reinit(inst->el, fr_time(), ctx);
+	proto_ldap_sync_reinit(inst->el, fr_time(), user_ctx);
 
 	return 0;
 }
@@ -932,10 +930,9 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 		/*
 		 *	Schedule sync reinit, but don't perform it immediately.
 		 */
-		memcpy(&ctx, &config, sizeof(ctx));
 		if (fr_event_timer_in(inst, inst->el, &inst->sync_retry_ev,
 				      inst->sync_retry_interval,
-				      proto_ldap_sync_reinit, ctx) < 0) {
+				      proto_ldap_sync_reinit, config) < 0) {
 			FATAL("Failed inserting event: %s", fr_strerror());
 		}
  		return 1;
@@ -946,7 +943,6 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 		/*
 		 *	Schedule conn reinit, but don't perform it immediately
 		 */
- 		memcpy(&ctx, &config, sizeof(ctx));
 		if (fr_event_timer_in(inst, inst->el, &inst->conn_retry_ev,
 				      inst->conn_retry_interval,
 				      proto_ldap_connection_init, listen) < 0) {
@@ -1109,8 +1105,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 
 	fr_assert(inst->handle_config.server_str[0]);
 	inst->handle_config.name = talloc_typed_asprintf(inst, "proto_ldap_conn (%s)", listen->server);
-
-	memcpy(&inst->handle_config.server, &inst->handle_config.server_str[0], sizeof(inst->handle_config.server));
+	inst->handle_config.server = UNCONST(char *, inst->handle_config.server_str);
 
 	/*
 	 *	Convert scope strings to enumerated constants

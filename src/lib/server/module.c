@@ -1080,13 +1080,10 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 module_instance_t *module_by_data(void const *data)
 {
 	module_instance_t *mi;
-	void *mutable;
-
-	memcpy(&mutable, &data, sizeof(mutable));
 
 	mi = rbtree_finddata(module_instance_data_tree,
 			     &(module_instance_t){
-				.dl_inst = &(dl_module_inst_t){ .data = mutable },
+				.dl_inst = &(dl_module_inst_t){ .data = UNCONST(void *, data) },
 			     });
 	if (!mi) return NULL;
 

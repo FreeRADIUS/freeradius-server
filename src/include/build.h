@@ -71,11 +71,21 @@ extern "C" {
 #define STRINGIFY(x) XSTRINGIFY(x)
 #define JOINSTR(x,y) XSTRINGIFY(x ## y)
 
-/*
- *	Helpers for initialising arrays
- *	of string literals.
+/** Helper for initialising arrays of string literals.
  */
 #define L(_str)		{ _str, sizeof(_str) - 1 }
+
+/** Comparison macro for integers
+ *
+ */
+#define CMP(_a, _b)	(((_a) > (_b)) - ((_a) < (_b)))
+
+/** Remove const qualification from a pointer
+ *
+ * @param[in] _type	The non-const version of the type.
+ * @param[in] _ptr	to de-const.
+ */
+#define UNCONST(_type, _ptr)	((_type)((uintptr_t)(_ptr)))
 
 /*
  *	HEX concatenation macros
@@ -182,6 +192,7 @@ extern "C" {
 #  define DIAG_PUSH() DIAG_PRAGMA(push)
 #  define DIAG_POP() DIAG_PRAGMA(pop)
 #else
+#  define DIAG_UNKNOWN_PRAGMAS
 #  define DIAG_OFF(_x)
 #  define DIAG_ON(_x)
 #  define DIAG_PUSH()

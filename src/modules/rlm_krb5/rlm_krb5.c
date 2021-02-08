@@ -420,7 +420,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	krb5_principal		client = NULL;	/* actually a pointer value */
 	krb5_creds		init_creds;
-	char			*nonconst_password;		/* compiler warnings */
 	fr_pair_t		*password;
 
 	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
@@ -469,9 +468,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
 	 */
-	memcpy(&nonconst_password, &password->vp_strvalue, sizeof(nonconst_password));
 	RDEBUG2("Retrieving and decrypting TGT");
-	ret = krb5_get_init_creds_password(conn->context, &init_creds, client, nonconst_password,
+	ret = krb5_get_init_creds_password(conn->context, &init_creds, client, UNCONST(char *, password->vp_strvalue),
 					   NULL, NULL, 0, NULL, inst->gic_options);
 	if (ret) {
 		rcode = krb5_process_error(inst, request, conn, ret);

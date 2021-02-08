@@ -336,7 +336,6 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 	char const	*filename;
 	cipher_rsa_t	*rsa_inst = talloc_get_type_abort(ctx, cipher_rsa_t);	/* Yeah this is a bit hacky */
 	EVP_PKEY	*pkey;
-	void		*pass;
 	int		pkey_type;
 
 	filename = cf_pair_value(cf_item_to_pair(ci));
@@ -347,9 +346,8 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 		return -1;
 	}
 
-	memcpy(&pass, &rsa_inst->private_key_password, sizeof(pass));
-
-	pkey = PEM_read_PrivateKey(fp, (EVP_PKEY **)out, _get_private_key_password, pass);
+	pkey = PEM_read_PrivateKey(fp, (EVP_PKEY **)out, _get_private_key_password,
+				   UNCONST(void *, rsa_inst->private_key_password));
 	fclose(fp);
 
 	if (!pkey) {

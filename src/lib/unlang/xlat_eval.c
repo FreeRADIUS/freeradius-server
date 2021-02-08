@@ -1437,14 +1437,11 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 	if (str && escape) {
 		size_t len;
 		char *escaped;
-		void *mutable;
 
 		len = talloc_array_length(str) * 3;
 
 		escaped = talloc_array(ctx, char, len);
-
-		memcpy(&mutable, &escape_ctx, sizeof(mutable));
-		escape(request, escaped, len, str, mutable);
+		escape(request, escaped, len, str, UNCONST(void *, escape_ctx));
 		talloc_free(str);
 		str = escaped;
 	}

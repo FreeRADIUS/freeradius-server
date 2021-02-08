@@ -2590,17 +2590,15 @@ static int fr_trie_print_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen,
 static int fr_trie_user_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
 {
 	fr_trie_user_t *user;
-	void *data;
 
 	if (!trie || (trie->type != FR_TRIE_USER)) return 0;
 
 	user = (fr_trie_user_t *) trie;
-	memcpy(&data, &user->data, sizeof(data)); /* const issues */
 
 	/*
 	 *	Call the user function with the key, key length, and data.
 	 */
-	if (cb->user_callback(cb->ctx, cb->start, keylen, data) < 0) {
+	if (cb->user_callback(cb->ctx, cb->start, keylen, UNCONST(void *, user->data)) < 0) {
 		return -1;
 	}
 
@@ -2609,14 +2607,14 @@ static int fr_trie_user_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, 
 
 int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 {
-	fr_trie_callback_t my_cb;
 	uint8_t buffer[MAX_KEY_BYTES + 1];
-
-	my_cb.start = buffer;
-	my_cb.end = buffer + sizeof(buffer);
-	my_cb.callback = fr_trie_user_cb;
-	my_cb.user_callback = callback;
-	my_cb.ctx = ctx;
+	fr_trie_callback_t my_cb = {
+		.start = buffer,
+		.end = buffer + sizeof(buffer),
+		.callback = fr_trie_user_cb,
+		.user_callback = callback,
+		.ctx = ctx
+	};
 
 	memset(buffer, 0, sizeof(buffer));
 

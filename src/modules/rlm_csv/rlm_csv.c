@@ -502,17 +502,11 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
 		return -1;
 	}
 
-	for (map = maps;
-	     map != NULL;
-	     map = map->next) {
-		map_t *unconst_map;
-
-		memcpy(&unconst_map, &map, sizeof(map));
-
+	for (map = maps; map != NULL; map = map->next) {
 		/*
 		 *	This function doesn't change the map, so it's OK.
 		 */
-		if (csv_map_verify(unconst_map, mod_inst) < 0) return -1;
+		if (csv_map_verify(UNCONST(map_t *, map), mod_inst) < 0) return -1;
 	}
 
 	return 0;
@@ -932,7 +926,7 @@ redo:
 				goto finish;
 			}
 		} else {
-			memcpy(&field_name, &map->rhs->name, sizeof(field_name)); /* const */
+			field_name = UNCONST(char *, map->rhs->name);
 		}
 
 		field = fieldname2offset(inst, field_name, NULL);

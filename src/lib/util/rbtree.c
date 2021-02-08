@@ -407,13 +407,7 @@ fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
 
 bool rbtree_insert(rbtree_t *tree, void const *data)
 {
-	void *mutable;
-
-	if (unlikely(tree->being_freed)) return NULL;
-
-	memcpy(&mutable, &data, sizeof(mutable));
-
-	if (rbtree_insert_node(tree, mutable)) return true;
+	if (rbtree_insert_node(tree, UNCONST(void *, data))) return true;
 	return false;
 }
 

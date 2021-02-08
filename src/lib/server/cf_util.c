@@ -1693,7 +1693,6 @@ static int _cf_data_walk_cb(void *data, void *uctx)
 	cf_data_walk_ctx_t	*cd_ctx = uctx;
 	CONF_DATA		*cd = data;
 	CONF_ITEM		*ci = data;
-	void			*mutable;
 	int			ret;
 
 	/*
@@ -1703,8 +1702,7 @@ static int _cf_data_walk_cb(void *data, void *uctx)
 
 	if ((cd->type != cd_ctx->type) && (strcmp(cd->type, cd_ctx->type) != 0)) return 0;
 
-	memcpy(&mutable, &cd->data, sizeof(data));
-	ret = cd_ctx->cb(mutable, cd_ctx->ctx);
+	ret = cd_ctx->cb(UNCONST(void *, cd->data), cd_ctx->ctx);
 
 	return ret;
 }

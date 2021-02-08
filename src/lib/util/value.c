@@ -3355,14 +3355,11 @@ int fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
 {
 	size_t	len;
 	char	*str;
-	char 	*mutable;
 
 	if (!fr_cond_assert(vb->type == FR_TYPE_STRING)) return -1;
 
 	len = strlen(vb->vb_strvalue);
-
-	memcpy(&mutable, &vb->vb_strvalue, sizeof(mutable));
-	str = talloc_realloc(ctx, mutable, char, len + 1);
+	str = talloc_realloc(ctx, UNCONST(char *, &vb->vb_strvalue), char, len + 1);
 	if (!str) {
 		fr_strerror_const("Failed re-allocing string buffer");
 		return -1;
@@ -3946,7 +3943,7 @@ void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
  */
 int fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
 {
-	uint8_t *ptr, *nptr;
+	uint8_t *nptr;
 	size_t nlen;
 
 	if (len == 0) return 0;
@@ -3958,27 +3955,26 @@ int fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const 
 		return -1;
 	}
 
-	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
-	if (!fr_cond_assert(ptr)) return -1;
+	if (!fr_cond_assert(dst->datum.ptr)) return -1;
 
-	if (talloc_reference_count(ptr) > 0) {
+	if (talloc_reference_count(dst->datum.ptr) > 0) {
 		fr_strerror_printf("%s: Boxed value has too many references", __FUNCTION__);
 		return -1;
 	}
 
 	nlen = dst->vb_length + len;
-	nptr = talloc_realloc(ctx, ptr, uint8_t, dst->vb_length + len);
+	nptr = talloc_realloc(ctx, dst->datum.ptr, uint8_t, dst->vb_length + len);
 	if (!nptr) {
 		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
-				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
+				   __FUNCTION__,
+				   talloc_get_name(dst->datum.ptr), talloc_array_length(dst->datum.ptr), nlen);
 		return -1;
 	}
-	ptr = nptr;
 
-	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
+	memcpy(nptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
 
 	dst->tainted = dst->tainted || tainted;
-	dst->datum.ptr = ptr;
+	dst->datum.ptr = nptr;
 	dst->vb_length += len;
 
 	return 0;

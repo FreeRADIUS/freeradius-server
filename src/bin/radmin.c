@@ -538,7 +538,7 @@ static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ct
 		}
 
 		if (info->argc >= 2) {
-			memcpy(&filename, &info->argv[1], sizeof(filename)); /* const issues */
+			filename = UNCONST(char *, info->argv[1]);
 		} else {
 			filename = getenv("FR_PROFILE_FILENAME");
 		}

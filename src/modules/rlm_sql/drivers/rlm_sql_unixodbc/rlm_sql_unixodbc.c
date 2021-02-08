@@ -97,17 +97,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	SQLSetConnectAttr(conn->dbc, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 
 	/* 3. Connect to the datasource */
-	{
-		SQLCHAR *odbc_server, *odbc_login, *odbc_password;
-
-		memcpy(&odbc_server, &config->sql_server, sizeof(odbc_server));
-		memcpy(&odbc_login, &config->sql_login, sizeof(odbc_login));
-		memcpy(&odbc_password, &config->sql_password, sizeof(odbc_password));
-		err_handle = SQLConnect(conn->dbc,
-					odbc_server, strlen(config->sql_server),
-					odbc_login, strlen(config->sql_login),
-					odbc_password, strlen(config->sql_password));
-	}
+	err_handle = SQLConnect(conn->dbc,
+				UNCONST(SQLCHAR *, config->sql_server), strlen(config->sql_server),
+				UNCONST(SQLCHAR *, config->sql_login), strlen(config->sql_login),
+				UNCONST(SQLCHAR *, config->sql_password), strlen(config->sql_password));
 
 	if (sql_check_error(err_handle, handle, config)) {
 		ERROR("Connection failed");
@@ -131,12 +124,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	int state;
 
 	/* Executing query */
-	{
-		SQLCHAR *odbc_query;
-
-		memcpy(&odbc_query, &query, sizeof(odbc_query));
-		err_handle = SQLExecDirect(conn->stmt, odbc_query, strlen(query));
-	}
+	err_handle = SQLExecDirect(conn->stmt, UNCONST(SQLCHAR *, query), strlen(query));
 	if ((state = sql_check_error(err_handle, handle, config))) {
 		if(state == RLM_SQL_RECONNECT) {
 			DEBUG("rlm_sql will attempt to reconnect");

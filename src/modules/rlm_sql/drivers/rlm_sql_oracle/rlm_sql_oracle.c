@@ -247,12 +247,8 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
-	int status;
-	rlm_sql_oracle_conn_t *conn = handle->conn;
-
-	OraText *oracle_query;
-
-	memcpy(&oracle_query, &query, sizeof(oracle_query));
+	int			status;
+	rlm_sql_oracle_conn_t	*conn = handle->conn;
 
 	if (!conn->ctx) {
 		ERROR("Socket not connected");
@@ -260,7 +256,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 		return RLM_SQL_RECONNECT;
 	}
 
-	if (OCIStmtPrepare(conn->query, conn->error, oracle_query, strlen(query),
+	if (OCIStmtPrepare(conn->query, conn->error, UNCONST(OraText *, query), strlen(query),
 			   OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_query");
 
@@ -294,13 +290,9 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	sb2		*ind;
 
-	OraText 	*oracle_query;
-
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
-	memcpy(&oracle_query, &query, sizeof(oracle_query));
-
-	if (OCIStmtPrepare(conn->query, conn->error, oracle_query, strlen(query), OCI_NTV_SYNTAX,
+	if (OCIStmtPrepare(conn->query, conn->error, UNCONST(OraText *, query), strlen(query), OCI_NTV_SYNTAX,
 			   OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_select_query");
 

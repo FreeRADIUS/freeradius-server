@@ -1480,8 +1480,7 @@ post_option:
 
 	if (dict_protocol_add(dict) < 0) goto error;
 
-	memcpy(&mutable, &dict->root, sizeof(mutable));
-
+	mutable = UNCONST(fr_dict_attr_t *, dict->root);
 	if (!type_size) {
 		mutable->flags.type_size = dict->default_type_size;
 		mutable->flags.length = dict->default_type_length;
@@ -1536,8 +1535,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 		return -1;
 	}
 
-	memcpy(&mutable, &dv, sizeof(mutable));
-
+	mutable = UNCONST(fr_dict_vendor_t *, dv);
 	mutable->type = type;
 	mutable->length = length;
 	mutable->flags = continuation;
@@ -1769,10 +1767,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				 *	with the structure size/
 				 */
 				if (ctx->stack[ctx->stack_depth].struct_size <= 255) {
-					fr_dict_attr_t *mutable;
-
-					memcpy(&mutable, &da, sizeof(mutable));
-					mutable->flags.length = ctx->stack[ctx->stack_depth].struct_size;
+					UNCONST(fr_dict_attr_t *, da)->flags.length = ctx->stack[ctx->stack_depth].struct_size;
 				} /* else length 0 means "unknown / variable size / too large */
 			} else {
 				fr_assert(da->type == FR_TYPE_TLV);
@@ -2106,7 +2101,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			fr_dict_attr_t const	*vsa_da;
 			fr_dict_attr_t const	*vendor_da;
 			fr_dict_attr_t		*new;
-			fr_dict_attr_t		*mutable;
 
 			if (argc < 2) {
 				fr_strerror_const_push("Invalid BEGIN-VENDOR entry");
@@ -2196,13 +2190,12 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 						      vsa_da, argv[1], vendor->pen, FR_TYPE_VENDOR, &flags);
 				if (unlikely(!new)) goto error;
 
-				memcpy(&mutable, &vsa_da, sizeof(mutable));
-				if (dict_attr_child_add(mutable, new) < 0) {
+				if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
 					talloc_free(new);
 					goto error;
 				}
 
-				if (dict_attr_add_to_namespace(ctx->dict, mutable, new) < 0) {
+				if (dict_attr_add_to_namespace(ctx->dict, UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
 					talloc_free(new);
 					goto error;
 				}

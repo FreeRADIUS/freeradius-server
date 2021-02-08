@@ -237,30 +237,27 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	cache_status_t status;
 
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
-	rlm_cache_entry_t *my_c;
 
 	fr_assert(handle == request);
 
 	if (!request) return CACHE_ERROR;
 
-	memcpy(&my_c, &c, sizeof(my_c));
-
 	/*
 	 *	Allow overwriting
 	 */
-	if (!rbtree_insert(driver->cache, my_c)) {
+	if (!rbtree_insert(driver->cache, c)) {
 		status = cache_entry_expire(config, instance, request, handle, c->key, c->key_len);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
-		if (!rbtree_insert(driver->cache, my_c)) {
+		if (!rbtree_insert(driver->cache, c)) {
 			RERROR("Failed adding entry");
 
 			return CACHE_ERROR;
 		}
 	}
 
-	if (fr_heap_insert(driver->heap, my_c) < 0) {
-		rbtree_deletebydata(driver->cache, my_c);
+	if (fr_heap_insert(driver->heap, UNCONST(rlm_cache_entry_t *, c)) < 0) {
+		rbtree_deletebydata(driver->cache, c);
 		RERROR("Failed adding entry to expiry heap");
 
 		return CACHE_ERROR;

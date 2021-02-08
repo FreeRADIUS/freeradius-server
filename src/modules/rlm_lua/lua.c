@@ -518,7 +518,7 @@ static int _lua_list_iterator_init(lua_State *L)
  */
 static int _lua_pair_accessor_init(lua_State *L)
 {
-	request_t			*request = fr_lua_util_get_request();
+	request_t		*request = fr_lua_util_get_request();
 	char const		*attr;
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t		*up;
@@ -534,7 +534,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 		REDEBUG("Unknown or invalid attribute name \"%s\"", attr);
 		return -1;
 	}
-	memcpy(&up, &da, sizeof(up));
+	up = UNCONST(fr_dict_attr_t *, da);
 
 	/*
 	 *	Add the pairs method to the main table, this allows

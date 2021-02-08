@@ -402,13 +402,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (res) goto error;
 
 	/* Now load the config file, which can override gleaned settings. */
-	{
-		char *file;
-
-		memcpy(&file, &inst->filename, sizeof(file));
-		res = ub_ctx_config(inst->ub, file);
-		if (res) goto error;
-	}
+	res = ub_ctx_config(inst->ub, UNCONST(char *, inst->filename));
+	if (res) goto error;
 
 	if (unbound_log_init(inst, &inst->u_log, inst->ub) < 0) goto error;
 

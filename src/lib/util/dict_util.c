@@ -1171,7 +1171,6 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 {
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*old;
-	fr_dict_attr_t		*mutable;
 	fr_dict_attr_flags_t	our_flags = *flags;
 
 	if (unlikely(dict->read_only)) {
@@ -1232,14 +1231,9 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	/*
-	 *	Setup parenting for the attribute
-	 */
-	memcpy(&mutable, &parent, sizeof(mutable));
-
-	/*
 	 *	Add in by number
 	 */
-	if (dict_attr_child_add(mutable, n) < 0) goto error;
+	if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, parent), n) < 0) goto error;
 
 	/*
 	 *	If it's a group attribute, the default
@@ -1404,13 +1398,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	/*
 	 *	Mark the attribute up as having an enumv
 	 */
-	{
-		fr_dict_attr_t *mutable;
-
-		memcpy(&mutable, &da, sizeof(mutable));
-
-		mutable->flags.has_value = 1;
-	}
+	UNCONST(fr_dict_attr_t *, da)->flags.has_value = 1;
 
 	return 0;
 }
@@ -3417,15 +3405,11 @@ void fr_dict_global_read_only(void)
  */
 fr_dict_t *fr_dict_unconst(fr_dict_t const *dict)
 {
-	fr_dict_t *mutable;
-
 	if (unlikely(dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
 		return NULL;
 	}
-
-	memcpy(&mutable, &dict, sizeof(dict));
-	return mutable;
+	return UNCONST(fr_dict_t *, dict);
 }
 
 /** Coerce to non-const
@@ -3433,7 +3417,6 @@ fr_dict_t *fr_dict_unconst(fr_dict_t const *dict)
  */
 fr_dict_attr_t *fr_dict_attr_unconst(fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t *mutable;
 	fr_dict_t *dict;
 
 	dict = dict_by_da(da);
@@ -3442,8 +3425,7 @@ fr_dict_attr_t *fr_dict_attr_unconst(fr_dict_attr_t const *da)
 		return NULL;
 	}
 
-	memcpy(&mutable, &da, sizeof(da));
-	return mutable;
+	return UNCONST(fr_dict_attr_t *, da);
 }
 
 fr_dict_t const *fr_dict_internal(void)

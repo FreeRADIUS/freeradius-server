@@ -80,34 +80,23 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	/* Not suported ? */
 	SQLSetConnectAttr(conn->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 #endif
+
 	/*
-	 *	The db2 API doesn't qualify arguments as const even when they should be.
+	 *	We probably want to use SQLDriverConnect, which connects
+	 *	to a remote server.
+	 *
+	 *	http://www.ibm.com/support/knowledgecenter/SSEPGG_10.5.0/com.ibm.db2.luw.apdv.cli.doc/doc/r0000584.html
+	 *	http://stackoverflow.com/questions/27167070/connection-string-to-a-remote-db2-db-in-another-server
+	 *
+	 *	And probably synthesise the retarded connection string ourselves,
+	 *	probably via config file expansions:
+	 *
+	 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PORT=50000
 	 */
-	{
-		SQLCHAR *server, *login, *password;
-
-		memcpy(&server, &config->sql_server, sizeof(server));
-		memcpy(&login, &config->sql_login, sizeof(login));
-		memcpy(&password, &config->sql_password, sizeof(password));
-
-		/*
-		 *	We probably want to use SQLDriverConnect, which connects
-		 *	to a remote server.
-		 *
-		 *	http://www.ibm.com/support/knowledgecenter/SSEPGG_10.5.0/com.ibm.db2.luw.apdv.cli.doc/doc/r0000584.html
-		 *	http://stackoverflow.com/questions/27167070/connection-string-to-a-remote-db2-db-in-another-server
-		 *
-		 *	And probably synthesis the retarded connection string ourselves,
-		 *	probably via config file expansions:
-		 *
-		 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PORT=50000
-		 */
-		row = SQLConnect(conn->dbc_handle,
-				    server, SQL_NTS,
-				    login, SQL_NTS,
-				    password, SQL_NTS);
-	}
-
+	row = SQLConnect(conn->dbc_handle,
+			 UNCONST(SQLCHAR *, config->sql_server), SQL_NTS,
+			 UNCONST(SQLCHAR *, config->sql_login), SQL_NTS,
+			 UNCONST(SQLCHAR *, config->sql_password), SQL_NTS);
 	if (row != SQL_SUCCESS) {
 		ERROR("could not connect to DB2 server %s", config->sql_server);
 

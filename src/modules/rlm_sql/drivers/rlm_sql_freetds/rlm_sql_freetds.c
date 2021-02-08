@@ -750,20 +750,17 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	Set User and Password properties for the db
 	 */
 	{
-		CS_VOID *login, *password;
-		CS_CHAR *server;
 		char database[128];
 
-		memcpy(&login, &config->sql_login, sizeof(login));
-		if (ct_con_props(conn->db, CS_SET, CS_USERNAME, login, strlen(config->sql_login), NULL) != CS_SUCCEED) {
+		if (ct_con_props(conn->db, CS_SET, CS_USERNAME,
+				 UNCONST(CS_VOID *, config->sql_login), strlen(config->sql_login), NULL) != CS_SUCCEED) {
 			ERROR("unable to set username for db");
 
 			goto error;
 		}
 
-		memcpy(&password, &config->sql_password, sizeof(password));
 		if (ct_con_props(conn->db, CS_SET, CS_PASSWORD,
-				 password, strlen(config->sql_password), NULL) != CS_SUCCEED) {
+				 UNCONST(CS_VOID *, config->sql_password), strlen(config->sql_password), NULL) != CS_SUCCEED) {
 			ERROR("unable to set password for db");
 
 			goto error;
@@ -772,8 +769,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		/*
 		 *	Connect to the database
 		 */
-		memcpy(&server, &config->sql_server, sizeof(server));
-		if (ct_connect(conn->db, server, strlen(config->sql_server)) != CS_SUCCEED) {
+		if (ct_connect(conn->db, UNCONST(CS_CHAR *, config->sql_server), strlen(config->sql_server)) != CS_SUCCEED) {
 			ERROR("unable to establish db to symbolic servername %s",
 			      config->sql_server);
 

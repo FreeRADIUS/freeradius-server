@@ -198,15 +198,11 @@ static int dl_module_magic_verify(CONF_SECTION const *cs, dl_module_common_t con
  */
 dl_module_inst_t const *dl_module_instance_by_data(void const *data)
 {
-	void *mutable;
-
 	DL_INIT_CHECK;
-
-	memcpy(&mutable, &data, sizeof(mutable));
 
 	if (dl_inst_cache.data == data) return dl_inst_cache.inst;
 
-	return rbtree_finddata(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = mutable });
+	return rbtree_finddata(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = UNCONST(void *, data) });
 }
 
 /** Lookup instance name via instance data

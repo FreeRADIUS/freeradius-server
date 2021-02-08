@@ -81,7 +81,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 *	container.
 	 */
 	if (unknown->type == FR_TYPE_VENDOR) {
-		fr_dict_attr_t *mutable, *n;
+		fr_dict_attr_t *n;
 
 		if (dict_vendor_add(dict, unknown->name, unknown->attr) < 0) return NULL;
 
@@ -91,8 +91,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		/*
 		 *	Setup parenting for the attribute
 		 */
-		memcpy(&mutable, &unknown->parent, sizeof(mutable));
-		if (dict_attr_child_add(mutable, n) < 0) return NULL;
+		if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, unknown->parent), n) < 0) return NULL;
 
 		return n;
 	}

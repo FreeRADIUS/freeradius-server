@@ -308,7 +308,6 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	int			ldap_errno;
 
 	char const		*url;
-	char const		**attrs;
 
 	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
@@ -339,12 +338,10 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	conn = mod_conn_get(inst, request);
 	if (!conn) goto free_urldesc;
 
-	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
-
 	if (fr_ldap_parse_url_extensions(&server_ctrls[0], request, conn, ldap_url->lud_exts) < 0) goto free_socket;
 
 	status = fr_ldap_search(&result, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
-				ldap_url->lud_filter, attrs, server_ctrls, NULL);
+				ldap_url->lud_filter, UNCONST(char **, ldap_url->lua_attr), server_ctrls, NULL);
 
 #ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (server_ctrls[0]) ldap_control_free(server_ctrls[0]);
@@ -1938,11 +1935,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (inst->userobj_sort_by) {
 		LDAPSortKey	**keys;
 		int		ret;
-		char		*p;
 
-		memcpy(&p, &inst->userobj_sort_by, sizeof(p));
-
-		ret = ldap_create_sort_keylist(&keys, p);
+		ret = ldap_create_sort_keylist(&keys, UNCONST(char *, inst->userobj_sort_by));
 		if (ret != LDAP_SUCCESS) {
 			cf_log_err(conf, "Invalid user.sort_by value \"%s\": %s",
 				      inst->userobj_sort_by, ldap_err2string(ret));

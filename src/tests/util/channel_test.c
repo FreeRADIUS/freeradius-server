@@ -64,11 +64,8 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t c
 
 int talloc_const_free(void const *ptr)
 {
-	void *tmp;
 	if (!ptr) return 0;
-
-	memcpy(&tmp, &ptr, sizeof(tmp));
-	return talloc_free(tmp);
+	return talloc_free(UNCONST(void *, ptr));
 }
 /**********************************************************************/
 
