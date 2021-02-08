@@ -18,7 +18,7 @@ else {
 	reject
 }
 
-if (&request:TLS-Cert-Issuer =~ /@example\.org/) {
+if (&request.TLS-Cert-Issuer =~ /@example\.org/) {
         test_pass
 } else {
 	test_fail
