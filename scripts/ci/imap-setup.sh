@@ -53,6 +53,9 @@ touch  "${PASSPATH}"
 touch "${LOGPATH}"
 touch "${LOGINFOPATH}" 
 
+# Get primary group name
+GROUP=$(id -gn)
+
 #
 # Add users to the password file
 #
@@ -170,7 +173,7 @@ default_login_user = ${USER} \
 echo "
 userdb {
 	driver = static
-	args = uid=${USER} gid=${USER}
+	args = uid=${USER} gid=${GROUP}
 } \
 " >> "${CONFPATH}"
 
