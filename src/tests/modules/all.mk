@@ -71,7 +71,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #  and make the output file depend on the library.  That way if the
 #  module is re-built, then the tests are re-run.
 #
-$(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(dir $x)))))
+$(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x)))))))
 
 
 #
