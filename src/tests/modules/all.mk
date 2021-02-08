@@ -48,9 +48,10 @@ else
 
   ifdef ${1}_require_test_server
     ifdef TEST_SERVER
-      # define FOO_TEST_SERVER
-      $(eval $(shell echo ${1} | tr a-z A-Z)_TEST_SERVER := $(TEST_SERVER))
-    else
+      # define and export FOO_TEST_SERVER if it's not already defined
+      $(eval export $(shell echo ${1} | tr a-z A-Z)_TEST_SERVER ?= $(TEST_SERVER))
+    endif
+    ifeq "$($(shell echo ${1} | tr a-z A-Z)_TEST_SERVER)" ""
       # the module requires a test server, but we don't have one.  Skip it.
       FILES_SKIP += ${2}
     endif
@@ -70,7 +71,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #  and make the output file depend on the library.  That way if the
 #  module is re-built, then the tests are re-run.
 #
-$(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(dir $x)))))
+$(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x)))))))
 
 
 #
