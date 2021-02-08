@@ -88,7 +88,7 @@ cp "${CIDIR}/dovecot/fr_dovecot.conf" "${TLSCONF}"
 
 # Configure the specifics for the non_tls dovecot server
 echo "
-instance_name = "fr_dovecot"
+instance_name = \"fr_dovecot\"
 
 ssl = no
 
@@ -106,7 +106,7 @@ service imap-login {
 
 # Configure the specifics for the tls dovecot server
 echo "
-instance_name = "fr_tls_dovecot"
+instance_name = \"fr_tls_dovecot\"
 
 
 base_dir = ${TLSRUNDIR}
@@ -138,7 +138,7 @@ verbose_ssl = yes
 " >> "${TLSCONF}"
 
 # Make sure there is a clean imap-stop.sh file
-> ${CIDIR}/imap-stop.sh
+echo "" > "${CIDIR}/imap-stop.sh"
 
 #
 # Add system specific dovecot information
@@ -180,11 +180,11 @@ userdb {
 # Run the imap server
 echo "Starting a dovecot imap server at ${CONFPATH}"
 
-if ! dovecot -c ${CONFPATH}; then
+if ! dovecot -c "${CONFPATH}"; then
 	echo "The server failed to start up. Here is fr_dovecot.log"
-	cat ${LOGPATH}
+	cat "${LOGPATH}"
 	echo "And here is fr_dovecot-info.log"
-	cat ${LOGINFOPATH}
+	cat "${LOGINFOPATH}"
 fi
 
 echo "dovecot -c ${CONFPATH} stop" >> "${CIDIR}/imap-stop.sh"
