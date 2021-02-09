@@ -521,9 +521,6 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
-/* Define to 1 if you have the `talloc_set_memlimit' function. */
-#undef HAVE_TALLOC_SET_MEMLIMIT
-
 /* 128 bit unsigned integer */
 #undef HAVE_UINT128_T
 
