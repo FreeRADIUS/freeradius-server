@@ -284,12 +284,6 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 	*start = next;						/* This is the address we feed into mprotect */
 	*end = (void *)((uintptr_t)next + (uintptr_t)rounded);
 
-	/*
-	 *	Disabled until samba fixes upstream issue
-	 *	with memlimits on pools.
-	 */
-//	if (talloc_set_memlimit(pool, pool_size) < 0) goto error; /* Don't allow allocations outside of the pool */
-
 	return pool;
 }
 
