@@ -1082,93 +1082,6 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
 	return 1;
 }
 
-static void _pair_list_sort_split(fr_pair_list_t *list, fr_pair_t **source, fr_pair_t **front, fr_pair_t **back)
-{
-	fr_pair_t *fast = NULL;
-	fr_pair_t *slow;
-
-	/*
-	 *	Stopping condition - no more elements left to split
-	 */
-	if (!*source || !(*source)->entry.next) {
-		*front = *source;
-		*back = NULL;
-
-		return;
-	}
-
-	/*
-	 *	Fast advances twice as fast as slow, so when it gets to the end,
-	 *	slow will point to the middle of the linked list.
-	 */
-	slow = *source;
-	fast = fr_dlist_next(&list->head, slow);
-	while (fast) {
-		fast = fr_dlist_next(&list->head, fast);
-		if (fast) {
-			slow = fr_dlist_next(&list->head, slow);
-			fast = fr_dlist_next(&list->head, fast);
-		}
-	}
-	*front = *source;
-	*back = fr_dlist_next(&list->head, slow);
-	/*
-	 * NULL terminate the first half of the list to make two lists
-	 */
-	if (slow) slow->entry.next = NULL;
-}
-
-static fr_pair_t *_pair_list_sort_merge(fr_pair_list_t *list, fr_pair_t **a, fr_pair_t **b, fr_cmp_t cmp)
-{
-	fr_pair_t *result = NULL;
-	fr_pair_t *next;
-
-	if (!*a) return *b;
-	if (!*b) return *a;
-	/*
-	 *	Compare the fr_dict_attr_ts and tags
-	 */
-	if (cmp(*a, *b) <= 0) {
-		result = *a;
-		next = fr_dlist_next(&list->head, (*a));
-		next = _pair_list_sort_merge(list, &next, b, cmp);
-		result->entry.next = &next->entry;
-	} else {
-		result = *b;
-		next = fr_dlist_next(&list->head, (*b));
-		next = _pair_list_sort_merge(list, a, &next, cmp);
-		result->entry.next = &next->entry;
-	}
-
-	return result;
-}
-
-/** Recursive sort routine for dlist of fr_pair_ts
- *
- * @param[in,out] list head of list being sorted.
- * @param[in,out] vps First item in current section of list being sorted.
- * @param[in] cmp to sort with
- */
-static void _fr_pair_list_sort
-(fr_pair_list_t *list, fr_pair_t **vps, fr_cmp_t cmp) {
-
-	fr_pair_t *a;
-	fr_pair_t *b;
-
-	/*
-	 *	If there's 0-1 elements it must already be sorted.
-	 */
-	if (!*vps || (!(*vps)->entry.next)) return;
-	_pair_list_sort_split(list, vps, &a, &b);	/* Split into sublists */
-	_fr_pair_list_sort(list, &a, cmp);		/* Traverse left */
-	_fr_pair_list_sort(list, &b, cmp);		/* Traverse right */
-
-	/*
-	 *	merge the two sorted lists together
-	 */
-	*vps = _pair_list_sort_merge(list, &a, &b, cmp);
-}
-
 /** Sort a doubly linked list of fr_pair_ts using merge sort
  *
  * @note We use a merge sort (which is a stable sort), making this
@@ -1181,50 +1094,7 @@ static void _fr_pair_list_sort
  */
 void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
 {
-	fr_pair_t *head;
-
-	/*
-	 *	If there's 0-1 elements it must already be sorted.
-	 */
-	if (fr_dlist_num_elements(&list->head) <= 1) return;
-
-	/*
-	 *	Pass the first element in the list into the real
-	 *	sort routine rather than creating lots of temporary
-	 *	list heads.  We then treat the list as a set of NULL
-	 *	terminated singly linked lists for the sort routine,
-	 *	re-building the prev links after the sort.
-	 */
-	head = fr_pair_list_head(list);
-	/* NULL terminate existing list */
-	list->head.entry.prev->next = NULL;
-
-	/*
-	 *	Call the real sort routine
-	 */
-	_fr_pair_list_sort(list, &head, cmp);
-
-	/*
-	 *	Reset pointers broken during sort
-	 */
-	list->head.entry.next = &head->entry;
-	head = fr_pair_list_head(list);
-	head->entry.prev = &list->head.entry;
-	while (head) {
-		if (head->entry.next) {
-			/*
-			 * There is a "next" entry, point it back to the current one
-			 */
-			head->entry.next->prev = &head->entry;
-		} else {
-			/*
-			 * No next entry, this is the tail
-			 */
-			list->head.entry.prev = &head->entry;
-			head->entry.next = &list->head.entry;
-		}
-		head = fr_pair_list_next(list, head);
-	}
+	fr_dlist_sort(&list->head, cmp);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
