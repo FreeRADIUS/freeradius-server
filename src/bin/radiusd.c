@@ -111,18 +111,6 @@ static int talloc_config_set(main_config_t *config)
 
 	talloc_enable_null_tracking();
 
-	if (config->talloc_memory_limit) {
-		TALLOC_CTX *null_child = talloc_new(NULL);
-		TALLOC_CTX *null_ctx = talloc_parent(null_child);
-
-		talloc_free(null_child);
-
-		if (talloc_set_memlimit(null_ctx, config->talloc_memory_limit) < 0) {
-			fr_strerror_const("Failed applying memory limit");
-			return -1;
-		}
-	}
-
 	return 0;
 }
 
@@ -804,20 +792,6 @@ int main(int argc, char *argv[])
 		 */
 		if (virtual_servers_open(sc) < 0) EXIT_WITH_FAILURE;
 	}
-
-#ifndef NDEBUG
-	{
-		size_t size;
-
-		size = talloc_total_size(config->root_cs);
-
-		if (talloc_set_memlimit(config->root_cs, size)) {
-			PERROR("Failed setting memory limit for global configuration");
-		} else {
-			DEBUG3("Memory limit for global configuration is set to %zd bytes", size);
-		}
-	}
-#endif
 
 	/*
 	 *	At this point, no one has any business *ever* going
