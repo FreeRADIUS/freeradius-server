@@ -585,7 +585,6 @@ int unlang_subrequest_op_init(void)
 			}
 		}
 	};
-	talloc_set_memlimit(gctx, talloc_get_size(gctx));	/* Ensure where are no allocations */
 	subrequest_instruction = unlang_subrequest_to_group(gctx);
 
 	unlang_register(UNLANG_TYPE_SUBREQUEST,
