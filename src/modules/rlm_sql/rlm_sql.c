@@ -1035,9 +1035,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		TALLOC_FREE(inst->driver_inst);
 		return -1;
 	}
-#ifndef NDEBUG
-	module_instance_read_only(inst->driver_inst, inst->driver->name);
-#endif
 
 	/*
 	 *	@fixme Inst should be passed to all driver callbacks
