@@ -1374,20 +1374,6 @@ int modules_instantiate(void)
 
 	if (rbtree_walk(module_instance_name_tree, RBTREE_IN_ORDER, _module_instantiate, NULL) < 0) return -1;
 
-#ifndef NDEBUG
-	{
-		size_t size;
-
-		size = talloc_total_size(instance_ctx);
-
-		if (talloc_set_memlimit(instance_ctx, size)) {
-			ERROR("Failed setting memory limit for all modules");
-		} else {
-			DEBUG3("Memory limit for all modules is set to %zd bytes", size);
-		}
-	}
-#endif
-
 	return 0;
 }
 
