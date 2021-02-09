@@ -21,8 +21,9 @@ ATTRIBUTE	Arista-WebAuth				6	integer
 ATTRIBUTE	Arista-BlockMac				7	string
 ATTRIBUTE	Arista-UnblockMac			8	string
 ATTRIBUTE	Arista-PortFlap				9	integer
+ATTRIBUTE	Arista-Captive-Portal			10	string
 
-VALUE	Arista-WebAuth			start			0
-VALUE	Arista-WebAuth			complete		1
+VALUE	Arista-WebAuth			start			1
+VALUE	Arista-WebAuth			complete		2
 
 END-VENDOR   Arista
