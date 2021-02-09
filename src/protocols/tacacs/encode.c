@@ -130,7 +130,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	ssize_t			len = 0;
 	size_t 			body_len, packet_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_marker_t	hdr, body;
+	fr_dbuff_marker_t	hdr, body, hdr_io;
+	uint8_t			version_byte;
 
 	fr_tacacs_packet_hdr_t const *original = (fr_tacacs_packet_hdr_t const *) original_packet;
 
@@ -165,6 +166,10 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	 *	Let's keep reference for packet header.
 	 */
 	fr_dbuff_marker(&hdr, &work_dbuff);
+	/*
+	 *	Add marker letting us read/write header bytes without moving hdr.
+	 */
+	fr_dbuff_marker(&hdr_io, &work_dbuff);
 
 	/*
 	 *	Handle the fields in-place.
@@ -556,8 +561,13 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Just to avoid malformed packet.
 			 */
-			if (!fr_dbuff_current(&hdr)[0]) fr_dbuff_current(&hdr)[0] = 0xc1; /* version 12.1 */
-
+			fr_dbuff_set(&hdr_io, &hdr);
+			fr_dbuff_out(&version_byte, &hdr_io);
+			if (!version_byte) {
+				version_byte = 0xc1; /* version 12.1 */
+				fr_dbuff_set(&hdr_io, &hdr);
+				fr_dbuff_in(&hdr_io, version_byte);
+			}
 			/*
 			 *	If the caller didn't set a session ID, use a random one.
 			 */
@@ -612,7 +622,9 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 *	they have the correct values.
 			 */
 			if (original) {
-				if (!fr_dbuff_current(&hdr)[0]) {
+				fr_dbuff_set(&hdr_io, &hdr);
+				fr_dbuff_out(&version_byte, &hdr_io);
+				if (!version_byte) {
 				 	packet->hdr.version = original->version;
 				}
 
