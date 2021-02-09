@@ -131,7 +131,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	size_t 			body_len, packet_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr, body, hdr_io;
-	uint8_t			version_byte;
+	uint8_t			version_byte = 0;
 
 	fr_tacacs_packet_hdr_t const *original = (fr_tacacs_packet_hdr_t const *) original_packet;
 
