@@ -96,15 +96,14 @@ static void sig_hup (int);
 static int talloc_config_set(main_config_t *config)
 {
 	if (config->spawn_workers) {
-		if (config->talloc_memory_limit || config->talloc_memory_report) {
-			fr_strerror_printf("talloc_memory_limit and talloc_memory_report "
-					   "require single threaded mode (-s | -X)");
+		if (config->talloc_memory_report) {
+			fr_strerror_printf("talloc_memory_report require single threaded mode (-s | -X)");
 			return 1;
 		}
 		return 0;
 	}
 
-	if (!config->talloc_memory_limit && !config->talloc_memory_report) {
+	if (!config->talloc_memory_report) {
 		talloc_disable_null_tracking();
 		return 0;
 	}
@@ -334,7 +333,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Cd:D:e:fhi:l:L:Mn:p:PrstTvxX")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "Cd:D:e:fhi:l:Mn:p:PrstTvxX")) != -1) switch (c) {
 		case 'C':
 			check_config = true;
 			config->spawn_workers = false;
@@ -376,24 +375,6 @@ int main(int argc, char *argv[])
 					config->name, config->log_file, fr_syserror(errno));
 				EXIT_WITH_FAILURE;
 			}
-			break;
-
-		case 'L':
-		{
-			size_t limit;
-
-			if (fr_size_from_str(&limit, optarg) < 0) {
-				fr_perror("%s: Invalid memory limit", config->name);
-				EXIT_WITH_FAILURE;
-			}
-
-			if ((limit > (((size_t)((1024 * 1024) * 1024)) * 16) || (limit < ((1024 * 1024) * 10)))) {
-				fprintf(stderr, "%s: Memory limit must be between 10M-16G\n", config->name);
-				EXIT_WITH_FAILURE;
-			}
-
-			config->talloc_memory_limit = limit;
-		}
 			break;
 
 		case 'n':

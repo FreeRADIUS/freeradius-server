@@ -133,8 +133,6 @@ struct main_config_s {
 							//!< Can only be used when the server is running in single
 							//!< threaded mode.
 
-	size_t		talloc_memory_limit;		//!< Limit the amount of talloced memory the server uses.
-							//!< Only applicable in single threaded mode.
 	uint32_t	max_networks;			//!< for the scheduler
 	uint32_t	max_workers;			//!< for the scheduler
 	fr_time_delta_t	stats_interval;			//!< for the scheduler
