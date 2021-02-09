@@ -268,26 +268,28 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_pair_t 		*vp;
-	fr_dbuff_marker_t	hdr;
-	uint32_t 		sequence;
+	fr_dbuff_marker_t	hdr, io;
+	uint8_t			data_count = 0;
 
 	/*
-	 *	Let's keep reference for packet header.
+	 *	Let's keep a reference for packet header, and another
+	 *	to let us write to to the encoding as needed.
 	 */
 	fr_dbuff_marker(&hdr, &work_dbuff);
+	fr_dbuff_marker(&io, &work_dbuff);
 
 	/*
 	 *	Create the header
 	 */
-	fr_dbuff_in_bytes(&work_dbuff, FR_VQP_VERSION,			/* Version */
-					code,				/* Opcode */
-					FR_ERROR_CODE_VALUE_NO_ERROR,	/* Response Code */
-					0x00);				/* Data Count */
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VQP_VERSION,			/* Version */
+					      code,				/* Opcode */
+					      FR_ERROR_CODE_VALUE_NO_ERROR,	/* Response Code */
+					      data_count);			/* Data Count */
 
 	if (original) {
-		fr_dbuff_in_memcpy(&work_dbuff, original + 4, 4);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, original + 4, 4);
 	} else {
-		fr_dbuff_in(&work_dbuff, seq_no);
+		FR_DBUFF_IN_RETURN(&work_dbuff, seq_no);
 	}
 
 	/*
@@ -297,20 +299,22 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		size_t len;
 
 		if (vp->da == attr_packet_type) {
-			fr_dbuff_current(&hdr)[1] = (uint8_t)vp->vp_uint32;
+			fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in(&io, (uint8_t)vp->vp_uint32);
 			fr_dcursor_next(cursor);
 			continue;
 		}
 
 		if (vp->da == attr_error_code) {
-			fr_dbuff_current(&hdr)[2] = vp->vp_uint8;
+			fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 2);
+			fr_dbuff_in(&io, vp->vp_uint8);
 			fr_dcursor_next(cursor);
 			continue;
 		}
 
 		if (!original && (vp->da == attr_sequence_number)) {
-			sequence = htonl(vp->vp_uint32);
-			memcpy(&fr_dbuff_current(&hdr)[4], &sequence, sizeof(sequence));
+			fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 4);
+			fr_dbuff_in(&io, vp->vp_uint32);
 			fr_dcursor_next(cursor);
 			continue;
 		}
@@ -342,10 +346,10 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		 */
 
 		/* Type */
-		fr_dbuff_in_bytes(&work_dbuff, 0x00, 0x00, 0x0c, (vp->da->attr & 0xff));
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00, 0x00, 0x0c, (vp->da->attr & 0xff));
 
 		/* Length */
-		fr_dbuff_in(&work_dbuff, (uint16_t)len);
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)len);
 
 		/* Data */
 		switch (vp->vp_type) {
@@ -365,10 +369,16 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		default:
 			return -1;
 		}
-		fr_dbuff_current(&hdr)[3]++;	/* Update the Data Count */
+		data_count++;
 
 		fr_dcursor_next(cursor);
 	}
+
+	/*
+	 *	Update the Data Count
+	 */
+	fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 3);
+	fr_dbuff_in(&io, data_count);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
