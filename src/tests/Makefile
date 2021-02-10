@@ -9,6 +9,8 @@
 include ../../Make.inc
 
 BUILD_PATH := $(top_builddir)/build
+top_srcdir ?= $(dir $(lastword $(MAKEFILE_LIST)))
+
 
 #
 #  The "build eapol_test" makefile contains only a definition of
@@ -74,7 +76,7 @@ SECRET	= testing123
 all: tests
 
 clean:
-	@rm -f test.conf dictionary *.ok *.log
+	@rm -f test.conf dictionary *.ok *.log $(BUILD_DIR)/tests/eap
 
 dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary;  \
@@ -153,7 +155,6 @@ $(BUILD_PATH)/tests/eap:
 .PHONY: clean.tests.eap
 clean.tests.eap:
 	@rm -rf $(BUILD_PATH)/tests/eap
-
 
 $(BUILD_PATH)/tests/eap/%.ok: ${top_srcdir}/src/tests/%.conf | $(BUILD_PATH)/tests/eap
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
