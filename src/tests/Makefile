@@ -170,12 +170,18 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.conf: ${top_srcdir}/src/tests/${1}.conf
 	@sed 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' < $$< > $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
-	@echo EAPOL_TEST $$(notdir $$(patsubst %.conf,%,$$<))
+	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
 	@if $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET) > $$@.log 2>&1; then \
 		touch $$@; \
 	fi
 
-EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok
+$(BUILD_PATH)/tests/eap/${1}-${2}-resumption.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
+	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
+	@if $(EAPOL_TEST) -r 2 -c $$< -p $(PORT) -s $(SECRET) > $$@.log 2>&1; then \
+		touch $$@; \
+	fi
+
+EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok $(BUILD_PATH)/tests/eap/${1}-${2}-resumption.ok
 endef
 $(foreach FILE,$(patsubst %.conf,%,$(EAP_TLS_FILES)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
 
