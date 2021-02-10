@@ -71,7 +71,7 @@ SECRET	= testing123
 #
 #	Build the directory for testing the server
 #
-all: parse tests
+all: tests
 
 clean:
 	@rm -f test.conf dictionary *.ok *.log
