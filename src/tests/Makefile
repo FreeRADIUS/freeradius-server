@@ -142,14 +142,24 @@ radiusd.kill:
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 ifneq "$(EAPOL_TEST)" ""
-EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_TLS_VERSIONS = 1.0 1.1 1.2 
 
-%.ok: %.conf
-	@echo EAPOL_TEST $(patsubst %.conf,%,$<)
-	@$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$<) 2>&1
-	@touch $@
+.PHONY: $(BUILD_PATH)/tests/eap
+$(BUILD_PATH)/tests/eap:
+	@mkdir -p $@
 
-tests.eap: $(patsubst %.conf,%.ok, $(EAP_TLS_TESTS))
+.PHONY: clean.tests.eap
+clean.tests.eap:
+	@rm -rf $(BUILD_PATH)/tests/eap
+
+$(BUILD_PATH)/tests/eap/%.ok: ${top_srcdir}/src/tests/%.conf | $(BUILD_PATH)/tests/eap
+	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
+	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $@.log 2>&1; then \
+		touch $@; \
+	fi
+
+tests.eap: $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES))))
 
 endif
 
