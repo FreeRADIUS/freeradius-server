@@ -60,7 +60,7 @@ $ ls /var/log/radius/radacct/bydate/
 [[autz-type-questions]]
 == Questions
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
 1.  Why is it useful to _not_ call certain modules for a request?
 2.  Why is it useful to control which modules get called for a request?

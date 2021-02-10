@@ -170,5 +170,5 @@ testing the ability to obtain user configuration from an SQL database?
 3.  What additional benefits, not mentioned here, do SQL databases have
 over the files module?
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

@@ -50,5 +50,5 @@ the first attributes, `[1]` refers to the second attribute, etc.
 Returns a comma-separated string containing all values for the named
 attributes.
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

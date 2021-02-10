@@ -108,5 +108,5 @@ $ more /var/log/radius/radacct/detail2
 1.  Could the configuration for the "group" section containing the
 "detail1" and "detail2" modules be simplified? If so, how?
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

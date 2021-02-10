@@ -64,5 +64,5 @@ If the policies are correct you will see that FreeRADIUS returns an
     configured above xref:reference:unlang/keywords.adoc[Keywords].
 
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

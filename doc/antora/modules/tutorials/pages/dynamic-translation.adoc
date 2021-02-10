@@ -61,7 +61,7 @@ there".
 That text was then sent back to the RADIUS client in the `Callback-Id`
 attribute, which was not quoted above.
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
 Another dynamic translation string function is the `expr` module. It performs
 some simple mathematical operations. The following sample file entry

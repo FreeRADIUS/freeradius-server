@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2020 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 # --------------------------------------
@@ -2039,7 +2039,7 @@ VALUE	TurboCell-TxRate		TxRate-128000k		2016
 VALUE	TurboCell-TxRate		TxRate-128128k		2017
 VALUE	TurboCell-TxRate		TxRate-128256k		2018
 VALUE	TurboCell-TxRate		TxRate-128384k		2019
-VALUE	TurboCell-TxRate		TxRate-128512k		2020
+VALUE	TurboCell-TxRate		TxRate-128512k		2021
 VALUE	TurboCell-TxRate		TxRate-128640k		2021
 VALUE	TurboCell-TxRate		TxRate-128768k		2022
 VALUE	TurboCell-TxRate		TxRate-128896k		2023

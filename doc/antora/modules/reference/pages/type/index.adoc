@@ -113,5 +113,5 @@ For a full list of data types which can be used in a cast, please see
 the xref:unlang/type/all_types.adoc[list of data types] page, and the
 "Basic Type Types" section.
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

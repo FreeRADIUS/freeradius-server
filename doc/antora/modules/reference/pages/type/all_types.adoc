@@ -61,5 +61,5 @@ statements.
 | vsa		| Encapsulation of vendor-specific attributes
 |=====
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS

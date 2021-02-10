@@ -62,5 +62,5 @@ image::eap_md5.svg[Fig. EAP-MD5]
 7.  What security issues exist with EAP-MD5?
 8.  Why is EAP-MD5 disabled in newer operating systems?
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.

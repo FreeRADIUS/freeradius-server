@@ -66,5 +66,5 @@ multiple names for one number?
 prefixed with the vendor name?
 3.  Why are vendor specific attributes useful?
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
