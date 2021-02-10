@@ -247,6 +247,12 @@ typedef struct talloc_child_ctx_s TALLOC_CHILD_CTX;
 TALLOC_CHILD_CTX	*talloc_child_ctx_init(TALLOC_CTX *ctx);
 TALLOC_CHILD_CTX	*talloc_child_ctx_alloc(TALLOC_CHILD_CTX *parent) CC_HINT(nonnull);
 
+/*
+ *	The talloc_autofree_context() is marked as deprecated since libtalloc > 2.1.15,
+ *	but we need that.
+ */
+void *fr_talloc_autofree_context(void);
+
 #ifdef __cplusplus
 }
 #endif

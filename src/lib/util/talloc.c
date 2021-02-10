@@ -806,3 +806,46 @@ TALLOC_CHILD_CTX *talloc_child_ctx_alloc(TALLOC_CHILD_CTX *parent)
 	parent->next = child;
 	return child;
 }
+
+/**	Autofree mechanism
+ *
+ */
+static void *fr_autofree_context;
+
+static void fr_talloc_setup_atexit(void);
+static int fr_talloc_autofree_destructor(void *ptr);
+
+static void fr_talloc_lib_atexit(void)
+{
+	TALLOC_FREE(fr_autofree_context);
+}
+
+static void fr_talloc_setup_atexit(void)
+{
+	static bool done;
+
+	if (done) return;
+
+	atexit(fr_talloc_lib_atexit);
+	done = true;
+}
+
+static int fr_talloc_autofree_destructor(UNUSED void *ptr)
+{
+	fr_autofree_context = NULL;
+	return 0;
+}
+
+/*
+  return a context which will be auto-freed on exit
+  this is useful for reducing the noise in leak reports
+*/
+void *fr_talloc_autofree_context(void)
+{
+	if (fr_autofree_context == NULL) {
+		fr_autofree_context = talloc_named_const(NULL, 0, "fr_autofree_context");
+		talloc_set_destructor(fr_autofree_context, fr_talloc_autofree_destructor);
+		fr_talloc_setup_atexit();
+	}
+	return fr_autofree_context;
+}
