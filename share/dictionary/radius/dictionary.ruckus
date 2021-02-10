@@ -66,12 +66,35 @@ ATTRIBUTE	Wispr-Redirect-Policy			132	string
 ATTRIBUTE	Eth-Profile-Id				133	integer
 ATTRIBUTE	Zone-Name				134	string
 ATTRIBUTE	Wlan-Name				135	string
-
+ATTRIBUTE	AP-Roamed				136	integer
 ATTRIBUTE	Read-Preference				137	octets
 ATTRIBUTE	Client-Host-Name			138	string
 ATTRIBUTE	Client-Os-Type				139	string
 ATTRIBUTE	Client-Os-Class				140	string
 ATTRIBUTE	Vlan-Pool				141	string
+ATTRIBUTE	Dpsk					142	octets
+ATTRIBUTE	CP-Token				143	string
+ATTRIBUTE	Max-DL-UL-Quota				144	integer
+ATTRIBUTE	Traffic-Class-Attribute-Ids		145	string
+ATTRIBUTE	TC-Attr-Ids-With-Quota			146	tlv
+ATTRIBUTE	TC-Name-Quota				.1	string
+ATTRIBUTE	TC-Quota				.2	octets
+
+ATTRIBUTE	Nat-Pool-Name				147	string
+ATTRIBUTE	Sta-SVlan-Id				148	integer
+ATTRIBUTE	TC-Acct-Ctrs				149	tlv
+ATTRIBUTE	Acct-Ctrs_TC-Name			.1	string
+ATTRIBUTE	Acct-Ctrs_Input-Octets			.2	integer
+ATTRIBUTE	Acct-Ctrs_Output-Octets			.3	integer
+ATTRIBUTE	Acct-Ctrs_Input-Packets			.4	integer
+ATTRIBUTE	Acct-Ctrs_Output-Packets		.5	integer
+
+ATTRIBUTE	AAA-Id					152	string
+ATTRIBUTE	DPSK-Params				153	tlv
+ATTRIBUTE	DPSK-AKM-Suite				.1	octets
+ATTRIBUTE	DPSK-Cipher				.2	byte
+ATTRIBUTE	DPSK-Anonce				.3	octets
+ATTRIBUTE	DPSK-EAPOL-Key-Frame			.4	octets
 
 #
 #  Integer Translations
