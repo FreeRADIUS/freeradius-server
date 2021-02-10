@@ -173,12 +173,18 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
 	@if $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET) > $$@.log 2>&1; then \
 		touch $$@; \
+	else \
+		echo FAILED; \
+		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
 	fi
 
 $(BUILD_PATH)/tests/eap/${1}-${2}-resumption.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
 	@if $(EAPOL_TEST) -r 2 -c $$< -p $(PORT) -s $(SECRET) > $$@.log 2>&1; then \
 		touch $$@; \
+	else \
+		echo FAILED; \
+		echo "        " $(EAPOL_TEST) -r 2 -c $$< -p $(PORT) -s $(SECRET); \
 	fi
 
 EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok $(BUILD_PATH)/tests/eap/${1}-${2}-resumption.ok
