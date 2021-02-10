@@ -9,8 +9,7 @@
 include ../../Make.inc
 
 BUILD_PATH := $(top_builddir)/build
-top_srcdir ?= $(patsubst %/,%,,$(dir $(lastword $(MAKEFILE_LIST))))
-
+top_srcdir ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 #
 #  The "build eapol_test" makefile contains only a definition of
