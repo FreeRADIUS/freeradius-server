@@ -64,8 +64,6 @@ ACCTPORT = $(shell expr $(PORT) + 1)
 
 #	example.com stripped.example.com
 
-EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
-
 SECRET	= testing123
 
 .PHONY: all eap dictionary clean
@@ -144,6 +142,8 @@ radiusd.kill:
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 ifneq "$(EAPOL_TEST)" ""
+EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+
 %.ok: %.conf
 	@echo EAPOL_TEST $(patsubst %.conf,%,$<)
 	@$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$<) 2>&1
