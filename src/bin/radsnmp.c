@@ -911,7 +911,7 @@ int main(int argc, char **argv)
 	 */
 	fr_thread_local_atexit_setup();
 
-	autofree = talloc_autofree_context();
+	autofree = fr_talloc_autofree_context();
 	conf = talloc_zero(autofree, radsnmp_conf_t);
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;

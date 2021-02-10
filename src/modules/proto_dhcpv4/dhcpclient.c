@@ -580,7 +580,7 @@ int main(int argc, char **argv)
 	 */
 	fr_thread_local_atexit_setup();
 
-	autofree = talloc_autofree_context();
+	autofree = fr_talloc_autofree_context();
 
 	fr_debug_lvl = 1;
 

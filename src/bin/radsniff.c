@@ -2270,7 +2270,7 @@ int main(int argc, char *argv[])
 	 */
 	fr_thread_local_atexit_setup();
 
-	autofree = talloc_autofree_context();
+	autofree = fr_talloc_autofree_context();
 
 	/*
 	 *	Useful if using radsniff as a long running stats daemon

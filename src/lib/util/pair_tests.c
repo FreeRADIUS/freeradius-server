@@ -175,7 +175,7 @@ static int init_adhoc_attrs(fr_dict_adhoc_attr_t *dict_adhoc)
 
 static void pair_tests_init(void)
 {
-	autofree = talloc_autofree_context();
+	autofree = fr_talloc_autofree_context();
 	if (!autofree) {
 	error:
 		fr_perror("pair_tests");

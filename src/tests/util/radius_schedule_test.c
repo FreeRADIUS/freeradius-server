@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
 	int			num_networks = 1;
 	int			num_workers = 2;
 	uint16_t		port16 = 0;
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree = fr_talloc_autofree_context();
 	fr_schedule_t		*sched;
 	fr_listen_t		listen = { .app_io = &app_io, .app = &test_app };
 	fr_listen_test_t	*app_io_inst;

@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 	fr_message_set_t	*ms;
 	uint32_t		seed;
 
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree = fr_talloc_autofree_context();
 
 	memset(array, 0, sizeof(array));
 	memset(messages, 0, sizeof(messages));

@@ -489,7 +489,7 @@ int main(int argc, char *argv[])
 {
 	int			c;
 	fr_channel_t		*channel;
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree = fr_talloc_autofree_context();
 	pthread_attr_t		attr;
 	pthread_t		master_id, worker_id;
 

@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
 	 */
 	fr_thread_local_atexit_setup();
 
-	autofree = talloc_autofree_context();
+	autofree = fr_talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {

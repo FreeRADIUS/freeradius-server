@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <string.h>
 #include <sys/time.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
 	intptr_t		val;
 	void			*data;
 	fr_atomic_queue_t	*aq;
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree = fr_talloc_autofree_context();
 
 	size = 4;
 

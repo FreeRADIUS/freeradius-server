@@ -480,7 +480,7 @@ static void sig_ignore(int sig)
 int main(int argc, char *argv[])
 {
 	int c;
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree = fr_talloc_autofree_context();
 
 	if (fr_time_start() < 0) {
 		fprintf(stderr, "Failed to start time: %s\n", fr_syserror(errno));

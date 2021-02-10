@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 	fr_ring_buffer_t *rb;
 	uint32_t	seed;
 
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree = fr_talloc_autofree_context();
 
 	while ((c = getopt(argc, argv, "hl:s:x")) != -1) switch (c) {
 		case 'l':

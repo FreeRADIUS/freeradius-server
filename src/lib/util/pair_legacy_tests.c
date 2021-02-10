@@ -165,7 +165,7 @@ static void pair_tests_init(void)
 {
 	printf("Setup %s\n", __func__);
 
-	autofree = talloc_autofree_context();
+	autofree = fr_talloc_autofree_context();
 	if (!autofree) {
 	error:
 		fr_perror("pair_tests");

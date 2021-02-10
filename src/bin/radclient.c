@@ -1151,7 +1151,7 @@ int main(int argc, char **argv)
 	 */
 	fr_thread_local_atexit_setup();
 
-	autofree = talloc_autofree_context();
+	autofree = fr_talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -1217,7 +1217,7 @@ int main(int argc, char **argv)
 			char const *p;
 			rc_file_pair_t *files;
 
-			files = talloc(talloc_autofree_context(), rc_file_pair_t);
+			files = talloc(fr_talloc_autofree_context(), rc_file_pair_t);
 			if (!files) goto oom;
 
 			p = strchr(optarg, ':');
@@ -1416,7 +1416,7 @@ int main(int argc, char **argv)
 	if (rbtree_num_elements(filename_tree) == 0) {
 		rc_file_pair_t *files;
 
-		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
+		files = talloc_zero(fr_talloc_autofree_context(), rc_file_pair_t);
 		files->packets = "-";
 		if (radclient_init(files, files) < 0) fr_exit_now(1);
 	}

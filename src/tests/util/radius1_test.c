@@ -522,7 +522,7 @@ static void sig_ignore(int sig)
 int main(int argc, char *argv[])
 {
 	int		c;
-	TALLOC_CTX	*autofree = talloc_autofree_context();
+	TALLOC_CTX	*autofree = fr_talloc_autofree_context();
 	uint16_t	port16 = 0;
 
 	fr_time_start();

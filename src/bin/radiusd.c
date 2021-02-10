@@ -250,11 +250,11 @@ int main(int argc, char *argv[])
 			 *	config to exist in.  We mprotect() this later to
 			 *	catch any stray writes.
 			 */
-			global_ctx = talloc_page_aligned_pool(talloc_autofree_context(),
+			global_ctx = talloc_page_aligned_pool(fr_talloc_autofree_context(),
 							      &pool_page_start, &pool_page_end, pool_size);
 			do_mprotect = true;
 		} else {
-	 		global_ctx = talloc_new(talloc_autofree_context());
+	 		global_ctx = talloc_new(fr_talloc_autofree_context());
 	 		do_mprotect = false;
 		}
 
