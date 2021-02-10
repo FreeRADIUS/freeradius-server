@@ -9,7 +9,7 @@
 include ../../Make.inc
 
 BUILD_PATH := $(top_builddir)/build
-top_srcdir ?= $(dir $(lastword $(MAKEFILE_LIST)))
+top_srcdir ?= $(patsubst %/,%,,$(dir $(lastword $(MAKEFILE_LIST))))
 
 
 #
