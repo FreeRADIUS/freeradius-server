@@ -153,17 +153,16 @@ $(BUILD_PATH)/tests/eap:
 .PHONY: clean.tests.eap
 clean.tests.eap:
 	@rm -rf $(BUILD_PATH)/tests/eap
-
-$(info BUILD_PATH=$(BUILD_PATH))
-$(info top_builddir=$(top_builddir))
-$(info $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap)
-
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.ok,%,$@).log 2>&1; then \
 		touch $@; \
 	fi
 
+#
+#  Don't run the full TLS version tests for CI post-install.
+#
+ifneq "$(prefix)" ""
 #
 #  ${1} is the config file
 #  ${2} is the TLS version to use.
@@ -194,6 +193,7 @@ EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok $(BUILD_PATH)/test
 endef
 
 $(foreach FILE,$(patsubst %.conf,%,$(EAP_TLS_FILES)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
+fi
 
 tests.eap: $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES)))) $(EAP_TLS_VERSION_FILES)
 
