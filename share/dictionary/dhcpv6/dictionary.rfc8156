@@ -23,9 +23,12 @@ VALUE	Failover-Binding-Status		Reset			8
 ATTRIBUTE	Failover-Connect-Flags			115	uint16
 VALUE	Failover-Connect-Flags		Fixed-PD-Length		1
 
-ATTRIBUTE	Failover-DNS-Removal-Info		116	tlv
+ATTRIBUTE	Failover-DNS-Removal-Info		116	group
 
-BEGIN-TLV	Failover-DNS-Removal-Info
+#
+#  The next 3 attributes can only occur inside of Failover-DNS-Removal-Info.
+#  However, in DHCPv6, the attribute number space is global.
+#
 ATTRIBUTE	Host-Name				117	string dns_label
 ATTRIBUTE	Zone-Name				118	string dns_label
 
@@ -34,7 +37,7 @@ VALUE	Flags				Fwd-Up-To-Date		0x01
 VALUE	Flags				Rev-Up-To-Date		0x02
 VALUE	Flags				Synthesized-Name	0x04
 VALUE	Flags				Using-Requested-FQDN	0x08
-END-TLV		Failover-DNS-Removal-Info
+
 
 ATTRIBUTE	Failover-Expiration-Time		120	date
 ATTRIBUTE	Failover-Max-Unacked-BNDUPD		121	uint32

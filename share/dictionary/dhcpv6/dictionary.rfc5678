@@ -12,17 +12,12 @@
 ##############################################################################
 
 ATTRIBUTE	MOD-Address-List			54	tlv
-
-BEGIN-TLV	MOD-Address-List
-ATTRIBUTE	IS					1	ipv6addr array
-ATTRIBUTE	CS					2	ipv6addr array
-ATTRIBUTE	ES					3	ipv6addr array
-END-TLV		MOD-Address-List
+ATTRIBUTE	IS					.1	ipv6addr array
+ATTRIBUTE	CS					.2	ipv6addr array
+ATTRIBUTE	ES					.3	ipv6addr array
 
 ATTRIBUTE	MOS-Domain-Name-List			55	tlv
+ATTRIBUTE	IS					.1	string dns_label,array
+ATTRIBUTE	CS					.2	string dns_label,array
+ATTRIBUTE	ES					.3	string dns_label,array
 
-BEGIN-TLV	MOS-Domain-Name-List
-ATTRIBUTE	IS					1	string dns_label,array
-ATTRIBUTE	CS					2	string dns_label,array
-ATTRIBUTE	ES					3	string dns_label,array
-END-TLV		MOS-Domain-Name-List
