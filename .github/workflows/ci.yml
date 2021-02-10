@@ -270,10 +270,16 @@ jobs:
         sudo systemctl stop slapd
         sudo aa-complain /usr/sbin/slapd
 
+    # The sleep before stopping dovecot gives it time to produce the DH parameters file.
+    # Test dovecot instances don't run as root so if this file doesn't exist then there
+    # are permissions issues and the SSL instance of dovecot doesn't work
     - name: Install fixture (dovecot imapd)
       if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
         sudo apt-get install -y --no-install-recommends dovecot-imapd
+        while [ ! -f /var/lib/dovecot/ssl-parameters.dat ] ; do
+            sleep 1
+        done
         sudo systemctl stop dovecot
         sudo aa-complain /usr/sbin/dovecot
 
