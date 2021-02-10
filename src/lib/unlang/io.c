@@ -108,7 +108,6 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	child->async = talloc_zero(child, fr_async_t);
 
 #define COPY_FIELD(_x) child->async->_x = parent->async->_x
-	COPY_FIELD(listen);
 	COPY_FIELD(recv_time);
 	fr_assert(request_is_internal(child));
 
