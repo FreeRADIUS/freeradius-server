@@ -9,7 +9,6 @@
 include ../../Make.inc
 
 BUILD_PATH := $(top_builddir)/build
-top_srcdir ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 #
 #  The "build eapol_test" makefile contains only a definition of
@@ -24,7 +23,7 @@ $(BUILD_PATH)/tests/eapol_test:
 
 # define where the EAPOL_TEST is located.  If necessary, build it.
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
-	@echo "EAPOL_TEST=" $(shell $(top_srcdir)/scripts/ci/eapol_test-build.sh) > $@
+	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
 
 # include the above definition.  If the "mk" file doesn't exist, then the preceding
 # rule will cause it to be build.
@@ -145,7 +144,7 @@ radiusd.kill:
 ifneq "$(EAPOL_TEST)" ""
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.0 1.1 1.2 
-EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1
+EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
 
 .PHONY: $(BUILD_PATH)/tests/eap
 $(BUILD_PATH)/tests/eap:
@@ -155,9 +154,9 @@ $(BUILD_PATH)/tests/eap:
 clean.tests.eap:
 	@rm -rf $(BUILD_PATH)/tests/eap
 
-$(BUILD_PATH)/tests/eap/%.ok: ${top_srcdir}/src/tests/%.conf | $(BUILD_PATH)/tests/eap
+$(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
-	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $@.log 2>&1; then \
+	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.ok,%,$@).log 2>&1; then \
 		touch $@; \
 	fi
 
@@ -166,12 +165,12 @@ $(BUILD_PATH)/tests/eap/%.ok: ${top_srcdir}/src/tests/%.conf | $(BUILD_PATH)/tes
 #  ${2} is the TLS version to use.
 #
 define EAP_TLS_CONFIG
-$(BUILD_PATH)/tests/eap/${1}-${2}.conf: ${top_srcdir}/src/tests/${1}.conf
+$(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
 	@sed 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' < $$< > $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
-	@if $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET) > $$@.log 2>&1; then \
+	@if $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
 		touch $$@; \
 	else \
 		echo FAILED; \
