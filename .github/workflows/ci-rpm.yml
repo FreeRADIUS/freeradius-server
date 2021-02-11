@@ -132,6 +132,24 @@ jobs:
         name: rpms-${{ matrix.env.NAME }}
         path: rpms
 
+    #
+    #  If the CI has failed and the branch is ci-debug then start a tmate
+    #  session. SSH rendezvous point is emited continuously in the job output.
+    #
+    - name: "Debug: Package dependancies for tmate"
+      run: |
+        yum install -y xz
+        ln -s /bin/true /bin/apt-get
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        sudo: false
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+
   rpm-test:
 
     needs:
@@ -238,3 +256,20 @@ jobs:
         path: |
           /var/log/radius
           freeradius/build/tests/eapol_test
+
+    #
+    #  See above comments for tmate
+    #
+    - name: "Debug: Package dependancies for tmate"
+      run: |
+        yum install -y xz
+        ln -s /bin/true /bin/apt-get
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        sudo: false
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
