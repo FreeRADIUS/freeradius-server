@@ -31,8 +31,7 @@ $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 
 #  A helpful target which causes eapol_test to be built, BUT does not run any
 #  test targets.
-.PHONY:
-eapol_test:
+eapol_test: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 	@echo EAPOL_TEST=$(EAPOL_TEST)
 else
 
