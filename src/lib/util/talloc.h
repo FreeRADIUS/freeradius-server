@@ -34,6 +34,8 @@ extern "C" {
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+USES_APPLE_DEPRECATED_API
 #include <talloc.h>
 
 /** Iterate over a talloced array of elements
