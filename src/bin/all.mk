@@ -30,7 +30,7 @@ ifneq "$(findstring fuzzer,${CFLAGS})" ""
 
 #
 #  Put the output artifacts into the build directory, but only if the
-#  variable is not already set by the environment or make filesx
+#  variable is not already set by the environment or make files.
 #
 FUZZER_ARTIFACTS ?= ${BUILD_DIR}/fuzzer
 
