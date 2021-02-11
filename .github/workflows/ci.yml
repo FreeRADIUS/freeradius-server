@@ -352,24 +352,9 @@ jobs:
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
-    #  We restrict access to this session to the job owner's GitHub SSH keys.
     #
-    - name: "Debug: Plant authorized_keys of job owner"
-      run: |
-        umask 077
-        mkdir -p ~/.ssh
-        curl -s https://api.github.com/users/${{ github.actor }}/keys | jq '.[].key + " ${{ github.actor }}"' --raw-output > ~/.ssh/authorized_keys
-        echo 'set tmate-authorized-keys "~/.ssh/authorized_keys"' > ~/.tmate.conf
-      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
-
-    # Backport of tmate 2.4.0 to Ubuntu-18.04 to support authorized_keys
-    # restriction. Can go away when we upgrade CI to 20.04.
-    - name: "Debug: Install backported tmate 2.4.0 on Ubuntu 18.04"
-      run: |
-        wget -O tmate.deb https://github.com/terryburton/tmate/releases/download/2.4.0/tmate_2.4.0-2_amd64.deb
-        sudo apt-get install -y --no-install-recommends ./tmate.deb
-      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() && matrix.env.OS == 'ubuntu-18.04' }}
-
     - name: "Debug: Start tmate"
       uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}

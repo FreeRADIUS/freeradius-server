@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - packaging_test
+      - ci-debug
   schedule:
     - cron: '0 20 * * *'
 
@@ -153,6 +154,24 @@ jobs:
         path: rpms
         retention-days: 1
 
+    #
+    #  If the CI has failed and the branch is ci-debug then start a tmate
+    #  session. SSH rendezvous point is emited continuously in the job output.
+    #
+    - name: "Debug: Package dependancies for tmate"
+      run: |
+        yum install -y xz
+        ln -s /bin/true /bin/apt-get
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        sudo: false
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+
   rpm-test:
 
     needs:
@@ -261,3 +280,19 @@ jobs:
           /var/log/radius
           freeradius/build/tests/eapol_test
         retention-days: 30
+
+    #
+    #  See above comments for tmate
+    #
+    - name: "Debug: Package dependancies for tmate"
+      run: |
+        yum install -y xz
+        ln -s /bin/true /bin/apt-get
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        sudo: false
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
