@@ -51,10 +51,7 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 	data = &packet->options[where];
 
 	while (where < size) {
-		if (data[0] == 0) { /* padding */
-			where++;
-			continue;
-		}
+		if (data[0] == 0) return NULL; /* padding */
 
 		if (data[0] == 255) { /* end of options */
 			if ((field == DHCP_OPTION_FIELD) && (overload & DHCP_FILE_FIELD)) {
