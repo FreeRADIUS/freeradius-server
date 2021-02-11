@@ -142,7 +142,7 @@ radiusd.kill:
 #
 ifneq "$(EAPOL_TEST)" ""
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
-EAP_TLS_VERSIONS = 1.0 1.1 1.2 
+EAP_TLS_VERSIONS = 1.2
 EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
 
 .PHONY: $(BUILD_PATH)/tests/eap
