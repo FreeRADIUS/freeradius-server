@@ -52,7 +52,7 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request)
 		default:
 		case -1:
 			REDEBUG("Condition evaluation failed because the value of an operand "
-				"could not be determined");
+				"could not be determined - %s", fr_strerror());
 			break;
 		}
 		condition = 0;
