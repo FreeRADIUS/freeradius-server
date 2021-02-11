@@ -358,17 +358,18 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 
 	if (inst->output && m->box) {
 		TALLOC_CTX *ctx;
-		fr_pair_list_t *vps, *output_pairs;
+		fr_pair_list_t vps, *output_pairs;
 
 		RDEBUG("EXEC GOT -- %pV", m->box);
 
+		fr_pair_list_init(&vps);
 		output_pairs = tmpl_list_head(request, inst->output_list);
 		fr_assert(output_pairs != NULL);
 
 		ctx = tmpl_list_ctx(request, inst->output_list);
 
-		vps = fr_pair_list_afrom_box(ctx, request->dict, m->box);
-		if (!fr_pair_list_empty(vps)) fr_pair_list_move(output_pairs, vps);
+		fr_pair_list_afrom_box(ctx, &vps, request->dict, m->box);
+		if (!fr_pair_list_empty(&vps)) fr_pair_list_move(output_pairs, &vps);
 
 		m->box = NULL;	/* has been consumed */
 	}

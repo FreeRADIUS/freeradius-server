@@ -396,7 +396,7 @@ void			fr_pair_list_debug(fr_pair_list_t const *list);
 /** @} */
 
 void			fr_pair_list_tainted(fr_pair_list_t *vps);
-fr_pair_list_t		*fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_value_box_t *box);
+void			fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict, fr_value_box_t *box);
 
 /* Tokenization */
 typedef struct {

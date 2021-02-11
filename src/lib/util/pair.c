@@ -2554,14 +2554,17 @@ void fr_pair_list_tainted(fr_pair_list_t *list)
 }
 
 
-/*
- *	Parse a set of VPs from a value box.
+/** Parse a list of VPs from a value box.
+ *
+ * @param[in] ctx	to allocate new VPs in
+ * @param[out] out	list to add new pairs to
+ * @param[in] dict	to use in parsing
+ * @param[in] box	whose value is to be parsed
  */
-fr_pair_list_t *fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_value_box_t *box)
+void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict, fr_value_box_t *box)
 {
 	int comma = 0;
 	char *p, *end, *last_comma = NULL;
-	fr_pair_list_t *vps;
 
 	fr_assert(box->type == FR_TYPE_STRING);
 
@@ -2611,17 +2614,14 @@ fr_pair_list_t *fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_dict_t const *dict, f
 	 */
 	if (last_comma) *last_comma = '\0';
 
-	vps = fr_pair_list_alloc(ctx);
-	if (fr_pair_list_afrom_str(ctx, dict, box->vb_strvalue, vps) == T_INVALID) {
-		fr_pair_list_free(vps);
-		return vps;
+	if (fr_pair_list_afrom_str(ctx, dict, box->vb_strvalue, out) == T_INVALID) {
+		return;
 	}
 
 	/*
 	 *	Mark the attributes as tainted.
 	 */
-	fr_pair_list_tainted(vps);
-	return vps;
+	fr_pair_list_tainted(out);
 }
 
 /** Move a list of fr_pair_t from a temporary list to a destination list
