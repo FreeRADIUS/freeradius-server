@@ -96,7 +96,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	int cflags = 0;
 	regex_t *preg;
 
-	static bool setup;
+	static bool setup = false;
 
 	/*
 	 *	Lets us use subcapture copy
@@ -104,6 +104,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	if (!setup) {
 		pcre_malloc = _pcre_malloc;
 		pcre_free = _pcre_free;
+		setup = true;
 	}
 
 	*out = NULL;
