@@ -30,6 +30,8 @@ RCSIDH(rlm_redis_h, "$Id$")
 #include <pthread.h>
 #endif
 
+#include <freeradius-devel/exfile.h>
+
 #include <freeradius-devel/modpriv.h>
 #include <hiredis/hiredis.h>
 
@@ -42,7 +44,6 @@ typedef struct rlm_redis_t REDIS_INST;
 
 typedef struct rlm_redis_t {
 	char const		*xlat_name;
-
 	char const		*hostname;
 	uint16_t		port;
 	uint32_t		database;
@@ -50,12 +51,17 @@ typedef struct rlm_redis_t {
 	uint16_t		query_timeout;
 	fr_connection_pool_t	*pool;
 
+	char const 		*logfile;
+	exfile_t		*ef;
+
 	int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, char const *query, REQUEST *request);
 	int (*redis_finish_query)(REDISSOCK *dissocket);
 } rlm_redis_t;
 
 #define MAX_QUERY_LEN			4096
 #define MAX_REDIS_ARGS			32
+
+void rlm_redis_query_log(REDIS_INST *inst, REQUEST *request, char const *query);
 
 int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 		    char const *query, REQUEST *request);

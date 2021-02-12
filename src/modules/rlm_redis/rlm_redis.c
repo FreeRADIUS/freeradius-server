@@ -37,8 +37,46 @@ static const CONF_PARSER module_config[] = {
 	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, REDIS_INST, database), "0" },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, REDIS_INST, password), NULL },
 	{ "query_timeout", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, query_timeout), "5" },
+	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, REDIS_INST, logfile), NULL },
 	CONF_PARSER_TERMINATOR
 };
+
+/*
+ *	Log the query to a file.
+ */
+void rlm_redis_query_log(REDIS_INST *inst, REQUEST *request, char const *query)
+{
+	int fd;
+	char *expanded = NULL;
+	size_t len;
+	bool failed = false;	/* Write the log message outside of the critical region */
+
+	if (!inst->logfile || !*inst->logfile) return;
+
+	if (radius_axlat(&expanded, request, inst->logfile, NULL, NULL) < 0) return;
+
+	fd = exfile_open(inst->ef, expanded, 0640);
+	if (fd < 0) {
+		ERROR("rlm_redis (%s): Couldn't open logfile '%s': %s", inst->xlat_name,
+			expanded, fr_syserror(errno));
+
+		talloc_free(expanded);
+		return;
+	}
+
+	len = strlen(query);
+	if ((write(fd, query, len) < 0) || (write(fd, "\n", 1) < 0)) {
+		failed = true;
+	}
+
+	if (failed) {
+		ERROR("rlm_redis (%s): Failed writing to logfile '%s': %s", inst->xlat_name,
+			expanded, fr_syserror(errno));
+	}
+
+	talloc_free(expanded);
+	exfile_close(inst->ef, fd);
+}
 
 static int _mod_conn_free(REDISSOCK *dissocket)
 {
@@ -251,6 +289,9 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	dissocket = *dissocket_p;
 
 	DEBUG2("rlm_redis (%s): executing the query: \"%s\"", inst->xlat_name, query);
+
+	rlm_redis_query_log(inst, request, query);
+
 	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
 	if (!dissocket->reply) {
 		RERROR("%s", dissocket->conn->errstr);
@@ -319,6 +360,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->redis_query = rlm_redis_query;
 	inst->redis_finish_query = rlm_redis_finish_query;
+
+	inst->ef = exfile_init(inst, 256, 30, true);
+	if (!inst->ef) {
+		cf_log_err_cs(conf, "Failed creating log file context");
+		return -1;
+	}
 
 	return 0;
 }

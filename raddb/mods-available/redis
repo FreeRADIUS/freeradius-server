@@ -25,6 +25,10 @@ redis {
 	#  Set connection and query timeout for rlm_redis
 	query_timeout = 5
 
+	# Write REDIS queries to a logfile. This is potentially useful for tracing
+	# issues with authorization queries.
+#	logfile = ${logdir}/redis.log
+
 	#
 	#  Information for the connection pool.  The configuration items
 	#  below are the same for all modules which use the new
