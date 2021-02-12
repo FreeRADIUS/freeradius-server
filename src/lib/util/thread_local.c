@@ -27,13 +27,13 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/thread_local.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 
 #include <errno.h>
 #include <pthread.h>
-#include <talloc.h>
 
 /** Entry in exit handler list
  *

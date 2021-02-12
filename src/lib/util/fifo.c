@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <string.h>
-#include <talloc.h>
 
 #include <freeradius-devel/util/fifo.h>
 

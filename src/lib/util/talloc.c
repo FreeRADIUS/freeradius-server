@@ -28,9 +28,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/thread_local.h>
 
 #include <string.h>
 #include <unistd.h>
+
+static _Thread_local TALLOC_CTX *thread_local_ctx;
 
 /** Retrieve the current talloc NULL ctx
  *
@@ -747,6 +750,47 @@ int talloc_const_free(void const *ptr)
 	return talloc_free(tmp);
 }
 
+/** Callback to free the autofree ctx on thread exit
+ *
+ */
+static void _autofree_on_thread_exit(void *af)
+{
+	talloc_set_destructor(af, NULL);
+	talloc_free(af);
+}
+
+/** Ensures in the autofree ctx is manually freed, things don't explode atexit
+ *
+ */
+static int _autofree_destructor(TALLOC_CTX *af)
+{
+	return fr_thread_local_atexit_disarm(_autofree_on_thread_exit, af);
+}
+
+/** Get a thread-safe autofreed ctx that will be freed when the thread or process exits
+ *
+ * @note This should be used in place of talloc_autofree_context (which is now deprecated)
+ * @note Will not be thread-safe if NULL tracking is enabled.
+ *
+ * @return A talloc ctx which will be freed when the thread or process exits.
+ */
+TALLOC_CTX *talloc_autofree_context_thread_local(void)
+{
+	TALLOC_CTX *af = thread_local_ctx;
+
+	if (!af) {
+		af = talloc_init_const("thread_local_autofree_context");
+		talloc_set_destructor(af, _autofree_destructor);
+		if (unlikely(!af)) return NULL;
+
+		if (unlikely(fr_thread_local_atexit(_autofree_on_thread_exit, af) < 0)) return NULL;
+
+		thread_local_ctx = af;
+	}
+
+	return af;
+}
+
 struct talloc_child_ctx_s {
 	struct talloc_child_ctx_s *next;
 };
@@ -769,7 +813,7 @@ static int _child_ctx_free(TALLOC_CHILD_CTX *list)
  *
  *  The TALLOC_CHILD_CTX ensures ordering for allocators and
  *  destructors.  When a TALLOC_CHILD_CTX is created, it is added to
- *  parent, in FILO order.  In contrast, the basic talloc operations
+ *  parent, in LIFO order.  In contrast, the basic talloc operations
  *  do not guarantee any kind of order.
  *
  *  When the TALLOC_CHILD_CTX is freed, the children are freed in FILO

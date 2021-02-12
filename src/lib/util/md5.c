@@ -10,7 +10,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/thread_local.h>
-#include <talloc.h>
 
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!

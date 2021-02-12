@@ -29,10 +29,10 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <talloc.h>
 
 /** Callback for implementing custom iterators
  *
@@ -561,7 +561,7 @@ static inline void * CC_HINT(hot) fr_dcursor_replace(fr_dcursor_t *cursor, void 
 	p = fr_dcursor_list_prev_peek(cursor);
 
 	fr_dlist_replace(cursor->dlist, cursor->current, r);
-	
+
 	/*
 	 *	Fixup current pointer.
 	 */

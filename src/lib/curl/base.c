@@ -26,7 +26,7 @@
 #include <freeradius-devel/tls/base.h>
 #endif
 
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 static uint32_t instance_count = 0;
 static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/

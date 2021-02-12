@@ -33,8 +33,7 @@ extern "C" {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/pair.h>
-
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 ssize_t		trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 		     	     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,

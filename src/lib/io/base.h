@@ -25,12 +25,11 @@
  */
 RCSIDH(io_h, "$Id$")
 
-#include <talloc.h>
-
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef __cplusplus
 extern "C" {

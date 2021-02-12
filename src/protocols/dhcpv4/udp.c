@@ -31,11 +31,10 @@
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/udpfromto.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdint.h>
 #include <stddef.h>
-#include <talloc.h>
-
 
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>

@@ -29,10 +29,10 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stddef.h>
 #include <stdint.h>
-#include <talloc.h>
 
 size_t		fr_utf8_char(uint8_t const *str, ssize_t inlen);
 ssize_t		fr_utf8_str(uint8_t const *str, ssize_t inlen);

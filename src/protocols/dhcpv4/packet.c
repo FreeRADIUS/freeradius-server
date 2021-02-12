@@ -23,13 +23,15 @@
  * @copyright 2008,2017 The FreeRADIUS server project
  * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  */
-#include <stdint.h>
-#include <stddef.h>
-#include <talloc.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/protocol/dhcpv4/rfc2131.h>
+
+#include <stdint.h>
+#include <stddef.h>
+
 #include "dhcpv4.h"
 #include "attrs.h"
 

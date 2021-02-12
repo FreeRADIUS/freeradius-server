@@ -30,12 +30,12 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/udpfromto.h>
 
 #include <stddef.h>
 #include <stdint.h>
-#include <talloc.h>
 #include <sys/ioctl.h>
 
 #ifdef HAVE_SYS_SOCKET_H

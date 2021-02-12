@@ -29,10 +29,10 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stddef.h>
 #include <stdint.h>
-#include <talloc.h>
 
 typedef struct fr_hash_entry_s fr_hash_entry_t;
 

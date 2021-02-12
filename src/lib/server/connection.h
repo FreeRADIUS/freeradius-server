@@ -30,8 +30,7 @@ extern "C" {
 
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/table.h>
-
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef _CONST
 #  error _CONST can only be defined in the local header

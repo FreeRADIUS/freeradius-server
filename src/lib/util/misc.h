@@ -30,13 +30,8 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/time.h>
-
-#include <ctype.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <strings.h>
-#include <talloc.h>
 
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 

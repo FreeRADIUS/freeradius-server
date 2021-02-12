@@ -26,12 +26,12 @@ RCSIDH(inet_h, "$Id$")
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <arpa/inet.h>
 #include <net/if.h>		/* SIOCGIFADDR et al */
 #include <netinet/in.h>		/* in6?_addr */
 #include <stdbool.h>
-#include <talloc.h>
 
 #ifdef __cplusplus
 extern "C" {

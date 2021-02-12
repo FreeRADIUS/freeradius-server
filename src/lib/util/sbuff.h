@@ -37,10 +37,10 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include <talloc.h>
 
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/talloc.h>
 
 typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;

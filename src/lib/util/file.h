@@ -28,8 +28,8 @@ RCSIDH(util_file_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/talloc.h>
 #include <stdbool.h>
-#include <talloc.h>
 
 /** Callback for allowing additional operations on newly created directories
  *

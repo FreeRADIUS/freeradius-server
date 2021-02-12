@@ -35,12 +35,13 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #define FR_PUT_LE16(a, val)\
@@ -583,7 +584,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	char		*f[4];
 	char		*tail = NULL;
 	fr_time_delta_t	gmtoff = 0;
-	
+
 	/*
 	 *	Test for unix timestamp, which is just a number and
 	 *	nothing else.

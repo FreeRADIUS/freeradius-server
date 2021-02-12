@@ -31,8 +31,7 @@
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/dbuff.h>
-
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 /** We use the same header for all types
  *

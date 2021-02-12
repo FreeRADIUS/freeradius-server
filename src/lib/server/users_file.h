@@ -31,9 +31,9 @@ RCSIDH(users_file_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/server/map.h>
-#include <talloc.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/talloc.h>
 
 typedef struct pair_list {
 	fr_rb_node_t		node;		//!< Entry into the tree of pair lists.

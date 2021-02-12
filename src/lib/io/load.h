@@ -25,8 +25,8 @@
  */
 RCSIDH(load_h, "$Id$")
 
-#include <talloc.h>
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/talloc.h>
 
 /** Load generation configuration.
  *

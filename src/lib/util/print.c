@@ -23,16 +23,15 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/print.h>
-#include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <ctype.h>
 #include <string.h>
-#include <talloc.h>
 
 /** Checks for utf-8, taken from http://www.w3.org/International/questions/qa-forms-utf-8
  *

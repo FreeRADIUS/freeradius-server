@@ -16,8 +16,7 @@
  */
 
 #include <freeradius-devel/util/pair.h>
-
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 /*
  *	Encoding byte 0

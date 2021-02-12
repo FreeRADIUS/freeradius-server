@@ -36,13 +36,13 @@ typedef struct fr_connection_s fr_connection_t;
 
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
 #else
 #  include <freeradius-devel/util/stdatomic.h>
 #endif
-#include <talloc.h>
 
 fr_table_num_ordered_t const fr_connection_states[] = {
 	{ L("HALTED"),		FR_CONNECTION_STATE_HALTED	},

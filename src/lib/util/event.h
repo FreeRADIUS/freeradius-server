@@ -31,10 +31,10 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdbool.h>
 #include <sys/event.h>
-#include <talloc.h>
 
 /** An opaque file descriptor handle
  */

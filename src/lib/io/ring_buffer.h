@@ -26,7 +26,7 @@
  */
 RCSIDH(ring_buffer_h, "$Id$")
 
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 #include <stdbool.h>
 #include <stdint.h>
 

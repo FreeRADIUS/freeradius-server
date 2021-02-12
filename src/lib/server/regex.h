@@ -32,8 +32,7 @@ extern "C" {
 #ifdef HAVE_REGEX
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/regex.h>
-
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 /*
  *	Increasing this is essentially free

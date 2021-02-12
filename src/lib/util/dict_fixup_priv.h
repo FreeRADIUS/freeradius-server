@@ -26,7 +26,7 @@ RCSIDH(dict_fixup_priv_h, "$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/util/dlist.h>
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 typedef struct {
 	TALLOC_CTX		*pool;		//!< Temporary pool for fixups, reduces holes

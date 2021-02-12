@@ -31,7 +31,7 @@ extern "C" {
 
 #include <pwd.h>
 #include <grp.h>
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 void (*reset_signal(int signo, void (*func)(int)))(int);
 size_t		rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen,

@@ -30,10 +30,10 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <talloc.h>
 #include <unistd.h>
 
 /*

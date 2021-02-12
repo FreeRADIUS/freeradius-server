@@ -39,9 +39,8 @@ extern "C" {
 
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/pair.h>
-
+#include <freeradius-devel/util/talloc.h>
 #include <sys/types.h>
-#include <talloc.h>
 
 #ifdef __cplusplus
 extern "C" {

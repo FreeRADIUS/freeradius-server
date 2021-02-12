@@ -30,12 +30,12 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/fopencookie.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <talloc.h>
 
 extern FILE	*fr_log_fp;
 

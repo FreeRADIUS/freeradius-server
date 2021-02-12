@@ -29,10 +29,10 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <talloc.h>
 
 /* rbtree.c */
 typedef struct rbtree_s rbtree_t;

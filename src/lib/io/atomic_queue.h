@@ -25,7 +25,6 @@
  */
 RCSIDH(atomic_queue_h, "$Id$")
 
-#include <talloc.h>
 #include <stdbool.h>
 
 #ifdef HAVE_STDATOMIC_H
@@ -33,6 +32,7 @@ RCSIDH(atomic_queue_h, "$Id$")
 #else
 #  include <freeradius-devel/util/stdatomic.h>
 #endif
+#include <freeradius-devel/util/talloc.h>
 
 /*
  *	Some macros to make our life easier.

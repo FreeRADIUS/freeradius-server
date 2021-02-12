@@ -30,8 +30,7 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 typedef struct fr_fifo_s fr_fifo_t;
 typedef void (*fr_fifo_free_t)(void *);

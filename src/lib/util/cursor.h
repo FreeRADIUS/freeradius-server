@@ -28,10 +28,10 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <talloc.h>
 
 /** Callback for implementing custom iterators
  *

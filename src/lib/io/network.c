@@ -29,14 +29,13 @@ RCSID("$Id$")
 
 #define LOG_DST nr->log
 
-#include <talloc.h>
-
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/control.h>

@@ -27,12 +27,12 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <talloc.h>
 
 #define FR_SYSERROR_BUFSIZE (2048)
 

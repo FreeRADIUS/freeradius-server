@@ -29,10 +29,10 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdint.h>
 #include <sys/types.h>
-#include <talloc.h>
 
 typedef int32_t fr_heap_iter_t;
 

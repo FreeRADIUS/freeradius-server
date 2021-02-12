@@ -47,6 +47,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/file.h>
 #include <sys/mman.h>
 

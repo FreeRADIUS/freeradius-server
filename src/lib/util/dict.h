@@ -34,11 +34,11 @@ extern "C" {
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/types.h>
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <talloc.h>
 
 /*
  *	Avoid circular type references.

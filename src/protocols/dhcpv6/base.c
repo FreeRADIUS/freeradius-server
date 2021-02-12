@@ -36,7 +36,6 @@
 #include <freeradius-devel/util/types.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <talloc.h>
 
 #include "dhcpv6.h"
 #include "attrs.h"

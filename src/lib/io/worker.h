@@ -46,8 +46,8 @@ typedef struct fr_worker_s fr_worker_t;
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/talloc.h>
 
-#include <talloc.h>
 #include <pthread.h>
 
 #ifdef __cplusplus

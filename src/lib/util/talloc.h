@@ -36,6 +36,11 @@ extern "C" {
 #include <stdint.h>
 #include <talloc.h>
 
+#undef talloc_autofree_context
+/** The original function is deprecated, so replace it with our version
+ */
+#define talloc_autofree_context talloc_autofree_context_thread_local
+
 /** Iterate over a talloced array of elements
  *
 @verbatim
@@ -241,6 +246,8 @@ static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char 
 #else
 #  define talloc_get_type_abort_const talloc_get_type_abort
 #endif
+
+TALLOC_CTX		*talloc_autofree_context_thread_local(void);
 
 typedef struct talloc_child_ctx_s TALLOC_CHILD_CTX;
 

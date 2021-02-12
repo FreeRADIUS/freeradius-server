@@ -25,9 +25,9 @@
  */
 RCSIDH(queue_h, "$Id$")
 
-#include <talloc.h>
 #include <stdbool.h>
 #include <freeradius-devel/io/atomic_queue.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef __cplusplus
 extern "C" {

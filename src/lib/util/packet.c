@@ -27,8 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/talloc.h>
 
-#include <talloc.h>
-
 /** Allocate a new fr_radius_packet_t
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
