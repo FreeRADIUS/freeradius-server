@@ -80,7 +80,6 @@ static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITE
 static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int lib_dir_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -153,7 +152,6 @@ static const CONF_PARSER resources[] = {
 	 *	it exists.
 	 */
 	{ FR_CONF_OFFSET("talloc_pool_size", FR_TYPE_SIZE | FR_TYPE_HIDDEN, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
-	{ FR_CONF_OFFSET("talloc_memory_limit", FR_TYPE_SIZE | FR_TYPE_HIDDEN, main_config_t, talloc_memory_limit), .func = talloc_memory_limit_parse },		/* DO NOT SET DEFAULT */
 	{ FR_CONF_OFFSET("talloc_memory_report", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
@@ -277,29 +275,6 @@ static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&fr_hostname_lookups, out, sizeof(fr_hostname_lookups));
-
-	return 0;
-}
-
-static int talloc_memory_limit_parse(TALLOC_CTX *ctx, void *out, void *parent,
-				     CONF_ITEM *ci, CONF_PARSER const *rule)
-{
-	int	ret;
-	size_t	value;
-
-	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
-
-	memcpy(&value, out, sizeof(value));
-
-	if (value) {
-		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", value, >=,
-				    (size_t)1024 * 1024 * 10);
-
-		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", value, <=,
-				    ((((size_t)1024) * 1024 * 1024) * 16));
-	}
-
-	memcpy(out, &value, sizeof(value));
 
 	return 0;
 }

@@ -544,7 +544,7 @@ int unlang_subrequest_push(rlm_rcode_t *out, request_t *child,
 
 int unlang_subrequest_op_init(void)
 {
-	unlang_subrequest_t *gctx;
+	unlang_subrequest_t	*gctx;
 
 	if (fr_dict_autoload(subrequest_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
@@ -585,9 +585,8 @@ int unlang_subrequest_op_init(void)
 			}
 		}
 	};
-	talloc_set_memlimit(gctx, talloc_get_size(gctx));	/* Ensure where are no allocations */
-	subrequest_instruction = unlang_subrequest_to_group(gctx);
 
+	subrequest_instruction = unlang_subrequest_to_group(gctx);
 	unlang_register(UNLANG_TYPE_SUBREQUEST,
 			   &(unlang_op_t){
 				.name = "subrequest",

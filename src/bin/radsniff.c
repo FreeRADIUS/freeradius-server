@@ -2292,16 +2292,6 @@ int main(int argc, char *argv[])
 	stats = talloc_zero(conf, rs_stats_t);
 
 	/*
-	 *  We don't really want probes taking down machines
-	 */
-#ifdef HAVE_TALLOC_SET_MEMLIMIT
-	/*
-	 *	@fixme causes hang in talloc steal
-	 */
-	 //talloc_set_memlimit(conf, 52428800);		/* 50 MB */
-#endif
-
-	/*
 	 *	Set some defaults
 	 */
 	conf->print_packet = true;

@@ -631,26 +631,6 @@ bool module_section_type_set(request_t *request, fr_dict_attr_t const *type_da, 
 	}
 }
 
-/** Mark module instance data as being read only
- *
- * This still allows memory to be modified, but not allocated
- */
-int module_instance_read_only(void *inst, char const *name)
-{
-	int	rcode;
-	size_t	size;
-
-	size = talloc_total_size(inst);
-	rcode = talloc_set_memlimit(inst, size);
-	if (rcode < 0) {
-		ERROR("Failed setting memory limit for module %s", name);
-	} else {
-		DEBUG3("Memory limit for module %s is set to %zd bytes", name, size);
-	}
-
-	return rcode;
-}
-
 /** Find an existing module instance by its name and parent
  *
  * @param[in] parent		to qualify search with.
@@ -1350,10 +1330,6 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 		pthread_mutex_init(mi->mutex, NULL);
 	}
 
-#ifndef NDEBUG
-	if (mi->dl_inst->data) module_instance_read_only(mi->dl_inst->data, mi->name);
-#endif
-
 	mi->instantiated = true;
 
 	return 0;
@@ -1373,20 +1349,6 @@ int modules_instantiate(void)
 	DEBUG2("#### Instantiating modules ####");
 
 	if (rbtree_walk(module_instance_name_tree, RBTREE_IN_ORDER, _module_instantiate, NULL) < 0) return -1;
-
-#ifndef NDEBUG
-	{
-		size_t size;
-
-		size = talloc_total_size(instance_ctx);
-
-		if (talloc_set_memlimit(instance_ctx, size)) {
-			ERROR("Failed setting memory limit for all modules");
-		} else {
-			DEBUG3("Memory limit for all modules is set to %zd bytes", size);
-		}
-	}
-#endif
 
 	return 0;
 }
