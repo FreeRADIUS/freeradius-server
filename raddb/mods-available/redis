@@ -40,10 +40,15 @@ redis {
 	#
 	server = 127.0.0.1
 
-	#  Select the Redis logical database having the specified zero-based numeric index.
+	#
+	#  database:: Select the Redis logical database having the specified zero-based numeric index.
+	#
 #	database = 0
 
-	#  The default port.
+	#
+	#  port:: Port to connect to
+	#  The default port is 6379.
+	#
 	port = 6379
 
 	#  password:: The password used to authenticate to the server.
