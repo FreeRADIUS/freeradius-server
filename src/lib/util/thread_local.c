@@ -221,3 +221,25 @@ int fr_thread_local_atexit(fr_thread_local_atexit_t func, void const *uctx)
 	return 0;
 }
 
+/** Remove destructor
+ *
+ * @return
+ *	- 0 on success.
+ *      - -1 if function and uctx could not be found.
+ */
+int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uctx)
+{
+	fr_exit_handler_entry_t *e = NULL;
+
+	while ((e = fr_dlist_next(&thread_local_atexit->head, e))) {
+		if ((e->func == func) && (e->uctx == uctx)) {
+			fr_dlist_remove(&thread_local_atexit->head, e);
+			talloc_set_destructor(e, NULL);
+			talloc_free(e);
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
