@@ -84,17 +84,17 @@ dictionary:
 	    echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> dictionary;  \
 	fi
 
-test.conf: dictionary
-	@echo "# test configuration file.  Do not install.  Delete at any time." > test.conf
+test.conf: dictionary config/eap-test
+	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
 	@if [ -n "$(LIB_PATH)" ]; then  \
-	    echo "libdir =" $(LIB_PATH) >> test.conf; \
+	    echo "libdir =" $(LIB_PATH) >> $@; \
 	fi
-	@echo "testdir =" $(TEST_PATH) >> test.conf
-	@echo 'logdir = $${testdir}' >> test.conf
-	@echo "maindir =" $(RADDB_PATH) >> test.conf
-	@echo 'radacctdir = $${testdir}' >> test.conf
-	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
-	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> test.conf
+	@echo "testdir =" $(TEST_PATH) >> $@
+	@echo 'logdir = $${testdir}' >> $@
+	@echo "maindir =" $(RADDB_PATH) >> $@
+	@echo 'radacctdir = $${testdir}' >> $@
+	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
+	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> $@
 	@echo 'security {' >> $@
 	@echo '        allow_vulnerable_openssl = yes' >> $@
 	@echo '}' >> $@
@@ -102,11 +102,29 @@ test.conf: dictionary
 	@echo 'modconfdir = $${maindir}mods-config' >> $@
 	@echo 'certdir = $${maindir}/certs' >> $@
 	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
-	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> test.conf
+	@echo '$$INCLUDE $${testdir}/config/' >> $@
+	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
+
+config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
+	@cp $< $@.tmp
+	@sed -i.bak -e 's/^\(\s*server \)\(inner-tunnel {\s*\)$$/\1eap-test-\2/' $@.tmp
+	@sed -i.bak -e 's/^\(\s*\)eap\(\s*\| {\)$$/\1eap-test\2/' $@.tmp
+	@mv $@.tmp $@
+	@rm $@.tmp.bak
+
+config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
+	@cp $< $@.tmp
+	@sed -i.bak -e 's/^\(\s*eap\)\( {\s*\)$$/\1 eap-test\2/' $@.tmp
+	@sed -i.bak -e '/^\s*cache {/,/^\s*enable/ s/\(enable\s*=\s*\).*/\1 yes/' $@.tmp
+	@sed -i.bak -e '/^\s*cache {/,/^[\s#]*persist_dir/ { /\(name\|persist_dir\)\s*=\s*/ s/#// }' $@.tmp
+	@sed -i.bak -e 's/inner-tunnel/eap-test-inner-tunnel/g' $@.tmp
+	@sed -i.bak -e 's/^\(\s*use_tunneled_reply\s*=\s*\).*/\1 yes/' $@.tmp
+	@mv $@.tmp $@
+	@rm $@.tmp.bak
 
 radiusd.pid: test.conf
-	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
+	@rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
+	@mkdir -p $(TEST_PATH)/tlscache
 	@printf "Starting server... "
 	@if ! $(RADIUSD_BIN) -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(DICT_PATH); then \
 		echo "failed"; \
@@ -151,7 +169,7 @@ $(BUILD_PATH)/tests/eap:
 
 .PHONY: clean.tests.eap
 clean.tests.eap:
-	@rm -rf $(BUILD_PATH)/tests/eap
+	@rm -rf $(BUILD_PATH)/tests/eap config/tlscache config/eap-test config/eap-test-inner-tunnel
 
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap
 	@printf 'EAPOL_TEST %s : ' '$*'
@@ -176,9 +194,11 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf $(BU
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@printf 'EAPOL_TEST %s : ' '$$(notdir $$(@:%.ok=%))'
-	@if $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
+	@if $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
 		if ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
 			echo FAILED version; \
+		elif ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
+			echo FAILED resumption; \
 		else \
 			echo Success; \
 			touch $$@; \
