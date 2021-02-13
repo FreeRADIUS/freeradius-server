@@ -116,6 +116,7 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	@cp $< $@.tmp
 	@sed -i.bak -e 's/^\(\s*eap\)\( {\s*\)$$/\1 eap-test\2/' $@.tmp
+	@sed -i.bak -e '/[\s#]*pwd {/,/[\s#]*}/ s/#\(\s*\)\(pwd\|}\|server_id\)/\1\2/' $@.tmp
 	@sed -i.bak -e '/^\s*cache {/,/^\s*enable/ s/\(enable\s*=\s*\).*/\1 yes/' $@.tmp
 	@sed -i.bak -e '/^\s*cache {/,/^[\s#]*persist_dir/ { /\(name\|persist_dir\)\s*=\s*/ s/#// }' $@.tmp
 	@sed -i.bak -e 's/inner-tunnel/eap-test-inner-tunnel/g' $@.tmp
@@ -160,7 +161,8 @@ radiusd.kill:
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 ifneq "$(EAPOL_TEST)" ""
-EAP_TLS_FILES = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_FILES = $(wildcard eap-*.conf peap-*.conf)
+EAP_FILES_TLS = $(shell grep -l ca_cert= $(EAP_FILES))
 EAP_TLS_VERSIONS = 1.2
 EAP_TLS_DISABLE_STRING = tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
 
@@ -172,14 +174,17 @@ $(BUILD_PATH)/tests/eap:
 clean.tests.eap:
 	@rm -rf $(BUILD_PATH)/tests/eap config/tlscache config/eap-test config/eap-test-inner-tunnel
 
+$(BUILD_PATH)/tests/eap/%.ok: NO_MPPE = $(filter eap-md5,$(basename $(notdir $@)))
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap
 	@printf 'EAPOL_TEST %s : ' '$*'
-	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.ok,%,$@).log 2>&1; then \
+	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
 		echo Success; \
 		touch $@; \
 	else \
 		echo FAILED; \
 	fi
+
+tests.eap:: $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok,$(filter-out $(EAP_FILES_TLS),$(EAP_FILES))))
 
 #
 #  Don't run the full TLS version tests for CI post-install.
@@ -211,11 +216,11 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok
 endef
 
-$(foreach FILE,$(patsubst %.conf,%,$(EAP_TLS_FILES)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
+$(foreach FILE,$(patsubst %.conf,%,$(EAP_FILES_TLS)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
 
-tests.eap: $(EAP_TLS_VERSION_FILES)
+tests.eap:: $(EAP_TLS_VERSION_FILES)
 else
-tests.eap: $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES))))
+tests.eap:: $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok,$(EAP_FILES_TLS)))
 endif
 
 endif
