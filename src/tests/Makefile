@@ -118,6 +118,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	@sed -i.bak -e 's/^\(\s*eap\)\( {\s*\)$$/\1 eap-test\2/' $@.tmp
 	@sed -i.bak -e '/[\s#]*pwd {/,/[\s#]*}/ s/#\(\s*\)\(pwd\|}\|server_id\)/\1\2/' $@.tmp
 	@sed -i.bak -e '/[\s#]*fast {/,/[\s#]*}/ s/#\(\s*\)\(fast\|}\|tls\|authority_identity\|pac_opaque_key\|virtual_server\)/\1\2/' $@.tmp
+	@sed -i.bak -e 's/^\(\s*tls_min_version\s*=\).*$$/\1 "1.0"/' $@.tmp
 	@sed -i.bak -e '/^\s*cache {/,/^\s*enable/ s/\(enable\s*=\s*\).*/\1 yes/' $@.tmp
 	@sed -i.bak -e '/^\s*cache {/,/^[\s#]*persist_dir/ { /\(name\|persist_dir\)\s*=\s*/ s/#// }' $@.tmp
 	@sed -i.bak -e 's/inner-tunnel/eap-test-inner-tunnel/g' $@.tmp
@@ -164,7 +165,7 @@ radiusd.kill:
 ifneq "$(EAPOL_TEST)" ""
 EAP_FILES = $(wildcard eap-*.conf peap-*.conf)
 EAP_FILES_TLS = $(shell grep -l ca_cert= $(EAP_FILES))
-EAP_TLS_VERSIONS = 1.2
+EAP_TLS_VERSIONS = 1.0 1.1 1.2
 EAP_TLS_DISABLE_STRING = tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
 
 .PHONY: $(BUILD_PATH)/tests/eap
@@ -197,12 +198,15 @@ ifneq "$(prefix)" ""
 #
 define EAP_TLS_CONFIG
 $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf $(BUILD_PATH)/tests/eap
-	@sed -e 's/phase1="/&$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' < $$< > $$@
+	@sed -e 's/phase1="/&$(EAP_TLS_DISABLE_STRING) /' < $$< > $$@.tmp
+	@sed -i.bak -e 's/\(tls_disable_tlsv1_[0-$(subst 1.,,${2})]\)=1/\1=0/g' $$@.tmp
+	@mv $$@.tmp $$@
+	@rm $$@.tmp.bak
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@printf 'EAPOL_TEST %s : ' '$$(notdir $$(@:%.ok=%))'
 	@if $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
-		if ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
+		if ! grep -q '^SSL: Using TLS version TLSv$(if $(filter 1.0,${2}),1,${2})$$$$' $$(patsubst %.ok,%,$$@).log; then \
 			echo FAILED version; \
 		elif ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
 			echo FAILED resumption; \
