@@ -109,6 +109,7 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 	@cp $< $@.tmp
 	@sed -i.bak -e 's/^\(\s*server \)\(inner-tunnel {\s*\)$$/\1eap-test-\2/' $@.tmp
 	@sed -i.bak -e 's/^\(\s*\)eap\(\s*\| {\)$$/\1eap-test\2/' $@.tmp
+	@sed -i.bak -e '/^\s*post-auth\s*{\s*$$/ a\\update reply { &Tunnel-Private-Group-ID = "eap-test-dummy" }' $@.tmp
 	@mv $@.tmp $@
 	@rm $@.tmp.bak
 
