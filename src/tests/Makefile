@@ -65,6 +65,8 @@ ACCTPORT = $(shell expr $(PORT) + 1)
 
 SECRET	= testing123
 
+TLSV13	= $(shell test $$(($$(echo OPENSSL_VERSION_NUMBER | cpp -E -P -x assembler-with-cpp -include openssl/opensslv.h | sed -e 's/L$$//'))) -gt $$((0x10100000)) && echo y)
+
 .PHONY: all eap dictionary clean
 
 #
@@ -119,6 +121,10 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	@sed -i.bak -e '/[\s#]*pwd {/,/[\s#]*}/ s/#\(\s*\)\(pwd\|}\|server_id\)/\1\2/' $@.tmp
 	@sed -i.bak -e '/[\s#]*fast {/,/[\s#]*}/ s/#\(\s*\)\(fast\|}\|tls\|authority_identity\|pac_opaque_key\|virtual_server\)/\1\2/' $@.tmp
 	@sed -i.bak -e 's/^\(\s*tls_min_version\s*=\).*$$/\1 "1.0"/' $@.tmp
+ifneq "$(TLSV13)" ""
+	@sed -i.bak -e 's/^\(\s*tls_max_version\s*=\).*$$/\1 "1.3"/' $@.tmp
+	@sed -i.bak -e '/^\s*tls_max_version/ a\\t\ttls13_enable = yes\n\t\ttls13_send_zero = yes' $@.tmp
+endif
 	@sed -i.bak -e '/^\s*cache {/,/^\s*enable/ s/\(enable\s*=\s*\).*/\1 yes/' $@.tmp
 	@sed -i.bak -e '/^\s*cache {/,/^[\s#]*persist_dir/ { /\(name\|persist_dir\)\s*=\s*/ s/#// }' $@.tmp
 	@sed -i.bak -e 's/inner-tunnel/eap-test-inner-tunnel/g' $@.tmp
@@ -166,6 +172,9 @@ ifneq "$(EAPOL_TEST)" ""
 EAP_FILES = $(wildcard eap-*.conf peap-*.conf)
 EAP_FILES_TLS = $(shell grep -l ca_cert= $(EAP_FILES))
 EAP_TLS_VERSIONS = 1.0 1.1 1.2
+ifneq "$(TLSV13)" ""
+EAP_TLS_VERSIONS += 1.3
+endif
 EAP_TLS_DISABLE_STRING = tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
 
 .PHONY: $(BUILD_PATH)/tests/eap
@@ -218,7 +227,9 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 		echo FAILED; \
 	fi
 
+ifneq "${1}-${2}" "eap-fast-1.3"
 EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok
+endif
 endef
 
 $(foreach FILE,$(patsubst %.conf,%,$(EAP_FILES_TLS)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
