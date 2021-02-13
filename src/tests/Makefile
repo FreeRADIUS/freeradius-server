@@ -117,6 +117,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	@cp $< $@.tmp
 	@sed -i.bak -e 's/^\(\s*eap\)\( {\s*\)$$/\1 eap-test\2/' $@.tmp
 	@sed -i.bak -e '/[\s#]*pwd {/,/[\s#]*}/ s/#\(\s*\)\(pwd\|}\|server_id\)/\1\2/' $@.tmp
+	@sed -i.bak -e '/[\s#]*fast {/,/[\s#]*}/ s/#\(\s*\)\(fast\|}\|tls\|authority_identity\|pac_opaque_key\|virtual_server\)/\1\2/' $@.tmp
 	@sed -i.bak -e '/^\s*cache {/,/^\s*enable/ s/\(enable\s*=\s*\).*/\1 yes/' $@.tmp
 	@sed -i.bak -e '/^\s*cache {/,/^[\s#]*persist_dir/ { /\(name\|persist_dir\)\s*=\s*/ s/#// }' $@.tmp
 	@sed -i.bak -e 's/inner-tunnel/eap-test-inner-tunnel/g' $@.tmp
