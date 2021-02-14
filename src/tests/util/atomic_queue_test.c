@@ -23,10 +23,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/atomic_queue.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/talloc.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
-#include <freeradius-devel/util/debug.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
@@ -40,16 +41,9 @@ static int		debug_lvl = 0;
 /**********************************************************************/
 typedef struct request_s request_t;
 void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request);
-int talloc_const_free(void const *ptr);
 
 void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request)
 {
-}
-
-int talloc_const_free(void const *ptr)
-{
-	if (!ptr) return 0;
-	return talloc_free(UNCONST(void *, ptr));
 }
 /**********************************************************************/
 

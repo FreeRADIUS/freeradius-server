@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -62,11 +63,6 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t c
 {
 }
 
-int talloc_const_free(void const *ptr)
-{
-	if (!ptr) return 0;
-	return talloc_free(UNCONST(void *, ptr));
-}
 /**********************************************************************/
 
 static void NEVER_RETURNS usage(void)

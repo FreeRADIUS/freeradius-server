@@ -736,20 +736,6 @@ void **talloc_array_null_strip(void **array)
 	return new;
 }
 
-/** Free const'd memory
- *
- * @param[in] ptr	to free.
- */
-int talloc_const_free(void const *ptr)
-{
-	void *tmp;
-
-	if (!ptr) return 0;
-
-	memcpy(&tmp, &ptr, sizeof(tmp));
-	return talloc_free(tmp);
-}
-
 /** Callback to free the autofree ctx on thread exit
  *
  */

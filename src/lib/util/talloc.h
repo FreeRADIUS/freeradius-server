@@ -191,7 +191,16 @@ void		**talloc_array_null_terminate(void **array);
 
 void		**talloc_array_null_strip(void **array);
 
-int		talloc_const_free(void const *ptr);
+/** Free const'd memory
+ *
+ * @param[in] ptr	to free.
+ */
+static inline int talloc_const_free(void const *ptr)
+{
+	if (!ptr) return 0;
+
+	return talloc_free(UNCONST(void *, ptr));
+}
 
 /** Free a list of talloced structures containing a next field
  *

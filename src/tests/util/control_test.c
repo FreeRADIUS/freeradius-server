@@ -23,9 +23,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
-#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/time.h>
 
 #include <sys/event.h>
 #include <stdio.h>
@@ -53,7 +54,6 @@ static fr_ring_buffer_t *rb = NULL;
 typedef struct request_s request_t;
 request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args);
 void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request);
-int talloc_const_free(void const *ptr);
 
 request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args)
 {
@@ -64,11 +64,6 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *
 {
 }
 
-int talloc_const_free(void const *ptr)
-{
-	if (!ptr) return 0;
-	return talloc_free(UNCONST(void *, ptr));
-}
 /**********************************************************************/
 
 static void NEVER_RETURNS usage(void)
