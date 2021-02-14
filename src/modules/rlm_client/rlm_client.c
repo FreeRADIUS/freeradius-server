@@ -320,7 +320,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 */
 	if (!request->client->server) RETURN_MODULE_FAIL;
 
-	c = client_read(buffer, request->client->server_cs;, true);
+	c = client_read(buffer, request->client->server_cs, true);
 	if (!c) RETURN_MODULE_FAIL;
 
 	/*
