@@ -277,7 +277,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	char const *value;
 	CONF_PAIR *cp;
 	RADCLIENT *c;
-	CONF_SECTION *server_cs;
 	char buffer[2048];
 
 	/*
