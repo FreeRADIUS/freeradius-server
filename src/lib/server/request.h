@@ -155,6 +155,7 @@ struct request_s {
 
 	uint64_t		seq_start;	//!< State sequence ID.  Stable identifier for a sequence of requests
 						//!< and responses.
+	fr_dict_t const		*dict;		//!< Dictionary of the protocol that this request belongs to.
 
 	fr_pair_t		*pair_root;	//!< Root atribute which contains the
 						///< other list attributes as children.
@@ -167,6 +168,8 @@ struct request_s {
 	 *	 list attribute.
 	 */
 	request_pair_lists_t	pair_list;	//!< Structure containing all pair lists.
+
+	fr_dlist_head_t		data;		//!< Request metadata.
 
 	/** Logging information
 	 *
@@ -181,7 +184,8 @@ struct request_s {
 		uint8_t			module_indent;	//!< Indentation after the module prefix name.
 	} log;
 
-	fr_dict_t const		*dict;		//!< Dictionary of the protocol that this request belongs to.
+	char const		*component; 	//!< Section the request is in.
+	char const		*module;	//!< Module the request is currently being processed by.
 
 	fr_radius_packet_t	*packet;	//!< Incoming request.
 	fr_radius_packet_t	*reply;		//!< Outgoing response.
@@ -190,8 +194,6 @@ struct request_s {
 	fr_heap_t		*backlog;	//!< thread-specific backlog
 	request_state_t		request_state;	//!< state for the various protocol handlers.
 
-	fr_dlist_head_t		data;		//!< Request metadata.
-
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
@@ -199,9 +201,6 @@ struct request_s {
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 	CONF_SECTION		*server_cs;	//!< virtual server which is processing the request.
-
-	char const		*component; 	//!< Section the request is in.
-	char const		*module;	//!< Module the request is currently being processed by.
 
 	fr_rb_node_t		dedup_node;	//!< entry in the deduplication tree.
 	int32_t			runnable_id;	//!< entry in the queue / heap of runnable packets
