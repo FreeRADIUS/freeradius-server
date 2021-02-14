@@ -192,7 +192,6 @@ struct request_s {
 
 	fr_dlist_head_t		data;		//!< Request metadata.
 
-	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently

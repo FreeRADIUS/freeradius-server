@@ -49,14 +49,17 @@ void request_stats_final(request_t *request)
 {
 	if (request->master_state == REQUEST_COUNTED) return;
 
+#if 0
 	if (!request->listener) return;
 	if (!request->client) return;
 	if (!request->packet) return;
+#endif
 
+#if 0
 	if ((request->listener->type != RAD_LISTEN_NONE) &&
 	    (request->listener->type != RAD_LISTEN_ACCT) &&
 	    (request->listener->type != RAD_LISTEN_AUTH)) return;
-
+#endif
 	/* don't count statistic requests */
 	if (request->packet->code == FR_CODE_STATUS_SERVER)
 		return;

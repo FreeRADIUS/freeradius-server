@@ -168,11 +168,6 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
 	child->packet->timestamp = parent->packet->timestamp;
 
 	/*
-	 *	Required for new identity support
-	 */
-	child->listener = parent->listener;
-
-	/*
 	 *	Fill in the child reply, based on the child request.
 	 */
 	fr_socket_addr_swap(&child->reply->socket, &child->packet->socket);

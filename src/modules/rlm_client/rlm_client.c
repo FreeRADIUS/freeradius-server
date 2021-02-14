@@ -321,14 +321,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 */
 	if (request->client->server) {
 		server_cs = request->client->server_cs;
-
-	} else if (request->listener) {
-		server_cs = request->listener->server_cs;
 	} else {
 		RETURN_MODULE_FAIL;
 	}
 
-	c = client_read(buffer, server_cs, true);
+	c = client_read(buffer, request->server_cs, true);
 	if (!c) RETURN_MODULE_FAIL;
 
 	/*
