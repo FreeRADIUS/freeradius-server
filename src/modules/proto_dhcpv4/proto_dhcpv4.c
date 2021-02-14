@@ -230,7 +230,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
-	request->config = main_config;
 	REQUEST_VERIFY(request);
 
 	if (!inst->io.app_io->decode) return 0;

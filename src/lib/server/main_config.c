@@ -511,8 +511,7 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	if (xlat_eval(buffer, sizeof(buffer), request, fmt, config_escape_func, NULL) < 0) return 0;
 
-	ci = cf_reference_item(request->config->root_cs,
-			       request->config->root_cs, buffer);
+	ci = cf_reference_item(main_config->root_cs, main_config->root_cs, buffer);
 	if (!ci || !cf_item_is_pair(ci)) {
 		REDEBUG("Config item \"%s\" does not exist", fmt);
 		return -1;

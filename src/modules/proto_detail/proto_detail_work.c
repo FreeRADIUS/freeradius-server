@@ -121,7 +121,6 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	fr_detail_entry_t const		*track = request->async->packet_ctx;
 	fr_pair_t *vp;
 
-	request->config = main_config;
 	request->client = inst->client;
 
 	request->packet->id = track->id;

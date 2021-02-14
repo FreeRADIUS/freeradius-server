@@ -183,8 +183,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	request->server_cs = virtual_server_find("default");
 	fr_assert(request->server_cs != NULL);
 
-	request->config = main_config;
-
 	/*
 	 *	Read packet from fp
 	 */
@@ -364,8 +362,6 @@ static bool do_xlats(char const *filename, FILE *fp)
 	request->master_state = REQUEST_ACTIVE;
 	request->server_cs = virtual_server_find("default");
 	fr_assert(request->server_cs != NULL);
-
-	request->config = main_config;
 
 	request->log.lvl = fr_debug_lvl;
 	output[0] = '\0';

@@ -87,7 +87,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
-	request->config = main_config;
 	REQUEST_VERIFY(request);
 
 	if (RDEBUG_ENABLED) {

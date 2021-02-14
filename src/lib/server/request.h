@@ -207,8 +207,6 @@ struct request_s {
 	int32_t			runnable_id;	//!< entry in the queue / heap of runnable packets
 	int32_t			time_order_id;	//!< entry in the queue / heap of time ordered packets
 
-	main_config_t const	*config;	//!< Pointer to the main config hack to try and deal with hup.
-
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
 
 	fr_async_t		*async;		//!< for new async listeners

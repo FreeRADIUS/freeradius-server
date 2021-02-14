@@ -127,7 +127,6 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
 	child->seq_start = 0;	/* children always start with their own sequence */
 	child->parent = parent;
 	child->dict = parent->dict;
-	child->config = parent->config;
 	child->client = parent->client;
 
 	/*
