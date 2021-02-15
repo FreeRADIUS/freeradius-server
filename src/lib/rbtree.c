@@ -49,9 +49,9 @@ struct rbnode_t {
 };
 
 #define NIL &sentinel	   /* all leafs are sentinels */
-static rbnode_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
+static rbnode_t sentinel = { NIL, NIL, NIL, BLACK, NULL};
 
-#define NOT_AT_ROOT(_node) ((_node) != NULL)
+#define NOT_AT_ROOT(_node) ((_node) != NIL)
 
 struct rbtree_t {
 #ifndef NDEBUG
@@ -265,7 +265,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 
 	/* find where node belongs */
 	current = tree->root;
-	parent = NULL;
+	parent = NIL;
 	while (current != NIL) {
 		int result;
 

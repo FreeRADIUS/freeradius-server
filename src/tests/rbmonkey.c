@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <netdb.h>
+#include <assert.h>
 
 #include <freeradius-devel/libradius.h>
 
@@ -136,7 +137,7 @@ descend:
 		}
 	}
 ascend:
-	if (!n->parent) return count_expect;
+	if (n->parent != NIL) return count_expect;
 	while (n->parent->right == n) {
 		n = n->parent;
 		if (!n->parent) return count_expect;
@@ -186,7 +187,9 @@ again:
 
 	t = rbtree_create(NULL, comp, free, RBTREE_FLAG_LOCK);
 	/* Find out the value of the NIL node */
-	NIL = t->root->left;
+	assert(t->root != NULL);
+	assert(t->root->parent == t->root);
+	NIL = t->root;
 
 	for (i = 0; i < n; i++) {
 		int *p;
