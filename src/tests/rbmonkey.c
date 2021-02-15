@@ -100,7 +100,7 @@ descend:
 		}
 	}
 ascend:
-	if (!n->parent) return count_expect;
+	if (n->parent == NIL) return count_expect;
 	while (n->parent->right == n) {
 		n = n->parent;
 		if (!n->parent) return count_expect;

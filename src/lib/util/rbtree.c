@@ -42,7 +42,7 @@ struct rbtree_s {
 	char const		*type;		//!< Talloc type to check elements against.
 
 	uint64_t		num_elements;	//!< How many elements are inside the tree.
-	fr_rb_cmp_t	compare;	//!< The comparator.
+	fr_rb_cmp_t		compare;	//!< The comparator.
 	fr_rb_free_t		free;		//!< Free function called when a node is freed.
 
 	bool			replace;	//!< Allow replacements.
@@ -198,7 +198,7 @@ static void rotate_left(rbtree_t *tree, fr_rb_node_t *x)
 
 	/* establish y->parent link */
 	if (y != NIL) y->parent = x->parent;
-	if (x->parent) {
+	if (x->parent != NIL) {
 		if (x == x->parent->left) {
 			x->parent->left = y;
 		} else {
@@ -226,7 +226,7 @@ static void rotate_right(rbtree_t *tree, fr_rb_node_t *x)
 
 	/* establish y->parent link */
 	if (y != NIL) y->parent = x->parent;
-	if (x->parent) {
+	if (x->parent != NIL) {
 		if (x == x->parent->right) {
 			x->parent->right = y;
 		} else {
@@ -318,7 +318,7 @@ fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
 
 	/* find where node belongs */
 	current = tree->root;
-	parent = NULL;
+	parent = NIL;
 	while (current != NIL) {
 		int result;
 
@@ -387,7 +387,7 @@ fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	};
 
 	/* insert node in tree */
-	if (parent) {
+	if (parent != NIL) {
 		if (tree->compare(data, parent->data) <= 0) {
 			parent->left = x;
 		} else {
@@ -511,7 +511,7 @@ static void rbtree_delete_internal(rbtree_t *tree, fr_rb_node_t *z, bool skiploc
 	parent = y->parent;
 	if (x != NIL) x->parent = parent;
 
-	if (parent) {
+	if (parent != NIL) {
 		if (y == parent->left) {
 			parent->left = x;
 		} else {
@@ -536,7 +536,7 @@ static void rbtree_delete_internal(rbtree_t *tree, fr_rb_node_t *z, bool skiploc
 		memcpy(y, z, sizeof(*y));
 		y->data = y_data;
 
-		if (!y->parent) {
+		if (y->parent == NIL) {
 			tree->root = y;
 		} else {
 			if (y->parent->left == z) y->parent->left = y;
@@ -756,7 +756,7 @@ static int walk_delete_order(rbtree_t *tree, fr_rb_walker_t compare, void *uctx)
 			x = x->right;
 			goto descend;
 		}
-		while (x->parent) {
+		while (x->parent != NIL) {
 			if (x->parent->left == x) {
 				x = x->parent;
 				goto visit;
