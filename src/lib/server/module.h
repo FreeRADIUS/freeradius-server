@@ -202,7 +202,7 @@ struct module_instance_s {
 							///< which allow the module to perform actions.
 
 	pthread_mutex_t			*mutex;		//!< Used prevent multiple threads entering a thread
-							///< unsafe simultaneously module.
+							///< unsafe module simultaneously.
 
 	uint32_t			number;		//!< unique module number.  Used as a lookup into the
 							///< thread instance array.

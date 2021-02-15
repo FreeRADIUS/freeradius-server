@@ -271,7 +271,7 @@ int unlang_module_fd_add(request_t *request,
 	unlang_module_event_t		*ev;
 	unlang_module_t			*mc;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state,
-								    unlang_frame_state_module_t);
+								       unlang_frame_state_module_t);
 
 	fr_assert(stack->depth > 0);
 
