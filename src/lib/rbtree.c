@@ -250,7 +250,7 @@ static void insert_fixup(rbtree_t *tree, rbnode_t *x)
 		}
 	}
 
-	tree->root->colour = BLACK;
+	if (tree->root != NIL) tree->root->colour = BLACK;  /* Avoid cache-dirty on NIL */
 }
 
 
