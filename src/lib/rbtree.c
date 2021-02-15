@@ -51,6 +51,8 @@ struct rbnode_t {
 #define NIL &sentinel	   /* all leafs are sentinels */
 static rbnode_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
 
+#define NOT_AT_ROOT(_node) ((_node) != NULL)
+
 struct rbtree_t {
 #ifndef NDEBUG
 	uint32_t		magic;
@@ -149,7 +151,7 @@ static void rotate_left(rbtree_t *tree, rbnode_t *x)
 
 	/* establish y->parent link */
 	if (y != NIL) y->parent = x->parent;
-	if (x->parent) {
+	if (NOT_AT_ROOT(x->parent)) {
 		if (x == x->parent->left) {
 			x->parent->left = y;
 		} else {
@@ -177,7 +179,7 @@ static void rotate_right(rbtree_t *tree, rbnode_t *x)
 
 	/* establish y->parent link */
 	if (y != NIL) y->parent = x->parent;
-	if (x->parent) {
+	if (NOT_AT_ROOT(x->parent)) {
 		if (x == x->parent->right) {
 			x->parent->right = y;
 		} else {
@@ -308,7 +310,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	x->colour = RED;
 
 	/* insert node in tree */
-	if (parent) {
+	if (NOT_AT_ROOT(parent)) {
 		if (tree->compare(data, parent->data) <= 0) {
 			parent->left = x;
 		} else {
@@ -432,7 +434,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 	parent = y->parent;
 	if (x != NIL) x->parent = parent;
 
-	if (parent) {
+	if (NOT_AT_ROOT(parent)) {
 		if (y == parent->left) {
 			parent->left = x;
 		} else {
@@ -447,7 +449,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 		z->data = y->data;
 		y->data = NULL;
 
-		if ((y->colour == BLACK) && parent) {
+		if ((y->colour == BLACK) && NOT_AT_ROOT(parent)) {
 			delete_fixup(tree, x, parent);
 		}
 
@@ -460,7 +462,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 		 */
 		memcpy(y, z, sizeof(*y));
 
-		if (y->parent) {
+		if (NOT_AT_ROOT(y->parent)) {
 			if (y->parent->left == z) y->parent->left = y;
 			if (y->parent->right == z) y->parent->right = y;
 		} else {
@@ -671,7 +673,7 @@ static int walk_delete_order(rbtree_t *tree, rb_walker_t compare, void *context)
 			x = x->right;
 			goto descend;
 		}
-		while (x->parent) {
+		while (NOT_AT_ROOT(x->parent)) {
 			if (x->parent->left == x) {
 				x = x->parent;
 				goto visit;
