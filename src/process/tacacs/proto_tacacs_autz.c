@@ -34,7 +34,6 @@
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/tacacs/tacacs.h>
-#include "proto_tacacs.h"
 
 typedef struct {
 	int		nothing;		// so the next fields don't have offset 0

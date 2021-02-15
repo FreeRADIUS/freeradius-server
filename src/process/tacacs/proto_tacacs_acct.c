@@ -34,7 +34,7 @@
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/tacacs/tacacs.h>
-#include "proto_tacacs.h"
+#include <freeradius-devel/protocol/tacacs/tacacs.h>
 
 typedef struct {
 	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.

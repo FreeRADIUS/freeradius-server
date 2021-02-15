@@ -34,7 +34,6 @@
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/tacacs/tacacs.h>
-#include "proto_tacacs.h"
 
 /*
  *	This module runs both Start and Continue, but it does mostly
