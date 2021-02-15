@@ -311,13 +311,14 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 
 	dl_symbol_init_cb_unregister(dl_loader, symbol, func);
 
-	n = talloc_zero(dl_loader, dl_symbol_init_t);
-	if (!n) return -1;
-
-	n->priority = priority;
-	n->symbol = symbol;
-	n->func = func;
-	n->ctx = ctx;
+	n = talloc(dl_loader, dl_symbol_init_t);
+	if (unlikely(!n)) return -1;
+	*n = (dl_symbol_init_t){
+		.priority = priority,
+		.symbol = symbol,
+		.func = func,
+		.ctx = ctx
+	};
 
 	while ((p = fr_dlist_next(&dl_loader->sym_init, p)) && (p->priority >= priority));
 	if (p) {
