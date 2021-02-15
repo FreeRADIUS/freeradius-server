@@ -329,7 +329,7 @@ int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
 
 /** Push a module or submodule onto the stack for evaluation
  *
- * @param[out] out		Where to write the result of calling the module.
+ * @param[out] p_result		Where to write the result of calling the module.
  * @param[in] request		The current request.
  * @param[in] module_instance	Instance of the module to call.
  * @param[in] method		to call.
@@ -339,7 +339,7 @@ int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_module_push(rlm_rcode_t *out, request_t *request,
+int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 		       module_instance_t *module_instance, module_method_t method, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -385,7 +385,7 @@ int unlang_module_push(rlm_rcode_t *out, request_t *request,
 	frame = &stack->frame[stack->depth];
 	state = frame->state;
 	*state = (unlang_frame_state_module_t){
-		.p_result = out,
+		.p_result = p_result,
 		.thread = module_thread(module_instance)
 	};
 
@@ -418,7 +418,7 @@ request_t *unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *na
 
 /** Yield, spawning a child request, and resuming once the child request is complete
  *
- * @param[in] out		Final rcode from when evaluation of the child request finishes.
+ * @param[in] p_result		Final rcode from when evaluation of the child request finishes.
  * @param[out] child		to yield to.  The child knows about the parent,
  *				which is why the parent isn't passed explicitly.
  * @param[in] resume		function to call when the child has finished executing.
@@ -428,7 +428,7 @@ request_t *unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *na
  * @return
  *	- UNLANG_ACTION_YIELD.
  */
-unlang_action_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *child,
+unlang_action_t unlang_module_yield_to_subrequest(rlm_rcode_t *p_result, request_t *child,
 						  unlang_module_resume_t resume,
 						  unlang_module_signal_t signal,
 						  unlang_subrequest_session_t const *session,
@@ -443,7 +443,7 @@ unlang_action_t unlang_module_yield_to_subrequest(rlm_rcode_t *out, request_t *c
 	/*
 	 *	Push the subrequest and immediately run it.
 	 */
-	if (unlang_subrequest_push(out, child, session, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_subrequest_push(p_result, child, session, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
 	return UNLANG_ACTION_YIELD;
 }
