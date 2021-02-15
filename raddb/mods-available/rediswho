@@ -34,6 +34,23 @@ rediswho {
 	server = 127.0.0.1
 
 	#
+	#  database:: Select the Redis logical database having the specified zero-based numeric index.
+	#
+#	database = 0
+
+	#
+	#  port:: Port to connect to
+	#  The default port is 6379.
+	#
+	port = 6379
+
+	#  password:: The password used to authenticate to the server.
+	#
+	#  We recommend using a strong password.
+	#
+#	password = thisisreallysecretandhardtoguess
+
+	#
 	#  trim_count:: How many sessions to keep track of per user.
 	#
 	#  If there are more than this number, older sessions are deleted.
