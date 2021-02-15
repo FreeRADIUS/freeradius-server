@@ -235,6 +235,9 @@ eap {
 			#  root CAs, instead of putting them in
 			#  `certificate_file`.
 			#
+			#  This field may contain a PKCS #11 URI instead of a filename
+			#  if OpenSSL is using the libp11 "pkcs11" ENGINE plugin.
+			#
 			certificate_file = ${certdir}/rsa/server.pem
 
 			#
@@ -248,6 +251,9 @@ eap {
 			#  only one `certificate_file` to the clients.  The main use for multiple
 			#  `ca_file` entries is to permit the use of EAP-TLS with client certificates
 			#  from multiple Root CAs.
+			#
+			#  This field may contain a PKCS #11 URI instead of a filename
+			#  if OpenSSL is using the libp11 "pkcs11" ENGINE plugin.
 			#
 			ca_file = ${certdir}/rsa/ca.pem
 
@@ -264,6 +270,9 @@ eap {
 			#  If the Private key & Certificate are located in the same file,
 			#  then `private_key_file` & `certificate_file` must contain the
 			#  same file name.
+			#
+			#  This field may contain a PKCS #11 URI instead of a filename
+			#  if OpenSSL is using the libp11 "pkcs11" ENGINE plugin.
 			#
 			private_key_file = ${certdir}/rsa/server.key
 
