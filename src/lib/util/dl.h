@@ -30,9 +30,10 @@ RCSIDH(dl_h, "$Id$")
 #else
 #  include <dlfcn.h>
 #endif
-#include <freeradius-devel/util/version.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/version.h>
 
 #include <stdbool.h>
 

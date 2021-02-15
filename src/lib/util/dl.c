@@ -57,11 +57,12 @@ RCSID("$Id$")
  */
 typedef struct dl_symbol_init_s dl_symbol_init_t;
 struct dl_symbol_init_s {
+	fr_dlist_t		entry;		//!< Entry into the list of 'init' symbol callbacks.
+
 	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_onload_t		func;		//!< to call when symbol is found in a dl's symbol table.
 	void			*ctx;		//!< User data to pass to func.
-	fr_dlist_t		entry;
 };
 
 /** Symbol dependent free callback
@@ -70,11 +71,12 @@ struct dl_symbol_init_s {
  */
 typedef struct dl_symbol_free_s dl_symbol_free_t;
 struct dl_symbol_free_s {
+	fr_dlist_t		entry;		//!< Entry into the list of 'free' symbol callbacks.
+
 	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_unload_t		func;		//!< to call when symbol is found in a dl's symbol table.
 	void			*ctx;		//!< User data to pass to func.
-	fr_dlist_t		entry;
 };
 
 /** A dynamic loader
@@ -317,10 +319,7 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 	n->func = func;
 	n->ctx = ctx;
 
-	while ((p = fr_dlist_next(&dl_loader->sym_init, p))) {
-		if (p->priority < priority) break;
-	}
-
+	while ((p = fr_dlist_next(&dl_loader->sym_init, p)) && (p->priority >= priority));
 	if (p) {
 		fr_dlist_insert_after(&dl_loader->sym_init, p, n);
 	} else {
@@ -340,10 +339,7 @@ void dl_symbol_init_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl
 {
 	dl_symbol_init_t	*found = NULL, find = { .symbol = symbol, .func = func };
 
-	while ((found = fr_dlist_next(&dl_loader->sym_init, found))) {
-		if (dl_symbol_init_cmp(&find, found) == 0) break;
-	}
-
+	while ((found = fr_dlist_next(&dl_loader->sym_init, found)) && (dl_symbol_init_cmp(&find, found) != 0));
 	if (found) {
 		fr_dlist_remove(&dl_loader->sym_init, found);
 		talloc_free(found);
@@ -383,10 +379,7 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 	n->func = func;
 	n->ctx = ctx;
 
-	while ((p = fr_dlist_next(&dl_loader->sym_free, p))) {
-		if (p->priority < priority) break;
-	}
-
+	while ((p = fr_dlist_next(&dl_loader->sym_free, p)) && (p->priority >= priority));
 	if (p) {
 		fr_dlist_insert_after(&dl_loader->sym_free, p, n);
 	} else {
@@ -406,10 +399,7 @@ void dl_symbol_free_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl
 {
 	dl_symbol_free_t	*found = NULL, find = { .symbol = symbol, .func = func };
 
-	while ((found = fr_dlist_next(&dl_loader->sym_free, found))) {
-		if (dl_symbol_free_cmp(&find, found) == 0) break;
-	}
-
+	while ((found = fr_dlist_next(&dl_loader->sym_free, found)) && (dl_symbol_free_cmp(&find, found) != 0));
 	if (found) {
 		fr_dlist_remove(&dl_loader->sym_free, found);
 		talloc_free(found);
@@ -582,17 +572,18 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		}
 	}
 
-	dl = talloc_zero(dl_loader, dl_t);
-	if (!dl) {
+	dl = talloc(dl_loader, dl_t);
+	if (unlikely(!dl)) {
 		dlclose(handle);
 		return NULL;
 	}
-
-	dl->name = talloc_typed_strdup(dl, name);
-	dl->handle = handle;
-	dl->loader = dl_loader;
-	dl->uctx = uctx;
-	dl->uctx_free = uctx_free;
+	*dl = (dl_t){
+		.name = talloc_typed_strdup(dl, name),
+		.handle = handle,
+		.loader = dl_loader,
+		.uctx = uctx,
+		.uctx_free = uctx_free
+	};
 	talloc_set_destructor(dl, _dl_free);
 
 	dl->in_tree = rbtree_insert(dl_loader->tree, dl);
