@@ -148,15 +148,17 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	mc = unlang_generic_to_module(frame->instruction);
 
-	ev = talloc_zero(request, unlang_module_event_t);
+	ev = talloc(request, unlang_module_event_t);
 	if (!ev) return -1;
 
-	ev->request = request;
-	ev->fd = -1;
-	ev->timeout = callback;
-	ev->inst = mc->instance->dl_inst->data;
-	ev->thread = state->thread;
-	ev->ctx = ctx;
+	*ev = (unlang_module_event_t){
+		.request = request,
+		.fd = -1,
+		.timeout = callback,
+		.inst = mc->instance->dl_inst->data,
+		.thread = state->thread,
+		.ctx = ctx
+	};
 
 	if (fr_event_timer_at(request, request->el, &ev->ev,
 			      when, unlang_module_event_timeout_handler, ev) < 0) {
