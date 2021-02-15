@@ -145,6 +145,7 @@ uint32_t	rbtree_num_elements(rbtree_t *tree);
 
 uint32_t	rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, fr_rb_order_t order);
 
+
 void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
 
 /*
@@ -164,6 +165,19 @@ void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
  *	used to batch-delete select nodes from a locked rbtree.
  */
 int		rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, void *uctx);
+
+/** Iterator structure for traversal of an rbtree
+ */
+typedef struct {
+	rbtree_t	*tree;			//!< Tree being iterated over.
+	fr_rb_node_t	*node;			///< current node.
+} fr_rb_tree_iter_t;
+
+void		*rbtree_iter_init_inorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HINT(nonnull);
+
+void		*rbtree_iter_next_inorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
+
+void		rbtree_iter_done(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
