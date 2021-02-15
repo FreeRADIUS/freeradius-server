@@ -30,7 +30,11 @@
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/dhcpv6/dhcpv6.h>
-#include "proto_dhcpv6.h"
+
+/*
+ *	No one outside of proto_dhcpv6 needs this definition.
+ */
+#define FR_DHCPV6_DO_NOT_RESPOND (256)
 
 static fr_dict_t const *dict_dhcpv6;
 
