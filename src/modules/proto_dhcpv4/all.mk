@@ -1,1 +1,0 @@
-SUBMAKEFILES := dhcpclient.mk

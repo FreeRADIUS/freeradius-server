@@ -8,6 +8,7 @@ SUBMAKEFILES := \
     radlast.mk \
     radtest.mk \
     radzap.mk \
+    dhcpclient.mk \
     unit_test_attribute.mk \
     unit_test_map.mk \
     unit_test_module.mk \
