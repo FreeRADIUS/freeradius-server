@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/paths.h>
 #include <freeradius-devel/util/syserror.h>
@@ -62,7 +61,7 @@ struct dl_symbol_init_s {
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_onload_t		func;		//!< to call when symbol is found in a dl's symbol table.
 	void			*ctx;		//!< User data to pass to func.
-	dl_symbol_init_t	*next;
+	fr_dlist_t		entry;
 };
 
 /** Symbol dependent free callback
@@ -75,7 +74,7 @@ struct dl_symbol_free_s {
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_unload_t		func;		//!< to call when symbol is found in a dl's symbol table.
 	void			*ctx;		//!< User data to pass to func.
-	dl_symbol_free_t	*next;
+	fr_dlist_t		entry;
 };
 
 /** A dynamic loader
@@ -89,14 +88,14 @@ struct dl_loader_s {
 	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
 	 *	of callbacks so there shouldn't be efficiency issues.
 	 */
-	dl_symbol_init_t	*sym_init;
+	fr_dlist_head_t		sym_init;
 
 	/** Linked list of symbol free callbacks
 	 *
 	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
 	 *	of callbacks so there shouldn't be efficiency issues.
 	 */
-	dl_symbol_free_t	*sym_free;
+	fr_dlist_head_t		sym_free;
 
 	bool			do_dlclose;	//!< dlclose modules when we're done with them.
 
@@ -220,14 +219,11 @@ void *dl_open_by_sym(char const *sym_name, int flags)
  */
 int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 {
-	dl_symbol_init_t	*init;
-	fr_cursor_t		cursor;
+	dl_symbol_init_t	*init = NULL;
 	void			*sym = NULL;
 	char			buffer[256];
 
-	for (init = fr_cursor_init(&cursor, &dl_loader->sym_init);
-	     init;
-	     init = fr_cursor_next(&cursor)) {
+	while ((init = fr_dlist_next(&dl_loader->sym_init, init))) {
 		if (init->symbol) {
 			char *p;
 
@@ -266,13 +262,10 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
  */
 static int dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 {
-	dl_symbol_free_t	*free;
-	fr_cursor_t		cursor;
+	dl_symbol_free_t	*free = NULL;
 	void			*sym = NULL;
 
-	for (free = fr_cursor_init(&cursor, &dl_loader->sym_free);
-	     free;
-	     free = fr_cursor_next(&cursor)) {
+	while ((free = fr_dlist_next(&dl_loader->sym_free, free))) {
 		if (free->symbol) {
 			char *sym_name = NULL;
 
@@ -312,12 +305,11 @@ static int dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 			       char const *symbol, dl_onload_t func, void *ctx)
 {
-	dl_symbol_init_t	*n, *p;
-	fr_cursor_t		cursor;
+	dl_symbol_init_t	*n, *p = NULL;
 
 	dl_symbol_init_cb_unregister(dl_loader, symbol, func);
 
-	n = talloc(dl_loader, dl_symbol_init_t);
+	n = talloc_zero(dl_loader, dl_symbol_init_t);
 	if (!n) return -1;
 
 	n->priority = priority;
@@ -325,10 +317,15 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 	n->func = func;
 	n->ctx = ctx;
 
-	for (p = fr_cursor_init(&cursor, &dl_loader->sym_init);
-	     p && (p->priority >= priority);
-	     fr_cursor_next(&cursor));
-	fr_cursor_insert(&cursor, n);
+	while ((p = fr_dlist_next(&dl_loader->sym_init, p))) {
+		if (p->priority < priority) break;
+	}
+
+	if (p) {
+		fr_dlist_insert_after(&dl_loader->sym_init, p, n);
+	} else {
+		fr_dlist_insert_tail(&dl_loader->sym_init, n);
+	}
 
 	return 0;
 }
@@ -341,14 +338,16 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
  */
 void dl_symbol_init_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl_onload_t func)
 {
-	dl_symbol_init_t	*found, find = { .symbol = symbol, .func = func };
-	fr_cursor_t		cursor;
+	dl_symbol_init_t	*found = NULL, find = { .symbol = symbol, .func = func };
 
-	for (found = fr_cursor_init(&cursor, &dl_loader->sym_init);
-	     found && (dl_symbol_init_cmp(&find, found) != 0);
-	     found = fr_cursor_next(&cursor));
+	while ((found = fr_dlist_next(&dl_loader->sym_init, found))) {
+		if (dl_symbol_init_cmp(&find, found) == 0) break;
+	}
 
-	if (found) talloc_free(fr_cursor_remove(&cursor));
+	if (found) {
+		fr_dlist_remove(&dl_loader->sym_init, found);
+		talloc_free(found);
+	}
 }
 
 /** Register a callback to execute when a dl with a particular symbol is unloaded
@@ -372,8 +371,7 @@ void dl_symbol_init_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl
 int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 			       char const *symbol, dl_unload_t func, void *ctx)
 {
-	dl_symbol_free_t	*n, *p;
-	fr_cursor_t		cursor;
+	dl_symbol_free_t	*n, *p = NULL;
 
 	dl_symbol_free_cb_unregister(dl_loader, symbol, func);
 
@@ -385,8 +383,15 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 	n->func = func;
 	n->ctx = ctx;
 
-	for (p = fr_cursor_init(&cursor, &dl_loader->sym_free); p && (p->priority >= priority); fr_cursor_next(&cursor));
-	fr_cursor_insert(&cursor, n);
+	while ((p = fr_dlist_next(&dl_loader->sym_free, p))) {
+		if (p->priority < priority) break;
+	}
+
+	if (p) {
+		fr_dlist_insert_after(&dl_loader->sym_free, p, n);
+	} else {
+		fr_dlist_insert_tail(&dl_loader->sym_free, n);
+	}
 
 	return 0;
 }
@@ -399,14 +404,16 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
  */
 void dl_symbol_free_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl_unload_t func)
 {
-	dl_symbol_free_t	*found, find = { .symbol = symbol, .func = func };
-	fr_cursor_t		cursor;
+	dl_symbol_free_t	*found = NULL, find = { .symbol = symbol, .func = func };
 
-	for (found = fr_cursor_init(&cursor, &dl_loader->sym_free);
-	     found && (dl_symbol_free_cmp(&find, found) != 0);
-	     found = fr_cursor_next(&cursor));
+	while ((found = fr_dlist_next(&dl_loader->sym_free, found))) {
+		if (dl_symbol_free_cmp(&find, found) == 0) break;
+	}
 
-	if (found) talloc_free(fr_cursor_remove(&cursor));
+	if (found) {
+		fr_dlist_remove(&dl_loader->sym_free, found);
+		talloc_free(found);
+	}
 }
 
 /** Free a dl
@@ -819,6 +826,8 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool de
 	dl_loader->uctx = uctx;
 	dl_loader->uctx_free = uctx_free;
 	dl_loader->defer_symbol_init = defer_symbol_init;
+	fr_dlist_init(&dl_loader->sym_init, dl_symbol_init_t, entry);
+	fr_dlist_init(&dl_loader->sym_free, dl_symbol_free_t, entry);
 
 	return dl_loader;
 }
