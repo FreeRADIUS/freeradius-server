@@ -460,11 +460,11 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 		 */
 		memcpy(y, z, sizeof(*y));
 
-		if (!y->parent) {
-			tree->root = y;
-		} else {
+		if (y->parent) {
 			if (y->parent->left == z) y->parent->left = y;
 			if (y->parent->right == z) y->parent->right = y;
+		} else {
+			tree->root = y;
 		}
 		if (y->left->parent == z) y->left->parent = y;
 		if (y->right->parent == z) y->right->parent = y;
