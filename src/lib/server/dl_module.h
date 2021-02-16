@@ -56,6 +56,7 @@ extern "C" {
 typedef enum {
 	DL_MODULE_TYPE_MODULE = 0,	//!< Standard loadable module.
 	DL_MODULE_TYPE_PROTO,		//!< Protocol module.
+	DL_MODULE_TYPE_PROCESS,		//!< protocol processor.
 	DL_MODULE_TYPE_SUBMODULE	//!< Driver (or method in the case of EAP)
 } dl_module_type_t;
 
