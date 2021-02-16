@@ -1642,6 +1642,15 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 			} else if (attr + (attr[1] + 2 + vp->vp_length) > end) {
 				break;
 
+			} else if (vp->vp_length > 253) {
+				/*
+				 *	Drop VPs which are too long.
+				 *	We don't (yet) split one VP
+				 *	across multiple attributes.
+				 */
+				vp = vp->next;
+				continue;
+
 			} else {
 				size_t first, second;
 
@@ -2972,6 +2981,114 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 }
 
 
+/** Convert one or more NAS-Filter-Rule attributes to one or more
+ * attributes.
+ *
+ */
+static ssize_t data2vp_nas_filter_rule(TALLOC_CTX *ctx,
+				       DICT_ATTR const *da, uint8_t const *start,
+				       size_t const packetlen, VALUE_PAIR **pvp)
+{
+	uint8_t const *p, *attr = start;
+	uint8_t const *end = start + packetlen;
+	uint8_t const *attr_end;
+	uint8_t *q;
+	VALUE_PAIR *vp;
+	uint8_t buffer[253];
+
+	q = buffer;
+
+	/*
+	 *	The packet has already been sanity checked, so we
+	 *	don't care about walking off of the end of it.
+	 */
+	while (attr < end) {
+		if ((attr + 2) > end) {
+			fr_strerror_printf("decode NAS-Filter-Rule: Failure (1) to call rad_packet_ok");
+			return -1;
+		}
+
+		if (attr[1] < 2) {
+			fr_strerror_printf("decode NAS-Filter-Rule: Failure (2) to call rad_packet_ok");
+			return -1;
+		}
+		if (attr[0] != PW_NAS_FILTER_RULE) break;
+
+		/*
+		 *	Now decode one, or part of one rule.
+		 */
+		p = attr + 2;
+		attr_end = attr + attr[1];
+
+		if (attr_end > end) {
+			fr_strerror_printf("decode NAS-Filter-Rule: Failure (3) to call rad_packet_ok");
+			return -1;
+		}
+
+		/*
+		 *	Coalesce data until the zero byte.
+		 */
+		while (p < attr_end) {
+			/*
+			 *	Once we hit the zero byte, create the
+			 *	VP, skip the zero byte, and reset the
+			 *	counters.
+			 */
+			if (*p == 0) {
+				/*
+				 *	Discard consecutive zeroes.
+				 */
+				if (q > buffer) {
+					vp = fr_pair_afrom_da(ctx, da);
+					if (!vp) {
+						fr_strerror_printf("decode NAS-Filter-Rule: Out of memory");
+						return -1;
+					}
+
+					fr_pair_value_bstrncpy(vp, buffer, q - buffer);
+
+					*pvp = vp;
+					pvp = &(vp->next);
+					q = buffer;
+				}
+
+				p++;
+				continue;
+			}
+			*(q++) = *(p++);
+
+			/*
+			 *	Not much reason to have rules which
+			 *	are too long.
+			 */
+			if ((size_t) (q - buffer) > sizeof(buffer)) {
+				fr_strerror_printf("decode NAS-Filter-Rule: decoded attribute is too long");
+				return -1;
+			}
+		}
+
+		/*
+		 *	Done this attribute.  There MAY be things left
+		 *	in the buffer.
+		 */
+		attr = attr_end;
+	}
+
+	if (q == buffer) return attr + attr[2] - start;
+
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) {
+		fr_strerror_printf("decode NAS-Filter-Rule: Out of memory");
+		return -1;
+	}
+				
+	fr_pair_value_bstrncpy(vp, buffer, q - buffer);
+
+	*pvp = vp;
+
+	return p - start;
+}
+
 /** Convert a "concatenated" attribute to one long VP
  *
  */
@@ -4186,6 +4303,11 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	if (da->flags.concat) {
 		VP_TRACE("attr2vp: concat attribute\n");
 		return data2vp_concat(ctx, da, data, length, pvp);
+	}
+
+	if (!da->vendor && (da->attr == PW_NAS_FILTER_RULE)) {
+		VP_TRACE("attr2vp: NAS-Filter-Rule attribute\n");
+		return data2vp_nas_filter_rule(ctx, da, data, length, pvp);
 	}
 
 	/*
