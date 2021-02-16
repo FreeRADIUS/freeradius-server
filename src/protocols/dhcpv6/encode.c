@@ -63,21 +63,19 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
  *   |          option-code          |           option-len          |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
- * @param[out] dbuff		Where to write the 4 byte option header.
+ * @param[out] m		Where to write the 4 byte option header.
  * @param[in] option		The option number (host byte order).
  * @param[in] data_len		The length of the option (host byte order).
  * @return
  *	- <0	How much data would have been required as a negative value.
  *	- 4	The length of data written.
  */
-static inline ssize_t encode_option_hdr(fr_dbuff_t *dbuff, uint16_t option, size_t data_len)
+static inline ssize_t encode_option_hdr(fr_dbuff_marker_t *m, uint16_t option, size_t data_len)
 {
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	FR_DBUFF_IN_RETURN(m, option);
+	FR_DBUFF_IN_RETURN(m, (uint16_t) data_len);
 
-	FR_DBUFF_IN_RETURN(&work_dbuff, option);
-	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) data_len);
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
+	return sizeof(option) + sizeof(uint16_t);
 }
 
 
@@ -156,9 +154,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (!da->flags.extra &&
 		    ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
 		     (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
-			fr_dbuff_marker_t	p;
+			fr_dbuff_marker_t	last_byte, src;
 
-			fr_dbuff_marker(&p, &work_dbuff);
+			fr_dbuff_marker(&last_byte, &work_dbuff);
+			fr_dbuff_marker(&src, &work_dbuff);
 			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data);
 			if (slen < 0) return slen;
 
@@ -168,10 +167,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			 *	partial name, and we omit the trailing
 			 *	zero.
 			 */
-			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) &&
-			    (*(fr_dbuff_current(&p) + fr_dbuff_current(&p)[0] + 1) == 0)) {
-				fr_dbuff_set_to_start(&work_dbuff);
-				fr_dbuff_advance(&work_dbuff, (size_t)slen - 1);
+			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) && slen > 0) {
+				uint8_t c = 0;
+
+				fr_dbuff_advance(&last_byte, (size_t)(slen - 1));
+				fr_dbuff_set(&src, &last_byte);
+				fr_dbuff_out(&c, &src);
+				if (!c) fr_dbuff_set(&work_dbuff, &last_byte);
 			}
 			break;
 		}
@@ -512,16 +514,18 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	/*
 	 *	Make space for the header...
 	 */
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
+	fr_dbuff_advance(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 
 	/*
 	 *	Write out the option's value
@@ -536,7 +540,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Write out the option number and length (before the value we just wrote)
 	 */
-	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
+	(void) encode_option_hdr(&hdr, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done RFC header");
 
@@ -548,10 +552,11 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
 
+	fr_dbuff_marker(&hdr, &work_dbuff);
 	VP_VERIFY(fr_dcursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -578,7 +583,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *   |          option-code          |           option-len          |
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
-	encode_option_hdr(&hdr_dbuff, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
+	(void) encode_option_hdr(&hdr, (uint16_t)da->attr, (uint16_t) (fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV header");
 
@@ -603,11 +608,12 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_dcursor_t *cursor, void *encoder_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dict_attr_t const	*dv;
 	ssize_t			len;
 
+	fr_dbuff_marker(&hdr, &work_dbuff);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
@@ -631,7 +637,8 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);
+	fr_dbuff_advance(&work_dbuff, DHCPV6_OPT_HDR_LEN);
 	FR_DBUFF_IN_RETURN(&work_dbuff, dv->attr);
 
 	/*
@@ -667,7 +674,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	}
 	if (len < 0) return len;
 
-	encode_option_hdr(&hdr_dbuff, da->attr, fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN);
+	(void) encode_option_hdr(&hdr, da->attr, fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN);
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done VSIO header");
 
