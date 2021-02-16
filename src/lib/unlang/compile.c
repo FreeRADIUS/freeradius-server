@@ -571,7 +571,7 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 	/*
 	 *	Sanity check sublists.
 	 */
-	if (map->child) {
+	if (!fr_dlist_empty(&map->child)) {
 		fr_dict_attr_t const *da;
 
 		if (!tmpl_is_attr(map->lhs)) {
@@ -591,7 +591,7 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 			return false;
 		}
 
-		return pass2_fixup_update_map(map->child, rules, da);
+		return pass2_fixup_update_map(fr_dlist_head(&map->child), rules, da);
 	}
 
 	return true;
@@ -603,9 +603,9 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 {
 	unlang_map_t	*gext = unlang_group_to_map(g);
-	map_t		*map;
+	map_t		*map = NULL;
 
-	for (map = gext->map; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(&gext->map, map))) {
 		if (!pass2_fixup_update_map(map, rules, NULL)) return false;
 	}
 
@@ -629,7 +629,7 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	 */
 	if (!gext->vpt) return true;
 
-	return pass2_fixup_tmpl(gext->map->ci, cf_section_to_item(g->cs), &gext->vpt);
+	return pass2_fixup_tmpl(fr_map_list_head(&gext->map)->ci, cf_section_to_item(g->cs), &gext->vpt);
 }
 
 static void unlang_dump(unlang_t *instruction, int depth)
@@ -667,7 +667,8 @@ static void unlang_dump(unlang_t *instruction, int depth)
 
 			g = unlang_generic_to_group(c);
 			gext = unlang_group_to_map(g);
-			for (map = gext->map; map != NULL; map = map->next) {
+			map = NULL;
+			while ((map = fr_dlist_next(&gext->map, map))) {
 				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
 				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 			}
@@ -1210,7 +1211,6 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	CONF_SECTION		*modules;
 	char const		*tmpl_str;
 
-	map_t		*head;
 	tmpl_t			*vpt = NULL;
 
 	map_proc_t		*proc;
@@ -1299,9 +1299,10 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(gext, &head, cs, &parse_rules, &parse_rules, unlang_fixup_map, NULL, 256);
+	fr_map_list_init(&gext->map);
+	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
+	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'map' sections cannot be empty");
 		goto error;
 	}
@@ -1311,14 +1312,13 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 *	Call the map's instantiation function to validate
 	 *	the map and perform any caching required.
 	 */
-	proc_inst = map_proc_instantiate(gext, proc, cs, vpt, head);
+	proc_inst = map_proc_instantiate(gext, proc, cs, vpt, &gext->map);
 	if (!proc_inst) {
 		cf_log_err(cs, "Failed instantiating map function '%s'", name2);
 		goto error;
 	}
 	c = unlang_group_to_generic(g);
 
-	gext->map = head;
 	gext->vpt = vpt;
 	gext->proc_inst = proc_inst;
 
@@ -1348,8 +1348,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
-	map_t		*head;
-
 	tmpl_rules_t		parse_rules;
 
 	static unlang_ext_t const update_ext = {
@@ -1372,9 +1370,10 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(gext, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+	fr_map_list_init(&gext->map);
+	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
+	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 	error:
 		talloc_free(g);
@@ -1389,8 +1388,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		c->name = "update";
 		c->debug_name = c->name;
 	}
-
-	gext->map = head;
 
 	if (!pass2_fixup_update(g, unlang_ctx->rules)) goto error;
 
@@ -1408,8 +1405,6 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
-
-	map_t		*head;
 
 	tmpl_rules_t		parse_rules;
 
@@ -1433,9 +1428,10 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(gext, &head, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
+	fr_map_list_init(&gext->map);
+	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
+	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'filter' sections cannot be empty");
 		return NULL;
 	}
@@ -1449,8 +1445,6 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		c->name = "filter";
 		c->debug_name = c->name;
 	}
-
-	gext->map = head;
 
 	/*
 	 *	The fixups here occur whether or not it's UPDATE or FILTER

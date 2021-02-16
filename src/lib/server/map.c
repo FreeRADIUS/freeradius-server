@@ -58,7 +58,10 @@ static void map_dump(request_t *request, map_t const *map)
 
 static inline map_t *map_alloc(TALLOC_CTX *ctx)
 {
-	return talloc_zero(ctx, map_t);
+	map_t *map;
+	map = talloc_zero(ctx, map_t);
+	fr_map_list_init(&map->child);
+	return map;
 }
 
 /** Convert CONFIG_PAIR (which may contain refs) to map_t.
@@ -93,7 +96,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	MEM(map = talloc_zero(ctx, map_t));
+	MEM(map = map_alloc(ctx));
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -303,7 +306,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 
 	*out = NULL;
-	MEM(map = talloc_zero(ctx, map_t));
+	MEM(map = map_alloc(ctx));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
@@ -458,7 +461,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
+int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
@@ -469,13 +472,10 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 	CONF_PAIR 	*cp;
 
 	unsigned int 	total = 0;
-	map_t	**tail, *map;
+	map_t		*map;
 	TALLOC_CTX	*parent;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
-
-	*out = NULL;
-	tail = out;
 
 	/*
 	 *	The first map has ctx as the parent.
@@ -509,7 +509,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 		if (total++ == max) {
 			cf_log_err(ci, "Map size exceeded");
 		error:
-			TALLOC_FREE(*out);
+			fr_dlist_talloc_free(out);
 			return -1;
 		}
 
@@ -522,7 +522,9 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 			fr_token_t token;
 			ssize_t slen;
 			bool qualifiers = our_lhs_rules.disallow_qualifiers;
+			fr_map_list_t child_list;
 
+			fr_map_list_init(&child_list);
 			subcs = cf_item_to_section(ci);
 			token = cf_section_name2_quote(subcs);
 
@@ -588,11 +590,13 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 			 *	additional ones, but that might get
 			 *	complex and confusing.
 			 */
-			if (map_afrom_cs(map, &map->child, cf_item_to_section(ci),
+			if (map_afrom_cs(map, &child_list, cf_item_to_section(ci),
 					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
+				fr_dlist_talloc_free(&child_list);
 				talloc_free(map);
 				goto error;
 			}
+			fr_dlist_move(&map->child, &child_list);
 
 			our_lhs_rules.disallow_qualifiers = qualifiers;
 			MAP_VERIFY(map);
@@ -621,8 +625,8 @@ int map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
 		if (validate && (validate(map, uctx) < 0)) goto error;
 
 	next:
-		parent = *tail = map;
-		tail = &(map->next);
+		parent = map;
+		fr_dlist_insert_tail(out, map);
 	}
 
 	return 0;
@@ -656,7 +660,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 	ssize_t slen;
 	map_t *map;
 
-	map = talloc_zero(ctx, map_t);
+	map = map_alloc(ctx);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
 				 &FR_SBUFF_IN(lhs, strlen(lhs)),
@@ -780,88 +784,15 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	return 0;
 }
 
-static void map_sort_split(map_t *source, map_t **front, map_t **back)
-{
-	map_t *fast;
-	map_t *slow;
-
-	/*
-	 *	Stopping condition - no more elements left to split
-	 */
-	if (!source || !source->next) {
-		*front = source;
-		*back = NULL;
-
-		return;
-	}
-
-	/*
-	 *	Fast advances twice as fast as slow, so when it gets to the end,
-	 *	slow will point to the middle of the linked list.
-	 */
-	slow = source;
-	fast = source->next;
-
-	while (fast) {
-		fast = fast->next;
-		if (fast) {
-			slow = slow->next;
-			fast = fast->next;
-		}
-	}
-
-	*front = source;
-	*back = slow->next;
-	slow->next = NULL;
-}
-
-static map_t *map_sort_merge(map_t *a, map_t *b, fr_cmp_t cmp)
-{
-	map_t *result = NULL;
-
-	if (!a) return b;
-	if (!b) return a;
-
-	/*
-	 *	Compare things in the maps
-	 */
-	if (cmp(a, b) <= 0) {
-		result = a;
-		result->next = map_sort_merge(a->next, b, cmp);
-	} else {
-		result = b;
-		result->next = map_sort_merge(a, b->next, cmp);
-	}
-
-	return result;
-}
-
-/** Sort a linked list of #map_t using merge sort
+/** Sort a doubly linked list of #map_t using merge sort
  *
- * @param[in,out] maps List of #map_t to sort.
+ * @param[in,out] list of #map_t to sort.
  * @param[in] cmp to sort with
  */
-void map_sort(map_t **maps, fr_cmp_t cmp)
+void map_sort(fr_map_list_t *list, fr_cmp_t cmp)
 {
-	map_t *head = *maps;
-	map_t *a;
-	map_t *b;
+	fr_dlist_sort(list, cmp);
 
-	/*
-	 *	If there's 0-1 elements it must already be sorted.
-	 */
-	if (!head || !head->next) {
-		return;
-	}
-
-	map_sort_split(head, &a, &b);	/* Split into sublists */
-	map_sort(&a, cmp);		/* Traverse left */
-	map_sort(&b, cmp);		/* Traverse right */
-
-	/*
-	 *	merge the two sorted lists together
-	 */
-	*maps = map_sort_merge(a, b, cmp);
 }
 
 /** Process map which has exec as a src
@@ -1738,7 +1669,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	 *	If there's no child and no RHS then the
 	 *	map was invalid.
 	 */
-	if (!map->child && !fr_cond_assert(map->rhs != NULL)) {
+	if (fr_dlist_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
 		fr_sbuff_terminate(out);
 		return 0;
 	}

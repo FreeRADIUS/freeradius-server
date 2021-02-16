@@ -42,7 +42,7 @@ struct ldap_inst_s {
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	map_t	*user_map; 			//!< Attribute map applied to users and profiles.
+	fr_map_list_t	user_map; 			//!< Attribute map applied to users and profiles.
 
 	/*
 	 *	Options

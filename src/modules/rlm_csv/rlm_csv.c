@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **key, map_t const *maps);
+				fr_value_box_t **key, fr_map_list_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -64,7 +64,7 @@ typedef struct {
 	tmpl_t		*key;
 	fr_type_t	key_data_type;
 
-	map_t	*map;		//!< if there is an "update" section in the configuration.
+	fr_map_list_t	map;		//!< if there is an "update" section in the configuration.
 } rlm_csv_t;
 
 typedef struct rlm_csv_entry_s rlm_csv_entry_t;
@@ -492,9 +492,9 @@ static int csv_map_verify(map_t *map, void *instance)
  *	Verify the result of the map.
  */
 static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
-			  tmpl_t const *src, map_t const *maps)
+			  tmpl_t const *src, fr_map_list_t const *maps)
 {
-	map_t const *map;
+	map_t const *map = NULL;
 
 	if (!src) {
 		cf_log_err(cs, "Missing key expansion");
@@ -502,7 +502,7 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
 		return -1;
 	}
 
-	for (map = maps; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		/*
 		 *	This function doesn't change the map, so it's OK.
 		 */
@@ -765,6 +765,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	};
 	char buffer[8192];
 
+	fr_map_list_init(&inst->map);
 	/*
 	 *	"update" without "key" is invalid, as we can't run the
 	 *	module.
@@ -895,11 +896,11 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
-				fr_value_box_t const *key, map_t const *maps)
+				fr_value_box_t const *key, fr_map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_csv_entry_t		*e;
-	map_t const		*map;
+	map_t const		*map = NULL;
 
 	e = find_entry(inst, key);
 	if (!e) {
@@ -909,9 +910,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 
 redo:
 	RINDENT();
-	for (map = maps;
-	     map != NULL;
-	     map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		int field;
 		char *field_name;
 
@@ -976,7 +975,7 @@ finish:
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **key, map_t const *maps)
+				fr_value_box_t **key, fr_map_list_t const *maps)
 {
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 
@@ -1003,7 +1002,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	ssize_t slen;
 	fr_value_box_t *key;
 
-	if (!inst->map || !inst->key) RETURN_MODULE_NOOP;
+	if (fr_dlist_empty(&inst->map) || !inst->key) RETURN_MODULE_NOOP;
 
 	/*
 	 *	Expand the key to whatever it is.  For attributes,
@@ -1036,7 +1035,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	RDEBUG2("Processing CVS map with key %pV", key);
 	RINDENT();
-	rcode = mod_map_apply(inst, request, key, inst->map);
+	rcode = mod_map_apply(inst, request, key, &inst->map);
 	REXDENT();
 
 	talloc_free(key);

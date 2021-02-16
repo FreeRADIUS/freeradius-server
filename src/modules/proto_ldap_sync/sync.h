@@ -149,7 +149,7 @@ struct sync_config_s {
 	/*
 	 *	LDAP attribute to RADIUS map
 	 */
-	map_t			*entry_map;		//!< How to convert attributes in entries
+	fr_map_list_t			entry_map;		//!< How to convert attributes in entries
 								//!< to FreeRADIUS attributes.
 
 	/*

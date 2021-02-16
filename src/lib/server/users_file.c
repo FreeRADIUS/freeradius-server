@@ -248,7 +248,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	PAIR_LIST		**last = &pl;
 	int			order = 0;
 	int			lineno		= 1;
-	map_t			**map_tail;
+	map_t			*new_map;
 	FILE			*fp;
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_file_t	fctx;
@@ -361,6 +361,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	We MUST be either at a valid entry, OR at EOF.
 		 */
 		MEM(t = talloc_zero(ctx, PAIR_LIST));
+		fr_map_list_init(&t->check);
+		fr_map_list_init(&t->reply);
 		t->filename = filename;
 		t->lineno = lineno;
 		t->order = order++;
@@ -374,7 +376,6 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 			break;
 		}
 		t->name = q;
-		map_tail = &t->check;
 
 		lhs_rules.list_def = PAIR_LIST_CONTROL;
 		comma = false;
@@ -394,9 +395,9 @@ check_item:
 		/*
 		 *	Try to parse the check item.
 		 */
-		slen = map_afrom_substr(t, map_tail, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
+		slen = map_afrom_substr(t, &new_map, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
 				       &lhs_rules, &rhs_rules, &rhs_term);
-		if (!*map_tail) {
+		if (!new_map) {
 	    		ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
 		fail_entry:
 			talloc_free(t);
@@ -411,7 +412,7 @@ check_item:
 		 *	comments, and LFs.  So the only thing which is
 		 *	left is a comma.
 		 */
-		if (!*map_tail) {
+		if (!new_map) {
 			if (fr_sbuff_is_char(&sbuff, ',')) {
 				ERROR_MARKER(&sbuff, "Unexpected extra comma reading check pair");
 
@@ -428,24 +429,23 @@ check_item:
 			*last = t;
 			break;
 		}
-		fr_assert((*map_tail)->lhs != NULL);
-		fr_assert((*map_tail)->rhs != NULL);
-		fr_assert((*map_tail)->next == NULL);
+		fr_assert(new_map->lhs != NULL);
+		fr_assert(new_map->rhs != NULL);
 
-		if (!tmpl_is_attr((*map_tail)->lhs)) {
+		if (!tmpl_is_attr(new_map->lhs)) {
 			ERROR("%s[%d]: Unknown attribute '%s'",
-			      file, lineno, (*map_tail)->lhs->name);
+			      file, lineno, new_map->lhs->name);
 			goto fail_entry;
 		}
 
-		if (!tmpl_is_data((*map_tail)->rhs) && !tmpl_is_exec((*map_tail)->rhs) &&
-		    !tmpl_contains_xlat((*map_tail)->rhs)) {
+		if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
+		    !tmpl_contains_xlat(new_map->rhs)) {
 			ERROR("%s[%d]: Invalid RHS '%s' for check item",
-			      file, lineno, (*map_tail)->rhs->name);
+			      file, lineno, new_map->rhs->name);
 			goto fail_entry;
 		}
 
-		map_tail = &(*map_tail)->next;
+		fr_dlist_insert_tail(&t->check, new_map);
 
 		/*
 		 *	There can be spaces before any comma.
@@ -510,7 +510,6 @@ setup_reply:
 		/*
 		 *	Setup the reply items.
 		 */
-		map_tail = &t->reply;
 		lhs_rules.list_def = PAIR_LIST_REPLY;
 		comma = false;
 
@@ -567,9 +566,9 @@ next_reply_item:
 		 *	lead to here have already checked for those
 		 *	cases.
 		 */
-		slen = map_afrom_substr(t, map_tail, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+		slen = map_afrom_substr(t, &new_map, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
 				       &lhs_rules, &rhs_rules, &rhs_term);
-		if (!*map_tail) {
+		if (!new_map) {
 			ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
 			goto fail;
 		}
@@ -585,7 +584,7 @@ next_reply_item:
 		 *
 		 *	What's left is a comment, comma, LF, or EOF.
 		 */
-		if (!*map_tail) {
+		if (!new_map) {
 			(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 			if (fr_sbuff_is_char(&sbuff, ',')) {
 				ERROR_MARKER(&sbuff, "Unexpected extra comma reading reply pair");
@@ -601,26 +600,25 @@ next_reply_item:
 			 */
 			goto add_entry;
 		}
-		fr_assert((*map_tail)->lhs != NULL);
-		fr_assert((*map_tail)->rhs != NULL);
-		fr_assert((*map_tail)->next == NULL);
+		fr_assert(new_map->lhs != NULL);
+		fr_assert(new_map->rhs != NULL);
 
-		if (!tmpl_is_attr((*map_tail)->lhs)) {
+		if (!tmpl_is_attr(new_map->lhs)) {
 			ERROR("%s[%d]: Unknown attribute '%s'",
-			      file, lineno, (*map_tail)->lhs->name);
+			      file, lineno, new_map->lhs->name);
 			goto fail_entry;
 		}
 
-		if (!tmpl_is_data((*map_tail)->rhs) && !tmpl_is_exec((*map_tail)->rhs) &&
-		    !tmpl_contains_xlat((*map_tail)->rhs)) {
+		if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
+		    !tmpl_contains_xlat(new_map->rhs)) {
 			ERROR("%s[%d]: Invalid RHS '%s' for reply item",
-			      file, lineno, (*map_tail)->rhs->name);
+			      file, lineno, new_map->rhs->name);
 			goto fail_entry;
 		}
 
-		fr_assert(tmpl_list((*map_tail)->lhs) == PAIR_LIST_REPLY);
+		fr_assert(tmpl_list(new_map->lhs) == PAIR_LIST_REPLY);
 
-		map_tail = &(*map_tail)->next;
+		fr_dlist_insert_tail(&t->reply, new_map);
 
 		(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 

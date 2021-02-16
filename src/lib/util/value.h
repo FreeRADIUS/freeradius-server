@@ -40,6 +40,7 @@ typedef struct value_box_s fr_value_box_t;
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>

@@ -30,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
 
 typedef struct fr_dlist_s fr_dlist_t;
@@ -54,6 +55,11 @@ typedef struct {
 	fr_dlist_t	entry;		//!< Struct holding the head and tail of the list.
 	size_t		num_elements;
 } fr_dlist_head_t;
+
+/** Find the dlist pointers within a list item
+ *
+ */
+#define fr_dlist_item_entry(_head, _item) (fr_dlist_t *) (((uint8_t *) _item) + _head->offset);
 
 /** Initialise a linked list without metadata
  *
@@ -668,6 +674,169 @@ static inline size_t fr_dlist_num_elements(fr_dlist_head_t const *head)
 {
 	return head->num_elements;
 }
+
+/** Split phase of a merge sort of a dlist
+ *
+ * @note Only to be used within a merge sort
+ *
+ * @param[in] head	of the original list being sorted
+ * @param[in] source	first item in the section of the list to split
+ * @param[out] front	first item of the first half of the split list
+ * @param[out] back	first item of the second half of the split list
+ */
+static inline void fr_dlist_sort_split(fr_dlist_head_t *head, void **source, void **front, void **back)
+{
+	void *fast = NULL;
+	void *slow;
+	fr_dlist_t *entry = NULL;
+
+	*front = *source;
+
+	if (*source) entry = fr_dlist_item_entry(head, *source);
+	/*
+	 *	Stopping condition - no more elements left to split
+	 */
+	if (!*source || !entry->next) {
+		*back = NULL;
+		return;
+	}
+
+	/*
+	 *	Fast advances twice as fast as slow, so when it gets to the end,
+	 *	slow will point to the middle of the linked list.
+	 */
+	slow = *source;
+	fast = fr_dlist_next(head, slow);
+	while (fast) {
+		fast = fr_dlist_next(head, fast);
+		if (fast) {
+			slow = fr_dlist_next(head, slow);
+			fast = fr_dlist_next(head, fast);
+		}
+	}
+
+	*back = fr_dlist_next(head, slow);
+
+	if (slow) {
+		entry = fr_dlist_item_entry(head, slow);
+		entry->next = NULL;
+	}
+}
+
+/** Merge phase of a merge sort of a dlist
+ *
+ * @note Only to be used within a merge sort
+ *
+ * @param[in] head	of the original list being sorted
+ * @param[in] a		first element of first list being merged
+ * @param[in] b		first element of second list being merged
+ * @param[in] cmp	comparison function for the sort
+ * @returns pointer to first item in merged list
+ */
+static inline void *fr_dlist_sort_merge(fr_dlist_head_t *head, void **a, void **b, fr_cmp_t cmp)
+{
+	void *result = NULL;
+	void *next;
+	fr_dlist_t *result_entry;
+	fr_dlist_t *next_entry;
+
+	if (!*a) return *b;
+	if (!*b) return *a;
+
+	/*
+	 *	Compare entries in the lists
+	 */
+	if (cmp(*a, *b) <= 0) {
+		result = *a;
+		next = fr_dlist_next(head, *a);
+		next = fr_dlist_sort_merge(head, &next, b, cmp);
+	} else {
+		result = *b;
+		next = fr_dlist_next(head, *b);
+		next = fr_dlist_sort_merge(head, a, &next, cmp);
+	}
+
+	result_entry = fr_dlist_item_entry(head, result);
+	next_entry = fr_dlist_item_entry(head, next);
+	result_entry->next = next_entry;
+
+	return result;
+}
+
+/** Recursive sort routine for dlist
+ *
+ * @param[in] head	of the list being sorted
+ * @param[in,out] ptr	to the first item in the current section of the list being sorted.
+ * @param[in] cmp	comparison function to sort with
+ */
+static inline void fr_dlist_recursive_sort(fr_dlist_head_t *head, void **ptr, fr_cmp_t cmp)
+{
+	void *a;
+	void *b;
+	fr_dlist_t *entry = NULL;
+
+	if (*ptr) entry = fr_dlist_item_entry(head, *ptr);
+
+	if (!*ptr || (!entry->next)) return;
+	fr_dlist_sort_split(head, ptr, &a, &b);		/* Split into sublists */
+	fr_dlist_recursive_sort(head, &a, cmp);		/* Traverse left */
+	fr_dlist_recursive_sort(head, &b, cmp);		/* Traverse right */
+
+	/*
+	 *	merge the two sorted lists together
+	 */
+	*ptr = fr_dlist_sort_merge(head, &a, &b, cmp);
+}
+
+/** Sort a dlist using merge sort
+ *
+ * @note This routine temporarily breaks the doubly linked nature of the list
+ *
+ * @param[in, out] list	to sort
+ * @param[in] cmp	comparison function to sort with
+ */
+static inline void fr_dlist_sort (fr_dlist_head_t *list, fr_cmp_t cmp)
+{
+	void *head;
+	fr_dlist_t *entry;
+
+	if (fr_dlist_num_elements(list) <= 1) return;
+
+	head = fr_dlist_head(list);
+	/* NULL terminate existing list */
+	list->entry.prev->next = NULL;
+
+	/*
+	 *	Call the recursive sort routine
+	 */
+	fr_dlist_recursive_sort(list, &head, cmp);
+
+	/*
+	 *	Reset "prev" pointers broken during sort
+	 */
+	entry = fr_dlist_item_entry(list, head);
+	list->entry.next = entry;
+	entry->prev = &list->entry;
+
+	while (head) {
+		entry = fr_dlist_item_entry(list, head);
+		if (entry->next) {
+			/*
+			 * There is a "next" entry, point it back to the current one
+			 */
+			entry->next->prev = entry;
+		} else {
+			/*
+			 * No next entry, this is the tail
+			 */
+			list->entry.prev = entry;
+			entry->next = &list->entry;
+		}
+		head = fr_dlist_next(list, head);
+	}
+
+}
+
 
 #ifdef __cplusplus
 }

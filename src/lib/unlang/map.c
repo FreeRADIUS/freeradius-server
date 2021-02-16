@@ -48,7 +48,7 @@ typedef enum {
  *
  */
 typedef struct {
-	fr_cursor_t		maps;				//!< Cursor of maps to evaluate.
+	fr_dcursor_t		maps;				//!< Cursor of maps to evaluate.
 
 	vp_list_mod_t		**vlm_next;
 	vp_list_mod_t		*vlm_head;			//!< First VP List Mod.
@@ -132,9 +132,9 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 	/*
 	 *	Iterate over the maps producing a set of modifications to apply.
 	 */
-	for (map = fr_cursor_current(&update_state->maps);
+	for (map = fr_dcursor_current(&update_state->maps);
 	     map;
-	     map = fr_cursor_next(&update_state->maps)) {
+	     map = fr_dcursor_next(&update_state->maps)) {
 		switch (update_state->state) {
 		case UNLANG_UPDATE_MAP_INIT:
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
@@ -278,7 +278,7 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 								    (sizeof(tmpl_t) * 2) + 128),
 								    g->num_children));	/* 128 is for string buffers */
 
-	fr_cursor_init(&update_state->maps, &gext->map);
+	fr_dcursor_init(&update_state->maps, &gext->map);
 	update_state->vlm_next = &update_state->vlm_head;
 	repeatable_set(frame);
 

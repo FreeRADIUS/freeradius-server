@@ -396,7 +396,7 @@ free_urldesc:
  *	Verify the result of the map.
  */
 static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   tmpl_t const *src, UNUSED map_t const *maps)
+			   tmpl_t const *src, UNUSED fr_map_list_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing LDAP URI");
@@ -425,7 +425,7 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **url, map_t const *maps)
+				fr_value_box_t **url, fr_map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -517,9 +517,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 		}
 
 		RINDENT();
-		for (map = maps, i = 0;
+		for (map = fr_dlist_head(maps), i = 0;
 		     map != NULL;
-		     map = map->next, i++) {
+		     map = fr_dlist_next(maps, map), i++) {
 			int			ret;
 			fr_ldap_result_t	attr;
 
@@ -963,7 +963,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	for many things besides searching for users.
 	 */
 
-	if (fr_ldap_map_expand(&expanded, request, inst->user_map) < 0) RETURN_MODULE_FAIL;
+	if (fr_ldap_map_expand(&expanded, request, &inst->user_map) < 0) RETURN_MODULE_FAIL;
 
 	conn = mod_conn_get(inst, request);
 	if (!conn) RETURN_MODULE_FAIL;
@@ -1164,7 +1164,7 @@ skip_edir:
 		}
 	}
 
-	if (inst->user_map || inst->valuepair_attr) {
+	if (!fr_dlist_empty(&inst->user_map) || inst->valuepair_attr) {
 		RDEBUG2("Processing user attributes");
 		RINDENT();
 		if (fr_ldap_map_do(request, conn, inst->valuepair_attr,
@@ -1571,6 +1571,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_ldap_t	*inst = instance;
 
 	inst->cs = conf;
+	fr_map_list_init(&inst->user_map);
 
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {

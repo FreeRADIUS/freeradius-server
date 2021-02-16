@@ -56,6 +56,12 @@ extern "C" {
 	['>'] = true, \
 	['~'] = true
 
+/** Value pair map list
+ *
+ * Specifically define a type for lists of map_t to aid type checking
+ */
+typedef fr_dlist_head_t fr_map_list_t;
+
 /** Value pair map
  *
  * Value pair maps contain a pair of templates, that describe a src attribute
@@ -77,8 +83,8 @@ struct vp_map_s {
 	CONF_ITEM		*ci;		//!< Config item that the map was created from. Mainly used for
 						//!< logging validation errors.
 
-	map_t		*child;		//!< a child map.  If it exists, `rhs` MUST be NULL
-	map_t		*next;		//!< The next valuepair map.
+	fr_map_list_t	child;		//!< a child map.  If it exists, `rhs` MUST be NULL
+	fr_dlist_t	entry;		//!< List entry.
 };
 
 /** A list modification
@@ -87,7 +93,7 @@ struct vp_map_s {
 struct vp_list_mod_s {
 	map_t const		*map;		//!< Original map describing the change to be made.
 
-	map_t		*mod;		//!< New map containing the destination (LHS) and
+	fr_map_list_t		mod;		//!< New map containing the destination (LHS) and
 						///< values (RHS).
 	vp_list_mod_t		*next;
 };
@@ -108,7 +114,7 @@ typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, reque
 int		map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
-int		map_afrom_cs(TALLOC_CTX *ctx, map_t **out, CONF_SECTION *cs,
+int		map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			     map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
 
@@ -128,7 +134,7 @@ ssize_t		map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 				fr_sbuff_parse_rules_t const *p_rules);
 
-void		map_sort(map_t **maps, fr_cmp_t cmp);
+void		map_sort(fr_map_list_t *list, fr_cmp_t cmp);
 
 int		map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 			  map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
@@ -152,6 +158,9 @@ extern size_t map_assignment_op_table_len;
 
 extern fr_sbuff_parse_rules_t const map_parse_rules_bareword_quoted;
 extern fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST];
+
+#define fr_map_list_init(_list) fr_dlist_talloc_init(_list, map_t, entry)
+#define fr_map_list_head(_list) ((map_t *)fr_dlist_head(_list))
 
 #ifdef __cplusplus
 }

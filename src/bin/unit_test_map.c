@@ -74,7 +74,8 @@ static int process_file(char const *filename)
 	int		rcode;
 	char const	*name1, *name2;
 	CONF_SECTION	*cs;
-	map_t	*head, *map;
+	fr_map_list_t	list;
+	map_t		*map = NULL;
 	char		buffer[8192];
 
 	main_config_t	*config;
@@ -84,6 +85,7 @@ static int process_file(char const *filename)
 		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
 	};
 
+	fr_map_list_init(&list);
 	/*
 	 *	Must be called first, so the handler is called last
 	 */
@@ -114,12 +116,12 @@ static int process_file(char const *filename)
 	/*
 	 *	Convert the update section to a list of maps.
 	 */
-	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(cs, &list, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) {
 		cf_log_perr(cs, "map_afrom_cs failed");
 		return EXIT_FAILURE; /* message already printed */
 	}
-	if (!head) {
+	if (fr_dlist_empty(&list)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 		return EXIT_FAILURE;
 	}
@@ -138,7 +140,7 @@ static int process_file(char const *filename)
 		printf("%s %s {\n", name1, name2);
 	}
 
-	for (map = head; map != NULL; map = map->next) {
+	while ((map = fr_dlist_next(&list, map))) {
 		map_print(&FR_SBUFF_OUT(buffer + 1, sizeof(buffer) - 1), map);
 		puts(buffer);
 	}

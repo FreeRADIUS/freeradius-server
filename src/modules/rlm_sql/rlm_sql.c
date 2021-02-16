@@ -306,7 +306,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
  *	Verify the result of the map.
  */
 static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			  tmpl_t const *src, UNUSED map_t const *maps)
+			  tmpl_t const *src, UNUSED fr_map_list_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing SQL query");
@@ -330,7 +330,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **query, map_t const *maps)
+				fr_value_box_t **query, fr_map_list_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -432,9 +432,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	 *	faster than building a radix tree each time the
 	 *	map set is evaluated (map->rhs can be dynamic).
 	 */
-	for (map = maps, i = 0;
+	for (map = fr_dlist_head(maps), i = 0;
 	     map && (i < MAX_SQL_FIELD_INDEX);
-	     map = map->next, i++) {
+	     map = fr_dlist_next(maps, map), i++) {
 		/*
 		 *	Expand the RHS to get the name of the SQL field
 		 */
@@ -471,9 +471,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	 */
 	while (((ret = rlm_sql_fetch_row(&row, inst, request, &handle)) == RLM_SQL_OK)) {
 		rows++;
-		for (map = maps, j = 0;
+		for (map = fr_dlist_head(maps), j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
-		     map = map->next, j++) {
+		     map = fr_dlist_next(maps, map), j++) {
 			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
 			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
 		}

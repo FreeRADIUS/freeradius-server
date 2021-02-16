@@ -453,7 +453,7 @@ static bool do_xlats(char const *filename, FILE *fp)
  *	Verify the result of the map.
  */
 static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   tmpl_t const *src, UNUSED map_t const *maps)
+			   tmpl_t const *src, UNUSED fr_map_list_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing source");
@@ -465,7 +465,7 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 }
 
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED request_t *request,
-			      	UNUSED fr_value_box_t **src, UNUSED map_t const *maps)
+			      	UNUSED fr_value_box_t **src, UNUSED fr_map_list_t const *maps)
 {
 	return RLM_MODULE_FAIL;
 }

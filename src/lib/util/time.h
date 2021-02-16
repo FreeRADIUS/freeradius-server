@@ -31,7 +31,6 @@ RCSIDH(time_h, "$Id$")
  */
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <sys/time.h>
 #include <stdint.h>

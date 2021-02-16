@@ -71,7 +71,7 @@ typedef struct {
 	module_instance_t	*driver_inst;		//!< Driver's instance data.
 	rlm_cache_driver_t const	*driver;		//!< Driver's exported interface.
 
-	map_t		*maps;			//!< Attribute map applied to users.
+	fr_map_list_t		maps;			//!< Attribute map applied to users.
 							//!< and profiles.
 	CONF_SECTION		*cs;
 } rlm_cache_t;
@@ -83,7 +83,7 @@ typedef struct {
 	fr_unix_time_t		created;		//!< When the entry was created.
 	fr_unix_time_t		expires;		//!< When the entry expires.
 
-	map_t		*maps;			//!< Head of the maps list.
+	fr_map_list_t		maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
 /** Allocate a new cache entry

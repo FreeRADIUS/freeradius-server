@@ -39,8 +39,8 @@ typedef struct pair_list {
 	fr_rb_node_t		node;		//!< Entry into the tree of pair lists.
 
 	char const		*name;
-	map_t			*check;
-	map_t			*reply;
+	fr_map_list_t		check;
+	fr_map_list_t		reply;
 	int			order;
 	char const		*filename;
 	int			lineno;

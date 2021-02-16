@@ -51,7 +51,7 @@ struct map_proc {
 struct map_proc_inst {
 	map_proc_t const	*proc;			//!< Map processor.
 	tmpl_t const		*src;			//!< Evaluated to provide source value for map processor.
-	map_t const		*maps;			//!< Head of the map list.
+	fr_map_list_t const	*maps;			//!< Head of the map list.
 	void			*data;			//!< Instance data created by #map_proc_instantiate
 };
 

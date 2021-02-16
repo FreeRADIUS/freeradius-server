@@ -138,12 +138,13 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	redisReply			*reply = NULL;
 	int				s_ret;
 
-	map_t			*head = NULL, **last = &head;
+	fr_map_list_t			head;
 #ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
 	size_t				pool_size = 0;
 #endif
 	rlm_cache_entry_t		*c;
 
+	fr_map_list_init(&head);
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
@@ -203,49 +204,47 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 #else
 	c = talloc_zero(NULL, rlm_cache_entry_t);
 #endif
+	fr_map_list_init(&c->maps);
 	/*
 	 *	Convert the key/value pairs back into maps
 	 */
 	for (i = 0; i < reply->elements; i += 3) {
-		if (fr_redis_reply_to_map(c, last, request,
+		if (fr_redis_reply_to_map(c, &head, request,
 					  reply->element[i], reply->element[i + 1], reply->element[i + 2]) < 0) {
 			talloc_free(c);
 			fr_redis_reply_free(&reply);
 			return CACHE_ERROR;
 		}
-		last = &(*last)->next;
 	}
 	fr_redis_reply_free(&reply);
 
 	/*
 	 *	Pull out the cache created date
 	 */
-	if (tmpl_da(head->lhs) == attr_cache_created) {
+	if (tmpl_da(fr_map_list_head(&head)->lhs) == attr_cache_created) {
 		map_t *map;
 
-		c->created = tmpl_value(head->rhs)->vb_date;
+		c->created = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
-		map = head;
-		head = head->next;
+		map = fr_dlist_pop_head(&head);
 		talloc_free(map);
 	}
 
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if (tmpl_da(head->lhs) == attr_cache_expires) {
+	if (tmpl_da(fr_map_list_head(&head)->lhs) == attr_cache_expires) {
 		map_t *map;
 
-		c->expires = tmpl_value(head->rhs)->vb_date;
+		c->expires = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
-		map = head;
-		head = head->next;
+		map = fr_dlist_pop_head(&head);
 		talloc_free(map);
 	}
 
 	c->key = talloc_memdup(c, key, key_len);
 	c->key_len = key_len;
-	c->maps = head;
+	fr_dlist_move(&c->maps, &head);
 	*out = c;
 
 	return CACHE_OK;
@@ -262,7 +261,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	rlm_cache_redis_t	*driver = instance;
 	TALLOC_CTX		*pool;
 
-	map_t		*map;
+	map_t			*map = NULL;
 
 	fr_redis_conn_t		*conn;
 	fr_redis_cluster_state_t	state;
@@ -294,7 +293,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 					.op	= T_OP_SET,
 					.lhs	= driver->created_attr,
 					.rhs	= &created_value,
-					.next	= &expires
 				};
 
 	/*
@@ -313,9 +311,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	tmpl_init_shallow(&expires_value, TMPL_TYPE_DATA, T_BARE_WORD, "<TEMP>", 6);
 	fr_value_box_init(&expires_value.data.literal, FR_TYPE_DATE, NULL, true);
 	tmpl_value(&expires_value)->vb_date = c->expires;
-	expires.next = c->maps;	/* Head of the list */
 
-	for (cnt = 0, map = &created; map; cnt++, map = map->next);
+	cnt = c->maps.num_elements + 2;
 
 	/*
 	 *	The majority of serialized entries should be under 1k.
@@ -337,7 +334,21 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	/*
 	 *	Add the maps to the command string in reverse order
 	 */
-	for (map = &created; map; map = map->next) {
+	if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, &created) < 0) {
+		REDEBUG("Failed encoding map as Redis K/V pair");
+		talloc_free(pool);
+		return CACHE_ERROR;
+	}
+	argv_p += 3;
+	argv_len_p += 3;
+	if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, &expires) < 0) {
+		REDEBUG("Failed encoding map as Redis K/V pair");
+		talloc_free(pool);
+		return CACHE_ERROR;
+	}
+	argv_p += 3;
+	argv_len_p += 3;
+	while ((map = fr_dlist_next(&c->maps, map))) {
 		if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, map) < 0) {
 			REDEBUG("Failed encoding map as Redis K/V pair");
 			talloc_free(pool);
