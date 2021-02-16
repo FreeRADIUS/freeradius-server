@@ -12,17 +12,6 @@ env:
   KQUEUE_DEBUG: yes
   M_PERTURB: "0x42"
   PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
-  SMTP_TEST_SERVER: 127.0.0.1
-  SMTP_TEST_SERVER_PORT: 2525
-  IMAP_TEST_SERVER: 127.0.0.1
-  IMAP_TEST_SERVER_PORT: 1430
-  IMAP_TEST_SERVER_SSL_PORT: 1431
-  SQL_MYSQL_TEST_SERVER: 127.0.0.1
-  SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
-  LDAP_TEST_SERVER: 127.0.0.1
-  LDAP_TEST_SERVER_PORT: 3890
-#  REDIS_TEST_SERVER: 127.0.0.1
-#  REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
   ANALYZE_C_DUMP: 1
   FR_GLOBAL_POOL: 4M
   TEST_CERTS: yes
@@ -319,6 +308,18 @@ jobs:
             $script
         done
         make ci-test
+      env:
+        SMTP_TEST_SERVER: 127.0.0.1
+        SMTP_TEST_SERVER_PORT: 2525
+        IMAP_TEST_SERVER: 127.0.0.1
+        IMAP_TEST_SERVER_PORT: 1430
+        IMAP_TEST_SERVER_SSL_PORT: 1431
+        SQL_MYSQL_TEST_SERVER: 127.0.0.1
+        SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
+        LDAP_TEST_SERVER: 127.0.0.1
+        LDAP_TEST_SERVER_PORT: 3890
+#       REDIS_TEST_SERVER: 127.0.0.1
+#       REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
 
     # Includes hack to disable trunk tests on MacOS which are currently broken
     # Also, no detect_leaks support for ASAN
