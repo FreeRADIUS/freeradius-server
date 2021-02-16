@@ -52,6 +52,10 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Add rlm_rest support for HTTP/2.
 	* Add REST-HTTP-Status-Code attribute holding HTTP status code.
 	* Add option to set http_negotiation in rlm_rest.  Fixes #2821.
+	* Encode / decode NAS-Filter-Rule according to RFC 4849.
+	  Inside of FreeRADIUS, each NAS-Filter-Rule just looks like
+	  a string.  But "on the wire", it follows RFC 4849.
+	  See src/tests/unit/rfc4849.txt
 
 	Bug fixes
 	* Respect the "log_reject" configuration item in more places.
