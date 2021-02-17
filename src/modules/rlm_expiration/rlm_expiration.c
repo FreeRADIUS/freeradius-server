@@ -116,7 +116,7 @@ static int expirecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_
 
 	now = (req) ? fr_time_to_sec(req->packet->timestamp) : time(NULL);
 
-	if (now <= fr_unix_time_to_sec(check->vp_date)) return 0;
+	if (now <= (time_t) fr_unix_time_to_sec(check->vp_date)) return 0;
 
 	return 1;
 }
