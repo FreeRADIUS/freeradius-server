@@ -1090,7 +1090,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 					continue;
 				}
 
-				MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
+				MEM(vp = fr_pair_afrom_da(ctx, da));
 				if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 					RPWDEBUG3("Skipping: %s += '%s'", attribute, value);
 					talloc_free(vp);
