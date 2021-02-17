@@ -123,7 +123,13 @@ static inline CC_HINT(always_inline) int request_detachable_init(request_t *chil
 static inline CC_HINT(always_inline) int request_child_init(request_t *child, request_t *parent)
 {
 	child->number = parent->child_number++;
-	child->name = talloc_typed_asprintf(child, "%s.%" PRIu64 , parent->name, child->number);
+
+	if ((parent->seq_start == 0) || (parent->number == parent->seq_start)) {
+		child->name = talloc_typed_asprintf(child, "%s.%" PRIu64, parent->name, child->number);
+	} else {
+		child->name = talloc_typed_asprintf(child, "(%s,%" PRIu64 ").%" PRIu64,
+						   parent->name, parent->seq_start, child->number);
+	}
 	child->seq_start = 0;	/* children always start with their own sequence */
 	child->parent = parent;
 	child->dict = parent->dict;
