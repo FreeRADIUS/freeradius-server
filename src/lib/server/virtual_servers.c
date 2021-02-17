@@ -497,7 +497,6 @@ bool listen_record(fr_listen_t *li)
 int virtual_servers_instantiate(void)
 {
 	size_t		i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
-	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
 	fr_assert(virtual_servers);
 
@@ -520,40 +519,6 @@ int virtual_servers_instantiate(void)
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
 		fr_assert(virtual_servers[i]->namespace != NULL);
-
-		/*
-		 *	If the dictionary was already loaded, e.g. by
-		 *	listen_on_read(), then don't do anything else.
-		 */
-		if (!cf_data_find(server_cs, virtual_server_dict_t, "dictionary")) {
-			fr_dict_t *dict = NULL;
-			fr_virtual_namespace_t	*found = NULL;
-
-			if (vns_tree) {
-				found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = virtual_servers[i]->namespace});
-				if (found) {
-					virtual_server_dict_set(server_cs, found->dict, true);
-
-					if ((found->func(server_cs) < 0)) {
-						PERROR("Failed compiling %s", cf_section_name2(server_cs));
-						return -1;
-					}
-				}
-			}
-
-			/*
-			 *	Maybe it's a valid namespace, but we
-			 *	just don't have a dictionary for it.
-			 *	Load the dictionary now.
-			 */
-			if (!found) {
-				char const *value = virtual_servers[i]->namespace;
-
-				if (fr_dict_protocol_afrom_file(&dict, value, NULL) == 0) {
-					virtual_server_dict_set(server_cs, dict, true);
-				}
-			}
-		}
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
@@ -618,6 +583,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 {
 	size_t i, server_cnt = 0;
 	CONF_SECTION *cs = NULL;
+	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
 	if (!virtual_servers) {
 		ERROR("No server { ... } sections found");
@@ -670,8 +636,11 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
+		CONF_SECTION		*server_cs;
 
 		fr_assert(virtual_servers[i] != NULL);
+
+		server_cs = virtual_servers[i]->server_cs;
 
 		if (!virtual_servers[i]->listener) goto bootstrap;
 
@@ -698,6 +667,41 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 	bootstrap:
 		if (fr_app_process_bootstrap(virtual_servers[i]->server_cs) < 0) return -1;
+
+		/*
+		 *	If the dictionary was already loaded, e.g. by
+		 *	listen_on_read(), then don't do anything else.
+		 */
+		if (!cf_data_find(server_cs, virtual_server_dict_t, "dictionary")) {
+			fr_dict_t *dict = NULL;
+			fr_virtual_namespace_t	*found = NULL;
+
+			if (vns_tree) {
+				found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = virtual_servers[i]->namespace});
+				if (found) {
+					virtual_server_dict_set(server_cs, found->dict, true);
+
+					if ((found->func(server_cs) < 0)) {
+						PERROR("Failed compiling %s", cf_section_name2(server_cs));
+						return -1;
+					}
+				}
+			}
+
+			/*
+			 *	Maybe it's a valid namespace, but we
+			 *	just don't have a dictionary for it.
+			 *	Load the dictionary now.
+			 */
+			if (!found) {
+				char const *value = virtual_servers[i]->namespace;
+
+				if (fr_dict_protocol_afrom_file(&dict, value, NULL) == 0) {
+					virtual_server_dict_set(server_cs, dict, true);
+				}
+			}
+		}
+
 	}
 
 	return 0;
