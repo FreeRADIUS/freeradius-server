@@ -77,7 +77,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 		}
 		RDEBUG2("Account will expire at '%pV'", &check_item->data);
 
-		left = fr_time_to_sec(check_item->vp_date - request->packet->timestamp);
+		left = fr_unix_time_to_sec(check_item->vp_date - fr_time_to_unix_time(request->packet->timestamp));
 
 		/*
 		 *	Else the account hasn't expired, but it may do so
@@ -116,7 +116,7 @@ static int expirecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_
 
 	now = (req) ? fr_time_to_sec(req->packet->timestamp) : time(NULL);
 
-	if (now <= fr_time_to_sec(check->vp_date)) return 0;
+	if (now <= fr_unix_time_to_sec(check->vp_date)) return 0;
 
 	return 1;
 }

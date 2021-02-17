@@ -154,7 +154,7 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 		break;
 
 	case FR_TYPE_DATE:
-		lua_pushinteger(L, (lua_Integer) fr_time_to_sec(vp->vp_date));
+		lua_pushinteger(L, (lua_Integer) fr_unix_time_to_sec(vp->vp_date));
 		break;
 
 	case FR_TYPE_FLOAT32:
