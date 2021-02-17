@@ -177,6 +177,14 @@ void		*rbtree_iter_init_inorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HINT
 
 void		*rbtree_iter_next_inorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
 
+void		*rbtree_iter_init_preorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HINT(nonnull);
+
+void		*rbtree_iter_next_preorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
+
+void		*rbtree_iter_init_postorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HINT(nonnull);
+
+void		*rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
+
 void		rbtree_iter_done(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
 
 #ifdef __cplusplus
