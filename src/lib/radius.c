@@ -4120,6 +4120,12 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	default:
 	raw:
 		/*
+		 *	If it's already unknown, don't create a new
+		 *	unknown one.
+		 */
+		if (da->flags.is_unknown) break;
+
+		/*
 		 *	Re-write the attribute to be "raw".  It is
 		 *	therefore of type "octets", and will be
 		 *	handled below.
