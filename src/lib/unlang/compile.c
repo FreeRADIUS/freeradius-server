@@ -3070,20 +3070,20 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	dict = virtual_server_namespace(server);
 	if (!dict) {
 		cf_log_err(cs, "Cannot call virtual server '%s', failed retrieving its namespace",
-			   fr_dict_root(unlang_ctx->rules->dict_def)->name);
+			   server);
 		return NULL;
 	}
 	if ((dict != fr_dict_internal()) && fr_dict_internal() &&
 	    unlang_ctx->rules->dict_def && (unlang_ctx->rules->dict_def != dict)) {
-		cf_log_err(cs, "Cannot call namespace '%s' from namespaces '%s' - they have incompatible protocols",
-			   fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
+		cf_log_err(cs, "Cannot call server %s with namespace '%s' from namespaces '%s' - they have incompatible protocols",
+			   server, fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
 		return NULL;
 	}
 
 	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
 	if (!attr_packet_type) {
-		cf_log_err(cs, "Cannot call namespace '%s' - it has no Packet-Type attribute",
-			   fr_dict_root(dict)->name);
+		cf_log_err(cs, "Cannot call server %s with namespace '%s' - it has no Packet-Type attribute",
+			   server, fr_dict_root(dict)->name);
 		return NULL;
 	}
 
