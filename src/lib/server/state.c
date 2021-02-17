@@ -731,6 +731,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 static int _free_child_data(state_child_entry_t *child_entry)
 {
 	fr_dlist_talloc_free(&child_entry->data);
+	talloc_free(child_entry->ctx);		/* Free the child's session_state_ctx if we own it */
 
 	return 0;
 }
