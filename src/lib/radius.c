@@ -4459,7 +4459,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
-	VALUE_PAIR *head, **tail, *vp;
+	VALUE_PAIR *head, **tail, *vp = NULL;
 
 	/*
 	 *	Extract attribute-value pairs
