@@ -97,6 +97,7 @@ static rbtree_t *server_section_name_tree = NULL;
 static int server_section_name_cmp(void const *one, void const *two);
 
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
@@ -121,18 +122,22 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ, &virtual_servers), \
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
 			  .subcs = (void const *) listen_on_read_config, .ident2 = CF_IDENT_ANY,
-	},
+			  .func = server_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER server_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
-
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener),		\
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER namespace_config[] = {
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -236,6 +241,23 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 }
 
 
+/** Callback to set up listen_on_read
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_server_t structure.
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_SECTION containing the listen section.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	return cf_section_rules_push(cf_item_to_section(ci), namespace_config);
+}
+
 /** dl_open a proto_* module
  *
  * @param[in] ctx	to allocate data in.
@@ -280,25 +302,22 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 {
 	fr_virtual_server_t	*server = talloc_get_type_abort(out, fr_virtual_server_t);
 	CONF_SECTION		*server_cs = cf_item_to_section(ci);
+	CONF_PAIR		*namespace;
+
+	namespace = cf_pair_find(server_cs, "namespace");
+	if (!namespace) {
+		cf_log_err(server_cs, "virtual server %s MUST contain a 'namespace' option",
+			   cf_section_name2(server_cs));
+		return -1;
+	}
 
 	server->server_cs = server_cs;
+	server->namespace = cf_pair_value(namespace);
 
 	/*
-	 *	Now parse everything in the virtual server.
+	 *	Now parse the listeners
 	 */
 	if (cf_section_parse(out, server, server_cs) < 0) return -1;
-
-	if (!server->namespace) {
-		cf_log_err(server_cs, "virtual server %s MUST contain a 'namespace' configuration",
-			   cf_section_name2(server_cs));
-		return -1;
-	}
-
-	if (!*server->namespace) {
-		cf_log_err(server_cs, "virtual server %s MUST NOT have an empty 'namespace' configuration",
-			   cf_section_name2(server_cs));
-		return -1;
-	}
 
 	return 0;
 }
