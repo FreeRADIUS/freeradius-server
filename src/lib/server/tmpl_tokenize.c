@@ -135,19 +135,20 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 			return;
 		}
 
-		FR_FAULT_LOG("\t[%u] %s %s %s%s%s%s (%u)",
+		FR_FAULT_LOG("\t[%u] %s %s %s%s%s%s (%p) attr %u",
 			     i,
 			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
 			     fr_table_str_by_value(fr_value_box_type_table, ar->da->type, "<INVALID>"),
-			      ar->da->name,
+			     ar->da->name,
 			     ar->num != NUM_ANY ? "[" : "",
 			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
 			     ar->num != NUM_ANY ? "]" : "",
+			     ar->da,
 			     ar->da->attr
 		);
-		if (ar->ar_parent) FR_FAULT_LOG("\t    parent     : %s", ar->ar_parent->name);
 		FR_FAULT_LOG("\t    is_raw     : %s", ar->da->flags.is_raw ? "yes" : "no");
 		FR_FAULT_LOG("\t    is_unknown : %s", ar->da->flags.is_unknown ? "yes" : "no");
+		if (ar->ar_parent) FR_FAULT_LOG("\t    parent     : %s (%p)", ar->ar_parent->name, ar->ar_parent);
 		break;
 
 
