@@ -940,7 +940,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			RPWDEBUG("Failed parsing certificate expiry time");
 		} else {
 			vp = CERT_ATTR_ADD(IDX_EXPIRATION, attr_index, NULL);
-			vp->vp_date = fr_time_from_timeval(&(struct timeval) {.tv_sec = expires});
+			vp->vp_date = fr_unix_time_from_sec(expires);
 		}
 	}
 
