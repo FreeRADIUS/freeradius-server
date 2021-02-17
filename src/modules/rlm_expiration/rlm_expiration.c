@@ -112,11 +112,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
  */
 static int expirecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
 {
-	time_t now = 0;
+	fr_unix_time_t now = 0;
 
-	now = (req) ? fr_time_to_sec(req->packet->timestamp) : time(NULL);
+	now = (fr_unix_time_t)((req) ? fr_time_to_sec(req->packet->timestamp) : time(NULL));
 
-	if (now <= (time_t) fr_unix_time_to_sec(check->vp_date)) return 0;
+	if (now <= fr_unix_time_to_sec(check->vp_date)) return 0;
 
 	return 1;
 }
