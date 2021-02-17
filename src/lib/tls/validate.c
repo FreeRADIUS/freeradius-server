@@ -78,8 +78,6 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	fr_tls_conf_t	*conf;
 	int		my_ok = ok;
 
-	fr_pair_list_t	cert_vps;
-
 	char const	**identity_p;
 	char const	*identity = NULL;
 
@@ -89,7 +87,6 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 	request_t		*request;
 
-	fr_pair_list_init(&cert_vps);
 	cert = X509_STORE_CTX_get_current_cert(x509_ctx);
 	err = X509_STORE_CTX_get_error(x509_ctx);
 	depth = X509_STORE_CTX_get_error_depth(x509_ctx);
@@ -132,17 +129,28 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	have a user identity.  i.e. we don't create the
 	 *	attributes for RadSec connections.
 	 *
-	 *	We do not repopulate the attribute list with cert
-	 *	attributes as these should have been cached previously.
+	 *	The certificates are cached in the request session
+	 *	state list, so they do not need to be cached in the
+	 *	SSL context.
 	 *
 	 *	If we do not have a copy of the cert that issued the
 	 *	client's cert in SSL_CTX's X509_STORE.
 	 */
 	if (identity && (depth <= 1) && !SSL_session_reused(ssl)) {
-		fr_tls_session_pairs_from_x509_cert(&cert_vps, request, tls_session, cert, depth);
+		fr_pair_list_t	cert_vps;
+
+		fr_pair_list_init(&cert_vps);
+
+		fr_tls_session_pairs_from_x509_cert(&cert_vps, request->session_state_ctx, tls_session, cert, depth);
 
 		/*
-		 *	Add a copy of the cert_vps to session state.
+		 *	Print the certs, and add them to the session
+		 *	state.  Note that the intermediate list
+		 *	cert_vps is used ONLY as a way to print out
+		 *	just the attributes created by the above call.
+		 *
+		 *	The attributes have already been created with
+		 *	the correct talloc ctx.
 		 *
 		 *	Both PVS studio and Coverity detect the condition
 		 *	below as logically dead code unless we explicitly
@@ -158,13 +166,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			 *	Print out all the pairs we have so far
 			 */
 			log_request_pair_list(L_DBG_LVL_2, request, NULL, &cert_vps, "&session-state.");
-
-			/*
-			 *	cert_vps have a different talloc parent, so we
-			 *	can't just reference them.
-			 */
-			MEM(fr_pair_list_copy(request->session_state_ctx, &request->session_state_pairs, &cert_vps) >= 0);
-			fr_pair_list_free(&cert_vps);
+			fr_tmp_pair_list_move(&request->session_state_pairs, &cert_vps);
 		}
 	}
 
