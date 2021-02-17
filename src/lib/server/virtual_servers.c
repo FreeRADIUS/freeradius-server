@@ -214,8 +214,8 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	fr_app_t const		*app;
 
 	if (!namespace) {
-		cf_log_err(listen_cs, "No 'namespace' set for virtual server");
-		cf_log_err(listen_cs, "Please add 'namespace = <protocol>' inside of the 'server %s { ... }' section",
+		cf_log_err(server_cs, "No 'namespace' set for virtual server");
+		cf_log_err(server_cs, "Please add 'namespace = <protocol>' inside of the 'server %s { ... }' section",
 			   cf_section_name2(server_cs));
 		return -1;
 	}
@@ -513,18 +513,13 @@ int virtual_servers_instantiate(void)
 		size_t			j, listen_cnt;
 		CONF_ITEM		*ci = NULL;
 		CONF_SECTION		*server_cs = virtual_servers[i]->server_cs;
-		CONF_PAIR		*ns;
 
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
-		ns = cf_pair_find(server_cs, "namespace");
-		if (!ns) {
-			cf_log_err(server_cs, "Missing \"namespace\" config item");
-			return -1;
-		}
+		fr_assert(virtual_servers[i]->namespace != NULL);
 
 		/*
 		 *	If the dictionary was already loaded, e.g. by
@@ -535,7 +530,7 @@ int virtual_servers_instantiate(void)
 			fr_virtual_namespace_t	*found = NULL;
 
 			if (vns_tree) {
-				found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = cf_pair_value(ns) });
+				found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = virtual_servers[i]->namespace});
 				if (found) {
 					virtual_server_dict_set(server_cs, found->dict, true);
 
@@ -552,7 +547,7 @@ int virtual_servers_instantiate(void)
 			 *	Load the dictionary now.
 			 */
 			if (!found) {
-				char const *value = cf_pair_value(ns);
+				char const *value = virtual_servers[i]->namespace;
 
 				if (fr_dict_protocol_afrom_file(&dict, value, NULL) == 0) {
 					virtual_server_dict_set(server_cs, dict, true);
