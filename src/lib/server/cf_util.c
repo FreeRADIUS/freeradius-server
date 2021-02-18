@@ -81,7 +81,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	CONF_ITEM	*find;
 
 	if (!parent) return NULL;
-	if (!parent->child) return NULL;	/* No children */
+	if (fr_dlist_empty(&parent->children)) return NULL;	/* No children */
 
 	if (!ident1) return cf_next(parent, NULL, type);
 
@@ -411,7 +411,7 @@ CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	CONF_ITEM	*found;
 	bool		in_ident1, in_ident2;
 
-	if (!parent || !parent->child) return NULL;
+	if (!parent || fr_dlist_empty(&parent->children)) return NULL;
 	if (parent != child->parent) return NULL;
 
 	for (found = fr_cursor_head(&parent->cursor);
@@ -2089,11 +2089,11 @@ void _cf_debug(CONF_ITEM const *ci)
 	DEBUG("  line          : %i", ci->lineno);
 	DEBUG("  next          : %p", ci->next);
 	DEBUG("  parent        : %p", ci->parent);
-	DEBUG("  children      : %s", ci->child ? "yes" : "no");
+	DEBUG("  children      : %s", !fr_dlist_empty(&ci->children) ? "yes" : "no");
 	DEBUG("  ident1 tree   : %p (%u entries)", ci->ident1, ci->ident1 ? rbtree_num_elements(ci->ident1) : 0);
 	DEBUG("  ident2 tree   : %p (%u entries)", ci->ident2, ci->ident2 ? rbtree_num_elements(ci->ident2) : 0);
 
-	if (!ci->child) return;
+	if (fr_dlist_empty(&ci->children)) return;
 
 	/*
 	 *	Print summary of the item's children
