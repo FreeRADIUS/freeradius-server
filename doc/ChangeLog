@@ -58,6 +58,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  See src/tests/unit/rfc4849.txt
 
 	Bug fixes
+	* Fix long-term double free due to PCRE calling our "free"
+	  function twice.  Fixes #1967, #3188, #3868.
 	* Respect the "log_reject" configuration item in more places.
 	  Fixes #3352.  This lowers the number of "Login incorrect"
 	  messages when "log_reject = no".
