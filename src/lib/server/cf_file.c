@@ -1786,8 +1786,6 @@ static int parse_input(cf_stack_t *stack)
 		}
 
 	add_section:
-		cf_item_add(parent, &(css->item));
-
 		/*
 		 *	The current section is now the child section.
 		 */

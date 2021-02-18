@@ -1044,7 +1044,6 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 		subcs = cf_section_alloc(cs, cs, rule->name, name2);
 		if (!subcs) return -1;
 
-		cf_item_add(cs, &(subcs->item));
 		return 0;
 	}
 
