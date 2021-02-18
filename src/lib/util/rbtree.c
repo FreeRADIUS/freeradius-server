@@ -916,6 +916,17 @@ void *rbtree_iter_next_inorder(fr_rb_tree_iter_t *iter)
 	 */
 	if (unlikely(iter->node == NIL)) return NULL;
 
+	/*
+	 *	rbtree_iter_delete() has already deleted this node,
+	 *	and saved the next one for us. (We check for NULL;
+	 *	NIL just means we're at the end.)
+	 */
+	if (!iter->node) {
+		iter->node = iter->next;
+		iter->next = NULL;
+		return iter->node->data;
+	}
+
 	if (x->right != NIL) {
 		x = x->right;
 
@@ -1120,6 +1131,23 @@ void *rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter)
 
 	iter->node = x;
 	return x->data;
+}
+
+/** Remove the current node from the tree
+ *
+ * @note Only makes sense for in-order traversals.
+ *
+ * @param[in] iter	previously initialised with #rbtree_iter_init
+ */
+void rbtree_iter_delete(fr_rb_tree_iter_t *iter)
+{
+	fr_rb_node_t *x = iter->node;
+
+	if (unlikely(x == NIL)) return;
+	(void) rbtree_iter_next_inorder(iter);
+	iter->next = iter->node;
+	iter->node = NULL;
+	rbtree_delete_internal(iter->tree, x, true);
 }
 
 /** Explicitly unlock the tree
