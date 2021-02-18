@@ -404,7 +404,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
  */
 static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 {
-	CONF_ITEM *ci;
+	CONF_ITEM *ci = NULL;
 
 	if (!cs || !template) return true;
 
@@ -415,7 +415,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 	 *	current section.  But only if the entries don't
 	 *	already exist in the current section.
 	 */
-	for (ci = template->item.child; ci; ci = ci->next) {
+	while ((ci = fr_dlist_next(&template->item.children, ci))) {
 		if (ci->type == CONF_ITEM_PAIR) {
 			CONF_PAIR *cp1, *cp2;
 
@@ -726,9 +726,9 @@ static int _file_callback(void *data, void *uctx)
  */
 int cf_section_pass2(CONF_SECTION *cs)
 {
-	CONF_ITEM *ci;
+	CONF_ITEM *ci = NULL;
 
-	for (ci = cs->item.child; ci; ci = ci->next) {
+	while ((ci = fr_dlist_next(&cs->item.children, ci))) {
 		char const	*value;
 		CONF_PAIR	*cp;
 		char		buffer[8192];
@@ -749,7 +749,8 @@ int cf_section_pass2(CONF_SECTION *cs)
 		cp->value = talloc_typed_strdup(cp, value);
 	}
 
-	for (ci = cs->item.child; ci; ci = ci->next) {
+	ci = NULL;
+	while ((ci = fr_dlist_next(&cs->item.children, ci))) {
 		if (ci->type != CONF_ITEM_SECTION) continue;
 
 		if (cf_section_pass2(cf_item_to_section(ci)) < 0) return -1;
@@ -1785,8 +1786,6 @@ static int parse_input(cf_stack_t *stack)
 		}
 
 	add_section:
-		cf_item_add(parent, &(css->item));
-
 		/*
 		 *	The current section is now the child section.
 		 */
@@ -2470,7 +2469,7 @@ static int cf_pair_write(FILE *fp, CONF_PAIR *cp)
 
 int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 {
-	CONF_ITEM	*ci;
+	CONF_ITEM	*ci = NULL;
 
 	if (!fp || !cs) return -1;
 
@@ -2509,7 +2508,7 @@ int cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 	 *	Loop over the children.  Either recursing, or opening
 	 *	a new file.
 	 */
-	for (ci = cs->item.child; ci; ci = ci->next) {
+	while ((ci = fr_dlist_next(&cs->item.children, ci))) {
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
 			cf_section_write(fp, cf_item_to_section(ci), depth + 1);

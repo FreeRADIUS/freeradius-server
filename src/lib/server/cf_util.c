@@ -32,8 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/thread_local.h>
 
-#include <freeradius-devel/util/cursor.h>
-
 static inline int cf_ident2_cmp(void const *a, void const *b);
 static int _cf_ident1_cmp(void const *a, void const *b);
 static int _cf_ident2_cmp(void const *a, void const *b);
@@ -49,11 +47,9 @@ static int _cf_ident2_cmp(void const *a, void const *b);
  */
 static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *prev, CONF_ITEM_TYPE type)
 {
-	CONF_ITEM *ci;
+	CONF_ITEM *ci = UNCONST(CONF_ITEM *, prev);
 
-	for (ci = prev ? prev->next : parent->child;
-	     ci;
-	     ci = ci->next) {
+	while ((ci = fr_dlist_next(&parent->children, ci))) {
 		if (ci->type == type) return ci;
 	}
 
@@ -81,7 +77,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	CONF_ITEM	*find;
 
 	if (!parent) return NULL;
-	if (!parent->child) return NULL;	/* No children */
+	if (fr_dlist_empty(&parent->children)) return NULL;	/* No children */
 
 	if (!ident1) return cf_next(parent, NULL, type);
 
@@ -123,11 +119,9 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	 *	No ident1, iterate over the child list
 	 */
 	if (IS_WILDCARD(ident1)) {
-		CONF_ITEM *ci;
+		CONF_ITEM *ci = NULL;
 
-		for (ci = parent->child;
-		     ci != NULL;
-		     ci = ci->next) {
+		while ((ci = fr_dlist_next(&parent->children, ci))) {
 			if (find->type != ci->type) continue;
 
 			if (cf_ident2_cmp(find, ci) == 0) break;
@@ -211,26 +205,26 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 	}
 
 	if (IS_WILDCARD(ident1)) {
-		for (ci = prev->next;
+		for (ci = fr_dlist_next(&parent->children, prev);
 		     ci && (cf_ident2_cmp(ci, find) != 0);
-		     ci = ci->next);
+		     ci = fr_dlist_next(&parent->children, ci));
 
 		return ci;
 	}
 
 	if (IS_WILDCARD(ident2)) {
-		for (ci = prev->next;
+		for (ci = fr_dlist_next(&parent->children, prev);
 		     ci && (_cf_ident1_cmp(ci, find) != 0);
-		     ci = ci->next) {
-			fr_assert(ci->next != ci);
+		     ci = fr_dlist_next(&parent->children, ci)) {
+			fr_assert(fr_dlist_next(&parent->children, ci) != ci);
 		}
 
 		return ci;
 	}
 
-	for (ci = prev->next;
+	for (ci = fr_dlist_next(&parent->children, prev);
 	     ci && (_cf_ident2_cmp(ci, find) != 0);
-	     ci = ci->next);
+	     ci = fr_dlist_next(&parent->children, ci));
 
 	return ci;
 }
@@ -372,9 +366,6 @@ static int _cf_ident2_cmp(void const *a, void const *b)
  */
 void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 {
-	fr_cursor_t	to_merge;
-	CONF_ITEM	*ci;
-
 	fr_assert(parent != child);
 
 	if (!parent || !child) return;
@@ -387,15 +378,9 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	if (!parent->ident2) parent->ident2 = rbtree_alloc(parent, CONF_ITEM, ident2_node,
 							   _cf_ident2_cmp, NULL, RBTREE_FLAG_NONE);
 
-	fr_cursor_init(&to_merge, &child);
-
-	for (ci = fr_cursor_head(&to_merge);
-	     ci;
-	     ci = fr_cursor_next(&to_merge)) {
-		rbtree_insert(parent->ident1, ci);
-		rbtree_insert(parent->ident2, ci);	/* NULL ident2 is still a value */
-	 	fr_cursor_append(&parent->cursor, ci);	/* Append to the list of children */
-	}
+	rbtree_insert(parent->ident1, child);
+	rbtree_insert(parent->ident2, child);		/* NULL ident2 is still a value */
+ 	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
 }
 
 /** Remove item from parent and fixup trees
@@ -408,22 +393,22 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
  */
 CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 {
-	CONF_ITEM	*found;
+	CONF_ITEM	*found = NULL;
 	bool		in_ident1, in_ident2;
 
-	if (!parent || !parent->child) return NULL;
+	if (!parent || fr_dlist_empty(&parent->children)) return NULL;
 	if (parent != child->parent) return NULL;
 
-	for (found = fr_cursor_head(&parent->cursor);
-	     found && (child != found);
-	     found = fr_cursor_next(&parent->cursor));
+	while ((found = fr_dlist_next(&parent->children, found))) {
+		if (child == found) break;
+	}
 
 	if (!found) return NULL;
 
 	/*
 	 *	Fixup the linked list
 	 */
-	found = fr_cursor_remove(&parent->cursor);
+	fr_dlist_remove(&parent->children, found);
 	if (!fr_cond_assert(found == child)) return NULL;
 
 	in_ident1 = (rbtree_finddata(parent->ident1, child) == child);
@@ -441,9 +426,9 @@ CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	/*
 	 *	Look for twins
 	 */
-	for (found = fr_cursor_head(&parent->cursor);
+	for (found = fr_dlist_head(&parent->children);
 	     found && (in_ident1 || in_ident2);
-	     found = fr_cursor_next(&parent->cursor)) {
+	     found = fr_dlist_next(&parent->children, found)) {
 		if (in_ident1 && (_cf_ident1_cmp(found, child) == 0)) {
 			rbtree_insert(parent->ident1, child);
 			in_ident1 = false;
@@ -470,7 +455,7 @@ CONF_ITEM *_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev)
 {
 	if (!ci) return NULL;
 
-	return prev ? prev->next : ci->child;
+	return fr_dlist_next(&ci->children, prev);
 }
 
 /** Return the top level #CONF_SECTION holding all other #CONF_ITEM
@@ -760,7 +745,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = cf_section_to_item(parent);
-	fr_cursor_init(&cs->item.cursor, &cs->item.child);
+	fr_dlist_init(&cs->item.children, CONF_ITEM, entry);
 	if (filename) cf_filename_set(cs, filename);
 	if (lineno) cf_lineno_set(cs, lineno);
 
@@ -874,8 +859,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 {
 	CONF_SECTION	*new, *subcs;
 	CONF_PAIR	*cp;
-	CONF_ITEM	*ci;
-	fr_cursor_t	cursor;
+	CONF_ITEM	*ci = NULL;
 
 	new = cf_section_alloc(ctx, parent, name1, name2);
 
@@ -888,10 +872,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	cf_filename_set(new, cs->item.filename);
 	cf_lineno_set(new, cs->item.lineno);
 
-	fr_cursor_copy(&cursor, &cs->item.cursor);	/* Mutable cursor */
-	for (ci = fr_cursor_head(&cursor);
-	     ci;
-	     ci = fr_cursor_next(&cursor)) {
+	while ((ci = fr_dlist_next(&cs->item.children, ci))) {
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
 			subcs = cf_item_to_section(ci);
@@ -1156,7 +1137,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	cp->rhs_quote = rhs_quote;
 	cp->op = op;
 	cf_filename_set(cp, "");		/* will be over-written if necessary */
-	fr_cursor_init(&cp->item.cursor, &cp->item.child);
+	fr_dlist_init(&cp->item.children, CONF_ITEM, entry);
 
 	cp->attr = talloc_typed_strdup(cp, attr);
 	if (!cp->attr) {
@@ -1460,7 +1441,7 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
-	fr_cursor_init(&cd->item.cursor, &cd->item.child);
+	fr_dlist_init(&cd->item.children, CONF_ITEM, entry);
 
 	/*
 	 *	strdup so if the data is freed, we can
@@ -2025,8 +2006,7 @@ void _cf_log_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const
  */
 void _cf_debug(CONF_ITEM const *ci)
 {
-	fr_cursor_t	cursor;
-	CONF_ITEM const	*child;
+	CONF_ITEM const	*child = NULL;
 
 	/*
 	 *	Print summary of the item
@@ -2084,23 +2064,20 @@ void _cf_debug(CONF_ITEM const *ci)
 
 	DEBUG("  filename      : %s", ci->filename);
 	DEBUG("  line          : %i", ci->lineno);
-	DEBUG("  next          : %p", ci->next);
+	DEBUG("  next          : %p", fr_dlist_next(&ci->parent->children, ci));
 	DEBUG("  parent        : %p", ci->parent);
-	DEBUG("  children      : %s", ci->child ? "yes" : "no");
+	DEBUG("  children      : %s", !fr_dlist_empty(&ci->children) ? "yes" : "no");
 	DEBUG("  ident1 tree   : %p (%u entries)", ci->ident1, ci->ident1 ? rbtree_num_elements(ci->ident1) : 0);
 	DEBUG("  ident2 tree   : %p (%u entries)", ci->ident2, ci->ident2 ? rbtree_num_elements(ci->ident2) : 0);
 
-	if (!ci->child) return;
+	if (fr_dlist_empty(&ci->children)) return;
 
 	/*
 	 *	Print summary of the item's children
 	 */
 	DEBUG("CHILDREN");
-	fr_cursor_copy(&cursor, &ci->cursor);
 
-	for (child = fr_cursor_head(&cursor);
-	     child;
-	     child = fr_cursor_next(&cursor)) {
+	while ((child = fr_dlist_next(&ci->children, child))) {
 	     	char const *in_ident1, *in_ident2;
 
 		in_ident1 = rbtree_finddata(ci->ident1, child) == child? "in ident1 " : "";
