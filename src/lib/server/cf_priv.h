@@ -25,6 +25,10 @@
  */
 RCSIDH(cf_priv_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <sys/stat.h>
 
