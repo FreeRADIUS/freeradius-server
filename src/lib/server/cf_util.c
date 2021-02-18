@@ -368,9 +368,6 @@ static int _cf_ident2_cmp(void const *a, void const *b)
  */
 void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 {
-	fr_cursor_t	to_merge;
-	CONF_ITEM	*ci;
-
 	fr_assert(parent != child);
 
 	if (!parent || !child) return;
@@ -383,15 +380,9 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	if (!parent->ident2) parent->ident2 = rbtree_alloc(parent, CONF_ITEM, ident2_node,
 							   _cf_ident2_cmp, NULL, RBTREE_FLAG_NONE);
 
-	fr_cursor_init(&to_merge, &child);
-
-	for (ci = fr_cursor_head(&to_merge);
-	     ci;
-	     ci = fr_cursor_next(&to_merge)) {
-		rbtree_insert(parent->ident1, ci);
-		rbtree_insert(parent->ident2, ci);	/* NULL ident2 is still a value */
-	 	fr_cursor_append(&parent->cursor, ci);	/* Append to the list of children */
-	}
+	rbtree_insert(parent->ident1, child);
+	rbtree_insert(parent->ident2, child);		/* NULL ident2 is still a value */
+ 	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
 }
 
 /** Remove item from parent and fixup trees
