@@ -31,6 +31,7 @@ RCSIDH(cf_priv_h, "$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dlist.h>
 
 typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,
@@ -48,12 +49,12 @@ struct cf_item {
 
 	CONF_ITEM_TYPE		type;		//!< Whether the config item is a config_pair, conf_section or cf_data.
 
-	CONF_ITEM		*next;		//!< Sibling.
+	fr_dlist_t		entry;		//!< Entry in dlist
 	CONF_ITEM		*parent;	//!< Parent.
 
-	CONF_ITEM		*child;		//!< The head of the ordered list of children.
 	fr_cursor_t		cursor;		//!< Cursor to iterate over children.  Maintains a 'tail' pointer for
 						//!< efficient insertion.
+	fr_dlist_head_t		children;	//!< The head of the ordered list of children.
 
 	rbtree_t		*ident1;	//!< Tree to store the first identifier (name1 || type || attr).
 	rbtree_t		*ident2;	//!< Tree to store the second identifier (name2 || name).
