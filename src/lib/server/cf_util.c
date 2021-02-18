@@ -761,6 +761,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = cf_section_to_item(parent);
 	fr_cursor_init(&cs->item.cursor, &cs->item.child);
+	fr_dlist_init(&cs->item.children, CONF_ITEM, entry);
 	if (filename) cf_filename_set(cs, filename);
 	if (lineno) cf_lineno_set(cs, lineno);
 
@@ -1157,6 +1158,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	cp->op = op;
 	cf_filename_set(cp, "");		/* will be over-written if necessary */
 	fr_cursor_init(&cp->item.cursor, &cp->item.child);
+	fr_dlist_init(&cp->item.children, CONF_ITEM, entry);
 
 	cp->attr = talloc_typed_strdup(cp, attr);
 	if (!cp->attr) {
@@ -1461,6 +1463,7 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
 	fr_cursor_init(&cd->item.cursor, &cd->item.child);
+	fr_dlist_init(&cd->item.children, CONF_ITEM, entry);
 
 	/*
 	 *	strdup so if the data is freed, we can
