@@ -1073,9 +1073,9 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 
 static void cf_section_parse_warn(CONF_SECTION *cs)
 {
-	CONF_ITEM *ci;
+	CONF_ITEM *ci = NULL;
 
-	for (ci = cs->item.child; ci; ci = ci->next) {
+	while ((ci = fr_dlist_next(&cs->item.children, ci))) {
 		/*
 		 *	Don't recurse on sections. We can only safely
 		 *	check conf pairs at the same level as the

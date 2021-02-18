@@ -49,11 +49,9 @@ static int _cf_ident2_cmp(void const *a, void const *b);
  */
 static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *prev, CONF_ITEM_TYPE type)
 {
-	CONF_ITEM *ci;
+	CONF_ITEM *ci = UNCONST(CONF_ITEM *, prev);
 
-	for (ci = prev ? prev->next : parent->child;
-	     ci;
-	     ci = ci->next) {
+	while ((ci = fr_dlist_next(&parent->children, ci))) {
 		if (ci->type == type) return ci;
 	}
 
@@ -123,11 +121,9 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	 *	No ident1, iterate over the child list
 	 */
 	if (IS_WILDCARD(ident1)) {
-		CONF_ITEM *ci;
+		CONF_ITEM *ci = NULL;
 
-		for (ci = parent->child;
-		     ci != NULL;
-		     ci = ci->next) {
+		while ((ci = fr_dlist_next(&parent->children, ci))) {
 			if (find->type != ci->type) continue;
 
 			if (cf_ident2_cmp(find, ci) == 0) break;
@@ -211,26 +207,26 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 	}
 
 	if (IS_WILDCARD(ident1)) {
-		for (ci = prev->next;
+		for (ci = fr_dlist_next(&parent->children, prev);
 		     ci && (cf_ident2_cmp(ci, find) != 0);
-		     ci = ci->next);
+		     ci = fr_dlist_next(&parent->children, ci));
 
 		return ci;
 	}
 
 	if (IS_WILDCARD(ident2)) {
-		for (ci = prev->next;
+		for (ci = fr_dlist_next(&parent->children, prev);
 		     ci && (_cf_ident1_cmp(ci, find) != 0);
-		     ci = ci->next) {
-			fr_assert(ci->next != ci);
+		     ci = fr_dlist_next(&parent->children, ci)) {
+			fr_assert(fr_dlist_next(&parent->children, ci) != ci);
 		}
 
 		return ci;
 	}
 
-	for (ci = prev->next;
+	for (ci = fr_dlist_next(&parent->children, prev);
 	     ci && (_cf_ident2_cmp(ci, find) != 0);
-	     ci = ci->next);
+	     ci = fr_dlist_next(&parent->children, ci));
 
 	return ci;
 }
@@ -470,7 +466,7 @@ CONF_ITEM *_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev)
 {
 	if (!ci) return NULL;
 
-	return prev ? prev->next : ci->child;
+	return fr_dlist_next(&ci->children, prev);
 }
 
 /** Return the top level #CONF_SECTION holding all other #CONF_ITEM
@@ -2087,7 +2083,7 @@ void _cf_debug(CONF_ITEM const *ci)
 
 	DEBUG("  filename      : %s", ci->filename);
 	DEBUG("  line          : %i", ci->lineno);
-	DEBUG("  next          : %p", ci->next);
+	DEBUG("  next          : %p", fr_dlist_next(&ci->parent->children, ci));
 	DEBUG("  parent        : %p", ci->parent);
 	DEBUG("  children      : %s", !fr_dlist_empty(&ci->children) ? "yes" : "no");
 	DEBUG("  ident1 tree   : %p (%u entries)", ci->ident1, ci->ident1 ? rbtree_num_elements(ci->ident1) : 0);
