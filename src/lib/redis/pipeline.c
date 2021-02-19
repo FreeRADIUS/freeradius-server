@@ -106,7 +106,7 @@ struct fr_redis_command_set_s {
 	 * @{
  	 */
 	fr_trunk_request_t		*treq;		//!< Trunk request this command set is associated with.
-	request_t				*request;	//!< Request this commands set is associated with (if any).
+	request_t			*request;	//!< Request this commands set is associated with (if any).
 	void				*rctx;		//!< Resume context to write results to.
 	/** @} */
 
