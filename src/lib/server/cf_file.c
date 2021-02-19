@@ -1567,11 +1567,13 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	if (!cd) return 0;
 
 	rule = cf_data_value(cd);
-	if ((rule->type & FR_TYPE_ON_READ) == 0) {
-		return 0;
-	}
 
-	return rule->on_read(parent, NULL, NULL, cf_pair_to_item(cp), rule);
+	/*
+	 *	Do the on_read callback after adding the value.
+	 */
+	if (rule->on_read) return rule->on_read(parent, NULL, NULL, cf_pair_to_item(cp), rule);
+
+	return 0;
 }
 
 static fr_table_ptr_sorted_t unlang_keywords[] = {

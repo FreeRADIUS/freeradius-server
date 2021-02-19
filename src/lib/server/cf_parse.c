@@ -174,7 +174,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 	fr_assert(cp);
 	fr_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
-	fr_assert((type & FR_TYPE_ON_READ) == 0);
 
 	if (required) cant_be_empty = true;		/* May want to review this in the future... */
 
