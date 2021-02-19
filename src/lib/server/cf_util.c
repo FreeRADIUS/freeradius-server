@@ -766,10 +766,10 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, name1);
 		if (cd) {
 			rule = cf_data_value(cd);
-			if (rule->func &&
+			if (rule->on_read &&
 			    (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
 			    ((rule->type & FR_TYPE_ON_READ) != 0)) {
-				if (rule->func(ctx, NULL, NULL, cf_section_to_item(cs), rule) < 0) {
+				if (rule->on_read(ctx, NULL, NULL, cf_section_to_item(cs), rule) < 0) {
 					talloc_free(cs);
 					return NULL;
 				}

@@ -1571,7 +1571,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		return 0;
 	}
 
-	return rule->func(parent, NULL, NULL, cf_pair_to_item(cp), rule);
+	return rule->on_read(parent, NULL, NULL, cf_pair_to_item(cp), rule);
 }
 
 static fr_table_ptr_sorted_t unlang_keywords[] = {

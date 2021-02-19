@@ -426,6 +426,9 @@ struct CONF_PARSER {
 	cf_parse_t	func;			//!< Override default parsing behaviour for the specified type with
 						//!< a custom parsing function.
 
+	cf_parse_t	on_read;		//!< Function to call as the item is being read, just after
+						//!< it has been allocated and initialized.
+
 	void const	*uctx;			//!< User data accessible by the #cf_parse_t func.  Useful for
 						///< building reusable functions.
 

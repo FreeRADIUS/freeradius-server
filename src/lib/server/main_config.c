@@ -125,7 +125,7 @@ static const CONF_PARSER lib_dir_on_read_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
 
 	{ FR_CONF_OFFSET("libdir", FR_TYPE_STRING | FR_TYPE_ON_READ, main_config_t, lib_dir), .dflt = "${prefix}/lib",
-	  .func = lib_dir_parse },
+	  .on_read = lib_dir_parse },
 
 	CONF_PARSER_TERMINATOR
 };
