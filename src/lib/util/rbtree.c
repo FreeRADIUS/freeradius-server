@@ -1030,7 +1030,7 @@ void *rbtree_iter_next_preorder(fr_rb_tree_iter_t *iter)
 	return NULL;
 }
 
-/** Initialise a pre-order iterator
+/** Initialise a post-order iterator
  *
  * @note If iteration ends early because of a loop condition #rbtree_iter_done must be called.
  *
