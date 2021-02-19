@@ -2050,7 +2050,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_ldap_free();;
+	fr_ldap_free();
 }
 
 /* globally exported name */
