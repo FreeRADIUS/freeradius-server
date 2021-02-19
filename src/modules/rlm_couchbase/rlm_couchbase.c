@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base.h>
+#include <freeradius-devel/radius/defs.h>
 
 #include <freeradius-devel/json/base.h>
 
@@ -148,11 +149,14 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 	{
 		TALLOC_CTX	*pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
-		fr_cursor_t	maps, vlms;
-		map_t	*map_head = NULL, *map;
+		fr_cursor_t	vlms;
+		fr_dcursor_t	maps;
+		map_t		*map = NULL;
+		fr_map_list_t	map_head;
 		vp_list_mod_t	*vlm_head = NULL, *vlm;
 
-		fr_cursor_init(&maps, &map_head);
+		fr_map_list_init(&map_head);
+		fr_dcursor_init(&maps, &map_head);
 
 		/*
 		 *	Convert JSON data into maps
@@ -173,9 +177,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 		 *	Convert all the maps into list modifications,
 		 *	which are guaranteed to succeed.
 		 */
-		for (map = fr_cursor_head(&maps);
-		     map;
-		     map = fr_cursor_next(&maps)) {
+		while ((map = fr_dlist_next(&map_head, map))) {
 			if (map_to_list_mod(pool, &vlm, request, map, NULL, NULL) < 0) goto invalid;
 			fr_cursor_insert(&vlms, vlm);
 		}
