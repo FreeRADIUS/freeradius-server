@@ -170,7 +170,8 @@ int		rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, vo
  */
 typedef struct {
 	rbtree_t	*tree;			//!< Tree being iterated over.
-	fr_rb_node_t	*node;			///< current node.
+	fr_rb_node_t	*node;			///< current node--set to NULL (not NIL) by rbtree_iter_delete()
+	fr_rb_node_t	*next;			///< if non-NULL, next node cached by rbtree_iter_delete()
 } fr_rb_tree_iter_t;
 
 void		*rbtree_iter_init_inorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HINT(nonnull);
@@ -186,6 +187,8 @@ void		*rbtree_iter_init_postorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HI
 void		*rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
 
 void		rbtree_iter_done(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
+
+void		rbtree_iter_delete(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
