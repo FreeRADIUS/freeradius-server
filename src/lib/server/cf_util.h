@@ -86,6 +86,9 @@ typedef int (*cf_walker_t)(void *data, void *ctx);
 #define		cf_item_add(_parent, _child) _cf_item_add(CF_TO_ITEM(_parent), CF_TO_ITEM(_child))
 void		_cf_item_add(CONF_ITEM *parent, CONF_ITEM *child);
 
+#define		cf_item_remove(_parent, _child) _cf_item_remove(CF_TO_ITEM(_parent), CF_TO_ITEM(_child))
+CONF_ITEM	*_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child);
+
 #define		cf_item_next(_ci, _prev) _cf_item_next(CF_TO_ITEM(_ci), _prev)
 CONF_ITEM	*_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev);
 

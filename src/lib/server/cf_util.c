@@ -391,7 +391,7 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
  *	- The item removed.
  *	- NULL if the item wasn't set.
  */
-CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
+CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 {
 	CONF_ITEM	*found = NULL;
 	bool		in_ident1, in_ident2;
@@ -1160,7 +1160,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	/*
 	 *	Remove the old CONF_PAIR
 	 */
-	ci = cf_remove(cf_section_to_item(cs), cf_pair_to_item(cp));
+	ci = cf_item_remove(cs, cp);
 	if (!fr_cond_assert(!ci || (ci == cf_pair_to_item(cp)))) return -1;
 
 	/*
@@ -1591,7 +1591,7 @@ void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 
 	if (!cd) return NULL;
 
-	ci = cf_remove(parent, cf_data_to_item(cd));
+	ci = cf_item_remove(parent, cd);
 	if (!fr_cond_assert(!ci || (ci == cf_data_to_item(cd)))) return NULL;
 	if (!ci) return NULL;
 

@@ -127,8 +127,6 @@ typedef struct {
 	bool			from_dir;	//!< was read from a directory
 } cf_file_t;
 
-CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child);
-
 #ifdef __cplusplus
 }
 #endif

@@ -1624,7 +1624,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 			/*
 			 *	Over-write the rule in place.
 			 *
-			 *	We'd like to call cf_remove(), but
+			 *	We'd like to call cf_item_remove(), but
 			 *	that apparently doesn't work for
 			 *	CONF_DATA.  We don't need to
 			 *	free/alloc one, so re-using this is
