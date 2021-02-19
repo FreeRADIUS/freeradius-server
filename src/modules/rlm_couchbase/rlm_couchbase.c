@@ -149,11 +149,11 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 	{
 		TALLOC_CTX	*pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
-		fr_cursor_t	vlms;
 		fr_dcursor_t	maps;
 		map_t		*map = NULL;
 		fr_map_list_t	map_head;
-		vp_list_mod_t	*vlm_head = NULL, *vlm;
+		vp_list_mod_t	*vlm;
+		fr_dlist_head_t	vlm_head;
 
 		fr_map_list_init(&map_head);
 		fr_dcursor_init(&maps, &map_head);
@@ -171,7 +171,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 			goto finish;
 		}
 
-		fr_cursor_init(&vlms, &vlm_head);
+		fr_dlist_init(&vlm_head, vp_list_mod_t, entry);
 
 		/*
 		 *	Convert all the maps into list modifications,
@@ -179,10 +179,10 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 		 */
 		while ((map = fr_dlist_next(&map_head, map))) {
 			if (map_to_list_mod(pool, &vlm, request, map, NULL, NULL) < 0) goto invalid;
-			fr_cursor_insert(&vlms, vlm);
+			fr_dlist_insert_tail(&vlm_head, vlm);
 		}
 
-		if (!vlm_head) {
+		if (fr_dlist_empty(&vlm_head)) {
 			RDEBUG2("Nothing to update");
 			talloc_free(pool);
 			rcode = RLM_MODULE_NOOP;
@@ -192,9 +192,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 		/*
 		 *	Apply the list of modifications
 		 */
-		for (vlm = fr_cursor_head(&vlms);
-		     vlm;
-		     vlm = fr_cursor_next(&vlms)) {
+		while ((vlm = fr_dlist_next(&vlm_head, vlm))) {
 			int ret;
 
 			ret = map_list_mod_apply(request, vlm);	/* SHOULD NOT FAIL */

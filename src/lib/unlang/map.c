@@ -50,8 +50,7 @@ typedef enum {
 typedef struct {
 	fr_dcursor_t		maps;				//!< Cursor of maps to evaluate.
 
-	vp_list_mod_t		**vlm_next;
-	vp_list_mod_t		*vlm_head;			//!< First VP List Mod.
+	fr_dlist_head_t		vlm_head;			//!< Head of list of VP List Mod.
 
 	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
 	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
@@ -80,12 +79,12 @@ static unlang_action_t list_mod_apply(rlm_rcode_t *p_result, request_t *request)
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_update_t	*update_state = frame->state;
-	vp_list_mod_t const		*vlm;
+	vp_list_mod_t const		*vlm = NULL;
 
 	/*
 	 *	No modifications...
 	 */
-	if (!update_state->vlm_head) {
+	if (fr_dlist_empty(&update_state->vlm_head)) {
 		RDEBUG2("Nothing to update");
 		goto done;
 	}
@@ -94,9 +93,7 @@ static unlang_action_t list_mod_apply(rlm_rcode_t *p_result, request_t *request)
 	 *	Apply the list of modifications.  This should not fail
 	 *	except on memory allocation error.
 	 */
-	for (vlm = update_state->vlm_head;
-	     vlm;
-	     vlm = vlm->next) {
+	while ((vlm = fr_dlist_next(&update_state->vlm_head, vlm))) {
 		int ret;
 
 		ret = map_list_mod_apply(request, vlm);
@@ -216,6 +213,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			FALL_THROUGH;
 
 		case UNLANG_UPDATE_MAP_EXPANDED_RHS:
+		{
+			vp_list_mod_t *new_mod;
 			/*
 			 *	Concat the top level results together
 			 */
@@ -226,20 +225,18 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 				goto error;
 			}
 
-			if (map_to_list_mod(update_state, update_state->vlm_next,
+			if (map_to_list_mod(update_state, &new_mod,
 					    request, map,
 					    &update_state->lhs_result, &update_state->rhs_result) < 0) goto error;
+			if (new_mod) fr_dlist_insert_tail(&update_state->vlm_head, new_mod);
 
 			fr_dlist_talloc_free(&update_state->rhs_result);
+		}
 
 		next:
 			update_state->state = UNLANG_UPDATE_MAP_INIT;
 			fr_dlist_talloc_free(&update_state->lhs_result);
 
-			/*
-			 *	Wind to the end...
-			 */
-			while (*update_state->vlm_next) update_state->vlm_next = &(*(update_state->vlm_next))->next;
 			break;
 		}
 	};
@@ -281,7 +278,7 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 	fr_dcursor_init(&update_state->maps, &gext->map);
 	fr_value_box_list_init(&update_state->lhs_result);
 	fr_value_box_list_init(&update_state->rhs_result);
-	update_state->vlm_next = &update_state->vlm_head;
+	fr_dlist_init(&update_state->vlm_head, vp_list_mod_t, entry);
 	repeatable_set(frame);
 
 	/*
