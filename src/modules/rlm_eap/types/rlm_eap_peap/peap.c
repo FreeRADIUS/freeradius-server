@@ -790,6 +790,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 			/* send an identity request */
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 			t->status = PEAP_STATUS_INNER_IDENTITY_REQ_SENT;
+			tls_session->session_not_resumed = true;
 			eappeap_identity(handler, tls_session);
 		}
 		return RLM_MODULE_HANDLED;

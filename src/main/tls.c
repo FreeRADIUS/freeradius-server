@@ -1,4 +1,3 @@
-
 /*
  * tls.c
  *
@@ -4340,7 +4339,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	not allowed,
 		 */
 		if (SSL_session_reused(ssn->ssl)) {
-			RDEBUG("Forcibly stopping session resumption as it is not allowed");
+			RDEBUG("TLS cache - Forcibly stopping session resumption as it is administratively disabled.");
 			return -1;
 		}
 
@@ -4348,11 +4347,13 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	Else resumption IS allowed, so we store the
 	 *	user data in the cache.
 	 */
-	} else if (!SSL_session_reused(ssn->ssl)) {
+	} else if ((!SSL_session_reused(ssn->ssl)) || ssn->session_not_resumed) {
 		VALUE_PAIR **certs;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
 		tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
+
+		RDEBUG("TLS cache - Setting up attributes for session resumption");
 
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
@@ -4490,6 +4491,8 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	Else the session WAS allowed.  Copy the cached reply.
 	 */
 	} else {
+		RDEBUG("TLS cache - Refreshing entry for session resumption");
+
 		/*
 		 *	The "restore VPs from OpenSSL cache" code is
 		 *	now in eaptls_process()

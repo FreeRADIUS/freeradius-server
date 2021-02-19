@@ -163,6 +163,7 @@ typedef struct _tls_session_t {
 
 	char const	*label;
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
+	bool		session_not_resumed;		//!< Whether our session was not resumed.
 } tls_session_t;
 
 /*
