@@ -946,6 +946,182 @@ void *rbtree_iter_next_inorder(fr_rb_tree_iter_t *iter)
 	return x->data;
 }
 
+/** Initialise a pre-order iterator
+ *
+ * @note If iteration ends early because of a loop condition #rbtree_iter_done must be called.
+ *
+ * @param[out] iter to initialise.
+ * @param[in] tree to iterate over.
+ * @return
+ *	- The first node.  Mutex will be held.
+ *	- NULL if the tree is empty.
+ */
+void *rbtree_iter_init_preorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
+{
+	fr_rb_node_t *x = tree->root;
+
+	if (x == NIL) return NULL;
+
+	if (tree->lock) pthread_mutex_lock(&tree->mutex);
+
+	/*
+	 *	First, the root.
+	 */
+	*iter = (fr_rb_tree_iter_t){
+		.tree = tree,
+		.node = x
+	};
+
+	return x->data;
+}
+
+/** Return the next node
+ *
+ * @note Will unlock the tree if no more elements remain.
+ *
+ * @param[in] iter	previously initialised with #rbtree_iter_init
+ * @return
+ *	- The next node.
+ *	- NULL if no more nodes remain.
+ */
+void *rbtree_iter_next_preorder(fr_rb_tree_iter_t *iter)
+{
+	fr_rb_node_t *x = iter->node, *y;
+
+	/*
+	 *	Catch callers repeatedly calling iterator
+	 *	at the end.
+	 */
+	if (unlikely(iter->node == NIL)) return NULL;
+
+	/*
+	 * Next is a child of the just-returned node, if it has one.
+	 * (Left child first.)
+	 */
+	if (x->left != NIL) {
+		x = x->left;
+		iter->node = x;
+		return x->data;
+	}
+	if (x->right != NIL) {
+		x = x->right;
+		iter->node = x;
+		return x->data;
+	}
+
+	/*
+	 * Otherwise, the nearest ancestor's unreturned right
+	 * child, if one exists.
+	 */
+	for (; (y = x->parent) != NIL; x = y) {
+		if (y->right != NIL && y->right != x) {
+			x = y->right;
+			iter->node = x;
+			return x->data;
+		}
+	}
+
+	/*
+	 * None of the above? We're done.
+	 */
+	iter->node = NIL;
+	if (iter->tree->lock)
+		pthread_mutex_unlock(&iter->tree->mutex);
+	return NULL;
+}
+
+/** Initialise a pre-order iterator
+ *
+ * @note If iteration ends early because of a loop condition #rbtree_iter_done must be called.
+ *
+ * @param[out] iter to initialise.
+ * @param[in] tree to iterate over.
+ * @return
+ *	- The first node.  Mutex will be held.
+ *	- NULL if the tree is empty.
+ */
+void *rbtree_iter_init_postorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
+{
+	fr_rb_node_t *x = tree->root;
+
+	if (x == NIL) return NULL;
+
+	if (tree->lock) pthread_mutex_lock(&tree->mutex);
+
+	/*
+	 *	First: the deepest leaf to the left (jogging to the
+	 *	right if there's a right child but no left).
+	 */
+	for (;;) {
+		for (; x->left != NIL; x = x->left) ;
+		if (x->right == NIL) break;
+		x = x->right;
+	}
+
+	*iter = (fr_rb_tree_iter_t){
+		.tree = tree,
+		.node = x
+	};
+
+	return x->data;
+}
+
+/** Return the next node
+ *
+ * @note Will unlock the tree if no more elements remain.
+ *
+ * @param[in] iter	previously initialised with #rbtree_iter_init
+ * @return
+ *	- The next node.
+ *	- NULL if no more nodes remain.
+ */
+void *rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter)
+{
+	fr_rb_node_t *x = iter->node, *y;
+
+	/*
+	 *	Catch callers repeatedly calling iterator
+	 *	at the end.
+	 */
+	if (unlikely(iter->node == NIL)) return NULL;
+
+	/*
+	 *	This is postorder, so a just-returned node's
+	 *	descendants have all been returned. If there
+	 *	is another node, it's an ancestor or one of
+	 *	its not-yet-returned descendants...but if
+	 *	we're at the root, we're done.
+	 */
+	y = x->parent;
+	if (y == NIL) {
+		iter->node = NIL;
+		if (iter->tree->lock) pthread_mutex_unlock(&iter->tree->mutex);
+		return NULL;
+	}
+
+	/*
+	 * Return the parent if it has no right child, or it has one but
+	 * it's been returned.
+	 */
+	if (y->right == NIL || y->right == x) {
+		iter->node = y;
+		return y->data;
+	}
+
+	/*
+	 * Otherwise, it's as if we're starting over with the right child.
+	 */
+	x = y->right;
+	for (;;) {
+		for (; x->left != NIL; x = x->left) ;
+		if (x->right == NIL) break;
+		x = x->right;
+	}
+
+	iter->node = x;
+	return x->data;
+}
+
 /** Explicitly unlock the tree
  *
  * @note Must be called if iterating over the tree ends early.

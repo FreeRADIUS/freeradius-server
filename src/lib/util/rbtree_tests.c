@@ -40,7 +40,7 @@ static int fr_rb_test_cmp(void const *one, void const *two)
 	return CMP(a->num, b->num);
 }
 
-static void test_rbtree_iter(void)
+static void test_rbtree_iter_inorder(void)
 {
 	rbtree_t 		*t;
 	fr_rb_test_node_t	sorted[MAXSIZE];
@@ -48,6 +48,7 @@ static void test_rbtree_iter(void)
 	size_t			n, i;
 	fr_rb_tree_iter_t	iter;
 
+	TEST_CASE("in-order iterator");
 	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, fr_rb_test_cmp, NULL, RBTREE_FLAG_LOCK);
 	TEST_CHECK(t != NULL);
 
@@ -80,8 +81,87 @@ static void test_rbtree_iter(void)
 	talloc_free(t);
 }
 
+/*
+ *	There's no natural test for pre- and post-order traversal
+ *	as there is for in-order, so we must content ourselves
+ *	with static test data.
+ */
+static uint32_t	pre_post_input[] = {0, 15, 256, 49, 3, 8192, 144, 4, 4096, 25194};
+static uint32_t	pre_output[] = {15, 3, 0, 4, 256, 49, 144, 8192, 4096, 25194};
+static uint32_t	post_output[] = {0, 4, 3, 144, 49, 4096, 25194, 8192, 256, 15};
+
+static void test_rbtree_iter_preorder(void)
+{
+	rbtree_t 		*t;
+	fr_rb_test_node_t	*p;
+	size_t			i;
+	fr_rb_tree_iter_t	iter;
+
+	TEST_CASE("pre-order iterator");
+	/*
+	 *	Build a tree from pre_post_input.
+	 */
+	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, fr_rb_test_cmp, NULL, RBTREE_FLAG_LOCK);
+	TEST_CHECK(t != NULL);
+
+	for (i = 0; i < sizeof(pre_post_input) / sizeof(uint32_t); i++) {
+		p = talloc(t, fr_rb_test_node_t);
+		p->num = pre_post_input[i];
+		rbtree_insert(t, p);
+	}
+
+	for (p = rbtree_iter_init_preorder(&iter, t), i = 0;
+	     p;
+	     p = rbtree_iter_next_preorder(&iter), i++) {
+		TEST_MSG("Checking pre_output[%zu] = %u vs n = %u", i, pre_output[i], p->num);
+		TEST_CHECK(pre_output[i] == p->num);
+		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
+	}
+
+	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
+	pthread_mutex_unlock(&t->mutex);
+
+	talloc_free(t);
+}
+
+static void test_rbtree_iter_postorder(void)
+{
+	rbtree_t 		*t;
+	fr_rb_test_node_t	*p;
+	size_t			i;
+	fr_rb_tree_iter_t	iter;
+
+	TEST_CASE("post-order iterator");
+	/*
+	 *	Build a tree from pre_post_input.
+	 */
+	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, fr_rb_test_cmp, NULL, RBTREE_FLAG_LOCK);
+	TEST_CHECK(t != NULL);
+
+	for (i = 0; i < sizeof(pre_post_input) / sizeof(uint32_t); i++) {
+		p = talloc(t, fr_rb_test_node_t);
+		p->num = pre_post_input[i];
+		rbtree_insert(t, p);
+	}
+
+	for (p = rbtree_iter_init_postorder(&iter, t), i = 0;
+	     p;
+	     p = rbtree_iter_next_postorder(&iter), i++) {
+		TEST_MSG("Checking post_output[%zu] s = %u vs n = %u", i, post_output[i], p->num);
+		TEST_CHECK(post_output[i] == p->num);
+		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
+	}
+
+	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
+	pthread_mutex_unlock(&t->mutex);
+
+	talloc_free(t);
+}
+
 TEST_LIST = {
-	{ "rbtree_iter",            test_rbtree_iter },
+	{ "rbtree_iter_inorder",            test_rbtree_iter_inorder },
+	{ "rbtree_iter_preorder",           test_rbtree_iter_preorder },
+	{ "rbtree_iter_postorder",          test_rbtree_iter_postorder },
 
 	{ NULL }
 };
