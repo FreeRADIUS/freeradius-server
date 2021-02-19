@@ -101,7 +101,6 @@ static void usage(main_config_t const *config, int status);
 static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
 {
 	CONF_SECTION *cs;
-	CONF_PAIR *cp;
 	RADCLIENT *client;
 
 	cs = cf_section_alloc(ctx, NULL, "client", name);
