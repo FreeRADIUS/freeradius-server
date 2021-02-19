@@ -160,7 +160,7 @@ static void CC_HINT(nonnull) tls_engine_control_notfound_strerror(ENGINE *e, cha
 			fr_strerror_const_push("available controls are:");
 			first = false;
 		}
-		fr_strerror_printf_push("%s, arg(s) %s%s%s", name, flags, desc ? " - " : "", desc);
+		fr_strerror_printf_push("%s, arg(s) %s%s%s", name, flags, desc ? " - " : "", desc ? desc : "");
 		talloc_free_children(pool);
 	}
 	if (first) fr_strerror_const_push("no controls available");
@@ -246,7 +246,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 {
 	tls_engine_t		*our_e = NULL;
 	ENGINE			*e;
-	fr_tls_engine_ctrl_t	*ctrl, *n;
+	fr_tls_engine_ctrl_t	*ctrl = NULL, *n;
 
 	if (!tls_engines) {
 		tls_engines = rbtree_alloc(NULL, tls_engine_t, node, tls_engine_cmp, rbtree_node_talloc_free, 0);
