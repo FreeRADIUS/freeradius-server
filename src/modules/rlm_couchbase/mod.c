@@ -373,7 +373,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
  *	- 0 on success.
  *	- <0 on error.
  */
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request, json_object *json, pair_list_t list)
+int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request, json_object *json, tmpl_pair_list_t list)
 {
 	json_object	*list_obj;
 	char const	*list_name = fr_table_str_by_value(pair_list_table, list, "<INVALID>");
@@ -397,7 +397,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request
 		return -1;
 	}
 
-	fr_cursor_tail(out);				/* Wind to the end */
+	fr_dcursor_tail(out);				/* Wind to the end */
 
 	/*
 	 *	Loop through the keys in this object.
@@ -415,7 +415,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request
 			REDEBUG("Invalid json type for \"%s\" key - Attributes must be json objects", attr_name);
 
 		error:
-			fr_cursor_free_list(out);	/* Free any maps we added */
+			fr_dcursor_free_list(out);	/* Free any maps we added */
 			return -1;
 		}
 
@@ -493,7 +493,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request
 				goto bad_value;
 			}
 
-			fr_cursor_insert(out, map);
+			fr_dcursor_insert(out, map);
 		}
 	}
 
