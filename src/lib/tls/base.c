@@ -33,9 +33,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/conf.h>
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/tls/attrs.h>
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/engine.h>
 #include <freeradius-devel/util/debug.h>
-#include "base.h"
-#include "attrs.h"
 
 static uint32_t instance_count = 0;
 
@@ -467,10 +468,15 @@ void fr_openssl_free(void)
 	 *	exiting to prevent memory leaks.
 	 */
 	ERR_remove_thread_state(NULL);
-	ENGINE_cleanup();
+
+	fr_tls_engine_free_all();
+
 	CONF_modules_unload(1);
+
 	ERR_free_strings();
+
 	EVP_cleanup();
+
 	CRYPTO_cleanup_all_ex_data();
 
 	TALLOC_FREE(global_mutexes);
@@ -487,12 +493,15 @@ void fr_openssl_free(void)
  */
 void fr_openssl_free(void)
 {
+	if (--instance_count > 0) return;
+
+	fr_tls_engine_free_all();
+
 	OPENSSL_cleanup();
+
 	fr_dict_autofree(tls_dict);
 }
 #endif
-
-
 
 /** Add all the default ciphers and message digests to our context.
  *
@@ -501,8 +510,6 @@ void fr_openssl_free(void)
  */
 int fr_openssl_init(void)
 {
-	ENGINE *rand_engine;
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
@@ -521,8 +528,6 @@ int fr_openssl_init(void)
 	SSL_load_error_strings();	/* Readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* Initialize library */
 	OpenSSL_add_all_algorithms();	/* Required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
-	ENGINE_load_builtin_engines();	/* Needed to load AES-NI engine (also loads rdrand, boo) */
-
 #  ifdef HAVE_OPENSSL_EVP_SHA256
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
@@ -544,17 +549,14 @@ int fr_openssl_init(void)
 
 	OPENSSL_config(NULL);
 #else
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_ENGINE_ALL_BUILTIN, NULL);
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG, NULL);
 #endif
 
 	/*
-	 *	Mirror the paranoia found elsewhere on the net,
-	 *	and disable rdrand as the default random number
-	 *	generator.
+	 *	FIXME - This should be done _after_
+	 *	running any engine controls.
 	 */
-	rand_engine = ENGINE_get_default_RAND();
-	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
-	ENGINE_register_all_complete();
+	fr_tls_engine_load_builtin();
 
 	instance_count++;
 

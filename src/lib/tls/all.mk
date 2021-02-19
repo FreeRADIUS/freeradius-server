@@ -9,6 +9,7 @@ SOURCES	:= \
 	cache.c \
 	conf.c \
 	ctx.c \
+	engine.c \
 	log.c \
 	ocsp.c \
 	session.c \
