@@ -78,7 +78,7 @@ static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 
 static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int lib_dir_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int lib_dir_on_read(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
@@ -124,8 +124,8 @@ static const CONF_PARSER lib_dir_on_read_config[] = {
 	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, main_config_t, log_dates_utc) },
 	{ FR_CONF_OFFSET_IS_SET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
 
-	{ FR_CONF_OFFSET("libdir", FR_TYPE_STRING | FR_TYPE_ON_READ, main_config_t, lib_dir), .dflt = "${prefix}/lib",
-	  .on_read = lib_dir_parse },
+	{ FR_CONF_OFFSET("libdir", FR_TYPE_STRING, main_config_t, lib_dir), .dflt = "${prefix}/lib",
+	  .on_read = lib_dir_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -314,7 +314,7 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	return 0;
 }
 
-static int lib_dir_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+static int lib_dir_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
 			 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
