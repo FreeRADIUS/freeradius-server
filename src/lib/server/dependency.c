@@ -290,7 +290,6 @@ int dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled)
 		cp = cf_pair_alloc(cs, name, enabled ? "yes" : "no",
 				   T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		if (!cp) return -1;
-		cf_pair_add(cs, cp);
 	}
 
 	return 0;
@@ -333,7 +332,6 @@ int dependency_version_number_add(CONF_SECTION *cs, char const *name, char const
 		cp = cf_pair_alloc(cs, name, version, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		if (!cp) return -1;
 
-		cf_pair_add(cs, cp);
 	} else {
 		WARN("Replacing user version.%s (%s) with %s", name, cf_pair_value(old), version);
 

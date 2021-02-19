@@ -785,9 +785,7 @@ static RADCLIENT *proto_ldap_fake_client_alloc(proto_ldap_inst_t *inst)
 	cs = cf_section_alloc(NULL, NULL, "client", "ldap");
 	cp = cf_pair_alloc(cs, "ipaddr", fr_inet_ntop(buffer, sizeof(buffer), &inst->dst_ipaddr),
 			   T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-	cf_pair_add(cs, cp);
 	cp = cf_pair_alloc(cs, "secret", "fake", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-	cf_pair_add(cs, cp);
 
 	client = client_afrom_cs(inst, cs, NULL);
 	if (!client) {

@@ -831,7 +831,6 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			ret = func(value_ctx, entry, base, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
-				talloc_free(dflt_cp);
 				return -1;
 			}
 			cp->parsed = true;
@@ -880,21 +879,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		}
 
 		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);
-		if (ret < 0) {
-			talloc_free(dflt_cp);
-			return -1;
-		}
+		if (ret < 0) return -1;
 		cp->parsed = true;
-	}
-
-	/*
-	 *	If we created a default cp and succeeded
-	 *	in parsing the dflt value, add the new
-	 *	cp to the enclosing section.
-	 */
-	if (dflt_cp) {
-		cf_item_add(cs, &(dflt_cp->item));
-		return 1;
 	}
 
 	return 0;

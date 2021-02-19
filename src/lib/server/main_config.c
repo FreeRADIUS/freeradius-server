@@ -1005,7 +1005,6 @@ do {\
 			}
 		} else {
 			MEM(cp = cf_pair_alloc(cs, "name", config->name, T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING));
-			cf_pair_add(cs, cp);
 		}
 	}
 

@@ -140,7 +140,6 @@ CONF_SECTION	*_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 				   char const *filename, int lineno);
 CONF_SECTION	*cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
-void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 /** @hidecallergraph */
 CONF_SECTION	*cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev);
 /** @hidecallergraph */
@@ -170,7 +169,6 @@ CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 			       fr_token_t op, fr_token_t lhs_type, fr_token_t rhs_type);
 CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
-void		cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp);
 void		cf_pair_mark_parsed(CONF_PAIR *cp);
 CONF_PAIR	*cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *prev);
 CONF_PAIR	*cf_pair_find(CONF_SECTION const *cs, char const *name);

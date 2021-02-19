@@ -321,7 +321,6 @@ char const *cf_expand_variables(char const *cf, int lineno,
 
 				cf_filename_set(subcs, ci->filename);
 				cf_lineno_set(subcs, ci->lineno);
-				cf_item_add(outer_cs, &(subcs->item));
 
 				ptr = next + 1;
 
@@ -436,7 +435,6 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 
 			cf_filename_set(cp2, cp1->item.filename);
 			cf_lineno_set(cp2, cp1->item.lineno);
-			cf_item_add(cs, &(cp2->item));
 			continue;
 		}
 
@@ -469,7 +467,6 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 
 			cf_filename_set(subcs2, subcs1->item.filename);
 			cf_lineno_set(subcs2, subcs1->item.lineno);
-			cf_item_add(cs, &(subcs2->item));
 			continue;
 		}
 
@@ -1565,7 +1562,6 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	cf_filename_set(cp, filename);
 	cf_lineno_set(cp, lineno);
 	cp->pass2 = pass2;
-	cf_item_add(parent, &(cp->item));
 
 	cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, attr);
 	if (!cd) return 0;
@@ -2325,8 +2321,6 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
-
-	cf_item_add(cs, &(cp->item));
 
 	MEM(tree = rbtree_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL, 0));
 

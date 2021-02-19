@@ -634,7 +634,6 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 			cc = cf_section_find(out, cf_section_name1(cs), cf_section_name2(cs));
 			if (!cc) {
 				cc = cf_section_alloc(out, out, cf_section_name1(cs), cf_section_name2(cs));
-				cf_section_add(out, cc);
 				if (!cc) return -1;
 			}
 
@@ -1025,7 +1024,6 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 		}
 
 		RDEBUG2("%s = %s", cf_pair_attr(cp), cf_pair_value(cp));
-		cf_pair_add(cs, cp);
 	}
 
 	REXDENT();

@@ -1340,7 +1340,6 @@ do { \
 		ERROR("Failed creating server pair");
 		fr_exit_now(EXIT_FAILURE);
 	}
-	cf_pair_add(conf->cs, cp);
 
 	/*
 	 *	Unescape sequences in the pool name
@@ -1386,17 +1385,14 @@ do { \
 	cp = cf_pair_find(pool_cs, "start");
 	if (!cp) {
 		cp = cf_pair_alloc(pool_cs, "start", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-		cf_pair_add(pool_cs, cp);
 	}
 	cp = cf_pair_find(pool_cs, "spare");
 	if (!cp) {
 		cp = cf_pair_alloc(pool_cs, "spare", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-		cf_pair_add(pool_cs, cp);
 	}
 	cp = cf_pair_find(pool_cs, "min");
 	if (!cp) {
 		cp = cf_pair_alloc(pool_cs, "min", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-		cf_pair_add(pool_cs, cp);
 	}
 
 	if (driver_init(conf, conf->cs, &conf->driver) < 0) {

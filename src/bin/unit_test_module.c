@@ -106,25 +106,12 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 
 	cs = cf_section_alloc(ctx, NULL, "client", name);
 	cp = cf_pair_alloc(cs, "ipaddr", ip, T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
-	cf_pair_add(cs, cp);
-
 	cp = cf_pair_alloc(cs, "secret", "supersecret", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
-	cf_pair_add(cs, cp);
-
 	cp = cf_pair_alloc(cs, "nas_type", "test", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
-	cf_pair_add(cs, cp);
-
 	cp = cf_pair_alloc(cs, "shortname", "test", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
-	cf_pair_add(cs, cp);
-
 	cp = cf_pair_alloc(cs, "groups", "foo", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
-	cf_pair_add(cs, cp);
-
 	cp = cf_pair_alloc(cs, "groups", "bar", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
-	cf_pair_add(cs, cp);
-
 	cp = cf_pair_alloc(cs, "groups", "baz", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
-	cf_pair_add(cs, cp);
 
 	client = client_afrom_cs(ctx, cs, NULL);
 	if (!client) {

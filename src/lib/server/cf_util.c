@@ -854,7 +854,6 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 				talloc_free(new);
 				return NULL;
 			}
-			cf_section_add(new, subcs);
 			break;
 
 		case CONF_ITEM_PAIR:
@@ -863,7 +862,6 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 				talloc_free(new);
 				return NULL;
 			}
-			cf_pair_add(new, cp);
 			break;
 
 		case CONF_ITEM_DATA: /* Skip data */
@@ -877,17 +875,6 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	return new;
 }
 
-/** Add a section as a child of another section
- *
- * @param[in] parent	section we're adding to.
- * @param[in] cs	we're adding.
- *
- * @hidecallergraph
- */
-void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
-{
-	cf_item_add(parent, &(cs->item));
-}
 
 /** Return the next child that's a #CONF_SECTION
  *
@@ -1122,6 +1109,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 		if (!cp->value) goto error;
 	}
 
+	cf_item_add(parent, &(cp->item));
 	return cp;
 }
 
@@ -1185,15 +1173,6 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	return 0;
 }
 
-/** Add a configuration pair to a section
- *
- * @param[in] parent section to add pair to.
- * @param[in] cp to add.
- */
-void cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp)
-{
-	cf_item_add(parent, cf_pair_to_item(cp));
-}
 
 /** Mark a pair as parsed
  *
@@ -1430,6 +1409,7 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 		talloc_set_destructor(cd, _cd_free);
 	}
 
+	cf_item_add(parent, cd);
 	return cd;
 }
 
@@ -1547,7 +1527,6 @@ CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name,
 	cd->is_talloced = true;
 	cf_filename_set(cd, filename);
 	cf_lineno_set(cd, lineno);
-	cf_item_add(ci, cd);
 
 	return cd;
 }
@@ -1592,7 +1571,6 @@ CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const
 	cd->is_talloced = false;
 	cf_filename_set(cd, filename);
 	cf_lineno_set(cd, lineno);
-	cf_item_add(ci, cd);
 
 	return cd;
 }

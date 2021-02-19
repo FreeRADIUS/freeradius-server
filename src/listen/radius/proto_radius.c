@@ -175,7 +175,6 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	 */
 	if (!transport_cs) {
 		transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
-		cf_section_add(listen_cs, transport_cs);
 		inst->io.app_io_conf = transport_cs;
 	}
 
