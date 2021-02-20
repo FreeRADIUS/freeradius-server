@@ -796,15 +796,16 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 
 		/*
 		 *	Or, the parent may already have parse rules
-		 *	for this new child.  In which case we run
-		 *	those rules.
+		 *	for this new child.  In which case we push the
+		 *	child rules for this section, and then do the
+		 *	on_read callback.
 		 */
 		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, name1);
 		if (cd) {
 			rule = cf_data_value(cd);
 			if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
 			    rule->on_read) {
-				if (cf_section_rules_push(cs, rule) < 0) goto error;
+				if (cf_section_rules_push(cs, rule->subcs) < 0) goto error;
 				if (rule->on_read(ctx, NULL, NULL, cf_section_to_item(cs), rule) < 0) goto error;
 			}
 		}
