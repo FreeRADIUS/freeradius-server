@@ -1384,15 +1384,15 @@ do { \
 	}
 	cp = cf_pair_find(pool_cs, "start");
 	if (!cp) {
-		cp = cf_pair_alloc(pool_cs, "start", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+		(void) cf_pair_alloc(pool_cs, "start", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 	}
 	cp = cf_pair_find(pool_cs, "spare");
 	if (!cp) {
-		cp = cf_pair_alloc(pool_cs, "spare", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+		(void) cf_pair_alloc(pool_cs, "spare", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 	}
 	cp = cf_pair_find(pool_cs, "min");
 	if (!cp) {
-		cp = cf_pair_alloc(pool_cs, "min", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+		(void) cf_pair_alloc(pool_cs, "min", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 	}
 
 	if (driver_init(conf, conf->cs, &conf->driver) < 0) {
