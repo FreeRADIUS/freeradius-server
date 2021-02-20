@@ -163,6 +163,18 @@ default_actions[MOD_COUNT][RLM_MODULE_NUMCODES] =
 	}
 };
 
+static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const *rules)
+{
+	if (!fr_cond_assert_msg(rules->dict_def, "No protocol dictionary set")) return -1;
+	if (!fr_cond_assert_msg(rules->dict_def != fr_dict_internal(), "rules->dict_def must not be the internal dictionary")) return -1;
+	if (!fr_cond_assert_msg(!rules->allow_foreign, "rules->allow_foreign must be false")) return -1;
+	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
+
+	return 0;
+}
+
+#define RULES_VERIFY(_rules) if (unlang_rules_verify(_rules) < 0) return NULL;
+
 static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, CONF_ITEM const *ci, tmpl_t **vpt_p)
 {
 	tmpl_t *vpt = *vpt_p;
@@ -505,6 +517,8 @@ static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
 
 static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
+	RULES_VERIFY(rules);
+
 	if (tmpl_is_xlat_unresolved(map->lhs)) {
 		fr_assert(tmpl_xlat(map->lhs) == NULL);
 
@@ -605,6 +619,8 @@ static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 	unlang_map_t	*gext = unlang_group_to_map(g);
 	map_t		*map = NULL;
 
+	RULES_VERIFY(rules);
+
 	while ((map = fr_dlist_next(&gext->map, map))) {
 		if (!pass2_fixup_update_map(map, rules, NULL)) return false;
 	}
@@ -618,6 +634,8 @@ static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 {
 	unlang_map_t	*gext = unlang_group_to_map(g);
+
+	RULES_VERIFY(rules);
 
 	/*
 	 *	Compile the map
@@ -1218,7 +1236,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 
 	char const		*name2 = cf_section_name2(cs);
 
-	tmpl_rules_t		parse_rules;
+	tmpl_rules_t		t_rules;
 
 	static unlang_ext_t const map_ext = {
 		.type = UNLANG_TYPE_MAP,
@@ -1229,8 +1247,9 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	/*
 	 *	We allow unknown attributes here.
 	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
 
 	modules = cf_section_find(cf_root(cs), "modules", NULL);
 	if (!modules) {
@@ -1267,7 +1286,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
 					 type,
 					 NULL,
-					 &parse_rules);
+					 &t_rules);
 		if (!vpt) {
 			cf_log_perr(cs, "Failed parsing map");
 		error:
@@ -1300,7 +1319,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 *	This looks at cs->name2 to determine which list to update
 	 */
 	fr_map_list_init(&gext->map);
-	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_map, NULL, 256);
+	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'map' sections cannot be empty");
@@ -1348,7 +1367,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
-	tmpl_rules_t		parse_rules;
+	tmpl_rules_t		t_rules;
 
 	static unlang_ext_t const update_ext = {
 		.type = UNLANG_TYPE_UPDATE,
@@ -1359,8 +1378,9 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	/*
 	 *	We allow unknown attributes here.
 	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
 
 	g = group_allocate(parent, cs, &update_ext);
 	if (!g) return NULL;
@@ -1371,7 +1391,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	This looks at cs->name2 to determine which list to update
 	 */
 	fr_map_list_init(&gext->map);
-	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
@@ -1406,7 +1426,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t		*c;
 	char const		*name2 = cf_section_name2(cs);
 
-	tmpl_rules_t		parse_rules;
+	tmpl_rules_t		t_rules;
 
 	static unlang_ext_t const filter_ext = {
 		.type = UNLANG_TYPE_FILTER,
@@ -1417,8 +1437,9 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	/*
 	 *	We allow unknown attributes here.
 	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
 
 	g = group_allocate(parent, cs, &filter_ext);
 	if (!g) return NULL;
@@ -1429,7 +1450,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	This looks at cs->name2 to determine which list to update
 	 */
 	fr_map_list_init(&gext->map);
-	rcode = map_afrom_cs(gext, &gext->map, cs, &parse_rules, &parse_rules, unlang_fixup_filter, NULL, 128);
+	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_filter, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'filter' sections cannot be empty");
@@ -1885,7 +1906,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t		*c;
 	ssize_t			slen;
 
-	tmpl_rules_t		parse_rules;
+	tmpl_rules_t		t_rules;
 
 	static unlang_ext_t const switch_ext = {
 		.type = UNLANG_TYPE_SWITCH,
@@ -1898,8 +1919,9 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	/*
 	 *	We allow unknown attributes here.
 	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -1926,7 +1948,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 				 &FR_SBUFF_IN(name2, strlen(name2)),
 				 type,
 				 NULL,
-				 &parse_rules);
+				 &t_rules);
 	if (!gext->vpt) {
 		char *spaces, *text;
 
@@ -2049,7 +2071,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	unlang_group_t		*case_g;
 	unlang_case_t		*case_gext;
 	tmpl_t			*vpt = NULL;
-	tmpl_rules_t		parse_rules;
+	tmpl_rules_t		t_rules;
 
 	static unlang_ext_t const case_ext = {
 		.type = UNLANG_TYPE_CASE,
@@ -2060,8 +2082,9 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	/*
 	 *	We allow unknown attributes here.
 	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
 
 	if (!parent || (parent->type != UNLANG_TYPE_SWITCH)) {
 		cf_log_err(cs, "\"case\" statements may only appear within a \"switch\" section");
@@ -2085,7 +2108,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 					 &FR_SBUFF_IN(name2, strlen(name2)),
 					 type,
 					 NULL,
-					 &parse_rules);
+					 &t_rules);
 		if (!vpt) {
 			char *spaces, *text;
 
@@ -2208,7 +2231,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	ssize_t			slen;
 	tmpl_t			*vpt;
 
-	tmpl_rules_t		parse_rules;
+	tmpl_rules_t		t_rules;
 
 	static unlang_ext_t const foreach_ext = {
 		.type = UNLANG_TYPE_FOREACH,
@@ -2221,8 +2244,9 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	We allow unknown attributes here.
 	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -2242,7 +2266,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				 &FR_SBUFF_IN(name2, strlen(name2)),
 				 type,
 				 NULL,
-				 &parse_rules);
+				 &t_rules);
 	if (!vpt) {
 		char *spaces, *text;
 
@@ -2411,6 +2435,7 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 	c->debug_name = c->name;
 	c->type = UNLANG_TYPE_TMPL;
 
+	RULES_VERIFY(unlang_ctx->rules);
 	slen = tmpl_afrom_substr(ut, &vpt,
 				 &FR_SBUFF_IN(p, talloc_array_length(p) - 1),
 				 cf_pair_attr_quote(cp),
@@ -2619,15 +2644,16 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	char const			*name2;
 	unlang_t			*c;
 	unlang_group_t			*g;
-	unlang_load_balance_t	*gext;
+	unlang_load_balance_t		*gext;
 
-	tmpl_rules_t			parse_rules;
+	tmpl_rules_t			t_rules;
 
 	/*
 	 *	We allow unknown attributes here.
 	 */
-	parse_rules = *(unlang_ctx->rules);
-	parse_rules.allow_unknown = true;
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
 
 	/*
 	 *	No children?  Die!
@@ -2670,7 +2696,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 					 &FR_SBUFF_IN(name2, strlen(name2)),
 					 type,
 					 NULL,
-					 &parse_rules);
+					 &t_rules);
 		if (!gext->vpt) {
 			char *spaces, *text;
 
@@ -2809,7 +2835,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 	unlang_compile_t		unlang_ctx2;
 
-	tmpl_rules_t			parse_rules;
+	tmpl_rules_t			t_rules;
 
 	fr_dict_t const			*dict;
 	fr_dict_attr_t const		*da = NULL;
@@ -2942,6 +2968,8 @@ get_packet_type:
 
 		src = cf_section_argv(cs, 0);
 		if (src) {
+			RULES_VERIFY(unlang_ctx->rules);
+
 			(void) tmpl_afrom_substr(parent, &src_vpt,
 						 &FR_SBUFF_IN(src, talloc_array_length(src) - 1),
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
@@ -2961,6 +2989,8 @@ get_packet_type:
 
 			dst = cf_section_argv(cs, 1);
 			if (dst) {
+				RULES_VERIFY(unlang_ctx->rules);
+
 				(void) tmpl_afrom_substr(parent, &dst_vpt,
 							 &FR_SBUFF_IN(dst, talloc_array_length(dst) - 1),
 							 cf_section_argv_quote(cs, 1), NULL, unlang_ctx->rules);
@@ -2988,10 +3018,10 @@ get_packet_type:
 		return UNLANG_IGNORE;
 	}
 
-	parse_rules = *unlang_ctx->rules;
-	parse_rules.parent = unlang_ctx->rules;
-	parse_rules.dict_def = dict;
-	parse_rules.allow_foreign = true;
+	t_rules = *unlang_ctx->rules;
+	t_rules.parent = unlang_ctx->rules;
+	t_rules.dict_def = dict;
+	t_rules.allow_foreign = true;
 
 	unlang_ctx2.actions = unlang_ctx->actions;
 
@@ -3000,7 +3030,7 @@ get_packet_type:
 	 */
 	unlang_ctx2.section_name1 = "subrequest";
 	unlang_ctx2.section_name2 = name2;
-	unlang_ctx2.rules = &parse_rules;
+	unlang_ctx2.rules = &t_rules;
 	unlang_ctx2.component = unlang_ctx->component;
 
 	/*
@@ -3114,7 +3144,7 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	char const     			*name;
 	fr_dict_t const			*dict;
 	unlang_compile_t		unlang_ctx2;
-	tmpl_rules_t			parent_rules, parse_rules;
+	tmpl_rules_t			parent_rules, t_rules;
 
 	static unlang_ext_t const 	caller_ext = {
 						.type = UNLANG_TYPE_CALLER,
@@ -3144,16 +3174,16 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	Create a new parent context with the new dictionary.
 	 */
 	memcpy(&parent_rules, unlang_ctx->rules, sizeof(parent_rules));
-	memcpy(&parse_rules, unlang_ctx->rules, sizeof(parse_rules));
+	memcpy(&t_rules, unlang_ctx->rules, sizeof(t_rules));
 	parent_rules.dict_def = dict;
-	parse_rules.parent = &parent_rules;
+	t_rules.parent = &parent_rules;
 
 	/*
 	 *	We don't want to modify the context we were passed, so
 	 *	we just clone it
 	 */
 	memcpy(&unlang_ctx2, unlang_ctx, sizeof(unlang_ctx2));
-	unlang_ctx2.rules = &parse_rules;
+	unlang_ctx2.rules = &t_rules;
 	unlang_ctx2.section_name1 = "caller";
 	unlang_ctx2.section_name2 = name;
 

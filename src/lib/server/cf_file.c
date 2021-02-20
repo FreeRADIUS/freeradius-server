@@ -136,6 +136,19 @@ typedef struct {
 	cf_stack_frame_t frame[MAX_STACK];	//!< stack frames
 } cf_stack_t;
 
+
+static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(tmpl_rules_t const *rules)
+{
+	if (!fr_cond_assert_msg(rules->dict_def, "No protocol dictionary set")) return -1;
+	if (!fr_cond_assert_msg(rules->dict_def != fr_dict_internal(), "rules->dict_def must not be the internal dictionary")) return -1;
+	if (!fr_cond_assert_msg(!rules->allow_foreign, "rules->allow_foreign must be false")) return -1;
+	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
+
+	return 0;
+}
+
+#define RULES_VERIFY(_rules) if (cf_tmpl_rules_verify(_rules) < 0) return NULL;
+
 /*
  *	Expand the variables in an input string.
  *
@@ -1201,13 +1214,16 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	Skip (...) to find the {
 	 */
 	while (true) {
+		tmpl_rules_t t_rules = {
+			.dict_def = dict,
+			.allow_unresolved = true,
+			.allow_unknown = true,
+		};
+
+		RULES_VERIFY(&t_rules);
+
 		slen = fr_cond_tokenize(cs, &cond,
-					&(tmpl_rules_t){
-			     			.dict_def = dict,
-			     			.allow_unresolved = true,
-			     			.allow_unknown = true,
-			     			.allow_foreign = (dict == NULL)	/* Allow foreign attributes if we have no dict */
-			    		}, &FR_SBUFF_IN(ptr, strlen(ptr)));
+					&t_rules, &FR_SBUFF_IN(ptr, strlen(ptr)));
 		if (slen < 0) {
 			ssize_t end = -slen;
 
