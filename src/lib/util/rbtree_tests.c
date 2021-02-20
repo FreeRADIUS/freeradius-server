@@ -46,7 +46,7 @@ static void test_rbtree_iter_inorder(void)
 	fr_rb_test_node_t	sorted[MAXSIZE];
 	fr_rb_test_node_t	*p;
 	size_t			n, i;
-	fr_rb_tree_iter_t	iter;
+	fr_rb_tree_iter_inorder_t	iter;
 
 	TEST_CASE("in-order iterator");
 	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, fr_rb_test_cmp, NULL, RBTREE_FLAG_LOCK);
@@ -178,10 +178,10 @@ uint32_t	non_primes[] = { 1,  4,  6,  8,  9, 10, 12, 14, 15, 16, 18, 20, 21, 22,
 
 static void test_rbtree_iter_delete(void)
 {
-	rbtree_t 		*t;
-	size_t			i;
-	fr_rb_test_node_t	*p;
-	fr_rb_tree_iter_t	iter;
+	rbtree_t 			*t;
+	size_t				i;
+	fr_rb_test_node_t		*p;
+	fr_rb_tree_iter_inorder_t	iter;
 
 	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, fr_rb_test_cmp, NULL, RBTREE_FLAG_LOCK);
 	TEST_CHECK(t != NULL);
@@ -202,7 +202,7 @@ static void test_rbtree_iter_delete(void)
 	for (p = rbtree_iter_init_inorder(&iter, t);
 	     p;
 	     p = rbtree_iter_next_inorder(&iter)) {
-		if (is_prime(p->num)) rbtree_iter_delete(&iter);
+		if (is_prime(p->num)) rbtree_iter_inorder_delete(&iter);
 	}
 
 	/*

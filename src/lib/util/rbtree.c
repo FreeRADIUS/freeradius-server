@@ -876,7 +876,7 @@ void *rbtree_node2data(UNUSED rbtree_t *tree, fr_rb_node_t *node)
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
  */
-void *rbtree_iter_init_inorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
+void *rbtree_iter_init_inorder(fr_rb_tree_iter_inorder_t *iter, rbtree_t *tree)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -889,7 +889,7 @@ void *rbtree_iter_init_inorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
 	 */
 	while (x->left != NIL) x = x->left;
 
-	*iter = (fr_rb_tree_iter_t){
+	*iter = (fr_rb_tree_iter_inorder_t){
 		.tree = tree,
 		.node = x
 	};
@@ -906,7 +906,7 @@ void *rbtree_iter_init_inorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
  *	- The next node.
  *	- NULL if no more nodes remain.
  */
-void *rbtree_iter_next_inorder(fr_rb_tree_iter_t *iter)
+void *rbtree_iter_next_inorder(fr_rb_tree_iter_inorder_t *iter)
 {
 	fr_rb_node_t *x = iter->node, *y;
 
@@ -1137,9 +1137,9 @@ void *rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter)
  *
  * @note Only makes sense for in-order traversals.
  *
- * @param[in] iter	previously initialised with #rbtree_iter_init
+ * @param[in] iter	previously initialised with #rbtree_iter_inorder_init
  */
-void rbtree_iter_delete(fr_rb_tree_iter_t *iter)
+void rbtree_iter_inorder_delete(fr_rb_tree_iter_inorder_t *iter)
 {
 	fr_rb_node_t *x = iter->node;
 
@@ -1148,15 +1148,4 @@ void rbtree_iter_delete(fr_rb_tree_iter_t *iter)
 	iter->next = iter->node;
 	iter->node = NULL;
 	rbtree_delete_internal(iter->tree, x, true);
-}
-
-/** Explicitly unlock the tree
- *
- * @note Must be called if iterating over the tree ends early.
- *
- * @param[in] iter	previously initialised with #rbtree_iter_init
- */
-void rbtree_iter_done(fr_rb_tree_iter_t *iter)
-{
-	if (iter->tree->lock) pthread_mutex_unlock(&iter->tree->mutex);
 }
