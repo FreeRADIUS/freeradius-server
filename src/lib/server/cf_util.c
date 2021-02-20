@@ -760,15 +760,17 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		CONF_DATA const *cd;
 		CONF_PARSER *rule;
 
+		/*
+		 *	Look up the parents parsing rules for itself.
+		 *	If there are rules, then one of them might be
+		 *	parsing rules for this new child.  If that
+		 *	happens, we push the child parsing rules to
+		 *	this new child.
+		 */
 		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, cf_section_name1(parent));
 		if (cd) {
 			rule = cf_data_value(cd);
 
-			/*
-			 *	The parent has an ON_READ rule.  Check
-			 *	if that rule has a child which matches
-			 *	this section.
-			 */
 			if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
 			    rule->on_read && rule->subcs) {
 				CONF_PARSER const *rule_p;
@@ -793,9 +795,9 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		}
 
 		/*
-		 *	Call any on_read callback.  And push this rule
-		 *	to the child section, so that the child can
-		 *	pick it up.
+		 *	Or, the parent may already have parse rules
+		 *	for this new child.  In which case we run
+		 *	those rules.
 		 */
 		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, name1);
 		if (cd) {
