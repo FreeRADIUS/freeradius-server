@@ -1253,7 +1253,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		/*
 		 *	Ignore ON_READ parse rules
 		 */
-		if ((rule->type & FR_TYPE_ON_READ) != 0) continue;
+		if (rule->on_read) continue;
 
 		/*
 		 *	Pre-allocate the config structure to hold default values
@@ -1618,7 +1618,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 		 *	Remove any ON_READ callbacks, and add the new
 		 *	rule in its place.
 		 */
-		if ((old->type & FR_TYPE_ON_READ) != 0) {
+		if (old->on_read) {
 			CONF_DATA *cd1;
 
 			/*

@@ -106,7 +106,7 @@ static int fr_app_process_bootstrap(CONF_SECTION *server);
 static int fr_app_process_instantiate(CONF_SECTION *server);
 
 static const CONF_PARSER listen_on_read_config[] = {
-	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ,
+	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener), \
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .on_read = listen_on_read },
@@ -119,7 +119,7 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
 	 */
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ, &virtual_servers), \
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers), \
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
 			  .subcs = (void const *) listen_on_read_config, .ident2 = CF_IDENT_ANY,
 			  .on_read = server_on_read },
