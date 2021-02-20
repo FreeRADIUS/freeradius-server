@@ -987,6 +987,46 @@ CONF_SECTION *cf_section_find_in_parent(CONF_SECTION const *cs,
 	return NULL;
 }
 
+
+/** Find a parent CONF_SECTION with name1 and optionally name2.
+ *
+ * @param[in] cs	The section we're searching in.
+ * @param[in] name1	of the section we're searching for. Special value CF_IDENT_ANY
+ *			can be used to match any name1 value.
+ * @param[in] name2	of the section we're searching for. Special value CF_IDENT_ANY
+ *			can be used to match any name2 value.
+ * @return
+ *	- The first matching subsection.
+ *	- NULL if no subsections match.
+ */
+CONF_SECTION *cf_section_has_parent(CONF_SECTION const *cs,
+				    char const *name1, char const *name2)
+{
+	CONF_ITEM *parent;
+
+	for (parent = cf_parent(cf_section_to_item(cs));
+	     parent != NULL;
+	     parent = cf_parent(parent)) {
+		CONF_SECTION *found = cf_item_to_section(parent);
+
+		if (IS_WILDCARD(name1)) return found;
+
+		if (strcmp(found->name1, name1) != 0) continue;
+
+		if (IS_WILDCARD(name2)) return found;
+
+		if (!name2) {
+			if (!found->name2) return found;
+
+			return NULL;
+		}
+
+		if (strcmp(found->name2, name2) == 0) return found;
+	}
+
+	return NULL;
+}
+
 /** Find a pair in a #CONF_SECTION
  *
  * @param[in] cs	the #CONF_SECTION to search in.

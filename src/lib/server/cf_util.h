@@ -152,6 +152,8 @@ CONF_SECTION	*cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *s
 				      char const *name1, char const *name2);
 CONF_SECTION	*cf_section_find_in_parent(CONF_SECTION const *cs,
 					   char const *name1, char const *name2);
+CONF_SECTION	*cf_section_has_parent(CONF_SECTION const *cs,
+				       char const *name1, char const *name2);
 
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 
