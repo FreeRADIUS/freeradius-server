@@ -576,6 +576,7 @@ bool listen_record(fr_listen_t *li)
 int virtual_servers_instantiate(void)
 {
 	size_t		i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
 	fr_assert(virtual_servers);
 
@@ -598,6 +599,29 @@ int virtual_servers_instantiate(void)
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
 		fr_assert(virtual_servers[i]->namespace != NULL);
+
+		/*
+		 *	Compile EAP-AKA, SIM, etc.  This code is a
+		 *	place-holder until such time as the
+		 *	process_foo() modules are done.
+		 */
+		if (vns_tree) {
+			fr_virtual_namespace_t	find = { .namespace = virtual_servers[i]->namespace };
+			fr_virtual_namespace_t	*found;
+
+			found = rbtree_finddata(vns_tree, &find);
+			if (found) {
+				CONF_DATA const *cd;
+				virtual_server_dict_t *dict;
+
+				cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
+				dict = (virtual_server_dict_t *) cf_data_value(cd);
+				fr_assert(dict != NULL);
+				fr_assert(dict->dict == found->dict);
+
+				if (found->func(server_cs) < 0) return -1;
+			}
+		}
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
@@ -662,7 +686,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 {
 	size_t i, server_cnt = 0;
 	CONF_SECTION *cs = NULL;
-	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
 	if (!virtual_servers) {
 		ERROR("No server { ... } sections found");
@@ -721,6 +744,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 		server_cs = virtual_servers[i]->server_cs;
 
+		fr_assert(cf_data_find(server_cs, virtual_server_dict_t, "dictionary") != NULL);
+
 		if (!virtual_servers[i]->listener) goto bootstrap;
 
  		listener = talloc_get_type_abort(virtual_servers[i]->listener, fr_virtual_listen_t *);
@@ -746,41 +771,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 	bootstrap:
 		if (fr_app_process_bootstrap(virtual_servers[i]->server_cs) < 0) return -1;
-
-		/*
-		 *	If the dictionary was already loaded, e.g. by
-		 *	listen_on_read(), then don't do anything else.
-		 */
-		if (!cf_data_find(server_cs, virtual_server_dict_t, "dictionary")) {
-			fr_dict_t *dict = NULL;
-			fr_virtual_namespace_t	*found = NULL;
-
-			if (vns_tree) {
-				found = rbtree_finddata(vns_tree, &(fr_virtual_namespace_t){ .namespace = virtual_servers[i]->namespace});
-				if (found) {
-					virtual_server_dict_set(server_cs, found->dict, true);
-
-					if ((found->func(server_cs) < 0)) {
-						PERROR("Failed compiling %s", cf_section_name2(server_cs));
-						return -1;
-					}
-				}
-			}
-
-			/*
-			 *	Maybe it's a valid namespace, but we
-			 *	just don't have a dictionary for it.
-			 *	Load the dictionary now.
-			 */
-			if (!found) {
-				char const *value = virtual_servers[i]->namespace;
-
-				if (fr_dict_protocol_afrom_file(&dict, value, NULL) == 0) {
-					virtual_server_dict_set(server_cs, dict, true);
-				}
-			}
-		}
-
 	}
 
 	return 0;
