@@ -792,7 +792,7 @@ static inline void fr_dlist_recursive_sort(fr_dlist_head_t *head, void **ptr, fr
  *
  * @note This routine temporarily breaks the doubly linked nature of the list
  *
- * @param[in, out] list	to sort
+ * @param[in,out] list	to sort
  * @param[in] cmp	comparison function to sort with
  */
 static inline void fr_dlist_sort (fr_dlist_head_t *list, fr_cmp_t cmp)
