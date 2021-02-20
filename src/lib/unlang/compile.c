@@ -3021,7 +3021,7 @@ get_packet_type:
 	t_rules = *unlang_ctx->rules;
 	t_rules.parent = unlang_ctx->rules;
 	t_rules.dict_def = dict;
-	t_rules.allow_foreign = true;
+	t_rules.allow_foreign = false;
 
 	unlang_ctx2.actions = unlang_ctx->actions;
 
