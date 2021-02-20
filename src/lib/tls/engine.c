@@ -69,8 +69,8 @@ static rbtree_t	*tls_engines;
  */
 static int tls_engine_cmp(void const *a, void const *b)
 {
-	tls_engine_t const *our_a = talloc_get_type_abort(a, tls_engine_t);
-	tls_engine_t const *our_b = talloc_get_type_abort(b, tls_engine_t);
+	tls_engine_t const *our_a = talloc_get_type_abort_const(a, tls_engine_t);
+	tls_engine_t const *our_b = talloc_get_type_abort_const(b, tls_engine_t);
 	int8_t ret;
 
 	ret = strcmp(our_a->id, our_b->id);
