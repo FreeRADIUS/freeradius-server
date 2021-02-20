@@ -13101,7 +13101,7 @@ else
 
 
     CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror -Weverything -Wno-reserved-id-macro -Wno-unused-macros -Wno-unreachable-code-return"
+    CFLAGS="$CFLAGS -Werror -Weverything -Wno-reserved-id-macro -Wno-unused-macros -Wno-unreachable-code-return -Wno-poison-system-directories"
 
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
