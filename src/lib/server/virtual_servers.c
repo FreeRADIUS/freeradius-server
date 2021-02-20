@@ -105,7 +105,9 @@ static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 static int fr_app_process_bootstrap(CONF_SECTION *server);
 static int fr_app_process_instantiate(CONF_SECTION *server);
 
-static const CONF_PARSER listen_on_read_config[] = {
+static const CONF_PARSER server_on_read_config[] = {
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
+
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener), \
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
@@ -121,23 +123,19 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 	 */
 	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers), \
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
-			  .subcs = (void const *) listen_on_read_config, .ident2 = CF_IDENT_ANY,
+			  .subcs = (void const *) server_on_read_config, .ident2 = CF_IDENT_ANY,
 			  .on_read = server_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER server_config[] = {
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
+
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener),		\
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
-
-	CONF_PARSER_TERMINATOR
-};
-
-static const CONF_PARSER namespace_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -241,21 +239,26 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 }
 
 
-/** Callback to set up listen_on_read
+/** Callback when a "server" section is created.
+ *
+ *  This callback exists only as a place-holder to ensure that the
+ *  listen_on_read function is called.  The conf file routines won't
+ *  recurse into every CONF_PARSER section to check if there's an
+ *  "on_read" callback.  So this place-holder is a signal.
  *
  * @param[in] ctx	to allocate data in.
- * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_server_t structure.
+ * @param[out] out	Unused
  * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_SECTION containing the listen section.
+ * @param[in] ci	#CONF_SECTION containing the server section.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			  UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	return cf_section_rules_push(cf_item_to_section(ci), namespace_config);
+	return 0;
 }
 
 /** dl_open a proto_* module
