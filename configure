@@ -13158,6 +13158,7 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
     	-Wno-gnu-zero-variadic-macro-arguments \
     	-Wno-packed \
     	-Wno-padded \
+    	-Wno-poison-system-directories \
     	-Wno-reserved-id-macro \
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \

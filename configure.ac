@@ -1725,6 +1725,7 @@ if test "x$developer" = "xyes"; then
     	-Wno-gnu-zero-variadic-macro-arguments \
     	-Wno-packed \
     	-Wno-padded \
+    	-Wno-poison-system-directories \
     	-Wno-reserved-id-macro \
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
