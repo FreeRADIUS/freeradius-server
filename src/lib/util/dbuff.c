@@ -34,6 +34,7 @@ RCSID("$Id$")
 #  define CHECK_DBUFF_INIT(_sbuff)
 #endif
 
+DIAG_OFF(overlength-strings)	/* Seems broken */
 /** Internal macro for defining dbuff move functions
  * @private
  */
@@ -60,6 +61,7 @@ FR_DBUFF_MOVE_DEF(dbuff, dbuff)
 FR_DBUFF_MOVE_DEF(dbuff, dbuff_marker)
 FR_DBUFF_MOVE_DEF(dbuff_marker, dbuff)
 FR_DBUFF_MOVE_DEF(dbuff_marker, dbuff_marker)
+DIAG_ON(overlength-strings)
 
 static inline CC_HINT(always_inline) size_t min(size_t x, size_t y)
 {

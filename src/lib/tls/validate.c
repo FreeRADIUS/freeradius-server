@@ -39,6 +39,7 @@
 #include "base.h"
 #include "missing.h"
 
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Validates a certificate using custom logic
  *
  * Before trusting a certificate, we make sure that the certificate is
@@ -346,6 +347,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	RDEBUG2("[verify client] = %s", my_ok ? "ok" : "invalid");
 	return my_ok;
 }
+DIAG_ON(used-but-marked-unused)
 
 /** Revalidates the client's certificate chain
  *

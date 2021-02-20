@@ -57,6 +57,7 @@ typedef enum {
  */
 #define OCSP_MAX_VALIDITY_PERIOD (5 * 60)
 
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Extract components of OCSP responser URL from a certificate
  *
  * @param[in] cert to extract URL from.
@@ -90,6 +91,7 @@ static int ocsp_cert_url_parse(X509 *cert, char **host_out, char **port_out, cha
 	}
 	return found_uri ? -1 : 0;
 }
+DIAG_ON(used-but-marked-unused)
 
 /** Set the OCSP TLS stapling extension for a SSL session, from cached response data
  *
@@ -169,6 +171,7 @@ static int ocsp_staple_to_pair(fr_pair_t **out, request_t *request, OCSP_RESPONS
 	return 0;
 }
 
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Callback used to get stapling data for the current server cert
  *
  * @param ssl	Current SSL session.
@@ -326,6 +329,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 	return ret;
 }
 
+DIAG_ON(used-but-marked-unused)
 /** Sends a OCSP request to a defined OCSP responder
  *
  */

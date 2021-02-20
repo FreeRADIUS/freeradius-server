@@ -36,7 +36,7 @@ fr_dict_autoload_t method_dict[] = {
 	{ NULL }
 };
 
-fr_dict_attr_t const *attr_module_method;
+static fr_dict_attr_t const *attr_module_method;
 
 extern fr_dict_attr_autoload_t module_method_attr[];
 fr_dict_attr_autoload_t module_method_attr[] = {

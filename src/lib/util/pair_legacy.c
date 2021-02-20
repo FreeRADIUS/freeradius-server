@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-fr_sbuff_term_t const 		bareword_terminals =
+static fr_sbuff_term_t const 	bareword_terminals =
 				FR_SBUFF_TERMS(
 					L("\t"),
 					L("\n"),

@@ -33,15 +33,11 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#ifndef NDEBUG
-#  define FREE_MAGIC (0xF4EEF4EE)
-#endif
-
 /** Initialise a pair list header
  *
  * @param[in,out] list to initialise
  */
-inline void fr_pair_list_init(fr_pair_list_t *list)
+void fr_pair_list_init(fr_pair_list_t *list)
 {
 	fr_dlist_talloc_init(&list->head, fr_pair_t, entry);
 }
@@ -373,7 +369,7 @@ void fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
  *
  * @hidecallergraph
  */
-inline void fr_pair_list_free(fr_pair_list_t *list)
+void fr_pair_list_free(fr_pair_list_t *list)
 {
 	fr_dlist_talloc_free(&list->head);
 }
@@ -385,7 +381,7 @@ inline void fr_pair_list_free(fr_pair_list_t *list)
  *
  * @hidecallergraph
  */
-inline bool fr_pair_list_empty(fr_pair_list_t const *list)
+bool fr_pair_list_empty(fr_pair_list_t const *list)
 {
 	return fr_dlist_empty(&list->head);
 }
@@ -577,7 +573,7 @@ static inline CC_HINT(always_inline) fr_pair_list_t *pair_children(fr_pair_t *vp
  *	- NULL on error
  *	- pointer to head of the child list.
  */
-inline fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
+fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
 {
 	return pair_children(vp);
 }
@@ -591,7 +587,7 @@ inline fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
  *	- pointer to the first item in the list.
  * @hidecallergraph
  */
-inline void *fr_pair_list_head(fr_pair_list_t const *list)
+void *fr_pair_list_head(fr_pair_list_t const *list)
 {
 	return fr_dlist_head(&list->head);
 }
@@ -605,7 +601,7 @@ inline void *fr_pair_list_head(fr_pair_list_t const *list)
  *	- pointer to the next item
  * @hidecallergraph
  */
-inline void *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
+void *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
 {
 	return fr_dlist_next(&list->head, item);
 }
@@ -618,7 +614,7 @@ inline void *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item
  *	- NULL if the head of the list has been reached
  *	- pointer to the previous item
  */
-inline void *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
+void *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
 {
 	return fr_dlist_prev(&list->head, item);
 }
@@ -631,7 +627,7 @@ inline void *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item
  *	- NULL if the list is empty
  *	- pointer to the last item in the list.
  */
-inline void *fr_pair_list_tail(fr_pair_list_t const *list)
+void *fr_pair_list_tail(fr_pair_list_t const *list)
 {
 	return fr_dlist_tail(&list->head);
 }
@@ -2526,7 +2522,7 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
  *
  * @return number of entries in the list
  */
-inline size_t fr_pair_list_len(fr_pair_list_t const *list)
+size_t fr_pair_list_len(fr_pair_list_t const *list)
 {
 	return list->head.num_elements;
 }

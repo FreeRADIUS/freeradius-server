@@ -378,8 +378,8 @@ static bool session_psk_identity_is_safe(const char *identity)
  *	- >0 if a PSK matching identity was found (the length of bytes written to psk).
  */
 unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
-				       char *identity, unsigned int max_identity_len,
-				       unsigned char *psk, unsigned int max_psk_len)
+					  char *identity, unsigned int max_identity_len,
+					  unsigned char *psk, unsigned int max_psk_len)
 {
 	unsigned int psk_len;
 	fr_tls_conf_t *conf;
@@ -488,6 +488,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 }
 #endif /* PSK_MAX_IDENTITY_LEN */
 
+DIAG_OFF(used-but-marked-unused)	/* Fix spurious warnings for sk_ macros */
 /** Record session state changes
  *
  * Called by OpenSSL whenever the session state changes, an alert is received or an error occurs.
@@ -601,6 +602,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 		}
 	}
 }
+DIAG_ON(used-but-marked-unused)
 
 /** Print a message to the request or global log detailing handshake state
  *
@@ -860,6 +862,7 @@ static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t
 	return vp;
 }
 
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Extract attributes from an X509 certificate
  *
  * @param pair_list	to copy attributes to.
@@ -872,7 +875,7 @@ static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t
  *	- < 0 on failure.
  */
 int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx,
-				     fr_tls_session_t *session, X509 *cert, int depth)
+					fr_tls_session_t *session, X509 *cert, int depth)
 {
 	char		buffer[1024];
 	char		attribute[256];
@@ -1105,6 +1108,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 	return 0;
 }
+DIAG_ON(used-but-marked-unused)
 
 /** Decrypt application data
  *

@@ -254,6 +254,7 @@ static void _tls_ctx_print_cert_line(char const *file, int line,
 	}
 }
 
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Print out the current stack of certs
  *
  * @param[in] file	File where this function is being called.
@@ -272,7 +273,7 @@ void _fr_tls_log_certificate_chain(char const *file, int line,
 	}
 	_tls_ctx_print_cert_line(file, line, request, i, cert);
 }
-
+DIAG_ON(used-but-marked-unused)
 
 /** Print errors raised by OpenSSL I/O functions
  *
