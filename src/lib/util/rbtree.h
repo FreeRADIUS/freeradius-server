@@ -166,17 +166,24 @@ void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
  */
 int		rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, void *uctx);
 
-/** Iterator structure for traversal of an rbtree
+/** Iterator structure for pre- or post-order traversal of an rbtreer
+ */
+typedef struct {
+	rbtree_t	*tree;			//!< Tree being iterated over.
+	fr_rb_node_t	*node;			///< current node
+} fr_rb_tree_iter_t;
+
+/** Iterator structure for in-order traversal of an rbtree
  */
 typedef struct {
 	rbtree_t	*tree;			//!< Tree being iterated over.
 	fr_rb_node_t	*node;			///< current node--set to NULL (not NIL) by rbtree_iter_delete()
 	fr_rb_node_t	*next;			///< if non-NULL, next node cached by rbtree_iter_delete()
-} fr_rb_tree_iter_t;
+} fr_rb_tree_iter_inorder_t;
 
-void		*rbtree_iter_init_inorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HINT(nonnull);
+void		*rbtree_iter_init_inorder(fr_rb_tree_iter_inorder_t *iter, rbtree_t *tree) CC_HINT(nonnull);
 
-void		*rbtree_iter_next_inorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
+void		*rbtree_iter_next_inorder(fr_rb_tree_iter_inorder_t *iter) CC_HINT(nonnull);
 
 void		*rbtree_iter_init_preorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HINT(nonnull);
 
@@ -186,9 +193,21 @@ void		*rbtree_iter_init_postorder(fr_rb_tree_iter_t *iter, rbtree_t *tree) CC_HI
 
 void		*rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
 
-void		rbtree_iter_done(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
+void		rbtree_iter_inorder_delete(fr_rb_tree_iter_inorder_t *iter);
 
-void		rbtree_iter_delete(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
+/** Explicitly unlock the tree
+ *
+ * @note Must be called if iterating over the tree ends early.
+ *
+ * @param[in] iter	previously initialised with #rbtree_iter_init
+ */
+#define rbtree_iter_done(_iter) \
+	(_Generic(_iter), \
+		(fr_rb_tree_iter_t *)		: (void) (((fr_rb_tree_iter_t *)(_iter)->lock) ? \
+							pthread_mutex_unlock((fr_rb_tree_iter_t *)(_iter)->lock) : 0),  \
+		(fr_rb_tree_iter_inorder_t *)	: (void) (((fr_rb_tree_iter_inorder_t *)(_iter)->lock) ? \
+							pthread_mutex_unlock((fr_rb_tree_iter_inorder_t *)(_iter)->lock) : 0),  \
+	)
 
 #ifdef __cplusplus
 }
