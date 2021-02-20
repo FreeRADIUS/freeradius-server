@@ -214,16 +214,38 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 {
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
-	char const		*value = cf_pair_value(cp);
+	char const		*namespace = cf_pair_value(cp);
+	char const		*file;
+	char const		*dir = NULL;
 	fr_dict_t		*dict;
 
-	if (!value || !*value) {
+	if (!namespace || !*namespace) {
 		cf_log_err(ci, "Missing value for 'namespace'");
 		return -1;
 	}
 
-	if (fr_dict_protocol_afrom_file(&dict, value, NULL) < 0) {
-		cf_log_warn(ci, "No such dictionary '%s'.  The server will likely fail", value);
+	/*
+	 *	The "control" socket does not have a dictionary.
+	 */
+	if (strcmp(namespace, "control") == 0) {
+		return 0;
+	}
+
+	file = namespace;	/* the default */
+
+	/*
+	 *	These are all equivalent.  Rewrite the names to be our
+	 *	canonical version.
+	 */
+	if ((strcmp(namespace, "eap-aka-prime") == 0) ||
+	    (strcmp(namespace, "eap-aka") == 0) ||
+	    (strcmp(namespace, "eap-sim") == 0)) {
+		dir = "eap/aka-sim";
+		file = "eap-aka-sim";
+	}
+
+	if (fr_dict_protocol_afrom_file(&dict, file, dir) < 0) {
+		cf_log_warn(ci, "Failed loading namespace '%s' - %s", namespace, fr_strerror());
 		return 0;
 	}
 
