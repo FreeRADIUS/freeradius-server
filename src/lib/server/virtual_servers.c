@@ -96,6 +96,7 @@ static rbtree_t *server_section_name_tree = NULL;
 
 static int server_section_name_cmp(void const *one, void const *two);
 
+static int namespace_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
@@ -106,7 +107,8 @@ static int fr_app_process_bootstrap(CONF_SECTION *server);
 static int fr_app_process_instantiate(CONF_SECTION *server);
 
 static const CONF_PARSER server_on_read_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_REQUIRED, fr_virtual_server_t, namespace),
+			.on_read = namespace_on_read },
 
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener), \
@@ -130,7 +132,7 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 };
 
 static const CONF_PARSER server_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace), },
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_REQUIRED, fr_virtual_server_t, namespace), },
 
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener),		\
@@ -194,6 +196,39 @@ void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, boo
 	talloc_set_destructor(p, _virtual_server_dict_free);
 
 	cf_data_add(server_cs, p, "dictionary", true);
+}
+
+/** Parse a "namespace" parameter.
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	always NULL
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_SECTION containing the listen section.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	CONF_PAIR		*cp = cf_item_to_pair(ci);
+	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
+	char const		*value = cf_pair_value(cp);
+	fr_dict_t		*dict;
+
+	if (!value || !*value) {
+		cf_log_err(ci, "Missing value for 'namespace'");
+		return -1;
+	}
+
+	if (fr_dict_protocol_afrom_file(&dict, value, NULL) < 0) {
+		cf_log_warn(ci, "No such dictionary '%s'.  The server will likely fail", value);
+		return 0;
+	}
+
+	virtual_server_dict_set(server_cs, dict, true);
+	return 0;
 }
 
 /** dl_open a proto_* module
