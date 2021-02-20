@@ -139,7 +139,7 @@ typedef struct {
 
 static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, tmpl_rules_t const *rules)
 {
-	if (cf_section_find_in_parent(cs, "policy", NULL)) {
+	if (cf_section_has_parent(cs, "policy", NULL)) {
 		if (!fr_cond_assert_msg(!rules->dict_def || (rules->dict_def == fr_dict_internal()),
 					"Protocol dictionary must be NULL not %s",
 					fr_dict_root(rules->dict_def)->name)) return -1;
