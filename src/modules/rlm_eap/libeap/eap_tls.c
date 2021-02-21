@@ -775,11 +775,12 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 		if (conf->tls13_send_zero) {
 			RDEBUG("TLS send Commitment Message");
 			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
-			tls_handshake_send(request, tls_session);
 		} else {
 			RDEBUG("TLS sending close_notify");
 			SSL_shutdown(tls_session->ssl);
 		}
+
+		tls_handshake_send(request, tls_session);
 	}
 #endif
 
