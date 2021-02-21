@@ -1735,26 +1735,26 @@ if test "x$developer" = "xyes"; then
   else
     if test "x$GCC" = "xyes"; then
       devcflags="$devcflags \
-      	-Wshadow \
-      	-Wpointer-arith \
-      	-Wcast-qual \
-      	-Wcast-align \
-      	-Wwrite-strings \
-      	-Wstrict-prototypes \
-      	-Wmissing-prototypes \
-      	-Wmissing-declarations \
-      	-Wnested-externs \
       	-W \
-      	-Wredundant-decls \
-      	-Wundef \
-      	-Wformat-y2k \
-      	-Wno-missing-field-initializers \
-      	-Wno-format-extra-args \
-      	-Wno-format-zero-length \
-      	-Wno-cast-align \
+      	-Wcast-align \
+      	-Wcast-qual \
       	-Wformat-nonliteral \
       	-Wformat-security \
+      	-Wformat-y2k \
       	-Wformat=2 \
+      	-Wmissing-declarations \
+      	-Wmissing-prototypes \
+      	-Wnested-externs \
+      	-Wno-cast-align \
+      	-Wno-format-extra-args \
+      	-Wno-format-zero-length \
+      	-Wno-missing-field-initializers \
+      	-Wpointer-arith \
+      	-Wredundant-decls \
+      	-Wshadow \
+      	-Wstrict-prototypes \
+      	-Wundef \
+      	-Wwrite-strings \
 	$verify_ptr"
       INSTALLSTRIP=""
     fi
