@@ -167,9 +167,10 @@ Useful range of values: `5` to `120`
 
 
 
-max_requests:: The maximum number of requests which the server keeps
-track of.  This should be `256` multiplied by the number of clients.
-e.g. With `4` clients, this number should be `1024`.
+max_requests:: The maximum number of requests which the server
+keeps track of.  This should be at least `256` multiplied by the
+number of clients.  e.g. With `4` clients, this number should be
+`1024`.
 
 If this number is too low, then when the server becomes busy,
 it will not respond to any new requests, until the 'cleanup_delay'
@@ -181,6 +182,9 @@ memory for no real benefit.
 If you aren't sure what it should be set to, it's better to set it
 too high than too low.  Setting it to `1000` per client is probably
 the highest it should be.
+
+Unlike v3, this setting is per worker thread, and is not global to
+the server.
 
 Useful range of values: `256` to `infinity`
 
@@ -719,7 +723,7 @@ modules {
 	$INCLUDE mods-enabled/
 }
 instantiate {
-#	daily
+#	dailycounter
 #	redundant redundant_sql {
 #	}
 }

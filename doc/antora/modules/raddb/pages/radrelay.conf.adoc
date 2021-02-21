@@ -247,7 +247,7 @@ as prefix/suffix stripping, or comparisons.
 == Default Configuration
 
 ```
-prefix = /tmp/freeradius/install
+prefix = /Users/alandekok/git/wrapper//install
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var

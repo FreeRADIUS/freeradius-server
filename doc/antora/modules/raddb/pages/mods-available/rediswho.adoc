@@ -29,6 +29,20 @@ a whole.
 
 
 
+database:: Select the Redis logical database having the specified zero-based numeric index.
+
+
+
+port:: Port to connect to
+The default port is 6379.
+
+
+password:: The password used to authenticate to the server.
+
+We recommend using a strong password.
+
+
+
 trim_count:: How many sessions to keep track of per user.
 
 If there are more than this number, older sessions are deleted.
@@ -84,6 +98,9 @@ of the appropriate name, along with insert / trim / expire queries.
 ```
 rediswho {
 	server = 127.0.0.1
+#	database = 0
+	port = 6379
+#	password = thisisreallysecretandhardtoguess
 	trim_count = 15
 	expire_time = 86400
 	Start {

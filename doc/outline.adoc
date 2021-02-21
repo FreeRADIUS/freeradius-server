@@ -2,8 +2,8 @@ This file gives an outline for the overall Antora documentation.  We
 are in the process of making the docs match this outline.
 
 * Introduction
- * Documentation overview
  * What is FreeRADIUS
+ * Documentation overview
  * Getting Help
   * mailing lists
   * support
@@ -23,6 +23,7 @@ are in the process of making the docs match this outline.
   * upgrades
 
 * Common Issues and Fixes
+ * how to debug / methodological approach
  * debugging
  * radiusd-X - how to read it
  * common error messages and what to do about them

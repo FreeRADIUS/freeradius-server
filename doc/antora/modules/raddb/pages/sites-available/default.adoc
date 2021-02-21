@@ -1498,8 +1498,8 @@ send Access-Accept {
 #		&WiMAX-MN-NAI = "%{User-Name}"
 #	}
 #	update reply {
-#		&WiMAX-FA-RK-Key = 0x00
-#		&WiMAX-MSK = "%{reply.EAP-MSK}"
+#		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
+#		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
 #	}
 #	wimax
 #	update reply {
