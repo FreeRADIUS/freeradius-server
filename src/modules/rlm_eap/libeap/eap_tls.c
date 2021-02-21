@@ -1021,7 +1021,19 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 						rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
 						fr_pair_add(&request->packet->vps, fr_pair_copy(request->packet, vp));
 					}
+
+				} else if ((vp->da->vendor == 0) &&
+					   (vp->da->attr == PW_EAP_TYPE)) {
+					/*
+					 *	EAP-Type gets added to
+					 *	the control list, so
+					 *	that we can sanity check it.
+					 */
+					rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+					fr_pair_add(&request->config, fr_pair_copy(request, vp));
+
 				} else {
+
 					rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
 					fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
 				}

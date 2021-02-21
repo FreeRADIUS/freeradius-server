@@ -4364,6 +4364,9 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->packet->vps, PW_STRIPPED_USER_DOMAIN, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
 
+		vp = fr_pair_list_copy_by_num(talloc_ctx, request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
+		if (vp) fr_pair_add(&vps, vp);
+
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_CHARGEABLE_USER_IDENTITY, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
 
