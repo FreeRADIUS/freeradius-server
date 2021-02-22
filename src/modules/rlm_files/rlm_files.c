@@ -89,7 +89,7 @@ static const CONF_PARSER module_config[] = {
 
 static int pairlist_cmp(void const *a, void const *b)
 {
-	return strcmp(((PAIR_LIST const *)a)->name, ((PAIR_LIST const *)b)->name);
+	return strcmp(((PAIR_LIST_LIST const *)a)->name, ((PAIR_LIST_LIST const *)b)->name);
 }
 
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
