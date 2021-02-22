@@ -13039,60 +13039,6 @@ if test "x$developer" = "xyes"; then
 $as_echo "$as_me: Setting additional developer CFLAGS" >&6;}
 
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wdocumentation\"" >&5
-$as_echo_n "checking for the compiler flag \"-Wdocumentation\"... " >&6; }
-if ${ax_cv_cc_wdocumentation_flag+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-
-
-    CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror -Wdocumentation"
-
-    ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main ()
-{
-return 0;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  ax_cv_cc_wdocumentation_flag="yes"
-else
-  ax_cv_cc_wdocumentation_flag="no"
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-
-    CFLAGS="$CFLAGS_SAVED"
-
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_wdocumentation_flag" >&5
-$as_echo "$ax_cv_cc_wdocumentation_flag" >&6; }
-
-  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
-    devcflags="-Wdocumentation"
-
-$as_echo "#define HAVE_WDOCUMENTATION 1" >>confdefs.h
-
-  fi
-
-
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Weverything\"" >&5
 $as_echo_n "checking for the compiler flag \"-Weverything\"... " >&6; }
 if ${ax_cv_cc_weverything_flag+:} false; then :
@@ -13191,6 +13137,60 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
 	$verify_ptr"
       INSTALLSTRIP=""
     fi
+  fi
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wdocumentation\"" >&5
+$as_echo_n "checking for the compiler flag \"-Wdocumentation\"... " >&6; }
+if ${ax_cv_cc_wdocumentation_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wdocumentation"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_wdocumentation_flag="yes"
+else
+  ax_cv_cc_wdocumentation_flag="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_wdocumentation_flag" >&5
+$as_echo "$ax_cv_cc_wdocumentation_flag" >&6; }
+
+  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
+    devcflags="$devcflags -Wdocumentation"
+
+$as_echo "#define HAVE_WDOCUMENTATION 1" >>confdefs.h
+
   fi
 
 

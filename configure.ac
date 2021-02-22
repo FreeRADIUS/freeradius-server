@@ -1693,15 +1693,6 @@ if test "x$developer" = "xyes"; then
   AC_MSG_NOTICE([Setting additional developer CFLAGS])
 
   dnl #
-  dnl #  Tell the compiler to parse doxygen documentation and verify it against function and variable declarations
-  dnl #
-  AX_CC_WDOCUMENTATION_FLAG
-  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
-    devcflags="-Wdocumentation"
-    AC_DEFINE([HAVE_WDOCUMENTATION],1,[Define if the compiler supports -Wdocumentation])
-  fi
-
-  dnl #
   dnl #  If we have -Weverything, it really means *everything* unlike -Wall
   dnl #  It's so verbose we need to turn off warnings which aren't useful.
   dnl #
@@ -1736,6 +1727,7 @@ if test "x$developer" = "xyes"; then
     if test "x$GCC" = "xyes"; then
       devcflags="$devcflags \
       	-W \
+      	-Wall \
       	-Wcast-align \
       	-Wcast-qual \
       	-Wformat-nonliteral \
@@ -1758,6 +1750,15 @@ if test "x$developer" = "xyes"; then
 	$verify_ptr"
       INSTALLSTRIP=""
     fi
+  fi
+
+  dnl #
+  dnl #  Tell the compiler to parse doxygen documentation and verify it against function and variable declarations
+  dnl #
+  AX_CC_WDOCUMENTATION_FLAG
+  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
+    devcflags="$devcflags -Wdocumentation"
+    AC_DEFINE([HAVE_WDOCUMENTATION],1,[Define if the compiler supports -Wdocumentation])
   fi
 
   dnl #
