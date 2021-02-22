@@ -314,9 +314,10 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 				   request_t *request, char const *filename, rbtree_t *tree)
 {
 	char const		*name;
+	PAIR_LIST_LIST const	*user_list, *default_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false;
-	PAIR_LIST		my_pl;
+	PAIR_LIST_LIST		my_list;
 	char			buffer[256];
 
 	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
@@ -326,10 +327,12 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 	if (!tree) RETURN_MODULE_NOOP;
 
-	my_pl.name = name;
-	user_pl = rbtree_finddata(tree, &my_pl);
-	my_pl.name = "DEFAULT";
-	default_pl = rbtree_finddata(tree, &my_pl);
+	my_list.name = name;
+	user_list = rbtree_finddata(tree, &my_list);
+	user_pl = (user_list) ? fr_dlist_head(&user_list->head) : NULL;
+	my_list.name = "DEFAULT";
+	default_list = rbtree_finddata(tree, &my_list);
+	default_pl = (default_list) ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
 	 *	Find the entry for the user.
@@ -347,19 +350,19 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
-			user_pl = user_pl->next;
+			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else if (!user_pl && default_pl) {
 			pl = default_pl;
-			default_pl = default_pl->next;
+			default_pl = fr_dlist_next(&default_list->head, default_pl);
 
 		} else if (user_pl->order < default_pl->order) {
 			pl = user_pl;
-			user_pl = user_pl->next;
+			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else {
 			pl = default_pl;
-			default_pl = default_pl->next;
+			default_pl = fr_dlist_next(&default_list->head, default_pl);
 		}
 
 		fr_pair_list_init(&list);
