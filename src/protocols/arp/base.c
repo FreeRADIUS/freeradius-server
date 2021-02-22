@@ -52,7 +52,7 @@ fr_dict_attr_t const *attr_arp_packet;
 
 extern fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[] = {
-	{ .out = &attr_arp_packet, .name = "Arp-Packet", .type = FR_TYPE_STRUCT, .dict = &dict_arp },
+	{ .out = &attr_arp_packet, .name = "arp", .type = FR_TYPE_STRUCT, .dict = &dict_arp },
 	{ NULL }
 };
 

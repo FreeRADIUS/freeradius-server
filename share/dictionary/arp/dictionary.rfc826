@@ -11,46 +11,46 @@
 #
 ##############################################################################
 
-ATTRIBUTE	ARP-Packet				1	struct
-MEMBER		Hardware-Format				uint16
+ATTRIBUTE	arp				1	struct
+MEMBER		hardware-format				uint16
 
-VALUE	Hardware-Format			Ethernet		1
+VALUE	hardware-format			Ethernet		1
 
-MEMBER		Protocol-Format				uint16
+MEMBER		protocol-format				uint16
 
-VALUE	Protocol-Format			IPv4			0x0800
+VALUE	protocol-format			IPv4			0x0800
 
-MEMBER		Hardware-Address-Length			uint8
-MEMBER		Protocol-Address-Length			uint8
-MEMBER		Packet-Type				uint16
+MEMBER		hardware-address-length			uint8
+MEMBER		protocol-address-length			uint8
+MEMBER		packet-type				uint16
 
-VALUE	Packet-Type			Request			1
-VALUE	Packet-Type			Reply			2
-VALUE	Packet-Type			Reverse-Request		3
-VALUE	Packet-Type			Reverse-Reply		4
-VALUE	Packet-Type			DRARP-Request		5
-VALUE	Packet-Type			DRARP-Reply		6
-VALUE	Packet-Type			DRARP-Error		7
-VALUE	Packet-Type			InARP-Request		8
-VALUE	Packet-Type			InARP-Reply		9
-VALUE	Packet-Type			ARP-NAK			10
-VALUE	Packet-Type			MARS-Request		11
-VALUE	Packet-Type			MARS-Multi		12
-VALUE	Packet-Type			MARS-MServ		13
-VALUE	Packet-Type			MARS-Join		14
-VALUE	Packet-Type			MARS-Leave		15
-VALUE	Packet-Type			MARS-NAK		16
-VALUE	Packet-Type			MARS-Unserv		17
-VALUE	Packet-Type			MARS-SJoin		18
-VALUE	Packet-Type			MARS-SLeave		19
-VALUE	Packet-Type			MARS-Grouplist-Request	20
-VALUE	Packet-Type			MARS-Grouplist-Reply	21
-VALUE	Packet-Type			MARS-Redirect-MAP	22
-VALUE	Packet-Type			MAPOS-UNARP		23
-VALUE	Packet-Type			OP_EXP1			24
-VALUE	Packet-Type			OP_EXP2			25
+VALUE	packet-type			Request			1
+VALUE	packet-type			Reply			2
+VALUE	packet-type			Reverse-Request		3
+VALUE	packet-type			Reverse-Reply		4
+VALUE	packet-type			DRARP-Request		5
+VALUE	packet-type			DRARP-Reply		6
+VALUE	packet-type			DRARP-Error		7
+VALUE	packet-type			InARP-Request		8
+VALUE	packet-type			InARP-Reply		9
+VALUE	packet-type			ARP-NAK			10
+VALUE	packet-type			MARS-Request		11
+VALUE	packet-type			MARS-Multi		12
+VALUE	packet-type			MARS-MServ		13
+VALUE	packet-type			MARS-Join		14
+VALUE	packet-type			MARS-Leave		15
+VALUE	packet-type			MARS-NAK		16
+VALUE	packet-type			MARS-Unserv		17
+VALUE	packet-type			MARS-SJoin		18
+VALUE	packet-type			MARS-SLeave		19
+VALUE	packet-type			MARS-Grouplist-Request	20
+VALUE	packet-type			MARS-Grouplist-Reply	21
+VALUE	packet-type			MARS-Redirect-MAP	22
+VALUE	packet-type			MAPOS-UNARP		23
+VALUE	packet-type			OP_EXP1			24
+VALUE	packet-type			OP_EXP2			25
 
-MEMBER		Sender-Hardware-Address			ether
-MEMBER		Sender-Protocol-Address			ipaddr
-MEMBER		Target-Hardware-Address			ether
-MEMBER		Target-Protocol-Address			ipaddr
+MEMBER		sender-hardware-address			ether
+MEMBER		sender-protocol-address			ipaddr
+MEMBER		target-hardware-address			ether
+MEMBER		target-protocol-address			ipaddr
