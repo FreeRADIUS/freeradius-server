@@ -16,34 +16,41 @@
 
 /**
  * $Id$
- * @file proto_arp/proto_arp_process.c
+ * @file src/process/arp/base.c
  * @brief ARP processing.
  *
  * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
  */
-#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/arp/arp.h>
 #include <freeradius-devel/protocol/arp/rfc826.h>
 
 static fr_dict_t const *dict_arp;
 
-extern fr_dict_autoload_t proto_arp_process_dict[];
-fr_dict_autoload_t proto_arp_process_dict[] = {
+extern fr_dict_autoload_t process_arp_dict[];
+fr_dict_autoload_t process_arp_dict[] = {
 	{ .out = &dict_arp, .proto = "arp" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_packet_type;
 
-extern fr_dict_attr_autoload_t proto_arp_process_dict_attr[];
-fr_dict_attr_autoload_t proto_arp_process_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT16, .dict = &dict_arp},
+extern fr_dict_attr_autoload_t process_arp_dict_attr[];
+fr_dict_attr_autoload_t process_arp_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_arp},
 	{ NULL }
+};
+
+typedef struct arp_base_s {
+	bool		test;
+} arp_base_t;
+
+static const CONF_PARSER config[] = {
+	{ FR_CONF_OFFSET("test", FR_TYPE_BOOL, arp_base_t, test), .dflt = "yes" },
+	CONF_PARSER_TERMINATOR
 };
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
@@ -264,10 +271,13 @@ static const virtual_server_compile_t compile_list[] = {
 };
 
 
-extern fr_app_worker_t proto_arp_process;
-fr_app_worker_t proto_arp_process = {
+extern fr_process_module_t process_arp;
+fr_process_module_t process_arp = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "arp_process",
-	.entry_point	= mod_process,
+	.name		= "process_arp",
+	.config		= config,
+	.inst_size	= sizeof(arp_base_t),
+	.process	= mod_process,
 	.compile_list	= compile_list,
+	.dict		= &dict_arp,
 };
