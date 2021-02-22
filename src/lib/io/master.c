@@ -1276,19 +1276,23 @@ do_read:
 		 *	function has done any complaining, if
 		 *	necessary.
 		 */
-		value = inst->app->priority(inst->app_instance, buffer, packet_len);
-		if (value <= 0) {
+		if (inst->app->priority) {
+			value = inst->app->priority(inst->app_instance, buffer, packet_len);
+			if (value <= 0) {
 
-			/*
-			 *	@todo - unix sockets.  We need to use
-			 *	the "name" of the socket, in the
-			 *	listener?
-			 */
-			DEBUG2("proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
-			       inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
-			return 0;
+				/*
+				 *	@todo - unix sockets.  We need to use
+				 *	the "name" of the socket, in the
+				 *	listener?
+				 */
+				DEBUG2("proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
+				       inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				return 0;
+			}
+			*priority = value;
+		} else {
+			*priority = PRIORITY_NORMAL;
 		}
-		*priority = value;
 
 		/*
 		 *	If the connection is pending, pause reading of
