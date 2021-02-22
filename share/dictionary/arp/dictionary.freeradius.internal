@@ -1,0 +1,45 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Non Protocol Attributes used by FreeRADIUS
+#
+#	$Id$
+#
+
+#
+#	All of these attributes are internal.
+#
+FLAGS	internal
+
+ATTRIBUTE		Packet-Type				1000 uint32
+
+#
+#  @todo - clone from header.packet-type
+#
+VALUE	Packet-Type			Request			1
+VALUE	Packet-Type			Reply			2
+VALUE	Packet-Type			Reverse-Request		3
+VALUE	Packet-Type			Reverse-Reply		4
+VALUE	Packet-Type			DRARP-Request		5
+VALUE	Packet-Type			DRARP-Reply		6
+VALUE	Packet-Type			DRARP-Error		7
+VALUE	Packet-Type			InARP-Request		8
+VALUE	Packet-Type			InARP-Reply		9
+VALUE	Packet-Type			ARP-NAK			10
+VALUE	Packet-Type			MARS-Request		11
+VALUE	Packet-Type			MARS-Multi		12
+VALUE	Packet-Type			MARS-MServ		13
+VALUE	Packet-Type			MARS-Join		14
+VALUE	Packet-Type			MARS-Leave		15
+VALUE	Packet-Type			MARS-NAK		16
+VALUE	Packet-Type			MARS-Unserv		17
+VALUE	Packet-Type			MARS-SJoin		18
+VALUE	Packet-Type			MARS-SLeave		19
+VALUE	Packet-Type			MARS-Grouplist-Request	20
+VALUE	Packet-Type			MARS-Grouplist-Reply	21
+VALUE	Packet-Type			MARS-Redirect-MAP	22
+VALUE	Packet-Type			MAPOS-UNARP		23
+VALUE	Packet-Type			OP_EXP1			24
+VALUE	Packet-Type			OP_EXP2			25

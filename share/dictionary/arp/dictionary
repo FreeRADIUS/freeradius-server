@@ -11,6 +11,7 @@
 PROTOCOL	ARP		8
 BEGIN-PROTOCOL	ARP
 
+$INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc826
 
 END-PROTOCOL	ARP
