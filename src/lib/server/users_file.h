@@ -36,15 +36,13 @@ extern "C" {
 #include <freeradius-devel/util/talloc.h>
 
 typedef struct pair_list {
-	fr_rb_node_t		node;		//!< Entry into the tree of pair lists.
-
-	char const		*name;
-	fr_map_list_t		check;
-	fr_map_list_t		reply;
-	int			order;
-	char const		*filename;
-	int			lineno;
-	struct pair_list	*next;
+	char const		*name;		//!< Key for matching entry.
+	fr_map_list_t		check;		//!< List of maps for comparison / modifying control list
+	fr_map_list_t		reply;		//!< List of maps for modifying reply list
+	int			order;		//!< Sequence of entry in source file
+	char const		*filename;	//!< Filename entry read from
+	int			lineno;		//!< Line number entry read from
+	fr_dlist_t		entry;		//!< Entry in dlist of PAIR_LIST with matching name
 } PAIR_LIST;
 
 typedef struct pair_list_list {
