@@ -181,7 +181,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
 	fr_pair_list_t	output;
-	PAIR_LIST	*pl;
+	PAIR_LIST	*pl = NULL;
 	int		found = 0;
 	int		pass, fail = 0;
 	char const	*keyname = NULL;
@@ -209,7 +209,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	/*
 	 *      Find the attr_filter profile entry for the entry.
 	 */
-	for (pl = inst->attrs; pl; pl = pl->next) {
+	while ((pl = fr_dlist_next(&inst->attrs.head, pl))) {
 		int fall_through = 0;
 		int relax_filter = inst->relaxed;
 		map_t *map = NULL;
