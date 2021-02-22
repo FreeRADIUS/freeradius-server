@@ -52,7 +52,7 @@ typedef struct pair_list_list {
 } PAIR_LIST_LIST;
 
 /* users_file.c */
-int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain);
+int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, int complain);
 void		pairlist_free(PAIR_LIST_LIST *);
 
 static inline void pairlist_list_init(PAIR_LIST_LIST *list) {
