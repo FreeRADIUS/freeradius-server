@@ -101,14 +101,13 @@ static void check_pair(request_t *request, fr_pair_t *check_item, fr_pair_t *rep
 	return;
 }
 
-static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char const *filename, PAIR_LIST **pair_list)
+static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char const *filename, PAIR_LIST_LIST *pair_list)
 {
 	int rcode;
-	PAIR_LIST *attrs = NULL;
-	PAIR_LIST *entry;
+	PAIR_LIST *entry = NULL;
 	map_t *map;
 
-	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1);
+	rcode = pairlist_read(ctx, dict_radius, filename, pair_list, 1);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -116,7 +115,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	/*
 	 *	Walk through the 'attrs' file list.
 	 */
-	for (entry = attrs; entry != NULL; entry = entry->next) {
+	while ((entry = fr_dlist_next(&pair_list->head, entry))) {
 		/*
 		 *	We apply the rules in the reply items.
 		 */
@@ -149,7 +148,6 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 		}
 	}
 
-	*pair_list = attrs;
 	return 0;
 }
 
