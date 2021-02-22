@@ -87,10 +87,10 @@ static inline void line_error_marker_adj(char const *src_file, int src_line,
 /*
  *	Free a PAIR_LIST
  */
-void pairlist_free(PAIR_LIST **pl)
+void pairlist_free(PAIR_LIST_LIST *pl)
 {
-	talloc_free(*pl);
-	*pl = NULL;
+	talloc_free(pl);
+	pairlist_list_init(pl);
 }
 
 static fr_table_num_sorted_t const check_cmp_op_table[] = {
