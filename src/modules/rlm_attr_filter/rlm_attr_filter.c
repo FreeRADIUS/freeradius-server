@@ -43,9 +43,9 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const	*filename;
-	tmpl_t	*key;
+	tmpl_t		*key;
 	bool		relaxed;
-	PAIR_LIST	*attrs;
+	PAIR_LIST_LIST	attrs;
 } rlm_attr_filter_t;
 
 static const CONF_PARSER module_config[] = {
@@ -161,6 +161,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_attr_filter_t *inst = instance;
 	int rcode;
+	pairlist_list_init(&inst->attrs);
 
 	rcode = attr_filter_getfile(inst, inst, inst->filename, &inst->attrs);
 	if (rcode != 0) {
