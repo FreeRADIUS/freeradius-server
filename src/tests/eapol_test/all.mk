@@ -85,7 +85,7 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 #
 #  Run EAP tests.
 #
-$(OUTPUT)/%.ok: $(DIR)/%.conf | $(GENERATED_CERT_FILES)
+$(OUTPUT)/%.ok: $(DIR)/%.conf $(BUILD_DIR)/lib/libfreeradius-server.la $(BUILD_DIR)/lib/libfreeradius-util.la | $(GENERATED_CERT_FILES)
 	@echo "EAPOL-TEST $(notdir $(patsubst %.conf,%,$<))"
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.eap.radiusd_kill
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory METHOD=$(basename $(notdir $@)) test.eap.radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
