@@ -1228,8 +1228,6 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 
 	if (!cs || !cp || !value) return -1;
 
-	MEM(new_cp = cf_pair_alloc(cs, cp->attr, value, cp->op, cp->lhs_quote, cp->rhs_quote));
-
 	/*
 	 *	Remove the old CONF_PAIR
 	 */
@@ -1239,7 +1237,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	/*
 	 *	Add the new CONF_PAIR
 	 */
-	cf_item_add(cf_section_to_item(cs), cf_pair_to_item(new_cp));
+	MEM(new_cp = cf_pair_alloc(cs, cp->attr, value, cp->op, cp->lhs_quote, cp->rhs_quote));
 
 	return 0;
 }
