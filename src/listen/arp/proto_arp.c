@@ -147,7 +147,7 @@ static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
 {
 	fr_assert(request->server_cs != NULL);
 
-	return virtual_server_entry_point_set(request);
+	virtual_server_entry_point_set(request);
 }
 
 
