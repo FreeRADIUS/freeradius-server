@@ -265,6 +265,7 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 	 *	only uses the CONF_SECTION for printing.
 	 */
 	module = dl_module(server_cs, NULL, namespace, DL_MODULE_TYPE_PROCESS);
+#ifndef NDEBUG
 	if (module) {
 		fr_process_module_t const *process = (fr_process_module_t const *) module->common;
 
@@ -280,6 +281,7 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 		fr_assert(process->dict);
 		fr_assert(*process->dict == dict);
 	}
+#endif
 	cf_data_add(server_cs, module, "process module", true);
 
 	return 0;
