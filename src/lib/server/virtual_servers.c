@@ -750,6 +750,8 @@ int virtual_servers_instantiate(void)
 		if (virtual_servers[i]->process_module) {
 			fr_process_module_t const *process = (fr_process_module_t const *) virtual_servers[i]->process_module->module->common;
 
+			fr_assert(dict != NULL);
+
 			if (process->instantiate &&
 			    (process->instantiate(virtual_servers[i]->process_module->data,
 						  virtual_servers[i]->process_module->conf) < 0)) {
