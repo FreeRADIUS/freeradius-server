@@ -488,6 +488,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 }
 #endif /* PSK_MAX_IDENTITY_LEN */
 
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* Fix spurious warnings for sk_ macros */
 /** Record session state changes
  *
@@ -603,6 +604,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 	}
 }
 DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 /** Print a message to the request or global log detailing handshake state
  *
@@ -862,6 +864,7 @@ static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t
 	return vp;
 }
 
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Extract attributes from an X509 certificate
  *
@@ -1109,6 +1112,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	return 0;
 }
 DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 /** Decrypt application data
  *

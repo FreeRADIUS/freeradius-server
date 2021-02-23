@@ -39,6 +39,7 @@
 #include "base.h"
 #include "missing.h"
 
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Validates a certificate using custom logic
  *
@@ -348,6 +349,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	return my_ok;
 }
 DIAG_ON(used-but-marked-unused)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 /** Revalidates the client's certificate chain
  *
