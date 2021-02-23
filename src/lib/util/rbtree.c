@@ -1149,3 +1149,25 @@ void rbtree_iter_inorder_delete(fr_rb_tree_iter_inorder_t *iter)
 	iter->node = NULL;
 	rbtree_delete_internal(iter->tree, x, true);
 }
+
+/** Explicitly unlock the tree
+ *
+ * @note Must be called if iterating over the tree ends early.
+ *
+ * @param[in] iter	previously initialised with #rbtree_iter_init
+ */
+void rbtree_iter_done(fr_rb_tree_iter_t *iter)
+{
+	if (iter->tree->lock) pthread_mutex_unlock(&iter->tree->mutex);
+}
+
+/** Explicitly unlock the tree
+ *
+ * @note Must be called if iterating over the tree ends early.
+ *
+ * @param[in] iter	previously initialised with #rbtree_iter_inorder_init
+ */
+void rbtree_iter_inorder_done(fr_rb_tree_iter_inorder_t *iter)
+{
+	if (iter->tree->lock) pthread_mutex_unlock(&iter->tree->mutex);
+}

@@ -195,19 +195,9 @@ void		*rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter) CC_HINT(nonnull);
 
 void		rbtree_iter_inorder_delete(fr_rb_tree_iter_inorder_t *iter);
 
-/** Explicitly unlock the tree
- *
- * @note Must be called if iterating over the tree ends early.
- *
- * @param[in] iter	previously initialised with #rbtree_iter_init
- */
-#define rbtree_iter_done(_iter) \
-	(_Generic(_iter), \
-		(fr_rb_tree_iter_t *)		: (void) (((fr_rb_tree_iter_t *)(_iter)->lock) ? \
-							pthread_mutex_unlock((fr_rb_tree_iter_t *)(_iter)->lock) : 0),  \
-		(fr_rb_tree_iter_inorder_t *)	: (void) (((fr_rb_tree_iter_inorder_t *)(_iter)->lock) ? \
-							pthread_mutex_unlock((fr_rb_tree_iter_inorder_t *)(_iter)->lock) : 0),  \
-	)
+void		rbtree_iter_done(fr_rb_tree_iter_t *iter);
+
+void		rbtree_iter_inorder_done(fr_rb_tree_iter_inorder_t *iter);
 
 #ifdef __cplusplus
 }
