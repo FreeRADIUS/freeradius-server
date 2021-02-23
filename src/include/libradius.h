@@ -195,6 +195,8 @@ typedef struct attr_flags {
 
 	unsigned int	compare : 1;				//!< has a paircompare registered
 
+	unsigned int	is_dup : 1;				//!< is a duplicate of another attribute
+
 	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;
