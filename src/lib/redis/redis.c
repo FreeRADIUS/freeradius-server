@@ -92,6 +92,11 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 		return REDIS_RCODE_SUCCESS;
 
 	case REDIS_REPLY_ERROR:
+		/*
+		 *	May indicate the connection handle is bad.
+		 */
+		fr_assert_msg(reply->str, "Error response contained no error string");
+
 		fr_strerror_printf("Server error: %s", reply->str);
 		if (strncmp(REDIS_ERROR_MOVED_STR, reply->str, sizeof(REDIS_ERROR_MOVED_STR) - 1) == 0) {
 			return REDIS_RCODE_MOVE;

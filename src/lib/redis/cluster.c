@@ -1719,6 +1719,7 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 	fr_assert(conn);
 
 	memset(state, 0, sizeof(*state));
+	*conn = NULL;	/* Better safe than exploding */
 
 	used_nodes = rbtree_num_elements(cluster->used_nodes);
 	if (used_nodes == 0) {
