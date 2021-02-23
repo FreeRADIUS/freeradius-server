@@ -475,21 +475,19 @@ void xlat_unregister(char const *name)
 }
 
 
-static int _xlat_unregister_callback(void *data, void *mod_inst)
-{
-	xlat_t *c = (xlat_t *) data;
-
-	if (c->mod_inst != mod_inst) return 0; /* keep walking */
-
-	return 2;		/* delete it */
-}
-
-
 void xlat_unregister_module(void *instance)
 {
+	xlat_t				*c;
+	fr_rb_tree_iter_inorder_t	iter;
+
 	if (!xlat_root) return;	/* All xlats have already been freed */
 
-	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, _xlat_unregister_callback, instance);
+	for (c = rbtree_iter_init_inorder(&iter, xlat_root);
+	     c;
+	     c = rbtree_iter_next_inorder(&iter)) {
+		if (c->mod_inst != instance) continue;
+		rbtree_iter_delete_inorder(&iter);
+	}
 }
 
 

@@ -735,16 +735,6 @@ static int filename_cmp(void const *one, void const *two)
 	return strcmp(a->filters, b->filters);
 }
 
-static int filename_walk(void *data, UNUSED void *uctx)
-{
-	rc_file_pair_t *files = data;
-
-	/*
-	 *	Read request(s) from the file.
-	 */
-	return radclient_init(files, files);
-}
-
 /*
  *	Deallocate packet ID, etc.
  */
@@ -1424,9 +1414,18 @@ int main(int argc, char **argv)
 	/*
 	 *	Walk over the list of filenames, creating the requests.
 	 */
-	if (rbtree_walk(filename_tree, RBTREE_IN_ORDER, filename_walk, NULL) != 0) {
-		ERROR("Failed parsing input files");
-		fr_exit_now(1);
+	{
+		fr_rb_tree_iter_inorder_t	iter;
+		rc_file_pair_t			*files;
+
+		for (files = rbtree_iter_init_inorder(&iter, filename_tree);
+			files;
+			files = rbtree_iter_next_inorder(&iter)) {
+				if (radclient_init(files, files)) {
+					ERROR("Failed parsing input files");
+					fr_exit_now(1);
+				}
+		}
 	}
 
 	/*

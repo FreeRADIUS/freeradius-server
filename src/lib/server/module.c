@@ -58,7 +58,7 @@ static rbtree_t *module_instance_data_tree;
  */
 static fr_cmd_table_t cmd_module_table[];
 
-static int _module_instantiate(void *instance, UNUSED void *ctx);
+static int _module_instantiate(void *instance);
 
 /*
  *	Ordered by component
@@ -83,59 +83,49 @@ static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 	return 0;
 }
 
-typedef struct {
-	char const *text;
-	int count;
-	int max_expansions;
-	char const **expansions;
-} module_tab_expand_t;
-
-
-static int _module_tab_expand(void *instance, void *ctx)
-{
-	module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
-	module_tab_expand_t     *mt = ctx;
-
-	if (mt->count >= mt->max_expansions) return 1;
-
-	if (fr_command_strncmp(mt->text, mi->name)) {
-		mt->expansions[mt->count] = strdup(mi->name);
-		mt->count++;
-	}
-
-	return 0;
-}
-
 static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
 {
-	module_tab_expand_t mt;
+	fr_rb_tree_iter_inorder_t	iter;
+	void				*instance;
+	char const			*text;
+	int				count;
 
 	if (info->argc <= 0) return 0;
 
-	mt.text = info->argv[info->argc - 1];
-	mt.count = 0;
-	mt.max_expansions = max_expansions;
-	mt.expansions = expansions;
+	text = info->argv[info->argc - 1];
+	count = 0;
 
-	(void) rbtree_walk(module_instance_name_tree, RBTREE_IN_ORDER, _module_tab_expand, &mt);
+	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	     instance;
+	     instance = rbtree_iter_next_inorder(&iter)) {
+		module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
 
-	return mt.count;
+		if (count >= max_expansions) {
+			rbtree_iter_done(&iter);
+			break;
+		}
+		if (fr_command_strncmp(text, mi->name)) {
+			expansions[count] = strdup(mi->name);
+			count++;
+		}
+	}
+
+	return count;
 }
 
-
-static int _module_list(void *instance, void *uctx)
-{
-	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-	FILE *fp = uctx;
-
-	fprintf(fp, "\t%s\n", mi->name);
-
-	return 0;
-}
 
 static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
 {
-	(void) rbtree_walk(module_instance_name_tree, RBTREE_IN_ORDER, _module_list, fp);
+	fr_rb_tree_iter_inorder_t	iter;
+	void				*instance;
+
+	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	     instance;
+	     instance = rbtree_iter_next_inorder(&iter)) {
+		module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+
+		fprintf(fp, "\t%s\n", mi->name);
+	}
 
 	return 0;
 }
@@ -422,7 +412,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 			parent = tmp;
 		} while (true);
 
-		_module_instantiate(module_by_name(NULL, inst_name), NULL);
+		_module_instantiate(module_by_name(NULL, inst_name));
 	}
 
 	/*
@@ -1120,22 +1110,21 @@ void module_free(module_instance_t *mi)
 }
 
 
-static int _module_instance_free_walker(void *data, UNUSED void *uctx)
-{
-	module_instance_t *mi = data;
-
-	mi->in_name_tree = false; /* about to be deleted */
-	talloc_free(mi);
-	return 2;
-}
-
-
 /** Free all modules loaded by the server
  */
 void modules_free(void)
 {
 	if (module_instance_name_tree) {
-		rbtree_walk(module_instance_name_tree, RBTREE_DELETE_ORDER, _module_instance_free_walker, NULL);
+		fr_rb_tree_iter_inorder_t	iter;
+		module_instance_t		*mi;
+
+		for (mi = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+		     mi;
+		     mi = rbtree_iter_next_inorder(&iter)) {
+			mi->in_name_tree = false; /* about to be deleted */
+			talloc_free(mi);
+			rbtree_iter_delete_inorder(&iter);
+		}
 		TALLOC_FREE(module_instance_name_tree);
 	}
 
@@ -1177,61 +1166,6 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
 	return 0;
 }
 
-typedef struct {
-	module_thread_instance_t **array; //!< Containing the thread instances.
-	fr_event_list_t *el;		//!< Event list for this thread.
-} _thread_intantiate_ctx_t;
-
-/** Setup thread specific instance data for a module
- *
- * @param[in] uctx	additional arguments to pass to a module's thread_instantiate function.
- * @param[in] instance	of module to perform thread instantiation for.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int _module_thread_instantiate(void *instance, void *uctx)
-{
-	module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
-	module_thread_instance_t	*ti;
-	_thread_intantiate_ctx_t	*thread_inst_ctx = uctx;
-	int				ret;
-
-	MEM(ti = talloc_zero(thread_inst_ctx->array, module_thread_instance_t));
-	ti->el = thread_inst_ctx->el;
-	ti->module = mi->module;
-	ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */
-
-	if (mi->module->thread_inst_size) {
-		MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
-
-		/*
-		 *	Fixup the type name, incase something calls
-		 *	talloc_get_type_abort() on it...
-		 */
-		if (!mi->module->thread_inst_type) {
-			talloc_set_name(ti->data, "rlm_%s_thread_t", mi->module->name);
-		} else {
-			talloc_set_name(ti->data, "%s", mi->module->thread_inst_type);
-		}
-	}
-
-	DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
-	if (mi->module->thread_instantiate) {
-		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
-						     thread_inst_ctx->el, ti->data);
-		if (ret < 0) {
-			PERROR("Thread instantiation failed for module \"%s\"", mi->name);
-			return -1;
-		}
-	}
-
-	fr_assert(mi->number < talloc_array_length(thread_inst_ctx->array));
-	thread_inst_ctx->array[mi->number] = ti;
-
-	return 0;
-}
-
 /** Creates per-thread instance data for modules which need it
  *
  * Must be called by any new threads before attempting to execute unlang sections.
@@ -1245,6 +1179,9 @@ static int _module_thread_instantiate(void *instance, void *uctx)
  */
 int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 {
+	void				*instance;
+	fr_rb_tree_iter_inorder_t	iter;
+
 	/*
 	 *	Initialise the thread specific tree if this is the first time through
 	 */
@@ -1253,10 +1190,43 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 		talloc_set_destructor(module_thread_inst_array, _module_thread_inst_array_free);
 	}
 
-	if (rbtree_walk(module_instance_name_tree, RBTREE_IN_ORDER, _module_thread_instantiate,
-			&(_thread_intantiate_ctx_t){ .el = el, .array = module_thread_inst_array }) < 0) {
-		TALLOC_FREE(module_thread_inst_array);
-		return -1;
+	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	     instance;
+	     instance = rbtree_iter_next_inorder(&iter)) {
+		module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
+		module_thread_instance_t	*ti;
+
+		MEM(ti = talloc_zero(module_thread_inst_array, module_thread_instance_t));
+		ti->el = el;
+		ti->module = mi->module;
+		ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */
+
+		if (mi->module->thread_inst_size) {
+			MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
+
+			/*
+			 *	Fixup the type name, incase something calls
+			 *	talloc_get_type_abort() on it...
+			 */
+			if (!mi->module->thread_inst_type) {
+				talloc_set_name(ti->data, "rlm_%s_thread_t", mi->module->name);
+			} else {
+				talloc_set_name(ti->data, "%s", mi->module->thread_inst_type);
+			}
+		}
+
+		DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+		if (mi->module->thread_instantiate) {
+			if (mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data, el, ti->data) < 0) {
+				PERROR("Thread instantiation failed for module \"%s\"", mi->name);
+				rbtree_iter_done(&iter);
+				TALLOC_FREE(module_thread_inst_array);
+				return -1;
+			}
+		}
+
+		fr_assert(mi->number < talloc_array_length(module_thread_inst_array));
+		module_thread_inst_array[mi->number] = ti;
 	}
 
 	return 0;
@@ -1276,12 +1246,11 @@ void modules_thread_detach(void)
 /** Complete module setup by calling its instantiate function
  *
  * @param[in] instance	of module to complete instantiation for.
- * @param[in] ctx	modules section, containing instance data.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _module_instantiate(void *instance, UNUSED void *ctx)
+static int _module_instantiate(void *instance)
 {
 	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
 
@@ -1346,9 +1315,19 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
  */
 int modules_instantiate(void)
 {
+	void				*instance;
+	fr_rb_tree_iter_inorder_t	iter;
+
 	DEBUG2("#### Instantiating modules ####");
 
-	if (rbtree_walk(module_instance_name_tree, RBTREE_IN_ORDER, _module_instantiate, NULL) < 0) return -1;
+	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	     instance;
+	     instance = rbtree_iter_next_inorder(&iter)) {
+		if (_module_instantiate(instance) < 0) {
+			rbtree_iter_done(&iter);
+			return -1;
+		}
+	}
 
 	return 0;
 }

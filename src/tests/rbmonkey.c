@@ -30,12 +30,6 @@ static int print_cb(void *i, UNUSED void *uctx)
 static int cb_stored = 0;
 static fr_rb_test_node_t rvals[MAXSIZE];
 
-static int store_cb(void  *i, UNUSED void *uctx)
-{
-	rvals[cb_stored++].num = ((fr_rb_test_node_t const *)i)->num;
-	return 0;
-}
-
 static uint32_t mask;
 
 static int filter_cb(void *i, void *uctx)
@@ -136,6 +130,8 @@ int main(UNUSED int argc, UNUSED char *argv[])
 	fr_rb_test_node_t	thresh = {};
 	int			n, rep;
 	fr_rb_test_node_t	vals[MAXSIZE];
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_test_node_t const		*node;
 
 	memset(&vals, 0, sizeof(vals));
 
@@ -177,13 +173,21 @@ again:
 
 	 *
 	 */
-	(void) rbtree_walk(t, RBTREE_DELETE_ORDER, filter_cb, &thresh);
+	for (node = rbtree_iter_init_inorder(&iter, t);
+	     node;
+	     node = rbtree_iter_next_inorder(&iter)) {
+		if ((node->num & mask) == (thresh.num & mask)) rbtree_iter_delete_inorder(&iter);
+	}
 	i = rbcount(t);
 	fprintf(stderr,"After delete rbcount is %i\n", i);
 	if (i < 0) return i;
 
 	cb_stored = 0;
-	rbtree_walk(t, RBTREE_IN_ORDER, &store_cb, NULL);
+	for (node = rbtree_iter_init_inorder(&iter, t);
+	     node;
+	     node = rbtree_iter_next_inorder(&iter)) {
+		rvals[cb_stored++].num = node->num;
+	}
 
 	for (j = i = 0; i < n; i++) {
 		if (i && (vals[i-1].num == vals[i].num)) continue;
