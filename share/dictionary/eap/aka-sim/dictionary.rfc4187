@@ -61,10 +61,10 @@ ATTRIBUTE	Next-Reauth-ID				133	string
 END-TLV		Encr-Data
 
 ATTRIBUTE	Checkcode				134	octets		# 0, 20 or 32 bytes
-
+ATTRIBUTE	Result-Ind				135	bool
 ATTRIBUTE	Bidding					136	short
 
 VALUE	Bidding				Prefer-AKA		0
 VALUE	Bidding				Prefer-AKA-Prime	32768	# D Bit
 
-ATTRIBUTE	Result-Ind				137	bool
+
