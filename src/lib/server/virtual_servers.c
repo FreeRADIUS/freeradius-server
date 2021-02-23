@@ -899,16 +899,13 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
-		CONF_SECTION		*server_cs;
 
 		fr_assert(virtual_servers[i] != NULL);
-
-		server_cs = virtual_servers[i]->server_cs;
 
 		/*
 		 *	The only listener which can't have a dictionary is "control".
 		 */
-		fr_assert((cf_data_find(server_cs, virtual_server_dict_t, "dictionary") != NULL) ||
+		fr_assert((cf_data_find(virtual_servers[i]->server_cs, virtual_server_dict_t, "dictionary") != NULL) ||
 			  (virtual_servers[i]->listener &&
 			   (strcmp(((fr_virtual_listen_t *) virtual_servers[i]->listener[0])->proto_module->module->common->name, "control") == 0)));
 
