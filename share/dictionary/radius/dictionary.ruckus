@@ -21,7 +21,8 @@ ATTRIBUTE	Grace-Period				6	integer
 ATTRIBUTE	SCG-CBlade-IP				7	integer
 ATTRIBUTE	SCG-DBlade-IP				8	integer
 ATTRIBUTE	VLAN-ID					9	integer
-ATTRIBUTE	Sta-Expiration				10	integer # not used by AP anymore. Please check SCG-33602
+# not used by AP anymore. Please check SCG-33602
+#ATTRIBUTE	Sta-Expiration				10	integer
 ATTRIBUTE	Sta-UUID				11	string
 ATTRIBUTE	Accept-Enhancement-Reason		12	integer
 ATTRIBUTE	Sta-Inner-Id				13	string

@@ -22,7 +22,7 @@ ATTRIBUTE	Old-Password				17	string
 ATTRIBUTE	Port-Message				18	string
 ATTRIBUTE	Dialback-No				19	string
 ATTRIBUTE	Dialback-Name				20	string
-ATTRIBUTE	Challenge-State				24	string
+ATTRIBUTE	Challenge-State				24	octets
 
 ATTRIBUTE	Framed-Compression			13	integer
 VALUE	Framed-Compression		Van-Jacobsen-TCP-IP	1

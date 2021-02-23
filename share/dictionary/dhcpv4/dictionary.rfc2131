@@ -243,7 +243,7 @@ ATTRIBUTE	V-I-Vendor-Class			124	octets
 # Vendor-Specific
 ATTRIBUTE	V-I-Vendor-Specific			125	vsa
 
-ATTRIBUTE	Etherboot				128	ether
+#ATTRIBUTE	Etherboot				128	ether
 # (for IP Phone software load)
 
 # RFC 4578 - Options for the Intel Preboot eXecution Environment

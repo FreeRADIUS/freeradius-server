@@ -1153,6 +1153,32 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 	return 0;
 }
 
+static int dict_attr_compatible(fr_dict_attr_t const *parent, fr_dict_attr_t const *old, fr_dict_attr_t const *n)
+{
+	if (old->parent != parent) {
+		fr_strerror_printf_push("Cannot add duplicate attribute \"%s\" with different parent (old %s, new %s)",
+					n->name, old->parent->name, parent->name);
+		return -1;
+	}
+
+	if (old->attr != n->attr) {
+		fr_strerror_printf_push("Cannot add duplicate attribute name \"%s\" with different number (old %u, new %d)",
+					n->name, old->attr, n->attr);
+		return -1;
+	}
+
+	if (old->type != n->type) {
+		fr_strerror_printf_push("Cannot add duplicate attribute with different type (old %s has type %s, new %s has type %s)",
+					old->name,
+					fr_table_str_by_value(fr_value_box_type_table, old->type, "?Unknown?"),
+					n->name,
+					fr_table_str_by_value(fr_value_box_type_table, n->type, "?Unknown?"));
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Add an attribute to the dictionary
  *
  * @param[in] dict		of protocol context we're operating in.
@@ -1183,46 +1209,43 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
 
-	/*
-	 *	Suppress duplicates.
-	 */
+	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &our_flags);
+	if (!n) return -1;
+
 #define FLAGS_EQUAL(_x) (old->flags._x == flags->_x)
 
 	old = fr_dict_attr_by_name(NULL, parent, name);
 	if (old) {
-		if ((old->parent == parent)&& (old->type == type) &&
+		/*
+		 *	Don't bother inserting exact duplicates.
+		 */
+		if ((old->parent == parent) && (old->type == type) &&
 		    FLAGS_EQUAL(array) && FLAGS_EQUAL(subtype)  &&
 		    ((old->attr == (unsigned int) attr) || ((attr < 0) && old->flags.internal))) {
 			return 0;
 		}
 
-		if (old->parent != parent) {
-			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different parent (old %s, new %s)",
-						name, old->parent->name, parent->name);
-			return -1;
-		}
+		/*
+		 *	We have the same name, but different
+		 *	properties.  That's an error.
+		 */
+		if (dict_attr_compatible(parent, old, n) < 0) goto error;
 
-		if (old->attr != (unsigned int) attr) {
-			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different number (old %u, new %d)",
-						name, old->attr, attr);
-			return -1;
-		}
-
-		if (old->type != type) {
-			fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different type (old %s, new %s)",
-						name,
-						fr_table_str_by_value(fr_value_box_type_table, old->type, "?Unknown?"),
-						fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
-			return -1;
-		}
-
-		fr_strerror_printf_push("Cannot add duplicate name \"%s\" with different flags",
-					name);
-		return -1;
+		/*
+		 *	We have the same name, and same (enough)
+		 *	properties.  Discard the duplicate.
+		 */
+		talloc_free(n);
+		return 0;
 	}
 
-	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &our_flags);
-	if (!n) return -1;
+	/*
+	 *	Attributes can also be indexed by number.  Ensure that
+	 *	all attributes of the same number have the same
+	 *	properties.
+	 */
+	old = fr_dict_attr_child_by_num(parent, n->attr);
+	if (old && (dict_attr_compatible(parent, old, n) < 0)) goto error;
 
 	if (dict_attr_add_to_namespace(dict, parent, n) < 0) {
 	error:

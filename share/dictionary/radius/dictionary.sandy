@@ -34,7 +34,7 @@ ATTRIBUTE	Mail-Quota				108	integer
 ATTRIBUTE	Mail-Filter				109	octets
 ATTRIBUTE	Mail-Box-Control			110	integer
 ATTRIBUTE	Mail-Client-IP				111	ipaddr
-ATTRIBUTE	Mail-Client-Helo			110	string
+#ATTRIBUTE	Mail-Client-Helo			110	string
 
 VALUE	Mail-Service			Transfer		1
 VALUE	Mail-Service			Delivery		2
