@@ -1,6 +1,8 @@
 #
 #  Stand-alone dictionaries to see if the dictionary parser works
 #
+PROTOCOL	TEST		254
+BEGIN-PROTOCOL	TEST
 
 ATTRIBUTE	Base-String				1	string
 ATTRIBUTE	Base-Integer				2	integer
@@ -28,3 +30,5 @@ ATTRIBUTE	Base-Integer64				19	integer64
 ATTRIBUTE	Base-IPv4-Prefix			20	ipv4prefix
 
 # Ignore VSA, VENDOR, timeval, boolean, combo-ip-prefix, decimal... for now
+
+END-PROTOCOL TEST
