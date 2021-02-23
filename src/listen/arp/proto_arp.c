@@ -143,29 +143,13 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	return slen;
 }
 
-static void mod_entry_point_set(void const *instance, request_t *request)
+static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
 {
-	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
-	fr_app_worker_t const	*app_process;
+	fr_assert(request->server_cs != NULL);
 
-	/*
-	 *	Only one "process" function: proto_arp_process.
-	 */
-	app_process = (fr_app_worker_t const *) inst->app_process->module->common;
-
-	request->server_cs = inst->server_cs;
-	request->async->process = app_process->entry_point;
-	request->async->process_inst = inst->process_instance;
+	return virtual_server_entry_point_set(request);
 }
 
-
-/*
- *	@todo - do actual priority setting
- */
-static int mod_priority_set(UNUSED void const *instance, UNUSED uint8_t const *buffer, UNUSED size_t buflen)
-{
-	return PRIORITY_NORMAL;
-}
 
 /** Open listen sockets/connect to external event source
  *
@@ -244,7 +228,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_arp_t		*inst = talloc_get_type_abort(instance, proto_arp_t);
-	fr_app_worker_t const	*app_process;
 
 	/*
 	 *	Instantiate the I/O module. But DON'T instantiate the
@@ -261,30 +244,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
-
-	/*
-	 *	Instantiate the ARP processor
-	 */
-	app_process = (fr_app_worker_t const *)inst->app_process->module->common;
-	if (app_process->instantiate && (app_process->instantiate(inst->app_process->data,
-								  inst->app_process->conf) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
-		return -1;
-	}
-
-	/*
-	 *	Compile the processing sections.
-	 */
-	if (app_process->compile_list) {
-		tmpl_rules_t		parse_rules;
-
-		memset(&parse_rules, 0, sizeof(parse_rules));
-		parse_rules.dict_def = dict_arp;
-
-		if (virtual_server_compile_sections(inst->server_cs, app_process->compile_list, &parse_rules, inst->app_process->data) < 0) {
-			return -1;
-		}
-	}
 
 	return 0;
 }
@@ -304,7 +263,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	proto_arp_t 		*inst = talloc_get_type_abort(instance, proto_arp_t);
 	dl_module_inst_t	*parent_inst;
-	fr_app_worker_t const	*app_process;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -322,33 +280,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Load proto_arp_process.  We don't have "type = ...",
-	 *	because there's only one allowed type.  As a result,
-	 *	we can't call fr_app_process_type_parse(), unless we
-	 *	butcher that function to almost meaninglessness.
-	 */
-	if (dl_module_instance(inst->cs, &inst->app_process, inst->cs,
-			       parent_inst, "process", DL_MODULE_TYPE_SUBMODULE) < 0) {
-		cf_log_perr(inst->cs, "Failed to load proto_arp_process");
-		return -1;
-	}
-
-	/*
-	 *	Check for "recv", and add the app_process library to
-	 *	the virtual server.  These re the only two steps done
-	 *	by fr_app_process_type_parse(), which we need.
-	 *
-	 *	If at some point proto_arp_process takes instance data,
-	 *	we will need to go add that, too
-	 */
-	if (!cf_section_find(inst->server_cs, "recv", "Request")) {
-		cf_log_err(inst->server_cs, "Failed finding 'recv Request {...} section of virtual server %s",
-			   cf_section_name2(inst->server_cs));
-		return -1;
-	}
-	cf_data_add_static(inst->server_cs, inst->app_process, "app_process", false);
-
-	/*
 	 *	Bootstrap the I/O module
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
@@ -359,39 +290,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 								inst->app_io_conf) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
 		return -1;
-	}
-
-	/*
-	 *	Bootstrap the ARP processor
-	 */
-	app_process = (fr_app_worker_t const *)(inst->app_process->module->common);
-	if (app_process->bootstrap && (app_process->bootstrap(inst->app_process->data,
-							      inst->app_process->conf) < 0)) {
-		cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
-		return -1;
-	}
-
-	/*
-	 *	Register the processing sections with the
-	 *	module manager.
-	 *
-	 *	We have to do this ourselves because we don't call
-	 *	fr_app_process_bootstrap().  That function requires a
-	 *	"type = ..." configuration, which isn't used for ARP.
-	 */
-	if (app_process->compile_list) {
-		int j;
-		virtual_server_compile_t const *list = app_process->compile_list;
-
-		for (j = 0; list[j].name != NULL; j++) {
-			if (list[j].name == CF_IDENT_ANY) continue;
-
-			if (virtual_server_section_register(&list[j]) < 0) {
-				cf_log_err(conf, "Failed registering section name for %s",
-					   app_process->name);
-				return -1;
-			}
-		}
 	}
 
 	return 0;
@@ -426,5 +324,4 @@ fr_app_t proto_arp = {
 	.decode			= mod_decode,
 	.encode			= mod_encode,
 	.entry_point_set	= mod_entry_point_set,
-	.priority		= mod_priority_set
 };

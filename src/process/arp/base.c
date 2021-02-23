@@ -58,7 +58,6 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
 	fr_pair_t *vp;
 
 	static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
@@ -88,7 +87,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 		request->component = "arp";
 
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint16(request->packet->code));
+		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request.Packet-Type");
 			RETURN_MODULE_FAIL;
@@ -151,7 +150,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 			RETURN_MODULE_HANDLED;
 		}
 
-		dv = fr_dict_enum_by_value(da, fr_box_uint8(request->reply->code));
+		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
 
@@ -195,7 +194,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 				request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
 
-				dv = fr_dict_enum_by_value(da, fr_box_uint16(request->reply->code));
+				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
