@@ -725,7 +725,8 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 {
 	size_t namelen;
 	DICT_ATTR const	*parent;
-	DICT_ATTR *n;
+	DICT_ATTR	*n;
+	DICT_ATTR const *old;
 	static int      max_attr = 0;
 
 	namelen = strlen(name);
@@ -1079,6 +1080,18 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	n->vendor = vendor;
 	n->type = type;
 	n->flags = flags;
+
+	/*
+	 *	Allow old-style names, but they always end up as
+	 *	new-style names.
+	 */
+	old = dict_attrbyvalue(n->attr, n->vendor);
+	if (old && (old->type == n->type)) {
+		DICT_ATTR *mutable;
+
+		memcpy(&mutable, &old, sizeof(old)); /* const issues */
+		mutable->flags.is_dup = true;
+	}
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
@@ -3271,7 +3284,15 @@ DICT_ATTR const *dict_attrbyname(char const *name)
 	da = (DICT_ATTR *) buffer;
 	strlcpy(da->name, name, DICT_ATTR_MAX_NAME_LEN + 1);
 
-	return fr_hash_table_finddata(attributes_byname, da);
+	da = fr_hash_table_finddata(attributes_byname, da);
+	if (!da) return NULL;
+
+	if (!da->flags.is_dup) return da;
+
+	/*
+	 *	This MUST exist if the dup flag is set.
+	 */
+	return dict_attrbyvalue(da->attr, da->vendor);
 }
 
 /** Look up a dictionary attribute by name embedded in another string

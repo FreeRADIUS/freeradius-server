@@ -185,6 +185,13 @@ decode 89 02
 data PKM-SS-Cert = 0x
 
 #
+#  The configuration can use the old names, but they
+#  get automatically converted to the new names.
+#
+attribute User-Service-Type = 1
+data Service-Type = Login-User
+
+#
 #  Or with weirdly formatted data
 #
 decode 89 03 ff 89 02 89 03 fe
