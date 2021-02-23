@@ -766,7 +766,7 @@ int virtual_servers_instantiate(void)
 				tmpl_rules_t		parse_rules;
 
 				memset(&parse_rules, 0, sizeof(parse_rules));
-				parse_rules.dict_def = dict->dict;
+				parse_rules.dict_def = dict ? dict->dict : NULL;
 				fr_assert(parse_rules.dict_def != NULL);
 
 				if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
