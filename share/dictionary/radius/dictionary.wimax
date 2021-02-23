@@ -489,7 +489,7 @@ ATTRIBUTE	Classifier-Action			84.9.8	byte
 
 ATTRIBUTE	Classifier-Eth-Option			84.9.9	tlv
 
-ATTRIBUTE	Eth-Proto-Type				.1	tlv
+ATTRIBUTE	Eth-Proto-Type				84.9.9.1 tlv
 ATTRIBUTE	Ethertype				.1	short
 ATTRIBUTE	Type-DSAP				.2	byte
 
