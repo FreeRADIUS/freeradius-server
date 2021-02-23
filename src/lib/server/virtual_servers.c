@@ -697,12 +697,13 @@ int virtual_servers_instantiate(void)
 		CONF_ITEM		*ci = NULL;
 		CONF_SECTION		*server_cs = virtual_servers[i]->server_cs;
 		CONF_DATA const		*cd;
-		virtual_server_dict_t	*dict;
+		virtual_server_dict_t	*dict = NULL;
 
 		cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
-		fr_assert(cd != NULL);
-		dict = (virtual_server_dict_t *) cf_data_value(cd);
-		fr_assert(dict != NULL);
+		if (cd) {	/* only NULl for the control socket */
+			dict = (virtual_server_dict_t *) cf_data_value(cd);
+			fr_assert(dict != NULL);
+		}
 
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
@@ -722,7 +723,7 @@ int virtual_servers_instantiate(void)
 
 			found = rbtree_finddata(vns_tree, &find);
 			if (found) {
-				fr_assert(dict->dict == found->dict);
+				fr_assert(dict && (dict->dict == found->dict));
 
 				if (found->func(server_cs) < 0) return -1;
 			}
@@ -902,7 +903,12 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 		server_cs = virtual_servers[i]->server_cs;
 
-		fr_assert(cf_data_find(server_cs, virtual_server_dict_t, "dictionary") != NULL);
+		/*
+		 *	The only listener which can't have a dictionary is "control".
+		 */
+		fr_assert((cf_data_find(server_cs, virtual_server_dict_t, "dictionary") != NULL) ||
+			  (virtual_servers[i]->listener &&
+			   (strcmp(((fr_virtual_listen_t *) virtual_servers[i]->listener[0])->proto_module->module->common->name, "control") == 0)));
 
 		if (!virtual_servers[i]->listener) goto bootstrap;
 
