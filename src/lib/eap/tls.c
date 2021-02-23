@@ -268,7 +268,7 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session,
 		    char const *sessid_prf_label, size_t sessid_prf_label_len)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	fr_assert(request->parent);	/* must be a subrequest */
 

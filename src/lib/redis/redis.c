@@ -27,21 +27,21 @@
 #include <freeradius-devel/util/debug.h>
 
 fr_table_num_sorted_t const redis_reply_types[] = {
-	{ L("array"),	REDIS_REPLY_ARRAY	},
-	{ L("error"),	REDIS_REPLY_ERROR	},
-	{ L("integer"),	REDIS_REPLY_INTEGER	},
-	{ L("nil"),	REDIS_REPLY_NIL		},
-	{ L("status"),	REDIS_REPLY_STATUS	},
-	{ L("string"),	REDIS_REPLY_STRING	}
+	{ L("array"),		REDIS_REPLY_ARRAY	},
+	{ L("error"),		REDIS_REPLY_ERROR	},
+	{ L("integer"),		REDIS_REPLY_INTEGER	},
+	{ L("nil"),		REDIS_REPLY_NIL		},
+	{ L("status"),		REDIS_REPLY_STATUS	},
+	{ L("string"),		REDIS_REPLY_STRING	}
 };
 size_t redis_reply_types_len = NUM_ELEMENTS(redis_reply_types);
 
 fr_table_num_sorted_t const redis_rcodes[] = {
-	{ L("ask"),	REDIS_RCODE_ASK		},
-	{ L("error"),	REDIS_RCODE_ERROR	},
-	{ L("move"),	REDIS_RCODE_MOVE	},
+	{ L("ask"),		REDIS_RCODE_ASK		},
+	{ L("error"),		REDIS_RCODE_ERROR	},
+	{ L("move"),		REDIS_RCODE_MOVE	},
 	{ L("reconnect"),	REDIS_RCODE_RECONNECT	},
-	{ L("success"),	REDIS_RCODE_SUCCESS	},
+	{ L("success"),		REDIS_RCODE_SUCCESS	},
 	{ L("try again"),	REDIS_RCODE_TRY_AGAIN	}
 };
 size_t redis_rcodes_len = NUM_ELEMENTS(redis_rcodes);
@@ -56,8 +56,8 @@ void fr_redis_version_print(void)
 
 /** Check the reply for errors
  *
- * @param conn used to issue the command.
- * @param reply to process.
+ * @param[in] conn used to issue the command.
+ * @param[in] reply to process.
  * @return
  *	- REDIS_RCODE_TRY_AGAIN - If the operation should be retries.
  *	- REDIS_RCODE_MOVED  	- If the key has been permanently moved.
@@ -132,10 +132,10 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 
 /** Print the response data in a useful treelike form
  *
- * @param lvl to print data at.
- * @param reply to print.
- * @param request The current request.
- * @param idx Response number.
+ * @param[in] lvl to print data at.
+ * @param[in] reply to print.
+ * @param[in] request The current request.
+ * @param[in] idx Response number.
  */
 void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx)
 {
