@@ -8,9 +8,6 @@
 #	$Id$
 #
 
-#	RFC 4005
-ATTRIBUTE	Originating-Line-Info			94	string
-
 #	draft-sterman-aaa-sip-00.txt
 #
 #	This is bad... at some point the IETF will allocate these.
