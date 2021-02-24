@@ -73,19 +73,19 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
  */
 int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 {
-	X509		*cert;
-	SSL		*ssl;
+	X509			*cert;
+	SSL			*ssl;
 	fr_tls_session_t	*tls_session;
-	int		err, depth;
-	fr_tls_conf_t	*conf;
-	int		my_ok = ok;
+	int			err, depth;
+	fr_tls_conf_t		*conf;
+	int			my_ok = ok;
 
-	char const	**identity_p;
-	char const	*identity = NULL;
+	char const		**identity_p;
+	char const		*identity = NULL;
 
-	char		subject[1024];
-	char		common_name[1024];
-	char		issuer[1024];
+	char			subject[1024];
+	char			common_name[1024];
+	char			issuer[1024];
 
 	request_t		*request;
 
@@ -374,7 +374,7 @@ int fr_tls_validate_client_cert_chain(SSL *ssl)
 	X509_STORE	*store;
 	X509_STORE_CTX	*store_ctx;
 
-	request_t		*request;
+	request_t	*request;
 
 	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 
