@@ -137,6 +137,8 @@ int		virtual_server_get_process_by_name(CONF_SECTION *server, char const *type, 
 
 void		virtual_server_entry_point_set(request_t *request);
 
+int		virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs);
+
 #ifdef __cplusplus
 }
 #endif

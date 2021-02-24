@@ -38,6 +38,7 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/unlang/base.h>
@@ -59,6 +60,7 @@ typedef struct {
 	char const		*namespace;		//!< Protocol namespace
 	fr_virtual_listen_t	**listener;		//!< Listeners in this virtual server.
 	dl_module_inst_t	*process_module;	//!< the process_* module for a virtual server
+	dl_module_inst_t	*dynamic_client_module;	//!< the process_* module for a dynamic client
 } fr_virtual_server_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -469,21 +471,46 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	return 0;
 }
 
-/*
+/** Set the request processing function.
+ *
  *	Short-term hack
  */
 void virtual_server_entry_point_set(request_t *request)
 {
 	fr_virtual_server_t *server;
 	fr_process_module_t const *process;
+	fr_io_track_t *track = request->async->packet_ctx;
 
 	server = cf_data_value(cf_data_find(request->server_cs, fr_virtual_server_t, "vs"));
 	fr_assert(server != NULL);
 
-	process = (fr_process_module_t const *) server->process_module->module->common;
+	if (unlikely(track->dynamic && server->dynamic_client_module)) {
+		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
+	} else {
+		process = (fr_process_module_t const *) server->process_module->module->common;
+	}
 
 	request->async->process = process->process;
 	request->async->process_inst = server->process_module->data;
+}
+
+/** Allow dynamic clients in this virtual server.
+ *
+ *	Short-term hack
+*/
+int virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs)
+{
+	fr_virtual_server_t *server;
+
+	server = cf_data_value(cf_data_find(server_cs, fr_virtual_server_t, "vs"));
+	if (server->dynamic_client_module) return 0;
+
+	if (dl_module_instance(server_cs, &server->dynamic_client_module, server_cs, NULL, "dynamic_client", DL_MODULE_TYPE_PROCESS) < 0) {
+		cf_log_err(server_cs, "Failed loading dynamic client module");
+		return -1;
+	}
+
+	return 0;
 }
 
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
@@ -670,6 +697,35 @@ bool listen_record(fr_listen_t *li)
 	return rbtree_insert(listen_addr_root, li);
 }
 
+static int process_instantiate(CONF_SECTION *server_cs, dl_module_inst_t *dl_inst, fr_dict_t const *dict)
+{
+	fr_process_module_t const *process = (fr_process_module_t const *) dl_inst->module->common;
+
+	if (process->instantiate &&
+	    (process->instantiate(dl_inst->data, dl_inst->conf) < 0)) {
+		cf_log_err(dl_inst->conf, "Instantiate failed");
+		return -1;
+	}
+
+	/*
+	 *	Compile the processing sections.
+	 */
+	if (process->compile_list) {
+		tmpl_rules_t		parse_rules;
+
+		memset(&parse_rules, 0, sizeof(parse_rules));
+		parse_rules.dict_def = dict;
+		fr_assert(parse_rules.dict_def != NULL);
+
+		if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
+						    dl_inst->data) < 0) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 
 /** Instantiate all the virtual servers
  *
@@ -748,32 +804,13 @@ int virtual_servers_instantiate(void)
 		 *	New process modules stuff, instead of app_process.
 		 */
 		if (virtual_servers[i]->process_module) {
-			fr_process_module_t const *process = (fr_process_module_t const *) virtual_servers[i]->process_module->module->common;
+			if (!dict) return -1; /* should never happen */
 
-			fr_assert(dict != NULL);
+			if (process_instantiate(server_cs, virtual_servers[i]->process_module, dict->dict) < 0) return -1;
 
-			if (process->instantiate &&
-			    (process->instantiate(virtual_servers[i]->process_module->data,
-						  virtual_servers[i]->process_module->conf) < 0)) {
-				cf_log_err(virtual_servers[i]->process_module->conf, "Instantiate failed");
-				return -1;
-			}
+			if (virtual_servers[i]->dynamic_client_module &&
+			    (process_instantiate(server_cs, virtual_servers[i]->dynamic_client_module, dict->dict) < 0)) return -1;
 
-			/*
-			 *	Compile the processing sections.
-			 */
-			if (process->compile_list) {
-				tmpl_rules_t		parse_rules;
-
-				memset(&parse_rules, 0, sizeof(parse_rules));
-				parse_rules.dict_def = dict ? dict->dict : NULL;
-				fr_assert(parse_rules.dict_def != NULL);
-
-				if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
-								    virtual_servers[i]->process_module->data) < 0) {
-					return -1;
-				}
-			}
 		} else {
 			if (fr_app_process_instantiate(server_cs) < 0) return -1;
 		}
@@ -835,6 +872,20 @@ static int add_compile_list(CONF_SECTION *cs, virtual_server_compile_t const *co
 	}
 
 	return 0;
+}
+
+static int process_bootstrap(dl_module_inst_t *dl_inst, char const *namespace)
+{
+	fr_process_module_t const *process = (fr_process_module_t const *) dl_inst->module->common;
+
+	if (process->bootstrap &&
+	    (process->bootstrap(dl_inst->data,
+				dl_inst->conf) < 0)) {
+		cf_log_err(dl_inst->conf, "Bootstrap failed");
+		return -1;
+	}
+
+	return add_compile_list(dl_inst->conf, process->compile_list, namespace);
 }
 
 /** Load protocol modules and call their bootstrap methods
@@ -934,18 +985,13 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 	bootstrap:
 		if (virtual_servers[i]->process_module) {
-			fr_process_module_t const *process = (fr_process_module_t const *) virtual_servers[i]->process_module->module->common;
+			if (process_bootstrap(virtual_servers[i]->process_module,
+					      virtual_servers[i]->namespace) < 0) return -1;
 
+			if (virtual_servers[i]->dynamic_client_module &&
+			    (process_bootstrap(virtual_servers[i]->process_module,
+					       virtual_servers[i]->namespace) < 0)) return -1;
 
-			if (process->bootstrap &&
-			    (process->bootstrap(virtual_servers[i]->process_module->data,
-						virtual_servers[i]->process_module->conf) < 0)) {
-				cf_log_err(virtual_servers[i]->process_module->conf, "Bootstrap failed");
-				return -1;
-			}
-
-			if (add_compile_list(virtual_servers[i]->process_module->conf, process->compile_list,
-					     virtual_servers[i]->namespace) < 0) return -1;
 			continue; /* don't call the old-style bootstrap */
 		}
 
