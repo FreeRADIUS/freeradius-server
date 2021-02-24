@@ -1416,9 +1416,9 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 	 *	states.
 	 */
 	if (SSL_is_init_finished(session->ssl)) {
-		SSL_CIPHER const *cipher;
-		fr_pair_t *vp;
-		char const *version;
+		SSL_CIPHER const	*cipher;
+		fr_pair_t		*vp;
+		char const		*version;
 
 		char cipher_desc[256], cipher_desc_clean[256];
 		char *p = cipher_desc, *q = cipher_desc_clean;
@@ -1594,8 +1594,8 @@ static void session_init(fr_tls_session_t *session)
  */
 fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 {
-	int		ret;
-	int		verify_mode;
+	int			ret;
+	int			verify_mode;
 	fr_tls_session_t	*session = NULL;
 	request_t		*request;
 
@@ -1668,10 +1668,10 @@ fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *con
 fr_tls_session_t *fr_tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, request_t *request, bool client_cert)
 {
 	fr_tls_session_t	*session = NULL;
-	SSL		*new_tls = NULL;
-	int		verify_mode = 0;
-	fr_pair_t	*vp;
-	SSL_CTX		*ssl_ctx;
+	SSL			*new_tls = NULL;
+	int			verify_mode = 0;
+	fr_pair_t		*vp;
+	SSL_CTX			*ssl_ctx;
 
 	fr_assert(request != NULL);
 	fr_assert(conf->ctx_count > 0);

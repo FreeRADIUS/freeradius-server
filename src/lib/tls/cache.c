@@ -63,7 +63,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  */
 static int fr_tls_cache_session_id_to_vp(request_t *request, uint8_t const *key, size_t key_len)
 {
-	fr_pair_t *vp;
+	fr_pair_t	*vp;
 
 	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
 	fr_pair_value_memdup(vp, key, key_len, false);
@@ -160,7 +160,7 @@ do { \
  */
 inline static ssize_t fr_tls_cache_id(uint8_t const **out, SSL_SESSION *sess)
 {
-	unsigned int len;
+	unsigned int	len;
 
 	*out = SSL_SESSION_get_id(sess, &len);
 	return len;
@@ -178,8 +178,8 @@ inline static ssize_t fr_tls_cache_id(uint8_t const **out, SSL_SESSION *sess)
  */
 static int fr_tls_cache_serialize(SSL *ssl, SSL_SESSION *sess)
 {
-	request_t			*request;
-	fr_tls_session_t		*tls_session;
+	request_t		*request;
+	fr_tls_session_t	*tls_session;
 	size_t			len, rcode;
 
 	uint8_t			*p, *data = NULL;
@@ -327,14 +327,14 @@ int fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session)
  */
 static SSL_SESSION *fr_tls_cache_read(SSL *ssl,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-				   unsigned char const *key,
+				      unsigned char const *key,
 #else
-				   unsigned char *key,
+				      unsigned char *key,
 #endif
-				   int key_len, int *copy)
+				      int key_len, int *copy)
 {
 	fr_tls_conf_t		*conf;
-	request_t			*request;
+	request_t		*request;
 	unsigned char const	**p;
 	uint8_t const		*q;
 	fr_pair_t		*vp;
@@ -503,13 +503,13 @@ void fr_tls_cache_deny(fr_tls_session_t *session)
  */
 int fr_tls_cache_disable_cb(SSL *ssl,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-			 UNUSED
+			    UNUSED
 #endif
-			 int is_forward_secure)
+			    int is_forward_secure)
 {
-	request_t			*request;
+	request_t		*request;
 
-	fr_tls_session_t		*session;
+	fr_tls_session_t	*session;
 	fr_pair_t		*vp;
 
 	session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
