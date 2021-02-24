@@ -3096,6 +3096,17 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		rad_assert(ssn != NULL);
 
 		ssn->client_cert_ok = true;
+
+#ifdef TLS1_3_VERSION
+		/*
+		 *	Allow sending of session tickets, but ONLY
+		 *	after we've verified the client certificates.
+		 */
+		if ((ssn->info.version = TLS1_3_VERSION) &&
+		    conf->session_cache_enable) {
+			SSL_set_num_tickets(ssn->ssl, 1);
+		}
+#endif
 	}
 
 	return (my_ok != 0);

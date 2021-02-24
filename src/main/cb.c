@@ -114,6 +114,27 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	state->info.version = msg_version;
 	state->info.initialized = true;
 
+
+#ifdef TLS1_3_VERSION
+	/*
+	 *	OpenSSL will send session tickets to the client BEFORE
+	 *	the user has been authenticated.  While bad for us,
+	 *	it's allowed by the spec.
+	 *
+	 *	As a result, we forcibly set the number of session
+	 *	tickets to zero here, even if resumption is enabled.
+	 *
+	 *	Then, once the client certs have been seen, eap_tls.c
+	 *	will reset the number of session tickets to 1, and
+	 *	*presumably* OpenSSL will send a session ticket to
+	 *	allow resumption.
+	 */
+	if ((msg_version == TLS1_3_VERSION) &&
+	    (SSL_get_state(ssl) == TLS_ST_SR_CLNT_HELLO)) {
+		SSL_set_num_tickets(ssl, 0);
+	}
+#endif
+
 	if (content_type == SSL3_RT_ALERT) {
 		state->info.alert_level = buf[0];
 		state->info.alert_description = buf[1];
