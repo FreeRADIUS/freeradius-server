@@ -184,6 +184,16 @@ rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx,
 	return tree;
 }
 
+/** Explicitly unlock an rbtree locked with an interator
+ *
+ */
+void rbtree_unlock(rbtree_t *tree)
+{
+	if (!tree->lock) return;
+
+	pthread_mutex_unlock(&tree->mutex);
+}
+
 /** Rotate Node x to left
  *
  */
@@ -957,6 +967,23 @@ void *rbtree_iter_next_inorder(fr_rb_tree_iter_inorder_t *iter)
 	return x->data;
 }
 
+/** Remove the current node from the tree
+ *
+ * @note Only makes sense for in-order traversals.
+ *
+ * @param[in] iter	previously initialised with #rbtree_iter_inorder_init
+ */
+void rbtree_iter_delete_inorder(fr_rb_tree_iter_inorder_t *iter)
+{
+	fr_rb_node_t *x = iter->node;
+
+	if (unlikely(x == NIL)) return;
+	(void) rbtree_iter_next_inorder(iter);
+	iter->next = iter->node;
+	iter->node = NULL;
+	rbtree_delete_internal(iter->tree, x, true);
+}
+
 /** Initialise a pre-order iterator
  *
  * @note If iteration ends early because of a loop condition #rbtree_iter_done must be called.
@@ -967,7 +994,7 @@ void *rbtree_iter_next_inorder(fr_rb_tree_iter_inorder_t *iter)
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
  */
-void *rbtree_iter_init_preorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
+void *rbtree_iter_init_preorder(fr_rb_tree_iter_preorder_t  *iter, rbtree_t *tree)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -978,7 +1005,7 @@ void *rbtree_iter_init_preorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
 	/*
 	 *	First, the root.
 	 */
-	*iter = (fr_rb_tree_iter_t){
+	*iter = (fr_rb_tree_iter_preorder_t){
 		.tree = tree,
 		.node = x
 	};
@@ -995,7 +1022,7 @@ void *rbtree_iter_init_preorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
  *	- The next node.
  *	- NULL if no more nodes remain.
  */
-void *rbtree_iter_next_preorder(fr_rb_tree_iter_t *iter)
+void *rbtree_iter_next_preorder(fr_rb_tree_iter_preorder_t  *iter)
 {
 	fr_rb_node_t *x = iter->node, *y;
 
@@ -1051,7 +1078,7 @@ void *rbtree_iter_next_preorder(fr_rb_tree_iter_t *iter)
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
  */
-void *rbtree_iter_init_postorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
+void *rbtree_iter_init_postorder(fr_rb_tree_iter_postorder_t  *iter, rbtree_t *tree)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -1069,7 +1096,7 @@ void *rbtree_iter_init_postorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
 		x = x->right;
 	}
 
-	*iter = (fr_rb_tree_iter_t){
+	*iter = (fr_rb_tree_iter_postorder_t){
 		.tree = tree,
 		.node = x
 	};
@@ -1086,7 +1113,7 @@ void *rbtree_iter_init_postorder(fr_rb_tree_iter_t *iter, rbtree_t *tree)
  *	- The next node.
  *	- NULL if no more nodes remain.
  */
-void *rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter)
+void *rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t  *iter)
 {
 	fr_rb_node_t *x = iter->node, *y;
 
@@ -1131,21 +1158,4 @@ void *rbtree_iter_next_postorder(fr_rb_tree_iter_t *iter)
 
 	iter->node = x;
 	return x->data;
-}
-
-/** Remove the current node from the tree
- *
- * @note Only makes sense for in-order traversals.
- *
- * @param[in] iter	previously initialised with #rbtree_iter_inorder_init
- */
-void rbtree_iter_inorder_delete(fr_rb_tree_iter_inorder_t *iter)
-{
-	fr_rb_node_t *x = iter->node;
-
-	if (unlikely(x == NIL)) return;
-	(void) rbtree_iter_next_inorder(iter);
-	iter->next = iter->node;
-	iter->node = NULL;
-	rbtree_delete_internal(iter->tree, x, true);
 }

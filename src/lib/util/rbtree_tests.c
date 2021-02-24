@@ -92,10 +92,10 @@ static uint32_t	post_output[] = {0, 4, 3, 144, 49, 4096, 25194, 8192, 256, 15};
 
 static void test_rbtree_iter_preorder(void)
 {
-	rbtree_t 		*t;
-	fr_rb_test_node_t	*p;
-	size_t			i;
-	fr_rb_tree_iter_t	iter;
+	rbtree_t 			*t;
+	fr_rb_test_node_t		*p;
+	size_t				i;
+	fr_rb_tree_iter_preorder_t	iter;
 
 	TEST_CASE("pre-order iterator");
 	/*
@@ -126,10 +126,10 @@ static void test_rbtree_iter_preorder(void)
 
 static void test_rbtree_iter_postorder(void)
 {
-	rbtree_t 		*t;
-	fr_rb_test_node_t	*p;
-	size_t			i;
-	fr_rb_tree_iter_t	iter;
+	rbtree_t 			*t;
+	fr_rb_test_node_t		*p;
+	size_t				i;
+	fr_rb_tree_iter_postorder_t	iter;
 
 	TEST_CASE("post-order iterator");
 	/*
@@ -202,7 +202,7 @@ static void test_rbtree_iter_delete(void)
 	for (p = rbtree_iter_init_inorder(&iter, t);
 	     p;
 	     p = rbtree_iter_next_inorder(&iter)) {
-		if (is_prime(p->num)) rbtree_iter_inorder_delete(&iter);
+		if (is_prime(p->num)) rbtree_iter_delete_inorder(&iter);
 	}
 
 	/*
