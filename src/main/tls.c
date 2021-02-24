@@ -4517,6 +4517,16 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		if (conf->session_cache_path) {
 			char buffer[2 * MAX_SESSION_SIZE + 1];
 
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+#ifdef TLS1_3_VERSION
+			/*
+			 *	OpenSSL frees the underlying session out from
+			 *	under us in TLS 1.3.
+			 */
+			if (ssn->info.version == TLS1_3_VERSION) ssn->ssl_session = SSL_get_session(ssn->ssl);
+#endif
+#endif
+
 			tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
 
 			/* "touch" the cached session/vp file */
