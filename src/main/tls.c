@@ -1830,6 +1830,21 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			}
 		}
 
+		/*
+		 *	Resumption MUST use the same EAP type as from
+		 *	the original packet.
+		 */
+		vp = fr_pair_find_by_num(pairlist->reply, PW_EAP_TYPE, 0, TAG_ANY);
+		if (vp) {
+			VALUE_PAIR *type = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
+
+			if (type && (type->vp_integer != vp->vp_integer)) {
+				REDEBUG("Resumption has changed EAP types for session %s", buffer);
+				REDEBUG("Rejecting session due to protocol violations");
+				goto error;
+			}
+		}
+
 		/* move the cached VPs into the session */
 		fr_pair_list_mcopy_by_num(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
 
@@ -2864,7 +2879,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				}
 				fr_bin2hex(value + 2, srcp, asn1len);
 			}
-
 
 			vp = fr_pair_make(talloc_ctx, certs, attribute, value, T_OP_ADD);
 			if (!vp) {
