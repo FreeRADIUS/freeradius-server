@@ -141,7 +141,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, 
 	*ut = (unlang_tmpl_t){
 		.self = tmpl_instruction,
 		.tmpl = tmpl
-	}
+	};
 
 	/*
 	 *	Push a new tmpl frame onto the stack
