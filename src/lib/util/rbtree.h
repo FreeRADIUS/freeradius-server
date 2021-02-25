@@ -124,29 +124,28 @@ typedef void (*fr_rb_free_t)(void *data);
 		)
 
 rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
-			       fr_rb_cmp_t compare, fr_rb_free_t node_free, int flags);
+			       fr_rb_cmp_t compare, fr_rb_free_t node_free, int flags) CC_HINT(warn_unused_result);
 
-void		rbtree_unlock(rbtree_t *tree);
+void		rbtree_unlock(rbtree_t *tree) CC_HINT(nonnull);
 
-void		rbtree_node_talloc_free(void *data);
+void		rbtree_node_talloc_free(void *data) CC_HINT(nonnull);
 
-bool		rbtree_insert(rbtree_t *tree, void const *data);
+bool		rbtree_insert(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
-fr_rb_node_t	*rbtree_insert_node(rbtree_t *tree, void *data);
+fr_rb_node_t	*rbtree_insert_node(rbtree_t *tree, void *data) CC_HINT(nonnull);
 
-void		rbtree_delete(rbtree_t *tree, fr_rb_node_t *z);
+void		rbtree_delete(rbtree_t *tree, fr_rb_node_t *z) CC_HINT(nonnull);
 
-bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
+bool		rbtree_deletebydata(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
-fr_rb_node_t	*rbtree_find(rbtree_t *tree, void const *data);
+fr_rb_node_t	*rbtree_find(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		*rbtree_finddata(rbtree_t *tree, void const *data);
+void		*rbtree_finddata(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
-uint32_t	rbtree_num_elements(rbtree_t *tree);
+uint32_t	rbtree_num_elements(rbtree_t *tree) CC_HINT(nonnull);
 
 uint32_t	rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, fr_rb_order_t order);
-
 
 void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
 

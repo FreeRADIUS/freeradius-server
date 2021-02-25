@@ -821,8 +821,6 @@ int rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, voi
 
 uint32_t rbtree_num_elements(rbtree_t *tree)
 {
-	if (!tree) return 0;
-
 	return tree->num_elements;
 }
 
