@@ -2106,9 +2106,7 @@ ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 	for (node = rbtree_iter_init_inorder(&iter, cluster->used_nodes);
 	     node;
 	     node = rbtree_iter_next_inorder(&iter)) {
-		if ((is_master && node->is_master) || (is_slave && !node->is_master)) {
-			found[count++] = node->addr;
-		}
+		if ((is_master && node->is_master) || (is_slave && !node->is_master)) found[count++] = node->addr;
 	}
 
 	pthread_mutex_unlock(&cluster->mutex);

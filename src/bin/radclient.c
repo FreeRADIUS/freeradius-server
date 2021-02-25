@@ -1419,12 +1419,12 @@ int main(int argc, char **argv)
 		rc_file_pair_t			*files;
 
 		for (files = rbtree_iter_init_inorder(&iter, filename_tree);
-			files;
-			files = rbtree_iter_next_inorder(&iter)) {
-				if (radclient_init(files, files)) {
-					ERROR("Failed parsing input files");
-					fr_exit_now(1);
-				}
+		     files;
+		     files = rbtree_iter_next_inorder(&iter)) {
+			if (radclient_init(files, files)) {
+				ERROR("Failed parsing input files");
+				fr_exit_now(1);
+			}
 		}
 	}
 
