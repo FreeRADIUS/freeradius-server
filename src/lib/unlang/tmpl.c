@@ -138,8 +138,10 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, 
 	};
 
 	MEM(ut = talloc(stack, unlang_tmpl_t));
-	ut->self = tmpl_instruction;
-	ut->tmpl = tmpl;
+	*ut = (unlang_tmpl_t){
+		.self = tmpl_instruction,
+		.tmpl = tmpl
+	}
 
 	/*
 	 *	Push a new tmpl frame onto the stack
