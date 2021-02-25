@@ -616,17 +616,6 @@ int dl_free(dl_t const *dl)
 	return talloc_decrease_ref_count(talloc_get_type_abort_const(dl, dl_t));
 }
 
-#ifndef NDEBUG
-static int _dl_walk_print(void *data, UNUSED void *uctx)
-{
-	dl_t *dl = talloc_get_type_abort(data, dl_t);
-
-	fr_strerror_printf_push("  %s (%zu)", dl->name, talloc_reference_count(dl));
-
-	return 0;
-}
-#endif
-
 static int _dl_loader_free(dl_loader_t *dl_loader)
 {
 	int ret = 0;
@@ -642,15 +631,25 @@ static int _dl_loader_free(dl_loader_t *dl_loader)
 	 *	should still be active.
 	 */
 	if (rbtree_num_elements(dl_loader->tree) > 0) {
-		ret = -1;
 #ifndef NDEBUG
+		fr_rb_tree_iter_inorder_t	iter;
+		void				*data;
+
 		/*
 		 *	Yes, this is the correct call order
 		 */
-		rbtree_walk(dl_loader->tree, RBTREE_IN_ORDER, _dl_walk_print, NULL);
+		for (data = rbtree_iter_init_inorder(&iter, dl_loader->tree);
+		     data;
+		     data = rbtree_iter_next_inorder(&iter)) {
+			dl_t *dl = talloc_get_type_abort(data, dl_t);
+
+			fr_strerror_printf_push("  %s (%zu)", dl->name, talloc_reference_count(dl));
+		}
+
 		fr_strerror_printf_push("Refusing to cleanup dl loader, the following dynamically loaded "
 					"libraries are still in use:");
 #endif
+		ret = -1;
 		goto finish;
 	}
 

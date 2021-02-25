@@ -1673,39 +1673,6 @@ void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 	return data;
 }
 
-/** ctx data for a _cf_data_walk_call
- *
- */
-typedef struct {
-	char const 	*type;		//!< of CONF_DATA we're iterating over.
-	cf_walker_t	cb;		//!< cb to process CONF_DATA.
-	void		*ctx;		//!< to pass to cb.
-} cf_data_walk_ctx_t;
-
-/** Wrap a cf_walker_t in an fr_rb_walker_t
- *
- * @param[in] data	A CONF_DATA entry.
- * @param[in] uctx	A cf_data_walk_ctx_t.
- */
-static int _cf_data_walk_cb(void *data, void *uctx)
-{
-	cf_data_walk_ctx_t	*cd_ctx = uctx;
-	CONF_DATA		*cd = data;
-	CONF_ITEM		*ci = data;
-	int			ret;
-
-	/*
-	 *	We're walking ident2, not all of the items will be data
-	 */
-	if (ci->type != CONF_ITEM_DATA) return 0;
-
-	if ((cd->type != cd_ctx->type) && (strcmp(cd->type, cd_ctx->type) != 0)) return 0;
-
-	ret = cd_ctx->cb(UNCONST(void *, cd->data), cd_ctx->ctx);
-
-	return ret;
-}
-
 /** Walk over a specific type of CONF_DATA
  *
  * @param[in] ci	containing the CONF_DATA to walk over.
@@ -1718,15 +1685,31 @@ static int _cf_data_walk_cb(void *data, void *uctx)
  */
 int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 {
-	cf_data_walk_ctx_t cd_ctx = {
-		.type = type,
-		.cb = cb,
-		.ctx = ctx
-	};
+	CONF_DATA			*cd;
+	fr_rb_tree_iter_inorder_t	iter;
+	int				ret = 0;
 
 	if (!ci->ident2) return 0;
 
-	return rbtree_walk(ci->ident2, RBTREE_IN_ORDER, _cf_data_walk_cb, &cd_ctx);
+	for (ci = rbtree_iter_init_inorder(&iter, ci->ident2);
+	     ci;
+	     ci = rbtree_iter_next_inorder(&iter)) {
+		/*
+		 *	We're walking ident2, not all of the items will be data
+		 */
+		if (ci->type != CONF_ITEM_DATA) continue;
+
+		cd = (void *) ci;
+		if ((cd->type != type) && (strcmp(cd->type, type) != 0)) continue;
+
+		ret = cb(UNCONST(void *, cd->data), ctx);
+		if (ret) {
+			rbtree_iter_done(&iter);
+			break;
+		}
+	}
+
+	return ret;
 }
 
 static inline CC_HINT(nonnull) void truncate_filename(char const **e, char const **p, int *len, char const *filename)

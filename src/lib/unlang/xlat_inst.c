@@ -349,7 +349,8 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
  */
 int xlat_thread_instantiate(TALLOC_CTX *ctx)
 {
-	int ret;
+	fr_rb_tree_iter_preorder_t	iter;
+	void				*data;
 
 	if (!xlat_inst_tree) return 0;
 
@@ -361,10 +362,14 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx)
 	/*
 	 *	Walk the inst tree, creating thread specific instances.
 	 */
-	ret = rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_thread_instantiate, xlat_thread_inst_tree);
-	if (ret < 0) {
-		TALLOC_FREE(xlat_thread_inst_tree);
-		return -1;
+	for (data = rbtree_iter_init_preorder(&iter, xlat_inst_tree);
+	     data;
+	     data = rbtree_iter_next_preorder(&iter)) {
+		if (_xlat_thread_instantiate(data, xlat_thread_inst_tree) < 0) {
+			TALLOC_FREE(xlat_thread_inst_tree);
+			rbtree_iter_done(&iter);
+			return -1;
+		}
 	}
 
 	return 0;
@@ -378,21 +383,6 @@ void xlat_thread_detach(void)
 	if (!xlat_thread_inst_tree) return;
 
 	TALLOC_FREE(xlat_thread_inst_tree);
-}
-
-/** Walk over #xlat_exp_t that require instantiation
- *
- * @param[in] uctx	UNUSED.
- * @param[in] data	node to perform
- */
-static int _xlat_instantiate_walker(void *data, UNUSED void *uctx)
-{
-	xlat_inst_t *inst = talloc_get_type_abort(data, xlat_inst_t);
-
-	if (inst->node->call.func->instantiate &&
-	    (inst->node->call.func->instantiate(inst->data, inst->node, inst->node->call.func->uctx) < 0)) return -1;
-
-	return 0;
 }
 
 /** Initialise the xlat inst code
@@ -415,9 +405,24 @@ static int xlat_instantiate_init(void)
  */
 int xlat_instantiate(void)
 {
+	fr_rb_tree_iter_preorder_t	iter;
+	void				*data;
+
 	if (!xlat_inst_tree) xlat_instantiate_init();
 
-	return rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_instantiate_walker, NULL);
+	for (data = rbtree_iter_init_preorder(&iter, xlat_inst_tree);
+	     data;
+	     data = rbtree_iter_next_preorder(&iter)) {
+		xlat_inst_t *inst = talloc_get_type_abort(data, xlat_inst_t);
+
+		if (inst->node->call.func->instantiate &&
+		    (inst->node->call.func->instantiate(inst->data, inst->node, inst->node->call.func->uctx) < 0)) {
+			rbtree_iter_done(&iter);
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 /** Callback for creating "permanent" instance data for a #xlat_exp_t

@@ -387,27 +387,22 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
 }
 
-static int apply(void *data, void *uctx)
-{
-	fr_network_socket_t *socket = data;
-
-	fr_event_update_t *update = uctx;
-
-	fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, update);
-
-	return 0;
-}
-
 static void fr_network_suspend(fr_network_t *nr)
 {
 	static fr_event_update_t pause_read[] = {
 		FR_EVENT_SUSPEND(fr_event_io_func_t, read),
 		{ 0 }
 	};
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_network_socket_t		*socket;
 
 	if (nr->suspended) return;
 
-	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, apply, pause_read);
+	for (socket = rbtree_iter_init_inorder(&iter, nr->sockets);
+	     socket;
+	     socket = rbtree_iter_next_inorder(&iter)) {
+		fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, pause_read);
+	}
 	nr->suspended = true;
 }
 
@@ -417,10 +412,16 @@ static void fr_network_unsuspend(fr_network_t *nr)
 		FR_EVENT_RESUME(fr_event_io_func_t, read),
 		{ 0 }
 	};
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_network_socket_t		*socket;
 
 	if (!nr->suspended) return;
 
-	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, apply, resume_read);
+	for (socket = rbtree_iter_init_inorder(&iter, nr->sockets);
+	     socket;
+	     socket = rbtree_iter_next_inorder(&iter)) {
+		fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, resume_read);
+	}
 	nr->suspended = false;
 }
 
@@ -1742,27 +1743,23 @@ static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cm
 	return 0;
 }
 
-static int socket_list(void *data, void *uctx)
-{
-	FILE *fp = uctx;
-	fr_network_socket_t *s = data;
-
-	if (!s->listen->app_io->get_name) {
-		fprintf(fp, "%s\n", s->listen->app_io->name);
-		return 0;
-	}
-
-	fprintf(fp, "%d\t%s\n", s->number, s->listen->app_io->get_name(s->listen));
-	return 0;
-}
-
 static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	fr_network_t const *nr = ctx;
+	fr_network_t const		*nr = ctx;
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_network_socket_t		*socket;
 
 	// @todo - note that this isn't thread-safe!
 
-	(void) rbtree_walk(nr->sockets, RBTREE_IN_ORDER, socket_list, fp);
+	for (socket = rbtree_iter_init_inorder(&iter, nr->sockets);
+	     socket;
+	     socket = rbtree_iter_next_inorder(&iter)) {
+		if (!socket->listen->app_io->get_name) {
+			fprintf(fp, "%s\n", socket->listen->app_io->name);
+		} else {
+			fprintf(fp, "%d\t%s\n", socket->number, socket->listen->app_io->get_name(socket->listen));
+		}
+	}
 	return 0;
 }
 

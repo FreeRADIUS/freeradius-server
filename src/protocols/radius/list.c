@@ -664,20 +664,6 @@ bool fr_packet_list_id_free(fr_packet_list_t *pl,
 	return true;
 }
 
-/*
- *	We always walk RBTREE_DELETE_ORDER, which is like RBTREE_IN_ORDER, except that
- *	<0 means error, stop
- *	0  means OK, continue
- *	1  means delete current node and stop
- *	2  means delete current node and continue
- */
-int fr_packet_list_walk(fr_packet_list_t *pl, fr_rb_walker_t callback, void *uctx)
-{
-	if (!pl || !callback) return 0;
-
-	return rbtree_walk(pl->tree, RBTREE_DELETE_ORDER, callback, uctx);
-}
-
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
 {
 	int i, maxfd;

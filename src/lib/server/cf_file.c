@@ -698,45 +698,6 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 	return true;
 }
 
-typedef struct {
-	int		rcode;
-	fr_rb_walker_t	callback;
-	CONF_SECTION	*modules;
-} cf_file_callback_t;
-
-/*
- *	Return 0 for keep going, 1 for stop.
- */
-static int _file_callback(void *data, void *uctx)
-{
-	cf_file_callback_t	*cb = uctx;
-	cf_file_t		*file = data;
-	struct stat		buf;
-
-	/*
-	 *	The file doesn't exist or we can no longer read it.
-	 */
-	if (stat(file->filename, &buf) < 0) {
-		cb->rcode = CF_FILE_ERROR;
-		return 1;
-	}
-
-	/*
-	 *	The file changed, we'll need to re-read it.
-	 */
-	if (buf.st_mtime != file->buf.st_mtime) {
-		if (cb->callback(cb->modules, file->cs)) {
-			cb->rcode |= CF_FILE_MODULE;
-			DEBUG3("HUP: Changed module file %s", file->filename);
-		} else {
-			DEBUG3("HUP: Changed config file %s", file->filename);
-			cb->rcode |= CF_FILE_CONFIG;
-		}
-	}
-
-	return 0;
-}
-
 /*
  *	Do variable expansion in pass2.
  *
@@ -2417,21 +2378,47 @@ void cf_file_check_user(uid_t uid, gid_t gid)
  */
 int cf_file_changed(CONF_SECTION *cs, fr_rb_walker_t callback)
 {
-	CONF_SECTION		*top;
-	cf_file_callback_t	cb;
-	rbtree_t		*tree;
+	CONF_SECTION			*top, *modules;
+	rbtree_t			*tree;
+	cf_file_t			*file;
+	int				rcode;
+	struct stat			buf;
+	fr_rb_tree_iter_inorder_t	iter;
 
 	top = cf_root(cs);
 	tree = cf_data_value(cf_data_find(top, rbtree_t, "filename"));
-	if (!tree) return true;
+	if (!tree) return CF_FILE_ERROR;
 
-	cb.rcode = CF_FILE_NONE;
-	cb.callback = callback;
-	cb.modules = cf_section_find(cs, "modules", NULL);
+	rcode = CF_FILE_NONE;
+	modules = cf_section_find(cs, "modules", NULL);
 
-	(void) rbtree_walk(tree, RBTREE_IN_ORDER, _file_callback, &cb);
+	for (file = rbtree_iter_init_inorder(&iter, tree);
+	     file;
+	     file = rbtree_iter_next_inorder(&iter)) {
+		/*
+		 *	The file doesn't exist or we can no longer read it.
+		 */
+		if (stat(file->filename, &buf) < 0) {
+			rcode = CF_FILE_ERROR;
+			rbtree_iter_done(&iter);
+			break;
+		}
 
-	return cb.rcode;
+		/*
+		 *	The file changed, we'll need to re-read it.
+		 */
+		if (buf.st_mtime != file->buf.st_mtime) {
+			if (callback(modules, file->cs)) {
+				rcode |= CF_FILE_MODULE;
+				DEBUG3("HUP: Changed module file %s", file->filename);
+			} else {
+				DEBUG3("HUP: Changed config file %s", file->filename);
+				rcode |= CF_FILE_CONFIG;
+			}
+		}
+	}
+
+	return rcode;
 }
 
 

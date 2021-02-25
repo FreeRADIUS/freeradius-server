@@ -1175,28 +1175,6 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 	return FR_REDIS_CLUSTER_RCODE_SUCCESS;
 }
 
-/** Walk all used pools adding them to the live node list
- *
- * @param[in] uctx	Where to write the node we found.
- * @param[in] data	node to check.
- * @return
- *	- 0 continue walking.
- *	- -1 found suitable node.
- */
-static int _cluster_pool_walk(void *data, void *uctx)
-{
-	cluster_nodes_live_t	*live = uctx;
-	fr_redis_cluster_node_t	*node = data;
-
-	fr_assert(node->pool);
-
-	if (live->skip == node->id) return 0;	/* Skip the dead node */
-
-	live->node[live->next].pool_state = fr_pool_state(node->pool);
-	live->node[live->next++].id = node->id;
-
-	return 0;
-}
 
 /** Try to determine the health of a cluster node passively by examining its pool state
  *
@@ -1322,6 +1300,8 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 
 	cluster_nodes_live_t	*live;
 	fr_time_t		now;
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_redis_cluster_node_t		*node;
 
 	RDEBUG2("Searching for live cluster nodes");
 
@@ -1335,7 +1315,15 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	live->skip = skip->id;
 
 	pthread_mutex_lock(&cluster->mutex);
-	rbtree_walk(cluster->used_nodes, RBTREE_IN_ORDER, _cluster_pool_walk, live);
+	for (node = rbtree_iter_init_inorder(&iter, cluster->used_nodes);
+	     node;
+	     node = rbtree_iter_next_inorder(&iter)) {
+		fr_assert(node->pool);
+		if (live->skip == node->id) continue;	/* Skip dead nodes */
+
+		live->node[live->next].pool_state = fr_pool_state(node->pool);
+		live->node[live->next++].id = node->id;
+	}
 	pthread_mutex_unlock(&cluster->mutex);
 
 	fr_assert(live->next);			/* There should be at least one */
@@ -1348,7 +1336,6 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	 */
 	for (i = 0; (i < cluster->conf->max_alt) && live->next; i++) {
 		fr_redis_conn_t 	*conn;
-		fr_redis_cluster_node_t	*node;
 		uint8_t			j;
 		int			first, last, pivot;	/* Must be signed for BS */
 		unsigned int		find, cumulative = 0;
@@ -2081,35 +2068,6 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 	return 0;
 }
 
-/** Private ctx structure to pass to _cluster_role_walk
- *
- */
-typedef struct {
-	bool			is_master;
-	bool			is_slave;
-	uint8_t			count;
-	fr_socket_t	*found;
-} addr_by_role_ctx_t;
-
-/** Walk all used pools, recording the IP addresses of ones matching the filter
- *
- * @param[in] uctx	Where to write the node we found.
- * @param[in] data	node to check.
- * @return
- *	- 0 continue walking.
- *	- -1 found suitable node.
- */
-static int _cluster_role_walk(void *data, void *uctx)
-{
-	addr_by_role_ctx_t		*ctx = uctx;
-	fr_redis_cluster_node_t		*node = data;
-
-	if ((ctx->is_master && node->is_master) || (ctx->is_slave && !node->is_master)) {
-		ctx->found[ctx->count++] = node->addr;
-	}
-	return 0;
-}
-
 /** Return an array of IP addresses belonging to masters or slaves
  *
  * @note We return IP addresses as they're safe to use across cluster remaps.
@@ -2125,37 +2083,45 @@ static int _cluster_role_walk(void *data, void *uctx)
 ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 					   fr_redis_cluster_t *cluster, bool is_master, bool is_slave)
 {
-	addr_by_role_ctx_t context;
 	size_t in_use = rbtree_num_elements(cluster->used_nodes);
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_redis_cluster_node_t		*node;
+	uint8_t				count;
+	fr_socket_t			*found;
 
 	if (in_use == 0) {
 		*out = NULL;
 		return 0;
 	}
 
-	context.is_master = is_master;
-	context.is_slave = is_slave;
-	context.count = 0;
-	context.found = talloc_zero_array(ctx, fr_socket_t, in_use);
-	if (!context.found) {
+	count = 0;
+	found = talloc_zero_array(ctx, fr_socket_t, in_use);
+	if (!found) {
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
 	pthread_mutex_lock(&cluster->mutex);
-	rbtree_walk(cluster->used_nodes, RBTREE_IN_ORDER, _cluster_role_walk, &context);
-	*out = context.found;
+
+	for (node = rbtree_iter_init_inorder(&iter, cluster->used_nodes);
+	     node;
+	     node = rbtree_iter_next_inorder(&iter)) {
+		if ((is_master && node->is_master) || (is_slave && !node->is_master)) {
+			found[count++] = node->addr;
+		}
+	}
+
 	pthread_mutex_unlock(&cluster->mutex);
 
-	if (context.count == 0) {
+	if (count == 0) {
 		*out = NULL;
-		talloc_free(context.found);
+		talloc_free(found);
 		return 0;
 	}
 
-	*out = context.found;
+	*out = found;
 
-	return context.count;
+	return count;
 }
 
 /** Destroy mutex associated with cluster slots structure
@@ -2166,43 +2132,6 @@ ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 static int _fr_redis_cluster_free(fr_redis_cluster_t *cluster)
 {
 	pthread_mutex_destroy(&cluster->mutex);
-
-	return 0;
-}
-
-/** Walk all used pools checking their versions
- *
- * @param[in] uctx	Where to write the node we found.
- * @param[in] data	node to check.
- * @return
- *	- 0 continue walking.
- *	- -1 found suitable node.
- */
-static int _cluster_version_walk(void *data, void *uctx)
-{
-	char const 		*min_version = uctx;
-	fr_redis_cluster_node_t	*node = data;
-	fr_redis_conn_t		*conn;
-	int			ret;
-	char			buffer[40];
-
-	conn = fr_pool_connection_get(node->pool, NULL);
-	if (!conn) return 0;
-
-	/*
-	 *	We don't care if we can't get the version
-	 *	as we don't want to prevent the server from
-	 *	starting if start == 0.
-	 */
-	ret = fr_redis_get_version(buffer, sizeof(buffer), conn);
-	fr_pool_connection_release(node->pool, NULL, conn);
-	if (ret < 0) return 0;
-
-	if (fr_redis_version_num(buffer) < fr_redis_version_num(min_version)) {
-		fr_strerror_printf("Redis node %s:%i (currently v%s) needs update to >= v%s",
-				   node->name, node->addr.inet.dst_port, buffer, min_version);
-		return -1;
-	}
 
 	return 0;
 }
@@ -2219,16 +2148,42 @@ static int _cluster_version_walk(void *data, void *uctx)
  */
 bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_version)
 {
-	int ret;
-	char *p;
-
-	memcpy(&p, &min_version, sizeof(p));
+	fr_redis_cluster_node_t		*node;
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_redis_conn_t			*conn;
+	int				ret;
+	char				buffer[40];
+	bool				all_above = true;
 
 	pthread_mutex_lock(&cluster->mutex);
-	ret = rbtree_walk(cluster->used_nodes, RBTREE_IN_ORDER, _cluster_version_walk, p);
+
+	for (node = rbtree_iter_init_inorder(&iter, cluster->used_nodes);
+	     node;
+	     node = rbtree_iter_next_inorder(&iter)) {
+		conn = fr_pool_connection_get(node->pool, NULL);
+		if (!conn) continue;
+
+		/*
+		 *	We don't care if we can't get the version
+		 *	as we don't want to prevent the server from
+		 *	starting if start == 0.
+		 */
+		ret = fr_redis_get_version(buffer, sizeof(buffer), conn);
+		fr_pool_connection_release(node->pool, NULL, conn);
+		if (ret < 0) continue;
+
+		if (fr_redis_version_num(buffer) < fr_redis_version_num(min_version)) {
+			fr_strerror_printf("Redis node %s:%i (currently v%s) needs update to >= v%s",
+					   node->name, node->addr.inet.dst_port, buffer, min_version);
+			all_above = false;
+			rbtree_iter_done(&iter);
+			break;
+		}
+	}
+
 	pthread_mutex_unlock(&cluster->mutex);
 
-	return ret < 0 ? false : true;
+	return all_above;
 }
 
 /** Allocate and initialise a new cluster structure

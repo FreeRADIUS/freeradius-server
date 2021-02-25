@@ -2383,13 +2383,6 @@ static int event_timer_location_cmp(void const *one, void const *two)
 	return (a->line > b->line) - (a->line < b->line);
 }
 
-static int event_timer_print_location(void *node, UNUSED void *uctx)
-{
-	fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
-
-	EVENT_DEBUG("                         : %u allocd at %s[%u]", counter->count, counter->file, counter->line);
-	return 0;
-}
 
 /** Print out information about the number of events in the event loop
  *
@@ -2457,6 +2450,9 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	EVENT_DEBUG("    num timer events     : %u", fr_event_list_num_timers(el));
 
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
+		fr_rb_tree_iter_inorder_t	iter;
+		void				*node;
+
 		if (!array[i]) continue;
 
 		if (i == 0) {
@@ -2467,7 +2463,14 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 			EVENT_DEBUG("    events %5s - %5s : %zu", decade_names[i - 1], decade_names[i], array[i]);
 		}
 
-		rbtree_walk(locations[i], RBTREE_IN_ORDER, event_timer_print_location, NULL);
+		for (node = rbtree_iter_init_inorder(&iter, locations[i]);
+		     node;
+		     node = rbtree_iter_next_inorder(&iter)) {
+			fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
+
+			EVENT_DEBUG("                         : %u allocd at %s[%u]",
+				    counter->count, counter->file, counter->line);
+		}
 	}
 	pthread_mutex_unlock(&print_lock);
 

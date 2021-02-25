@@ -566,27 +566,25 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	return 0;
 }
 
-#ifndef NDEBUG
-static int _dl_inst_walk_print(void *data, UNUSED void *uctx)
-{
-	dl_module_inst_t *dl_inst = talloc_get_type_abort(data, dl_module_inst_t);
-
-	WARN("  %s (%s)", dl_inst->module->dl->name, dl_inst->name);
-
-	return 0;
-}
-#endif
-
 static int _dl_module_loader_free(dl_module_loader_t *dl_module_l)
 {
 	int ret = 0;
 
 	if (rbtree_num_elements(dl_module_l->inst_data_tree) > 0) {
-		ret = -1;
 #ifndef NDEBUG
+		fr_rb_tree_iter_inorder_t	iter;
+		void				*data;
+
 		WARN("Refusing to cleanup dl loader, the following module instances are still in use:");
-		rbtree_walk(dl_module_l->inst_data_tree, RBTREE_IN_ORDER, _dl_inst_walk_print, NULL);
+		for (data = rbtree_iter_init_inorder(&iter, dl_module_l->inst_data_tree);
+		     data;
+		     data = rbtree_iter_next_inorder(&iter)) {
+			dl_module_inst_t *dl_inst = talloc_get_type_abort(data, dl_module_inst_t);
+
+			WARN("  %s (%s)", dl_inst->module->dl->name, dl_inst->name);
+		}
 #endif
+		ret = -1;
 		goto finish;
 	}
 

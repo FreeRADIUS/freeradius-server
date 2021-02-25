@@ -66,21 +66,6 @@ static int8_t cache_heap_cmp(void const *one, void const *two)
 	return (a->expires > b->expires) - (a->expires < b->expires);
 }
 
-/** Walk over the cache rbtree
- *
- * Used to free any entries left in the tree on detach.
- *
- * @param[in] data	to free.
- * @param[in] uctx	unused.
- * @return 2
- */
-static int _cache_entry_free(void *data, UNUSED void *uctx)
-{
-	talloc_free(data);
-
-	return 2;
-}
-
 /** Cleanup a cache_rbtree instance
  *
  */
@@ -89,7 +74,15 @@ static int mod_detach(void *instance)
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	if (driver->cache) {
-		rbtree_walk(driver->cache, RBTREE_DELETE_ORDER, _cache_entry_free, NULL);
+		fr_rb_tree_iter_inorder_t	iter;
+		void				*data;
+
+		for (data = rbtree_iter_init_inorder(&iter, driver->cache);
+		     data;
+		     data = rbtree_iter_next_inorder(&iter)) {
+			talloc_free(data);
+			rbtree_iter_delete_inorder(&iter);
+		}
 		talloc_free(driver->cache);
 	}
 
