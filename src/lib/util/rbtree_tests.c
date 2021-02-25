@@ -221,12 +221,51 @@ static void test_rbtree_iter_delete(void)
 	talloc_free(t);
 }
 
+static void test_rbtree_iter_done(void)
+{
+	rbtree_t 			*t;
+	size_t				i;
+	fr_rb_test_node_t		*p;
+	fr_rb_tree_iter_inorder_t	iter_in;
+
+	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, fr_rb_test_cmp, NULL, RBTREE_FLAG_LOCK);
+	TEST_CHECK(t != NULL);
+
+ 	/*
+ 	 *	Initialise the test nodes
+ 	 *	with integers from 0 to 19.
+ 	 */
+	for (i = 0; i < 20; i++) {
+		p = talloc(t, fr_rb_test_node_t);
+		p->num = i;
+		rbtree_insert(t, p);
+	}
+
+	/*
+	 *	Iterate inorder and get out early.
+	 */
+	for (p = rbtree_iter_init_inorder(&iter_in, t), i = 0;
+	     p;
+	     p = rbtree_iter_next_inorder(&iter_in), i++) {
+		if (i > 10) {
+			rbtree_iter_done(&iter_in);
+			break;
+		}
+		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
+	}
+	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
+	pthread_mutex_unlock(&t->mutex);
+
+	talloc_free(t);
+}
+
 
 TEST_LIST = {
 	{ "rbtree_iter_inorder",            test_rbtree_iter_inorder },
 	{ "rbtree_iter_preorder",           test_rbtree_iter_preorder },
 	{ "rbtree_iter_postorder",          test_rbtree_iter_postorder },
 	{ "rbtree_iter_delete",             test_rbtree_iter_delete },
+	{ "rbtree_iter_done",               test_rbtree_iter_done },
 
 	{ NULL }
 };

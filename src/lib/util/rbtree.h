@@ -211,11 +211,11 @@ void		*rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t *iter) CC_HINT(non
  * @param[in] iter	previously initialised with #rbtree_iter_init
  */
 #define rbtree_iter_done(_iter) \
-	(_Generic(_iter), \
-		(fr_rb_tree_iter_inorder_t *)	: rbtree_unlock(((fr_rb_tree_iter_inorder_t *)(_iter))->tree),  \
-		(fr_rb_tree_iter_preorder_t *)	: rbtree_unlock(((fr_rb_tree_iter_preorder_t *)(_iter))->tree),  \
-		(fr_rb_tree_iter_postorder_t *)	: rbtree_unlock(((fr_rb_tree_iter_postorder_t *)(_iter))->tree)  \
-	)
+	(_Generic((_iter), \
+		fr_rb_tree_iter_inorder_t *	: rbtree_unlock(((fr_rb_tree_iter_inorder_t *)(_iter))->tree),  \
+		fr_rb_tree_iter_preorder_t *	: rbtree_unlock(((fr_rb_tree_iter_preorder_t *)(_iter))->tree),  \
+		fr_rb_tree_iter_postorder_t *	: rbtree_unlock(((fr_rb_tree_iter_postorder_t *)(_iter))->tree)  \
+	))
 
 #ifdef __cplusplus
 }
