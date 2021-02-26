@@ -708,9 +708,9 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	to debug problems if they free or change elements
 	 *	and don't remove them from the list.
 	 */
-	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
+	if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
 	xa = resume(ctx, out, request, exp->call.inst, thread_inst->data, result, rctx);
-	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
+	if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
 
 	RDEBUG2("EXPAND %%{%s:...}", exp->call.func->name);
 	switch (xa) {
@@ -768,9 +768,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			char		*result_str = NULL;
 			ssize_t		slen;
 
-			if (*result) {
 				(void) talloc_list_get_type_abort(*result, fr_value_box_t);
 				result_str = fr_value_box_list_aprint(NULL, *result, NULL, NULL);
+			if (!fr_dlist_empty(result)) {
 				if (!result_str) return XLAT_ACTION_FAIL;
 			} else {
 				result_str = talloc_typed_strdup(NULL, "");
@@ -833,10 +833,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 */
 			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, *result);
 
-			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
+			if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
 			xa = node->call.func->func.async(ctx, out, request, node->call.inst->data, thread_inst->data, result);
-			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
-
+			if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
 			if (RDEBUG_ENABLED2) {
 				xlat_debug_log_expansion(request, *in, result_copy);
 				talloc_list_free(&result_copy);
@@ -872,7 +871,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/*
 		 *	No result from the first child, try the alternate
 		 */
-		if (!*result) {
+		if (fr_dlist_empty(result)) {
 			/*
 			 *	Already tried the alternate
 			 */
@@ -900,9 +899,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xlat_debug_log_result(request, *result);
 
 		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
-		fr_assert(!*result);
 		fr_dcursor_init(&from, result);
 		fr_dcursor_merge(out, &from);
+		fr_assert(fr_dlist_empty(result));
 	}
 		break;
 
@@ -914,8 +913,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
 
-		fr_assert(*result != NULL);
 		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
+		fr_assert(!fr_dlist_empty(result));
 
 		/*
 		 *	If the input is a series of xlat expansions,
@@ -928,9 +927,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 			MEM(value = fr_value_box_alloc_null(ctx));
 
-			if (*result) {
 				(void) talloc_list_get_type_abort(*result, fr_value_box_t);
 				str = fr_value_box_list_aprint(value, *result, NULL, NULL);
+			if (!fr_dlist_empty(result)) {
 				if (!str) return XLAT_ACTION_FAIL;
 			} else {
 				str = talloc_typed_strdup(value, "");
@@ -1304,8 +1303,8 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 				return NULL;
 			}
 
-			if (result) {
 				str = fr_value_box_list_aprint(ctx, result, NULL, &fr_value_escape_double);
+			if (!fr_dlist_empty(&result)) {
 				if (!str) {
 					RPEDEBUG("Failed concatenating xlat result string");
 					talloc_free(pool);

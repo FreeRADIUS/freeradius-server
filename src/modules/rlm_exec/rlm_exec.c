@@ -356,7 +356,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 
-	if (inst->output && m->box) {
+	if (inst->output && !fr_dlist_empty(&m->box)) {
 		TALLOC_CTX *ctx;
 		fr_pair_list_t vps, *output_pairs;
 

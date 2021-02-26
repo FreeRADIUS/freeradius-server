@@ -1613,7 +1613,7 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!in) return XLAT_ACTION_DONE;
+	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
@@ -1664,7 +1664,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!in) return XLAT_ACTION_DONE;
+	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
 	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
@@ -1712,7 +1712,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!*in) return XLAT_ACTION_DONE;
+	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
 	buff = fr_value_box_list_aprint(NULL, *in, NULL, NULL);
 	if (!buff) return XLAT_ACTION_FAIL;
@@ -1776,7 +1776,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!in) return XLAT_ACTION_DONE;
+	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
 	/*
 	 * Separator is first value box
@@ -1829,7 +1829,7 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!*in) return XLAT_ACTION_DONE;
+	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
 	/*
 	 *	Concatenate all input
@@ -1865,7 +1865,7 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t		data_len, key_len;
 	fr_value_box_t	*vb, *vb_data, *vb_sep, *vb_key;
 
-	if (!in) return XLAT_ACTION_FAIL;
+	if (fr_dlist_empty(in)) return XLAT_ACTION_FAIL;
 
 	vb_data = fr_value_box_list_get(*in, 0);
 	vb_sep = fr_value_box_list_get(*in, 1);
@@ -2107,7 +2107,7 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*vb, *in_vb;
 	fr_cursor_t	cursor;
 
-	if (!*in) {
+	if (fr_dlist_empty(in)) {
 		REDEBUG("Missing input boxes");
 		return XLAT_ACTION_FAIL;
 	}

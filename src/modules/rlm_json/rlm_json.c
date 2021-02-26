@@ -409,7 +409,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 		return -1;
 	}
 	if (ret == 0) return 0;
-	fr_assert(head);
+	fr_assert(!fr_dlist_empty(&head));
 
 	for (value = head;
 	     value;

@@ -139,8 +139,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 		case UNLANG_UPDATE_MAP_INIT:
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
 
-			fr_assert(!update_state->lhs_result);	/* Should have been consumed */
-			fr_assert(!update_state->rhs_result);	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&update_state->lhs_result));	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&update_state->rhs_result));	/* Should have been consumed */
 
 			switch (map->lhs->type) {
 			default:
@@ -219,8 +219,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			/*
 			 *	Concat the top level results together
 			 */
-			if (update_state->rhs_result &&
 			    (fr_value_box_list_concat(update_state, update_state->rhs_result, &update_state->rhs_result,
+			if (!fr_dlist_empty(&update_state->rhs_result) &&
 						      FR_TYPE_STRING, true) < 0)) {
 				RPEDEBUG("Failed concatenating RHS expansion results");
 				goto error;
@@ -310,11 +310,11 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request)
 	 *	FIXME - We don't yet support async LHS/RHS expansions for map procs
 	 */
 #ifndef NDEBUG
-	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
+	if (!fr_dlist_empty(&map_proc_state->src_result)) fr_dlist_verify(&map_proc_state->src_result);
 #endif
 	*p_result = map_proc(request, gext->proc_inst, &map_proc_state->src_result);
 #ifndef NDEBUG
-	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
+	if (!fr_dlist_empty(&map_proc_state->src_result)) fr_dlist_verify(&map_proc_state->src_result);
 #endif
 
 	return *p_result == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;

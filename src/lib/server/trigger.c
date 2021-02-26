@@ -236,7 +236,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 		 */
 	}
 
-	if (!ctx->box) {
+	if (fr_dlist_empty(&ctx->box)) {
 		RERROR("Failed trigger %s - did not expand to anything", ctx->name);
 		RETURN_MODULE_FAIL;
 	}

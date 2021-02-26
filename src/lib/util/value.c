@@ -4875,7 +4875,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 	fr_dcursor_t		cursor;
 	fr_value_box_t const	*vb;
 
-	if (!list || !*list) {
+	if (!list || fr_dlist_empty(list)) {
 		fr_strerror_const("Invalid arguments.  List was NULL");
 		return -1;
 	}
@@ -5077,7 +5077,7 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 		for (in_p = in, i = 0;
 		     in_p;
 		     in_p = in_p->next) {
-			if (!in_p->vb_group) {
+			if (fr_dlist_empty(&in_p->vb_group)) {
 				argv[i] = talloc_typed_strdup(argv, "");
 			} else {
 				fr_value_box_aprint(argv, &argv[i], in_p->vb_group, NULL);

@@ -311,7 +311,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		tmp_ctx = talloc_new(NULL);
 
-		fr_assert(lhs_result && *lhs_result);
+		fr_assert(!fr_dlist_empty(lhs_result));
 
 		/*
 		 *	This should always be a noop, but included
@@ -484,7 +484,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	happens.  This is only for XLATs and in future
 		 *	EXECs.
 		 */
-		if (!rhs_result || !*rhs_result) {
+		if (fr_dlist_empty(rhs_result)) {
 			n = list_mod_empty_string_afrom_map(ctx, original, mutated);
 			if (!n) {
 				RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
@@ -538,7 +538,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_value_box_t		*n_vb;
 		int			err;
 
-		fr_assert(!rhs_result || !*rhs_result);
+		fr_assert(fr_dlist_empty(rhs_result));
 		fr_assert((tmpl_is_attr(mutated->lhs) && tmpl_da(mutated->lhs)) ||
 			   (tmpl_is_list(mutated->lhs) && !tmpl_da(mutated->lhs)));
 
@@ -615,7 +615,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_cursor_t	from;
 		fr_value_box_t	*vb, *vb_head, *n_vb;
 
-		fr_assert(!rhs_result || !*rhs_result);
+		fr_assert(fr_dlist_empty(rhs_result));
 		fr_assert(tmpl_da(mutated->lhs));
 		fr_assert(tmpl_is_attr(mutated->lhs));
 
@@ -689,7 +689,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	happens.  This is only for XLATs and in future
 		 *	EXECs.
 		 */
-		if (!rhs_result || !*rhs_result) {
+		if (fr_dlist_empty(rhs_result)) {
 			RPEDEBUG("Cannot assign empty value to \"%s\"", mutated->lhs->name);
 			goto error;
 		}
@@ -762,7 +762,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		goto error;
 	}
 
-	fr_assert(head || !n);
+	fr_assert(!fr_dlist_empty(&head) || !n);
 
 	/*
 	 *	FIXME: This is only required because

@@ -359,7 +359,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 			state->status = -state->status;
 		}
 
-		fr_assert(state->box == NULL);
+		fr_assert(fr_dlist_empty(&state->box));
 		goto resume;
 	}
 
