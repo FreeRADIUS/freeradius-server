@@ -104,21 +104,22 @@ typedef struct {
  */
 static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
 				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				     fr_value_box_t **in)
+				     fr_value_box_list_t *in)
 {
 	fr_value_box_t *vb;
+	fr_value_box_t *in_head = fr_dlist_head(in);
 	char *tmp;
 
-	if (!*in) return XLAT_ACTION_DONE;
+	if (!in_head) return XLAT_ACTION_DONE;
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	if (!(tmp = fr_json_from_string(vb, (*in)->vb_strvalue, false))) {
+	if (!(tmp = fr_json_from_string(vb, in_head->vb_strvalue, false))) {
 		REDEBUG("Unable to JSON-quote string");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
