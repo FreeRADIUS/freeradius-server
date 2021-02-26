@@ -221,7 +221,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 
 static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				      UNUSED fr_value_box_t **in, void *rctx)
+				      UNUSED fr_value_box_list_t *in, void *rctx)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
 	rlm_rest_t const		*mod_inst = xti->inst;
@@ -303,7 +303,7 @@ finish:
  */
 static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-			       fr_value_box_t **in)
+			       fr_value_box_list_t *in)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
 	rlm_rest_t const		*mod_inst = xti->inst;
@@ -315,21 +315,22 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	char				*uri = NULL;
 	char const			*p = NULL, *q;
 	http_method_t			method;
+	fr_value_box_t			*in_head = fr_dlist_head(in);
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("Got empty URL string");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		REDEBUG("Failed concatenating arguments into URL string");
 		return XLAT_ACTION_FAIL;
 	}
-	p = (*in)->vb_strvalue;
+	p = in_head->vb_strvalue;
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
 	section = &rctx->section;
