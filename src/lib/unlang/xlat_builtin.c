@@ -2739,11 +2739,12 @@ static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst,
-				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
+				      UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
 		vb->vb_size = 0;
 		fr_dcursor_append(out, vb);
@@ -2753,13 +2754,13 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Concatenate all input
 	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
-	vb->vb_size = strlen((*in)->vb_strvalue);
+	vb->vb_size = strlen(in_head->vb_strvalue);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
