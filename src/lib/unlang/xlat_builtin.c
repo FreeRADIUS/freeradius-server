@@ -2591,23 +2591,24 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				    fr_value_box_t **in)
+				    fr_value_box_list_t *in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
 	fr_sha1_ctx	sha1_ctx;
 	fr_value_box_t	*vb;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
 
 	/*
 	 * Concatenate all input if there is some
 	 */
-	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
 	fr_sha1_init(&sha1_ctx);
-	if (*in) {
-		fr_sha1_update(&sha1_ctx, (*in)->vb_octets, (*in)->vb_length);
+	if (in_head) {
+		fr_sha1_update(&sha1_ctx, in_head->vb_octets, in_head->vb_length);
 	} else {
 		/* sha1 of empty string */
 		fr_sha1_update(&sha1_ctx, NULL, 0);
