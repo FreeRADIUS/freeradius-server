@@ -594,6 +594,7 @@ int		rad_vp2attr(RADIUS_PACKET const *packet,
 			    VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 
 /* pair.c */
+VALUE_PAIR	*fr_pair_alloc(TALLOC_CTX *ctx);
 VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da);
 VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		fr_pair_to_unknown(VALUE_PAIR *vp);
