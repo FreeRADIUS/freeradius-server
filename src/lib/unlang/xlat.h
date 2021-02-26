@@ -143,7 +143,7 @@ typedef void (*fr_unlang_xlat_fd_event_t)(request_t *request, void *xlat_inst,
  */
 typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-				     fr_value_box_t **in);
+				     fr_value_box_list_t *in);
 
 /** xlat callback resumption function
  *
@@ -166,7 +166,7 @@ typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-					    fr_value_box_t **in, void *rctx);
+					    fr_value_box_list_t *in, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
