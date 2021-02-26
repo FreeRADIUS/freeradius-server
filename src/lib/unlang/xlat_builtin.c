@@ -2492,12 +2492,13 @@ if ("foo" =~ /^(?<name>.*)/) {
  */
 static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				     fr_value_box_t **in)
+				     fr_value_box_list_t *in)
 {
+	fr_value_box_t	*in_head  = fr_dlist_head(in);
 	/*
 	 *	Return the complete capture if no other capture is specified
 	 */
-	if (!(*in)) {
+	if (!in_head) {
 		fr_value_box_t	*vb;
 		char		*p;
 
@@ -2515,7 +2516,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_DONE;
 	}
 
-	switch ((*in)->type) {
+	switch (in_head->type) {
 	/*
 	 *	If the input is an integer value then get an
 	 *	arbitrary subcapture index.
@@ -2526,12 +2527,12 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_value_box_t	*vb;
 		char		*p;
 
-		if ((*in)->next) {
+		if (fr_dlist_next(in, in_head)) {
 			REDEBUG("Only one subcapture argument allowed");
 			return XLAT_ACTION_FAIL;
 		}
 
-		if (fr_value_box_cast(NULL, &idx, FR_TYPE_UINT32, NULL, *in) < 0) {
+		if (fr_value_box_cast(NULL, &idx, FR_TYPE_UINT32, NULL, in_head) < 0) {
 			RPEDEBUG("Bad subcapture index");
 			return XLAT_ACTION_FAIL;
 		}
@@ -2557,13 +2558,13 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/*
 		 *	Concatenate all input
 		 */
-		if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 			RPEDEBUG("Failed concatenating input");
 			return XLAT_ACTION_FAIL;
 		}
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		if (regex_request_to_sub_named(vb, &p, request, (*in)->vb_strvalue) < 0) {
+		if (regex_request_to_sub_named(vb, &p, request, in_head->vb_strvalue) < 0) {
 			REDEBUG2("No previous named regex capture group");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
