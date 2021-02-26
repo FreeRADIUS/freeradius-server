@@ -1960,7 +1960,7 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED request_t *request, UNUSED void const *xlat_inst,
-				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
+				      UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 
 {
 	fr_value_box_t	*vb;
