@@ -1404,22 +1404,18 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 int fr_network_destroy(fr_network_t *nr)
 {
 	fr_channel_data_t	*cd;
+	fr_rb_tree_iter_inorder_t	iter;
+	fr_network_socket_t		*socket;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
 	/*
 	 *	Close the network sockets
 	 */
-	{
-		fr_network_socket_t	**sockets;
-		size_t			len;
-		size_t			i;
-
-		len = rbtree_flatten(nr, (void ***)&sockets, nr->sockets, RBTREE_IN_ORDER);
-
-		for (i = 0; i < len; i++) talloc_free(sockets[i]);
-
-		talloc_free(sockets);
+	for (socket = rbtree_iter_init_inorder(&iter, nr->sockets);
+	     socket;
+	     socket = rbtree_iter_next_inorder(&iter)) {
+		talloc_free(socket);
 	}
 
 

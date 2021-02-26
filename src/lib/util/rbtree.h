@@ -145,27 +145,7 @@ void		*rbtree_finddata(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
 uint32_t	rbtree_num_elements(rbtree_t *tree) CC_HINT(nonnull);
 
-uint32_t	rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, fr_rb_order_t order);
-
 void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
-
-/*
- *	The callback should be declared as:
- *	int callback(void *context, void *data)
- *
- *	The "context" is some user-defined context.
- *	The "data" is the pointer to the user data in the node,
- *	NOT the node itself.
- *
- *	It should return 0 if all is OK, and !0 for any error.
- *	The walking will stop on any error.
- *
- *	Except with RBTREE_DELETE_ORDER, where the callback should return <0 for
- *	errors, and may return 1 to delete the current node and halt,
- *	or 2 to delete the current node and continue.  This may be
- *	used to batch-delete select nodes from a locked rbtree.
- */
-int		rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, void *uctx);
 
 /** Iterator structure for in-order traversal of an rbtree
  */
