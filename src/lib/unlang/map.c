@@ -230,11 +230,11 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 					    request, map,
 					    &update_state->lhs_result, &update_state->rhs_result) < 0) goto error;
 
-			talloc_list_free(&update_state->rhs_result);
+			fr_dlist_talloc_free(&update_state->rhs_result);
 
 		next:
 			update_state->state = UNLANG_UPDATE_MAP_INIT;
-			talloc_list_free(&update_state->lhs_result);
+			fr_dlist_talloc_free(&update_state->lhs_result);
 
 			/*
 			 *	Wind to the end...

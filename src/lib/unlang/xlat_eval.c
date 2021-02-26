@@ -948,8 +948,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 
 			fr_value_box_strdup_shallow(value, NULL, str, fr_value_box_list_tainted(*result));
-			talloc_free(*result);
 			*result = value;
+			fr_dlist_talloc_free(result);
 		}
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false));

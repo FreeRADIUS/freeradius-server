@@ -253,7 +253,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request)
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		talloc_list_free(&state->rhead);
+		fr_dlist_talloc_free(&state->rhead);
 		if (unlang_xlat_push(state->ctx, &state->rhead, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;

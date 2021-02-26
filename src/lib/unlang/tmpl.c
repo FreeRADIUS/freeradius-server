@@ -339,7 +339,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 *	care about output, and we don't care about the programs exit status.
 	 */
 	if (state->failed) {
-		TALLOC_FREE(state->box);
+		fr_dlist_talloc_free(&state->box);
 		goto resume;
 	}
 
@@ -439,7 +439,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	TALLOC_FREE(state->box); /* this is the xlat expansion, and not the output string we want */
+	fr_dlist_talloc_free(&state->box); /* this is the xlat expansion, and not the output string we want */
 
 	state->pid = pid;
 	state->status = -1;	/* default to program didn't work */

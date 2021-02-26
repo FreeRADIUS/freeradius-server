@@ -319,7 +319,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 */
 		if (fr_value_box_list_concat(*lhs_result, *lhs_result, lhs_result, FR_TYPE_STRING, true) < 0) {
 			RPEDEBUG("Left side expansion failed");
-			TALLOC_FREE(*lhs_result);
+			fr_dlist_talloc_free(lhs_result);
 			goto error;
 		}
 
@@ -331,7 +331,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference",
 				 (*lhs_result)->vb_strvalue);
-			TALLOC_FREE(*lhs_result);
+			fr_dlist_talloc_free(lhs_result);
 			goto error;
 		}
 		fr_assert(tmpl_is_attr(mutated->lhs) || tmpl_is_list(mutated->lhs));
@@ -700,7 +700,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 */
 		if (fr_value_box_list_concat(*rhs_result, *rhs_result, rhs_result, FR_TYPE_STRING, true) < 0) {
 			RPEDEBUG("Right side expansion failed");
-			TALLOC_FREE(*rhs_result);
+			fr_dlist_talloc_free(rhs_result);
 			goto error;
 		}
 
@@ -773,7 +773,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 */
 	fr_value_box_copy(fr_map_list_head(&n->mod)->rhs, tmpl_value(fr_map_list_head(&n->mod)->rhs), head);
 	tmpl_value(fr_map_list_head(&n->mod)->rhs)->next = head->next;
-	talloc_free(head);
+	fr_dlist_talloc_free(&head);
 
 finish:
 	if (n) {
