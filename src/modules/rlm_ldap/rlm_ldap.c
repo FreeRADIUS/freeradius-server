@@ -425,7 +425,7 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **url, fr_map_list_t const *maps)
+				fr_value_box_list_t *url, fr_map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -443,20 +443,21 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
+	fr_value_box_t		*url_head = fr_dlist_head(url);
 
 	/*
 	 *	FIXME - Maybe it can be NULL?
 	 */
-	if (!*url) {
+	if (!url_head) {
 		REDEBUG("LDAP URL cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *url, url, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(request, url_head, url, FR_TYPE_STRING, true) < 0) {
 		REDEBUG("Failed concatenating input");
 		return RLM_MODULE_FAIL;
 	}
-	url_str = (*url)->vb_strvalue;
+	url_str = url_head->vb_strvalue;
 
 	if (!ldap_is_ldap_url(url_str)) {
 		REDEBUG("Map query string does not look like a valid LDAP URI");
