@@ -59,7 +59,7 @@ extern "C" {
  *	- #RLM_MODULE_FAIL - If an error occurred performing the mapping.
  */
 typedef rlm_rcode_t (*map_proc_func_t)(void *mod_inst, void *proc_inst, request_t *request,
-				       fr_value_box_t **result, fr_map_list_t const *maps);
+				       fr_value_box_list_t *result, fr_map_list_t const *maps);
 
 /** Allocate new instance data for a map processor
  *
