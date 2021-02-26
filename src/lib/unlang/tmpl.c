@@ -376,6 +376,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 */
 	if (state->out) {
 		fr_type_t type = FR_TYPE_STRING;
+		fr_value_box_t *box;
 
 		/*
 		 *	Remove any trailing LF / CR
@@ -394,14 +395,15 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 			state->ptr = p;
 		}
 
-		MEM(state->box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
-		if (fr_value_box_from_str(state->box, state->box, &type, NULL,
 		fr_value_box_list_init(&state->box);
+		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
+		if (fr_value_box_from_str(state->ctx, box, &type, NULL,
 					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
-			talloc_free(state->box);
+			talloc_free(box);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
+		fr_dlist_insert_head(&state->box, box);
 	}
 
 	/*
