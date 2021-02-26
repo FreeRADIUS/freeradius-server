@@ -177,7 +177,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
  * @param[in] node	Being processed.
  * @param[in] args	from previous expansion.
  */
-static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, fr_value_box_t const *args)
+static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const *node, fr_value_box_list_t const *args)
 {
 	char *str;
 
@@ -198,6 +198,18 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	talloc_free(str);
 }
 
+/** Output the list result of an expansion
+ *
+ * @param[in] request	The current request.
+ * @param[in] result	of the expansion.
+ */
+static inline void xlat_debug_log_list_result(request_t *request, fr_value_box_list_t const *result)
+{
+	if (!RDEBUG_ENABLED2) return;
+
+	RDEBUG2("  --> %pM", result);
+}
+
 /** Output the result of an expansion
  *
  * @param[in] request	The current request.
@@ -207,7 +219,7 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
 {
 	if (!RDEBUG_ENABLED2) return;
 
-	RDEBUG2("  --> %pM", result);
+	RDEBUG2("  --> %pV", result);
 }
 
 /** One letter expansions
