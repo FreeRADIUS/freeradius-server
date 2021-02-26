@@ -399,10 +399,12 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 {
 	fr_pair_t			*vp;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
-	fr_value_box_t			*head, *value;
+	fr_value_box_t			*value;
+	fr_value_box_list_t		head;
 	int				ret;
 
 	fr_pair_list_free(out);
+	fr_value_box_list_init(&head);
 
 	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);
@@ -413,9 +415,9 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 	if (ret == 0) return 0;
 	fr_assert(!fr_dlist_empty(&head));
 
-	for (value = head;
+	for (value = fr_dlist_head(&head);
 	     value;
-	     fr_pair_add(out, vp), value = value->next) {
+	     fr_pair_add(out, vp), value = fr_dlist_next(&head, value)) {
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
 
