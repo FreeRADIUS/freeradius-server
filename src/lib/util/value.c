@@ -1811,8 +1811,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_GROUP:
 	{
-		fr_cursor_t cursor;
-		fr_value_box_t *vb;
+		fr_value_box_t *vb = NULL;
 
 		/*
 		 *	Initialise an empty buffer we can
@@ -1820,9 +1819,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 		 */
 		if (fr_value_box_bstrndup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
 
-		for (vb = fr_cursor_init(&cursor, &src->vb_group);
-		     vb;
-		     vb = fr_cursor_next(&cursor)) {
+		while ((vb = fr_dlist_next(&src->vb_group, vb))) {
 			/*
 			 *	Attempt to cast to a string so
 			 *	we can append.
@@ -1895,8 +1892,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_GROUP:
 	{
-		fr_cursor_t cursor;
-		fr_value_box_t *vb;
+		fr_value_box_t *vb = NULL;
 
 		/*
 		 *	Initialise an empty buffer we can
@@ -1904,9 +1900,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		 */
 		if (fr_value_box_memdup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
 
-		for (vb = fr_cursor_init(&cursor, &src->vb_group);
-		     vb;
-		     vb = fr_cursor_next(&cursor)) {
+		while ((vb = fr_dlist_next(&src->vb_group, vb))) {
 			/*
 			 *	Attempt to cast to octets so
 			 *	we can append;
@@ -5100,16 +5094,14 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
  */
 int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in)
 {
-	fr_value_box_t const *in_p;
 	fr_cursor_t cursor;
+	fr_value_box_t const *in_p = NULL;
 
 	*out = NULL;
 
 	fr_cursor_init(&cursor, out);
 
-	for (in_p = in;
-	     in_p;
-	     in_p = in_p->next) {
+	while ((in_p = fr_dlist_next(in, in_p))) {
 	     	fr_value_box_t *n = NULL;
 
 		n = fr_value_box_alloc_null(ctx);

@@ -920,7 +920,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case XLAT_GROUP:
 	{
 		fr_value_box_t	*value;
-		fr_cursor_t from;
 
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);

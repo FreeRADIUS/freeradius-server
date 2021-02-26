@@ -2105,7 +2105,6 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   fr_value_box_t **in)
 {
 	fr_value_box_t	*vb, *in_vb;
-	fr_cursor_t	cursor;
 
 	if (fr_dlist_empty(in)) {
 		REDEBUG("Missing input boxes");
@@ -2117,9 +2116,9 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Loop over the input boxes, packing them together.
 	 */
-	for (in_vb = fr_cursor_init(&cursor, in);
+	for (in_vb = fr_dlist_head(in);
 	     in_vb;
-	     in_vb = fr_cursor_next(&cursor)) {
+	     in_vb = fr_dlist_next(in, in_vb)) {
 		fr_value_box_t *cast, box;
 
 		if (in_vb->type != FR_TYPE_OCTETS) {
