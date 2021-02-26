@@ -159,6 +159,8 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, 
 		.status_p = status
 	};
 
+	fr_value_box_list_init(&state->box);
+
 	return 0;
 }
 
@@ -394,6 +396,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 
 		MEM(state->box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
 		if (fr_value_box_from_str(state->box, state->box, &type, NULL,
+		fr_value_box_list_init(&state->box);
 					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
 			talloc_free(state->box);
 			*p_result = RLM_MODULE_FAIL;
@@ -520,9 +523,13 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request)
 
 	/*
 	 *	If we're not called from unlang_tmpl_push(), then
-	 *	ensure that we clean up the resulting value boxes.
+	 *	ensure that we clean up the resulting value boxes
+	 *	and that the list to write the boxes in is initialised.
 	 */
-	if (!state->ctx) state->ctx = state;
+	if (!state->ctx) {
+		state->ctx = state;
+		fr_value_box_list_init(&state->box);
+	}
 
 	if (!tmpl_async_required(ut->tmpl)) {
 		if (!ut->inline_exec) {

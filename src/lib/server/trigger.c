@@ -404,6 +404,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 
 	MEM(ctx = talloc_zero(fake, fr_trigger_t));
 	fr_pair_list_init(&ctx->vps);
+	fr_value_box_list_init(&ctx->box);
 	ctx->name = talloc_strdup(ctx, value);
 
 	if (request && !fr_pair_list_empty(&request->request_pairs)) {

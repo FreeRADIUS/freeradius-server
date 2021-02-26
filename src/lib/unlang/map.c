@@ -279,6 +279,8 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 								    g->num_children));	/* 128 is for string buffers */
 
 	fr_dcursor_init(&update_state->maps, &gext->map);
+	fr_value_box_list_init(&update_state->lhs_result);
+	fr_value_box_list_init(&update_state->rhs_result);
 	update_state->vlm_next = &update_state->vlm_head;
 	repeatable_set(frame);
 
@@ -333,6 +335,7 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 	 */
 	repeatable_set(frame);
 
+	fr_value_box_list_init(&map_proc_state->src_result);
 	/*
 	 *	Set this BEFORE doing anything else, as we will be
 	 *	called again after unlang_xlat_push() returns.

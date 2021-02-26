@@ -439,6 +439,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	}
 
 	m = talloc_zero(ctx, rlm_exec_ctx_t);
+	fr_value_box_list_init(&m->box);
 
 	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, &env_pairs, mod_exec_wait_resume, NULL, m);
 }

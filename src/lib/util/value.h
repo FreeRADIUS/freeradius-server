@@ -350,6 +350,8 @@ static inline CC_HINT(always_inline) void fr_value_box_init(fr_value_box_t *vb, 
 		.enumv = enumv,
 		.tainted = tainted
 	}, sizeof(*vb));
+	fr_dlist_entry_init(&vb->entry);
+	if (type == FR_TYPE_GROUP) fr_value_box_list_init(&vb->vb_group);
 }
 
 /** Initialise an empty/null box that will be filled later

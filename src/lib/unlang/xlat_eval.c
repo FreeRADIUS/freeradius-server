@@ -819,8 +819,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		{
 			xlat_action_t		xa;
 			xlat_thread_inst_t	*thread_inst;
-			fr_value_box_t		*result_copy = NULL;
+			fr_value_box_list_t	result_copy;
 
+			fr_value_box_list_init(&result_copy);
 			thread_inst = xlat_thread_instance_find(node);
 
 			XLAT_DEBUG("** [%i] %s(func-async) - %%{%s:%pM}", unlang_interpret_stack_depth(request), __FUNCTION__,
@@ -1079,7 +1080,8 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 
 		case XLAT_FUNC:
 		{
-			fr_value_box_t *result = NULL;
+			fr_value_box_list_t result;
+			fr_value_box_list_init(&result);
 
 			XLAT_DEBUG("** [%i] %s(func) - %%{%s:...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
@@ -1172,9 +1174,11 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 	ssize_t			slen;
 	char			*str = NULL, *child;
 	char const		*p;
-	fr_value_box_t		*head = NULL, string, *value;
+	fr_value_box_t		string, *value;
+	fr_value_box_list_t	head;
 	fr_dcursor_t		cursor;
 
+	fr_value_box_list_init(&head);
 	fr_dcursor_talloc_init(&cursor, &head, fr_value_box_t);
 
 	XLAT_DEBUG("%.*sxlat aprint %d %s", lvl, xlat_spaces, node->type, node->fmt);
@@ -1271,9 +1275,9 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 		 *	Will not handle yields.
 		 */
 		if (node->call.func->type == XLAT_FUNC_NORMAL) {
-			fr_value_box_t	*result = NULL;
+			fr_value_box_list_t	result;
 			TALLOC_CTX	*pool = talloc_new(NULL);
-
+			fr_value_box_list_init(&result);
 			/*
 			 *	Use the unlang stack to evaluate
 			 *	the async xlat up until the point

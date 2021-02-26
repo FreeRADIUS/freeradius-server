@@ -264,9 +264,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	map_t	map_tmp;
 	map_t const	*mutated = original;
 
-	fr_value_box_t	*head = NULL;
-
 	fr_dcursor_t	values;
+	fr_value_box_list_t	head;
 	TALLOC_CTX	*tmp_ctx = NULL;
 
 	MAP_VERIFY(original);
@@ -279,6 +278,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		   tmpl_is_xlat(original->lhs));
 
 	*out = NULL;
+	fr_value_box_list_init(&head);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
