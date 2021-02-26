@@ -4122,23 +4122,21 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	Re-write the attribute to be "raw".  It is
 		 *	therefore of type "octets", and will be
 		 *	handled below.
+		 *
+		 *      We allocate the VP *first*, and then the da
+		 *      from it, so that there are no memory leaks.
 		 */
-		da = dict_unknown_afrom_fields(ctx, da->attr, da->vendor);
+		vp = fr_pair_alloc(ctx);
+		if (!vp) return -1;
+
+		da = dict_unknown_afrom_fields(vp, da->attr, da->vendor);
 		if (!da) {
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
 		}
 		tag = TAG_NONE;
-#ifndef NDEBUG
-		/*
-		 *	Fix for Coverity.
-		 */
-		if (da->type != PW_TYPE_OCTETS) {
-			dict_attr_free(&da);
-			return -1;
-		}
-#endif
-		break;
+		vp->da = da;
+		goto alloc_raw;
 	}
 
 	/*
@@ -4149,12 +4147,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
+alloc_raw:
 	vp->vp_length = datalen;
 	vp->tag = tag;
-
-#ifdef __clang_analyzer__
-	if (!datalen && da->type != PW_TYPE_OCTETS) return -1;
-#endif
 
 	switch (da->type) {
 	case PW_TYPE_STRING:
