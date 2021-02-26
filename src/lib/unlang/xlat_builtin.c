@@ -2244,18 +2244,19 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				    fr_value_box_t **in)
+				    fr_value_box_list_t *in)
 {
 	int64_t		result;
-	fr_value_box_t*	vb;
+	fr_value_box_t	*vb;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
 
 	/* Make sure input can be converted to an unsigned 32 bit integer */
-	if (fr_value_box_cast_in_place(ctx, (*in), FR_TYPE_UINT32, NULL) < 0) {
+	if (fr_value_box_cast_in_place(ctx, in_head, FR_TYPE_UINT32, NULL) < 0) {
 		RPEDEBUG("Failed converting input to uint32");
 		return XLAT_ACTION_FAIL;
 	}
 
-	result = (*in)->vb_uint32;
+	result = in_head->vb_uint32;
 
 	/* Make sure it isn't too big */
 	if (result > (1 << 30)) result = (1 << 30);
