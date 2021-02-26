@@ -4956,25 +4956,25 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 /** Concatenate the string representations of a list of value boxes together
  *
  * @param[in] ctx	to allocate the buffer in.
- * @param[in] head	of the list of value boxes.
+ * @param[in] list	of value boxes.
  * @param[in] delim	to insert between value box values.
  * @param[in] e_rules	to control escaping of the concatenated elements.
  * @return
  *	- NULL on error.
  *	- The concatenation of the string values of the value box list on success.
  */
-char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim,
+char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
 			       fr_sbuff_escape_rules_t const *e_rules)
 {
-	fr_value_box_t const	*vb = head;
+	fr_value_box_t const	*vb = fr_dlist_head(list);
 	char			*aggr, *td = NULL;
 	TALLOC_CTX		*pool = NULL;
 
-	if (!head) return NULL;
+	if (!vb) return NULL;
 
 	fr_value_box_aprint(ctx, &aggr, vb, e_rules);
 	if (!aggr) return NULL;
-	if (!vb->next) return aggr;
+	if (!fr_dlist_next(list, vb)) return aggr;
 
 	/*
 	 *	If we're aggregating more values,
@@ -4983,7 +4983,7 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char
 	pool = talloc_pool(NULL, 255);
 	if (delim) td = talloc_typed_strdup(pool, delim);
 
-	while ((vb = vb->next)) {
+	while ((vb = fr_dlist_next(list, vb))) {
 		char *str, *new_aggr;
 
 		fr_value_box_aprint(pool, &str, vb, e_rules);
