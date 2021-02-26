@@ -1830,29 +1830,31 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_t **in)
+				   fr_value_box_list_t *in)
 {
 	char *p;
 	fr_value_box_t* vb;
+	fr_value_box_t* in_head;
 
 	/*
 	 *	If there's no input, there's no output
 	 */
 	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
+	in_head = fr_dlist_head(in);
 	/*
 	 *	Concatenate all input
 	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	vb->vb_length = ((*in)->vb_length * 2);
+	vb->vb_length = (in_head->vb_length * 2);
 	vb->vb_strvalue = p = talloc_zero_array(vb, char, vb->vb_length + 1);
-	if ((*in)->vb_length) {
-		fr_bin2hex(&FR_SBUFF_OUT(p, talloc_array_length(p)), &FR_DBUFF_TMP((*in)->vb_octets, (*in)->vb_length), SIZE_MAX);
+	if (in_head->vb_length) {
+		fr_bin2hex(&FR_SBUFF_OUT(p, talloc_array_length(p)), &FR_DBUFF_TMP(in_head->vb_octets, in_head->vb_length), SIZE_MAX);
 	}
 
 	fr_dcursor_append(out, vb);
