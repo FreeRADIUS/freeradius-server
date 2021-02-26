@@ -63,7 +63,7 @@ typedef struct {
  */
 static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				        request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				        fr_value_box_t **in)
+				        fr_value_box_list_t *in)
 {
 	fr_dcursor_t	in_cursor;
 	fr_value_box_t	*vb, *vb_decoded;
@@ -144,7 +144,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					fr_value_box_t **in)
+					fr_value_box_list_t *in)
 {
 	fr_dcursor_t	*cursor;
 	bool		tainted = false;
@@ -153,15 +153,16 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	uint8_t		binbuf[2048];
 	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
 	ssize_t		len = 0;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
 
-	if (!*in) return XLAT_ACTION_DONE;
+	if (!in_head) return XLAT_ACTION_DONE;
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input string for attribute reference");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (xlat_fmt_to_cursor(NULL, &cursor, &tainted, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
+	if (xlat_fmt_to_cursor(NULL, &cursor, &tainted, request, in_head->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
 
 	if (!fr_dcursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
 
