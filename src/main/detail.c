@@ -506,10 +506,10 @@ open_file:
 		/* FALL-THROUGH */
 
 	case STATE_HEADER:
+	do_header:
 		rad_assert(data->ctx == NULL);
 		MEM(data->ctx = talloc_init("detail"));
 
-	do_header:
 		data->done_entry = false;
 		data->timestamp_offset = 0;
 
