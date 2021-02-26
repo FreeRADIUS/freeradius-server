@@ -3014,6 +3014,13 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 			       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 {
 	fr_value_box_t tmp;
+	/*
+	 *	Store list poiters to restore later - fr_value_box_cast clears them
+	 */
+	fr_dlist_t entry = {
+		.next = vb->entry.next,
+		.prev = vb->entry.prev
+	};
 
 	/*
 	 *	Simple case, destination type and current
@@ -3035,6 +3042,12 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	if (fr_value_box_cast(ctx, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
 
 	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
+
+	/*
+	 *	Restore list pointers
+	 */
+	vb->entry.next = entry.next;
+	vb->entry.prev = entry.prev;
 
 	return 0;
 }
