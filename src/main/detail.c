@@ -506,6 +506,9 @@ open_file:
 		/* FALL-THROUGH */
 
 	case STATE_HEADER:
+		rad_assert(data->ctx == NULL);
+		MEM(data->ctx = talloc_init("detail"));
+
 	do_header:
 		data->done_entry = false;
 		data->timestamp_offset = 0;
@@ -539,6 +542,7 @@ open_file:
 			DEBUG("detail (%s): Unlinking %s", data->name, data->filename_work);
 			unlink(data->filename_work);
 			if (data->fp) fclose(data->fp);
+			TALLOC_FREE(data->ctx);
 			data->fp = NULL;
 			data->work_fd = -1;
 			data->state = STATE_UNOPENED;
@@ -666,7 +670,7 @@ open_file:
 				data->timestamp = atoi(value);
 				data->timestamp_offset = data->last_offset;
 
-				vp = fr_pair_afrom_num(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
+				vp = fr_pair_afrom_num(data->ctx, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
 				if (vp) {
 					vp->vp_date = (uint32_t) data->timestamp;
 					vp->type = VT_DATA;
@@ -690,7 +694,7 @@ open_file:
 			 *	attributes like radsqlrelay does?
 			 */
 			vp = NULL;
-			if ((fr_pair_list_afrom_str(data, buffer, &vp) > 0) &&
+			if ((fr_pair_list_afrom_str(data->ctx, buffer, &vp) > 0) &&
 			    (vp != NULL)) {
 				fr_cursor_merge(&cursor, vp);
 			} else {
@@ -775,6 +779,7 @@ open_file:
 		}
 
 		fr_pair_list_free(&data->vps);
+		TALLOC_FREE(data->ctx);
 		data->state = STATE_HEADER;
 		goto do_header;
 	}
@@ -786,6 +791,7 @@ open_file:
 	if (data->done_entry) {
 		DEBUG2("detail (%s): Skipping record for timestamp %lu", data->name, data->timestamp);
 		fr_pair_list_free(&data->vps);
+		TALLOC_FREE(data->ctx);
 		data->state = STATE_HEADER;
 		goto do_header;
 	}
