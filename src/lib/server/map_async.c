@@ -258,10 +258,10 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
  */
 int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		    request_t *request, map_t const *original,
-		    fr_value_box_t **lhs_result, fr_value_box_t **rhs_result)
+		    fr_value_box_list_t *lhs_result, fr_value_box_list_t *rhs_result)
 {
 	vp_list_mod_t	*n = NULL;
-	map_t	map_tmp;
+	map_t		map_tmp;
 	map_t const	*mutated = original;
 
 	fr_dcursor_t	values;
@@ -301,6 +301,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	case TMPL_TYPE_XLAT:
 	{
 		ssize_t slen;
+		fr_value_box_t *lhs_result_head = fr_dlist_head(lhs_result);
 
 		/*
 		 *	Get our own mutable copy of the original so we can
@@ -317,20 +318,20 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	This should always be a noop, but included
 		 *	here for robustness.
 		 */
-		if (fr_value_box_list_concat(*lhs_result, *lhs_result, lhs_result, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat(lhs_result_head, lhs_result_head, lhs_result, FR_TYPE_STRING, true) < 0) {
 			RPEDEBUG("Left side expansion failed");
 			fr_dlist_talloc_free(lhs_result);
 			goto error;
 		}
 
-		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, (*lhs_result)->vb_strvalue,
+		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, lhs_result_head->vb_strvalue,
 					   &(tmpl_rules_t){
 					   	.dict_def = request->dict,
 					   	.prefix = TMPL_ATTR_REF_PREFIX_NO
 					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference",
-				 (*lhs_result)->vb_strvalue);
+				 lhs_result_head->vb_strvalue);
 			fr_dlist_talloc_free(lhs_result);
 			goto error;
 		}
@@ -673,6 +674,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_dcursor_t	from;
 		fr_pair_list_t	vp_head;
 		fr_pair_t	*vp;
+		fr_value_box_t	*rhs_result_head = fr_dlist_head(rhs_result);
 
 		fr_pair_list_init(&vp_head);
 		/*
@@ -698,7 +700,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	This should always be a noop, but included
 		 *	here for robustness.
 		 */
-		if (fr_value_box_list_concat(*rhs_result, *rhs_result, rhs_result, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat(rhs_result_head, rhs_result_head, rhs_result, FR_TYPE_STRING, true) < 0) {
 			RPEDEBUG("Right side expansion failed");
 			fr_dlist_talloc_free(rhs_result);
 			goto error;
@@ -712,7 +714,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		/*
 		 *	Parse the VPs from the RHS.
 		 */
-		fr_pair_list_afrom_box(ctx, &vp_head, request->dict, *rhs_result);
+		fr_pair_list_afrom_box(ctx, &vp_head, request->dict, rhs_result_head);
 		if (fr_pair_list_empty(&vp_head)) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");
@@ -771,8 +773,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	If tmpl_value were a pointer we could
 	 *	assign values directly.
 	 */
-	fr_value_box_copy(fr_map_list_head(&n->mod)->rhs, tmpl_value(fr_map_list_head(&n->mod)->rhs), head);
 	tmpl_value(fr_map_list_head(&n->mod)->rhs)->next = head->next;
+	fr_value_box_copy(fr_map_list_head(&n->mod)->rhs, tmpl_value(fr_map_list_head(&n->mod)->rhs), fr_dlist_head(&head));
 	fr_dlist_talloc_free(&head);
 
 finish:
