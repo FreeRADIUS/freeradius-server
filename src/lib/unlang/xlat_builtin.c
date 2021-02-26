@@ -2705,20 +2705,21 @@ EVP_MD_XLAT(sha3_512, sha3_512)
  */
 static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_t **in)
+				      fr_value_box_list_t *in)
 {
-	if (!*in) return XLAT_ACTION_DONE;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+	if (!in_head) return XLAT_ACTION_DONE;
 
 	/*
 	 * Concatenate all input
 	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 
 		return XLAT_ACTION_FAIL;
 	}
 
-	*in = NULL;	/* Let the caller know this was consumed */
+	fr_dlist_remove(in, in_head);		/* Let the caller know this was consumed */
 	fr_dcursor_append(out, in_head);
 
 	return XLAT_ACTION_DONE;
