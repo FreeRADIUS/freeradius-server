@@ -1770,7 +1770,7 @@ finish:
  */
 static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_t **in)
+				      fr_value_box_list_t *in)
 {
 	fr_value_box_t	*result;
 	fr_value_box_t	*separator;
@@ -1785,7 +1785,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 * Separator is first value box
 	 */
-	separator = *in;
+	separator = fr_dlist_pop_head(in);
 
 	if (!separator) {
 		REDEBUG("Missing separator for concat xlat");
@@ -1801,10 +1801,15 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_aprint(result, (*in)->next, sep, NULL);
+	buff = fr_value_box_list_aprint(result, in, sep, NULL);
 	if (!buff) goto error;
 
-	fr_value_box_bstrdup_buffer_shallow(NULL, result, NULL, buff, fr_value_box_list_tainted((*in)->next));
+	fr_value_box_bstrdup_buffer_shallow(NULL, result, NULL, buff, fr_value_box_list_tainted(in));
+
+	/*
+	 *	Return separator to the start of the vb list
+	 */
+	fr_dlist_insert_head(in, separator);
 
 	fr_dcursor_append(out, result);
 
