@@ -2787,7 +2787,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					 fr_value_box_t **in)
+					 fr_value_box_list_t *in)
 {
 	char const		*p, *q, *end;
 	char const		*regex, *rep, *subject;
@@ -2797,12 +2797,13 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	regex_t			*pattern;
 	fr_regex_flags_t	flags;
 	fr_value_box_t		*vb;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("No input arguments");
 		return XLAT_ACTION_FAIL;
 	}
@@ -2810,13 +2811,13 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Concatenate all input
 	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	p = (*in)->vb_strvalue;
-	end = p + (*in)->vb_length;
+	p = in_head->vb_strvalue;
+	end = p + in_head->vb_length;
 
 	if (p == end) {
 		REDEBUG("Regex must not be empty");
@@ -2901,7 +2902,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		talloc_free(pattern);
 		return XLAT_ACTION_FAIL;
 	}
-	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, (*in)->tainted);
+	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, in_head->tainted);
 
 	fr_dcursor_append(out, vb);
 
