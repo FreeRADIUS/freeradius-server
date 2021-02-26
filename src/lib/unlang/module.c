@@ -475,7 +475,7 @@ unlang_action_t unlang_module_yield_to_subrequest(rlm_rcode_t *p_result, request
  * @return
  *	- UNLANG_ACTION_YIELD
  */
-unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_t const *exp,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx)
@@ -521,7 +521,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_t **ou
  * @return
  *	- UNLANG_ACTION_YIELD
  */
-unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_t **out, int *status,
+unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t *out, int *status,
 					    request_t *request, tmpl_t const *vpt,
 					    fr_pair_list_t *vps,
 					    unlang_module_resume_t resume,
