@@ -2636,25 +2636,26 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #ifdef HAVE_OPENSSL_EVP_H
 static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			         request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			         fr_value_box_t **in, EVP_MD const *md)
+			         fr_value_box_list_t *in, EVP_MD const *md)
 {
 	uint8_t		digest[EVP_MAX_MD_SIZE];
 	unsigned int	digestlen;
 	EVP_MD_CTX	*md_ctx;
 	fr_value_box_t	*vb;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
 
 	/*
 	 * Concatenate all input if there is some
 	 */
-	if (*in && fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
 	md_ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(md_ctx, md, NULL);
-	if (*in) {
-		EVP_DigestUpdate(md_ctx, (*in)->vb_octets, (*in)->vb_length);
+	if (in_head) {
+		EVP_DigestUpdate(md_ctx, in_head->vb_octets, in_head->vb_length);
 	} else {
 		EVP_DigestUpdate(md_ctx, NULL, 0);
 	}
@@ -2672,7 +2673,7 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #  define EVP_MD_XLAT(_md, _md_func) \
 static xlat_action_t xlat_func_##_md(TALLOC_CTX *ctx, fr_dcursor_t *out,\
 				      request_t *request, void const *xlat_inst, void *xlat_thread_inst,\
-				      fr_value_box_t **in)\
+				      fr_value_box_list_t *in)\
 {\
 	return xlat_evp_md(ctx, out, request, xlat_inst, xlat_thread_inst, in, EVP_##_md_func());\
 }
