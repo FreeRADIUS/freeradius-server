@@ -732,8 +732,6 @@ int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value
 
 bool		fr_value_box_list_tainted(fr_value_box_list_t const *head);
 
-fr_value_box_t*	fr_value_box_list_get(fr_value_box_t *head, int index);
-
 int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_t const *in);
 /** @} */
 
