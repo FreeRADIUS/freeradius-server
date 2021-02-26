@@ -5127,13 +5127,15 @@ int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_
  *	- true if a list member is tainted.
  *	- false if no list members are tainted.
  */
-bool fr_value_box_list_tainted(fr_value_box_t const *head)
+bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
 {
-	if (!head) return false;
+	fr_value_box_t *vb = NULL;
 
-	do {
-		if (head->tainted) return true;
-	} while ((head = head->next));
+	if (fr_dlist_empty(head)) return false;
+
+	while ((vb = fr_dlist_next(head, vb))) {
+		if (vb->tainted) return true;
+	}
 
 	return false;
 }

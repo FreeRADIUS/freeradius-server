@@ -730,7 +730,7 @@ char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list
 
 int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in);
 
-bool		fr_value_box_list_tainted(fr_value_box_t const *head);
+bool		fr_value_box_list_tainted(fr_value_box_list_t const *head);
 
 fr_value_box_t*	fr_value_box_list_get(fr_value_box_t *head, int index);
 
