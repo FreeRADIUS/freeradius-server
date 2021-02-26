@@ -5099,14 +5099,9 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
  *	- A duplicate list of value boxes, allocated in the context of 'ctx'
  *	- NULL on error, or empty input list.
  */
-int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in)
+int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
 {
-	fr_cursor_t cursor;
 	fr_value_box_t const *in_p = NULL;
-
-	*out = NULL;
-
-	fr_cursor_init(&cursor, out);
 
 	while ((in_p = fr_dlist_next(in, in_p))) {
 	     	fr_value_box_t *n = NULL;
@@ -5114,13 +5109,12 @@ int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_
 		n = fr_value_box_alloc_null(ctx);
 		if (!n) {
 		error:
-			fr_cursor_head(&cursor);
-			fr_cursor_free_list(&cursor);
+			fr_dlist_talloc_free(out);
 			return -1;
 		}
 
 		if (fr_value_box_copy(n, n, in_p) < 0) goto error;
-		fr_cursor_append(&cursor, n);
+		fr_dlist_insert_tail(out, n);
 	}
 
 	return 0;

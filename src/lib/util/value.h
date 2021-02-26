@@ -728,7 +728,7 @@ int		fr_value_box_list_concat(TALLOC_CTX *ctx,
 char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
 					 fr_sbuff_escape_rules_t const *e_rules);
 
-int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in);
+int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in);
 
 bool		fr_value_box_list_tainted(fr_value_box_t const *head);
 
