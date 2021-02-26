@@ -84,22 +84,11 @@ extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
 extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
 extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
 
-typedef enum {
-	FR_VALUE_BOX_LIST_SINGLE = 0,				//!< Singly linked list.
-	FR_VALUE_BOX_LIST_DOUBLE,      				//!< Doubly linked list.
-} fr_value_box_list_type_t;
-
-/** Placeholder structure to represent lists of value boxes
+/** Lists of value boxes
  *
- * Should have additional fields added later.
+ * Specifically define a type for lists of value_box_t to aid type checking
  */
-typedef struct {
-	union {
-		fr_value_box_t	        *slist;			//!< The head of the list.
-		fr_dlist_head_t		dlist;			//!< Doubly linked list head.
-	};
-	fr_value_box_list_type_t type;				//!< What type of list this is.
-} fr_value_box_list_t;
+typedef fr_dlist_head_t	fr_value_box_list_t;
 
 /** Union containing all data types supported by the server
  *
@@ -164,7 +153,7 @@ struct value_box_s {
 
 	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
 
-	fr_value_box_t			*next;			//!< Next in a series of value_box.
+	fr_dlist_t			entry;			//!< Doubly linked list entry.
 };
 
 /** @name Field accessors for #fr_value_box_t
@@ -176,7 +165,7 @@ struct value_box_s {
  */
 #define vb_strvalue				datum.strvalue
 #define vb_octets				datum.octets
-#define vb_group				datum.children.slist
+#define vb_group				datum.children
 
 #define vb_ip					datum.ip
 
