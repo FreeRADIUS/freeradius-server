@@ -722,7 +722,7 @@ int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  * @{
  */
 int		fr_value_box_list_concat(TALLOC_CTX *ctx,
-					 fr_value_box_t *out, fr_value_box_t **list,
+					 fr_value_box_t *out, fr_value_box_list_t *list,
 					 fr_type_t type, bool free_input);
 
 char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim,
