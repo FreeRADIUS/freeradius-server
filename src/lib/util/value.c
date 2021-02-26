@@ -4538,7 +4538,7 @@ finish:
 	 *	Fixup enumvs
 	 */
 	dst->enumv = dst_enumv;
-	dst->next = NULL;
+	fr_dlist_entry_init(&dst->entry);
 
 	return 0;
 }
