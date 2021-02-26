@@ -188,11 +188,11 @@ bool trigger_enabled(void)
 }
 
 typedef struct {
-	char		*name;
-	xlat_exp_t	*xlat;
-	fr_pair_list_t	vps;
-	fr_value_box_t	*box;
-	bool		expanded;
+	char			*name;
+	xlat_exp_t		*xlat;
+	fr_pair_list_t		vps;
+	fr_value_box_list_t	box;
+	bool			expanded;
 } fr_trigger_t;
 
 static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

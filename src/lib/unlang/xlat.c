@@ -45,7 +45,7 @@ typedef struct {
 	/*
 	 *	For func and alternate
 	 */
-	fr_value_box_t		*rhead;				//!< Head of the result of a nested
+	fr_value_box_list_t	rhead;				//!< Head of the result of a nested
 								///< expansion.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.

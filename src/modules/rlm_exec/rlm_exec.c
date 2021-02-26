@@ -287,8 +287,8 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 }
 
 typedef struct {
-	fr_value_box_t	*box;
-	int		status;
+	fr_value_box_list_t	box;
+	int			status;
 } rlm_exec_ctx_t;
 
 static const rlm_rcode_t status2rcode[] = {
