@@ -598,7 +598,7 @@ wait:
 /** Execute a program without waiting for the program to finish.
  *
  * @param request	the request
- * @param vb		as returned by xlat_frame_eval()
+ * @param vb_list	as returned by xlat_frame_eval()
  * @param env_pairs	VPs to put into into the environment.  May be NULL.
  * @return
  *	- <0 on error
@@ -608,7 +608,7 @@ wait:
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_pairs)
+int fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs)
 {
 	int		argc;
 	char		**envp;
@@ -619,8 +619,8 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_p
 	/*
 	 *	Ensure that we don't do anything stupid.
 	 */
-	first =  fr_value_box_list_get(vb, 0);
-	if (first->type == FR_TYPE_GROUP) first = first->vb_group;
+	first =  fr_dlist_head(vb_list);
+	if (first->type == FR_TYPE_GROUP) first = fr_dlist_head(&first->vb_group);
 	if (first->tainted) {
 		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
 		return -1;
@@ -637,7 +637,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_t *vb, fr_pair_list_t *env_p
 		envp[0] = NULL;
 	}
 
-	argc = fr_value_box_list_flatten_argv(request, &argv, vb);
+	argc = fr_value_box_list_flatten_argv(request, &argv, vb_list);
 	if (argc < 0) {
 		talloc_free(envp);
 		return -1;

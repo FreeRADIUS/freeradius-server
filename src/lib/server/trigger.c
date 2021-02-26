@@ -244,7 +244,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 	/*
 	 *	Execute the program without waiting for results.
 	 */
-	if (fr_exec_nowait(request, ctx->box, NULL) < 0) {
+	if (fr_exec_nowait(request, &ctx->box, NULL) < 0) {
 		RPERROR("Failed trigger %s", ctx->name);
 		RETURN_MODULE_FAIL;
 	}
