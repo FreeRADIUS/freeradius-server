@@ -3128,31 +3128,13 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		 *	This ensures orderly freeing, regardless
 		 *	of talloc hierarchy.
 		 */
-		switch (data->datum.children.type) {
-		case FR_VALUE_BOX_LIST_SINGLE:
-		{
-			fr_cursor_t	cursor;
-			fr_value_box_t	*vb;
-
-			for (vb = fr_cursor_init(&cursor, &data->datum.children.slist);
-			     vb;
-			     vb = fr_cursor_next(&cursor)) {
-				fr_value_box_clear_value(vb);
-				talloc_free(vb);
-			}
-		}
-			break;
-
-		case FR_VALUE_BOX_LIST_DOUBLE:
 		{
 			fr_value_box_t	*vb = NULL;
 
-			while ((vb = fr_dlist_next(&data->datum.children.dlist, vb))) {
+			while ((vb = fr_dlist_next(&data->datum.children, vb))) {
 				fr_value_box_clear_value(vb);
 				talloc_free(vb);
 			}
-		}
-			break;
 		}
 		return;
 
