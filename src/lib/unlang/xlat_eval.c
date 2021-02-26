@@ -1214,7 +1214,7 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 		 *	cast to a string until we're actually doing
 		 *	the concatenation.
 		 */
-		if (fr_value_box_cast(ctx, &string, FR_TYPE_STRING, NULL, head) < 0) {
+		if (fr_value_box_cast(ctx, &string, FR_TYPE_STRING, NULL, fr_dlist_head(&head)) < 0) {
 			RPERROR("Casting one letter expansion to string failed");
 			fr_dcursor_free_list(&cursor);
 			return NULL;
@@ -1312,8 +1312,8 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 				return NULL;
 			}
 
-				str = fr_value_box_list_aprint(ctx, result, NULL, &fr_value_escape_double);
 			if (!fr_dlist_empty(&result)) {
+				str = fr_value_box_list_aprint(ctx, &result, NULL, &fr_value_escape_double);
 				if (!str) {
 					RPEDEBUG("Failed concatenating xlat result string");
 					talloc_free(pool);
