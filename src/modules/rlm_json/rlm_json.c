@@ -183,7 +183,7 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
  */
 static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
 				      void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_t **in)
+				      fr_value_box_list_t *in)
 {
 	rlm_json_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 								    rlm_json_t);
@@ -196,20 +196,21 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reques
 	char			*json_str = NULL;
 	fr_value_box_t		*vb;
 	fr_sbuff_t		sbuff;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 	fr_pair_list_init(&json_vps);
 	fr_pair_list_init(&vps);
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("Missing attribute(s)");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	sbuff = FR_SBUFF_IN((*in)->vb_strvalue, (*in)->vb_length);
+	sbuff = FR_SBUFF_IN(in_head->vb_strvalue, in_head->vb_length);
 	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 	/*
