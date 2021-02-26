@@ -2178,26 +2178,27 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				     fr_value_box_t **in)
+				     fr_value_box_list_t *in)
 {
 	tmpl_t			*vpt = NULL;
 	fr_dcursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
 	fr_value_box_t		*vb;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!in) return XLAT_ACTION_DONE;
+	if (!in_head) return XLAT_ACTION_DONE;
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
 	fr_pair_t *vp;
 
-	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, (*in)->vb_strvalue,
+	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
 				&(tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
