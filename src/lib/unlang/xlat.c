@@ -40,7 +40,7 @@ typedef struct {
 	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
 	TALLOC_CTX		*event_ctx;			//!< for temporary events
 	xlat_exp_t const	*exp;
-	fr_cursor_t		values;				//!< Values aggregated so far.
+	fr_dcursor_t		values;				//!< Values aggregated so far.
 
 	/*
 	 *	For func and alternate
@@ -214,7 +214,7 @@ int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
 	state->exp = talloc_get_type_abort_const(exp, xlat_exp_t);	/* Ensure the node is valid */
 
-	fr_cursor_talloc_init(&state->values, out, fr_value_box_t);
+	fr_dcursor_talloc_init(&state->values, out, fr_value_box_t);
 
 	state->ctx = ctx;
 

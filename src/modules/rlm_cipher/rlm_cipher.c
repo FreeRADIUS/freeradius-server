@@ -463,7 +463,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
@@ -510,7 +510,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
 	MEM(fr_value_box_mem_realloc(vb, NULL, vb, ciphertext_len) == 0);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -527,7 +527,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					  fr_value_box_t **in)
 {
@@ -593,7 +593,7 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 	MEM(fr_value_box_mem_realloc(vb, NULL, vb, sig_len) == 0);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -610,7 +610,7 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
@@ -656,7 +656,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
 	MEM(fr_value_box_bstr_realloc(vb, NULL, vb, plaintext_len) == 0);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -674,7 +674,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					    fr_value_box_t **in)
 {
@@ -774,13 +774,13 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	case 1:		/* success (signature valid) */
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = true;
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 		break;
 
 	case 0:		/* failure (signature not valid) */
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = false;
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 		break;
 
 	default:

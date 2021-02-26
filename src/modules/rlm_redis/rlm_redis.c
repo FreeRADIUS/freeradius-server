@@ -156,7 +156,7 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
@@ -202,7 +202,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(fr_redis_cluster_rcodes_table, rcode, "<INVALID>"), false);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -211,7 +211,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, void const *xlat_inst,
 				     UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
@@ -274,7 +274,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_asprintf(vb, vb, NULL, false, "%pV:%u", fr_box_ipaddr(ipaddr), port);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }

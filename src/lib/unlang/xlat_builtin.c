@@ -1600,7 +1600,7 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
 					     fr_value_box_t **in)
@@ -1636,7 +1636,7 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	fr_assert((size_t)elen <= alen);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1651,7 +1651,7 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
 					     fr_value_box_t **in)
@@ -1682,7 +1682,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 	MEM(fr_value_box_mem_realloc(vb, NULL, vb, declen) == 0);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1699,7 +1699,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
@@ -1744,7 +1744,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_cursor_append(out, result);
+	fr_dcursor_append(out, result);
 
 finish:
 	talloc_free(buff);
@@ -1764,7 +1764,7 @@ finish:
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
@@ -1802,7 +1802,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	fr_value_box_bstrdup_buffer_shallow(NULL, result, NULL, buff, fr_value_box_list_tainted((*in)->next));
 
-	fr_cursor_append(out, result);
+	fr_dcursor_append(out, result);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1819,7 +1819,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
@@ -1846,7 +1846,7 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_bin2hex(&FR_SBUFF_OUT(p, talloc_array_length(p)), &FR_DBUFF_TMP((*in)->vb_octets, (*in)->vb_length), SIZE_MAX);
 	}
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1857,7 +1857,7 @@ typedef enum {
 	HMAC_SHA1
 } hmac_type;
 
-static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in, uint8_t *digest, int digest_len, hmac_type type)
 {
@@ -1893,7 +1893,7 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, digest, digest_len, false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1908,7 +1908,7 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					fr_value_box_t **in)
 {
@@ -1926,7 +1926,7 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					 fr_value_box_t **in)
 {
@@ -1947,22 +1947,22 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED request_t *request, UNUSED void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 
 {
 	fr_value_box_t	*vb;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 
-	for (vb = fr_cursor_talloc_init(&cursor, in, fr_value_box_t);
+	for (vb = fr_dcursor_talloc_init(&cursor, in, fr_value_box_t);
 	     vb;
-	     vb = fr_cursor_next(&cursor)) {
+	     vb = fr_dcursor_next(&cursor)) {
 		fr_value_box_t *my;
 
 		MEM(my = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
 		my->vb_size = fr_value_box_network_length(vb);
-		fr_cursor_append(out, my);
+		fr_dcursor_append(out, my);
 	}
 
 	return XLAT_ACTION_DONE;
@@ -1978,7 +1978,7 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
@@ -2003,7 +2003,7 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2018,7 +2018,7 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
@@ -2043,7 +2043,7 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2068,7 +2068,7 @@ exec echo {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      UNUSED fr_value_box_t **in)
 {
@@ -2085,7 +2085,7 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2100,7 +2100,7 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_t **in)
 {
@@ -2144,7 +2144,7 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_assert(vb->vb_octets != NULL);
 	}
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2164,7 +2164,7 @@ static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
@@ -2209,7 +2209,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
 		vb->vb_strvalue = buff;
 		vb->vb_length = talloc_array_length(buff) - 1;
 
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 	}
 	tmpl_cursor_clear(&cc);
 	talloc_free(vpt);
@@ -2229,7 +2229,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				    fr_value_box_t **in)
 {
@@ -2253,7 +2253,7 @@ static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
 	vb->vb_uint64 = result;
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2285,7 +2285,7 @@ static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_cursor_t *out,
 @endverbatim
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
@@ -2458,7 +2458,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	*buff_p++ = '\0';
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2476,7 +2476,7 @@ if ("foo" =~ /^(?<name>.*)/) {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
@@ -2496,7 +2496,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 		fr_assert(p);
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, p, false);
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -2530,7 +2530,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 		}
 		fr_assert(p);
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, p, false);
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -2557,7 +2557,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 		fr_assert(p);
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, p, false);
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
 	}
@@ -2574,7 +2574,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				    fr_value_box_t **in)
 {
@@ -2602,7 +2602,7 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, digest, sizeof(digest), false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2618,7 +2618,7 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @ingroup xlat_functions
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			         request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			         fr_value_box_t **in, EVP_MD const *md)
 {
@@ -2648,13 +2648,13 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_cursor_t *out,
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, digest, digestlen, false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
 
 #  define EVP_MD_XLAT(_md, _md_func) \
-static xlat_action_t xlat_func_##_md(TALLOC_CTX *ctx, fr_cursor_t *out,\
+static xlat_action_t xlat_func_##_md(TALLOC_CTX *ctx, fr_dcursor_t *out,\
 				      request_t *request, void const *xlat_inst, void *xlat_thread_inst,\
 				      fr_value_box_t **in)\
 {\
@@ -2686,7 +2686,7 @@ EVP_MD_XLAT(sha3_512, sha3_512)
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
@@ -2701,8 +2701,8 @@ static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_cursor_append(out, *in);
 	*in = NULL;	/* Let the caller know this was consumed */
+	fr_dcursor_append(out, in_head);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2719,7 +2719,7 @@ static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst, fr_value_box_t **in)
 {
@@ -2728,7 +2728,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if (!*in) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
 		vb->vb_size = 0;
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 		return XLAT_ACTION_DONE;
 	}
 
@@ -2742,7 +2742,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
 	vb->vb_size = strlen((*in)->vb_strvalue);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2766,7 +2766,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					 fr_value_box_t **in)
 {
@@ -2884,7 +2884,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, (*in)->tainted);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	talloc_free(pattern);
 
@@ -2908,7 +2908,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request,
 #ifdef HAVE_REGEX_PCRE2
 				   void const *xlat_inst, void *xlat_thread_inst,
@@ -3009,7 +3009,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	fr_assert(vb && (vb->type != FR_TYPE_INVALID));
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -3018,8 +3018,8 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * If upper is true, change to uppercase, otherwise, change to lowercase
  */
-static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       request_t *request, fr_value_box_t **in, bool upper)
+static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	char		*buff_p;
 	char const	*p, *end;
@@ -3050,7 +3050,7 @@ static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	*buff_p = '\0';
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -3067,7 +3067,7 @@ static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
@@ -3086,7 +3086,7 @@ static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_t **in)
 {
@@ -3103,7 +3103,7 @@ static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_t **in)
 {
@@ -3174,7 +3174,7 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	*buff_p = '\0';
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -3191,7 +3191,7 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					  fr_value_box_t **in)
 {
@@ -3255,7 +3255,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 
 	*buff_p = '\0';
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }

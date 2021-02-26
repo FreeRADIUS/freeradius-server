@@ -102,7 +102,7 @@ typedef struct {
  * @param in list of value boxes as input
  * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request,
+static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
 				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				     fr_value_box_t **in)
 {
@@ -125,7 +125,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_
 	}
 	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, tmp, false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -180,7 +180,7 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
  * @param in list of value boxes as input
  * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request,
+static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
 				      void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_t **in)
 {
@@ -289,7 +289,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 	}
 	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, json_str, false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 	fr_pair_list_free(&json_vps);
 
 	return XLAT_ACTION_DONE;

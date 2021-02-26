@@ -73,7 +73,7 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
 					     fr_value_box_t **in)
@@ -111,7 +111,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, chap_password, sizeof(chap_password), false);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }

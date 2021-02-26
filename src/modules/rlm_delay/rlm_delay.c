@@ -182,7 +182,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 	return unlang_module_yield(request, mod_delay_return, mod_delay_cancel, yielded_at);
 }
 
-static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       UNUSED fr_value_box_t **in, void *rctx)
@@ -199,7 +199,7 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	RDEBUG3("Request delayed by %pVs", vb);
 
-	fr_cursor_insert(out, vb);
+	fr_dcursor_insert(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -221,7 +221,7 @@ static void xlat_delay_cancel(request_t *request, UNUSED void *instance, UNUSED 
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in)
 {

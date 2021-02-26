@@ -219,7 +219,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 	return 0;
 }
 
-static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 				      UNUSED fr_value_box_t **in, void *rctx)
 {
@@ -279,7 +279,7 @@ error:
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
-		fr_cursor_insert(out, vb);
+		fr_dcursor_insert(out, vb);
 	}
 
 finish:
@@ -301,7 +301,7 @@ finish:
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_t **in)
 {

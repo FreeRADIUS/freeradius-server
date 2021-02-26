@@ -66,7 +66,7 @@ static int always_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp
  *
  * Example: "%{db_status:fail}"
  */
-static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 request_t *request, void const *xlat_inst,
 				 UNUSED void *xlat_thread_inst,
 				 fr_value_box_t **in)
@@ -117,7 +117,7 @@ done:
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_strdup(vb, vb, NULL, p, false);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 

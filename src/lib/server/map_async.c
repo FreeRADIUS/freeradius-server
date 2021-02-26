@@ -264,9 +264,9 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	map_t	map_tmp;
 	map_t const	*mutated = original;
 
-	fr_cursor_t	values;
 	fr_value_box_t	*head = NULL;
 
+	fr_dcursor_t	values;
 	TALLOC_CTX	*tmp_ctx = NULL;
 
 	MAP_VERIFY(original);
@@ -448,7 +448,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		fr_cursor_init(&values, &head);
+		fr_dcursor_init(&values, &head);
 
 		if (fr_value_box_from_str(fr_dlist_head(&n->mod),
 					  tmpl_value(fr_map_list_head(&n->mod)->rhs), &type,
@@ -465,13 +465,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 */
 	if (!map_check_src_or_dst(request, mutated, mutated->lhs)) goto error;
 
-	(void)fr_cursor_init(&values, &head);
+	(void)fr_dcursor_init(&values, &head);
 
 	switch (mutated->rhs->type) {
 	case TMPL_TYPE_XLAT:
 	{
 		fr_assert(tmpl_xlat(mutated->rhs) != NULL);
-		fr_cursor_t	from;
+		fr_dcursor_t	from;
 		fr_value_box_t	*vb, *n_vb;
 
 	assign_values:
@@ -489,8 +489,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			if (!n) {
 				RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 			xlat_error:
-				fr_cursor_head(&values);
-				fr_cursor_free_list(&values);
+				fr_dcursor_head(&values);
+				fr_dcursor_free_list(&values);
 				goto error;
 			}
 			goto finish;
@@ -502,13 +502,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		(void)fr_cursor_init(&from, rhs_result);
-		while ((vb = fr_cursor_remove(&from))) {
+		(void)fr_dcursor_init(&from, rhs_result);
+		while ((vb = fr_dcursor_remove(&from))) {
 			if (vb->type != tmpl_da(mutated->lhs)->type) {
 				n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
 				if (!n_vb) {
-					fr_cursor_head(&from);
-					fr_cursor_free_list(&from);
+					fr_dcursor_head(&from);
+					fr_dcursor_free_list(&from);
 					goto xlat_error;
 				}
 
@@ -517,15 +517,15 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 						      tmpl_da(mutated->lhs), vb) < 0) {
 					RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 
-					fr_cursor_head(&from);
-					fr_cursor_free_list(&from);
+					fr_dcursor_head(&from);
+					fr_dcursor_free_list(&from);
 					goto xlat_error;
 				}
 				talloc_free(vb);
 			} else {
 				n_vb = talloc_steal(n, vb);	/* Should already be in ctx of n's parent */
 			}
-			fr_cursor_append(&values, n_vb);
+			fr_dcursor_append(&values, n_vb);
 		}
 	}
 		break;
@@ -586,8 +586,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
 			if (!n_vb) {
 			attr_error:
-				fr_cursor_head(&values);
-				fr_cursor_free_list(&values);
+				fr_dcursor_head(&values);
+				fr_dcursor_free_list(&values);
 				tmpl_cursor_clear(&cc_attr);
 				goto error;
 			}
@@ -603,7 +603,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			} else {
 				fr_value_box_copy(n_vb, n_vb, &vp->data);
 			}
-			fr_cursor_append(&values, n_vb);
+			fr_dcursor_append(&values, n_vb);
 		} while ((vp = fr_dcursor_next(&from)));
 
 		tmpl_cursor_clear(&cc_attr);
@@ -630,8 +630,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
 			if (!n_vb) {
 			data_error:
-				fr_cursor_head(&values);
-				fr_cursor_free_list(&values);
+				fr_dcursor_head(&values);
+				fr_dcursor_free_list(&values);
 				goto error;
 			}
 			/*
@@ -656,8 +656,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				 */
 				if (fr_value_box_copy(n_vb, n_vb, vb) < 0) goto data_error;
 			}
-			fr_cursor_append(&values, n_vb);
 		}
+			fr_dcursor_append(&values, n_vb);
 	}
 		break;
 

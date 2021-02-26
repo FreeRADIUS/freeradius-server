@@ -141,7 +141,7 @@ typedef void (*fr_unlang_xlat_fd_event_t)(request_t *request, void *xlat_inst,
  *				mean it turned a result.
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
-typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
+typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 				     fr_value_box_t **in);
 
@@ -164,7 +164,7 @@ typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  *				mean it turned a result.
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
-typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
+typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 					    fr_value_box_t **in, void *rctx);
 

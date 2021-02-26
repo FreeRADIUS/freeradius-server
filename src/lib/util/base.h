@@ -35,7 +35,6 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>

@@ -123,7 +123,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED request_t *request,
 				      UNUSED void const *xlat_inst, void *xlat_thread_inst,
 				      UNUSED fr_value_box_t **in, void *rctx)
@@ -138,7 +138,7 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	(void) rbtree_deletebydata(thread->t->tree, echo);
 	talloc_free(echo);
 
-	fr_cursor_insert(out, vb);
+	fr_dcursor_insert(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -179,7 +179,7 @@ static void _xlat_icmp_timeout(request_t *request,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       request_t *request, void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_t **in)
 {

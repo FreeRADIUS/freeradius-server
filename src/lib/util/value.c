@@ -49,7 +49,7 @@ RCSID("$Id$")
 #undef _VALUE_PRIVATE
 
 #include <freeradius-devel/util/ascend.h>
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/hex.h>
@@ -4872,7 +4872,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 			     fr_value_box_t *out, fr_value_box_t **list, fr_type_t type, bool free_input)
 {
 	TALLOC_CTX		*pool;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_value_box_t const	*vb;
 
 	if (!list || !*list) {
@@ -4891,7 +4891,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		return -1;
 	}
 
-	fr_cursor_init(&cursor, list);
+	fr_dcursor_init(&cursor, list);
 
 	/*
 	 *	Allow concatenating in place
@@ -4909,28 +4909,28 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 			if (fr_value_box_copy(ctx, out, &from_cast) < 0) return -1;
 			out->next = next;			/* Restore the next pointer */
 		}
-		fr_cursor_next(&cursor);
+		fr_dcursor_next(&cursor);
 	} else {
 		if (fr_value_box_cast(ctx, out, type, NULL, *list) < 0) return -1;	/* Decomposes to copy */
 
 		if (free_input) {
-			fr_cursor_free_item(&cursor);		/* Advances cursor */
+			fr_dcursor_free_item(&cursor);		/* Advances cursor */
 		} else {
-			fr_cursor_next(&cursor);
+			fr_dcursor_next(&cursor);
 		}
 	}
 
 	/*
 	 *	Imploding a one element list.
 	 */
-	if (!fr_cursor_current(&cursor)) return 0;
+	if (!fr_dcursor_current(&cursor)) return 0;
 
 	pool = talloc_pool(NULL, 255);	/* To absorb the temporary strings */
 
 	/*
 	 *	Join the remaining values
 	 */
-	while ((vb = fr_cursor_current(&cursor))) {
+	while ((vb = fr_dcursor_current(&cursor))) {
 	     	fr_value_box_t from_cast;
 	     	fr_value_box_t const *n;
 
@@ -4959,9 +4959,9 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		}
 
 		if (free_input) {
-			fr_cursor_free_item(&cursor);		/* Advances cursor */
+			fr_dcursor_free_item(&cursor);		/* Advances cursor */
 		} else {
-			fr_cursor_next(&cursor);
+			fr_dcursor_next(&cursor);
 		}
 	}
 
