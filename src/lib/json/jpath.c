@@ -128,7 +128,7 @@ size_t fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen,
 /** Recursive function for jpath_expr_evaluate
  *
  * @param[in,out] ctx to allocate fr_value_box_t in.
- * @param[out] tail Where to write fr_value_box_t (**).
+ * @param[out] tail Where to write fr_value_box_t.
  * @param[in] dst_type FreeRADIUS type to convert to.
  * @param[in] dst_enumv Enumeration values to allow string to integer conversions.
  * @param[in] object current node in the json tree.
@@ -138,7 +138,7 @@ size_t fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen,
  *	- 0 on no match.
  *	- -1 on error.
  */
-static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
+static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 			  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			  json_object *object, fr_jpath_node_t const *jpath)
 {
@@ -360,8 +360,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 		return -1;
 	}
 
-	**tail = value;
-	*tail = &(**tail)->next;
+	fr_dlist_insert_tail(tail, value);
 	return 1;
 }
 
@@ -381,14 +380,10 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
  *	- 0 on no match.
  *	- -1 on error.
  */
-int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
+int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 			   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			   json_object *root, fr_jpath_node_t const *jpath)
 {
-	fr_value_box_t **tail = out;
-
-	*tail = NULL;
-
 	if (!root) return -1;
 
 	switch (jpath->selector->type) {
@@ -401,7 +396,7 @@ int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
 		return -1;
 	}
 
-	return jpath_evaluate(ctx, &tail, dst_type, dst_enumv, root, jpath->next);
+	return jpath_evaluate(ctx, out, dst_type, dst_enumv, root, jpath->next);
 }
 
 /** Print a node list to a string for debugging
