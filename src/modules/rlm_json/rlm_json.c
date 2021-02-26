@@ -443,7 +443,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
-			      	fr_value_box_t **json, fr_map_list_t const *maps)
+			      	fr_value_box_list_t *json, fr_map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
@@ -454,17 +454,18 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_
 	rlm_json_jpath_to_eval_t	to_eval;
 
 	char const			*json_str = NULL;
+	fr_value_box_t			*json_head = fr_dlist_head(json);
 
-	if (!*json) {
+	if (!json_head) {
 		REDEBUG("JSON map input cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *json, json, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(request, json_head, json, FR_TYPE_STRING, true) < 0) {
 		REDEBUG("Failed concatenating input");
 		return RLM_MODULE_FAIL;
 	}
-	json_str = (*json)->vb_strvalue;
+	json_str = json_head->vb_strvalue;
 
 	if ((talloc_array_length(json_str) - 1) == 0) {
 		REDEBUG("JSON map input length must be > 0");
