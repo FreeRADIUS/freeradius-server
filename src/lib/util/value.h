@@ -314,6 +314,13 @@ static inline bool fr_value_box_list_len_min(fr_value_box_t const *head, size_t 
 	for (i = 0; head && i < min; head = head->next, i++);
 
 	return (i == min);
+/** Initialise a list of fr_value_box_t
+ *
+ * @param[in,out] list 	to initialise
+ */
+static inline void fr_value_box_list_init(fr_value_box_list_t *list)
+{
+	fr_dlist_talloc_init(list, fr_value_box_t, entry);
 }
 /** @} */
 
