@@ -164,7 +164,7 @@ void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 
 xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_func_resume_t resume, xlat_exp_t const *exp,
-				       request_t *request, fr_value_box_t **result, void *rctx);
+				       request_t *request, fr_value_box_list_t *result, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_exp_t const **child, bool *alternate,
