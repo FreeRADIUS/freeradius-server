@@ -69,13 +69,14 @@ static int always_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp
 static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 request_t *request, void const *xlat_inst,
 				 UNUSED void *xlat_thread_inst,
-				 fr_value_box_t **in)
+				 fr_value_box_list_t *in)
 {
 	rlm_always_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),rlm_always_t);
 	module_instance_t	*mi;
 	char const		*status;
 	char const		*p;
 	fr_value_box_t		*vb;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 	mi = module_by_name(NULL, inst->xlat_name);
 	if (!mi) {
@@ -91,8 +92,8 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p = fr_table_str_by_value(rcode_table, mi->code, "<invalid>");
 	}
 
-	if (!(*in) || (*in)->vb_length == 0) goto done;
-	status = (*in)->vb_strvalue;
+	if (!in_head || in_head->vb_length == 0) goto done;
+	status = in_head->vb_strvalue;
 
 	/*
 	 *      Set the module status
