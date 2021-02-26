@@ -465,7 +465,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
  */
 static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-					     fr_value_box_t **in)
+					     fr_value_box_list_t *in)
 {
 	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
@@ -477,18 +477,19 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t				ciphertext_len;
 
 	fr_value_box_t			*vb;
+	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("encrypt requires one or arguments (<plaintext>...)");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		fr_tls_log_error(request, "Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	plaintext = (*in)->vb_strvalue;
-	plaintext_len = (*in)->vb_length;
+	plaintext = in_head->vb_strvalue;
+	plaintext_len = in_head->vb_length;
 
 	/*
 	 *	Figure out the buffer we need
