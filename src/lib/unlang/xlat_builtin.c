@@ -2935,7 +2935,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #else
 				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 #endif
-				   fr_value_box_t **in)
+				   fr_value_box_list_t *in)
 {
 	char const		*p, *q, *end;
 	char			*vb_str;
@@ -2944,11 +2944,12 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t			pattern_len, rep_len;
 
 	fr_value_box_t		*vb;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("No input arguments");
 		return XLAT_ACTION_FAIL;
 	}
@@ -2956,13 +2957,13 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Concatenate all input
 	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	p = (*in)->vb_strvalue;
-	end = p + (*in)->vb_length;
+	p = in_head->vb_strvalue;
+	end = p + in_head->vb_length;
 
 	if (p == end) {
 		REDEBUG("Substitution arguments must not be empty");
@@ -3022,7 +3023,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p = q + pattern_len;
 	}
 
-	if (fr_value_box_bstrdup_buffer_shallow(vb, vb, NULL, vb_str, (*in)->vb_strvalue) < 0) {
+	if (fr_value_box_bstrdup_buffer_shallow(vb, vb, NULL, vb_str, in_head->vb_strvalue) < 0) {
 		RPEDEBUG("Failed creating output box");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
