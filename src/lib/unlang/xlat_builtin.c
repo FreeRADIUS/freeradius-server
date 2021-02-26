@@ -1656,28 +1656,30 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
-					     fr_value_box_t **in)
+					     fr_value_box_list_t *in)
 {
 	size_t		alen;
 	ssize_t		declen;
 	uint8_t		*decbuf;
 	fr_value_box_t	*vb;
+	fr_value_box_t	*in_head;
 
 	/*
 	 *	If there's no input, there's no output
 	 */
 	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+	in_head = fr_dlist_head(in);
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	alen = FR_BASE64_DEC_LENGTH((*in)->vb_length);
+	alen = FR_BASE64_DEC_LENGTH(in_head->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	MEM(fr_value_box_mem_alloc(vb, &decbuf, vb, NULL, alen, (*in)->tainted) == 0);
-	declen = fr_base64_decode(decbuf, alen, (*in)->vb_strvalue, (*in)->vb_length);
+	MEM(fr_value_box_mem_alloc(vb, &decbuf, vb, NULL, alen, in_head->tainted) == 0);
+	declen = fr_base64_decode(decbuf, alen, in_head->vb_strvalue, in_head->vb_length);
 	if (declen < 0) {
 		talloc_free(vb);
 		REDEBUG("Base64 string invalid");
