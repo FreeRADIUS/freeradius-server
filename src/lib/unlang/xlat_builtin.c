@@ -1870,7 +1870,7 @@ typedef enum {
 
 static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				fr_value_box_t **in, uint8_t *digest, int digest_len, hmac_type type)
+				fr_value_box_list_t *in, uint8_t *digest, int digest_len, hmac_type type)
 {
 	uint8_t const	*data_p, *key_p;
 	size_t		data_len, key_len;
@@ -1878,9 +1878,9 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (fr_dlist_empty(in)) return XLAT_ACTION_FAIL;
 
-	vb_data = fr_value_box_list_get(*in, 0);
-	vb_sep = fr_value_box_list_get(*in, 1);
-	vb_key = fr_value_box_list_get(*in, 2);
+	vb_data = fr_dlist_head(in);
+	vb_sep = fr_dlist_next(in, vb_data);
+	vb_key = fr_dlist_next(in, vb_sep);
 
 	if (!vb_data || !vb_sep || !vb_key ||
             vb_sep->vb_length != 1 ||
