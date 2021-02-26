@@ -185,7 +185,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request,
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       UNUSED fr_value_box_t **in, void *rctx)
+				       UNUSED fr_value_box_list_t *in, void *rctx)
 {
 	fr_time_t	*yielded_at = talloc_get_type_abort(rctx, fr_time_t);
 	fr_time_t	delayed;
@@ -223,12 +223,13 @@ static void xlat_delay_cancel(request_t *request, UNUSED void *instance, UNUSED 
  */
 static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				fr_value_box_t **in)
+				fr_value_box_list_t *in)
 {
 	rlm_delay_t const	*inst;
 	void			*instance;
 	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
 
@@ -245,20 +246,20 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	immediately re-enqueue the request.
 	 *	This is very useful for testing.
 	 */
-	if (!*in) {
+	if (!in_head) {
 		if (!fr_cond_assert(delay_add(request, &resume_at, *yielded_at, 0, true, true) == 0)) {
 			return XLAT_ACTION_FAIL;
 		}
 		goto yield;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		talloc_free(yielded_at);
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_time_delta_from_str(&delay, (*in)->vb_strvalue, FR_TIME_RES_SEC) < 0) {
+	if (fr_time_delta_from_str(&delay, in_head->vb_strvalue, FR_TIME_RES_SEC) < 0) {
 		RPEDEBUG("Failed parsing delay time");
 		talloc_free(yielded_at);
 		return XLAT_ACTION_FAIL;
