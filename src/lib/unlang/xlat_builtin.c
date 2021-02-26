@@ -2083,7 +2083,7 @@ exec echo {
  */
 static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      UNUSED fr_value_box_t **in)
+				      UNUSED fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb = NULL;
 
@@ -2115,7 +2115,7 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_t **in)
+				   fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb, *in_vb;
 
