@@ -305,7 +305,7 @@ static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *requ
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (state->out) *state->out = state->box;
+	if (state->out) fr_dlist_move(state->out, &state->box);
 
 	if (state->resume) {
 		rlm_rcode_t rcode;
