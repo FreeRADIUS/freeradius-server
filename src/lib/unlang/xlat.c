@@ -192,7 +192,7 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		     request_t *request, xlat_exp_t const *exp, bool top_frame)
 {
 

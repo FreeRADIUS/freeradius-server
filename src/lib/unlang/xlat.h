@@ -404,7 +404,7 @@ void		xlat_instances_free(void);
 int		unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 					      void const *ctx, fr_time_t when);
 
-int		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+int		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_t const *exp, bool top_frame)
 				 CC_HINT(warn_unused_result);
 
