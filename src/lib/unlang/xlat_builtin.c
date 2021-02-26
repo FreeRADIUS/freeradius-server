@@ -1705,7 +1705,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_t **in)
+				   fr_value_box_list_t *in)
 {
 	fr_value_box_t		*result;
 	char			*buff = NULL, *p, *end;
@@ -1718,7 +1718,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
-	buff = fr_value_box_list_aprint(NULL, *in, NULL, NULL);
+	buff = fr_value_box_list_aprint(NULL, in, NULL, NULL);
 	if (!buff) return XLAT_ACTION_FAIL;
 
 	len = talloc_array_length(buff) - 1;
@@ -1740,7 +1740,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	outlen = len / 2;
 
 	MEM(result = fr_value_box_alloc_null(ctx));
-	MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(*in)) == 0);
+	MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(in)) == 0);
 	fr_hex2bin(&err, &FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p), true);
 	if (err) {
 		REDEBUG2("Invalid hex string");
