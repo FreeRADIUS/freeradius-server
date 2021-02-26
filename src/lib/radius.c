@@ -3803,19 +3803,12 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			return 0;
 		}
 
-#if !defined(NDEBUG) || defined(__clang_analyzer__)
 		/*
-		 *	Hacks for Coverity.  Editing the dictionary
-		 *	will break assumptions about CUI.  We know
-		 *	this, but Coverity doesn't.
+		 *	Create a zero-length attribute.
 		 */
-		if (da->type != PW_TYPE_OCTETS) return -1;
-#endif
-
-		data = buffer;
-		*buffer = '\0';
-		datalen = 0;
-		goto alloc_cui;	/* skip everything */
+		vp = fr_pair_afrom_da(ctx, da);
+		if (!vp) return -1;
+		goto done;
 	}
 
 	/*
@@ -4271,6 +4264,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
 		return -1;
 	}
+
+done:
 	vp->type = VT_DATA;
 	*pvp = vp;
 
