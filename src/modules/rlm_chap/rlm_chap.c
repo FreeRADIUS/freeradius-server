@@ -76,22 +76,23 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
-					     fr_value_box_t **in)
+					     fr_value_box_list_t *in)
 {
 	uint8_t		chap_password[1 + RADIUS_CHAP_CHALLENGE_LENGTH];
 	fr_value_box_t	*vb;
 	fr_pair_t	*challenge;
 	uint8_t	const	*vector;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
 
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("chap requires a password as input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
@@ -107,7 +108,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		vector = request->packet->vector;
 	}
 	fr_radius_encode_chap_password(chap_password, (uint8_t)(fr_rand() & 0xff), vector,
-				       (*in)->vb_strvalue, (*in)->vb_length);
+				       in_head->vb_strvalue, in_head->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(vb, vb, NULL, chap_password, sizeof(chap_password), false);
