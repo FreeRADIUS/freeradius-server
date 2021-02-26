@@ -219,8 +219,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			/*
 			 *	Concat the top level results together
 			 */
-			    (fr_value_box_list_concat(update_state, update_state->rhs_result, &update_state->rhs_result,
 			if (!fr_dlist_empty(&update_state->rhs_result) &&
+			    (fr_value_box_list_concat(update_state, fr_dlist_head(&update_state->rhs_result), &update_state->rhs_result,
 						      FR_TYPE_STRING, true) < 0)) {
 				RPEDEBUG("Failed concatenating RHS expansion results");
 				goto error;
@@ -304,7 +304,7 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request)
 	map_proc_inst_t			*inst = gext->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
-	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, map_proc_state->src_result);
+	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, &map_proc_state->src_result);
 
 	/*
 	 *	FIXME - We don't yet support async LHS/RHS expansions for map procs
@@ -347,15 +347,18 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 	 */
 	if (inst->src) switch (inst->src->type) {
 	default:
-		if (tmpl_aexpand(frame->state, &map_proc_state->src_result,
+	{
+		fr_value_box_t *src_result = NULL;
+		if (tmpl_aexpand(frame->state, &src_result,
 				 request, inst->src, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding map src");
 		error:
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
+		fr_dlist_insert_head(&map_proc_state->src_result, src_result);
 		break;
-
+	}
 	case TMPL_TYPE_EXEC:
 		if (unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
 				     request, inst->src, NULL, NULL) < 0) {
