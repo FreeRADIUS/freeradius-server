@@ -4788,7 +4788,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		/*
 		 *	Be lazy by just converting it to a string, and then printing the string.
 		 */
-		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) return 0;
+		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data) < 0) return 0;
 
 		slen = fr_value_box_print(&our_out, &vb, e_rules);
 		fr_value_box_clear(&vb);
@@ -4904,6 +4904,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 
 			out->entry.next = entry.next;		/* Restore the list pointers */
 			out->entry.prev = entry.prev;
+
 		}
 		fr_dcursor_next(&cursor);
 	} else {
