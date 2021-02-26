@@ -3216,29 +3216,30 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					  fr_value_box_t **in)
+					  fr_value_box_list_t *in)
 {
 	char const	*p, *end;
 	char		*buff_p;
 	char		*c1, *c2;
 	size_t		outlen = 0;
 	fr_value_box_t	*vb;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
 
 	/*
 	 * Nothing to do if input is empty
 	 */
-	if (!*in) return XLAT_ACTION_DONE;
+	if (!in_head) return XLAT_ACTION_DONE;
 
 	/*
 	 * Concatenate all input
 	 */
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	p = (*in)->vb_strvalue;
-	end = p + (*in)->vb_length;
+	p = in_head->vb_strvalue;
+	end = p + in_head->vb_length;
 
 	/*
 	 * Calculate size of output
@@ -3256,7 +3257,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(fr_value_box_bstr_alloc(vb, &buff_p, vb, NULL, outlen, false) == 0);
 
 	/* Reset p to start position */
-	p = (*in)->vb_strvalue;
+	p = in_head->vb_strvalue;
 
 	while (p < end) {
 		if (*p != '%') {
@@ -3268,7 +3269,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/* Don't need \0 check, as it won't be in the hextab */
 		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
-			REMARKER((*in)->vb_strvalue, p - (*in)->vb_strvalue, "Non-hex char in %% sequence");
+			REMARKER(in_head->vb_strvalue, p - in_head->vb_strvalue, "Non-hex char in %% sequence");
 			talloc_free(vb);
 
 			return XLAT_ACTION_FAIL;
