@@ -613,8 +613,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	case TMPL_TYPE_DATA:
 	{
-		fr_cursor_t	from;
-		fr_value_box_t	*vb, *vb_head, *n_vb;
+		/*
+		 *	Commented out lines below are due to fr_value_box_t
+		 *	now being in a dlist - so value box entries in a fr_tmpl_t
+		 *	can no-longer be treated as the head of a list
+		 */
+		fr_value_box_t	*vb, *n_vb;
+//		fr_value_box_t	*vb_head;
 
 		fr_assert(fr_dlist_empty(rhs_result));
 		fr_assert(tmpl_da(mutated->lhs));
@@ -623,11 +628,9 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		vb_head = tmpl_value(mutated->rhs);
+		vb = tmpl_value(mutated->rhs);
 
-		for (vb = fr_cursor_init(&from, &vb_head);
-		     vb;
-		     vb = fr_cursor_next(&from)) {
+//		while ((vb = fr_dlist_next(vb_head, vb))) {
 			n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
 			if (!n_vb) {
 			data_error:
@@ -657,8 +660,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				 */
 				if (fr_value_box_copy(n_vb, n_vb, vb) < 0) goto data_error;
 			}
-		}
 			fr_dcursor_append(&values, n_vb);
+//		}
 	}
 		break;
 
@@ -773,8 +776,12 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	If tmpl_value were a pointer we could
 	 *	assign values directly.
 	 */
-	tmpl_value(fr_map_list_head(&n->mod)->rhs)->next = head->next;
 	fr_value_box_copy(fr_map_list_head(&n->mod)->rhs, tmpl_value(fr_map_list_head(&n->mod)->rhs), fr_dlist_head(&head));
+	/*
+	 *	value boxes in tmpls cannot now be the head of a list
+	 *
+	 *tmpl_value(fr_map_list_head(&n->mod)->rhs)->next = head->next;
+	 */
 	fr_dlist_talloc_free(&head);
 
 finish:
@@ -825,7 +832,7 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 	 *	Fast path...
 	 */
 	mod = fr_dlist_head(&vlm->mod);
-	if ((vlm->mod.num_elements == 1) && !tmpl_value(mod->rhs)->next) {
+	if (vlm->mod.num_elements == 1) {
 		fr_pair_t *vp;
 		vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
 		fr_pair_add(list, vp);
@@ -838,18 +845,22 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 	for (;
 	     mod;
 	     mod = fr_dlist_next(&vlm->mod, mod)) {
-		fr_value_box_t	*vb;
+		/*
+		 *	Commented out lines due to fr_value_box_t lists now
+		 *	being dlists
+		 */
+//		fr_value_box_t	*vb;
 		fr_pair_t	*vp;
 
-		for (vb = tmpl_value(mod->rhs);
-	     	     vb;
-	     	     vb = vb->next) {
-			vp = map_list_mod_to_vp(ctx, mod->lhs, vb);
+//		for (vb = tmpl_value(mod->rhs);
+//	     	     vb;
+//	     	     vb = vb->next) {
+			vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
 			if (!vp) {
 				fr_pair_list_free(list);
 			}
 			fr_pair_add(list, vp);
-		}
+//		}
 	}
 }
 
@@ -974,11 +985,16 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 *	map_list_mod_debug()
 		 */
 		if (RDEBUG_ENABLED2) {
-			for (vb = tmpl_value(mod->rhs);
-			     vb;
-			     vb = vb->next) {
+			vb = tmpl_value(mod->rhs);
+		/*
+		 *	Commented out lines due to fr_value_box_t lists now
+		 *	being dlists
+		 */
+//			for (vb = tmpl_value(mod->rhs);
+//			     vb;
+//			     vb = vb->next) {
 				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_INVALID ? vb : NULL);
-			}
+//			}
 		}
 	}
 	mod = fr_dlist_head(&vlm->mod);	/* Reset */
@@ -1134,13 +1150,16 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_value_box_t	*vb = tmpl_value(fr_map_list_head(&vlm->mod)->rhs);
-
-			do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//			do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
 					fr_dcursor_free_item(&list);
 					goto finish;
 				}
-			} while ((vb = vb->next));
+//			} while ((vb = vb->next));
 			goto finish;	/* Wasn't found */
 		}
 
@@ -1152,13 +1171,16 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		do {
 		     	fr_value_box_t	*vb = tmpl_value(fr_map_list_head(&vlm->mod)->rhs);
-
-		     	do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//		     	do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
 					fr_dcursor_free_item(&list);
 					break;
 				}
-		     	} while ((vb = vb->next));
+//		     	} while ((vb = vb->next));
 		} while ((found = fr_dcursor_next(&list)));
 	}
 		goto finish;
@@ -1238,9 +1260,13 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
-			do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//			do {
 				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
-			} while ((vb = vb->next));
+//			} while ((vb = vb->next));
 
 			if (remove) fr_dcursor_free_item(&list);
 			goto finish;
@@ -1253,9 +1279,13 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
-			do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//			do {
 				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
-			} while ((vb = vb->next));
+//			} while ((vb = vb->next));
 
 			if (remove) {
 				fr_dcursor_free_item(&list);
