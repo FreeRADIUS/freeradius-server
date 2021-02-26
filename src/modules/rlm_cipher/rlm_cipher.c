@@ -530,7 +530,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-					  fr_value_box_t **in)
+					  fr_value_box_list_t *in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_cipher_t);
@@ -546,18 +546,19 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	unsigned int			digest_len = 0;
 
 	fr_value_box_t			*vb;
+	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("sign requires one or arguments (<plaintext>...)");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		REDEBUG("Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	msg = (*in)->vb_strvalue;
-	msg_len = (*in)->vb_length;
+	msg = in_head->vb_strvalue;
+	msg_len = in_head->vb_length;
 
 	/*
 	 *	First produce a digest of the message
