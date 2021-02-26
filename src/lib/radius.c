@@ -4143,7 +4143,6 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	And now that we've verified the basic type
 	 *	information, decode the actual data.
 	 */
- alloc_cui:
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
