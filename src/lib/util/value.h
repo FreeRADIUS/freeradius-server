@@ -284,36 +284,29 @@ struct value_box_s {
 
 /** Returns the number of boxes in a list of value boxes
  *
- * @param[in] head	of the value box list.
+ * @param[in] list	of value boxes.
  * @return Number of boxes in the list.
  */
-static inline size_t fr_value_box_list_len(fr_value_box_t const *head)
+static inline size_t fr_value_box_list_len(fr_value_box_list_t const *list)
 {
-	size_t i;
-
-	for (i = 0; head; head = head->next, i++);
-
-	return i;
+	return fr_dlist_num_elements(list);
 }
 
 /** Determines whether a list contains the number of boxes required
  *
- * @note More efficient than fr_value_box_list_len for argument validation as it
- *	doesn't walk the entire list.
- *
- * @param[in] head	of the list of value boxes.
+ * @param[in] list	of value boxes.
  * @param[in] min	The number of boxes required to return true.
  * @return
  *	- true if the list has at least min boxes.
  *	- false if the list has fewer than min boxes.
  */
-static inline bool fr_value_box_list_len_min(fr_value_box_t const *head, size_t min)
+static inline bool fr_value_box_list_len_min(fr_value_box_list_t const *list, size_t min)
 {
-	size_t i;
+	size_t i = fr_dlist_num_elements(list);
 
-	for (i = 0; head && i < min; head = head->next, i++);
+	return (i >= min);
+}
 
-	return (i == min);
 /** Initialise a list of fr_value_box_t
  *
  * @param[in,out] list 	to initialise
