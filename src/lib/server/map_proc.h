@@ -85,7 +85,7 @@ int		map_proc_register(void *mod_inst, char const *name,
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 				      CONF_SECTION *cs, tmpl_t const *src, fr_map_list_t const *maps);
 
-rlm_rcode_t	map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_box_t **src);
+rlm_rcode_t	map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_box_list_t *src);
 
 #ifdef __cplusplus
 }
