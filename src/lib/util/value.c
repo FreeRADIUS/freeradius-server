@@ -5034,12 +5034,13 @@ uint32_t fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash)
  *	- >= 0 number of array elements in argv
  *	- <0 on error
  */
-int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_t const *in)
+int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
 {
 	int i, argc;
 	char **argv;
+	fr_value_box_t *head = fr_dlist_head(in);
 
-	if (in->type != FR_TYPE_GROUP) {
+	if (head->type != FR_TYPE_GROUP) {
 		argc = 1;
 
 	} else {
@@ -5049,21 +5050,21 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	argv = talloc_zero_array(ctx, char *, argc + 1);
 	if (!argv) return -1;
 
-	if (in->type != FR_TYPE_GROUP) {
-		fr_value_box_aprint(argv, &argv[0], in, NULL);
+	if (head->type != FR_TYPE_GROUP) {
+		fr_value_box_aprint(argv, &argv[0], head, NULL);
 	} else {
 		fr_value_box_t const *in_p;
 
 		/*
 		 *	Print the children of each group into the argv array.
 		 */
-		for (in_p = in, i = 0;
+		for (in_p = head, i = 0;
 		     in_p;
-		     in_p = in_p->next) {
+		     in_p = fr_dlist_next(in, in_p)) {
 			if (fr_dlist_empty(&in_p->vb_group)) {
 				argv[i] = talloc_typed_strdup(argv, "");
 			} else {
-				fr_value_box_aprint(argv, &argv[i], in_p->vb_group, NULL);
+				fr_value_box_aprint(argv, &argv[i], in_p, NULL);
 			}
 			if (!argv[i]) {
 				talloc_free(argv);
