@@ -550,7 +550,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, bool tls_requir
 RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
 #endif
 {
-	bool		global = false, in_server = false;
+	bool		in_server = false;
 	CONF_SECTION	*cs;
 	RADCLIENT	*c = NULL;
 	RADCLIENT_LIST	*clients = NULL;
@@ -579,7 +579,6 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	}
 
 	if (cf_top_section(section) == section) {
-		global = true;
 		clients->name = "global";
 		clients->server = NULL;
 	}
