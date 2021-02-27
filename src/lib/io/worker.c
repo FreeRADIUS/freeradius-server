@@ -1061,6 +1061,12 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const *
 {
 	fr_worker_t *worker;
 
+#ifndef NDEBUG
+	int rbflags = RBTREE_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
+#else
+	int rbflags = RBTREE_FLAG_NONE;
+#endif
+
 	worker = talloc_zero(ctx, fr_worker_t);
 	if (!worker) {
 nomem:
@@ -1134,7 +1140,7 @@ nomem:
 		goto fail;
 	}
 
-	worker->dedup = rbtree_talloc_alloc(worker, request_t, dedup_node, worker_dedup_cmp, NULL, RBTREE_FLAG_NONE);
+	worker->dedup = rbtree_talloc_alloc(worker, request_t, dedup_node, worker_dedup_cmp, NULL, rbflags);
 	if (!worker->dedup) {
 		fr_strerror_const("Failed creating de_dup tree");
 		goto fail;

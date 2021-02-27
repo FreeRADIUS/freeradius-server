@@ -1225,6 +1225,12 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 
 int virtual_servers_init(CONF_SECTION *config)
 {
+#ifndef NDEBUG
+	int rbflags = RBTREE_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
+#else
+	int rbflags = RBTREE_FLAG_NONE;
+#endif
+
 	virtual_server_root = config;
 
 	if (fr_dict_autoload(virtual_server_dict) < 0) {
@@ -1238,9 +1244,9 @@ int virtual_servers_init(CONF_SECTION *config)
 	}
 
 	MEM(listen_addr_root = rbtree_alloc(NULL, fr_listen_t, virtual_server_node,
-					    listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
+					    listen_addr_cmp, NULL, rbflags));
 	MEM(server_section_name_tree = rbtree_alloc(NULL, virtual_server_compile_t, node,
-						    server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+						    server_section_name_cmp, NULL, rbflags));
 
 	return 0;
 }
