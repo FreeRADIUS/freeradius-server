@@ -154,6 +154,9 @@ struct dl_module_instance_s {
 	dl_module_inst_t const	*parent;		//!< Parent module's instance (if any).
 };
 
+extern fr_table_num_sorted_t const dl_module_type_prefix[];
+extern size_t dl_module_type_prefix_len;
+
 /** Callback priorities
  *
  * The higher the priority, the earlier in callback gets called.

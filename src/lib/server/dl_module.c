@@ -61,13 +61,13 @@ static _Thread_local dl_module_inst_cache_t	dl_inst_cache;
 
 /** Name prefixes matching the types of loadable module
  */
-static fr_table_num_sorted_t const dl_module_type_prefix[] = {
+fr_table_num_sorted_t const dl_module_type_prefix[] = {
 	{ L(""),	DL_MODULE_TYPE_SUBMODULE	},
 	{ L("process"),	DL_MODULE_TYPE_PROCESS		},
 	{ L("proto"),	DL_MODULE_TYPE_PROTO		},
 	{ L("rlm"),	DL_MODULE_TYPE_MODULE		}
 };
-static size_t dl_module_type_prefix_len = NUM_ELEMENTS(dl_module_type_prefix);
+size_t dl_module_type_prefix_len = NUM_ELEMENTS(dl_module_type_prefix);
 
 static int dl_module_inst_data_cmp(void const *one, void const *two)
 {
