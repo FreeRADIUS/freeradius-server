@@ -241,7 +241,7 @@ typedef struct fr_jpath_node fr_jpath_node_t;
 size_t		fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen,
 				     char const *in, UNUSED void *arg);
 
-int		fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
+int		fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				       json_object *root, fr_jpath_node_t const *jpath);
 

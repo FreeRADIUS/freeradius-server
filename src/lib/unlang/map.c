@@ -53,8 +53,8 @@ typedef struct {
 	vp_list_mod_t		**vlm_next;
 	vp_list_mod_t		*vlm_head;			//!< First VP List Mod.
 
-	fr_value_box_t		*lhs_result;			//!< Result of expanding the LHS
-	fr_value_box_t		*rhs_result;			//!< Result of expanding the RHS.
+	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
+	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
 
 	unlang_update_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_update_t;
@@ -63,7 +63,7 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
+	fr_value_box_list_t	src_result;			//!< Result of expanding the map source.
 } unlang_frame_state_map_proc_t;
 
 /** Apply a list of modifications on one or more fr_pair_t lists.
@@ -139,8 +139,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 		case UNLANG_UPDATE_MAP_INIT:
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
 
-			fr_assert(!update_state->lhs_result);	/* Should have been consumed */
-			fr_assert(!update_state->rhs_result);	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&update_state->lhs_result));	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&update_state->rhs_result));	/* Should have been consumed */
 
 			switch (map->lhs->type) {
 			default:
@@ -219,8 +219,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			/*
 			 *	Concat the top level results together
 			 */
-			if (update_state->rhs_result &&
-			    (fr_value_box_list_concat(update_state, update_state->rhs_result, &update_state->rhs_result,
+			if (!fr_dlist_empty(&update_state->rhs_result) &&
+			    (fr_value_box_list_concat(update_state, fr_dlist_head(&update_state->rhs_result), &update_state->rhs_result,
 						      FR_TYPE_STRING, true) < 0)) {
 				RPEDEBUG("Failed concatenating RHS expansion results");
 				goto error;
@@ -230,11 +230,11 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 					    request, map,
 					    &update_state->lhs_result, &update_state->rhs_result) < 0) goto error;
 
-			talloc_list_free(&update_state->rhs_result);
+			fr_dlist_talloc_free(&update_state->rhs_result);
 
 		next:
 			update_state->state = UNLANG_UPDATE_MAP_INIT;
-			talloc_list_free(&update_state->lhs_result);
+			fr_dlist_talloc_free(&update_state->lhs_result);
 
 			/*
 			 *	Wind to the end...
@@ -279,6 +279,8 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 								    g->num_children));	/* 128 is for string buffers */
 
 	fr_dcursor_init(&update_state->maps, &gext->map);
+	fr_value_box_list_init(&update_state->lhs_result);
+	fr_value_box_list_init(&update_state->rhs_result);
 	update_state->vlm_next = &update_state->vlm_head;
 	repeatable_set(frame);
 
@@ -302,17 +304,17 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request)
 	map_proc_inst_t			*inst = gext->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
-	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, map_proc_state->src_result);
+	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, &map_proc_state->src_result);
 
 	/*
 	 *	FIXME - We don't yet support async LHS/RHS expansions for map procs
 	 */
 #ifndef NDEBUG
-	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
+	if (!fr_dlist_empty(&map_proc_state->src_result)) fr_dlist_verify(&map_proc_state->src_result);
 #endif
 	*p_result = map_proc(request, gext->proc_inst, &map_proc_state->src_result);
 #ifndef NDEBUG
-	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
+	if (!fr_dlist_empty(&map_proc_state->src_result)) fr_dlist_verify(&map_proc_state->src_result);
 #endif
 
 	return *p_result == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
@@ -333,6 +335,7 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 	 */
 	repeatable_set(frame);
 
+	fr_value_box_list_init(&map_proc_state->src_result);
 	/*
 	 *	Set this BEFORE doing anything else, as we will be
 	 *	called again after unlang_xlat_push() returns.
@@ -344,15 +347,18 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 	 */
 	if (inst->src) switch (inst->src->type) {
 	default:
-		if (tmpl_aexpand(frame->state, &map_proc_state->src_result,
+	{
+		fr_value_box_t *src_result = NULL;
+		if (tmpl_aexpand(frame->state, &src_result,
 				 request, inst->src, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding map src");
 		error:
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
+		fr_dlist_insert_head(&map_proc_state->src_result, src_result);
 		break;
-
+	}
 	case TMPL_TYPE_EXEC:
 		if (unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
 				     request, inst->src, NULL, NULL) < 0) {

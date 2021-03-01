@@ -123,10 +123,10 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED request_t *request,
 				      UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				      UNUSED fr_value_box_t **in, void *rctx)
+				      UNUSED fr_value_box_list_t *in, void *rctx)
 {
 	rlm_icmp_echo_t *echo = talloc_get_type_abort(rctx, rlm_icmp_echo_t);
 	xlat_icmp_thread_inst_t	*thread = talloc_get_type_abort(xlat_thread_inst, xlat_icmp_thread_inst_t);
@@ -138,7 +138,7 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	(void) rbtree_deletebydata(thread->t->tree, echo);
 	talloc_free(echo);
 
-	fr_cursor_insert(out, vb);
+	fr_dcursor_insert(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -179,9 +179,9 @@ static void _xlat_icmp_timeout(request_t *request,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
+static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-			       fr_value_box_t **in)
+			       fr_value_box_list_t *in)
 {
 	void			*instance;
 	rlm_icmp_t const	*inst;
@@ -192,6 +192,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	ssize_t			rcode;
 	socklen_t      		salen;
 	struct sockaddr_storage	dst;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
 
@@ -200,20 +201,20 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	/*
 	 *	If there's no input, do we can't ping anything.
 	 */
-	if (!*in) return XLAT_ACTION_FAIL;
+	if (!in_head) return XLAT_ACTION_FAIL;
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_cast_in_place(ctx, *in, thread->t->ipaddr_type, NULL) < 0) {
+	if (fr_value_box_cast_in_place(ctx, in_head, thread->t->ipaddr_type, NULL) < 0) {
 		RPEDEBUG("Failed casting result to IP address");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(echo = talloc_zero(ctx, rlm_icmp_echo_t));
-	echo->ip = *in;
+	echo->ip = in_head;
 	echo->request = request;
 	echo->counter = thread->t->counter++;
 

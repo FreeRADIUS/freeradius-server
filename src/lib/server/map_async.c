@@ -258,15 +258,14 @@ static inline fr_pair_list_t *map_check_src_or_dst(request_t *request, map_t con
  */
 int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		    request_t *request, map_t const *original,
-		    fr_value_box_t **lhs_result, fr_value_box_t **rhs_result)
+		    fr_value_box_list_t *lhs_result, fr_value_box_list_t *rhs_result)
 {
 	vp_list_mod_t	*n = NULL;
-	map_t	map_tmp;
+	map_t		map_tmp;
 	map_t const	*mutated = original;
 
-	fr_cursor_t	values;
-	fr_value_box_t	*head = NULL;
-
+	fr_dcursor_t	values;
+	fr_value_box_list_t	head;
 	TALLOC_CTX	*tmp_ctx = NULL;
 
 	MAP_VERIFY(original);
@@ -279,6 +278,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		   tmpl_is_xlat(original->lhs));
 
 	*out = NULL;
+	fr_value_box_list_init(&head);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
@@ -301,6 +301,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	case TMPL_TYPE_XLAT:
 	{
 		ssize_t slen;
+		fr_value_box_t *lhs_result_head = fr_dlist_head(lhs_result);
 
 		/*
 		 *	Get our own mutable copy of the original so we can
@@ -311,27 +312,27 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		tmp_ctx = talloc_new(NULL);
 
-		fr_assert(lhs_result && *lhs_result);
+		fr_assert(!fr_dlist_empty(lhs_result));
 
 		/*
 		 *	This should always be a noop, but included
 		 *	here for robustness.
 		 */
-		if (fr_value_box_list_concat(*lhs_result, *lhs_result, lhs_result, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat(lhs_result_head, lhs_result_head, lhs_result, FR_TYPE_STRING, true) < 0) {
 			RPEDEBUG("Left side expansion failed");
-			TALLOC_FREE(*lhs_result);
+			fr_dlist_talloc_free(lhs_result);
 			goto error;
 		}
 
-		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, (*lhs_result)->vb_strvalue,
+		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, lhs_result_head->vb_strvalue,
 					   &(tmpl_rules_t){
 					   	.dict_def = request->dict,
 					   	.prefix = TMPL_ATTR_REF_PREFIX_NO
 					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference",
-				 (*lhs_result)->vb_strvalue);
-			TALLOC_FREE(*lhs_result);
+				 lhs_result_head->vb_strvalue);
+			fr_dlist_talloc_free(lhs_result);
 			goto error;
 		}
 		fr_assert(tmpl_is_attr(mutated->lhs) || tmpl_is_list(mutated->lhs));
@@ -448,7 +449,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		fr_cursor_init(&values, &head);
+		fr_dcursor_init(&values, &head);
 
 		if (fr_value_box_from_str(fr_dlist_head(&n->mod),
 					  tmpl_value(fr_map_list_head(&n->mod)->rhs), &type,
@@ -465,13 +466,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 */
 	if (!map_check_src_or_dst(request, mutated, mutated->lhs)) goto error;
 
-	(void)fr_cursor_init(&values, &head);
+	(void)fr_dcursor_init(&values, &head);
 
 	switch (mutated->rhs->type) {
 	case TMPL_TYPE_XLAT:
 	{
 		fr_assert(tmpl_xlat(mutated->rhs) != NULL);
-		fr_cursor_t	from;
+		fr_dcursor_t	from;
 		fr_value_box_t	*vb, *n_vb;
 
 	assign_values:
@@ -484,13 +485,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	happens.  This is only for XLATs and in future
 		 *	EXECs.
 		 */
-		if (!rhs_result || !*rhs_result) {
+		if (fr_dlist_empty(rhs_result)) {
 			n = list_mod_empty_string_afrom_map(ctx, original, mutated);
 			if (!n) {
 				RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 			xlat_error:
-				fr_cursor_head(&values);
-				fr_cursor_free_list(&values);
+				fr_dcursor_head(&values);
+				fr_dcursor_free_list(&values);
 				goto error;
 			}
 			goto finish;
@@ -502,13 +503,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		(void)fr_cursor_init(&from, rhs_result);
-		while ((vb = fr_cursor_remove(&from))) {
+		(void)fr_dcursor_init(&from, rhs_result);
+		while ((vb = fr_dcursor_remove(&from))) {
 			if (vb->type != tmpl_da(mutated->lhs)->type) {
 				n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
 				if (!n_vb) {
-					fr_cursor_head(&from);
-					fr_cursor_free_list(&from);
+					fr_dcursor_head(&from);
+					fr_dcursor_free_list(&from);
 					goto xlat_error;
 				}
 
@@ -517,15 +518,15 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 						      tmpl_da(mutated->lhs), vb) < 0) {
 					RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 
-					fr_cursor_head(&from);
-					fr_cursor_free_list(&from);
+					fr_dcursor_head(&from);
+					fr_dcursor_free_list(&from);
 					goto xlat_error;
 				}
 				talloc_free(vb);
 			} else {
 				n_vb = talloc_steal(n, vb);	/* Should already be in ctx of n's parent */
 			}
-			fr_cursor_append(&values, n_vb);
+			fr_dcursor_append(&values, n_vb);
 		}
 	}
 		break;
@@ -538,7 +539,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_value_box_t		*n_vb;
 		int			err;
 
-		fr_assert(!rhs_result || !*rhs_result);
+		fr_assert(fr_dlist_empty(rhs_result));
 		fr_assert((tmpl_is_attr(mutated->lhs) && tmpl_da(mutated->lhs)) ||
 			   (tmpl_is_list(mutated->lhs) && !tmpl_da(mutated->lhs)));
 
@@ -586,8 +587,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
 			if (!n_vb) {
 			attr_error:
-				fr_cursor_head(&values);
-				fr_cursor_free_list(&values);
+				fr_dcursor_head(&values);
+				fr_dcursor_free_list(&values);
 				tmpl_cursor_clear(&cc_attr);
 				goto error;
 			}
@@ -603,7 +604,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			} else {
 				fr_value_box_copy(n_vb, n_vb, &vp->data);
 			}
-			fr_cursor_append(&values, n_vb);
+			fr_dcursor_append(&values, n_vb);
 		} while ((vp = fr_dcursor_next(&from)));
 
 		tmpl_cursor_clear(&cc_attr);
@@ -612,26 +613,29 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	case TMPL_TYPE_DATA:
 	{
-		fr_cursor_t	from;
-		fr_value_box_t	*vb, *vb_head, *n_vb;
+		/*
+		 *	Commented out lines below are due to fr_value_box_t
+		 *	now being in a dlist - so value box entries in a fr_tmpl_t
+		 *	can no-longer be treated as the head of a list
+		 */
+		fr_value_box_t	*vb, *n_vb;
+//		fr_value_box_t	*vb_head;
 
-		fr_assert(!rhs_result || !*rhs_result);
+		fr_assert(fr_dlist_empty(rhs_result));
 		fr_assert(tmpl_da(mutated->lhs));
 		fr_assert(tmpl_is_attr(mutated->lhs));
 
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) goto error;
 
-		vb_head = tmpl_value(mutated->rhs);
+		vb = tmpl_value(mutated->rhs);
 
-		for (vb = fr_cursor_init(&from, &vb_head);
-		     vb;
-		     vb = fr_cursor_next(&from)) {
+//		while ((vb = fr_dlist_next(vb_head, vb))) {
 			n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
 			if (!n_vb) {
 			data_error:
-				fr_cursor_head(&values);
-				fr_cursor_free_list(&values);
+				fr_dcursor_head(&values);
+				fr_dcursor_free_list(&values);
 				goto error;
 			}
 			/*
@@ -656,8 +660,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				 */
 				if (fr_value_box_copy(n_vb, n_vb, vb) < 0) goto data_error;
 			}
-			fr_cursor_append(&values, n_vb);
-		}
+			fr_dcursor_append(&values, n_vb);
+//		}
 	}
 		break;
 
@@ -673,6 +677,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_dcursor_t	from;
 		fr_pair_list_t	vp_head;
 		fr_pair_t	*vp;
+		fr_value_box_t	*rhs_result_head = fr_dlist_head(rhs_result);
 
 		fr_pair_list_init(&vp_head);
 		/*
@@ -689,7 +694,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	happens.  This is only for XLATs and in future
 		 *	EXECs.
 		 */
-		if (!rhs_result || !*rhs_result) {
+		if (fr_dlist_empty(rhs_result)) {
 			RPEDEBUG("Cannot assign empty value to \"%s\"", mutated->lhs->name);
 			goto error;
 		}
@@ -698,9 +703,9 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	This should always be a noop, but included
 		 *	here for robustness.
 		 */
-		if (fr_value_box_list_concat(*rhs_result, *rhs_result, rhs_result, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat(rhs_result_head, rhs_result_head, rhs_result, FR_TYPE_STRING, true) < 0) {
 			RPEDEBUG("Right side expansion failed");
-			TALLOC_FREE(*rhs_result);
+			fr_dlist_talloc_free(rhs_result);
 			goto error;
 		}
 
@@ -712,7 +717,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		/*
 		 *	Parse the VPs from the RHS.
 		 */
-		fr_pair_list_afrom_box(ctx, &vp_head, request->dict, *rhs_result);
+		fr_pair_list_afrom_box(ctx, &vp_head, request->dict, rhs_result_head);
 		if (fr_pair_list_empty(&vp_head)) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");
@@ -762,7 +767,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		goto error;
 	}
 
-	fr_assert(head || !n);
+	fr_assert(!fr_dlist_empty(&head) || !n);
 
 	/*
 	 *	FIXME: This is only required because
@@ -771,9 +776,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	If tmpl_value were a pointer we could
 	 *	assign values directly.
 	 */
-	fr_value_box_copy(fr_map_list_head(&n->mod)->rhs, tmpl_value(fr_map_list_head(&n->mod)->rhs), head);
-	tmpl_value(fr_map_list_head(&n->mod)->rhs)->next = head->next;
-	talloc_free(head);
+	fr_value_box_copy(fr_map_list_head(&n->mod)->rhs, tmpl_value(fr_map_list_head(&n->mod)->rhs), fr_dlist_head(&head));
+	/*
+	 *	value boxes in tmpls cannot now be the head of a list
+	 *
+	 *tmpl_value(fr_map_list_head(&n->mod)->rhs)->next = head->next;
+	 */
+	fr_dlist_talloc_free(&head);
 
 finish:
 	if (n) {
@@ -823,7 +832,7 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 	 *	Fast path...
 	 */
 	mod = fr_dlist_head(&vlm->mod);
-	if ((vlm->mod.num_elements == 1) && !tmpl_value(mod->rhs)->next) {
+	if (vlm->mod.num_elements == 1) {
 		fr_pair_t *vp;
 		vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
 		fr_pair_add(list, vp);
@@ -836,18 +845,22 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 	for (;
 	     mod;
 	     mod = fr_dlist_next(&vlm->mod, mod)) {
-		fr_value_box_t	*vb;
+		/*
+		 *	Commented out lines due to fr_value_box_t lists now
+		 *	being dlists
+		 */
+//		fr_value_box_t	*vb;
 		fr_pair_t	*vp;
 
-		for (vb = tmpl_value(mod->rhs);
-	     	     vb;
-	     	     vb = vb->next) {
-			vp = map_list_mod_to_vp(ctx, mod->lhs, vb);
+//		for (vb = tmpl_value(mod->rhs);
+//	     	     vb;
+//	     	     vb = vb->next) {
+			vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
 			if (!vp) {
 				fr_pair_list_free(list);
 			}
 			fr_pair_add(list, vp);
-		}
+//		}
 	}
 }
 
@@ -972,11 +985,16 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 *	map_list_mod_debug()
 		 */
 		if (RDEBUG_ENABLED2) {
-			for (vb = tmpl_value(mod->rhs);
-			     vb;
-			     vb = vb->next) {
+			vb = tmpl_value(mod->rhs);
+		/*
+		 *	Commented out lines due to fr_value_box_t lists now
+		 *	being dlists
+		 */
+//			for (vb = tmpl_value(mod->rhs);
+//			     vb;
+//			     vb = vb->next) {
 				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_INVALID ? vb : NULL);
-			}
+//			}
 		}
 	}
 	mod = fr_dlist_head(&vlm->mod);	/* Reset */
@@ -1132,13 +1150,16 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_value_box_t	*vb = tmpl_value(fr_map_list_head(&vlm->mod)->rhs);
-
-			do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//			do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
 					fr_dcursor_free_item(&list);
 					goto finish;
 				}
-			} while ((vb = vb->next));
+//			} while ((vb = vb->next));
 			goto finish;	/* Wasn't found */
 		}
 
@@ -1150,13 +1171,16 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		do {
 		     	fr_value_box_t	*vb = tmpl_value(fr_map_list_head(&vlm->mod)->rhs);
-
-		     	do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//		     	do {
 				if (fr_value_box_cmp(vb, &found->data) == 0) {
 					fr_dcursor_free_item(&list);
 					break;
 				}
-		     	} while ((vb = vb->next));
+//		     	} while ((vb = vb->next));
 		} while ((found = fr_dcursor_next(&list)));
 	}
 		goto finish;
@@ -1236,9 +1260,13 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
-			do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//			do {
 				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
-			} while ((vb = vb->next));
+//			} while ((vb = vb->next));
 
 			if (remove) fr_dcursor_free_item(&list);
 			goto finish;
@@ -1251,9 +1279,13 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
-			do {
+			/*
+			 *	Commented out loop due to fr_value_box_t now being
+			 *	in dlists
+			 */
+//			do {
 				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
-			} while ((vb = vb->next));
+//			} while ((vb = vb->next));
 
 			if (remove) {
 				fr_dcursor_free_item(&list);

@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **key, fr_map_list_t const *maps);
+				fr_value_box_list_t *key, fr_map_list_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -975,23 +975,24 @@ finish:
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **key, fr_map_list_t const *maps)
+				fr_value_box_list_t *key, fr_map_list_t const *maps)
 {
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
+	fr_value_box_t		*key_head = fr_dlist_head(key);
 
-	if (!*key) {
+	if (!key_head) {
 		REDEBUG("CSV key cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
 	if ((inst->key_data_type == FR_TYPE_OCTETS) || (inst->key_data_type == FR_TYPE_STRING)) {
-		if (fr_value_box_list_concat(request, *key, key, inst->key_data_type, true) < 0) {
+		if (fr_value_box_list_concat(request, key_head, key, inst->key_data_type, true) < 0) {
 			REDEBUG("Failed parsing key");
 			return RLM_MODULE_FAIL;
 		}
 	}
 
-	return mod_map_apply(inst, request, *key, maps);
+	return mod_map_apply(inst, request, key_head, maps);
 }
 
 

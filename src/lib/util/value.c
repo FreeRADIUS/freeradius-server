@@ -49,7 +49,7 @@ RCSID("$Id$")
 #undef _VALUE_PRIVATE
 
 #include <freeradius-devel/util/ascend.h>
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/hex.h>
@@ -500,7 +500,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->enumv = src->enumv;
 	dst->type = src->type;
 	dst->tainted = src->tainted;
-	dst->next = NULL;	/* copy one */
+	fr_dlist_entry_init(&dst->entry);
 }
 
 /** Compare two values
@@ -1811,8 +1811,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_GROUP:
 	{
-		fr_cursor_t cursor;
-		fr_value_box_t *vb;
+		fr_value_box_t *vb = NULL;
 
 		/*
 		 *	Initialise an empty buffer we can
@@ -1820,9 +1819,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 		 */
 		if (fr_value_box_bstrndup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
 
-		for (vb = fr_cursor_init(&cursor, &src->vb_group);
-		     vb;
-		     vb = fr_cursor_next(&cursor)) {
+		while ((vb = fr_dlist_next(&src->vb_group, vb))) {
 			/*
 			 *	Attempt to cast to a string so
 			 *	we can append.
@@ -1895,8 +1892,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 
 	case FR_TYPE_GROUP:
 	{
-		fr_cursor_t cursor;
-		fr_value_box_t *vb;
+		fr_value_box_t *vb = NULL;
 
 		/*
 		 *	Initialise an empty buffer we can
@@ -1904,9 +1900,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		 */
 		if (fr_value_box_memdup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
 
-		for (vb = fr_cursor_init(&cursor, &src->vb_group);
-		     vb;
-		     vb = fr_cursor_next(&cursor)) {
+		while ((vb = fr_dlist_next(&src->vb_group, vb))) {
 			/*
 			 *	Attempt to cast to octets so
 			 *	we can append;
@@ -3020,6 +3014,13 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 			       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 {
 	fr_value_box_t tmp;
+	/*
+	 *	Store list poiters to restore later - fr_value_box_cast clears them
+	 */
+	fr_dlist_t entry = {
+		.next = vb->entry.next,
+		.prev = vb->entry.prev
+	};
 
 	/*
 	 *	Simple case, destination type and current
@@ -3041,6 +3042,12 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	if (fr_value_box_cast(ctx, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
 
 	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
+
+	/*
+	 *	Restore list pointers
+	 */
+	vb->entry.next = entry.next;
+	vb->entry.prev = entry.prev;
 
 	return 0;
 }
@@ -3128,31 +3135,13 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		 *	This ensures orderly freeing, regardless
 		 *	of talloc hierarchy.
 		 */
-		switch (data->datum.children.type) {
-		case FR_VALUE_BOX_LIST_SINGLE:
-		{
-			fr_cursor_t	cursor;
-			fr_value_box_t	*vb;
-
-			for (vb = fr_cursor_init(&cursor, &data->datum.children.slist);
-			     vb;
-			     vb = fr_cursor_next(&cursor)) {
-				fr_value_box_clear_value(vb);
-				talloc_free(vb);
-			}
-		}
-			break;
-
-		case FR_VALUE_BOX_LIST_DOUBLE:
 		{
 			fr_value_box_t	*vb = NULL;
 
-			while ((vb = fr_dlist_next(&data->datum.children.dlist, vb))) {
+			while ((vb = fr_dlist_next(&data->datum.children, vb))) {
 				fr_value_box_clear_value(vb);
 				talloc_free(vb);
 			}
-		}
-			break;
 		}
 		return;
 
@@ -4549,7 +4538,7 @@ finish:
 	 *	Fixup enumvs
 	 */
 	dst->enumv = dst_enumv;
-	dst->next = NULL;
+	fr_dlist_entry_init(&dst->entry);
 
 	return 0;
 }
@@ -4799,7 +4788,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		/*
 		 *	Be lazy by just converting it to a string, and then printing the string.
 		 */
-		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data->vb_group) < 0) return 0;
+		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data) < 0) return 0;
 
 		slen = fr_value_box_print(&our_out, &vb, e_rules);
 		fr_value_box_clear(&vb);
@@ -4869,13 +4858,14 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *	- -1 on failure.
  */
 int fr_value_box_list_concat(TALLOC_CTX *ctx,
-			     fr_value_box_t *out, fr_value_box_t **list, fr_type_t type, bool free_input)
+			     fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type, bool free_input)
 {
 	TALLOC_CTX		*pool;
-	fr_cursor_t		cursor;
+	fr_dcursor_t		cursor;
 	fr_value_box_t const	*vb;
+	fr_value_box_t		*head_vb;
 
-	if (!list || !*list) {
+	if (!list || fr_dlist_empty(list)) {
 		fr_strerror_const("Invalid arguments.  List was NULL");
 		return -1;
 	}
@@ -4891,15 +4881,19 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		return -1;
 	}
 
-	fr_cursor_init(&cursor, list);
+	head_vb = fr_dlist_head(list);
+	fr_dcursor_init(&cursor, list);
 
 	/*
 	 *	Allow concatenating in place
 	 */
-	if (out == *list) {
-		if ((*list)->type != type) {
+	if (out == head_vb) {
+		if (head_vb->type != type) {
 			fr_value_box_t from_cast;
-			fr_value_box_t *next = out->next;
+			fr_dlist_t entry = {
+				.next = out->entry.next,
+				.prev = out->entry.prev
+			};
 
 			/*
 			 *	Two phase, as the casting code doesn't
@@ -4907,30 +4901,33 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 			 */
 			if (fr_value_box_cast(ctx, &from_cast, type, NULL, out) < 0) return -1;
 			if (fr_value_box_copy(ctx, out, &from_cast) < 0) return -1;
-			out->next = next;			/* Restore the next pointer */
+
+			out->entry.next = entry.next;		/* Restore the list pointers */
+			out->entry.prev = entry.prev;
+
 		}
-		fr_cursor_next(&cursor);
+		fr_dcursor_next(&cursor);
 	} else {
-		if (fr_value_box_cast(ctx, out, type, NULL, *list) < 0) return -1;	/* Decomposes to copy */
+		if (fr_value_box_cast(ctx, out, type, NULL, head_vb) < 0) return -1;	/* Decomposes to copy */
 
 		if (free_input) {
-			fr_cursor_free_item(&cursor);		/* Advances cursor */
+			fr_dcursor_free_item(&cursor);		/* Advances cursor */
 		} else {
-			fr_cursor_next(&cursor);
+			fr_dcursor_next(&cursor);
 		}
 	}
 
 	/*
 	 *	Imploding a one element list.
 	 */
-	if (!fr_cursor_current(&cursor)) return 0;
+	if (!fr_dcursor_current(&cursor)) return 0;
 
 	pool = talloc_pool(NULL, 255);	/* To absorb the temporary strings */
 
 	/*
 	 *	Join the remaining values
 	 */
-	while ((vb = fr_cursor_current(&cursor))) {
+	while ((vb = fr_dcursor_current(&cursor))) {
 	     	fr_value_box_t from_cast;
 	     	fr_value_box_t const *n;
 
@@ -4959,9 +4956,9 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		}
 
 		if (free_input) {
-			fr_cursor_free_item(&cursor);		/* Advances cursor */
+			fr_dcursor_free_item(&cursor);		/* Advances cursor */
 		} else {
-			fr_cursor_next(&cursor);
+			fr_dcursor_next(&cursor);
 		}
 	}
 
@@ -4973,25 +4970,25 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 /** Concatenate the string representations of a list of value boxes together
  *
  * @param[in] ctx	to allocate the buffer in.
- * @param[in] head	of the list of value boxes.
+ * @param[in] list	of value boxes.
  * @param[in] delim	to insert between value box values.
  * @param[in] e_rules	to control escaping of the concatenated elements.
  * @return
  *	- NULL on error.
  *	- The concatenation of the string values of the value box list on success.
  */
-char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim,
+char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
 			       fr_sbuff_escape_rules_t const *e_rules)
 {
-	fr_value_box_t const	*vb = head;
+	fr_value_box_t const	*vb = fr_dlist_head(list);
 	char			*aggr, *td = NULL;
 	TALLOC_CTX		*pool = NULL;
 
-	if (!head) return NULL;
+	if (!vb) return NULL;
 
 	fr_value_box_aprint(ctx, &aggr, vb, e_rules);
 	if (!aggr) return NULL;
-	if (!vb->next) return aggr;
+	if (!fr_dlist_next(list, vb)) return aggr;
 
 	/*
 	 *	If we're aggregating more values,
@@ -5000,7 +4997,7 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char
 	pool = talloc_pool(NULL, 255);
 	if (delim) td = talloc_typed_strdup(pool, delim);
 
-	while ((vb = vb->next)) {
+	while ((vb = fr_dlist_next(list, vb))) {
 		char *str, *new_aggr;
 
 		fr_value_box_aprint(pool, &str, vb, e_rules);
@@ -5051,12 +5048,13 @@ uint32_t fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash)
  *	- >= 0 number of array elements in argv
  *	- <0 on error
  */
-int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_t const *in)
+int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
 {
 	int i, argc;
 	char **argv;
+	fr_value_box_t *head = fr_dlist_head(in);
 
-	if (in->type != FR_TYPE_GROUP) {
+	if (head->type != FR_TYPE_GROUP) {
 		argc = 1;
 
 	} else {
@@ -5066,21 +5064,21 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
 	argv = talloc_zero_array(ctx, char *, argc + 1);
 	if (!argv) return -1;
 
-	if (in->type != FR_TYPE_GROUP) {
-		fr_value_box_aprint(argv, &argv[0], in, NULL);
+	if (head->type != FR_TYPE_GROUP) {
+		fr_value_box_aprint(argv, &argv[0], head, NULL);
 	} else {
 		fr_value_box_t const *in_p;
 
 		/*
 		 *	Print the children of each group into the argv array.
 		 */
-		for (in_p = in, i = 0;
+		for (in_p = head, i = 0;
 		     in_p;
-		     in_p = in_p->next) {
-			if (!in_p->vb_group) {
+		     in_p = fr_dlist_next(in, in_p)) {
+			if (fr_dlist_empty(&in_p->vb_group)) {
 				argv[i] = talloc_typed_strdup(argv, "");
 			} else {
-				fr_value_box_aprint(argv, &argv[i], in_p->vb_group, NULL);
+				fr_value_box_aprint(argv, &argv[i], in_p, NULL);
 			}
 			if (!argv[i]) {
 				talloc_free(argv);
@@ -5116,30 +5114,22 @@ int fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box
  *	- A duplicate list of value boxes, allocated in the context of 'ctx'
  *	- NULL on error, or empty input list.
  */
-int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in)
+int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
 {
-	fr_value_box_t const *in_p;
-	fr_cursor_t cursor;
+	fr_value_box_t const *in_p = NULL;
 
-	*out = NULL;
-
-	fr_cursor_init(&cursor, out);
-
-	for (in_p = in;
-	     in_p;
-	     in_p = in_p->next) {
+	while ((in_p = fr_dlist_next(in, in_p))) {
 	     	fr_value_box_t *n = NULL;
 
 		n = fr_value_box_alloc_null(ctx);
 		if (!n) {
 		error:
-			fr_cursor_head(&cursor);
-			fr_cursor_free_list(&cursor);
+			fr_dlist_talloc_free(out);
 			return -1;
 		}
 
 		if (fr_value_box_copy(n, n, in_p) < 0) goto error;
-		fr_cursor_append(&cursor, n);
+		fr_dlist_insert_tail(out, n);
 	}
 
 	return 0;
@@ -5152,33 +5142,15 @@ int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_
  *	- true if a list member is tainted.
  *	- false if no list members are tainted.
  */
-bool fr_value_box_list_tainted(fr_value_box_t const *head)
+bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
 {
-	if (!head) return false;
+	fr_value_box_t *vb = NULL;
 
-	do {
-		if (head->tainted) return true;
-	} while ((head = head->next));
+	if (fr_dlist_empty(head)) return false;
 
-	return false;
-}
-
-/** Get list member at a given index
- *
- * @param[in] head	of list.
- * @param[in] index	of member to return.
- * @return
- *	- NULL if there is no member at given index
- *	- member if it exists
- */
-fr_value_box_t *fr_value_box_list_get(fr_value_box_t *head, int index)
-{
-	int i = 0;
-
-	while (i < index && head) {
-		head = head->next;
-		i++;
+	while ((vb = fr_dlist_next(head, vb))) {
+		if (vb->tainted) return true;
 	}
 
-	return head;
+	return false;
 }

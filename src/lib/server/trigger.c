@@ -188,11 +188,11 @@ bool trigger_enabled(void)
 }
 
 typedef struct {
-	char		*name;
-	xlat_exp_t	*xlat;
-	fr_pair_list_t	vps;
-	fr_value_box_t	*box;
-	bool		expanded;
+	char			*name;
+	xlat_exp_t		*xlat;
+	fr_pair_list_t		vps;
+	fr_value_box_list_t	box;
+	bool			expanded;
 } fr_trigger_t;
 
 static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -236,7 +236,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 		 */
 	}
 
-	if (!ctx->box) {
+	if (fr_dlist_empty(&ctx->box)) {
 		RERROR("Failed trigger %s - did not expand to anything", ctx->name);
 		RETURN_MODULE_FAIL;
 	}
@@ -244,7 +244,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 	/*
 	 *	Execute the program without waiting for results.
 	 */
-	if (fr_exec_nowait(request, ctx->box, NULL) < 0) {
+	if (fr_exec_nowait(request, &ctx->box, NULL) < 0) {
 		RPERROR("Failed trigger %s", ctx->name);
 		RETURN_MODULE_FAIL;
 	}
@@ -404,6 +404,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 
 	MEM(ctx = talloc_zero(fake, fr_trigger_t));
 	fr_pair_list_init(&ctx->vps);
+	fr_value_box_list_init(&ctx->box);
 	ctx->name = talloc_strdup(ctx, value);
 
 	if (request && !fr_pair_list_empty(&request->request_pairs)) {

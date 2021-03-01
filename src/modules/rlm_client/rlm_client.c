@@ -115,26 +115,27 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				   fr_value_box_t **client_override, fr_map_list_t const *maps)
+				   fr_value_box_list_t *client_override, fr_map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	map_t const		*map = NULL;
 	RADCLIENT		*client;
 	client_get_vp_ctx_t	uctx;
 
-	if (*client_override) {
+	if (!fr_dlist_empty(client_override)) {
 		fr_ipaddr_t	ip;
 		char const	*client_str;
+		fr_value_box_t	*client_override_head = fr_dlist_head(client_override);
 
 		/*
 		 *	Concat don't asprint, as this becomes a noop
 		 *	in the vast majority of cases.
 		 */
-		if (fr_value_box_list_concat(request, *client_override, client_override, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat(request, client_override_head, client_override, FR_TYPE_STRING, true) < 0) {
 			REDEBUG("Failed concatenating input data");
 			return RLM_MODULE_FAIL;
 		}
-		client_str = (*client_override)->vb_strvalue;
+		client_str = client_override_head->vb_strvalue;
 
 		if (fr_inet_pton(&ip, client_str, -1, AF_UNSPEC, false, true) < 0) {
 			REDEBUG("\"%s\" is not a valid IPv4 or IPv6 address", client_str);

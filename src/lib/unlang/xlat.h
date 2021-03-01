@@ -141,9 +141,9 @@ typedef void (*fr_unlang_xlat_fd_event_t)(request_t *request, void *xlat_inst,
  *				mean it turned a result.
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
-typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
+typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-				     fr_value_box_t **in);
+				     fr_value_box_list_t *in);
 
 /** xlat callback resumption function
  *
@@ -164,9 +164,9 @@ typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  *				mean it turned a result.
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
-typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
+typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-					    fr_value_box_t **in, void *rctx);
+					    fr_value_box_list_t *in, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
@@ -404,7 +404,7 @@ void		xlat_instances_free(void);
 int		unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 					      void const *ctx, fr_time_t when);
 
-int		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+int		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_t const *exp, bool top_frame)
 				 CC_HINT(warn_unused_result);
 

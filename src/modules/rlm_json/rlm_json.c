@@ -102,30 +102,31 @@ typedef struct {
  * @param in list of value boxes as input
  * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request,
+static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
 				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				     fr_value_box_t **in)
+				     fr_value_box_list_t *in)
 {
 	fr_value_box_t *vb;
+	fr_value_box_t *in_head = fr_dlist_head(in);
 	char *tmp;
 
-	if (!*in) return XLAT_ACTION_DONE;
+	if (!in_head) return XLAT_ACTION_DONE;
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	if (!(tmp = fr_json_from_string(vb, (*in)->vb_strvalue, false))) {
+	if (!(tmp = fr_json_from_string(vb, in_head->vb_strvalue, false))) {
 		REDEBUG("Unable to JSON-quote string");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
 	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, tmp, false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -180,9 +181,9 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
  * @param in list of value boxes as input
  * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request_t *request,
+static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
 				      void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_t **in)
+				      fr_value_box_list_t *in)
 {
 	rlm_json_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 								    rlm_json_t);
@@ -195,20 +196,21 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 	char			*json_str = NULL;
 	fr_value_box_t		*vb;
 	fr_sbuff_t		sbuff;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
 
 	fr_pair_list_init(&json_vps);
 	fr_pair_list_init(&vps);
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("Missing attribute(s)");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	sbuff = FR_SBUFF_IN((*in)->vb_strvalue, (*in)->vb_length);
+	sbuff = FR_SBUFF_IN(in_head->vb_strvalue, in_head->vb_length);
 	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 	/*
@@ -289,7 +291,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out, request
 	}
 	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, json_str, false);
 
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 	fr_pair_list_free(&json_vps);
 
 	return XLAT_ACTION_DONE;
@@ -397,10 +399,12 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 {
 	fr_pair_t			*vp;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
-	fr_value_box_t			*head, *value;
+	fr_value_box_t			*value;
+	fr_value_box_list_t		head;
 	int				ret;
 
 	fr_pair_list_free(out);
+	fr_value_box_list_init(&head);
 
 	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);
@@ -409,11 +413,11 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 		return -1;
 	}
 	if (ret == 0) return 0;
-	fr_assert(head);
+	fr_assert(!fr_dlist_empty(&head));
 
-	for (value = head;
+	for (value = fr_dlist_head(&head);
 	     value;
-	     fr_pair_add(out, vp), value = value->next) {
+	     fr_pair_add(out, vp), value = fr_dlist_next(&head, value)) {
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
 
@@ -441,7 +445,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
-			      	fr_value_box_t **json, fr_map_list_t const *maps)
+			      	fr_value_box_list_t *json, fr_map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
@@ -452,17 +456,18 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_
 	rlm_json_jpath_to_eval_t	to_eval;
 
 	char const			*json_str = NULL;
+	fr_value_box_t			*json_head = fr_dlist_head(json);
 
-	if (!*json) {
+	if (!json_head) {
 		REDEBUG("JSON map input cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *json, json, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(request, json_head, json, FR_TYPE_STRING, true) < 0) {
 		REDEBUG("Failed concatenating input");
 		return RLM_MODULE_FAIL;
 	}
-	json_str = (*json)->vb_strvalue;
+	json_str = json_head->vb_strvalue;
 
 	if ((talloc_array_length(json_str) - 1) == 0) {
 		REDEBUG("JSON map input length must be > 0");

@@ -463,9 +463,9 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-					     fr_value_box_t **in)
+					     fr_value_box_list_t *in)
 {
 	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
@@ -477,18 +477,19 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	size_t				ciphertext_len;
 
 	fr_value_box_t			*vb;
+	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("encrypt requires one or arguments (<plaintext>...)");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		fr_tls_log_error(request, "Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	plaintext = (*in)->vb_strvalue;
-	plaintext_len = (*in)->vb_length;
+	plaintext = in_head->vb_strvalue;
+	plaintext_len = in_head->vb_length;
 
 	/*
 	 *	Figure out the buffer we need
@@ -510,7 +511,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 	RHEXDUMP3(ciphertext, ciphertext_len, "Ciphertext (%zu bytes)", ciphertext_len);
 	MEM(fr_value_box_mem_realloc(vb, NULL, vb, ciphertext_len) == 0);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -527,9 +528,9 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-					  fr_value_box_t **in)
+					  fr_value_box_list_t *in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_cipher_t);
@@ -545,18 +546,19 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	unsigned int			digest_len = 0;
 
 	fr_value_box_t			*vb;
+	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("sign requires one or arguments (<plaintext>...)");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		REDEBUG("Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	msg = (*in)->vb_strvalue;
-	msg_len = (*in)->vb_length;
+	msg = in_head->vb_strvalue;
+	msg_len = in_head->vb_length;
 
 	/*
 	 *	First produce a digest of the message
@@ -593,7 +595,7 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 	MEM(fr_value_box_mem_realloc(vb, NULL, vb, sig_len) == 0);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -610,9 +612,9 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-					     fr_value_box_t **in)
+					     fr_value_box_list_t *in)
 {
 	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
@@ -624,18 +626,19 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	size_t				plaintext_len;
 
 	fr_value_box_t			*vb;
+	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("decrypt requires one or more arguments (<ciphertext>...)");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_OCTETS, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
 		REDEBUG("Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	ciphertext = (*in)->vb_octets;
-	ciphertext_len = (*in)->vb_length;
+	ciphertext = in_head->vb_octets;
+	ciphertext_len = in_head->vb_length;
 
 	/*
 	 *	Decrypt the ciphertext
@@ -656,7 +659,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	}
 	RHEXDUMP3((uint8_t const *)plaintext, plaintext_len, "Plaintext (%zu bytes)", plaintext_len);
 	MEM(fr_value_box_bstr_realloc(vb, NULL, vb, plaintext_len) == 0);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -674,9 +677,9 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-					    fr_value_box_t **in)
+					    fr_value_box_list_t *in)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_cipher_t);
@@ -692,8 +695,10 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	unsigned int			digest_len = 0;
 
 	fr_value_box_t			*vb;
+	fr_value_box_t			*in_head = fr_dlist_pop_head(in);
+	fr_value_box_t			*args;
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("verification requires two or more arguments (<signature>, <message>...)");
 		return XLAT_ACTION_FAIL;
 	}
@@ -701,7 +706,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	Check we have at least two boxed values
 	 */
-	if (!(*in)->next) {
+	if (fr_dlist_empty(in)) {
 		REDEBUG("Missing message data arg or message data was (null)");
 		return XLAT_ACTION_FAIL;
 	}
@@ -711,25 +716,31 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	isn't already in that form.
 	 *	It could be hexits or base64 or some other encoding.
 	 */
-	if ((*in)->type != FR_TYPE_OCTETS) {
+	if (in_head->type != FR_TYPE_OCTETS) {
 		REDEBUG("Signature argument wrong type, expected %s, got %s.  "
 			"Use %%{base64_decode:<text>} or %%{hex_decode:<text>} if signature is armoured",
 			fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "?Unknown?"),
-			fr_table_str_by_value(fr_value_box_type_table, (*in)->type, "?Unknown?"));
+			fr_table_str_by_value(fr_value_box_type_table, in_head->type, "?Unknown?"));
 		return XLAT_ACTION_FAIL;
 	}
-	sig = (*in)->vb_octets;
-	sig_len = (*in)->vb_length;
+	sig = in_head->vb_octets;
+	sig_len = in_head->vb_length;
 
 	/*
 	 *	Concat (...) args to get message data
 	 */
-	if (fr_value_box_list_concat(ctx, (*in)->next, &((*in)->next), FR_TYPE_STRING, true) < 0) {
+	args = fr_dlist_head(in);
+	if (fr_value_box_list_concat(ctx, args, in, FR_TYPE_STRING, true) < 0) {
 		REDEBUG("Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	msg = (*in)->next->vb_strvalue;
-	msg_len = (*in)->next->vb_length;
+	msg = args->vb_strvalue;
+	msg_len = args->vb_length;
+
+	/*
+	 *	Return the first entry to the "in" vb list
+	 */
+	fr_dlist_insert_head(in, in_head);
 
 	/*
 	 *	The argument separator also gets rolled into
@@ -774,13 +785,13 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	case 1:		/* success (signature valid) */
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = true;
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 		break;
 
 	case 0:		/* failure (signature not valid) */
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = false;
-		fr_cursor_append(out, vb);
+		fr_dcursor_append(out, vb);
 		break;
 
 	default:

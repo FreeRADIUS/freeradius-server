@@ -40,12 +40,12 @@ typedef struct {
 	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
 	TALLOC_CTX		*event_ctx;			//!< for temporary events
 	xlat_exp_t const	*exp;
-	fr_cursor_t		values;				//!< Values aggregated so far.
+	fr_dcursor_t		values;				//!< Values aggregated so far.
 
 	/*
 	 *	For func and alternate
 	 */
-	fr_value_box_t		*rhead;				//!< Head of the result of a nested
+	fr_value_box_list_t	rhead;				//!< Head of the result of a nested
 								///< expansion.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
@@ -192,7 +192,7 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		     request_t *request, xlat_exp_t const *exp, bool top_frame)
 {
 
@@ -214,7 +214,8 @@ int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
 	state->exp = talloc_get_type_abort_const(exp, xlat_exp_t);	/* Ensure the node is valid */
 
-	fr_cursor_talloc_init(&state->values, out, fr_value_box_t);
+	fr_dcursor_talloc_init(&state->values, out, fr_value_box_t);
+	fr_value_box_list_init(&state->rhead);
 
 	state->ctx = ctx;
 
@@ -252,7 +253,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request)
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		talloc_list_free(&state->rhead);
+		fr_dlist_talloc_free(&state->rhead);
 		if (unlang_xlat_push(state->ctx, &state->rhead, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;

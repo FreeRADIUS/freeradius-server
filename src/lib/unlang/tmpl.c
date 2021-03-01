@@ -112,7 +112,7 @@ static void unlang_tmpl_signal(request_t *request, fr_state_signal_t action)
  * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
  * @param[out] status		where the status of exited programs will be stored.
  */
-int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, tmpl_t const *tmpl, fr_pair_list_t *vps, int *status)
+int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *tmpl, fr_pair_list_t *vps, int *status)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -158,6 +158,8 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_t **out, request_t *request, 
 		.vps = vps,
 		.status_p = status
 	};
+
+	fr_value_box_list_init(&state->box);
 
 	return 0;
 }
@@ -303,7 +305,7 @@ static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *requ
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (state->out) *state->out = state->box;
+	if (state->out) fr_dlist_move(state->out, &state->box);
 
 	if (state->resume) {
 		rlm_rcode_t rcode;
@@ -337,7 +339,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 *	care about output, and we don't care about the programs exit status.
 	 */
 	if (state->failed) {
-		TALLOC_FREE(state->box);
+		fr_dlist_talloc_free(&state->box);
 		goto resume;
 	}
 
@@ -357,7 +359,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 			state->status = -state->status;
 		}
 
-		fr_assert(state->box == NULL);
+		fr_assert(fr_dlist_empty(&state->box));
 		goto resume;
 	}
 
@@ -374,6 +376,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 */
 	if (state->out) {
 		fr_type_t type = FR_TYPE_STRING;
+		fr_value_box_t *box;
 
 		/*
 		 *	Remove any trailing LF / CR
@@ -392,13 +395,15 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 			state->ptr = p;
 		}
 
-		MEM(state->box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
-		if (fr_value_box_from_str(state->box, state->box, &type, NULL,
+		fr_value_box_list_init(&state->box);
+		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
+		if (fr_value_box_from_str(state->ctx, box, &type, NULL,
 					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
-			talloc_free(state->box);
+			talloc_free(box);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
+		fr_dlist_insert_head(&state->box, box);
 	}
 
 	/*
@@ -429,14 +434,14 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	state->fd = -1;
 	if (state->out) fd_p = &state->fd;
 
-	if (fr_exec_wait_start(request, state->box, state->vps, &pid, NULL, fd_p) < 0) {
+	if (fr_exec_wait_start(request, &state->box, state->vps, &pid, NULL, fd_p) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	TALLOC_FREE(state->box); /* this is the xlat expansion, and not the output string we want */
+	fr_dlist_talloc_free(&state->box); /* this is the xlat expansion, and not the output string we want */
 
 	state->pid = pid;
 	state->status = -1;	/* default to program didn't work */
@@ -492,7 +497,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, req
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (fr_exec_nowait(request, state->box, state->vps) < 0) {
+	if (fr_exec_nowait(request, &state->box, state->vps) < 0) {
 		RPEDEBUG("Failed executing program");
 		*p_result = RLM_MODULE_FAIL;
 
@@ -520,9 +525,13 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request)
 
 	/*
 	 *	If we're not called from unlang_tmpl_push(), then
-	 *	ensure that we clean up the resulting value boxes.
+	 *	ensure that we clean up the resulting value boxes
+	 *	and that the list to write the boxes in is initialised.
 	 */
-	if (!state->ctx) state->ctx = state;
+	if (!state->ctx) {
+		state->ctx = state;
+		fr_value_box_list_init(&state->box);
+	}
 
 	if (!tmpl_async_required(ut->tmpl)) {
 		if (!ut->inline_exec) {

@@ -84,22 +84,11 @@ extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
 extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
 extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
 
-typedef enum {
-	FR_VALUE_BOX_LIST_SINGLE = 0,				//!< Singly linked list.
-	FR_VALUE_BOX_LIST_DOUBLE,      				//!< Doubly linked list.
-} fr_value_box_list_type_t;
-
-/** Placeholder structure to represent lists of value boxes
+/** Lists of value boxes
  *
- * Should have additional fields added later.
+ * Specifically define a type for lists of value_box_t to aid type checking
  */
-typedef struct {
-	union {
-		fr_value_box_t	        *slist;			//!< The head of the list.
-		fr_dlist_head_t		dlist;			//!< Doubly linked list head.
-	};
-	fr_value_box_list_type_t type;				//!< What type of list this is.
-} fr_value_box_list_t;
+typedef fr_dlist_head_t	fr_value_box_list_t;
 
 /** Union containing all data types supported by the server
  *
@@ -164,7 +153,7 @@ struct value_box_s {
 
 	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
 
-	fr_value_box_t			*next;			//!< Next in a series of value_box.
+	fr_dlist_t			entry;			//!< Doubly linked list entry.
 };
 
 /** @name Field accessors for #fr_value_box_t
@@ -176,7 +165,7 @@ struct value_box_s {
  */
 #define vb_strvalue				datum.strvalue
 #define vb_octets				datum.octets
-#define vb_group				datum.children.slist
+#define vb_group				datum.children
 
 #define vb_ip					datum.ip
 
@@ -295,36 +284,36 @@ struct value_box_s {
 
 /** Returns the number of boxes in a list of value boxes
  *
- * @param[in] head	of the value box list.
+ * @param[in] list	of value boxes.
  * @return Number of boxes in the list.
  */
-static inline size_t fr_value_box_list_len(fr_value_box_t const *head)
+static inline size_t fr_value_box_list_len(fr_value_box_list_t const *list)
 {
-	size_t i;
-
-	for (i = 0; head; head = head->next, i++);
-
-	return i;
+	return fr_dlist_num_elements(list);
 }
 
 /** Determines whether a list contains the number of boxes required
  *
- * @note More efficient than fr_value_box_list_len for argument validation as it
- *	doesn't walk the entire list.
- *
- * @param[in] head	of the list of value boxes.
+ * @param[in] list	of value boxes.
  * @param[in] min	The number of boxes required to return true.
  * @return
  *	- true if the list has at least min boxes.
  *	- false if the list has fewer than min boxes.
  */
-static inline bool fr_value_box_list_len_min(fr_value_box_t const *head, size_t min)
+static inline bool fr_value_box_list_len_min(fr_value_box_list_t const *list, size_t min)
 {
-	size_t i;
+	size_t i = fr_dlist_num_elements(list);
 
-	for (i = 0; head && i < min; head = head->next, i++);
+	return (i >= min);
+}
 
-	return (i == min);
+/** Initialise a list of fr_value_box_t
+ *
+ * @param[in,out] list 	to initialise
+ */
+static inline void fr_value_box_list_init(fr_value_box_list_t *list)
+{
+	fr_dlist_talloc_init(list, fr_value_box_t, entry);
 }
 /** @} */
 
@@ -361,6 +350,8 @@ static inline CC_HINT(always_inline) void fr_value_box_init(fr_value_box_t *vb, 
 		.enumv = enumv,
 		.tainted = tainted
 	}, sizeof(*vb));
+	fr_dlist_entry_init(&vb->entry);
+	if (type == FR_TYPE_GROUP) fr_value_box_list_init(&vb->vb_group);
 }
 
 /** Initialise an empty/null box that will be filled later
@@ -731,19 +722,17 @@ int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  * @{
  */
 int		fr_value_box_list_concat(TALLOC_CTX *ctx,
-					 fr_value_box_t *out, fr_value_box_t **list,
+					 fr_value_box_t *out, fr_value_box_list_t *list,
 					 fr_type_t type, bool free_input);
 
-char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim,
+char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
 					 fr_sbuff_escape_rules_t const *e_rules);
 
-int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in);
+int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in);
 
-bool		fr_value_box_list_tainted(fr_value_box_t const *head);
+bool		fr_value_box_list_tainted(fr_value_box_list_t const *head);
 
-fr_value_box_t*	fr_value_box_list_get(fr_value_box_t *head, int index);
-
-int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_t const *in);
+int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in);
 /** @} */
 
 /*

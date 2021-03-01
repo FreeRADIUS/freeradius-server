@@ -201,7 +201,7 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
  * @param[in,out] result	Result of expanding the map input.  May be consumed
  *				by the map processor.
  */
-rlm_rcode_t map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_box_t **result)
+rlm_rcode_t map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_box_list_t *result)
 {
 	return inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, result, inst->maps);
 }

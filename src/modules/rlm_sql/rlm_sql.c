@@ -330,7 +330,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_t **query, fr_map_list_t const *maps)
+				fr_value_box_list_t *query, fr_map_list_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -350,6 +350,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	char			map_rhs_buff[128];
 
 	char const		*query_str = NULL;
+	fr_value_box_t		*query_head = fr_dlist_head(query);
 
 #define MAX_SQL_FIELD_INDEX (64)
 
@@ -358,16 +359,16 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 
 	fr_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
 
-	if (!*query) {
+	if (!query_head) {
 		REDEBUG("Query cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *query, query, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(request, query_head, query, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input string");
 		return RLM_MODULE_FAIL;
 	}
-	query_str = (*query)->vb_strvalue;
+	query_str = query_head->vb_strvalue;
 
 	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
 

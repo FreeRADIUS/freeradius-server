@@ -260,7 +260,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 					      request_t *request, void *rctx)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
-	fr_value_box_t		*box = talloc_get_type_abort(rctx, fr_value_box_t);
+	fr_value_box_list_t	*box = talloc_get_type_abort(rctx, fr_value_box_list_t);
 	fr_pair_list_t		env_pairs;
 
 	fr_pair_list_init(&env_pairs);
@@ -287,8 +287,8 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 }
 
 typedef struct {
-	fr_value_box_t	*box;
-	int		status;
+	fr_value_box_list_t	box;
+	int			status;
 } rlm_exec_ctx_t;
 
 static const rlm_rcode_t status2rcode[] = {
@@ -356,11 +356,12 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
 
-	if (inst->output && m->box) {
+	if (inst->output && !fr_dlist_empty(&m->box)) {
 		TALLOC_CTX *ctx;
 		fr_pair_list_t vps, *output_pairs;
+		fr_value_box_t *box = fr_dlist_head(&m->box);
 
-		RDEBUG("EXEC GOT -- %pV", m->box);
+		RDEBUG("EXEC GOT -- %pV", box);
 
 		fr_pair_list_init(&vps);
 		output_pairs = tmpl_list_head(request, inst->output_list);
@@ -368,10 +369,10 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 
 		ctx = tmpl_list_ctx(request, inst->output_list);
 
-		fr_pair_list_afrom_box(ctx, &vps, request->dict, m->box);
+		fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
 		if (!fr_pair_list_empty(&vps)) fr_pair_list_move(output_pairs, &vps);
 
-		m->box = NULL;	/* has been consumed */
+		fr_dlist_talloc_free(&m->box);	/* has been consumed */
 	}
 
 	status = m->status;
@@ -385,7 +386,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	The status rcodes aren't quite the same as the rcode
 	 *	enumeration.
 	 */
-	RETURN_MODULE_RCODE(rlm_exec_status2rcode(request, m->box, status));
+	RETURN_MODULE_RCODE(rlm_exec_status2rcode(request, fr_dlist_head(&m->box), status));
 }
 
 /*
@@ -413,11 +414,11 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	 *	Do the asynchronous xlat expansion.
 	 */
 	if (!inst->wait) {
-		fr_value_box_t *box;
+		fr_value_box_list_t *box = talloc_zero(ctx, fr_value_box_list_t);
 
-		MEM(box = talloc_zero(ctx, fr_value_box_t));
+		fr_value_box_list_init(box);
 
-		return unlang_module_yield_to_xlat(request, &box, request, tmpl_xlat(inst->tmpl), mod_exec_nowait_resume, NULL, box);
+		return unlang_module_yield_to_xlat(request, box, request, tmpl_xlat(inst->tmpl), mod_exec_nowait_resume, NULL, &box);
 	}
 
 	/*
@@ -439,6 +440,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	}
 
 	m = talloc_zero(ctx, rlm_exec_ctx_t);
+	fr_value_box_list_init(&m->box);
 
 	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, &env_pairs, mod_exec_wait_resume, NULL, m);
 }

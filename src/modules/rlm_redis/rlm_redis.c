@@ -156,10 +156,10 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      request_t *request, void const *xlat_inst,
 				      UNUSED void *xlat_thread_inst,
-				      fr_value_box_t **in)
+				      fr_value_box_list_t *in)
 {
 	rlm_redis_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_redis_t);
@@ -169,18 +169,19 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	fr_redis_conn_t			*conn;
 	fr_redis_cluster_rcode_t	rcode;
 	fr_value_box_t			*vb;
+	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("Missing key");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, (*in)->vb_strvalue, (*in)->vb_length,
+	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, in_head->vb_strvalue, in_head->vb_length,
 			      AF_UNSPEC, true, true) < 0) {
 		RPEDEBUG("Failed parsing node address");
 		return XLAT_ACTION_FAIL;
@@ -202,7 +203,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(fr_redis_cluster_rcodes_table, rcode, "<INVALID>"), false);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -211,10 +212,10 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
+static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, void const *xlat_inst,
 				     UNUSED void *xlat_thread_inst,
-				     fr_value_box_t **in)
+				     fr_value_box_list_t *in)
 {
 	rlm_redis_t const			*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 										    rlm_redis_t);
@@ -230,18 +231,19 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	size_t					key_len;
 	unsigned long				idx = 0;
 	fr_value_box_t				*vb;
+	fr_value_box_t				*in_head = fr_dlist_head(in);
 
-	if (!*in) {
+	if (!in_head) {
 		REDEBUG("Missing key");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	key = p = (*in)->vb_strvalue;
+	key = p = in_head->vb_strvalue;
 	p = strchr(p, ' ');		/* Look for index */
 	if (p) {
 		key_len = p - key;
@@ -252,7 +254,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 	} else {
-		key_len = (*in)->vb_length;
+		key_len = in_head->vb_length;
 	}
 
 	key_slot = fr_redis_cluster_slot_by_key(inst->cluster, request, (uint8_t const *)key, key_len);
@@ -274,7 +276,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_asprintf(vb, vb, NULL, false, "%pV:%u", fr_box_ipaddr(ipaddr), port);
-	fr_cursor_append(out, vb);
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
