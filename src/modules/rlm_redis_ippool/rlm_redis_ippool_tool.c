@@ -197,7 +197,7 @@ static char lua_remove_cmd[] =
 	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_OWNER_KEY":' .. found)" EOL	/* 11 */
 	"return 1" EOL;									/* 12 */
 
-static void NEVER_RETURNS usage(int ret) {
+static NEVER_RETURNS void usage(int ret) {
 	INFO("Usage: %s -adrsm range... [-p prefix_len]... [-x]... [-oShf] server[:port] [pool] [range id]", name);
 	INFO("Pool management:");
 	INFO("  -a range               Add address(es)/prefix(es) to the pool.");

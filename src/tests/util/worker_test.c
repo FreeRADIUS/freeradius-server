@@ -79,7 +79,7 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t c
 
 /**********************************************************************/
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: worker_test [OPTS]\n");
 	fprintf(stderr, "  -c <control-plane>     Size of the control plane queue.\n");

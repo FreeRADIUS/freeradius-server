@@ -57,7 +57,7 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 };
 
 
-static void NEVER_RETURNS usage(char *argv[])
+static NEVER_RETURNS void usage(char *argv[])
 {
 	fprintf(stderr, "usage: %s [OPTS] filename ...\n", argv[0]);
 	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " RADDBDIR ").\n");

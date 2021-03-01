@@ -66,7 +66,7 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *
 
 /**********************************************************************/
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: control_test [OPTS]\n");
 	fprintf(stderr, "  -m <messages>	  Send number of messages.\n");

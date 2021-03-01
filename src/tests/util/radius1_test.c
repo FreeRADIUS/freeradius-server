@@ -77,7 +77,7 @@ static char const	*secret = "testing123";
 
 static fr_schedule_worker_t workers[MAX_WORKERS];
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: radius_test [OPTS]\n");
 	fprintf(stderr, "  -c <control-plane>     Size of the control plane queue.\n");

@@ -202,7 +202,7 @@ static fr_app_t test_app = {
 	.entry_point_set = entry_point_set,
 };
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: schedule_test [OPTS]\n");
 	fprintf(stderr, "  -n <num>               Start num network threads\n");

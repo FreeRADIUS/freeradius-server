@@ -122,7 +122,7 @@ static void  free_blocks(fr_ring_buffer_t *rb, UNUSED uint32_t *seed, int *start
 	}
 }
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: ring_buffer_test [OPTS]\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");

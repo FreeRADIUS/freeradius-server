@@ -82,7 +82,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 }
 
 // http://stackoverflow.com/a/29838852
-static void NEVER_RETURNS handleErrors(void)
+static NEVER_RETURNS void handleErrors(void)
 {
 	unsigned long errCode;
 

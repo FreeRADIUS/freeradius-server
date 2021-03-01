@@ -42,7 +42,7 @@ RCSID("$Id$")
 
 static int		debug_lvl = 0;
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: schedule_test [OPTS]\n");
 	fprintf(stderr, "  -n <num>               Start num network threads\n");

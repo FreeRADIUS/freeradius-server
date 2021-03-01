@@ -1030,7 +1030,7 @@ cleanup:
 /*
  *  Display the syntax for starting this program.
  */
-static void NEVER_RETURNS usage(main_config_t const *config, int status)
+static NEVER_RETURNS void usage(main_config_t const *config, int status)
 {
 	FILE *output = status ? stderr : stdout;
 

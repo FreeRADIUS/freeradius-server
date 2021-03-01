@@ -110,10 +110,10 @@ void			fr_fault_log_hex(uint8_t const *data, size_t data_len);
 bool			_fr_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
 			CC_HINT(format (printf, 4, 5));
 
-void NEVER_RETURNS	_fr_assert_fatal(char const *file, int line, char const *expr, char const *msg, ...)
+NEVER_RETURNS void	_fr_assert_fatal(char const *file, int line, char const *expr, char const *msg, ...)
 			CC_HINT(format (printf, 4, 5));
 
-void NEVER_RETURNS	_fr_exit(char const *file, int line, int status, bool now);
+NEVER_RETURNS void	_fr_exit(char const *file, int line, int status, bool now);
 /** @} */
 
 /** @name Assertion and exit macros

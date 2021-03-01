@@ -120,7 +120,7 @@ static fr_table_num_sorted_t const request_types[] = {
 };
 static size_t request_types_len = NUM_ELEMENTS(request_types);
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	DEBUG("Usage: dhcpclient [options] server[:port] [<command>]");
 	DEBUG("Send a DHCP request with provided RADIUS attrs and output response.");

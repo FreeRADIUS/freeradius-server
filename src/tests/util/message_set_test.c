@@ -175,7 +175,7 @@ static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int
 	}
 }
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: message_set_test [OPTS]\n");
 	fprintf(stderr, "  -s <string>            Set random seed to <string>.\n");

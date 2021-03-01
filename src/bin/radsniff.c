@@ -106,7 +106,7 @@ fr_dict_attr_autoload_t radsniff_dict_attr[] = {
 	{ NULL }
 };
 
-static void NEVER_RETURNS usage(int status);
+static NEVER_RETURNS void usage(int status);
 
 /** Fork and kill the parent process, writing out our PID
  *
@@ -2191,7 +2191,7 @@ fr_event_list_t *list, int fd, int UNUSED flags, UNUSED void *ctx)
 	}
 }
 
-static void NEVER_RETURNS usage(int status)
+static NEVER_RETURNS void usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
 	fprintf(output, "Usage: radsniff [options][stats options] -- [pcap files]\n");

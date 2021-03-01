@@ -1411,7 +1411,7 @@ void _fr_assert_fatal(char const *file, int line, char const *expr, char const *
  * @param[in] now	Exit immediately.
  */
 #ifndef NDEBUG
-void NEVER_RETURNS _fr_exit(char const *file, int line, int status, bool now)
+NEVER_RETURNS void _fr_exit(char const *file, int line, int status, bool now)
 {
 	if (status != EXIT_SUCCESS) {
 		char const *error = fr_strerror();
@@ -1430,7 +1430,7 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status, bool now)
 	exit(status);
 }
 #else
-void NEVER_RETURNS _fr_exit(UNUSED char const *file, UNUSED int line, int status, bool now)
+NEVER_RETURNS void _fr_exit(UNUSED char const *file, UNUSED int line, int status, bool now)
 {
 	if (status != EXIT_SUCCESS) fr_debug_break(false);	/* If running under GDB we'll break here */
 

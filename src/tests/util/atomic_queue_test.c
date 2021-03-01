@@ -48,7 +48,7 @@ void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *
 /**********************************************************************/
 
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: atomic_queue_test [OPTS]\n");
 	fprintf(stderr, "  -s size                set queue size.\n");

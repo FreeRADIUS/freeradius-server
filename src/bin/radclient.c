@@ -134,7 +134,7 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ NULL }
 };
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 
