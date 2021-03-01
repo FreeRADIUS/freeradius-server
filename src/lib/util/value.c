@@ -2570,13 +2570,13 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	 *	Helps catch invalid fr_value_box_field_sizes
 	 *	entries, and shuts up clang analyzer.
 	 */
-	if (!fr_cond_assert_msg(len == 0, "Invalid cast from %s to %s. "
+	if (!fr_cond_assert_msg(len > 0, "Invalid cast from %s to %s. "
 			        "invalid source type len, expected > 0, got %zu",
 			        fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 			        fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
 			        len)) return -1;
 
-	if (!fr_cond_assert_msg(len > sizeof(uint64_t),
+	if (!fr_cond_assert_msg(len <= sizeof(uint64_t),
 				"Invalid cast from %s to %s. "
 				"invalid source type len, expected <= %zu, got %zu",
 				fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
