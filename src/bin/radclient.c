@@ -1156,7 +1156,7 @@ int main(int argc, char **argv)
 	if (!filename_tree) {
 	oom:
 		ERROR("Out of memory");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -1336,33 +1336,33 @@ int main(int argc, char **argv)
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radclient");
-		return 1;
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
 		fr_perror("radclient");
-		return 1;
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_radius_init() < 0) {
 		fr_perror("radclient");
-		return 1;
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_autoload(radclient_dict) < 0) {
 		fr_perror("radclient");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_attr_autoload(radclient_dict_attr) < 0) {
 		fr_perror("radclient");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(fr_dict_unconst(dict_freeradius), raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, __FILE__, __LINE__, NULL,
 			      "Failed to initialize the dictionaries");
-		return 1;
+		exit(EXIT_FAILURE);
 	}
 	fr_strerror_clear();	/* Clear the error buffer */
 
