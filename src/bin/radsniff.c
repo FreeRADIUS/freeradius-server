@@ -980,12 +980,12 @@ static int _request_free(rs_request_t *request)
 	 *	something has gone very badly wrong.
 	 */
 	if (request->in_request_tree) {
-		ret = rbtree_deletebydata(request_tree, request);
+		ret = rbtree_delete_by_data(request_tree, request);
 		RS_ASSERT(ret);
 	}
 
 	if (request->in_link_tree) {
-		ret = rbtree_deletebydata(link_tree, request);
+		ret = rbtree_delete_by_data(link_tree, request);
 		RS_ASSERT(ret);
 	}
 
@@ -1390,7 +1390,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	{
 		/* look for a matching request and use it for decoding */
 		search.expect = packet;
-		original = rbtree_finddata(request_tree, &search);
+		original = rbtree_find_data(request_tree, &search);
 
 		/*
 		 *	Verify this code is allowed
@@ -1608,8 +1608,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (!fr_pair_list_empty(&search.link_vps)) {
 			rs_request_t *tuple;
 
-			original = rbtree_finddata(link_tree, &search);
-			tuple = rbtree_finddata(request_tree, &search);
+			original = rbtree_find_data(link_tree, &search);
+			tuple = rbtree_find_data(request_tree, &search);
 
 			/*
 			 *	If the packet we matched using attributes is not the same
@@ -1623,7 +1623,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Detect duplicates using the normal 5-tuple of src/dst ips/ports id
 		 */
 		} else {
-			original = rbtree_finddata(request_tree, &search);
+			original = rbtree_find_data(request_tree, &search);
 			if (original && (memcmp(original->expect->vector, packet->vector,
 			    			sizeof(original->expect->vector)) != 0)) {
 				/*
@@ -1673,7 +1673,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 			/* Request may need to be reinserted as the 5 tuple of the response may of changed */
 			if (rs_packet_cmp(original, &search) != 0) {
-				rbtree_deletebydata(request_tree, original);
+				rbtree_delete_by_data(request_tree, original);
 			}
 
 			/* replace expected packets and vps */

@@ -158,9 +158,9 @@ static int track_free(fr_io_track_t *track)
 static int track_dedup_free(fr_io_track_t *track)
 {
 	fr_assert(track->client->table != NULL);
-	fr_assert(rbtree_finddata(track->client->table, track) != NULL);
+	fr_assert(rbtree_find_data(track->client->table, track) != NULL);
 
-	if (!rbtree_deletebydata(track->client->table, track)) {
+	if (!rbtree_delete_by_data(track->client->table, track)) {
 		fr_assert(0);
 	}
 
@@ -895,7 +895,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	/*
 	 *	No existing duplicate.  Return the new tracking entry.
 	 */
-	old = rbtree_finddata(client->table, track);
+	old = rbtree_find_data(client->table, track);
 	if (!old) goto do_insert;
 
 	fr_assert(old->client == client);
@@ -964,7 +964,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	} else {
 		fr_assert(client == old->client);
 
-		if (!rbtree_deletebydata(client->table, old)) {
+		if (!rbtree_delete_by_data(client->table, old)) {
 			fr_assert(0);
 		}
 		if (old->ev) (void) fr_event_timer_delete(&old->ev);

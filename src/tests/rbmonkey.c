@@ -168,7 +168,7 @@ again:
 	 * For testing deletebydata instead
 
 	 for (i = 0; i < n; i++) {
-		if (filter_cb(&vals[i], &thresh) == 2) rbtree_deletebydata(t, &vals[i]);
+		if (filter_cb(&vals[i], &thresh) == 2) rbtree_delete_by_data(t, &vals[i]);
 	 }
 
 	 *

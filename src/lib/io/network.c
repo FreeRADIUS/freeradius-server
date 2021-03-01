@@ -243,7 +243,7 @@ int fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_network_socket_t *s;
 
-	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	s = rbtree_find_data(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
 	fr_network_socket_dead(nr, s);
@@ -296,7 +296,7 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li)
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	s = rbtree_find_data(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return;
 
 	/*
@@ -1045,8 +1045,8 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_network_t *nr = s->nr;
 	fr_channel_data_t *cd;
 
-	rbtree_deletebydata(nr->sockets, s);
-	rbtree_deletebydata(nr->sockets_by_num, s);
+	rbtree_delete_by_data(nr->sockets, s);
+	rbtree_delete_by_data(nr->sockets_by_num, s);
 
 	fr_event_fd_delete(nr->el, s->listen->fd, s->filter);
 
@@ -1283,7 +1283,7 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 	fr_assert(data_size == sizeof(my_inject));
 
 	memcpy(&my_inject, data, data_size);
-	s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
+	s = rbtree_find_data(nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
 	if (!s) {
 		talloc_free(my_inject.packet); /* MUST be it's own TALLOC_CTX */
 		return;
@@ -1345,7 +1345,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 		 *	@todo - cache this somewhere so we don't need
 		 *	to do an rbtree lookup for every packet.
 		 */
-		s = rbtree_finddata(nr->sockets, &(fr_network_socket_t){ .listen = li });
+		s = rbtree_find_data(nr->sockets, &(fr_network_socket_t){ .listen = li });
 
 		/*
 		 *	This shouldn't happen, but be safe...
@@ -1415,7 +1415,8 @@ int fr_network_destroy(fr_network_t *nr)
 		size_t			len;
 		size_t			i;
 
-		len = rbtree_flatten(nr, (void ***)&sockets, nr->sockets, RBTREE_IN_ORDER);
+		if (rbtree_flatten_inorder(nr, (void ***)&sockets, nr->sockets) < 0) return -1;
+		len = talloc_array_length(sockets);
 
 		for (i = 0; i < len; i++) talloc_free(sockets[i]);
 
@@ -1744,7 +1745,7 @@ static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cm
 	fprintf(fp, "count.out\t%" PRIu64 "\n", nr->stats.out);
 	fprintf(fp, "count.dup\t%" PRIu64 "\n", nr->stats.dup);
 	fprintf(fp, "count.dropped\t%" PRIu64 "\n", nr->stats.dropped);
-	fprintf(fp, "count.sockets\t%u\n", rbtree_num_elements(nr->sockets));
+	fprintf(fp, "count.sockets\t%"PRIu64"\n", rbtree_num_elements(nr->sockets));
 
 	return 0;
 }
@@ -1774,7 +1775,7 @@ static int cmd_stats_socket(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t con
 	fr_network_t const *nr = ctx;
 	fr_network_socket_t *s;
 
-	s = rbtree_finddata(nr->sockets_by_num, &(fr_network_socket_t){ .number = info->box[0]->vb_uint32 });
+	s = rbtree_find_data(nr->sockets_by_num, &(fr_network_socket_t){ .number = info->box[0]->vb_uint32 });
 	if (!s) {
 		fprintf(fp_err, "No such socket number '%s'.\n", info->argv[0]);
 		return -1;

@@ -183,7 +183,7 @@ static rlm_csv_entry_t *find_entry(rlm_csv_t const *inst, fr_value_box_t const *
 
 	memcpy(&my_e.key, &key, sizeof(key)); /* const issues */
 
-	return rbtree_finddata(inst->tree, &my_e);
+	return rbtree_find_data(inst->tree, &my_e);
 }
 
 static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e, int lineno)

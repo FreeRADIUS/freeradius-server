@@ -262,7 +262,7 @@ static SECURID_SESSION *securid_sessionlist_delete(rlm_securid_t *inst, SECURID_
 
 static void securid_sessionlist_clean_expired(rlm_securid_t *inst, request_t *request, time_t timestamp)
 {
-	int num_sessions;
+	uint64_t num_sessions;
 	SECURID_SESSION *session;
 
 	num_sessions = rbtree_num_elements(inst->session_tree);

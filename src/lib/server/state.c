@@ -260,7 +260,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 
 	fr_dlist_remove(&state->to_expire, entry);
 
-	rbtree_deletebydata(state->tree, entry);
+	rbtree_delete_by_data(state->tree, entry);
 
 	DEBUG4("State ID %" PRIu64 " unlinked", entry->id);
 }
@@ -558,7 +558,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, request_t *req
 	 */
 	my_entry.state_comp.server_hash ^= fr_hash_string(cf_section_name2(request->server_cs));
 
-	entry = rbtree_finddata(state->tree, &my_entry);
+	entry = rbtree_find_data(state->tree, &my_entry);
 
 	if (entry) (void) talloc_get_type_abort(entry, fr_state_entry_t);
 
@@ -856,7 +856,7 @@ uint64_t fr_state_entries_timeout(fr_state_tree_t *state)
 /** Return number of entries we're currently tracking
  *
  */
-uint32_t fr_state_entries_tracked(fr_state_tree_t *state)
+uint64_t fr_state_entries_tracked(fr_state_tree_t *state)
 {
-	return (uint32_t)rbtree_num_elements(state->tree);
+	return rbtree_num_elements(state->tree);
 }

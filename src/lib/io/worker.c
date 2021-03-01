@@ -548,7 +548,7 @@ static void worker_stop_request(fr_worker_t *worker, request_t *request, fr_time
 	 */
 	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
 	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
-	if (request->async->listen && request->async->listen->track_duplicates) rbtree_deletebydata(worker->dedup, request);
+	if (request->async->listen && request->async->listen->track_duplicates) rbtree_delete_by_data(worker->dedup, request);
 
 #ifndef NDEBUG
 	request->async->process = NULL;
@@ -781,7 +781,7 @@ nak:
 	if (request->async->listen->track_duplicates) {
 		request_t *old;
 
-		old = rbtree_finddata(worker->dedup, request);
+		old = rbtree_find_data(worker->dedup, request);
 		if (!old) {
 			/*
 			 *	Ignore duplicate packets where we've
@@ -939,7 +939,7 @@ static void worker_run_request(fr_worker_t *worker, fr_time_t start)
 			 *	then, only some of the time.
 			 */
 			if (request_is_external(request) && request->async->listen->track_duplicates) {
-				(void) rbtree_deletebydata(worker->dedup, request);
+				(void) rbtree_delete_by_data(worker->dedup, request);
 			}
 
 			now = fr_time();

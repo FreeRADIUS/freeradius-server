@@ -430,7 +430,7 @@ static int8_t fr_event_pid_cmp(void const *a, void const *b)
 /** Return the number of file descriptors is_registered with this event loop
  *
  */
-int fr_event_list_num_fds(fr_event_list_t *el)
+uint64_t fr_event_list_num_fds(fr_event_list_t *el)
 {
 	if (unlikely(!el)) return -1;
 
@@ -725,7 +725,7 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 			}
 		}
 
-		rbtree_deletebydata(el->fds, ef);
+		rbtree_delete_by_data(el->fds, ef);
 		ef->is_registered = false;
 	}
 
@@ -787,7 +787,7 @@ int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
 	/*
 	 *	Ensure this exists
 	 */
-	ef = rbtree_finddata(src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = rbtree_find_data(src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -833,7 +833,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 	struct kevent		evset[10];
 	int			count = 0;
 
-	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = rbtree_find_data(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -929,7 +929,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	}
 
 	if (!ef_out || !*ef_out) {
-		ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+		ef = rbtree_find_data(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	} else {
 		ef = *ef_out;
 		fr_assert((fd < 0) || (ef->fd == fd));
@@ -1088,7 +1088,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef;
 
-	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = rbtree_find_data(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1126,7 +1126,7 @@ int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, ui
 {
 	fr_event_fd_t	*ef;
 
-	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = rbtree_find_data(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1156,7 +1156,7 @@ int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, 
 {
 	fr_event_fd_t	*ef;
 
-	ef = rbtree_finddata(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = rbtree_find_data(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -2425,7 +2425,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 				fr_event_counter_t find = { .file = ev->file, .line = ev->line };
 				fr_event_counter_t *counter;
 
-				counter = rbtree_finddata(locations[i], &find);
+				counter = rbtree_find_data(locations[i], &find);
 				if (!counter) {
 					counter = talloc(locations[i], fr_event_counter_t);
 					if (!counter) goto oom;
@@ -2445,7 +2445,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	pthread_mutex_lock(&print_lock);
 	EVENT_DEBUG("Event list %p", el);
-	EVENT_DEBUG("    fd events            : %u", fr_event_list_num_fds(el));
+	EVENT_DEBUG("    fd events            : %"PRIu64, fr_event_list_num_fds(el));
 	EVENT_DEBUG("    events last iter     : %u", el->num_fd_events);
 	EVENT_DEBUG("    num timer events     : %u", fr_event_list_num_timers(el));
 

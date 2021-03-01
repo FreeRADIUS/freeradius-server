@@ -536,7 +536,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 		if (stat(filename, &my_file.buf) < 0) goto error;
 
-		file = rbtree_finddata(tree, &my_file);
+		file = rbtree_find_data(tree, &my_file);
 
 		/*
 		 *	The file was previously read by including it
@@ -2372,55 +2372,6 @@ void cf_file_check_user(uid_t uid, gid_t gid)
 	if (uid != 0) conf_check_uid = uid;
 	if (gid != 0) conf_check_gid = gid;
 }
-
-/*
- *	See if any of the files have changed.
- */
-int cf_file_changed(CONF_SECTION *cs, fr_rb_walker_t callback)
-{
-	CONF_SECTION			*top, *modules;
-	rbtree_t			*tree;
-	cf_file_t			*file;
-	int				rcode;
-	struct stat			buf;
-	fr_rb_tree_iter_inorder_t	iter;
-
-	top = cf_root(cs);
-	tree = cf_data_value(cf_data_find(top, rbtree_t, "filename"));
-	if (!tree) return CF_FILE_ERROR;
-
-	rcode = CF_FILE_NONE;
-	modules = cf_section_find(cs, "modules", NULL);
-
-	for (file = rbtree_iter_init_inorder(&iter, tree);
-	     file;
-	     file = rbtree_iter_next_inorder(&iter)) {
-		/*
-		 *	The file doesn't exist or we can no longer read it.
-		 */
-		if (stat(file->filename, &buf) < 0) {
-			rcode = CF_FILE_ERROR;
-			rbtree_iter_done(&iter);
-			break;
-		}
-
-		/*
-		 *	The file changed, we'll need to re-read it.
-		 */
-		if (buf.st_mtime != file->buf.st_mtime) {
-			if (callback(modules, file->cs)) {
-				rcode |= CF_FILE_MODULE;
-				DEBUG3("HUP: Changed module file %s", file->filename);
-			} else {
-				DEBUG3("HUP: Changed config file %s", file->filename);
-				rcode |= CF_FILE_CONFIG;
-			}
-		}
-	}
-
-	return rcode;
-}
-
 
 static char const parse_tabs[] = "																																																																																																																																																																																																								";
 

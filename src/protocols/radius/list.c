@@ -331,7 +331,7 @@ fr_radius_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t
 {
 	if (!pl || !request) return 0;
 
-	return rbtree_finddata(pl->tree, request);
+	return rbtree_find_data(pl->tree, request);
 }
 
 
@@ -373,7 +373,7 @@ fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_
 	my_request.id = reply->id;
 	request = &my_request;
 
-	return rbtree_finddata(pl->tree, request);
+	return rbtree_find_data(pl->tree, request);
 }
 
 
@@ -727,9 +727,9 @@ fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint3
 	return NULL;
 }
 
-uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl)
+uint64_t fr_packet_list_num_incoming(fr_packet_list_t *pl)
 {
-	uint32_t num_elements;
+	uint64_t num_elements;
 
 	if (!pl) return 0;
 

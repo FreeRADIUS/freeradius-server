@@ -203,7 +203,7 @@ dl_module_inst_t const *dl_module_instance_by_data(void const *data)
 
 	if (dl_inst_cache.data == data) return dl_inst_cache.inst;
 
-	return rbtree_finddata(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = UNCONST(void *, data) });
+	return rbtree_find_data(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = UNCONST(void *, data) });
 }
 
 /** Lookup instance name via instance data
@@ -310,7 +310,7 @@ static int _dl_module_free(dl_module_t *dl_module)
 	}
 
 	if (dl_module->in_tree) {
-		rbtree_deletebydata(dl_module_loader->module_tree, dl_module);
+		rbtree_delete_by_data(dl_module_loader->module_tree, dl_module);
 		dl_module->in_tree = false;
 	}
 
@@ -366,7 +366,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	If the module's already been loaded, increment the reference count.
 	 */
-	dl_module = rbtree_finddata(dl_module_loader->module_tree,
+	dl_module = rbtree_find_data(dl_module_loader->module_tree,
 				    &(dl_module_t){ .dl = &(dl_t){ .name = module_name }});
 	if (dl_module) {
 		talloc_free(module_name);
@@ -459,7 +459,7 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
          *	Remove this instance from the tracking tree.
          */
         fr_assert(dl_module_loader != NULL);
-        rbtree_deletebydata(dl_module_loader->inst_data_tree, dl_inst);
+        rbtree_delete_by_data(dl_module_loader->inst_data_tree, dl_inst);
 
         /*
          *	Decrements the reference count. The module object

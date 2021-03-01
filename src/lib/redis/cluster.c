@@ -553,7 +553,7 @@ do { \
 do { \
 	(_node)->is_active = false; \
 	(_node)->is_master = false; \
-	rbtree_deletebydata(cluster->used_nodes, _node); \
+	rbtree_delete_by_data(cluster->used_nodes, _node); \
 	fr_fifo_push(cluster->free_nodes, _node); \
 } while (0)
 
@@ -601,7 +601,7 @@ do { \
 		memset(&tmpl_slot, 0, sizeof(tmpl_slot));
 
 		SET_ADDR(find.addr, map->element[2]);
-		found = rbtree_finddata(cluster->used_nodes, &find);
+		found = rbtree_find_data(cluster->used_nodes, &find);
 		if (found) {
 			active[found->id] = true;
 			goto reuse_master_node;
@@ -653,7 +653,7 @@ do { \
 		 */
 		for (j = 3; (j < map->elements); j++) {
 			SET_ADDR(find.addr, map->element[j]);
-			found = rbtree_finddata(cluster->used_nodes, &find);
+			found = rbtree_find_data(cluster->used_nodes, &find);
 			if (found) {
 				active[found->id] = true;
 				goto next;
@@ -728,7 +728,7 @@ do { \
 
 		if (cluster->node[i].is_active) {
 			/* Sanity check for duplicates that are active */
-			found = rbtree_finddata(cluster->used_nodes, &cluster->node[i]);
+			found = rbtree_find_data(cluster->used_nodes, &cluster->node[i]);
 			fr_assert(found);
 			fr_assert(found->is_active);
 			fr_assert(found->id == i);
@@ -1119,7 +1119,7 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 	 *	If we have already have a pool for the
 	 *	host we were redirected to, use that.
 	 */
-	found = rbtree_finddata(cluster->used_nodes, &find);
+	found = rbtree_find_data(cluster->used_nodes, &find);
 	if (found) {
 		/* We have the new pool, don't need to hold the lock */
 		pthread_mutex_unlock(&cluster->mutex);
@@ -1699,7 +1699,7 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 	fr_redis_cluster_node_t			*node;
 	fr_redis_cluster_key_slot_t const	*key_slot;
 	uint8_t					first, i;
-	int					used_nodes;
+	uint64_t				used_nodes;
 
 	fr_assert(cluster);
 	fr_assert(state);
@@ -2025,7 +2025,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 	find.addr.inet.dst_port = node_addr->inet.dst_port;
 
 	pthread_mutex_lock(&cluster->mutex);
-	found = rbtree_finddata(cluster->used_nodes, &find);
+	found = rbtree_find_data(cluster->used_nodes, &find);
 	if (!found) {
 		fr_redis_cluster_node_t *spare;
 		char buffer[INET6_ADDRSTRLEN];
@@ -2083,7 +2083,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 					   fr_redis_cluster_t *cluster, bool is_master, bool is_slave)
 {
-	size_t in_use = rbtree_num_elements(cluster->used_nodes);
+	uint64_t 			in_use = rbtree_num_elements(cluster->used_nodes);
 	fr_rb_tree_iter_inorder_t	iter;
 	fr_redis_cluster_node_t		*node;
 	uint8_t				count;
@@ -2220,7 +2220,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	CONF_PAIR		*cp;
 	int			af = AF_UNSPEC;		/* AF of first server */
 
-	int			num_nodes;
+	uint64_t		num_nodes;
 	fr_redis_cluster_t	*cluster;
 
 	fr_assert(triggers_enabled || !trigger_prefix);

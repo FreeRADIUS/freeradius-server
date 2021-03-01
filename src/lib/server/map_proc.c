@@ -61,10 +61,10 @@ static int _map_proc_talloc_free(map_proc_t *proc)
 	strlcpy(find.name, proc->name, sizeof(find.name));
 	find.length = strlen(find.name);
 
-	found = rbtree_finddata(map_proc_root, &find);
+	found = rbtree_find_data(map_proc_root, &find);
 	if (!found) return 0;
 
-	rbtree_deletebydata(map_proc_root, found);
+	rbtree_delete_by_data(map_proc_root, found);
 
 	return 0;
 }
@@ -90,7 +90,7 @@ map_proc_t *map_proc_find(char const *name)
 	strlcpy(find.name, name, sizeof(find.name));
 	find.length = strlen(find.name);
 
-	return rbtree_finddata(map_proc_root, &find);
+	return rbtree_find_data(map_proc_root, &find);
 }
 
 /** Register a map processor

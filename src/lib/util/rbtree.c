@@ -41,7 +41,7 @@ struct rbtree_s {
 						///< the structure being inserted.
 	char const		*type;		//!< Talloc type to check elements against.
 
-	uint64_t		num_elements;	//!< How many elements are inside the tree.
+	size_t			num_elements;	//!< How many elements are inside the tree.
 	fr_rb_cmp_t		compare;	//!< The comparator.
 	fr_rb_free_t		free;		//!< Free function called when a node is freed.
 
@@ -577,11 +577,11 @@ void rbtree_delete(rbtree_t *tree, fr_rb_node_t *z)
 	rbtree_delete_internal(tree, z, false);
 }
 
-/** Delete a node from the tree, based on given data, which MUST have come from rbtree_finddata().
+/** Delete a node from the tree, based on given data, which MUST have come from rbtree_find_data().
  *
  *
  */
-bool rbtree_deletebydata(rbtree_t *tree, void const *data)
+bool rbtree_delete_by_data(rbtree_t *tree, void const *data)
 {
 	fr_rb_node_t *node;
 
@@ -628,7 +628,7 @@ fr_rb_node_t *rbtree_find(rbtree_t *tree, void const *data)
  *
  * @hidecallergraph
  */
-void *rbtree_finddata(rbtree_t *tree, void const *data)
+void *rbtree_find_data(rbtree_t *tree, void const *data)
 {
 	fr_rb_node_t *x;
 
@@ -640,220 +640,21 @@ void *rbtree_finddata(rbtree_t *tree, void const *data)
 	return x->data;
 }
 
-/** Walk the tree, Pre-order
+/** Return how many nodes there are in a tree
  *
- * We call ourselves recursively for each function, but that's OK,
- * as the stack is only log(N) deep, which is ~12 entries deep.
+ * @param[in] tree	to return node count for.
  */
-static int walk_node_pre_order(fr_rb_node_t *x, fr_rb_walker_t compare, void *uctx)
-{
-	int		ret;
-	fr_rb_node_t	*left, *right;
-
-	left = x->left;
-	right = x->right;
-
-	ret = compare(x->data, uctx);
-	if (ret != 0) return ret;
-
-	if (left != NIL) {
-		ret = walk_node_pre_order(left, compare, uctx);
-		if (ret != 0) return ret;
-	}
-
-	if (right != NIL) {
-		ret = walk_node_pre_order(right, compare, uctx);
-		if (ret != 0) return ret;
-	}
-
-	return 0;/* we know everything returned zero */
-}
-
-/** rbtree_in_order
- *
- */
-static int walk_node_in_order(fr_rb_node_t *x, fr_rb_walker_t compare, void *uctx)
-{
-	int ret;
-	fr_rb_node_t *right;
-
-	if (x->left != NIL) {
-		ret = walk_node_in_order(x->left, compare, uctx);
-		if (ret != 0) return ret;
-	}
-
-	right = x->right;
-
-	ret = compare(x->data, uctx);
-	if (ret != 0) return ret;
-
-	if (right != NIL) {
-		ret = walk_node_in_order(right, compare, uctx);
-		if (ret != 0) return ret;
-	}
-
-	return 0;		/* we know everything returned zero */
-}
-
-
-/** rbtree_post_order
- *
- */
-static int walk_node_post_order(fr_rb_node_t *x, fr_rb_walker_t compare, void *uctx)
-{
-	int ret;
-
-	if (x->left != NIL) {
-		ret = walk_node_post_order(x->left, compare, uctx);
-		if (ret != 0) return ret;
-	}
-
-	if (x->right != NIL) {
-		ret = walk_node_post_order(x->right, compare, uctx);
-		if (ret != 0) return ret;
-	}
-
-	ret = compare(x->data, uctx);
-	if (ret != 0) return ret;
-
-	return 0;		/* we know everything returned zero */
-}
-
-/** rbtree_delete_order
- *
- *	This executes an rbtree_in_order-like walk that adapts to changes in the
- *	tree above it, which may occur because we allow the compare to
- *	tell us to delete the current node.
- *
- *	The compare should return:
- *
- *		< 0  - on error
- *		0    - continue walking, don't delete the node
- *		1    - delete the node and stop walking
- *		2    - delete the node and continue walking
- */
-static int walk_delete_order(rbtree_t *tree, fr_rb_walker_t compare, void *uctx)
-{
-	fr_rb_node_t *solid, *x;
-	int ret = 0;
-
-	/* Keep track of last node that refused deletion. */
-	solid = NIL;
-	while (solid == NIL) {
-		x = tree->root;
-		if (x == NIL) break;
-	descend:
-		while (x->left != NIL) {
-			x = x->left;
-		}
-	visit:
-		ret = compare(x->data, uctx);
-		if (ret < 0) {
-			return ret;
-		}
-		if (ret) {
-			rbtree_delete_internal(tree, x, true);
-			if (ret != 2) {
-				return ret;
-			}
-		} else {
-			solid = x;
-		}
-	}
-	if (solid != NIL) {
-		x = solid;
-		if (x->right != NIL) {
-			x = x->right;
-			goto descend;
-		}
-		while (x->parent != NIL) {
-			if (x->parent->left == x) {
-				x = x->parent;
-				goto visit;
-			}
-			x = x->parent;
-		}
-	}
-	return ret;
-}
-
-
-/*
- *	walk the entire tree.  The compare function CANNOT modify
- *	the tree.
- *
- *	The compare function should return 0 to continue walking.
- *	Any other value stops the walk, and is returned.
- */
-int rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, void *uctx)
-{
-	int ret;
-
-	if (tree->root == NIL) return 0;
-
-	if (tree->lock) pthread_mutex_lock(&tree->mutex);
-
-	switch (order) {
-	case RBTREE_PRE_ORDER:
-		ret = walk_node_pre_order(tree->root, compare, uctx);
-		break;
-
-	case RBTREE_IN_ORDER:
-		ret = walk_node_in_order(tree->root, compare, uctx);
-		break;
-
-	case RBTREE_POST_ORDER:
-		ret = walk_node_post_order(tree->root, compare, uctx);
-		break;
-
-	case RBTREE_DELETE_ORDER:
-		ret = walk_delete_order(tree, compare, uctx);
-		break;
-
-	default:
-		ret = -1;
-		break;
-	}
-
-	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
-	return ret;
-}
-
-uint32_t rbtree_num_elements(rbtree_t *tree)
+uint64_t rbtree_num_elements(rbtree_t *tree)
 {
 	return tree->num_elements;
-}
-
-typedef struct {
-	size_t			idx;
-	void			**data;
-} rbtree_flatten_ctx_t;
-
-static int _flatten_cb(void *data, void *uctx)
-{
-	rbtree_flatten_ctx_t *ctx = uctx;
-	ctx->data[ctx->idx++] = data;
-	return 0;
-}
-
-
-
-/*
- *	Given a Node, return the data.
- */
-void *rbtree_node2data(UNUSED rbtree_t *tree, fr_rb_node_t *node)
-{
-	if (!node) return NULL;
-
-	return node->data;
 }
 
 /** Initialise an in-order iterator
  *
  * @note If iteration ends early because of a loop condition #rbtree_iter_done must be called.
  *
- * @param[out] iter to initialise.
- * @param[in] tree to iterate over.
+ * @param[out] iter	to initialise.
+ * @param[in] tree	to iterate over.
  * @return
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
@@ -960,8 +761,8 @@ void rbtree_iter_delete_inorder(fr_rb_tree_iter_inorder_t *iter)
  *
  * @note If iteration ends early because of a loop condition #rbtree_iter_done must be called.
  *
- * @param[out] iter to initialise.
- * @param[in] tree to iterate over.
+ * @param[out] iter	to initialise.
+ * @param[in] tree	to iterate over.
  * @return
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
@@ -1044,8 +845,8 @@ void *rbtree_iter_next_preorder(fr_rb_tree_iter_preorder_t  *iter)
  *
  * @note If iteration ends early because of a loop condition #rbtree_iter_done must be called.
  *
- * @param[out] iter to initialise.
- * @param[in] tree to iterate over.
+ * @param[out] iter	to initialise.
+ * @param[in] tree	to iterate over.
  * @return
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
@@ -1132,17 +933,18 @@ void *rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t *iter)
 	return x->data;
 }
 
-#define DEF_RBTREE_FLATTEN_FUNC(_order)
-ssize_t rbtree_flatten_##_order(TALLOC_CTX *ctx, void **out[], rbtree_t *tree) \
+#define DEF_RBTREE_FLATTEN_FUNC(_order) \
+int rbtree_flatten_##_order(TALLOC_CTX *ctx, void **out[], rbtree_t *tree) \
 { \
-	uint32_t num = rbtree_num_elements(tree), i; \
+	uint64_t num = rbtree_num_elements(tree), i; \
 	fr_rb_tree_iter_##_order##_t iter; \
 	void *item, **list; \
-	if (unlikely(!(list = talloc_array(ctx, void *, num)))) return -1;
+	if (unlikely(!(list = talloc_array(ctx, void *, num)))) return -1; \
 	for (item = rbtree_iter_init_##_order(&iter, tree), i = 0; \
 	     item; \
 	     item = rbtree_iter_next_##_order(&iter), i++) list[i] = item; \
-	return list; \
+	*out = list; \
+	return 0; \
 }
 DEF_RBTREE_FLATTEN_FUNC(preorder)
 DEF_RBTREE_FLATTEN_FUNC(postorder)

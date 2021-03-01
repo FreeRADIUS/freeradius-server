@@ -1285,18 +1285,5 @@ void main_config_hup(main_config_t *config)
 	}
 	last_hup = when;
 
-#if 0
-	rcode = cf_file_changed(cs_cache->cs, hup_callback);
-	if (rcode == CF_FILE_NONE) {
-		INFO("HUP - No files changed.  Ignoring");
-		return;
-	}
-
-	if (rcode == CF_FILE_ERROR) {
-		INFO("HUP - Cannot read configuration files.  Ignoring");
-		return;
-	}
-#endif
-
 	INFO("HUP - NYI in version 4");	/* Not yet implemented in v4 */
 }

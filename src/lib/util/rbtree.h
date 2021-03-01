@@ -37,13 +37,6 @@ extern "C" {
 /* rbtree.c */
 typedef struct rbtree_s rbtree_t;
 
-/* callback order for walking  */
-typedef enum {
-	RBTREE_PRE_ORDER,
-	RBTREE_IN_ORDER,
-	RBTREE_POST_ORDER,
-} fr_rb_order_t;
-
 /* Red-Black tree description */
 typedef enum {
 	BLACK,
@@ -66,7 +59,6 @@ struct fr_rb_node_s {
 #define RBTREE_FLAG_LOCK    (1 << 1)
 
 typedef int (*fr_rb_cmp_t)(void const *one, void const *two);
-typedef int (*fr_rb_walker_t)(void *data, void *uctx);
 typedef void (*fr_rb_free_t)(void *data);
 
 #ifndef STABLE_COMPARE
@@ -135,34 +127,23 @@ fr_rb_node_t	*rbtree_insert_node(rbtree_t *tree, void *data) CC_HINT(nonnull);
 
 void		rbtree_delete(rbtree_t *tree, fr_rb_node_t *z) CC_HINT(nonnull);
 
-bool		rbtree_deletebydata(rbtree_t *tree, void const *data) CC_HINT(nonnull);
+bool		rbtree_delete_by_data(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
 fr_rb_node_t	*rbtree_find(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		*rbtree_finddata(rbtree_t *tree, void const *data) CC_HINT(nonnull);
+void		*rbtree_find_data(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
-uint32_t	rbtree_num_elements(rbtree_t *tree) CC_HINT(nonnull);
+uint64_t	rbtree_num_elements(rbtree_t *tree) CC_HINT(nonnull);
 
-void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
-
-/*
- *	The callback should be declared as:
- *	int callback(void *context, void *data)
- *
- *	The "context" is some user-defined context.
- *	The "data" is the pointer to the user data in the node,
- *	NOT the node itself.
- *
- *	It should return 0 if all is OK, and !0 for any error.
- *	The walking will stop on any error.
- *
- *	Except with RBTREE_DELETE_ORDER, where the callback should return <0 for
- *	errors, and may return 1 to delete the current node and halt,
- *	or 2 to delete the current node and continue.  This may be
- *	used to batch-delete select nodes from a locked rbtree.
+/** Given a Node, return the data
  */
-int		rbtree_walk(rbtree_t *tree, fr_rb_order_t order, fr_rb_walker_t compare, void *uctx);
+static inline void *rbtree_node_to_data(UNUSED rbtree_t *tree, fr_rb_node_t *node)
+{
+	if (!node) return NULL;
+
+	return node->data;
+}
 
 /** Iterator structure for in-order traversal of an rbtree
  */
@@ -214,13 +195,11 @@ void		*rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t *iter) CC_HINT(non
 	))
 
 
-ssize_t		rbtree_flatten_inorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+int		rbtree_flatten_inorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
 
-ssize_t		rbtree_flatten_preorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+int		rbtree_flatten_preorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
 
-ssize_t		rbtree_flatten_postorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
-
-
+int		rbtree_flatten_postorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
 #ifdef __cplusplus
 }
 #endif

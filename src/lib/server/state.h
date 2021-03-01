@@ -50,7 +50,7 @@ void	fr_state_restore_to_child(request_t *request, void const *unique_ptr, int u
  */
 uint64_t fr_state_entries_created(fr_state_tree_t *state);
 uint64_t fr_state_entries_timeout(fr_state_tree_t *state);
-uint32_t fr_state_entries_tracked(fr_state_tree_t *state);
+uint64_t fr_state_entries_tracked(fr_state_tree_t *state);
 
 #ifdef __cplusplus
 }

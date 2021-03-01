@@ -356,7 +356,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 
 		pthread_mutex_lock(trigger_mutex);
 
-		found = rbtree_finddata(trigger_last_fired_tree, &find);
+		found = rbtree_find_data(trigger_last_fired_tree, &find);
 		if (!found) {
 			MEM(found = talloc(NULL, trigger_last_fired_t));
 			found->ci = ci;

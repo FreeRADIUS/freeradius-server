@@ -117,7 +117,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_MAX_PACKET_CODE], rlm_stats_
 	 *	Bootstrap with my statistics, where we don't need a
 	 *	lock.
 	 */
-	stats = rbtree_finddata(*tree, mydata);
+	stats = rbtree_find_data(*tree, mydata);
 	if (!stats) {
 		memset(final_stats, 0, sizeof(uint64_t) * FR_RADIUS_MAX_PACKET_CODE);
 	} else {
@@ -136,7 +136,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_MAX_PACKET_CODE], rlm_stats_
 		if (other == t) continue;
 
 		tree = (rbtree_t **) (((uint8_t *) other) + tree_offset);
-		stats = rbtree_finddata(*tree, mydata);
+		stats = rbtree_find_data(*tree, mydata);
 		if (!stats) {
 			continue;
 		}
@@ -186,7 +186,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		 *	Update source statistics
 		 */
 		mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
-		stats = rbtree_finddata(t->src, &mydata);
+		stats = rbtree_find_data(t->src, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
@@ -204,7 +204,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		 *	Update destination statistics
 		 */
 		mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
-		stats = rbtree_finddata(t->dst, &mydata);
+		stats = rbtree_find_data(t->dst, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 

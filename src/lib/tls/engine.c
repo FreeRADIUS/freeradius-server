@@ -258,7 +258,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 	} else {
 		tls_engine_t *found = NULL;
 
-		found = rbtree_finddata(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
+		found = rbtree_find_data(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
 		if (found) {
 			fr_strerror_printf("engine %s%s%s%salready initialised", id,
 					   instance ? " (" : "",
@@ -434,7 +434,7 @@ int fr_tls_engine(ENGINE **e_out, char const *id, char const *instance, bool aut
 	}
 
 
-	found = rbtree_finddata(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
+	found = rbtree_find_data(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
 	if (!found) {
 		if (!auto_init) goto not_init;
 		goto do_init;
@@ -454,7 +454,7 @@ void fr_tls_engine_load_builtin(void)
 	/*
 	 *	Mitigate against CrossTalk (CVE-2020-0543)
 	 */
-	if (!tls_engines || !rbtree_finddata(tls_engines, &(tls_engine_t){ .id = "rdrand" })) {
+	if (!tls_engines || !rbtree_find_data(tls_engines, &(tls_engine_t){ .id = "rdrand" })) {
 		ENGINE *rand_engine;
 
 		ENGINE_register_all_RAND();	/* Give rand engines a chance to register */
