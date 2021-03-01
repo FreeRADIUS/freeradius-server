@@ -2561,9 +2561,32 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	size_t			len = fr_value_box_field_sizes[src->type];
 	int64_t			min;
 
-#define SIGN_BIT_HIGH(_int, _len)	((((uint64_t)1) << ((_len << 3) - 1)) & _int)
+#define SIGN_BIT_HIGH(_int, _len)	((((uint64_t)1) << (((_len) << 3) - 1)) & (_int))
 #define SIGN_PROMOTE(_int, _len)	((_len) < sizeof(_int) ? \
 					(_int) | (~((__typeof__(_int))0)) << ((_len) << 3) : (_int))
+
+#if !defined(NDEBUG) || defined(__clang_analyzer__)
+	/*
+	 *	Helps catch invalid fr_value_box_field_sizes
+	 *	entries, and shuts up clang analyzer.
+	 */
+	if (unlikely(len == 0)) {
+		fr_strerror_printf("Invalid cast from %s to %s.  %"PRId64" "
+				   "invalid source type len, expected > 0, got %zu",
+				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				   len);
+		return -1;
+	}
+	if (unlikely(len > sizeof(uint64_t))) {
+		fr_strerror_printf("Invalid cast from %s to %s.  %"PRId64" "
+				   "invalid source type len, expected <= %zu, got %zu",
+				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				   sizeof(uint64_t), len);
+		return -1;
+	}
+#endif
 
 	switch (src->type) {
 	/*
