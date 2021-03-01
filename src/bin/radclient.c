@@ -73,7 +73,7 @@ static int last_used_id = -1;
 
 static int ipproto = IPPROTO_UDP;
 
-static rbtree_t *filename_tree = NULL;
+static rbtree_t *filename_tree;
 static fr_packet_list_t *packet_list = NULL;
 
 static rc_request_t *request_head = NULL;
