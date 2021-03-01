@@ -43,9 +43,9 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const	*filename;
-	tmpl_t	*key;
+	tmpl_t		*key;
 	bool		relaxed;
-	PAIR_LIST	*attrs;
+	PAIR_LIST_LIST	attrs;
 } rlm_attr_filter_t;
 
 static const CONF_PARSER module_config[] = {
@@ -101,14 +101,13 @@ static void check_pair(request_t *request, fr_pair_t *check_item, fr_pair_t *rep
 	return;
 }
 
-static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char const *filename, PAIR_LIST **pair_list)
+static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char const *filename, PAIR_LIST_LIST *pair_list)
 {
 	int rcode;
-	PAIR_LIST *attrs = NULL;
-	PAIR_LIST *entry;
+	PAIR_LIST *entry = NULL;
 	map_t *map;
 
-	rcode = pairlist_read(ctx, dict_radius, filename, &attrs, 1);
+	rcode = pairlist_read(ctx, dict_radius, filename, pair_list, 1);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -116,7 +115,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	/*
 	 *	Walk through the 'attrs' file list.
 	 */
-	for (entry = attrs; entry != NULL; entry = entry->next) {
+	while ((entry = fr_dlist_next(&pair_list->head, entry))) {
 		/*
 		 *	We apply the rules in the reply items.
 		 */
@@ -149,7 +148,6 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 		}
 	}
 
-	*pair_list = attrs;
 	return 0;
 }
 
@@ -161,6 +159,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_attr_filter_t *inst = instance;
 	int rcode;
+	pairlist_list_init(&inst->attrs);
 
 	rcode = attr_filter_getfile(inst, inst, inst->filename, &inst->attrs);
 	if (rcode != 0) {
@@ -182,7 +181,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
 	fr_pair_list_t	output;
-	PAIR_LIST	*pl;
+	PAIR_LIST	*pl = NULL;
 	int		found = 0;
 	int		pass, fail = 0;
 	char const	*keyname = NULL;
@@ -210,7 +209,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	/*
 	 *      Find the attr_filter profile entry for the entry.
 	 */
-	for (pl = inst->attrs; pl; pl = pl->next) {
+	while ((pl = fr_dlist_next(&inst->attrs.head, pl))) {
 		int fall_through = 0;
 		int relax_filter = inst->relaxed;
 		map_t *map = NULL;

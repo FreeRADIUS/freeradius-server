@@ -87,10 +87,10 @@ static inline void line_error_marker_adj(char const *src_file, int src_line,
 /*
  *	Free a PAIR_LIST
  */
-void pairlist_free(PAIR_LIST **pl)
+void pairlist_free(PAIR_LIST_LIST *pl)
 {
-	talloc_free(*pl);
-	*pl = NULL;
+	talloc_free(pl);
+	pairlist_list_init(pl);
 }
 
 static fr_table_num_sorted_t const check_cmp_op_table[] = {
@@ -144,14 +144,13 @@ static fr_sbuff_parse_rules_t const rhs_term = {
 /*
  *	Caller saw a $INCLUDE at the start of a line.
  */
-static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbuff, PAIR_LIST **last,
+static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbuff, PAIR_LIST_LIST *list,
 			 char const *file, int lineno)
 {
 	size_t		len;
 	char		*newfile, *p, c;
 	fr_sbuff_marker_t name;
 
-	*last = NULL;
 	fr_sbuff_advance(sbuff, 8);
 
 	/*
@@ -226,7 +225,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	/*
 	 *	Read the $INCLUDEd file recursively.
 	 */
-	if (pairlist_read(ctx, dict, newfile, last, 0) != 0) {
+	if (pairlist_read(ctx, dict, newfile, list, 0) != 0) {
 		ERROR("%s[%d]: Could not read included file %s: %s",
 		      file, lineno, newfile, fr_syserror(errno));
 		talloc_free(newfile);
@@ -241,11 +240,9 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 /*
  *	Read the users file. Return a PAIR_LIST.
  */
-int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST **list, int complain)
+int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, int complain)
 {
 	char			*q;
-	PAIR_LIST		*pl = NULL;
-	PAIR_LIST		**last = &pl;
 	int			order = 0;
 	int			lineno		= 1;
 	map_t			*new_map;
@@ -321,7 +318,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		if (leading_spaces) {
 	    		ERROR_MARKER(&sbuff, "Entry does not begin with a user name");
 		fail:
-			pairlist_free(&pl);
+			pairlist_free(list);
 			fclose(fp);
 			return -1;
 		}
@@ -330,18 +327,26 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	$INCLUDE filename
 		 */
 		if (fr_sbuff_is_str(&sbuff, "$INCLUDE", 8)) {
-			if (users_include(ctx, dict, &sbuff, &t, file, lineno) < 0) goto fail;
+			/*
+			 *	Temporary list for include entries to be read into
+			 */
+			PAIR_LIST_LIST tmp_list;
+
+			pairlist_list_init(&tmp_list);
+			if (users_include(ctx, dict, &sbuff, &tmp_list, file, lineno) < 0) goto fail;
 
 			/*
 			 *	The file may have read no entries, one
 			 *	entry, or it may be a linked list of
-			 *	entries.  Go to the end of the list.
+			 *	entries.  Set the order of the entries
+			 *	then move them to the end of the main list.
 			 */
-			*last = t;
-			while (*last) {
-				(*last)->order = order++;
-				last = &((*last)->next);
+			t = NULL;
+			while ((t = fr_dlist_next(&tmp_list.head, t))) {
+				t->order = order++;
 			}
+
+			fr_dlist_move(&list->head, &tmp_list.head);
 
 			if (fr_sbuff_next_if_char(&sbuff, '\n')) {
 				lineno++;
@@ -426,7 +431,7 @@ check_item:
 			 */
 
 		add_entry:
-			*last = t;
+			fr_dlist_insert_tail(&list->head, &t);
 			break;
 		}
 		fr_assert(new_map->lhs != NULL);
@@ -535,8 +540,7 @@ reply_item:
 			 *	the middle of the reply item list.  Oh
 			 *	well.
 			 */
-			*last = t;
-			last = &(t->next);
+			fr_dlist_insert_tail(&list->head, t);
 			continue;
 
 		} else if (lineno == (t->lineno + 1)) {
@@ -666,6 +670,5 @@ next_reply_item:
 
 	fclose(fp);
 
-	*list = pl;
 	return 0;
 }

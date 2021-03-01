@@ -89,15 +89,16 @@ static const CONF_PARSER module_config[] = {
 
 static int pairlist_cmp(void const *a, void const *b)
 {
-	return strcmp(((PAIR_LIST const *)a)->name, ((PAIR_LIST const *)b)->name);
+	return strcmp(((PAIR_LIST_LIST const *)a)->name, ((PAIR_LIST_LIST const *)b)->name);
 }
 
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 {
 	int rcode;
-	PAIR_LIST *users = NULL;
+	PAIR_LIST_LIST users;
+	PAIR_LIST_LIST search_list;	// Temporary list header used for matching in rbtree
 	PAIR_LIST *entry, *next;
-	PAIR_LIST *user_list, *default_list, **default_tail;
+	PAIR_LIST_LIST *user_list, *default_list;
 	rbtree_t *tree;
 
 	if (!filename) {
@@ -105,6 +106,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		return 0;
 	}
 
+	pairlist_list_init(&users);
 	rcode = pairlist_read(ctx, dict_radius, filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
@@ -113,11 +115,10 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 	/*
 	 *	Walk through the 'users' file list
 	 */
-	entry = users;
-	while (entry) {
+	entry = NULL;
+	while ((entry = fr_dlist_next(&users.head, entry))) {
 		map_t *map = NULL;
 		fr_dict_attr_t const *da;
-
 		/*
 		 *	Look for improper use of '=' in the
 		 *	check items.  They should be using
@@ -198,30 +199,27 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 */
 			fr_assert(tmpl_list(map->lhs) == PAIR_LIST_REPLY);
 		}
-
-		entry = entry->next;
 	}
 
-	tree = rbtree_alloc(ctx, PAIR_LIST, node, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+	tree = rbtree_alloc(ctx, PAIR_LIST_LIST, node, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;
 	}
 
 	default_list = NULL;
-	default_tail = &default_list;
 
 	/*
 	 *	We've read the entries in linearly, but putting them
 	 *	into an indexed data structure would be much faster.
 	 *	Let's go fix that now.
 	 */
-	for (entry = users; entry != NULL; entry = next) {
+	for (entry = fr_dlist_head(&users.head); entry != NULL; entry = next) {
 		/*
 		 *	Remove this entry from the input list.
 		 */
-		next = entry->next;
-		entry->next = NULL;
+		next = fr_dlist_next(&users.head, entry);
+		fr_dlist_remove(&users.head, entry);
 
 		/*
 		 *	@todo - loop over entry->reply, calling
@@ -239,54 +237,48 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 */
 		if (strcmp(entry->name, "DEFAULT") == 0) {
 			if (!default_list) {
-				default_list = entry;
+				default_list = talloc_zero(ctx, PAIR_LIST_LIST);
+				pairlist_list_init(default_list);
+				default_list->name = talloc_strdup(ctx, entry->name);
 
 				/*
-				 *	Insert the first DEFAULT into the tree.
+				 *	Insert the DEFAULT list into the tree.
 				 */
-				if (!rbtree_insert(tree, entry)) {
+				if (!rbtree_insert(tree, default_list)) {
 				error:
-					pairlist_free(&entry);
-					pairlist_free(&next);
+					pairlist_free(&users);
+					talloc_free(next);
 					talloc_free(tree);
 					return -1;
 				}
-
-			} else {
-				/*
-				 *	Tack this entry onto the tail
-				 *	of the DEFAULT list.
-				 */
-				*default_tail = entry;
 			}
 
-			default_tail = &entry->next;
+			/*
+			 *	Append the entry to the DEFAULT list
+			 */
+			fr_dlist_insert_tail(&default_list->head, entry);
 			continue;
 		}
 
 		/*
-		 *	Not DEFAULT, must be a normal user.
+		 *	Not DEFAULT, must be a normal user. First look
+		 *	for a matching list header already in the tree.
 		 */
-		user_list = rbtree_finddata(tree, entry);
+		search_list.name = entry->name;
+		user_list = rbtree_finddata(tree, &search_list);
 		if (!user_list) {
+			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
+			pairlist_list_init(user_list);
+			user_list->name = talloc_strdup(ctx, entry->name);
 			/*
-			 *	Insert the first one.
+			 *	Insert the new list header.
 			 */
-			if (!rbtree_insert(tree, entry)) goto error;
-		} else {
-			/*
-			 *	Find the tail of this list, and add it
-			 *	there.
-			 *
-			 *	@todo - maybe use dlists here to avoid
-			 *	O(N^2) issues?  But people who put 10K
-			 *	entries for the same username should
-			 *	really re-think their approach.
-			 */
-			while (user_list->next) user_list = user_list->next;
-
-			user_list->next = entry;
+			if (!rbtree_insert(tree, user_list)) goto error;
 		}
+		/*
+		 *	Append the entry to the user list
+		 */
+		fr_dlist_insert_tail(&user_list->head, entry);
 	}
 
 	*ptree = tree;
@@ -322,9 +314,10 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 				   request_t *request, char const *filename, rbtree_t *tree)
 {
 	char const		*name;
+	PAIR_LIST_LIST const	*user_list, *default_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false;
-	PAIR_LIST		my_pl;
+	PAIR_LIST_LIST		my_list;
 	char			buffer[256];
 
 	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
@@ -334,10 +327,12 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 	if (!tree) RETURN_MODULE_NOOP;
 
-	my_pl.name = name;
-	user_pl = rbtree_finddata(tree, &my_pl);
-	my_pl.name = "DEFAULT";
-	default_pl = rbtree_finddata(tree, &my_pl);
+	my_list.name = name;
+	user_list = rbtree_finddata(tree, &my_list);
+	user_pl = (user_list) ? fr_dlist_head(&user_list->head) : NULL;
+	my_list.name = "DEFAULT";
+	default_list = rbtree_finddata(tree, &my_list);
+	default_pl = (default_list) ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
 	 *	Find the entry for the user.
@@ -355,19 +350,19 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
-			user_pl = user_pl->next;
+			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else if (!user_pl && default_pl) {
 			pl = default_pl;
-			default_pl = default_pl->next;
+			default_pl = fr_dlist_next(&default_list->head, default_pl);
 
 		} else if (user_pl->order < default_pl->order) {
 			pl = user_pl;
-			user_pl = user_pl->next;
+			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else {
 			pl = default_pl;
-			default_pl = default_pl->next;
+			default_pl = fr_dlist_next(&default_list->head, default_pl);
 		}
 
 		fr_pair_list_init(&list);
