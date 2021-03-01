@@ -42,7 +42,6 @@ typedef enum {
 	RBTREE_PRE_ORDER,
 	RBTREE_IN_ORDER,
 	RBTREE_POST_ORDER,
-	RBTREE_DELETE_ORDER
 } fr_rb_order_t;
 
 /* Red-Black tree description */
@@ -145,8 +144,6 @@ void		*rbtree_finddata(rbtree_t *tree, void const *data) CC_HINT(nonnull);
 
 uint32_t	rbtree_num_elements(rbtree_t *tree) CC_HINT(nonnull);
 
-uint32_t	rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, fr_rb_order_t order);
-
 void		*rbtree_node2data(rbtree_t *tree, fr_rb_node_t *node);
 
 /*
@@ -215,6 +212,14 @@ void		*rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t *iter) CC_HINT(non
 		fr_rb_tree_iter_preorder_t *	: rbtree_unlock(((fr_rb_tree_iter_preorder_t *)(_iter))->tree),  \
 		fr_rb_tree_iter_postorder_t *	: rbtree_unlock(((fr_rb_tree_iter_postorder_t *)(_iter))->tree)  \
 	))
+
+
+ssize_t		rbtree_flatten_inorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+
+ssize_t		rbtree_flatten_preorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+
+ssize_t		rbtree_flatten_postorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+
 
 #ifdef __cplusplus
 }

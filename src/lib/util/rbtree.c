@@ -836,33 +836,7 @@ static int _flatten_cb(void *data, void *uctx)
 	return 0;
 }
 
-/** Return an array containing all elements in the tree, in the specified order
- *
- * @param[in] ctx	Where to allocate the array.
- * @param[out] out	Where to write a pointer to the array.
- * @param[in] tree	to flatten.
- * @param[in] order	to flatten the tree in.
- * @return
- *	- The number of elements in the tree.
- */
-uint32_t rbtree_flatten(TALLOC_CTX *ctx, void **out[], rbtree_t *tree, fr_rb_order_t order)
-{
-	uint32_t		num = rbtree_num_elements(tree);
-	rbtree_flatten_ctx_t	uctx;
 
-	if (unlikely(!tree)) {
-		*out = NULL;
-		return 0;
-	}
-
-	uctx.idx = 0;
-	uctx.data = talloc_array(ctx, void *, num);
-	if (!uctx.data) return 0;
-	rbtree_walk(tree, order, _flatten_cb, &uctx);
-	*out = uctx.data;
-
-	return uctx.idx;
-}
 
 /*
  *	Given a Node, return the data.
@@ -992,7 +966,7 @@ void rbtree_iter_delete_inorder(fr_rb_tree_iter_inorder_t *iter)
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
  */
-void *rbtree_iter_init_preorder(fr_rb_tree_iter_preorder_t  *iter, rbtree_t *tree)
+void *rbtree_iter_init_preorder(fr_rb_tree_iter_preorder_t *iter, rbtree_t *tree)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -1076,7 +1050,7 @@ void *rbtree_iter_next_preorder(fr_rb_tree_iter_preorder_t  *iter)
  *	- The first node.  Mutex will be held.
  *	- NULL if the tree is empty.
  */
-void *rbtree_iter_init_postorder(fr_rb_tree_iter_postorder_t  *iter, rbtree_t *tree)
+void *rbtree_iter_init_postorder(fr_rb_tree_iter_postorder_t *iter, rbtree_t *tree)
 {
 	fr_rb_node_t *x = tree->root;
 
@@ -1111,7 +1085,7 @@ void *rbtree_iter_init_postorder(fr_rb_tree_iter_postorder_t  *iter, rbtree_t *t
  *	- The next node.
  *	- NULL if no more nodes remain.
  */
-void *rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t  *iter)
+void *rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t *iter)
 {
 	fr_rb_node_t *x = iter->node, *y;
 
@@ -1157,3 +1131,19 @@ void *rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t  *iter)
 	iter->node = x;
 	return x->data;
 }
+
+#define DEF_RBTREE_FLATTEN_FUNC(_order)
+ssize_t rbtree_flatten_##_order(TALLOC_CTX *ctx, void **out[], rbtree_t *tree) \
+{ \
+	uint32_t num = rbtree_num_elements(tree), i; \
+	fr_rb_tree_iter_##_order##_t iter; \
+	void *item, **list; \
+	if (unlikely(!(list = talloc_array(ctx, void *, num)))) return -1;
+	for (item = rbtree_iter_init_##_order(&iter, tree), i = 0; \
+	     item; \
+	     item = rbtree_iter_next_##_order(&iter), i++) list[i] = item; \
+	return list; \
+}
+DEF_RBTREE_FLATTEN_FUNC(preorder)
+DEF_RBTREE_FLATTEN_FUNC(postorder)
+DEF_RBTREE_FLATTEN_FUNC(inorder)
