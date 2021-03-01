@@ -95,7 +95,7 @@ struct vp_list_mod_s {
 
 	fr_map_list_t		mod;		//!< New map containing the destination (LHS) and
 						///< values (RHS).
-	vp_list_mod_t		*next;
+	fr_dlist_t		entry;		//!< Entry into dlist
 };
 
 #ifndef WITH_VERIFY_PTR
