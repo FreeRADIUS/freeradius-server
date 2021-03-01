@@ -578,7 +578,7 @@ static inline CC_HINT(nonnull) void fr_dlist_verify(fr_dlist_head_t *list_head)
 	}
 }
 #else
-#  define fr_list_verify(_head)
+#  define fr_dlist_verify(_head)
 #endif
 
 /** Merge two lists, inserting the tail of one into the other
