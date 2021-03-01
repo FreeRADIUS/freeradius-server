@@ -32,7 +32,7 @@ echo $?"` == "1") {
 #
 # Check for the delivery of the remaining emails
 #
-if (!(`/bin/sh -c "for i in 1 2 3 ; \
+if (!(`/bin/sh -c "for i in 1 2 3 4 5; \
 do if [ -e build/ci/exim4/mail/smtp_cc_request_1 ] \
 && [ -e build/ci/exim4/mail/smtp_cc_request_2 ] \
 && [ -e build/ci/exim4/mail/smtp_to_request_1 ] \
@@ -43,7 +43,7 @@ do if [ -e build/ci/exim4/mail/smtp_cc_request_1 ] \
 then \
 echo 'found' ;\
 break; \
-fi; sleep .02;\
+fi; sleep .1;\
 done ;"` == "found")) {
 	reject
 }
