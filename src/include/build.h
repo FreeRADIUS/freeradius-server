@@ -129,7 +129,10 @@ extern "C" {
  */
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
-#define NEVER_RETURNS		CC_HINT(noreturn)
+/** Should be placed before the function return type
+ *
+ */
+#define NEVER_RETURNS		_Noreturn
 #define UNUSED			CC_HINT(unused)
 
 /** clang 10 doesn't recognised the FALL-THROUGH comment anymore
