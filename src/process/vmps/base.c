@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file proto_vmps/proto_vmps_process.c
+ * @file src/process/vmps/base.c
  * @brief VMPS processing.
  *
  * @copyright 2018 The Freeradius server project.
@@ -24,7 +24,7 @@
  */
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
@@ -34,16 +34,16 @@
 
 static fr_dict_t const *dict_vmps;
 
-extern fr_dict_autoload_t proto_vmps_process_dict[];
-fr_dict_autoload_t proto_vmps_process_dict[] = {
+extern fr_dict_autoload_t process_vmps_dict[];
+fr_dict_autoload_t process_vmps_dict[] = {
 	{ .out = &dict_vmps, .proto = "vmps" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_packet_type;
 
-extern fr_dict_attr_autoload_t proto_vmps_process_dict_attr[];
-fr_dict_attr_autoload_t proto_vmps_process_dict_attr[] = {
+extern fr_dict_attr_autoload_t process_vmps_dict_attr[];
+fr_dict_attr_autoload_t process_vmps_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
 	{ NULL }
 };
@@ -236,10 +236,11 @@ static const virtual_server_compile_t compile_list[] = {
 };
 
 
-extern fr_app_worker_t proto_vmps_process;
-fr_app_worker_t proto_vmps_process = {
+extern fr_process_module_t process_vmps;
+fr_process_module_t process_vmps = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "vmps_process",
-	.entry_point	= mod_process,
+	.name		= "process_vmps",
+	.process	= mod_process,
 	.compile_list	= compile_list,
+	.dict		= &dict_vmps,
 };

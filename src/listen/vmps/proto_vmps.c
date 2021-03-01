@@ -309,41 +309,12 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	return data_len;
 }
 
-static void mod_entry_point_set(void const *instance, request_t *request)
+static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
 {
-	proto_vmps_t const	*inst = talloc_get_type_abort_const(instance, proto_vmps_t);
-	dl_module_inst_t		*type_submodule;
-	fr_io_track_t		*track = request->async->packet_ctx;
+	fr_assert(request->server_cs != NULL);
 
-	fr_assert(request->packet->code != 0);
-	fr_assert(request->packet->code <= FR_VQP_MAX_CODE);
-
-	request->server_cs = inst->io.server_cs;
-
-	/*
-	 *	'track' can be NULL when there's no network listener.
-	 */
-	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
-		fr_app_worker_t const	*app_process;
-
-		app_process = (fr_app_worker_t const *) inst->io.dynamic_submodule->module->common;
-
-		request->async->process = app_process->entry_point;
-		request->async->process_inst = inst->io.dynamic_submodule;
-		track->dynamic = 0;
-		return;
-	}
-
-	type_submodule = inst->type_submodule_by_code[request->packet->code];
-	if (!type_submodule) {
-		REDEBUG("No module available to handle packet code %i", request->packet->code);
-		return;
-	}
-
-	request->async->process = ((fr_app_worker_t const *)type_submodule->module->common)->entry_point;
-	request->async->process_inst = type_submodule->data;
+	virtual_server_entry_point_set(request);
 }
-
 
 static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
 {
