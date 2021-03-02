@@ -1841,17 +1841,32 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 	return entry->methods;
 }
 
-int virtual_server_get_process_by_name(CONF_SECTION *server, char const *type, module_method_t *method_p, void **ctx)
+int virtual_server_get_process_by_name(CONF_SECTION *cs, char const *type, module_method_t *method_p, void **ctx)
 {
 	CONF_DATA const		*cd;
 	dl_module_inst_t const	*dl_module;
 	dl_module_t const	*module;
 	fr_app_worker_t const	*app_process;
 
-	cd = cf_data_find(server, dl_module_inst_t *, type);
+	/*
+	 *	Try the old method.  If it doesn't exist, use the new
+	 *	process_foo method.
+	 */
+	cd = cf_data_find(cs, dl_module_inst_t *, type);
 	if (!cd) {
-		fr_strerror_printf("No processing section found for '%s'", type);
-		return -1;
+		fr_virtual_server_t *server;
+		fr_process_module_t const *process;
+
+		server = cf_data_value(cf_data_find(cs, fr_virtual_server_t, "vs"));
+		if (!server) {
+			fr_strerror_printf("No processing section found for '%s'", type);
+			return -1;
+		}
+
+		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
+		*method_p = process->process;
+		*ctx = server->process_module->data;
+		return 0;
 	}
 
 	dl_module = *(dl_module_inst_t **) cf_data_value(cd);
