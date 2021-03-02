@@ -69,7 +69,7 @@ static CONF_PARSER const limit_config[] = {
  */
 static CONF_PARSER const proto_vmps_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_vmps_t,
-			  type_submodule), .func = type_parse },
+			  allowed_types), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_vmps_t, io.submodule),
 	  .func = transport_parse },
 
@@ -105,18 +105,27 @@ fr_dict_attr_autoload_t proto_vmps_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	static char const *type_lib_table[FR_VQP_MAX_CODE] = {
-		[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "process",
-		[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "process",
-	};
 	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
+	fr_dict_enum_t		*dv;
+	CONF_PAIR		*cp;
+	char const		*value;
 
-	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_vmps",
-					 type_lib_table, NUM_ELEMENTS(type_lib_table),
-					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
+	cp = cf_item_to_pair(ci);
+	value = cf_pair_value(cp);
+
+	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
+	if (!dv || (dv->value->vb_uint32 >= FR_VQP_MAX_CODE)) {
+		cf_log_err(ci, "Unknown VMPS packet type '%s'", value);
+		return -1;
+	}
+
+	inst->allowed[dv->value->vb_uint32] = true;
+	*((char const **) out) = value;
+
+	return 0;
 }
 
 /** Wrapper around dl_instance
