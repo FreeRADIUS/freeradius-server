@@ -16,17 +16,17 @@
 
 /**
  * $Id$
- * @file proto_dhcpv4/proto_dhcpv4_process.c
+ * @file src/process/dhcpv4/base.c
  * @brief Base DORA, etc. DHCPV4 processing.
  *
  * @copyright 2018 The Freeradius server project.
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
-#define LOG_PREFIX "proto_dhcpv4 - "
+#define LOG_PREFIX "process_dhcpv4 - "
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
@@ -35,8 +35,8 @@
 
 static fr_dict_t const *dict_dhcpv4;
 
-extern fr_dict_autoload_t proto_dhcpv4_process_dict[];
-fr_dict_autoload_t proto_dhcpv4_process_dict[] = {
+extern fr_dict_autoload_t process_dhcpv4_dict[];
+fr_dict_autoload_t process_dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
 	{ NULL }
 };
@@ -44,8 +44,8 @@ fr_dict_autoload_t proto_dhcpv4_process_dict[] = {
 static fr_dict_attr_t const *attr_message_type;
 static fr_dict_attr_t const *attr_yiaddr;
 
-extern fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[];
-fr_dict_attr_autoload_t proto_dhcpv4_process_dict_attr[] = {
+extern fr_dict_attr_autoload_t process_dhcpv4_dict_attr[];
+fr_dict_attr_autoload_t process_dhcpv4_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_yiaddr, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ NULL }
@@ -410,10 +410,11 @@ static const virtual_server_compile_t compile_list[] = {
 };
 
 
-extern fr_app_worker_t proto_dhcpv4_process;
-fr_app_worker_t proto_dhcpv4_process = {
+extern fr_process_module_t process_dhcpv4;
+fr_process_module_t process_dhcpv4 = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "dhcpv4_process",
-	.entry_point	= mod_process,
+	.name		= "process_dhcpv4",
+	.process	= mod_process,
 	.compile_list	= compile_list,
+	.dict		= &dict_dhcpv4,
 };
