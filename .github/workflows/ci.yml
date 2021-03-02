@@ -359,3 +359,68 @@ jobs:
       with:
         limit-access-to-actor: true
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+
+#
+#  If the above CI checks pass then we auto-merge into the same branch in the
+#  main FR repo (only on push) if the FR_PAT_PUSH secret is defined, i.e. when
+#  the actor claims to be a FreeRADIUS developer with push access.
+#
+
+
+  #
+  #  Needed because secrets are not available for evaluation in if conditions
+  #  at the job level, so we evaluate the existence of the FR_PAT_PUSH secret
+  #  within a step and export the result instead. We also extract the short
+  #  branch name here because it's convenient to do so.
+  #
+  merge-preflight:
+    needs:
+      - ci
+    if: github.event_name == 'push' && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
+    name: "Merge preflight"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Report whether FR_PAT_PUSH secret exists"
+        id: merge-preflight
+        run: |
+          [ -n "$FR_PAT_PUSH" ] && echo "::set-output name=FR_PAT_PUSH_EXISTS::1"
+          echo "::set-output name=BRANCH::${GITHUB_REF#refs/heads/}"
+        env:
+          FR_PAT_PUSH: ${{ secrets.FR_PAT_PUSH }}
+    outputs:
+      FR_PAT_PUSH_EXISTS: ${{ steps.merge-preflight.outputs.FR_PAT_PUSH_EXISTS }}
+      BRANCH: ${{ steps.merge-preflight.outputs.BRANCH }}
+
+
+  merge-upstream:
+
+    needs:
+      - ci
+      - merge-preflight
+
+    if: needs.merge-preflight.outputs.FR_PAT_PUSH_EXISTS == '1'
+
+    runs-on: ubuntu-latest
+
+    name: "Merge into upstream"
+
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        lfs: false
+        persist-credentials: false
+
+    - name: "Merge into upstream dev branch"
+      run: |
+        git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
+        git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
+        git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
+        git merge "$BRANCH" --ff-only
+        git push upstream "upstream-branch:$BRANCH"
+      env:
+        USERNAME: ${{ github.actor }}
+        REPO_KEY: ${{ secrets.FR_PAT_PUSH }}
+        BRANCH: ${{ needs.merge-preflight.outputs.BRANCH }}
