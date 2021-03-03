@@ -2945,6 +2945,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	checks.
 	 */
 	if (depth == 0) {
+		tls_session_t *ssn = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+		rad_assert(ssn != NULL);
+
 		/*
 		 *	If the conf tells us to, check cert issuer
 		 *	against the specified value and fail
@@ -3069,6 +3072,15 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			unlink(filename);
 			break;
 		}
+
+		/*
+		 *	Track that we've verified the client certificate.
+		 */
+		ssn->client_cert_ok = (my_ok == 1);
+
+		if (conf->session_cache_enable) {
+			SSL_set_num_tickets(ssn->ssl, 1);
+		}
 	} /* depth == 0 */
 
 	if (certs && request && !my_ok) {
@@ -3084,29 +3096,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		RDEBUG3("subject       : %s", subject);
 		RDEBUG3("issuer        : %s", issuer);
 		RDEBUG3("verify return : %d", my_ok);
-	}
-
-	/*
-	 *	Track if the client certificate was validated.  This
-	 *	flag is less an indication *that* it was validated,
-	 *	and instead more of a flag *when* it was validated.
-	 */
-	if (lookup == 0) {
-		tls_session_t *ssn = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
-		rad_assert(ssn != NULL);
-
-		ssn->client_cert_ok = true;
-
-#ifdef TLS1_3_VERSION
-		/*
-		 *	Allow sending of session tickets, but ONLY
-		 *	after we've verified the client certificates.
-		 */
-		if ((ssn->info.version = TLS1_3_VERSION) &&
-		    conf->session_cache_enable) {
-			SSL_set_num_tickets(ssn->ssl, 1);
-		}
-#endif
 	}
 
 	return (my_ok != 0);
