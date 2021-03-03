@@ -434,6 +434,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
 	rlm_radius_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 	rlm_rcode_t		rcode;
+	unlang_action_t		ua;
 
 	void			*rctx = NULL;
 
@@ -480,10 +481,10 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *
 	 *	This may return YIELD, for "please yield", or it may
 	 *	return another code which indicates what happened to
-	 *	the request...b
+	 *	the request...
 	 */
-	inst->io->enqueue(&rcode, &rctx, inst->io_instance, t->io_thread, request);
-	if (rcode != RLM_MODULE_YIELD) {
+	ua = inst->io->enqueue(&rcode, &rctx, inst->io_instance, t->io_thread, request);
+	if (ua != UNLANG_ACTION_YIELD) {
 		fr_assert(rctx == NULL);
 		RETURN_MODULE_RCODE(rcode);
 	}
