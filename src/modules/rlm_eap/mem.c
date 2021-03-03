@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <stdio.h>
 #include "rlm_eap.h"
+#include <freeradius-devel/tls.h>
 
 #ifdef HAVE_PTHREAD_H
 #define PTHREAD_MUTEX_LOCK pthread_mutex_lock
