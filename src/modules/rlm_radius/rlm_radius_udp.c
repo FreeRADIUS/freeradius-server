@@ -132,7 +132,7 @@ typedef struct {
 	bool			status_checking;       	//!< whether we're doing status checks
 	udp_request_t		*status_u;		//!< for sending status check packets
 	udp_result_t		*status_r;		//!< for faking out status checks as real packets
-	request_t			*status_request;
+	request_t		*status_request;
 } udp_handle_t;
 
 
@@ -2725,7 +2725,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 
 	*rctx_out = r;
 
-	return UNLANG_ACTION_YIELD;
+	RETURN_MODULE_YIELD;
 }
 
 /** Instantiate thread data for the submodule.
