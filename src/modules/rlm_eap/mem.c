@@ -25,7 +25,10 @@ RCSID("$Id$")
 
 #include <stdio.h>
 #include "rlm_eap.h"
+
+#ifdef WITH_TLS
 #include <freeradius-devel/tls.h>
+#endif
 
 #ifdef HAVE_PTHREAD_H
 #define PTHREAD_MUTEX_LOCK pthread_mutex_lock
@@ -252,6 +255,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 				inst->session_tail = NULL;
 			}
 
+#ifdef WITH_TLS
 			/*
 			 *	Remove expired TLS sessions.
 			 */
@@ -266,6 +270,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 			default:
 				break;
 			}
+#endif
 
 			talloc_free(handler);
 		} else {
