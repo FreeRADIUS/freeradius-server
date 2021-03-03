@@ -30,7 +30,7 @@ $(eval $(call TEST_BOOTSTRAP))
 TACACS_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
 TACACS_RADIUS_LOG := $(TACACS_BUILD_DIR)/radiusd.log
 TACACS_GDB_LOG    := $(TACACS_BUILD_DIR)/gdb.log
-TACACS_LIBS	  := libfreeradius-tacacs.a proto_tacacs.a proto_tacacs_auth.a proto_tacacs_autz.a proto_tacacs_acct.a
+TACACS_LIBS	  := libfreeradius-tacacs.a proto_tacacs.a process_tacacs.a
 
 #
 #	Local TACACS+ client

@@ -16,8 +16,8 @@
 
 /**
  * $Id$
- * @file proto_tacacs_auth.c
- * @brief TACACS+ authentication handler.
+ * @file src/lib/process/tacacs/base.c
+ * @brief TACACS+ handler.
  * @author Jorge Pereira <jpereira@freeradius.org>
  *
  * @copyright 2020 The FreeRADIUS server project.
@@ -27,8 +27,8 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
@@ -36,17 +36,24 @@
 #include <freeradius-devel/tacacs/tacacs.h>
 
 /*
- *	This module runs both Start and Continue, but it does mostly
- *	the same things for each one.  So we abstract the
- *	configuration.
+ *	This module runs many packet types, but it does mostly the
+ *	same things for each one.  So we abstract the configuration.
  */
 typedef struct {
+	fr_dict_attr_t const *attr_process;
+	int		reply;				//!< reply code
+
+	fr_dict_attr_t const *attr_status;
+	uint8_t		status_fail;
+
+	char const	*fail_message;			//!< failed message
+
 	CONF_SECTION	*recv_request;
 	void		*unlang_request;
 
 	CONF_SECTION	*send_reply;
 	void		*unlang_reply;
-} fr_tacacs_auth_request_ctx_t;
+} tacacs_unlang_t;
 
 typedef struct {
 	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.
@@ -58,19 +65,21 @@ typedef struct {
 
 	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
 
-	fr_tacacs_auth_request_ctx_t	start;
-	fr_tacacs_auth_request_ctx_t	cont;
-} proto_tacacs_auth_t;
+	tacacs_unlang_t	auth_start;
+	tacacs_unlang_t	auth_cont;
+	tacacs_unlang_t	autz;
+	tacacs_unlang_t	acct;
+} process_tacacs_t;
 
 static const CONF_PARSER session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, proto_tacacs_auth_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, proto_tacacs_auth_t, max_session), .dflt = "4096" },
-	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, proto_tacacs_auth_t, state_server_id) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, process_tacacs_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_tacacs_t, max_session), .dflt = "4096" },
+	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_tacacs_t, state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER proto_tacacs_auth_config[] = {
+static const CONF_PARSER config[] = {
 	{ FR_CONF_POINTER("session", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) session_config },
 
 	CONF_PARSER_TERMINATOR
@@ -79,8 +88,8 @@ static const CONF_PARSER proto_tacacs_auth_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_tacacs;
 
-extern fr_dict_autoload_t proto_tacacs_auth_dict[];
-fr_dict_autoload_t proto_tacacs_auth_dict[] = {
+extern fr_dict_autoload_t process_tacacs_dict[];
+fr_dict_autoload_t process_tacacs_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_tacacs, .proto = "tacacs" },
 	{ NULL }
@@ -93,6 +102,11 @@ static fr_dict_attr_t const *attr_tacacs_authentication_flags;
 static fr_dict_attr_t const *attr_tacacs_authentication_type;
 static fr_dict_attr_t const *attr_tacacs_authentication_service;
 static fr_dict_attr_t const *attr_tacacs_authentication_status;
+
+static fr_dict_attr_t const *attr_tacacs_authorization_status;
+static fr_dict_attr_t const *attr_tacacs_accounting_status;
+static fr_dict_attr_t const *attr_tacacs_accounting_flags;
+
 static fr_dict_attr_t const *attr_tacacs_client_port;
 static fr_dict_attr_t const *attr_tacacs_data;
 static fr_dict_attr_t const *attr_tacacs_privilege_level;
@@ -101,15 +115,21 @@ static fr_dict_attr_t const *attr_tacacs_server_message;
 static fr_dict_attr_t const *attr_tacacs_session_id;
 static fr_dict_attr_t const *attr_tacacs_state;
 
-extern fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[];
-fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[] = {
+extern fr_dict_attr_autoload_t process_tacacs_dict_attr[];
+fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ .out = &attr_tacacs_action, .name = "Action", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_flags, .name = "Authentication-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_type, .name = "Authentication-Type", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_authentication_service, .name = "Authentication-Service", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+
 	{ .out = &attr_tacacs_authentication_status, .name = "Authentication-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_authorization_status, .name = "Authorization-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+
+	{ .out = &attr_tacacs_accounting_status, .name = "Accounting-Status", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+	{ .out = &attr_tacacs_accounting_flags, .name = "Accounting-Flags", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
+
 	{ .out = &attr_tacacs_client_port, .name = "Client-Port", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_data, .name = "Data", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_privilege_level, .name = "Privilege-Level", .type = FR_TYPE_UINT8, .dict = &dict_tacacs },
@@ -121,9 +141,11 @@ fr_dict_attr_autoload_t proto_tacacs_auth_dict_attr[] = {
 	{ NULL }
 };
 
-static void authentication_failed(request_t *request, char const *msg)
+static void message_failed(request_t *request, tacacs_unlang_t const *ctx, char const *msg)
 {
 	fr_pair_t	*vp;
+
+	if (!msg) msg = ctx->fail_message;
 
 	RPEDEBUG("%s", msg);
 
@@ -132,27 +154,26 @@ static void authentication_failed(request_t *request, char const *msg)
 	 */
 	if (!fr_pair_find_by_da(&request->reply_pairs, attr_tacacs_server_message)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
-		fr_pair_value_strdup(vp, "Authentication failed");
+		fr_pair_value_strdup(vp, msg);
 	}
 
 	/*
 	 *	Set the status.
 	 */
-	MEM(pair_update_reply(&vp, attr_tacacs_authentication_status) >= 0);
-	vp->vp_uint8 = FR_TAC_PLUS_AUTHEN_STATUS_FAIL;
+	MEM(pair_update_reply(&vp, ctx->attr_status) >= 0);
+	vp->vp_uint8 = ctx->status_fail;
 }
 
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	proto_tacacs_auth_t const	*inst = talloc_get_type_abort_const(mctx->instance, proto_tacacs_auth_t);
+	process_tacacs_t const	*inst = talloc_get_type_abort_const(mctx->instance, process_tacacs_t);
 	fr_pair_t			*vp;
-	fr_pair_t			*auth_type;
 	rlm_rcode_t			rcode;
 	CONF_SECTION			*unlang;
 	fr_dict_enum_t const		*dv = NULL;
 	fr_dcursor_t			cursor;
-	fr_tacacs_auth_request_ctx_t const *auth_ctx;
+	tacacs_unlang_t const		*ctx;
 	fr_tacacs_packet_hdr_t const	*pkt = (fr_tacacs_packet_hdr_t const *) request->packet->data;
 
 	REQUEST_VERIFY(request);
@@ -160,10 +181,26 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	/*
 	 *	Wrapper to distinguish between Authentication Start & Continue.
 	 */
-	if (request->packet->code == FR_PACKET_TYPE_VALUE_AUTHENTICATION_START) {
-		auth_ctx = &inst->start;
-	} else {
-		auth_ctx = &inst->cont;
+	switch (request->packet->code) {
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_START:
+		ctx = &inst->auth_start;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE:
+		ctx = &inst->auth_start;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST: 
+		ctx = &inst->autz;
+		break;
+
+	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST: 
+		ctx = &inst->acct;
+		break;
+
+	default:
+		REDEBUG("Ignoring packet - not a request from a client");
+		RETURN_MODULE_FAIL;
 	}
 
 	switch (request->request_state) {
@@ -173,7 +210,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		/*
 		 *	We always reply, unless specifically set to "Do not respond"
 		 */
-		request->reply->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY;
+		request->reply->code = ctx->reply;
 
 		/*
 		 *	Grab the VPS and data associated with the
@@ -202,8 +239,8 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		/*
 		 *	Push the conf section into the unlang stack.
 		 */
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(auth_ctx->recv_request), cf_filename(auth_ctx->recv_request));
-		if (unlang_interpret_push_instruction(request, auth_ctx->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(ctx->recv_request), cf_filename(ctx->recv_request));
+		if (unlang_interpret_push_instruction(request, ctx->unlang_request, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
 			RETURN_MODULE_FAIL;
 		}
 
@@ -235,73 +272,104 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_DISALLOW:
 		default:
-			authentication_failed(request, "Failed to authenticate the user");
+			message_failed(request, ctx, NULL);
 			goto setup_send;
 		}
 
 		/*
-		 *	Find Authentication-Type, and complain if they have too many.
+		 *	Only some packet types run authenticate foo { ... }
 		 */
-		auth_type = NULL;
-		for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
-		     vp;
-		     vp = fr_dcursor_next(&cursor)) {
+		if (ctx->attr_process == attr_tacacs_authentication_type) {
+			fr_pair_t			*auth_type;
+
+			/*
+			 *	Find Authentication-Type, and complain if they have too many.
+			 */
+			auth_type = NULL;
+			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, attr_auth_type);
+			     vp;
+			     vp = fr_dcursor_next(&cursor)) {
+				if (!auth_type) {
+					auth_type = vp;
+					continue;
+				}
+
+				RWDEBUG("Ignoring extra %pP", vp);
+			}
+
+			/*
+			 *	No Auth-Type, force it to reject.
+			 */
 			if (!auth_type) {
-				auth_type = vp;
-				continue;
+				vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_authentication_type);
+				if (!vp) {
+					message_failed(request, ctx, "No Auth-Type or Authentication-Type configured: rejecting authentication.");
+					goto setup_send;
+				}
+
+				/*
+				 *	Look up the name of Authentication-Type
+				 */
+				dv = fr_dict_enum_by_value(vp->da, &vp->data);
+				if (!dv) {
+					message_failed(request, ctx, "Unknown value for Authentication-Type: rejecting authentication.");
+					goto setup_send;
+				}
+
+				/*
+				 *	Use that name to search for a matching Auth-Type which has been defined.
+				 */
+				dv = fr_dict_enum_by_name(attr_auth_type, dv->name, -1);
+				if (!dv) {
+					message_failed(request, ctx, "No Auth-Type found to match Authentication-Type: rejecting authentication.");
+					goto setup_send;
+				}
+			} else {
+				/*
+				 *	Find the appropriate Auth-Type by name.
+				 */
+				vp = auth_type;
+				dv = fr_dict_enum_by_value(attr_auth_type, &vp->data);
 			}
 
-			RWDEBUG("Ignoring extra %pP", vp);
-		}
-
-		/*
-		 *	No Auth-Type, force it to reject.
-		 */
-		if (!auth_type) {
-			vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_authentication_type);
-			if (!vp) {
-				authentication_failed(request, "No Auth-Type or Authentication-Type configured: rejecting authentication.");
+			if (!dv) {
+				message_failed(request, ctx, "Unknown Auth-Type found: rejecting the user");
 				goto setup_send;
 			}
 
-			/*
-			 *	Look up the name of Authentication-Type
-			 */
+			unlang = cf_section_find(request->server_cs, "authenticate", dv->name);
+			if (!unlang) {
+				message_failed(request, ctx, "No matching 'authenticate' section found: rejecting the user");
+				goto setup_send;
+			}
+
+			RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+			if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME) < 0) {
+				RETURN_MODULE_FAIL;
+			}
+
+		} else if (ctx->attr_process == attr_tacacs_accounting_flags) {
+			vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_accounting_flags);
+			if (!vp) goto setup_send;
+			
 			dv = fr_dict_enum_by_value(vp->da, &vp->data);
-			if (!dv) {
-				authentication_failed(request, "Unknown value for Authentication-Type: rejecting authentication.");
+			if (!dv) goto setup_send;
+
+			unlang = cf_section_find(request->server_cs, "accounting", dv->name);
+			if (!unlang) {
+				RDEBUG2("No 'accounting %s { ... }' section found - skipping...", dv->name);
 				goto setup_send;
 			}
 
-			/*
-			 *	Use that name to search for a matching Auth-Type which has been defined.
-			 */
-			dv = fr_dict_enum_by_name(attr_auth_type, dv->name, -1);
-			if (!dv) {
-				authentication_failed(request, "No Auth-Type found to match Authentication-Type: rejecting authentication.");
-				goto setup_send;
+			RDEBUG("Running 'accounting %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+			if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+				RETURN_MODULE_FAIL;
 			}
+
+			request->request_state = REQUEST_PROCESS;
+			
 		} else {
-			/*
-			 *	Find the appropriate Auth-Type by name.
-			 */
-			vp = auth_type;
-			dv = fr_dict_enum_by_value(attr_auth_type, &vp->data);
-		}
-		if (!dv) {
-			authentication_failed(request, "Unknown Auth-Type found: rejecting the user");
 			goto setup_send;
-		}
-
-		unlang = cf_section_find(request->server_cs, "authenticate", dv->name);
-		if (!unlang) {
-			authentication_failed(request, "No matching 'authenticate' section found: rejecting the user");
-			goto setup_send;
-		}
-
-		RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME) < 0) {
-			RETURN_MODULE_FAIL;
 		}
 
 		request->request_state = REQUEST_PROCESS;
@@ -332,7 +400,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		case RLM_MODULE_UPDATED:
 		case RLM_MODULE_DISALLOW:
 		default:
-			authentication_failed(request, "Failed to authenticate the user");
+			message_failed(request, ctx, NULL);
 			goto setup_send;
 
 		case RLM_MODULE_OK:
@@ -343,8 +411,8 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		}
 
 	setup_send:
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(auth_ctx->send_reply), cf_filename(auth_ctx->send_reply));
-		if (unlang_interpret_push_instruction(request, auth_ctx->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+		RDEBUG("Running 'send %s' from file %s", cf_section_name2(ctx->send_reply), cf_filename(ctx->send_reply));
+		if (unlang_interpret_push_instruction(request, ctx->unlang_reply, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
 			RETURN_MODULE_FAIL;
 		}
 
@@ -418,57 +486,10 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	RETURN_MODULE_OK;
 }
 
-static virtual_server_compile_t compile_list[] = {
-	/**
-	 *	Basically, the TACACS+ protocol use same type "authenticate" to handle
-	 *	Start and Continue requests. (yep, you're right. it's horrible)
-	 *	Therefore, we split the same "auth" type into two different sections just
-	 *	to allow the user to have different logic for that.
-	 *
-	 *	If you want to cry, just take a look at
-	 *	https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4
-	 */
-	{
-		.name = "recv",
-		.name2 = "Authentication-Start",
-		.component = MOD_AUTHENTICATE,
-		.offset = offsetof(proto_tacacs_auth_t, start.recv_request),
-		.instruction = offsetof(proto_tacacs_auth_t, start.unlang_request),
-	},
-	{
-		.name = "send",
-		.name2 = "Authentication-Start-Reply",
-		.component = MOD_POST_AUTH,
-		.offset = offsetof(proto_tacacs_auth_t, start.send_reply),
-		.instruction = offsetof(proto_tacacs_auth_t, start.unlang_reply),
-	},
-	{
-		.name = "recv",
-		.name2 = "Authentication-Continue",
-		.component = MOD_AUTHENTICATE,
-		.offset = offsetof(proto_tacacs_auth_t, cont.recv_request),
-		.instruction = offsetof(proto_tacacs_auth_t, cont.unlang_request),
-	},
-	{
-		.name = "send",
-		.name2 = "Authentication-Continue-Reply",
-		.component = MOD_POST_AUTH,
-		.offset = offsetof(proto_tacacs_auth_t, cont.send_reply),
-		.instruction = offsetof(proto_tacacs_auth_t, cont.unlang_reply),
-	},
-
-	{
-		.name = "authenticate",
-		.name2 = CF_IDENT_ANY,
-		.component = MOD_AUTHENTICATE,
-	},
-
-	COMPILE_TERMINATOR
-};
 
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 {
-	proto_tacacs_auth_t	*inst = instance;
+	process_tacacs_t	*inst = instance;
 
 	/*
 	 *	Usually we use the 'State' attribute. But, in this
@@ -483,31 +504,152 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	return 0;
 }
 
-static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *process_app_cs)
+static int mod_bootstrap(void *instance, CONF_SECTION *process_app_cs)
 {
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(process_app_cs));
-	CONF_SECTION		*server_cs;
+	process_tacacs_t	*inst = instance;
+	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(process_app_cs));
 
 	fr_assert(process_app_cs);
-	fr_assert(listen_cs);
+	fr_assert(server_cs);
 
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
+	/*
+	 *	Set up the parameters for the various packet types.
+	 */
+	inst->auth_start = (tacacs_unlang_t) {
+		.attr_process = attr_tacacs_authentication_type,
+		.fail_message = "Failed to authenticate the user",
+		.reply = FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY,
+		.attr_status = attr_tacacs_authentication_status,
+		.status_fail = FR_TAC_PLUS_AUTHEN_STATUS_FAIL,
+	};
+
+	inst->auth_cont = (tacacs_unlang_t) {
+		.attr_process = attr_tacacs_authentication_type,
+		.fail_message = "Failed to authenticate the user",
+		.reply = FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY,
+		.attr_status = attr_tacacs_authentication_status,
+		.status_fail = FR_TAC_PLUS_AUTHEN_STATUS_FAIL,
+	};
+
+	inst->autz = (tacacs_unlang_t) {
+		.fail_message = "Failed to authorize the user",
+		.reply = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY,
+		.attr_status = attr_tacacs_authorization_status,
+		.status_fail = FR_TAC_PLUS_AUTHOR_STATUS_FAIL,
+	};
+
+	inst->acct = (tacacs_unlang_t) {
+		.attr_process = attr_tacacs_accounting_flags,
+		.fail_message = "Failed to process the accounting packet",
+		.reply = FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY,
+		.attr_status = attr_tacacs_accounting_status,
+		.status_fail = FR_TAC_PLUS_ACCT_STATUS_ERROR,
+	};
+
 	return 0;
 }
 
-extern fr_app_worker_t proto_tacacs_auth;
-fr_app_worker_t proto_tacacs_auth = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "tacacs_auth",
-	.config		= proto_tacacs_auth_config,
-	.inst_size	= sizeof(proto_tacacs_auth_t),
+static virtual_server_compile_t compile_list[] = {
+	/**
+	 *	Basically, the TACACS+ protocol use same type "authenticate" to handle
+	 *	Start and Continue requests. (yep, you're right. it's horrible)
+	 *	Therefore, we split the same "auth" type into two different sections just
+	 *	to allow the user to have different logic for that.
+	 *
+	 *	If you want to cry, just take a look at
+	 *	https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4
+	 */
+	{
+		.name = "recv",
+		.name2 = "Authentication-Start",
+		.component = MOD_AUTHENTICATE,
+		.offset = offsetof(process_tacacs_t, auth_start.recv_request),
+		.instruction = offsetof(process_tacacs_t, auth_start.unlang_request),
+	},
+	{
+		.name = "send",
+		.name2 = "Authentication-Start-Reply",
+		.component = MOD_POST_AUTH,
+		.offset = offsetof(process_tacacs_t, auth_start.send_reply),
+		.instruction = offsetof(process_tacacs_t, auth_start.unlang_reply),
+	},
+	{
+		.name = "recv",
+		.name2 = "Authentication-Continue",
+		.component = MOD_AUTHENTICATE,
+		.offset = offsetof(process_tacacs_t, auth_cont.recv_request),
+		.instruction = offsetof(process_tacacs_t, auth_cont.unlang_request),
+	},
+	{
+		.name = "send",
+		.name2 = "Authentication-Continue-Reply",
+		.component = MOD_POST_AUTH,
+		.offset = offsetof(process_tacacs_t, auth_cont.send_reply),
+		.instruction = offsetof(process_tacacs_t, auth_cont.unlang_reply),
+	},
 
+	{
+		.name = "authenticate",
+		.name2 = CF_IDENT_ANY,
+		.component = MOD_AUTHENTICATE,
+	},
+
+	/* authorization */
+	
+	{
+		.name = "recv",
+		.name2 = "Authorization-Request",
+		.component = MOD_AUTHORIZE,
+		.offset = offsetof(process_tacacs_t, autz.recv_request),
+		.instruction = offsetof(process_tacacs_t, autz.unlang_request),
+	},
+	{
+		.name = "send",
+		.name2 = "Authorization-Reply",
+		.component = MOD_POST_AUTH,
+		.offset = offsetof(process_tacacs_t, autz.send_reply),
+		.instruction = offsetof(process_tacacs_t, autz.unlang_reply),
+	},
+
+	/* accounting */
+
+	{
+		.name = "recv",
+		.name2 = "Accounting-Request",
+		.component = MOD_ACCOUNTING,
+		.offset = offsetof(process_tacacs_t, acct.recv_request),
+		.instruction = offsetof(process_tacacs_t, acct.unlang_request),
+	},
+	{
+		.name = "send",
+		.name2 = "Accounting-Reply",
+		.component = MOD_POST_AUTH,
+		.offset = offsetof(process_tacacs_t, acct.send_reply),
+		.instruction = offsetof(process_tacacs_t, acct.unlang_reply),
+	},
+	{
+		.name = "accounting",
+		.name2 = CF_IDENT_ANY,
+		.component = MOD_ACCOUNTING,
+	},
+
+	COMPILE_TERMINATOR
+};
+
+
+extern fr_process_module_t process_tacacs;
+fr_process_module_t process_tacacs = {
+	.magic		= RLM_MODULE_INIT,
+	.name		= "process_tacacs",
+	.config		= config,
+	.inst_size	= sizeof(process_tacacs_t),
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-	.entry_point	= mod_process,
+	.process	= mod_process,
 	.compile_list	= compile_list,
+	.dict		= &dict_tacacs,
 };

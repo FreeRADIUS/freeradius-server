@@ -34,8 +34,8 @@
 typedef struct {
 	fr_io_instance_t	io;				//!< wrapper for IO abstraction
 
-	dl_module_inst_t	**type_submodule;		//!< Instance of the various types
-	dl_module_inst_t	*type_submodule_by_code[FR_PACKET_TYPE_MAX];	//!< Lookup process entry point by code.
+	char			**allowed_types;		//!< names for for 'type = ...'
+	bool			allowed[FR_PACKET_TYPE_MAX];	//!< indexed by value
 
 	uint32_t		max_packet_size;		//!< for message ring buffer.
 	uint32_t		num_messages;			//!< for message ring buffer.

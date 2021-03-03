@@ -56,7 +56,7 @@ static const CONF_PARSER priority_config[] = {
 };
 
 static const CONF_PARSER proto_tacacs_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_tacacs_t, type_submodule),
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_tacacs_t, allowed_types),
 	  .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_tacacs_t, io.submodule),
 	  .func = transport_parse },
@@ -90,7 +90,7 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
  * If we found a Packet-Type = Authentication-Start CONF_PAIR for example, here's we'd load
  * the proto_tacacs_auth module.
  *
- * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[in] ctx	to allocate data in (instance of proto_tacacs).
  * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
@@ -99,19 +99,26 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	static char const *type_lib_table[FR_PACKET_TYPE_MAX] = {
-		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "auth",
-		[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "auth",
- 		[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "autz",
- 		[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "acct",
-	};
 	proto_tacacs_t		*inst = talloc_get_type_abort(parent, proto_tacacs_t);
+	fr_dict_enum_t		*dv;
+	CONF_PAIR		*cp;
+	char const		*value;
 
-	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_tacacs",
-					 type_lib_table, NUM_ELEMENTS(type_lib_table),
-					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
+	cp = cf_item_to_pair(ci);
+	value = cf_pair_value(cp);
+
+	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
+	if (!dv || (dv->value->vb_uint32 >= FR_PACKET_TYPE_MAX)) {
+		cf_log_err(ci, "Unknown TACACS+ packet type '%s'", value);
+		return -1;
+	}
+
+	inst->allowed[dv->value->vb_uint32] = true;
+	*((char const **) out) = value;
+
+	return 0;
 }
 
 /** Wrapper around dl_instance
@@ -399,39 +406,11 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	return data_len;
 }
 
-static void mod_entry_point_set(void const *instance, request_t *request)
+static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
 {
-	proto_tacacs_t const	*inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
-	dl_module_inst_t	*type_submodule;
-	fr_io_track_t		*track = request->async->packet_ctx;
+	fr_assert(request->server_cs != NULL);
 
-	fr_assert(request->packet->code != 0);
-	fr_assert(request->packet->code < FR_PACKET_TYPE_MAX);
-
-	request->server_cs = inst->io.server_cs;
-
-	/*
-	 *	'track' can be NULL when there's no network listener.
-	 */
-	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
-		fr_app_worker_t const	*app_process;
-
-		app_process = (fr_app_worker_t const *) inst->io.dynamic_submodule->module->common;
-
-		request->async->process = app_process->entry_point;
-		request->async->process_inst = inst->io.dynamic_submodule;
-		track->dynamic = 0;
-		return;
-	}
-
-	type_submodule = inst->type_submodule_by_code[request->packet->code];
-	if (!type_submodule) {
-		REDEBUG("The server is not configured to accept 'type = %s'", fr_tacacs_packet_codes[request->packet->code]);
-		return;
-	}
-
-	request->async->process = ((fr_app_worker_t const *)type_submodule->module->common)->entry_point;
-	request->async->process_inst = type_submodule->data;
+	virtual_server_entry_point_set(request);
 }
 
 static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
