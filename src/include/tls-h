@@ -141,6 +141,7 @@ typedef struct _tls_session_t {
 	bool		is_init_finished;		//!< whether or not init is finished
 	bool		client_cert_ok;			//!< whether or not we validated the client certificate
 	bool		authentication_success;		//!< whether or not the user was authenticated (cert or PW)
+	bool		quick_session_tickets;		//!< for EAP-TLS.
 
 	/*
 	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this

@@ -98,6 +98,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	}
 
 	handler->opaque = ((void *)ssn);
+	ssn->quick_session_tickets = true; /* send as soon as we've seen the client cert */
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS

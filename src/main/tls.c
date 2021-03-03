@@ -3078,7 +3078,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 */
 		ssn->client_cert_ok = (my_ok == 1);
 
-		if (conf->session_cache_enable) {
+		if (ssn->quick_session_tickets && conf->session_cache_enable) {
 			SSL_set_num_tickets(ssn->ssl, 1);
 		}
 	} /* depth == 0 */

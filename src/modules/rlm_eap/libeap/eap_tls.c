@@ -765,19 +765,31 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	notibly not for PEAP even on resumption.
 	 */
 	if ((tls_session->info.version == TLS1_3_VERSION) &&
-	    (handler->type == PW_EAP_TLS) &&
-	    (tls_session->client_cert_ok || SSL_session_reused(tls_session->ssl))) {
+	    (tls_session->client_cert_ok || tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
 		fr_tls_server_conf_t *conf;
 
 		conf = (fr_tls_server_conf_t *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
 		rad_assert(conf != NULL);
 
-		if (conf->tls13_send_zero) {
-			RDEBUG("TLS send Commitment Message");
-			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
-		} else {
-			RDEBUG("TLS sending close_notify");
-			SSL_shutdown(tls_session->ssl);
+		if ((handler->type == PW_EAP_TLS) || SSL_session_reused(tls_session->ssl)) {
+			tls_session->authentication_success = true;
+
+			if (conf->tls13_send_zero) {
+				RDEBUG("TLS send Commitment Message");
+				tls_session->record_plus(&tls_session->clean_in, "\0", 1);
+			} else {
+				RDEBUG("TLS sending close_notify");
+				SSL_shutdown(tls_session->ssl);
+			}
+		}
+
+		/*
+		 *	Allow sending of session tickets, but ONLY
+		 *	after we've verified the client certificate,
+		 *	or users password.
+		 */
+		else if (conf->session_cache_enable) {
+			SSL_set_num_tickets(tls_session->ssl, 1);
 		}
 
 		tls_handshake_send(request, tls_session);
