@@ -250,6 +250,22 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 				inst->session_head = NULL;
 				inst->session_tail = NULL;
 			}
+
+			/*
+			 *	Remove expired TLS sessions.
+			 */
+			switch (handler->type) {
+			case PW_EAP_TLS:
+			case PW_EAP_TTLS:
+			case PW_EAP_PEAP:
+			case PW_EAP_FAST:
+				tls_fail(handler->opaque); /* MUST be a tls_session! */
+				break;
+
+			default:
+				break;
+			}
+
 			talloc_free(handler);
 		} else {
 			break;
