@@ -1225,6 +1225,7 @@ redo:
 		 *	Get IP addresses only if we have IP addresses.
 		 */
 		if ((saremote.ss_family == AF_INET) || (saremote.ss_family == AF_INET6)) {
+			memset(&address.socket, 0, sizeof(address.socket));
 			(void) fr_ipaddr_from_sockaddr(&address.socket.inet.src_ipaddr, &address.socket.inet.src_port,
 						       &saremote, salen);
 			salen = sizeof(saremote);
@@ -1235,6 +1236,8 @@ redo:
 			(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
 			(void) fr_ipaddr_from_sockaddr(&address.socket.inet.dst_ipaddr, &address.socket.inet.dst_port,
 						       &saremote, salen);
+			address.socket.proto = inst->ipproto;
+			address.socket.fd = accept_fd;
 		}
 
 	} else {
