@@ -482,7 +482,7 @@ void virtual_server_entry_point_set(request_t *request)
 	fr_io_track_t *track = request->async->packet_ctx;
 
 	server = cf_data_value(cf_data_find(request->server_cs, fr_virtual_server_t, "vs"));
-	fr_assert(server != NULL);
+	if (!server) return;
 
 	if (unlikely(track && track->dynamic && server->dynamic_client_module)) {
 		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
