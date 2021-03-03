@@ -19,8 +19,9 @@ ifeq "$(WITH_TACACS)" "yes"
 #
 #	Test name
 #
-TEST  := test.tacacs
-FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
+TEST  	   := test.tacacs
+TEST_LIBS  := libfreeradius-tacacs.la proto_tacacs.la proto_tacacs_tcp.la process_tacacs.la
+FILES	   := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 
 $(eval $(call TEST_BOOTSTRAP))
 
@@ -30,7 +31,6 @@ $(eval $(call TEST_BOOTSTRAP))
 TACACS_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
 TACACS_RADIUS_LOG := $(TACACS_BUILD_DIR)/radiusd.log
 TACACS_GDB_LOG    := $(TACACS_BUILD_DIR)/gdb.log
-TACACS_LIBS	  := libfreeradius-tacacs.a proto_tacacs.a process_tacacs.a
 
 #
 #	Local TACACS+ client
@@ -46,7 +46,7 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 #
 #	Run the tacacs_client commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% $(TACACS_LIBS) | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
