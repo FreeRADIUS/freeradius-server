@@ -90,6 +90,28 @@ typedef struct {
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 
+/** A function used to escape an argument passed to an xlat
+ *
+ * @param[in,out] vb		to escape
+ * @param[in] uxtc		a "context" for the escaping
+ */
+typedef int (*xlat_escape_func_t)(fr_value_box_t *vb, void *uxtc);
+
+/** Definition for a single argument consumend by an xlat function
+ *
+ */
+typedef struct {
+	bool			required;	//!< Argument must be present.
+	bool			concat;		//!< Concat boxes together.
+	bool			variadic;	//!< All additional boxes should be processed
+						///< using this definition.
+	fr_type_t		type;		//!< Type to cast argument to.
+	xlat_escape_func_t	func;		//!< Function to handle tainted values.
+	void			*uctx;		//!< Arcument to escape callback.
+} xlat_arg_parser_t;
+
+#define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .variadic = false, .type = FR_TYPE_INVALID, .func = NULL, .uctx = NULL }
+
 /** A callback when the the timeout occurs
  *
  * Used when a xlat needs wait for an event.
