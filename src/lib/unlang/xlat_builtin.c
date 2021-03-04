@@ -2733,29 +2733,28 @@ EVP_MD_XLAT(sha3_512, sha3_512)
 #endif
 
 
+static xlat_arg_parser_t const xlat_func_string_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
+
 /** Print data as string, if possible.
  *
  * Concat and cast one or more input boxes to a single output box string.
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_string(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_string(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				      fr_value_box_list_t *in)
 {
-	fr_value_box_t	*in_head = fr_dlist_head(in);
-	if (!in_head) return XLAT_ACTION_DONE;
+	fr_value_box_t	*in_head = fr_dlist_pop_head(in);
 
 	/*
-	 * Concatenate all input
+	 *	Casting and concat is done by arg processing
+	 *	so just move the value box to the output
 	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_dlist_remove(in, in_head);		/* Let the caller know this was consumed */
 	fr_dcursor_append(out, in_head);
 
 	return XLAT_ACTION_DONE;
@@ -3420,8 +3419,8 @@ do { \
 #  endif
 #endif
 
-	xlat_register(NULL, "string", xlat_func_string, false);
 	xlat_register(NULL, "strlen", xlat_func_strlen, false);
+	XLAT_REGISTER_MONO("string", xlat_func_string, xlat_func_string_arg);
 	xlat_register(NULL, "sub", xlat_func_sub, false);
 	xlat_register(NULL, "tolower", xlat_func_tolower, false);
 	xlat_register(NULL, "toupper", xlat_func_toupper, false);
