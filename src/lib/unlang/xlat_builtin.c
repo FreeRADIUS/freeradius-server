@@ -2107,6 +2107,10 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED re
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_md5_arg = {
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
 
 /** Calculate the MD5 hash of a string or attribute.
  *
@@ -2117,21 +2121,13 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED re
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 *	Concatenate all input if there is some
-	 */
-	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	if (in_head) {
 		fr_md5_calc(digest, in_head->vb_octets, in_head->vb_length);
@@ -3441,9 +3437,7 @@ do { \
 	xlat_register(NULL, "hmacsha1", xlat_func_hmac_sha1, false);
 	xlat_register(NULL, "length", xlat_func_length, false);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
-	xlat_register(NULL, "md5", xlat_func_md5, false);
-	xlat = xlat_register(NULL, "md4", xlat_func_md4, false);
-	xlat_func_arg(xlat, XLAT_INPUT_MONO, &xlat_func_md4_arg);
+	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	xlat_register(NULL, "module", xlat_func_module, false);
 	xlat_register(NULL, "pack", xlat_func_pack, false);
 	xlat_register(NULL, "pairs", xlat_func_pairs, false);
