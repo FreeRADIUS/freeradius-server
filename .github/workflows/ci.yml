@@ -23,18 +23,21 @@ jobs:
           - ubuntu-18.04
 #          - ubuntu-20.04
         env:
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG" }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3" }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc                }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-reproducible   }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-gcc-O2-g3          }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-lean         }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang              }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-reproducible }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-clang-O2-g3        }
 
     env: ${{ matrix.env }}
 
-    name: "${{ matrix.os }} ${{ matrix.env.CC }} ${{ toJson(matrix.env) }}"
+    # Test names are used in the branch protection rules in GitHub
+    # If you change the names here, or add additional matrix entries, you
+    # must also amend the branch protection fules.
+    name: "${{ github.ref }}-${{ matrix.env.NAME }}"
 
     steps:
 
@@ -162,3 +165,98 @@ jobs:
         limit-access-to-actor: true
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
+##########################################################################################
+#                            FREERADIUS CORE DEVELOPERS ONLY
+##########################################################################################
+#
+#  Direct push access to the main freeradius-server repo has been disabled in an attempt
+#  to keep CI passing reliably.
+#
+#  The code below will automatically push to the main repository if a commit passes CI in
+#  your fork on a branch that exists in the main repository.
+#
+#  The code below will only run if PERSONAL_ACCESS_TOKEN is defined in the repository
+#  secrets for your fork of the freeradius-server repo.
+#
+#  If the above CI checks pass then we auto-merge into the same branch in the
+#  main FR repo (only on push) if the PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
+#  the actor claims to be a FreeRADIUS developer with push access.
+#
+#  Personal access tokens can be generated via the GitHub website:
+#
+#  - Click on the Profile menu (top right)
+#    > Settings
+#    > Developer settings
+#    > Personal access tokens
+#    > Generate New Token
+#  - Next, add the following settings and scopes:
+#    Note: FreeRADIUS CI Push
+#    repo (checked)
+#    workflow (checked)
+#
+#  This will allow any git operations using this PERSONAL_ACCESS_TOKEN to commit code to any
+#  public repository you have access to.
+#
+#  As this PERSONAL_ACCESS_TOKEN will only ever be accessible from GitHub actions when they are
+#  running from your fork of the FreeRADIUS repo, this shouldn't be a security issue.
+#
+#  After generating your PERSONAL_ACCESS_TOKEN you will need to add it as a secret to your
+#  repository.
+#
+#  - Copy your new token
+#  - Click on the Profile menu (top right)
+#    > Your repositories
+#  - Search for freeradius-server
+#    > Click freeradius-server
+#  - Click settings in the tabs on the left
+#  - Click secrets in the menu items on the left
+#  - Click New repository secret
+#  - Name: PERSONAL_ACCESS_TOKEN
+#    Value: <value you copied>
+#  - Click Add secret
+  #
+  #  Needed because secrets are not available for evaluation in if conditions
+  #  at the job level, so we evaluate the existence of the PERSONAL_ACCESS_TOKEN secret
+  #  within a step and export the result instead. We also extract the short
+  #  branch name here because it's convenient to do so.
+  #
+  merge-preflight:
+    needs:
+      - ci
+    if: github.event_name == 'push' && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
+    name: "Merge preflight"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Report whether PERSONAL_ACCESS_TOKEN secret exists"
+        id: merge-preflight
+        run: |
+          [ -n "$PERSONAL_ACCESS_TOKEN" ] && echo "::set-output name=PERSONAL_ACCESS_TOKEN_EXISTS::1"
+        env:
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+    outputs:
+      PERSONAL_ACCESS_TOKEN_EXISTS: ${{ steps.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS }}
+
+  merge-upstream:
+    needs:
+      - ci
+      - merge-preflight
+    if: needs.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS == '1'
+    runs-on: ubuntu-latest
+    name: "Merge into upstream"
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        lfs: false
+        persist-credentials: false
+    - name: "Merge into upstream dev branch"
+      run: |
+        BRANCH=${GITHUB_REF#refs/heads/}
+        git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
+        git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
+        git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
+        git merge "$BRANCH" --ff-only
+        git push upstream "upstream-branch:$BRANCH"
+      env:
+        USERNAME: ${{ github.actor }}
+        REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
