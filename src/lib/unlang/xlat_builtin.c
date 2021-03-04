@@ -1914,6 +1914,11 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_hex_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
 
 /** Print data as hex, not as VALUE.
  *
@@ -1926,27 +1931,15 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
 	char *p;
 	fr_value_box_t* vb;
 	fr_value_box_t* in_head;
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
-
 	in_head = fr_dlist_head(in);
-	/*
-	 *	Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 	vb->vb_length = (in_head->vb_length * 2);
@@ -1959,7 +1952,6 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
-
 
 typedef enum {
 	HMAC_MD5,
@@ -3447,7 +3439,7 @@ do { \
 	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, xlat_func_bin_arg);
 	xlat_register(NULL, "concat", xlat_func_concat, false);
-	xlat_register(NULL, "hex", xlat_func_hex, false);
+	XLAT_REGISTER_MONO("hex", xlat_func_hex, xlat_func_hex_arg);
 	xlat_register(NULL, "hmacmd5", xlat_func_hmac_md5, false);
 	xlat_register(NULL, "hmacsha1", xlat_func_hmac_sha1, false);
 	xlat_register(NULL, "length", xlat_func_length, false);
