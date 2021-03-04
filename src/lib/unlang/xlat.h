@@ -39,6 +39,12 @@ typedef enum {
 	XLAT_ACTION_FAIL			//!< An xlat function failed.
 } xlat_action_t;
 
+typedef enum {
+	XLAT_INPUT_UNPROCESSED,				//!< No input argument processing
+	XLAT_INPUT_MONO,				//!< Ingests a single argument
+	XLAT_INPUT_ARGS					//!< Ingests a number of arguments
+} xlat_input_type_t;
+
 typedef struct xlat_inst xlat_inst_t;
 typedef struct xlat_thread_inst xlat_thread_inst_t;
 typedef struct xlat_exp xlat_exp_t;
