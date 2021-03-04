@@ -465,15 +465,20 @@ jobs:
     #  the main repository.
     #  This update may fail if the developer has pushed additional commits since the
     #  workflow started.  This is normal, and we ignore the failure.
+    #
+    #  We fixup the origin URL as the default remote fails on push with:
+    #    fatal: could not read Username for 'https://github.com': No such device or address
     - name: "Merge into upstream dev branch and update local branch"
       run: |
         BRANCH=${GITHUB_REF#refs/heads/}
         git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
+        git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
         git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
         git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
         git pull --rebase upstream "$BRANCH"
         git push upstream "upstream-branch:$BRANCH"
         git push origin "upstream-branch:$BRANCH" || true
       env:
-        USERNAME: ${{ github.actor }}
+        USERNAME: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.repository }}
         REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
