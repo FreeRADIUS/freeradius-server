@@ -1,5 +1,5 @@
 /**
- * @file src/lib/sim/milenage.c
+ * @file src/modules/rlm_wimax/milenage.c
  * @brief 3GPP AKA - Milenage algorithm (3GPP TS 35.205, .206, .207, .208)
  *
  * This file implements an example authentication algorithm defined for 3GPP
