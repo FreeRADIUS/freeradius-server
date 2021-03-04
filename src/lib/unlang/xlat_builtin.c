@@ -2678,8 +2678,8 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED r
  * @ingroup xlat_functions
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
-			         request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+			         UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			         fr_value_box_list_t *in, EVP_MD const *md)
 {
 	uint8_t		digest[EVP_MAX_MD_SIZE];
@@ -2687,14 +2687,6 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	EVP_MD_CTX	*md_ctx;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 * Concatenate all input if there is some
-	 */
-	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	md_ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(md_ctx, md, NULL);
@@ -3410,21 +3402,21 @@ do { \
 	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, xlat_func_sha_arg);
 
 #ifdef HAVE_OPENSSL_EVP_H
-	xlat_register(NULL, "sha2_224", xlat_func_sha2_224, false);
-	xlat_register(NULL, "sha2_256", xlat_func_sha2_256, false);
-	xlat_register(NULL, "sha2_384", xlat_func_sha2_384, false);
-	xlat_register(NULL, "sha2_512", xlat_func_sha2_512, false);
+	XLAT_REGISTER_MONO("sha2_224", xlat_func_sha2_224, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha2_256", xlat_func_sha2_256, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha2_384", xlat_func_sha2_384, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha2_512", xlat_func_sha2_512, xlat_func_sha_arg);
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	xlat_register(NULL, "blake2s_256", xlat_func_blake2s_256, false);
-	xlat_register(NULL, "blake2b_512", xlat_func_blake2b_512, false);
+	XLAT_REGISTER_MONO("blake2s_256", xlat_func_blake2s_256, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("blake2b_512", xlat_func_blake2b_512, xlat_func_sha_arg);
 #  endif
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	xlat_register(NULL, "sha3_224", xlat_func_sha3_224, false);
-	xlat_register(NULL, "sha3_256", xlat_func_sha3_256, false);
-	xlat_register(NULL, "sha3_384", xlat_func_sha3_384, false);
-	xlat_register(NULL, "sha3_512", xlat_func_sha3_512, false);
+	XLAT_REGISTER_MONO("sha3_224", xlat_func_sha3_224, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha3_256", xlat_func_sha3_256, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha3_384", xlat_func_sha3_384, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha3_512", xlat_func_sha3_512, xlat_func_sha_arg);
 #  endif
 #endif
 
