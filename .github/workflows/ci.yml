@@ -64,7 +64,10 @@ jobs:
 
     env: ${{ matrix.env }}
 
-    name: "${{ matrix.env.NAME }} ${{ toJson(matrix.env) }}"
+    # Test names are used in the branch protection rules in GitHub
+    # If you change the names here, or add additional matrix entries, you
+    # must also amend the branch protection fules.
+    name: "${{ matrix.env.NAME }}"
 
     steps:
 
