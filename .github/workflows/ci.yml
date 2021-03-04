@@ -421,7 +421,7 @@ jobs:
   merge-preflight:
     needs:
       - ci
-    if: ( github.event_name == 'push' ) && ( github.repository_owner != 'FreeRADIUS') && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
+    if: ( github.event_name == 'push' ) && ( github.repository_owner != 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
     name: "Merge preflight"
     runs-on: ubuntu-latest
     steps:
