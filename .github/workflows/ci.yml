@@ -466,7 +466,7 @@ jobs:
         git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
         git merge "$BRANCH" --ff-only
         git push upstream "upstream-branch:$BRANCH"
-        git push origin "$BRANCH" || true
+        git push origin "upstream-branch:$BRANCH" || true
       env:
         USERNAME: ${{ github.actor }}
         REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
