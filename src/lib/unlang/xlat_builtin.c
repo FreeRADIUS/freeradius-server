@@ -357,6 +357,7 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 	c->func.async = func;
 	c->type = XLAT_FUNC_NORMAL;
 	c->needs_async = needs_async;	/* this function may yield */
+	c->input_type = XLAT_INPUT_UNPROCESSED;	/* set default - will be overridden if args are registered */
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 

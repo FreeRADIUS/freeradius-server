@@ -74,6 +74,8 @@ typedef struct xlat_s {
 	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	void			*mod_inst;		//!< Module instance passed to xlat
 	xlat_escape_legacy_t	escape;			//!< Escape function to apply to dynamic input to func.
+	xlat_input_type_t	input_type;		//!< Type of input used.
+	xlat_arg_parser_t	*args;			//!< Definition of args consumed.
 } xlat_t;
 
 typedef enum {
