@@ -67,7 +67,7 @@ jobs:
     # Test names are used in the branch protection rules in GitHub
     # If you change the names here, or add additional matrix entries, you
     # must also amend the branch protection fules.
-    name: "${{ matrix.env.NAME }}"
+    name: "${{ github.ref }}-${{ matrix.env.NAME }}"
 
     steps:
 
@@ -363,7 +363,6 @@ jobs:
         limit-access-to-actor: true
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
-
 ##########################################################################################
 #                            FREERADIUS CORE DEVELOPERS ONLY
 ##########################################################################################
@@ -390,7 +389,8 @@ jobs:
 #    > Generate New Token
 #  - Next, add the following settings and scopes:
 #    Note: FreeRADIUS CI Push
-#    public_repo (checked)
+#    repo (checked)
+#    workflow (checked)
 #
 #  This will allow any git operations using this PERSONAL_ACCESS_TOKEN to commit code to any
 #  public repository you have access to.
