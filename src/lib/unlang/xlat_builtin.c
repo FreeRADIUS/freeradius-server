@@ -3070,43 +3070,31 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * If upper is true, change to uppercase, otherwise, change to lowercase
  */
-static xlat_action_t xlat_change_case(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request, fr_value_box_list_t *in, bool upper)
+static xlat_action_t xlat_change_case(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       UNUSED request_t *request, fr_value_box_list_t *in, bool upper)
 {
-	char		*buff_p;
-	char const	*p, *end;
-	fr_value_box_t	*vb;
-	fr_value_box_t	*in_head = fr_dlist_head(in);
+	char		*p;
+	char const	*end;
+	fr_value_box_t	*vb = fr_dlist_pop_head(in);
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (!in_head) return XLAT_ACTION_DONE;
-
-	/*
-	 * Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	p = in_head->vb_strvalue;
-	end = p + in_head->vb_length;
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	MEM(fr_value_box_bstr_alloc(vb, &buff_p, vb, NULL, in_head->vb_length, in_head->tainted) == 0);
+	p = UNCONST(char *, vb->vb_strvalue);
+	end = p + vb->vb_length;
 
 	while (p < end) {
-		*(buff_p++) = upper ? toupper ((int) *(p++)) : tolower((int) *(p++));
+		*(p) = upper ? toupper ((int) *(p)) : tolower((int) *(p));
+		p++;
 	}
-
-	*buff_p = '\0';
 
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
+
+static xlat_arg_parser_t const xlat_change_case_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
 
 
 /** Convert a string to lowercase
@@ -3418,8 +3406,8 @@ do { \
 	XLAT_REGISTER_MONO("string", xlat_func_string, xlat_func_string_arg);
 	XLAT_REGISTER_MONO("strlen", xlat_func_strlen, xlat_func_strlen_arg);
 	xlat_register(NULL, "sub", xlat_func_sub, false);
-	xlat_register(NULL, "tolower", xlat_func_tolower, false);
-	xlat_register(NULL, "toupper", xlat_func_toupper, false);
+	XLAT_REGISTER_MONO("tolower", xlat_func_tolower, xlat_change_case_arg);
+	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
 	xlat_register(NULL, "urlquote", xlat_func_urlquote, false);
 	xlat_register(NULL, "urlunquote", xlat_func_urlunquote, false);
 
