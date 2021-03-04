@@ -173,7 +173,12 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
 	@if $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
-		touch $$@; \
+		if grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
+			touch $$@; \
+		else \
+			echo FAILED - not using TLS version ${2}; \
+			echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
+		fi \
 	else \
 		echo FAILED; \
 		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
@@ -188,7 +193,7 @@ $(BUILD_PATH)/tests/eap/${1}-${2}-resumption.ok: $(BUILD_PATH)/tests/eap/${1}-${
 		echo "        " $(EAPOL_TEST) -r 2 -c $$< -p $(PORT) -s $(SECRET); \
 	fi
 
-EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok $(BUILD_PATH)/tests/eap/${1}-${2}-resumption.ok
+EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok
 endef
 
 $(foreach FILE,$(patsubst %.conf,%,$(EAP_TLS_FILES)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
