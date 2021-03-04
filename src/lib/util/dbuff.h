@@ -761,7 +761,7 @@ size_t	fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift);
 #define fr_dbuff_ptr(_dbuff_or_marker) \
 	_Generic((_dbuff_or_marker), \
 		 fr_dbuff_t *			: ((fr_dbuff_t *)(_dbuff_or_marker)), \
-		 fr_dbuff_marker_t *		: ((fr_dbuff_marker_t *)(_dbuff_or_marker))->parent \
+		 fr_dbuff_marker_t *		: (((fr_dbuff_marker_t *)(_dbuff_or_marker))->parent) \
 	)
 
 /** Return a const pointer to the dbuff
@@ -773,8 +773,8 @@ size_t	fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift);
 	_Generic((_dbuff_or_marker), \
 		 fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker)), \
 		 fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker)), \
-		 fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent, \
-		 fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent \
+		 fr_dbuff_marker_t *		: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent), \
+		 fr_dbuff_marker_t const *	: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent) \
 	)
 
 /** Return the underlying buffer in a dbuff or one of marker
@@ -784,10 +784,10 @@ size_t	fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift);
  */
 #define fr_dbuff_buff(_dbuff_or_marker) \
 	_Generic((_dbuff_or_marker), \
-		 fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker))->buff, \
-		 fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker))->buff, \
-		 fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->buff, \
-		 fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->buff \
+		 fr_dbuff_t *			: (((fr_dbuff_t const *)(_dbuff_or_marker))->buff), \
+		 fr_dbuff_t const *		: (((fr_dbuff_t const *)(_dbuff_or_marker))->buff), \
+		 fr_dbuff_marker_t *		: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->buff), \
+		 fr_dbuff_marker_t const *	: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->buff) \
 	)
 
 /** Return the 'start' position of a dbuff or marker
@@ -800,10 +800,10 @@ size_t	fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift);
  */
 #define fr_dbuff_start(_dbuff_or_marker) \
 	(_Generic((_dbuff_or_marker), \
-		  fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker))->start, \
-		  fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker))->start, \
-		  fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->start, \
-		  fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->start \
+		  fr_dbuff_t *			: (((fr_dbuff_t const *)(_dbuff_or_marker))->start), \
+		  fr_dbuff_t const *		: (((fr_dbuff_t const *)(_dbuff_or_marker))->start), \
+		  fr_dbuff_marker_t *		: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->start), \
+		  fr_dbuff_marker_t const *	: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->start) \
 	))
 
 /** Return the 'current' position of a dbuff or marker
@@ -813,10 +813,10 @@ size_t	fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift);
  */
 #define fr_dbuff_current(_dbuff_or_marker) \
 	(_Generic((_dbuff_or_marker), \
-		  fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker))->p, \
-		  fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker))->p, \
-		  fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->p, \
-		  fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->p \
+		  fr_dbuff_t *			: (((fr_dbuff_t const *)(_dbuff_or_marker))->p), \
+		  fr_dbuff_t const *		: (((fr_dbuff_t const *)(_dbuff_or_marker))->p), \
+		  fr_dbuff_marker_t *		: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->p), \
+		  fr_dbuff_marker_t const *	: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->p) \
 	))
 
 /** @cond */
@@ -840,10 +840,10 @@ size_t	fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift);
  */
 #define fr_dbuff_end(_dbuff_or_marker) \
 	(_Generic((_dbuff_or_marker), \
-		  fr_dbuff_t *			: ((fr_dbuff_t const *)(_dbuff_or_marker))->end, \
-		  fr_dbuff_t const *		: ((fr_dbuff_t const *)(_dbuff_or_marker))->end, \
-		  fr_dbuff_marker_t *		: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->end, \
-		  fr_dbuff_marker_t const *	: ((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->end \
+		  fr_dbuff_t *			: (((fr_dbuff_t const *)(_dbuff_or_marker))->end), \
+		  fr_dbuff_t const *		: (((fr_dbuff_t const *)(_dbuff_or_marker))->end), \
+		  fr_dbuff_marker_t *		: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->end), \
+		  fr_dbuff_marker_t const *	: (((fr_dbuff_marker_t const *)(_dbuff_or_marker))->parent->end) \
 	))
 /** @} */
 
