@@ -831,15 +831,6 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 #ifdef TLS1_3_VERSION
 		case TLS1_3_VERSION:
 			str_version = "TLS 1.3";
-
-			{
-				fr_tls_server_conf_t	*conf;
-				conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ssn->ctx);
-
-				if (conf->tls13_early_session_tickets && conf->session_cache_enable) {
-					SSL_set_num_tickets(ssn->ssl, 1);
-				}
-			}
 			break;
 #endif
 		default:
@@ -1382,7 +1373,6 @@ static CONF_PARSER tls_server_config[] = {
 #ifdef TLS1_3_VERSION
 	{ "tls13_enable", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_enable_magic), NULL },
 	{ "tls13_send_zero", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_send_zero), NULL },
-	{ "tls13_early_session_tickets", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_early_session_tickets), NULL },
 #endif
 
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
