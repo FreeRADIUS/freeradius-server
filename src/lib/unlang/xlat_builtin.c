@@ -2627,6 +2627,11 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 #endif
 
+static xlat_arg_parser_t const xlat_func_sha_arg = {
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
+
 /** Calculate the SHA1 hash of a string or attribute.
  *
  * Example:
@@ -2636,22 +2641,14 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				    UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				    fr_value_box_list_t *in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
 	fr_sha1_ctx	sha1_ctx;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 * Concatenate all input if there is some
-	 */
-	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	fr_sha1_init(&sha1_ctx);
 	if (in_head) {
@@ -3410,7 +3407,7 @@ do { \
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	xlat_register(NULL, "regex", xlat_func_regex, false);
 #endif
-	xlat_register(NULL, "sha1", xlat_func_sha1, false);
+	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, xlat_func_sha_arg);
 
 #ifdef HAVE_OPENSSL_EVP_H
 	xlat_register(NULL, "sha2_224", xlat_func_sha2_224, false);
