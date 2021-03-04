@@ -3215,6 +3215,12 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUS
 }
 
 
+static xlat_arg_parser_t const xlat_func_urlunquote_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
+
 /** URLdecode special characters
  *
  * @note Remember to escape % with %% in strings, else xlat will try to parse it.
@@ -3236,19 +3242,6 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t		outlen = 0;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 * Nothing to do if input is empty
-	 */
-	if (!in_head) return XLAT_ACTION_DONE;
-
-	/*
-	 * Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	p = in_head->vb_strvalue;
 	end = p + in_head->vb_length;
@@ -3295,6 +3288,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+
 
 /** Global initialisation for xlat
  *
@@ -3402,7 +3396,7 @@ do { \
 	XLAT_REGISTER_MONO("tolower", xlat_func_tolower, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, xlat_func_urlquote_arg);
-	xlat_register(NULL, "urlunquote", xlat_func_urlunquote, false);
+	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, xlat_func_urlunquote_arg);
 
 	return 0;
 }
