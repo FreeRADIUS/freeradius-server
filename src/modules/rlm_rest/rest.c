@@ -654,7 +654,6 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		 */
 		if (!fr_cursor_next_peek(&ctx->cursor)) {
 			ctx->state = READ_STATE_END;
-			encoded = p;
 			break;
 		}
 		
