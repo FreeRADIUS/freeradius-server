@@ -191,8 +191,7 @@ jobs:
 #    > Generate New Token
 #  - Next, add the following settings and scopes:
 #    Note: FreeRADIUS CI Push
-#    repo (checked)
-#    workflow (checked)
+#    public_repo (checked)
 #
 #  This will allow any git operations using this PERSONAL_ACCESS_TOKEN to commit code to any
 #  public repository you have access to.
@@ -223,7 +222,7 @@ jobs:
   merge-preflight:
     needs:
       - ci
-    if: github.event_name == 'push' && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
+    if: ( github.event_name == 'push' ) && ( github.repository_owner != 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
     name: "Merge preflight"
     runs-on: ubuntu-latest
     steps:
@@ -249,7 +248,11 @@ jobs:
         fetch-depth: 0
         lfs: false
         persist-credentials: false
-    - name: "Merge into upstream dev branch"
+    #  Note: This also opportunistically updates the developer's branch with commits from 
+    #  the main repository.
+    #  This update may fail if the developer has pushed additional commits since the 
+    #  workflow started.  This is normal, and we ignore the failure.
+    - name: "Merge into upstream dev branch and update local branch"
       run: |
         BRANCH=${GITHUB_REF#refs/heads/}
         git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
@@ -257,6 +260,7 @@ jobs:
         git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
         git merge "$BRANCH" --ff-only
         git push upstream "upstream-branch:$BRANCH"
+        git push origin "$BRANCH" || true
       env:
         USERNAME: ${{ github.actor }}
         REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
