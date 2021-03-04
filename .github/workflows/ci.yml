@@ -20,7 +20,20 @@ env:
   GH_ACTIONS: 1
 
 jobs:
+  # Prevents actions which have already run in the developer's fork,
+  # running again when the commits are pushed to the main repo.
+  pre-ci:
+    runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@master
+
   ci:
+    needs: pre-ci
+    if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
 
 #
 #  Launching these containers takes the best part of a minute, so we configure
