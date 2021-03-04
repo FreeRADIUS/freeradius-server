@@ -37,7 +37,7 @@ jobs:
     # Test names are used in the branch protection rules in GitHub
     # If you change the names here, or add additional matrix entries, you
     # must also amend the branch protection fules.
-    name: "${{ github.ref }}-${{ matrix.env.NAME }}"
+    name: "v3.0.x-${{ matrix.env.NAME }}"
 
     steps:
 
