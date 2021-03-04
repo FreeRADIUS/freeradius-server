@@ -2186,6 +2186,11 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_pack_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
 
 /** Pack multiple things together
  *
@@ -2196,53 +2201,22 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
-	fr_value_box_t	*vb, *in_vb;
-
-	if (fr_dlist_empty(in)) {
-		REDEBUG("Missing input boxes");
-		return XLAT_ACTION_FAIL;
-	}
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL, false));
+	fr_value_box_t	*vb;
 
 	/*
-	 *	Loop over the input boxes, packing them together.
+	 *	Input boxes are already cast to FR_TYPE_OCTETS and concatenated
+	 *	by the input argument parser - so simply move to the output
 	 */
-	for (in_vb = fr_dlist_head(in);
-	     in_vb;
-	     in_vb = fr_dlist_next(in, in_vb)) {
-		fr_value_box_t *cast, box;
-
-		if (in_vb->type != FR_TYPE_OCTETS) {
-			if (fr_value_box_cast(ctx, &box, FR_TYPE_OCTETS, NULL, in_vb) < 0) {
-			error:
-				talloc_free(vb);
-				RPEDEBUG("Failed packing value");
-				return XLAT_ACTION_FAIL;
-			}
-			cast = &box;
-		} else {
-			cast = in_vb;
-		}
-
-		if (vb->vb_length == 0) {
-			(void) fr_value_box_memdup(vb, vb, NULL, cast->vb_octets, cast->vb_length, cast->tainted);
-
-		} else if (fr_value_box_mem_append(ctx, vb, cast->vb_octets, cast->vb_length, cast->tainted) < 0) {
-			goto error;
-		}
-
-		fr_assert(vb->vb_octets != NULL);
-	}
-
+	vb = fr_dlist_pop_head(in);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
+
 
 /** Encode attributes as a series of string attribute/value pairs
  *
@@ -3439,7 +3413,7 @@ do { \
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	xlat_register(NULL, "module", xlat_func_module, false);
-	xlat_register(NULL, "pack", xlat_func_pack, false);
+	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
 	xlat_register(NULL, "pairs", xlat_func_pairs, false);
 	xlat_register(NULL, "rand", xlat_func_rand, false);
 	xlat_register(NULL, "randstr", xlat_func_randstr, false);
