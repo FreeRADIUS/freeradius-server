@@ -1718,10 +1718,6 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
 	in_head = fr_dlist_head(in);
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	alen = FR_BASE64_DEC_LENGTH(in_head->vb_length);
 
@@ -1738,6 +1734,12 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+
+extern xlat_arg_parser_t xlat_func_base64_decode_arg;
+xlat_arg_parser_t xlat_func_base64_decode_arg = {
+	.required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
+	.func = NULL, .uctx = NULL
+};
 
 
 /** Convert hex string to binary
@@ -3385,7 +3387,7 @@ int xlat_init(void)
 	xlat_func_mono(xlat, &_arg)
 
 	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, xlat_func_base64_encode_arg);
-	xlat_register(NULL, "base64decode", xlat_func_base64_decode, false);
+	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
 	xlat_register(NULL, "bin", xlat_func_bin, false);
 	xlat_register(NULL, "concat", xlat_func_concat, false);
 	xlat_register(NULL, "hex", xlat_func_hex, false);
