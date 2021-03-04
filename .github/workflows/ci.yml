@@ -363,7 +363,6 @@ jobs:
         limit-access-to-actor: true
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
-
 ##########################################################################################
 #                            FREERADIUS CORE DEVELOPERS ONLY
 ##########################################################################################
@@ -371,14 +370,8 @@ jobs:
 #  Direct push access to the main freeradius-server repo has been disabled in an attempt
 #  to keep CI passing reliably.
 #
-#  The code below will automatically push to the main repository if a commit passes CI in
-#  your fork on a branch that exists in the main repository.
-#
-#  The code below will only run if PERSONAL_ACCESS_TOKEN is defined in the repository
-#  secrets for your fork of the freeradius-server repo.
-#
 #  If the above CI checks pass then we auto-merge into the same branch in the
-#  main FR repo (only on push) if the PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
+#  main FR repo (only on push) if a PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
 #  the actor claims to be a FreeRADIUS developer with push access.
 #
 #  Personal access tokens can be generated via the GitHub website:
@@ -390,7 +383,8 @@ jobs:
 #    > Generate New Token
 #  - Next, add the following settings and scopes:
 #    Note: FreeRADIUS CI Push
-#    public_repo (checked)
+#    repo (checked)
+#    workflow (checked)
 #
 #  This will allow any git operations using this PERSONAL_ACCESS_TOKEN to commit code to any
 #  public repository you have access to.
@@ -447,9 +441,9 @@ jobs:
         fetch-depth: 0
         lfs: false
         persist-credentials: false
-    #  Note: This also opportunistically updates the developer's branch with commits from 
+    #  Note: This also opportunistically updates the developer's branch with commits from
     #  the main repository.
-    #  This update may fail if the developer has pushed additional commits since the 
+    #  This update may fail if the developer has pushed additional commits since the
     #  workflow started.  This is normal, and we ignore the failure.
     - name: "Merge into upstream dev branch and update local branch"
       run: |
