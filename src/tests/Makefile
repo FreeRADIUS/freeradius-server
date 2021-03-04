@@ -40,7 +40,7 @@ ifeq "$(EAPOL_TEST)" ""
 EAPOL_TEST := $(shell which eapol_test)
 endif
 
-endif
+endif # check for eapol_test
 
 TEST_PATH := $(top_builddir)/src/tests
 DICT_PATH := $(TEST_PATH)
@@ -154,6 +154,7 @@ radiusd.kill:
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 ifneq "$(EAPOL_TEST)" ""
+EAP_FILES	= eap-md5.conf
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.2
 EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
@@ -166,11 +167,18 @@ $(BUILD_PATH)/tests/eap:
 clean.tests.eap:
 	@rm -rf $(BUILD_PATH)/tests/eap config/tlscache config/eap-test config/eap-test-inner-tunnel
 
+#
+#  MD5 doesn't use MPPE keys
+#
+$(BUILD_PATH)/tests/eap/%.ok: NO_MPPE = $(filter eap-md5,$(basename $(notdir $@)))
+
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
-	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.ok,%,$@).log 2>&1; then \
-		touch $@; \
+	@if ! $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
+		echo "    " FAILED; \
+		exit 1; \
 	fi
+	@touch $@
 
 #
 #  Don't run the full TLS version tests for CI post-install.
@@ -206,11 +214,11 @@ EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok
 endef
 
 $(foreach FILE,$(patsubst %.conf,%,$(EAP_TLS_FILES)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
-endif
+endif # there's no "prefix", so we don't run the full EAP tests
 
-tests.eap: $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES)))) $(EAP_TLS_VERSION_FILES)
+tests.eap: $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES) $(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
 
-endif
+endif # we have eapol_test built
 
 # kill the server (if it's running)
 # start the server
