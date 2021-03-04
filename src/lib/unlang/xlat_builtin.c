@@ -370,6 +370,35 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 	return c;
 }
 
+/** Register the arguments of an xlat
+ *
+ * For xlats that take multiple arguments
+ *
+ * @param[in,out] xlat		to have it's arguments registered
+ * @param[in] args		to be registered
+ */
+void xlat_func_args(xlat_t const *xlat, xlat_arg_parser_t args[])
+{
+	xlat_t	*c = UNCONST(xlat_t *, xlat);
+
+	c->args = args;
+	c->input_type = XLAT_INPUT_ARGS;
+}
+
+/** Register the argument of an xlat
+ *
+ * For xlats that take all their input as a single argument
+ *
+ * @param[in,out] xlat		to have it's arguments registered
+ * @param[in] arg		to be registered
+ */
+void xlat_func_mono(xlat_t const *xlat, xlat_arg_parser_t *arg)
+{
+	xlat_t	*c = UNCONST(xlat_t *, xlat);
+
+	c->args = arg;
+	c->input_type = XLAT_INPUT_MONO;
+}
 
 /** Mark an xlat function as internal
  *

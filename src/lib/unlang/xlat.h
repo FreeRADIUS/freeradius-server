@@ -359,6 +359,10 @@ int		xlat_register_legacy(void *mod_inst, char const *name,
 
 xlat_t const	*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async);
 
+void		xlat_func_args(xlat_t const *xlat, xlat_arg_parser_t args[]) CC_HINT(nonnull);
+
+void		xlat_func_mono(xlat_t const *xlat, xlat_arg_parser_t *arg) CC_HINT(nonnull);
+
 int		xlat_internal(char const *name);
 
 /** Set a callback for global instantiation of xlat functions
