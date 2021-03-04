@@ -1663,10 +1663,6 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
 
 	in_head = fr_dlist_head(in);
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	alen = FR_BASE64_ENC_LENGTH(in_head->vb_length);
 
@@ -1688,6 +1684,12 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+
+extern xlat_arg_parser_t xlat_func_base64_encode_arg;
+xlat_arg_parser_t xlat_func_base64_encode_arg = {
+	.required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
+	.func = NULL, .uctx = NULL
+};
 
 
 /** Decode base64 string
@@ -3340,6 +3342,8 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 int xlat_init(void)
 {
+	xlat_t const	*xlat;
+
 	if (xlat_root) return 0;
 
 	/*
@@ -3377,7 +3381,10 @@ int xlat_init(void)
 	XLAT_REGISTER(xlat);
 
 
-	xlat_register(NULL, "base64", xlat_func_base64_encode, false);
+#define XLAT_REGISTER_MONO(_xlat, _func, _arg) xlat = xlat_register(NULL, _xlat, _func, false); \
+	xlat_func_mono(xlat, &_arg)
+
+	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, xlat_func_base64_encode_arg);
 	xlat_register(NULL, "base64decode", xlat_func_base64_decode, false);
 	xlat_register(NULL, "bin", xlat_func_bin, false);
 	xlat_register(NULL, "concat", xlat_func_concat, false);
