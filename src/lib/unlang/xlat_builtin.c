@@ -2218,6 +2218,11 @@ static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, U
 }
 
 
+static xlat_arg_parser_t const xlat_func_pairs_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Encode attributes as a series of string attribute/value pairs
  *
  * This is intended to serialize one or more attributes as a comma
@@ -2242,16 +2247,6 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	tmpl_cursor_ctx_t	cc;
 	fr_value_box_t		*vb;
 	fr_value_box_t		*in_head = fr_dlist_head(in);
-
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (!in_head) return XLAT_ACTION_DONE;
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	fr_pair_t *vp;
 
@@ -3394,6 +3389,7 @@ do { \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
@@ -3414,7 +3410,6 @@ do { \
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	xlat_register(NULL, "module", xlat_func_module, false);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
-	xlat_register(NULL, "pairs", xlat_func_pairs, false);
 	xlat_register(NULL, "rand", xlat_func_rand, false);
 	xlat_register(NULL, "randstr", xlat_func_randstr, false);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
