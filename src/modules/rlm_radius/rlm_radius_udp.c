@@ -2695,6 +2695,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 		.priority = request->async->priority,
 		.recv_time = request->async->recv_time
 	};
+	fr_pair_list_init(&u->extra);
 
 	r->rcode = RLM_MODULE_FAIL;
 

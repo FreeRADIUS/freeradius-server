@@ -20,8 +20,6 @@ env:
   GH_ACTIONS: 1
 
 jobs:
-  # Prevents actions which have already run in the developer's fork,
-  # running again when the commits are pushed to the main repo.
   pre-ci:
     runs-on: ubuntu-latest
     # Map a step output to a job output
@@ -77,9 +75,9 @@ jobs:
 
     env: ${{ matrix.env }}
 
-    # Test names are used in the branch protection rules in GitHub
-    # If you change the names here, or add additional matrix entries, you
-    # must also amend the branch protection fules.
+    #  If branch protection is in place with status checks enabled, ensure
+    #  names are updated if new matrix entries are added or the name format
+    #  changes.
     name: "master-${{ matrix.env.NAME }}"
 
     steps:
@@ -380,11 +378,11 @@ jobs:
 #                            FREERADIUS CORE DEVELOPERS ONLY
 ##########################################################################################
 #
-#  Direct push access to the main freeradius-server repo has been disabled in an attempt
+#  Direct push access to the main freeradius-server repo will be disabled in an attempt
 #  to keep CI passing reliably.
 #
-#  If the above CI checks pass then we auto-merge into the same branch in the
-#  main FR repo (only on push) if a PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
+#  If the above CI checks pass then we auto-merge into the same upstream branch
+#  (only on push) if a PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
 #  the actor claims to be a FreeRADIUS developer with push access.
 #
 #  Personal access tokens can be generated via the GitHub website:
@@ -419,6 +417,15 @@ jobs:
 #  - Name: PERSONAL_ACCESS_TOKEN
 #    Value: <value you copied>
 #  - Click Add secret
+#
+#  You may also wish to set a different pushurl for your local repository to make integration
+#  more seamless:
+#
+#  git config remote.origin.pushurl git@github.com:<github_user>/freeradius-server.git
+#
+#  git pull will then pull from the upstream repo, whilst git push will be directed to your fork.
+#
+
   #
   #  Needed because secrets are not available for evaluation in if conditions
   #  at the job level, so we evaluate the existence of the PERSONAL_ACCESS_TOKEN secret
@@ -458,15 +465,20 @@ jobs:
     #  the main repository.
     #  This update may fail if the developer has pushed additional commits since the
     #  workflow started.  This is normal, and we ignore the failure.
+    #
+    #  We fixup the origin URL as the default remote fails on push with:
+    #    fatal: could not read Username for 'https://github.com': No such device or address
     - name: "Merge into upstream dev branch and update local branch"
       run: |
         BRANCH=${GITHUB_REF#refs/heads/}
         git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
+        git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
         git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
         git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
-        git merge "$BRANCH" --ff-only
+        git pull --rebase upstream "$BRANCH"
         git push upstream "upstream-branch:$BRANCH"
         git push origin "upstream-branch:$BRANCH" || true
       env:
-        USERNAME: ${{ github.actor }}
+        USERNAME: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.repository }}
         REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
