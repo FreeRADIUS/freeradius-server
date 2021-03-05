@@ -1862,15 +1862,21 @@ finish:
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_concat_args[] = {
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
-/** Concatenate values of given attributes using separator
+/** Concatenate string representation of values of given attributes using separator
  *
- * First char of xlat is the separator, followed by attributes
+ * First argument of is the list of attributes to concatenate, followed
+ * by an optional separator
  *
  * Example:
 @verbatim
-"%{concat:, %{User-Name}%{Calling-Station-Id}" == "bob, aa:bb:cc:dd:ee:ff"
-"%{concat:, %{request[*]}" == "<attr1value>, <attr2value>, <attr3value>, ..."
+"%(concat:%{request[*]} ,)" == "<attr1value>,<attr2value>,<attr3value>,..."
+"%(concat:%{Tmp-String-0[*]} '. ')" == "<str1value>. <str2value>. <str3value>. ..."
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1880,43 +1886,24 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      fr_value_box_list_t *in)
 {
 	fr_value_box_t	*result;
-	fr_value_box_t	*separator;
+	fr_value_box_t	*list = fr_dlist_head(in);
+	fr_value_box_t	*separator = fr_dlist_next(in, list);
 	char		*buff;
 	char const	*sep;
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
+	sep = (separator) ? separator->vb_strvalue : "";
 
-	/*
-	 * Separator is first value box
-	 */
-	separator = fr_dlist_pop_head(in);
-
-	if (!separator) {
-		REDEBUG("Missing separator for concat xlat");
-		return XLAT_ACTION_FAIL;
-	}
-
-	sep = separator->vb_strvalue;
-
-	result = fr_value_box_alloc_null(ctx);
+	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
 	if (!result) {
 	error:
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_aprint(result, in, sep, NULL);
+	buff = fr_value_box_list_aprint(result, &list->vb_group, sep, NULL);
 	if (!buff) goto error;
 
 	fr_value_box_bstrdup_buffer_shallow(NULL, result, NULL, buff, fr_value_box_list_tainted(in));
-
-	/*
-	 *	Return separator to the start of the vb list
-	 */
-	fr_dlist_insert_head(in, separator);
 
 	fr_dcursor_append(out, result);
 
@@ -3358,6 +3345,7 @@ do { \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
 
@@ -3370,7 +3358,6 @@ do { \
 	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, xlat_func_bin_arg);
-	xlat_register(NULL, "concat", xlat_func_concat, false);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, xlat_func_hex_arg);
 	xlat_register(NULL, "hmacmd5", xlat_func_hmac_md5, false);
 	xlat_register(NULL, "hmacsha1", xlat_func_hmac_sha1, false);
