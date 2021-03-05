@@ -1,16 +1,23 @@
 %bcond_with rlm_yubikey
+%bcond_with experimental_modules
+%bcond_with rlm_sigtran
+%bcond_with wbclient
 %bcond_without ldap
-# %%bcond_with experimental_modules
+
+# Many distributions have extremely old versions of OpenSSL
+# if you'd like to build with the FreeRADIUS openssl packages
+# which are installed in /opt/openssl you should pass
+# _with_freeradius_openssl
+
+%{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 
 #%{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
-<<<<<<< HEAD
+%{!?_with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
 %{!?_with_rlm_cache_memcached: %global _with_rlm_cache_memcached --with-rlm_cache_memcached}
-=======
 %{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
->>>>>>> upstream/v3.0.x
 
 # experimental modules
 %bcond_with rlm_idn
