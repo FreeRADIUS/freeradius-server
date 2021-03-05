@@ -280,7 +280,7 @@ struct value_box_s {
  *
  * @{
  */
-#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = _v; _iv; _iv = _iv->next)
+#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = fr_dlist_head(_v); _iv; _iv = fr_dlist_next(_v, _iv))
 
 /** Returns the number of boxes in a list of value boxes
  *
