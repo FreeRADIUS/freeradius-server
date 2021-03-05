@@ -182,6 +182,14 @@ static void rc_get_port(PW_CODE type, uint16_t *port);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
 static void rc_deallocate_id(rc_transaction_t *trans);
 
+/*
+ *	For cbtls_cache_*()
+ */
+rlm_rcode_t process_post_auth(UNUSED int postauth_type, UNUSED REQUEST *request)
+{
+	return RLM_MODULE_FAIL;
+}
+
 
 static void NEVER_RETURNS usage(void)
 {

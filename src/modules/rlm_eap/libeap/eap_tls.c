@@ -764,21 +764,35 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	data to be sent. So this is done always for EAP-TLS but
 	 *	notibly not for PEAP even on resumption.
 	 */
-	if (tls_session->is_init_finished && (tls_session->info.version == TLS1_3_VERSION)) {
-		switch (handler->type) {
-		case PW_EAP_PEAP:
-			break;
+	if ((tls_session->info.version == TLS1_3_VERSION) &&
+	    (tls_session->client_cert_ok || tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
+		fr_tls_server_conf_t *conf;
 
-		default:
-			if (!SSL_session_reused(tls_session->ssl)) break;
-			/* FALL-THROUGH */
+		conf = (fr_tls_server_conf_t *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
+		rad_assert(conf != NULL);
 
-		case PW_EAP_TLS:
-			RDEBUG("TLS send Commitment Message");
-			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
-			tls_handshake_send(request, tls_session);
-			break;
+		if ((handler->type == PW_EAP_TLS) || SSL_session_reused(tls_session->ssl)) {
+			tls_session->authentication_success = true;
+
+			if (conf->tls13_send_zero) {
+				RDEBUG("TLS send Commitment Message");
+				tls_session->record_plus(&tls_session->clean_in, "\0", 1);
+			} else {
+				RDEBUG("TLS sending close_notify");
+				SSL_shutdown(tls_session->ssl);
+			}
 		}
+
+		/*
+		 *	Allow sending of session tickets, but ONLY
+		 *	after we've verified the client certificate,
+		 *	or users password.
+		 */
+		else if (conf->session_cache_enable) {
+			SSL_set_num_tickets(tls_session->ssl, 1);
+		}
+
+		tls_handshake_send(request, tls_session);
 	}
 #endif
 
@@ -1020,7 +1034,19 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 						rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
 						fr_pair_add(&request->packet->vps, fr_pair_copy(request->packet, vp));
 					}
+
+				} else if ((vp->da->vendor == 0) &&
+					   (vp->da->attr == PW_EAP_TYPE)) {
+					/*
+					 *	EAP-Type gets added to
+					 *	the control list, so
+					 *	that we can sanity check it.
+					 */
+					rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+					fr_pair_add(&request->config, fr_pair_copy(request, vp));
+
 				} else {
+
 					rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
 					fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
 				}

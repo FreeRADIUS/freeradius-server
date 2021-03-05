@@ -286,7 +286,9 @@ void eaptls_gen_eap_key(eap_handler_t *handler)
 		SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 		break;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef TLS1_3_VERSION
 	case TLS1_3_VERSION:
+#endif
 	default:
 	{
 		uint8_t const context[] = { type };

@@ -41,11 +41,16 @@ RCSID("$Id$")
 #endif
 
 struct radclient_list {
+	char const	*name;	/* name of this list */
+	char const	*server; /* virtual server associated with this client list */
+
 	/*
 	 *	FIXME: One set of trees for IPv4, and another for IPv6?
 	 */
 	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
 	uint32_t       	min_prefix;
+
+	bool		parsed;
 };
 
 
@@ -145,6 +150,19 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 
 	clients->min_prefix = 128;
 
+	/*
+	 *	Associate the "clients" list with the virtual server.
+	 */
+	if (cs && (cf_data_add(cs, "clients", clients, NULL) < 0)) {
+		ERROR("Failed to associate client list with section %s\n", cf_section_name1(cs));
+		client_list_free(clients);
+		return false;
+	}
+	if (!cs) {
+		rad_assert(root_clients == NULL);
+		root_clients = clients;
+	}
+
 	return clients;
 }
 
@@ -160,6 +178,17 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	char buffer[INET6_ADDRSTRLEN + 3];
 
 	if (!client) return false;
+
+	/*
+	 *	Initialize the global list, if not done already.
+	 */
+	if (!root_clients) {
+		root_clients = client_list_init(NULL);
+		if (!root_clients) {
+			ERROR("Cannot add client - failed creating client list");
+			return false;
+		}
+	}
 
 	/*
 	 *	Hack to fixup wildcard clients
@@ -191,61 +220,81 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_server)) return false;
 
 	/*
-	 *	If "clients" is NULL, it means add to the global list,
-	 *	unless we're trying to add it to a virtual server...
+	 *	If there's no client list, BUT there's a virtual
+	 *	server, try to add the client to the appropriate
+	 *	"clients" section for that virtual server.
 	 */
-	if (!clients) {
-		if (client->server != NULL) {
-			CONF_SECTION *cs;
-			CONF_SECTION *subcs;
+	if (!clients && client->server) {
+		CONF_SECTION *cs;
+		CONF_SECTION *subcs;
+		CONF_PAIR *cp;
+		char const *section_name;
 
-			cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
-			if (!cs) {
-				ERROR("Failed to find virtual server %s", client->server);
-				return false;
-			}
+		cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
+		if (!cs) {
+			ERROR("Cannot add client - virtual server %s does not exist", client->server);
+			return false;
+		}
 
-			/*
-			 *	If this server has no "listen" section, add the clients
-			 *	to the global client list.
-			 */
-			subcs = cf_section_sub_find(cs, "listen");
-			if (!subcs) {
-				DEBUG("No 'listen' section in virtual server %s.  Adding client to global client list",
-				      client->server);
-				goto global_clients;
-			}
+		/*
+		 *	If this server has no "listen" section, add the clients
+		 *	to the global client list.
+		 */
+		subcs = cf_section_sub_find(cs, "listen");
+		if (!subcs) {
+			DEBUG("No 'listen' section in virtual server %s.  Adding client to global client list",
+			      client->server);
+			goto check_list;
+		}
 
-			/*
-			 *	If the client list already exists, use that.
-			 *	Otherwise, create a new client list.
-			 */
-			clients = cf_data_find(cs, "clients");
-			if (!clients) {
-				clients = client_list_init(cs);
-				if (!clients) {
-					ERROR("Out of memory");
-					return false;
-				}
-			}
+		cp = cf_pair_find(subcs, "clients");
+		if (!cp) {
+			DEBUG("No 'clients' configuration item in first listener of virtual server %s.  Adding client to global client list",
+			      client->server);
+			goto check_list;
+		}
 
-			if (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
-				ERROR("Failed to associate clients with virtual server %s", client->server);
-				client_list_free(clients);
-				return false;
-			}
-		} else {
-		global_clients:
-			/*
-			 *	Initialize the global list, if not done already.
-			 */
-			if (!root_clients) {
-				root_clients = client_list_init(NULL);
-				if (!root_clients) return false;
-			}
-			clients = root_clients;
+		/*
+		 *	Duplicate the lookup logic in common_socket_parse()
+		 *
+		 *	Explicit list given: use it.
+		 */
+		section_name = cf_pair_value(cp);
+		if (!section_name) goto check_list;
+
+		subcs = cf_section_sub_find_name2(main_config.config, "clients", section_name);
+		if (!subcs) {
+			subcs = cf_section_find(section_name);
+		}
+		if (!subcs) {
+			cf_log_err_cs(cs,
+				   "Failed to find clients %s {...}",
+				   section_name);
+			return false;
+		}
+
+		DEBUG("Adding client to client list %s", section_name);
+
+		/*
+		 *	If the client list already exists, use that.
+		 *	Otherwise, create a new client list.
+		 *
+		 *	@todo - add the client to _all_ listeners?
+		 */
+		clients = cf_data_find(subcs, "clients");
+		if (clients) goto check_list;
+
+		clients = client_list_init(subcs);
+		if (!clients) {
+			ERROR("Cannot add client - failed creating client list %s for server %s", section_name,
+			      client->server);
+			return false;
 		}
 	}
+
+check_list:
+	if (!clients) clients = root_clients;
+	client->list = clients;
 
 	/*
 	 *	Create a tree for it.
@@ -501,7 +550,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, bool tls_requir
 RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
 #endif
 {
-	bool		global = false, in_server = false;
+	bool		in_server = false;
 	CONF_SECTION	*cs;
 	RADCLIENT	*c = NULL;
 	RADCLIENT_LIST	*clients = NULL;
@@ -511,14 +560,34 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	it.  Otherwise create a new one.
 	 */
 	clients = cf_data_find(section, "clients");
-	if (clients) return clients;
+	if (clients) {
+		/*
+		 *	Modules are initialized before the listeners.
+		 *	Which means that we MIGHT have read clients
+		 *	from SQL before parsing this "clients"
+		 *	section.  So there may already be a clients
+		 *	list.
+		 *
+		 *	But the list isn't _our_ list that we parsed,
+		 *	so we still need to parse the clients here.
+		 */
+		if (clients->parsed) return clients;		
+		clients->parsed = true;
+	} else {
+		clients = client_list_init(section);
+		if (!clients) return NULL;
+	}
 
-	clients = client_list_init(section);
-	if (!clients) return NULL;
+	if (cf_top_section(section) == section) {
+		clients->name = "global";
+		clients->server = NULL;
+	}
 
-	if (cf_top_section(section) == section) global = true;
-
-	if (strcmp("server", cf_section_name1(section)) == 0) in_server = true;
+	if (strcmp("server", cf_section_name1(section)) == 0) {
+		clients->name = NULL;
+		clients->server = cf_section_name2(section);
+		in_server = true;
+	}
 
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs;
@@ -630,22 +699,6 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		}
 
 	}
-
-	/*
-	 *	Associate the clients structure with the section.
-	 */
-	if (cf_data_add(section, "clients", clients, NULL) < 0) {
-		cf_log_err_cs(section, "Failed to associate clients with section %s", cf_section_name1(section));
-		client_list_free(clients);
-		return NULL;
-	}
-
-	/*
-	 *	Replace the global list of clients with the new one.
-	 *	The old one is still referenced from the original
-	 *	configuration, and will be freed when that is freed.
-	 */
-	if (global) root_clients = clients;
 
 	return clients;
 }

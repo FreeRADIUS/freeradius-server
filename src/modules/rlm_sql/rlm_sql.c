@@ -1532,6 +1532,20 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		pair = cf_pair_find_next(section->cs, pair, attr);
 
 		if (!pair) {
+			char const *name;
+
+			/*
+			 *	Hack for RADIUS!
+			 */
+			name = cf_section_name1(section->cs);
+			if ((strcmp(name, "accounting-on") == 0) ||
+			    (strcmp(name, "accounting-off") == 0)) {
+				RDEBUG("Accounting on/off had no updates.  Returning 'ok'");
+				rcode = RLM_MODULE_OK;
+				goto finish;
+			}
+
+
 			RDEBUG("No additional queries configured");
 			rcode = RLM_MODULE_NOOP;
 

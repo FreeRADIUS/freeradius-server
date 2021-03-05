@@ -1,0 +1,266 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+  pull_request:
+
+env:
+  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  CI: 1
+  GH_ACTIONS: 1
+
+jobs:
+  ci:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-18.04
+#          - ubuntu-20.04
+        env:
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc                }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-reproducible   }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-gcc-O2-g3          }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-lean         }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang              }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-reproducible }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-clang-O2-g3        }
+
+    env: ${{ matrix.env }}
+
+    # Test names are used in the branch protection rules in GitHub
+    # If you change the names here, or add additional matrix entries, you
+    # must also amend the branch protection fules.
+    name: "v3.0.x-${{ matrix.env.NAME }}"
+
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Package manager performance improvements
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
+
+    - name: Freshen APT repo metadata
+      run: |
+        sudo apt-get update
+
+    - name: Install common build dependencies
+      run: |
+        sudo apt-get install -y --no-install-recommends \
+        autoconf \
+        build-essential \
+        debhelper \
+        devscripts \
+        dh-make \
+        fakeroot \
+        firebird-dev \
+        freetds-dev \
+        libcap-dev \
+        libcollectdclient-dev \
+        libcurl4-openssl-dev \
+        libgdbm-dev \
+        libhiredis-dev \
+        libidn11-dev \
+        libiodbc2 \
+        libiodbc2-dev \
+        libkqueue-dev \
+        libkrb5-dev \
+        libldap2-dev \
+        libmemcached-dev \
+        libmysqlclient-dev \
+        libpam0g-dev \
+        libpcap-dev \
+        libpcre3-dev \
+        libperl-dev \
+        libpq-dev \
+        libreadline-dev \
+        libruby \
+        libsnmp-dev \
+        libssl-dev \
+        libtalloc-dev \
+        libunbound-dev \
+        libwbclient-dev \
+        libykclient-dev \
+        libyubikey-dev \
+        lintian \
+        pbuilder \
+        python-dev \
+        python3-dev \
+        ruby-dev \
+        quilt
+
+    - name: Install JSON build deps for 18.04
+      if: ${{ matrix.os == 'ubuntu-18.04' }}
+      run: sudo apt-get install -y --no-install-recommends libjson-c3
+
+    - name: Install JSON build deps for 20.04
+      if: ${{ matrix.os == 'ubuntu-20.04' }}
+      run: sudo apt-get install -y --no-install-recommends libjson-c4
+
+    - name: Install LLVM 10 for 18.04
+      if: ${{ matrix.os == 'ubuntu-18.04' && matrix.env.CC == 'clang' }}
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
+        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+
+    - name: Install LLVM 10 for 20.04
+      if: ${{ matrix.os == 'ubuntu-20.04' && matrix.env.CC == 'clang' }}
+      run: |
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
+        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
+        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+
+    - name: Install GCC
+      if: ${{ matrix.env.CC == 'gcc' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends gcc gdb
+
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+
+    - name: Build
+      run: |
+        export PATH=$(echo "$PATH" | sed -e 's#:/home/linuxbrew/[^:]\+##g')
+        CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL --enable-reproducible-builds=${REPRODUCIBLE}
+        make -j `nproc`
+
+    - name: clang scan
+      run: |
+        make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ]
+      if: ${{ matrix.env.CC == 'clang' }}
+
+    - name: "Clang Static Analyzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-scan.tgz
+        path: build/plist/**/*.html
+      if: ${{ matrix.env.CC == 'clang' && failure() }}
+
+    - name: Test
+      run: make ci-test
+
+    #
+    #  If the CI has failed and the branch is ci-debug then start a tmate
+    #  session. SSH rendezvous point is emited continuously in the job output.
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+##########################################################################################
+#                            FREERADIUS CORE DEVELOPERS ONLY
+##########################################################################################
+#
+#  Direct push access to the main freeradius-server repo has been disabled in an attempt
+#  to keep CI passing reliably.
+#
+#  The code below will automatically push to the main repository if a commit passes CI in
+#  your fork on a branch that exists in the main repository.
+#
+#  The code below will only run if PERSONAL_ACCESS_TOKEN is defined in the repository
+#  secrets for your fork of the freeradius-server repo.
+#
+#  If the above CI checks pass then we auto-merge into the same branch in the
+#  main FR repo (only on push) if the PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
+#  the actor claims to be a FreeRADIUS developer with push access.
+#
+#  Personal access tokens can be generated via the GitHub website:
+#
+#  - Click on the Profile menu (top right)
+#    > Settings
+#    > Developer settings
+#    > Personal access tokens
+#    > Generate New Token
+#  - Next, add the following settings and scopes:
+#    Note: FreeRADIUS CI Push
+#    public_repo (checked)
+#
+#  This will allow any git operations using this PERSONAL_ACCESS_TOKEN to commit code to any
+#  public repository you have access to.
+#
+#  As this PERSONAL_ACCESS_TOKEN will only ever be accessible from GitHub actions when they are
+#  running from your fork of the FreeRADIUS repo, this shouldn't be a security issue.
+#
+#  After generating your PERSONAL_ACCESS_TOKEN you will need to add it as a secret to your
+#  repository.
+#
+#  - Copy your new token
+#  - Click on the Profile menu (top right)
+#    > Your repositories
+#  - Search for freeradius-server
+#    > Click freeradius-server
+#  - Click settings in the tabs on the left
+#  - Click secrets in the menu items on the left
+#  - Click New repository secret
+#  - Name: PERSONAL_ACCESS_TOKEN
+#    Value: <value you copied>
+#  - Click Add secret
+  #
+  #  Needed because secrets are not available for evaluation in if conditions
+  #  at the job level, so we evaluate the existence of the PERSONAL_ACCESS_TOKEN secret
+  #  within a step and export the result instead. We also extract the short
+  #  branch name here because it's convenient to do so.
+  #
+  merge-preflight:
+    needs:
+      - ci
+    if: ( github.event_name == 'push' ) && ( github.repository_owner != 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
+    name: "Merge preflight"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Report whether PERSONAL_ACCESS_TOKEN secret exists"
+        id: merge-preflight
+        run: |
+          [ -n "$PERSONAL_ACCESS_TOKEN" ] && echo "::set-output name=PERSONAL_ACCESS_TOKEN_EXISTS::1"
+        env:
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+    outputs:
+      PERSONAL_ACCESS_TOKEN_EXISTS: ${{ steps.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS }}
+
+  merge-upstream:
+    needs:
+      - ci
+      - merge-preflight
+    if: needs.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS == '1'
+    runs-on: ubuntu-latest
+    name: "Merge into upstream"
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        lfs: false
+        persist-credentials: false
+    #  Note: This also opportunistically updates the developer's branch with commits from 
+    #  the main repository.
+    #  This update may fail if the developer has pushed additional commits since the 
+    #  workflow started.  This is normal, and we ignore the failure.
+    - name: "Merge into upstream dev branch and update local branch"
+      run: |
+        BRANCH=${GITHUB_REF#refs/heads/}
+        git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
+        git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
+        git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
+        git merge "$BRANCH" --ff-only
+        git push upstream "upstream-branch:$BRANCH"
+        git push origin "$BRANCH" || true
+      env:
+        USERNAME: ${{ github.actor }}
+        REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}

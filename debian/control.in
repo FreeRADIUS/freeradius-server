@@ -32,7 +32,7 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  samba-dev | samba4-dev
 Section: net
 Priority: optional
-Maintainer: Josip Rodin <joy-packages@debian.org>
+Maintainer: Network RADIUS SARL <info@networkradius.com>
 Uploaders: Stephen Gran <sgran@debian.org>, Mark Hymers <mhy@debian.org>
 Standards-Version: 3.9.8
 Homepage: http://www.freeradius.org/

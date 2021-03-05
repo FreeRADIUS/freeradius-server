@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "06 December 2017" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "16 February 2021" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -562,7 +562,7 @@ as seen in the examples below.
 .IP """strings"""
 .RS
 Double-quoted strings are expanded by inserting the value of any
-attributes (see VARIABLES, below) before being evaluated.  If
+attributes (see ATTRIBUTE REFERENCES, below) before being evaluated.  If
 the result is a number it is evaluated in a numerical context.
 
 String length is limited by line-length, usually about 8000
@@ -606,7 +606,7 @@ start and end of the subject string.
 
 If the comparison operator is "=~", then parentheses in the regular
 expression will define variables containing the matching text, as
-described below in the VARIABLES section.
+described below in the ATTRIBUTE REFERENCES section.
 .SH EXPANSIONS
 Attributes are expanded using the ATTRIBUTE REFERENCE syntax
 described above, and surrounding the reference with "%{...}"
@@ -714,8 +714,8 @@ the expansion of "%{reply:Reply-Message[*]} will yield "Hello\\nbob"
 .SH ATTRIBUTE ASSIGNMENTS
 The attribute lists described above may be edited by listing one or
 more attributes in an "update" section.  Once the attributes have been
-defined, they may be referenced as described above in the VARIABLES
-section.
+defined, they may be referenced as described above in the ATTRIBUTE
+REFERENCES section.
 
 The following syntax defines attributes in an "update" section.  Each
 attribute and value has to be all on one line in the configuration

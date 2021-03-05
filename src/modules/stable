@@ -33,6 +33,7 @@ rlm_soh
 rlm_sql
 rlm_sqlcounter
 rlm_sqlippool
+rlm_sql_map
 rlm_test
 rlm_unix
 rlm_sometimes

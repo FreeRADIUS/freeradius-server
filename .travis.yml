@@ -89,7 +89,7 @@ before_script:
 # Run CLANG analyzer if we're building with CLANG
   - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ]; fi
 script:
-  - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
+  - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make ci-test; fi
 #  - if [ "${DO_BUILD}" = 'no' ]; then make deb; fi
 # Build the doxygen documentation
   - if [ "${DO_BUILD}" = 'no' ]; then cd doc/source; doxygen 3>&1 1>&2 2>&3 | grep -iv '^warning:' | tee doxygen_stderr.log && [ ! -n "$(cat doxygen_stderr.log)" ]; fi

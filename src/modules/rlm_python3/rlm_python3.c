@@ -67,7 +67,7 @@ static CONF_SECTION *current_conf;		//!< Needed to pass parameter to PyInit_radi
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), "${.module}" }, \
+#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), NULL }, \
 	{ "func_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.function_name), NULL },
 
 	A(instantiate)
@@ -844,20 +844,30 @@ static void python_function_destroy(python_func_def_t *def)
 /** Import a user module and load a function from it
  *
  */
-static int python_function_load(python_func_def_t *def)
+static int python_function_load(char const *name, python_func_def_t *def)
 {
-	char const *funcname = "python_function_load";
+	if (!def->module_name && !def->function_name) return 0; /* Just not set, it's fine */
 
-	if (def->module_name == NULL || def->function_name == NULL) return 0;
+	if (!def->module_name) {
+		ERROR("Once you have set the 'func_%s = %s', you should set 'mod_%s = ...' too.",
+					name, def->function_name, name);
+		return -1;
+	}
+
+	if (!def->function_name) {
+		ERROR("Once you have set the 'mod_%s = %s', you should set 'func_%s = ...' too.",
+					name, def->module_name, name);
+		return -1;
+	}
 
 	def->module = PyImport_ImportModule(def->module_name);
 	if (!def->module) {
-		ERROR("%s - Module '%s' not found", funcname, def->module_name);
+		ERROR("%s - Module '%s' not found", __func__, def->module_name);
 
 	error:
 		python_error_log();
 		ERROR("%s - Failed to import python function '%s.%s'",
-		      funcname, def->module_name, def->function_name);
+		      __func__, def->module_name, def->function_name);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
@@ -868,12 +878,12 @@ static int python_function_load(python_func_def_t *def)
 
 	def->function = PyObject_GetAttrString(def->module, def->function_name);
 	if (!def->function) {
-		ERROR("%s - Function '%s.%s' is not found", funcname, def->module_name, def->function_name);
+		ERROR("%s - Function '%s.%s' is not found", __func__, def->module_name, def->function_name);
 		goto error;
 	}
 
 	if (!PyCallable_Check(def->function)) {
-		ERROR("%s - Function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
+		ERROR("%s - Function '%s.%s' is not callable", __func__, def->module_name, def->function_name);
 		goto error;
 	}
 
@@ -1229,7 +1239,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Process the various sections
 	 */
-#define PYTHON_FUNC_LOAD(_x) if (python_function_load(&inst->_x) < 0) goto error
+#define PYTHON_FUNC_LOAD(_x) if (python_function_load(#_x, &inst->_x) < 0) goto error
 	PYTHON_FUNC_LOAD(instantiate);
 	PYTHON_FUNC_LOAD(authenticate);
 	PYTHON_FUNC_LOAD(authorize);
@@ -1248,9 +1258,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PYTHON_FUNC_LOAD(detach);
 
 	/*
-	 *	Call the instantiate function.
+	 *	Call the instantiate function only if the function and module is set.
 	 */
-	if (inst->instantiate.function) {
+	if (inst->instantiate.module_name && inst->instantiate.function_name) {
+
 		code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
 		if (code < 0) {
 		error:

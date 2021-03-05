@@ -26,16 +26,41 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include "milenage.h"
 
 #ifdef HAVE_OPENSSL_HMAC_H
 #include <openssl/hmac.h>
 #endif
+
+#define WIMAX_EPSAKA_RAND_SIZE	16
+#define WIMAX_EPSAKA_KI_SIZE	16
+#define WIMAX_EPSAKA_OPC_SIZE	16
+#define WIMAX_EPSAKA_AMF_SIZE	2
+#define WIMAX_EPSAKA_SQN_SIZE	6
+#define WIMAX_EPSAKA_MAC_A_SIZE	8
+#define WIMAX_EPSAKA_MAC_S_SIZE	8
+#define WIMAX_EPSAKA_XRES_SIZE	8
+#define WIMAX_EPSAKA_CK_SIZE	16
+#define WIMAX_EPSAKA_IK_SIZE	16
+#define WIMAX_EPSAKA_AK_SIZE	6
+#define WIMAX_EPSAKA_AK_RESYNC_SIZE	6
+#define WIMAX_EPSAKA_KK_SIZE	32
+#define WIMAX_EPSAKA_KS_SIZE	14
+#define WIMAX_EPSAKA_PLMN_SIZE	3
+#define WIMAX_EPSAKA_KASME_SIZE	32
+#define WIMAX_EPSAKA_AUTN_SIZE	16
+#define WIMAX_EPSAKA_AUTS_SIZE  14
 
 /*
  *	FIXME: Fix the build system to create definitions from names.
  */
 typedef struct rlm_wimax_t {
 	bool	delete_mppe_keys;
+
+	DICT_ATTR const	*resync_info;
+	DICT_ATTR const	*xres;
+	DICT_ATTR const	*autn;
+	DICT_ATTR const	*kasme;
 } rlm_wimax_t;
 
 /*
@@ -53,14 +78,36 @@ static const CONF_PARSER module_config[] = {
 };
 
 /*
+ *	Print hex values in a readable format for debugging
+ *	Example:
+ *	FOO: 00 11 AA 22 00 FF
+ */
+static void rdebug_hex(REQUEST *request, char const *prefix, uint8_t const *data, int len)
+{
+	int i;
+	char buffer[256];	/* large enough for largest len */
+
+	/*
+	 *	Leave a trailing space, we don't really care about that.
+	 */
+	for (i = 0; i < len; i++) {
+		snprintf(buffer + i * 3, sizeof(buffer) - i * 3, "%02x ", data[i]);
+	}
+
+	RDEBUG("%s %s", prefix, buffer);
+}
+#define RDEBUG_HEX if (rad_debug_lvl) rdebug_hex
+
+/*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
+	rlm_wimax_t *inst = instance;
 
 	/*
 	 *	Fix Calling-Station-Id.  Damn you, WiMAX!
@@ -93,9 +140,123 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		return RLM_MODULE_OK;
 	}
 
+	/*
+	 *	Check for attr WiMAX-Re-synchronization-Info
+	 *	which contains the concatenation of RAND and AUTS
+	 *
+	 *	If it is present then we proceed to verify the SIM and
+	 *	extract the new value of SQN
+	 */
+	VALUE_PAIR *resync_info, *ki, *opc, *sqn, *rand;
+	int m_ret;
+
+	/* Look for the Re-synchronization-Info attribute in the request */
+	resync_info = fr_pair_find_by_da(request->packet->vps, inst->resync_info, TAG_ANY);
+	if (resync_info && (resync_info->vp_length < (WIMAX_EPSAKA_RAND_SIZE + WIMAX_EPSAKA_AUTS_SIZE))) {
+		RWDEBUG("Found request:WiMAX-Re-synchronization-Info with incorrect length: Ignoring it");
+		resync_info = NULL;
+	}
+
+	/*
+	 *	These are the private keys which should be added to the control
+	 *	list after looking them up in a database by IMSI
+	 *
+	 *	We grab them from the control list here
+	 */
+	ki = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_KI, 0, TAG_ANY);
+	if (ki && (ki->vp_length < MILENAGE_CK_SIZE)) {
+		RWDEBUG("Found config:WiMAX-SIM-Ki with incorrect length: Ignoring it");
+		ki = NULL;
+	}
+
+	opc = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_OPC, 0, TAG_ANY);
+	if (opc && (opc->vp_length < MILENAGE_IK_SIZE)) {
+		RWDEBUG("Found config:WiMAX-SIM-OPC with incorrect length: Ignoring it");
+		opc = NULL;
+	}
+
+	/* If we have resync info (RAND and AUTS), Ki and OPc then we can proceed */
+	if (resync_info && ki && opc) {
+		uint64_t sqn_bin;
+		uint8_t rand_bin[WIMAX_EPSAKA_RAND_SIZE];
+		uint8_t auts_bin[WIMAX_EPSAKA_AUTS_SIZE];
+
+		RDEBUG("Found WiMAX-Re-synchronization-Info. Proceeding with SQN resync");
+
+		/* Split Re-synchronization-Info into seperate RAND and AUTS */
+
+		memcpy(rand_bin, &resync_info->vp_octets[0], WIMAX_EPSAKA_RAND_SIZE);
+		memcpy(auts_bin, &resync_info->vp_octets[WIMAX_EPSAKA_RAND_SIZE], WIMAX_EPSAKA_AUTS_SIZE);
+
+		RDEBUG_HEX(request, "RAND  ", rand_bin, WIMAX_EPSAKA_RAND_SIZE);
+		RDEBUG_HEX(request, "AUTS  ", auts_bin, WIMAX_EPSAKA_AUTS_SIZE);
+
+		/*
+		 *	This procedure uses the secret keys Ki and OPc to authenticate
+		 *	the SIM and extract the SQN
+		 */
+		m_ret = milenage_auts(&sqn_bin, opc->vp_octets, ki->vp_octets, rand_bin, auts_bin);
+		
+		/*
+		 *	If the SIM verification fails then we can't go any further as
+		 *	we don't have the keys. And that probably means something bad
+		 *	is happening so we bail out now
+		 */
+		if (m_ret < 0) {
+			RDEBUG("SIM verification failed");
+		  	return RLM_MODULE_REJECT;
+		}
+
+		/*
+		 *	If we got this far it means have got a new SQN and RAND
+		 *	so we store them in:
+		 *	control:WiMAX-SIM-SQN
+		 *	control:WiMAX-SIM-RAND
+		 *
+		 *	From there they can be grabbed by unlang and used later
+		 */
+
+		/* SQN is six bytes so we extract what we need from the 64 bit variable */
+		uint8_t sqn_bin_arr[WIMAX_EPSAKA_SQN_SIZE] = {
+			(sqn_bin & 0x0000FF0000000000ull) >> 40,
+			(sqn_bin & 0x000000FF00000000ull) >> 32,
+			(sqn_bin & 0x00000000FF000000ull) >> 24,
+			(sqn_bin & 0x0000000000FF0000ull) >> 16,
+			(sqn_bin & 0x000000000000FF00ull) >>  8,
+			(sqn_bin & 0x00000000000000FFull) >>  0
+		};
+
+		/* Add SQN to control:WiMAX-SIM-SQN */
+		sqn = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_SQN, 0, TAG_ANY);
+		if (sqn && (sqn->vp_length < WIMAX_EPSAKA_SQN_SIZE)) {
+			RWDEBUG("Found config:WiMAX-SIM-SQN with incorrect length: Ignoring it");
+			sqn = NULL;
+		}
+
+		if (!sqn) {
+			MEM(sqn = pair_make_config("WiMAX-SIM-SQN", NULL, T_OP_SET));
+			fr_pair_value_memcpy(sqn, sqn_bin_arr, WIMAX_EPSAKA_SQN_SIZE);
+		}
+		RDEBUG_HEX(request, "SQN   ", sqn->vp_octets, WIMAX_EPSAKA_SQN_SIZE);
+
+		/* Add RAND to control:WiMAX-SIM-RAND */
+		rand = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_RAND, 0, TAG_ANY);
+		if (rand && (rand->vp_length < WIMAX_EPSAKA_RAND_SIZE)) {
+			RWDEBUG("Found config:WiMAX-SIM-RAND with incorrect length: Ignoring it");
+			rand = NULL;
+		}
+
+		if (!rand) {
+			MEM(rand = pair_make_config("WiMAX-SIM-RAND", NULL, T_OP_SET));
+			fr_pair_value_memcpy(rand, rand_bin, WIMAX_EPSAKA_RAND_SIZE);
+		}
+		RDEBUG_HEX(request, "RAND  ", rand->vp_octets, WIMAX_EPSAKA_RAND_SIZE);
+
+		return RLM_MODULE_UPDATED;
+	}
+
 	return RLM_MODULE_NOOP;
 }
-
 
 /*
  *	Massage the request before recording it or proxying it
@@ -105,21 +266,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request
 	return mod_authorize(instance, request);
 }
 
-/*
- *	Write accounting information to this modules database.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED REQUEST *request)
-{
-	return RLM_MODULE_OK;
-}
 
 /*
- *	Generate the keys after the user has been authenticated.
+ *	This function generates the keys for old style WiMAX (v1 to v2.0)
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, VALUE_PAIR *emsk)
 {
 	rlm_wimax_t *inst = instance;
-	VALUE_PAIR *msk, *emsk, *vp;
+	VALUE_PAIR *vp;
 	VALUE_PAIR *mn_nai, *ip, *fa_rk;
 	HMAC_CTX *hmac;
 	unsigned int rk1_len, rk2_len, rk_len;
@@ -127,13 +281,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	uint8_t usage_data[24];
 	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t mip_rk[2 * EVP_MAX_MD_SIZE];
-
-	msk = fr_pair_find_by_num(request->reply->vps, PW_EAP_MSK, 0, TAG_ANY);
-	emsk = fr_pair_find_by_num(request->reply->vps, PW_EAP_EMSK, 0, TAG_ANY);
-	if (!msk || !emsk) {
-		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
-		return RLM_MODULE_NOOP;
-	}
 
 	/*
 	 *	If we delete the MS-MPPE-*-Key attributes, then add in
@@ -143,10 +290,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		fr_pair_delete_by_num(&request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
 		fr_pair_delete_by_num(&request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
-		vp = pair_make_reply("WiMAX-MSK", NULL, T_OP_EQ);
-		if (vp) {
-			fr_pair_value_memcpy(vp, msk->vp_octets, msk->vp_length);
-		}
+		MEM(vp = pair_make_reply("WiMAX-MSK", NULL, T_OP_EQ));
+		fr_pair_value_memcpy(vp, msk->vp_octets, msk->vp_length);
 	}
 
 	/*
@@ -195,16 +340,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		   (mip_rk_1[2] << 8) | mip_rk_1[3]);
 	if (mip_spi < 256) mip_spi += 256;
 
-	if (rad_debug_lvl) {
-		int len = rk_len;
-		char buffer[512];
-
-		if (len > 128) len = 128; /* buffer size */
-
-		fr_bin2hex(buffer, mip_rk, len);
-		RDEBUG("MIP-RK = 0x%s", buffer);
-		RDEBUG("MIP-SPI = %08x", ntohl(mip_spi));
-	}
+	RDEBUG_HEX(request, "MIP-RK ", mip_rk, rk_len);
+	RDEBUG("MIP-SPI = %08x", ntohl(mip_spi));
 
 	/*
 	 *	FIXME: Perform SPI collision prevention
@@ -455,6 +592,220 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	return RLM_MODULE_UPDATED;
 }
 
+/*
+ *	Generate the EPS-AKA authentication vector
+ *
+ *	These are the keys needed for new style WiMAX (LTE / 3gpp authentication),
+ 	for WiMAX v2.1
+ */
+static rlm_rcode_t aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, VALUE_PAIR *ki, VALUE_PAIR *opc,
+				     VALUE_PAIR *amf, VALUE_PAIR *sqn, VALUE_PAIR *plmn)
+{  
+	size_t i;
+	VALUE_PAIR *rand_previous, *rand, *xres, *autn, *kasme;
+
+	/*
+	 *	For most authentication requests we need to generate a fresh RAND
+	 *
+	 *	The exception is after SQN re-syncronisation - in this case we
+	 *	get RAND in the request, and this module if called in authorize should
+	 *	have put it in control:WiMAX-SIM-RAND so we can grab it from there)
+	 */
+	rand_previous = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_RAND, 0, TAG_ANY);
+	if (rand_previous && (rand_previous->vp_length < WIMAX_EPSAKA_RAND_SIZE)) {
+		RWDEBUG("Found config:WiMAX-SIM-Rand with incorrect size.  Ignoring it.");
+		rand_previous = NULL;
+	}
+
+	MEM(rand = pair_make_reply("WiMAX-E-UTRAN-Vector-RAND", NULL, T_OP_SET));
+	if (!rand_previous) {
+		uint32_t lvalue;
+		uint8_t buffer[WIMAX_EPSAKA_RAND_SIZE];
+
+		for (i = 0; i < (WIMAX_EPSAKA_RAND_SIZE / 4); i++) {
+			lvalue = fr_rand();
+			memcpy(buffer + i * 4, &lvalue, sizeof(lvalue));
+		}
+
+		fr_pair_value_memcpy(rand, buffer, WIMAX_EPSAKA_RAND_SIZE);
+
+	} else {
+		fr_pair_value_memcpy(rand, rand_previous->vp_octets, WIMAX_EPSAKA_RAND_SIZE);
+	}
+
+   	/*
+	 *	Feed AMF, Ki, SQN and RAND into the Milenage algorithm (f1, f2, f3, f4, f5)
+	 *	which returns AUTN, AK, CK, IK, XRES.
+	 */
+	uint8_t xres_bin[WIMAX_EPSAKA_XRES_SIZE];
+	uint8_t ck_bin[WIMAX_EPSAKA_CK_SIZE];
+	uint8_t ik_bin[WIMAX_EPSAKA_IK_SIZE];
+	uint8_t ak_bin[WIMAX_EPSAKA_AK_SIZE];
+	uint8_t autn_bin[WIMAX_EPSAKA_AUTN_SIZE];
+
+	/* But first convert uint8 SQN to uint64 */
+	uint64_t sqn_bin = 0x0000000000000000;
+	for (i = 0; i < sqn->vp_length; ++i) sqn_bin = (sqn_bin << 8) | sqn->vp_octets[i];
+
+	if (!opc || (opc->vp_length < MILENAGE_OPC_SIZE)) {
+		RWDEBUG("Found config:WiMAX-SIM-OPC with incorrect size.  Ignoring it");
+		return RLM_MODULE_NOOP;
+	}
+	if (!amf || (amf->vp_length < MILENAGE_AMF_SIZE)) {
+		RWDEBUG("Found config:WiMAX-SIM-AMF with incorrect size.  Ignoring it");
+		return RLM_MODULE_NOOP;
+	}
+	if (!ki || (ki->vp_length < MILENAGE_KI_SIZE)) {
+		RWDEBUG("Found config:WiMAX-SIM-KI with incorrect size.  Ignoring it");
+		return RLM_MODULE_NOOP;
+	}
+
+	/* Call milenage */
+	milenage_umts_generate(autn_bin, ik_bin, ck_bin, ak_bin, xres_bin, opc->vp_octets,
+			       amf->vp_octets, ki->vp_octets, sqn_bin, rand->vp_octets);
+
+	/*
+	 *	Now we genertate KASME
+	 *
+	 *	Officially described in 33401-g30.doc section A.2
+	 *	But an easier to read explanation can be found at:
+	 *	https://medium.com/uw-ictd/lte-authentication-2d0810a061ec
+	 *
+	*/
+
+	/* k = CK || IK */
+	uint8_t kk_bin[WIMAX_EPSAKA_KK_SIZE];
+	memcpy(kk_bin, ck_bin, sizeof(ck_bin));
+	memcpy(kk_bin + sizeof(ck_bin), ik_bin, sizeof(ik_bin));
+
+	/* Initialize a 14 byte buffer s */
+	uint8_t ks_bin[WIMAX_EPSAKA_KS_SIZE];
+
+	/* Assign the first byte of s as 0x10 */
+	ks_bin[0] = 0x10;
+      
+	/* Copy the 3 bytes of PLMN into s */
+	memcpy(ks_bin + 1, plmn->vp_octets, 3);
+
+	/* Assign 5th and 6th byte as 0x00 and 0x03 */
+	ks_bin[4] = 0x00;
+	ks_bin[5] = 0x03;
+      
+	/* Assign the next 6 bytes as SQN XOR AK */
+	for (i = 0; i < 6; i++) {
+		ks_bin[i+6] = sqn->vp_octets[i] ^ ak_bin[i];
+	}
+      
+	/* Assign the last two bytes as 0x00 and 0x06 */
+	ks_bin[12] = 0x00;
+	ks_bin[13] = 0x06;
+
+	/* Perform an HMAC-SHA256 using Key k from step 1 and s as the message. */
+	uint8_t kasme_bin[WIMAX_EPSAKA_KASME_SIZE];
+	HMAC_CTX *hmac;
+	unsigned int kasme_len = sizeof(kasme_bin);
+
+	hmac = HMAC_CTX_new();
+	HMAC_Init_ex(hmac, kk_bin, sizeof(kk_bin), EVP_sha256(), NULL);
+	HMAC_Update(hmac, ks_bin, sizeof(ks_bin));
+	HMAC_Final(hmac, &kasme_bin[0], &kasme_len);
+	HMAC_CTX_free(hmac);
+
+	/*
+	 *	Add reply attributes XRES, AUTN and KASME (RAND we added earlier)
+	 *
+	 *	Note that we can't call fr_pair_find_by_num(), as
+	 *	these attributes are buried deep inside of the WiMAX
+	 *	hierarchy.
+	 */
+	xres = fr_pair_find_by_da(request->reply->vps, inst->xres, TAG_ANY);
+	if (!xres) {
+		MEM(xres = pair_make_reply("WiMAX-E-UTRAN-Vector-XRES", NULL, T_OP_SET));
+		fr_pair_value_memcpy(xres, xres_bin, WIMAX_EPSAKA_XRES_SIZE);
+	}
+
+	autn = fr_pair_find_by_da(request->reply->vps, inst->autn, TAG_ANY);
+	if (!autn) {
+		MEM(autn = pair_make_reply("WiMAX-E-UTRAN-Vector-AUTN", NULL, T_OP_SET));
+		fr_pair_value_memcpy(autn, autn_bin, WIMAX_EPSAKA_AUTN_SIZE);
+	}
+
+	kasme = fr_pair_find_by_da(request->reply->vps, inst->kasme, TAG_ANY);
+	if (!kasme) {
+		MEM(kasme = pair_make_reply("WiMAX-E-UTRAN-Vector-KASME", NULL, T_OP_SET));
+		fr_pair_value_memcpy(kasme, kasme_bin, WIMAX_EPSAKA_KASME_SIZE);
+	}
+
+	/* Print keys to log for debugging */
+	if (rad_debug_lvl) {
+		RDEBUG("-------- Milenage in --------");
+		RDEBUG_HEX(request, "OPc   ", opc->vp_octets, opc->vp_length);
+		RDEBUG_HEX(request, "Ki    ", ki->vp_octets, ki->vp_length);
+		RDEBUG_HEX(request, "RAND  ", rand->vp_octets, rand->vp_length);
+		RDEBUG_HEX(request, "SQN   ", sqn->vp_octets, sqn->vp_length);
+		RDEBUG_HEX(request, "AMF   ", amf->vp_octets, amf->vp_length);
+		RDEBUG("-------- Milenage out -------");
+		RDEBUG_HEX(request, "XRES  ", xres->vp_octets, xres->vp_length);
+		RDEBUG_HEX(request, "Ck    ", ck_bin, sizeof(ck_bin));
+		RDEBUG_HEX(request, "Ik    ", ik_bin, sizeof(ik_bin));
+		RDEBUG_HEX(request, "Ak    ", ak_bin, sizeof(ak_bin));
+		RDEBUG_HEX(request, "AUTN  ", autn->vp_octets, autn->vp_length);
+		RDEBUG("-----------------------------");
+		RDEBUG_HEX(request, "Kk    ", kk_bin, sizeof(kk_bin));
+		RDEBUG_HEX(request, "Ks    ", ks_bin, sizeof(ks_bin));
+		RDEBUG_HEX(request, "KASME ", kasme->vp_octets, kasme->vp_length);
+	}
+
+	return RLM_MODULE_UPDATED;
+}
+
+/*
+ *	Generate the keys after the user has been authenticated.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+{
+	VALUE_PAIR *msk, *emsk, *ki, *opc, *amf, *sqn, *plmn;
+
+	/*
+	 *	If we have MSK and EMSK then assume we want MIP keys
+	 *	Else if we have the SIM keys then we want the EPS-AKA vector
+	 */
+
+	msk = fr_pair_find_by_num(request->reply->vps, PW_EAP_MSK, 0, TAG_ANY);
+	emsk = fr_pair_find_by_num(request->reply->vps, PW_EAP_EMSK, 0, TAG_ANY);
+
+	if (msk && emsk) {
+		RDEBUG("MSK and EMSK found.  Generating MIP keys");
+		return mip_keys_generate(instance, request, msk, emsk);
+	}
+
+	ki = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_KI, 0, TAG_ANY);
+	opc = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_OPC, 0, TAG_ANY);
+	amf = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_AMF, 0, TAG_ANY);
+	sqn = fr_pair_find_by_num(request->config, PW_WIMAX_SIM_SQN, 0, TAG_ANY);
+	plmn = fr_pair_find_by_num(request->packet->vps, 146, VENDORPEC_WIMAX, TAG_ANY);
+	
+	if (ki && opc && amf && sqn && plmn) {
+		RDEBUG("AKA attributes found.  Generating AKA keys.");
+		return aka_keys_generate(request, instance, ki, opc, amf, sqn, plmn);
+	}
+
+	RDEBUG("Input keys not found.  Cannot create WiMAX keys");
+	return RLM_MODULE_NOOP;
+}
+
+
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+{
+	rlm_wimax_t *inst = instance;
+      
+	inst->resync_info = dict_attrbyname("WiMAX-Re-synchronization-Info");
+	inst->xres = dict_attrbyname("WiMAX-E-UTRAN-Vector-XRES");
+	inst->autn = dict_attrbyname("WiMAX-E-UTRAN-Vector-AUTN");
+	inst->kasme = dict_attrbyname("WiMAX-E-UTRAN-Vector-KASME");
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -472,10 +823,10 @@ module_t rlm_wimax = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_wimax_t),
 	.config		= module_config,
+	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
-		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

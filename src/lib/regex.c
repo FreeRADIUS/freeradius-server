@@ -39,12 +39,19 @@
  */
 static int _regex_free(regex_t *preg)
 {
-	if (preg->compiled) pcre_free(preg->compiled);
+	if (preg->compiled) {
+		pcre_free(preg->compiled);
+		preg->compiled = NULL;
+	}
+
+	if (preg->extra) {
 #ifdef PCRE_CONFIG_JIT
-	if (preg->extra) pcre_free_study(preg->extra);
+		pcre_free_study(preg->extra);
 #else
-	if (preg->extra) pcre_free(preg->extra);
+		pcre_free(preg->extra);
 #endif
+		preg->extra = NULL;
+	}
 
 	return 0;
 }
@@ -54,11 +61,13 @@ static int _regex_free(regex_t *preg)
  *	talloc wrappers. This allows us to use the subcapture copy
  *	functions and just reparent the memory allocated.
  */
-static void *_pcre_malloc(size_t to_alloc) {
+static void *_pcre_malloc(size_t to_alloc)
+{
 	return talloc_array(NULL, uint8_t, to_alloc);
 }
 
-static void _pcre_free(void *to_free) {
+static void _pcre_free(void *to_free)
+{
 	talloc_free(to_free);
 }
 
@@ -87,7 +96,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	int cflags = 0;
 	regex_t *preg;
 
-	static bool setup;
+	static bool setup = false;
 
 	/*
 	 *	Lets us use subcapture copy
@@ -95,6 +104,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	if (!setup) {
 		pcre_malloc = _pcre_malloc;
 		pcre_free = _pcre_free;
+		setup = true;
 	}
 
 	*out = NULL;

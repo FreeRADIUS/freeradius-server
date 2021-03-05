@@ -495,32 +495,25 @@ char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
  * @param out Where to write the string.
  * @param outlen Length of output buffer.
  * @param vp to print.
+ * @param raw_value if true, the raw value is printed and not the enumerated attribute value
  * @return the length of data written to out, or a value >= outlen on truncation.
  */
-size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
+size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp, bool raw_value)
 {
 	char const	*q;
 	size_t		len, freespace = outlen;
+	bool		raw = raw_value || (!vp->da->flags.has_tag && !vp->da->flags.has_value);
 
-	if (!vp->da->flags.has_tag) {
+	if (raw) {
 		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
-			if (vp->da->flags.has_value) break;
-
 			return snprintf(out, freespace, "%u", vp->vp_integer);
 
 		case PW_TYPE_SHORT:
-			if (vp->da->flags.has_value) break;
-
 			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_short);
 
 		case PW_TYPE_BYTE:
-			if (vp->da->flags.has_value) break;
-
 			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_byte);
-
-		case PW_TYPE_SIGNED:
-			return snprintf(out, freespace, "%d", vp->vp_signed);
 
 		default:
 			break;

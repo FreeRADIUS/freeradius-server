@@ -647,6 +647,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 	 */
 	switch (reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
+		tls_session->authentication_success = true;
 		RDEBUG("Got tunneled Access-Accept");
 
 		rcode = RLM_MODULE_OK;

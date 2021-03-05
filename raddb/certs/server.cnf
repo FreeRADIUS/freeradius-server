@@ -44,7 +44,7 @@ distinguished_name	= server
 default_bits		= 2048
 input_password		= whatever
 output_password		= whatever
-req_extensions		= v3_req
+#req_extensions		= v3_req
 
 [server]
 countryName		= FR
@@ -58,6 +58,8 @@ commonName		= "Example Server Certificate"
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer:always
 
 #  This should be a host name of the RADIUS server.
 #  Note that the host name is exchanged in EAP *before*

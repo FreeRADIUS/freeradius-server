@@ -1,0 +1,22 @@
+#
+#	Configuration file for the rlm_attr_filter module.
+#	Please see rlm_attr_filter(5) manpage for more information.
+#
+#	$Id$
+#
+#	This configuration file is used to remove attributes From an
+#	CoA-Request or Disconnect-Request message.  We have specified
+#	a sample list here.  This will have to be modified to add
+#	attributes needed by your local configuration.
+#
+DEFAULT
+	User-Name =* ANY,
+	NAS-IP-Address =* ANY,
+	NAS-IPv6-Address =* ANY,
+	NAS-Port =* ANY,
+	NAS-Identifier =* ANY,
+	NAS-Port-Type =* ANY,
+	Calling-Station-Id =* ANY,
+	State =* ANY,
+	Message-Authenticator =* ANY,
+	Proxy-State =* ANY

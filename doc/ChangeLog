@@ -1,5 +1,7 @@
 FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
+	* Many new "unlang" documentation files.  See "make docsite"
+	  and doc/antora
 	* Update dictionary.bskyb.  Fixes #3339.
 	* Update alcatel.sr. #3495
 	* Abfab-tls updates from Alejandro Perez.
@@ -14,9 +16,6 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  and doc/configuration/dynamic_home_servers.md
 	* Update radmin to show more information about the home servers
 	  using "show home_server list all".
-	* Support TLS 1.3 in TLS-based EAP methods.  This has been tested
-	  to work with hostap and Windows.  Thanks to Jorge Vergara
-	  for assistance.
 	* The default configuration now replies with EAP-Key-Name, if it
 	  is available, and was requested.
 	* Include extensions in generated certificates.
@@ -38,9 +37,32 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* More RFC complaince for various corner cases of DHCP,
 	* Treat DHCP Discover and Request differently for lease allocation times.
 	* Add support for PBKDF2 keys. Fixes #2649
-	* Update dictionary.mikrotik
+	* Update dictionary.mikrotik, dictionary.aruba, dictionary.paloalto, dictionary.juniper.
+	* Update default PostgreSQL schema to use "text" instead of
+	  a fixed-size "varchar".
+	* The default minimum TLS version is not TLS 1.2
+	  Older versions can be allowed by setting tls_min_version
+	* Add "tls_min_version" to ldap module configuration.
+	* Added mods-available/dhcp_sql which is a DHCP-specific instance
+	  of the SQL module.
+	* Add radmin command "show client list verbose", which gives a lot
+	  more information about each client.
+	* Add support for EAPS-AKA authentication to rlm_wimax.
+	  Fixes #3801. Patches from Benjamin Thompson.
+	* Add rlm_rest support for HTTP/2.
+	* Add REST-HTTP-Status-Code attribute holding HTTP status code.
+	* Add option to set http_negotiation in rlm_rest.  Fixes #2821.
+	* Encode / decode NAS-Filter-Rule according to RFC 4849.
+	  Inside of FreeRADIUS, each NAS-Filter-Rule just looks like
+	  a string.  But "on the wire", it follows RFC 4849.
+	  See src/tests/unit/rfc4849.txt
+	* Allow attributes using old names in configuration files, SQL,
+	  or modules to match attributes in the packet which use
+	  new names,
 
 	Bug fixes
+	* Fix long-term double free due to PCRE calling our "free"
+	  function twice.  Fixes #1967, #3188, #3868.
 	* Respect the "log_reject" configuration item in more places.
 	  Fixes #3352.  This lowers the number of "Login incorrect"
 	  messages when "log_reject = no".
@@ -69,6 +91,23 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  This improves performance noticably.
 	* Parse locale-dependent dates.  Fixes #3602.
 	* Strip out "-frecord-gcc-switches" from rlm_python3 configure build. Fixes #3693
+	* Fix radiusd.conf ENV LD_PRELOAD function.
+	* Update the "sql" module so that it uses fewer handles for group selection,
+	  which means that it is less likely to complain that the
+	  connection pool is exhausted.
+	* Update the "sql" module to return "ok" when no rows have been updated
+	  for accounting on/off.
+	* Make the "date" module handle UTC more consistently.
+	* Check for, and complain about, inconsistent use of tls_min_version
+	  versus disable_tlsv1
+	* Fix "read client from SQL" code so that it properly ties clients
+	  to a virtual server.  Also document the behavior.
+	* Update / correct data types in dictionary.wimax
+	* Fix edge case in rlm_rest post decoder which could lead to the value of
+	  a post attribute being lost in the case where the output buffer was completely
+	  full after writing an attribute value, and more attributes needed to be encoded.
+	  Reported by Adrian Smith.
+	* Fix leak with unknown attributes in detail reader.  Fixes #3937.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements

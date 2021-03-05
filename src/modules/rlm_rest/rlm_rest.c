@@ -60,6 +60,8 @@ static const CONF_PARSER section_config[] = {
 	{ "uri", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, uri), ""   },
 	{ "method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, method_str), "GET" },
 	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
+	{ "attr_num", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, attr_num), "no" },
+	{ "raw_value", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, raw_value), "no" },
 	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data), NULL },
 	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
 
@@ -81,6 +83,8 @@ static const CONF_PARSER section_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ "connect_uri", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_t, connect_uri), NULL },
 	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout_tv), "4.0" },
+	{ "http_negotiation", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_t, http_negotiation_str), "default" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -223,6 +227,8 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 		.name = "xlat",
 		.method = HTTP_METHOD_GET,
 		.body = HTTP_BODY_NONE,
+		.attr_num = false,
+		.raw_value = false,
 		.body_str = "application/x-www-form-urlencoded",
 		.require_auth = false,
 		.force_to = HTTP_BODY_PLAIN
@@ -923,6 +929,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*		(parse_sub_section(conf, &inst->checksimul, MOD_SESSION) < 0) || */
 		(parse_sub_section(conf, &inst->post_auth, MOD_POST_AUTH) < 0))
 	{
+		return -1;
+	}
+
+	inst->http_negotiation = fr_str2int(http_negotiation_table, inst->http_negotiation_str, -1);
+	if (inst->http_negotiation == -1) {
+		cf_log_err_cs(conf, "Unsupported HTTP version \"%s\".", inst->http_negotiation_str);
 		return -1;
 	}
 

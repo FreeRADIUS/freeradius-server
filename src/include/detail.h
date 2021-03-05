@@ -42,6 +42,8 @@ typedef struct listen_detail_t {
 	int		delay_time;
 	char const	*filename;
 	char const	*filename_work;
+
+	TALLOC_CTX	*ctx;
 	VALUE_PAIR	*vps;
 	int		work_fd;
 

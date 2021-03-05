@@ -1,11 +1,16 @@
 %bcond_with rlm_yubikey
+%bcond_without ldap
 # %%bcond_with experimental_modules
 
 #%{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
+<<<<<<< HEAD
 %{!?_with_rlm_cache_memcached: %global _with_rlm_cache_memcached --with-rlm_cache_memcached}
+=======
+%{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
+>>>>>>> upstream/v3.0.x
 
 # experimental modules
 %bcond_with rlm_idn
@@ -157,6 +162,7 @@ Requires: perl-Net-IP
 This package provides Perl utilities for managing IP pools stored in
 SQL databases.
 
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
 %package ldap
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -166,6 +172,7 @@ BuildRequires: openldap-ltb
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
+%endif
 
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
@@ -199,10 +206,16 @@ This plugin provides Perl support for the FreeRADIUS server project.
 Summary: Python support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-%{!?el8:Requires: python}
-%{?el8:Requires: python2}
-%{!?el8:BuildRequires: python-devel}
-%{?el8:BuildRequires: python2-devel}
+%{?fedora:Requires: python2}
+%{?fedora:BuildRequires: python2-devel}
+%if 0%{?rhel} <= 7
+Requires: python
+BuildRequires: python-devel
+%endif
+%if 0%{?rhel} >= 8
+Requires: python2
+BuildRequires: python2-devel
+%endif
 
 %description python
 This plugin provides Python support for the FreeRADIUS server project.
@@ -352,8 +365,10 @@ export LDFLAGS="-Wl,--build-id"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
         --with-rlm-ldap-include-dir=/usr/local/openldap/include \
         --with-rlm-ldap-lib-dir=/usr/local/openldap/lib64 \
+%endif
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -391,6 +406,7 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_ruby} \
         %{?_with_rlm_cache_memcached} \
         %{?_without_libwbclient} \
+        %{?_without_libfreeradius_ldap} \
 #        --with-modules="rlm_wimax" \
 
 make %_smp_mflags
@@ -434,6 +450,7 @@ rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %endif
 %if %{?_with_rlm_sql_oracle:0}%{!?_with_rlm_sql_oracle:1}
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
@@ -632,6 +649,7 @@ fi
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 %{_libdir}/freeradius/rlm_sqlcounter.so
 %{_libdir}/freeradius/rlm_sqlippool.so
+%{_libdir}/freeradius/rlm_sql_map.so
 
 %if %{?_with_developer:1}%{!?_with_developer:0}
 %{_libdir}/freeradius/rlm_sqlhpwippool.so
@@ -699,6 +717,7 @@ fi
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/counter
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/main
@@ -709,6 +728,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/counter/mysql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui/mysql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/cui/mysql/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mysql
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mysql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/mysql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/mysql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mysql
@@ -725,6 +746,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/counter/postgresql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui/postgresql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/cui/postgresql/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/postgresql
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/postgresql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/postgresql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/postgresql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/postgresql
@@ -739,6 +762,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/counter/sqlite/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/cui/sqlite
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/cui/sqlite/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/sqlite
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/sqlite/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/sqlite
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/sqlite/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/sqlite
@@ -749,6 +774,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/moonshot-targeted-ids/sqlite/*
 #
 # freetds
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mssql
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/mssql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/mssql
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/mssql/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/mssql
@@ -758,6 +785,8 @@ fi
 #
 # oracle
 %if %{?_with_rlm_sql_oracle:1}%{!?_with_rlm_sql_oracle:0}
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/dhcp/oracle
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/dhcp/oracle/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/sql/ippool/oracle/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/sql/ippool-dhcp/oracle
@@ -768,27 +797,32 @@ fi
 
 %files utils
 %defattr(-,root,root)
-/usr/bin/rlm_ippool_tool
-/usr/bin/smbencrypt
+/usr/bin/dhcpclient
+/usr/bin/map_unit
+/usr/bin/rad_counter
+/usr/bin/radattr
 /usr/bin/radclient
+/usr/bin/radcrypt
 /usr/bin/radeapclient
-/usr/bin/radwho
-/usr/bin/radsniff
 /usr/bin/radlast
 /usr/bin/radtest
-/usr/bin/radzap
+/usr/bin/radsniff
 /usr/bin/radsqlrelay
-/usr/bin/radcrypt
+/usr/bin/radwho
+/usr/bin/radzap
+/usr/bin/rlm_ippool_tool
+/usr/bin/smbencrypt
 # man-pages
 %doc %{_mandir}/man1/dhcpclient.1.gz
-%doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/rad_counter.1.gz
+%doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/radeapclient.1.gz
 %doc %{_mandir}/man1/radlast.1.gz
+%doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz
 %doc %{_mandir}/man1/radzap.1.gz
-%doc %{_mandir}/man8/radsqlrelay.8.gz
+%doc %{_mandir}/man8/rlm_ippool_tool.8.gz
 
 %files perl-util
 %defattr(-,root,root)
@@ -828,9 +862,11 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 
+%if %{!?_without_ldap:1}%{?_without_ldap:0}
 %files ldap
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_ldap.so
+%endif
 
 %files unixODBC
 %defattr(-,root,root)

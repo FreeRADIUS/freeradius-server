@@ -254,6 +254,7 @@ ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer
 
 ATTRIBUTE	REST-HTTP-Header			1160	string
 ATTRIBUTE	REST-HTTP-Body				1161	string
+ATTRIBUTE	REST-HTTP-Status-Code			1162	integer
 
 ATTRIBUTE	Cache-Expires				1170	date
 ATTRIBUTE	Cache-Created				1171	date
@@ -527,6 +528,11 @@ ATTRIBUTE	Tmp-Cast-IPv4Prefix			1870	ipv4prefix
 #	these attributes.
 #
 ATTRIBUTE	WiMAX-MN-NAI				1900	string
+ATTRIBUTE	WiMAX-SIM-Ki				1901	octets
+ATTRIBUTE	WiMAX-SIM-OPc				1902	octets
+ATTRIBUTE	WiMAX-SIM-AMF				1903	octets
+ATTRIBUTE	WiMAX-SIM-SQN				1904	octets
+ATTRIBUTE	WiMAX-SIM-RAND				1905	octets
 
 ATTRIBUTE	TLS-Cert-Serial				1910	string
 ATTRIBUTE	TLS-Cert-Expiration			1911	string
@@ -554,10 +560,19 @@ ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
 ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage-OID 1936	string
 ATTRIBUTE	TLS-Client-Cert-Valid-Since		1937	string
+ATTRIBUTE	TLS-Cache-Method			1938	integer
+VALUE	TLS-Cache-Method		save			1
+VALUE	TLS-Cache-Method		load			2
+VALUE	TLS-Cache-Method		clear			3
+VALUE	TLS-Cache-Method		refresh			4
 
-# 1938 - 1939: reserved for future cert attributes
+
+# 1939: reserved for future cert attributes
 
 # 1940 - 1949: reserved for TLS session caching, mostly in 4.0
+
+ATTRIBUTE	TLS-Session-ID				1940	octets
+ATTRIBUTE	TLS-Session-Data			1942	octets
 
 # Set by EAP-TLS code
 ATTRIBUTE	TLS-OCSP-Cert-Valid			1943	integer

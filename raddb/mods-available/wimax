@@ -1,6 +1,8 @@
 #
 #	The WiMAX module currently takes no configuration.
 #
+#	## Instructions for v1 and v2.0 WiMAX
+#
 #	It should be listed in the "authorize" and "preacct" sections.
 #	This enables the module to fix the horrible binary version
 #	of Calling-Station-Id to the normal format, as specified in
@@ -88,6 +90,57 @@
 #	DHCP-RK = 160-bit random number assigned by the AAA server
 #		  to a specific DHCP server.  vDHCP-RK is the same
 #		  thing.
+#
+#
+#
+#	## Instructions for v2.1 (LTE) WiMAX:
+#
+#	When called from the "authorize" this module will detect the
+#	presence of the following attributes:
+#
+#		request:WiMAX-Re-synchronization-Info
+#		control:WiMAX-SIM-Ki
+#		control:WiMAX-SIM-OPc
+#
+#	If all attributes are present, (i.e. a known SIM is requesting a
+#	resync) then the module will attempt to extract the new SQN and
+#	save it in control:WiMAX-SIM-SQN. It will also save a copy of
+#	RAND from the request in control:WiMAX-SIM-RAND.
+#
+#	The resulting value of SQN can then be saved in a database
+#	e.g. via a call to the sql module using some unlang
+#
+#	When called in the "post_auth" section it looks for:
+#
+#		control:WiMAX-SIM-Ki
+#		control:WiMAX-SIM-OPc
+#		control:WiMAX-SIM-AMF
+#		control:WiMAX-SIM-SQN
+#		request:WiMAX-Visited-PLMN-ID
+#
+#	If all these are present then it will attempt to generate the
+#	keys for EPS AKA.
+#
+#	First it checks for the presence of control:WiMAX-SIM-RAND and
+#	if it is not present it generates a new RAND value which is
+#	stored in reply:WiMAX-E-UTRAN-Vector-RAND. If it is present then
+#	the value is simply copied to the reply attribute.
+#
+#	Then it calls the Milenage algorithm to generate:
+#
+#		reply:WiMAX-E-UTRAN-Vector-XRES
+#		reply:WiMAX-E-UTRAN-Vector-AUTN
+#
+#	And finally generates KASME which is stored in:
+#		reply:WiMAX-E-UTRAN-Vector-KASME
+#
+#
+#	NOTE: It is up to the system administrator to make sure that all
+#	the necessary "control" attributes are populated with the
+#	required values. The IMSI is likely to be found in User-Name in
+#	the request and this can be used as the key to grab the values
+#	from a database.
+#
 #
 wimax {
 	#

@@ -960,8 +960,8 @@ static int send_one_packet(rc_request_t *request)
 			 */
 			fr_packet_list_yank(pl, request->packet);
 
-			REDEBUG("No reply from server for ID %d socket %d",
-				request->packet->id, request->packet->sockfd);
+			RDEBUG("No reply from server for ID %d socket %d",
+			       request->packet->id, request->packet->sockfd);
 			deallocate_id(request);
 
 			/*

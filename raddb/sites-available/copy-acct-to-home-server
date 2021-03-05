@@ -69,6 +69,12 @@ server copy-acct-to-home-server {
 		#  a common naming scheme for detail files, then you can
 		#  have many detail file writers, and only one reader.
 		#
+		#  Do NOT copy the "filename" configuration from the
+		#  "detail" module here.  It won't work.  Instead, use
+		#  file globbing (or wildcards), such as:
+		#
+		#	filename = ${radacctdir}/reader1/detail-*
+		#
 		filename = ${radacctdir}/detail
 
 		#

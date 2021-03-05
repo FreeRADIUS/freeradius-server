@@ -19,14 +19,14 @@ rest {
 #		ca_path = ${certdir}
 
 #		certificate_file        = /path/to/radius.crt
-#		private_key_file	= /path/to/radius.key
-#		private_key_password	= "supersecret"
-#		random_file		= /dev/urandom
+#		private_key_file        = /path/to/radius.key
+#		private_key_password    = "supersecret"
+#		random_file             = /dev/urandom
 
 		#  Server certificate verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
 		#    "yes" (verify the cert was issued by one of the
-		#	   trusted CAs)
+		#          trusted CAs)
 		#
 		#  The default is "yes"
 #		check_cert = yes
@@ -34,7 +34,7 @@ rest {
 		#  Server certificate CN verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
 		#    "yes" (verify the CN in the certificate matches the host
-		#	   in the URI)
+		#          in the URI)
 		#
 		#  The default is "yes"
 #		check_cert_cn = yes
@@ -54,6 +54,12 @@ rest {
 #	connect_timeout = 4.0
 
 	#
+	# Specify HTTP protocol version to use. one of '1.0', '1.1', '2.0', '2.0+auto',
+	# '2.0+tls' or 'default'. (libcurl option CURLOPT_HTTP_VERSION)
+	#
+#	http_negotiation = 1.1
+
+	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#  For example if you list rest in the authorize section of a virtual server,
@@ -65,6 +71,10 @@ rest {
 	#                   'delete' or any custom HTTP method.
 	#    body         - The format of the HTTP body sent to the remote server.
 	#                   May be 'none', 'post' or 'json', defaults to 'none'.
+	#    attr_num     - If true, the attribute number is supplied for each attribute.
+	#                   Defaults to false.
+	#    raw_value    - If true, enumerated attribute values are provided as numeric
+	#                   values. Defaults to false.
 	#    data         - Send custom freeform data in the HTTP body. Content-type
 	#                   may be specified with 'body'. Will be expanded.
 	#                   Values from expansion will not be escaped, this should be
@@ -90,7 +100,6 @@ rest {
 	#  (i.e. deleted) after each call to the rest module, and each
 	#  %{rest:} expansion.  This is so that headers from one REST
 	#  call do not affect headers from a different REST call.
-
 	#
 	#  Body encodings are the same for requests and responses
 	#
@@ -98,26 +107,35 @@ rest {
 	#  [outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>
 	#
 	#  JSON - All attributes and values are escaped according to the JSON specification
+	#  - attribute  Name of the attribute.
+	#  - attr_num   Number of the attribute. Only available if the configuration item
+	#               'attr_num' is enabled.
+	#  - type       Type of the attribute (e.g. "integer", "string", "ipaddr", "octets", ...).
+	#  - value      Attribute value, for enumerated attributes the human readable value is
+	#               provided and not the numeric value (Depends on the 'raw_value' config item).
 	#  {
 	#      "<attribute0>":{
+	#          "attr_num":<attr_num0>,
 	#          "type":"<type0>",
 	#          "value":[<value0>,<value1>,<valueN>]
 	#      },
 	#      "<attribute1>":{
+	#          "attr_num":<attr_num1>,
 	#          "type":"<type1>",
 	#          "value":[...]
 	#      },
 	#      "<attributeN>":{
+	#          "attr_num":<attr_numN>,
 	#          "type":"<typeN>",
 	#          "value":[...]
 	#      },
 	#  }
 	#
 	#  The response format adds three optional fields:
-	#  - do_xlat	If true, any values will be xlat expanded. Defaults to true.
-	#  - is_json	If true, any nested JSON data will be copied to the attribute
+	#  - do_xlat    If true, any values will be xlat expanded. Defaults to true.
+	#  - is_json    If true, any nested JSON data will be copied to the attribute
 	#               in string form. Defaults to true.
-	#  - op	        Controls how the attribute is inserted into the target list.
+	#  - op         Controls how the attribute is inserted into the target list.
 	#               Defaults to ':='. To create multiple attributes from multiple
 	#               values, this should be set to '+=', otherwise only the last
 	#               value will be used, and it will be assigned to a single
@@ -156,6 +174,9 @@ rest {
 	#  2xx    successful    yes           ok/updated
 	#  5xx    server error  no            fail
 	#  xxx    -             no            invalid
+	#
+	#  The status code is held in %{reply:REST-HTTP-Status-Code}.
+	#
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authorize"
 		method = 'get'
@@ -174,11 +195,11 @@ rest {
 	#  2xx    successful    yes           ok/updated
 	#  5xx    server error  no            fail
 	#  xxx    -             no            invalid
-        preacct {
-                uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
-                method = 'post'
-                tls = ${..tls}
-        }
+	preacct {
+		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=preacct"
+		method = 'post'
+		tls = ${..tls}
+	}
 	accounting {
 		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting"
 		method = 'post'

@@ -139,6 +139,9 @@ typedef struct _tls_session_t {
 	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 	bool		connected;			//!< whether the outgoing socket is connected
 	bool		is_init_finished;		//!< whether or not init is finished
+	bool		client_cert_ok;			//!< whether or not we validated the client certificate
+	bool		authentication_success;		//!< whether or not the user was authenticated (cert or PW)
+	bool		quick_session_tickets;		//!< for EAP-TLS.
 
 	/*
 	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this
@@ -162,6 +165,7 @@ typedef struct _tls_session_t {
 
 	char const	*label;
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
+	bool		session_not_resumed;		//!< Whether our session was not resumed.
 } tls_session_t;
 
 /*
@@ -361,6 +365,10 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1;
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
+#ifdef TLS1_3_VERSION
+       bool		tls13_enable_magic;
+       bool		tls13_send_zero;
+#endif
 
 	char const	*tls_min_version;
 	char const	*tls_max_version;
@@ -385,6 +393,7 @@ struct fr_tls_server_conf_t {
 	uint32_t     	session_cache_size;
 	char const	*session_id_name;
 	char const	*session_cache_path;
+	char const	*session_cache_server;
 	fr_hash_table_t *cache_ht;
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 

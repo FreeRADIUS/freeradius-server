@@ -13,15 +13,18 @@ EAP-TTLS.
 server certificate.  Without those extensions Windows clients will
 refuse to authenticate to FreeRADIUS.
 
-  The root CA and the "XP Extensions" file also contain a crlDistributionPoints
-attribute. The latest release of Windows Phone needs this to be present
-for the handset to validate the RADIUS server certificate. The RADIUS
-server must have the URI defined but the CA need not have...however it
-is best practice for a CA to have a revocation URI. Note that whilst
-the Windows Mobile client cannot actually use the CRL when doing 802.1X
-it is recommended that the URI be an actual working URL and contain a
+  The root CA and the "XP Extensions" file also contain a
+crlDistributionPoints attribute. Many systems need this to be present
+in order to validate the RADIUS server certificate. The RADIUS server
+must have the URI defined but the CA need not have...however it is
+best practice for a CA to have a revocation URI. Note that whilst the
+Windows Mobile client cannot actually use the CRL when doing 802.1X it
+is recommended that the URI be an actual working URL and contain a
 revocation format file as there may be other OS behaviour at play and
 future OSes that may do something with that URI.
+
+  For Windows, you will need to import the "p12" and/or the "der"
+format of the certificates.  Linux systems need the "pem" format.
 
   In general, you should use self-signed certificates for 802.1x (EAP)
 authentication.  When you list root CAs from other organisations in
@@ -157,9 +160,11 @@ $ openssl speed rsa2048
 
   to test 2048 bit keys.
 
-  A 1GHz system will likely do 30 calculations/s.  A 2GHz system may
-  do 50 calculations/s, or more.  That number is also the number of
-  authentications/s that can be done for EAP-TLS (or TTLS, or PEAP).
+  The number that is printed is the MAXIMUM number of
+  authentications/s which can be done for EAP-TLS (or TTLS, or PEAP).
+  In practice, you will see results much lower than this number.
+  The reason is that EAP requires many round-trip packets, whereas
+  "openssl speed rsa2028" only does RSA calculations, and nothing else.
 
 
 		COMPATIBILITY

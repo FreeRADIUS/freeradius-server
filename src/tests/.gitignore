@@ -2,9 +2,11 @@
 .foo
 .bar
 .request
-*.ok
 dictionary
 test.conf
 radius.log
 radiusd.pid
 eapol_test
+tlscache
+config/eap-test
+config/eap-test-inner-tunnel

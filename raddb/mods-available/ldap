@@ -588,6 +588,12 @@ ldap {
 		#  on the contents of ldap.conf.
 
 #		require_cert	= 'demand'
+
+		#
+		#  Minimum TLS version to accept. We STRONGLY recommend
+		#  setting this to "1.2"
+		#
+#		tls_min_version = "1.2"
 	}
 
 	#  As of version 3.0, the 'pool' section has replaced the

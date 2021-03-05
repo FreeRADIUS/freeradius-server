@@ -47,7 +47,7 @@ html: $(DOCRST:.rst=.html)
 #
 build/docsite/sitemap.xml: $(ADOC_FILES)
 	@echo ANTORA site.yml
-	${Q}$(ANTORA) site.yml
+	${Q}$(ANTORA) $(ANTORA_FLAGS) site.yml
 
 
 docsite: build/docsite/sitemap.xml

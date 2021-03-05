@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/libradius.h>
 
 #include	<freeradius-devel/md5.h>
+#include	<freeradius-devel/rfc4849.h>
 
 #include	<fcntl.h>
 #include	<ctype.h>
@@ -1552,6 +1553,8 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 
 	VERIFY_VP(vp);
 
+	if (room < 2) return -1;
+
 	if (vp->da->vendor != 0) {
 		fr_strerror_printf("rad_vp2rfc called with VSA");
 		return -1;
@@ -1592,6 +1595,88 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 
 		*pvp = (*pvp)->next;
 		return 18;
+	}
+
+	/*
+	 *	Hacks for NAS-Filter-Rule.  They all get concatenated
+	 *	with 0x00 bytes in between the values.  We rely on the
+	 *	decoder to do the opposite transformation on incoming
+	 *	packets.
+	 */
+	if (vp->da->attr == PW_NAS_FILTER_RULE) {
+		uint8_t const *end = ptr + room;
+		uint8_t *p, *attr = ptr;
+		bool zero = false;
+
+		attr[0] = PW_NAS_FILTER_RULE;
+		attr[1] = 2;
+		p = ptr + 2;
+
+		while (vp && !vp->da->vendor && (vp->da->attr == PW_NAS_FILTER_RULE)) {
+			if ((p + zero + vp->vp_length) > end) {				
+				break;
+			}
+
+			if (zero) {
+				if (attr[1] == 255) {
+					attr = p;
+					if ((attr + 3) >= end) break;
+
+					attr[0] = PW_NAS_FILTER_RULE;
+					attr[1] = 2;
+					p = attr + 2;
+				}
+
+				*(p++) = 0;
+				attr[1]++;
+			}
+
+			/*
+			 *	Check for overflow
+			 */
+			if ((attr[1] + vp->vp_length) < 255) {
+				memcpy(p, vp->vp_strvalue, vp->vp_length);
+				attr[1] += vp->vp_length;
+				p += vp->vp_length;
+
+			} else if (attr + (attr[1] + 2 + vp->vp_length) > end) {
+				break;
+
+			} else if (vp->vp_length > 253) {
+				/*
+				 *	Drop VPs which are too long.
+				 *	We don't (yet) split one VP
+				 *	across multiple attributes.
+				 */
+				vp = vp->next;
+				continue;
+
+			} else {
+				size_t first, second;
+
+				first = 255 - attr[1];
+				second = vp->vp_length - first;
+
+				memcpy(p, vp->vp_strvalue, first);
+				p += first;
+				attr[1] = 255;
+				attr = p;
+
+				attr[0] = PW_NAS_FILTER_RULE;
+				attr[1] = 2;
+				p = attr + 2;
+
+				memcpy(p, vp->vp_strvalue + first, second);
+				attr[1] += second;
+				p += second;
+			}
+
+			vp = vp->next;
+			zero = true;
+		}
+
+		*pvp = vp;
+		return p - ptr;
 	}
 
 	/*
@@ -2896,6 +2981,114 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 }
 
 
+/** Convert one or more NAS-Filter-Rule attributes to one or more
+ * attributes.
+ *
+ */
+static ssize_t data2vp_nas_filter_rule(TALLOC_CTX *ctx,
+				       DICT_ATTR const *da, uint8_t const *start,
+				       size_t const packetlen, VALUE_PAIR **pvp)
+{
+	uint8_t const *p, *attr = start;
+	uint8_t const *end = start + packetlen;
+	uint8_t const *attr_end;
+	uint8_t *q;
+	VALUE_PAIR *vp;
+	uint8_t buffer[253];
+
+	q = buffer;
+
+	/*
+	 *	The packet has already been sanity checked, so we
+	 *	don't care about walking off of the end of it.
+	 */
+	while (attr < end) {
+		if ((attr + 2) > end) {
+			fr_strerror_printf("decode NAS-Filter-Rule: Failure (1) to call rad_packet_ok");
+			return -1;
+		}
+
+		if (attr[1] < 2) {
+			fr_strerror_printf("decode NAS-Filter-Rule: Failure (2) to call rad_packet_ok");
+			return -1;
+		}
+		if (attr[0] != PW_NAS_FILTER_RULE) break;
+
+		/*
+		 *	Now decode one, or part of one rule.
+		 */
+		p = attr + 2;
+		attr_end = attr + attr[1];
+
+		if (attr_end > end) {
+			fr_strerror_printf("decode NAS-Filter-Rule: Failure (3) to call rad_packet_ok");
+			return -1;
+		}
+
+		/*
+		 *	Coalesce data until the zero byte.
+		 */
+		while (p < attr_end) {
+			/*
+			 *	Once we hit the zero byte, create the
+			 *	VP, skip the zero byte, and reset the
+			 *	counters.
+			 */
+			if (*p == 0) {
+				/*
+				 *	Discard consecutive zeroes.
+				 */
+				if (q > buffer) {
+					vp = fr_pair_afrom_da(ctx, da);
+					if (!vp) {
+						fr_strerror_printf("decode NAS-Filter-Rule: Out of memory");
+						return -1;
+					}
+
+					fr_pair_value_bstrncpy(vp, buffer, q - buffer);
+
+					*pvp = vp;
+					pvp = &(vp->next);
+					q = buffer;
+				}
+
+				p++;
+				continue;
+			}
+			*(q++) = *(p++);
+
+			/*
+			 *	Not much reason to have rules which
+			 *	are too long.
+			 */
+			if ((size_t) (q - buffer) > sizeof(buffer)) {
+				fr_strerror_printf("decode NAS-Filter-Rule: decoded attribute is too long");
+				return -1;
+			}
+		}
+
+		/*
+		 *	Done this attribute.  There MAY be things left
+		 *	in the buffer.
+		 */
+		attr = attr_end;
+	}
+
+	if (q == buffer) return attr + attr[2] - start;
+
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) {
+		fr_strerror_printf("decode NAS-Filter-Rule: Out of memory");
+		return -1;
+	}
+				
+	fr_pair_value_bstrncpy(vp, buffer, q - buffer);
+
+	*pvp = vp;
+
+	return p - start;
+}
+
 /** Convert a "concatenated" attribute to one long VP
  *
  */
@@ -3610,19 +3803,12 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			return 0;
 		}
 
-#if !defined(NDEBUG) || defined(__clang_analyzer__)
 		/*
-		 *	Hacks for Coverity.  Editing the dictionary
-		 *	will break assumptions about CUI.  We know
-		 *	this, but Coverity doesn't.
+		 *	Create a zero-length attribute.
 		 */
-		if (da->type != PW_TYPE_OCTETS) return -1;
-#endif
-
-		data = buffer;
-		*buffer = '\0';
-		datalen = 0;
-		goto alloc_cui;	/* skip everything */
+		vp = fr_pair_afrom_da(ctx, da);
+		if (!vp) return -1;
+		goto done;
 	}
 
 	/*
@@ -3927,42 +4113,42 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	default:
 	raw:
 		/*
+		 *	If it's already unknown, don't create a new
+		 *	unknown one.
+		 */
+		if (da->flags.is_unknown) break;
+
+		/*
 		 *	Re-write the attribute to be "raw".  It is
 		 *	therefore of type "octets", and will be
 		 *	handled below.
+		 *
+		 *      We allocate the VP *first*, and then the da
+		 *      from it, so that there are no memory leaks.
 		 */
-		da = dict_unknown_afrom_fields(ctx, da->attr, da->vendor);
+		vp = fr_pair_alloc(ctx);
+		if (!vp) return -1;
+
+		da = dict_unknown_afrom_fields(vp, da->attr, da->vendor);
 		if (!da) {
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
 		}
 		tag = TAG_NONE;
-#ifndef NDEBUG
-		/*
-		 *	Fix for Coverity.
-		 */
-		if (da->type != PW_TYPE_OCTETS) {
-			dict_attr_free(&da);
-			return -1;
-		}
-#endif
-		break;
+		vp->da = da;
+		goto alloc_raw;
 	}
 
 	/*
 	 *	And now that we've verified the basic type
 	 *	information, decode the actual data.
 	 */
- alloc_cui:
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
+alloc_raw:
 	vp->vp_length = datalen;
 	vp->tag = tag;
-
-#ifdef __clang_analyzer__
-	if (!datalen && da->type != PW_TYPE_OCTETS) return -1;
-#endif
 
 	switch (da->type) {
 	case PW_TYPE_STRING:
@@ -4072,6 +4258,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
 		return -1;
 	}
+
+done:
 	vp->type = VT_DATA;
 	*pvp = vp;
 
@@ -4110,6 +4298,11 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	if (da->flags.concat) {
 		VP_TRACE("attr2vp: concat attribute\n");
 		return data2vp_concat(ctx, da, data, length, pvp);
+	}
+
+	if (!da->vendor && (da->attr == PW_NAS_FILTER_RULE)) {
+		VP_TRACE("attr2vp: NAS-Filter-Rule attribute\n");
+		return data2vp_nas_filter_rule(ctx, da, data, length, pvp);
 	}
 
 	/*
@@ -4261,7 +4454,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
-	VALUE_PAIR *head, **tail, *vp;
+	VALUE_PAIR *head, **tail, *vp = NULL;
 
 	/*
 	 *	Extract attribute-value pairs

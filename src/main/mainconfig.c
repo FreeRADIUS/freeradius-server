@@ -941,6 +941,9 @@ do {\
 		for (ci = cf_item_find_next(subcs, NULL);
 		     ci != NULL;
 		     ci = cf_item_find_next(subcs, ci)) {
+
+			if (cf_item_is_data(ci)) continue;
+
 			if (!cf_item_is_pair(ci)) {
 				cf_log_err(ci, "Unexpected item in ENV section");
 				goto failure;

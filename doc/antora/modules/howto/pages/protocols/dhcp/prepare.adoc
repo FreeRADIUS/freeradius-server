@@ -1,0 +1,59 @@
+== Preparation
+
+It is necessary to consider the requirements for the installation in order to
+devise an efficient and manageable set up.
+
+=== Understand the network topology
+
+When multiple networks (VLANs) are in use consideration must be given to how
+the correct "pool" (IP address ranges) from which to allocate addresses is
+identified.
+
+The policy for setting specific DHCP options (e.g. lease time, default gateway,
+time server and vendor-specific parameters) for different groups of hosts,
+based on their network or some device attributes either supplied in the DHCP
+requests or determined by dynamic lookup, should be well defined and
+understood.
+
+Other DHCP servers may implement implicit assumptions about the requirement of
+your network topology and silently define particular behaviours, such as the
+selection of IP address pool for a request based on a relay address. Some of
+these behaviours must be specifed explicitly when using FreeRADIUS.
+
+=== Choose a database backend
+
+FreeRADIUS stores its leases in an SQL database, so one of the key decisions to
+make is which database to use.
+
+FreeRADIUS supports:
+
+  * SQLite
+  * PostgreSQL
+  * MySQL / MariaDB
+  * Microsoft SQL Server
+  * Oracle
+
+In most configurations the SQL database is likely to be the limiting component
+that restricts the IP allocation throughput of the overall system. Each
+database server has its own performance characteristics and unique approach to
+features such as high-availability.
+
+The choice of database should be made carefully based on the performance and
+high-availability requirements of the system, as well as any prior experience.
+
+[TIP]
+====
+SQLite is an in-process database that uses the local file system, is simple to
+configure and is suitable for smaller installations. However, users with larger
+address pools or high availability requirements should choose one of the other
+standalone databases based on criteria such as performance, features,
+familiarity and your need for commercial support.
+====
+
+FreeRADIUS ships with a default database schema and set of queries for each
+supported database.  These are sufficient for most DHCP deployments but can be
+reviewed and modified as required to suit a particular situation, for example
+to customise the IP allocation policy such as by disabling address
+"stickiness".
+
+Now xref:protocols/dhcp/enable.adoc[enable the DHCP service].

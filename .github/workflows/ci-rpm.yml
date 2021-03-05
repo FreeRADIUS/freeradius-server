@@ -1,0 +1,237 @@
+name: CI RPM
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+  pull_request:
+
+jobs:
+  rpm-build:
+
+    strategy:
+      matrix:
+        env:
+          - { NAME: "centos-7",  OS: "centos:7" }
+          - { NAME: "centos-8",  OS: "centos:8" }
+          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: ${{ matrix.env.OS }}
+
+    name: "RPM build"
+
+    steps:
+
+    # Required so that the checkout action uses git protocol rather than the GitHub REST API.
+    # make rpm requires the FR directory to be a git repository.
+    - name: Install recent git for CentOS 7
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        yum install -y https://packages.endpoint.com/rhel/7/os/x86_64/git-core-2.24.1-1.ep7.x86_64.rpm
+
+    - name: Install distro git for CentOS > 7
+      if: ${{ matrix.env.NAME != 'centos-7' }}
+      run: |
+        yum install -y git-core
+
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Extra repos
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
+      run: |
+        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        yum install -y epel-release
+
+    - name: Enable PowerTools on CentOS 8
+      if: ${{ matrix.env.NAME == 'centos-8' }}
+      run: |
+        yum install -y yum-utils
+        yum config-manager --enable PowerTools || :
+        yum config-manager --enable powertools || :
+
+    - name: Install common tools
+      run: |
+        yum install -y \
+          bzip2 \
+          gcc \
+          make \
+          perl \
+          rpm-build \
+          yum-utils
+
+    #
+    #  We just patch the SPEC file for Fedora since we want to use the standard
+    #  make rpm target which wants to build with LDAP.
+    #
+    - name: Disable rlm_ldap on Fedora (no LTB packages)
+      if: ${{ startsWith(matrix.env.NAME, 'fedora-') }}
+      run: |
+        sed -ie 's/%bcond_without ldap/%global _without_ldap: 1/' freeradius/redhat/freeradius.spec
+
+    - name: Install build dependencies
+      run: |
+        yum-builddep -y freeradius/redhat/freeradius.spec
+
+    - name: Build RPMs
+      run: |
+        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        ./configure
+        make rpm
+      working-directory: freeradius
+
+    - name: Collect RPMs
+      run: |
+        mkdir rpms
+        mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
+
+    - name: Build eapol_test
+      run: |
+        yum install -y libnl3-devel which
+        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        make -C src/tests -j `nproc` eapol_test
+        mv scripts/ci/eapol_test/eapol_test ../rpms
+      working-directory: freeradius
+
+    - name: Store RPMs
+      uses: actions/upload-artifact@v2
+      with:
+        name: rpms-${{ matrix.env.NAME }}
+        path: rpms
+
+    #
+    #  If the CI has failed and the branch is ci-debug then start a tmate
+    #  session. SSH rendezvous point is emited continuously in the job output.
+    #
+    - name: "Debug: Package dependancies for tmate"
+      run: |
+        yum install -y xz
+        ln -s /bin/true /bin/apt-get
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        sudo: false
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+
+  rpm-test:
+
+    needs:
+      - rpm-build
+
+    strategy:
+      matrix:
+        env:
+          - { NAME: "centos-7", OS: "centos:7" }
+          - { NAME: "centos-8", OS: "centos:8" }
+          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: ${{ matrix.env.OS }}
+
+    name: "RPM install test"
+
+    steps:
+
+    - name: Extra repos for CentOS
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
+      run: |
+        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        yum install -y epel-release
+
+    - name: Enable PowerTools on CentOS 8
+      if: ${{ matrix.env.NAME == 'centos-8' }}
+      run: |
+        yum install -y yum-utils
+        yum config-manager --enable PowerTools || :
+        yum config-manager --enable powertools || :
+
+    # For pkill
+    - name: Enable procps-ng on Fedora
+      if: ${{ startsWith(matrix.env.NAME, 'fedora-') }}
+      run: |
+        yum install -y procps-ng
+
+    - name: Load RPMs
+      uses: actions/download-artifact@v2
+      with:
+        name: rpms-${{ matrix.env.NAME }}
+
+    - name: Install RPMs
+      run: |
+        yum install -y *.rpm
+
+    - name: Config check
+      run: |
+        radiusd -XC
+
+    #
+    #  We now perform some post-install tests that depend on the availability
+    #  of the source tree
+    #
+    - name: Install pre-built eapol_test
+      run: |
+        yum install -y libnl3 make gdb which
+        mv eapol_test /usr/local/bin
+        chmod +x /usr/local/bin/eapol_test
+
+    - uses: actions/checkout@v2
+      with:
+        path: freeradius
+
+    - name: Run the post-install test target
+      run: |
+        echo "top_builddir := $(pwd)" > Make.inc
+        mkdir -p build/tests/eapol_test
+        echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
+        make -f scripts/ci/package-test.mk package-test
+      working-directory: freeradius
+
+    - name: Upload radius logs on failure
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: radius-logs-${{ matrix.env.NAME }}.tgz
+        path: |
+          /var/log/radius
+          freeradius/build/tests/eapol_test
+
+    #
+    #  See above comments for tmate
+    #
+    - name: "Debug: Package dependancies for tmate"
+      run: |
+        yum install -y xz
+        ln -s /bin/true /bin/apt-get
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        sudo: false
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+

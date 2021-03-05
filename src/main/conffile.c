@@ -3562,6 +3562,10 @@ bool cf_item_is_pair(CONF_ITEM const *item)
 	return item->type == CONF_ITEM_PAIR;
 }
 
+bool cf_item_is_data(CONF_ITEM const *item)
+{
+	return item->type == CONF_ITEM_DATA;
+}
 
 static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 				void *data, void (*data_free)(void *))

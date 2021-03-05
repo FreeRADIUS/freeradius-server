@@ -195,6 +195,8 @@ typedef struct attr_flags {
 
 	unsigned int	compare : 1;				//!< has a paircompare registered
 
+	unsigned int	is_dup : 1;				//!< is a duplicate of another attribute
+
 	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;
@@ -449,7 +451,7 @@ size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char q
 
 char     	*vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
-size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp, bool raw_value);
 size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		vp_print(FILE *, VALUE_PAIR const *);
 void		vp_printlist(FILE *, VALUE_PAIR const *);
@@ -592,6 +594,7 @@ int		rad_vp2attr(RADIUS_PACKET const *packet,
 			    VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 
 /* pair.c */
+VALUE_PAIR	*fr_pair_alloc(TALLOC_CTX *ctx);
 VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da);
 VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		fr_pair_to_unknown(VALUE_PAIR *vp);

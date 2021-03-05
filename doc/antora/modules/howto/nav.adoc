@@ -1,0 +1,13 @@
+* xref:index.adoc[Howto Guides]
+** Protocols
+**** xref:protocols/dhcp/index.adoc[DHCP]
+***** xref:protocols/dhcp/prepare.adoc[Preparation]
+***** xref:protocols/dhcp/enable.adoc[Enabling the DHCP service]
+***** xref:protocols/dhcp/test.adoc[Testing the DHCP service]
+***** xref:protocols/dhcp/policy.adoc[Defining the DHCP policy]
+****** xref:protocols/dhcp/policy_ippool_creation.adoc[IP pool creation]
+****** xref:protocols/dhcp/policy_common_options.adoc[Common options]
+****** xref:protocols/dhcp/policy_network_options.adoc[Network options and IP pool selection]
+****** xref:protocols/dhcp/policy_subnet_options.adoc[Subnet options]
+****** xref:protocols/dhcp/policy_device_options.adoc[Device, class and group options]
+****** xref:protocols/dhcp/policy_ippool_access.adoc[IP pool access restriction]

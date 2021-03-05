@@ -115,6 +115,15 @@ do {\
 	}\
 } while (0)
 
+/*
+ * that macro is originally declared in include/curl/curlver.h
+ * We have to use this as curl uses lots of enums
+ */
+#ifndef CURL_AT_LEAST_VERSION
+#  define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | (z))
+#  define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
+#endif
+
 const unsigned long http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
 	0,			// HTTP_AUTH_UNKNOWN
 	0,			// HTTP_AUTH_NONE
@@ -219,6 +228,40 @@ const FR_NAME_NUMBER http_content_type_table[] = {
 	{ "application/x-yaml",			HTTP_BODY_YAML		},
 
 	{  NULL , -1 }
+};
+
+/** Conversion table for "HTTP" protocol version to use.
+ *
+ * Used by rlm_rest_t for specify the http client version.
+ *
+ * Values we expect to use in curl_easy_setopt()
+ *
+ * @see fr_str2int
+ * @see fr_int2str
+ */
+const FR_NAME_NUMBER http_negotiation_table[] = {
+
+	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
+	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
+/*
+ *	These are all enum values
+ */
+#if CURL_AT_LEAST_VERSION(7,49,0)
+	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
+#endif
+#if CURL_AT_LEAST_VERSION(7,33,0)
+	{ "2.0+auto",	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
+								///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
+								///< server. (Added in 7.33.0)
+#endif
+#if CURL_AT_LEAST_VERSION(7,47,0)
+	{ "2.0+tls",	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
+								///< libcurl will fall back to HTTP 1.1 if HTTP 2
+								///< can't be negotiated with the HTTPS server.
+								///< For clear text HTTP servers, libcurl will use 1.1.
+#endif
+	{ "default", 	CURL_HTTP_VERSION_NONE }		//!< We don't care about what version the library uses.
+								///< libcurl will use whatever it thinks fit.
 };
 
 /*
@@ -461,10 +504,12 @@ int mod_conn_alive(void *instance, void *handle)
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
+ * @param[in] section configuration data.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *userdata)
+static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *userdata,
+		UNUSED rlm_rest_section_t *section)
 {
 	rlm_rest_request_t *ctx = userdata;
 	rest_custom_data_t *data = ctx->encoder;
@@ -507,10 +552,12 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
+ * @param[in] section configuration data.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata)
+static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata,
+		UNUSED rlm_rest_section_t *section)
 {
 	rlm_rest_request_t	*ctx = userdata;
 	REQUEST			*request = ctx->request; /* Used by RDEBUG */
@@ -603,19 +650,30 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		}
 
 		/*
-		 *  there are more attributes, insert a separator
+		 *  there are no more attributes, stop
 		 */
-		if (fr_cursor_next(&ctx->cursor)) {
-			if (freespace < 1) goto no_space;
-			*p++ = '&';
-			freespace--;
+		if (!fr_cursor_next_peek(&ctx->cursor)) {
+			ctx->state = READ_STATE_END;
+			break;
 		}
+		
+		if (freespace < 1) goto no_space;
+		*p++ = '&';
+		freespace--;
+		/*
+		 *	Only advance once we have a separator
+		 *	really we should have an additional
+		 *	state for encoding the separator,
+		 *	but, we don't, and v3.0.x is stable
+		 *	so let's do the easiest fix with the
+		 *	lowest risk.
+		 */
+		fr_cursor_next(&ctx->cursor);
 
 		/*
 		 *  We wrote one full attribute value pair, record progress.
 		 */
 		encoded = p;
-
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
@@ -685,10 +743,12 @@ no_space:
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
+ * @param[in] section configuration data.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
+static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata,
+		rlm_rest_section_t *section)
 {
 	rlm_rest_request_t	*ctx = userdata;
 	REQUEST			*request = ctx->request; /* Used by RDEBUG */
@@ -747,7 +807,13 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
-			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
+			if (section->attr_num) {
+				len = snprintf(p, freespace + 1, "\"%s\":{\"attr_num\":%d,\"type\":\"%s\",\"value\":[",
+						vp->da->name, vp->da->attr, type);
+			} else {
+				len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
+			}
+
 			if (len >= freespace) goto no_space;
 			p += len;
 			freespace -= len;
@@ -783,7 +849,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				 *  write that out.
 				 */
 				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
-				len = vp_prints_value_json(p, attr_space + 1, vp);
+				len = vp_prints_value_json(p, attr_space + 1, vp, section->raw_value);
 				if (is_truncated(len, attr_space + 1)) goto no_space;
 
 				/*
@@ -893,10 +959,12 @@ no_space:
  * @param[in] limit Maximum buffer size to alloc.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls to
  *	stream function.
+ * @param[in] section configuration data.
  * @return the length of the data written to the buffer (excluding NULL) or -1
  *	if alloc >= limit.
  */
-static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata)
+static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata,
+		rlm_rest_section_t *section)
 {
 	char *previous = NULL;
 	char *current = NULL;
@@ -913,7 +981,7 @@ static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size
 			free(previous);
 		}
 
-		len = func(current + used, alloc - used, 1, userdata);
+		len = func(current + used, alloc - used, 1, userdata, section);
 		used += len;
 		if (!len) {
 			*buffer = current;
@@ -1575,8 +1643,9 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 *  HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
 		 *
 		 *  "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
+		 *  "HTTP/2 " (8) + "100 " (4) + "\r\n" (2) = 12
 		 */
-		if (s < 14) {
+		if (s < 12) {
 			REDEBUG("Malformed HTTP header: Status line too short");
 			goto malformed;
 		}
@@ -1614,8 +1683,10 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		p++;
 		s--;
 
-		/*  Char after reason code must be a space, or \r */
-		if (!((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
+		/*
+		 *  "xxx( |\r)" status code and terminator.
+		 */
+		if (!isdigit(p[0]) || !isdigit(p[1]) || !isdigit(p[2]) || !((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
 
 		ctx->code = atoi(p);
 
@@ -1924,7 +1995,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
-	len = rest_request_encode_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->request);
+	len = rest_request_encode_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->request, section);
 	if (len <= 0) {
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
@@ -1995,6 +2066,16 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	SET_OPTION(CURLOPT_URL, uri);
 	SET_OPTION(CURLOPT_NOSIGNAL, 1);
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
+
+	/*
+	 *	As described in https://curl.se/libcurl/c/CURLOPT_HTTP_VERSION.html,
+	 *	The libcurl decides which http version should be
+	 *  used by default accoring by library version.
+	 */
+	if (instance->http_negotiation != CURL_HTTP_VERSION_NONE) {
+		RDEBUG3("Set HTTP negotiation for %s", instance->http_negotiation_str);
+		SET_OPTION(CURLOPT_HTTP_VERSION, instance->http_negotiation);
+	}
 
 	content_type = fr_int2str(http_content_type_table, type, section->body_str);
 	snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
@@ -2322,6 +2403,7 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->handle;
 	CURLcode		ret;
+	VALUE_PAIR 		*vp;
 
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
@@ -2329,6 +2411,14 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
 
 		return -1;
 	}
+
+	/*
+	 *  Save the HTTP return status code.
+	 */
+	vp = pair_make_reply("REST-HTTP-Status-Code", NULL, T_OP_SET);
+	vp->vp_integer = rest_get_handle_code(handle);
+
+	RDEBUG2("Adding reply:REST-HTTP-Status-Code += \"%d\"", vp->vp_integer);
 
 	return 0;
 }

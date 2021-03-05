@@ -31,6 +31,15 @@ detail {
 	#  be ONE "listen" section reading detail files from a
 	#  particular directory.
 	#
+	#  The configuration below puts the detail files into separate
+	#  directories for each client.  If you are reading the detail
+	#  files via the "listen" section, just use one directory.
+	#
+	#  e.g. filename = ${radacctdir}/reader1/detail-%Y%m%d
+	#
+	#  AND use a separate directory (reader2, reader3, etc.) for each
+	#  reader.
+	#
 	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/detail-%Y%m%d
 
 	#
