@@ -544,6 +544,11 @@ done:
 DIAG_OFF(format-nonliteral)
 /** Copy a time string (local timezone) to an sbuff
  *
+ * @note This function will attempt to extend the sbuff by double the length of
+ *	 the fmt string.  It is recommended to either pre-extend the sbuff before
+ *	 calling this function, or avoid using format specifiers that expand to
+ *	 character strings longer than 4 bytes.
+ *
  * @param[in] out	Where to write the formatted time string.
  * @param[in] time	Internal server time to convert to wallclock
  *			time and copy out as formatted string.
@@ -560,13 +565,18 @@ size_t fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 
 	localtime_r(&utime, &tm);
 
-	len = strftime(fr_sbuff_current(out), fr_sbuff_remaining(out), fmt, &tm);
+	len = strftime(fr_sbuff_current(out), fr_sbuff_extend_lowat(NULL, out, strlen(fmt) * 2), fmt, &tm);
 	if (len == 0) return 0;
 
 	return fr_sbuff_advance(out, len);
 }
 
 /** Copy a time string (UTC) to an sbuff
+ *
+ * @note This function will attempt to extend the sbuff by double the length of
+ *	 the fmt string.  It is recommended to either pre-extend the sbuff before
+ *	 calling this function, or avoid using format specifiers that expand to
+ *	 character strings longer than 4 bytes.
  *
  * @param[in] out	Where to write the formatted time string.
  * @param[in] time	Internal server time to convert to wallclock
@@ -584,7 +594,7 @@ size_t fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 
 	gmtime_r(&utime, &tm);
 
-	len = strftime(fr_sbuff_current(out), fr_sbuff_remaining(out), fmt, &tm);
+	len = strftime(fr_sbuff_current(out), fr_sbuff_extend_lowat(NULL, out, strlen(fmt) * 2), fmt, &tm);
 	if (len == 0) return 0;
 
 	return fr_sbuff_advance(out, len);
