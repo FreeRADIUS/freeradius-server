@@ -49,8 +49,6 @@ RCSID("$Id$")
 #  define RTLD_LOCAL (0)
 #endif
 
-
-
 /** Symbol dependent initialisation callback
  *
  * Call this function when the dl is loaded for the first time.
@@ -375,10 +373,12 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 	n = talloc(dl_loader, dl_symbol_free_t);
 	if (!n) return -1;
 
-	n->priority = priority;
-	n->symbol = symbol;
-	n->func = func;
-	n->ctx = ctx;
+	*n = (dl_symbol_free_t){
+		.priority = priority,
+		.symbol = symbol,
+		.func = func,
+		.ctx = ctx
+	};
 
 	while ((p = fr_dlist_next(&dl_loader->sym_free, p)) && (p->priority >= priority));
 	if (p) {
