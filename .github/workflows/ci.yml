@@ -471,6 +471,8 @@ jobs:
     - name: "Merge into upstream dev branch and update local branch"
       run: |
         BRANCH=${GITHUB_REF#refs/heads/}
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
         git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
         git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
