@@ -43,4 +43,7 @@ sql_map {
 #		reply:Tunnel-Medium-Type	:= 5
 #		reply:Tunnel-Private-Group-ID	:= 6
 	}
+
+	# If the 'query' results in multiple rows, it creates the <radius attr>[*] array entry.
+#	multiple_rows = yes
 }
