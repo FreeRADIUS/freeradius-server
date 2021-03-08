@@ -290,6 +290,9 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
  */
 static int _request_free(request_t *request)
 {
+	fr_assert(request->time_order_id <= 0);
+	fr_assert(request->runnable_id <= 0);
+
 	/*
 	 *	Reinsert into the free list if it's not already
 	 *	in the free list.
