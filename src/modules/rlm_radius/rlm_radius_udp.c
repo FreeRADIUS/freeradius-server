@@ -485,13 +485,13 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 
 	switch (fr_retry_next(&u->retry, now)) {
 	case FR_RETRY_MRD:
-		DEBUG("%s - Reached maximum_retransmit_duration, failing status checks",
-		      h->module_name);
+		DEBUG("%s - Reached maximum_retransmit_duration (%pVs > %pVs), failing status checks",
+		      h->module_name, fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
 		goto fail;
 
 	case FR_RETRY_MRC:
-		DEBUG("%s - Reached maximum_retransmit_count, failing status checks",
-		      h->module_name);
+		DEBUG("%s - Reached maximum_retransmit_count (%u of %u), failing status checks",
+		      h->module_name, u->retry.count, u->retry.config->mrc);
 	fail:
 		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 		return;
@@ -1680,7 +1680,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	udp_handle_t		*h;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
-	request_t			*request = treq->request;
+	request_t		*request = treq->request;
 	fr_trunk_connection_t	*tconn = treq->tconn;
 
 	fr_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
@@ -1726,11 +1726,13 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 
 	case FR_RETRY_MRD:
-		RDEBUG("Reached maximum_retransmit_duration, failing request");
+		DEBUG("%s - Reached maximum_retransmit_duration (%pVs > %pVs), failing status checks",
+		      h->module_name, fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
-		RDEBUG("Reached maximum_retransmit_count, failing request");
+		RDEBUG("Reached maximum_retransmit_count (%u of %u), failing request",
+		       u->retry.count, u->retry.config->mrc);
 		break;
 	}
 

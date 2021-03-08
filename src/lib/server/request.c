@@ -290,8 +290,16 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
  */
 static int _request_free(request_t *request)
 {
-	fr_assert(!fr_heap_entry_inserted(request->time_order_id));
-	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
+	fr_assert_msg(!fr_heap_entry_inserted(request->time_order_id),
+		      "alloced %s:%i: %s still in the time_order heap ID %i",
+		      request->alloc_file,
+		      request->alloc_line,
+		      request->name ? request->name : "(null)", request->time_order_id);
+	fr_assert_msg(!fr_heap_entry_inserted(request->runnable_id),
+		      "alloced %s:%i: %s still in the runnable heap ID %i",
+		      request->alloc_file,
+		      request->alloc_line,
+		      request->name ? request->name : "(null)", request->runnable_id);
 
 	/*
 	 *	Reinsert into the free list if it's not already
@@ -324,6 +332,15 @@ static int _request_free(request_t *request)
 
 		memset(request, 0, sizeof(*request));
 		request->component = "free_list";
+#ifndef NDEBUG
+		/*
+		 *	So we don't trip heap asserts
+		 *	if the request is freed out of
+		 *	the free list.
+		 */
+		request->time_order_id = -1;
+		request->runnable_id = -1;
+#endif
 
 		/*
 		 *	Reinsert into the free list
