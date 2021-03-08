@@ -495,11 +495,11 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	 *	and insert it back into a slab allocator.
 	 */
 finished:
-	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
-	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
+	if (fr_heap_entry_inserted(request->time_order_id)) (void) fr_heap_extract(worker->time_order, request);
+	if (fr_heap_entry_inserted(request->runnable_id)) (void) fr_heap_extract(worker->runnable, request);
 
-	fr_assert(request->time_order_id < 0);
-	fr_assert(request->runnable_id < 0);
+	fr_assert(!fr_heap_entry_inserted(request->time_order_id));
+	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 
 #ifndef NDEBUG
 	request->async->el = NULL;
@@ -685,7 +685,7 @@ static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *r
 	 *	strict time priority.  Once they are in the list, they
 	 *	are only removed when the request is done / free'd.
 	 */
-	fr_assert(request->time_order_id < 0);
+	fr_assert(!fr_heap_entry_inserted(request->time_order_id));
 	(void) fr_heap_insert(worker->time_order, request);
 
 	/*

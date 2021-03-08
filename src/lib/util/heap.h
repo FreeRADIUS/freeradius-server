@@ -82,6 +82,14 @@ typedef struct fr_heap_s fr_heap_t;
 
 fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
 
+/** Check if an entry is inserted into a heap
+ *
+ */
+static inline bool fr_heap_entry_inserted(int32_t heap_id)
+{
+	return (heap_id >= 0);
+}
+
 int		fr_heap_insert(fr_heap_t *hp, void *data) CC_HINT(nonnull);
 int		fr_heap_extract(fr_heap_t *hp, void *data) CC_HINT(nonnull(1));
 void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
