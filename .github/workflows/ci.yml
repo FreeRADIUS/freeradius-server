@@ -477,7 +477,7 @@ jobs:
         git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
         git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
         git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
-        git pull --rebase upstream "$BRANCH"
+        git merge "$BRANCH" --ff-only
         git push upstream "upstream-branch:$BRANCH"
         git push origin "upstream-branch:$BRANCH" || true
       env:
