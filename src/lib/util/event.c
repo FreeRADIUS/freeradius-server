@@ -423,7 +423,7 @@ static int8_t fr_event_pid_cmp(void const *a, void const *b)
 {
 	fr_event_pid_t const	*ev_a = a, *ev_b = b;
 
-	return STABLE_COMPARE(ev_a->pid, ev_b->pid);
+	return CMP(ev_a->pid, ev_b->pid);
 }
 #endif
 

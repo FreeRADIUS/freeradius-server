@@ -75,17 +75,24 @@ extern "C" {
  */
 #define L(_str)		{ _str, sizeof(_str) - 1 }
 
-/** Comparison macro for integers
- *
+/** Evaluates to +1 for a > b, and -1 for a < b
  */
-#define CMP(_a, _b)	(((_a) > (_b)) - ((_a) < (_b)))
+#define CMP_PREFER_SMALLER(_a,_b)	(((_a) > (_b)) - ((_a) < (_b)))
+
+/** Evaluates to -1 for a > b, and +1 for a < b
+ */
+#define CMP_PREFER_LARGER(_a,_b)	(((_a) < (_b)) - ((_a) > (_b)))
+
+/** Same as CMP_PREFER_SMALLER use when you don't really care about ordering, you just want _an_ ordering.
+ */
+#define CMP(_a, _b)			CMP_PREFER_SMALLER(_a, _b)
 
 /** Remove const qualification from a pointer
  *
  * @param[in] _type	The non-const version of the type.
  * @param[in] _ptr	to de-const.
  */
-#define UNCONST(_type, _ptr)	((_type)((uintptr_t)(_ptr)))
+#define UNCONST(_type, _ptr)		((_type)((uintptr_t)(_ptr)))
 
 /*
  *	HEX concatenation macros

@@ -36,19 +36,6 @@ extern "C" {
 
 typedef int32_t fr_heap_iter_t;
 
-#ifndef STABLE_COMPARE
-/*
- *	The first comparison returns +1 for a>b, and -1 for a<b
- *	The second comparison returns -1 for a>b, and +1 for a<b
- *
- *	Use STABLE_COMPARE when you don't really care about ordering,
- *	you just want _an_ ordering.
- */
-#define COMPARE_PREFER_SMALLER(_a,_b) (((_a) > (_b)) - ((_a) < (_b)))
-#define COMPARE_PREFER_LARGER(_a,_b) (((_a) < (_b)) - ((_a) > (_b)))
-#define STABLE_COMPARE COMPARE_PREFER_SMALLER
-#endif
-
 /*
  *  Return negative numbers to put 'a' at the top of the heap.
  *  Return positive numbers to put 'b' at the top of the heap.

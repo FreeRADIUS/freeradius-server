@@ -61,19 +61,6 @@ struct fr_rb_node_s {
 typedef int (*fr_rb_cmp_t)(void const *one, void const *two);
 typedef void (*fr_rb_free_t)(void *data);
 
-#ifndef STABLE_COMPARE
-/*
- *	The first comparison returns +1 for a>b, and -1 for a<b
- *	The second comparison returns -1 for a>b, and +1 for a<b
- *
- *	Use STABLE_COMPARE when you don't really care about ordering,
- *	you just want _an_ ordering.
- */
-#define COMPARE_PREFER_SMALLER(_a,_b) (((_a) > (_b)) - ((_a) < (_b)))
-#define COMPARE_PREFER_LARGER(_a,_b) (((_a) < (_b)) - ((_a) > (_b)))
-#define STABLE_COMPARE COMPARE_PREFER_SMALLER
-#endif
-
 /** Creates a red black that verifies elements are of a specific talloc type
  *
  * @param[in] _ctx		to tie tree lifetime to.

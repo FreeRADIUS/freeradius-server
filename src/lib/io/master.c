@@ -182,7 +182,7 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 	 *	priority elements.  So if "a" is larger than "b", we
 	 *	wish to prefer "a".
 	 */
-	ret = COMPARE_PREFER_LARGER(a->priority, b->priority);
+	ret = CMP_PREFER_LARGER(a->priority, b->priority);
 	if (ret != 0) return ret;
 
 	/*
@@ -194,7 +194,7 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 	 *	packets go in.  Since we'll never have two identical
 	 *	"recv_time" values, the code should never get here.
 	 */
-	return COMPARE_PREFER_SMALLER(a->recv_time, b->recv_time);
+	return CMP_PREFER_SMALLER(a->recv_time, b->recv_time);
 }
 
 /*
@@ -225,13 +225,13 @@ static int8_t address_cmp(void const *one, void const *two)
 	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
 	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);;
 
-	ret = STABLE_COMPARE(a->socket.inet.src_port, b->socket.inet.src_port);
+	ret = CMP(a->socket.inet.src_port, b->socket.inet.src_port);
 	if (ret != 0) return ret;
 
-	ret = STABLE_COMPARE(a->socket.inet.dst_port, b->socket.inet.dst_port);
+	ret = CMP(a->socket.inet.dst_port, b->socket.inet.dst_port);
 	if (ret != 0) return ret;
 
-	ret = STABLE_COMPARE(a->socket.inet.ifindex, b->socket.inet.ifindex);
+	ret = CMP(a->socket.inet.ifindex, b->socket.inet.ifindex);
 	if (ret != 0) return ret;
 
 	ret = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);

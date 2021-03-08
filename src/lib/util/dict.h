@@ -367,10 +367,10 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
 	 *	because we need to check the lineage.
 	 */
 	if (a->flags.is_unknown | a->flags.is_raw | b->flags.is_unknown | b->flags.is_raw) {
-		ret = STABLE_COMPARE(a->depth, b->depth);
+		ret = CMP(a->depth, b->depth);
 		if (ret != 0) return ret;
 
-		ret = STABLE_COMPARE(a->attr, b->attr);
+		ret = CMP(a->attr, b->attr);
 		if (ret != 0) return ret;
 
 		ret = (a->parent == NULL) - (b->parent == NULL);
@@ -383,7 +383,7 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
 	 *	Comparing knowns is cheap because the
 	 *	DAs are unique.
 	 */
-	return STABLE_COMPARE(a, b);
+	return CMP(a, b);
 }
 /** @} */
 

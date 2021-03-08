@@ -128,7 +128,7 @@ static int module_method_cmp(void const *one, void const *two)
 {
 	module_method_entry_t const *a = one, *b = two;
 
-	return STABLE_COMPARE(a, b);
+	return CMP(a, b);
 }
 
 /** Allocate a new module method set
