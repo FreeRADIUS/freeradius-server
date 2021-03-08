@@ -2323,7 +2323,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		ssize_t			slen;
 
 		fr_trunk_request_t	*treq;
-		request_t			*request;
+		request_t		*request;
 		udp_request_t		*u;
 		udp_result_t		*r;
 		radius_track_entry_t	*rr;
@@ -2658,6 +2658,17 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
 	}
 }
 
+#ifndef NDEBUG
+/** Free a udp_result_t
+ *
+ * Allows us to set break points for debugging.
+ */
+static int _udp_result_free(UNUSED udp_result_t *u)
+{
+	return 0;
+}
+#endif
+
 /** Free a udp_request_t
  */
 static int _udp_request_free(udp_request_t *u)
@@ -2689,8 +2700,11 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 	if (!treq) RETURN_MODULE_FAIL;
 
 	MEM(r = talloc_zero(request, udp_result_t));
-	MEM(u = talloc(treq, udp_request_t));
+#ifndef NDEBUG
+	talloc_set_destructor(r, _udp_result_free);
+#endif
 
+	MEM(u = talloc(treq, udp_request_t));
 	*u = (udp_request_t){
 		.code = request->packet->code,
 		.synchronous = inst->parent->synchronous,
@@ -2724,6 +2738,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 	}
 
 	r->treq = treq;	/* Remember for signalling purposes */
+
 	talloc_set_destructor(u, _udp_request_free);
 
 	*rctx_out = r;
