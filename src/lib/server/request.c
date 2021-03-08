@@ -444,7 +444,11 @@ request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx, request_i
 
 	request = fr_dlist_head(free_list);
 	if (!request) {
-		request = request_alloc_pool(ctx);
+		/*
+		 *	Must be allocated with in the NULL ctx
+		 *	as chunk is returned to the free list.
+		 */
+		request = request_alloc_pool(NULL);
 		talloc_set_destructor(request, _request_free);
 	} else {
 		/*
