@@ -706,7 +706,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 {
 	bool			is_dup;
 	int			ret = -1;
-	request_t			*request;
+	request_t		*request;
 	TALLOC_CTX		*ctx;
 	fr_listen_t const	*listen;
 
@@ -958,10 +958,10 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 	request_t const *a = one, *b = two;
 	int ret;
 
-	ret = (a->async->priority > b->async->priority) - (a->async->priority < b->async->priority);
+	ret = CMP(a->async->priority, b->async->priority);
 	if (ret != 0) return ret;
 
-	return (a->async->recv_time > b->async->recv_time) - (a->async->recv_time < b->async->recv_time);
+	return CMP(a->async->recv_time, b->async->recv_time);
 }
 
 /**
@@ -971,7 +971,7 @@ static int8_t worker_time_order_cmp(void const *one, void const *two)
 {
 	request_t const *a = one, *b = two;
 
-	return (a->async->recv_time > b->async->recv_time) - (a->async->recv_time < b->async->recv_time);
+	return CMP(a->async->recv_time, b->async->recv_time);
 }
 
 /**
@@ -982,10 +982,10 @@ static int worker_dedup_cmp(void const *one, void const *two)
 	int ret;
 	request_t const *a = one, *b = two;
 
-	ret = (a->async->listen > b->async->listen) - (a->async->listen < b->async->listen);
+	ret = CMP(a->async->listen, b->async->listen);
 	if (ret) return ret;
 
-	return (a->async->packet_ctx > b->async->packet_ctx) - (a->async->packet_ctx < b->async->packet_ctx);
+	return CMP(a->async->packet_ctx, b->async->packet_ctx);
 }
 
 /** Destroy a worker
