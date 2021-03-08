@@ -688,7 +688,7 @@ The urlunquote of http%3A%2F%2Fexample.org%2F is http://example.org/
 
 == Hashing and Encryption
 
-=== %{hmacmd5:<shared_key> <string>}
+=== %(hmacmd5:<shared_key> <string>)
 
 Generate `HMAC-MD5` of string.
 
@@ -703,7 +703,7 @@ update {
     &control.Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control.Tmp-Octets-0 := "%{hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+    &control.Tmp-Octets-0 := "%(hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1})"
 }
 
 update reply {
@@ -719,7 +719,7 @@ The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\37
 The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-=== %{hmacsha1:<shared_key> <string>}
+=== %(hmacsha1:<shared_key> <string>)
 
 Generate `HMAC-SHA1` of string.
 
@@ -734,7 +734,7 @@ update {
     &control.Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control.Tmp-Octets-0 := "%{hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+    &control.Tmp-Octets-0 := "%(hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1})"
 }
 
 update reply {
