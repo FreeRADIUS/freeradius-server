@@ -530,8 +530,6 @@ again:
 				fr_strerror_const("libpcre2 out of memory");
 				return -1;
 			}
-
-			talloc_free(buff);
 			buff_len = actual_len;	/* The length we get passed back includes the \0 */
 			buff = talloc_array(ctx, char, buff_len);
 			goto again;
