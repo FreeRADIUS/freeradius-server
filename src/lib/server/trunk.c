@@ -434,7 +434,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 #define REQUEST_STATE_TRANSITION(_new) \
 do { \
 	request_t *request = treq->pub.request; \
-	ROPTIONAL(DEBUG3, RDEBUG3, "Trunk request %" PRIu64 " changed state %s -> %s", \
+	ROPTIONAL(RDEBUG3, DEBUG3, "Trunk request %" PRIu64 " changed state %s -> %s", \
 		  treq->id, \
 		  fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 		  fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
@@ -457,7 +457,7 @@ do { \
 #define REQUEST_STATE_TRANSITION(_new) \
 do { \
 	request_t *request = treq->pub.request; \
-	ROPTIONAL(DEBUG3, RDEBUG3, "Trunk request %" PRIu64 " changed state %s -> %s", \
+	ROPTIONAL(RDEBUG3, DEBUG3, "Trunk request %" PRIu64 " changed state %s -> %s", \
 		  treq->id, \
 		  fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 		  fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
@@ -482,7 +482,7 @@ do { \
 		request_t *request = (_treq)->pub.request; \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_cancel; \
-		ROPTIONAL(DEBUG3, RDEBUG3, "Calling request_cancel(conn=%p, preq=%p, reason=%s, uctx=%p)", \
+		ROPTIONAL(RDEBUG3, DEBUG3, "Calling request_cancel(conn=%p, preq=%p, reason=%s, uctx=%p)", \
 			  (_treq)->pub.tconn->pub.conn, \
 			  (_treq)->pub.preq, \
 			  fr_table_str_by_value(fr_trunk_cancellation_reasons, \
@@ -503,7 +503,7 @@ do { \
 		request_t *request = (_treq)->pub.request; \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
 		(_treq)->pub.trunk->in_handler = (void *)(_treq)->pub.trunk->funcs.request_conn_release; \
-		ROPTIONAL(DEBUG3, RDEBUG3, "Calling request_conn_release(conn=%p, preq=%p, uctx=%p)", \
+		ROPTIONAL(RDEBUG3, DEBUG3, "Calling request_conn_release(conn=%p, preq=%p, uctx=%p)", \
 			  (_treq)->pub.tconn->pub.conn, \
 			  (_treq)->pub.preq, \
 			  (_treq)->pub.trunk->uctx); \
@@ -520,7 +520,7 @@ do { \
 	if ((_treq)->pub.trunk->funcs.request_complete) { \
 		request_t *request = (_treq)->pub.request; \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
-		ROPTIONAL(DEBUG3, RDEBUG3, "Calling request_complete(request=%p, preq=%p, rctx=%p, uctx=%p)", \
+		ROPTIONAL(RDEBUG3, DEBUG3, "Calling request_complete(request=%p, preq=%p, rctx=%p, uctx=%p)", \
 			  (_treq)->pub.request, \
 			  (_treq)->pub.preq, \
 			  (_treq)->pub.rctx, \
@@ -539,7 +539,7 @@ do { \
 	if ((_treq)->pub.trunk->funcs.request_fail) { \
 		request_t *request = (_treq)->pub.request; \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
-		ROPTIONAL(DEBUG3, RDEBUG3, "Calling request_fail(request=%p, preq=%p, rctx=%p, state=%s uctx=%p)", \
+		ROPTIONAL(RDEBUG3, DEBUG3, "Calling request_fail(request=%p, preq=%p, rctx=%p, state=%s uctx=%p)", \
 			  (_treq)->pub.request, \
 			  (_treq)->pub.preq, \
 			  (_treq)->pub.rctx, \
@@ -559,7 +559,7 @@ do { \
 	if ((_treq)->pub.trunk->funcs.request_free) { \
 		request_t *request = (_treq)->pub.request; \
 		void *_prev = (_treq)->pub.trunk->in_handler; \
-		ROPTIONAL(DEBUG3, RDEBUG3, "Calling request_free(request=%p, preq=%p, uctx=%p)", \
+		ROPTIONAL(RDEBUG3, DEBUG3, "Calling request_free(request=%p, preq=%p, uctx=%p)", \
 			  (_treq)->pub.request, \
 			  (_treq)->pub.preq, \
 			  (_treq)->pub.trunk->uctx); \
