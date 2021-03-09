@@ -2816,15 +2816,15 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #ifdef HAVE_REGEX_PCRE2
 /** Perform regex substitution TODO CHECK
  *
- * Called when %{sub:} pattern begins with "/"
+ * Called when %(sub:) pattern begins with "/"
  *
 @verbatim
-%{sub:/<regex>/[flags] <replace> <subject>}
+%(sub:/<regex>/[flags] <replace> <subject>)
 @endverbatim
  *
  * Example: (User-Name = "foo")
 @verbatim
-"%{sub:/oo.*$/ un %{User-Name}}" == "fun"
+"%(sub:/oo.*$/ un %{User-Name})" == "fun"
 @endverbatim
  *
  * @see #xlat_func_sub
@@ -2917,12 +2917,12 @@ static xlat_arg_parser_t const xlat_func_sub_args[] = {
 /** Perform regex substitution
  *
 @verbatim
-%{sub:<pattern> <replace> <subject>}
+%(sub:<pattern> <replace> <subject>)
 @endverbatim
  *
  * Example: (User-Name = "foobar")
 @verbatim
-"%{sub:oo un %{User-Name}}" == "funbar"
+"%(sub:oo un %{User-Name})" == "funbar"
 @endverbatim
  *
  * @see xlat_func_sub_regex
