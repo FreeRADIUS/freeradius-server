@@ -123,29 +123,43 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 		xlat_exp_t const 	*child = node->child;
 		char		 	*out, *n_out;
 		TALLOC_CTX		*pool;
+		char			open = '{', close = '}';
+		bool			first_done = false;
 
-		if (!child) return talloc_asprintf(ctx, "%%{%s:}", node->call.func->name);
+		if (node->call.func->input_type == XLAT_INPUT_ARGS) {
+			open = '(';
+			close = ')';
+		}
+		if (!child) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
 
-		out = talloc_asprintf(ctx, "%%{%s:", node->call.func->name);
+		out = talloc_asprintf(ctx, "%%%c%s:", open, node->call.func->name);
 		pool = talloc_pool(NULL, 128);	/* Size of a single child (probably ok...) */
 		do {
 			char *child_str;
 
 			child_str = xlat_fmt_aprint(pool, child);
 			if (child_str) {
-				n_out = talloc_buffer_append_buffer(ctx, out, child_str);
-				if (!n_out) {
-					talloc_free(out);
-					talloc_free(pool);
-					return NULL;
+				if ((first_done) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
+					n_out = talloc_strdup_append_buffer(out, " ");
+					if (!n_out) {
+					child_error:
+						talloc_free(out);
+						talloc_free(pool);
+						return NULL;
+					}
+					out = n_out;
 				}
+
+				n_out = talloc_buffer_append_buffer(ctx, out, child_str);
+				if (!n_out) goto child_error;
 				out = n_out;
+				first_done = true;
 			}
 			talloc_free_children(pool);	/* Clear pool contents */
 		} while ((child = child->next));
 		talloc_free(pool);
 
-		n_out = talloc_strdup_append_buffer(out, "}");
+		n_out = talloc_strndup_append_buffer(out, &close, 1);
 		if (!n_out) {
 			talloc_free(out);
 			return NULL;
