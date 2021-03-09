@@ -2633,7 +2633,8 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
 	 */
 	case FR_SIGNAL_CANCEL:
 		fr_trunk_request_signal_cancel(r->treq);
-		talloc_free(rctx);	/* Should be freed soon anyway, but better to be explicit */
+		r->treq = NULL;
+		talloc_free(r);		/* Should be freed soon anyway, but better to be explicit */
 		return;
 
 	/*
