@@ -98,7 +98,9 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 *	Create the child and then run it.
 			 */
 		case CHILD_INIT:
-			RDEBUG3("parallel child %d is INIT", i);
+			RDEBUG3("parallel - child %s (%d/%d) INIT",
+				state->children[i].child->name,
+				i + 1, state->num_children);
 			fr_assert(state->children[i].instruction != NULL);
 			child = unlang_io_subrequest_alloc(request,
 							   request->dict, state->detach);
@@ -181,7 +183,9 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 */
 		case CHILD_RUNNABLE:
 		runnable:
-			RDEBUG2("parallel - running entry %d/%d", i + 1, state->num_children);
+			RDEBUG2("parallel - child %s (%d/%d) continuing",
+				state->children[i].child->name,
+				i + 1, state->num_children);
 
 			/*
 			 *	Note that we do NOT call child->async-process()
@@ -198,7 +202,9 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 				continue;
 			}
 
-			RDEBUG3("parallel child %s returns %s", state->children[i].child->name,
+			RDEBUG3("parallel - child %s (%d/%d) returns %s",
+				state->children[i].child->name,
+				i, state->num_children,
 				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"));
 
 			fr_assert(result < NUM_ELEMENTS(state->children[i].instruction->actions));
@@ -227,8 +233,9 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 *	parallel section".
 			 */
 			if (priority == MOD_ACTION_RETURN) {
-				RDEBUG2("child %d/%d says 'return' - skipping the remaining children",
-				        i, state->num_children);
+				RDEBUG2("parallel - child %s (%d/%d) says 'return' - skipping the remaining children",
+					state->children[i].child->name,
+				        i + 1, state->num_children);
 
 				/*
 				 *	Fall through to processing the
@@ -283,12 +290,16 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			}
 
 			fr_assert(state->children[i].instruction != NULL);
-			RDEBUG3("parallel child %s is already YIELDED", state->children[i].child->name);
+			RDEBUG3("parallel - child %s (%d/%d) YIELDED",
+				state->children[i].child->name,
+				i + 1, state->num_children);
 			child_state = CHILD_YIELDED;
 			continue;
 
 		case CHILD_EXITED:
-			RDEBUG3("parallel child %d has already EXITED", i);
+			RDEBUG3("parallel - child %s (%d/%d) EXITED",
+				state->children[i].child->name,
+				i + 1, state->num_children);
 			state->children[i].state = CHILD_DONE;
 			state->children[i].child = NULL;		// someone else freed this somewhere
 			state->children[i].instruction = NULL;
@@ -298,7 +309,9 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 *	Don't need to call this any more.
 			 */
 		case CHILD_DONE:
-			RDEBUG3("parallel child %d is already DONE", i);
+			RDEBUG3("parallel - child %s (%d/%d) DONE",
+				state->children[i].child->name,
+				i + 1, state->num_children);
 			fr_assert(state->children[i].child == NULL);
 			fr_assert(state->children[i].instruction == NULL);
 			continue;
