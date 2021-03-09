@@ -313,7 +313,7 @@ struct fr_trunk_request_pub_s {
 
 	void			* _CONST rctx;		//!< Resume ctx of the module.
 
-	request_t			* _CONST request;	//!< The request that we're writing the data on behalf of.
+	request_t		* _CONST request;	//!< The request that we're writing the data on behalf of.
 };
 
 /** Public fields for the trunk connection

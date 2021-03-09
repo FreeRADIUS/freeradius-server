@@ -490,7 +490,7 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 		goto fail;
 
 	case FR_RETRY_MRC:
-		DEBUG("%s - Reached maximum_retransmit_count (%u of %u), failing status checks",
+		DEBUG("%s - Reached maximum_retransmit_count (%u > %u), failing status checks",
 		      h->module_name, u->retry.count, u->retry.config->mrc);
 	fail:
 		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
@@ -1731,7 +1731,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 		break;
 
 	case FR_RETRY_MRC:
-		RDEBUG("Reached maximum_retransmit_count (%u of %u), failing request",
+		RDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
 		       u->retry.count, u->retry.config->mrc);
 		break;
 	}
@@ -1769,7 +1769,7 @@ static void request_mux(fr_event_list_t *el,
 	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
 		fr_trunk_request_t	*treq;
 		udp_request_t		*u;
-		request_t			*request;
+		request_t		*request;
 
  		if (unlikely(fr_trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
@@ -1938,7 +1938,7 @@ static void request_mux(fr_event_list_t *el,
 	for (i = 0; i < sent; i++) {
 		fr_trunk_request_t	*treq = h->coalesced[i].treq;
 		udp_request_t		*u;
-		request_t			*request;
+		request_t		*request;
 		char const		*action;
 
 		/*
@@ -2663,8 +2663,18 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
  *
  * Allows us to set break points for debugging.
  */
-static int _udp_result_free(UNUSED udp_result_t *u)
+static int _udp_result_free(udp_result_t *r)
 {
+	fr_trunk_request_t	*treq;
+	udp_request_t		*u;
+
+	if (!r->treq) return 0;
+
+	treq = talloc_get_type_abort(r->treq, fr_trunk_request_t);
+	u = talloc_get_type_abort(treq->preq, udp_request_t);
+
+	fr_assert_msg(!u->ev, "udp_result_t freed with active timer");
+
 	return 0;
 }
 #endif
