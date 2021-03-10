@@ -170,7 +170,7 @@ static void _xlat_icmp_timeout(request_t *request,
 	unlang_interpret_mark_runnable(request);
 }
 
-/** Xlat to delay the request
+/** Xlat to ping a specified ip address
  *
  * Example (ping 192.0.2.1):
 @verbatim
@@ -202,11 +202,6 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	If there's no input, do we can't ping anything.
 	 */
 	if (!in_head) return XLAT_ACTION_FAIL;
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	if (fr_value_box_cast_in_place(ctx, in_head, thread->t->ipaddr_type, NULL) < 0) {
 		RPEDEBUG("Failed casting result to IP address");
@@ -284,6 +279,11 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, echo);
 }
+
+extern xlat_arg_parser_t xlat_icmp_arg;
+xlat_arg_parser_t xlat_icmp_arg = {
+	.required = false, .concat = true, .variadic = false, .type = FR_TYPE_STRING, .func = NULL, .uctx = NULL
+};
 
 static int echo_cmp(void const *one, void const *two)
 {
@@ -535,14 +535,15 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_icmp_t *inst = instance;
-	xlat_t const *xlat;
+	rlm_icmp_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 	inst->name = inst->xlat_name;
 
 	xlat = xlat_register(inst, inst->xlat_name, xlat_icmp, true);
+	xlat_func_mono(xlat, &xlat_icmp_arg);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);
 
