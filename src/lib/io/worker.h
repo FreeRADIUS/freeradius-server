@@ -77,7 +77,7 @@ void		fr_worker(fr_worker_t *worker) CC_HINT(nonnull);
 
 void		fr_worker_debug(fr_worker_t *worker, FILE *fp) CC_HINT(nonnull);
 
-int		fr_worker_pre_event(void *uctx, fr_time_t wake);
+int		fr_worker_pre_event(fr_time_t wake, void *uctx);
 
 void		fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 
@@ -87,7 +87,9 @@ int		fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats) CC_HIN
 
 #include <freeradius-devel/server/module.h>
 
-int		fr_worker_request_add(request_t *request, module_method_t process, void *ctx);
+int		fr_worker_request_add(request_t *request, module_method_t process, void *uctx) CC_HINT(nonnull(1,2));
+
+int		fr_worker_subrequest_add(request_t *request) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

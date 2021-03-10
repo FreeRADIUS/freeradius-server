@@ -119,7 +119,7 @@ typedef	void (*fr_event_timer_cb_t)(fr_event_list_t *el, fr_time_t now, void *uc
  * @param[in] now	The current time.
  * @param[in] uctx	User ctx passed to #fr_event_list_alloc.
  */
-typedef	int (*fr_event_status_cb_t)(void *uctx, fr_time_t now);
+typedef	int (*fr_event_status_cb_t)(fr_time_t now, void *uctx);
 
 /** Called when an IO event occurs on a file descriptor
  *

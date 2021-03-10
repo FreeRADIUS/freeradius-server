@@ -1947,7 +1947,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	}
 }
 
-static int  _rs_event_status(UNUSED void *ctx, fr_time_delta_t wake_t)
+static int  _rs_event_status(fr_time_delta_t wake_t, UNUSED void *uctx)
 {
 	struct timeval wake;
 

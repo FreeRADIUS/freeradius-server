@@ -1208,7 +1208,7 @@ void fr_worker(fr_worker_t *worker)
  *
  *	This should be run ONLY in single-threaded mode!
  */
-int fr_worker_pre_event(void *uctx, UNUSED fr_time_t wake)
+int fr_worker_pre_event(UNUSED fr_time_t wake, void *uctx)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 	request_t *request;

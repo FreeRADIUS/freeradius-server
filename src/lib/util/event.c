@@ -1802,7 +1802,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 		for (pre = fr_dlist_head(&el->pre_callbacks);
 		     pre != NULL;
 		     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
-			if (pre->callback(pre->uctx, wake ? *wake : 0) > 0) {
+			if (pre->callback(wake ? *wake : 0, pre->uctx) > 0) {
 				wake = &when;
 				when = 0;
 			}

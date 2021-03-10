@@ -148,7 +148,7 @@ struct fr_network_s {
 };
 
 static void fr_network_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
-static int fr_network_pre_event(void *ctx, fr_time_t wake);
+static int fr_network_pre_event(fr_time_t wake, void *uctx);
 static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s);
 static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx);
 static int8_t reply_cmp(void const *one, void const *two)
@@ -1306,16 +1306,14 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
  *  work, and tell the event code to return to the main loop if
  *  there's work to do.
  *
- * @param[in] ctx the network
  * @param[in] wake the time when the event loop will wake up.
+ * @param[in] uctx the network
  */
-static int fr_network_pre_event(void *ctx, UNUSED fr_time_t wake)
+static int fr_network_pre_event(UNUSED fr_time_t wake, void *uctx)
 {
-	fr_network_t *nr = talloc_get_type_abort(ctx, fr_network_t);
+	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
 
-	if (fr_heap_num_elements(nr->replies) > 0) {
-		return 1;
-	}
+	if (fr_heap_num_elements(nr->replies) > 0) return 1;
 
 	return 0;
 }

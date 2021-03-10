@@ -232,7 +232,7 @@ int main_loop_start(void)
 	return ret;
 }
 
-static int _loop_status(UNUSED void *ctx, fr_time_t wake)
+static int _loop_status(fr_time_t wake, UNUSED void *ctx)
 {
 	if (wake > (NSEC / 10)) DEBUG3("Main loop waking up in %pV seconds", fr_box_time_delta(wake));
 
