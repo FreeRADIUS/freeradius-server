@@ -50,13 +50,18 @@ typedef struct {
 	int nothing;
 } rlm_dhcpv4_t;
 
+static xlat_arg_parser_t const dhcpv4_decode_xlat_args[] = {
+	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Decode DHCP option data
  *
  * Creates DHCP attributes based on the given binary option data
  *
  * Example:
 @verbatim
-%{dhcpv4_decode:%{Tmp-Octets-0}}
+%(dhcpv4_decode:%{Tmp-Octets-0})
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -126,6 +131,11 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const dhcpv4_encode_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Encode DHCP option data
  *
  * Returns octet string created from the provided DHCP attributes
@@ -141,7 +151,10 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_list_t *in)
 {
+	tmpl_t		*vpt;
+	fr_pair_t	*vp;
 	fr_dcursor_t	*cursor;
+	tmpl_cursor_ctx_t	cc;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
 
@@ -150,28 +163,36 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	ssize_t		len = 0;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
 
-	if (!in_head) return XLAT_ACTION_DONE;
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input string for attribute reference");
+	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, in_head->vb_strvalue,
+				&(tmpl_rules_t){
+					.dict_def = request->dict,
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				}) <= 0) {
+		RPEDEBUG("Failed parsing attribute reference");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (xlat_fmt_to_cursor(NULL, &cursor, &tainted, request, in_head->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
+	MEM(cursor = talloc(ctx, fr_dcursor_t));
+	talloc_steal(cursor, vpt);
+	vp = tmpl_cursor_init(NULL, NULL, &cc, cursor, request, vpt);
 
-	if (!fr_dcursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
+	if (!vp) return XLAT_ACTION_DONE; /* Nothing to encode */
 
 	while (fr_dcursor_filter_current(cursor, fr_dhcpv4_is_encodable, NULL)) {
+		vp = fr_dcursor_current(cursor);
+		if (vp->vp_tainted) tainted = true;
 		len = fr_dhcpv4_encode_option(&FR_DBUFF_TMP(p, end), cursor,
 					      &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
 		if (len < 0) {
 			RPEDEBUG("DHCP option encoding failed");
 			talloc_free(cursor);
+			tmpl_cursor_clear(&cc);
 			return XLAT_ACTION_FAIL;
 		}
 		p += len;
 	}
 	talloc_free(cursor);
+	tmpl_cursor_clear(&cc);
 
 	/*
 	 *	Pass the options string back
@@ -185,13 +206,17 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static int dhcp_load(void)
 {
+	xlat_t	*xlat;
+
 	if (fr_dhcpv4_global_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
 
-	xlat_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat, false);
-	xlat_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat, false);
+	xlat = xlat_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat, false);
+	xlat_func_args(xlat, dhcpv4_decode_xlat_args);
+	xlat = xlat_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat, false);
+	xlat_func_args(xlat, dhcpv4_encode_xlat_args);
 
 	return 0;
 }
