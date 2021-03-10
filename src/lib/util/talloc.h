@@ -34,7 +34,14 @@ extern "C" {
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
 #include <talloc.h>
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
+#endif
 
 #undef talloc_autofree_context
 /** The original function is deprecated, so replace it with our version
