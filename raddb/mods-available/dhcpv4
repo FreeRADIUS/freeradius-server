@@ -39,7 +39,7 @@ dhcpv4 {
 #
 #  The rlm_dhcpv4 provides the below xlat's functions to handle the DHCPV4 packets.
 #
-#  ### %{dhcpv4_decode:...}
+#  ### %(dhcpv4_decode:...)
 #
 #  Decode DHCP option declared in dictionary.rfc2131.
 #
@@ -52,7 +52,7 @@ dhcpv4 {
 #  update request {
 #    &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
 #  }
-#  if ("%{dhcpv4_decode:%{Tmp-Octets-0}}" != 2) {
+#  if ("%(dhcpv4_decode:%{Tmp-Octets-0})" != 2) {
 #    update reply {
 #      &Reply-Message := "Problems decoding the DHPCv4 fields."
 #    }
