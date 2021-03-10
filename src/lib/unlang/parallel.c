@@ -107,6 +107,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			RDEBUG3("parallel - child %s (%d/%d) INIT",
 				child->name,
 				i + 1, state->num_children);
+			state->children[i].name = talloc_bstrdup(state, child->name);
 
 			if (state->detach) child_free = child;
 
@@ -186,7 +187,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		case CHILD_RUNNABLE:
 		runnable:
 			RDEBUG2("parallel - child %s (%d/%d) continuing",
-				state->children[i].child->name,
+				state->children[i].name,
 				i + 1, state->num_children);
 
 			/*
@@ -205,7 +206,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			}
 
 			RDEBUG3("parallel - child %s (%d/%d) returns %s",
-				state->children[i].child->name,
+				state->children[i].name,
 				i + 1, state->num_children,
 				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"));
 
@@ -236,7 +237,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 */
 			if (priority == MOD_ACTION_RETURN) {
 				RDEBUG2("parallel - child %s (%d/%d) says 'return' - skipping the remaining children",
-					state->children[i].child->name,
+					state->children[i].name,
 				        i + 1, state->num_children);
 
 				/*
@@ -293,14 +294,14 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 
 			fr_assert(state->children[i].instruction != NULL);
 			RDEBUG3("parallel - child %s (%d/%d) YIELDED",
-				state->children[i].child->name,
+				state->children[i].name,
 				i + 1, state->num_children);
 			child_state = CHILD_YIELDED;
 			continue;
 
 		case CHILD_EXITED:
 			RDEBUG3("parallel - child %s (%d/%d) EXITED",
-				state->children[i].child->name,
+				state->children[i].name,
 				i + 1, state->num_children);
 			state->children[i].state = CHILD_DONE;
 			state->children[i].child = NULL;		// someone else freed this somewhere
@@ -312,7 +313,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 */
 		case CHILD_DONE:
 			RDEBUG3("parallel - child %s (%d/%d) DONE",
-				state->children[i].child->name,
+				state->children[i].name,
 				i + 1, state->num_children);
 			fr_assert(state->children[i].child == NULL);
 			fr_assert(state->children[i].instruction == NULL);
@@ -424,10 +425,12 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 	/*
 	 *	Allocate an array for the children.
 	 */
-	frame->state = state = talloc_zero_size(request,
-						sizeof(unlang_parallel_state_t) +
-						sizeof(state->children[0]) *
-						g->num_children);
+	MEM(frame->state = state = _talloc_zero_pooled_object(request,
+							      sizeof(unlang_parallel_state_t) +
+							      (sizeof(state->children[0]) * g->num_children),
+							      "unlang_parallel_state_t",
+							      g->num_children,
+							      (talloc_array_length(request->name) * 2)));
 	if (!state) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;

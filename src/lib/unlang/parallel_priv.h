@@ -48,26 +48,27 @@ typedef enum {
  */
 typedef struct {
 	unlang_parallel_child_state_t	state;		//!< State of the child.
-	request_t				*child; 	//!< Child request.
+	request_t			*child; 	//!< Child request.
+	char				*name;		//!< Cache the request name.
 	unlang_t			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 
 typedef struct {
-	rlm_rcode_t		result;
-	int			priority;
+	rlm_rcode_t			result;
+	int				priority;
 
-	int			num_children;		//!< How many children are executing.
+	int				num_children;	//!< How many children are executing.
 
-	bool			detach;			//!< are we creating the child detached
-	bool			clone;			//!< are the children cloned
+	bool				detach;		//!< are we creating the child detached
+	bool				clone;		//!< are the children cloned
 
-	unlang_parallel_child_t children[];		//!< Array of children.
+	unlang_parallel_child_t		children[];	//!< Array of children.
 } unlang_parallel_state_t;
 
 typedef struct {
-	unlang_group_t		group;
-	bool			detach;			//!< are we creating the child detached
-	bool			clone;
+	unlang_group_t			group;
+	bool				detach;		//!< are we creating the child detached
+	bool				clone;
 } unlang_parallel_t;
 
 /** Cast a group structure to the parallel keyword extension
