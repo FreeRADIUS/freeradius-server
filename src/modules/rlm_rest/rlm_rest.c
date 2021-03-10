@@ -292,6 +292,10 @@ finish:
 	return xa;
 }
 
+static xlat_arg_parser_t const rest_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
+
 /** Simple xlat to read text data from a URL
  *
  * Example:
@@ -301,7 +305,7 @@ finish:
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_list_t *in)
 {
@@ -321,15 +325,6 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
 
-	if (!in_head) {
-		REDEBUG("Got empty URL string");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		REDEBUG("Failed concatenating arguments into URL string");
-		return XLAT_ACTION_FAIL;
-	}
 	p = in_head->vb_strvalue;
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
@@ -1116,13 +1111,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_rest_t *inst = instance;
-	xlat_t const *xlat;
+	rlm_rest_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	xlat = xlat_register(inst, inst->xlat_name, rest_xlat, true);
+	xlat_func_mono(xlat, &rest_xlat_arg);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
