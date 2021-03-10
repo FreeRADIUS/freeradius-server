@@ -26,7 +26,6 @@
  */
 #include <stdint.h>
 #include <stddef.h>
-#include <talloc.h>
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
