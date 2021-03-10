@@ -50,6 +50,7 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
 	 *	unlang_interpret(), and NOT child->async->process.
 	 */
 	if (request->parent) {
+		RDEBUG3("Signalling parent %s that child has EXITED", request->parent->name);
 		child->state = CHILD_EXITED;
 		unlang_interpret_mark_resumable(request->parent);
 	}
@@ -98,13 +99,14 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 *	Create the child and then run it.
 			 */
 		case CHILD_INIT:
-			RDEBUG3("parallel - child %s (%d/%d) INIT",
-				state->children[i].child->name,
-				i + 1, state->num_children);
 			fr_assert(state->children[i].instruction != NULL);
 			child = unlang_io_subrequest_alloc(request,
 							   request->dict, state->detach);
 			child->packet->code = request->packet->code;
+
+			RDEBUG3("parallel - child %s (%d/%d) INIT",
+				child->name,
+				i + 1, state->num_children);
 
 			if (state->detach) child_free = child;
 
