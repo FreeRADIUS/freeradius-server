@@ -212,6 +212,11 @@ static void xlat_delay_cancel(request_t *request, UNUSED void *instance, UNUSED 
 	RDEBUG2("Cancelling delay");
 }
 
+static xlat_arg_parser_t const xlat_delay_args[] = {
+	{ .single = true, .type = FR_TYPE_TIME_DELTA },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Xlat to delay the request
  *
  * Example (delay 2 seconds):
@@ -221,15 +226,14 @@ static void xlat_delay_cancel(request_t *request, UNUSED void *instance, UNUSED 
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+static xlat_action_t xlat_delay(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_list_t *in)
 {
 	rlm_delay_t const	*inst;
 	void			*instance;
-	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
-	fr_value_box_t		*in_head = fr_dlist_head(in);
+	fr_value_box_t		*delay = fr_dlist_head(in);
 
 	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
 
@@ -246,26 +250,15 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	immediately re-enqueue the request.
 	 *	This is very useful for testing.
 	 */
-	if (!in_head) {
+	if (!delay) {
 		if (!fr_cond_assert(delay_add(request, &resume_at, *yielded_at, 0, true, true) == 0)) {
 			return XLAT_ACTION_FAIL;
 		}
 		goto yield;
 	}
 
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		talloc_free(yielded_at);
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_time_delta_from_str(&delay, in_head->vb_strvalue, FR_TIME_RES_SEC) < 0) {
-		RPEDEBUG("Failed parsing delay time");
-		talloc_free(yielded_at);
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (delay_add(request, &resume_at, *yielded_at, delay, inst->force_reschedule, inst->relative) != 0) {
+	if (delay_add(request, &resume_at, *yielded_at, delay->vb_time_delta,
+		      inst->force_reschedule, inst->relative) != 0) {
 		RDEBUG2("Not adding delay");
 		talloc_free(yielded_at);
 		return XLAT_ACTION_DONE;
@@ -293,13 +286,14 @@ static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, v
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_delay_t *inst = instance;
-	xlat_t const *xlat;
+	rlm_delay_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	xlat = xlat_register(inst, inst->xlat_name, xlat_delay, true);
+	xlat_func_args(xlat, xlat_delay_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_delay_t *, NULL, inst);
 	return 0;
 }
