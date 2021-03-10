@@ -1217,9 +1217,9 @@ void unlang_interpret_mark_resumable(request_t *request)
 	 *	runnable, before the parent request starts running.
 	 */
 	if (!is_yielded(frame) || unlang_request_is_scheduled(request)) {
-		RDEBUG3("Not marking resumable due to %s %s",
-			is_yielded(frame) ?
-			"it not being yielded " : "", unlang_request_is_scheduled(request) ? "it already being scheduled" : "");
+		RDEBUG3("Not marking resumable due to%s%s",
+			!is_yielded(frame) ?
+			" it not being yielded " : "", unlang_request_is_scheduled(request) ? " it already being scheduled" : "");
 		return;
 	}
 
