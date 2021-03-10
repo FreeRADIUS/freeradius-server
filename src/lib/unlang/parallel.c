@@ -206,7 +206,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 
 			RDEBUG3("parallel - child %s (%d/%d) returns %s",
 				state->children[i].child->name,
-				i, state->num_children,
+				i + 1, state->num_children,
 				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"));
 
 			fr_assert(result < NUM_ELEMENTS(state->children[i].instruction->actions));
