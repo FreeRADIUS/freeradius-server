@@ -1117,6 +1117,11 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_integer_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Print data as integer, not as VALUE.
  *
  * Example:
@@ -1124,111 +1129,93 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 update request {
 	&Tmp-IP-Address-0 := "127.0.0.5"
 }
-"%{integer:&Tmp-IP-Address-0}" == 2130706437
+"%(integer:%{Tmp-IP-Address-0})" == 2130706437
 @endverbatim
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				 request_t *request, char const *fmt)
+static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       request_t *request, UNUSED void const *xlat_inst,
+				       UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
-	fr_pair_t	*vp;
+	fr_value_box_t	*in_vb = fr_dlist_head(in);
 
-	uint64_t	int64 = 0;	/* Needs to be initialised to zero */
-	uint32_t	int32 = 0;	/* Needs to be initialised to zero */
+	switch (in_vb->type) {
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_BOOL:
+		/*
+		 *	Ensure enumeration is NULL so that the integer
+		 *	version of a box is returned
+		 */
+		in_vb->enumv = NULL;
+		break;
 
-	fr_skip_whitespace(fmt);
-
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	switch (vp->vp_type) {
 	case FR_TYPE_DATE:
 	case FR_TYPE_STRING:
-	{
-		fr_value_box_t vb;
-
-		if (fr_value_box_cast(NULL, &vb, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
-			RPEDEBUG("Invalid input for printing as an integer");
-			return -1;
+		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) {
+		error:
+			RPEDEBUG("Invalid input for casting to an integer");
+			return XLAT_ACTION_FAIL;
 		}
-
-		return snprintf(*out, outlen, "%" PRIu64, vb.vb_uint64);
-	}
+		break;
 
 	case FR_TYPE_OCTETS:
-		if (vp->vp_length > 8) {
+		if (in_vb->vb_length > 8) goto error;
+
+		if (in_vb->vb_length > 4) {
+			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL);
 			break;
 		}
 
-		if (vp->vp_length > 4) {
-			memcpy(&int64, vp->vp_octets, vp->vp_length);
-			return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
-		}
+		fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL);
+		break;
 
-		memcpy(&int32, vp->vp_octets, vp->vp_length);
-		return snprintf(*out, outlen, "%i", htonl(int32));
-
-	case FR_TYPE_UINT64:
-		return snprintf(*out, outlen, "%" PRIu64, vp->vp_uint64);
-
-	/*
-	 *	IP addresses are treated specially, as parsing functions assume the value
-	 *	is bigendian and will convert it for us.
-	 */
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:	/* Same addr field */
-		return snprintf(*out, outlen, "%u", ntohl(vp->vp_ipv4addr));
+	case FR_TYPE_IPV4_PREFIX:
+		if(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL) < 0) goto error;
+		break;
 
-	case FR_TYPE_UINT32:
-		return snprintf(*out, outlen, "%u", vp->vp_uint32);
-
-	case FR_TYPE_UINT8:
-		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint8);
-
-	case FR_TYPE_UINT16:
-		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint16);
-
-	/*
-	 *	Ethernet is weird... It's network related, so it
-	 *	should be bigendian.
-	 */
 	case FR_TYPE_ETHERNET:
-		int64 = vp->vp_ether[0];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[1];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[2];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[3];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[4];
-		int64 <<= 8;
-		int64 |= vp->vp_ether[5];
-		return snprintf(*out, outlen, "%" PRIu64, int64);
-
-	case FR_TYPE_INT32:
-		return snprintf(*out, outlen, "%i", vp->vp_int32);
+		if(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) goto error;
+		break;
 
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
 	{
-		uint128_t ipv6int;
+		uint128_t	ipv6int;
+		char		buff[40];
+		fr_value_box_t	*vb;
 
 		/*
 		 *	Needed for correct alignment (as flagged by ubsan)
 		 */
-		memcpy(&ipv6int, &vp->vp_ipv6addr, sizeof(ipv6int));
+		memcpy(&ipv6int, &in_vb->vb_ip.addr.v6.s6_addr, sizeof(ipv6int));
 
-		return fr_snprint_uint128(*out, outlen, ntohlll(ipv6int));
+		fr_snprint_uint128(buff, 40, ntohlll(ipv6int));
+
+		MEM(vb=fr_value_box_alloc_null(ctx));
+		fr_value_box_bstrndup(ctx, vb, NULL, buff, strlen(buff), false);
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
 	}
 
 	default:
-		break;
+		REDEBUG("Type '%s' cannot be converted to integer", fr_table_str_by_value(fr_value_box_type_table, in_vb->type, "???"));
+		goto error;
 	}
 
-	REDEBUG("Type '%s' cannot be converted to integer", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "???"));
+	fr_dlist_remove(in, in_vb);
+	fr_dcursor_append(out, in_vb);
 
-	return -1;
+	return XLAT_ACTION_DONE;
 }
 
 /** Processes fmt as a map string and applies it to the current request
@@ -3142,7 +3129,6 @@ int xlat_init(void)
 #define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(xlat);
 
-	XLAT_REGISTER(integer);
 	XLAT_REGISTER(map);
 	xlat_register_legacy(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
@@ -3160,6 +3146,7 @@ do { \
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, xlat_func_explode_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
+	XLAT_REGISTER_ARGS("integer", xlat_func_integer, xlat_func_integer_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
