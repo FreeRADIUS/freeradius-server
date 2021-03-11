@@ -58,11 +58,6 @@ static rbtree_t *xlat_root = NULL;
 
 static char const hextab[] = "0123456789abcdef";
 
-static fr_sbuff_parse_rules_t const xlat_arg_parse_rules = {
-	.terminals = &FR_SBUFF_TERM(" ")
-};
-
-
 /** Return a VP from the specified request.
  *
  * @note DEPRECATED, TO NOT USE.  @see xlat_fmt_to_cursor instead.
@@ -1036,7 +1031,13 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	return XLAT_ACTION_DONE;
 }
 
-/** Split an attribute into multiple new attributes based on a delimiter
+static xlat_arg_parser_t const xlat_func_explode_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Split a string into multiple new strings based on a delimiter
  *
  * @todo should support multibyte delimiter for string types.
  *
@@ -1062,130 +1063,69 @@ if ("%{explode:&Tmp-String-1 ,}" != 3) {
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_explode(TALLOC_CTX *ctx, char **out, size_t outlen,
-				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				 request_t *request, char const *fmt)
+static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       request_t *request, UNUSED void const *xlat_inst,
+				       UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
-	tmpl_t			*vpt = NULL;
-	fr_pair_t		*vp;
-	fr_dcursor_t		cursor, to_merge;
-	tmpl_cursor_ctx_t	cc;
-	fr_pair_list_t		head;
-	ssize_t			slen;
-	int			count = 0;
-	char const		*p = fmt;
-	char			delim;
+	fr_value_box_t		*strings = fr_dlist_head(in);
+	fr_value_box_list_t	*list = &strings->vb_group;
+	fr_value_box_t		*delim_vb = fr_dlist_next(in, strings);
+	ssize_t			delim_len;
+	char const		*delim;
+	fr_value_box_t		*string, *vb;
 
-	fr_pair_list_init(&head);
-	/*
-	 *  Trim whitespace
-	 */
-	fr_skip_whitespace(p);
-
-	slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt,
-				      &FR_SBUFF_IN(p, strlen(p)),
-				      &xlat_arg_parse_rules,
-				      &(tmpl_rules_t){ .dict_def = request->dict });
-	if (slen <= 0) {
-		RPEDEBUG("Invalid input");
-		return -1;
+	if (delim_vb->vb_length == 0) {
+		REDEBUG("Delimiter must be greater than zero characters");
+		return XLAT_ACTION_FAIL;
 	}
 
-	p += slen;
+	delim = delim_vb->vb_strvalue;
+	delim_len = delim_vb->vb_length;
 
-	if (*p++ != ' ') {
-	arg_error:
-		talloc_free(vpt);
-		REDEBUG("explode needs exactly two arguments: &ref <delim>");
-		return -1;
-	}
-
-	if (*p == '\0' || p[1]) goto arg_error;
-
-	delim = *p;
-
-	fr_dcursor_init(&to_merge, &head);
-
-	vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
-	while (vp) {
-		fr_pair_t *nvp;
-		char const *end;
-		char const *q;
+	while((string = fr_dlist_pop_head(list))) {
+		fr_sbuff_t		sbuff = FR_SBUFF_IN(string->vb_strvalue, string->vb_length);
+		fr_sbuff_marker_t	m_start;
 
 		/*
-		 *	This can theoretically operate on lists too
-		 *	so we need to check the type of each attribute.
+		 *	If the delimiter is not in the string, just move to the output
 		 */
-		switch (vp->vp_type) {
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_STRING:
-			break;
-
-		default:
-			goto next;
+		if (!fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, delim, delim_len)) {
+			fr_dcursor_append(out, string);
+			continue;
 		}
 
-		p = vp->vp_ptr;
-		end = p + vp->vp_length;
-		while (p < end) {
-			q = memchr(p, delim, end - p);
-			if (!q) {
-				/* Delimiter not present in attribute */
-				if (p == vp->vp_ptr) goto next;
-				q = end;
-			}
+		fr_sbuff_set_to_start(&sbuff);
+		fr_sbuff_marker(&m_start, &sbuff);
 
-			/* Skip zero length */
-			if (q == p) {
-				p = q + 1;
+		while (fr_sbuff_remaining(&sbuff)) {
+			if (fr_sbuff_adv_to_str(&sbuff, SIZE_MAX, delim, delim_len)) {
+				/*
+				 *	If there's nothing before the delimiter skip
+				 */
+				if (fr_sbuff_behind(&m_start) == 0) goto advance;
+
+				vb = fr_value_box_alloc_null(ctx);
+				fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
+						      fr_sbuff_behind(&m_start), string->tainted);
+				fr_dcursor_append(out, vb);
+
+			advance:
+				fr_sbuff_advance(&sbuff, delim_len);
+				fr_sbuff_set(&m_start, &sbuff);
 				continue;
 			}
-
-			MEM(nvp = fr_pair_afrom_da(talloc_parent(vp), vp->da));
-			switch (vp->vp_type) {
-			case FR_TYPE_OCTETS:
-				MEM(fr_pair_value_memdup(nvp, (uint8_t const *)p, q - p, vp->vp_tainted) == 0);
-				break;
-
-			case FR_TYPE_STRING:
-				MEM(fr_pair_value_bstrndup(nvp, p, q - p, vp->vp_tainted) == 0);
-				break;
-
-			default:
-				fr_assert(0);
-			}
-
-			fr_dcursor_append(&to_merge, nvp);
-
-			p = q + 1;	/* next */
-
-			count++;
+			fr_sbuff_set_to_end(&sbuff);
+			vb = fr_value_box_alloc_null(ctx);
+			fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
+					      fr_sbuff_behind(&m_start), string->tainted);
+			fr_dcursor_append(out, vb);
+			break;
 		}
-
-		/*
-		 *	Remove the unexploded version
-		 */
-		vp = fr_dcursor_remove(&cursor);
-		talloc_free(vp);
-		/*
-		 *	Remove sets cursor->current to
-		 *	the next iter value.
-		 */
-		vp = fr_dcursor_current(&cursor);
-		continue;
-
-	next:
-		vp = fr_dcursor_next(&cursor);
+		talloc_free(string);
 	}
-	tmpl_cursor_clear(&cc);
 
-	fr_dcursor_head(&to_merge);
-	fr_dcursor_merge(&cursor, &to_merge);
-	talloc_free(vpt);
-
-	return snprintf(*out, outlen, "%i", count);
+	return XLAT_ACTION_DONE;
 }
-
 
 /** Print data as integer, not as VALUE.
  *
@@ -3212,7 +3152,6 @@ int xlat_init(void)
 #define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(xlat);
 
-	xlat_register_legacy(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	XLAT_REGISTER(integer);
 	XLAT_REGISTER(map);
 	xlat_register_legacy(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
@@ -3225,11 +3164,12 @@ do { \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, xlat_func_debug_args);
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, xlat_func_debug_attr_args);
+	XLAT_REGISTER_ARGS("explode", xlat_func_explode, xlat_func_explode_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
-	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
