@@ -889,6 +889,11 @@ done:
 }
 
 
+static xlat_arg_parser_t const xlat_func_debug_attr_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.
@@ -901,23 +906,25 @@ done:
  *
  * Example:
 @verbatim
-"%{debug_attr:&request[*]}"
+"%(debug_attr:&request[*])"
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
-				    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				    request_t *request, char const *fmt)
+static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					  request_t *request, UNUSED void const *xlat_inst,
+					  UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		cursor;
 	tmpl_cursor_ctx_t	cc;
 	tmpl_t			*vpt;
+	fr_value_box_t		*attr = fr_dlist_head(in);
+	char const		*fmt;
 
-	if (!RDEBUG_ENABLED2) return 0;	/* NOOP if debugging isn't enabled */
+	if (!RDEBUG_ENABLED2) return XLAT_ACTION_DONE;	/* NOOP if debugging isn't enabled */
 
-	fr_skip_whitespace(fmt);
+	fmt = attr->vb_strvalue;
 
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(tmpl_rules_t){
@@ -925,7 +932,7 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	RIDEBUG("Attributes matching \"%s\"", fmt);
@@ -1026,9 +1033,8 @@ static ssize_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, U
 
 	talloc_free(vpt);
 
-	return 0;
+	return XLAT_ACTION_DONE;
 }
-
 
 /** Split an attribute into multiple new attributes based on a delimiter
  *
@@ -3206,7 +3212,6 @@ int xlat_init(void)
 #define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(xlat);
 
-	XLAT_REGISTER(debug_attr);
 	xlat_register_legacy(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	XLAT_REGISTER(integer);
 	XLAT_REGISTER(map);
@@ -3221,6 +3226,7 @@ do { \
 } while (0)
 
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, xlat_func_debug_args);
+	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, xlat_func_debug_attr_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
