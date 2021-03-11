@@ -16,16 +16,16 @@
 
 /**
  * $Id$
- * @file proto_dhcpv6/proto_dhcpv6_process.c
+ * @file src/process/dhcpv6/base.c
  * @brief Base DHCPV6 processing.
  *
  * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
  */
-#define LOG_PREFIX "proto_dhcpv6 - "
+#define LOG_PREFIX "process_dhcpv6 - "
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
@@ -38,8 +38,8 @@
 
 static fr_dict_t const *dict_dhcpv6;
 
-extern fr_dict_autoload_t proto_dhcpv6_process_dict[];
-fr_dict_autoload_t proto_dhcpv6_process_dict[] = {
+extern fr_dict_autoload_t process_dhcpv6_dict[];
+fr_dict_autoload_t process_dhcpv6_dict[] = {
 	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
 	{ NULL }
 };
@@ -52,8 +52,8 @@ static fr_dict_attr_t const *attr_relay_link_address;
 static fr_dict_attr_t const *attr_relay_peer_address;
 static fr_dict_attr_t const *attr_transaction_id;
 
-extern fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[];
-fr_dict_attr_autoload_t proto_dhcpv6_process_dict_attr[] = {
+extern fr_dict_attr_autoload_t process_dhcpv6_dict_attr[];
+fr_dict_attr_autoload_t process_dhcpv6_dict_attr[] = {
 	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
 	{ .out = &attr_hop_count, .name = "Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv6 },
 	{ .out = &attr_interface_id, .name = "Interface-ID", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
@@ -412,10 +412,11 @@ static const virtual_server_compile_t compile_list[] = {
 };
 
 
-extern fr_app_worker_t proto_dhcpv6_process;
-fr_app_worker_t proto_dhcpv6_process = {
+extern fr_process_module_t process_dhcpv6;
+fr_process_module_t process_dhcpv6 = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "dhcpv6_process",
-	.entry_point	= mod_process,
+	.name		= "process_dhcpv6",
+	.process	= mod_process,
 	.compile_list	= compile_list,
+	.dict		= &dict_dhcpv6,
 };
