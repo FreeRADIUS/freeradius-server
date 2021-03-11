@@ -1863,7 +1863,7 @@ int virtual_server_get_process_by_name(CONF_SECTION *cs, char const *type, modul
 			return -1;
 		}
 
-		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
+		process = (fr_process_module_t const *) server->process_module->module->common;
 		*method_p = process->process;
 		*ctx = server->process_module->data;
 		return 0;
