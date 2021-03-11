@@ -340,15 +340,13 @@ aaa, bb, c
 aaa,bb,c
 ```
 
-=== %{explode:<&ref> <delim>}
+=== %(explode:<&ref> <delim>)
 
-Split an attribute into multiple new attributes based on a delimiter.
-The original input attribute is removed, and is replaced with multiple
-attributes of the same name, but which contain the "exploded" values.
+Split an string into multiple new strings based on a delimiter.
 
 This expansion is the opposite of `%(concat: ... )`.
 
-.Return: _the number of total new attributes_.
+.Return: _the number exploded list of strings_.
 
 .Example
 
@@ -358,10 +356,12 @@ update control {
     &Tmp-String-0 := "bob.toba@domain.com"
 }
 
-"%{explode:&control.Tmp-String-0 @}"
+update control {
+    &Tmp-String-1 := "%(explode:&control.Tmp-String-0 @)"
+}
 
 update reply {
-    &Reply-Message := "Welcome %{control.Tmp-String-0[0]}"
+    &Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 }
 ----
 

@@ -1039,10 +1039,8 @@ static xlat_arg_parser_t const xlat_func_explode_args[] = {
 
 /** Split a string into multiple new strings based on a delimiter
  *
- * @todo should support multibyte delimiter for string types.
- *
 @verbatim
-%{explode:&ref <delim>}
+%(explode:<string> <delim>)
 @endverbatim
  *
  * Example:
@@ -1050,15 +1048,7 @@ static xlat_arg_parser_t const xlat_func_explode_args[] = {
 update request {
 	&Tmp-String-1 := "a,b,c"
 }
-if ("%{explode:&Tmp-String-1 ,}" != 3) {
-	reject
-}
-@endverbatim
- * Replaces Tmp-String-1 with three new attributes:
-@verbatim
-&Tmp-String-1 = "a"
-&Tmp-String-1 = "b"
-&Tmp-String-1 = "c"
+"%(concat:%(explode:%{Tmp-String-1} ,) |)" == "a|b|c"
 @endverbatim
  *
  * @ingroup xlat_functions

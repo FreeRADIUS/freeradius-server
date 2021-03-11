@@ -145,7 +145,7 @@ server coa {
 		#
 		#  Split the string and split into pieces.
 		#
-		if ("%{explode:&control.Tmp-String-0 |}") {
+		if ("%(explode:&control.Tmp-String-0 |)") {
 
 			foreach &control.Tmp-String-0 {
 
