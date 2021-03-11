@@ -1,5 +1,5 @@
 #
-# PRE: update
+# PRE: update concat
 #
 #  Check explode works correctly
 #
@@ -9,59 +9,37 @@ update {
 	&control.User-Name += '|hello|goodbye'
 	&control.User-Name += '|morning|night|1|'
 	&control.Reply-Message := 'Can\'t touch this'
+	&control.Tmp-String-0 := 'here.  are . some.  words. '
 }
 
-if ("%{explode:&Class |}" != 3) {
-	test_fail
-}
-
-if ("%{Class[#]}" != 3) {
-	test_fail
-}
-
-if ((&Class[0] != '1=1') || (&Class[1] != 'my_attr=2') || (&Class[2] != 'my_attr=hello')) {
-	test_fail
-}
-
-if (&Class[3]) {
-	test_fail
-}
-
-if ("%{explode:&control.Calling-Station-Id |}" != 0) {
-	test_fail
-}
-
-if ("%{explode:&control.User-Name[*] |}" != 5) {
-	test_fail
-}
-
-if ("%{control.User-Name[#]}" != 5) {
-	test_fail
-}
-
-if ((&control.User-Name[0] != 'hello') || \
-    (&control.User-Name[1] != 'goodbye') || \
-    (&control.User-Name[2] != 'morning') || \
-    (&control.User-Name[3] != 'night') || \
-    (&control.User-Name[4] != '1')) {
-	test_fail
-}
-
-if (&control.User-Name[5]) {
-	test_fail
-}
-
-if ("%{explode:&control.Reply-Message |}" != 0) {
-	test_fail
-}
-
-if ("%{control.Reply-Message[#]}" != 1) {
-	test_fail
-}
-
-if (&control.Reply-Message != 'Can\'t touch this') {
-	test_fail
+update {
+	&request.Tmp-String-1 := "%(concat:%(explode:%{Class} |) ,)"
+	&request.Tmp-String-2 := "%(concat:%(explode:%{Calling-Station-ID} |) ,)"
+	&request.Tmp-String-3 := "%(concat:%(explode:%{control.User-Name[*]} |) ,)"
+	&request.Tmp-String-4 := "%(concat:%(explode:%{control.Reply-Message} |) ,)"
+	&request.Tmp-String-5 := "%(concat:%(explode:%{control.Tmp-String-0} '. ') ,)"
 }
 
 debug_all
+
+if ("%{Tmp-String-1}" != "1=1,my_attr=2,my_attr=hello") {
+	test_fail
+}
+
+if ("%{Tmp-String-2}" != "") {
+	test_fail
+}
+
+if ("%{Tmp-String-3}" != "hello,goodbye,morning,night,1") {
+	test_fail
+}
+
+if ("%{Tmp-String-4}" != 'Can\'t touch this') {
+	test_fail
+}
+
+if ("%{Tmp-String-5}" != 'here, are ,some, words') {
+	test_fail
+}
+
 success
