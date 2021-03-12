@@ -100,6 +100,7 @@ typedef enum {
 #define UNLANG_NORMAL_CHILD	(false)
 
 typedef struct unlang_s unlang_t;
+typedef struct unlang_stack_frame_s unlang_stack_frame_t;
 
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
@@ -157,6 +158,55 @@ typedef struct {
 	xlat_flags_t		flags;
 } unlang_tmpl_t;
 
+/** Function to call when interpreting a frame
+ *
+ * @param[in,out] p_result	Pointer to the current rcode, may be modified by the function.
+ * @param[in] request		The current request.
+ * @param[in] frame		being executed.
+ *
+ * @return an action for the interpreter to perform.
+ */
+typedef unlang_action_t (*unlang_process_t)(rlm_rcode_t *p_result, request_t *request,
+					    unlang_stack_frame_t *frame);
+
+/** Function to call if the request was signalled
+ *
+ * This is the instruction specific cancellation function.
+ * This function will usually either call a more specialised cancellation function
+ * set when something like a module yielded, or just cleanup the state of the original
+ * #unlang_process_t.
+ *
+ * @param[in] request		The current request.
+ * @param[in] frame		being signalled.
+ * @param[in] action		We're being signalled with.
+ */
+typedef void (*unlang_signal_t)(request_t *request,
+				unlang_stack_frame_t *frame, fr_state_signal_t action);
+
+/** An unlang operation
+ *
+ * These are like the opcodes in other interpreters.  Each operation, when executed
+ * will return an #unlang_action_t, which determines what the interpreter does next.
+ */
+typedef struct {
+	char const		*name;				//!< Name of the operation.
+
+	unlang_process_t	interpret;     			//!< Function to interpret the keyword
+
+	unlang_signal_t		signal;				//!< Function to signal stop / dup / whatever
+
+	bool			debug_braces;			//!< Whether the operation needs to print braces
+								///< in debug mode.
+
+	size_t			frame_state_size;       	//!< size of instance data in the stack frame
+
+	char const		*frame_state_name;		//!< talloc name of the frame instance data
+
+	size_t			frame_state_pool_objects;	//!< How many sub-allocations we expect.
+
+	size_t			frame_state_pool_size;		//!< The total size of the pool to alloc.
+} unlang_op_t;
+
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
@@ -169,9 +219,9 @@ typedef struct {
  * through the server.  Because the interpreter stack is distinct from the C stack, we can have
  * a single system thread with many thousands of pending requests.
  */
-typedef struct {
-	unlang_t		*instruction;			//!< The unlang node we're evaluating.
-	unlang_t		*next;				//!< The next unlang node we will evaluate
+struct unlang_stack_frame_s {
+	unlang_t const		*instruction;			//!< The unlang node we're evaluating.
+	unlang_t const		*next;				//!< The next unlang node we will evaluate
 
 	unlang_process_t	process;			//!< function to call for interpreting this stack frame
 	unlang_signal_t		signal;				//!< function to call when signalling this stack frame
@@ -187,19 +237,20 @@ typedef struct {
 	 */
 	void			*state;
 
-	rlm_rcode_t		result;				//!< The result from executing the instruction.
+	rlm_rcode_t 		result;				//!< The result from executing the instruction.
 	int			priority;			//!< Result priority.  When we pop this stack frame
 								///< this priority will be compared with the one of the
 								///< frame lower in the stack to determine if the
 								///< result stored in the lower stack frame should
 								///< be replaced.
 	uint8_t			uflags;				//!< Unwind markers
-} unlang_stack_frame_t;
+};
 
 /** An unlang stack associated with a request
  *
  */
 typedef struct {
+	int			priority;			//!< Current priority.
 	rlm_rcode_t		result;				//!< The current stack rcode.
 	int			depth;				//!< Current depth we're executing at.
 	uint8_t			unwind;				//!< Unwind to this frame if it exists.
@@ -228,13 +279,13 @@ static inline void repeatable_clear(unlang_stack_frame_t *frame)	{ frame->uflags
 static inline void top_frame_clear(unlang_stack_frame_t *frame)		{ frame->uflags &= ~UNWIND_FLAG_TOP_FRAME; }
 static inline void break_point_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_BREAK_POINT; }
 static inline void return_point_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FLAG_RETURN_POINT; }
-static inline void yielded_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FLAG_YIELDED; }
+static inline void yielded_clear(unlang_stack_frame_t *frame) 		{ frame->uflags &= ~UNWIND_FLAG_YIELDED; }
 
-static inline bool is_repeatable(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_REPEAT; }
-static inline bool is_top_frame(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_TOP_FRAME; }
-static inline bool is_break_point(unlang_stack_frame_t *frame)		{ return frame->uflags & UNWIND_FLAG_BREAK_POINT; }
-static inline bool is_return_point(unlang_stack_frame_t *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
-static inline bool is_yielded(unlang_stack_frame_t *frame) 		{ return frame->uflags & UNWIND_FLAG_YIELDED; }
+static inline bool is_repeatable(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_REPEAT; }
+static inline bool is_top_frame(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_TOP_FRAME; }
+static inline bool is_break_point(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_BREAK_POINT; }
+static inline bool is_return_point(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
+static inline bool is_yielded(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FLAG_YIELDED; }
 
 static inline unlang_action_t unwind_to_break(unlang_stack_t *stack)
 {
@@ -250,6 +301,20 @@ static inline unlang_action_t unwind_all(unlang_stack_t *stack)
 {
 	stack->unwind = UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR;
 	return UNLANG_ACTION_UNWIND;
+}
+
+static inline unlang_stack_frame_t *unlang_current_frame(request_t *request)
+{
+	unlang_stack_t *stack = request->stack;
+
+	return &stack->frame[stack->depth];
+}
+
+static inline int unlang_current_depth(request_t *request)
+{
+	unlang_stack_t *stack = request->stack;
+
+	return stack->depth;
 }
 
 /** Different operations the interpreter can execute
@@ -268,27 +333,27 @@ extern size_t mod_rcode_table_len;
  *
  * @{
  */
-static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
+static inline unlang_group_t *unlang_generic_to_group(unlang_t const *p)
 {
 	fr_assert((p->type > UNLANG_TYPE_MODULE) && (p->type <= UNLANG_TYPE_POLICY));
 
-	return (unlang_group_t *)p;
+	return UNCONST(unlang_group_t *, p);
 }
 
-static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
+static inline unlang_t *unlang_group_to_generic(unlang_group_t const *p)
 {
-	return (unlang_t *)p;
+	return UNCONST(unlang_t *, p);
 }
 
-static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t *p)
+static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t const *p)
 {
 	fr_assert(p->type == UNLANG_TYPE_TMPL);
-	return talloc_get_type_abort(p, unlang_tmpl_t);
+	return UNCONST(unlang_tmpl_t *, talloc_get_type_abort_const(p, unlang_tmpl_t));
 }
 
-static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t *p)
+static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t const *p)
 {
-	return (unlang_t *)p;
+	return UNCONST(unlang_t *, p);
 }
 /** @} */
 
@@ -296,7 +361,7 @@ static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t *p)
  *
  * @{
  */
-int		unlang_interpret_push(request_t *request, unlang_t *instruction,
+int		unlang_interpret_push(request_t *request, unlang_t const *instruction,
 				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
 				      CC_HINT(warn_unused_result);
 
@@ -324,6 +389,8 @@ request_t		*unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *names
  *
  * @{
  */
+void		unlang_register(int type, unlang_op_t *op);
+
 void		unlang_call_init(void);
 
 void		unlang_caller_init(void);

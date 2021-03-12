@@ -65,10 +65,10 @@ typedef struct {
 	/** @} */
 } unlang_frame_state_module_t;
 
-static inline unlang_module_t *unlang_generic_to_module(unlang_t *p)
+static inline unlang_module_t *unlang_generic_to_module(unlang_t const *p)
 {
 	fr_assert(p->type == UNLANG_TYPE_MODULE);
-	return talloc_get_type_abort(p, unlang_module_t);
+	return UNCONST(unlang_module_t *, talloc_get_type_abort_const(p, unlang_module_t));
 }
 
 static inline unlang_t *unlang_module_to_generic(unlang_module_t *p)

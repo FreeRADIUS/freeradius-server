@@ -20,12 +20,13 @@
  * @file unlang/function.c
  * @brief Unlang "function" keyword evaluation.
 
- * @copyright 2018 The FreeRADIUS server project
- * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2018,2021 The FreeRADIUS server project
+ * @copyright 2018,2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
 #include "unlang_priv.h"
+#include "function.h"
 
 /*
  *	Some functions differ mainly in their parsing
@@ -33,6 +34,7 @@ RCSID("$Id$")
 typedef struct {
 	unlang_function_t		func;			//!< To call when going down the stack.
 	unlang_function_t		repeat;			//!< To call when going back up the stack.
+	unlang_function_signal_t	signal;			//!< Signal function to call.
 	void				*uctx;			//!< Uctx to pass to function.
 } unlang_frame_state_func_t;
 
@@ -56,15 +58,30 @@ static unlang_t function_instruction = {
 	}
 };
 
+/** Generic signal handler
+ *
+ * @param[in] request		being signalled.
+ * @param[in] frame		being signalled.
+ * @param[in] action		Type of signal.
+ */
+static void unlang_function_signal(request_t *request,
+				   unlang_stack_frame_t *frame, fr_state_signal_t action)
+{
+	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+
+	if (!state->signal) return;
+
+	state->signal(request, action, state->uctx);
+}
+
 /** Call a generic function
  *
- * @param[out] p_result	The frame result.
- * @param[in] request	The current request.
+ * @param[out] p_result		The frame result.
+ * @param[in] request		The current request.
+ * @param[in] frame		The current frame.
  */
-static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 	unlang_action_t			ua;
 	char const 			*caller;
@@ -76,9 +93,9 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	caller = request->module;
 	request->module = NULL;
 	if (!is_repeatable(frame)) {
-		ua = state->func(p_result, NULL, request, state->uctx);
+		ua = state->func(p_result, &frame->priority, request, state->uctx);
 	} else {
-		ua = state->repeat(p_result, NULL, request, state->uctx);
+		ua = state->repeat(p_result, &frame->priority, request, state->uctx);
 	}
 	request->module = caller;
 
@@ -94,12 +111,14 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
  * @param[in] func	to call going up the stack.
  * @param[in] repeat	function to call going back down the stack (may be NULL).
  *			This may be the same as func.
+ * @param[in] signal	function to call if the request is signalled.
  * @param[in] uctx	to pass to func.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_interpret_push_function(request_t *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
+int unlang_interpret_push_function(request_t *request, unlang_function_t func, unlang_function_t repeat,
+				   unlang_function_signal_t signal, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -125,6 +144,7 @@ int unlang_interpret_push_function(request_t *request, unlang_function_t func, u
 	state = frame->state;
 	state->func = func;
 	state->repeat = repeat;
+	state->signal = signal;
 	state->uctx = uctx;
 
 	return 0;
@@ -136,6 +156,7 @@ void unlang_function_init(void)
 			   &(unlang_op_t){
 				.name = "function",
 				.interpret = unlang_function_call,
+				.signal = unlang_function_signal,
 				.debug_braces = false,
 			        .frame_state_size = sizeof(unlang_frame_state_func_t),
 				.frame_state_name = "unlang_frame_state_func_t",

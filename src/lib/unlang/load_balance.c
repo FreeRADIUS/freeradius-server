@@ -31,18 +31,11 @@
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t *request,
+						unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_frame_state_redundant_t	*redundant;
-
-	unlang_group_t			*g;
-
-	g = unlang_generic_to_group(instruction);
-
-	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
+	unlang_frame_state_redundant_t	*redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 
 #ifdef __clang_analyzer__
 	if (!redundant->found) {
@@ -74,7 +67,7 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 		 *	process again.
 		 */
 
-		fr_assert(instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
+		fr_assert(frame->instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
 
 		/*
 		 *	If the current child says "return", then do
@@ -112,19 +105,14 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_redundant_t	*redundant;
-
-	unlang_group_t			*g;
-	unlang_load_balance_t	*gext = NULL;
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	unlang_load_balance_t		*gext = NULL;
 
 	uint32_t count = 0;
 
-	g = unlang_generic_to_group(instruction);
 	if (!g->num_children) {
 		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -134,7 +122,8 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 
 	RDEBUG4("%s setting up", frame->instruction->debug_name);
 
-	redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
+	redundant = talloc_get_type_abort(frame->state,
+					  unlang_frame_state_redundant_t);
 
 	if (gext && gext->vpt) {
 		uint32_t hash, start;
@@ -237,7 +226,7 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 	/*
 	 *	Plain "load-balance".  Just do one child.
 	 */
-	if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
+	if (frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
 		if (unlang_interpret_push(request, redundant->found,
 					  frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
 			*p_result = RLM_MODULE_FAIL;
@@ -254,7 +243,7 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 	redundant->child = NULL;
 
 	frame->process = unlang_load_balance_next;
-	return unlang_load_balance_next(p_result, request);
+	return unlang_load_balance_next(p_result, request, frame);
 }
 
 void unlang_load_balance_init(void)

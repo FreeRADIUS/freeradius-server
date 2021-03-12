@@ -27,14 +27,9 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request)
+unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
-
-	g = unlang_generic_to_group(instruction);
+	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
 
 	/*
 	 *	The compiler catches most of these, EXCEPT for the
@@ -42,7 +37,7 @@ unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request)
 	 *	and can be empty.
 	 */
 	if (!g->children) {
-		RDEBUG2("} # %s ... <ignoring empty subsection>", instruction->debug_name);
+		RDEBUG2("} # %s ... <ignoring empty subsection>", frame->instruction->debug_name);
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
@@ -54,17 +49,14 @@ unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request)
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_policy(rlm_rcode_t *result, request_t *request)
+static unlang_action_t unlang_policy(rlm_rcode_t *result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-
 	/*
 	 *	Ensure returns stop at the enclosing policy
 	 */
 	return_point_set(frame);
 
-	return unlang_group(result, request);
+	return unlang_group(result, request, frame);
 }
 
 

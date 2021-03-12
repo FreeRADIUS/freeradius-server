@@ -24,6 +24,7 @@
  * @copyright 2016-2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/unlang/compile.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/unlang/subrequest.h>
@@ -32,12 +33,7 @@
 extern "C" {
 #endif
 
-#define UNLANG_STACK_MAX (64)		//!< The maximum depth of the stack.
-#define UNLANG_FRAME_PRE_ALLOC (128)	//!< How much memory we pre-alloc for each frame.
-
 bool		unlang_section(CONF_SECTION *cs);
-
-void		unlang_register(int type, unlang_op_t *op);
 
 int		unlang_init(void);
 

@@ -1239,19 +1239,26 @@ void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 /** Asynchronously add a request_t to a worker thread
  *
  *  When we don't know what the worker is...
+ *
+ * @param[in] request		to add.
+ * @param[in] process		module method to call when the request is executed.
+ * @param[in] uctx		to pass to the process method.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int fr_worker_request_add(request_t *request, module_method_t process, void *ctx)
+int fr_worker_request_add(request_t *request, module_method_t process, void *uctx)
 {
 	fr_worker_t *worker;
 	fr_time_t now;
 
-	if (!request || !process) {
+	if (unlikely(!request || !process)) {
 		fr_strerror_const("Invalid arguments");
 		return -1;
 	}
 
 	worker = thread_local_worker;
-	if (!worker) {
+	if (unlikely(!worker)) {
 		fr_strerror_const("No worker has been defined");
 		return -1;
 	}
@@ -1262,7 +1269,7 @@ int fr_worker_request_add(request_t *request, module_method_t process, void *ctx
 
 	fr_assert(request_is_internal(request));
 	request->async->process = process;
-	request->async->process_inst = ctx;
+	request->async->process_inst = uctx;
 
 	worker_request_time_tracking_start(worker, request, now);
 

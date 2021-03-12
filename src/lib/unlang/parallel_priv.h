@@ -50,7 +50,7 @@ typedef struct {
 	unlang_parallel_child_state_t	state;		//!< State of the child.
 	request_t			*child; 	//!< Child request.
 	char				*name;		//!< Cache the request name.
-	unlang_t			*instruction;	//!< broken out of g->children
+	unlang_t const			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 
 typedef struct {

@@ -75,19 +75,11 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 	return 0;
 }
 
-static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	fr_pair_t			*vp;
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_frame_state_foreach_t	*foreach = NULL;
-	unlang_group_t			*g;
-
-	g = unlang_generic_to_group(instruction);
-
-	foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
-
+	unlang_frame_state_foreach_t	*foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	vp = fr_dcursor_current(&foreach->cursor);
 	if (!vp) {
 		*p_result = frame->result;
@@ -126,24 +118,17 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 }
 
 
-static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame;
-	unlang_t			*instruction;
 	unlang_frame_state_foreach_t	*foreach = NULL;
-
-	unlang_group_t			*g;
-	unlang_foreach_t		*gext;
+	unlang_stack_t			*stack = request->stack;
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	unlang_foreach_t		*gext = unlang_group_to_foreach(g);
 
 	int				i, foreach_depth = 0;
 	fr_pair_list_t			vps;
 
-	frame = &stack->frame[stack->depth];
 	fr_pair_list_init(&vps);
-	instruction = frame->instruction;
-	g = unlang_generic_to_group(instruction);
-	gext = unlang_group_to_foreach(g);
 
 	/*
 	 *	Ensure any breaks terminate here...
@@ -154,7 +139,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 	 *	Figure out foreach depth by walking back up the stack
 	 */
 	if (stack->depth > 0) for (i = (stack->depth - 1); i >= 0; i--) {
-			unlang_t *our_instruction;
+			unlang_t const *our_instruction;
 			our_instruction = stack->frame[i].instruction;
 			if (!our_instruction || (our_instruction->type != UNLANG_TYPE_FOREACH)) continue;
 			foreach_depth++;
@@ -166,7 +151,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	MEM(frame->state = foreach = talloc_zero(stack, unlang_frame_state_foreach_t));
+	MEM(frame->state = foreach = talloc_zero(request->stack, unlang_frame_state_foreach_t));
 	fr_pair_list_init(&foreach->vps);
 
 	/*
@@ -191,16 +176,12 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request)
 	talloc_set_destructor(foreach, _free_unlang_frame_state_foreach);
 
 	frame->process = unlang_foreach_next;
-	return unlang_foreach_next(p_result, request);
+	return unlang_foreach_next(p_result, request, frame);
 }
 
-static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-
-	RDEBUG2("%s", unlang_ops[instruction->type].name);
+	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
 
 	*p_result = frame->result;
 
@@ -208,7 +189,7 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request)
 	 *	Stop at the next break point, or if we hit
 	 *	the a top frame.
 	 */
-	return unwind_to_break(stack);
+	return unwind_to_break(request->stack);
 }
 
 /** Implements the Foreach-Variable-X

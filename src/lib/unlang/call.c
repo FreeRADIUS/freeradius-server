@@ -30,13 +30,11 @@ RCSID("$Id$")
 #include "call_priv.h"
 #include "unlang_priv.h"
 
-static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *request,
+					   unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_call_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
-	unlang_t			*instruction = frame->instruction;
-	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 
 	rlm_rcode_t			rcode;
 	unlang_action_t			ua;
@@ -83,13 +81,10 @@ static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *req
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request,
+					      unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_call_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
-	unlang_t			*instruction = frame->instruction;
-
 	unlang_group_t			*g;
 	unlang_call_t			*gext;
 	char const			*server;
@@ -105,7 +100,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	 *	can still be side effects from executing the virtual
 	 *	server.
 	 */
-	g = unlang_generic_to_group(instruction);
+	g = unlang_generic_to_group(frame->instruction);
 	gext = unlang_group_to_call(g);
 	server = cf_section_name2(gext->server_cs);
 
@@ -141,7 +136,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 		.prev_server_cs = request->server_cs,
 	};
 
-	return unlang_call_process(p_result, request);
+	return unlang_call_process(p_result, request, frame);
 }
 
 /** Push a call to a virtual server onto the stack for evaluation

@@ -227,10 +227,8 @@ int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_exp_t const		*child = NULL;
 	xlat_action_t			xa;
@@ -290,12 +288,11 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request)
  * If there is no #xlat_func_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
+ * @param[in] frame		The current stack frame.
  * @param[in] action		What the request should do (the type of signal).
  */
-static void unlang_xlat_signal(request_t *request, fr_state_signal_t action)
+static void unlang_xlat_signal(request_t *request, unlang_stack_frame_t *frame, fr_state_signal_t action)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
 	/*
@@ -318,14 +315,13 @@ static void unlang_xlat_signal(request_t *request, fr_state_signal_t action)
  *			  - RLM_MODULE_YIELD if additional asynchronous
  *			    operations need to be performed.
  * @param[in] request	to resume processing.
+ * @param[in] frame	the current stack frame.
  * @return
  *	- UNLANG_ACTION_YIELD	if yielding.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
-static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 

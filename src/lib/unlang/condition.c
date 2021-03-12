@@ -28,18 +28,12 @@ RCSID("$Id$")
 #include "group_priv.h"
 #include "unlang_priv.h"
 
-static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	int			condition;
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
+	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
+	unlang_cond_t		*gext = unlang_group_to_cond(g);
 
-	unlang_group_t		*g;
-	unlang_cond_t	*gext;
-
-	g = unlang_generic_to_group(instruction);
-	gext = unlang_group_to_cond(g);
 	fr_assert(gext->cond != NULL);
 
 	condition = cond_eval(request, *p_result, gext->cond);
@@ -79,7 +73,7 @@ static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request)
 	/*
 	 *	We took the "if".  Go recurse into its' children.
 	 */
-	return unlang_group(p_result, request);
+	return unlang_group(p_result, request, frame);
 }
 
 void unlang_condition_init(void)

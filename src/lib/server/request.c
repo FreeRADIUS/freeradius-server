@@ -554,6 +554,13 @@ int request_detach(request_t *child)
 	fr_assert(request != NULL);
 
 	/*
+	 *	Let any signal handler that cares
+	 *	know that the child is about to
+	 *	be detached.
+	 */
+	unlang_interpret_signal(child, FR_SIGNAL_DETACH);
+
+	/*
 	 *	Unlink the child from the parent.
 	 */
 	request_data_get(request, child, 0);

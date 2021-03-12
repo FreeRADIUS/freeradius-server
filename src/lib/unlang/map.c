@@ -112,19 +112,18 @@ done:
 
 /** Create a list of modifications to apply to one or more fr_pair_t lists
  *
- * @param[in] request	The current request.
  * @param[out] p_result	The rcode indicating what the result
  *      		of the operation was.
+ * @param[in] request	The current request.
+ * @param[in] frame	Current stack frame.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_update_t	*update_state = frame->state;
-	map_t			*map;
+	unlang_frame_state_update_t	*update_state = talloc_get_type_abort(frame->state, unlang_frame_state_update_t);
+	map_t				*map;
 
 	/*
 	 *	Iterate over the maps producing a set of modifications to apply.
@@ -257,20 +256,16 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-
-	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_map_t			*gext = unlang_group_to_map(g);
 	unlang_frame_state_update_t	*update_state;
 
 	/*
 	 *	Initialise the frame state
 	 */
-	MEM(frame->state = update_state = talloc_zero_pooled_object(stack, unlang_frame_state_update_t,
+	MEM(frame->state = update_state = talloc_zero_pooled_object(request->stack, unlang_frame_state_update_t,
 								    (sizeof(map_t) +
 								    (sizeof(tmpl_t) * 2) + 128),
 								    g->num_children));	/* 128 is for string buffers */
@@ -285,18 +280,14 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 	 *	Call list_mod_create
 	 */
 	frame->process = list_mod_create;
-	return list_mod_create(p_result, request);
+	return list_mod_create(p_result, request, frame);
 }
 
 
-static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-
-	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	unlang_map_t		*gext = unlang_group_to_map(g);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	unlang_map_t			*gext = unlang_group_to_map(g);
 
 	map_proc_inst_t			*inst = gext->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
@@ -317,13 +308,10 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request)
 	return *p_result == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	unlang_map_t		*gext = unlang_group_to_map(g);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	unlang_map_t			*gext = unlang_group_to_map(g);
 	map_proc_inst_t			*inst = gext->proc_inst;
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 
@@ -382,7 +370,7 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 		goto error;
 	}
 
-	return map_proc_apply(p_result, request);
+	return map_proc_apply(p_result, request, frame);
 }
 
 void unlang_map_init(void)

@@ -66,10 +66,8 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
 /** Run one or more sub-sections from the parallel section.
  *
  */
-static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_parallel_state_t		*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 
 	int				i, priority;
@@ -144,7 +142,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 */
 			if ((unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
 						   UNLANG_NEXT_STOP, UNLANG_TOP_FRAME) < 0) ||
-			    (unlang_interpret_push_function(child, unlang_parallel_child_done, NULL, &state->children[i]) < 0) ||
+			    (unlang_interpret_push_function(child, unlang_parallel_child_done, NULL, NULL, &state->children[i]) < 0) ||
 			    (unlang_interpret_push(child,
 						   state->children[i].instruction, RLM_MODULE_FAIL,
 						   UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0)) {
@@ -265,7 +263,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 				state->priority = priority;
 
 				RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
-					stack->depth, __FUNCTION__,
+					unlang_current_depth(request), __FUNCTION__,
 					fr_table_str_by_value(mod_rcode_table, result, "<invalid>"),
 					priority);
 			}
@@ -376,10 +374,8 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 /** Send a signal from parent request to all of it's children
  *
  */
-static void unlang_parallel_signal(request_t *request, fr_state_signal_t action)
+static void unlang_parallel_signal(UNUSED request_t *request, unlang_stack_frame_t *frame, fr_state_signal_t action)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_parallel_state_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 	int			i;
 
@@ -402,11 +398,9 @@ static void unlang_parallel_signal(request_t *request, fr_state_signal_t action)
 	}
 }
 
-static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
+	unlang_t const			*instruction = frame->instruction;
 
 	unlang_group_t			*g;
 	unlang_parallel_t		*gext;
@@ -452,7 +446,7 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 	}
 
 	frame->process = unlang_parallel_process;
-	return unlang_parallel_process(p_result, request);
+	return unlang_parallel_process(p_result, request, frame);
 }
 
 void unlang_parallel_init(void)

@@ -176,7 +176,7 @@ static unlang_action_t eap_tls_virtual_server(rlm_rcode_t *p_result, rlm_eap_tls
 	/*
 	 *	Catch the interpreter on the way back up the stack
 	 */
-	if (unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, eap_session) < 0) {
+	if (unlang_interpret_push_function(request, NULL, eap_tls_virtual_server_result, NULL, eap_session) < 0) {
 		RETURN_MODULE_FAIL;
 	}
 

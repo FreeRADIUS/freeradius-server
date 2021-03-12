@@ -30,11 +30,8 @@ RCSID("$Id$")
 #include "switch_priv.h"
 #include "unlang_priv.h"
 
-static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
 	unlang_t		*this, *found, *null_case;
 
 	unlang_group_t		*switch_g;
@@ -44,7 +41,7 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request)
 	map_t			map;
 	tmpl_t			vpt, *switch_vpt;
 
-	switch_g = unlang_generic_to_group(instruction);
+	switch_g = unlang_generic_to_group(frame->instruction);
 	switch_gext = unlang_group_to_switch(switch_g);
 
 	memset(&cond, 0, sizeof(cond));
@@ -176,21 +173,16 @@ do_null_case:
 }
 
 
-static unlang_action_t unlang_case(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t unlang_case(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
-
-	g = unlang_generic_to_group(instruction);
+	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
 
 	if (!g->children) {
 		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_group(p_result, request);
+	return unlang_group(p_result, request, frame);
 }
 
 void unlang_switch_init(void)
