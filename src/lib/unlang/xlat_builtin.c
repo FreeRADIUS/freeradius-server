@@ -1298,9 +1298,14 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 }
 
 
+static xlat_arg_parser_t const xlat_func_next_time_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Calculate number of seconds until the next n hour(s), day(s), week(s), year(s).
  *
- * For example, if it were 16:18 %{nexttime:1h} would expand to 2520.
+ * For example, if it were 16:18 %(nexttime:1h) would expand to 2520.
  *
  * The envisaged usage for this function is to limit sessions so that they don't
  * cross billing periods. The output of the xlat should be combined with %{rand:} to create
@@ -1309,9 +1314,9 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				   request_t *request, char const *fmt)
+static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 fr_value_box_list_t *in)
 {
 	long		num;
 
@@ -1319,16 +1324,18 @@ static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 	char		*q;
 	time_t		now;
 	struct tm	*local, local_buff;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*vb;
 
 	now = time(NULL);
 	local = localtime_r(&now, &local_buff);
 
-	p = fmt;
+	p = in_head->vb_strvalue;
 
 	num = strtoul(p, &q, 10);
 	if (!q || *q == '\0') {
 		REDEBUG("nexttime: <int> must be followed by period specifier (h|d|w|m|y)");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	if (p == q) {
@@ -1370,10 +1377,13 @@ static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 
 	default:
 		REDEBUG("nexttime: Invalid period specifier '%c', must be h|d|w|m|y", *p);
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
-	return snprintf(*out, outlen, "%" PRIu64, (uint64_t)(mktime(local) - now));
+	MEM(vb=fr_value_box_alloc_null(ctx));
+	fr_value_box_uint64(vb, NULL, (uint64_t)(mktime(local) - now), false);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /** xlat expand string attribute value
@@ -3144,7 +3154,6 @@ int xlat_init(void)
 
 	XLAT_REGISTER(integer);
 	XLAT_REGISTER(map);
-	xlat_register_legacy(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
 	XLAT_REGISTER(xlat);
 
@@ -3161,6 +3170,7 @@ do { \
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
+	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
