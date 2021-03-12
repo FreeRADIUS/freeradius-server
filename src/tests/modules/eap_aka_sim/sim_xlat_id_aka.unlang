@@ -51,7 +51,7 @@ if ("%{3gpp_pseudonym_encrypt:&control.User-Name &control.Tmp-String-0 6}" != ''
 #  0.5 - Get the original IMSI back again
 #
 update control {
-	&Tmp-String-1 := "%{3gpp_pseudonym_decrypt:&control.User-Name &control.Tmp-String-0}"
+	&Tmp-String-1 := "%(3gpp_pseudonym_decrypt:&control.User-Name &control.Tmp-String-0)"
 }
 
 if (&control.Tmp-String-1 != &User-Name) {
@@ -104,7 +104,7 @@ if ("%{3gpp_pseudonym_encrypt:&control.User-Name[1] &control.Tmp-String-0 6}" !=
 #  1.4 - Get the original IMSI back again
 #
 update control {
-	&Tmp-String-1 := "%{3gpp_pseudonym_decrypt:&control.User-Name[1] &control.Tmp-String-0}"
+	&Tmp-String-1 := "%(3gpp_pseudonym_decrypt:&control.User-Name[1] &control.Tmp-String-0)"
 }
 
 if (&control.Tmp-String-1 != "0%{User-Name[1]}") {

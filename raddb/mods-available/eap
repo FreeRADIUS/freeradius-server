@@ -1638,7 +1638,7 @@ eap {
 #
 #  The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
 #
-#  ### %{3gpp_pseudonym_decrypt:...}
+#  ### %(3gpp_pseudonym_decrypt:...)
 #
 #  TODO
 #
