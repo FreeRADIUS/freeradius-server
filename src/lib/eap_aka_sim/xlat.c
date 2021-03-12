@@ -181,25 +181,23 @@ static xlat_action_t aka_sim_id_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, f
  *
  * @ingroup xlat_functions
  */
-static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					       request_t *request, char const *fmt)
+static xlat_action_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+							 UNUSED void const *xlat_inst,
+							 UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	tmpl_t	*id_vpt, *key_vpt;
 	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	ssize_t		slen, id_len, key_len;
 	uint8_t		tag;
-	char		out_tag;
+	char		out_tag, *buff;
 	uint8_t		*key;
 	char		decrypted[AKA_SIM_IMSI_MAX_LEN + 1];
-	char const	*p = fmt, *id;
+	char const	*id;
+	fr_value_box_t	*id_vb = fr_dlist_head(in);
+	fr_value_box_t	*key_vb = fr_dlist_next(in, id_vb);
+	fr_value_box_t	*vb;
 
-	/*
-	 *  Trim whitespace
-	 */
-	fr_skip_whitespace(p);
-
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, &FR_SBUFF_IN(p, strlen(p)),
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &id_vpt, &FR_SBUFF_IN(id_vb->vb_strvalue, id_vb->vb_length),
 				      NULL,
 				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
@@ -209,17 +207,10 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 		RPEDEBUG("Invalid ID attribute reference");
 	error:
 		talloc_free(our_ctx);
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
-	p += slen;
-	if (*p != ' ') {
-		REDEBUG2("Missing key argument");
-		goto error;
-	}
-	p++;
-
-	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, &FR_SBUFF_IN(p, strlen(p)),
+	slen = tmpl_afrom_attr_substr(our_ctx, NULL, &key_vpt, &FR_SBUFF_IN(key_vb->vb_strvalue, key_vb->vb_length),
 				      NULL,
 				      &(tmpl_rules_t){
 				      		.dict_def = request->dict,
@@ -282,11 +273,24 @@ static ssize_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, char **out, 
 	/*
 	 *	Recombine unencrypted IMSI with tag
 	 */
-	MEM(*out = talloc_typed_asprintf(ctx, "%c%s", out_tag, decrypted));
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_bstr_alloc(ctx, &buff, vb, NULL, AKA_SIM_IMSI_MAX_LEN + 1, false);
+	*buff = out_tag;
+	strncpy(buff+1, decrypted, AKA_SIM_IMSI_MAX_LEN + 1);
+	fr_dcursor_append(out, vb);
 	talloc_free(our_ctx);
 
-	return talloc_array_length(*out) - 1;
+	return XLAT_ACTION_DONE;
 }
+
+extern xlat_arg_parser_t aka_sim_3gpp_pseudonym_decrypt_xlat_args[];
+xlat_arg_parser_t aka_sim_3gpp_pseudonym_decrypt_xlat_args[] = {
+	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_STRING,
+	  .func = NULL, .uctx = NULL },
+	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_STRING,
+	  .func = NULL, .uctx = NULL },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Encrypts a 3gpp pseudonym
  *
@@ -484,8 +488,8 @@ void fr_aka_sim_xlat_register(void)
 	xlat_func_args(xlat, aka_sim_xlat_id_type_xlat_args);
 	xlat = xlat_register(NULL, "3gpp_pseudonym_key_index", aka_sim_id_3gpp_pseudonym_key_index_xlat, false);
 	xlat_func_args(xlat, aka_sim_id_3gpp_pseudonym_key_index_xlat_args);
-	xlat_register_legacy(NULL, "3gpp_pseudonym_decrypt",
-		      aka_sim_3gpp_pseudonym_decrypt_xlat, NULL, NULL, 0, 0);
+	xlat = xlat_register(NULL, "3gpp_pseudonym_decrypt", aka_sim_3gpp_pseudonym_decrypt_xlat, false);
+	xlat_func_args(xlat, aka_sim_3gpp_pseudonym_decrypt_xlat_args);
 	xlat_register_legacy(NULL, "3gpp_pseudonym_encrypt",
 		      aka_sim_3gpp_pseudonym_encrypt_xlat, NULL, NULL, 0, 0);
 	aka_sim_xlat_refs = 1;
