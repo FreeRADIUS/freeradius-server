@@ -1252,11 +1252,6 @@ int fr_worker_request_add(request_t *request, module_method_t process, void *uct
 	fr_worker_t *worker;
 	fr_time_t now;
 
-	if (unlikely(!request || !process)) {
-		fr_strerror_const("Invalid arguments");
-		return -1;
-	}
-
 	worker = thread_local_worker;
 	if (unlikely(!worker)) {
 		fr_strerror_const("No worker has been defined");
