@@ -464,7 +464,6 @@ do { \
 } while (0)
 #define REQUEST_BAD_STATE_TRANSITION(_new) \
 do { \
-	request_t *request = treq->pub.request; \
 	if (!fr_cond_assert_msg(0, "Trunk request %" PRIu64 " invalid transition %s -> %s", \
 				treq->id, \
 				fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
