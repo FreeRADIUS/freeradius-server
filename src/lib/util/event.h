@@ -196,7 +196,7 @@ typedef union {
 } fr_event_funcs_t;
 
 uint64_t	fr_event_list_num_fds(fr_event_list_t *el);
-int		fr_event_list_num_timers(fr_event_list_t *el);
+uint64_t	fr_event_list_num_timers(fr_event_list_t *el);
 int		fr_event_list_kq(fr_event_list_t *el);
 fr_time_t	fr_event_list_time(fr_event_list_t *el) CC_HINT(nonnull);
 

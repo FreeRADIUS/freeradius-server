@@ -37,9 +37,10 @@ extern "C" {
  */
 typedef enum {
 	CHILD_INIT = 0,					//!< Initial state.
-	CHILD_RUNNABLE,					//!< Child can continue running.
-	CHILD_YIELDED,					//!< Child is yielded waiting on an event.
+	CHILD_RUNNABLE,					//!< Running/runnable.
 	CHILD_EXITED,					//!< Child has exited
+	CHILD_DETACHED,					//!< Child has detached.
+	CHILD_CANCELLED,				//!< Child was cancelled.
 	CHILD_DONE					//!< The child has completed.
 } unlang_parallel_child_state_t;
 
@@ -47,8 +48,10 @@ typedef enum {
  *
  */
 typedef struct {
+	int				num;		//!< The child number.
+
 	unlang_parallel_child_state_t	state;		//!< State of the child.
-	request_t			*child; 	//!< Child request.
+	request_t			*request; 	//!< Child request.
 	char				*name;		//!< Cache the request name.
 	unlang_t const			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
@@ -58,6 +61,7 @@ typedef struct {
 	int				priority;
 
 	int				num_children;	//!< How many children are executing.
+	int				num_complete;	//!< How many children are complete.
 
 	bool				detach;		//!< are we creating the child detached
 	bool				clone;		//!< are the children cloned

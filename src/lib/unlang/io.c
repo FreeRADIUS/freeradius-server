@@ -51,14 +51,6 @@ unlang_action_t unlang_io_process_interpret(rlm_rcode_t *p_result, UNUSED module
 	}
 
 	/*
-	 *	Either we're done naturally, or we're forcibly done.  Stop.
-	 *
-	 *	If we have a parent, then we're running synchronously
-	 *	with it.  Allow the parent to resume.
-	 */
-	if (request->parent) unlang_interpret_mark_resumable(request->parent);
-
-	/*
 	 *	Don't bother setting request->reply->code.
 	 */
 	RETURN_MODULE_HANDLED;

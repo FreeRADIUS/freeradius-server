@@ -868,7 +868,7 @@ nak:
  * @param[in] worker the worker
  * @param[in] start the current time
  */
-static void worker_run_request(fr_worker_t *worker, fr_time_t start)
+static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker, fr_time_t start)
 {
 	rlm_rcode_t final;
 	request_t *request;

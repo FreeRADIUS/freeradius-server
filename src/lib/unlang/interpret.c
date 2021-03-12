@@ -334,7 +334,7 @@ static inline unlang_frame_action_t result_calculate(request_t *request, unlang_
 		 */
 		stack->unwind = UNWIND_FLAG_NONE;
 
-		RDEBUG4("** [%i] %s - unwind stop (%s %d) - flags - stack (%i), frame (%i)",
+		RDEBUG4("** [%i] %s - unwind stop (%s %d) - flags - stack unwind (%i), frame uflags (%i)",
 			stack->depth, __FUNCTION__,
 			fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
 			frame->priority, stack->unwind, frame->uflags);
@@ -392,21 +392,9 @@ static inline void frame_pop(unlang_stack_t *stack)
 
 	frame = &stack->frame[--stack->depth];
 
-	/*
-	 *	The child was break / return, AND the current frame is
-	 *	a break / return point.  Stop unwinding the stack.
-	 *
-	 *	NOTE: This is the frame further UP the stack, not the
-	 *	one we just popped.  So we *MUST* clear repeat,
-	 *	otherwise the interpreter will just keep repeating
-	 *	this frame instead of continuing to unwind the stack.
-	 *
-	 *	An alternative way of doing this would be to rearrange
-	 *	the code so repeat unwinding had precedence, but it's
-	 *	probably more robust to have the interpreter not be
-	 *	dependent on flag evaluation order.
-	 */
-	if (stack->unwind && is_repeatable(frame)) repeatable_clear(frame);
+	if (stack->unwind && is_repeatable(frame) && !is_break_point(frame) && !is_return_point(frame)) {
+		repeatable_clear(frame);
+	}
 }
 
 /** Evaluates all the unlang nodes in a section
@@ -1187,16 +1175,6 @@ void unlang_interpret_mark_resumable(request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-
-	/*
-	 *	Child requests aren't runnable, only parent requests
-	 *	are.
-	 */
-	while (request->parent) {
-		fr_assert(!unlang_request_is_scheduled(request));
-		request->runnable_id = -2; /* hack for now, see unlang_parallel_process() */
-		request = request->parent;
-	}
 
 	/*
 	 *	The request hasn't yielded, OR it's already been

@@ -442,7 +442,7 @@ uint64_t fr_event_list_num_fds(fr_event_list_t *el)
  * @param[in] el to return timer events for.
  * @return number of timer events.
  */
-int fr_event_list_num_timers(fr_event_list_t *el)
+uint64_t fr_event_list_num_timers(fr_event_list_t *el)
 {
 	if (unlikely(!el)) return -1;
 

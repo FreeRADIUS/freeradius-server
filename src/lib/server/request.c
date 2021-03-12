@@ -567,13 +567,6 @@ int request_detach(request_t *child)
 
 	child->parent = NULL;
 
-	while (!request->backlog) {
-		fr_assert(request->parent != NULL);
-		request = request->parent;
-	}
-
-	child->backlog = request->backlog;
-
 	return 0;
 }
 

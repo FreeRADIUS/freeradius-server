@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/tls/base.h>
 
@@ -463,7 +464,13 @@ static void request_run(fr_event_list_t *el, request_t *request)
 	void		*inst;
 	fr_dict_enum_t	*dv;
 	fr_heap_t	*backlog;
-	request_t	*child;
+	/*
+	 *	Record the number of FDs and timers
+	 *      inserted by modules before we start
+	 *      running requests.
+	 */
+	uint64_t	base_timers = fr_event_list_num_timers(el);
+	uint64_t	base_fds = fr_event_list_num_fds(el);
 
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!dv) return;
@@ -477,15 +484,25 @@ static void request_run(fr_event_list_t *el, request_t *request)
 	request->backlog = backlog;
 	request->el = el;
 
-	if (process(&rcode, &(module_ctx_t){ .instance = inst }, request) != UNLANG_ACTION_YIELD) goto done;
+	/*
+	 *	Don't check unlang_action_t, this may have
+	 *	added detached children, in which case
+	 *	we need to run them...
+	 */
+	(void)process(&rcode, &(module_ctx_t){ .instance = inst }, request);
 
-	while (true) {
-		bool wait_for_event;
-		int num_events;
+	while ((fr_event_list_num_timers(el) > base_timers) ||
+	       (fr_event_list_num_fds(el) > base_fds) ||
+	       (fr_heap_num_elements(backlog) > 0)) {
+		request_t	*runnable;
+		bool 		wait_for_event;
+		int		num_events;
 
+		/*
+		 *	Check if we need to wait for I/O
+		 */
 		wait_for_event = (fr_heap_num_elements(backlog) == 0);
 
-	corral:
 		num_events = fr_event_corral(el, fr_time(), wait_for_event);
 		if (num_events < 0) {
 			PERROR("Failed retrieving events");
@@ -498,33 +515,21 @@ static void request_run(fr_event_list_t *el, request_t *request)
 		if (num_events > 0) fr_event_service(el);
 
 		/*
-		 *	The request is not runnable.  Wait for events.
-		 *
-		 *	Note that we do NOT run any child requests.
-		 *	There may be child requests in the backlog,
-		 *	but we just ignore them.
+		 *	If there's requests in the backlog
+		 *      run all of them.
 		 */
-		if (request->runnable_id < 0) {
-			wait_for_event = true;
-			goto corral;
+		while ((runnable = fr_heap_pop(backlog))) {
+			if (runnable->async->process(&rcode,
+						     &(module_ctx_t){ .instance = inst },
+						     runnable) != UNLANG_ACTION_YIELD) {
+				/*
+				 *	It's a detached child, and
+				 *	it's done, free it!
+				 */
+				if ((runnable != request) && !runnable->parent) talloc_free(runnable);
+			}
 		}
-
-		/*
-		 *	Run the parent request in preference to any
-		 *	child requests.
-		 */
-		(void) fr_heap_extract(backlog, request);
-
-		if (process(&rcode, &(module_ctx_t){ .instance = inst }, request) != UNLANG_ACTION_YIELD) break;
-	}
-
-done:
-	/*
-	 *	Parallel-detach creates detached, but runnable
-	 *	children.  We don't want to run them, so we just clean
-	 *	them up here.
-	 */
-	while ((child = fr_heap_pop(backlog)) != NULL) talloc_free(child);
+	};
 
 	/*
 	 *	We do NOT run detached child requests.  We just ignore
