@@ -1231,6 +1231,12 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	return -1;
 }
 
+static xlat_arg_parser_t const xlat_func_map_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
+
 /** Processes fmt as a map string and applies it to the current request
  *
  * e.g.
@@ -1243,22 +1249,28 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     request_t *request, char const *fmt)
+static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   fr_value_box_list_t *in)
 {
-	map_t	*map = NULL;
+	map_t		*map = NULL;
 	int		ret;
+	fr_value_box_t	*fmt_vb = fr_dlist_head(in);
+	fr_value_box_t	*vb;
 
 	tmpl_rules_t	attr_rules = {
 		.dict_def = request->dict,
 		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 	};
 
-	if (map_afrom_attr_str(request, &map, fmt, &attr_rules, &attr_rules) < 0) {
-		RPEDEBUG("Failed parsing \"%s\" as map", fmt);
-		return -1;
+	if (map_afrom_attr_str(request, &map, fmt_vb->vb_strvalue, &attr_rules, &attr_rules) < 0) {
+		RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
+		return XLAT_ACTION_FAIL;
 	}
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+	vb->vb_int8 = 0;	/* Default fail value - changed to 1 on success */
+	fr_dcursor_append(out, vb);
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
@@ -1269,7 +1281,7 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	default:
 		REDEBUG("Unexpected type %s in left hand side of expression",
 			fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
-		return strlcpy(*out, "0", outlen);
+		return XLAT_ACTION_FAIL;
 	}
 
 	switch (map->rhs->type) {
@@ -1285,16 +1297,17 @@ static ssize_t xlat_func_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	default:
 		REDEBUG("Unexpected type %s in right hand side of expression",
 			fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
-		return strlcpy(*out, "0", outlen);
+		return XLAT_ACTION_FAIL;
 	}
 
 	RINDENT();
 	ret = map_to_request(request, map, map_to_vp, NULL);
 	REXDENT();
 	talloc_free(map);
-	if (ret < 0) return strlcpy(*out, "0", outlen);
+	if (ret < 0) return XLAT_ACTION_FAIL;
 
-	return strlcpy(*out, "1", outlen);
+	vb->vb_int8 = 1;
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -3153,7 +3166,6 @@ int xlat_init(void)
 	xlat_internal(xlat);
 
 	XLAT_REGISTER(integer);
-	XLAT_REGISTER(map);
 	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
 	XLAT_REGISTER(xlat);
 
@@ -3186,6 +3198,7 @@ do { \
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, xlat_func_bin_arg);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, xlat_func_hex_arg);
 	xlat_register(NULL, "length", xlat_func_length, false);
+	XLAT_REGISTER_MONO("map", xlat_func_map, xlat_func_map_arg);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	xlat_register(NULL, "module", xlat_func_module, false);
