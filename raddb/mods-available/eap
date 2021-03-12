@@ -1657,7 +1657,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %{3gpp_pseudonym_encrypt:...}
+#  ### %(3gpp_pseudonym_encrypt:...)
 #
 #  TODO
 #

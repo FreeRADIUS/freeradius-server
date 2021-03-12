@@ -295,7 +295,7 @@ xlat_arg_parser_t aka_sim_3gpp_pseudonym_decrypt_xlat_args[] = {
 /** Encrypts a 3gpp pseudonym
  *
 @verbatim
-%{3gpp_pseudonym_encrypt:&id_attr &key_attr key_index}
+%(3gpp_pseudonym_encrypt:&id_attr &key_attr key_index)
 @endverbatim
  *
  * @ingroup xlat_functions
