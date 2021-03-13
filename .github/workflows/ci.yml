@@ -190,25 +190,6 @@ jobs:
         pcre-config --libs-posix --version 2>/dev/null || :
         pcre2-config --libs-posix --version 2>/dev/null || :
 
-    - name: Hacks to silence clang-12 warnings in talloc and json-c (MacOS)
-      if: ${{ runner.os == 'macOS' }}
-      run: |
-        sed -i '' '1i\
-        #pragma clang diagnostic ignored "-Wdocumentation"
-        ' /usr/local/include/talloc.h
-        sed -i '' '1i\
-        #pragma clang diagnostic ignored "-Wdocumentation-deprecated-sync"
-        ' /usr/local/include/json-c/json_tokener.h
-        sed -i '' '1i\
-        #pragma clang diagnostic ignored "-Wdocumentation-deprecated-sync"
-        ' /usr/local/include/json-c/arraylist.h
-        sed -i '' '1i\
-        #pragma clang diagnostic ignored "-Wdocumentation-deprecated-sync"
-        ' /usr/local/include/json-c/json_util.h
-        sed -i '' '1i\
-        #pragma clang diagnostic ignored "-Wstrict-prototypes"
-        ' /usr/local/include/cassandra.h
-
     - name: Configure
       run: |
         if $CC -v 2>&1 | grep clang > /dev/null; then
