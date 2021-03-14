@@ -38,7 +38,15 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 
+#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(documentation)
+#endif
+DIAG_OFF(strict-prototypes)  /* Seen with homebrew cassandra-cpp-driver 2.15.3 */
 #include <cassandra.h>
+DIAG_ON(strict-prototypes)
+#ifdef HAVE_WDOCUMENTATION
+DIAG_ON(documentation)
+#endif
 
 #include "rlm_sql.h"
 
