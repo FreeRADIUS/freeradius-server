@@ -99,9 +99,12 @@ extern size_t xlat_action_table_len;
 /** A function used to escape an argument passed to an xlat
  *
  * @param[in,out] vb		to escape
- * @param[in] uxtc		a "context" for the escaping
+ * @param[in] uctx		a "context" for the escaping
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-typedef int (*xlat_escape_func_t)(fr_value_box_t *vb, void *uxtc);
+typedef int (*xlat_escape_func_t)(fr_value_box_t *vb, void *uctx);
 
 /** Definition for a single argument consumend by an xlat function
  *
