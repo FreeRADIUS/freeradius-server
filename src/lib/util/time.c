@@ -53,16 +53,16 @@ USES_APPLE_DEPRECATED_API
 
 #include <stdatomic.h>
 
-static _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
-static char const			*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone
-static long				gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
-static int				isdst = 0;			//!< from localtime_r(), tm_is_dst
+_Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
+static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone
+static long			gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
+static int			isdst = 0;			//!< from localtime_r(), tm_is_dst
 
 #ifdef HAVE_CLOCK_GETTIME
-static int64_t				our_epoch;
+int64_t				our_epoch;
 #else  /* __MACH__ */
-static mach_timebase_info_data_t	timebase;
-static uint64_t				our_mach_epoch;
+mach_timebase_info_data_t	timebase;
+uint64_t			our_mach_epoch;
 #endif
 
 /** Get a new our_realtime value
@@ -164,149 +164,6 @@ int fr_time_start(void)
 #endif
 
 	return fr_time_sync();
-}
-
-/** Return a relative time since the server our_epoch
- *
- *  This time is useful for doing time comparisons, deltas, etc.
- *  Human (i.e. printable) time is something else.
- *
- * @returns fr_time_t time in nanoseconds since the server our_epoch.
- *
- * @hidecallergraph
- */
-fr_time_t fr_time(void)
-{
-#ifdef HAVE_CLOCK_GETTIME
-	struct timespec ts;
-	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
-	return fr_time_delta_from_timespec(&ts) - our_epoch;
-#else  /* __MACH__ is defined */
-	uint64_t when;
-
-	when = mach_absolute_time();
-	when -= our_mach_epoch;
-
-	return when * (timebase.numer / timebase.denom);
-#endif
-}
-
-/** Nanoseconds since the Unix Epoch the last time we synced internal time with wallclock time
- *
- */
-int64_t fr_time_wallclock_at_last_sync(void)
-{
-	return atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert an fr_time_t (internal time) to our version of unix time (wallclock time)
- *
- */
-fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
-{
-	return when + atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert an fr_time_t (internal time) to number of usec since the unix epoch (wallclock time)
- *
- */
-int64_t fr_time_to_usec(fr_time_t when)
-{
-	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000);
-}
-
-/** Convert an fr_time_t (internal time) to number of msec since the unix epoch (wallclock time)
- *
- */
-int64_t fr_time_to_msec(fr_time_t when)
-{
-	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000000);
-}
-
-/** Convert an fr_time_t (internal time) to number of sec since the unix epoch (wallclock time)
- *
- */
-int64_t fr_time_to_sec(fr_time_t when)
-{
-	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / NSEC);
-}
-
-/** Convert a timeval (wallclock time) to a fr_time_t (internal time)
- *
- * @param[in] when_tv	The timestamp to convert.
- * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- <0 number of nanoseconds before the server started.
- */
-fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
-{
-	return fr_time_delta_from_timeval(when_tv) - atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert a time_t (wallclock time) to a fr_time_t (internal time)
- *
- * @param[in] when	The timestamp to convert.
- * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- <0 number of nanoseconds before the server started.
- */
-fr_time_t fr_time_from_sec(time_t when)
-{
-	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert msec (wallclock time) to a fr_time_t (internal time)
- *
- * @param[in] when	The timestamp to convert.
- * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- <0 number of nanoseconds before the server started.
- */
-fr_time_t fr_time_from_msec(int64_t when)
-{
-	return (((fr_time_t) when) * MSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert usec (wallclock time) to a fr_time_t (internal time)
- *
- * @param[in] when	The timestamp to convert.
- * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- <0 number of nanoseconds before the server started.
- */
-fr_time_t fr_time_from_usec(int64_t when)
-{
-	return (((fr_time_t) when) * USEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert a nsec (wallclock time) to a fr_time_t (internal time)
- *
- * @param[in] when	The timestamp to convert.
- * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- <0 number of nanoseconds before the server started.
- */
-fr_time_t fr_time_from_nsec(int64_t when)
-{
-	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
-}
-
-/** Convert a timespec (wallclock time) to a fr_time_t (internal time)
- *
- * @param[in] when_ts	The timestamp to convert.
- * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- 0 if when_tv occurred before the server started.
- */
-fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
-{
-	return fr_time_delta_from_timespec(when_ts) - atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
 /** Return time delta from the time zone.

@@ -32,10 +32,11 @@ RCSIDH(time_h, "$Id$")
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/sbuff.h>
-#include <sys/time.h>
+#include <inttypes.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <inttypes.h>
+#include <sys/time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,11 +87,14 @@ typedef struct {
 #define USEC	(1000000)
 #define MSEC	(1000)
 
-int fr_time_start(void);
-int fr_time_sync(void);
+extern _Atomic int64_t			our_realtime;
 
-/** @hidecallergraph */
-fr_time_t fr_time(void);
+#ifdef HAVE_CLOCK_GETTIME
+extern int64_t				our_epoch;
+#else  /* __MACH__ */
+extern mach_timebase_info_data_t	timebase;
+extern uint64_t				our_mach_epoch;
+#endif
 
 /*
  *	Need cast because of difference in sign
@@ -105,7 +109,7 @@ fr_time_t fr_time(void);
 #define fr_unix_time_to_msec(_x) 	(uint64_t)fr_time_delta_to_msec(_x)
 #define fr_unix_time_to_sec(_x)  	(uint64_t)fr_time_delta_to_sec(_x)
 
-static inline fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
+static inline CC_HINT(nonnull) fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
 {
 	return (((fr_unix_time_t) tv->tv_sec) * NSEC) + (((fr_unix_time_t) tv->tv_usec) * 1000);
 }
@@ -130,12 +134,12 @@ static inline fr_time_delta_t fr_time_delta_from_sec(int64_t sec)
 	return (sec * NSEC);
 }
 
-static inline fr_time_delta_t fr_time_delta_from_timeval(struct timeval const *tv)
+static inline CC_HINT(nonnull) fr_time_delta_t fr_time_delta_from_timeval(struct timeval const *tv)
 {
 	return (((fr_time_delta_t) tv->tv_sec) * NSEC) + (((fr_time_delta_t) tv->tv_usec) * 1000);
 }
 
-static inline fr_time_delta_t fr_time_delta_from_timespec(struct timespec const *ts)
+static inline CC_HINT(nonnull) fr_time_delta_t fr_time_delta_from_timespec(struct timespec const *ts)
 {
 	return (((fr_time_delta_t) ts->tv_sec) * NSEC) + ts->tv_nsec;
 }
@@ -181,6 +185,125 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
  */
 #define fr_time_to_timespec(_when) fr_time_delta_to_timespec(fr_time_wallclock_at_last_sync() + _when)
 
+
+/** Nanoseconds since the Unix Epoch the last time we synced internal time with wallclock time
+ *
+ */
+static inline int64_t fr_time_wallclock_at_last_sync(void)
+{
+	return atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert an fr_time_t (internal time) to our version of unix time (wallclock time)
+ *
+ */
+static inline fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
+{
+	return when + atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert an fr_time_t (internal time) to number of usec since the unix epoch (wallclock time)
+ *
+ */
+static inline int64_t fr_time_to_usec(fr_time_t when)
+{
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000);
+}
+
+/** Convert an fr_time_t (internal time) to number of msec since the unix epoch (wallclock time)
+ *
+ */
+static inline int64_t fr_time_to_msec(fr_time_t when)
+{
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000000);
+}
+
+/** Convert an fr_time_t (internal time) to number of sec since the unix epoch (wallclock time)
+ *
+ */
+static inline int64_t fr_time_to_sec(fr_time_t when)
+{
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / NSEC);
+}
+
+/** Convert a timeval (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when_tv	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+static inline CC_HINT(nonnull) fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
+{
+	return fr_time_delta_from_timeval(when_tv) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert a time_t (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+static inline fr_time_t fr_time_from_sec(time_t when)
+{
+	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert msec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+static inline fr_time_t fr_time_from_msec(int64_t when)
+{
+	return (((fr_time_t) when) * MSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert usec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+static inline fr_time_t fr_time_from_usec(int64_t when)
+{
+	return (((fr_time_t) when) * USEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert a nsec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+static inline fr_time_t fr_time_from_nsec(int64_t when)
+{
+	return (((fr_time_t) when) * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
+/** Convert a timespec (wallclock time) to a fr_time_t (internal time)
+ *
+ * @param[in] when_ts	The timestamp to convert.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- 0 if when_tv occurred before the server started.
+ */
+static inline CC_HINT(nonnull) fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
+{
+	return fr_time_delta_from_timespec(when_ts) - atomic_load_explicit(&our_realtime, memory_order_consume);
+}
+
 /** Compare two fr_time_t values
  *
  * @param[in] a	The first value to compare.
@@ -195,21 +318,35 @@ static inline int8_t fr_time_cmp(fr_time_t a, fr_time_t b)
 	return (a > b) - (a < b);
 }
 
-int64_t		fr_time_to_usec(fr_time_t when);
-int64_t		fr_time_to_msec(fr_time_t when);
-int64_t		fr_time_to_sec(fr_time_t when);
+/** Return a relative time since the server our_epoch
+ *
+ *  This time is useful for doing time comparisons, deltas, etc.
+ *  Human (i.e. printable) time is something else.
+ *
+ * @returns fr_time_t time in nanoseconds since the server our_epoch.
+ *
+ * @hidecallergraph
+ */
+static inline fr_time_t fr_time(void)
+{
+#ifdef HAVE_CLOCK_GETTIME
+	struct timespec ts;
+	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
+	return fr_time_delta_from_timespec(&ts) - our_epoch;
+#else  /* __MACH__ is defined */
+	uint64_t when;
 
-fr_unix_time_t fr_time_to_unix_time(fr_time_t when);
+	when = mach_absolute_time();
+	when -= our_mach_epoch;
 
+	return when * (timebase.numer / timebase.denom);
+#endif
+}
+
+int		fr_time_start(void);
+int		fr_time_sync(void);
 int64_t		fr_time_wallclock_at_last_sync(void);
 
-fr_time_t	fr_time_from_sec(time_t when) CC_HINT(nonnull);
-fr_time_t	fr_time_from_msec(int64_t when) CC_HINT(nonnull);
-fr_time_t	fr_time_from_usec(int64_t when) CC_HINT(nonnull);
-fr_time_t	fr_time_from_nsec(int64_t when) CC_HINT(nonnull);
-
-fr_time_t	fr_time_from_timeval(struct timeval const *when_tv) CC_HINT(nonnull);
-fr_time_t	fr_time_from_timespec(struct timespec const *when_tv) CC_HINT(nonnull);
 int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);
 int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
 
