@@ -2,21 +2,59 @@ name: CI RPM
 
 on:
   push:
-    branches:
-      - packaging_test
-      - ci-debug
   schedule:
     - cron: '0 20 * * *'
 
 jobs:
+
+  #
+  #  We don't want to consume many workers on each push so we only build the
+  #  full suite of distros during the scheduled or ci-debug run and just the
+  #  "bleeding-edge" distro on each push.
+  #
+  #  This job builds the matrix based on the event that trigger this run which
+  #  the next job consumes.
+  #
+  set-matrix:
+    name: Setup build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+    - id: set-matrix
+      name: Setup the matrix
+      run: |
+        if [ "$GITHUB_EVENT_NAME" = "schedule" -o "$GITHUB_REF" = "refs/heads/ci-debug" ]; then
+          M=$(cat <<EOF
+          {
+            "env": [
+              { "NAME": "centos-7", "OS": "centos:7"             },
+              { "NAME": "centos-8", "OS": "centos:8"             },
+              { "NAME": "fedora-rawhide", "OS": "fedora:rawhide" }
+            ]
+          }
+        EOF
+          )
+        else
+          M=$(cat <<EOF
+          {
+            "env": [
+              { "NAME": "fedora-rawhide", "OS": "fedora:rawhide" }
+            ]
+          }
+        EOF
+          )
+        fi
+        echo ::set-output name=matrix::$M
+
+
   rpm-build:
 
+    needs:
+      - set-matrix
+
     strategy:
-      matrix:
-        env:
-          - { NAME: "centos-7",  OS: "centos:7" }
-          - { NAME: "centos-8",  OS: "centos:8" }
-          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -153,14 +191,11 @@ jobs:
   rpm-test:
 
     needs:
+      - set-matrix
       - rpm-build
 
     strategy:
-      matrix:
-        env:
-          - { NAME: "centos-7", OS: "centos:7" }
-          - { NAME: "centos-8", OS: "centos:8" }
-          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
       fail-fast: false
 
     runs-on: ubuntu-latest
