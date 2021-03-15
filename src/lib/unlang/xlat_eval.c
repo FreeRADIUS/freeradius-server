@@ -229,30 +229,35 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
  * @param[in] request	currently being processed
  * @param[in] arg	specification of current argument
  * @param[in] arg_num	number of current argument in the argument specifications
- *
+ * @return
+ *	- XLAT_ACTION_DONE on success.
+ *	- XLAT_ACTION_FAIL on failure.
  */
 static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
-					   xlat_arg_parser_t const *arg, unsigned long int arg_num)
+					   xlat_arg_parser_t const *arg, unsigned int arg_num)
 {
-	fr_value_box_t *vb = fr_dlist_head(list);
-	if (!vb) {
+	fr_value_box_t *vb;
+	if (!fr_dlist_empty(list)) {
 		if (arg->required) {
-			RERROR("Missing required argument %lu", arg_num);
+			RPEDEBUG("Missing required argument %u", arg_num);
 			return XLAT_ACTION_FAIL;
 		}
 		return XLAT_ACTION_DONE;
 	}
 
 	// *todo* make this escape tainted value boxes
+	vb = fr_dlist_head(list);
+
 	if (arg->concat) {
 		/*
 		 *	Concatenate child boxes, casting to desired type,
 		 *	then replace group vb with first child vb
 		 */
 		if (fr_value_box_list_concat(ctx, vb, list, arg->type, true) < 0) {
-			RERROR("Failed concatenating argument %lu", arg_num);
+			RPEDEBUG("Failed concatenating argument %u", arg_num);
 			return XLAT_ACTION_FAIL;
 		}
+
 		return XLAT_ACTION_DONE;
 	}
 
@@ -262,21 +267,22 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	 */
 	if (arg->single) {
 		if (fr_dlist_num_elements(list) > 1) {
-			RPERROR("Incorrect number of values provided to argument %lu, "
-				"expected %s got %zu",
-				arg_num,
-				arg->required ? "0-1" : "1",
-				fr_dlist_num_elements(list));
+			RPEDEBUG("Incorrect number of values provided to argument %u, "
+				 "expected %s got %zu",
+				 arg_num,
+				 arg->required ? "0-1" : "1",
+				 fr_dlist_num_elements(list));
 			return XLAT_ACTION_FAIL;
 		}
 		if ((arg->type != FR_TYPE_VOID) && (vb->type != arg->type)) {
 		cast_error:
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) {
-				RPERROR("Failed casting argument %lu", arg_num);
+				RPEDEBUG("Failed casting argument %u", arg_num);
 				return XLAT_ACTION_FAIL;
 			}
 		}
+
 		return XLAT_ACTION_DONE;
 	}
 
@@ -291,6 +297,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 						       arg->type, NULL) < 0) goto cast_error;
 		 } while ((vb = fr_dlist_next(list, vb)));
 	}
+
 	return XLAT_ACTION_DONE;
 }
 
@@ -312,7 +319,7 @@ static inline CC_HINT(always_inline)
 xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 				xlat_input_type_t input_type, xlat_arg_parser_t const args[])
 {
-	xlat_arg_parser_t const	*arg = args;
+	xlat_arg_parser_t const	*arg_p = args;
 	xlat_action_t		xa;
 	fr_value_box_t		*vb, *next;
 
@@ -332,55 +339,48 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 	 *	xlat takes all input as a single vb.
 	 */
 	case XLAT_INPUT_MONO:
-		if (!(arg->required) && fr_dlist_empty(list)) return XLAT_ACTION_DONE;
-		return xlat_process_arg_list(ctx, list, request, arg, 1);
+		return xlat_process_arg_list(ctx, list, request, arg_p, 1);
 
 	/*
 	 *	xlat consumes a sequence of arguments.
 	 */
 	case XLAT_INPUT_ARGS:
 		vb = fr_dlist_head(list);
-		while (arg->type != FR_TYPE_NULL) {
-			if (!vb) {
-				if (arg->required) {
-					RERROR("Missing required argument %lu", ((arg - args) + 1));
-					return XLAT_ACTION_DONE;
-				}
-				break;
-			}
-
+		while (arg_p->type != FR_TYPE_NULL) {
 			/*
 			 *	Everything in the top level list should be
 			 *	groups
 			 */
-			if (!fr_cond_assert(vb->type == FR_TYPE_GROUP)) return XLAT_ACTION_FAIL;
+			if (!fr_cond_assert(!vb || (vb->type == FR_TYPE_GROUP))) return XLAT_ACTION_FAIL;
 
 			/*
 			 *	pre-advance, in case the vb is replaced
 			 *	during processing.
 			 */
 			next = fr_dlist_next(list, vb);
-			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, arg, ((arg - args) + 1));
+			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, arg_p,
+						   (unsigned int)((arg_p - args) + 1));
 			if (xa != XLAT_ACTION_DONE) return xa;
 
 			/*
 			 *	In some cases we replace the current
 			 *	argument with the head of the group.
 			 */
-			if (arg->single || arg->concat) {
+			if (arg_p->single || arg_p->concat) {
 				fr_dlist_replace(list, vb, fr_dlist_pop_head(&vb->vb_group));
 				talloc_free(vb);
 			}
 
-			if (arg->variadic) {
+			if (arg_p->variadic) {
 				if (!next) break;
 			} else {
-				arg++;
+				arg_p++;
 			}
 			vb = next;
 		}
 		break;
 	}
+
 	return XLAT_ACTION_DONE;
 }
 
