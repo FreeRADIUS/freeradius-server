@@ -1521,13 +1521,12 @@ static int auth_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	FR_STATS_TYPE_INC(client->auth.total_requests);
-
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (code) {
 	case PW_CODE_ACCESS_REQUEST:
+		FR_STATS_TYPE_INC(client->auth.total_requests);
 		fun = rad_authenticate;
 		break;
 
@@ -1637,13 +1636,12 @@ static int acct_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	FR_STATS_TYPE_INC(client->acct.total_requests);
-
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (code) {
 	case PW_CODE_ACCOUNTING_REQUEST:
+		FR_STATS_TYPE_INC(client->acct.total_requests);
 		fun = rad_accounting;
 		break;
 
