@@ -345,7 +345,6 @@ static inline fr_time_t fr_time(void)
 
 int		fr_time_start(void);
 int		fr_time_sync(void);
-int64_t		fr_time_wallclock_at_last_sync(void);
 
 int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);
 int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
