@@ -350,15 +350,17 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	c = talloc_zero(ctx, xlat_t);
-	c->name = talloc_typed_strdup(c, name);
+	c = talloc(ctx, xlat_t);
+	*c = (xlat_t){
+		.name = talloc_typed_strdup(c, name),
+		.func = {
+			.async = func
+		},
+		.type = XLAT_FUNC_NORMAL,
+		.needs_async = needs_async,		/* this function may yield */
+		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
+	};
 	talloc_set_destructor(c, _xlat_func_talloc_free);
-
-	c->func.async = func;
-	c->type = XLAT_FUNC_NORMAL;
-	c->needs_async = needs_async;	/* this function may yield */
-	c->input_type = XLAT_INPUT_UNPROCESSED;	/* set default - will be overridden if args are registered */
-
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
 	if (!rbtree_insert(xlat_root, c)) {
