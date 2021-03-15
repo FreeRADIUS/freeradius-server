@@ -238,7 +238,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 {
 	fr_value_box_t *vb;
 
-#define DO_ESCAPE(_arg, _vb, _arg_num) \
+#define ESCAPE(_arg, _vb, _arg_num) \
 do { \
 	if ((_arg)->func && ((_vb)->tainted || (_arg)->always_escape) && \
 	    ((_arg)->func(request, _vb, (_arg)->uctx) < 0)) { \
@@ -257,16 +257,17 @@ do { \
 
 	vb = fr_dlist_head(list);
 
+	/*
+	 *	Concatenate child boxes, casting to desired type,
+	 *	then replace group vb with first child vb
+	 */
 	if (arg->concat) {
 		if (arg->func) {
-			for (; vb; vb = fr_dlist_next(list, vb)) DO_ESCAPE(arg, vb, arg_num);
+			do ESCAPE(arg, vb, arg_num); while ((vb = fr_dlist_next(list, vb)));
 
 			vb = fr_dlist_head(list);	/* Reset */
 		}
-		/*
-		 *	Concatenate child boxes, casting to desired type,
-		 *	then replace group vb with first child vb
-		 */
+
 		if (fr_value_box_list_concat(ctx, vb, list, arg->type, true) < 0) {
 			RPEDEBUG("Failed concatenating argument %u", arg_num);
 			return XLAT_ACTION_FAIL;
@@ -289,7 +290,7 @@ do { \
 			return XLAT_ACTION_FAIL;
 		}
 
-		DO_ESCAPE(arg, vb, arg_num);
+		ESCAPE(arg, vb, arg_num);
 
 		if ((arg->type != FR_TYPE_VOID) && (vb->type != arg->type)) {
 		cast_error:
@@ -303,19 +304,26 @@ do { \
 		return XLAT_ACTION_DONE;
 	}
 
+	/*
+	 *	We're neither concatenating nor do we only expect a single value,
+	 *	cast all child values to the required type.
+	 */
 	if (arg->type != FR_TYPE_VOID) {
-		/*
-		 *	We're neither concatenating nor do we only expect a single value,
-		 *	cast all child values to the required type.
-		 */
 		do {
- 			DO_ESCAPE(arg, vb, arg_num);
-
+ 			ESCAPE(arg, vb, arg_num);
 			if (vb->type == arg->type) continue;
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) goto cast_error;
-		 } while ((vb = fr_dlist_next(list, vb)));
+		} while ((vb = fr_dlist_next(list, vb)));
+
+	/*
+	 *	If it's not a void type we still need to escape the values
+	 */
+	} else if (arg->func) {
+		do ESCAPE(arg, vb, arg_num); while ((vb = fr_dlist_next(list, vb)));
 	}
+
+#undef ESCAPE
 
 	return XLAT_ACTION_DONE;
 }
