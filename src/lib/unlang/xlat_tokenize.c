@@ -325,10 +325,10 @@ static inline int xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_f
 }
 #endif
 
-/** Parse an xlat function and its child arguments
+/** Parse an xlat function and its child argument
  *
  * Parses a function call string in the format
- * @verbatim %{<func>:<arguments} @endverbatim
+ * @verbatim %{<func>:<argument>} @endverbatim
  *
  * @return
  *	- 0 if the string was parsed into a function.
@@ -382,6 +382,14 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
 		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
 	} else {
+		if (func->input_type == XLAT_INPUT_ARGS) {
+			fr_strerror_const("Function takes multiple arguments and should \
+					   be called using %(func:args) syntax");
+		error:
+			head = NULL;
+			talloc_free(node);
+			return -1;
+		}
 		node->call.func = func;
 		node->flags.needs_async = func->needs_async;
 	}
@@ -397,10 +405,7 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 	 *	function's arguments.
 	 */
 	if (xlat_tokenize_literal(node, &node->child, &node->flags, in, true, &xlat_expansion_rules, rules) < 0) {
-	error:
-		*head = NULL;
-		talloc_free(node);
-		return -1;
+		goto error;
 	}
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
@@ -417,7 +422,7 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 /** Parse an xlat function and its child arguments
  *
  * Parses a function call string in the format
- * @verbatim %{<func>:<arguments} @endverbatim
+ * @verbatim %(<func>:<arguments>) @endverbatim
  *
  * @return
  *	- 0 if the string was parsed into a function.
@@ -471,6 +476,13 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
 		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
 	} else {
+		if (func && (func->input_type != XLAT_INPUT_ARGS)) {
+			fr_strerror_const("Function should be called using the syntax %{func:arg}");
+		error:
+			*head = NULL;
+			talloc_free(node);
+			return -1;
+		}
 		node->call.func = func;
 		node->flags.needs_async = func->needs_async;
 	}
@@ -486,10 +498,7 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 	 *	function's arguments.
 	 */
 	if (xlat_tokenize_argv(node, &node->child, &node->flags, in, &xlat_multi_arg_rules, rules) < 0) {
-	error:
-		*head = NULL;
-		talloc_free(node);
-		return -1;
+		goto error;
 	}
 
 	if (!fr_sbuff_next_if_char(in, ')')) {

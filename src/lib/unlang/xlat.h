@@ -112,6 +112,7 @@ typedef int (*xlat_escape_func_t)(fr_value_box_t *vb, void *uctx);
 typedef struct {
 	bool			required;	//!< Argument must be present.
 	bool			concat;		//!< Concat boxes together.
+	bool			single;		//!< Argument must only contain a single box
 	bool			variadic;	//!< All additional boxes should be processed
 						///< using this definition.
 	fr_type_t		type;		//!< Type to cast argument to.
@@ -119,7 +120,8 @@ typedef struct {
 	void			*uctx;		//!< Arcument to escape callback.
 } xlat_arg_parser_t;
 
-#define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .variadic = false, .type = FR_TYPE_INVALID, .func = NULL, .uctx = NULL }
+#define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = false, \
+					.type = FR_TYPE_INVALID, .func = NULL, .uctx = NULL }
 
 /** A callback when the the timeout occurs
  *

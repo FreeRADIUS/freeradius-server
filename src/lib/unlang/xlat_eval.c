@@ -222,6 +222,156 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
 	RDEBUG2("  --> %pV", result);
 }
 
+/** Process list of boxed values provided as input to an xlat
+ *
+ * Ensures that the value boxes passed to an xlat function match the
+ * requirements listed in its "args", and escapes any tainted boxes
+ * using the specified escaping routine.
+ *
+ * @param[in] ctx		in which to allocate any buffers.
+ * @param[in,out] in		value boxes provided as input.
+ * @param[in] input_type	required by xlat.
+ * @param[in] args		definition of arguments required by xlat.
+ */
+static xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *in, request_t *request,
+					xlat_input_type_t input_type, xlat_arg_parser_t args[])
+{
+	xlat_arg_parser_t	*arg;
+	fr_value_box_t		*vb, *next;
+	int			i = 1;
+	bool			variadic_parsed = false;
+
+	/*
+	 *	No args registered for this xlat
+	 */
+	if (!args) return XLAT_ACTION_DONE;
+
+	switch (input_type) {
+	case XLAT_INPUT_UNPROCESSED:
+		/*
+		 *	xlat needs no input processing just return.
+		 */
+		return XLAT_ACTION_DONE;
+
+	case XLAT_INPUT_MONO:
+		/*
+		 *	xlat takes all input as a single vb.
+		 */
+		vb = fr_dlist_head(in);
+		if (!vb) {
+			if (args->required) {
+		missing:
+				RERROR("Missing required argument no %d", i);
+				return XLAT_ACTION_FAIL;
+			}
+			break;
+		}
+
+		if (args->concat) {
+			/* Concat all vbs to one, casting to the required type. */
+			if (fr_value_box_list_concat(ctx, vb, in, args->type, true) < 0) {
+		concat_error:
+				RPERROR("Failed concatenating input");
+				return XLAT_ACTION_FAIL;
+			}
+		} else {
+			if ((vb->type == args->type) && (vb->type != FR_TYPE_VALUE_BOX)) return XLAT_ACTION_DONE;
+
+			/* Just cast the first vb to the required type */
+			if (fr_value_box_cast_in_place(ctx, vb, args->type, NULL) < 0) {
+		cast_error:
+				RPERROR("Failed converting input to %s",
+					fr_table_str_by_value(fr_value_box_type_table, args->type, "<INVALID>"));
+				return XLAT_ACTION_FAIL;
+			}
+		}
+
+		break;
+
+	case XLAT_INPUT_ARGS:
+	{
+		fr_value_box_t	*child_vb;
+		/*
+		 *	xlat consumes a sequence of arguments.
+		 */
+		arg = args;
+		vb = fr_dlist_head(in);
+		while (arg->type != FR_TYPE_INVALID) {
+			/*
+			 *	pre-advance, in case the vb is replaced during processing
+			 */
+			next = fr_dlist_next(in, vb);
+
+			if (!vb) {
+				if ((arg->required) && (!variadic_parsed)) goto missing;
+				break;
+			}
+
+			child_vb = fr_dlist_head(&vb->vb_group);
+
+			// *todo* make this escape tainted value boxes
+			if (arg->concat) {
+				/*
+				 *	Concatenate child boxes, casting to desired type,
+				 *	then replace group vb with first child vb
+				 */
+				if (fr_value_box_list_concat(ctx, child_vb, &vb->vb_group, arg->type, true) < 0) {
+					goto concat_error;
+				}
+				goto promote_child;
+			}
+
+			if (arg->single) {
+				/*
+				 *	Only a single child box is valid here.  Check there is
+				 *	just one, cast to the correct type and move to top list
+				 */
+				if (fr_dlist_num_elements(&vb->vb_group) != 1) {
+					RPERROR("Incorrect number of values provided to argument %d", i);
+					return XLAT_ACTION_FAIL;
+				}
+				if ((child_vb->type != arg->type) && (arg->type != FR_TYPE_VOID)) {
+					if (fr_value_box_cast_in_place(ctx, child_vb, arg->type, NULL) < 0) {
+						goto cast_error;
+					}
+				}
+			promote_child:
+				fr_dlist_remove(&vb->vb_group, child_vb);
+				fr_dlist_replace(in, vb, child_vb);
+				talloc_free(vb);
+				goto arg_parsed;
+			}
+
+			if (arg->type == FR_TYPE_VOID) goto arg_parsed;
+
+			/*
+			 *	We're neither concatenating nor do we only expect a single value,
+			 *	cast all child values to the required type.
+			 */
+
+			do {
+				if (child_vb->type != arg->type) {
+					if (fr_value_box_cast_in_place(ctx, child_vb, arg->type, NULL) < 0) {
+						goto cast_error;
+					}
+				}
+			 } while ((child_vb = fr_dlist_next(&vb->vb_group, child_vb)));
+
+		arg_parsed:
+			if (arg->variadic == false) {
+				arg++;
+			} else {
+				variadic_parsed = true;
+			}
+			vb = next;
+			i++;
+		}
+	}
+		break;
+	}
+	return XLAT_ACTION_DONE;
+}
+
 /** One letter expansions
  *
  * @param[in] ctx	to allocate boxed value, and buffers in.
@@ -846,6 +996,11 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
 
 			if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
+			xa = xlat_process_args(ctx, result, request, node->call.func->input_type, node->call.func->args);
+			if (xa == XLAT_ACTION_FAIL) {
+				if (RDEBUG_ENABLED2) fr_dlist_talloc_free(&result_copy);
+				return (xa);
+			}
 			xa = node->call.func->func.async(ctx, out, request, node->call.inst->data, thread_inst->data, result);
 			if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
 			if (RDEBUG_ENABLED2) {
