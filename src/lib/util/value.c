@@ -2954,6 +2954,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_INVALID:
+	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Invalid cast from %s to %s.  Invalid destination type",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
@@ -4543,6 +4544,7 @@ parse:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VARIABLE_SIZE:	/* Should have been dealt with above */
 	case FR_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
+	case FR_TYPE_VOID:
 	case FR_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
 		return -1;
@@ -4825,6 +4827,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VOID:
 	case FR_TYPE_BAD:
 		(void)fr_cond_assert(0);
 		return 0;
