@@ -222,6 +222,79 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
 	RDEBUG2("  --> %pV", result);
 }
 
+/** Process an individual xlat argument value box group
+ *
+ * @param[in] ctx	to allocate any additional buffers in
+ * @param[in,out] list	of value boxes representing one argument
+ * @param[in] request	currently being processed
+ * @param[in] arg	specification of current argument
+ * @param[in] arg_num	number of current argument in the argument specifications
+ *
+ */
+static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
+					   xlat_arg_parser_t const *arg, unsigned long int arg_num)
+{
+	fr_value_box_t *vb = fr_dlist_head(list);
+	if (!vb) {
+		if (arg->required) {
+			RERROR("Missing required argument %lu", arg_num);
+			return XLAT_ACTION_FAIL;
+		}
+		return XLAT_ACTION_DONE;
+	}
+
+	// *todo* make this escape tainted value boxes
+	if (arg->concat) {
+		/*
+		 *	Concatenate child boxes, casting to desired type,
+		 *	then replace group vb with first child vb
+		 */
+		if (fr_value_box_list_concat(ctx, vb, list, arg->type, true) < 0) {
+			RERROR("Failed concatenating argument %lu", arg_num);
+			return XLAT_ACTION_FAIL;
+		}
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	Only a single child box is valid here.  Check there is
+	 *	just one, cast to the correct type
+	 */
+	if (arg->single) {
+		if (fr_dlist_num_elements(list) > 1) {
+			RPERROR("Incorrect number of values provided to argument %lu, "
+				"expected %s got %zu",
+				arg_num,
+				arg->required ? "0-1" : "1",
+				fr_dlist_num_elements(list));
+			return XLAT_ACTION_FAIL;
+		}
+		if ((arg->type != FR_TYPE_VOID) && (vb->type != arg->type)) {
+		cast_error:
+			if (fr_value_box_cast_in_place(ctx, vb,
+						       arg->type, NULL) < 0) {
+				RPERROR("Failed casting argument %lu", arg_num);
+				return XLAT_ACTION_FAIL;
+			}
+		}
+		return XLAT_ACTION_DONE;
+	}
+
+	if (arg->type != FR_TYPE_VOID) {
+		/*
+		 *	We're neither concatenating nor do we only expect a single value,
+		 *	cast all child values to the required type.
+		 */
+		do {
+			if (vb->type == arg->type) continue;
+			if (fr_value_box_cast_in_place(ctx, vb,
+						       arg->type, NULL) < 0) goto cast_error;
+		 } while ((vb = fr_dlist_next(list, vb)));
+	}
+	return XLAT_ACTION_DONE;
+}
+
+
 /** Process list of boxed values provided as input to an xlat
  *
  * Ensures that the value boxes passed to an xlat function match the
@@ -229,142 +302,82 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
  * using the specified escaping routine.
  *
  * @param[in] ctx		in which to allocate any buffers.
- * @param[in,out] in		value boxes provided as input.
+ * @param[in,out] list		value boxes provided as input.
+ * 				List will be modified in accordance to rules
+ * 				provided in the args array.
  * @param[in] input_type	required by xlat.
  * @param[in] args		definition of arguments required by xlat.
  */
-static xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *in, request_t *request,
+static xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 					xlat_input_type_t input_type, xlat_arg_parser_t args[])
 {
-	xlat_arg_parser_t	*arg;
+	xlat_arg_parser_t const	*arg = args;
+	xlat_action_t		xa;
 	fr_value_box_t		*vb, *next;
-	int			i = 1;
-	bool			variadic_parsed = false;
 
 	/*
 	 *	No args registered for this xlat
 	 */
 	if (!args) return XLAT_ACTION_DONE;
 
+	/*
+	 *	xlat needs no input processing just return.
+	 */
 	switch (input_type) {
 	case XLAT_INPUT_UNPROCESSED:
-		/*
-		 *	xlat needs no input processing just return.
-		 */
 		return XLAT_ACTION_DONE;
 
+	/*
+	 *	xlat takes all input as a single vb.
+	 */
 	case XLAT_INPUT_MONO:
-		/*
-		 *	xlat takes all input as a single vb.
-		 */
-		vb = fr_dlist_head(in);
-		if (!vb) {
-			if (args->required) {
-		missing:
-				RERROR("Missing required argument no %d", i);
-				return XLAT_ACTION_FAIL;
-			}
-			break;
-		}
+		if (!(arg->required) && fr_dlist_empty(list)) return XLAT_ACTION_DONE;
+		return xlat_process_arg_list(ctx, list, request, arg, 1);
 
-		if (args->concat) {
-			/* Concat all vbs to one, casting to the required type. */
-			if (fr_value_box_list_concat(ctx, vb, in, args->type, true) < 0) {
-		concat_error:
-				RPERROR("Failed concatenating input");
-				return XLAT_ACTION_FAIL;
-			}
-		} else {
-			if ((vb->type == args->type) && (vb->type != FR_TYPE_VALUE_BOX)) return XLAT_ACTION_DONE;
-
-			/* Just cast the first vb to the required type */
-			if (fr_value_box_cast_in_place(ctx, vb, args->type, NULL) < 0) {
-		cast_error:
-				RPERROR("Failed converting input to %s",
-					fr_table_str_by_value(fr_value_box_type_table, args->type, "<INVALID>"));
-				return XLAT_ACTION_FAIL;
-			}
-		}
-
-		break;
-
+	/*
+	 *	xlat consumes a sequence of arguments.
+	 */
 	case XLAT_INPUT_ARGS:
 	{
-		fr_value_box_t	*child_vb;
-		/*
-		 *	xlat consumes a sequence of arguments.
-		 */
-		arg = args;
-		vb = fr_dlist_head(in);
+		vb = fr_dlist_head(list);
 		while (arg->type != FR_TYPE_INVALID) {
-			/*
-			 *	pre-advance, in case the vb is replaced during processing
-			 */
-			next = fr_dlist_next(in, vb);
-
 			if (!vb) {
-				if ((arg->required) && (!variadic_parsed)) goto missing;
+				if (arg->required) {
+					RERROR("Missing required argument %lu", ((arg - args) + 1));
+					return XLAT_ACTION_DONE;
+				}
 				break;
 			}
 
-			child_vb = fr_dlist_head(&vb->vb_group);
-
-			// *todo* make this escape tainted value boxes
-			if (arg->concat) {
-				/*
-				 *	Concatenate child boxes, casting to desired type,
-				 *	then replace group vb with first child vb
-				 */
-				if (fr_value_box_list_concat(ctx, child_vb, &vb->vb_group, arg->type, true) < 0) {
-					goto concat_error;
-				}
-				goto promote_child;
-			}
-
-			if (arg->single) {
-				/*
-				 *	Only a single child box is valid here.  Check there is
-				 *	just one, cast to the correct type and move to top list
-				 */
-				if (fr_dlist_num_elements(&vb->vb_group) != 1) {
-					RPERROR("Incorrect number of values provided to argument %d", i);
-					return XLAT_ACTION_FAIL;
-				}
-				if ((child_vb->type != arg->type) && (arg->type != FR_TYPE_VOID)) {
-					if (fr_value_box_cast_in_place(ctx, child_vb, arg->type, NULL) < 0) {
-						goto cast_error;
-					}
-				}
-			promote_child:
-				fr_dlist_remove(&vb->vb_group, child_vb);
-				fr_dlist_replace(in, vb, child_vb);
-				talloc_free(vb);
-				goto arg_parsed;
-			}
-
-			if (arg->type == FR_TYPE_VOID) goto arg_parsed;
+			/*
+			 *	Everything in the top level list should be
+			 *	groups
+			 */
+			if (!fr_cond_assert(vb->type == FR_TYPE_GROUP)) return XLAT_ACTION_FAIL;
 
 			/*
-			 *	We're neither concatenating nor do we only expect a single value,
-			 *	cast all child values to the required type.
+			 *	pre-advance, in case the vb is replaced
+			 *	during processing.
 			 */
+			next = fr_dlist_next(list, vb);
+			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, arg, ((arg - args) + 1));
+			if (xa != XLAT_ACTION_DONE) return xa;
 
-			do {
-				if (child_vb->type != arg->type) {
-					if (fr_value_box_cast_in_place(ctx, child_vb, arg->type, NULL) < 0) {
-						goto cast_error;
-					}
-				}
-			 } while ((child_vb = fr_dlist_next(&vb->vb_group, child_vb)));
+			/*
+			 *	In some cases we replace the current
+			 *	argument with the head of the group.
+			 */
+			if (arg->single || arg->concat) {
+				fr_dlist_replace(list, vb, fr_dlist_pop_head(&vb->vb_group));
+				talloc_free(vb);
+			}
 
-		arg_parsed:
-			if (arg->variadic == false) {
-				arg++;
+			if (arg->variadic) {
+				if (!next) break;
 			} else {
-				variadic_parsed = true;
+				arg++;
 			}
 			vb = next;
-			i++;
 		}
 	}
 		break;
