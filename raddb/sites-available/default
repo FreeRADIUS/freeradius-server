@@ -61,6 +61,7 @@ listen {
 	#  Allowed values are:
 	#	auth	listen for authentication packets
 	#	acct	listen for accounting packets
+	#       auth+acct listen for both authentication and accounting packets
 	#	proxy   IP to use for sending proxied packets
 	#	detail  Read from the detail file.  For examples, see
 	#               raddb/sites-available/copy-acct-to-home-server
