@@ -120,7 +120,7 @@ typedef struct {
 						///< tainted ones.
 	fr_type_t		type;		//!< Type to cast argument to.
 	xlat_escape_func_t	func;		//!< Function to handle tainted values.
-	void			*uctx;		//!< Arcument to escape callback.
+	void			*uctx;		//!< Argument to pass to escape callback.
 } xlat_arg_parser_t;
 
 #define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = false, \
@@ -367,9 +367,9 @@ xlat_t		*xlat_register_legacy(void *mod_inst, char const *name,
 
 xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async) CC_HINT(nonnull(2));
 
-void		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
+int		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
 
-void		xlat_func_mono(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
+int		xlat_func_mono(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
 
 void		xlat_internal(xlat_t *xlat);
 

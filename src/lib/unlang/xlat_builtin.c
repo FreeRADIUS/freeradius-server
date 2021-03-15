@@ -377,11 +377,41 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
  *
  * @param[in] arg	specification to validate.
  */
-static inline void xlat_arg_parser_validate(xlat_arg_parser_t const *arg)
+static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool last)
 {
 	if (arg->concat) {
-		fr_assert((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS));
+		if (!fr_cond_assert_msg((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS),
+					"concat  type must be string or octets")) return -1;
+
+		if (!fr_cond_assert_msg(!arg->single, "concat and single are mutually exclusive")) return -1;
 	}
+
+	if (arg->single) {
+		if (!fr_cond_assert_msg(!arg->concat, "single and concat are mutually exclusive")) return -1;
+	}
+
+	if (arg->variadic) {
+		if (!fr_cond_assert_msg(last, "variadic can only be set on the last argument")) return -1;
+	}
+
+	if (arg->always_escape) {
+		if (!fr_cond_assert_msg(arg->func, "always_escape requires an escape func")) return -1;
+	}
+
+	if (arg->uctx) {
+		if (!fr_cond_assert_msg(arg->func, "uctx requires an escape func")) return -1;
+	}
+
+	switch (arg->type) {
+	case FR_TYPE_VALUE:
+		break;
+
+	default:
+		fr_assert_fail("type must be a leaf box type");
+		return -1;
+	}
+
+	return 0;
 }
 
 /** Register the arguments of an xlat
@@ -390,15 +420,21 @@ static inline void xlat_arg_parser_validate(xlat_arg_parser_t const *arg)
  *
  * @param[in,out] x		to have it's arguments registered
  * @param[in] args		to be registered
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
-void xlat_func_args(xlat_t *x, xlat_arg_parser_t const args[])
+int xlat_func_args(xlat_t *x, xlat_arg_parser_t const args[])
 {
 	xlat_arg_parser_t const *arg = args;
 
-	for (arg = args; arg->type != FR_TYPE_NULL; arg++) xlat_arg_parser_validate(arg);
-
+	for (arg = args; arg->type != FR_TYPE_NULL; arg++) {
+		if (xlat_arg_parser_validate(arg, (arg + 1)->type == FR_TYPE_NULL) < 0) return -1;
+	}
 	x->args = args;
 	x->input_type = XLAT_INPUT_ARGS;
+
+	return 0;
 }
 
 /** Register the argument of an xlat
@@ -407,12 +443,18 @@ void xlat_func_args(xlat_t *x, xlat_arg_parser_t const args[])
  *
  * @param[in,out] x		to have it's arguments registered
  * @param[in] arg		to be registered
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
-void xlat_func_mono(xlat_t *x, xlat_arg_parser_t const *arg)
+int xlat_func_mono(xlat_t *x, xlat_arg_parser_t const *arg)
 {
-	xlat_arg_parser_validate(arg);
+	if (xlat_arg_parser_validate(arg, true) < 0) return -1;
+
 	x->args = arg;
 	x->input_type = XLAT_INPUT_MONO;
+
+	return 0;
 }
 
 /** Mark an xlat function as internal
