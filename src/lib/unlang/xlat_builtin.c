@@ -370,6 +370,15 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 	return c;
 }
 
+
+/** Verify xlat arg specifications are valid
+ *
+ * @param[in] arg	specification to validate.
+ */
+static inline void xlat_arg_parser_validate(xlat_arg_parser_t *arg) {
+	if (arg->concat) fr_assert((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS));
+}
+
 /** Register the arguments of an xlat
  *
  * For xlats that take multiple arguments
@@ -380,6 +389,12 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 void xlat_func_args(xlat_t const *xlat, xlat_arg_parser_t args[])
 {
 	xlat_t	*c = UNCONST(xlat_t *, xlat);
+	xlat_arg_parser_t *arg = args;
+
+	while (arg->type != FR_TYPE_INVALID) {
+		xlat_arg_parser_validate(arg);
+		arg++;
+	}
 
 	c->args = args;
 	c->input_type = XLAT_INPUT_ARGS;
@@ -396,6 +411,7 @@ void xlat_func_mono(xlat_t const *xlat, xlat_arg_parser_t *arg)
 {
 	xlat_t	*c = UNCONST(xlat_t *, xlat);
 
+	xlat_arg_parser_validate(arg);
 	c->args = arg;
 	c->input_type = XLAT_INPUT_MONO;
 }
