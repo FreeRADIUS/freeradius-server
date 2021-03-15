@@ -98,13 +98,14 @@ extern size_t xlat_action_table_len;
 
 /** A function used to escape an argument passed to an xlat
  *
+ * @param[in] request		being processed.  Used mostly for debugging.
  * @param[in,out] vb		to escape
  * @param[in] uctx		a "context" for the escaping
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*xlat_escape_func_t)(fr_value_box_t *vb, void *uctx);
+typedef int (*xlat_escape_func_t)(request_t *request, fr_value_box_t *vb, void *uctx);
 
 /** Definition for a single argument consumend by an xlat function
  *
@@ -115,6 +116,8 @@ typedef struct {
 	bool			single;		//!< Argument must only contain a single box
 	bool			variadic;	//!< All additional boxes should be processed
 						///< using this definition.
+	bool			always_escape;	//!< Pass all arguments to escape function not just
+						///< tainted ones.
 	fr_type_t		type;		//!< Type to cast argument to.
 	xlat_escape_func_t	func;		//!< Function to handle tainted values.
 	void			*uctx;		//!< Arcument to escape callback.

@@ -237,6 +237,16 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 					   xlat_arg_parser_t const *arg, unsigned int arg_num)
 {
 	fr_value_box_t *vb;
+
+#define DO_ESCAPE(_arg, _vb, _arg_num) \
+do { \
+	if ((_arg)->func && ((_vb)->tainted || (_arg)->always_escape) && \
+	    ((_arg)->func(request, _vb, (_arg)->uctx) < 0)) { \
+		RPEDEBUG("Failed escaping argument %u", _arg_num); \
+		return XLAT_ACTION_FAIL; \
+	} \
+} while (0)
+
 	if (!fr_dlist_empty(list)) {
 		if (arg->required) {
 			RPEDEBUG("Missing required argument %u", arg_num);
@@ -245,10 +255,14 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 		return XLAT_ACTION_DONE;
 	}
 
-	// *todo* make this escape tainted value boxes
 	vb = fr_dlist_head(list);
 
 	if (arg->concat) {
+		if (arg->func) {
+			for (; vb; vb = fr_dlist_next(list, vb)) DO_ESCAPE(arg, vb, arg_num);
+
+			vb = fr_dlist_head(list);	/* Reset */
+		}
 		/*
 		 *	Concatenate child boxes, casting to desired type,
 		 *	then replace group vb with first child vb
@@ -274,6 +288,9 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 				 fr_dlist_num_elements(list));
 			return XLAT_ACTION_FAIL;
 		}
+
+		DO_ESCAPE(arg, vb, arg_num);
+
 		if ((arg->type != FR_TYPE_VOID) && (vb->type != arg->type)) {
 		cast_error:
 			if (fr_value_box_cast_in_place(ctx, vb,
@@ -292,6 +309,8 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 		 *	cast all child values to the required type.
 		 */
 		do {
+ 			DO_ESCAPE(arg, vb, arg_num);
+
 			if (vb->type == arg->type) continue;
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) goto cast_error;
