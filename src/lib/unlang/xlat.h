@@ -357,18 +357,18 @@ int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 
 #define XLAT_DEFAULT_BUF_LEN	2048
 
-int		xlat_register_legacy(void *mod_inst, char const *name,
-				     xlat_func_legacy_t func, xlat_escape_legacy_t escape,
-				     xlat_instantiate_t instantiate, size_t inst_size,
-				     size_t buf_len);
+xlat_t		*xlat_register_legacy(void *mod_inst, char const *name,
+				      xlat_func_legacy_t func, xlat_escape_legacy_t escape,
+				      xlat_instantiate_t instantiate, size_t inst_size,
+				      size_t buf_len);
 
-xlat_t const	*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async);
+xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async) CC_HINT(nonnull(2));
 
-void		xlat_func_args(xlat_t const *xlat, xlat_arg_parser_t args[]) CC_HINT(nonnull);
+void		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
 
-void		xlat_func_mono(xlat_t const *xlat, xlat_arg_parser_t *arg) CC_HINT(nonnull);
+void		xlat_func_mono(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
 
-int		xlat_internal(char const *name);
+void		xlat_internal(xlat_t *xlat);
 
 /** Set a callback for global instantiation of xlat functions
  *

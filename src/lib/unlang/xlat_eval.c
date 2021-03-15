@@ -308,8 +308,9 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
  * @param[in] input_type	required by xlat.
  * @param[in] args		definition of arguments required by xlat.
  */
-static xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
-					xlat_input_type_t input_type, xlat_arg_parser_t args[])
+static inline CC_HINT(always_inline)
+xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
+				xlat_input_type_t input_type, xlat_arg_parser_t const args[])
 {
 	xlat_arg_parser_t const	*arg = args;
 	xlat_action_t		xa;

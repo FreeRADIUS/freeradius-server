@@ -244,22 +244,22 @@ static void _xlat_func_tree_free(void *xlat)
  * @param[in] buf_len		Size of the output buffer to allocate when calling the function.
  *				May be 0 if the function allocates its own buffer.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- A handle for the newly registered xlat function on success.
+ *	- NULL on failure.
  */
-int xlat_register_legacy(void *mod_inst, char const *name,
-			 xlat_func_legacy_t func, xlat_escape_legacy_t escape,
-			 xlat_instantiate_t instantiate, size_t inst_size,
-			 size_t buf_len)
+xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
+			     xlat_func_legacy_t func, xlat_escape_legacy_t escape,
+			     xlat_instantiate_t instantiate, size_t inst_size,
+			     size_t buf_len)
 {
 	xlat_t	*c;
 	bool	is_new = false;
 
-	if (!xlat_root && (xlat_init() < 0)) return -1;;
+	if (!xlat_root && (xlat_init() < 0)) return NULL;
 
 	if (!name || !*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
-		return -1;
+		return NULL;
 	}
 
 	/*
@@ -269,7 +269,7 @@ int xlat_register_legacy(void *mod_inst, char const *name,
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
-			return -1;
+			return NULL;
 		}
 	/*
 	 *	Doesn't exist.  Create it.
@@ -296,10 +296,10 @@ int xlat_register_legacy(void *mod_inst, char const *name,
 		ERROR("Failed inserting xlat registration for %s",
 		      c->name);
 		talloc_free(c);
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return c;
 }
 
 
@@ -310,10 +310,10 @@ int xlat_register_legacy(void *mod_inst, char const *name,
  * @param[in] func		to register.
  * @param[in] needs_async	Requires asynchronous evaluation.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- A handle for the newly registered xlat function on success.
+ *	- NULL on failure.
  */
-xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async)
+xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async)
 {
 	xlat_t	*c;
 
@@ -377,7 +377,8 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
  *
  * @param[in] arg	specification to validate.
  */
-static inline void xlat_arg_parser_validate(xlat_arg_parser_t *arg) {
+static inline void xlat_arg_parser_validate(xlat_arg_parser_t const *arg)
+{
 	if (arg->concat) {
 		fr_assert((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS));
 	}
@@ -387,58 +388,41 @@ static inline void xlat_arg_parser_validate(xlat_arg_parser_t *arg) {
  *
  * For xlats that take multiple arguments
  *
- * @param[in,out] xlat		to have it's arguments registered
+ * @param[in,out] x		to have it's arguments registered
  * @param[in] args		to be registered
  */
-void xlat_func_args(xlat_t const *xlat, xlat_arg_parser_t args[])
+void xlat_func_args(xlat_t *x, xlat_arg_parser_t const args[])
 {
-	xlat_t	*c = UNCONST(xlat_t *, xlat);
-	xlat_arg_parser_t *arg = args;
+	xlat_arg_parser_t const *arg = args;
 
-	while (arg->type != FR_TYPE_NULL) {
-		xlat_arg_parser_validate(arg);
-		arg++;
-	}
+	for (arg = args; arg->type != FR_TYPE_NULL; arg++) xlat_arg_parser_validate(arg);
 
-	c->args = args;
-	c->input_type = XLAT_INPUT_ARGS;
+	x->args = args;
+	x->input_type = XLAT_INPUT_ARGS;
 }
 
 /** Register the argument of an xlat
  *
  * For xlats that take all their input as a single argument
  *
- * @param[in,out] xlat		to have it's arguments registered
+ * @param[in,out] x		to have it's arguments registered
  * @param[in] arg		to be registered
  */
-void xlat_func_mono(xlat_t const *xlat, xlat_arg_parser_t *arg)
+void xlat_func_mono(xlat_t *x, xlat_arg_parser_t const *arg)
 {
-	xlat_t	*c = UNCONST(xlat_t *, xlat);
-
 	xlat_arg_parser_validate(arg);
-	c->args = arg;
-	c->input_type = XLAT_INPUT_MONO;
+	x->args = arg;
+	x->input_type = XLAT_INPUT_MONO;
 }
 
 /** Mark an xlat function as internal
  *
- * @param[in] name of function to find.
- * @return
- *	- -1 on failure (function doesn't exist).
- *	- 0 on success.
+ * @param[in] xlat to mark as internal.
  */
-int xlat_internal(char const *name)
+void xlat_internal(xlat_t *xlat)
 {
-	xlat_t *c;
-
-	c = xlat_func_find(name, -1);
-	if (!c) return -1;
-
-	c->internal = true;
-
-	return 0;
+	xlat->internal = true;
 }
-
 
 /** Set global instantiation/detach callbacks
  *
@@ -760,7 +744,7 @@ int xlat_register_legacy_redundant(CONF_SECTION *cs)
 	 *	Get the number of children for load balancing.
 	 */
 	if (xr->type == XLAT_REDUNDANT) {
-		if (xlat_register_legacy(xr, name2, xlat_redundant, NULL, NULL, 0, 0) < 0) {
+		if (!xlat_register_legacy(xr, name2, xlat_redundant, NULL, NULL, 0, 0)) {
 			ERROR("Registering xlat for redundant section failed");
 			talloc_free(xr);
 			return -1;
@@ -788,7 +772,7 @@ int xlat_register_legacy_redundant(CONF_SECTION *cs)
 			xr->count++;
 		}
 
-		if (xlat_register_legacy(xr, name2, xlat_load_balance, NULL, NULL, 0, 0) < 0) {
+		if (!xlat_register_legacy(xr, name2, xlat_load_balance, NULL, NULL, 0, 0)) {
 			ERROR("Registering xlat for load-balance section failed");
 			talloc_free(xr);
 			return -1;
@@ -3348,7 +3332,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 int xlat_init(void)
 {
-	xlat_t const	*xlat;
+	xlat_t *xlat;
 
 	if (xlat_root) return 0;
 
@@ -3371,11 +3355,11 @@ int xlat_init(void)
 		return -1;
 	}
 
-#define XLAT_REGISTER(_x) xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
-	xlat_internal(STRINGIFY(_x));
+#define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
+	xlat_internal(xlat);
 
-	xlat_register_legacy(NULL, "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_internal("debug");
+	xlat = xlat_register_legacy(NULL, "debug", xlat_func_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_internal(xlat);
 	XLAT_REGISTER(debug_attr);
 	xlat_register_legacy(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	XLAT_REGISTER(integer);
