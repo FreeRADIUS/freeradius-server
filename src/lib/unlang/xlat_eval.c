@@ -247,7 +247,7 @@ do { \
 	} \
 } while (0)
 
-	if (!fr_dlist_empty(list)) {
+	if (fr_dlist_empty(list)) {
 		if (arg->required) {
 			RPEDEBUG("Missing required argument %u", arg_num);
 			return XLAT_ACTION_FAIL;
