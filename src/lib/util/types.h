@@ -78,6 +78,9 @@ typedef enum {
 	FR_TYPE_GROUP,				//!< A grouping of other attributes
 	FR_TYPE_VALUE_BOX,			//!< A boxed value.
 
+	FR_TYPE_VOID,				//!< User data.  Should be a talloced chunk
+						///< assigned to the ptr value of the union.
+
 	FR_TYPE_MAX				//!< Number of defined data types.
 } fr_type_t;
 
@@ -181,6 +184,7 @@ typedef enum {
 	case FR_TYPE_COMBO_IP_PREFIX: \
 	case FR_TYPE_STRUCTURAL: \
 	case FR_TYPE_VALUE_BOX: \
+	case FR_TYPE_VOID: \
 	case FR_TYPE_BAD
 
 /** Types which represent concrete values

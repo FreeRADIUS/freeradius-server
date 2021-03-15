@@ -276,7 +276,6 @@ _Generic((_ct), \
  *  user-supplied variables.
  */
 #define FR_TYPE_SUBSECTION	102
-#define FR_TYPE_VOID		103
 
 /*
  *	It's a developer option and should be used carefully.
