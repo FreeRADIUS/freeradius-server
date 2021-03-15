@@ -32,7 +32,7 @@ extern "C" {
 /** Internal data types
  */
 typedef enum {
-	FR_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
+	FR_TYPE_NULL = 0,			//!< Invalid (uninitialised) attribute type.
 
 	FR_TYPE_STRING,				//!< String of printable characters.
 	FR_TYPE_OCTETS,				//!< Raw octets.
@@ -153,7 +153,7 @@ typedef enum {
 
 #define FR_TYPE_BAD \
 	     FR_TYPE_MAX: \
-	case FR_TYPE_INVALID
+	case FR_TYPE_NULL
 
 /** Stupid hack for things which produce special error messages for VSAs
  *

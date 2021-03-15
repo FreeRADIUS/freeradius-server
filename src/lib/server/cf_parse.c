@@ -214,7 +214,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 						.allow_unresolved = true,
 						.allow_foreign = true
 					};
-		fr_type_t		cast = FR_TYPE_INVALID;
+		fr_type_t		cast = FR_TYPE_NULL;
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
 		if (!cp->printed) cf_pair_debug(cs, cp, secret);
@@ -444,7 +444,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	{
 		fr_ipaddr_t	*ipaddr = out;
 		int		af = AF_UNSPEC;
-		fr_type_t	our_type = FR_TYPE_INVALID;
+		fr_type_t	our_type = FR_TYPE_NULL;
 		fr_sbuff_t	sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
 		slen = tmpl_cast_from_substr(&our_type, &sbuff);
@@ -557,7 +557,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	It's not an error parsing the configuration
 		 *	file.
 		 */
-		fr_assert(type > FR_TYPE_INVALID);
+		fr_assert(type > FR_TYPE_NULL);
 		fr_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",

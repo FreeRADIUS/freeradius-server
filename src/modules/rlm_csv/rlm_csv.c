@@ -346,7 +346,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 		/*
 		 *	Try to parse fields as data types if the data type is defined.
 		 */
-		if (inst->field_types[i] != FR_TYPE_INVALID) {
+		if (inst->field_types[i] != FR_TYPE_NULL) {
 			fr_value_box_t box;
 			fr_type_t type = inst->field_types[i];
 
@@ -400,7 +400,7 @@ static int csv_map_verify(map_t *map, void *instance)
 {
 	rlm_csv_t *inst = instance;
 	int offset;
-	fr_type_t type = FR_TYPE_INVALID;
+	fr_type_t type = FR_TYPE_NULL;
 
 	/*
 	 *	Destinations where we can put the fr_pair_ts we
@@ -436,14 +436,14 @@ static int csv_map_verify(map_t *map, void *instance)
 			return -1;
 		}
 
-		if ((type == FR_TYPE_INVALID) || (offset < 0)) break;
+		if ((type == FR_TYPE_NULL) || (offset < 0)) break;
 
 		/*
 		 *	Try to set the data type of the field.  But if
 		 *	they map the same field to two different data
 		 *	types, that's an error.
 		 */
-		if (inst->field_types[offset] == FR_TYPE_INVALID) {
+		if (inst->field_types[offset] == FR_TYPE_NULL) {
 			inst->field_types[offset] = type;
 			break;
 		}
@@ -544,7 +544,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		case FR_TYPE_VALUE:
 			break;
 
-		case FR_TYPE_INVALID:
+		case FR_TYPE_NULL:
 			cf_log_err(conf, "Can't determine key data_type. 'key' must be an expression of type "
 				   "xlat, attr, or data");
 			return -1;
@@ -631,7 +631,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	for (i = 0; i < inst->num_fields; i++) {
 		inst->field_offsets[i] = -1; /* unused */
-		inst->field_types[i] = FR_TYPE_INVALID;
+		inst->field_types[i] = FR_TYPE_NULL;
 	}
 
 	/*

@@ -993,7 +993,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 //			for (vb = tmpl_value(mod->rhs);
 //			     vb;
 //			     vb = vb->next) {
-				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_INVALID ? vb : NULL);
+				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_NULL ? vb : NULL);
 //			}
 		}
 	}

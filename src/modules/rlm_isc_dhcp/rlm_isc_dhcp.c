@@ -839,7 +839,7 @@ static fr_type_t isc2fr_type(rlm_isc_dhcp_tokenizer_t *state)
 	TYPE_CHECK("string", FR_TYPE_OCTETS);
 
 	fr_strerror_printf("unknown type '%.*s'", state->token_len, state->token);
-	return FR_TYPE_INVALID;
+	return FR_TYPE_NULL;
 }
 
 
@@ -950,7 +950,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	}
 
 	type = isc2fr_type(state);
-	if (type == FR_TYPE_INVALID) goto error;
+	if (type == FR_TYPE_NULL) goto error;
 
 	/*
 	 *	Now that we've parsed everything, look up the name.

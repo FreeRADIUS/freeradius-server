@@ -193,7 +193,7 @@ int tmpl_request_ptr(request_t **context, tmpl_request_ref_t name)
  *
  * @param[in] vpt	to determine the type of.
  * @return
- *	- FR_TYPE_INVALID if the type of the #tmpl_t can't be determined.
+ *	- FR_TYPE_NULL if the type of the #tmpl_t can't be determined.
  *	- The data type we'd expect the #tmpl_t to produce at runtime
  *	  when expanded.
  */
@@ -202,12 +202,12 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
 	/*
 	 *	Regexes can't be expanded
 	 */
-	if (tmpl_contains_regex(vpt)) return FR_TYPE_INVALID;
+	if (tmpl_contains_regex(vpt)) return FR_TYPE_NULL;
 
 	/*
 	 *	Casts take precedence over everything.
 	 */
-	if (vpt->cast != FR_TYPE_INVALID) return vpt->cast;
+	if (vpt->cast != FR_TYPE_NULL) return vpt->cast;
 
 	/*
 	 *	Anything that's not a bare word will
@@ -231,7 +231,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
 		break;
 	}
 
-	return FR_TYPE_INVALID;
+	return FR_TYPE_NULL;
 }
 
 /** Expand a #tmpl_t to a string writing the result to a buffer
@@ -280,13 +280,13 @@ ssize_t _tmpl_to_type(void *out,
 		      fr_type_t dst_type)
 {
 	fr_value_box_t		value_to_cast;
-	fr_value_box_t		value_from_cast = { .type = FR_TYPE_INVALID };
+	fr_value_box_t		value_from_cast = { .type = FR_TYPE_NULL };
 	fr_value_box_t const	*to_cast = &value_to_cast;
 	fr_value_box_t const	*from_cast = &value_from_cast;
 
 	fr_pair_t		*vp = NULL;
 
-	fr_type_t		src_type = FR_TYPE_INVALID;
+	fr_type_t		src_type = FR_TYPE_NULL;
 
 	ssize_t			slen = -1;	/* quiet compiler */
 

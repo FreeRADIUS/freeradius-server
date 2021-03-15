@@ -393,7 +393,7 @@ void xlat_func_args(xlat_t const *xlat, xlat_arg_parser_t args[])
 	xlat_t	*c = UNCONST(xlat_t *, xlat);
 	xlat_arg_parser_t *arg = args;
 
-	while (arg->type != FR_TYPE_INVALID) {
+	while (arg->type != FR_TYPE_NULL) {
 		xlat_arg_parser_validate(arg);
 		arg++;
 	}
@@ -3081,7 +3081,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_assert(vb && (vb->type != FR_TYPE_INVALID));
+	fr_assert(vb && (vb->type != FR_TYPE_NULL));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

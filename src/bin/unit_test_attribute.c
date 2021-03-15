@@ -2202,8 +2202,8 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	/*
 	 *	Parse data types
 	 */
-	type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, in, strlen(in), FR_TYPE_INVALID);
-	if (type == FR_TYPE_INVALID) {
+	type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, in, strlen(in), FR_TYPE_NULL);
+	if (type == FR_TYPE_NULL) {
 		RETURN_PARSE_ERROR(0);
 	}
 	p = in + match_len;

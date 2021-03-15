@@ -168,7 +168,7 @@ size_t fr_value_box_type_table_len = NUM_ELEMENTS(fr_value_box_type_table);
 #define network_min_size(_x) (fr_value_box_network_sizes[_x][0])
 #define network_max_size(_x) (fr_value_box_network_sizes[_x][1])
 static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_INVALID]			= {~0, 0},
+	[FR_TYPE_NULL]			= {~0, 0},
 
 	[FR_TYPE_STRING]			= {0, ~0},
 	[FR_TYPE_OCTETS]			= {0, ~0},
@@ -517,8 +517,8 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	int compare = 0;
 
-	if (!fr_cond_assert(a->type != FR_TYPE_INVALID)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
+	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
 
 	if (a->type != b->type) {
 		fr_strerror_printf("%s: Can't compare values of different types", __FUNCTION__);
@@ -781,8 +781,8 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 	if (!a || !b) return -1;
 
-	if (!fr_cond_assert(a->type != FR_TYPE_INVALID)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
+	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
 
 	switch (a->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -1033,7 +1033,7 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
  */
 int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
 	switch (src->type) {
 	default:
@@ -2863,9 +2863,9 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 		      fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(dst_type != FR_TYPE_NULL)) return -1;
 	if (!fr_cond_assert(src != dst)) return -1;
-	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
 	if (fr_dict_non_data_types[dst_type]) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
@@ -2953,7 +2953,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_INVALID:
+	case FR_TYPE_NULL:
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Invalid cast from %s to %s.  Invalid destination type",
@@ -3165,7 +3165,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		}
 		return;
 
-	case FR_TYPE_INVALID:
+	case FR_TYPE_NULL:
 		return;
 
 	default:
@@ -3184,7 +3184,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 void fr_value_box_clear(fr_value_box_t *data)
 {
 	fr_value_box_clear_value(data);
-	fr_value_box_init(data, FR_TYPE_INVALID, NULL, false);
+	fr_value_box_init(data, FR_TYPE_NULL, NULL, false);
 }
 
 /** Copy value data verbatim duplicating any buffers
@@ -3200,7 +3200,7 @@ void fr_value_box_clear(fr_value_box_t *data)
  */
 int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
 	switch (src->type) {
 	default:
@@ -3284,7 +3284,7 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
  */
 int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
 	switch (src->type) {
 	default:
@@ -4212,7 +4212,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	ssize_t		ret;
 	char		buffer[256];
 
-	if (!fr_cond_assert(*dst_type != FR_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(*dst_type != FR_TYPE_NULL)) return -1;
 
 	len = (inlen < 0) ? strlen(in) : (size_t)inlen;
 
@@ -4582,7 +4582,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 
-	if (!fr_cond_assert(data->type != FR_TYPE_INVALID)) return 0;
+	if (!fr_cond_assert(data->type != FR_TYPE_NULL)) return 0;
 
 	if (data->enumv && data->enumv->name) {
 		char const *name;

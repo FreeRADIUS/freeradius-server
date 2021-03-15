@@ -262,8 +262,8 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
-	if (type == FR_TYPE_INVALID) {
+	type = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_NULL);
+	if (type == FR_TYPE_NULL) {
 		fr_strerror_printf("Unknown data type '%s'", name);
 		return -1;
 	}
@@ -375,8 +375,8 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			if (strncmp(key, "uint", 4) == 0) {
 				fr_type_t subtype;
 
-				subtype = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_INVALID);
-				if (subtype == FR_TYPE_INVALID) {
+				subtype = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_NULL);
+				if (subtype == FR_TYPE_NULL) {
 				unknown_type:
 					fr_strerror_printf("Unknown or unsupported %s type '%s'",
 							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),
@@ -517,7 +517,7 @@ static int dict_gctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
 {
 	while ((ctx->stack_depth > 0) &&
-	       (ctx->stack[ctx->stack_depth].nest == FR_TYPE_INVALID)) {
+	       (ctx->stack[ctx->stack_depth].nest == FR_TYPE_NULL)) {
 		ctx->stack_depth--;
 	}
 
@@ -1116,7 +1116,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 */
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_INVALID:
+	case FR_TYPE_NULL:
 	case FR_TYPE_MAX:
 		fr_strerror_printf_push("Cannot define VALUE for Attribute '%s' of data type \"%s\"", da->name,
 					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
@@ -1855,7 +1855,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			}
 
 			while (ctx->stack_depth > stack_depth) {
-				if (ctx->stack[ctx->stack_depth].nest == FR_TYPE_INVALID) {
+				if (ctx->stack[ctx->stack_depth].nest == FR_TYPE_NULL) {
 					ctx->stack_depth--;
 					continue;
 				}
@@ -1974,7 +1974,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	Pop the stack until we get to a PROTOCOL nesting.
 			 */
 			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_MAX)) {
-				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_INVALID) {
+				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
 					fr_strerror_printf_push("END-PROTOCOL %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
 					goto error;
@@ -2070,7 +2070,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	Pop the stack until we get to a TLV nesting.
 			 */
 			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_TLV)) {
-				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_INVALID) {
+				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
 					fr_strerror_printf_push("END-TLV %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
 					goto error;
@@ -2226,7 +2226,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	Pop the stack until we get to a VENDOR nesting.
 			 */
 			while ((ctx->stack_depth > 0) && (ctx->stack[ctx->stack_depth].nest != FR_TYPE_VENDOR)) {
-				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_INVALID) {
+				if (ctx->stack[ctx->stack_depth].nest != FR_TYPE_NULL) {
 					fr_strerror_printf_push("END-VENDOR %s with mismatched BEGIN-??? %s", argv[1],
 						ctx->stack[ctx->stack_depth].da->name);
 					goto error;

@@ -145,7 +145,7 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 	fr_dict_attr_t const *da;
 	fr_type_t type = *p_type;
 
-	fr_assert(type != FR_TYPE_INVALID);
+	fr_assert(type != FR_TYPE_NULL);
 	fr_assert(type < FR_TYPE_TLV);
 
 	if (tmpl_is_unresolved(vpt)) {
@@ -200,7 +200,7 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 		}
 #endif
 
-//		(void) tmpl_cast_set(vpt, FR_TYPE_INVALID);
+//		(void) tmpl_cast_set(vpt, FR_TYPE_NULL);
 		return 0;
 	}
 
@@ -226,8 +226,8 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 	 *	Which means we no longer need the cast.
 	 */
 	fr_assert(tmpl_is_data(vpt));
-	fr_assert((vpt->cast == FR_TYPE_INVALID) || (vpt->cast == tmpl_value_type(vpt)));
-	(void) tmpl_cast_set(vpt, FR_TYPE_INVALID);
+	fr_assert((vpt->cast == FR_TYPE_NULL) || (vpt->cast == tmpl_value_type(vpt)));
+	(void) tmpl_cast_set(vpt, FR_TYPE_NULL);
 	return 0;
 }
 
@@ -247,7 +247,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	if (tmpl_contains_regex(c->data.map->rhs)) {
 		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
 		fr_assert(!tmpl_is_list(c->data.map->lhs));
-		fr_assert(c->data.map->rhs->cast == FR_TYPE_INVALID);
+		fr_assert(c->data.map->rhs->cast == FR_TYPE_NULL);
 
 		/*
 		 *	Can't use casts with regular expressions, on
@@ -262,7 +262,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 *	binary-safe!
 		 */
 		cast_type = c->data.map->lhs->cast;
-		if (cast_type != FR_TYPE_INVALID) {
+		if (cast_type != FR_TYPE_NULL) {
 			if ((cast_type != FR_TYPE_STRING) &&
 			    (cast_type != FR_TYPE_OCTETS)) {
 				fr_strerror_const("Invalid cast used with regular expression");
@@ -282,7 +282,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 				return -1;
 			}
 
-			(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_INVALID);
+			(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_NULL);
 		}
 
 		/*
@@ -344,7 +344,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	/*
 	 *	Figure out the type of the LHS.
 	 */
-	if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
+	if (c->data.map->lhs->cast != FR_TYPE_NULL) {
 		lhs_type = c->data.map->lhs->cast;
 		/*
 		 *	Two explicit casts MUST be the same, otherwise
@@ -353,7 +353,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 *	We only do type promotion when at least one
 		 *	data type is implicitly specified.
 		 */
-		if (c->data.map->rhs->cast != FR_TYPE_INVALID) {
+		if (c->data.map->rhs->cast != FR_TYPE_NULL) {
 			if (c->data.map->rhs->cast != lhs_type) {
 				fr_strerror_const("Incompatible casts");
 				if (in) fr_sbuff_set(in, fr_sbuff_start(in));
@@ -390,13 +390,13 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		fr_assert(!tmpl_is_regex(c->data.map->lhs));
 #endif
 
-		lhs_type = FR_TYPE_INVALID;
+		lhs_type = FR_TYPE_NULL;
 	}
 
 	/*
 	 *	Figure out the type of the RHS.
 	 */
-	if (c->data.map->rhs->cast != FR_TYPE_INVALID) {
+	if (c->data.map->rhs->cast != FR_TYPE_NULL) {
 		rhs_type = c->data.map->rhs->cast;
 
 	} else if (tmpl_is_data(c->data.map->rhs)) {
@@ -416,13 +416,13 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		rhs_type = FR_TYPE_STRING;
 
 	} else {
-		rhs_type = FR_TYPE_INVALID;
+		rhs_type = FR_TYPE_NULL;
 
 		/*
 		 *	Both sides are have unresolved issues.  Leave
 		 *	them alone...
 		 */
-		if (lhs_type == FR_TYPE_INVALID) {
+		if (lhs_type == FR_TYPE_NULL) {
 			/*
 			 *	If we still have unresolved data, then
 			 *	ensure that they are converted to
@@ -457,18 +457,18 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	 *	because we will just check it again after the pass2
 	 *	fixups.
 	 */
-	if ((lhs_type != FR_TYPE_INVALID) && (rhs_type == FR_TYPE_INVALID)) {
+	if ((lhs_type != FR_TYPE_NULL) && (rhs_type == FR_TYPE_NULL)) {
 		cast_type = lhs_type;
 		goto set_types;
 	}
 
-	if ((rhs_type != FR_TYPE_INVALID) && (lhs_type == FR_TYPE_INVALID)) {
+	if ((rhs_type != FR_TYPE_NULL) && (lhs_type == FR_TYPE_NULL)) {
 		cast_type = rhs_type;
 		goto set_types;
 	}
 
 	cast_type = fr_type_promote(lhs_type, rhs_type);
-	if (!fr_cond_assert_msg(cast_type != FR_TYPE_INVALID, "%s", fr_strerror())) return -1;
+	if (!fr_cond_assert_msg(cast_type != FR_TYPE_NULL, "%s", fr_strerror())) return -1;
 
 set_types:
 	/*
@@ -991,7 +991,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	fr_sbuff_marker_t		m;
 	tmpl_t				*vpt;
 	fr_token_t			type;
-	fr_type_t			cast = FR_TYPE_INVALID;
+	fr_type_t			cast = FR_TYPE_NULL;
 	fr_sbuff_parse_rules_t		tmp_p_rules;
 	fr_sbuff_parse_rules_t const	*p_rules;
 	ssize_t				slen;
@@ -1063,7 +1063,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	 *	at the start of the flags.
 	 */
 	if (type == T_SOLIDUS_QUOTED_STRING) {
-		if (cast != FR_TYPE_INVALID) {
+		if (cast != FR_TYPE_NULL) {
 			fr_strerror_const("Invalid cast used with regular expression");
 			fr_sbuff_set(&our_in, &m);
 			goto error;
@@ -1113,7 +1113,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 			goto error;
 		}
 
-		cast = FR_TYPE_INVALID;
+		cast = FR_TYPE_NULL;
 	}
 
 	if (tmpl_cast_set(vpt, cast) < 0) {
@@ -1283,7 +1283,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		}
 
 	unary:
-		if (lhs->cast != FR_TYPE_INVALID) {
+		if (lhs->cast != FR_TYPE_NULL) {
 			fr_strerror_const("Cannot do cast for existence check");
 			fr_sbuff_set(&our_in, &m_lhs_cast);
 			goto error;

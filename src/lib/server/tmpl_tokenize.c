@@ -2764,7 +2764,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 /** Parse a cast specifier
  *
  * @param[out] out	Where to write the cast type.
- *			Will default to FR_TYPE_INVALID.
+ *			Will default to FR_TYPE_NULL.
  * @param[in] in	String containing the cast marker.
  * @return
  *	- 0 no cast specifier found.
@@ -2775,13 +2775,13 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 {
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 	fr_sbuff_marker_t	m;
-	fr_type_t		cast = FR_TYPE_INVALID;
+	fr_type_t		cast = FR_TYPE_NULL;
 	ssize_t			slen;
 
 	if (fr_sbuff_next_if_char(&our_in, '<')) {
 		fr_sbuff_marker(&m, &our_in);
-		fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_value_box_type_table, &our_in, FR_TYPE_INVALID);
-		if (cast == FR_TYPE_INVALID) {
+		fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_value_box_type_table, &our_in, FR_TYPE_NULL);
+		if (cast == FR_TYPE_NULL) {
 			fr_strerror_const("Unknown data type");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -2821,7 +2821,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	/*
 	 *	We can always remove a cast.
 	 */
-	case FR_TYPE_INVALID:
+	case FR_TYPE_NULL:
 		goto done;
 
 	/*
@@ -2842,7 +2842,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	 *	By default, tmpl types cannot be cast to anything.
 	 */
 	default:
-		if (dst_type != FR_TYPE_INVALID) {
+		if (dst_type != FR_TYPE_NULL) {
 			fr_strerror_const("Cannot use cast here.");
 			return -1;
 		}
@@ -2872,7 +2872,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 		 */
 	check_types:
 		if (src_type == dst_type) {
-			vpt->cast = FR_TYPE_INVALID;
+			vpt->cast = FR_TYPE_NULL;
 			return 0;
 		}
 
@@ -3229,7 +3229,7 @@ int tmpl_resolve(tmpl_t *vpt)
 		/*
 		 *	Attempt to process the cast
 		 */
-		if (vpt->cast != FR_TYPE_INVALID) {
+		if (vpt->cast != FR_TYPE_NULL) {
 			ret = fr_value_box_cast_in_place(vpt, &vpt->data.literal, vpt->cast, NULL);
 			if (ret < 0) goto done;
 		}
@@ -4269,9 +4269,9 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 					     file, line);
 		}
 
-		if (tmpl_value_type(vpt) == FR_TYPE_INVALID) {
+		if (tmpl_value_type(vpt) == FR_TYPE_NULL) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
-					     "FR_TYPE_INVALID (uninitialised)", file, line);
+					     "FR_TYPE_NULL (uninitialised)", file, line);
 		}
 
 		if (tmpl_value_type(vpt) >= FR_TYPE_MAX) {
@@ -4384,8 +4384,8 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			/* nothing */
 		}
 
-		cast = fr_table_value_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_INVALID);
-		if (cast == FR_TYPE_INVALID) {
+		cast = fr_table_value_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_NULL);
+		if (cast == FR_TYPE_NULL) {
 			return_P("Unknown data type");
 		}
 

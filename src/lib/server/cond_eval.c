@@ -144,7 +144,7 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *in)
 		/*
 		 *	No cast means that it's an existence check.
 		 */
-		if (vpt->cast == FR_TYPE_INVALID) {
+		if (vpt->cast == FR_TYPE_NULL) {
 			return (tmpl_find_vp(NULL, request, vpt) == 0);
 		}
 
@@ -184,7 +184,7 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *in)
 		 *	We don't yet have xlats returning lists of
 		 *	value boxes, so there's an assert.
 		 */
-		if (vpt->cast == FR_TYPE_INVALID) {
+		if (vpt->cast == FR_TYPE_NULL) {
 			switch (box->type) {
 			case FR_TYPE_STRING:
 			case FR_TYPE_OCTETS:
@@ -382,7 +382,7 @@ static int cond_realize_tmpl(request_t *request,
 	 *	converted to the correct thing.
 	 */
 	case TMPL_TYPE_DATA:
-		fr_assert((in->cast == FR_TYPE_INVALID) || (in->cast == tmpl_value_type(in)));
+		fr_assert((in->cast == FR_TYPE_NULL) || (in->cast == tmpl_value_type(in)));
 		*out = tmpl_value(in);
 		return 0;
 
@@ -413,7 +413,7 @@ static int cond_realize_tmpl(request_t *request,
 		 *	don't find that, then the *other* side MUST
 		 *	have an explicit data type.
 		 */
-		if (in->cast != FR_TYPE_INVALID) {
+		if (in->cast != FR_TYPE_NULL) {
 			cast_type = in->cast;
 
 		} else if (!other) {
@@ -468,7 +468,7 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 	if (da) {
 		cast_type = da->type;
 
-	} else if (vpt->cast != FR_TYPE_INVALID) {
+	} else if (vpt->cast != FR_TYPE_NULL) {
 		/*
 		 *	If there's an explicit cast, use that.
 		 */
@@ -511,7 +511,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dict_attr_t const	*da = NULL;
 
-	if (tmpl_is_attr(map->lhs) && (map->lhs->cast == FR_TYPE_INVALID)) da = tmpl_da(map->lhs);
+	if (tmpl_is_attr(map->lhs) && (map->lhs->cast == FR_TYPE_NULL)) da = tmpl_da(map->lhs);
 
 	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_clear(&rhs_cast);

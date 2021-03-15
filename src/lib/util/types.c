@@ -396,7 +396,7 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 	 */
 	switch (a) {
 	case FR_TYPE_NON_VALUES:
-		return FR_TYPE_INVALID;
+		return FR_TYPE_NULL;
 
 	default:
 		break;
@@ -404,7 +404,7 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 
 	switch (b) {
 	case FR_TYPE_NON_VALUES:
-		return FR_TYPE_INVALID;
+		return FR_TYPE_NULL;
 
 	default:
 		break;
@@ -438,14 +438,14 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 				   fr_table_str_by_value(fr_value_box_type_table, a, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, b, "<INVALID>"));
 
-		return FR_TYPE_INVALID;
+		return FR_TYPE_NULL;
 	}
 
-	if (unlikely(type_promote_table[a][b] == FR_TYPE_INVALID)) {
+	if (unlikely(type_promote_table[a][b] == FR_TYPE_NULL)) {
 		fr_strerror_printf("No type promotions for a = %s, b = %s",
 				   fr_table_str_by_value(fr_value_box_type_table, a, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, b, "<INVALID>"));
-		return FR_TYPE_INVALID;
+		return FR_TYPE_NULL;
 	}
 
 	/*

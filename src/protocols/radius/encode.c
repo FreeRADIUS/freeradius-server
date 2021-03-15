@@ -1461,7 +1461,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		if (len < 0) return len;
 		break;
 
-	case FR_TYPE_INVALID:
+	case FR_TYPE_NULL:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);

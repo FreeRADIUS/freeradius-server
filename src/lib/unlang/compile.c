@@ -446,7 +446,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 		return false;
 	}
 
-	if (c->data.map->lhs->cast != FR_TYPE_INVALID) {
+	if (c->data.map->lhs->cast != FR_TYPE_NULL) {
 		cf_log_err(map->ci, "Cannot cast virtual attribute %s to %s", map->lhs->name,
 			   fr_table_str_by_value(fr_value_box_type_table, c->data.map->lhs->type, "<INVALID>"));
 		return false;
@@ -2161,7 +2161,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_da(switch_gext->vpt);
 
-			if ((cast_type == FR_TYPE_INVALID) && da) cast_type = da->type;
+			if ((cast_type == FR_TYPE_NULL) && da) cast_type = da->type;
 
 			if (tmpl_cast_in_place(vpt, cast_type, da) < 0) {
 				cf_log_perr(cs, "Invalid argument for 'case' statement");

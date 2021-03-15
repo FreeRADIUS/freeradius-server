@@ -103,7 +103,7 @@ static fr_dict_adhoc_attr_t test_dict_attrs[] = {
 	{ .attr = FR_TEST_VALUES, .parent = NULL, .da = &attr_test_values, .name = "Test-Values", .type = FR_TYPE_UINT32, .values = &attr_test_values_entries },
 	{ .attr = FR_TEST_TLV_ROOT, .parent = NULL, .da = &attr_test_tlv_root, .name = "Test-TLV-Root", .type = FR_TYPE_TLV, },
 	{ .attr = FR_TEST_TLV_STRING, .parent = &attr_test_tlv_root, .da = &attr_test_tlv_string, .name = "Test-TLV-String", .type = FR_TYPE_STRING, },
-	{ .attr = -1, .parent = NULL, .da = NULL, .name = NULL, .type = FR_TYPE_INVALID }
+	{ .attr = -1, .parent = NULL, .da = NULL, .name = NULL, .type = FR_TYPE_NULL }
 };
 
 /*

@@ -71,7 +71,7 @@ fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 };
 
 size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_INVALID]		= {~0, 0},	//!< Ensure array starts at 0 (umm?)
+	[FR_TYPE_NULL]		= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 
 	[FR_TYPE_STRING]		= {0, ~0},
 	[FR_TYPE_OCTETS]		= {0, ~0},

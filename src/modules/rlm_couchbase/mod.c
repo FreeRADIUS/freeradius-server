@@ -467,7 +467,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 		 *	Create a map representing the operation
 		 */
 		{
-			fr_value_box_t	tmp = { .type = FR_TYPE_INVALID };
+			fr_value_box_t	tmp = { .type = FR_TYPE_NULL };
 			map_t	*map;
 
 			if (fr_json_object_to_value_box(ctx, &tmp, value_obj, da, true) < 0) {

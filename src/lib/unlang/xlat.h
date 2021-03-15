@@ -121,7 +121,7 @@ typedef struct {
 } xlat_arg_parser_t;
 
 #define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = false, \
-					.type = FR_TYPE_INVALID, .func = NULL, .uctx = NULL }
+					.type = FR_TYPE_NULL, .func = NULL, .uctx = NULL }
 
 /** A callback when the the timeout occurs
  *

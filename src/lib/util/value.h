@@ -359,7 +359,7 @@ static inline CC_HINT(always_inline) void fr_value_box_init(fr_value_box_t *vb, 
  */
 static inline CC_HINT(always_inline) void fr_value_box_init_null(fr_value_box_t *vb)
 {
-	fr_value_box_init(vb, FR_TYPE_INVALID, NULL, false);
+	fr_value_box_init(vb, FR_TYPE_NULL, NULL, false);
 }
 
 /** Allocate a value box of a specific type
@@ -397,7 +397,7 @@ static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc(TALLOC_C
  */
 static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
 {
-	return fr_value_box_alloc(ctx, FR_TYPE_INVALID, NULL, false);
+	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL, false);
 }
 
 /** Box an ethernet value (6 bytes, network byte order)
