@@ -350,7 +350,7 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	c = talloc(ctx, xlat_t);
+	MEM(c = talloc(ctx, xlat_t));
 	*c = (xlat_t){
 		.name = talloc_typed_strdup(c, name),
 		.func = {
