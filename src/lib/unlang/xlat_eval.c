@@ -224,6 +224,12 @@ static inline void xlat_debug_log_result(request_t *request, fr_value_box_t cons
 
 /** Process an individual xlat argument value box group
  *
+ * @param[in] ctx	to allocate any additional buffers in
+ * @param[in,out] list	of value boxes representing one argument
+ * @param[in] request	currently being processed
+ * @param[in] arg	specification of current argument
+ * @param[in] arg_num	number of current argument in the argument specifications
+ *
  */
 static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
 					   xlat_arg_parser_t const *arg, unsigned long int arg_num)
