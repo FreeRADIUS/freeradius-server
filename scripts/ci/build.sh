@@ -16,7 +16,7 @@ fi
 #
 if $CC -v 2>&1 | grep clang > /dev/null; then
     echo "Enabling llvm sanitizers"
-    enable_llvm_sanitizers="--enable-llvm-address-sanitizer --enable-llvm-leak-sanitizer --enable-llvm-undefined-behaviour-sanitizer"
+    enable_llvm_sanitizers="--enable-address-sanitizer --enable-leak-sanitizer --enable-undefined-behaviour-sanitizer"
 else
     enable_llvm_sanitizers=""
 fi

@@ -1,7 +1,7 @@
 #
 #  In order to use the fuzzer, you must build with:
 #
-#	./configure --enable-llvm-fuzzer-sanitizer ...
+#	./configure --enable-fuzzer ...
 #
 #  and then re-build *all* of the source.
 #

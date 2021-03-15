@@ -368,15 +368,15 @@ dnl #
 dnl #  Enable the -fsanitize=fuzzer and link in the address sanitizer
 dnl #  libraries.
 dnl #
-AC_ARG_ENABLE(llvm-fuzzer,
-[AS_HELP_STRING([--enable-llvm-fuzzer],
-                [build with support for LLVM's fuzzer (if building with clang).])],
+AC_ARG_ENABLE(fuzzer,
+[AS_HELP_STRING([--enable-fuzzer],
+                [build with support for a fuzzer])],
 [ case "$enableval" in
   no)
-    llvm_fuzzer=no
+    fuzzer=no
     ;;
   *)
-    llvm_fuzzer=yes
+    fuzzer=yes
   esac ]
 )
 
@@ -384,15 +384,15 @@ dnl #
 dnl #  Enable the -fsanitize=address and link in the address sanitizer
 dnl #  libraries.
 dnl #
-AC_ARG_ENABLE(llvm-address-sanitizer,
-[AS_HELP_STRING([--enable-llvm-address-sanitizer],
-                [build with support for LLVM's address sanitizer (if building with clang).])],
+AC_ARG_ENABLE(address-sanitizer,
+[AS_HELP_STRING([--enable-address-sanitizer],
+                [build with support for address sanitizer.])],
 [ case "$enableval" in
   no)
-    llvm_address_sanitizer=no
+    address_sanitizer=no
     ;;
   *)
-    llvm_address_sanitizer=yes
+    address_sanitizer=yes
   esac ]
 )
 
@@ -400,32 +400,47 @@ dnl #
 dnl #  Enable -fsanitize=leak and link in the leak sanitizer
 dnl #  libraries.
 dnl #
-AC_ARG_ENABLE(llvm-leak-sanitizer,
-[AS_HELP_STRING([--enable-llvm-leak-sanitizer],
-                [build with support for LLVM's leak sanitizer (if building with clang).])],
+AC_ARG_ENABLE(leak-sanitizer,
+[AS_HELP_STRING([--enable-leak-sanitizer],
+                [build with support for leak sanitizer.])],
 [ case "$enableval" in
   no)
-    llvm_leak_sanitizer=no
+    leak_sanitizer=no
     ;;
   *)
-    llvm_leak_sanitizer=yes
+    leak_sanitizer=yes
   esac ]
 )
 
+dnl #
+dnl #  Enable -fsanitize=thread and link in the thread sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(thread-sanitizer,
+[AS_HELP_STRING([--enable-thread-sanitizer],
+                [build with support for thread sanitizer.])],
+[ case "$enableval" in
+  no)
+    thread_sanitizer=no
+    ;;
+  *)
+    thread_sanitizer=yes
+  esac ]
+)
 
 dnl #
 dnl #  Enable the -fsanitize=undefined and link in the address sanitizer
 dnl #  libraries.
 dnl #
-AC_ARG_ENABLE(llvm-undefined-behaviour-sanitizer,
-[AS_HELP_STRING([--enable-llvm-undefined-behaviour-sanitizer],
-                [build with support for LLVM's undefined behaviour sanitizer (if building with clang).])],
+AC_ARG_ENABLE(undefined-behaviour-sanitizer,
+[AS_HELP_STRING([--enable-undefined-behaviour-sanitizer],
+                [build with support for undefined behaviour sanitizer.])],
 [ case "$enableval" in
   no)
-    llvm_undefined_behaviour_sanitizer=no
+    undefined_behaviour_sanitizer=no
     ;;
   *)
-    llvm_undefined_behaviour_sanitizer=yes
+    undefined_behaviour_sanitizer=yes
   esac ]
 )
 
@@ -1778,7 +1793,7 @@ if test "x$developer" = "xyes"; then
   dnl #
   dnl #  If running with clang, add in FUZZER
   dnl #
-  if test "x$llvm_fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+  if test "x$fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
     dnl #
     dnl #  -fsanitize=fuzzer  - Build with fuzzer support
     dnl #
@@ -1786,9 +1801,9 @@ if test "x$developer" = "xyes"; then
   fi
 
   dnl #
-  dnl #  If running with clang, add in ASAN
+  dnl #  Add in ASAN
   dnl #
-  if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+  if test "x$address_sanitizer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=address		- Build with address sanitizer support
     dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
@@ -1806,9 +1821,9 @@ if test "x$developer" = "xyes"; then
   fi
 
   dnl #
-  dnl #  If running with clang, add in LSAN
+  dnl #  Add in LSAN
   dnl #
-  if test "x$llvm_leak_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+  if test "x$leak_sanitizer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=leak	- Build with lsan support
     dnl #
@@ -1816,9 +1831,19 @@ if test "x$developer" = "xyes"; then
   fi
 
   dnl #
-  dnl #  If running with clang, add in UBSAN
+  dnl #  Add in TSAN
   dnl #
-  if test "x$llvm_undefined_behaviour_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+  if test "x$thread_sanitizer" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=thread	- Build with tsan support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,thread"
+  fi
+
+  dnl #
+  dnl #  Add in UBSAN
+  dnl #
+  if test "x$undefined_behaviour_sanitizer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=undefined		- Build with ubsan support
     dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
