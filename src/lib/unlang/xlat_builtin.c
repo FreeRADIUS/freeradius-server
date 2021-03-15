@@ -257,7 +257,7 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
 
 	if (!xlat_root && (xlat_init() < 0)) return NULL;
 
-	if (!name || !*name) {
+	if (!*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return NULL;
 	}
@@ -319,7 +319,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 
 	if (!xlat_root) xlat_init();
 
-	if (!name || !*name) {
+	if (!*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return NULL;
 	}
