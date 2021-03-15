@@ -240,6 +240,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 			RERROR("Missing required argument %lu", arg_num);
 			return XLAT_ACTION_FAIL;
 		}
+		return XLAT_ACTION_DONE;
 	}
 
 	// *todo* make this escape tainted value boxes

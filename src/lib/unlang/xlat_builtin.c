@@ -376,7 +376,9 @@ xlat_t const *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func,
  * @param[in] arg	specification to validate.
  */
 static inline void xlat_arg_parser_validate(xlat_arg_parser_t *arg) {
-	if (arg->concat) fr_assert((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS));
+	if (arg->concat) {
+		fr_assert((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS));
+	}
 }
 
 /** Register the arguments of an xlat
