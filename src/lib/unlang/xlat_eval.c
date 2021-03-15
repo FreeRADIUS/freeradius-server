@@ -338,18 +338,8 @@ static xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *lis
 	 *	xlat consumes a sequence of arguments.
 	 */
 	case XLAT_INPUT_ARGS:
-	{
-		fr_value_box_t	*child_vb;
-		/*
-		 *	xlat consumes a sequence of arguments.
-		 */
-		arg = args;
-		vb = fr_dlist_head(in);
+		vb = fr_dlist_head(list);
 		while (arg->type != FR_TYPE_NULL) {
-			/*
-			 *	pre-advance, in case the vb is replaced during processing
-			 */
-			next = fr_dlist_next(in, vb);
 			if (!vb) {
 				if (arg->required) {
 					RERROR("Missing required argument %lu", ((arg - args) + 1));
@@ -388,7 +378,6 @@ static xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *lis
 			}
 			vb = next;
 		}
-	}
 		break;
 	}
 	return XLAT_ACTION_DONE;
