@@ -249,7 +249,7 @@ do { \
 
 	if (fr_dlist_empty(list)) {
 		if (arg->required) {
-			RPEDEBUG("Missing required argument %u", arg_num);
+			RPEDEBUG("Required argument %u is null", arg_num);
 			return XLAT_ACTION_FAIL;
 		}
 		return XLAT_ACTION_DONE;
@@ -375,10 +375,24 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 		vb = fr_dlist_head(list);
 		while (arg_p->type != FR_TYPE_NULL) {
 			/*
+			 *	Separate check to see if the group
+			 *	box is there.  Check in
+			 *	xlat_process_arg_list verifies it
+			 *	has a value.
+			 */
+			if (!vb) {
+				if (arg_p->required) {
+					RPEDEBUG("Missing required argument %u", (unsigned int)((arg_p - args) + 1));
+					return XLAT_ACTION_FAIL;
+				}
+				return XLAT_ACTION_DONE;
+			}
+
+			/*
 			 *	Everything in the top level list should be
 			 *	groups
 			 */
-			if (!fr_cond_assert(!vb || (vb->type == FR_TYPE_GROUP))) return XLAT_ACTION_FAIL;
+			if (!fr_cond_assert(vb->type == FR_TYPE_GROUP)) return XLAT_ACTION_FAIL;
 
 			/*
 			 *	pre-advance, in case the vb is replaced

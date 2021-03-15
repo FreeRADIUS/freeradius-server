@@ -381,7 +381,7 @@ static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool la
 {
 	if (arg->concat) {
 		if (!fr_cond_assert_msg((arg->type == FR_TYPE_STRING) || (arg->type == FR_TYPE_OCTETS),
-					"concat  type must be string or octets")) return -1;
+					"concat type must be string or octets")) return -1;
 
 		if (!fr_cond_assert_msg(!arg->single, "concat and single are mutually exclusive")) return -1;
 	}
@@ -426,10 +426,19 @@ static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool la
  */
 int xlat_func_args(xlat_t *x, xlat_arg_parser_t const args[])
 {
-	xlat_arg_parser_t const *arg = args;
+	xlat_arg_parser_t const *arg_p = args;
+	bool			seen_optional = false;
 
-	for (arg = args; arg->type != FR_TYPE_NULL; arg++) {
-		if (xlat_arg_parser_validate(arg, (arg + 1)->type == FR_TYPE_NULL) < 0) return -1;
+	for (arg_p = args; arg_p->type != FR_TYPE_NULL; arg_p++) {
+		if (xlat_arg_parser_validate(arg_p, (arg_p + 1)->type == FR_TYPE_NULL) < 0) return -1;
+
+		if (arg_p->required) {
+			if (!fr_cond_assert_msg(!seen_optional,
+						"required arguments must be at the "
+						"start of the argument list")) return -1;
+		} else {
+			seen_optional = true;
+		}
 	}
 	x->args = args;
 	x->input_type = XLAT_INPUT_ARGS;
