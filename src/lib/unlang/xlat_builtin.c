@@ -1570,62 +1570,6 @@ static ssize_t xlat_func_next_time(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 	return snprintf(*out, outlen, "%" PRIu64, (uint64_t)(mktime(local) - now));
 }
 
-
-/** Right pad a string
- *
-@verbatim
-%{rpad:&Attribute-Name <length> <char>}
-@endverbatim
- *
- * Example: (User-Name = "foo")
-@verbatim
-"%{rpad:&User-Name 5 x}" == "fooxx"
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static ssize_t xlat_func_rpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      request_t *request, char const *fmt)
-{
-	char		fill;
-	size_t		pad;
-	ssize_t		len;
-	tmpl_t	*vpt;
-	char		*to_pad = NULL;
-
-	fr_assert(!*out);
-
-	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
-
-	if (!fr_cond_assert(vpt)) return 0;
-
-	/*
-	 *	Print the attribute (left justified).  If it's too
-	 *	big, we're done.
-	 */
-	len = tmpl_aexpand(ctx, &to_pad, request, vpt, NULL, NULL);
-	if (len <= 0) return 0;
-
-	if ((size_t) len >= pad) {
-		*out = to_pad;
-		return pad;
-	}
-
-	MEM(to_pad = talloc_realloc(ctx, to_pad, char, pad + 1));
-
-	/*
-	 *	We have to pad with "fill" characters.
-	 */
-	memset(to_pad + len, fill, pad - len);
-	to_pad[pad] = '\0';
-
-	*out = to_pad;
-
-	return pad;
-}
-
-
 /** xlat expand string attribute value
  *
  * @ingroup xlat_functions
@@ -1669,12 +1613,97 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	return slen;
 }
 
-
-
 /*
  *	Async xlat functions
  */
 
+static xlat_arg_parser_t const xlat_func_rpad_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true, .single = true, .type = FR_TYPE_UINT64 },
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Right pad a string
+ *
+@verbatim
+%(rpad:&Attribute-Name <length> [<fill>])
+@endverbatim
+ *
+ * Example: (User-Name = "foo")
+@verbatim
+"%(rpad:%{User-Name} 5 x)" == "fooxx"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    request_t *request, UNUSED void const *xlat_inst,
+				    UNUSED void *xlat_thread_inst,
+				    fr_value_box_list_t *args)
+{
+	fr_value_box_t		*values = fr_dlist_head(args);
+	fr_value_box_list_t	*list = &values->vb_group;
+	fr_value_box_t		*pad = fr_dlist_next(args, values);
+	size_t			pad_len = (size_t)pad->vb_uint64;
+	fr_value_box_t		*fill = fr_dlist_next(args, pad);
+	char const		*fill_str;
+	size_t			fill_len = 0;
+
+	fr_value_box_t		*in = NULL;
+
+	/*
+	 *	Fill is optional
+	 */
+	if (fill) {
+		fill_str = fill->vb_strvalue;
+		fill_len = talloc_array_length(fill_str) - 1;
+	}
+
+	if (fill_len == 0) {
+		fill_str = " ";
+		fill_len = 1;
+	}
+
+	while ((in = fr_dlist_pop_head(list))) {
+		size_t		len = talloc_array_length(in->vb_strvalue) - 1;
+		size_t		remaining;
+		char		*buff;
+		fr_sbuff_t	sbuff;
+
+		fr_dcursor_append(out, in);
+
+		if (len > pad_len) continue;
+
+		if (fr_value_box_bstr_realloc(in, &buff, in, pad_len) < 0) {
+			RPEDEBUG("Failed reallocing input data");
+			return XLAT_ACTION_FAIL;
+		}
+
+		fr_sbuff_init(&sbuff, buff, pad_len + 1);
+		fr_sbuff_advance(&sbuff, len);
+
+		if (fill_len == 1) {
+			memset(fr_sbuff_current(&sbuff), *fill_str, fr_sbuff_remaining(&sbuff));
+			continue;
+		}
+
+		/*
+		 *	Copy fill as a repeating pattern
+		 */
+		while ((remaining = fr_sbuff_remaining(&sbuff))) {
+			fr_sbuff_in_bstrncpy(&sbuff, fill_str, remaining >= fill_len ? fill_len : remaining);
+		}
+	}
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_arg_parser_t const xlat_func_base64_encode_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
 
 /** Encode string or attribute as base64
  *
@@ -1688,22 +1717,15 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
-					     fr_value_box_list_t *in)
+					     fr_value_box_list_t *args)
 {
 	size_t		alen;
 	ssize_t		elen;
 	char		*buff;
 	fr_value_box_t	*vb;
-	fr_value_box_t	*in_head;
+	fr_value_box_t	*in = fr_dlist_head(args);
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
-
-	in_head = fr_dlist_head(in);
-
-	alen = FR_BASE64_ENC_LENGTH(in_head->vb_length);
+	alen = FR_BASE64_ENC_LENGTH(in->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	if (fr_value_box_bstr_alloc(vb, &buff, vb, NULL, alen, false) < 0) {
@@ -1711,25 +1733,25 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	elen = fr_base64_encode(buff, alen + 1, in_head->vb_octets, in_head->vb_length);
+	elen = fr_base64_encode(buff, alen + 1, in->vb_octets, in->vb_length);
 	if (elen < 0) {
 		RPEDEBUG("Base64 encoding failed");
-		talloc_free(buff);
+		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
 
 	fr_assert((size_t)elen <= alen);
+	vb->tainted = in->tainted;
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
 
-extern xlat_arg_parser_t xlat_func_base64_encode_arg;
-xlat_arg_parser_t xlat_func_base64_encode_arg = {
-	.required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
-	.func = NULL, .uctx = NULL
+static xlat_arg_parser_t const xlat_func_base64_decode_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_OCTETS
 };
-
 
 /** Decode base64 string
  *
@@ -1743,43 +1765,31 @@ xlat_arg_parser_t xlat_func_base64_encode_arg = {
 static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     request_t *request, UNUSED void const *xlat_inst,
 					     UNUSED void *xlat_thread_inst,
-					     fr_value_box_list_t *in)
+					     fr_value_box_list_t *args)
 {
 	size_t		alen;
 	ssize_t		declen;
 	uint8_t		*decbuf;
 	fr_value_box_t	*vb;
-	fr_value_box_t	*in_head;
+	fr_value_box_t	*in = fr_dlist_head(args);
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
-
-	in_head = fr_dlist_head(in);
-
-	alen = FR_BASE64_DEC_LENGTH(in_head->vb_length);
+	alen = FR_BASE64_DEC_LENGTH(in->vb_length);
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	MEM(fr_value_box_mem_alloc(vb, &decbuf, vb, NULL, alen, in_head->tainted) == 0);
-	declen = fr_base64_decode(decbuf, alen, in_head->vb_strvalue, in_head->vb_length);
+	MEM(fr_value_box_mem_alloc(vb, &decbuf, vb, NULL, alen, in->tainted) == 0);
+	declen = fr_base64_decode(decbuf, alen, in->vb_strvalue, in->vb_length);
 	if (declen < 0) {
-		talloc_free(vb);
 		REDEBUG("Base64 string invalid");
+		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
+
 	MEM(fr_value_box_mem_realloc(vb, NULL, vb, declen) == 0);
+	vb->tainted = in->tainted;
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
-
-extern xlat_arg_parser_t xlat_func_base64_decode_arg;
-xlat_arg_parser_t xlat_func_base64_decode_arg = {
-	.required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
-	.func = NULL, .uctx = NULL
-};
-
 
 /** Convert hex string to binary
  *
@@ -3417,16 +3427,26 @@ int xlat_init(void)
 	xlat_register_legacy(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0);
 	XLAT_REGISTER(map);
 	xlat_register_legacy(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register_legacy(NULL, "rpad", xlat_func_rpad, NULL, NULL, 0, 0);
 	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
 	XLAT_REGISTER(xlat);
 
+#define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
+do { \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, false))) return -1; \
+	xlat_func_args(xlat, _args); \
+} while (0)
 
-#define XLAT_REGISTER_MONO(_xlat, _func, _arg) xlat = xlat_register(NULL, _xlat, _func, false); \
-	xlat_func_mono(xlat, &_arg)
+	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
+
+#define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
+do { \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, false))) return -1; \
+	xlat_func_mono(xlat, &_arg); \
+} while (0)
 
 	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
+
 	xlat_register(NULL, "bin", xlat_func_bin, false);
 	xlat_register(NULL, "concat", xlat_func_concat, false);
 	xlat_register(NULL, "hex", xlat_func_hex, false);
