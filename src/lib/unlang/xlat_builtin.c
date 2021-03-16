@@ -1647,7 +1647,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*pad = fr_dlist_next(args, values);
 	size_t			pad_len = (size_t)pad->vb_uint64;
 	fr_value_box_t		*fill = fr_dlist_next(args, pad);
-	char const		*fill_str;
+	char const		*fill_str = NULL;
 	size_t			fill_len = 0;
 
 	fr_value_box_t		*in = NULL;
