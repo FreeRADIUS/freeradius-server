@@ -325,6 +325,19 @@ static inline int xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_f
 }
 #endif
 
+static inline int xlat_validate_function_mono(xlat_exp_t *node)
+{
+	fr_assert(node->type == XLAT_FUNC_NORMAL);
+
+	if (node->call.func->args && node->call.func->args->required &&
+	    (node->child->type == XLAT_LITERAL) && (talloc_array_length(node->child->fmt) == 1)) {
+		fr_strerror_const("Missing required input");
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Parse an xlat function and its child argument
  *
  * Parses a function call string in the format
@@ -334,9 +347,9 @@ static inline int xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_f
  *	- 0 if the string was parsed into a function.
  *	- <0 on parse error.
  */
-static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t **head,
-						    xlat_flags_t *flags, fr_sbuff_t *in,
-						    tmpl_rules_t const *rules)
+static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head,
+					      xlat_flags_t *flags, fr_sbuff_t *in,
+					      tmpl_rules_t const *rules)
 {
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -408,6 +421,11 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 		goto error;
 	}
 
+	/*
+	 *	Check there's input if it's needed
+	 */
+	if ((node->type == XLAT_FUNC_NORMAL) && (xlat_validate_function_mono(node) < 0)) goto error;
+
 	if (!fr_sbuff_next_if_char(in, '}')) {
 		fr_strerror_const("Missing closing brace");
 		goto error;
@@ -415,6 +433,28 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 
 	xlat_flags_merge(flags, &node->flags);
 	*head = node;
+
+	return 0;
+}
+
+static inline int xlat_validate_function_args(xlat_exp_t *node)
+{
+	xlat_arg_parser_t const *arg_p;
+	xlat_exp_t		*child = node->child;
+
+	fr_assert(node->type == XLAT_FUNC_NORMAL);
+
+	for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
+		if (!arg_p->required) break;
+
+		if (!child) {
+			fr_strerror_printf("Missing required arg %u",
+					   (unsigned int)(arg_p - node->call.func->args) + 1);
+			return -1;
+		}
+
+		child = child->next;
+	}
 
 	return 0;
 }
@@ -428,9 +468,9 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
  *	- 0 if the string was parsed into a function.
  *	- <0 on parse error.
  */
-static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t **head,
-						   xlat_flags_t *flags, fr_sbuff_t *in,
-						   tmpl_rules_t const *rules)
+static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head,
+					      xlat_flags_t *flags, fr_sbuff_t *in,
+					      tmpl_rules_t const *rules)
 {
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -500,6 +540,11 @@ static inline int xlat_tokenize_function_multi_arg(TALLOC_CTX *ctx, xlat_exp_t *
 	if (xlat_tokenize_argv(node, &node->child, &node->flags, in, &xlat_multi_arg_rules, rules) < 0) {
 		goto error;
 	}
+
+	/*
+	 *	Check we have all the required arguments
+	 */
+	if ((node->type == XLAT_FUNC_NORMAL) && (xlat_validate_function_args(node) < 0)) goto error;
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
 		fr_strerror_const("Missing closing brace");
@@ -767,7 +812,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 		fr_sbuff_set(in, &s_m);		/* backtrack */
 		fr_sbuff_marker_release(&s_m);
 
-		ret = xlat_tokenize_function_single_arg(ctx, head, flags, in, t_rules);
+		ret = xlat_tokenize_function_mono(ctx, head, flags, in, t_rules);
 		if (ret <= 0) return ret;
 	}
 		break;
@@ -921,7 +966,7 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 		if (fr_sbuff_adv_past_str_literal(in, "%(")) {
 			if (len == 0) TALLOC_FREE(node); /* Free the empty node */
 
-			if (xlat_tokenize_function_multi_arg(ctx, &node, flags, in, t_rules) < 0) goto error;
+			if (xlat_tokenize_function_args(ctx, &node, flags, in, t_rules) < 0) goto error;
 			fr_cursor_insert(&cursor, node);
 			node = NULL;
 			continue;
@@ -1613,6 +1658,23 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 
 			xlat_exp_set_type(node, XLAT_FUNC);
 			node->call.func = func;
+
+			/*
+			 *	Check input arguments of our freshly
+			 *	resolved function
+			 */
+			switch (node->call.func->input_type) {
+			case XLAT_INPUT_UNPROCESSED:
+				break;
+
+			case XLAT_INPUT_MONO:
+				if (xlat_validate_function_mono(node) < 0) return -1;
+				break;
+
+			case XLAT_INPUT_ARGS:
+				if (xlat_validate_function_args(node) < 0) return -1;
+				break;
+			}
 
 			/*
 			 *	Reset node flags

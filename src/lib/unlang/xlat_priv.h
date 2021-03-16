@@ -111,8 +111,7 @@ typedef struct {
  * These nodes form a tree which represents one or more nested expansions.
  */
 struct xlat_exp {
-	char const	*fmt;		//!< The original format string.
-	size_t		len;		//!< Length of the format string.
+	char const	*fmt;		//!< The original format string (a talloced buffer).
 	fr_token_t	quote;		//!< Type of quoting around XLAT_GROUP types.
 
 	xlat_flags_t	flags;		//!< Flags that control resolution and evaluation.

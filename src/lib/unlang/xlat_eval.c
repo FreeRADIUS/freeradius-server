@@ -1039,7 +1039,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			fr_value_box_list_init(&result_copy);
 			thread_inst = xlat_thread_instance_find(node);
 
-			XLAT_DEBUG("** [%i] %s(func-async) - %%{%s:%pM}", unlang_interpret_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(func-async) - %%{%s:%pM}",
+				   unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt, result);
 
 			/*
@@ -1048,14 +1049,18 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 */
 			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
 
-			if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
+			if (!fr_dlist_empty(result)) fr_dlist_verify(result);
+
 			xa = xlat_process_args(ctx, result, request, node->call.func->input_type, node->call.func->args);
 			if (xa == XLAT_ACTION_FAIL) {
 				if (RDEBUG_ENABLED2) fr_dlist_talloc_free(&result_copy);
-				return (xa);
+				return xa;
 			}
-			xa = node->call.func->func.async(ctx, out, request, node->call.inst->data, thread_inst->data, result);
-			if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
+
+			xa = node->call.func->func.async(ctx, out, request,
+							 node->call.inst->data, thread_inst->data, result);
+
+			if (!fr_dlist_empty(result)) fr_dlist_verify(result);
 			if (RDEBUG_ENABLED2) {
 				xlat_debug_log_expansion(request, *in, &result_copy);
 				fr_dlist_talloc_free(&result_copy);
