@@ -249,7 +249,7 @@ do { \
 
 	if (fr_dlist_empty(list)) {
 		if (arg->required) {
-			RPEDEBUG("Required argument %u is null", arg_num);
+			REDEBUG("Required argument %u is null", arg_num);
 			return XLAT_ACTION_FAIL;
 		}
 		return XLAT_ACTION_DONE;
@@ -382,7 +382,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			 */
 			if (!vb) {
 				if (arg_p->required) {
-					RPEDEBUG("Missing required argument %u", (unsigned int)((arg_p - args) + 1));
+					REDEBUG("Missing required argument %u", (unsigned int)((arg_p - args) + 1));
 					return XLAT_ACTION_FAIL;
 				}
 				return XLAT_ACTION_DONE;
