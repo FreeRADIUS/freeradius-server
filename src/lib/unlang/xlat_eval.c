@@ -923,9 +923,9 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	to debug problems if they free or change elements
 	 *	and don't remove them from the list.
 	 */
-	if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
+	fr_dlist_verify(result);
 	xa = resume(ctx, out, request, exp->call.inst, thread_inst->data, result, rctx);
-	if (!fr_dlist_empty(result)) { fr_dlist_verify(result); }
+	fr_dlist_verify(result);
 
 	RDEBUG2("EXPAND %%{%s:...}", exp->call.func->name);
 	switch (xa) {
@@ -1049,9 +1049,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 */
 			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-			if (!fr_dlist_empty(result)) fr_dlist_verify(result);
-#endif
+			fr_dlist_verify(result);
 
 			xa = xlat_process_args(ctx, result, request, node->call.func->input_type, node->call.func->args);
 			if (xa == XLAT_ACTION_FAIL) {
@@ -1061,10 +1059,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 			xa = node->call.func->func.async(ctx, out, request,
 							 node->call.inst->data, thread_inst->data, result);
+			fr_dlist_verify(result);
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-			if (!fr_dlist_empty(result)) fr_dlist_verify(result);
-#endif
 			if (RDEBUG_ENABLED2) {
 				xlat_debug_log_expansion(request, *in, &result_copy);
 				fr_dlist_talloc_free(&result_copy);

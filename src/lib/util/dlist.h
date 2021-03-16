@@ -577,6 +577,8 @@ static inline CC_HINT(nonnull) void fr_dlist_verify(fr_dlist_head_t *list_head)
 	     item = _talloc_get_type_abort(item, list_head->type, __location__);
 	}
 }
+#elif !defined(NDEBUG)
+#  define fr_dlist_verify(_head) fr_assert(_head)
 #else
 #  define fr_dlist_verify(_head)
 #endif
