@@ -404,6 +404,7 @@ static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool la
 
 	switch (arg->type) {
 	case FR_TYPE_VALUE:
+	case FR_TYPE_VOID:
 		break;
 
 	default:
