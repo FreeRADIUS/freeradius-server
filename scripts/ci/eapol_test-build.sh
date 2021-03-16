@@ -31,6 +31,7 @@
 #  FORCE_BUILD=1 in the environment.
 #
 
+: ${BUILD_DIR:="${HOSTAPD_BUILD_DIR}"}
 TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
@@ -88,7 +89,7 @@ if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone --branch "${HOSTAPD_GIT_TAG}" -
     exit 1
 fi
 
-cp "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
+cp -n "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
 if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
     echo "Build error" 1>&2
