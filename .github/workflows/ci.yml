@@ -16,6 +16,8 @@ env:
   FR_GLOBAL_POOL: 4M
   TEST_CERTS: yes
   DO_BUILD: yes
+  HOSTAPD_BUILD_DIR: /tmp/hostapd.ci
+  HOSTAPD_GIT_TAG: hostap_2_8
   CI: 1
   GH_ACTIONS: 1
 
@@ -100,6 +102,14 @@ jobs:
     # Now the LFS pull will be local if we hit the cache, or remote otherwise
     - name: Git LFS pull
       run: git lfs pull
+
+    - name: Restore eapol_test build directory from cache
+      uses: actions/cache@v2
+      id: hostapd-cache
+      with:
+        path: ${{ env.HOSTAPD_BUILD_DIR }}
+        key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v3
+      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
 
     - name: Package manager performance improvements
       if: ${{ runner.os != 'macOS' }}
