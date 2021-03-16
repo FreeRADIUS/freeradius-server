@@ -3489,7 +3489,7 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
  * @param[in] ctx	to realloc buffer in.
  * @param[out] out	if non-null where to write a pointer to the new buffer.
  * @param[in] dst 	to realloc buffer for.
- * @param[in] len	to realloc to.
+ * @param[in] len	to realloc to (don't include nul byte).
  * @return
  *	- 0 on success.
  *	 - -1 on failure.
