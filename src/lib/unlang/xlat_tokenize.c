@@ -383,8 +383,8 @@ static inline int xlat_tokenize_function_single_arg(TALLOC_CTX *ctx, xlat_exp_t 
 		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
 	} else {
 		if (func->input_type == XLAT_INPUT_ARGS) {
-			fr_strerror_const("Function takes multiple arguments and should \
-					   be called using %(func:args) syntax");
+			fr_strerror_const("Function takes multiple arguments and should "
+					  "be called using %(func:args) syntax");
 		error:
 			head = NULL;
 			talloc_free(node);
