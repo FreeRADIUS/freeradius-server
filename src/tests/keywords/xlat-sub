@@ -110,7 +110,7 @@ if ("%{sub:/***/g . %{Tmp-String-0}}" != '') {
 	test_fail
 }
 
-if (&Module-Failure-Message[0] != 'Failed compiling regex: quantifier does not follow a repeatable item') {
+if (&Module-Failure-Message[1] != 'Failed compiling regex: quantifier does not follow a repeatable item') {
 	test_fail
 }
 
@@ -119,7 +119,7 @@ if ("%{sub://g . %{Tmp-String-0}}" != '') {
 	test_fail
 }
 
-if (&Module-Failure-Message[0] != 'Failed compiling regex: Empty expression') {
+if (&Module-Failure-Message[1] != 'Failed compiling regex: Empty expression') {
 	test_fail
 }
 }
