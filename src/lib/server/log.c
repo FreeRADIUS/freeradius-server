@@ -677,6 +677,9 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 		for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
 			dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
 		}
+		if ((type == L_ERR) || (type == L_DBG_ERR) || (type == L_DBG_ERR_REQ)) {
+			vlog_module_failure_msg(request, fmt, ap);
+		}
 		va_end(ap);
 
 		return;			/* DONE */

@@ -404,6 +404,7 @@ static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool la
 
 	switch (arg->type) {
 	case FR_TYPE_VALUE:
+	case FR_TYPE_VOID:
 		break;
 
 	default:
@@ -1791,6 +1792,12 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_bin_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
+
 /** Convert hex string to binary
  *
  * Example:
@@ -1807,27 +1814,20 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   fr_value_box_list_t *in)
 {
 	fr_value_box_t		*result;
-	char			*buff = NULL, *p, *end;
+	char const		*p, *end;
 	uint8_t			*bin;
 	size_t			len, outlen;
 	fr_sbuff_parse_error_t	err;
+	fr_value_box_t		*in_head;
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
-
-	buff = fr_value_box_list_aprint(NULL, in, NULL, NULL);
-	if (!buff) return XLAT_ACTION_FAIL;
-
-	len = talloc_array_length(buff) - 1;
+	in_head = fr_dlist_head(in);
+	len = in_head->vb_length;
 	if ((len > 1) && (len & 0x01)) {
 		REDEBUG("Input data length must be >1 and even, got %zu", len);
-		talloc_free(buff);
 		return XLAT_ACTION_FAIL;
 	}
 
-	p = buff;
+	p = in_head->vb_strvalue;
 	end = p + len;
 
 	/*
@@ -1850,7 +1850,6 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_dcursor_append(out, result);
 
 finish:
-	talloc_free(buff);
 	return XLAT_ACTION_DONE;
 }
 
@@ -1915,6 +1914,11 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_hex_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
 
 /** Print data as hex, not as VALUE.
  *
@@ -1927,27 +1931,15 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
 	char *p;
 	fr_value_box_t* vb;
 	fr_value_box_t* in_head;
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
-
 	in_head = fr_dlist_head(in);
-	/*
-	 *	Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 	vb->vb_length = (in_head->vb_length * 2);
@@ -1960,7 +1952,6 @@ static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
-
 
 typedef enum {
 	HMAC_MD5,
@@ -2079,6 +2070,11 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const xlat_func_md4_arg = {
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
+
 /** Calculate the MD4 hash of a string or attribute.
  *
  * Example:
@@ -2088,21 +2084,13 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 * Concatenate all input if there is some
-	 */
-	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	if (in_head) {
 		fr_md4_calc(digest, in_head->vb_octets, in_head->vb_length);
@@ -2119,6 +2107,10 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_md5_arg = {
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
 
 /** Calculate the MD5 hash of a string or attribute.
  *
@@ -2129,21 +2121,13 @@ static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 *	Concatenate all input if there is some
-	 */
-	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	if (in_head) {
 		fr_md5_calc(digest, in_head->vb_octets, in_head->vb_length);
@@ -2202,6 +2186,11 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_pack_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
 
 /** Pack multiple things together
  *
@@ -2212,53 +2201,22 @@ static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_pack(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
-	fr_value_box_t	*vb, *in_vb;
-
-	if (fr_dlist_empty(in)) {
-		REDEBUG("Missing input boxes");
-		return XLAT_ACTION_FAIL;
-	}
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL, false));
+	fr_value_box_t	*vb;
 
 	/*
-	 *	Loop over the input boxes, packing them together.
+	 *	Input boxes are already cast to FR_TYPE_OCTETS and concatenated
+	 *	by the input argument parser - so simply move to the output
 	 */
-	for (in_vb = fr_dlist_head(in);
-	     in_vb;
-	     in_vb = fr_dlist_next(in, in_vb)) {
-		fr_value_box_t *cast, box;
-
-		if (in_vb->type != FR_TYPE_OCTETS) {
-			if (fr_value_box_cast(ctx, &box, FR_TYPE_OCTETS, NULL, in_vb) < 0) {
-			error:
-				talloc_free(vb);
-				RPEDEBUG("Failed packing value");
-				return XLAT_ACTION_FAIL;
-			}
-			cast = &box;
-		} else {
-			cast = in_vb;
-		}
-
-		if (vb->vb_length == 0) {
-			(void) fr_value_box_memdup(vb, vb, NULL, cast->vb_octets, cast->vb_length, cast->tainted);
-
-		} else if (fr_value_box_mem_append(ctx, vb, cast->vb_octets, cast->vb_length, cast->tainted) < 0) {
-			goto error;
-		}
-
-		fr_assert(vb->vb_octets != NULL);
-	}
-
+	vb = fr_dlist_pop_head(in);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
+
 
 /** Encode attributes as a series of string attribute/value pairs
  *
@@ -3446,17 +3404,16 @@ do { \
 
 	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
-
-	xlat_register(NULL, "bin", xlat_func_bin, false);
+	XLAT_REGISTER_MONO("bin", xlat_func_bin, xlat_func_bin_arg);
 	xlat_register(NULL, "concat", xlat_func_concat, false);
-	xlat_register(NULL, "hex", xlat_func_hex, false);
+	XLAT_REGISTER_MONO("hex", xlat_func_hex, xlat_func_hex_arg);
 	xlat_register(NULL, "hmacmd5", xlat_func_hmac_md5, false);
 	xlat_register(NULL, "hmacsha1", xlat_func_hmac_sha1, false);
 	xlat_register(NULL, "length", xlat_func_length, false);
-	xlat_register(NULL, "md4", xlat_func_md4, false);
-	xlat_register(NULL, "md5", xlat_func_md5, false);
+	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
+	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	xlat_register(NULL, "module", xlat_func_module, false);
-	xlat_register(NULL, "pack", xlat_func_pack, false);
+	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
 	xlat_register(NULL, "pairs", xlat_func_pairs, false);
 	xlat_register(NULL, "rand", xlat_func_rand, false);
 	xlat_register(NULL, "randstr", xlat_func_randstr, false);
