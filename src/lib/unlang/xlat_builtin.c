@@ -2218,6 +2218,11 @@ static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, U
 }
 
 
+static xlat_arg_parser_t const xlat_func_pairs_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Encode attributes as a series of string attribute/value pairs
  *
  * This is intended to serialize one or more attributes as a comma
@@ -2225,8 +2230,8 @@ static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, U
  *
  * Example:
 @verbatim
-"%{pairs:request[*]}" == "User-Name = 'foo'User-Password = 'bar'"
-"%{concat:, %{pairs:request[*]}}" == "User-Name = 'foo', User-Password = 'bar'"
+"%(pairs:request[*])" == "User-Name = 'foo'User-Password = 'bar'"
+"%{concat:, %(pairs:request[*])}" == "User-Name = 'foo', User-Password = 'bar'"
 @endverbatim
  *
  * @see #xlat_func_concat
@@ -2242,16 +2247,6 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	tmpl_cursor_ctx_t	cc;
 	fr_value_box_t		*vb;
 	fr_value_box_t		*in_head = fr_dlist_head(in);
-
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (!in_head) return XLAT_ACTION_DONE;
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	fr_pair_t *vp;
 
@@ -2288,6 +2283,12 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const xlat_func_rand_arg = {
+	.required = true,
+	.single = true,
+	.type = FR_TYPE_UINT32
+};
+
 /** Generate a random integer value
  *
  * For "N = %{rand:MAX}", 0 <= N < MAX
@@ -2299,19 +2300,13 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				    UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				    fr_value_box_list_t *in)
 {
 	int64_t		result;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/* Make sure input can be converted to an unsigned 32 bit integer */
-	if (fr_value_box_cast_in_place(ctx, in_head, FR_TYPE_UINT32, NULL) < 0) {
-		RPEDEBUG("Failed converting input to uint32");
-		return XLAT_ACTION_FAIL;
-	}
 
 	result = in_head->vb_uint32;
 
@@ -2329,6 +2324,12 @@ static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+
+static xlat_arg_parser_t const xlat_func_randstr_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
 
 /** Generate a string of random chars
  *
@@ -2385,18 +2386,6 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *
 	 */
 #define REPETITION_MAX 1024
-
-	/*
-	 *	Nothing to do if input is empty
-	 */
-	if (!in_head) return XLAT_ACTION_DONE;
-	/*
-	 *	Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	start = p = in_head->vb_strvalue;
 	end = p + in_head->vb_length;
@@ -2534,6 +2523,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 /** Get named subcapture value from previous regex
  *
@@ -2637,6 +2627,11 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 #endif
 
+static xlat_arg_parser_t const xlat_func_sha_arg = {
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
+
 /** Calculate the SHA1 hash of a string or attribute.
  *
  * Example:
@@ -2646,22 +2641,14 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				    UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				    fr_value_box_list_t *in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
 	fr_sha1_ctx	sha1_ctx;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 * Concatenate all input if there is some
-	 */
-	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	fr_sha1_init(&sha1_ctx);
 	if (in_head) {
@@ -2691,8 +2678,8 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @ingroup xlat_functions
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
-			         request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+			         UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			         fr_value_box_list_t *in, EVP_MD const *md)
 {
 	uint8_t		digest[EVP_MAX_MD_SIZE];
@@ -2700,14 +2687,6 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	EVP_MD_CTX	*md_ctx;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 * Concatenate all input if there is some
-	 */
-	if (in_head && fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	md_ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(md_ctx, md, NULL);
@@ -3394,6 +3373,7 @@ do { \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
@@ -3414,30 +3394,29 @@ do { \
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	xlat_register(NULL, "module", xlat_func_module, false);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
-	xlat_register(NULL, "pairs", xlat_func_pairs, false);
-	xlat_register(NULL, "rand", xlat_func_rand, false);
-	xlat_register(NULL, "randstr", xlat_func_randstr, false);
+	XLAT_REGISTER_MONO("rand", xlat_func_rand, xlat_func_rand_arg);
+	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, xlat_func_randstr_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	xlat_register(NULL, "regex", xlat_func_regex, false);
 #endif
-	xlat_register(NULL, "sha1", xlat_func_sha1, false);
+	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, xlat_func_sha_arg);
 
 #ifdef HAVE_OPENSSL_EVP_H
-	xlat_register(NULL, "sha2_224", xlat_func_sha2_224, false);
-	xlat_register(NULL, "sha2_256", xlat_func_sha2_256, false);
-	xlat_register(NULL, "sha2_384", xlat_func_sha2_384, false);
-	xlat_register(NULL, "sha2_512", xlat_func_sha2_512, false);
+	XLAT_REGISTER_MONO("sha2_224", xlat_func_sha2_224, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha2_256", xlat_func_sha2_256, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha2_384", xlat_func_sha2_384, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha2_512", xlat_func_sha2_512, xlat_func_sha_arg);
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	xlat_register(NULL, "blake2s_256", xlat_func_blake2s_256, false);
-	xlat_register(NULL, "blake2b_512", xlat_func_blake2b_512, false);
+	XLAT_REGISTER_MONO("blake2s_256", xlat_func_blake2s_256, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("blake2b_512", xlat_func_blake2b_512, xlat_func_sha_arg);
 #  endif
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	xlat_register(NULL, "sha3_224", xlat_func_sha3_224, false);
-	xlat_register(NULL, "sha3_256", xlat_func_sha3_256, false);
-	xlat_register(NULL, "sha3_384", xlat_func_sha3_384, false);
-	xlat_register(NULL, "sha3_512", xlat_func_sha3_512, false);
+	XLAT_REGISTER_MONO("sha3_224", xlat_func_sha3_224, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha3_256", xlat_func_sha3_256, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha3_384", xlat_func_sha3_384, xlat_func_sha_arg);
+	XLAT_REGISTER_MONO("sha3_512", xlat_func_sha3_512, xlat_func_sha_arg);
 #  endif
 #endif
 
