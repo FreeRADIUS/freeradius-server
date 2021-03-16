@@ -54,7 +54,7 @@ else {
         test_pass
 }
 
-if ("%{pairs:reply.}" == "") {
+if ("%(pairs:reply.)" == "") {
         test_fail
 }
 
