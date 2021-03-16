@@ -132,10 +132,10 @@ jobs:
         while : ; do
           CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3" ./configure -C \
             --enable-werror \
-            --enable-llvm-address-sanitizer \
-            --enable-llvm-undefined-behaviour-sanitizer \
-            --enable-llvm-leak-sanitizer \
-            --enable-llvm-fuzzer \
+            --enable-address-sanitizer \
+            --enable-undefined-behaviour-sanitizer \
+            --enable-leak-sanitizer \
+            --enable-fuzzer \
             --prefix=$HOME/freeradius \
           || cat ./config.log
           echo "Contents of src/include/autoconf.h"
