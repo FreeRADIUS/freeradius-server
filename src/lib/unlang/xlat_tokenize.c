@@ -327,7 +327,7 @@ static inline int xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_f
 
 static inline int xlat_validate_function_mono(xlat_exp_t *node)
 {
-	fr_assert(node->type == XLAT_FUNC_NORMAL);
+	fr_assert(node->type == XLAT_FUNC);
 
 	if (node->call.func->args && node->call.func->args->required &&
 	    (node->child->type == XLAT_LITERAL) && (talloc_array_length(node->child->fmt) == 1)) {
