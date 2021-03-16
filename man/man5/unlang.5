@@ -836,7 +836,7 @@ The number of attributes in the named list.
 
 .IP %{List-Name:[*]}
 All values of attributes in the named-list, concatenated together with ','
-as the separator. Use the %{pairs:} xlat to get a list of attributes and
+as the separator. Use the %(pairs:) xlat to get a list of attributes and
 values.
 
 e.g. If a response contains "Reply-Message = 'Hello', Reply-Message = 'bob'
@@ -963,10 +963,10 @@ Generate HMAC-SHA1 of input data.
 
 "%{hmacsha1:foo bar}" == "85d155c55ed286a300bd1cf124de08d87e914f3a"
 
-.IP %{pairs:<list_or_attr>}
+.IP %(pairs:<list_or_attr>)
 Serialize attributes as comma-delimited string
 
-e.g. "%{pairs:request.}" == "User-Name = 'foo', User-Password = 'bar', ..."
+e.g. "%(pairs:request.)" == "User-Name = 'foo', User-Password = 'bar', ..."
 
 .IP %{base64:<string>}
 Encode string as base64.

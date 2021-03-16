@@ -2230,8 +2230,8 @@ static xlat_arg_parser_t const xlat_func_pairs_args[] = {
  *
  * Example:
 @verbatim
-"%{pairs:request[*]}" == "User-Name = 'foo'User-Password = 'bar'"
-"%{concat:, %{pairs:request[*]}}" == "User-Name = 'foo', User-Password = 'bar'"
+"%(pairs:request[*])" == "User-Name = 'foo'User-Password = 'bar'"
+"%{concat:, %(pairs:request[*])}" == "User-Name = 'foo', User-Password = 'bar'"
 @endverbatim
  *
  * @see #xlat_func_concat
