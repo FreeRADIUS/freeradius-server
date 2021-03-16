@@ -424,7 +424,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 	/*
 	 *	Check there's input if it's needed
 	 */
-	if ((node->type == XLAT_FUNC_NORMAL) && (xlat_validate_function_mono(node) < 0)) goto error;
+	if ((node->type == XLAT_FUNC) && (xlat_validate_function_mono(node) < 0)) goto error;
 
 	if (!fr_sbuff_next_if_char(in, '}')) {
 		fr_strerror_const("Missing closing brace");
@@ -442,7 +442,7 @@ static inline int xlat_validate_function_args(xlat_exp_t *node)
 	xlat_arg_parser_t const *arg_p;
 	xlat_exp_t		*child = node->child;
 
-	fr_assert(node->type == XLAT_FUNC_NORMAL);
+	fr_assert(node->type == XLAT_FUNC);
 
 	for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
 		if (!arg_p->required) break;
@@ -544,7 +544,7 @@ static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head
 	/*
 	 *	Check we have all the required arguments
 	 */
-	if ((node->type == XLAT_FUNC_NORMAL) && (xlat_validate_function_args(node) < 0)) goto error;
+	if ((node->type == XLAT_FUNC) && (xlat_validate_function_args(node) < 0)) goto error;
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
 		fr_strerror_const("Missing closing brace");
