@@ -165,6 +165,7 @@ struct value_box_s {
  */
 #define vb_strvalue				datum.strvalue
 #define vb_octets				datum.octets
+#define vb_void					datum.ptr
 #define vb_group				datum.children
 
 #define vb_ip					datum.ip
@@ -735,8 +736,9 @@ bool		fr_value_box_list_tainted(fr_value_box_list_t const *head);
 int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in);
 /** @} */
 
-/*
- *	Printing
+/** @name Print the value of a value box as a string
+ *
+ * @{
  */
 ssize_t		fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
 
@@ -753,12 +755,29 @@ static inline size_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
 {
 	SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print_quoted, data, quote)
 }
+/** @} */
 /** @name Hashing
  *
  * @{
  */
 uint32_t	fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash);
 /** @} */
+
+void value_box_verify(char const *file, int line, fr_value_box_t const *vb);
+void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list);
+
+#ifdef WITH_VERIFY_PTR
+#  define VALUE_BOX_VERIFY(_x) value_box_verify(__FILE__, __LINE__, _x)
+#  define VALUE_BOX_LIST_VERIFY(_x) value_box_list_verify(__FILE__, __LINE__, _x)
+#else
+/*
+ *  Even if were building without WITH_VERIFY_PTR
+ *  the pointer must not be NULL when these various macros are used
+ *  so we can add some sneaky asserts.
+ */
+#  define VALUE_BOX_VERIFY(_x) fr_assert(_x)
+#  define VALUE_BOX_LIST_VERIFY(_x) fr_assert(_x)
+#endif
 
 #undef _CONST
 

@@ -4804,8 +4804,6 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		fr_value_box_t	vb;
 		ssize_t		slen;
 
-		memset(&vb, 0, sizeof(vb));
-
 		/*
 		 *	Be lazy by just converting it to a string, and then printing the string.
 		 */
@@ -5175,4 +5173,49 @@ bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
 	}
 
 	return false;
+}
+
+/** Validation function to check that a fr_value_box_t is correctly initialised
+ *
+ * @note Do not add talloc checks here.  fr_value_box_t may be allocated on the stack.
+ */
+void value_box_verify(char const *file, int line, fr_value_box_t const *vb)
+{
+	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
+
+	switch (vb->type) {
+	case FR_TYPE_STRING:
+		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
+				    "was NULL", file, line);
+		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
+				    "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
+				    "not null terminated", file, line);
+		break;
+
+	case FR_TYPE_OCTETS:
+		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t octets field "
+				    "was NULL", file, line);
+		break;
+
+	case FR_TYPE_VOID:
+		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t ptr field "
+				    "was NULL", file, line);
+		break;
+
+	case FR_TYPE_GROUP:
+		value_box_list_verify(file, line, &vb->vb_group);
+		break;
+
+	default:
+		break;
+	}
+}
+
+void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
+{
+	fr_value_box_t const *vb;
+
+	FR_DLIST_VERIFY(list);
+
+	while ((vb = fr_dlist_next(list, vb))) value_box_verify(file, line, list);
 }

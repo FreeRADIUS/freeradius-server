@@ -565,11 +565,14 @@ static inline void *fr_dlist_replace(fr_dlist_head_t *list_head, void *item, voi
  * Does nothing if the list was not initialised with #fr_dlist_talloc_init.
  */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-static inline CC_HINT(nonnull) void fr_dlist_verify(fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) void fr_dlist_verify(char const *file, int line, fr_dlist_head_t *list_head)
 {
 	void *item;
 
 	if (!list_head->type) return;
+
+	fr_assert_msg(fr_dlist_initialised(list_head), "CONSISTENCY CHECK FAILED %s[%i]: dlist not initialised",
+		      file, line);
 
 	for (item = fr_dlist_head(list_head);
 	     item;
@@ -577,10 +580,11 @@ static inline CC_HINT(nonnull) void fr_dlist_verify(fr_dlist_head_t *list_head)
 	     item = _talloc_get_type_abort(item, list_head->type, __location__);
 	}
 }
+#  define FR_DLIST_VERIFY(_head) fr_dlist_verify(__FILE__, __LINE__, _head)
 #elif !defined(NDEBUG)
-#  define fr_dlist_verify(_head) fr_assert(_head)
+#  define FR_DLIST_VERIFY(_head) fr_assert(_head)
 #else
-#  define fr_dlist_verify(_head)
+#  define FR_DLIST_VERIFY(_head)
 #endif
 
 /** Merge two lists, inserting the tail of one into the other
