@@ -3135,6 +3135,12 @@ static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const xlat_func_urlquote_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
+
 /** URLencode special characters
  *
  * Example:
@@ -3144,8 +3150,8 @@ static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_list_t *in)
 {
 	char const	*p, *end;
@@ -3153,19 +3159,6 @@ static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	size_t		outlen = 0;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 * Nothing to do if input is empty
-	 */
-	if (!in_head) return XLAT_ACTION_DONE;
-
-	/*
-	 * Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	p = in_head->vb_strvalue;
 	end = p + in_head->vb_length;
@@ -3408,7 +3401,7 @@ do { \
 	xlat_register(NULL, "sub", xlat_func_sub, false);
 	XLAT_REGISTER_MONO("tolower", xlat_func_tolower, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
-	xlat_register(NULL, "urlquote", xlat_func_urlquote, false);
+	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, xlat_func_urlquote_arg);
 	xlat_register(NULL, "urlunquote", xlat_func_urlunquote, false);
 
 	return 0;
