@@ -501,7 +501,17 @@ typedef struct {
 #    ifdef HAVE_128BIT_INTEGERS
 #      define ntohlll(x) (((uint128_t)ntohll((uint64_t)(x >> 64))) | (((uint128_t)ntohll(((uint64_t) x)) << 64)))
 #    else
-uint128_t ntohlll(uint128_t num);
+static inline uint128_t ntohlll(uint128_t const num)
+{
+	uint64_t const *p = (uint64_t const *) &num;
+	uint64_t ret[2];
+
+	/* swapsies */
+	ret[1] = ntohll(p[0]);
+	ret[0] = ntohll(p[1]);
+
+	return *(uint128_t *)ret;
+}
 #    endif
 #  else
 #    define ntohlll(x) (x)

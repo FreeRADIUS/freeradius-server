@@ -1266,7 +1266,16 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
-		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
+	{
+		uint128_t ipv6int;
+
+		/*
+		 *	Needed for correct alignment (as flagged by ubsan)
+		 */
+		memcpy(&ipv6int, &vp->vp_ipv6addr, sizeof(ipv6int));
+
+		return fr_snprint_uint128(*out, outlen, ntohlll(ipv6int));
+	}
 
 	default:
 		break;

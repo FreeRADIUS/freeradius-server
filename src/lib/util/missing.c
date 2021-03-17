@@ -269,25 +269,6 @@ int clock_gettime(int clk_id, struct timespec *t)
 }
 #endif
 
-#if !defined(HAVE_128BIT_INTEGERS) && !defined(WORDS_BIGENDIAN)
-/** Swap byte order of 128 bit integer
- *
- * @param num 128bit integer to swap.
- * @return 128bit integer reversed.
- */
-uint128_t ntohlll(uint128_t const num)
-{
-	uint64_t const *p = (uint64_t const *) &num;
-	uint64_t ret[2];
-
-	/* swapsies */
-	ret[1] = ntohll(p[0]);
-	ret[0] = ntohll(p[1]);
-
-	return *(uint128_t *)ret;
-}
-#endif
-
 /*
  *	Replacements in case we don't have inet_pton
  */
