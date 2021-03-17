@@ -492,6 +492,15 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	case FR_TYPE_VARIABLE_SIZE:
 		dst->vb_length = src->vb_length;
 		break;
+	/*
+	 *	Not 100% sure this should be done here
+	 *	but if the intent is to make a null
+	 *	box usable, then we need to do this
+	 *	somewhere.
+	 */
+	case FR_TYPE_GROUP:
+		fr_value_box_list_init(&dst->vb_group);
+		break;
 
 	default:
 		break;
@@ -3148,7 +3157,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		talloc_free(data->datum.ptr);
 		break;
 
-	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_GROUP:
 		/*
 		 *	Depth first freeing of children
 		 *
@@ -3158,7 +3167,7 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 		{
 			fr_value_box_t	*vb = NULL;
 
-			while ((vb = fr_dlist_next(&data->datum.children, vb))) {
+			while ((vb = fr_dlist_next(&data->vb_group, vb))) {
 				fr_value_box_clear_value(vb);
 				talloc_free(vb);
 			}
@@ -3207,6 +3216,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		memcpy(((uint8_t *)dst) + fr_value_box_offsets[src->type],
 		       ((uint8_t const *)src) + fr_value_box_offsets[src->type],
 		       fr_value_box_field_sizes[src->type]);
+		fr_value_box_copy_meta(dst, src);
 		break;
 
 	case FR_TYPE_STRING:
@@ -3222,6 +3232,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 			return -1;
 		}
 		dst->vb_strvalue = str;
+		fr_value_box_copy_meta(dst, src);
 	}
 		break;
 
@@ -3238,11 +3249,41 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 			talloc_set_type(bin, uint8_t);
 		}
 		dst->vb_octets = bin;
+		fr_value_box_copy_meta(dst, src);
+	}
+		break;
+
+	case FR_TYPE_GROUP:
+	{
+		fr_value_box_t *child;
+
+		fr_value_box_copy_meta(dst, src);	/* Initialises group child dlist */
+
+		while ((child = fr_dlist_next(&src->vb_group, child))) {
+			fr_value_box_t *new;
+
+			/*
+			 *	Build out the child
+			 */
+			new = fr_value_box_alloc_null(ctx);
+			if (unlikely(!new)) {
+			group_error:
+				fr_strerror_const("Failed duplicating group child");
+				fr_dlist_talloc_free(&dst->vb_group);
+				return -1;
+			}
+
+			/*
+			 *	Populate it with the
+			 *      data from the original
+			 *	child.
+			 */
+			if (unlikely(fr_value_box_copy(new, new, child) < 0)) goto group_error;
+			fr_dlist_insert_tail(&dst->vb_group, new);
+		}
 	}
 		break;
 	}
-
-	fr_value_box_copy_meta(dst, src);
 
 	return 0;
 }
@@ -3282,7 +3323,7 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src)
+int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
 {
 	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
@@ -3302,6 +3343,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		talloc_set_type(str, char);
 		dst->vb_strvalue = str;
 		fr_value_box_copy_meta(dst, src);
+		memset(&src->datum, 0, sizeof(src->datum));
 	}
 		return 0;
 
@@ -3318,6 +3360,22 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		dst->vb_octets = bin;
 		fr_value_box_copy_meta(dst, src);
+		memset(&src->datum, 0, sizeof(src->datum));
+	}
+		return 0;
+
+	case FR_TYPE_GROUP:
+	{
+		fr_value_box_t *child;
+
+		while ((child = fr_dlist_pop_head(&src->vb_group))) {
+			child = talloc_steal(ctx, child);
+			if (unlikely(!child)) {
+				fr_strerror_const("Failed stealing child");
+				return -1;
+			}
+			fr_dlist_insert_tail(&dst->vb_group, child);
+		}
 	}
 		return 0;
 	}
@@ -5213,9 +5271,9 @@ void value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 
 void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
 {
-	fr_value_box_t const *vb;
+	fr_value_box_t const *vb = NULL;
 
 	FR_DLIST_VERIFY(list);
 
-	while ((vb = fr_dlist_next(list, vb))) value_box_verify(file, line, list);
+	while ((vb = fr_dlist_next(list, vb))) value_box_verify(file, line, vb);
 }

@@ -557,7 +557,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       xlat_escape_legacy_t escape, void const *escape_ctx,
 		       fr_type_t dst_type)
 {
-	fr_value_box_t const	*to_cast = NULL;
+	fr_value_box_t		*to_cast = NULL;
 	fr_value_box_t		from_cast;
 
 	fr_pair_t		*vp = NULL;
@@ -687,7 +687,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	{
 		RDEBUG4("EXPAND TMPL DATA");
 
-		to_cast = tmpl_value(vpt);
+		to_cast = UNCONST(fr_value_box_t *, tmpl_value(vpt));
 		switch (to_cast->type) {
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:

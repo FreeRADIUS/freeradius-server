@@ -314,7 +314,7 @@ static inline bool fr_value_box_list_len_min(fr_value_box_list_t const *list, si
  */
 static inline void fr_value_box_list_init(fr_value_box_list_t *list)
 {
-	fr_dlist_talloc_init(list, fr_value_box_t, entry);
+	fr_dlist_init(list, fr_value_box_t, entry);	/* Not always talloced */
 }
 /** @} */
 
@@ -623,7 +623,7 @@ int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					  const fr_value_box_t *src);
 
-int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src);
+int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src);
 /** @} */
 
 /** @name Assign and manipulate binary-unsafe C strings

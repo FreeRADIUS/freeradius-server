@@ -1037,25 +1037,27 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			xlat_thread_inst_t	*thread_inst;
 			fr_value_box_list_t	result_copy;
 
-			fr_value_box_list_init(&result_copy);
 			thread_inst = xlat_thread_instance_find(node);
 
 			XLAT_DEBUG("** [%i] %s(func-async) - %%{%s:%pM}",
 				   unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt, result);
 
+			VALUE_BOX_LIST_VERIFY(result);
 			/*
 			 *	Need to copy the input list in case
 			 *	the async function mucks with it.
 			 */
-			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
-
-			VALUE_BOX_LIST_VERIFY(result);
+			if (RDEBUG_ENABLED2) {
+				fr_value_box_list_init(&result_copy);
+				fr_value_box_list_acopy(NULL, &result_copy, result);
+			}
 			xa = xlat_process_args(ctx, result, request, node->call.func->input_type, node->call.func->args);
 			if (xa == XLAT_ACTION_FAIL) {
 				if (RDEBUG_ENABLED2) fr_dlist_talloc_free(&result_copy);
 				return xa;
 			}
+			VALUE_BOX_LIST_VERIFY(result);
 
 			xa = node->call.func->func.async(ctx, out, request,
 							 node->call.inst->data, thread_inst->data, result);
@@ -1170,6 +1172,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xlat_debug_log_expansion(request, *in, NULL);
 		xlat_debug_log_result(request, value);
 
+		VALUE_BOX_VERIFY(value);
+
 		fr_dcursor_insert(out, value);
 	}
 		break;
@@ -1228,6 +1232,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 	for (node = *in; node; node = (*in)->next) {
 	     	*in = node;		/* Update node in our caller */
 		fr_dcursor_tail(out);	/* Needed for debugging */
+		VALUE_BOX_LIST_VERIFY(out->dlist);
 
 		switch (node->type) {
 		case XLAT_LITERAL:
@@ -1380,6 +1385,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 	}
 
 finish:
+	VALUE_BOX_LIST_VERIFY(out->dlist);
 	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
 		   __FUNCTION__, fr_table_str_by_value(xlat_action_table, xa, "<INVALID>"));
 

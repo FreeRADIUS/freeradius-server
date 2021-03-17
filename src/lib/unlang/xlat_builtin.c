@@ -1827,16 +1827,16 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	uint8_t			*bin;
 	size_t			len, outlen;
 	fr_sbuff_parse_error_t	err;
-	fr_value_box_t		*in_head;
+	fr_value_box_t		*hex;
 
-	in_head = fr_dlist_head(in);
-	len = in_head->vb_length;
+	hex = fr_dlist_head(in);
+	len = hex->vb_length;
 	if ((len > 1) && (len & 0x01)) {
 		REDEBUG("Input data length must be >1 and even, got %zu", len);
 		return XLAT_ACTION_FAIL;
 	}
 
-	p = in_head->vb_strvalue;
+	p = hex->vb_strvalue;
 	end = p + len;
 
 	/*
@@ -1940,24 +1940,30 @@ static xlat_arg_parser_t const xlat_func_hex_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hex(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+static xlat_action_t xlat_func_hex(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
 				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				   fr_value_box_list_t *in)
 {
-	char *p;
-	fr_value_box_t* vb;
-	fr_value_box_t* in_head;
+	char		*new_buff;
+	fr_value_box_t	*bin = fr_dlist_pop_head(in);	/* First argument */
 
-	in_head = fr_dlist_head(in);
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	vb->vb_length = (in_head->vb_length * 2);
-	vb->vb_strvalue = p = talloc_zero_array(vb, char, vb->vb_length + 1);
-	if (in_head->vb_length) {
-		fr_bin2hex(&FR_SBUFF_OUT(p, talloc_array_length(p)), &FR_DBUFF_TMP(in_head->vb_octets, in_head->vb_length), SIZE_MAX);
+	/*
+	 *	Use existing box, but with new buffer
+	 */
+	MEM(new_buff = talloc_zero_array(bin, char, (bin->vb_length * 2) + 1));
+	if (bin->vb_length) {
+		fr_bin2hex(&FR_SBUFF_OUT(new_buff, (bin->vb_length * 2) + 1),
+					 &FR_DBUFF_TMP(bin->vb_octets, bin->vb_length), SIZE_MAX);
+		fr_value_box_clear_value(bin);
+		fr_value_box_strdup_shallow(bin, NULL, new_buff, bin->tainted);
+	/*
+	 *	Zero length binary > zero length hex string
+	 */
+	} else {
+		fr_value_box_clear_value(bin);
+		fr_value_box_strdup(bin, bin, NULL, "", bin->tainted);
 	}
-
-	fr_dcursor_append(out, vb);
+	fr_dcursor_append(out, bin);
 
 	return XLAT_ACTION_DONE;
 }

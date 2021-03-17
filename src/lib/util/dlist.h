@@ -565,7 +565,7 @@ static inline void *fr_dlist_replace(fr_dlist_head_t *list_head, void *item, voi
  * Does nothing if the list was not initialised with #fr_dlist_talloc_init.
  */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-static inline CC_HINT(nonnull) void fr_dlist_verify(char const *file, int line, fr_dlist_head_t *list_head)
+static inline CC_HINT(nonnull) void fr_dlist_verify(char const *file, int line, fr_dlist_head_t const *list_head)
 {
 	void *item;
 
