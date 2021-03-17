@@ -33,7 +33,6 @@
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
-static int dictionary_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
@@ -51,12 +50,10 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  *
  */
 static CONF_PARSER const proto_detail_config[] = {
-	{ FR_CONF_OFFSET("dictionary", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_detail_t,
-			  dict), .dflt = "radius", .func = dictionary_parse },
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_detail_t,
-			  type_submodule), .func = type_parse },
+			  type), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_detail_t, io_submodule),
-	  .func = transport_parse },
+	  .func = transport_parse, .dflt = "file" },
 
 	/*
 	 *	Add this as a synonym so normal humans can understand it.
@@ -106,33 +103,6 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ NULL }
 };
 
-/** Wrapper around fr_dict_t* which translates the dictionary name into a dictionary
- *
- * @param[in] ctx	to allocate data in (instance of proto_detail).
- * @param[out] out	Where to write a fr_dict_t *
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_PAIR specifying the name of the type module.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	char const		*dict_str = cf_pair_value(cf_item_to_pair(ci));
-	fr_dict_t const		*dict;
-
-	dict = fr_dict_by_protocol_name(dict_str);
-	if (!dict) {
-		cf_log_err(ci, "Unknown dictionary");
-		return -1;
-	}
-
-	*(fr_dict_t **) out = fr_dict_unconst(dict);
-
-	return 0;
-}
-
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_detail).
@@ -144,41 +114,39 @@ static int dictionary_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	dl_module_inst_t	*process_dl;
-	proto_detail_process_t	*process_inst;
-	fr_dict_attr_t const	*attr_packet_type;
 	proto_detail_t		*inst = talloc_get_type_abort(parent, proto_detail_t);
-	int			code;
+	fr_dict_enum_t const	*type_enum;
+	CONF_PAIR		*cp = cf_item_to_pair(ci);
+	char const		*value = cf_pair_value(cp);
 
+	*((char const **) out) = value;
+
+	inst->dict = virtual_server_namespace_by_ci(ci);
 	if (!inst->dict) {
-		cf_log_err(ci, "Please define 'dictionary' BEFORE 'type'");
+		cf_log_err(ci, "Please define 'namespace' in this virtual server");
 		return -1;
 	}
 
-	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(inst->dict), "Packet-Type");
-	if (!attr_packet_type) {
+	inst->attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(inst->dict), "Packet-Type");
+	if (!inst->attr_packet_type) {
 		cf_log_err(ci, "Failed to find 'Packet-Type' attribute");
 		return -1;
 	}
 
-	code = fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_detail",
-					 NULL, 0, NULL, 0);
-	if (code < 0) return -1;
+	if (!value) {
+		cf_log_err(ci, "No value given for 'type'");
+		return -1;
+	}
 
-	inst->code = code;
+	type_enum = fr_dict_enum_by_name(inst->attr_packet_type, value, -1);
+	if (!type_enum) {
+		cf_log_err(ci, "Invalid type \"%s\"", value);
+		return -1;
+	}
 
-	/*
-	 *	Find the process module, and tell it what dictionary
-	 *	and packet type to use.
-	 */
-	process_dl = *(dl_module_inst_t **) out;
-	process_inst = inst->process_instance = talloc_get_type_abort(process_dl->data, proto_detail_process_t);
-
-	process_inst->dict = inst->dict;
-	process_inst->attr_packet_type = attr_packet_type;
-
+	inst->code = type_enum->value->vb_uint32;
 	return 0;
 }
 
@@ -230,6 +198,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	RHEXDUMP3(data, data_len, "proto_detail decode packet");
 
+	request->dict = inst->dict;
 	request->packet->code = inst->code;
 
 	/*
@@ -376,19 +345,11 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	return 1;
 }
 
-static void mod_entry_point_set(void const *instance, request_t *request)
+static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
 {
-	proto_detail_t const *inst = talloc_get_type_abort_const(instance, proto_detail_t);
-	fr_app_worker_t const *app_process;
+	fr_assert(request->server_cs != NULL);
 
-	/*
-	 *	Only one "process" function: proto_detail_process.
-	 */
-	app_process = (fr_app_worker_t const *)inst->type_submodule->module->common;
-
-	request->server_cs = inst->server_cs;
-	request->async->process = app_process->entry_point;
-	request->async->process_inst = inst->process_instance;
+	virtual_server_entry_point_set(request);
 }
 
 /** Open listen sockets/connect to external event source
@@ -482,7 +443,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
-	CONF_PAIR		*cp = NULL;
 
 	/*
 	 *	Instantiate the I/O module. But DON'T instantiate the
@@ -493,26 +453,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 				       inst->app_io_conf) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
 		return -1;
-	}
-
-	/*
-	 *	Instantiate the process module.
-	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type")) != NULL) {
-		fr_app_worker_t const *app_process;
-
-#ifdef __clang_analyzer__
-		DEBUG("Instantiating %s", cf_pair_value(cp));
-#endif
-
-		app_process = (fr_app_worker_t const *)inst->type_submodule->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule->data,
-									  inst->type_submodule->conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		break;
 	}
 
 	/*
@@ -558,7 +498,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	proto_detail_t 		*inst = talloc_get_type_abort(instance, proto_detail_t);
-	CONF_PAIR		*cp = NULL;
 
 	/*
 	 *	The listener is inside of a virtual server.
@@ -568,21 +507,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->self = &proto_detail;
 
 	virtual_server_dict_set(inst->server_cs, inst->dict, false);
-
-	/*
-	 *	Bootstrap the process module.
-	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_module_t const	*module = talloc_get_type_abort_const(inst->type_submodule->module,
-									      dl_module_t);
-		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
-
-		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule->data,
-								      inst->type_submodule->conf) < 0)) {
-			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
-			return -1;
-		}
-	}
 
 	/*
 	 *	No IO module, it's an empty listener.  That's not

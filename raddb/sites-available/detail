@@ -12,7 +12,9 @@ server detail {
 	#  In v4, all "server" sections MUST start with a "namespace"
 	#  parameter.  This tells the server which protocol is being used.
 	#
-	namespace = detail
+	#  RADIUS, or DHCPv4, or any other protocol supported by the server.
+	#
+	namespace = radius
 
 	#
 	#  This virtual server will read detail files from the
@@ -22,27 +24,15 @@ server detail {
 
 	listen {
 		#
-		#  This has to be listed first, sorry.
-		#
-		#  The value given here must match the `namespace` of
-		#  the virtual server which originally created the
-		#  detail files.
-		#
-		dictionary = radius
-
-		#
 		#  Types of packets we are reading.
 		#
 		type = Accounting-Request
 
 		#
-		#  What transports are being used to read detail
-		#  files.  For now, only "file" is supported.
+		#  There is no need to specify a transport.
+		#  The default is `file`, which is the only
+		#  one supported.
 		#
-		#  Future releases will allow reading "detail"
-		#  style information from sockets or streams.
-		#
-		transport = file
 
 		#
 		#  Unlike v3, there is no "load_factor" configuration.
@@ -231,10 +221,9 @@ server detail {
 	}
 
 #
-#  All packets read by the detail listener are processed through the
-#  'recv' section.  Note that there is no second name to the section.
+#  The detail file reader runs the normal RADIUS / DHCP / etc. processing sections.
 #
-recv {
+recv Accounting-Request {
 	update request {
 		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %{%{integer:Event-Timestamp}:-%{integer:Packet-Original-Timestamp}}}"
 	}
@@ -254,34 +243,25 @@ recv {
 }
 
 #
-#  All successful packets sent by the detail listener are processed through the
-#  'send ok' section.  Note that the name is the same for all packet types.
-#
 #  If the listener is configured with 'track = yes', then the entry in
 #  the detail file is marked up as being "done".  Subsequent re-reads
 #  of the same detail file (e.g. on server restart) will skip the
 #  "done" entries.
 #
-send ok {
+send Accounting-Response {
 	ok
 }
 
 #
-#  All failed packets sent by the detail listener are processed through the
-#  'send fail' section.  Note that the name is the same for all packet types.
+#  All failed packets sent by the detail listener should be processed
+#  through the 'send Do-Not-Respond' section.
 #
 #  If the listener is configured with 'track = yes', then the packet
 #  will be retransmitted by the detail file reader, until the packet
 #  returns "success".  See the "limit" subsection above for retransmission
 #  configuration.
 #
-send fail {
+send Do-Not-Respond {
 	ok
 }
-
-#
-#  Note that unlike other listeners, there is no "send Do-Not-Respond"
-#  section.  You should just return "fail" instead.
-#
-
 } # virtual server "detail"

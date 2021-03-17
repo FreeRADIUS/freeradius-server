@@ -34,14 +34,10 @@ extern "C" {
 #endif
 
 typedef struct {
-	fr_dict_t			*dict;				//!< root dictionary
-	fr_dict_attr_t const		*attr_packet_type;
-} proto_detail_process_t;
-
-typedef struct {
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 	CONF_SECTION			*cs;				//!< my configuration
 	fr_app_t			*self;				//!< child / parent linking issues
+	char const			*type;				//!< packet type name
 
 	dl_module_inst_t		*io_submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
@@ -58,10 +54,8 @@ typedef struct {
 	void				*work_io_instance;		//!< Easy access to the app_io instance.
 	CONF_SECTION			*work_io_conf;			//!< Easy access to the app_io's config secti
 
-	void				*process_instance;		//!< app_process instance
-
-	fr_dict_t			*dict;				//!< root dictionary
-	dl_module_inst_t		*type_submodule;		//!< Instance of the type
+	fr_dict_t const			*dict;				//!< root dictionary
+	fr_dict_attr_t const		*attr_packet_type;
 
 	uint32_t			code;				//!< packet code to use for incoming packets
 	uint32_t			max_packet_size;		//!< for message ring buffer
