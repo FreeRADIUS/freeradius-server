@@ -213,10 +213,14 @@ extract_artifact() {
 
   echo
 
+  # Output of cp -v is one of:
+  # '/tmp/fuzzer.5BhhNj/radius/crash-65c4c2124530039f94f14cfdc4394ddf94f0895c' -> 'build/fuzzer/radius/crash-65c4c2124530039f94f14cfdc4394ddf94f0895c'
+  # /tmp/fuzzer.5BhhNj/radius/crash-65c4c2124530039f94f14cfdc4394ddf94f0895c -> build/fuzzer/radius/crash-65c4c2124530039f94f14cfdc4394ddf94f0895c
   FILES="$(cp -rvf "$TMPDIR"/* "$REPRODUCER_DIR")"
   echo "$FILES" | while read -r LINE; do
-    LINE="${LINE#*\' -> \'}"
+    LINE="${LINE#* -> }"
     LINE="${LINE%\'}"
+    LINE="${LINE#\'}"
     echo "scripts/build/fuzzer $LINE"
   done
 
