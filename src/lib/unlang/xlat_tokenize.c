@@ -571,7 +571,7 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
 		XLAT_DEBUG("VIRTUAL <-- %pV",
-			   fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+			   fr_box_strvalue_len(vpt->name, vpt->len));
 		node->call.func = func;
 		node->attr = vpt;	/* Store for context */
 		node->flags.needs_async = func->needs_async;

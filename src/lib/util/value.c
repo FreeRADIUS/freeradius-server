@@ -3255,7 +3255,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 
 	case FR_TYPE_GROUP:
 	{
-		fr_value_box_t *child;
+		fr_value_box_t *child = NULL;
 
 		fr_value_box_copy_meta(dst, src);	/* Initialises group child dlist */
 
@@ -4859,17 +4859,19 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	case FR_TYPE_GROUP:
 	{
-		fr_value_box_t	vb;
+		fr_value_box_t	*child = NULL;
 		ssize_t		slen;
 
-		/*
-		 *	Be lazy by just converting it to a string, and then printing the string.
-		 */
-		if (fr_value_box_cast_to_strvalue(NULL, &vb, FR_TYPE_STRING, NULL, data) < 0) return 0;
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{');
 
-		slen = fr_value_box_print(&our_out, &vb, e_rules);
-		fr_value_box_clear(&vb);
-		if (slen < 0) return slen;
+		while ((child = fr_dlist_next(&data->vb_group, child))) {
+			slen = fr_value_box_print(&our_out, child, e_rules);
+			if (slen < 0) return slen;
+
+			if (fr_dlist_next(&data->vb_group, child)) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
+		}
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 	}
 		break;
 
@@ -5235,11 +5237,12 @@ bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
 
 /** Validation function to check that a fr_value_box_t is correctly initialised
  *
- * @note Do not add talloc checks here.  fr_value_box_t may be allocated on the stack.
  */
-void value_box_verify(char const *file, int line, fr_value_box_t const *vb)
+void value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
 {
 	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
+
+	if (talloced) talloc_get_type_abort_const(vb, fr_value_box_t);
 
 	switch (vb->type) {
 	case FR_TYPE_STRING:
@@ -5261,7 +5264,7 @@ void value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 		break;
 
 	case FR_TYPE_GROUP:
-		value_box_list_verify(file, line, &vb->vb_group);
+		value_box_list_verify(file, line, &vb->vb_group, talloced);
 		break;
 
 	default:
@@ -5269,11 +5272,9 @@ void value_box_verify(char const *file, int line, fr_value_box_t const *vb)
 	}
 }
 
-void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list)
+void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
 {
 	fr_value_box_t const *vb = NULL;
 
-	FR_DLIST_VERIFY(list);
-
-	while ((vb = fr_dlist_next(list, vb))) value_box_verify(file, line, vb);
+	while ((vb = fr_dlist_next(list, vb))) value_box_verify(file, line, vb, talloced);
 }
