@@ -193,7 +193,10 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->child)) {
-		RDEBUG2("      (%%{%s:%pM})", node->call.func->name, args);
+		RDEBUG2("      (%%%c%s:%pM%c)",
+			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
+			node->call.func->name, args,
+			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
 	}
 	talloc_free(str);
 }
@@ -927,7 +930,10 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xa = resume(ctx, out, request, exp->call.inst, thread_inst->data, result, rctx);
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-	RDEBUG2("EXPAND %%{%s:...}", exp->call.func->name);
+	RDEBUG2("EXPAND %%%c%s:...%c",
+		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
+		exp->call.func->name,
+		(exp->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
 	switch (xa) {
 	default:
 		break;
