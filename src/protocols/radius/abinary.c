@@ -1330,6 +1330,7 @@ ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data
 	char			buffer[FR_IPADDR_PREFIX_STRLEN];
 	char			string[256];
 	fr_sbuff_t		sbuff = FR_SBUFF_OUT(string, sizeof(string));
+	uint64_t		aligned[256 / sizeof(uint64_t)];
 
 	static char const *action[] = {"drop", "forward"};
 	static char const *direction[] = {"out", "in"};
@@ -1339,7 +1340,15 @@ ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data
 	 */
 	if (data_len < 4) return -1;
 
-	filter = (ascend_filter_t const *) data;
+	/*
+	 *	ascend data filters aren't concatenated across
+	 *	multiple RADIUS attributes.
+	 */
+	if (data_len > RADIUS_MAX_STRING_LENGTH) return -1;
+
+	memcpy(aligned, data, data_len);
+
+	filter = (ascend_filter_t const *) aligned;
 
 	switch ((ascend_filter_type_t)filter->type) {
 	case ASCEND_FILTER_IP:
