@@ -4,6 +4,6 @@
 %{attr_by_oid:...}
 %{attr_num:...}
 %{test:...}
-%{trigger:...}
+%(trigger:...)
 %{vendor:...}
 %{vendor_num:...}
