@@ -923,9 +923,9 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	to debug problems if they free or change elements
 	 *	and don't remove them from the list.
 	 */
-	VALUE_BOX_LIST_VERIFY(result);
+	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 	xa = resume(ctx, out, request, exp->call.inst, thread_inst->data, result, rctx);
-	VALUE_BOX_LIST_VERIFY(result);
+	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 	RDEBUG2("EXPAND %%{%s:...}", exp->call.func->name);
 	switch (xa) {
@@ -984,7 +984,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			ssize_t		slen;
 
 			if (!fr_dlist_empty(result)) {
-				VALUE_BOX_LIST_VERIFY(result);
+				VALUE_BOX_TALLOC_LIST_VERIFY(result);
 				result_str = fr_value_box_list_aprint(NULL, result, NULL, NULL);
 				if (!result_str) return XLAT_ACTION_FAIL;
 			} else {
@@ -1045,7 +1045,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   node->fmt, result,
 				   (node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
 
-			VALUE_BOX_LIST_VERIFY(result);
+			VALUE_BOX_TALLOC_LIST_VERIFY(result);
 			/*
 			 *	Need to copy the input list in case
 			 *	the async function mucks with it.
@@ -1059,11 +1059,11 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				if (RDEBUG_ENABLED2) fr_dlist_talloc_free(&result_copy);
 				return xa;
 			}
-			VALUE_BOX_LIST_VERIFY(result);
+			VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 			xa = node->call.func->func.async(ctx, out, request,
 							 node->call.inst->data, thread_inst->data, result);
-			VALUE_BOX_LIST_VERIFY(result);
+			VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 			if (RDEBUG_ENABLED2) {
 				xlat_debug_log_expansion(request, *in, &result_copy);
@@ -1127,7 +1127,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xlat_debug_log_expansion(request, *in, NULL);
 		xlat_debug_log_list_result(request, result);
 
-		VALUE_BOX_LIST_VERIFY(result);
+		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 		fr_dcursor_init(&from, result);
 		fr_dcursor_merge(out, &from);
 		fr_assert(fr_dlist_empty(result));
@@ -1143,7 +1143,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_assert(!fr_dlist_empty(result));
 
-		VALUE_BOX_LIST_VERIFY(result);
+		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 		/*
 		 *	If the input is a series of xlat expansions,
@@ -1167,7 +1167,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			fr_dlist_talloc_free(result);
 			fr_dlist_insert_head(result, value);
 		}
-		VALUE_BOX_LIST_VERIFY(result);
+		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false));
 		fr_dlist_move(&value->vb_group, result);
@@ -1234,7 +1234,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 	for (node = *in; node; node = (*in)->next) {
 	     	*in = node;		/* Update node in our caller */
 		fr_dcursor_tail(out);	/* Needed for debugging */
-		VALUE_BOX_LIST_VERIFY(out->dlist);
+		VALUE_BOX_TALLOC_LIST_VERIFY(out->dlist);
 
 		switch (node->type) {
 		case XLAT_LITERAL:
@@ -1387,7 +1387,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 	}
 
 finish:
-	VALUE_BOX_LIST_VERIFY(out->dlist);
+	VALUE_BOX_TALLOC_LIST_VERIFY(out->dlist);
 	XLAT_DEBUG("** [%i] %s << %s", unlang_interpret_stack_depth(request),
 		   __FUNCTION__, fr_table_str_by_value(xlat_action_table, xa, "<INVALID>"));
 

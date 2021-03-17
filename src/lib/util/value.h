@@ -763,12 +763,14 @@ static inline size_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
 uint32_t	fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash);
 /** @} */
 
-void value_box_verify(char const *file, int line, fr_value_box_t const *vb);
-void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list);
+void value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced);
+void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced);
 
 #ifdef WITH_VERIFY_PTR
-#  define VALUE_BOX_VERIFY(_x) value_box_verify(__FILE__, __LINE__, _x)
-#  define VALUE_BOX_LIST_VERIFY(_x) value_box_list_verify(__FILE__, __LINE__, _x)
+#  define VALUE_BOX_VERIFY(_x) value_box_verify(__FILE__, __LINE__, _x, false)
+#  define VALUE_BOX_LIST_VERIFY(_x) value_box_list_verify(__FILE__, __LINE__, _x, false)
+#  define VALUE_BOX_TALLOC_VERIFY(_x) value_box_verify(__FILE__, __LINE__, _x, true)
+#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) value_box_list_verify(__FILE__, __LINE__, _x, true)
 #else
 /*
  *  Even if were building without WITH_VERIFY_PTR
@@ -777,6 +779,8 @@ void value_box_list_verify(char const *file, int line, fr_value_box_list_t const
  */
 #  define VALUE_BOX_VERIFY(_x) fr_assert(_x)
 #  define VALUE_BOX_LIST_VERIFY(_x) fr_assert(_x)
+#  define VALUE_BOX_TALLOC_VERIFY(_x) fr_assert(_x)
+#  define VALUE_BOX_TALLOC_LIST_VERIFY(_x) fr_assert(_x)
 #endif
 
 #undef _CONST
