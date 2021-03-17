@@ -116,7 +116,8 @@ static const CONF_PARSER server_on_read_config[] = {
 			.on_read = namespace_on_read },
 
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
-			 fr_virtual_server_t, listener), \
+			 fr_virtual_server_t, listener),
+			 .ident2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .on_read = listen_on_read },
 
@@ -128,7 +129,7 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
 	 */
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers), \
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers),
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
 			  .subcs = (void const *) server_on_read_config, .ident2 = CF_IDENT_ANY,
 			  .on_read = server_on_read },
@@ -141,7 +142,8 @@ static const CONF_PARSER server_config[] = {
 			 .func = namespace_parse },
 
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
-			 fr_virtual_server_t, listener),		\
+			 fr_virtual_server_t, listener),
+			 .ident2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
 
@@ -153,7 +155,7 @@ const CONF_PARSER virtual_servers_config[] = {
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
 	 */
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers), \
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers),
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
 			  .subcs = (void const *) server_config, .ident2 = CF_IDENT_ANY,
 			  .func = server_parse },
@@ -306,8 +308,10 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
+	char const		*value;
 	dl_module_t const	*module;
 	fr_app_t const		*app;
+	bool			set_dict;
 
 	if (!namespace) {
 		cf_log_err(server_cs, "No 'namespace' set for virtual server");
@@ -316,14 +320,27 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 		return -1;
 	}
 
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", cf_pair_value(namespace));
+	value = cf_section_name2(listen_cs);
+	if (value) {
+		set_dict = false;
 
-	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_MODULE_TYPE_PROTO);
+
+	} else {
+		value = cf_pair_value(namespace);
+		fr_assert(value);
+		set_dict = true;
+
+	}
+
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", value);
+	module = dl_module(listen_cs, NULL, value, DL_MODULE_TYPE_PROTO);
 	if (!module) {
-		cf_log_err(listen_cs, "Failed loading proto_%s module", cf_pair_value(namespace));
+		cf_log_err(listen_cs, "Failed loading proto_%s module", value);
 		return -1;
 	}
 	cf_data_add(listen_cs, module, "proto module", true);
+
+	if (!set_dict) return 0;
 
 	app = (fr_app_t const *) module->common;
 	if (app->dict) virtual_server_dict_set(server_cs, *app->dict, false);
@@ -419,10 +436,14 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
+	char const		*value;
 
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
+	value = cf_section_name2(listen_cs);
+	if (!value) value = cf_pair_value(namespace);
 
-	if (dl_module_instance(ctx, &listen->proto_module, listen_cs, NULL, cf_pair_value(namespace), DL_MODULE_TYPE_PROTO) < 0) {
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", value, out);
+
+	if (dl_module_instance(ctx, &listen->proto_module, listen_cs, NULL, value, DL_MODULE_TYPE_PROTO) < 0) {
 		cf_log_err(listen_cs, "Failed loading proto module");
 		return -1;
 	}
