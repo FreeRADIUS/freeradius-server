@@ -16,7 +16,7 @@ env:
   FR_GLOBAL_POOL: 4M
   TEST_CERTS: yes
   DO_BUILD: yes
-  HOSTAPD_BUILD_DIR: /tmp/hostapd.ci
+  HOSTAPD_BUILD_DIR: eapol_test.ci
   HOSTAPD_GIT_TAG: hostap_2_8
   CI: 1
   GH_ACTIONS: 1
@@ -108,7 +108,7 @@ jobs:
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
-        key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v3
+        key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v4
       if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
 
     - name: Package manager performance improvements
