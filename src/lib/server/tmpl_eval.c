@@ -270,7 +270,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
  * @param dst_type		FR_TYPE_* matching out pointer.  @see tmpl_expand.
  * @return
  *	- -1 on failure.
- *	- The length of data written to buff, or pointed to by out.
+ *	- The length of data written out.
  */
 ssize_t _tmpl_to_type(void *out,
 		      uint8_t *buff, size_t bufflen,
