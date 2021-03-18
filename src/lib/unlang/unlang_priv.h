@@ -421,7 +421,7 @@ void		unlang_subrequest_op_free(void);
 
 void		unlang_switch_init(void);
 
-void		unlang_tmpl_init_shallow(void);
+void		unlang_tmpl_init(void);
  /** @} */
 
 #ifdef __cplusplus

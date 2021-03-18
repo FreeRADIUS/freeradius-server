@@ -591,7 +591,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 }
 
 
-void unlang_tmpl_init_shallow(void)
+void unlang_tmpl_init(void)
 {
 	unlang_register(UNLANG_TYPE_TMPL,
 			   &(unlang_op_t){

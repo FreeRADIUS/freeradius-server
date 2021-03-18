@@ -91,7 +91,7 @@ int unlang_init(void)
 	unlang_switch_init();
 	unlang_call_init();
 	unlang_caller_init();
-	unlang_tmpl_init_shallow();
+	unlang_tmpl_init();
 
 	return 0;
 }
