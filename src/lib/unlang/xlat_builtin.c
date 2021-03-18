@@ -1374,6 +1374,99 @@ static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, re
 	return p - fmt;
 }
 
+/** Generic padding function used by lpad / rpad xlat
+ *
+ * @param[out] out	where to write resulting values
+ * @param[in] request	being processed - used for debug messages
+ * @param[in] args	provided to xlat
+ * @param[in] pad_left	true for left, false for right
+ */
+static xlat_action_t xlat_func_pad(fr_dcursor_t *out, request_t *request,
+				   fr_value_box_list_t *args, bool pad_left)
+{
+	fr_value_box_t		*values = fr_dlist_head(args);
+	fr_value_box_list_t	*list = &values->vb_group;
+	fr_value_box_t		*pad = fr_dlist_next(args, values);
+	size_t			pad_len = (size_t)pad->vb_uint64;
+	fr_value_box_t		*fill = fr_dlist_next(args, pad);
+	char const		*fill_str = NULL;
+	size_t			fill_len = 0;
+
+	fr_value_box_t		*in = NULL;
+
+	/*
+	 *	Fill is optional
+	 */
+	if (fill) {
+		fill_str = fill->vb_strvalue;
+		fill_len = fill->vb_length;
+	}
+
+	if (fill_len == 0) {
+		fill_str = " ";
+		fill_len = 1;
+	}
+
+	while ((in = fr_dlist_pop_head(list))) {
+		size_t		len = in->vb_length;
+		size_t		remaining;
+		char		*buff;
+		fr_sbuff_t	sbuff;
+
+		fr_dcursor_append(out, in);
+
+		if (len >= pad_len) continue;
+
+		if (fr_value_box_bstr_realloc(in, &buff, in, pad_len) < 0) {
+			RPEDEBUG("Failed reallocating input data");
+			return XLAT_ACTION_FAIL;
+		}
+
+		if (pad_left) {
+			size_t	add = 0;
+			/*
+			 *	Padding on the left
+			 */
+			remaining = pad_len - len;
+			memmove(&(buff[remaining]), buff, len);
+
+			if (fill_len == 1) {
+				memset(buff, *fill_str, remaining);
+				continue;
+			}
+
+			while (remaining > 0) {
+				add = remaining >= fill_len ? fill_len : remaining;
+				memcpy(buff, fill_str, add);
+				buff += add;
+				remaining -= add;
+			}
+			continue;
+		}
+
+		/*
+		 *	Padding on the right
+		 */
+		fr_sbuff_init(&sbuff, buff, pad_len + 1);
+		fr_sbuff_advance(&sbuff, len);
+
+		if (fill_len == 1) {
+			memset(fr_sbuff_current(&sbuff), *fill_str, fr_sbuff_remaining(&sbuff));
+			continue;
+		}
+
+		/*
+		 *	Copy fill as a repeating pattern
+		 */
+		while ((remaining = fr_sbuff_remaining(&sbuff))) {
+			fr_sbuff_in_bstrncpy(&sbuff, fill_str, remaining >= fill_len ? fill_len : remaining);
+		}
+
+	}
+
+	return XLAT_ACTION_DONE;
+
+}
 
 /** Left pad a string
  *
