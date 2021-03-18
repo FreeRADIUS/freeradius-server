@@ -62,6 +62,14 @@ jobs:
     container:
       image: ${{ matrix.env.OS }}
 
+    env:
+      HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
+      HOSTAPD_GIT_TAG: hostap_2_8
+      CMAKE_SH_PATH: /tmp/cmake
+      CMAKE_SH_FILE: cmake-3.8.2-Linux-x86_64.sh
+      CMAKE_SH_URL: "https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh"
+      CMAKE_SH_SHA: bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73
+
     name: "RPM build"
 
     steps:
@@ -78,7 +86,8 @@ jobs:
       run: |
         yum install -y git-core
 
-    - uses: actions/checkout@v2
+    - name: Checkout kqueue
+      uses: actions/checkout@v2
       with:
         repository: mheily/libkqueue
         path: libkqueue
@@ -95,11 +104,22 @@ jobs:
         rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
         rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
+    - name: Restore cmake download from cache
+      uses: actions/cache@v2
+      id: cmake-cache
+      with:
+        path: ${{ env.CMAKE_SH_PATH }}
+        key: ${{ env.CMAKE_SH_FILE }}-v1
+
+    - name: Download and install cmake
+      run: |
+        mkdir -p "$CMAKE_SH_PATH"
+        [ -e "$CMAKE_SH_PATH/$CMAKE_SH_FILE" ] || curl -f -o "$CMAKE_SH_PATH/$CMAKE_SH_FILE" "$CMAKE_SH_URL"
+        [ "$(cat $CMAKE_SH_PATH/$CMAKE_SH_FILE | openssl sha256 | sed 's/^.* //')" = "$CMAKE_SH_SHA" ]
+        sh "$CMAKE_SH_PATH/$CMAKE_SH_FILE" --skip-license --prefix=/usr/local
+
     - name: Build libkqueue
       run: |
-        curl -f -o cmake.sh https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
-        [ "$(cat cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
-        sh cmake.sh --skip-license --prefix=/usr/local
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
         cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./
         make
@@ -155,10 +175,20 @@ jobs:
         mv libkqueue/*.rpm rpms
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
 
+    - name: Restore eapol_test build directory from cache
+      uses: actions/cache@v2
+      id: hostapd-cache
+      with:
+        path: ${{ env.HOSTAPD_BUILD_DIR }}
+        key: hostapd-${{ matrix.env.NAME }}-${{ env.HOSTAPD_GIT_TAG }}-v1
+
+    # Build eapol_test using a minimal make environment to avoid configuring
     - name: Build eapol_test
       run: |
         yum install -y libnl3-devel which
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        echo "top_srcdir:=$(pwd)" > Make.inc
+        echo "BUILD_DIR:=build" >> Make.inc
         make -j `nproc` eapol_test
         mv scripts/ci/eapol_test/eapol_test ../rpms
       working-directory: freeradius
@@ -188,6 +218,11 @@ jobs:
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
 
+  #
+  #  Perform "post-install" testing of the FR packages that we have just built
+  #  in a clean environment consisting of only the base OS and package
+  #  dependancies
+  #
   rpm-test:
 
     needs:
