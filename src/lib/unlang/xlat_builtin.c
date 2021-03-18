@@ -1488,50 +1488,12 @@ static xlat_arg_parser_t const xlat_func_pad_args[] = {
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      request_t *request, char const *fmt)
+static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    request_t *request, UNUSED void const *xlat_inst,
+				    UNUSED void *xlat_thread_inst,
+				    fr_value_box_list_t *args)
 {
-	char		fill;
-	size_t		pad;
-	ssize_t		len;
-	tmpl_t	*vpt;
-	char		*to_pad = NULL;
-
-	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
-
-	if (!fr_cond_assert(vpt)) return 0;
-
-	/*
-	 *	Print the attribute (left justified).  If it's too
-	 *	big, we're done.
-	 */
-	len = tmpl_aexpand(ctx, &to_pad, request, vpt, NULL, NULL);
-	if (len <= 0) return -1;
-
-	/*
-	 *	Already big enough, no padding required...
-	 */
-	if ((size_t) len >= pad) {
-		*out = to_pad;
-		return pad;
-	}
-
-	/*
-	 *	Realloc is actually pretty cheap in most cases...
-	 */
-	MEM(to_pad = talloc_realloc(ctx, to_pad, char, pad + 1));
-
-	/*
-	 *	We have to shift the string to the right, and pad with
-	 *	"fill" characters.
-	 */
-	memmove(to_pad + (pad - len), to_pad, len + 1);
-	memset(to_pad, fill, pad - len);
-
-	*out = to_pad;
-
-	return pad;
+	return xlat_func_pad(out, request, args, true);
 }
 
 
@@ -3368,7 +3330,6 @@ int xlat_init(void)
 	XLAT_REGISTER(debug_attr);
 	xlat_register_legacy(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	XLAT_REGISTER(integer);
-	xlat_register_legacy(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0);
 	XLAT_REGISTER(map);
 	xlat_register_legacy(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
@@ -3380,10 +3341,11 @@ do { \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
-	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
+	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
 
