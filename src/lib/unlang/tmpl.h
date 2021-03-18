@@ -39,7 +39,7 @@ extern "C" {
  * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
  * set here.
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable().
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable().
  *
  * @param[in] rctx		Resume ctx for the callback.
  * @param[in] request		The current request.

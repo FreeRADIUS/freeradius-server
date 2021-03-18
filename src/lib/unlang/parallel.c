@@ -131,7 +131,7 @@ static void unlang_parallel_child_signal(request_t *request, fr_state_signal_t a
 	 */
 	if (state->num_complete == state->num_children) {
 		RDEBUG3("Signalling parent %s that all children have EXITED or DETACHED", request->parent->name);
-		unlang_interpret_mark_resumable(request->parent);
+		unlang_interpret_mark_runnable(request->parent);
 	}
 
 	return;
@@ -153,7 +153,7 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
 	 *	the parent anything.  Because we have that kind of
 	 *	relationship.
 	 *
-	 *	Note that we call unlang_interpret_mark_resumable() here
+	 *	Note that we call unlang_interpret_mark_runnable() here
 	 *	because unlang_parallel_process() calls
 	 *	unlang_interpret(), and NOT child->async->process.
 	 */
@@ -177,7 +177,7 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
 		 */
 		if (state->num_complete == state->num_children) {
 			RDEBUG3("Signalling parent %s that all children have EXITED or DETACHED", request->parent->name);
-			unlang_interpret_mark_resumable(request->parent);
+			unlang_interpret_mark_runnable(request->parent);
 		}
 	}
 

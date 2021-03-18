@@ -64,7 +64,7 @@ static void _delay_done(UNUSED module_ctx_t const *mctx, request_t *request, voi
 	 */
 	if (!fr_cond_assert(fired >= *yielded)) REDEBUG("Unexpected resume time");
 
-	unlang_interpret_mark_resumable(request);
+	unlang_interpret_mark_runnable(request);
 }
 
 static void _xlat_delay_done(request_t *request,
@@ -80,7 +80,7 @@ static void _xlat_delay_done(request_t *request,
 	 */
 	if (!fr_cond_assert(fired > *yielded)) REDEBUG("Unexpected resume time");
 
-	unlang_interpret_mark_resumable(request);
+	unlang_interpret_mark_runnable(request);
 }
 
 static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,

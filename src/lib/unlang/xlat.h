@@ -131,7 +131,7 @@ typedef struct {
  * Used when a xlat needs wait for an event.
  * Typically the callback is set, and then the xlat returns unlang_xlat_yield().
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable(), i.e. if an event
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable(), i.e. if an event
  *	on a registered FD occurs before the timeout event fires.
  *
  * @param[in] request		the request.
@@ -148,7 +148,7 @@ typedef	void (*fr_unlang_xlat_timeout_t)(request_t *request, void *xlat_inst,
  * Used when a xlat needs to read from an FD.  Typically the callback is set, and then the
  * xlat returns unlang_xlat_yield().
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable(), so
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable(), so
  *
  * @param[in] request		the current request.
  * @param[in] xlat_inst		the xlat instance.
@@ -206,7 +206,7 @@ typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 /** A callback when the request gets a fr_state_signal_t.
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable().
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable().
  *
  * @param[in] request		The current request.
  * @param[in] xlat_inst		the xlat instance.

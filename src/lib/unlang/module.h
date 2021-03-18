@@ -39,7 +39,7 @@ extern "C" {
  * Used when a module needs wait for an event.
  * Typically the callback is set, and then the module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable(), i.e. if an event
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable(), i.e. if an event
  *	on a registered FD occurs before the timeout event fires.
  *
  * @param[in] mctx		calling context for the module.
@@ -55,7 +55,7 @@ typedef	void (*unlang_module_timeout_t)(module_ctx_t const *mctx, request_t *req
  * Used when a module needs to read from an FD.  Typically the callback is set, and then the
  * module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable(), so
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable(), so
  *
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.
@@ -84,7 +84,7 @@ typedef unlang_action_t (*unlang_module_resume_t)(rlm_rcode_t *p_result, module_
  * A module may call unlang_yeild(), but still need to do something on FR_SIGNAL_DUP.  If so, it's
  * set here.
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable().
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable().
  *
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.

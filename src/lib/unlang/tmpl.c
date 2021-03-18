@@ -203,7 +203,7 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 
 	if (state->exec.ev) fr_event_timer_delete(&state->exec.ev);
 
-	unlang_interpret_mark_resumable(request);
+	unlang_interpret_mark_runnable(request);
 }
 
 static void unlang_tmpl_exec_stdout_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
@@ -308,7 +308,7 @@ static void unlang_tmpl_exec_timeout(
 	state->exec.failed = true;
 
 	unlang_tmpl_exec_cleanup(request);
-	unlang_interpret_mark_resumable(request);
+	unlang_interpret_mark_runnable(request);
 }
 
 

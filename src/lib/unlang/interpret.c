@@ -1171,7 +1171,7 @@ bool unlang_interpret_is_resumable(request_t *request)
  *
  * @param[in] request		The current request.
  */
-void unlang_interpret_mark_resumable(request_t *request)
+void unlang_interpret_mark_runnable(request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

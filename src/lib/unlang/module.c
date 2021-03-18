@@ -124,7 +124,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
  * Used when a module needs wait for an event.  Typically the callback is set, and then the
  * module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable().
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable().
  *
  * param[in] request		the current request.
  * param[in] callback		to call.
@@ -243,7 +243,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
  * Used when a module needs to read from an FD.  Typically the callback is set, and then the
  * module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_interpret_mark_resumable().
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable().
  *
  * @param[in] request		The current request.
  * @param[in] read		callback.  Used for receiving and demuxing/decoding data.
@@ -736,7 +736,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
  *	A common pattern is to use ``return unlang_module_yield(...)``.
  *
  * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_interpret_mark_resumable().
+ * @param[in] resume		Called on unlang_interpret_mark_runnable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] rctx		to pass to the callbacks.
  * @return

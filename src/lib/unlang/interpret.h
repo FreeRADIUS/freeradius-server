@@ -60,7 +60,7 @@ rlm_rcode_t	unlang_interpret_synchronous(request_t *request, CONF_SECTION *cs, r
 
 void		*unlang_interpret_stack_alloc(TALLOC_CTX *ctx);
 
-void		unlang_interpret_mark_resumable(request_t *request);
+void		unlang_interpret_mark_runnable(request_t *request);
 
 bool		unlang_interpret_is_resumable(request_t *request);
 

@@ -380,7 +380,7 @@ static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, void
 }
 
 
-/** Continue after unlang_interpret_mark_resumable()
+/** Continue after unlang_interpret_mark_runnable()
  *
  */
 static unlang_action_t mod_radius_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *ctx)
