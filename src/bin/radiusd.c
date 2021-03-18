@@ -700,7 +700,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_init() < 0) return -1;
+	if (unlang_init_global() < 0) return -1;
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
@@ -987,7 +987,7 @@ cleanup:
 	/*
 	 *	Free any resources used by the unlang interpreter.
 	 */
-	unlang_free();
+	unlang_free_global();
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	fr_openssl_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */

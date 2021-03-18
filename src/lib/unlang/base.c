@@ -79,7 +79,6 @@ int unlang_init_global(void)
 	 */
 	if (xlat_init() < 0) return -1;
 
-	unlang_interpret_init_global();
 	/* Register operations for the default keywords */
 	unlang_condition_init();
 	unlang_foreach_init();
@@ -99,7 +98,7 @@ int unlang_init_global(void)
 	return 0;
 }
 
-void unlang_free(void)
+void unlang_free_global(void)
 {
 	if (--instance_count > 0) return;
 

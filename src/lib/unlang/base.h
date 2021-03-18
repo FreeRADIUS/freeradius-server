@@ -37,7 +37,7 @@ bool			unlang_section(CONF_SECTION *cs);
 
 int			unlang_init_global(void);
 
-int			unlang_free_global(void);
+void			unlang_free_global(void);
 
 
 #ifdef __cplusplus
