@@ -5176,7 +5176,7 @@ void value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool
 {
 	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
 
-	if (talloced) talloc_get_type_abort_const(vb, fr_value_box_t);
+	if (talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
 
 	switch (vb->type) {
 	case FR_TYPE_STRING:
