@@ -72,7 +72,7 @@ rlm_rcode_t	unlang_interpret_stack_result(request_t *request);
 
 TALLOC_CTX	*unlang_interpret_frame_talloc_ctx(request_t *request);
 
-void		unlang_interpret_init(void);
+void 		unlang_interpret_init_global(void);
 #ifdef __cplusplus
 }
 #endif

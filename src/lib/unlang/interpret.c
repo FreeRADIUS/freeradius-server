@@ -1336,7 +1336,7 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 	return 0;
 }
 
-void unlang_interpret_init(void)
+void unlang_interpret_init_global(void)
 {
 	(void) xlat_register_legacy(NULL, "interpreter", unlang_interpret_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 }
