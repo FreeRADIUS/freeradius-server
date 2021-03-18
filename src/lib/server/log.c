@@ -945,10 +945,16 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 {
 	char			buffer[1024];
 	log_fd_event_ctx_t	*log_info = uctx;
+	request_t		*request = log_info->request;
 	fr_sbuff_t		sbuff;
 	fr_sbuff_marker_t	m_start, m_end;
 
 	fr_sbuff_term_t const 	line_endings = FR_SBUFF_TERMS(L("\n"), L("\r"));
+
+	if (!RDEBUG_ENABLEDX(log_info->lvl)) {
+		while (read(fd, buffer, sizeof(buffer) > 0));
+		return;
+	}
 
 	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
 	fr_sbuff_marker(&m_start, &sbuff);

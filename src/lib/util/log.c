@@ -851,6 +851,11 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 
 	fr_sbuff_term_t const 	line_endings = FR_SBUFF_TERMS(L("\n"), L("\r"));
 
+	if (log_info->lvl < fr_debug_lvl) {
+		while (read(fd, buffer, sizeof(buffer) > 0));
+		return;
+	}
+
 	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
 	fr_sbuff_marker(&m_start, &sbuff);
 	fr_sbuff_marker(&m_end, &sbuff);

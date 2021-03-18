@@ -323,7 +323,8 @@ void	log_global_free(void);
 #define RDEBUG_ENABLED2		log_rdebug_enabled(L_DBG_LVL_2, request)		//!< True if request debug level 1-2 messages are enabled
 #define RDEBUG_ENABLED3		log_rdebug_enabled(L_DBG_LVL_3, request)		//!< True if request debug level 1-3 messages are enabled
 #define RDEBUG_ENABLED4		log_rdebug_enabled(L_DBG_LVL_4, request)		//!< True if request debug level 1-4 messages are enabled
-#define RDEBUG_ENABLED5		log_rdebug_enabled(L_DBG_LVL_MAX, request)	//!< True if request debug level 1-5 messages are enabled
+#define RDEBUG_ENABLED5		log_rdebug_enabled(L_DBG_LVL_MAX, request)		//!< True if request debug level 1-5 messages are enabled
+#define RDEBUG_ENABLEDX(_x)	log_rdebug_enabled(_x, request)				//!< True if specified lvl is enabled
 
 #define RDEBUGX(_l, fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, _l, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
 #define RDEBUG(fmt, ...)	do { if (request->log.lvl) log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__); } while(0)
