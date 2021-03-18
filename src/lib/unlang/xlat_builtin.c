@@ -1877,6 +1877,7 @@ static xlat_arg_parser_t const xlat_func_concat_args[] = {
 @verbatim
 "%(concat:%{request[*]} ,)" == "<attr1value>,<attr2value>,<attr3value>,..."
 "%(concat:%{Tmp-String-0[*]} '. ')" == "<str1value>. <str2value>. <str3value>. ..."
+"%(concat:%(join:%{User-Name} %{Calling-Station-Id}) ', ')" == "bob, aa:bb:cc:dd:ee:ff"
 @endverbatim
  *
  * @ingroup xlat_functions
