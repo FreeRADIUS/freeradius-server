@@ -663,12 +663,13 @@ static inline void fr_dlist_talloc_free(fr_dlist_head_t *head)
  */
 static inline void fr_dlist_talloc_reverse_free(fr_dlist_head_t *head)
 {
-	void *e = NULL;
+	void *e = NULL, *p;
 
 	e = fr_dlist_tail(head);
 	do {
-		e = fr_dlist_remove(head, e);
+		p = fr_dlist_remove(head, e);
 		talloc_free(e);
+		e = p;
 	} while (e);
 }
 
