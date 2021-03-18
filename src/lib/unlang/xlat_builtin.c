@@ -1962,36 +1962,17 @@ typedef enum {
 } hmac_type;
 
 static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_list_t *in, uint8_t *digest, int digest_len, hmac_type type)
 {
-	uint8_t const	*data_p, *key_p;
-	size_t		data_len, key_len;
-	fr_value_box_t	*vb, *vb_data, *vb_sep, *vb_key;
+	fr_value_box_t	*vb, *data, *key;
 
-	if (fr_dlist_empty(in)) return XLAT_ACTION_FAIL;
-
-	vb_data = fr_dlist_head(in);
-	vb_sep = fr_dlist_next(in, vb_data);
-	vb_key = fr_dlist_next(in, vb_sep);
-
-	if (!vb_data || !vb_sep || !vb_key ||
-            vb_sep->vb_length != 1 ||
-            vb_sep->vb_strvalue[0] != ' ') {
-		REDEBUG("HMAC requires exactly two arguments (%%{data} %%{key})");
-		return XLAT_ACTION_FAIL;
-	}
-
-	data_p = vb_data->vb_octets;
-	data_len = vb_data->vb_length;
-
-	key_p = vb_key->vb_octets;
-	key_len = vb_key->vb_length;
+	data = fr_dlist_head(in);
+	key = fr_dlist_next(in, data);
 
 	if (type == HMAC_MD5) {
-		fr_hmac_md5(digest, data_p, data_len, key_p, key_len);
+		fr_hmac_md5(digest, data->vb_octets, data->vb_length, key->vb_octets, key->vb_length);
 	} else if (type == HMAC_SHA1) {
-		fr_hmac_sha1(digest, data_p, data_len, key_p, key_len);
+		fr_hmac_sha1(digest, data->vb_octets, data->vb_length, key->vb_octets, key->vb_length);
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -2002,22 +1983,27 @@ static xlat_action_t xlat_hmac(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_hmac_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Generate the HMAC-MD5 of a string or attribute
  *
  * Example:
 @verbatim
-"%{hmacmd5:%{string:foo} %{string:bar}}" == "0x31b6db9e5eb4addb42f1a6ca07367adc"
+"%(hmacmd5:%{string:foo} %{string:bar})" == "0x31b6db9e5eb4addb42f1a6ca07367adc"
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					request_t *request, void const *xlat_inst, void *xlat_thread_inst,
+static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					fr_value_box_list_t *in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
-	return xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, MD5_DIGEST_LENGTH, HMAC_MD5);
+	return xlat_hmac(ctx, out, in, digest, MD5_DIGEST_LENGTH, HMAC_MD5);
 }
 
 
@@ -2025,17 +2011,17 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-"%{hmacsha1:%{string:foo} %{string:bar}}" == "0x85d155c55ed286a300bd1cf124de08d87e914f3a"
+"%(hmacsha1:%{string:foo} %{string:bar})" == "0x85d155c55ed286a300bd1cf124de08d87e914f3a"
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 request_t *request, void const *xlat_inst, void *xlat_thread_inst,
+static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 					 fr_value_box_list_t *in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
-	return xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
+	return xlat_hmac(ctx, out, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
 }
 
 static xlat_arg_parser_t const xlat_func_join_args[] = {
@@ -3294,6 +3280,8 @@ do { \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
+	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
@@ -3309,8 +3297,6 @@ do { \
 	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, xlat_func_bin_arg);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, xlat_func_hex_arg);
-	xlat_register(NULL, "hmacmd5", xlat_func_hmac_md5, false);
-	xlat_register(NULL, "hmacsha1", xlat_func_hmac_sha1, false);
 	xlat_register(NULL, "length", xlat_func_length, false);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
