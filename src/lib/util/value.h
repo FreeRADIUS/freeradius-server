@@ -732,8 +732,6 @@ char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list
 int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in);
 
 bool		fr_value_box_list_tainted(fr_value_box_list_t const *head);
-
-int		fr_value_box_list_flatten_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in);
 /** @} */
 
 /** @name Print the value of a value box as a string

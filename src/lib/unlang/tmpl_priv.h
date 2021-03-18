@@ -42,18 +42,28 @@ typedef struct {
 	fr_unlang_tmpl_resume_t		resume;	       	//!< resumption handler
 	fr_unlang_tmpl_signal_t		signal;		//!< signal handler
 
-	bool				failed;		//!< due to exec timeout or buffer overflow
+	union {
+		struct {
+			fr_sbuff_t			stdout_buff;	//!< Expandable buffer to store process output.
+			fr_sbuff_uctx_talloc_t		stdout_tctx;	//!< sbuff talloc ctx data.
 
-	pid_t				pid;		//!< child PID
-	int				fd;		//!< for reading from the child
-	fr_event_timer_t const		*ev;		//!< for timing out the child
-	fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
+			log_fd_event_ctx_t		stdout_uctx;	//!< Config for the stdout logger.
+			log_fd_event_ctx_t		stderr_uctx;	//!< Config for the stderr logger.
 
-	fr_pair_list_t			*vps;		//!< input VPs
-	char				*buffer;	//!< for reading the answer
-	char				*ptr;		//!< where in the buffer we are writing to
-	int				status;		//!< return code of the program
-	int				*status_p;	//!< where we write the return status of the program
+			pid_t				pid;		//!< child PID
+			int				stdout_fd;	//!< for reading from the child.
+			int				stderr_fd;	//!< for producing error messages.
+
+			fr_event_timer_t const		*ev;		//!< for timing out the child
+			fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
+			bool				failed;		//!< due to exec timeout or buffer overflow
+
+			int				status;		//!< return code of the program
+			int				*status_p;	//!< where we write the return status of the program
+
+			fr_pair_list_t			*vps;		//!< input VPs
+		} exec;
+	};
 } unlang_frame_state_tmpl_t;
 
 #ifdef __cplusplus

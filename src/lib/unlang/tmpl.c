@@ -20,6 +20,7 @@
  * @file unlang/tmpl.c
  * @brief Defines functions for calling tmpl__t asynchronously
  *
+ * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
  */
 
@@ -49,10 +50,22 @@ static void unlang_tmpl_exec_cleanup(request_t *request)
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	if (state->fd >= 0) {
-		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
-		close(state->fd);
-		state->fd = -1;
+	if (state->exec.pid) RDEBUG3("Cleaning up exec state for pid %u", state->exec.pid);
+
+	if (state->exec.stdout_fd >= 0) {
+		if (fr_event_fd_delete(request->el, state->exec.stdout_fd, FR_EVENT_FILTER_IO) < 0) {
+			RPERROR("Failed removing stdout handler");
+		}
+		close(state->exec.stdout_fd);
+		state->exec.stdout_fd = -1;
+	}
+
+	if (state->exec.stderr_fd >= 0) {
+		if (fr_event_fd_delete(request->el, state->exec.stderr_fd, FR_EVENT_FILTER_IO) < 0) {
+			RPERROR("Failed removing stderr handler");
+		}
+		close(state->exec.stdout_fd);
+		state->exec.stdout_fd = -1;
 	}
 
 	/*
@@ -60,12 +73,12 @@ static void unlang_tmpl_exec_cleanup(request_t *request)
 	 *	need to wait as long as necessary for the PID to exit,
 	 *	and that we don't care about the exit status.
 	 */
-	if (state->pid) {
-		(void) fr_event_pid_wait(request->el, request->el, NULL, state->pid, NULL, NULL);
-		state->pid = 0;
+	if (state->exec.pid) {
+		(void) fr_event_pid_wait(request->el, request->el, NULL, state->exec.pid, NULL, NULL);
+		state->exec.pid = 0;
 	}
 
-	if (state->ev) fr_event_timer_delete(&state->ev);
+	if (state->exec.ev) fr_event_timer_delete(&state->exec.ev);
 }
 
 /** Send a signal (usually stop) to a request
@@ -93,8 +106,8 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 	 *	ignore future signals.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		if (state->pid > 0) kill(state->pid, SIGKILL);
-		state->failed = true;
+		if (state->exec.pid > 0) kill(state->exec.pid, SIGKILL);
+		state->exec.failed = true;
 
 		unlang_tmpl_exec_cleanup(request);
 		state->signal = NULL;
@@ -154,10 +167,11 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	*state = (unlang_frame_state_tmpl_t) {
 		.out = out,
 		.ctx = ctx,
-		.vps = vps,
-		.status_p = status
+		.exec = {
+			.vps = vps,
+			.status_p = status,
+		}
 	};
-
 	fr_value_box_list_init(&state->box);
 
 	return 0;
@@ -174,80 +188,87 @@ static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pi
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	state->status = status;
-	state->pid = 0;
+	state->exec.status = status;
+	state->exec.pid = 0;
 
 	/*
 	 *	We may receive the "child exited" signal before the
 	 *	"pipe has been closed" signal.
 	 */
-	if (state->fd >= 0) {
-		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
-		close(state->fd);
-		state->fd = -1;
+	if (state->exec.stdout_fd >= 0) {
+		(void) fr_event_fd_delete(request->el, state->exec.stdout_fd, FR_EVENT_FILTER_IO);
+		close(state->exec.stdout_fd);
+		state->exec.stdout_fd = -1;
 	}
 
-	if (state->ev) fr_event_timer_delete(&state->ev);
+	if (state->exec.ev) fr_event_timer_delete(&state->exec.ev);
 
 	unlang_interpret_mark_resumable(request);
 }
 
-static void unlang_tmpl_exec_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void unlang_tmpl_exec_stdout_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	request_t				*request = uctx;
+	request_t			*request = uctx;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_tmpl_t);
-	ssize_t data_len;
-	char *p, *end;
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+	ssize_t				data_len, remaining;
+	fr_sbuff_marker_t		start_m;
 
-	p = state->ptr;
-	end = state->buffer + talloc_array_length(state->buffer);
+	fr_sbuff_marker(&start_m, &state->exec.stdout_buff);
 
-	data_len = read(state->fd, p, end - p);
-	if (data_len < 0) {
-		if (errno == EINTR) return;
+	do {
+		/*
+		 *	Read in 128 byte chunks
+		 */
+		remaining = fr_sbuff_extend_lowat(NULL, &state->exec.stdout_buff, 128);
 
-		REDEBUG("Error reading from child program - %s", fr_syserror(errno));
-		unlang_tmpl_exec_cleanup(request);
-		unlang_interpret_mark_resumable(request);
-		return;
-	}
+		/*
+		 *	Ran out of buffer space.
+		 */
+		if (unlikely(!remaining)) {
+			REDEBUG("Too much output from program - killing it and failing the request");
 
-	p += data_len;
+			if (state->exec.pid > 0) kill(state->exec.pid, SIGKILL);
+
+		error:
+			state->exec.failed = true;
+			unlang_tmpl_exec_cleanup(request);
+			break;
+		}
+
+		data_len = read(fd,
+				fr_sbuff_current(&state->exec.stdout_buff),
+				remaining);
+		if (data_len < 0) {
+			if (errno == EINTR) continue;
+
+			REDEBUG("Error reading from child program - %s", fr_syserror(errno));
+			goto error;
+		}
+
+		/*
+		 *	Event if we get 0 now the process
+		 *	may write more data later before
+		 *	it completes, so we leave the fd
+		 *	handlers in place.
+		 */
+		if (data_len == 0) break;
+
+		fr_sbuff_advance(&state->exec.stdout_buff, data_len);
+	} while (remaining == data_len);	/* If process returned maximum output, loop again */
 
 	/*
-	 *	Done reading, close the pipe.  We still wait for the
-	 *	caller to exit, so that we can get it's exit code.
+	 *	Only print if we got additional data
 	 */
-	if (data_len == 0) goto close_pipe;
-
-	/*
-	 *	Ran out of buffer space.  Kill the process and discard
-	 *	all output.  We destroy the output so that we don't
-	 *	return truncated data to the caller.  We also destroy
-	 *	the timer which waits for the exit code.  We no longer
-	 *	care about it.
-	 */
-	if (p >= end) {
-		fr_assert(state->ev != NULL);
-		fr_event_timer_delete(&state->ev);
-		state->ptr = state->buffer;
-
-		REDEBUG("Too much output from program - killing it and failing the request");
-		kill(state->pid, SIGKILL);
-		state->failed = true;
-
-	close_pipe:
-		(void) fr_event_fd_delete(request->el, state->fd, FR_EVENT_FILTER_IO);
-		close(state->fd);
-		state->fd = -1;
-		return;
+	if (RDEBUG_ENABLED2 && fr_sbuff_behind(&start_m)) {
+		RDEBUG2("pid %u (stdout) - %pV",
+			state->exec.pid,
+			fr_box_strvalue_len(fr_sbuff_current(&start_m),
+					    fr_sbuff_behind(&start_m)));
 	}
 
-	fr_assert(p < end);
-	state->ptr = p;
+	fr_sbuff_marker_release(&start_m);
 }
 
 static void unlang_tmpl_exec_timeout(
@@ -262,7 +283,7 @@ static void unlang_tmpl_exec_timeout(
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	fr_assert(state->pid > 0);
+	fr_assert(state->exec.pid > 0);
 
 #ifdef __linux__
 	int status;
@@ -272,19 +293,19 @@ static void unlang_tmpl_exec_timeout(
 	 *	program has exited, and we haven't noticed.  In which
 	 *	case, do a graceful cleanup.
 	 */
-	if (waitpid(state->pid, &status, WNOHANG) == state->pid) {
-		unlang_tmpl_exec_waitpid(el, state->pid, status, request);
+	if (waitpid(state->exec.pid, &status, WNOHANG) == state->exec.pid) {
+		unlang_tmpl_exec_waitpid(el, state->exec.pid, status, request);
 		return;
 	}
 #endif
 
-	if (state->fd < 0) {
+	if (state->exec.stdout_fd < 0) {
 		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
 	} else {
 		REDEBUG("Timeout running program - killing it and failing the request");
 	}
-	kill(state->pid, SIGKILL);
-	state->failed = true;
+	kill(state->exec.pid, SIGKILL);
+	state->exec.failed = true;
 
 	unlang_tmpl_exec_cleanup(request);
 	unlang_interpret_mark_resumable(request);
@@ -316,8 +337,6 @@ static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *requ
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-
-
 /** Wrapper to call exec after the program has finished executing
  *
  */
@@ -333,25 +352,25 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 *	The exec failed for some internal reason.  We don't
 	 *	care about output, and we don't care about the programs exit status.
 	 */
-	if (state->failed) {
+	if (state->exec.failed) {
 		fr_dlist_talloc_free(&state->box);
 		goto resume;
 	}
 
-	fr_assert(state->pid == 0);
+	fr_assert(state->exec.pid == 0);
 
-	if (state->status != 0) {
-		if (WIFEXITED(state->status)) {
-			RDEBUG("Program failed with status code %d", WEXITSTATUS(state->status));
-			state->status = WEXITSTATUS(state->status);
+	if (state->exec.status != 0) {
+		if (WIFEXITED(state->exec.status)) {
+			RDEBUG("Program failed with status code %d", WEXITSTATUS(state->exec.status));
+			state->exec.status = WEXITSTATUS(state->exec.status);
 
-		} else if (WIFSIGNALED(state->status)) {
-			RDEBUG("Program exited due to signal with status code %d", WTERMSIG(state->status));
-			state->status = -WTERMSIG(state->status);
+		} else if (WIFSIGNALED(state->exec.status)) {
+			RDEBUG("Program exited due to signal with status code %d", WTERMSIG(state->exec.status));
+			state->exec.status = -WTERMSIG(state->exec.status);
 
 		} else {
-			RDEBUG("Program exited due to unknown status %d", state->status);
-			state->status = -state->status;
+			RDEBUG("Program exited due to unknown status %d", state->exec.status);
+			state->exec.status = -state->exec.status;
 		}
 
 		fr_assert(fr_dlist_empty(&state->box));
@@ -361,7 +380,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	/*
 	 *	Save the *mangled* exit status, not the raw one.
 	 */
-	if (state->status_p) *state->status_p = state->status;
+	if (state->exec.status_p) *state->exec.status_p = state->exec.status;
 
 	/*
 	 *	We might want to just get the status of the program,
@@ -376,24 +395,13 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		/*
 		 *	Remove any trailing LF / CR
 		 */
-		if (state->ptr > state->buffer) {
-			char *p = state->ptr;
-
-			while (p > state->buffer) {
-				if (p[-1] < ' ') {
-					p--;
-					continue;
-				}
-
-				break;
-			}
-			state->ptr = p;
-		}
+		fr_sbuff_trim(&state->exec.stdout_buff, sbuff_char_line_endings);
 
 		fr_value_box_list_init(&state->box);
 		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
 		if (fr_value_box_from_str(state->ctx, box, &type, NULL,
-					  state->buffer, state->ptr - state->buffer, 0, true) < 0) {
+					  fr_sbuff_buff(&state->exec.stdout_buff),
+					  fr_sbuff_used(&state->exec.stdout_buff), 0, true) < 0) {
 			talloc_free(box);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
@@ -418,33 +426,32 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 	pid_t				pid;
-	int				*fd_p = NULL;
+	int				*stdout_fd = NULL;
 
-	/*
-	 *	@todo - if there's no state->out, then we don't need
-	 *	to have an FD, and we don't need to have a buffer.
-	 */
-	state->fd = -1;
-	if (state->out) fd_p = &state->fd;
+	state->exec.stdout_fd = -1;
+	state->exec.stderr_fd = -1;
+	if (state->out || RDEBUG_ENABLED2) stdout_fd = &state->exec.stdout_fd;
 
-	if (fr_exec_wait_start(request, &state->box, state->vps, &pid, NULL, fd_p) < 0) {
+	if (fr_exec_wait_start(&pid, NULL, stdout_fd, &state->exec.stderr_fd,
+			       request, &state->box, state->exec.vps) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
+		unlang_tmpl_exec_cleanup(request);
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	fr_dlist_talloc_free(&state->box); /* this is the xlat expansion, and not the output string we want */
 
-	state->pid = pid;
-	state->status = -1;	/* default to program didn't work */
+	state->exec.pid = pid;
+	state->exec.status = -1;	/* default to program didn't work */
 
 	/*
 	 *	Tell the event loop that it needs to wait for this PID.
 	 */
-	if (fr_event_pid_wait(state, request->el, &state->ev_pid, pid,
+	if (fr_event_pid_wait(state, request->el, &state->exec.ev_pid, pid,
 			      unlang_tmpl_exec_waitpid, request) < 0) {
-		state->pid = 0;
+		state->exec.pid = 0;
 		RPEDEBUG("Failed adding watcher for child process");
 		unlang_tmpl_exec_cleanup(request);
 		goto fail;
@@ -455,23 +462,67 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	 *
 	 *	@todo - make the timeout configurable
 	 */
-	if (fr_event_timer_in(state->ctx, request->el, &state->ev, fr_time_delta_from_sec(10), unlang_tmpl_exec_timeout, request) < 0) {
+	if (fr_event_timer_in(state->ctx, request->el, &state->exec.ev,
+			      fr_time_delta_from_sec(EXEC_TIMEOUT), unlang_tmpl_exec_timeout, request) < 0) {
 		unlang_tmpl_exec_cleanup(request);
 		goto fail;
 	}
 
 	/*
-	 *	If the caller doesn't want the output box, we can just skip reading from the FD.
+	 *	If we need to parse stdout, insert a
+	 *	special IO handler that aggregates all
+	 *	stdout data into an expandable buffer.
 	 */
-	if (state->fd >= 0) {
-		if (fr_event_fd_insert(state->ctx, request->el, state->fd, unlang_tmpl_exec_read, NULL, NULL, request) < 0) {
+	if (state->out) {
+		if (fr_event_fd_insert(state->ctx, request->el, state->exec.stdout_fd,
+				       unlang_tmpl_exec_stdout_read, NULL, NULL, request) < 0) {
 			RPEDEBUG("Failed adding event");
-			unlang_tmpl_exec_cleanup(request);
 			goto fail;
 		}
 
-		MEM(state->buffer = talloc_array(state, char, 1024));
-		state->ptr = state->buffer;
+		/*
+		 *	Accept a maximum of 32k of
+		 *	data from the process.
+		 */
+		fr_sbuff_init_talloc(state, &state->exec.stdout_buff, &state->exec.stdout_tctx, 128, 32 * 1024);
+		fr_value_box_list_init(&state->box);
+
+	/*
+	 *	If the caller doesn't want the output box,
+	 *	we still want to copy stdout into the
+	 *	request log if we're logging at a high
+	 *	enough level of verbosity.
+	 */
+	} else if (RDEBUG_ENABLED2) {
+		state->exec.stdout_uctx = (log_fd_event_ctx_t){
+			.type = L_DBG,
+			.lvl = L_DBG_LVL_2,
+			.request = request,
+			.prefix = fr_asprintf(state, "pid %u (stdout)", state->exec.pid)
+		};
+
+		if (fr_event_fd_insert(state->ctx, request->el, state->exec.stdout_fd,
+				       log_request_fd_event, NULL, NULL, &state->exec.stdout_uctx) < 0) {
+			RPEDEBUG("Failed adding event");
+			goto fail;
+		}
+	}
+
+	/*
+	 *	Send stderr to the request log as
+	 *	error messages with a custom prefix
+	 */
+	state->exec.stderr_uctx = (log_fd_event_ctx_t){
+		.type = L_DBG_ERR,
+		.lvl = L_DBG_LVL_1,
+		.request = request,
+		.prefix = fr_asprintf(state, "pid %u (stderr)", state->exec.pid)
+	};
+
+	if (fr_event_fd_insert(state->ctx, request->el, state->exec.stderr_fd,
+			       log_request_fd_event, NULL, NULL, &state->exec.stderr_uctx) < 0) {
+		RPEDEBUG("Failed adding event");
+		goto fail;
 	}
 
 	frame->process = unlang_tmpl_exec_wait_final;
@@ -488,7 +539,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, req
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	if (fr_exec_nowait(request, &state->box, state->vps) < 0) {
+	if (fr_exec_nowait(request, &state->box, state->exec.vps) < 0) {
 		RPEDEBUG("Failed executing program");
 		*p_result = RLM_MODULE_FAIL;
 

@@ -45,8 +45,8 @@ extern "C" {
 #ifdef __cplusplus
 extern "C" {
 #endif
-pid_t	radius_start_program(char const *cmd, request_t *request, bool exec_wait,
-			     int *input_fd, int *output_fd,
+pid_t	radius_start_program(int *stdin_fd, int *stdout_fd, int *stderr_fd,
+			     char const *cmd, request_t *request, bool exec_wait,
 			     fr_pair_list_t *input_pairs, bool shell_escape);
 
 int	radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
@@ -58,7 +58,8 @@ int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 
 int	fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
 
-int	fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd);
+int	fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
+			   request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
 
 void	fr_exec_waitpid(pid_t pid);
 

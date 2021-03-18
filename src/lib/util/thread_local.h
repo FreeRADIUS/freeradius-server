@@ -44,6 +44,8 @@ int fr_thread_local_atexit(fr_thread_local_atexit_t func, void const *uctx);
 
 int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uctx);
 
+void fr_thread_local_atexit_disarm_all(void);
+
 /** Set a destructor for thread local storage to free the memory on thread exit
  *
  * @note Pointers to thread local storage seem to become unusable as threads are

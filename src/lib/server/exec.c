@@ -55,6 +55,42 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
+/** Flatten a list into individual "char *" argv-style array
+ *
+ * @param[in] ctx	to allocate boxes in.
+ * @param[out] argv_p	where output strings go
+ * @param[in] in	boxes to flatten
+ * @return
+ *	- >= 0 number of array elements in argv
+ *	- <0 on error
+ */
+static int fr_exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
+{
+	char		**argv;
+	fr_value_box_t	*vb = NULL;
+	unsigned int	i = 0;
+	size_t		argc = fr_value_box_list_len(in);
+
+	argv = talloc_zero_array(ctx, char *, argc + 1);
+	if (!argv) return -1;
+
+	while ((vb = fr_dlist_next(in, vb))) {
+		/*
+		 *	Print the children of each group into the argv array.
+		 */
+		argv[i] = fr_value_box_list_aprint(argv, &vb->vb_group, NULL, NULL);
+		if (!argv[i]) {
+			talloc_free(argv);
+			return -1;
+		}
+		i++;
+	}
+
+	*argv_p = argv;
+
+	return argc;
+}
+
 static void fr_exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs, char **envp, size_t envlen, bool shell_escape)
 {
 	char			*p;
@@ -124,8 +160,8 @@ static void fr_exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs,
  *	goes wrong, we exit with status 1.
  */
 static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **envp,
-					bool exec_wait, int *input_fd, int *output_fd,
-					int to_child[static 2], int from_child[static 2])
+					bool exec_wait,
+					int stdin_pipe[static 2], int stdout_pipe[static 2], int stderr_pipe[static 2])
 {
 	int devnull;
 
@@ -134,7 +170,7 @@ static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **
 	 */
 	devnull = open("/dev/null", O_RDWR);
 	if (devnull < 0) {
-		ERROR("Failed opening /dev/null: %s\n", fr_syserror(errno));
+		fprintf(stderr, "Failed opening /dev/null: %s\n", fr_syserror(errno));
 
 		/*
 		 *	Where the status code is interpreted as a module rcode
@@ -150,34 +186,41 @@ static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **
 	 *	has created them.
 	 */
 	if (exec_wait) {
-		if (input_fd) {
-			close(to_child[1]);
-			dup2(to_child[0], STDIN_FILENO);
+		if (stdin_pipe[1] >= 0) {
+			close(stdin_pipe[1]);
+			dup2(stdin_pipe[0], STDIN_FILENO);
 		} else {
 			dup2(devnull, STDIN_FILENO);
 		}
 
-		if (output_fd) {
-			close(from_child[0]);
-			dup2(from_child[1], STDOUT_FILENO);
+		if (stdout_pipe[1] >= 0) {
+			close(stdout_pipe[0]);
+			dup2(stdout_pipe[1], STDOUT_FILENO);
 		} else {
 			dup2(devnull, STDOUT_FILENO);
 		}
 
+		if (stderr_pipe[1] >= 0) {
+			close(stderr_pipe[0]);
+			dup2(stderr_pipe[1], STDERR_FILENO);
+		} else {
+			dup2(devnull, STDERR_FILENO);
+		}
 	} else {	/* no pipe, STDOUT should be /dev/null */
 		dup2(devnull, STDIN_FILENO);
 		dup2(devnull, STDOUT_FILENO);
+
+		/*
+		 *	If we're not debugging, then we can't do
+		 *	anything with the error messages, so we throw
+		 *	them away.
+		 *
+		 *	If we are debugging, then we want the error
+		 *	messages to go to the STDERR of the server.
+		 */
+		if (!request || !RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
 	}
 
-	/*
-	 *	If we're not debugging, then we can't do
-	 *	anything with the error messages, so we throw
-	 *	them away.
-	 *
-	 *	If we are debugging, then we want the error
-	 *	messages to go to the STDERR of the server.
-	 */
-	if (!request || !RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
 	close(devnull);
 
 	/*
@@ -185,7 +228,15 @@ static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **
 	 *	want to leave dangling FD's for the child process
 	 *	to play funky games with, so we close them.
 	 */
-	closefrom(3);
+	closefrom(STDERR_FILENO + 1);
+
+	/*
+	 *	Disarm the thread local destructors
+	 *
+	 *	FIXME - Leaving them enabled causes issues in child
+	 *	execd processes, but we should really track down why.
+	 */
+	fr_thread_local_atexit_disarm_all();
 
 	/*
 	 *	I swear the signature for execve is wrong and should
@@ -209,27 +260,34 @@ static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **
 
 /** Start a process
  *
- * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv
- *	part is xlat'ed.
- * @param request Current reuqest
- * @param exec_wait set to true to read from or write to child.
- * @param[in,out] input_fd pointer to int, receives the stdin file descriptor. Set to NULL
- *	and the child will have /dev/null on stdin.
- * @param[in,out] output_fd pinter to int, receives the stdout file descriptor. Set to NULL
- *	and child will have /dev/null on stdout.
- * @param input_pairs list of value pairs - these will be put into the environment variables
- *	of the child.
- * @param shell_escape values before passing them as arguments.
+ * @param[out] stdin_fd		pointer to int, receives the stdin file
+ *				descriptor. Set to NULL and the child
+ *				will have /dev/null on stdin.
+ * @param[out] stdout_fd	pointer to int, receives the stdout file
+ *				descriptor. Set to NULL and the child
+ *				will have /dev/null on stdout.
+ * @param[out] stderr_fd	pointer to int, receives the stderr file
+ *				descriptor. Set to NULL and the child
+ *				will have /dev/null on stderr.
+ * @param[in] cmd		Command to execute. This is parsed into argv[]
+ *				parts, then each individual argv part is
+ *				xlat'ed.
+ * @param[in] request		Current reuqest
+ * @param[in] exec_wait		set to true to read from or write to child.
+ * @param[in] input_pairs	list of value pairs - these will be put into
+ *				the environment variables of the child.
+ * @param[in] shell_escape	values before passing them as arguments.
  * @return
  *	- PID of the child process.
  *	- -1 on failure.
  */
-pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
-			   int *input_fd, int *output_fd,
+pid_t radius_start_program(int *stdin_fd, int *stdout_fd, int *stderr_fd,
+			   char const *cmd, request_t *request, bool exec_wait,
 			   fr_pair_list_t *input_pairs, bool shell_escape)
 {
-	int		to_child[2] = {-1, -1};
-	int		from_child[2] = {-1, -1};
+	int		stdin_pipe[2]  = {-1, -1};
+	int		stdout_pipe[2] = {-1, -1};
+	int		stderr_pipe[2] = {-1, -1};
 	pid_t		pid;
 	int		argc;
 	int		i;
@@ -260,19 +318,31 @@ pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 	 *	Open a pipe for child/parent communication, if necessary.
 	 */
 	if (exec_wait) {
-		if (input_fd) {
-			if (pipe(to_child) != 0) {
+		if (stdin_fd) {
+			if (pipe(stdin_pipe) != 0) {
 				ERROR("Couldn't open pipe to child: %s", fr_syserror(errno));
 				return -1;
 			}
 		}
-		if (output_fd) {
-			if (pipe(from_child) != 0) {
+		if (stdout_fd) {
+			if (pipe(stdout_pipe) != 0) {
 				ERROR("Couldn't open pipe from child: %s", fr_syserror(errno));
 				/* safe because these either need closing or are == -1 */
-				close(to_child[0]);
-				close(to_child[1]);
+			error:
+				close(stdin_pipe[0]);
+				close(stdin_pipe[1]);
+				close(stdout_pipe[0]);
+				close(stdout_pipe[1]);
+				close(stderr_pipe[0]);
+				close(stderr_pipe[1]);
 				return -1;
+			}
+		}
+		if (stderr_fd) {
+			if (pipe(stderr_pipe) != 0) {
+				ERROR("Couldn't open pipe from child: %s", fr_syserror(errno));
+
+				goto error;
 			}
 		}
 	}
@@ -283,7 +353,7 @@ pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 
 	pid = fork();
 	if (pid == 0) {
-		fr_exec_child(request, argv, envp, exec_wait, input_fd, output_fd, to_child, from_child);
+		fr_exec_child(request, argv, envp, exec_wait, stdin_pipe, stdout_pipe, stderr_pipe);
 	}
 
 	/*
@@ -296,14 +366,7 @@ pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 	 */
 	if (pid < 0) {
 		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
-		if (exec_wait) {
-			/* safe because these either need closing or are == -1 */
-			close(to_child[0]);
-			close(to_child[1]);
-			close(from_child[0]);
-			close(from_child[1]);
-		}
-		return -1;
+		if (exec_wait) goto error;
 	}
 
 	/*
@@ -315,15 +378,18 @@ pid_t radius_start_program(char const *cmd, request_t *request, bool exec_wait,
 		 *	return the ends of the pipe(s) our caller wants
 		 *
 		 */
-		if (input_fd) {
-			*input_fd = to_child[1];
-			close(to_child[0]);
+		if (stdin_fd) {
+			*stdin_fd = stdin_pipe[1];
+			close(stdin_pipe[0]);
 		}
-		if (output_fd) {
-			*output_fd = from_child[0];
-			close(from_child[1]);
+		if (stdout_fd) {
+			*stdout_fd = stdout_pipe[0];
+			close(stdout_pipe[1]);
 		}
-
+		if (stderr_fd) {
+			*stderr_fd = stderr_pipe[0];
+			close(stderr_pipe[1]);
+		}
 	} else {
 		(void) fr_event_pid_wait(request->el, request->el, NULL, pid, NULL, NULL);
 	}
@@ -470,7 +536,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 
 {
 	pid_t pid;
-	int from_child;
+	int stdout_pipe;
 	char *p;
 	pid_t child_pid;
 	int comma = 0;
@@ -482,7 +548,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 
 	if (out) *out = '\0';
 
-	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, input_pairs, shell_escape);
+	pid = radius_start_program(NULL, &stdout_pipe, NULL, cmd, request, exec_wait, input_pairs, shell_escape);
 	if (pid < 0) {
 		return -1;
 	}
@@ -491,11 +557,11 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 		return 0;
 	}
 
-	len = radius_readfrom_program(from_child, pid, timeout, answer, sizeof(answer));
+	len = radius_readfrom_program(stdout_pipe, pid, timeout, answer, sizeof(answer));
 	if (len < 0) {
 		/*
 		 *	Failure - radius_readfrom_program will
-		 *	have called close(from_child) for us
+		 *	have called close(stdout_pipe) for us
 		 */
 		RERROR("Failed to read from child output");
 		return -1;
@@ -507,7 +573,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_
 	 *	Make sure that the writer can't block while writing to
 	 *	a pipe that no one is reading from anymore.
 	 */
-	close(from_child);
+	close(stdout_pipe);
 
 	if (len == 0) {
 		goto wait;
@@ -637,7 +703,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_lis
 		envp[0] = NULL;
 	}
 
-	argc = fr_value_box_list_flatten_argv(request, &argv, vb_list);
+	argc = fr_exec_value_box_list_to_argv(request, &argv, vb_list);
 	if (argc < 0) {
 		talloc_free(envp);
 		return -1;
@@ -657,7 +723,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_lis
 	if (pid == 0) {
 		int unused[2];
 
-		fr_exec_child(request, argv, envp, false, NULL, NULL, unused, unused);
+		fr_exec_child(request, argv, envp, false, unused, unused, unused);
 	}
 
 	/*
@@ -687,12 +753,13 @@ int fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_lis
  *  The caller takes responsibility for reading from the returned FD,
  *  and closing it.
  *
- * @param request	the request
- * @param vb_list	as returned by xlat_frame_eval()
- * @param env_pairs	VPs to put into into the environment.  May be NULL.
- * @param[out] pid_p	The PID of the child
- * @param[out] input_fd	The stdin FD of the child
- * @param[out] output_fd  The stdout FD of the child
+ * @param[out] pid_p		The PID of the child
+ * @param[out] stdin_fd		The stdin FD of the child.
+ * @param[out] stdout_fd 	The stdout FD of the child.
+ * @param[out] stderr_fd 	The stderr FD of the child.
+ * @param[in] request		the request
+ * @param[in] vb_list		as returned by xlat_frame_eval()
+ * @param[in] env_pairs		VPs to put into into the environment.  May be NULL.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -701,15 +768,17 @@ int fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_lis
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs, pid_t *pid_p, int *input_fd, int *output_fd)
+int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
+		       request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs)
 {
 	int		argc;
 	char		**envp;
 	char		**argv;
 	pid_t		pid;
 	fr_value_box_t	*first;
-	int		to_child[2] = {-1, -1};
-	int		from_child[2] = {-1, -1};
+	int		stdin_pipe[2] = {-1, -1};
+	int		stderr_pipe[2] = {-1, -1};
+	int		stdout_pipe[2] = {-1, -1};
 
 	/*
 	 *	Ensure that we don't do anything stupid.
@@ -732,7 +801,7 @@ int fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair
 		envp[0] = NULL;
 	}
 
-	argc = fr_value_box_list_flatten_argv(request, &argv, vb_list);
+	argc = fr_exec_value_box_list_to_argv(request, &argv, vb_list);
 	if (argc < 0) {
 	error:
 		talloc_free(envp);
@@ -745,8 +814,8 @@ int fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair
 		for (i = 0; i < argc; i++) RDEBUG3("arg[%d] %s", i, argv[i]);
 	}
 
-	if (input_fd) {
-		if (pipe(to_child) < 0) {
+	if (stdin_fd) {
+		if (pipe(stdin_pipe) < 0) {
 		error2:
 			fr_strerror_const_push("Failed opening pipe to read to child");
 			talloc_free(argv);
@@ -754,13 +823,20 @@ int fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair
 		}
 	}
 
-	if (output_fd) {
-		if (pipe(from_child) < 0) {
-			if (input_fd) {
-				close(to_child[0]);
-				close(to_child[1]);
-			}
+	if (stdout_fd) {
+		if (pipe(stdout_pipe) < 0) {
+		error3:
+			close(stdin_pipe[0]);
+			close(stdin_pipe[1]);
 			goto error2;
+		}
+	}
+
+	if (stderr_fd) {
+		if (pipe(stderr_pipe) < 0) {
+			close(stdout_pipe[0]);
+			close(stdout_pipe[1]);
+			goto error3;
 		}
 	}
 
@@ -769,9 +845,7 @@ int fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair
 	/*
 	 *	The child never returns from calling fr_exec_child();
 	 */
-	if (pid == 0) {
-		fr_exec_child(request, argv, envp, true, input_fd, output_fd, to_child, from_child);
-	}
+	if (pid == 0) fr_exec_child(request, argv, envp, true, stdin_pipe, stdout_pipe, stderr_pipe);
 
 	/*
 	 *	Parent process.  Do all necessary cleanups.
@@ -780,14 +854,12 @@ int fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair
 
 	if (pid < 0) {
 		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
-		if (input_fd) {
-			close(to_child[0]);
-			close(to_child[1]);
-		}
-		if (output_fd) {
-			close(from_child[0]);
-			close(from_child[1]);
-		}
+		close(stdin_pipe[0]);
+		close(stdin_pipe[1]);
+		close(stdout_pipe[0]);
+		close(stdout_pipe[1]);
+		close(stderr_pipe[0]);
+		close(stderr_pipe[1]);
 		talloc_free(argv);
 		return -1;
 	}
@@ -798,15 +870,21 @@ int fr_exec_wait_start(request_t *request, fr_value_box_list_t *vb_list, fr_pair
 	 */
 	*pid_p = pid;
 
-	if (input_fd) {
-		*input_fd = to_child[1];
-		close(from_child[0]);
+	if (stdin_fd) {
+		*stdin_fd = stdin_pipe[1];
+		close(stdout_pipe[0]);
 	}
 
-	if (output_fd) {
-		*output_fd = from_child[0];
-		fr_nonblock(*output_fd);
-		close(from_child[1]);
+	if (stdout_fd) {
+		*stdout_fd = stdout_pipe[0];
+		fr_nonblock(*stdout_fd);
+		close(stdout_pipe[1]);
+	}
+
+	if (stderr_fd) {
+		*stderr_fd = stderr_pipe[0];
+		fr_nonblock(*stderr_fd);
+		close(stderr_pipe[1]);
 	}
 
 	return 0;

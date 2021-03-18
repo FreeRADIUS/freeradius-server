@@ -242,6 +242,7 @@ extern bool const sbuff_char_class_float[UINT8_MAX + 1];
 extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
 extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
 extern bool const sbuff_char_whitespace[UINT8_MAX + 1];
+extern bool const sbuff_char_line_endings[UINT8_MAX + 1];
 extern bool const sbuff_char_blank[UINT8_MAX + 1];
 
 /** Matches a-z,A-Z
@@ -280,6 +281,15 @@ extern bool const sbuff_char_blank[UINT8_MAX + 1];
 	['f'] = true, \
 	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true,	['E'] = true, \
 	['F'] = true
+
+#define SBUFF_CHAR_CLASS_SYMBOLS \
+	['!'] = true, ['"'] = true, ['#'] = true, ['$'] = true, ['%'] = true, \
+	['&'] = true, ['/'] = true, ['('] = true, [')'] = true, ['*'] = true, \
+	['+'] = true, ['`'] = true, ['-'] = true, ['.'] = true, ['/'] = true, \
+	[':'] = true, [';'] = true, ['<'] = true, ['='] = true, ['>'] = true, \
+	['?'] = true, ['@'] = true, ['['] = true, ['\''] = true, [']'] = true, \
+	['^'] = true, ['_'] = true, ['`'] = true, ['{'] = true, ['|'] = true, \
+	['}'] = true, ['~'] = true \
 
 /*
  * If the additional tables need to be generated feel free to use this
@@ -1167,8 +1177,6 @@ ssize_t	fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 ssize_t	fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_escape_rules_t const *e_rules);
 #define	FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(...)	FR_SBUFF_RETURN(fr_sbuff_in_escape_buffer, ##__VA_ARGS__)
 
-size_t fr_sbuff_in_trim(fr_sbuff_t *sbuff, char c);
-
 /** Lookup a string in a table using an integer value, and copy it to the sbuff
  *
  * @param[out] _slen	Where to write the return value.
@@ -1431,6 +1439,13 @@ static inline char fr_sbuff_next(fr_sbuff_t *sbuff)
 	if (!fr_sbuff_extend(sbuff)) return '\0';
 	return fr_sbuff_advance(sbuff, 1);
 }
+/** @} */
+
+/** @name Remove chars from a buffer and re-terminate
+ *
+ * @{
+ */
+size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1]);
 /** @} */
 
 /** @name Conditions

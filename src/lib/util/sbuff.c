@@ -74,6 +74,11 @@ bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
 bool const sbuff_char_whitespace[UINT8_MAX + 1] = {
 	['\t'] = true, ['\n'] = true, ['\r'] = true, ['\f'] = true, ['\v'] = true, [' '] = true,
 };
+
+bool const sbuff_char_line_endings[UINT8_MAX + 1] = {
+	['\n'] = true, ['\r'] = true
+};
+
 bool const sbuff_char_blank[UINT8_MAX + 1] = {
 	['\t'] = true, [' '] = true,
 };
@@ -169,7 +174,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 
 	CHECK_SBUFF_INIT(sbuff);
 
-#define update_ptr(_buff, _shift, _field) _field = ((_field) - (_shift)) <= (_buff) ? (_buff) : ((_field) - (_shift))
+#define update_ptr(_buff, _shift, _field) _field = (size_t)((_field) - (_buff)) < (_shift) ? (_buff) : ((_field) - (_shift))
 #define update_max_shift(_buff, _max_shift, _field) if (((_buff) + (_max_shift)) > (_field)) _max_shift -= (((_buff) + (_max_shift)) - (_field))
 
 	buff = sbuff->buff;
@@ -214,6 +219,8 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 
 		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(buff, max_shift, m_i->p);
 	}
+
+//	memmove(sbuff->buff, sbuff->buff + max_shift, max_shift);
 
 	if (reterminate) *sbuff->p = '\0';
 
@@ -1521,25 +1528,6 @@ ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_es
 	return fr_sbuff_in_escape(sbuff, in, talloc_array_length(in) - 1, e_rules);
 }
 
-/** Trim trailing characters from a string we're composing
- *
- * @param[in] sbuff		to trim trailing characters from.
- * @param[in] c			to trim.
- * @return how many chars we removed.
- */
-size_t fr_sbuff_in_trim(fr_sbuff_t *sbuff, char c)
-{
-	char	*p = sbuff->p - 1;
-	ssize_t	slen;
-
-	while ((p > sbuff->start) && (*p == c)) p--;
-
-	slen = fr_sbuff_set(sbuff, p + 1);
-	if (sbuff != 0) fr_sbuff_terminate(sbuff);
-
-	return slen;
-}
-
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
  *
  * @param[in] sbuff		to search in.
@@ -1921,6 +1909,24 @@ bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)
 	return true;
 }
 
+/** Trim trailing characters from a string we're composing
+ *
+ * @param[in] sbuff		to trim trailing characters from.
+ * @param[in] to_trim		Charset to trim.
+ * @return how many chars we removed.
+ */
+size_t fr_sbuff_trim(fr_sbuff_t *sbuff, bool const to_trim[static UINT8_MAX + 1])
+{
+	char	*p = sbuff->p - 1;
+	ssize_t	slen;
+
+	while ((p >= sbuff->start) && to_trim[(uint8_t)*p]) p--;
+
+	slen = fr_sbuff_set(sbuff, p + 1);
+	if (slen != 0) fr_sbuff_terminate(sbuff);
+
+	return slen;
+}
 
 /** Efficient terminal string search
  *

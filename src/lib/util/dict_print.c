@@ -69,7 +69,7 @@ ssize_t fr_dict_print_flags(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t ty
 					  fr_table_str_by_value(date_precision_table, flags->type_size, "?"));
 	}
 
-	fr_sbuff_in_trim(&our_out, ',');
+	fr_sbuff_trim(&our_out, (bool[UINT8_MAX + 1]){ [','] = true });
 
 	return fr_sbuff_set(out, &our_out);
 }

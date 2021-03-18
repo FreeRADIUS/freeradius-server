@@ -753,7 +753,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		 * Start up ntlm_auth with a pipe on stdin and stdout
 		 */
 
-		pid = radius_start_program(inst->ntlm_cpw, request, true, &to_child, &from_child, NULL, false);
+		pid = radius_start_program(&to_child, &from_child, NULL, inst->ntlm_cpw, request, true, NULL, false);
 		if (pid < 0) {
 			REDEBUG("could not exec ntlm_auth cpw command");
 			return -1;

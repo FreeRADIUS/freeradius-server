@@ -231,6 +231,8 @@ int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uct
 {
 	fr_exit_handler_entry_t *e = NULL;
 
+	if (!thread_local_atexit) return -1;
+
 	while ((e = fr_dlist_next(&thread_local_atexit->head, e))) {
 		if ((e->func == func) && (e->uctx == uctx)) {
 			fr_dlist_remove(&thread_local_atexit->head, e);
@@ -241,5 +243,17 @@ int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uct
 	}
 
 	return -1;
+}
+
+void fr_thread_local_atexit_disarm_all(void)
+{
+	fr_exit_handler_entry_t *e = NULL;
+
+	if (!thread_local_atexit) return;
+
+	while ((e = fr_dlist_pop_head(&thread_local_atexit->head))) {
+		talloc_set_destructor(e, NULL);
+		talloc_free(e);
+	}
 }
 
