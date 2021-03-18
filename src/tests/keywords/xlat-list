@@ -33,7 +33,7 @@ if ("%{control[*]}" != '192.0.2.1,192.0.2.2') {
 update request {
 	&Tmp-IP-Address-1 += "%{control[1]}"
 	&Tmp-IP-Address-1 += "%{control[0]}"
-	&Tmp-String-0 = "%{concat:,%{control[*]}}"
+	&Tmp-String-0 = "%(concat:%{control[*]} ,)"
 	&Tmp-Integer-0 = "%{control[#]}"
 }
 

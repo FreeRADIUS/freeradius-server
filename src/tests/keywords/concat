@@ -8,8 +8,11 @@ update {
 }
 
 update {
-	&request.Tmp-String-1 := "%{concat:, %{request[*]}}"
-	&request.Tmp-String-2 := "%{concat:, %{Tmp-String-0[*]}}"
+	&request.Tmp-String-1 := "%(concat:%{request[*]} ', ')"
+	&request.Tmp-String-2 := "%(concat:%{Tmp-String-0[*]} ', ')"
+	&request.Tmp-String-3 := "%(concat:%{Tmp-String-0[*]})"
+	&request.Tmp-String-4 := "%(concat:%{Tmp-String-0[*]} ,)"
+	&request.Tmp-String-5 := "%(concat:%{Tmp-String-0[*]} |-)"
 }
 
 if (&request.Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
@@ -17,6 +20,21 @@ if (&request.Tmp-String-1 != "bob, hello, ab c, de fg, 123") {
 }
 
 if (&request.Tmp-String-2 != "ab c, de fg") {
+	test_fail
+}
+
+# Empty separator
+if (&request.Tmp-String-3 != "ab cde fg") {
+	test_fail
+}
+
+# Single character separator
+if (&request.Tmp-String-4 != "ab c,de fg") {
+	test_fail
+}
+
+# Multi character separator not delimited
+if (&request.Tmp-String-5 !="ab c|-de fg") {
 	test_fail
 }
 

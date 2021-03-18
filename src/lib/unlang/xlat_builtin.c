@@ -1862,15 +1862,22 @@ finish:
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_concat_args[] = {
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
-/** Concatenate values of given attributes using separator
+/** Concatenate string representation of values of given attributes using separator
  *
- * First char of xlat is the separator, followed by attributes
+ * First argument of is the list of attributes to concatenate, followed
+ * by an optional separator
  *
  * Example:
 @verbatim
-"%{concat:, %{User-Name}%{Calling-Station-Id}" == "bob, aa:bb:cc:dd:ee:ff"
-"%{concat:, %{request[*]}" == "<attr1value>, <attr2value>, <attr3value>, ..."
+"%(concat:%{request[*]} ,)" == "<attr1value>,<attr2value>,<attr3value>,..."
+"%(concat:%{Tmp-String-0[*]} '. ')" == "<str1value>. <str2value>. <str3value>. ..."
+"%(concat:%(join:%{User-Name} %{Calling-Station-Id}) ', ')" == "bob, aa:bb:cc:dd:ee:ff"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1880,43 +1887,24 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      fr_value_box_list_t *in)
 {
 	fr_value_box_t	*result;
-	fr_value_box_t	*separator;
+	fr_value_box_t	*list = fr_dlist_head(in);
+	fr_value_box_t	*separator = fr_dlist_next(in, list);
 	char		*buff;
 	char const	*sep;
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (fr_dlist_empty(in)) return XLAT_ACTION_DONE;
+	sep = (separator) ? separator->vb_strvalue : "";
 
-	/*
-	 * Separator is first value box
-	 */
-	separator = fr_dlist_pop_head(in);
-
-	if (!separator) {
-		REDEBUG("Missing separator for concat xlat");
-		return XLAT_ACTION_FAIL;
-	}
-
-	sep = separator->vb_strvalue;
-
-	result = fr_value_box_alloc_null(ctx);
+	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
 	if (!result) {
 	error:
 		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_aprint(result, in, sep, NULL);
+	buff = fr_value_box_list_aprint(result, &list->vb_group, sep, NULL);
 	if (!buff) goto error;
 
 	fr_value_box_bstrdup_buffer_shallow(NULL, result, NULL, buff, fr_value_box_list_tainted(in));
-
-	/*
-	 *	Return separator to the start of the vb list
-	 */
-	fr_dlist_insert_head(in, separator);
 
 	fr_dcursor_append(out, result);
 
@@ -2036,6 +2024,31 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNU
 	return xlat_hmac(ctx, out, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
 }
 
+static xlat_arg_parser_t const xlat_func_join_args[] = {
+	{ .required = true, .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Join a series of arguments to form a single list
+ *
+ */
+static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED request_t *request, UNUSED void const *xlat_inst,
+				    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+{
+	fr_value_box_t	*arg = NULL, *vb, *p;
+
+	while ((arg = fr_dlist_next(in, arg))) {
+		fr_assert(arg->type == FR_TYPE_GROUP);
+		vb = fr_dlist_head(&arg->vb_group);
+		while (vb) {
+			p = fr_dlist_remove(&arg->vb_group, vb);
+			fr_dcursor_append(out, vb);
+			vb = fr_dlist_next(&arg->vb_group, p);
+		}
+	}
+	return XLAT_ACTION_DONE;
+}
 
 /** Return the on-the-wire size of the boxes in bytes
  *
@@ -2802,15 +2815,15 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #ifdef HAVE_REGEX_PCRE2
 /** Perform regex substitution TODO CHECK
  *
- * Called when %{sub:} pattern begins with "/"
+ * Called when %(sub:) pattern begins with "/"
  *
 @verbatim
-%{sub:/<regex>/[flags] <replace> <subject>}
+%(sub:/<regex>/[flags] <replace> <subject>)
 @endverbatim
  *
  * Example: (User-Name = "foo")
 @verbatim
-"%{sub:/oo.*$/ un %{User-Name}}" == "fun"
+"%(sub:/oo.*$/ un %{User-Name})" == "fun"
 @endverbatim
  *
  * @see #xlat_func_sub
@@ -2822,49 +2835,27 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 fr_value_box_list_t *in)
 {
 	char const		*p, *q, *end;
-	char const		*regex, *rep, *subject;
+	char const		*regex;
 	char			*buff;
-	size_t			regex_len, rep_len, subject_len;
+	size_t			regex_len;
 	ssize_t			slen;
 	regex_t			*pattern;
 	fr_regex_flags_t	flags;
 	fr_value_box_t		*vb;
-	fr_value_box_t		*in_head = fr_dlist_head(in);
+	fr_value_box_t		*regex_vb = fr_dlist_head(in);
+	fr_value_box_t		*rep_vb = fr_dlist_next(in, regex_vb);
+	fr_value_box_t		*subject_vb = fr_dlist_next(in, rep_vb);
 
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (!in_head) {
-		REDEBUG("No input arguments");
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	p = in_head->vb_strvalue;
-	end = p + in_head->vb_length;
+	p = regex_vb->vb_strvalue;
+	end = p + regex_vb->vb_length;
 
 	if (p == end) {
 		REDEBUG("Regex must not be empty");
 		return XLAT_ACTION_FAIL;
 	}
 
-	/*
-	 *	Parse '/<regex>/'
-	 */
-	if (*p != '/') {
-		REDEBUG("Regex must start with '/'");
-		return XLAT_ACTION_FAIL;
-	}
-	p++;
-
+	p++;	/* Advance past '/' */
 	regex = p;
 
 	q = memchr(p, '/', end - p);
@@ -2879,44 +2870,13 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Parse '[flags]'
 	 */
-	q = memchr(p, ' ', end - p);
-	if (!q) {
-		REDEBUG("Missing replacement");
-		return XLAT_ACTION_FAIL;
-	}
-
 	memset(&flags, 0, sizeof(flags));
 
-	slen = regex_flags_parse(NULL, &flags, &FR_SBUFF_IN(p, q), NULL, true);
+	slen = regex_flags_parse(NULL, &flags, &FR_SBUFF_IN(p, end), NULL, true);
 	if (slen < 0) {
 		RPEDEBUG("Failed parsing regex flags");
 		return XLAT_ACTION_FAIL;
 	}
-
-	/*
-	 *	Parse ' <replace>'
-	 */
-	p += slen;
-
-	fr_assert(*p == ' ');
-
-	p++;	/* Skip space */
-	rep = p;
-
-	/*
-	 *	Parse ' <subject>'
-	 */
-	q = memchr(p, ' ', end - p);
-	if (!q) {
-		REDEBUG("Missing subject");
-		return XLAT_ACTION_FAIL;
-	}
-	rep_len = q - p;
-
-	p = q + 1;
-
-	subject = p;
-	subject_len = end - p;
 
 	/*
 	 *	Process the substitution
@@ -2928,13 +2888,14 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	if (regex_substitute(vb, &buff, 0, pattern, &flags,
-			     subject, subject_len, rep, rep_len, NULL) < 0) {
+			     subject_vb->vb_strvalue, subject_vb->vb_length,
+			     rep_vb->vb_strvalue, rep_vb->vb_length, NULL) < 0) {
 		RPEDEBUG("Failed performing substitution");
 		talloc_free(vb);
 		talloc_free(pattern);
 		return XLAT_ACTION_FAIL;
 	}
-	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, in_head->tainted);
+	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, subject_vb->tainted);
 
 	fr_dcursor_append(out, vb);
 
@@ -2945,15 +2906,22 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #endif
 
 
+static xlat_arg_parser_t const xlat_func_sub_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Perform regex substitution
  *
 @verbatim
-%{sub:<pattern> <replace> <subject>}
+%(sub:<pattern> <replace> <subject>)
 @endverbatim
  *
  * Example: (User-Name = "foobar")
 @verbatim
-"%{sub:oo un %{User-Name}}" == "funbar"
+"%(sub:oo un %{User-Name})" == "funbar"
 @endverbatim
  *
  * @see xlat_func_sub_regex
@@ -2975,34 +2943,12 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const		*pattern, *rep;
 	size_t			pattern_len, rep_len;
 
-	fr_value_box_t		*vb;
-	fr_value_box_t		*in_head = fr_dlist_head(in);
+	fr_value_box_t		*rep_vb, *subject_vb, *vb;
+	fr_value_box_t		*pattern_vb = fr_dlist_head(in);
 
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (!in_head) {
-		REDEBUG("No input arguments");
-		return XLAT_ACTION_FAIL;
-	}
+	pattern = pattern_vb->vb_strvalue;
 
-	/*
-	 *	Concatenate all input
-	 */
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	p = in_head->vb_strvalue;
-	end = p + in_head->vb_length;
-
-	if (p == end) {
-		REDEBUG("Substitution arguments must not be empty");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (*p == '/') {
+	if (*pattern == '/') {
 #ifdef HAVE_REGEX_PCRE2
 		return xlat_func_sub_regex(ctx, out, request, xlat_inst, xlat_thread_inst, in);
 #else
@@ -3013,33 +2959,22 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	/*
-	 *	Parse '<pattern> '
+	 *	Check for empty pattern
 	 */
-	q = memchr(p, ' ', end - p);
-	if (!q || (q == p)) {
-		REDEBUG("Missing pattern");
+	pattern_len = pattern_vb->vb_length;
+	if (pattern_len == 0) {
+		REDEBUG("Empty pattern");
 		return XLAT_ACTION_FAIL;
 	}
 
-	pattern = p;
-	pattern_len = q - p;
-	p = q + 1;
+	rep_vb = fr_dlist_next(in, pattern_vb);
+	rep = rep_vb->vb_strvalue;
+	rep_len = rep_vb->vb_length;
 
-	/*
-	 *	Parse '<replacement> '
-	 */
-	q = memchr(p, ' ', end - p);
-	if (!q) {
-		REDEBUG("Missing subject");
-		return XLAT_ACTION_FAIL;
-	}
-	rep = p;
-	rep_len = q - p;
-	p = q + 1;
+	subject_vb = fr_dlist_next(in, rep_vb);
+	p = subject_vb->vb_strvalue;
+	end = p + subject_vb->vb_length;
 
-	/*
-	 *	Parse '<subject>'
-	 */
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	vb_str = talloc_bstrndup(vb, "", 0);
 
@@ -3055,7 +2990,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p = q + pattern_len;
 	}
 
-	if (fr_value_box_bstrdup_buffer_shallow(vb, vb, NULL, vb_str, in_head->vb_strvalue) < 0) {
+	if (fr_value_box_bstrdup_buffer_shallow(vb, vb, NULL, vb_str, subject_vb->tainted) < 0) {
 		RPEDEBUG("Failed creating output box");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
@@ -3066,6 +3001,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+
 
 /** Change case of a string
  *
@@ -3346,6 +3282,8 @@ do { \
 
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
+	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
+	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
 
@@ -3358,7 +3296,6 @@ do { \
 	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, xlat_func_bin_arg);
-	xlat_register(NULL, "concat", xlat_func_concat, false);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, xlat_func_hex_arg);
 	xlat_register(NULL, "length", xlat_func_length, false);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
@@ -3393,7 +3330,7 @@ do { \
 
 	XLAT_REGISTER_MONO("string", xlat_func_string, xlat_func_string_arg);
 	XLAT_REGISTER_MONO("strlen", xlat_func_strlen, xlat_func_strlen_arg);
-	xlat_register(NULL, "sub", xlat_func_sub, false);
+	XLAT_REGISTER_ARGS("sub", xlat_func_sub, xlat_func_sub_args);
 	XLAT_REGISTER_MONO("tolower", xlat_func_tolower, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, xlat_func_urlquote_arg);

@@ -311,9 +311,9 @@ Failure in test at line /path/raddb/sites-enaled/default:231
 
 == String manipulation
 
-=== %{concat:<delim> <&ref:[idx]>}
+=== %(concat:<&ref:[idx]> <delim>)
 
-Used to join two or more attributes, separated by a delimiter.
+Used to join two or more attributes, separated by an optional delimiter.
 
 .Return: _string_
 
@@ -328,8 +328,8 @@ update {
 }
 
 update reply {
-    &Reply-Message += "%{concat:, %{control.Tmp-String-0[*]}}"
-    &Reply-Message += "%{concat:,%{control.Tmp-String-0[*]}}"
+    &Reply-Message += "%(concat:%{control.Tmp-String-0[*]} ', ')"
+    &Reply-Message += "%(concat:%{control.Tmp-String-0[*]} ,)"
 }
 ----
 
@@ -346,7 +346,7 @@ Split an attribute into multiple new attributes based on a delimiter.
 The original input attribute is removed, and is replaced with multiple
 attributes of the same name, but which contain the "exploded" values.
 
-This expansion is the opposite of `%{concat: ... }`.
+This expansion is the opposite of `%(concat: ... )`.
 
 .Return: _the number of total new attributes_.
 
@@ -961,7 +961,7 @@ if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
 The user@example.com { login=user, domain=example.com }
 ```
 
-### %{sub:/<regex>/[flags] <replace> <subject>}
+### %(sub:/<regex>/[flags] <replace> <subject>)
 
 Substitute text just as easily as it can match it, even using regex patterns.
 
@@ -975,7 +975,7 @@ update control {
     &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
 }
 update reply {
-    &Reply-Message := "%{sub:/ / , %{control.Tmp-String-0}}"
+    &Reply-Message := "%(sub:/ / , %{control.Tmp-String-0})"
 }
 ----
 

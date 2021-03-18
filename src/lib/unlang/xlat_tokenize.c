@@ -1337,7 +1337,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
 			.terminals = fr_sbuff_terminals_amerge(NULL, p_rules->terminals,
 							       tmpl_parse_rules_bareword_quoted.terminals),
-			.escapes = tmpl_parse_rules_bareword_quoted.escapes
+			.escapes = (p_rules->escapes ? p_rules->escapes : tmpl_parse_rules_bareword_quoted.escapes)
 		};
 		our_p_rules = &tmp_p_rules;
 	} else {
