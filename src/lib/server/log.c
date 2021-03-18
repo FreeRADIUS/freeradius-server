@@ -145,7 +145,7 @@ fr_table_num_sorted_t const syslog_severity_table[] = {
 #endif
 
 #ifdef LOG_CRIT
-	{ L("critical"),		LOG_CRIT	},
+	{ L("critical"),	LOG_CRIT	},
 #endif
 
 #ifdef LOG_DEBUG
@@ -153,7 +153,7 @@ fr_table_num_sorted_t const syslog_severity_table[] = {
 #endif
 
 #ifdef LOG_EMERG
-	{ L("emergency"),		LOG_EMERG	},
+	{ L("emergency"),	LOG_EMERG	},
 #endif
 
 #ifdef LOG_ERR
