@@ -1468,6 +1468,13 @@ static xlat_action_t xlat_func_pad(fr_dcursor_t *out, request_t *request,
 
 }
 
+static xlat_arg_parser_t const xlat_func_pad_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true, .single = true, .type = FR_TYPE_UINT64 },
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Left pad a string
  *
 @verbatim
