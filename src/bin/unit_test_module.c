@@ -531,6 +531,8 @@ static void request_run(fr_event_list_t *el, request_t *request)
 		}
 	};
 
+	DEBUG2("No more requests remaining");
+
 	/*
 	 *	We do NOT run detached child requests.  We just ignore
 	 *	them.
