@@ -2037,6 +2037,31 @@ static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return xlat_hmac(ctx, out, request, xlat_inst, xlat_thread_inst, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
 }
 
+static xlat_arg_parser_t const xlat_func_join_args[] = {
+	{ .required = true, .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Join a series of arguments to form a single list
+ *
+ */
+static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED request_t *request, UNUSED void const *xlat_inst,
+				    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+{
+	fr_value_box_t	*arg = NULL, *vb, *p;
+
+	while ((arg = fr_dlist_next(in, arg))) {
+		fr_assert(arg->type == FR_TYPE_GROUP);
+		vb = fr_dlist_head(&arg->vb_group);
+		while (vb) {
+			p = fr_dlist_remove(&arg->vb_group, vb);
+			fr_dcursor_append(out, vb);
+			vb = fr_dlist_next(&arg->vb_group, p);
+		}
+	}
+	return XLAT_ACTION_DONE;
+}
 
 /** Return the on-the-wire size of the boxes in bytes
  *
@@ -3346,6 +3371,7 @@ do { \
 } while (0)
 
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
+	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
 
