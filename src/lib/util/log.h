@@ -28,8 +28,9 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
-#include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/fopencookie.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <stdbool.h>
@@ -117,6 +118,19 @@ typedef struct {
 	char const		*subsq_prefix;	//!< Prefix for subsequent lines.
 } fr_log_perror_format_t;
 
+/** Context structure for the log fd event function
+ *
+ * This enables a file descriptor to be inserted into an event loop
+ * and produce log output.  It's useful for execd child processes
+ * and for capturing stdout/stderr from libraries.
+ */
+typedef struct {
+	fr_log_t const	*dst;		//!< Where to log to.
+	fr_log_type_t	type;		//!< What type of log message it is.
+	fr_log_lvl_t	lvl;		//!< Priority of the message.
+	char const	*prefix;	//!< To add to log messages.
+} fr_log_fd_event_ctx_t;
+
 extern fr_log_t default_log;
 extern bool fr_log_rate_limit;
 
@@ -162,6 +176,9 @@ void	fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 			  uint8_t const *data, size_t data_len,
 			  ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
 			  CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull (1, 3, 5, 8));
+
+void	fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
+
 #ifdef __cplusplus
 }
 #endif
