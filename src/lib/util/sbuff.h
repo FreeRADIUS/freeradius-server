@@ -366,38 +366,66 @@ do { \
 
 /** Prevent an sbuff being advanced as it's passed into a printing or parsing function
  *
- * @param[in] _sbuff	to make an ephemeral copy of.
+ * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_SBUFF_NO_ADVANCE(_sbuff) \
-((fr_sbuff_t){ \
-	.buff		= (_sbuff)->buff, \
-	.start		= (_sbuff)->p, \
-	.end		= (_sbuff)->end, \
-	.p		= (_sbuff)->p, \
-	.is_const	= (_sbuff)->is_const, \
-	.extend		= (_sbuff)->extend, \
-	.shifted	= (_sbuff)->shifted, \
-	.uctx		= (_sbuff)->uctx, \
-	.parent		= (_sbuff) \
-})
+#define FR_SBUFF_NO_ADVANCE(_sbuff_or_marker) \
+_Generic((_sbuff_or_marker), \
+	fr_sbuff_t *		: ((fr_sbuff_t){ \
+					.buff		= ((fr_sbuff_t *)(_sbuff_or_marker))->buff, \
+					.start		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
+					.end		= ((fr_sbuff_t *)(_sbuff_or_marker))->end, \
+					.p		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
+					.is_const	= ((fr_sbuff_t *)(_sbuff_or_marker))->is_const, \
+					.extend		= ((fr_sbuff_t *)(_sbuff_or_marker))->extend, \
+					.shifted	= ((fr_sbuff_t *)(_sbuff_or_marker))->shifted, \
+					.uctx		= ((fr_sbuff_t *)(_sbuff_or_marker))->uctx, \
+					.parent		= ((fr_sbuff_t *)(_sbuff_or_marker)) \
+			 	  }), \
+	fr_sbuff_marker_t *	: ((fr_sbuff_t){ \
+					.buff		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->buff, \
+					.start		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
+					.end		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->end, \
+					.p		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
+					.is_const	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->is_const, \
+					.extend		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->extend, \
+					.shifted	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->shifted, \
+					.uctx		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->uctx, \
+					.parent		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent \
+				  }) \
+)
+
 
 /** Copy all fields in an sbuff
  *
  * @param[in] _sbuff	to make an ephemeral copy of.
  */
-#define FR_SBUFF_COPY(_sbuff) \
-((fr_sbuff_t){ \
-	.buff		= (_sbuff)->buff, \
-	.start		= (_sbuff)->p, \
-	.end		= (_sbuff)->end, \
-	.p		= (_sbuff)->p, \
-	.is_const	= (_sbuff)->is_const, \
-	.adv_parent	= 1, \
-	.extend		= (_sbuff)->extend, \
-	.shifted	= (_sbuff)->shifted, \
-	.uctx		= (_sbuff)->uctx, \
-	.parent		= (_sbuff) \
-})
+#define FR_SBUFF_COPY(_sbuff_or_marker) \
+_Generic((_sbuff_or_marker), \
+	fr_sbuff_t *		: ((fr_sbuff_t){ \
+					.buff		= ((fr_sbuff_t *)(_sbuff_or_marker))->buff, \
+					.start		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
+					.end		= ((fr_sbuff_t *)(_sbuff_or_marker))->end, \
+					.p		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
+					.is_const	= ((fr_sbuff_t *)(_sbuff_or_marker))->is_const, \
+					.adv_parent	= 1, \
+					.extend		= ((fr_sbuff_t *)(_sbuff_or_marker))->extend, \
+					.shifted	= ((fr_sbuff_t *)(_sbuff_or_marker))->shifted, \
+					.uctx		= ((fr_sbuff_t *)(_sbuff_or_marker))->uctx, \
+					.parent		= ((fr_sbuff_t *)(_sbuff_or_marker)) \
+			 	  }), \
+	fr_sbuff_marker_t *	: ((fr_sbuff_t){ \
+					.buff		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->buff, \
+					.start		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
+					.end		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->end, \
+					.p		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
+					.is_const	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->is_const, \
+					.adv_parent	= 1, \
+					.extend		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->extend, \
+					.shifted	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->shifted, \
+					.uctx		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->uctx, \
+					.parent		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent \
+				  }) \
+)
 
 /** Creates a compound literal to pass into functions which accept a sbuff
  *
