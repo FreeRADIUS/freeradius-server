@@ -930,6 +930,77 @@ void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 	}
 }
 
+/** Function to provide as the readable callback to the event loop
+ *
+ * Writes any data read from a file descriptor to the request log,
+ * tries very hard not to chop lines in the middle, but will split
+ * at 1024 byte boundaries if forced to.
+ *
+ * @param[in] el	UNUSED
+ * @param[in] fd	UNUSED
+ * @param[in] flags	UNUSED
+ * @param[in] uctx	Pointer to a log_fd_event_ctx_t
+ */
+void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	char			buffer[1024];
+	log_fd_event_ctx_t	*log_info = uctx;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_marker_t	m_start, m_end;
+
+	fr_sbuff_term_t const 	line_endings = FR_SBUFF_TERMS(L("\n"), L("\r"));
+
+	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
+	fr_sbuff_marker(&m_start, &sbuff);
+	fr_sbuff_marker(&m_end, &sbuff);
+
+#ifndef NDEBUG
+	memset(buffer, 0x42, sizeof(buffer));
+#endif
+
+	for (;;) {
+		ssize_t		slen;
+
+		slen = read(fd, fr_sbuff_current(&m_end), fr_sbuff_remaining(&m_end));
+		if ((slen < 0) && (errno == EINTR)) continue;
+
+		if (slen > 0) fr_sbuff_advance(&m_end, slen);
+
+		while (fr_sbuff_ahead(&m_end) > 0) {
+			fr_sbuff_adv_until(&sbuff, fr_sbuff_ahead(&m_end), &line_endings, '\0');
+
+			/*
+			 *	Incomplete line, try and read the rest.
+			 */
+			if ((slen > 0) && (fr_sbuff_used(&m_start) > 0) &&
+			    !fr_sbuff_is_terminal(&sbuff, &line_endings)) {
+				break;
+			}
+
+			log_request(log_info->type, log_info->lvl, log_info->request,
+				    __FILE__, __LINE__,
+				    "%s%s%pV",
+				    log_info->prefix ? log_info->prefix : "",
+				    log_info->prefix ? " - " : "",
+				    fr_box_strvalue_len(fr_sbuff_current(&m_start),
+							fr_sbuff_behind(&m_start)));
+
+			fr_sbuff_advance(&sbuff, 1);	/* Skip the whitespace */
+			fr_sbuff_set(&m_start, &sbuff);
+		}
+
+		/*
+		 *	Error or done
+		 */
+		if (slen <= 0) break;
+
+		/*
+		 *	Clear out the existing data
+		 */
+		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
+	};
+}
+
 /** Log a fatal error, then exit
  *
  */

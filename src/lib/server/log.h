@@ -40,6 +40,7 @@ typedef struct log_dst log_dst_t;
 
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/pair.h>
 
 /** Logging callback to write log messages to a destination
@@ -62,10 +63,23 @@ typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, request_t *requ
 			   char const *fmt, va_list ap, void *uctx);
 
 struct log_dst {
-	log_func_t	func;	//!< Function to call to log to this destination.
-	void		*uctx;	//!< Context to pass to the logging function.
-	log_dst_t	*next;	//!< Next logging destination.
+	log_func_t	func;		//!< Function to call to log to this destination.
+	void		*uctx;		//!< Context to pass to the logging function.
+	log_dst_t	*next;		//!< Next logging destination.
 };
+
+/** Context structure for the log fd event function
+ *
+ * This enables a file descriptor to be inserted into an event loop
+ * and produce log output.  It's useful for execd child processes
+ * and for capturing stdout/stderr from libraries.
+ */
+typedef struct {
+	fr_log_type_t	type;		//!< What type of log message it is.
+	fr_log_lvl_t	lvl;		//!< Priority of the message.
+	request_t	*request;	//!< request to log messages in the context of.
+	char const	*prefix;	//!< To add to log messages.
+} log_fd_event_ctx_t;
 
 extern fr_table_num_sorted_t const syslog_facility_table[];
 extern size_t syslog_facility_table_len;
@@ -119,6 +133,8 @@ void 	log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *reques
 void	log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			char const *file, int line,
 			uint8_t const *data, size_t data_len) CC_HINT(nonnull);
+
+void	log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 
 void	log_fatal(fr_log_t const *log, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(noreturn);
