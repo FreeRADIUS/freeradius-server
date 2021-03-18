@@ -509,7 +509,11 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		if (total++ == max) {
 			cf_log_err(ci, "Map size exceeded");
 		error:
-			fr_dlist_talloc_free(out);
+			/*
+			 *	Free in reverse as successive entries have their
+			 *	prececessors as talloc parents
+			 */
+			fr_dlist_talloc_reverse_free(out);
 			return -1;
 		}
 

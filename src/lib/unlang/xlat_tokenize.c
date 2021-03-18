@@ -519,7 +519,6 @@ static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head
 		if (func && (func->input_type != XLAT_INPUT_ARGS)) {
 			fr_strerror_const("Function should be called using the syntax %{func:arg}");
 		error:
-			*head = NULL;
 			talloc_free(node);
 			return -1;
 		}
