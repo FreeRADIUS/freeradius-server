@@ -878,7 +878,7 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 				break;
 			}
 
-			fr_log(log_info->dst, log_info->lvl,
+			fr_log(log_info->dst, log_info->type,
 			       __FILE__, __LINE__,
 			       "%s%s%pV",
 			       log_info->prefix ? log_info->prefix : "",
