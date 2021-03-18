@@ -3121,7 +3121,10 @@ int main(int argc, char *argv[])
 	 *	Initialise the interpreter, registering operations.
 	 *	Needed because some keywords also register xlats.
 	 */
-	if (unlang_init() < 0) return -1;
+	if (unlang_init_global() < 0) {
+		fr_perror("unit_test_attribute");
+		EXIT_WITH_FAILURE;
+	}
 
 	if (!xlat_register_legacy(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN)) {
 		ERROR("Failed registering xlat");
@@ -3204,8 +3207,7 @@ cleanup:
 		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
 	}
 	fr_dict_free(&config.dict);
-	unlang_free();
-	xlat_free();
+	unlang_free_global();
 
 	/*
 	 *	Dictionaries get freed towards the end

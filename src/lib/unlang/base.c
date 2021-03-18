@@ -28,6 +28,8 @@ RCSID("$Id$")
 
 #include "unlang_priv.h"
 
+static uint32_t instance_count;
+
 /** Return whether a section has unlang data associated with it
  *
  * @param[in] cs	to check.
@@ -65,18 +67,19 @@ void unlang_register(int type, unlang_op_t *op)
 	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
 }
 
-/** Initialize the unlang compiler / interpreter.
- *
- *  For now, just register the magic xlat function.
- */
-int unlang_init(void)
+int unlang_init_global(void)
 {
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
 	/*
 	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
 	 */
 	if (xlat_init() < 0) return -1;
 
-	unlang_interpret_init();
+	unlang_interpret_init_global();
 	/* Register operations for the default keywords */
 	unlang_condition_init();
 	unlang_foreach_init();
@@ -98,6 +101,9 @@ int unlang_init(void)
 
 void unlang_free(void)
 {
+	if (--instance_count > 0) return;
+
 	unlang_foreach_free();
 	unlang_subrequest_op_free();
+	xlat_free();
 }

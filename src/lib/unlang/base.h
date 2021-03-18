@@ -33,11 +33,12 @@
 extern "C" {
 #endif
 
-bool		unlang_section(CONF_SECTION *cs);
+bool			unlang_section(CONF_SECTION *cs);
 
-int		unlang_init(void);
+int			unlang_init_global(void);
 
-void		unlang_free(void);
+int			unlang_free_global(void);
+
 
 #ifdef __cplusplus
 }

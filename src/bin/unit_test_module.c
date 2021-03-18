@@ -800,8 +800,12 @@ int main(int argc, char *argv[])
 
 	/*
 	 *	Initialise the interpreter, registering operations.
+	 *      This initialises
 	 */
-	if (unlang_init() < 0) return -1;
+	if (unlang_init_global() < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *	Ensure that we load the correct virtual server for the
@@ -1033,7 +1037,7 @@ cleanup:
 	/*
 	 *	Free any resources used by the unlang interpreter.
 	 */
-	unlang_free();
+	unlang_free_global();
 
 	/*
 	 *	And now nothing should be left anywhere except the
