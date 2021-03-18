@@ -1287,93 +1287,6 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 }
 
 
-/** Parse the 3 arguments to lpad / rpad.
- *
- * Parses a fmt string with the components @verbatim <tmpl> <pad_len> <pad_char>@endverbatim
- *
- * @param[out] vpt_p		Template to retrieve value to pad.
- * @param[out] pad_len_p	Length the string needs to be padded to.
- * @param[out] pad_char_p	Char to use for padding.
- * @param[in] request		The current request.
- * @param[in] fmt		string to parse.
- *
- * @return
- *	- <= 0 the negative offset the parse error ocurred at.
- *	- >0 how many bytes of fmt were parsed.
- */
-static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, request_t *request, char const *fmt)
-{
-	ssize_t			slen;
-	unsigned long		pad_len;
-	char const		*p;
-	char			*end;
-	tmpl_t			*vpt;
-
-
-	*pad_char_p = ' ';		/* the default */
-
-	*vpt_p = NULL;
-
-	p = fmt;
-	fr_skip_whitespace(p);
-
-	if (*p != '&') {
-		REDEBUG("First argument must be an attribute reference");
-		return 0;
-	}
-
-	slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
-				      &FR_SBUFF_IN(p, strlen(p)),
-				      &xlat_arg_parse_rules,
-				      &(tmpl_rules_t){ .dict_def = request->dict });
-	if (slen <= 0) {
-		RPEDEBUG("Failed parsing input string");
-		return slen;
-	}
-
-	p = fmt + slen;
-
-	fr_skip_whitespace(p);
-
-	pad_len = strtoul(p, &end, 10);
-	if ((pad_len == ULONG_MAX) || (pad_len > 8192)) {
-		talloc_free(vpt);
-		REDEBUG("Invalid pad_len found at: %s", p);
-		return fmt - p;
-	}
-
-	p += (end - p);
-
-	/*
-	 *	The pad_char_p character is optional.
-	 *
-	 *	But we must have a space after the previous number,
-	 *	and we must have only ONE pad_char_p character.
-	 */
-	if (*p) {
-		if (!isspace(*p)) {
-			talloc_free(vpt);
-			REDEBUG("Invalid text found at: %s", p);
-			return fmt - p;
-		}
-
-		fr_skip_whitespace(p);
-
-		if (p[1] != '\0') {
-			talloc_free(vpt);
-			REDEBUG("Invalid text found at: %s", p);
-			return fmt - p;
-		}
-
-		*pad_char_p = *p++;
-	}
-
-	*vpt_p = vpt;
-	*pad_len_p = pad_len;
-
-	return p - fmt;
-}
-
 /** Generic padding function used by lpad / rpad xlat
  *
  * @param[out] out	where to write resulting values
@@ -1689,13 +1602,6 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  *	Async xlat functions
  */
 
-static xlat_arg_parser_t const xlat_func_rpad_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
-	{ .required = true, .single = true, .type = FR_TYPE_UINT64 },
-	{ .concat = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 /** Right pad a string
  *
 @verbatim
@@ -1714,61 +1620,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED void *xlat_thread_inst,
 				    fr_value_box_list_t *args)
 {
-	fr_value_box_t		*values = fr_dlist_head(args);
-	fr_value_box_list_t	*list = &values->vb_group;
-	fr_value_box_t		*pad = fr_dlist_next(args, values);
-	size_t			pad_len = (size_t)pad->vb_uint64;
-	fr_value_box_t		*fill = fr_dlist_next(args, pad);
-	char const		*fill_str = NULL;
-	size_t			fill_len = 0;
-
-	fr_value_box_t		*in = NULL;
-
-	/*
-	 *	Fill is optional
-	 */
-	if (fill) {
-		fill_str = fill->vb_strvalue;
-		fill_len = talloc_array_length(fill_str) - 1;
-	}
-
-	if (fill_len == 0) {
-		fill_str = " ";
-		fill_len = 1;
-	}
-
-	while ((in = fr_dlist_pop_head(list))) {
-		size_t		len = talloc_array_length(in->vb_strvalue) - 1;
-		size_t		remaining;
-		char		*buff;
-		fr_sbuff_t	sbuff;
-
-		fr_dcursor_append(out, in);
-
-		if (len > pad_len) continue;
-
-		if (fr_value_box_bstr_realloc(in, &buff, in, pad_len) < 0) {
-			RPEDEBUG("Failed reallocing input data");
-			return XLAT_ACTION_FAIL;
-		}
-
-		fr_sbuff_init(&sbuff, buff, pad_len + 1);
-		fr_sbuff_advance(&sbuff, len);
-
-		if (fill_len == 1) {
-			memset(fr_sbuff_current(&sbuff), *fill_str, fr_sbuff_remaining(&sbuff));
-			continue;
-		}
-
-		/*
-		 *	Copy fill as a repeating pattern
-		 */
-		while ((remaining = fr_sbuff_remaining(&sbuff))) {
-			fr_sbuff_in_bstrncpy(&sbuff, fill_str, remaining >= fill_len ? fill_len : remaining);
-		}
-	}
-
-	return XLAT_ACTION_DONE;
+	return xlat_func_pad(out, request, args, false);
 }
 
 static xlat_arg_parser_t const xlat_func_base64_encode_arg = {
@@ -3347,7 +3199,7 @@ do { \
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
-	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
+	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
 do { \
