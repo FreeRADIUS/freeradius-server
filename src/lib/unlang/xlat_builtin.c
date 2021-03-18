@@ -1286,155 +1286,6 @@ static ssize_t xlat_func_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	return -1;
 }
 
-
-/** Parse the 3 arguments to lpad / rpad.
- *
- * Parses a fmt string with the components @verbatim <tmpl> <pad_len> <pad_char>@endverbatim
- *
- * @param[out] vpt_p		Template to retrieve value to pad.
- * @param[out] pad_len_p	Length the string needs to be padded to.
- * @param[out] pad_char_p	Char to use for padding.
- * @param[in] request		The current request.
- * @param[in] fmt		string to parse.
- *
- * @return
- *	- <= 0 the negative offset the parse error ocurred at.
- *	- >0 how many bytes of fmt were parsed.
- */
-static ssize_t parse_pad(tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, request_t *request, char const *fmt)
-{
-	ssize_t			slen;
-	unsigned long		pad_len;
-	char const		*p;
-	char			*end;
-	tmpl_t			*vpt;
-
-
-	*pad_char_p = ' ';		/* the default */
-
-	*vpt_p = NULL;
-
-	p = fmt;
-	fr_skip_whitespace(p);
-
-	if (*p != '&') {
-		REDEBUG("First argument must be an attribute reference");
-		return 0;
-	}
-
-	slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
-				      &FR_SBUFF_IN(p, strlen(p)),
-				      &xlat_arg_parse_rules,
-				      &(tmpl_rules_t){ .dict_def = request->dict });
-	if (slen <= 0) {
-		RPEDEBUG("Failed parsing input string");
-		return slen;
-	}
-
-	p = fmt + slen;
-
-	fr_skip_whitespace(p);
-
-	pad_len = strtoul(p, &end, 10);
-	if ((pad_len == ULONG_MAX) || (pad_len > 8192)) {
-		talloc_free(vpt);
-		REDEBUG("Invalid pad_len found at: %s", p);
-		return fmt - p;
-	}
-
-	p += (end - p);
-
-	/*
-	 *	The pad_char_p character is optional.
-	 *
-	 *	But we must have a space after the previous number,
-	 *	and we must have only ONE pad_char_p character.
-	 */
-	if (*p) {
-		if (!isspace(*p)) {
-			talloc_free(vpt);
-			REDEBUG("Invalid text found at: %s", p);
-			return fmt - p;
-		}
-
-		fr_skip_whitespace(p);
-
-		if (p[1] != '\0') {
-			talloc_free(vpt);
-			REDEBUG("Invalid text found at: %s", p);
-			return fmt - p;
-		}
-
-		*pad_char_p = *p++;
-	}
-
-	*vpt_p = vpt;
-	*pad_len_p = pad_len;
-
-	return p - fmt;
-}
-
-
-/** Left pad a string
- *
-@verbatim
-%{lpad:&Attribute-Name <length> <char>}
-@endverbatim
- *
- * Example: (User-Name = "foo")
-@verbatim
-"%{lpad:&User-Name 5 x}" == "xxfoo"
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static ssize_t xlat_func_lpad(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      request_t *request, char const *fmt)
-{
-	char		fill;
-	size_t		pad;
-	ssize_t		len;
-	tmpl_t	*vpt;
-	char		*to_pad = NULL;
-
-	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
-
-	if (!fr_cond_assert(vpt)) return 0;
-
-	/*
-	 *	Print the attribute (left justified).  If it's too
-	 *	big, we're done.
-	 */
-	len = tmpl_aexpand(ctx, &to_pad, request, vpt, NULL, NULL);
-	if (len <= 0) return -1;
-
-	/*
-	 *	Already big enough, no padding required...
-	 */
-	if ((size_t) len >= pad) {
-		*out = to_pad;
-		return pad;
-	}
-
-	/*
-	 *	Realloc is actually pretty cheap in most cases...
-	 */
-	MEM(to_pad = talloc_realloc(ctx, to_pad, char, pad + 1));
-
-	/*
-	 *	We have to shift the string to the right, and pad with
-	 *	"fill" characters.
-	 */
-	memmove(to_pad + (pad - len), to_pad, len + 1);
-	memset(to_pad, fill, pad - len);
-
-	*out = to_pad;
-
-	return pad;
-}
-
-
 /** Processes fmt as a map string and applies it to the current request
  *
  * e.g.
@@ -1627,12 +1478,97 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  *	Async xlat functions
  */
 
-static xlat_arg_parser_t const xlat_func_rpad_args[] = {
+static xlat_arg_parser_t const xlat_func_pad_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
 	{ .required = true, .single = true, .type = FR_TYPE_UINT64 },
 	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
+
+
+/** lpad a string
+ *
+@verbatim
+%(rpad:&Attribute-Name <length> [<fill>])
+@endverbatim
+ *
+ * Example: (User-Name = "foo")
+@verbatim
+"%(rpad:%{User-Name} 5 x)" == "xxfoo"
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    request_t *request, UNUSED void const *xlat_inst,
+				    UNUSED void *xlat_thread_inst,
+				    fr_value_box_list_t *args)
+{
+	fr_value_box_t		*values = fr_dlist_head(args);
+	fr_value_box_list_t	*list = &values->vb_group;
+	fr_value_box_t		*pad = fr_dlist_next(args, values);
+	size_t			pad_len = (size_t)pad->vb_uint64;
+	fr_value_box_t		*fill = fr_dlist_next(args, pad);
+	char const		*fill_str = NULL;
+	size_t			fill_len = 0;
+
+	fr_value_box_t		*in = NULL;
+
+	/*
+	 *	Fill is optional
+	 */
+	if (fill) {
+		fill_str = fill->vb_strvalue;
+		fill_len = talloc_array_length(fill_str) - 1;
+	}
+
+	if (fill_len == 0) {
+		fill_str = " ";
+		fill_len = 1;
+	}
+
+	while ((in = fr_dlist_pop_head(list))) {
+		size_t			len = talloc_array_length(in->vb_strvalue) - 1;
+		size_t			remaining;
+		char			*buff;
+		fr_sbuff_t		sbuff;
+		fr_sbuff_marker_t	m_data;
+
+		fr_dcursor_append(out, in);
+
+		if (len > pad_len) continue;
+
+		if (fr_value_box_bstr_realloc(in, &buff, in, pad_len) < 0) {
+			RPEDEBUG("Failed reallocing input data");
+			return XLAT_ACTION_FAIL;
+		}
+
+		fr_sbuff_init(&sbuff, buff, pad_len + 1);
+		fr_sbuff_marker(&m_data, &sbuff);
+		fr_sbuff_advance(&m_data, pad_len - len);	/* Mark where we want the data to go */
+		fr_sbuff_move(&m_data, &sbuff, len);		/* Shift the data */
+		fr_sbuff_set(&m_data, fr_sbuff_start(&sbuff) + (pad_len - len));
+		fr_sbuff_set_to_start(&sbuff);			/* reset to the beginning of the buffer */
+
+		if (fill_len == 1) {
+			memset(fr_sbuff_current(&sbuff), *fill_str, fr_sbuff_ahead(&m_data));
+			continue;
+		}
+
+		/*
+		 *	Copy fill as a repeating pattern
+		 */
+		while ((remaining = fr_sbuff_ahead(&m_data))) {
+			size_t to_copy = remaining >= fill_len ? fill_len : remaining;
+			memcpy(fr_sbuff_current(&sbuff), fill_str, to_copy);	/* avoid \0 termination */
+			fr_sbuff_advance(&sbuff, to_copy);
+		}
+		fr_sbuff_set_to_end(&sbuff);
+		fr_sbuff_terminate(&sbuff);			/* Move doesn't re-terminate */
+	}
+
+	return XLAT_ACTION_DONE;
+}
 
 /** Right pad a string
  *
@@ -3268,7 +3204,6 @@ int xlat_init(void)
 	XLAT_REGISTER(debug_attr);
 	xlat_register_legacy(NULL, "explode", xlat_func_explode, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	XLAT_REGISTER(integer);
-	xlat_register_legacy(NULL, "lpad", xlat_func_lpad, NULL, NULL, 0, 0);
 	XLAT_REGISTER(map);
 	xlat_register_legacy(NULL, "nexttime", xlat_func_next_time, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
@@ -3285,7 +3220,8 @@ do { \
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
-	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_rpad_args);
+	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
+	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
 do { \

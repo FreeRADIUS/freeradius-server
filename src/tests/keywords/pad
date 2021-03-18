@@ -32,17 +32,22 @@ if ("%(rpad:%{Tmp-String-0} 7 xy)" != "testxyx") {
 #
 #	lpad tests
 #
-if ("%{lpad:&Tmp-String-0 7}" != "   test") {
+if ("%(lpad:%{Tmp-String-0} 7)" != "   test") {
 	test_fail
 	return
 }
 
-if ("%{lpad:&Tmp-String-0 2}" != "test") {
+if ("%(lpad:%{Tmp-String-0} 2)" != "test") {
 	test_fail
 	return
 }
 
-if ("%{lpad:&Tmp-String-0 7 x}" != "xxxtest") {
+if ("%(lpad:%{Tmp-String-0} 7 x)" != "xxxtest") {
+	test_fail
+	return
+}
+
+if ("%(lpad:%{Tmp-String-0} 7 xy)" != "xyxtest") {
 	test_fail
 	return
 }
