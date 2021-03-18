@@ -961,7 +961,7 @@ if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
 The user@example.com { login=user, domain=example.com }
 ```
 
-### %(sub:/<regex>/[flags] <replace> <subject>)
+### %(sub:<subject> /<regex>/[flags] <replace>)
 
 Substitute text just as easily as it can match it, even using regex patterns.
 
@@ -975,7 +975,7 @@ update control {
     &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
 }
 update reply {
-    &Reply-Message := "%(sub:/ / , %{control.Tmp-String-0})"
+    &Reply-Message := "%(sub:%{control.Tmp-String-0} / / ,)"
 }
 ----
 

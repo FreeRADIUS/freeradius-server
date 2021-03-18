@@ -2818,12 +2818,12 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * Called when %(sub:) pattern begins with "/"
  *
 @verbatim
-%(sub:/<regex>/[flags] <replace> <subject>)
+%(sub:<subject> /<regex>/[flags] <replace>)
 @endverbatim
  *
  * Example: (User-Name = "foo")
 @verbatim
-"%(sub:/oo.*$/ un %{User-Name})" == "fun"
+"%(sub:%{User-Name} /oo.*$/ un)" == "fun"
 @endverbatim
  *
  * @see #xlat_func_sub
@@ -2842,9 +2842,9 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	regex_t			*pattern;
 	fr_regex_flags_t	flags;
 	fr_value_box_t		*vb;
-	fr_value_box_t		*regex_vb = fr_dlist_head(in);
+	fr_value_box_t		*subject_vb = fr_dlist_head(in);
+	fr_value_box_t		*regex_vb = fr_dlist_next(in, subject_vb);
 	fr_value_box_t		*rep_vb = fr_dlist_next(in, regex_vb);
-	fr_value_box_t		*subject_vb = fr_dlist_next(in, rep_vb);
 
 
 	p = regex_vb->vb_strvalue;
@@ -2916,12 +2916,12 @@ static xlat_arg_parser_t const xlat_func_sub_args[] = {
 /** Perform regex substitution
  *
 @verbatim
-%(sub:<pattern> <replace> <subject>)
+%(sub:<subject> <pattern> <replace>)
 @endverbatim
  *
  * Example: (User-Name = "foobar")
 @verbatim
-"%(sub:oo un %{User-Name})" == "funbar"
+"%(sub:%{User-Name} oo un)" == "funbar"
 @endverbatim
  *
  * @see xlat_func_sub_regex
@@ -2943,8 +2943,9 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const		*pattern, *rep;
 	size_t			pattern_len, rep_len;
 
-	fr_value_box_t		*rep_vb, *subject_vb, *vb;
-	fr_value_box_t		*pattern_vb = fr_dlist_head(in);
+	fr_value_box_t		*rep_vb, *vb;
+	fr_value_box_t		*subject_vb = fr_dlist_head(in);
+	fr_value_box_t		*pattern_vb = fr_dlist_next(in, subject_vb);
 
 	pattern = pattern_vb->vb_strvalue;
 
@@ -2971,7 +2972,6 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rep = rep_vb->vb_strvalue;
 	rep_len = rep_vb->vb_length;
 
-	subject_vb = fr_dlist_next(in, rep_vb);
 	p = subject_vb->vb_strvalue;
 	end = p + subject_vb->vb_length;
 
