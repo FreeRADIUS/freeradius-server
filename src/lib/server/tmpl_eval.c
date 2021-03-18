@@ -1301,16 +1301,16 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
  */
 void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
 {
+	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
+
+	fr_dlist_remove(&cc->nested, &cc->leaf);	/* Noop if leaf isn't inserted */
+	fr_dlist_talloc_free(&cc->nested);
+
 	/*
 	 *	Always free the pool because it's allocated when
 	 *	any nested ctxs are used.
 	 */
 	TALLOC_FREE(cc->pool);
-
-	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
-
-	fr_dlist_remove(&cc->nested, &cc->leaf);	/* Noop if leaf isn't inserted */
-	fr_dlist_talloc_free(&cc->nested);
 }
 
 /** Copy pairs matching a #tmpl_t in the current #request_t
