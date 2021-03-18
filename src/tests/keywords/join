@@ -1,0 +1,25 @@
+#
+# PRE: update if concat
+#
+
+update {
+        &request.Tmp-String-0 := "ab c"
+        &request.Tmp-String-0 += "de fg"
+        &request.Tmp-Integer-0 := 123
+        &control.Tmp-IP-Address-0 := 192.168.1.254
+}
+
+update {
+        &request.Tmp-String-1 := "%(concat:%(join:%{request[*]} %{control.Tmp-IP-Address-0}) '. ')"
+        &request.Tmp-String-2 := "%(concat:%(join:%{Tmp-String-0[*]} %{Tmp-Integer-0}) ,)"
+}
+
+if (&request.Tmp-String-1 != "bob. hello. ab c. de fg. 123. 192.168.1.254") {
+        test_fail
+}
+
+if (&request.Tmp-String-2 != "ab c,de fg,123") {
+        test_fail
+}
+
+success
