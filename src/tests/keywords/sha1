@@ -16,7 +16,6 @@ update {
 	&request.Tmp-Octets-5 := "%{sha1:%{request.Tmp-Octets-9}}"
 	&request.Tmp-Octets-6 := "%(hmacsha1:%{Tmp-String-1} %{Tmp-String-2})"
 	&request.Tmp-Octets-7 := "%(hmacsha1:%{Tmp-String-3} %{Tmp-String-3})"
-	&request.Tmp-Octets-8 := "%(hmacsha1:%{Tmp-String-1} )"
 }
 
 #
@@ -50,16 +49,9 @@ if (&request.Tmp-Octets-6 != 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79) {
 }
 
 #
-#  MD5 HMAC with empty key and data
+#  SHA1 HMAC with empty key and data
 #
 if (&Tmp-Octets-7 != 0xfbdb1d1b18aa6c08324b7d64b71fb76370690e1d) {
-	test_fail
-}
-
-#
-#  MD5 HMAC with missing key should fail
-#
-if (&Tmp-Octets-8 != "") {
 	test_fail
 }
 
