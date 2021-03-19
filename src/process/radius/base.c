@@ -934,7 +934,6 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	CONF_SECTION	*cs;
 	radius_state_t 	const	*state;
 	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
-	unlang_action_t action;
 
 	fr_assert((request->packet->code > 0) && (request->packet->code < FR_RADIUS_MAX_PACKET_CODE));
 
