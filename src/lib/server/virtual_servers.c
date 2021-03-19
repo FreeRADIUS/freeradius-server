@@ -492,17 +492,11 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	return 0;
 }
 
-static unlang_action_t null_method(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
-{
-	RETURN_MODULE_OK;
-}
-
-
 /** Set the request processing function.
  *
  *	Short-term hack
  */
-void virtual_server_entry_point_set(request_t *request)
+int virtual_server_entry_point_set(request_t *request)
 {
 	fr_virtual_server_t *server;
 	fr_process_module_t const *process;
@@ -510,20 +504,16 @@ void virtual_server_entry_point_set(request_t *request)
 	module_instance_t *mi = talloc_zero(request, module_instance_t);
 
 	server = cf_data_value(cf_data_find(request->server_cs, fr_virtual_server_t, "vs"));
-	if (!server) return;
+	if (!server) return -1;
 
 	mi->name = server->process_module->name;
 
 	if (unlikely(track && track->dynamic && server->dynamic_client_module)) {
 		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
-		request->async->process = process->process;
-		request->async->process_inst = server->dynamic_client_module->data;
 		mi->dl_inst = server->dynamic_client_module;
 
 	} else {
 		process = (fr_process_module_t const *) server->process_module->module->common;
-		request->async->process = process->process;
-		request->async->process_inst = server->process_module->data;
 		mi->dl_inst = server->process_module;
 	}
 
@@ -538,9 +528,9 @@ void virtual_server_entry_point_set(request_t *request)
 	 *	src/lib/server/module.c, that reserves 0 for "nothing
 	 *	is initialized".
 	 */
-	if (unlang_module_push(&request->rcode, request, mi, null_method, true) < 0) {
-		fr_assert(0);
-	}
+	if (unlang_module_push(&request->rcode, request, mi, process->process, true) < 0) return -1;
+
+	return 0;
 }
 
 /** Allow dynamic clients in this virtual server.

@@ -759,8 +759,7 @@ nak:
 	/*
 	 *	Set the entry point for this virtual server.
 	 */
-	virtual_server_entry_point_set(request);
-	if (!request->async->process) {
+	if (virtual_server_entry_point_set(request) < 0) {
 		RERROR("Protocol failed to set 'process' function");
 		worker_nak(worker, cd, now);
 		return;

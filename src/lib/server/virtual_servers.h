@@ -135,7 +135,7 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 
 int		virtual_server_get_process_by_name(CONF_SECTION *server, char const *type, module_method_t *method_p, void **ctx);
 
-void		virtual_server_entry_point_set(request_t *request);
+int		virtual_server_entry_point_set(request_t *request);
 
 int		virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs);
 
