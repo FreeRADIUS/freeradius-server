@@ -4,19 +4,19 @@
 
 # Set debug to something high, recording the old level
 update request {
-	&Tmp-Integer-0 := "%{debug:4}"
+	&Tmp-Integer-0 := "%(debug:4)"
 }
 
 # Check debug level is now 4
-if ("%{debug:4}" != 4) {
+if ("%(debug:4)" != 4) {
 	fail
 }
 
 # Set debug back to the original level
-"%{debug:%{Tmp-Integer-0}}"
+"%(debug:%{Tmp-Integer-0})"
 
 # Read out the current debug level to verify it changed
-if ("%{debug:%{Tmp-Integer-0}}" != "%{Tmp-Integer-0}") {
+if ("%(debug:%{Tmp-Integer-0})" != "%{Tmp-Integer-0}") {
 	fail
 }
 
