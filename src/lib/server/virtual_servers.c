@@ -492,6 +492,12 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	return 0;
 }
 
+static unlang_action_t null_method(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+{
+	RETURN_MODULE_OK;
+}
+
+
 /** Set the request processing function.
  *
  *	Short-term hack
@@ -501,18 +507,40 @@ void virtual_server_entry_point_set(request_t *request)
 	fr_virtual_server_t *server;
 	fr_process_module_t const *process;
 	fr_io_track_t *track = request->async->packet_ctx;
+	module_instance_t *mi = talloc_zero(request, module_instance_t);
 
 	server = cf_data_value(cf_data_find(request->server_cs, fr_virtual_server_t, "vs"));
 	if (!server) return;
 
+	mi->name = server->process_module->name;
+
 	if (unlikely(track && track->dynamic && server->dynamic_client_module)) {
 		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
+		request->async->process = process->process;
+		request->async->process_inst = server->dynamic_client_module->data;
+		mi->dl_inst = server->dynamic_client_module;
+
 	} else {
 		process = (fr_process_module_t const *) server->process_module->module->common;
+		request->async->process = process->process;
+		request->async->process_inst = server->process_module->data;
+		mi->dl_inst = server->process_module;
 	}
 
-	request->async->process = process->process;
-	request->async->process_inst = server->process_module->data;
+	mi->instantiated = true;
+
+	/*
+	 *	Bootstrap the stack with a module instance.
+	 *
+	 *	@todo - src/lib/unlang/module.c calls module_thread(),
+	 *	which looks up mi->number in various data structures.
+	 *	It's probably best to initialize instance_num=1 in
+	 *	src/lib/server/module.c, that reserves 0 for "nothing
+	 *	is initialized".
+	 */
+	if (unlang_module_push(&request->rcode, request, mi, null_method, true) < 0) {
+		fr_assert(0);
+	}
 }
 
 /** Allow dynamic clients in this virtual server.
