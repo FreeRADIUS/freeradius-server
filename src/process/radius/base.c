@@ -869,6 +869,11 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+/*
+ *	rcodes not listed under a packet_type
+ *	mean that the packet code will not be
+ *	changed.
+ */
 static process_radius_state_t const radius_state[FR_RADIUS_CODE_MAX] = {
 	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = {
 		.packet_type = {
@@ -880,7 +885,8 @@ static process_radius_state_t const radius_state[FR_RADIUS_CODE_MAX] = {
 			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
-			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT.
+			[RLM_MODULE_NOTFOUND] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_REJECT,
 		.recv = recv_generic,
