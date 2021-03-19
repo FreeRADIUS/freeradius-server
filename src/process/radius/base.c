@@ -1118,8 +1118,6 @@ static const virtual_server_compile_t compile_list[] = {
 		.component = MOD_AUTHORIZE,
 		CONF(status_server),
 	},
-
-
 	{
 		.name = "recv",
 		.name2 = "CoA-Request",
@@ -1166,6 +1164,11 @@ static const virtual_server_compile_t compile_list[] = {
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 		CONF(do_not_respond),
+	},
+	{
+		.name = "authenticate",
+		.name2 = CF_IDENT_ANY,
+		.component = MOD_AUTHENTICATE
 	},
 
 	COMPILE_TERMINATOR
