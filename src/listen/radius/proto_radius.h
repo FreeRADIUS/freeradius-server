@@ -32,14 +32,14 @@
 typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
-	dl_module_inst_t			**type_submodule;		//!< Instance of the various types
-	dl_module_inst_t			*type_submodule_by_code[FR_RADIUS_MAX_PACKET_CODE];	//!< Lookup process entry point by code.
-
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
 
 	bool				tunnel_password_zeros;		//!< check for trailing zeroes in Tunnel-Password.
 
 	uint32_t			priorities[FR_RADIUS_MAX_PACKET_CODE];	//!< priorities for individual packets
+
+	char				**allowed_types;		//!< names for for 'type = ...'
+	bool				allowed[FR_RADIUS_MAX_PACKET_CODE];
 } proto_radius_t;
 

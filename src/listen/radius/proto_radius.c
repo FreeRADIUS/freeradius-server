@@ -73,7 +73,7 @@ static const CONF_PARSER priority_config[] = {
  */
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
-			  type_submodule), .func = type_parse },
+			  allowed_types), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io.submodule),
 	  .func = transport_parse },
 
@@ -121,21 +121,26 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	static char const *type_lib_table[FR_RADIUS_MAX_PACKET_CODE] = {
-		[FR_CODE_ACCESS_REQUEST]	= "auth",
-		[FR_CODE_ACCOUNTING_REQUEST]	= "acct",
-		[FR_CODE_COA_REQUEST]		= "coa",
-		[FR_CODE_DISCONNECT_REQUEST]	= "coa",
-		[FR_CODE_STATUS_SERVER]		= "status",
-	};
-
 	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
+	fr_dict_enum_t		*dv;
+	CONF_PAIR		*cp;
+	char const		*value;
 
-	return fr_app_process_type_parse(ctx, out, ci, attr_packet_type, "proto_radius",
-					 type_lib_table, NUM_ELEMENTS(type_lib_table),
-					 inst->type_submodule_by_code, NUM_ELEMENTS(inst->type_submodule_by_code));
+	cp = cf_item_to_pair(ci);
+	value = cf_pair_value(cp);
+
+	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
+	if (!dv || (dv->value->vb_uint32 >= FR_RADIUS_MAX_PACKET_CODE)) {
+		cf_log_err(ci, "Unknown RADIUS packet type '%s'", value);
+		return -1;
+	}
+
+	inst->allowed[dv->value->vb_uint32] = true;
+	*((char const **) out) = value;
+
+	return 0;
 }
 
 /** Wrapper around dl_instance
@@ -407,39 +412,11 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	return data_len;
 }
 
-static void mod_entry_point_set(void const *instance, request_t *request)
+static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
 {
-	proto_radius_t const	*inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	dl_module_inst_t	*type_submodule;
-	fr_io_track_t		*track = request->async->packet_ctx;
+	fr_assert(request->server_cs != NULL);
 
-	fr_assert(request->packet->code != 0);
-	fr_assert(request->packet->code <= FR_RADIUS_MAX_PACKET_CODE);
-
-	request->server_cs = inst->io.server_cs;
-
-	/*
-	 *	'track' can be NULL when there's no network listener.
-	 */
-	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
-		fr_app_worker_t const	*app_process;
-
-		app_process = (fr_app_worker_t const *) inst->io.dynamic_submodule->module->common;
-
-		request->async->process = app_process->entry_point;
-		request->async->process_inst = inst->io.dynamic_submodule;
-		track->dynamic = 0;
-		return;
-	}
-
-	type_submodule = inst->type_submodule_by_code[request->packet->code];
-	if (!type_submodule) {
-		REDEBUG("The server is not configured to accept 'type = %s'", fr_packet_codes[request->packet->code]);
-		return;
-	}
-
-	request->async->process = ((fr_app_worker_t const *)type_submodule->module->common)->entry_point;
-	request->async->process_inst = type_submodule->data;
+	virtual_server_entry_point_set(request);
 }
 
 
@@ -455,7 +432,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	 */
 	if (!inst->priorities[buffer[0]]) return 0;
 
-	if (!inst->type_submodule_by_code[buffer[0]]) return -1;
+	if (!inst->allowed[buffer[0]]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -573,7 +550,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	No Access-Request packets, then no cleanup delay.
 	 */
-	if (!inst->type_submodule_by_code[FR_CODE_ACCESS_REQUEST]) {
+	if (!inst->allowed[FR_CODE_ACCESS_REQUEST]) {
 		inst->io.cleanup_delay = 0;
 	}
 #endif
