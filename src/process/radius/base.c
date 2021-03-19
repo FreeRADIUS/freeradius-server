@@ -468,12 +468,12 @@ RESUME(auth_type);
 
 RESUME(access_request)
 {
-	rlm_rcode_t rcode = request->rcode;
-	fr_pair_t *vp;
-	CONF_SECTION *cs;
-	fr_dict_enum_t	const *dv;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t		rcode = request->rcode;
+	fr_pair_t		*vp;
+	CONF_SECTION		*cs;
+	fr_dict_enum_t const	*dv;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
@@ -521,11 +521,11 @@ RESUME(access_request)
 
 RESUME(auth_type)
 {
-	rlm_rcode_t rcode = request->rcode;
-	fr_pair_t *vp;
-	CONF_SECTION *cs;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t		rcode = request->rcode;
+	fr_pair_t		*vp;
+	CONF_SECTION		*cs;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 	fr_assert((request->reply->code > 0) && (request->reply->code < FR_RADIUS_MAX_PACKET_CODE));
@@ -646,9 +646,9 @@ RESUME(access_reject)
 
 RESUME(access_challenge)
 {
-	CONF_SECTION *cs;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	CONF_SECTION		*cs;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	/*
 	 *	Cache the state context.
@@ -669,10 +669,10 @@ RESUME(access_challenge)
 
 RESUME(acct_type)
 {
-	rlm_rcode_t rcode = request->rcode;
-	CONF_SECTION *cs;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t		rcode = request->rcode;
+	CONF_SECTION		*cs;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 	fr_assert((request->reply->code > 0) && (request->reply->code < FR_RADIUS_MAX_PACKET_CODE));
@@ -703,12 +703,12 @@ RESUME(acct_type)
 
 RESUME(accounting_request)
 {
-	rlm_rcode_t rcode = request->rcode;
-	fr_pair_t *vp;
-	CONF_SECTION *cs;
-	fr_dict_enum_t	const *dv;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t		rcode = request->rcode;
+	fr_pair_t		*vp;
+	CONF_SECTION		*cs;
+	fr_dict_enum_t const	*dv;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
@@ -769,9 +769,9 @@ RESUME(status_server)
 
 RECV(generic)
 {
-	CONF_SECTION *cs;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	CONF_SECTION		*cs;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	if (request->parent && RDEBUG_ENABLED) {
 		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
@@ -794,13 +794,12 @@ RECV(generic)
 					      NULL, NULL);
 }
 
-
 RESUME(recv_generic)
 {
-	rlm_rcode_t rcode = request->rcode;
-	CONF_SECTION *cs;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t		rcode = request->rcode;
+	CONF_SECTION		*cs;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
@@ -816,13 +815,12 @@ RESUME(recv_generic)
 					      NULL, NULL);
 }
 
-
 SEND(generic)
 {
-	fr_pair_t 	*vp;
-	CONF_SECTION	*cs;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	fr_pair_t 		*vp;
+	CONF_SECTION		*cs;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	ERROR("HERE %s", __FUNCTION__);
 
@@ -864,10 +862,10 @@ SEND(generic)
 
 RESUME(send_generic)
 {
-	rlm_rcode_t rcode = request->rcode;
-	CONF_SECTION *cs;
-	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t		rcode = request->rcode;
+	CONF_SECTION		*cs;
+	radius_state_t const	*state;
+	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	ERROR("HERE %s", __FUNCTION__);
 
