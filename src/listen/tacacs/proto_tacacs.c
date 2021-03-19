@@ -406,13 +406,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	return data_len;
 }
 
-static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
-{
-	fr_assert(request->server_cs != NULL);
-
-	virtual_server_entry_point_set(request);
-}
-
 static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
 {
 	proto_tacacs_t const *inst = talloc_get_type_abort_const(instance, proto_tacacs_t);
@@ -582,6 +575,5 @@ fr_app_t proto_tacacs = {
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,
-	.entry_point_set	= mod_entry_point_set,
 	.priority		= mod_priority_set
 };

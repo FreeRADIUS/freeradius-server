@@ -1495,7 +1495,8 @@ void fr_request_async_bootstrap(request_t *request, fr_event_list_t *el)
 
 	request->async->listen = NULL;
 	request->async->packet_ctx = NULL;
-	listener[0]->app->entry_point_set(listener[0]->proto_module->data, request);
+
+	virtual_server_entry_point_set(request);
 }
 
 static int fr_app_process_bootstrap(CONF_SECTION *server)

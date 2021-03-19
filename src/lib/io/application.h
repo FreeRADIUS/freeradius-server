@@ -69,13 +69,6 @@ typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
  */
 typedef int (*fr_app_open_t)(void *instance, fr_schedule_t *sc, CONF_SECTION *cs);
 
-/** Set the next state executed by the request to be one of the application subtype's entry points
- *
- * @param[in] instance	of the #fr_app_t.
- * @param[in] request	To set the next state function for.
- */
-typedef void (*fr_app_entry_point_set_t)(void const *instance, request_t *request);
-
 /** Set the priority of a packet
  *
  * @param[in] instance	of the #fr_app_t.
@@ -124,11 +117,6 @@ typedef struct {
 							///< May be NULL.
 							///< Here for convenience, so that encode operations common
 							///< to all #fr_app_io_t can be performed by the #fr_app_t.
-
-	fr_app_entry_point_set_t	entry_point_set;//!< Callback to Set the entry point into the state machine
-							///< provided by the fr_app_worker_t.
-							///< We need a function this as the #fr_app_worker_t might
-							///< change based on the packet we received.
 
 	fr_app_priority_get_t		priority;	//!< Assign a priority to the packet.
 } fr_app_t;

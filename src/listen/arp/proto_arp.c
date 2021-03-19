@@ -143,14 +143,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	return slen;
 }
 
-static void mod_entry_point_set(UNUSED void const *instance, request_t *request)
-{
-	fr_assert(request->server_cs != NULL);
-
-	virtual_server_entry_point_set(request);
-}
-
-
 /** Open listen sockets/connect to external event source
  *
  * @param[in] instance	Ctx data for this application.
@@ -323,5 +315,4 @@ fr_app_t proto_arp = {
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,
-	.entry_point_set	= mod_entry_point_set,
 };
