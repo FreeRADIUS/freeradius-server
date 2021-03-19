@@ -836,9 +836,9 @@ int unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, rlm_rcod
 		if (!instruction) {
 			REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
 				cf_section_name1(cs), cf_section_name2(cs));
+			return -1;
 		}
 	}
-
 
 	return unlang_interpret_push_instruction(request, instruction, default_rcode, top_frame);
 }
