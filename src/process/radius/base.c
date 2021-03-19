@@ -385,7 +385,7 @@ RESUME(access_request)
 	}
 
 	/*
-	 *	Run the "Autheenticate = foo" section.
+	 *	Run the "Authenticate = foo" section.
 	 *
 	 *	And continue with sending the generic reply.
 	 */
