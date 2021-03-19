@@ -2,7 +2,7 @@ server eap-sim {
 	namespace = eap-sim
 
 	recv Identity-Response {
-		"%{debug_attr:&session-state.}"
+		"%(debug_attr:&session-state.)"
 		if (!&session-state.Tmp-String-0) {
 			update reply {
 				&Any-ID-Req := yes
