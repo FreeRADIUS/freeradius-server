@@ -214,6 +214,27 @@ int unlang_call_push(request_t *request, CONF_SECTION *server_cs,
 	return 0;
 }
 
+/*
+ *	Hacks for now until we do cleanups.
+ *
+ *	This function should really do the module_instance_t
+ *	initialization, which is currently in
+ *	virtual_server_entry_point_set().  The interpreter needs the
+ *	top stack frame to contain a unlang_frame_state_module_t, in
+ *	order to properly do resume, etc. with the module context,
+ *	dl_inst->data, etc.
+ *
+ *	We still want the cf_data_find() stuff in the virtual server
+ *	code, as it's responsible for adding / finding the link
+ *	between process functions.
+ */
+int unlang_virtual_server_push(request_t *request, CONF_SECTION *server_cs)
+{
+	request->server_cs = server_cs; /* probably wrong, but what the heck */
+	virtual_server_entry_point_set(request);
+
+	return 0;
+}
 
 void unlang_call_init(void)
 {

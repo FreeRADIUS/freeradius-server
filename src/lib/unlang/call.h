@@ -32,6 +32,8 @@ int unlang_call_push(request_t *request, CONF_SECTION *server_cs,
 		     void *instance, module_method_t entry_point, bool top_frame)
 		     CC_HINT(warn_unused_result);
 
+int unlang_virtual_server_push(request_t *request, CONF_SECTION *server_cs);
+
 #ifdef __cplusplus
 }
 #endif
