@@ -355,8 +355,8 @@ RESUME(access_request)
 	UPDATE_STATE(packet);
 	fr_assert(state->packet_type[rcode] != 0);
 
-	UPDATE_STATE_CS(reply);
 	request->reply->code = state->packet_type[rcode];
+	UPDATE_STATE_CS(reply);
 
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
@@ -621,8 +621,8 @@ RESUME(accounting_request)
 	UPDATE_STATE(packet);
 	fr_assert(state->packet_type[rcode] != 0);
 
-	UPDATE_STATE_CS(reply);
 	request->reply->code = state->packet_type[rcode];
+	UPDATE_STATE_CS(reply);
 
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
@@ -716,8 +716,8 @@ RESUME(recv_generic)
 	UPDATE_STATE(packet);
 	fr_assert(state->packet_type[rcode] != 0);
 
-	UPDATE_STATE_CS(reply);
 	request->reply->code = state->packet_type[rcode];
+	UPDATE_STATE_CS(reply);
 
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
@@ -800,8 +800,8 @@ RESUME(send_generic)
 		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == FR_CODE_DO_NOT_RESPOND))) {
 			char const *old = cf_section_name2(cs);
 
-			UPDATE_STATE_CS(reply);
 			request->reply->code = state->packet_type[rcode];
+			UPDATE_STATE_CS(reply);
 
 			RWDEBUG("Failed running 'send %s', changing reply to %s", old, cf_section_name2(cs));
 
