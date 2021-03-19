@@ -87,7 +87,7 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
  */
 typedef struct radius_unlang_packets_s {
 	uint64_t	nothing;		// so that "access_request" isn't at offset 0
-	
+
 	CONF_SECTION *access_request;
 	CONF_SECTION *access_accept;
 	CONF_SECTION *access_reject;
@@ -453,9 +453,9 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(radius_auth_t const *ins
 
 #define RCODE2PACKET(_x) ((*state->packet_type)[_x])
 
-#define RECV(_x) static unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
-#define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request, UNUSED void *rctx)
-#define RESUME(_x) static unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request, UNUSED void *rctx)
+#define RECV(_x) static unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+#define RESUME(_x) static unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
 #if 0
 RECV(access_request)
@@ -533,7 +533,7 @@ RESUME(auth_type)
 	if (auth_type_rcode[rcode] == FR_CODE_DO_NOT_RESPOND) {
 		request->reply->code = auth_type_rcode[rcode];
 		UPDATE_STATE_CS(reply);
-		
+
 		RDEBUG("The 'authenticate' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
@@ -682,7 +682,7 @@ RESUME(acct_type)
 
 		request->reply->code = acct_type_rcode[rcode];
 		UPDATE_STATE_CS(reply);
-		
+
 		RDEBUG("The 'accounting' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
@@ -1006,7 +1006,7 @@ static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
 		.packet_type = &accounting_request,
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
-		.resume = resume_accounting_request,		
+		.resume = resume_accounting_request,
 		.offset = offsetof(radius_unlang_packets_t, accounting_request),
 	},
 	[ FR_CODE_ACCOUNTING_RESPONSE ] = {
