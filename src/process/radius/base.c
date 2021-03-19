@@ -177,7 +177,7 @@ static const CONF_PARSER config[] = {
 typedef unsigned int fr_packet_rcode_t[RLM_MODULE_NUMCODES];
 
 typedef struct radius_state_s {
-	uint16_t		packet_type[RLM_MODULE_NUMCODES];
+	uint32_t		packet_type[RLM_MODULE_NUMCODES];
 	size_t			offset;
 	rlm_rcode_t		rcode;		// default rcode
 	unsigned int	       	reject;		// reject packet
@@ -186,7 +186,7 @@ typedef struct radius_state_s {
 	unlang_module_resume_t	resume;
 } radius_state_t;
 
-static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE];
+static const radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE];
 
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
@@ -396,7 +396,7 @@ RESUME(access_request)
 
 RESUME(auth_type)
 {
-	static uint16_t auth_type_rcode[RLM_MODULE_NUMCODES] = {
+	static const uint32_t auth_type_rcode[RLM_MODULE_NUMCODES] = {
 		[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
 		[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
 		[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
@@ -563,7 +563,7 @@ RESUME(access_challenge)
 
 RESUME(acct_type)
 {
-	static uint16_t acct_type_rcode[RLM_MODULE_NUMCODES] = {
+	static const uint32_t acct_type_rcode[RLM_MODULE_NUMCODES] = {
 		[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
@@ -879,7 +879,7 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
+static const radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
 	[ FR_CODE_ACCESS_REQUEST ] = {
 		.packet_type = {
 			[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_ACCEPT,
