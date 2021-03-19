@@ -99,11 +99,6 @@ void		fr_request_async_bootstrap(request_t *request, fr_event_list_t *el); /* fo
 fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
 bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
 
-int		fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **module_inst,
-					  CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
-					  char const *proto_name,
-					  char const **type_table, size_t type_table_len,
-					  dl_module_inst_t **type_submodule_by_code, uint32_t code_max);
 
 /** Module methods which are allowed in virtual servers.
  *

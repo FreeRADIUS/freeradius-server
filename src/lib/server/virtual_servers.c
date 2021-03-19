@@ -108,9 +108,6 @@ static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
-static int fr_app_process_bootstrap(CONF_SECTION *server);
-static int fr_app_process_instantiate(CONF_SECTION *server);
-
 static const CONF_PARSER server_on_read_config[] = {
 	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_REQUIRED, fr_virtual_server_t, namespace),
 			.on_read = namespace_on_read },
@@ -841,20 +838,14 @@ int virtual_servers_instantiate(void)
 			}
 		}
 
-		/*
-		 *	New process modules stuff, instead of app_process.
-		 */
-		if (virtual_servers[i]->process_module) {
-			if (!dict) return -1; /* should never happen */
+		fr_assert(virtual_servers[i]->process_module);
 
-			if (process_instantiate(server_cs, virtual_servers[i]->process_module, dict->dict) < 0) return -1;
+		if (!dict) return -1; /* should never happen */
 
-			if (virtual_servers[i]->dynamic_client_module &&
-			    (process_instantiate(server_cs, virtual_servers[i]->dynamic_client_module, dict->dict) < 0)) return -1;
+		if (process_instantiate(server_cs, virtual_servers[i]->process_module, dict->dict) < 0) return -1;
 
-		} else {
-			if (fr_app_process_instantiate(server_cs) < 0) return -1;
-		}
+		if (virtual_servers[i]->dynamic_client_module &&
+		    (process_instantiate(server_cs, virtual_servers[i]->dynamic_client_module, dict->dict) < 0)) return -1;
 
 		/*
 		 *	Print out warnings for unused "recv" and
@@ -1025,18 +1016,14 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		}
 
 	bootstrap:
-		if (virtual_servers[i]->process_module) {
-			if (process_bootstrap(virtual_servers[i]->process_module,
-					      virtual_servers[i]->namespace) < 0) return -1;
+		fr_assert(virtual_servers[i]->process_module);
 
-			if (virtual_servers[i]->dynamic_client_module &&
-			    (process_bootstrap(virtual_servers[i]->process_module,
-					       virtual_servers[i]->namespace) < 0)) return -1;
+		if (process_bootstrap(virtual_servers[i]->process_module,
+				      virtual_servers[i]->namespace) < 0) return -1;
 
-			continue; /* don't call the old-style bootstrap */
-		}
-
-		if (fr_app_process_bootstrap(virtual_servers[i]->server_cs) < 0) return -1;
+		if (virtual_servers[i]->dynamic_client_module &&
+		    (process_bootstrap(virtual_servers[i]->process_module,
+				       virtual_servers[i]->namespace) < 0)) return -1;
 	}
 
 	return 0;
@@ -1493,184 +1480,6 @@ void fr_request_async_bootstrap(request_t *request, fr_event_list_t *el)
 	request->async->packet_ctx = NULL;
 
 	virtual_server_entry_point_set(request);
-}
-
-static int fr_app_process_bootstrap(CONF_SECTION *server)
-{
-	CONF_DATA const *cd = NULL;
-
-	/*
-	 *	Bootstrap the process modules
-	 */
-	while ((cd = cf_data_find_next(server, cd, dl_module_inst_t *, CF_IDENT_ANY))) {
-		dl_module_inst_t	*dl_module = *(dl_module_inst_t **) cf_data_value(cd);
-		dl_module_t const	*module = talloc_get_type_abort_const(dl_module->module, dl_module_t);
-		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
-
-		if (app_process->bootstrap && (app_process->bootstrap(dl_module->data,
-								      dl_module->conf) < 0)) {
-			cf_log_err(dl_module->conf, "Bootstrap failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		if (add_compile_list(dl_module->conf, app_process->compile_list, app_process->name) < 0) return -1;
-	}
-
-	return 0;
-}
-
-
-static int fr_app_process_instantiate(CONF_SECTION *server)
-{
-	CONF_DATA const *cd = NULL;
-
-	/*
-	 *	Bootstrap the process modules
-	 */
-	while ((cd = cf_data_find_next(server, cd, dl_module_inst_t *, CF_IDENT_ANY))) {
-		dl_module_inst_t	*dl_module = *(dl_module_inst_t **) cf_data_value(cd);
-		dl_module_t const	*module = talloc_get_type_abort_const(dl_module->module, dl_module_t);
-		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
-		tmpl_rules_t		parse_rules;
-
-		memset(&parse_rules, 0, sizeof(parse_rules));
-		parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
-		fr_assert(parse_rules.dict_def != NULL);
-
-		if (app_process->instantiate &&
-		    (app_process->instantiate(dl_module->data, dl_module->conf) < 0)) {
-			cf_log_err(dl_module->conf, "Instantiation failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		/*
-		 *	Compile the processing sections.
-		 */
-		if (app_process->compile_list &&
-		    (virtual_server_compile_sections(server, app_process->compile_list, &parse_rules, dl_module->data) < 0)) {
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-int fr_app_process_type_parse(TALLOC_CTX *ctx, dl_module_inst_t **dl_module,
-			      CONF_ITEM *ci, fr_dict_attr_t const *packet_type,
-			      char const *proto_name,
-			      char const **type_table, size_t type_table_len,
-			      dl_module_inst_t **type_submodule_by_code, uint32_t code_max)
-{
-	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
-	CONF_SECTION		*process_app_cs;
-	dl_module_inst_t	*parent_module;
-	char const		*name;
-	fr_dict_enum_t const	*type_enum;
-	uint32_t		code;
-
-	fr_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
-
-	/*
-	 *	Allow the process module to be specified by
-	 *	packet type.  Or, by a name in the table.
-	 */
-	type_enum = fr_dict_enum_by_name(packet_type, type_str, -1);
-	if (!type_enum) {
-		size_t i;
-
-		for (i = 0; i < type_table_len; i++) {
-			name = type_table[i];
-			if (name && (strcmp(name, type_str) == 0)) {
-				type_enum = fr_dict_enum_by_value(packet_type, fr_box_uint32(i));
-				break;
-			}
-		}
-
-		if (!type_enum) {
-			cf_log_err(ci, "Invalid type \"%s\"", type_str);
-			return -1;
-		}
-	}
-
-	cf_data_add(ci, type_enum, NULL, false);
-
-	code = type_enum->value->vb_uint32;
-	if (type_table) {
-		if (!code || (code >= type_table_len)) {
-			cf_log_err(ci, "Unsupported 'type = %s'", type_str);
-			return -1;
-		}
-
-		name = type_table[code];
-		if (!name) {
-			cf_log_err(ci, "Cannot listen for unsupported 'type = %s'", type_str);
-			return -1;
-		}
-
-		/*
-		 *	Setting 'type = foo' means you MUST have at least a
-		 *	'recv foo' section.
-		 */
-		if (!cf_section_find(server, "recv", type_enum->name)) {
-			cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
-				   type_enum->name, cf_section_name2(server));
-			return -1;
-		}
-	} else {
-		name = "process"; /* mainly for the detail reader */
-
-		if (!cf_section_find(server, "recv", NULL)) {
-			cf_log_err(ci, "Failed finding 'recv {...} section of virtual server %s",
-				   cf_section_name2(server));
-			return -1;
-		}
-
-		code = 0;
-	}
-
-	parent_module = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, proto_name));
-	fr_assert(parent_module);
-
-	process_app_cs = cf_section_find(listen_cs, type_enum->name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!process_app_cs) {
-		MEM(process_app_cs = cf_section_alloc(listen_cs, listen_cs, type_enum->name, NULL));
-	}
-
-	/*
-	 *	Parent dl_module_inst_t added in virtual_servers.c (listen_parse)
-	 */
-	if (dl_module_instance(ctx, dl_module, process_app_cs, parent_module, name, DL_MODULE_TYPE_SUBMODULE) < 0) {
-		return -1;
-	}
-
-	/*
-	 *	Set the table which looks up the function by packet
-	 *	code.
-	 */
-	if (type_submodule_by_code && (code < code_max)) {
-		type_submodule_by_code[code] = *dl_module;
-	}
-
-	/*
-	 *	Cache the pointer to the loaded dl_module, by packet
-	 *	name.  This lets us call it later for bootstrap,
-	 *	instantiate, or entry_point.
-	 */
-	if (!cf_data_find(server, dl_module_inst_t, type_enum->name)) {
-		dl_module_inst_t **ptr = talloc(server, dl_module_inst_t *);
-
-		*ptr = *dl_module;
-		(void) cf_data_add(server, ptr, type_enum->name, NULL);
-	}
-
-	return code;
 }
 
 
