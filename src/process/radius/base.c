@@ -457,6 +457,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(radius_auth_t const *ins
 #define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 #define RESUME(_x) static unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
+#define RADIUS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_RADIUS_MAX_PACKET_CODE))
 #if 0
 RECV(access_request)
 {
@@ -528,7 +529,7 @@ RESUME(auth_type)
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	fr_assert((request->reply->code > 0) && (request->reply->code < FR_RADIUS_MAX_PACKET_CODE));
+	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	if (auth_type_rcode[rcode] == FR_CODE_DO_NOT_RESPOND) {
 		request->reply->code = auth_type_rcode[rcode];
@@ -675,7 +676,7 @@ RESUME(acct_type)
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	fr_assert((request->reply->code > 0) && (request->reply->code < FR_RADIUS_MAX_PACKET_CODE));
+	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	if (acct_type_rcode[rcode]) {
 		fr_assert(acct_type_rcode[rcode] == FR_CODE_DO_NOT_RESPOND);
@@ -824,7 +825,7 @@ SEND(generic)
 
 	ERROR("HERE %s", __FUNCTION__);
 
-	fr_assert((request->reply->code > 0) && (request->reply->code < FR_RADIUS_MAX_PACKET_CODE));
+	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	UPDATE_STATE_CS(reply);
 
@@ -845,8 +846,7 @@ SEND(generic)
 					 &request->reply_pairs, attr_packet_type) >= 0);
 		vp->vp_uint32 = request->reply->code;
 
-	} else if ((vp->vp_uint32 > 0) && (vp->vp_uint32 < FR_RADIUS_MAX_PACKET_CODE) &&
-		   (radius_state[vp->vp_uint32].packet_type != NULL)) {
+	} else if (RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
 		request->reply->code = vp->vp_uint32;
 		UPDATE_STATE_CS(reply);
 
@@ -869,7 +869,7 @@ RESUME(send_generic)
 
 	ERROR("HERE %s", __FUNCTION__);
 
-	fr_assert((request->reply->code > 0) && (request->reply->code < FR_RADIUS_MAX_PACKET_CODE));
+	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	/*
 	 *	If they delete &reply.Packet-Type, tough for them.
@@ -934,7 +934,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 {
 	radius_state_t 	const	*state;
 
-	fr_assert((request->packet->code > 0) && (request->packet->code < FR_RADIUS_MAX_PACKET_CODE));
+	fr_assert(RADIUS_PACKET_CODE_VALID(request->packet->code));
 
 	UPDATE_STATE(packet);
 
