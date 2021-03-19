@@ -886,6 +886,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	 */
 	while (((now - start) < (NSEC / 100000)) &&
 	       ((request = fr_heap_pop(worker->runnable)) != NULL)) {
+		unlang_action_t action;
 
 		REQUEST_VERIFY(request);
 		fr_assert(request->runnable_id < 0);
@@ -909,9 +910,9 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 		/*
 		 *	Everything else, run the request.
 		 */
-		request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
+		action = request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
 
-		if (final == RLM_MODULE_YIELD) {
+		if (action == UNLANG_ACTION_YIELD) {
 			now = fr_time();
 			fr_time_tracking_yield(&request->async->tracking, now);
 
