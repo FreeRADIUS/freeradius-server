@@ -444,10 +444,12 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(radius_auth_t const *ins
 /*
  *	RADIUS state machine functions
  */
-#define UPDATE_STATE(_x) do { \
+#define UPDATE_STATE_CS(_x) do { \
 			state = &radius_state[request->_x->code]; \
 			cs = *(CONF_SECTION **) (((uint8_t *) &inst->packets) + state->offset); \
 		} while (0)
+
+#define UPDATE_STATE(_x) state = &radius_state[request->_x->code]
 
 #define RCODE2PACKET(_x) ((*state->packet_type)[_x])
 
@@ -479,7 +481,7 @@ RESUME(access_request)
 	fr_assert(RCODE2PACKET(rcode) != 0);
 
 	request->reply->code = RCODE2PACKET(rcode);
-	UPDATE_STATE(reply);
+	UPDATE_STATE_CS(reply);
 
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
@@ -530,7 +532,7 @@ RESUME(auth_type)
 
 	if (auth_type_rcode[rcode] == FR_CODE_DO_NOT_RESPOND) {
 		request->reply->code = auth_type_rcode[rcode];
-		UPDATE_STATE(reply);
+		UPDATE_STATE_CS(reply);
 		
 		RDEBUG("The 'authenticate' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
@@ -602,7 +604,7 @@ RESUME(auth_type)
 		break;
 
 	}
-	UPDATE_STATE(reply);
+	UPDATE_STATE_CS(reply);
 
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
@@ -655,7 +657,7 @@ RESUME(access_challenge)
 	 */
 	if (fr_request_to_state(inst->auth.state_tree, request) < 0) {
 		request->reply->code = FR_CODE_DO_NOT_RESPOND;
-		UPDATE_STATE(reply);
+		UPDATE_STATE_CS(reply);
 		return unlang_module_yield_to_section(p_result, request,
 						      cs, state->rcode, state->send,
 						      NULL, NULL);
@@ -679,7 +681,7 @@ RESUME(acct_type)
 		fr_assert(acct_type_rcode[rcode] == FR_CODE_DO_NOT_RESPOND);
 
 		request->reply->code = acct_type_rcode[rcode];
-		UPDATE_STATE(reply);
+		UPDATE_STATE_CS(reply);
 		
 		RDEBUG("The 'accounting' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
@@ -691,7 +693,7 @@ RESUME(acct_type)
 	}
 
 	request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
-	UPDATE_STATE(reply);
+	UPDATE_STATE_CS(reply);
 
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
@@ -714,7 +716,7 @@ RESUME(accounting_request)
 	fr_assert(RCODE2PACKET(rcode) != 0);
 
 	request->reply->code = RCODE2PACKET(rcode);
-	UPDATE_STATE(reply);
+	UPDATE_STATE_CS(reply);
 
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
@@ -779,7 +781,7 @@ RECV(generic)
 	request->component = "radius";
 	fr_assert(request->dict == dict_radius);
 
-	UPDATE_STATE(packet);
+	UPDATE_STATE_CS(packet);
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type");
@@ -806,7 +808,7 @@ RESUME(recv_generic)
 	fr_assert(RCODE2PACKET(rcode) != 0);
 
 	request->reply->code = RCODE2PACKET(rcode);
-	UPDATE_STATE(reply);
+	UPDATE_STATE_CS(reply);
 
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
@@ -826,7 +828,7 @@ SEND(generic)
 
 	fr_assert((request->reply->code > 0) && (request->reply->code < FR_RADIUS_MAX_PACKET_CODE));
 
-	UPDATE_STATE(reply);
+	UPDATE_STATE_CS(reply);
 
 	/*
 	 *	Allow for over-ride of reply code, IF it's
@@ -848,7 +850,8 @@ SEND(generic)
 	} else if ((vp->vp_uint32 > 0) && (vp->vp_uint32 < FR_RADIUS_MAX_PACKET_CODE) &&
 		   (radius_state[vp->vp_uint32].packet_type != NULL)) {
 		request->reply->code = vp->vp_uint32;
-		UPDATE_STATE(reply);
+		UPDATE_STATE_CS(reply);
+
 	} else {
 		RWDEBUG("Ignoring invalid value %u for &reply.Packet-Type", vp->vp_uint32);
 	}
@@ -873,7 +876,7 @@ RESUME(send_generic)
 	/*
 	 *	If they delete &reply.Packet-Type, tough for them.
 	 */
-	UPDATE_STATE(reply);
+	UPDATE_STATE_CS(reply);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 	switch (RCODE2PACKET(rcode)) {
@@ -891,7 +894,7 @@ RESUME(send_generic)
 			char const *old = cf_section_name2(cs);
 
 			request->reply->code = RCODE2PACKET(rcode);
-			UPDATE_STATE(reply);
+			UPDATE_STATE_CS(reply);
 
 			RWDEBUG("Failed running 'send %s', changing reply to %s", old, cf_section_name2(cs));
 
@@ -931,9 +934,7 @@ RESUME(send_generic)
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	CONF_SECTION	*cs;
 	radius_state_t 	const	*state;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	fr_assert((request->packet->code > 0) && (request->packet->code < FR_RADIUS_MAX_PACKET_CODE));
 
