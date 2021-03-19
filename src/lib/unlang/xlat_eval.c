@@ -1151,12 +1151,13 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
 
-		fr_assert(!fr_dlist_empty(result));
-
-		VALUE_BOX_TALLOC_LIST_VERIFY(result);
-
 		MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL, false));
-		fr_dlist_move(&arg->vb_group, result);
+
+		if (!fr_dlist_empty(result)) {
+			VALUE_BOX_TALLOC_LIST_VERIFY(result);
+			fr_dlist_move(&arg->vb_group, result);
+		}
+
 		xlat_debug_log_expansion(request, *in, NULL);
 		xlat_debug_log_result(request, arg);
 
