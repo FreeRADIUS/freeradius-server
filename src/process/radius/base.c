@@ -322,6 +322,11 @@ static fr_packet_rcode_t disconnect_nak = {
 
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
+#ifndef NDEBUG
+#  define TRACE	RDEBUG3("Entered state %s", __FUNCTION__)
+#else
+#  define TRACE
+#endif
 
 /*
  *	Return a short string showing the terminal server, port
@@ -476,6 +481,8 @@ RESUME(access_request)
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
+	TRACE;
+
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	UPDATE_STATE(packet);
@@ -527,6 +534,8 @@ RESUME(auth_type)
 	CONF_SECTION		*cs;
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+
+	TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
@@ -618,6 +627,8 @@ RESUME(access_accept)
 	fr_pair_t *vp;
 	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
+	TRACE;
+
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_success_message);
 	if (vp){
 		auth_message(&inst->auth, request, true, "Login OK (%pV)", &vp->data);
@@ -633,6 +644,8 @@ RESUME(access_reject)
 {
 	fr_pair_t *vp;
 	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+
+	TRACE;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_failure_message);
 	if (vp) {
@@ -650,6 +663,8 @@ RESUME(access_challenge)
 	CONF_SECTION		*cs;
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+
+	TRACE;
 
 	/*
 	 *	Cache the state context.
@@ -674,6 +689,8 @@ RESUME(acct_type)
 	CONF_SECTION		*cs;
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+
+	TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
@@ -710,6 +727,8 @@ RESUME(accounting_request)
 	fr_dict_enum_t const	*dv;
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+
+	TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
@@ -774,6 +793,8 @@ RECV(generic)
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
+	TRACE;
+
 	if (request->parent && RDEBUG_ENABLED) {
 		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
@@ -802,6 +823,8 @@ RESUME(recv_generic)
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
+	TRACE;
+
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	UPDATE_STATE(packet);
@@ -823,7 +846,7 @@ SEND(generic)
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	ERROR("HERE %s", __FUNCTION__);
+	TRACE;
 
 	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
 
@@ -867,7 +890,7 @@ RESUME(send_generic)
 	radius_state_t const	*state;
 	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	ERROR("HERE %s", __FUNCTION__);
+	TRACE;
 
 	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
 
@@ -933,6 +956,8 @@ RESUME(send_generic)
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	radius_state_t 	const	*state;
+
+	TRACE;
 
 	fr_assert(RADIUS_PACKET_CODE_VALID(request->packet->code));
 
