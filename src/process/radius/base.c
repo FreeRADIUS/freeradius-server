@@ -696,7 +696,7 @@ RECV(generic)
 		RETURN_MODULE_FAIL;
 	}
 
-	RDEBUG("Running 'recv %s' from file %s", cf_section_name2(cs), cf_filename(cs));
+	if (cs) RDEBUG("Running 'recv %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
 					      NULL, NULL);
@@ -763,7 +763,7 @@ SEND(generic)
 		RWDEBUG("Ignoring invalid value %u for &reply.Packet-Type", vp->vp_uint32);
 	}
 
-	RDEBUG("Running 'send %s' from file %s", cf_section_name2(cs), cf_filename(cs));
+	if (cs) RDEBUG("Running 'send %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
 					      NULL, NULL);
