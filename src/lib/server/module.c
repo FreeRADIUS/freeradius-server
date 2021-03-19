@@ -1157,7 +1157,7 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
 
 		ti = talloc_get_type_abort(array[i], module_thread_instance_t);
 
-		DEBUG4("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+		if (ti->module) DEBUG4("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
 
 		/*
 		 *	Check for ti->module is a hack
