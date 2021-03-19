@@ -177,7 +177,7 @@ static const CONF_PARSER config[] = {
 typedef unsigned int fr_packet_rcode_t[RLM_MODULE_NUMCODES];
 
 typedef struct radius_state_s {
-	fr_packet_rcode_t	*packet_type;
+	uint16_t		packet_type[RLM_MODULE_NUMCODES];
 	size_t			offset;
 	rlm_rcode_t		rcode;		// default rcode
 	unsigned int	       	reject;		// reject packet
@@ -187,138 +187,6 @@ typedef struct radius_state_s {
 } radius_state_t;
 
 static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE];
-
-static fr_packet_rcode_t access_request = {
-	[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
-};
-
-static fr_packet_rcode_t auth_type_rcode = {
-	[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
-	[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_NOTFOUND] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
-};
-
-static fr_packet_rcode_t access_accept = {
-	[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
-};
-
-static fr_packet_rcode_t access_reject = {
-	[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
-};
-
-static fr_packet_rcode_t access_challenge = {
-	[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
-};
-
-static fr_packet_rcode_t accounting_request = {
-	[RLM_MODULE_NOOP] =	FR_CODE_ACCOUNTING_RESPONSE,
-	[RLM_MODULE_OK] =	FR_CODE_ACCOUNTING_RESPONSE,
-	[RLM_MODULE_UPDATED] =	FR_CODE_ACCOUNTING_RESPONSE,
-	[RLM_MODULE_HANDLED] =	FR_CODE_ACCOUNTING_RESPONSE,
-
-	[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND,
-};
-
-static fr_packet_rcode_t acct_type_rcode = {
-	[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND,
-};
-
-static fr_packet_rcode_t accounting_response = {
-	[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
-	[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND,
-};
-
-static fr_packet_rcode_t status_server = {
-	[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
-	[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_ACCEPT,
-
-	[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_NOTFOUND] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_REJECT,
-	[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
-};
-
-static fr_packet_rcode_t coa_request = {
-	[RLM_MODULE_NOOP] =	FR_CODE_COA_ACK,
-	[RLM_MODULE_OK] =	FR_CODE_COA_ACK,
-	[RLM_MODULE_UPDATED] =	FR_CODE_COA_ACK,
-	[RLM_MODULE_NOTFOUND] =	FR_CODE_COA_ACK,
-
-	[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
-};
-
-static fr_packet_rcode_t coa_ack = {
-	[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
-};
-
-static fr_packet_rcode_t coa_nak = {
-	[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
-	[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
-};
-
-static fr_packet_rcode_t disconnect_request = {
-	[RLM_MODULE_NOOP] =	FR_CODE_DISCONNECT_ACK,
-	[RLM_MODULE_OK] =	FR_CODE_DISCONNECT_ACK,
-	[RLM_MODULE_UPDATED] =	FR_CODE_DISCONNECT_ACK,
-	[RLM_MODULE_NOTFOUND] =	FR_CODE_DISCONNECT_ACK,
-
-	[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
-};
-
-static fr_packet_rcode_t disconnect_ack = {
-	[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
-};
-
-static fr_packet_rcode_t disconnect_nak = {
-	[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
-	[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
-};
 
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
@@ -456,7 +324,6 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(radius_auth_t const *ins
 
 #define UPDATE_STATE(_x) state = &radius_state[request->_x->code]
 
-#define RCODE2PACKET(_x) ((*state->packet_type)[_x])
 
 #define RECV(_x) static unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 #define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
@@ -486,10 +353,10 @@ RESUME(access_request)
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	UPDATE_STATE(packet);
-	fr_assert(RCODE2PACKET(rcode) != 0);
+	fr_assert(state->packet_type[rcode] != 0);
 
-	request->reply->code = RCODE2PACKET(rcode);
 	UPDATE_STATE_CS(reply);
+	request->reply->code = state->packet_type[rcode];
 
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
@@ -529,6 +396,17 @@ RESUME(access_request)
 
 RESUME(auth_type)
 {
+	static uint16_t auth_type_rcode[RLM_MODULE_NUMCODES] = {
+		[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
+		[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOTFOUND] =	FR_CODE_ACCESS_REJECT,
+		[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
+		[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_REJECT,
+		[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
+	};
+
 	rlm_rcode_t		rcode = request->rcode;
 	fr_pair_t		*vp;
 	CONF_SECTION		*cs;
@@ -685,6 +563,14 @@ RESUME(access_challenge)
 
 RESUME(acct_type)
 {
+	static uint16_t acct_type_rcode[RLM_MODULE_NUMCODES] = {
+		[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND,
+	};
+
 	rlm_rcode_t		rcode = request->rcode;
 	CONF_SECTION		*cs;
 	radius_state_t const	*state;
@@ -733,10 +619,10 @@ RESUME(accounting_request)
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	UPDATE_STATE(packet);
-	fr_assert(RCODE2PACKET(rcode) != 0);
+	fr_assert(state->packet_type[rcode] != 0);
 
-	request->reply->code = RCODE2PACKET(rcode);
 	UPDATE_STATE_CS(reply);
+	request->reply->code = state->packet_type[rcode];
 
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
@@ -806,7 +692,7 @@ RECV(generic)
 	UPDATE_STATE_CS(packet);
 
 	if (!state->recv) {
-		REDEBUG("Invalid packet type");
+		REDEBUG("Invalid reply packet type (%u)", request->reply->code);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -828,10 +714,10 @@ RESUME(recv_generic)
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	UPDATE_STATE(packet);
-	fr_assert(RCODE2PACKET(rcode) != 0);
+	fr_assert(state->packet_type[rcode] != 0);
 
-	request->reply->code = RCODE2PACKET(rcode);
 	UPDATE_STATE_CS(reply);
+	request->reply->code = state->packet_type[rcode];
 
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
@@ -900,7 +786,7 @@ RESUME(send_generic)
 	UPDATE_STATE_CS(reply);
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	switch (RCODE2PACKET(rcode)) {
+	switch (state->packet_type[rcode]) {
 	case 0:			/* don't change the reply */
 		fr_assert(request->reply->code != 0);
 		break;
@@ -910,12 +796,12 @@ RESUME(send_generic)
 		 *	ACK can turn into NAK, but not vice versa.
 		 *	And anything can say "don't respond".
 		 */
-		if ((RCODE2PACKET(rcode) != request->reply->code) &&
-		    ((RCODE2PACKET(rcode) == state->reject) || (RCODE2PACKET(rcode) == FR_CODE_DO_NOT_RESPOND))) {
+		if ((state->packet_type[rcode] != request->reply->code) &&
+		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == FR_CODE_DO_NOT_RESPOND))) {
 			char const *old = cf_section_name2(cs);
 
-			request->reply->code = RCODE2PACKET(rcode);
 			UPDATE_STATE_CS(reply);
+			request->reply->code = state->packet_type[rcode];
 
 			RWDEBUG("Failed running 'send %s', changing reply to %s", old, cf_section_name2(cs));
 
@@ -924,7 +810,7 @@ RESUME(send_generic)
 							      NULL, NULL);
 		}
 
-		fr_assert(!RCODE2PACKET(rcode) || (RCODE2PACKET(rcode) == request->reply->code));
+		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
 		break;
 
 	case FR_CODE_DO_NOT_RESPOND:
@@ -964,7 +850,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	UPDATE_STATE(packet);
 
 	if (!state->recv) {
-		REDEBUG("Invalid packet type");
+		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -995,14 +881,29 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *cs)
 
 static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
 	[ FR_CODE_ACCESS_REQUEST ] = {
-		.packet_type = &access_request,
+		.packet_type = {
+			[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_HANDLED] =	FR_CODE_ACCESS_ACCEPT,
+
+			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+		},
 		.rcode = RLM_MODULE_REJECT,
 		.recv = recv_generic,
 		.resume = resume_access_request,
 		.offset = offsetof(radius_unlang_packets_t, access_request),
 	},
 	[ FR_CODE_ACCESS_ACCEPT ] = {
-		.packet_type = &access_accept,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.reject = FR_CODE_ACCESS_REJECT,
 		.send = send_generic,
@@ -1010,14 +911,24 @@ static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
 		.offset = offsetof(radius_unlang_packets_t, access_accept),
 	},
 	[ FR_CODE_ACCESS_REJECT ] = {
-		.packet_type = &access_reject,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_access_reject,
 		.offset = offsetof(radius_unlang_packets_t, access_reject),
 	},
 	[ FR_CODE_ACCESS_CHALLENGE ] = {
-		.packet_type = &access_challenge,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.reject = FR_CODE_ACCESS_REJECT,
 		.send = send_generic,
@@ -1026,37 +937,77 @@ static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
 	},
 
 	[ FR_CODE_ACCOUNTING_REQUEST ] = {
-		.packet_type = &accounting_request,
+		.packet_type = {
+			[RLM_MODULE_NOOP] =	FR_CODE_ACCOUNTING_RESPONSE,
+			[RLM_MODULE_OK] =	FR_CODE_ACCOUNTING_RESPONSE,
+			[RLM_MODULE_UPDATED] =	FR_CODE_ACCOUNTING_RESPONSE,
+			[RLM_MODULE_HANDLED] =	FR_CODE_ACCOUNTING_RESPONSE,
+
+			[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_accounting_request,
 		.offset = offsetof(radius_unlang_packets_t, accounting_request),
 	},
 	[ FR_CODE_ACCOUNTING_RESPONSE ] = {
-		.packet_type = &accounting_response,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND,
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.offset = offsetof(radius_unlang_packets_t, accounting_response),
 	},
-
 	[ FR_CODE_STATUS_SERVER ] = {
-		.packet_type = &status_server,
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_ACCEPT,
+
+			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_NOTFOUND] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.offset = offsetof(radius_unlang_packets_t, status_server),
 	},
-
 	[ FR_CODE_COA_REQUEST ] = {
-		.packet_type = &coa_request,
+		.packet_type = {
+			[RLM_MODULE_NOOP] =	FR_CODE_COA_ACK,
+			[RLM_MODULE_OK] =	FR_CODE_COA_ACK,
+			[RLM_MODULE_UPDATED] =	FR_CODE_COA_ACK,
+			[RLM_MODULE_NOTFOUND] =	FR_CODE_COA_ACK,
+
+			[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.offset = offsetof(radius_unlang_packets_t, coa_request),
 	},
 	[ FR_CODE_COA_ACK ] = {
-		.packet_type = &coa_ack,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.reject = FR_CODE_COA_NAK,
 		.send = send_generic,
@@ -1064,22 +1015,41 @@ static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
 		.offset = offsetof(radius_unlang_packets_t, coa_ack),
 	},
 	[ FR_CODE_COA_NAK ] = {
-		.packet_type = &coa_nak,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
+			[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.offset = offsetof(radius_unlang_packets_t, coa_nak),
 	},
-
 	[ FR_CODE_DISCONNECT_REQUEST ] = {
-		.packet_type = &disconnect_request,
+		.packet_type = {
+			[RLM_MODULE_NOOP] =	FR_CODE_DISCONNECT_ACK,
+			[RLM_MODULE_OK] =	FR_CODE_DISCONNECT_ACK,
+			[RLM_MODULE_UPDATED] =	FR_CODE_DISCONNECT_ACK,
+			[RLM_MODULE_NOTFOUND] =	FR_CODE_DISCONNECT_ACK,
+
+			[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.offset = offsetof(radius_unlang_packets_t, disconnect_request),
 	},
 	[ FR_CODE_DISCONNECT_ACK ] = {
-		.packet_type = &disconnect_ack,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.reject = FR_CODE_DISCONNECT_NAK,
 		.send = send_generic,
@@ -1087,7 +1057,12 @@ static radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
 		.offset = offsetof(radius_unlang_packets_t, disconnect_ack),
 	},
 	[ FR_CODE_DISCONNECT_NAK ] = {
-		.packet_type = &disconnect_nak,
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
+		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
