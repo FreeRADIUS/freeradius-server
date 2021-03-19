@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 
 static TALLOC_CTX *instance_ctx = NULL;
-static size_t instance_num = 0;
+static size_t instance_num = 1;
 
 /*
  *	For simplicity, this is just array[instance_num].  Once we
