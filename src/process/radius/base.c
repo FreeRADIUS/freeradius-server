@@ -372,7 +372,7 @@ RESUME(access_request)
 	/*
 	 *	Run authenticate foo { ... }
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_auth_type);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_auth_type);
 	if (!vp) goto send_reply;
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
