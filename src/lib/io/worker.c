@@ -958,7 +958,7 @@ void fr_worker_destroy(fr_worker_t *worker)
  */
 static void _worker_request_internal_init(request_t *request, void *uctx)
 {
-	fr_time_t	*now = fr_time();
+	fr_time_t	now = fr_time();
 	fr_worker_t	*worker = uctx;
 
 	worker_request_init(worker, request, now);
@@ -976,7 +976,7 @@ static void _worker_request_internal_init(request_t *request, void *uctx)
  */
 static void _worker_request_internal_done(request_t *request, UNUSED rlm_rcode_t rcode, void *uctx)
 {
-	fr_time_t	*now = fr_time();
+	fr_time_t	now = fr_time();
 	fr_worker_t	*worker = uctx;
 
 	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
