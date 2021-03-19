@@ -51,8 +51,7 @@ static void _request_internal_init(request_t *request, void *uctx)
  */
 static void _request_internal_done(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
 {
-	RDEBUG3("Freeing synchronous request");
-	talloc_free(request);
+	RDEBUG3("Done synchronous request");
 }
 
 /** External request is now complete
@@ -172,7 +171,7 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 
 	rcode = unlang_interpret(request);
 
-	while (!(dont_wait_for_event = (fr_heap_num_elements(intps->runnable) == 0)) ||
+	while ((dont_wait_for_event = (fr_heap_num_elements(intps->runnable) > 0)) ||
 	       (intps->yielded > 0)) {
 		rlm_rcode_t	sub_rcode;
 		int		num_events;
@@ -230,9 +229,6 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 
 		if (sub_request == request) {
 			rcode = sub_rcode;
-		} else {
-			RDEBUG4("Cleaning up subrequest");
-			talloc_free(sub_request);
 		}
 	}
 
