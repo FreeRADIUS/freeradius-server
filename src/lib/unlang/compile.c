@@ -3547,7 +3547,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *
 		 *	This should really be removed from the server.
 		 */
-		if (((name[0] == '%') && (name[1] == '{')) ||
+		if (((name[0] == '%') && ((name[1] == '{') || (name[1] == '('))) ||
 		    (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING)) {
 			return compile_tmpl(parent, unlang_ctx, cp);
 		}
