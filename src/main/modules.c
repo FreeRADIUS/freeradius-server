@@ -1404,6 +1404,14 @@ static int load_byserver(CONF_SECTION *cs)
 							MOD_POST_AUTH)) {
 			goto error; /* FIXME: memleak? */
 		}
+
+		subcs = cf_section_sub_find_name2(cs, "cache", "refresh");
+		if (subcs && !load_subcomponent_section(subcs,
+							components,
+							da,
+							MOD_POST_AUTH)) {
+			goto error; /* FIXME: memleak? */
+		}
 #endif
 
 #ifdef WITH_DHCP
