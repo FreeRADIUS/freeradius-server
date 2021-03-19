@@ -1895,7 +1895,7 @@ static size_t tls_session_id_binary(SSL_SESSION *ssn, uint8_t *buffer, size_t bu
 #define CACHE_SAVE (1)
 #define CACHE_LOAD (2)
 #define CACHE_CLEAR (3)
-#define CACHE_REFRESH (3)
+#define CACHE_REFRESH (4)
 
 static REQUEST *cache_init_fake_request(fr_tls_server_conf_t const *conf, SSL_SESSION *sess, SSL *ssl,
 					uint8_t const *data, size_t size)
