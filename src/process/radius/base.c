@@ -60,7 +60,6 @@ static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t process_radius_dict_attr[];
 fr_dict_attr_autoload_t process_radius_dict_attr[] = {
-
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -76,6 +75,16 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
+	{ NULL }
+};
+
+static fr_value_box_t const	*enum_auth_type_accept;
+static fr_value_box_t const	*enum_auth_type_reject;
+
+extern fr_dict_enum_autoload_t process_radius_dict_enum[];
+fr_dict_enum_autoload_t process_radius_dict_enum[] = {
+	{ .out = &enum_auth_type_accept, .name = "Accept", .attr = &attr_auth_type },
+	{ .out = &enum_auth_type_accept, .name = "Reject", .attr = &attr_auth_type },
 	{ NULL }
 };
 
@@ -345,6 +354,19 @@ RESUME(access_request)
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) goto send_reply;
+
+	/*
+	 *	The magic Auth-Type accept value
+	 *	which means skip the authenticate
+	 *	section...
+	 */
+	if (fr_value_box_cmp(enum_auth_type_accept, dv->value) == 0) {
+		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
+		goto send_reply;
+	} else if (fr_value_box_cmp(enum_auth_type_reject, dv->value) == 0) {
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+		goto send_reply;
+	}
 
 	cs = cf_section_find(inst->server_cs, "authenticate", dv->name);
 	if (!cs) {
