@@ -56,7 +56,7 @@ typedef struct {
 } tacacs_unlang_t;
 
 typedef struct {
-	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.
+	fr_time_delta_t	session_timeout;		//!< Maximum time between the last response and next request.
 	uint32_t	max_session;			//!< Maximum ongoing session allowed.
 
 	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
@@ -69,10 +69,12 @@ typedef struct {
 	tacacs_unlang_t	auth_cont;
 	tacacs_unlang_t	autz;
 	tacacs_unlang_t	acct;
+
+	CONF_SECTION	*server_cs;
 } process_tacacs_t;
 
 static const CONF_PARSER session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, process_tacacs_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_tacacs_t, session_timeout), .dflt = "15" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_tacacs_t, max_session), .dflt = "4096" },
 	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_tacacs_t, state_server_id) },
 
@@ -190,11 +192,11 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		ctx = &inst->auth_start;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST: 
+	case FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST:
 		ctx = &inst->autz;
 		break;
 
-	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST: 
+	case FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST:
 		ctx = &inst->acct;
 		break;
 
@@ -351,7 +353,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		} else if (ctx->attr_process == attr_tacacs_accounting_flags) {
 			vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_accounting_flags);
 			if (!vp) goto setup_send;
-			
+
 			dv = fr_dict_enum_by_value(vp->da, &vp->data);
 			if (!dv) goto setup_send;
 
@@ -367,7 +369,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			}
 
 			request->request_state = REQUEST_PROCESS;
-			
+
 		} else {
 			goto setup_send;
 		}
@@ -499,7 +501,8 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	 *	connection.
 	 */
 	inst->state_tree = fr_state_tree_init(inst, attr_tacacs_state, main_config->spawn_workers, inst->max_session,
-					      inst->session_timeout, inst->state_server_id);
+					      inst->session_timeout, inst->state_server_id,
+					      fr_hash_string(cf_section_name2(inst->server_cs)));
 
 	return 0;
 }
@@ -514,6 +517,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *process_app_cs)
 
 	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
+	inst->server_cs = server_cs;
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	/*
@@ -599,7 +603,7 @@ static virtual_server_compile_t compile_list[] = {
 	},
 
 	/* authorization */
-	
+
 	{
 		.name = "recv",
 		.name2 = "Authorization-Request",

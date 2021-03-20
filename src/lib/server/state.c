@@ -75,7 +75,7 @@ typedef struct {
 								//!< to locate authentication sessions originating
 								//!< from a particular backend authentication server.
 
-			uint32_t	server_hash;		//!< Hash of the current virtual server, xor'd with
+			uint32_t	context_id;		//!< Hash of the current virtual server, xor'd with
 								//!< r1, r2, r3, r4 after the original state value
 								//!< is sent, but before the state entry is inserted
 								//!< into the tree.  The receiving virtual server
@@ -100,7 +100,7 @@ typedef struct {
 	};
 
 	uint64_t		seq_start;			//!< Number of first request in this sequence.
-	time_t			cleanup;			//!< When this entry should be cleaned up.
+	fr_time_t		cleanup;			//!< When this entry should be cleaned up.
 	fr_dlist_t		list;				//!< Entry in the list of things to expire.
 
 	int			tries;
@@ -139,12 +139,14 @@ struct fr_state_tree_s {
 	rbtree_t		*tree;				//!< rbtree used to lookup state value.
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
-	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
+	fr_time_delta_t		timeout;			//!< How long to wait before cleaning up state entires.
 
 	bool			thread_safe;			//!< Whether we lock the tree whilst modifying it.
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
 
 	uint8_t			server_id;			//!< ID to use for load balancing.
+	uint32_t		context_id;			//!< ID binding state values to a context such
+								///< as a virtual server.
 
 	fr_dict_attr_t const	*da;				//!< State attribute used.
 };
@@ -197,12 +199,15 @@ static int _state_tree_free(fr_state_tree_t *state)
  * @param[in] max_sessions	we track state for.
  * @param[in] timeout		How long to wait before cleaning up entries.
  * @param[in] server_id		ID byte to use in load-balancing operations.
+ * @param[in] context_id	Specifies a unique ctx id to prevent states being
+ *				used in contexts for which they weren't intended.
  * @return
  *	- A new state tree.
  *	- NULL on failure.
  */
 fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
-				    uint32_t max_sessions, uint32_t timeout, uint8_t server_id)
+				    uint32_t max_sessions, fr_time_delta_t timeout,
+				    uint8_t server_id, uint32_t context_id)
 {
 	fr_state_tree_t *state;
 
@@ -243,6 +248,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 
 	state->da = da;		/* Remember which attribute we use to load/store state */
 	state->server_id = server_id;
+	state->context_id = context_id;
 	state->thread_safe = thread_safe;
 
 	return state;
@@ -312,7 +318,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 {
 	size_t			i;
 	uint32_t		x;
-	time_t			now = time(NULL);
+	fr_time_t		now = fr_time();
 	fr_pair_t		*vp;
 	fr_state_entry_t	*entry, *next;
 
@@ -506,7 +512,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	only succeed in the virtual server that created the state
 	 *	value.
 	 */
-	*((uint32_t *)(&entry->state_comp.server_hash)) ^= fr_hash_string(cf_section_name2(request->server_cs));
+	*((uint32_t *)(&entry->state_comp.context_id)) ^= state->context_id;
 
 	if (!rbtree_insert(state->tree, entry)) {
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
@@ -527,7 +533,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 /** Find the entry, based on the State attribute
  *
  */
-static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, request_t *request, fr_value_box_t const *vb)
+static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, fr_value_box_t const *vb)
 {
 	fr_state_entry_t *entry, my_entry;
 
@@ -556,7 +562,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, request_t *req
 	/*
 	 *	Make it unique for different virtual servers handling the same request
 	 */
-	my_entry.state_comp.server_hash ^= fr_hash_string(cf_section_name2(request->server_cs));
+	my_entry.state_comp.context_id ^= state->context_id;
 
 	entry = rbtree_find_data(state->tree, &my_entry);
 
@@ -577,7 +583,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	if (!vp) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, request, &vp->data);
+	entry = state_entry_find(state, &vp->data);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
@@ -634,7 +640,7 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, request, &vp->data);
+	entry = state_entry_find(state, &vp->data);
 	if (entry) {
 		(void)talloc_get_type_abort(entry, fr_state_entry_t);
 		if (entry->thawed) {
@@ -698,7 +704,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	vp = fr_pair_find_by_da(&request->request_pairs, state->da);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	if (vp) old = state_entry_find(state, request, &vp->data);
+	if (vp) old = state_entry_find(state, &vp->data);
 
 	entry = state_entry_create(state, request, &request->reply_pairs, old);
 	if (!entry) {

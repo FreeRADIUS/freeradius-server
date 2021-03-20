@@ -127,7 +127,7 @@ typedef struct {
 	char const	*denied_msg;		//!< Additional text to append if the user is already logged
 						//!< in (simultaneous use check failed).
 
-	uint32_t	session_timeout;	//!< Maximum time between the last response and next request.
+	fr_time_delta_t	session_timeout;	//!< Maximum time between the last response and next request.
 	uint32_t	max_session;		//!< Maximum ongoing session allowed.
 
 	uint8_t       	state_server_id;	//!< Sets a specific byte in the state to allow the
@@ -152,7 +152,7 @@ typedef struct {
 #include <freeradius-devel/server/process.h>
 
 static const CONF_PARSER session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, process_radius_auth_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_radius_auth_t, session_timeout), .dflt = "15" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_radius_auth_t, max_session), .dflt = "4096" },
 	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_radius_auth_t, state_server_id) },
 
@@ -691,7 +691,8 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	process_radius_t	*inst = instance;
 
 	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.max_session,
-						   inst->auth.session_timeout, inst->auth.state_server_id);
+						   inst->auth.session_timeout, inst->auth.state_server_id,
+						   fr_hash_string(cf_section_name2(inst->server_cs)));
 
 	return 0;
 }
