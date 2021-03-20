@@ -84,7 +84,7 @@ static fr_value_box_t const	*enum_auth_type_reject;
 extern fr_dict_enum_autoload_t process_radius_dict_enum[];
 fr_dict_enum_autoload_t process_radius_dict_enum[] = {
 	{ .out = &enum_auth_type_accept, .name = "Accept", .attr = &attr_auth_type },
-	{ .out = &enum_auth_type_accept, .name = "Reject", .attr = &attr_auth_type },
+	{ .out = &enum_auth_type_reject, .name = "Reject", .attr = &attr_auth_type },
 	{ NULL }
 };
 
