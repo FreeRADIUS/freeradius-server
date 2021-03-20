@@ -1356,7 +1356,7 @@ int virtual_servers_free(void)
 unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request)
 {
 	rlm_rcode_t	rcode;
-	CONF_SECTION	*cs, *server_cs;
+	CONF_SECTION	*cs;
 	char const	*module;
 	char const	*component;
 	fr_dict_attr_t const *da;
@@ -1364,16 +1364,6 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	CONF_SECTION	*subcs;
 	fr_dict_t const	*dict_internal;
 
-	/*
-	 *	Cache the old server_cs in case it was changed.
-	 *
-	 *	FIXME: unlang_call_current(request) should NOT be changed.
-	 *	Instead, we should always create a child request_t when
-	 *	we need to use a different virtual server.
-	 *
-	 *	This is mainly for things like proxying
-	 */
-	server_cs = unlang_call_current(request);
 	cs = cf_section_find(unlang_call_current(request), "authenticate", NULL);
 	if (!cs) {
 		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
