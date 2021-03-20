@@ -49,26 +49,211 @@ typedef struct fr_process_module_s {
 #  define PROCESS_TRACE
 #endif
 
-#ifndef process_packet_code_t
-#define process_packet_code_t uint32_t
-#endif
+#ifdef PROCESS_CODE_MAX
 
-typedef process_packet_code_t fr_process_rcode_t[RLM_MODULE_NUMCODES];
+typedef PROCESS_PACKET_TYPE fr_process_rcode_t[RLM_MODULE_NUMCODES];
 
 /*
- *	RADIUS state machine tables for rcode to packet.
+ *	Process state machine tables for rcode to packet.
  */
 typedef struct {
-	process_packet_code_t	packet_type[RLM_MODULE_NUMCODES];	//!< rcode to packet type mapping.
+	PROCESS_PACKET_TYPE	packet_type[RLM_MODULE_NUMCODES];	//!< rcode to packet type mapping.
 	size_t			section_offset;	//!< Where to look in the process instance for
 						///< a pointer to the section we should execute.
 	rlm_rcode_t		rcode;		//!< Default rcode
-	process_packet_code_t	reject;		//!< Reject packet type.
+	PROCESS_PACKET_TYPE	reject;		//!< Reject packet type.
 	module_method_t		recv;		//!< Method to call when receiving this type of packet.
 	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
 	unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
 } fr_process_state_t;
 
+/*
+ *	Process state machine functions
+ */
+#define UPDATE_STATE_CS(_x) do { \
+			state = &process_state[request->_x->code]; \
+			memcpy(&cs, (CONF_SECTION * const *) (((uint8_t const *) &inst->sections) + state->section_offset), sizeof(cs)); \
+		} while (0)
+
+#define UPDATE_STATE(_x) state = &process_state[request->_x->code]
+
+static fr_process_state_t const process_state[PROCESS_CODE_MAX];
+
+#define RECV(_x) static inline unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+#define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+
+RECV(generic)
+{
+	CONF_SECTION			*cs;
+	fr_process_state_t const	*state;
+	PROCESS_INST const		*inst = mctx->instance;
+
+	PROCESS_TRACE;
+
+	if (request->parent && RDEBUG_ENABLED) {
+		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
+	}
+
+	UPDATE_STATE_CS(packet);
+
+	if (!state->recv) {
+		REDEBUG("Invalid reply packet type (%u)", request->reply->code);
+		RETURN_MODULE_FAIL;
+	}
+
+	if (cs) RDEBUG("Running 'recv %s' from file %s", cf_section_name2(cs), cf_filename(cs));
+	return unlang_module_yield_to_section(p_result, request,
+					      cs, state->rcode, state->resume,
+					      NULL, NULL);
+}
+
+RESUME(recv_generic)
+{
+	rlm_rcode_t			rcode = request->rcode;
+	CONF_SECTION			*cs;
+	fr_process_state_t const	*state;
+	PROCESS_INST const   		*inst = mctx->instance;
+
+	PROCESS_TRACE;
+
+	fr_assert(rcode < RLM_MODULE_NUMCODES);
+
+	UPDATE_STATE(packet);
+	fr_assert(state->packet_type[rcode] != 0);
+
+	request->reply->code = state->packet_type[rcode];
+	UPDATE_STATE_CS(reply);
+
+	fr_assert(state->send != NULL);
+	return unlang_module_yield_to_section(p_result, request,
+					      cs, state->rcode, state->send,
+					      NULL, NULL);
+}
+
+SEND(generic)
+{
+	fr_pair_t 			*vp;
+	CONF_SECTION			*cs;
+	fr_process_state_t const	*state;
+	PROCESS_INST const   		*inst = mctx->instance;
+
+	PROCESS_TRACE;
+
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
+
+	UPDATE_STATE_CS(reply);
+
+	/*
+	 *	Allow for over-ride of reply code, IF it's
+	 *	within range, AND we've pre-compiled the
+	 *	unlang.
+	 *
+	 *	Add reply->packet-type in case we're
+	 *	being called via the `call {}` keyword.
+	 *
+	 *	@todo - enforce that this is an allowed reply for the
+	 *	request.
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
+	if (!vp) {
+		MEM(fr_pair_update_by_da(request->reply_ctx, &vp,
+					 &request->reply_pairs, attr_packet_type) >= 0);
+		vp->vp_uint32 = request->reply->code;
+
+	} else if ((vp->vp_uint32 != PROCESS_CODE_MAX) && PROCESS_PACKET_CODE_VALID(vp->vp_uint32)) {
+		request->reply->code = vp->vp_uint32;
+		UPDATE_STATE_CS(reply);
+
+	} else {
+		RWDEBUG("Ignoring invalid value %u for &reply.Packet-Type", vp->vp_uint32);
+	}
+
+	if (cs) RDEBUG("Running 'send %s' from file %s", cf_section_name2(cs), cf_filename(cs));
+	return unlang_module_yield_to_section(p_result, request,
+					      cs, state->rcode, state->resume,
+					      NULL, NULL);
+}
+
+RESUME(send_generic)
+{
+	rlm_rcode_t			rcode = request->rcode;
+	CONF_SECTION			*cs;
+	fr_process_state_t const	*state;
+	PROCESS_INST const   		*inst = mctx->instance;
+
+	PROCESS_TRACE;
+
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
+
+	/*
+	 *	If they delete &reply.Packet-Type, tough for them.
+	 */
+	UPDATE_STATE_CS(reply);
+
+	fr_assert(rcode < RLM_MODULE_NUMCODES);
+	switch (state->packet_type[rcode]) {
+	case 0:			/* don't change the reply */
+		fr_assert(request->reply->code != 0);
+		break;
+
+	default:
+		/*
+		 *	ACK can turn into NAK, but not vice versa.
+		 *	And anything can say "don't respond".
+		 */
+		if ((state->packet_type[rcode] != request->reply->code) &&
+		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == PROCESS_CODE_DO_NOT_RESPOND))) {
+			char const *old = cf_section_name2(cs);
+
+			request->reply->code = state->packet_type[rcode];
+			UPDATE_STATE_CS(reply);
+
+			RWDEBUG("Failed running 'send %s', changing reply to %s", old, cf_section_name2(cs));
+
+			return unlang_module_yield_to_section(p_result, request,
+							      cs, state->rcode, state->send,
+							      NULL, NULL);
+		}
+
+		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
+		break;
+
+	case PROCESS_CODE_DO_NOT_RESPOND:
+		RDEBUG("The 'send %s' section returned %s - not sending a response",
+		       fr_table_str_by_value(rcode_table, rcode, "???"),
+		       cf_section_name2(cs));
+		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
+		break;
+	}
+
+	request->reply->timestamp = fr_time();
+
+	/*
+	 *	Check for "do not respond".
+	 */
+	if (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) {
+		RDEBUG("Not sending reply to client.");
+		RETURN_MODULE_OK;
+	}
+
+	if (request->parent && RDEBUG_ENABLED) {
+		RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
+	}
+
+	RETURN_MODULE_OK;
+}
+
+#endif	/* PROCESS_CODE_MAX */
+
+#undef RECV
+#undef SEND
+#undef RESUME
+#define RECV(_x) static unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+#define RESUME(_x) static unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
 #ifdef __cplusplus
 }

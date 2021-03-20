@@ -33,12 +33,6 @@
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/state.h>
 
-#define process_packet_code_t		fr_radius_packet_code_t
-#define PROCESS_CODE_MAX		FR_RADIUS_CODE_MAX
-#define PROCESS_CODE_DO_NOT_RESPOND	FR_RADIUS_CODE_DO_NOT_RESPOND
-#define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PACKET_CODE_VALID
-#include <freeradius-devel/server/process.h>
-
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
@@ -140,6 +134,13 @@ typedef struct {
 	process_radius_auth_t		auth;		//!< Authentication configuration.
 } process_radius_t;
 
+#define PROCESS_PACKET_TYPE		fr_radius_packet_code_t
+#define PROCESS_CODE_MAX		FR_RADIUS_CODE_MAX
+#define PROCESS_CODE_DO_NOT_RESPOND	FR_RADIUS_CODE_DO_NOT_RESPOND
+#define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PACKET_CODE_VALID
+#define PROCESS_INST			process_radius_t
+#include <freeradius-devel/server/process.h>
+
 static const CONF_PARSER session_config[] = {
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, process_radius_auth_t, session_timeout), .dflt = "15" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_radius_auth_t, max_session), .dflt = "4096" },
@@ -174,8 +175,6 @@ static const CONF_PARSER config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
-
-static fr_process_state_t const process_state[PROCESS_CODE_MAX];
 
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
@@ -297,20 +296,6 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
 	talloc_free(msg);
 }
 
-/*
- *	RADIUS state machine functions
- */
-#define UPDATE_STATE_CS(_x) do { \
-			state = &process_state[request->_x->code]; \
-			cs = *(CONF_SECTION **) (((uint8_t *) &inst->sections) + state->section_offset); \
-		} while (0)
-
-#define UPDATE_STATE(_x) state = &process_state[request->_x->code]
-
-
-#define RECV(_x) static unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
-#define RESUME(_x) static unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
 #if 0
 RECV(access_request)
@@ -328,7 +313,7 @@ RESUME(access_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_t const		*dv;
 	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -393,7 +378,7 @@ RESUME(auth_type)
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -485,7 +470,7 @@ RESUME(auth_type)
 RESUME(access_accept)
 {
 	fr_pair_t			*vp;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -503,7 +488,7 @@ RESUME(access_accept)
 RESUME(access_reject)
 {
 	fr_pair_t			*vp;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -522,7 +507,7 @@ RESUME(access_challenge)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -556,7 +541,7 @@ RESUME(acct_type)
 	rlm_rcode_t			rcode = request->rcode;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -594,7 +579,7 @@ RESUME(accounting_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_t const		*dv;
 	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -655,179 +640,18 @@ RESUME(status_server)
 }
 #endif
 
-RECV(generic)
-{
-	CONF_SECTION			*cs;
-	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
-
-	PROCESS_TRACE;
-
-	if (request->parent && RDEBUG_ENABLED) {
-		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
-	}
-
-	request->component = "radius";
-	fr_assert(request->dict == dict_radius);
-
-	UPDATE_STATE_CS(packet);
-
-	if (!state->recv) {
-		REDEBUG("Invalid reply packet type (%u)", request->reply->code);
-		RETURN_MODULE_FAIL;
-	}
-
-	if (cs) RDEBUG("Running 'recv %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->resume,
-					      NULL, NULL);
-}
-
-RESUME(recv_generic)
-{
-	rlm_rcode_t			rcode = request->rcode;
-	CONF_SECTION			*cs;
-	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
-
-	PROCESS_TRACE;
-
-	fr_assert(rcode < RLM_MODULE_NUMCODES);
-
-	UPDATE_STATE(packet);
-	fr_assert(state->packet_type[rcode] != 0);
-
-	request->reply->code = state->packet_type[rcode];
-	UPDATE_STATE_CS(reply);
-
-	fr_assert(state->send != NULL);
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->send,
-					      NULL, NULL);
-}
-
-SEND(generic)
-{
-	fr_pair_t 			*vp;
-	CONF_SECTION			*cs;
-	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
-
-	PROCESS_TRACE;
-
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
-
-	UPDATE_STATE_CS(reply);
-
-	/*
-	 *	Allow for over-ride of reply code, IF it's
-	 *	within range, AND we've pre-compiled the
-	 *	unlang.
-	 *
-	 *	Add reply->packet-type in case we're
-	 *	being called via the `call {}` keyword.
-	 *
-	 *	@todo - enforce that this is an allowed reply for the
-	 *	request.
-	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
-	if (!vp) {
-		MEM(fr_pair_update_by_da(request->reply_ctx, &vp,
-					 &request->reply_pairs, attr_packet_type) >= 0);
-		vp->vp_uint32 = request->reply->code;
-
-	} else if ((vp->vp_uint32 != PROCESS_CODE_MAX) && PROCESS_PACKET_CODE_VALID(vp->vp_uint32)) {
-		request->reply->code = vp->vp_uint32;
-		UPDATE_STATE_CS(reply);
-
-	} else {
-		RWDEBUG("Ignoring invalid value %u for &reply.Packet-Type", vp->vp_uint32);
-	}
-
-	if (cs) RDEBUG("Running 'send %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->resume,
-					      NULL, NULL);
-}
-
-RESUME(send_generic)
-{
-	rlm_rcode_t			rcode = request->rcode;
-	CONF_SECTION			*cs;
-	fr_process_state_t const	*state;
-	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
-
-	PROCESS_TRACE;
-
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
-
-	/*
-	 *	If they delete &reply.Packet-Type, tough for them.
-	 */
-	UPDATE_STATE_CS(reply);
-
-	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	switch (state->packet_type[rcode]) {
-	case 0:			/* don't change the reply */
-		fr_assert(request->reply->code != 0);
-		break;
-
-	default:
-		/*
-		 *	ACK can turn into NAK, but not vice versa.
-		 *	And anything can say "don't respond".
-		 */
-		if ((state->packet_type[rcode] != request->reply->code) &&
-		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == PROCESS_CODE_DO_NOT_RESPOND))) {
-			char const *old = cf_section_name2(cs);
-
-			request->reply->code = state->packet_type[rcode];
-			UPDATE_STATE_CS(reply);
-
-			RWDEBUG("Failed running 'send %s', changing reply to %s", old, cf_section_name2(cs));
-
-			return unlang_module_yield_to_section(p_result, request,
-							      cs, state->rcode, state->send,
-							      NULL, NULL);
-		}
-
-		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
-		break;
-
-	case PROCESS_CODE_DO_NOT_RESPOND:
-		RDEBUG("The 'send %s' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"),
-		       cf_section_name2(cs));
-		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
-		break;
-	}
-
-	request->reply->timestamp = fr_time();
-
-	/*
-	 *	Check for "do not respond".
-	 */
-	if (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) {
-		RDEBUG("Not sending reply to client.");
-		RETURN_MODULE_OK;
-	}
-
-	if (request->parent && RDEBUG_ENABLED) {
-		RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
-	}
-
-	RETURN_MODULE_OK;
-}
-
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
+	(void) talloc_get_type_abort_const(mctx->instance, process_radius_t);
+
 	PROCESS_TRACE;
 
 	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->packet->code));
+
+	request->component = "radius";
+	fr_assert(request->dict == dict_radius);
 
 	UPDATE_STATE(packet);
 
