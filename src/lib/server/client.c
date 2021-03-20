@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/unlang/call.h>
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hex.h>
@@ -1032,7 +1033,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 	 *	@todo - allow for setting a DIFFERENT virtual server,
 	 *	src IP, protocol, etc.  This should all be in TLVs..
 	 */
-	c = client_afrom_cs(cs, cs, request->server_cs);
+	c = client_afrom_cs(cs, cs, unlang_call_current(request));
 	if (!c) {
 	error:
 		talloc_free(cs);

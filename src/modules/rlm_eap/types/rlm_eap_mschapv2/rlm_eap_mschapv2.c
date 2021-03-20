@@ -746,7 +746,7 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->name);
+	unlang = cf_section_find(unlang_call_current(request), "authenticate", inst->auth_type->name);
 	if (!unlang) {
 		process_authenticate(&rcode, inst->auth_type->value->vb_uint32, request);
 	} else {

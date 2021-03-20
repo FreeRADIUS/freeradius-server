@@ -32,10 +32,11 @@ RCSID("$Id$")
 #include <string.h>
 #include <time.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/server/pool.h>
+#include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "rest.h"
 
@@ -1787,7 +1788,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", cf_section_name2(request->server_cs));
+	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", cf_section_name2(unlang_call_current(request)));
 	RINDENT();
 	RDEBUG3("%s", buffer);
 	REXDENT();

@@ -54,11 +54,12 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS worker->name
 #define LOG_DST worker->log
 
+#include <freeradius-devel/io/channel.h>
+#include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/time_tracking.h>
 #include <freeradius-devel/io/worker.h>
-#include <freeradius-devel/io/channel.h>
-#include <freeradius-devel/io/message.h>
-#include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/dlist.h>
 
@@ -731,7 +732,6 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	 *	to a request.
 	 */
 	fr_assert(cd->listen != NULL);
-	request->server_cs = cd->listen->server_cs;
 
 	/*
 	 *	Update the transport-specific fields.
@@ -765,7 +765,7 @@ nak:
 	/*
 	 *	Set the entry point for this virtual server.
 	 */
-	if (virtual_server_push(request, cd->listen->server_cs, UNLANG_TOP_FRAME) < 0) {
+	if (unlang_call_push(request, cd->listen->server_cs, UNLANG_TOP_FRAME) < 0) {
 		RERROR("Protocol failed to set 'process' function");
 		worker_nak(worker, cd, now);
 		return;

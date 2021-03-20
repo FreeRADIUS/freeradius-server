@@ -339,7 +339,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 				goto setup_send;
 			}
 
-			unlang = cf_section_find(request->server_cs, "authenticate", dv->name);
+			unlang = cf_section_find(unlang_call_current(request), "authenticate", dv->name);
 			if (!unlang) {
 				message_failed(request, ctx, "No matching 'authenticate' section found: rejecting the user");
 				goto setup_send;
@@ -357,7 +357,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			dv = fr_dict_enum_by_value(vp->da, &vp->data);
 			if (!dv) goto setup_send;
 
-			unlang = cf_section_find(request->server_cs, "accounting", dv->name);
+			unlang = cf_section_find(unlang_call_current(request), "accounting", dv->name);
 			if (!unlang) {
 				RDEBUG2("No 'accounting %s { ... }' section found - skipping...", dv->name);
 				goto setup_send;

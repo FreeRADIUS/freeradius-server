@@ -42,6 +42,8 @@ extern const CONF_PARSER virtual_servers_on_read_config[];
  */
 void		virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free);
 
+fr_dict_t const *virtual_server_dict(CONF_SECTION *server_cs);
+
 int		virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name,
 							fr_dict_attr_t const *da);
 

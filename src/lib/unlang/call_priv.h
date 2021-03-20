@@ -21,6 +21,7 @@
  * @file unlang/call_priv.h
  *
  * @copyright 2020 The FreeRADIUS server project
+ * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #ifdef __cplusplus
 extern "C" {

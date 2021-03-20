@@ -677,11 +677,11 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 	}
 
 	if (tmpl_da(vpt) == attr_virtual_server) {
-		if (!request->server_cs) return XLAT_ACTION_DONE;
+		if (!unlang_call_current(request)) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt),
-					       cf_section_name2(request->server_cs), false) < 0) goto error;
+					       cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
 		goto done;
 	}
 

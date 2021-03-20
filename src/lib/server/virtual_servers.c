@@ -67,14 +67,14 @@ static fr_dict_t const *dict_freeradius;
 
 static fr_dict_attr_t const *attr_auth_type;
 
-extern fr_dict_autoload_t virtual_server_dict[];
-fr_dict_autoload_t virtual_server_dict[] = {
+extern fr_dict_autoload_t virtual_server_dict_autoload[];
+fr_dict_autoload_t virtual_server_dict_autoload[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
 
-extern fr_dict_attr_autoload_t virtual_server_dict_attr[];
-fr_dict_attr_autoload_t virtual_server_dict_attr[] = {
+extern fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[];
+fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ NULL }
@@ -201,6 +201,19 @@ void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, boo
 	talloc_set_destructor(p, _virtual_server_dict_free);
 
 	cf_data_add(server_cs, p, "dictionary", true);
+}
+
+fr_dict_t const *virtual_server_dict(CONF_SECTION *server_cs)
+{
+	virtual_server_dict_t *p;
+	CONF_DATA const *cd;
+
+	cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
+	if (cd) {
+		p = (virtual_server_dict_t *) cf_data_value(cd);
+		return p->dict;
+	}
+	return NULL;
 }
 
 /** Parse a "namespace" parameter.
@@ -1310,13 +1323,13 @@ int virtual_servers_init(CONF_SECTION *config)
 
 	virtual_server_root = config;
 
-	if (fr_dict_autoload(virtual_server_dict) < 0) {
+	if (fr_dict_autoload(virtual_server_dict_autoload) < 0) {
 		PERROR("%s", __FUNCTION__);
 		return -1;
 	}
-	if (fr_dict_attr_autoload(virtual_server_dict_attr) < 0) {
+	if (fr_dict_attr_autoload(virtual_server_dict_attr_autoload) < 0) {
 		PERROR("%s", __FUNCTION__);
-		fr_dict_autofree(virtual_server_dict);
+		fr_dict_autofree(virtual_server_dict_autoload);
 		return -1;
 	}
 
@@ -1333,7 +1346,7 @@ int virtual_servers_free(void)
 	TALLOC_FREE(listen_addr_root);
 	TALLOC_FREE(server_section_name_tree);
 
-	fr_dict_autofree(virtual_server_dict);
+	fr_dict_autofree(virtual_server_dict_autoload);
 
 	return 0;
 }
@@ -1354,17 +1367,17 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	/*
 	 *	Cache the old server_cs in case it was changed.
 	 *
-	 *	FIXME: request->server_cs should NOT be changed.
+	 *	FIXME: unlang_call_current(request) should NOT be changed.
 	 *	Instead, we should always create a child request_t when
 	 *	we need to use a different virtual server.
 	 *
 	 *	This is mainly for things like proxying
 	 */
-	server_cs = request->server_cs;
-	cs = cf_section_find(request->server_cs, "authenticate", NULL);
+	server_cs = unlang_call_current(request);
+	cs = cf_section_find(unlang_call_current(request), "authenticate", NULL);
 	if (!cs) {
 		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
-			cf_section_name2(request->server_cs),
+			cf_section_name2(unlang_call_current(request)),
 			fr_table_str_by_value(rcode_table, RLM_MODULE_REJECT, "<invalid>"));
 		RETURN_MODULE_REJECT;
 	}
@@ -1413,7 +1426,6 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 
 	request->component = component;
 	request->module = module;
-	request->server_cs = server_cs;
 
 	RETURN_MODULE_RCODE(rcode);
 }

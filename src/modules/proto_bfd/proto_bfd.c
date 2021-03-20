@@ -391,7 +391,6 @@ static void bfd_request(bfd_state_t *session, request_t *request, fr_radius_pack
 	memset(packet, 0, sizeof(*packet));
 
 	request->packet = packet;
-	request->server_cs = session->server_cs;
 	packet->socket = session->socket;
 	/*	request->heap_offset = -1; */
 }
@@ -1368,7 +1367,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		request->component = NULL;
 		request->module = NULL;
 
-		DEBUG2("server %s {", cf_section_name2(request->server_cs));
+		DEBUG2("server %s {", cf_section_name2(unlang_call_current(request)));
 		if (unlang_interpret_push_section(request, session->unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME) < 0) {
 			talloc_free(request);
 			return 0;

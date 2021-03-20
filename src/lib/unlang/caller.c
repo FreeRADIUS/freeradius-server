@@ -21,6 +21,7 @@
  * @brief Unlang "caller" keyword evaluation.  Used for setting allowed parent protocols
  *
  * @copyright 2020 The FreeRADIUS server project
+ * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 

@@ -364,7 +364,6 @@ static void request_running(request_t *request, fr_state_signal_t action)
 		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, &request->request_pairs, true);
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, request->request_pairs, NULL);
 
-		request->server_cs = request->listener->server_cs;
 		request->component = "ldap";
 
 		switch (request->packet->code) {
@@ -402,12 +401,12 @@ static void request_running(request_t *request, fr_state_signal_t action)
 			fr_assert(0);
 			return;
 		}
-		unlang = cf_section_find(request->server_cs, verb, state);
-		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
+		unlang = cf_section_find(unlang_call_current(request), verb, state);
+		if (!unlang) unlang = cf_section_find(unlang_call_current(request), "recv", "*");
 		if (!unlang) {
 			RDEBUG2("Ignoring %s operation.  Add \"%s %s {}\" to virtual-server \"%s\""
 				" to handle", fr_table_str_by_value(ldap_sync_code_table, request->packet->code, "<INVALID>"),
-				verb, state, cf_section_name2(request->server_cs));
+				verb, state, cf_section_name2(unlang_call_current(request)));
 			rcode = RLM_MODULE_NOOP;
 			goto done;
 		}
@@ -826,11 +825,11 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	proto_ldap_attributes_add(request, config);
 	request->packet->code = LDAP_SYNC_CODE_COOKIE_STORE;
 
-	unlang = cf_section_find(request->server_cs, "load", "Cookie");
+	unlang = cf_section_find(unlang_call_current(request), "load", "Cookie");
 	if (!unlang) {
 		RDEBUG2("Ignoring %s operation.  Add \"load Cookie {}\" to virtual-server \"%s\""
 			" to handle", fr_table_str_by_value(ldap_sync_code_table, request->packet->code, "<INVALID>"),
-			cf_section_name2(request->server_cs));
+			cf_section_name2(unlang_call_current(request)));
 	}
 
 	*cookie = NULL;

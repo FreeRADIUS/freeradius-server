@@ -18,28 +18,20 @@
 /**
  * $Id$
  *
- * @file unlang/base.h
- * @brief Public interface to the unlang interpreter
+ * @file unlang/call.h
  *
- * @copyright 2016-2019 The FreeRADIUS server project
+ * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/unlang/compile.h>
-#include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/module.h>
-#include <freeradius-devel/unlang/subrequest.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool			unlang_section(CONF_SECTION *cs);
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/cf_util.h>
 
-int			unlang_init_global(void);
+int unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame);
 
-void			unlang_free_global(void);
-
+CONF_SECTION *unlang_call_current(request_t *request);
 
 #ifdef __cplusplus
 }

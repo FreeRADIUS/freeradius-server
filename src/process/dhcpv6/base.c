@@ -195,7 +195,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 		request->component = "dhcpv6";
 
-		unlang = cf_section_find(request->server_cs, "recv", fr_dhcpv6_packet_types[request->packet->code]);
+		unlang = cf_section_find(unlang_call_current(request), "recv", fr_dhcpv6_packet_types[request->packet->code]);
 		if (!unlang) {
 			RWDEBUG("Failed to find 'recv %s' section", fr_dhcpv6_packet_types[request->packet->code]);
 			request->reply->code = FR_DHCPV6_DO_NOT_RESPOND;
@@ -255,7 +255,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->name);
+		if (dv) unlang = cf_section_find(unlang_call_current(request), "send", dv->name);
 
 		if (!unlang) goto send_reply;
 
@@ -301,7 +301,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_section_find(request->server_cs, "send", dv->name);
+				unlang = cf_section_find(unlang_call_current(request), "send", dv->name);
 				if (unlang) goto rerun_nak;
 
 				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);

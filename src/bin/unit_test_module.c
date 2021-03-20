@@ -289,7 +289,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	 *	New async listeners
 	 */
 	request->async = talloc_zero(request, fr_async_t);
-	virtual_server_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
 }

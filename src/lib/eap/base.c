@@ -62,9 +62,10 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_eap - "
 
+#include <freeradius-devel/eap/base.h>
+#include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/eap/base.h>
 #include "types.h"
 #include "attrs.h"
 
@@ -400,12 +401,13 @@ rlm_rcode_t eap_virtual_server(request_t *request, eap_session_t *eap_session, c
 	eap_session_t	*eap_session_inner;
 	rlm_rcode_t	rcode;
 	fr_pair_t	*vp;
+	CONF_SECTION	*server_cs;
 
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_virtual_server);
-	request->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
+	server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
 
-	if (request->server_cs) {
-		RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(request->server_cs));
+	if (server_cs) {
+		RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(unlang_call_current(request)));
 	} else {
 		RDEBUG2("Running request in virtual server");
 	}

@@ -166,7 +166,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	fr_pair_value_bstrndup(vp, (char const *)eap_round->response->type.data, eap_round->response->type.length, true);
 	vp->vp_tainted = true;
 
-	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type->name);
+	unlang = cf_section_find(unlang_call_current(request), "authenticate", inst->auth_type->name);
 	if (!unlang) {
 		/*
 		 *	Call the authenticate section of the *current* virtual server.

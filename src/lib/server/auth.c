@@ -26,15 +26,15 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/print.h>
-
 #include <freeradius-devel/radius/defs.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -50,7 +50,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 	fr_pair_t *vp, *username, *parent_username = NULL;
 	rlm_rcode_t final;
 
-	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
+	RDEBUG("Virtual server %s received request", cf_section_name2(unlang_call_current(request)));
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 	username = fr_pair_find_by_num(&request->request_pairs, 0, FR_STRIPPED_USER_NAME);
@@ -162,9 +162,9 @@ runit:
 		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
 	}
 
-	RDEBUG("server %s {", cf_section_name2(request->server_cs));
+	RDEBUG("server %s {", cf_section_name2(unlang_call_current(request)));
 	request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
-	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
+	RDEBUG("} # server %s", cf_section_name2(unlang_call_current(request)));
 
 	fr_cond_assert(final == RLM_MODULE_OK);
 

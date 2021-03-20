@@ -84,7 +84,6 @@ static int fr_tls_cache_session_id_to_vp(request_t *request, uint8_t const *key,
 unlang_action_t fr_tls_cache_process(rlm_rcode_t *p_result, request_t *request, CONF_SECTION *action)
 {
 	rlm_rcode_t	rcode;
-	CONF_SECTION	*server_cs;
 	char const	*module;
 	char const	*component;
 
@@ -93,10 +92,8 @@ unlang_action_t fr_tls_cache_process(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	Save the current status of the request.
 	 */
-	server_cs = request->server_cs;
 	module = request->module;
 	component = request->component;
-	request->server_cs = cf_item_to_section(cf_parent(action));
 	request->module = NULL;
 
 	/*
@@ -110,7 +107,6 @@ unlang_action_t fr_tls_cache_process(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	Restore the original status of the request.
 	 */
-	request->server_cs = server_cs;
 	request->module = module;
 	request->component = component;
 
