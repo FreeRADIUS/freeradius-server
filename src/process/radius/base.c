@@ -129,6 +129,7 @@ typedef struct {
 } process_radius_auth_t;
 
 typedef struct {
+	CONF_SECTION			*server_cs;	//!< Our virtual server.
 	process_radius_sections_t	sections;	//!< Pointers to various config sections
 							///< we need to execute.
 	process_radius_auth_t		auth;		//!< Authentication configuration.
@@ -345,7 +346,7 @@ RESUME(access_request)
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) goto send_reply;
 
-	cs = cf_section_find(request->server_cs, "authenticate", dv->name);
+	cs = cf_section_find(inst->server_cs, "authenticate", dv->name);
 	if (!cs) {
 		RDEBUG2("No 'authenticate %s { ... }' section found - skipping...", dv->name);
 		goto send_reply;
@@ -611,7 +612,7 @@ RESUME(accounting_request)
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) goto send_reply;
 
-	cs = cf_section_find(request->server_cs, "accounting", dv->name);
+	cs = cf_section_find(inst->server_cs, "accounting", dv->name);
 	if (!cs) {
 		RDEBUG2("No 'accounting %s { ... }' section found - skipping...", dv->name);
 		goto send_reply;
@@ -673,14 +674,17 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	return 0;
 }
 
-static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
+	process_radius_t	*inst = instance;
 	CONF_SECTION		*server_cs;
 
 	server_cs = cf_item_to_section(cf_parent(cs));
 	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
+
+	inst->server_cs = server_cs;
 
 	return 0;
 }
