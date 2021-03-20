@@ -41,19 +41,6 @@ typedef struct {
 								///< sections run in the server_cs.
 } unlang_call_t;
 
-/** A call stack entry
- *
- * Represents a single call on the unlang stack.
- */
-typedef struct {
-	void				*instance;		//!< Instance data.
-
-	module_method_t			process;		//!< Next state in the state machine.
-
-	request_state_t			prev_request_state;	//!< Record the previous request state.
-	CONF_SECTION			*prev_server_cs;	//!< Record the previous server cs.
-} unlang_frame_state_call_t;
-
 /** Cast a group structure to the call keyword extension
  *
  */

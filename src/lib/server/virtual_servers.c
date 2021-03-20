@@ -493,15 +493,18 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  *
  *	Short-term hack
  */
-int virtual_server_entry_point_set(request_t *request)
+int virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
 	fr_virtual_server_t *server;
 	fr_process_module_t const *process;
 	fr_io_track_t *track = request->async->packet_ctx;
 	module_instance_t *mi = talloc_zero(request, module_instance_t);
 
-	server = cf_data_value(cf_data_find(request->server_cs, fr_virtual_server_t, "vs"));
-	if (!server) return -1;
+	server = cf_data_value(cf_data_find(server_cs, fr_virtual_server_t, "vs"));
+	if (!server) {
+		REDEBUG("server_cs does not contain virtual server data");
+		return -1;
+	}
 
 	mi->name = server->process_module->name;
 	mi->module = (module_t *)server->process_module;
@@ -527,7 +530,7 @@ int virtual_server_entry_point_set(request_t *request)
 	 *	src/lib/server/module.c, that reserves 0 for "nothing
 	 *	is initialized".
 	 */
-	if (unlang_module_push(&request->rcode, request, mi, process->process, true) < 0) return -1;
+	if (unlang_module_push(&request->rcode, request, mi, process->process, top_frame) < 0) return -1;
 
 	return 0;
 }
@@ -1348,8 +1351,6 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	CONF_SECTION	*subcs;
 	fr_dict_t const	*dict_internal;
 
-	fr_assert(request->server_cs != NULL);
-
 	/*
 	 *	Cache the old server_cs in case it was changed.
 	 *
@@ -1452,36 +1453,6 @@ rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtua
 	unlang_module_yield_to_section(&rcode, request, auth_cs, default_rcode, resume, signal, rctx);
 	return rcode;
 }
-
-/*
- *	Hack for unit_test_module.c
- */
-void fr_request_async_bootstrap(request_t *request, fr_event_list_t *el)
-{
-	size_t listen_cnt;
-	fr_virtual_listen_t	**listener;
-
-	if (!virtual_servers) return; /* let it crash! */
-
-	listener = virtual_servers[0]->listener;
-	listen_cnt = talloc_array_length(listener);
-
-	if (!listen_cnt) return;
-
-	/*
-	 *	New async listeners
-	 */
-	request->async = talloc_zero(request, fr_async_t);
-
-	request->async->channel = NULL;
-	request->async->el = el;
-
-	request->async->listen = NULL;
-	request->async->packet_ctx = NULL;
-
-	virtual_server_entry_point_set(request);
-}
-
 
 /** Compile sections for a virtual server.
  *
@@ -1694,44 +1665,4 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 	if (!entry) return NULL;
 
 	return entry->methods;
-}
-
-int virtual_server_get_process_by_name(CONF_SECTION *cs, char const *type, module_method_t *method_p, void **ctx)
-{
-	CONF_DATA const		*cd;
-	dl_module_inst_t const	*dl_module;
-	dl_module_t const	*module;
-	fr_app_worker_t const	*app_process;
-
-	/*
-	 *	Try the old method.  If it doesn't exist, use the new
-	 *	process_foo method.
-	 */
-	cd = cf_data_find(cs, dl_module_inst_t *, type);
-	if (!cd) {
-		fr_virtual_server_t *server;
-		fr_process_module_t const *process;
-
-		server = cf_data_value(cf_data_find(cs, fr_virtual_server_t, "vs"));
-		if (!server) {
-			fr_strerror_printf("No processing section found for '%s'", type);
-			return -1;
-		}
-
-		process = (fr_process_module_t const *) server->process_module->module->common;
-		*method_p = process->process;
-		*ctx = server->process_module->data;
-		return 0;
-	}
-
-	dl_module = *(dl_module_inst_t **) cf_data_value(cd);
-	fr_assert(dl_module != NULL);
-
-	module = talloc_get_type_abort_const(dl_module->module, dl_module_t);
-	app_process = (fr_app_worker_t const *)(module->common);
-
-	*method_p = app_process->entry_point;
-	*ctx = dl_module->data;
-
-	return 0;
 }

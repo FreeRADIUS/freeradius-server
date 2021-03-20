@@ -36,7 +36,6 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/base.h>
 
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/unlang/call.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/radius/radius.h>
@@ -125,7 +124,7 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	return client;
 }
 
-static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *el, RADCLIENT *client)
+static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client, CONF_SECTION *server_cs)
 {
 	fr_pair_t	*vp;
 	request_t	*request;
@@ -168,8 +167,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 
 	request->master_state = REQUEST_ACTIVE;
-	request->server_cs = virtual_server_find("default");
-	fr_assert(request->server_cs != NULL);
 
 	/*
 	 *	Read packet from fp
@@ -287,7 +284,12 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_event_list_t *
 	request->log.dst->uctx = &default_log;
 	request->log.lvl = fr_debug_lvl;
 
-	fr_request_async_bootstrap(request, el);
+
+	/*
+	 *	New async listeners
+	 */
+	request->async = talloc_zero(request, fr_async_t);
+	virtual_server_push(request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
 }
@@ -348,9 +350,6 @@ static bool do_xlats(char const *filename, FILE *fp)
 	request->log.dst->uctx = &default_log;
 
 	request->master_state = REQUEST_ACTIVE;
-	request->server_cs = virtual_server_find("default");
-	fr_assert(request->server_cs != NULL);
-
 	request->log.lvl = fr_debug_lvl;
 	output[0] = '\0';
 
@@ -458,12 +457,6 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
 	return RLM_MODULE_FAIL;
 }
 
-static void request_run(request_t *request)
-{
-	virtual_server_entry_point_set(request);
-	(void)unlang_interpret_synchronous(request);
-}
-
 static request_t *request_clone(request_t *old)
 {
 	request_t *request;
@@ -511,6 +504,8 @@ int main(int argc, char *argv[])
 	char			*p;
 	main_config_t		*config;
 	dl_module_loader_t	*dl_modules = NULL;
+
+	CONF_SECTION		*server_cs;
 
 	fr_pair_list_init(&filter_vps);
 	/*
@@ -766,7 +761,8 @@ int main(int argc, char *argv[])
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
-	if (!virtual_server_find("default")) {
+	server_cs = virtual_server_find("default");
+	if (!server_cs) {
 		ERROR("Cannot find virtual server 'default'");
 		EXIT_WITH_FAILURE;
 	}
@@ -832,7 +828,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Grab the VPs from stdin, or from the file.
 	 */
-	request = request_from_file(autofree, fp, el, client);
+	request = request_from_file(autofree, fp, client, server_cs);
 	if (!request) {
 		fr_perror("Failed reading input from %s", input_file);
 		EXIT_WITH_FAILURE;
@@ -886,7 +882,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		request_run(request);
+		unlang_interpret_synchronous(request);
 	} else {
 		int i;
 		request_t *old = request_clone(request);
@@ -894,7 +890,7 @@ int main(int argc, char *argv[])
 
 		for (i = 0; i < count; i++) {
 			request = request_clone(old);
-			request_run(request);
+			unlang_interpret_synchronous(request);
 			talloc_free(request);
 		}
 	}

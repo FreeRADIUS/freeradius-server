@@ -25,75 +25,18 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/pair.h>
 
-#include "call.h"
 #include "call_priv.h"
 #include "unlang_priv.h"
-
-static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *request,
-					   unlang_stack_frame_t *frame)
-{
-	unlang_frame_state_call_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
-	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
-
-	rlm_rcode_t			rcode;
-	unlang_action_t			ua;
-
-	request->request_state = REQUEST_INIT;
-	request->server_cs = state->prev_server_cs;	/* So we get correct debug info */
-
-	/*
-	 *	Call the process function
-	 *
-	 *	This is a function in the virtual server's state machine.
-	 */
-	ua = state->process(&rcode, &(module_ctx_t){ .instance = state->instance }, request);
-	switch (ua) {
-	case UNLANG_ACTION_YIELD:
-		break;
-
-	case UNLANG_ACTION_STOP_PROCESSING:
-	case UNLANG_ACTION_PUSHED_CHILD:	/* Wants to do more processing */
-		return ua;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Record the rcode and restore the previous virtual server
-	 */
-	*p_result = rcode;
-	request->request_state = state->prev_request_state;
-	request->server_cs = state->prev_server_cs;
-
-	/*
-	 *	Push the contents of the call { } section onto the stack.
-	 *	This gets executed after the server returns.
-	 */
-	if (g->children) {
-		if (unlang_interpret_push(request, g->children, frame->result,
-					  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_STOP_PROCESSING;
-		}
-		return UNLANG_ACTION_PUSHED_CHILD;
-	};
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
 
 static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request,
 					      unlang_stack_frame_t *frame)
 {
-	unlang_frame_state_call_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
 	unlang_group_t			*g;
 	unlang_call_t			*gext;
-	char const			*server;
 	fr_dict_enum_t const		*type_enum;
-
-	module_method_t			process_p;
-	void				*process_inst;
+	fr_pair_t			*packet_type_vp;
 
 	/*
 	 *	Do not check for children here.
@@ -104,7 +47,6 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	 */
 	g = unlang_generic_to_group(frame->instruction);
 	gext = unlang_group_to_call(g);
-	server = cf_section_name2(gext->server_cs);
 
 	/*
 	 *	Push OUR subsection onto the childs stack frame.
@@ -115,127 +57,34 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	 */
 	type_enum = fr_dict_enum_by_value(gext->attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
-		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
+		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s",
+			request->packet->code, cf_section_name2(gext->server_cs));
+	error:
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	/*
-	 *	...and get the processing function
-	 *	which matches that type in the target
-	 *	virtual server.
+	 *	Sync up packet codes and attributes
+	 *
+	 *	Fixme - packet->code needs to die...
 	 */
-	if (virtual_server_get_process_by_name(gext->server_cs, type_enum->name, &process_p, &process_inst) < 0) {
-		REDEBUG("Cannot call virtual server '%s' - %s", server, fr_strerror());
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+	switch (pair_update_control(&packet_type_vp, gext->attr_packet_type)) {
+	case 0:
+		packet_type_vp->vp_uint32 = request->packet->code;
+		break;
+
+	case 1:
+		request->packet->code = packet_type_vp->vp_uint32;
+		break;
+
+	default:
+		goto error;
 	}
 
-	*state = (unlang_frame_state_call_t){
-		.instance = process_inst,
-		.process = process_p,
-		.prev_request_state = request->request_state,
-		.prev_server_cs = request->server_cs,
-	};
+	if (virtual_server_push(request, gext->server_cs, UNLANG_SUB_FRAME) < 0) goto error;
 
-	return unlang_call_process(p_result, request, frame);
-}
-
-/** Push a call to a virtual server onto the stack for evaluation
- *
- * This does the same work as #unlang_call_frame_init.
- *
- * @param[in] request		The current request.
- * @param[in] server_cs		of the virtual server to run.
- * @param[in] instance		of the state machine.
- * @param[in] entry_point	Where to start in the virtual server state machine.
- * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
- *				Set to UNLANG_SUB_FRAME if the interprer should continue.
- */
-int unlang_call_push(request_t *request, CONF_SECTION *server_cs,
-		     void *instance, module_method_t entry_point, bool top_frame)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame;
-	unlang_frame_state_call_t	*state;
-	unlang_call_t			*c;
-	char const			*name;
-
-	/*
-	 *	We need to have a unlang_module_t to push on the
-	 *	stack.  The only sane way to do it is to attach it to
-	 *	the frame state.
-	 */
-	name = cf_section_name2(server_cs);
-	MEM(c = talloc(stack, unlang_call_t));	/* Free at the same time as the state */
-	*c = (unlang_call_t){
-		.group = {
-			.self = {
-				.type = UNLANG_TYPE_CALL,
-				.name = name,
-				.debug_name = name,
-				.actions = {
-					[RLM_MODULE_REJECT]	= 0,
-					[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-					[RLM_MODULE_OK]		= 0,
-					[RLM_MODULE_HANDLED]	= 0,
-					[RLM_MODULE_INVALID]	= 0,
-					[RLM_MODULE_DISALLOW]	= 0,
-					[RLM_MODULE_NOTFOUND]	= 0,
-					[RLM_MODULE_NOOP]	= 0,
-					[RLM_MODULE_UPDATED]	= 0
-				}
-			}
-		}
-	};
-
-	/*
-	 *	Push a new call frame onto the stack
-	 */
-	if (unlang_interpret_push(request, unlang_call_to_generic(c),
-				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
-		talloc_free(c);
-		return -1;
-	}
-
-	/*
-	 *	And setup the frame.  The memory was
-	 *	pre-allocated for us by the interpreter.
-	 */
-	frame = &stack->frame[stack->depth];
-	state = talloc_get_type_abort(frame->state, unlang_frame_state_call_t);
-	*state = (unlang_frame_state_call_t){
-		.instance = instance,
-		.process = entry_point,		/* This mutates */
-		.prev_request_state = request->request_state,
-		.prev_server_cs = request->server_cs
-	};
-	frame->process = unlang_call_process;		/* Skip the initialisation */
-	talloc_steal(frame->state, c);			/* Bind our temporary unlang_call_t to the frame */
-
-	return 0;
-}
-
-/*
- *	Hacks for now until we do cleanups.
- *
- *	This function should really do the module_instance_t
- *	initialization, which is currently in
- *	virtual_server_entry_point_set().  The interpreter needs the
- *	top stack frame to contain a unlang_frame_state_module_t, in
- *	order to properly do resume, etc. with the module context,
- *	dl_inst->data, etc.
- *
- *	We still want the cf_data_find() stuff in the virtual server
- *	code, as it's responsible for adding / finding the link
- *	between process functions.
- */
-int unlang_virtual_server_push(request_t *request, CONF_SECTION *server_cs)
-{
-	request->server_cs = server_cs; /* probably wrong, but what the heck */
-	virtual_server_entry_point_set(request);
-
-	return 0;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 void unlang_call_init(void)
@@ -245,8 +94,6 @@ void unlang_call_init(void)
 				.name			= "call",
 				.interpret		= unlang_call_frame_init,
 				.debug_braces		= true,
-				.frame_state_size	= sizeof(unlang_frame_state_call_t),
-				.frame_state_name	= "unlang_frame_state_call_t"
 			   });
 }
 

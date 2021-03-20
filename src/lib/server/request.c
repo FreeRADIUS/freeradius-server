@@ -647,8 +647,6 @@ void request_verify(char const *file, int line, request_t const *request)
 
 	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
 
-	fr_assert(request->server_cs != NULL);
-
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, "request");
 #if 0

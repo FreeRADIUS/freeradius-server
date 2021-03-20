@@ -94,8 +94,6 @@ rlm_rcode_t	virtual_server_process_auth(request_t *request, CONF_SECTION *virtua
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx);
 
-void		fr_request_async_bootstrap(request_t *request, fr_event_list_t *el); /* for unit_test_module */
-
 fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
 bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
 
@@ -128,9 +126,7 @@ int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compil
 
 virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));
 
-int		virtual_server_get_process_by_name(CONF_SECTION *server, char const *type, module_method_t *method_p, void **ctx);
-
-int		virtual_server_entry_point_set(request_t *request);
+int		virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame);
 
 int		virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs);
 
