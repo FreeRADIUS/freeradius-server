@@ -49,6 +49,27 @@ typedef struct fr_process_module_s {
 #  define PROCESS_TRACE
 #endif
 
+#ifndef process_packet_code_t
+#define process_packet_code_t uint32_t
+#endif
+
+typedef process_packet_code_t fr_process_rcode_t[RLM_MODULE_NUMCODES];
+
+/*
+ *	RADIUS state machine tables for rcode to packet.
+ */
+typedef struct {
+	process_packet_code_t	packet_type[RLM_MODULE_NUMCODES];	//!< rcode to packet type mapping.
+	size_t			section_offset;	//!< Where to look in the process instance for
+						///< a pointer to the section we should execute.
+	rlm_rcode_t		rcode;		//!< Default rcode
+	process_packet_code_t	reject;		//!< Reject packet type.
+	module_method_t		recv;		//!< Method to call when receiving this type of packet.
+	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
+	unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
+} fr_process_state_t;
+
+
 #ifdef __cplusplus
 }
 #endif

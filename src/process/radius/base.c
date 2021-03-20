@@ -29,9 +29,15 @@
 #include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/process.h>
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/state.h>
+
+#define process_packet_code_t		fr_radius_packet_code_t
+#define PROCESS_CODE_MAX		FR_RADIUS_CODE_MAX
+#define PROCESS_CODE_DO_NOT_RESPOND	FR_RADIUS_CODE_DO_NOT_RESPOND
+#define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PACKET_CODE_VALID
+#include <freeradius-devel/server/process.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -169,21 +175,7 @@ static const CONF_PARSER config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	RADIUS state machine tables for rcode to packet.
- */
-typedef struct {
-	fr_radius_packet_code_t	packet_type[RLM_MODULE_NUMCODES];	//!< rcode to packet type mapping.
-	size_t			section_offset;	//!< Where to look in process_radius_sections_t for
-						///< a pointer to the section we should execute.
-	rlm_rcode_t		rcode;		//!< Default rcode
-	fr_radius_packet_code_t	reject;		//!< Reject packet type.
-	module_method_t		recv;		//!< Method to call when receiving this type of packet.
-	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
-	unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
-} process_radius_state_t;
-
-static process_radius_state_t const radius_state[FR_RADIUS_CODE_MAX];
+static fr_process_state_t const process_state[PROCESS_CODE_MAX];
 
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
@@ -309,11 +301,11 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
  *	RADIUS state machine functions
  */
 #define UPDATE_STATE_CS(_x) do { \
-			state = &radius_state[request->_x->code]; \
+			state = &process_state[request->_x->code]; \
 			cs = *(CONF_SECTION **) (((uint8_t *) &inst->sections) + state->section_offset); \
 		} while (0)
 
-#define UPDATE_STATE(_x) state = &radius_state[request->_x->code]
+#define UPDATE_STATE(_x) state = &process_state[request->_x->code]
 
 
 #define RECV(_x) static unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -335,7 +327,7 @@ RESUME(access_request)
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_t const		*dv;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -386,7 +378,7 @@ RESUME(access_request)
 
 RESUME(auth_type)
 {
-	static const fr_radius_packet_code_t auth_type_rcode[RLM_MODULE_NUMCODES] = {
+	static const fr_process_rcode_t auth_type_rcode = {
 		[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
 		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
@@ -400,7 +392,7 @@ RESUME(auth_type)
 	rlm_rcode_t			rcode = request->rcode;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -529,7 +521,7 @@ RESUME(access_reject)
 RESUME(access_challenge)
 {
 	CONF_SECTION			*cs;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -553,7 +545,7 @@ RESUME(access_challenge)
 
 RESUME(acct_type)
 {
-	static const fr_radius_packet_code_t acct_type_rcode[RLM_MODULE_NUMCODES] = {
+	static const fr_process_rcode_t acct_type_rcode = {
 		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
 		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
@@ -563,7 +555,7 @@ RESUME(acct_type)
 
 	rlm_rcode_t			rcode = request->rcode;
 	CONF_SECTION			*cs;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -601,7 +593,7 @@ RESUME(accounting_request)
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_t const		*dv;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -666,7 +658,7 @@ RESUME(status_server)
 RECV(generic)
 {
 	CONF_SECTION			*cs;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -696,7 +688,7 @@ RESUME(recv_generic)
 {
 	rlm_rcode_t			rcode = request->rcode;
 	CONF_SECTION			*cs;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -719,12 +711,12 @@ SEND(generic)
 {
 	fr_pair_t 			*vp;
 	CONF_SECTION			*cs;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
-	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
 
 	UPDATE_STATE_CS(reply);
 
@@ -745,7 +737,7 @@ SEND(generic)
 					 &request->reply_pairs, attr_packet_type) >= 0);
 		vp->vp_uint32 = request->reply->code;
 
-	} else if ((vp->vp_uint32 != FR_RADIUS_CODE_MAX) && FR_RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
+	} else if ((vp->vp_uint32 != PROCESS_CODE_MAX) && PROCESS_PACKET_CODE_VALID(vp->vp_uint32)) {
 		request->reply->code = vp->vp_uint32;
 		UPDATE_STATE_CS(reply);
 
@@ -763,12 +755,12 @@ RESUME(send_generic)
 {
 	rlm_rcode_t			rcode = request->rcode;
 	CONF_SECTION			*cs;
-	process_radius_state_t const	*state;
+	fr_process_state_t const	*state;
 	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
-	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
 
 	/*
 	 *	If they delete &reply.Packet-Type, tough for them.
@@ -787,7 +779,7 @@ RESUME(send_generic)
 		 *	And anything can say "don't respond".
 		 */
 		if ((state->packet_type[rcode] != request->reply->code) &&
-		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND))) {
+		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == PROCESS_CODE_DO_NOT_RESPOND))) {
 			char const *old = cf_section_name2(cs);
 
 			request->reply->code = state->packet_type[rcode];
@@ -803,11 +795,11 @@ RESUME(send_generic)
 		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
 		break;
 
-	case FR_RADIUS_CODE_DO_NOT_RESPOND:
+	case PROCESS_CODE_DO_NOT_RESPOND:
 		RDEBUG("The 'send %s' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"),
 		       cf_section_name2(cs));
-		request->reply->code = FR_RADIUS_CODE_DO_NOT_RESPOND;
+		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 		break;
 	}
 
@@ -816,7 +808,7 @@ RESUME(send_generic)
 	/*
 	 *	Check for "do not respond".
 	 */
-	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
+	if (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("Not sending reply to client.");
 		RETURN_MODULE_OK;
 	}
@@ -831,7 +823,7 @@ RESUME(send_generic)
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	process_radius_state_t const *state;
+	fr_process_state_t const *state;
 
 	PROCESS_TRACE;
 
@@ -874,7 +866,7 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *cs)
  *	mean that the packet code will not be
  *	changed.
  */
-static process_radius_state_t const radius_state[FR_RADIUS_CODE_MAX] = {
+static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = {
 		.packet_type = {
 			[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
