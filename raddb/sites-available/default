@@ -73,6 +73,132 @@ server default {
 	namespace = radius
 
 	#
+	#  ### RADIUS Configuration
+	#
+	#  All of the configuration for processing RADIUS packets goes here.
+	#
+	radius {
+		#
+		#  #### Access-Request subsection
+		#
+		#  This section contains configuration which is
+		#  specific to processing `Access-Request` packets.
+		#
+		#  Similar sections can be added, but are not
+		#  necessary for Accounting-Request (and other)
+		#  packets.  At this time, there is no configuration
+		#  needed for other packet types.
+		#
+		Access-Request {
+			#
+			#  log:: Logging configuration for `Access-Request` packets
+			#
+			#  In v3, the `Access-Request` logging was
+			#  configured in the main `radiusd.conf` file,
+			#  in the main `log` subsection.  That
+			#  limitation meant that the configuration was
+			#  global to FreeRADIUS.  i.e. you could not
+			#  have different `Access-Request` logging for
+			#  different virtual server.
+			#
+			#  The extra configuration in v4 allows for
+			#  increased flexibility.
+			#
+			log {
+				#
+				#  stripped_names:: Log the full
+				#  `User-Name` attribute, as it was
+				#  found in the request.
+				#
+				#  allowed values: {no, yes}
+				#
+				stripped_names = no
+
+				#
+				#  auth:: Log authentication requests
+				#  to the log file.
+				#
+				#  allowed values: {no, yes}
+				#
+				auth = no
+
+				#
+				#  auth_goodpass:: Log "good"
+				#  passwords with the authentication
+				#  requests.
+				#
+				#  allowed values: {no, yes}
+				#
+				auth_goodpass = no
+
+				#
+				#  auth_badpass:: Log "bad"
+				#  passwords with the authentication
+				#  requests.
+				#
+				#  allowed values: {no, yes}
+				#
+				auth_badpass = no
+
+				#
+				#  msg_goodpass::
+				#  msg_badpass::
+				#
+				#  Log additional text at the end of the "Login OK" messages.
+				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
+				#  configurations above have to be set to "yes".
+				#
+				#  The strings below are dynamically expanded, which means that
+				#  you can put anything you want in them.  However, note that
+				#  this expansion can be slow, and can negatively impact server
+				#  performance.
+				#
+#				msg_goodpass = ""
+#				msg_badpass = ""
+
+				#
+				#  msg_denied::
+				#
+				#  The message when the user exceeds the Simultaneous-Use limit.
+				#
+				msg_denied = "You are already logged in - access denied"
+			}
+
+			#
+			#  session:: Controls how ongoing
+			#  (multi-round) sessions are handled
+			#
+			#  This section is primarily useful for EAP.
+			#  It controls the number of EAP
+			#  authentication attempts that can occur
+			#  concurrently.
+			#
+			session {
+				#
+				#  max:: The maximum number of ongoing sessions
+				#
+#				max = 4096
+
+				#
+				#  timeout:: How long to wait before expiring a
+				#  session.
+				#
+				#  The timer starts when a response
+				#  with a state value is sent.  The
+				#  timer stops when a request
+				#  containing the previously sent
+				#  state value is received.
+				#
+#				timeout = 15
+			}
+		}
+
+		#
+		#  There is currently no configuration for other packet types.
+		#
+	}
+
+	#
 	#  ### The listen section
 	#
 	#  The `listen` sections in v4 are very different from the
@@ -412,121 +538,6 @@ server default {
 #				deny = 127.0.0/24
 			}
 		}
-
-		#
-		#  #### Access-Request subsection
-		#
-		#  This section contains configuration which is
-		#  specific to processing `Access-Request` packets.
-		#
-		#  Similar sections can be added, but are not
-		#  necessary for Accounting-Request (and other)
-		#  packets.  At this time, there is no configuration
-		#  needed for other packet types.
-		#
-		Access-Request {
-			#
-			#  log:: Logging configuration for `Access-Request` packets
-			#
-			#  In v3, the `Access-Request` logging was
-			#  configured in the main `radiusd.conf` file,
-			#  in the main `log` subsection.  That
-			#  limitation meant that the configuration was
-			#  global to FreeRADIUS.  i.e. you could not
-			#  have different `Access-Request` logging for
-			#  different virtual server.
-			#
-			#  The extra configuration in v4 allows for
-			#  increased flexibility.
-			#
-			log {
-				#
-				#  stripped_names:: Log the full
-				#  `User-Name` attribute, as it was
-				#  found in the request.
-				#
-				#  allowed values: {no, yes}
-				#
-				stripped_names = no
-
-				#
-				#  auth:: Log authentication requests
-				#  to the log file.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth = no
-
-				#
-				#  auth_goodpass:: Log "good"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_goodpass = no
-
-				#
-				#  auth_badpass:: Log "bad"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_badpass = no
-
-				#
-				#  msg_goodpass::
-				#  msg_badpass::
-				#
-				#  Log additional text at the end of the "Login OK" messages.
-				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-				#  configurations above have to be set to "yes".
-				#
-				#  The strings below are dynamically expanded, which means that
-				#  you can put anything you want in them.  However, note that
-				#  this expansion can be slow, and can negatively impact server
-				#  performance.
-				#
-#				msg_goodpass = ""
-#				msg_badpass = ""
-
-				#
-				#  msg_denied::
-				#
-				#  The message when the user exceeds the Simultaneous-Use limit.
-				#
-				msg_denied = "You are already logged in - access denied"
-			}
-
-			#
-			#  session:: Controls how ongoing
-			#  (multi-round) sessions are handled
-			#
-			#  This section is primarily useful for EAP.
-			#  It controls the number of EAP
-			#  authentication attempts that can occur
-			#  concurrently.
-			#
-			session {
-				#
-				#  max:: The maximum number of ongoing sessions
-				#
-#				max = 4096
-
-				#
-				#  timeout:: How long to wait before expiring a
-				#  session.
-				#
-				#  The timer starts when a response
-				#  with a state value is sent.  The
-				#  timer stops when a request
-				#  containing the previously sent
-				#  state value is received.
-				#
-#				timeout = 15
-			}
-		}
 	}
 
 	listen {
@@ -579,109 +590,6 @@ server default {
 				allow = 127/8
 				allow = 192.0.2/24
 #				deny = 127.0.0/24
-			}
-		}
-
-		#
-		#  #### Access-Request subsection
-		#
-		#  This section contains configuration which is
-		#  specific to processing `Access-Request` packets.
-		#
-		#  Similar sections can be added, but are not
-		#  necessary for Accounting-Request (and other)
-		#  packets.  At this time, there is no configuration
-		#  needed for other packet types.
-		#
-		Access-Request {
-			#
-			#  log:: Logging configuration for `Access-Request` packets
-			#
-			#  In v3, the `Access-Request` logging was
-			#  configured in the main `radiusd.conf` file,
-			#  in the main `log` subsection.  That
-			#  limitation meant that the configuration was
-			#  global to FreeRADIUS.  i.e. you could not
-			#  have different `Access-Request` logging for
-			#  different virtual server.
-			#
-			#  The extra configuration in v4 allows for
-			#  increased flexibility.
-			#
-			log {
-				#  stripped_names:: Log the full
-				#  `User-Name` attribute, as it was
-				#  found in the request.
-				#
-				#  allowed values: {no, yes}
-				#
-				stripped_names = no
-
-				#  auth:: Log authentication requests
-				#  to the log file.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth = no
-
-				#  auth_goodpass:: Log "good"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_badpass = no
-
-				#  auth_badpass:: Log "bad"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_goodpass = no
-
-				#  Log additional text at the end of the "Login OK" messages.
-				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-				#  configurations above have to be set to "yes".
-				#
-				#  The strings below are dynamically expanded, which means that
-				#  you can put anything you want in them.  However, note that
-				#  this expansion can be slow, and can negatively impact server
-				#  performance.
-				#
-#				msg_goodpass = ""
-#				msg_badpass = ""
-
-				#  The message when the user exceeds the Simultaneous-Use limit.
-				#
-				msg_denied = "You are already logged in - access denied"
-			}
-
-			#
-			#  session:: Controls how ongoing
-			#  (multi-round) sessions are handled
-			#
-			#  This section is primarily useful for EAP.
-			#  It controls the number of EAP
-			#  authentication attempts that can occur
-			#  concurrently.
-			#
-			session {
-				#
-				#  max:: The maximum number of ongoing sessions
-				#
-#				max = 4096
-
-				#  timeout:: How long to wait before expiring a
-				#  session.
-				#
-				#  The timer starts when a response
-				#  with a state value is sent.  The
-				#  timer stops when a request
-				#  containing the previously sent
-				#  state value is received.
-				#
-#				timeout = 15
 			}
 		}
 	}
