@@ -246,7 +246,7 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 			memset(&request->pair_list, 0, sizeof(request->pair_list)); \
 			return -1; \
 		} \
-		fr_pair_add(&pair_root->children, vp); \
+		fr_pair_append(&pair_root->children, vp); \
 		request->pair_list._list = vp; \
 	} while(0)
 

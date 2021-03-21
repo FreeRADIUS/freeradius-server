@@ -91,7 +91,7 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
 		}
 
 		vp->op = map->op;
-		fr_pair_add(&head, vp);
+		fr_pair_append(&head, vp);
 
 		if (map->op != T_OP_ADD) break;	/* Create multiple attribute for multiple CONF_PAIRs */
 	}

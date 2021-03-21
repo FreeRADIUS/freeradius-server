@@ -303,7 +303,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	if (vp ) {
 		vp = fr_pair_copy(request->reply_ctx, vp);
 		if (vp) {
-			fr_pair_add(&request->reply_pairs, vp);
+			fr_pair_append(&request->reply_pairs, vp);
 		}
 	}
 
@@ -321,7 +321,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, da));
 		vp->vp_uint64 = local_stats[i];
 
-		fr_pair_add(&request->reply_pairs, vp);
+		fr_pair_append(&request->reply_pairs, vp);
 	}
 
 	RETURN_MODULE_OK;

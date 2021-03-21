@@ -257,7 +257,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 				RDEBUG4("::: APPENDING %s FROM %d TO %d",
 				       from_vp->da->name, i, tailto++);
 				fr_pair_remove(from, from_vp);
-				fr_pair_add(&append, from_vp);
+				fr_pair_append(&append, from_vp);
 				from_vp->op = T_OP_EQ;
 			}
 		}

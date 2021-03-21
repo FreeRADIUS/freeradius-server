@@ -227,7 +227,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	MEM(pair_add_reply(&vp, attr_eap_message) >= 0);
+	MEM(pair_append_reply(&vp, attr_eap_message) >= 0);
 	vp->vp_length = eap_packet->length[0] * 256 + eap_packet->length[1];
 	vp->vp_octets = talloc_steal(vp, reply->packet);
 	reply->packet = NULL;
@@ -243,7 +243,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	if (!vp) {
 		static uint8_t auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
 
-		MEM(pair_add_reply(&vp, attr_message_authenticator) >= 0);
+		MEM(pair_append_reply(&vp, attr_message_authenticator) >= 0);
 		fr_pair_value_memdup(vp, auth_vector, sizeof(auth_vector), false);
 	}
 
@@ -338,7 +338,7 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 
 		RDEBUG2("Got EAP_START message");
 
-		MEM(pair_add_reply(&vp, attr_eap_message) >= 0);
+		MEM(pair_append_reply(&vp, attr_eap_message) >= 0);
 
 		/*
 		 *	Manually create an EAP Identity request
@@ -378,7 +378,7 @@ rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	MEM(pair_add_request(&vp, attr_eap_type) >= 0);
+	MEM(pair_append_request(&vp, attr_eap_type) >= 0);
 	vp->vp_uint32 = eap_msg->vp_octets[4];
 
 	/*

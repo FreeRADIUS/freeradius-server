@@ -123,7 +123,7 @@ static int load_attr_pairs(fr_pair_list_t *out)
 
 	for (p = test_dict_attrs;
 	     p->attr != -1;
-	     p++) if (fr_pair_add_by_da(autofree, NULL, out, *p->da) < 0) return -1;
+	     p++) if (fr_pair_prepend_by_da(autofree, NULL, out, *p->da) < 0) return -1;
 
 	return 0;
 }

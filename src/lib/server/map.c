@@ -872,7 +872,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 			talloc_free(&vp);
 			return -2;
 		}
-		fr_pair_add(out, vp);
+		fr_pair_append(out, vp);
 
 		return 0;
 	}
@@ -985,7 +985,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 			goto error;
 		}
 		n->op = map->op;
-		fr_pair_add(out, n);
+		fr_pair_append(out, n);
 		break;
 
 	case TMPL_TYPE_UNRESOLVED:
@@ -1000,7 +1000,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 			goto error;
 		}
 		n->op = map->op;
-		fr_pair_add(out, n);
+		fr_pair_append(out, n);
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -1039,7 +1039,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 				fr_assert((n->vp_type != FR_TYPE_STRING) || (n->vp_strvalue != NULL));
 
 				n->op = map->op;
-				fr_pair_add(out, n);
+				fr_pair_append(out, n);
 			}
 
 			return 0;
@@ -1078,7 +1078,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 			}
 		}
 		n->op = map->op;
-		fr_pair_add(out, n);
+		fr_pair_append(out, n);
 
 		MAP_VERIFY(map);
 		break;
@@ -1473,12 +1473,12 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 
 		if (fr_dlist_num_elements(&leaf) > 1) {
 			while ((extent = fr_dlist_tail(&leaf))) {
-				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
+				fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 				fr_dlist_talloc_free_tail(&leaf);
 			}
 		} else {
 			extent = fr_dlist_head(&leaf);
-			fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
+			fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 			fr_dlist_talloc_free_head(&leaf);
 		}
 
@@ -1526,7 +1526,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				dst = fr_dcursor_replace(&dst_list, fr_pair_copy(extent->list_ctx, src_vp));
 				talloc_free(dst);
 			} else {
-				fr_pair_add(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
+				fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 			}
 		}
 

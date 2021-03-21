@@ -878,7 +878,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 	}
 
 	vp->op = map->op;
-	fr_pair_add(out, vp);
+	fr_pair_append(out, vp);
 
 	return 0;
 }

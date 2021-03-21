@@ -165,7 +165,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			}
 
 			vp->op = map->op;
-			fr_pair_add(&head, vp);
+			fr_pair_append(&head, vp);
 
 			/*
 			 *	Only process the first value, unless the operator is +=

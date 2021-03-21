@@ -1970,7 +1970,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 		smb_account_ctrl_text = fr_pair_find_by_da(&request->control_pairs, attr_smb_account_ctrl_text);
 		if (smb_account_ctrl_text) {
-			MEM(pair_add_control(&smb_ctrl, attr_smb_account_ctrl) >= 0);
+			MEM(pair_append_control(&smb_ctrl, attr_smb_account_ctrl) >= 0);
 			smb_ctrl->vp_uint32 = pdb_decode_acct_ctrl(smb_account_ctrl_text->vp_strvalue);
 		}
 	}

@@ -16,8 +16,9 @@
 
 /** AVP manipulation and search API
  *
- * @file src/lib/util/dpair.c
+ * @file src/lib/util/pair.c
  *
+ * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2000,2006,2015,2020 The FreeRADIUS server project
  */
 RCSID("$Id$")
@@ -330,6 +331,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 		break;
 	}
 	fr_value_box_copy(n, &n->data, &vp->data);
+
 	return n;
 }
 
@@ -338,29 +340,63 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
  * @param[in] ctx to move fr_pair_t into
  * @param[in] vp fr_pair_t to move into the new context.
  */
-void fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
+int fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
 {
-	(void) talloc_steal(ctx, vp);
+	fr_pair_t *nvp;
 
-	/*
-	 *	The DA may be unknown.  If we're stealing the VPs to a
-	 *	different context, copy the unknown DA.  We use the VP
-	 *	as a context here instead of "ctx", so that when the
-	 *	VP is freed, so is the DA.
-	 *
-	 *	Since we have no introspection into OTHER VPs using
-	 *	the same DA, we can't have multiple VPs use the same
-	 *	DA.  So we might as well tie it to this VP.
-	 */
-	if (vp->da->flags.is_unknown) {
-		fr_dict_attr_t *da;
-
-		da = fr_dict_unknown_afrom_da(vp, vp->da);
-
-		fr_dict_unknown_free(&vp->da);
-
-		vp->da = da;
+	nvp = talloc_steal(ctx, vp);
+	if (unlikely(!nvp)) {
+		fr_strerror_printf("Failed moving pair %pV to new ctx", vp);
+		return -1;
 	}
+
+	return 0;
+}
+
+/** Change a vp's talloc ctx and insert it into a new list
+ *
+ * @param[in] list_ctx	to move vp into.
+ * @param[out] list	to add vp to.
+ * @param[in] vp	to move.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure (already in list).
+ */
+int fr_pair_steal_append(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *vp)
+{
+	if (fr_dlist_entry_in_list(&vp->entry)) {
+		fr_strerror_printf("Pair %pV is a list member, cannot be moved", vp);
+		return -1;
+	}
+
+	if (unlikely(fr_pair_steal(list_ctx, vp) < 0)) return -1;
+
+	if (unlikely(fr_pair_append(list, vp) < 0)) return -1;
+
+	return 0;
+}
+
+/** Change a vp's talloc ctx and insert it into a new list
+ *
+ * @param[in] list_ctx	to move vp into.
+ * @param[out] list	to add vp to.
+ * @param[in] vp	to move.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure (already in list).
+ */
+int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *vp)
+{
+	if (fr_dlist_entry_in_list(&vp->entry)) {
+		fr_strerror_printf("Pair %pV is a list member, cannot be moved", vp);
+		return -1;
+	}
+
+	if (unlikely(fr_pair_steal(list_ctx, vp) < 0)) return -1;
+
+	if (unlikely(fr_pair_prepend(list, vp) < 0)) return -1;
+
+	return 0;
 }
 
 /** Free memory used by a valuepair list.
@@ -632,40 +668,52 @@ void *fr_pair_list_tail(fr_pair_list_t const *list)
 	return fr_dlist_tail(&list->head);
 }
 
+/** Add a VP to the start of the list.
+ *
+ * Links an additional VP 'add' at the beginning a list.
+ *
+ * @param[in] list	VP in linked list. Will add new VP to this list.
+ * @param[in] to_add	VP to add to list.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (pair already in list).
+ */
+int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
+{
+	VP_VERIFY(to_add);
+
+	if (fr_dlist_entry_in_list(&to_add->entry)) {
+		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+		return -1;
+	}
+
+	fr_dlist_insert_head(&list->head, to_add);
+
+	return 0;
+}
+
 /** Add a VP to the end of the list.
  *
- * Links an additional VP 'add' at the beginnng or end of a list.
+ * Links an additional VP 'to_add' at the end of a list.
  *
- * @param[in] list VP in linked list. Will add new VP to this list.
- * @param[in] add VP to add to list.
- * @param[in] prepend - should the new VP be prepended or appended.
+ * @param[in] list	VP in linked list. Will add new VP to this list.
+ * @param[in] to_add	VP to add to list.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (pair already in list).
  */
-void _fr_pair_add(fr_pair_list_t *list, fr_pair_t *add, bool prepend)
+int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
-#ifdef WITH_VERIFY_PTR
-	fr_pair_t *i;
-#endif
+	VP_VERIFY(to_add);
 
-	if (!add) return;
-
-	VP_VERIFY(add);
-
-#ifdef WITH_VERIFY_PTR
-	for (i = fr_pair_list_head(list); i; i = fr_pair_list_next(list, i)) {
-		VP_VERIFY(i);
-		/*
-		 *	The same VP should never by added multiple times
-		 *	to the same list.
-		 */
-		(void)fr_cond_assert(i != add);
-	}
-#endif
-	if (prepend) {
-		fr_dlist_insert_head(&list->head, add);
-	} else {
-		fr_dlist_insert_tail(&list->head, add);
+	if (fr_dlist_entry_in_list(&to_add->entry)) {
+		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+		return -1;
 	}
 
+	fr_dlist_insert_tail(&list->head, to_add);
+
+	return 0;
 }
 
 /** Replace first matching VP
@@ -686,7 +734,7 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
 	VP_VERIFY(replace);
 
 	if (fr_dlist_empty(&list->head)) {
-		fr_pair_add(list, replace);
+		fr_pair_append(list, replace);
 		return;
 	}
 
@@ -714,7 +762,7 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
 	 *	If we got here, we didn't find anything to replace, so
 	 *	we just append.
 	 */
-	fr_pair_add(list, replace);
+	fr_pair_append(list, replace);
 }
 
 /** Delete matching pairs
@@ -742,6 +790,33 @@ void fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *par
 	}
 }
 
+/** Alloc a new fr_pair_t (and append)
+ *
+ * @param[in] ctx	to allocate new #fr_pair_t in.
+ * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
+ *			care about manipulating the fr_pair_t.
+ * @param[in,out] list	in search and insert into.
+ * @param[in] da	of attribute to update.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_append_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da)
+{
+	fr_pair_t	*vp;
+
+	vp = fr_pair_afrom_da(ctx, da);
+	if (unlikely(!vp)) {
+		if (out) *out = NULL;
+		return -1;
+	}
+
+	fr_pair_append(list, vp);
+	if (out) *out = vp;
+
+	return 0;
+}
+
 /** Alloc a new fr_pair_t (and prepend)
  *
  * @param[in] ctx	to allocate new #fr_pair_t in.
@@ -753,7 +828,7 @@ void fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *par
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da)
+int fr_pair_prepend_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
 	fr_pair_t	*vp;
 
@@ -763,18 +838,18 @@ int fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr
 		return -1;
 	}
 
-	_fr_pair_add(list, vp, true);
+	fr_pair_prepend(list, vp);
 	if (out) *out = vp;
 
 	return 0;
 }
 
-/** Return the first fr_pair_t matching the #fr_dict_attr_t or alloc a new fr_pair_t (and prepend)
+/** Return the first fr_pair_t matching the #fr_dict_attr_t or alloc a new fr_pair_t (and append)
  *
  * @param[in] ctx	to allocate any new #fr_pair_t in.
  * @param[out] out	Pair we allocated or found.  May be NULL if the caller doesn't
  *			care about manipulating the fr_pair_t.
- * @param[in,out] list	to search for attributes in or prepend attributes to.
+ * @param[in,out] list	to search for attributes in or append attributes to.
  * @param[in] da	of attribute to locate or alloc.
  * @return
  *	- 1 if attribute already existed.
@@ -785,9 +860,7 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 {
 	fr_pair_t	*vp;
 
-	for (vp = fr_pair_list_head(list); vp; vp = fr_pair_list_next(list, vp)) {
-		if (da == vp->da) break;
-	}
+	vp = fr_pair_find_by_da(list, da);
 	if (vp) {
 		VP_VERIFY(vp);
 		if (out) *out = vp;
@@ -800,7 +873,7 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 		return -1;
 	}
 
-	_fr_pair_add(list, vp, true);
+	fr_pair_append(list, vp);
 	if (out) *out = vp;
 
 	return 0;
@@ -834,10 +907,16 @@ int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
  *
  * @param[in] list	of value pairs to remove VP from.
  * @param[in] vp	to remove
+ * @return previous item in the list to the one being removed.
  */
-void fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
+fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
 {
+	fr_pair_t *prev;
+
+	prev = fr_pair_list_prev(list, vp);
 	fr_dlist_remove(&list->head, vp);
+
+	return prev;
 }
 
 /** Remove fr_pair_t from a list and free
@@ -846,15 +925,13 @@ void fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
  * @param[in] vp	to remove
  * @return previous item in the list to the one being removed.
  */
-fr_pair_t *fr_pair_delete(fr_pair_list_t *list, fr_pair_t const *vp)
+fr_pair_t *fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
 {
-	fr_pair_t *my_vp, *prev;
-
-	memcpy(&my_vp, &vp, sizeof(my_vp)); /* const hack */
+	fr_pair_t *prev;
 
 	prev = fr_pair_list_prev(list, vp);
-	fr_dlist_remove(&list->head, my_vp);
-	talloc_free(my_vp);
+	fr_dlist_remove(&list->head, vp);
+	talloc_free(vp);
 
 	return prev;
 }
@@ -1321,7 +1398,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
 			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
-		fr_pair_add(&tmp_list, new_vp);
+		fr_pair_append(&tmp_list, new_vp);
 	}
 
 	fr_tmp_pair_list_move(to, &tmp_list);
@@ -1371,7 +1448,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
-		fr_pair_add(&tmp_list, new_vp); /* fr_pair_list_copy sets next pointer to NULL */
+		fr_pair_append(&tmp_list, new_vp); /* fr_pair_list_copy sets next pointer to NULL */
 	}
 
 	fr_tmp_pair_list_move(to, &tmp_list);
@@ -1424,7 +1501,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
-		fr_pair_add(&tmp_list, new_vp);
+		fr_pair_append(&tmp_list, new_vp);
 	}
 
 	fr_dlist_move(&to->head, &tmp_list.head);
@@ -1462,7 +1539,7 @@ int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t con
 			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
-		fr_pair_add(&tmp_list, new_vp);
+		fr_pair_append(&tmp_list, new_vp);
 	}
 
 	fr_dlist_move(&to->head, &tmp_list.head);

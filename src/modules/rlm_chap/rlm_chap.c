@@ -147,7 +147,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 		MEM(vp = fr_pair_afrom_da(request->request_ctx, attr_chap_challenge));
 		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
-		fr_pair_add(&request->request_pairs, vp);
+		fr_pair_append(&request->request_pairs, vp);
 	}
 
 	if (!inst->auth_type) {

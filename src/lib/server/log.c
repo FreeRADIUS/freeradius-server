@@ -554,7 +554,7 @@ void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 	p = fr_vasprintf(request, fmt, aq);
 	va_end(aq);
 
-	MEM(pair_add_request(&vp, attr_module_failure_message) >= 0);
+	MEM(pair_prepend_request(&vp, attr_module_failure_message) >= 0);
 	if (request->module && (request->module[0] != '\0')) {
 		fr_pair_value_aprintf(vp, "%s: %s", request->module, p);
 	} else {

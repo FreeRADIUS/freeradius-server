@@ -405,7 +405,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	if (!fr_pair_find_by_da(&request->request_pairs, attr_nas_identifier)) {
 		fr_pair_t *vp;
 
-		MEM(pair_add_request(&vp, attr_nas_identifier) >= 0);
+		MEM(pair_append_request(&vp, attr_nas_identifier) >= 0);
 		fr_pair_value_strdup(vp, "status check - are you alive?");
 	}
 
@@ -415,7 +415,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	Status-Server, the time of the current packet.
 	 */
 	if (!fr_pair_find_by_da(&request->request_pairs, attr_event_timestamp)) {
-		MEM(pair_add_request(NULL, attr_event_timestamp) >= 0);
+		MEM(pair_append_request(NULL, attr_event_timestamp) >= 0);
 	}
 
 	/*
@@ -1431,7 +1431,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
 		fr_pair_value_memdup(vp, attr + 2, 5, true);
-		fr_pair_add(&u->extra, vp);
+		fr_pair_append(&u->extra, vp);
 	}
 
 	/*
@@ -2438,7 +2438,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 			if (!vp) {
 				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_packet_type));
 				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
-				fr_pair_add(&request->reply_pairs, vp);
+				fr_pair_append(&request->reply_pairs, vp);
 			}
 		}
 
@@ -2461,7 +2461,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 
 			MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_message_authenticator));
 			(void) fr_pair_value_memdup(vp, (uint8_t const *) "", 1, false);
-			fr_pair_add(&request->reply_pairs, vp);
+			fr_pair_append(&request->reply_pairs, vp);
 		}
 
 		treq->request->reply->code = code;

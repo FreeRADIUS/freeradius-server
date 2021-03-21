@@ -417,7 +417,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
 
 	for (value = fr_dlist_head(&head);
 	     value;
-	     fr_pair_add(out, vp), value = fr_dlist_next(&head, value)) {
+	     fr_pair_append(out, vp), value = fr_dlist_next(&head, value)) {
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
 

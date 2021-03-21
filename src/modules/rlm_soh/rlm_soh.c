@@ -182,7 +182,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 					p[4] = 'N';
 					p[3] = 'A';
 					p[2] = 'P';
-					fr_pair_add(&request->reply_pairs, vp);
+					fr_pair_append(&request->reply_pairs, vp);
 
 				} else {
 					RDEBUG2("SoH decoding NAP from DHCP request");

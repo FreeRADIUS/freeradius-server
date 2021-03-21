@@ -681,7 +681,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 
 		if (t->username) {
 			vp = fr_pair_copy(request->request_ctx, t->username);
-			fr_pair_add(&request->request_pairs, vp);
+			fr_pair_append(&request->request_pairs, vp);
 		}
 	} /* else the request ALREADY had a User-Name */
 
@@ -705,7 +705,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		/* encapsulate response here */
 		if (req->response) {
 			RDEBUG2("sending chbind response");
-			fr_pair_add(&request->reply_pairs,
+			fr_pair_append(&request->reply_pairs,
 				    eap_chbind_packet2vp(request->reply_ctx, req->response));
 		} else {
 			RDEBUG2("no chbind response");

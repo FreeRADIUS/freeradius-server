@@ -420,7 +420,7 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 
 	if (fr_pair_find_by_da(&request->request_pairs, attr_chap_password) &&
 	    !fr_pair_find_by_da(&request->request_pairs, attr_chap_challenge)) {
-	    	MEM(pair_add_request(&vp, attr_chap_challenge) >= 0);
+	    	MEM(pair_append_request(&vp, attr_chap_challenge) >= 0);
 		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 	}
 }

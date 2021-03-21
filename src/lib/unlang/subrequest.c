@@ -300,7 +300,7 @@ static unlang_action_t unlang_subrequest_state_init(rlm_rcode_t *p_result, reque
 		}
 
 	}
-	fr_pair_add(&child->request_pairs, vp);
+	fr_pair_append(&child->request_pairs, vp);
 
 	if (gext->src) {
 		if (tmpl_is_list(gext->src)) {

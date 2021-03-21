@@ -180,7 +180,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 		vp = fr_pair_make_unknown(ctx, dict, attrname, value, op);
 		if (!vp) return NULL;
 
-		if (vps) fr_pair_add(vps, vp);
+		if (vps) fr_pair_append(vps, vp);
 		return vp;
 	}
 
@@ -255,7 +255,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 		return NULL;
 	}
 
-	if (vps) fr_pair_add(vps, vp);
+	if (vps) fr_pair_append(vps, vp);
 	return vp;
 }
 
@@ -509,7 +509,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		 */
 		fr_dict_unknown_free(&da);
 
-		fr_pair_add(&tmp_list, vp);
+		fr_pair_append(&tmp_list, vp);
 
 		/*
 		 *	Now look for EOL, hash, etc.
@@ -731,7 +731,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from)
 	do_add:
 			j = fr_pair_list_next(from, i);
 			fr_pair_remove(from, i);
-			fr_pair_add(&head_new, i);
+			fr_pair_append(&head_new, i);
 			i = j;
 			continue;
 		}

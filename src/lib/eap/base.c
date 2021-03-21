@@ -137,7 +137,7 @@ void eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t co
 		MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
 		fr_pair_value_memdup(vp, ptr, size, false);
 
-		fr_pair_add(list, vp);
+		fr_pair_append(list, vp);
 
 		ptr += size;
 		total -= size;

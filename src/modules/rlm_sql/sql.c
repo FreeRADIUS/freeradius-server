@@ -229,7 +229,7 @@ int sql_pair_list_afrom_str(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t 
 	/*
 	 *	Add the pair into the packet
 	 */
-	fr_pair_add(out, vp);
+	fr_pair_append(out, vp);
 	return 0;
 }
 

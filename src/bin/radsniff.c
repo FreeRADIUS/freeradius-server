@@ -961,7 +961,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vp
 				fr_pair_list_free(out);
 				return -1;
 			}
-			fr_pair_add(out, copy);
+			fr_pair_append(out, copy);
 			last_match = match;
 
 			count++;

@@ -288,7 +288,7 @@ int fr_tls_cache_write(request_t *request, fr_tls_session_t *tls_session)
 	RINDENT();
 	RDEBUG2("&session-state.%pP", vp);
 	REXDENT();
-	fr_pair_add(&request->session_state_pairs, vp);
+	fr_pair_append(&request->session_state_pairs, vp);
 
 	/*
 	 *	Call the virtual server to write the session

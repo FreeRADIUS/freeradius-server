@@ -121,19 +121,19 @@ static inline CC_HINT(always_inline) void dhcpv6_reply_initialise(request_t *req
 		     vp;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
 		     	if (vp->da == attr_hop_count) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
+		     		fr_pair_append(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		     	if (vp->da == attr_relay_link_address) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
+		     		fr_pair_append(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		     	if (vp->da == attr_relay_peer_address) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
+		     		fr_pair_append(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		     	if (vp->da == attr_interface_id) {
-		     		fr_pair_add(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
+		     		fr_pair_append(&request->reply_pairs, fr_pair_copy(request->reply_ctx, vp));
 		     		continue;
 		     	}
 		}

@@ -61,7 +61,7 @@ static ssize_t internal_decode_pair_value_dbuff(TALLOC_CTX *ctx, fr_pair_list_t 
 		talloc_free(vp);
 		return slen;
 	}
-	fr_pair_add(head, vp);
+	fr_pair_append(head, vp);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -107,12 +107,12 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 		while (fr_dcursor_head(&cursor)) {
 		     	FR_PROTO_TRACE("Moving %s into %s",
 		     		       ((fr_pair_t *)fr_dcursor_head(&cursor))->da->name, tlv->da->name);
-			fr_pair_add(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_dcursor_remove(&cursor)));
+			fr_pair_append(&tlv->vp_group, talloc_reparent(ctx, tlv, fr_dcursor_remove(&cursor)));
 		}
 
-		fr_pair_add(head, tlv);
+		fr_pair_append(head, tlv);
 	} else {
-		fr_pair_add(head, fr_dcursor_head(&cursor));
+		fr_pair_append(head, fr_dcursor_head(&cursor));
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -146,7 +146,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 			return slen;
 		}
 	}
-	fr_pair_add(head, vp);
+	fr_pair_append(head, vp);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }

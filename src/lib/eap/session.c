@@ -430,7 +430,7 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 		 *	correctly
 		 */
 		RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-		MEM(pair_add_request(&user, attr_user_name) >= 0);
+		MEM(pair_append_request(&user, attr_user_name) >= 0);
 		fr_pair_value_bstrdup_buffer(user, eap_session->identity, true);
 	/*
 	 *	The RFC 3579 is pretty unambiguous, the main issue is that the EAP Identity Response

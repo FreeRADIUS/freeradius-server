@@ -261,14 +261,14 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 			 *    the output list without checking it.
 			 */
 			if (check_item->op == T_OP_SET ) {
-				fr_pair_add(&output, check_item);
+				fr_pair_append(&output, check_item);
 				continue;
 			}
 
 			/*
 			 *	Append the realized VP to the check list.
 			 */
-			fr_pair_add(&check_list, check_item);
+			fr_pair_append(&check_list, check_item);
 		}
 
 		/*
@@ -320,7 +320,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 				}
 				fr_pair_remove(list, input_item);
 				fr_assert(input_item != NULL);
-				fr_pair_add(&output, input_item);
+				fr_pair_append(&output, input_item);
 				input_item = prev; /* Set input_item to previous in the list for outer loop */
 			}
 		}

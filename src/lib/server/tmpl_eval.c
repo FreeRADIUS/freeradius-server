@@ -1350,7 +1350,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 			err = -4;
 			break;
 		}
-		fr_pair_add(out, vp);
+		fr_pair_append(out, vp);
 	}
 	tmpl_cursor_clear(&cc);
 
@@ -1715,7 +1715,7 @@ int tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 				}
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, ar->ar_da));	/* Copies unknowns */
-				fr_pair_add(list, vp);
+				fr_pair_append(list, vp);
 				list = &vp->vp_group;
 				list_ctx = vp;		/* New allocations occur under the VP */
 				break;

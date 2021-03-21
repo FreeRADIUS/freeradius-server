@@ -476,7 +476,7 @@ static unlang_action_t do_logging(rlm_rcode_t *p_result, UNUSED rlm_sqlippool_t 
 
 	if (!str || !*str) RETURN_MODULE_RCODE(rcode);
 
-	MEM(pair_add_request(&vp, attr_module_success_message) == 0);
+	MEM(pair_append_request(&vp, attr_module_success_message) == 0);
 	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) {
 		pair_delete_request(vp);
 		RETURN_MODULE_RCODE(rcode);
@@ -636,7 +636,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	}
 
 	RDEBUG2("Allocated IP %s", allocation);
-	fr_pair_add(&request->reply_pairs, vp);
+	fr_pair_append(&request->reply_pairs, vp);
 
 	/*
 	 *	UPDATE

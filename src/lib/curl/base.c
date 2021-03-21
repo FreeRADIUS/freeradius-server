@@ -205,7 +205,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 			MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
 			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
 
-			fr_pair_add(&cert_vps, vp);
+			fr_pair_append(&cert_vps, vp);
 		}
 		/*
 		 *	Add a copy of the cert_vps to the request list.

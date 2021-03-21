@@ -315,19 +315,19 @@ static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, UNUSED m
 				MEM(fr_pair_value_memdup_buffer(vp, vec->sim.rand, true) == 0);
 				TALLOC_FREE(vec->sim.rand);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 
 				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_sres));
 				MEM(fr_pair_value_memdup_buffer(vp, vec->sim.sres, true) == 0);
 				TALLOC_FREE(vec->sim.sres);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 
 				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_kc));
 				MEM(fr_pair_value_memdup_buffer(vp, vec->sim.kc, true) == 0);
 				TALLOC_FREE(vec->sim.kc);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 				REXDENT();
 
 				i++;
@@ -346,31 +346,31 @@ static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, UNUSED m
 				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.rand, true) == 0);
 				TALLOC_FREE(vec->umts.rand);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 
 				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_xres));
 				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.xres, true) == 0);
 				TALLOC_FREE(vec->umts.xres);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 
 				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_ck));
 				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.ck, true) == 0);
 				TALLOC_FREE(vec->umts.ck);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 
 				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_ik));
 				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.ik, true) == 0);
 				TALLOC_FREE(vec->umts.ik);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 
 				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_autn));
 				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.authn, true) == 0);
 				TALLOC_FREE(vec->umts.authn);
 				RDEBUG2("&control.%pP", vp);
-				fr_pair_add(&request->control_pairs, vp);
+				fr_pair_append(&request->control_pairs, vp);
 				REXDENT();
 
 				i++;

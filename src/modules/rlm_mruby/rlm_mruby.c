@@ -381,7 +381,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 			DEBUG("%s: %s %s %s OK", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 		}
 
-		fr_pair_add(&tmp_list, vp);
+		fr_pair_append(&tmp_list, vp);
 	}
 	radius_pairmove(request, vps, &tmp_list, false);
 }

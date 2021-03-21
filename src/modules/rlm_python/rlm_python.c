@@ -352,7 +352,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		}
 
-		fr_pair_add(&tmp_list, vp);
+		fr_pair_append(&tmp_list, vp);
 	}
 	radius_pairmove(request, vps, &tmp_list, false);
 }

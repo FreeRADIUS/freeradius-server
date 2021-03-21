@@ -117,7 +117,7 @@ static int load_attr_pairs(fr_pair_list_t *out)
 
 	for (p = test_dict_attrs;
 	     p->attr != -1;
-	     p++) if (fr_pair_add_by_da(autofree, NULL, out, *p->da) < 0) return -1;
+	     p++) if (fr_pair_prepend_by_da(autofree, NULL, out, *p->da) < 0) return -1;
 
 	return 0;
 }
@@ -212,14 +212,14 @@ static request_t *request_fake_alloc(void)
 /*
  *	Tests functions
  */
-static void test_pair_add_request(void)
+static void test_pair_append_request(void)
 {
 	fr_pair_t      *local_vp;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	TEST_CASE("Add 'Test-Integer' in 'request_pairs' using pair_add_request()");
-	TEST_CHECK(pair_add_request(&local_vp, attr_test_integer) == 0);
+	TEST_CASE("Add 'Test-Integer' in 'request_pairs' using pair_append_request()");
+	TEST_CHECK(pair_append_request(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->request_pairs)) != NULL);
@@ -233,14 +233,14 @@ static void test_pair_add_request(void)
 	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
-static void test_pair_add_reply(void)
+static void test_pair_append_reply(void)
 {
 	fr_pair_t      *local_vp;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	TEST_CASE("Add 'Test-Integer' in 'reply_pairs' using pair_add_reply()");
-	TEST_CHECK(pair_add_reply(&local_vp, attr_test_integer) == 0);
+	TEST_CASE("Add 'Test-Integer' in 'reply_pairs' using pair_append_reply()");
+	TEST_CHECK(pair_append_reply(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->reply_pairs)) != NULL);
@@ -255,14 +255,14 @@ static void test_pair_add_reply(void)
 	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
-static void test_pair_add_control(void)
+static void test_pair_append_control(void)
 {
 	fr_pair_t      *local_vp;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_add_control()");
-	TEST_CHECK(pair_add_control(&local_vp, attr_test_integer) == 0);
+	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_append_control()");
+	TEST_CHECK(pair_append_control(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->control_pairs)) != NULL);
@@ -277,14 +277,14 @@ static void test_pair_add_control(void)
 	TEST_CHECK_RET(talloc_free(request), 0);
 }
 
-static void test_pair_add_session_state(void)
+static void test_pair_append_session_state(void)
 {
 	fr_pair_t      *local_vp;
 	fr_pair_t      *vp;
 	request_t      *request = request_fake_alloc();
 
-	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_add_session_state()");
-	TEST_CHECK(pair_add_session_state(&local_vp, attr_test_integer) == 0);
+	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_append_session_state()");
+	TEST_CHECK(pair_append_session_state(&local_vp, attr_test_integer) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->session_state_pairs)) != NULL);
@@ -471,10 +471,10 @@ TEST_LIST = {
 	/*
 	 *	Add pairs
 	 */
-	{ "pair_add_request",          test_pair_add_request },
-	{ "pair_add_reply",            test_pair_add_reply },
-	{ "pair_add_control",          test_pair_add_control },
-	{ "pair_add_session_state",    test_pair_add_session_state },
+	{ "pair_append_request",          test_pair_append_request },
+	{ "pair_append_reply",            test_pair_append_reply },
+	{ "pair_append_control",          test_pair_append_control },
+	{ "pair_append_session_state",    test_pair_append_session_state },
 
 	/*
 	 *	Update pairs

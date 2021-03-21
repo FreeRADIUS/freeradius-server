@@ -317,7 +317,7 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session,
 		uint8_t		*session_id;
 		fr_pair_t	*vp;
 
-		MEM(pair_add_reply(&vp, attr_eap_session_id) >= 0);
+		MEM(pair_append_reply(&vp, attr_eap_session_id) >= 0);
 		if (eap_crypto_tls_session_id(vp, request, tls_session->ssl,
 					      &session_id, eap_session->type,
 					      sessid_prf_label, sessid_prf_label_len) < 0) {

@@ -461,7 +461,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 			fr_pair_to_unknown(vp);
 			fr_pair_value_memdup(vp, p, len, true);
 		}
-		fr_pair_add(out, vp);
+		fr_pair_append(out, vp);
 		p += len;
 	}
 
@@ -589,7 +589,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	 */
 
 	MEM(vp = fr_pair_afrom_da(fake->request_ctx, attr_eap_message));
-	fr_pair_add(&fake->request_pairs, vp);
+	fr_pair_append(&fake->request_pairs, vp);
 	fr_pair_value_memdup(vp, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length, false);
 
 	RDEBUG2("Got tunneled request");
@@ -598,7 +598,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	MEM(fr_pair_add_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
+	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	/*
@@ -632,7 +632,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 
 	if (t->username) {
 		vp = fr_pair_copy(fake->request_ctx, t->username);
-		fr_pair_add(&fake->request_pairs, vp);
+		fr_pair_append(&fake->request_pairs, vp);
 	}
 
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
@@ -640,7 +640,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 
 		MEM(tvp = fr_pair_afrom_da(fake, attr_eap_type));
 		tvp->vp_uint32 = t->default_provisioning_method;
-		fr_pair_add(&fake->control_pairs, tvp);
+		fr_pair_append(&fake->control_pairs, tvp);
 
 		/*
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
@@ -648,12 +648,12 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_challenge));
 			fr_pair_value_memdup(tvp, t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
-			fr_pair_add(&fake->control_pairs, tvp);
+			fr_pair_append(&fake->control_pairs, tvp);
 			RHEXDUMP3(t->keyblock->server_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 auth_challenge");
 
 			MEM(tvp = fr_pair_afrom_da(fake, attr_ms_chap_peer_challenge));
 			fr_pair_value_memdup(tvp, t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, false);
-			fr_pair_add(&fake->control_pairs, tvp);
+			fr_pair_append(&fake->control_pairs, tvp);
 			RHEXDUMP3(t->keyblock->client_challenge, RADIUS_CHAP_CHALLENGE_LENGTH, "MSCHAPv2 peer_challenge");
 		}
 	}

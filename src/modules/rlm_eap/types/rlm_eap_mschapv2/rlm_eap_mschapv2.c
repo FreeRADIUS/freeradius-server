@@ -512,7 +512,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
 
-				MEM(pair_add_request(&nt_enc, attr_ms_chap_nt_enc_pw) >= 0);
+				MEM(pair_append_request(&nt_enc, attr_ms_chap_nt_enc_pw) >= 0);
 				MEM(fr_pair_value_mem_alloc(nt_enc, &p, 4 + to_copy, false) == 0);
 				p[0] = 6;
 				p[1] = mschap_id;

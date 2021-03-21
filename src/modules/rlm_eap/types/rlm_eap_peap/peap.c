@@ -166,7 +166,7 @@ static void eap_peap_soh_verify(request_t *request, uint8_t const *data, unsigne
 
 	MEM(vp = fr_pair_afrom_da(request->request_ctx, attr_soh_supported));
 	vp->vp_bool = false;
-	fr_pair_add(&request->request_pairs, vp);
+	fr_pair_append(&request->request_pairs, vp);
 
 	if (data && data[0] == FR_EAP_METHOD_NAK) {
 		REDEBUG("SoH - client NAKed");
@@ -286,14 +286,14 @@ static void eap_peap_inner_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *pairs,
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 	memcpy(p + EAP_HEADER_LEN, data, total);
 
-	fr_pair_add(pairs, vp);
+	fr_pair_append(pairs, vp);
 	while (total < data_len) {
 		MEM(vp = fr_pair_afrom_da(ctx, attr_eap_message));
 		fr_pair_value_memdup(vp, data + total, (data_len - total), false);
 
 		total += vp->vp_length;
 
-		fr_pair_add(pairs, vp);
+		fr_pair_append(pairs, vp);
 	}
 }
 
@@ -677,7 +677,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		q[4] = FR_EAP_METHOD_IDENTITY;
 		memcpy(q + EAP_HEADER_LEN + 1,
 		       t->username->vp_strvalue, t->username->vp_length);
-		fr_pair_add(&fake->request_pairs, vp);
+		fr_pair_append(&fake->request_pairs, vp);
 	}
 		break;
 
@@ -752,12 +752,12 @@ static int CC_HINT(nonnull) setup_fake_request(request_t *request, request_t *fa
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	MEM(fr_pair_add_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
+	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
 	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
 
 	if (t->username) {
 		vp = fr_pair_copy(fake->request_ctx, t->username);
-		fr_pair_add(&fake->request_pairs, vp);
+		fr_pair_append(&fake->request_pairs, vp);
 		RDEBUG2("Setting &request.User-Name from tunneled (inner) identity \"%s\"",
 			vp->vp_strvalue);
 	} else {

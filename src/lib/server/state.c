@@ -492,7 +492,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, state->da));
 		fr_pair_value_memdup(vp, entry->state, sizeof(entry->state), false);
-		fr_pair_add(reply_list, vp);
+		fr_pair_append(reply_list, vp);
 	}
 
 	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %" PRIu64 "s",

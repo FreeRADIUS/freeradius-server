@@ -230,7 +230,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 			vp = fr_pair_afrom_da(request->request_ctx, attr_tacacs_state);
 			if (vp) {
 				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
-				fr_pair_add(&request->request_pairs, vp);
+				fr_pair_append(&request->request_pairs, vp);
 			}
 
 			fr_state_to_request(inst->state_tree, request);

@@ -175,7 +175,11 @@ fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 
 fr_pair_t	*fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp) CC_HINT(warn_unused_result);
 
-void		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
+int		fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp);
+
+int		fr_pair_steal_append(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp);
+
+int		fr_pair_steal_prepend(TALLOC_CTX *nctx, fr_pair_list_t *list, fr_pair_t *vp);
 
 /** @hidecallergraph */
 void		fr_pair_list_free(fr_pair_list_t *list);
@@ -229,23 +233,25 @@ fr_pair_t	*fr_pair_find_by_num(fr_pair_list_t *list, unsigned int vendor, unsign
 
 fr_pair_t	*fr_pair_find_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr);
 
-#define fr_pair_add(_list, _vp) (_fr_pair_add(_list, _vp, false))
-#define fr_pair_prepend(_list, _vp) (_fr_pair_add(_list, _vp, true))
-void		_fr_pair_add(fr_pair_list_t *list, fr_pair_t *vp, bool prepend);
+int		fr_pair_append(fr_pair_list_t *list, fr_pair_t *vp);
+
+int		fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *vp);
 
 void		fr_pair_replace(fr_pair_list_t *list, fr_pair_t *add);
 
 void		fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr);
 
-int		fr_pair_add_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da);
+int		fr_pair_append_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da);
+
+int		fr_pair_prepend_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 
 int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 
 int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 
-void		fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp);
+fr_pair_t	*fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp);
 
-fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t const *vp);
+fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp);
 
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head);

@@ -859,7 +859,7 @@ static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t
 	RINDENT();
 	RDEBUG3("%pP", vp);
 	REXDENT();
-	fr_pair_add(pair_list, vp);
+	fr_pair_append(pair_list, vp);
 
 	return vp;
 }
@@ -1103,7 +1103,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 					continue;
 				}
 
-				fr_pair_add(pair_list, vp);
+				fr_pair_append(pair_list, vp);
 			}
 			BIO_free_all(out);
 		}
@@ -1446,7 +1446,7 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 		vp = fr_pair_afrom_da(request->session_state_ctx, attr_tls_session_cipher_suite);
 		if (vp) {
 			fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher));
-			fr_pair_add(&request->session_state_pairs, vp);
+			fr_pair_append(&request->session_state_pairs, vp);
 			RINDENT();
 			RDEBUG2("&session-state.%pP", vp);
 			REXDENT();
@@ -1462,7 +1462,7 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 		vp = fr_pair_afrom_da(request->session_state_ctx, attr_tls_session_version);
 		if (vp) {
 			fr_pair_value_strdup(vp, version);
-			fr_pair_add(&request->session_state_pairs, vp);
+			fr_pair_append(&request->session_state_pairs, vp);
 			RINDENT();
 			RDEBUG2("&session-state.TLS-Session-Version := \"%s\"", version);
 			REXDENT();

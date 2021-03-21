@@ -1021,7 +1021,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 	vp->op = T_OP_EQ;
 
-	fr_pair_add(&parent->options, vp);
+	fr_pair_append(&parent->options, vp);
 
 	// @todo - print out ISC names...
 	IDEBUG("%.*s option %s %s ", state->braces, spaces, da->name, value);
@@ -1047,7 +1047,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 		vp->op = T_OP_EQ;
 
-		fr_pair_add(&parent->options, vp);
+		fr_pair_append(&parent->options, vp);
 
 		// @todo - print out ISC names...
 		IDEBUG("%.*s option %s %.*ss ", state->braces, spaces, da->name, state->token_len, state->token);
@@ -1666,7 +1666,7 @@ static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 	ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 	if (ret < 0) return ret;
 
-	fr_pair_add(&info->parent->options, vp);
+	fr_pair_append(&info->parent->options, vp);
 
 	talloc_free(info);
 	return 2;
@@ -1776,7 +1776,7 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 		ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
 		if (ret < 0) return ret;
 
-		fr_pair_add(&request->reply_pairs, vp);
+		fr_pair_append(&request->reply_pairs, vp);
 
 		/*
 		 *	If we've found a fixed IP, then tell
@@ -1889,7 +1889,7 @@ recurse:
 				copy = fr_pair_copy(request->reply_ctx, vp);
 				if (!copy) return -1;
 
-				fr_pair_add(&request->reply_pairs, copy);
+				fr_pair_append(&request->reply_pairs, copy);
 
 				next = fr_pair_list_next(&head->options, vp);
 				if (!next) break;

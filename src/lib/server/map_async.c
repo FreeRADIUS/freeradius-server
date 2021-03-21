@@ -835,7 +835,7 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 	if (vlm->mod.num_elements == 1) {
 		fr_pair_t *vp;
 		vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
-		fr_pair_add(list, vp);
+		fr_pair_append(list, vp);
 		return;
 	}
 
@@ -859,7 +859,7 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 			if (!vp) {
 				fr_pair_list_free(list);
 			}
-			fr_pair_add(list, vp);
+			fr_pair_append(list, vp);
 //		}
 	}
 }

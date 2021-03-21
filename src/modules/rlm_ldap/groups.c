@@ -335,7 +335,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 			if (is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
-				fr_pair_add(&groups, vp);
+				fr_pair_append(&groups, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
 			 *	this to a DN. Store all the group names in an array so we can do one query.
@@ -352,7 +352,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 			if (!is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
-				fr_pair_add(&groups, vp);
+				fr_pair_append(&groups, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
 			 *	this to a name.
@@ -378,7 +378,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 				fr_pair_value_bstrdup_buffer(vp, name, true);
-				fr_pair_add(&groups, vp);
+				fr_pair_append(&groups, vp);
 				talloc_free(name);
 			}
 		}
@@ -407,7 +407,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 	for (dn_p = group_dn; *dn_p; dn_p++) {
 		MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
 		fr_pair_value_strdup(vp, *dn_p);
-		fr_pair_add(list, vp);
+		fr_pair_append(list, vp);
 
 		RDEBUG2("&control.%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		ldap_memfree(*dn_p);
@@ -502,7 +502,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 			}
 			fr_ldap_util_normalise_dn(dn, dn);
 
-			MEM(pair_add_control(&vp, inst->cache_da) == 0);
+			MEM(pair_append_control(&vp, inst->cache_da) == 0);
 			fr_pair_value_strdup(vp, dn);
 
 			RINDENT();
@@ -517,7 +517,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 			values = ldap_get_values_len((*pconn)->handle, entry, inst->groupobj_name_attr);
 			if (!values) continue;
 
-			MEM(pair_add_control(&vp, inst->cache_da) == 0);
+			MEM(pair_append_control(&vp, inst->cache_da) == 0);
 			fr_pair_value_bstrndup(vp, values[0]->bv_val, values[0]->bv_len, true);
 
 			RINDENT();

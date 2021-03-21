@@ -305,7 +305,7 @@ static int identity_req_pairs_add(request_t *request, eap_aka_sim_session_t *eap
 				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->last_id_req, "<INVALID>"));
 			return -1;
 		}
-		MEM(pair_add_reply(&vp, attr_eap_aka_sim_any_id_req) >= 0);
+		MEM(pair_append_reply(&vp, attr_eap_aka_sim_any_id_req) >= 0);
 		vp->vp_bool = true;
 		break;
 
@@ -318,7 +318,7 @@ static int identity_req_pairs_add(request_t *request, eap_aka_sim_session_t *eap
 		default:
 			goto id_out_of_order;
 		}
-		MEM(pair_add_reply(&vp, attr_eap_aka_sim_fullauth_id_req) >= 0);
+		MEM(pair_append_reply(&vp, attr_eap_aka_sim_fullauth_id_req) >= 0);
 		vp->vp_bool = true;
 		break;
 
@@ -332,7 +332,7 @@ static int identity_req_pairs_add(request_t *request, eap_aka_sim_session_t *eap
 		default:
 			goto id_out_of_order;
 		}
-		MEM(pair_add_reply(&vp, attr_eap_aka_sim_permanent_id_req) >= 0);
+		MEM(pair_append_reply(&vp, attr_eap_aka_sim_permanent_id_req) >= 0);
 		vp->vp_bool = true;
 		break;
 
@@ -600,7 +600,7 @@ static unlang_action_t pseudonym_store_resume(rlm_rcode_t *p_result, module_ctx_
 		 *	used, it'll be 1 (as per the standard).
 		 */
 		} else {
-			MEM(pair_add_session_state(&vp, attr_eap_aka_sim_counter) >= 0);
+			MEM(pair_append_session_state(&vp, attr_eap_aka_sim_counter) >= 0);
 			vp->vp_uint16 = 0;
 		}
 
@@ -946,7 +946,7 @@ static unlang_action_t common_failure_notification_send(rlm_rcode_t *p_result, m
 	 */
 	if (after_authentication(eap_aka_sim_session)) {
 		if (!notification_vp) {
-			MEM(pair_add_reply(&notification_vp, attr_eap_aka_sim_notification) >= 0);
+			MEM(pair_append_reply(&notification_vp, attr_eap_aka_sim_notification) >= 0);
 			notification_vp->vp_uint16 = eap_aka_sim_session->failure_type; /* Default will be zero */
 		}
 
@@ -992,7 +992,7 @@ static unlang_action_t common_failure_notification_send(rlm_rcode_t *p_result, m
 		 *	Only valid code is general failure
 		 */
 		if (!notification_vp) {
-			MEM(pair_add_reply(&notification_vp, attr_eap_aka_sim_notification) >= 0);
+			MEM(pair_append_reply(&notification_vp, attr_eap_aka_sim_notification) >= 0);
 			notification_vp->vp_uint16 = FR_NOTIFICATION_VALUE_GENERAL_FAILURE;
 		/*
 		 *	User supplied failure code
@@ -1573,13 +1573,13 @@ static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, modu
 	/*
 	 *	Okay, we got the challenges! Put them into attributes.
 	 */
-	MEM(pair_add_reply(&vp, attr_eap_aka_sim_rand) >= 0);
+	MEM(pair_append_reply(&vp, attr_eap_aka_sim_rand) >= 0);
 	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.gsm.vector[0].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
 
-	MEM(pair_add_reply(&vp, attr_eap_aka_sim_rand) >= 0);
+	MEM(pair_append_reply(&vp, attr_eap_aka_sim_rand) >= 0);
 	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.gsm.vector[1].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
 
-	MEM(pair_add_reply(&vp, attr_eap_aka_sim_rand) >= 0);
+	MEM(pair_append_reply(&vp, attr_eap_aka_sim_rand) >= 0);
 	fr_pair_value_memdup(vp, eap_aka_sim_session->keys.gsm.vector[2].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE, false);
 
 	/*
@@ -1724,7 +1724,7 @@ static unlang_action_t sim_start_request_send(rlm_rcode_t *p_result, module_ctx_
 	 *      just add the default (1).
 	 */
 	if (!(fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_version_list))) {
-		MEM(pair_add_reply(&vp, attr_eap_aka_sim_version_list) >= 0);
+		MEM(pair_append_reply(&vp, attr_eap_aka_sim_version_list) >= 0);
 		vp->vp_uint16 = EAP_SIM_VERSION;
 	}
 
@@ -2292,7 +2292,7 @@ static unlang_action_t aka_challenge_enter(rlm_rcode_t *p_result, module_ctx_t c
 	 	 */
 		if (inst->network_name &&
 		    !fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_kdf_input)) {
-			MEM(pair_add_reply(&vp, attr_eap_aka_sim_kdf_input) >= 0);
+			MEM(pair_append_reply(&vp, attr_eap_aka_sim_kdf_input) >= 0);
 			fr_pair_value_bstrdup_buffer(vp, inst->network_name, false);
 		}
 	}
@@ -2304,7 +2304,7 @@ static unlang_action_t aka_challenge_enter(rlm_rcode_t *p_result, module_ctx_t c
 		 */
 		if (eap_aka_sim_session->send_at_bidding_prefer_prime &&
 		    !fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_bidding)) {
-			MEM(pair_add_reply(&vp, attr_eap_aka_sim_bidding) >= 0);
+			MEM(pair_append_reply(&vp, attr_eap_aka_sim_bidding) >= 0);
 			vp->vp_uint16 = FR_BIDDING_VALUE_PREFER_AKA_PRIME;
 		}
 		break;
@@ -2316,7 +2316,7 @@ static unlang_action_t aka_challenge_enter(rlm_rcode_t *p_result, module_ctx_t c
 	 */
 	if (eap_aka_sim_session->send_result_ind &&
 	    !fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_result_ind)) {
-	    	MEM(pair_add_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
+	    	MEM(pair_append_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
 		vp->vp_bool = true;
 	}
 
@@ -2370,7 +2370,7 @@ static unlang_action_t sim_challenge_enter(rlm_rcode_t *p_result, module_ctx_t c
 	 */
 	if (eap_aka_sim_session->send_result_ind &&
 	    !fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_result_ind)) {
-	    	MEM(pair_add_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
+	    	MEM(pair_append_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
 		vp->vp_bool = true;
 	}
 
@@ -3632,14 +3632,14 @@ static unlang_action_t aka_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 		 *	next challenge round.
 		 */
 		case 0:
-			MEM(pair_add_control(&vp, attr_sim_sqn) >= 0);
+			MEM(pair_append_control(&vp, attr_sim_sqn) >= 0);
 			vp->vp_uint64 = new_sqn;
 
-			MEM(pair_add_control(&vp, attr_sim_ki) >= 0);
+			MEM(pair_append_control(&vp, attr_sim_ki) >= 0);
 			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.auc.ki,
 					     sizeof(eap_aka_sim_session->keys.auc.ki), false);
 
-			MEM(pair_add_control(&vp, attr_sim_opc) >= 0);
+			MEM(pair_append_control(&vp, attr_sim_opc) >= 0);
 			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.auc.opc,
 					     sizeof(eap_aka_sim_session->keys.auc.opc), false);
 			break;
@@ -4203,7 +4203,7 @@ unlang_action_t aka_sim_state_machine_start(rlm_rcode_t *p_result, module_ctx_t 
 	 *	Copy the EAP-Identity into and Identity
 	 *	attribute to make policies easier.
 	 */
-	MEM(pair_add_request(&vp, attr_eap_aka_sim_identity) >= 0);
+	MEM(pair_append_request(&vp, attr_eap_aka_sim_identity) >= 0);
 	fr_pair_value_bstrdup_buffer(vp, eap_session->identity, true);
 
 	/*

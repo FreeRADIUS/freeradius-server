@@ -811,7 +811,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			goto skip;
 		}
 
-		fr_pair_add(vps, vp);
+		fr_pair_append(vps, vp);
 
 		count++;
 
@@ -1158,7 +1158,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 
 			fr_pair_list_t tmp_list;
 			fr_pair_list_init(&tmp_list);
-			fr_pair_add(&tmp_list, vp);
+			fr_pair_append(&tmp_list, vp);
 			radius_pairmove(current, vps, &tmp_list, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array

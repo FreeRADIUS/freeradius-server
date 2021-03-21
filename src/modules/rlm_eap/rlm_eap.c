@@ -642,9 +642,9 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	if (eap_session->identity) {
 		fr_pair_t	*identity;
 
-		request = eap_session->subrequest;	/* Set request for pair_add_request macro */
+		request = eap_session->subrequest;	/* Set request for pair_append_request macro */
 
-		MEM(pair_add_request(&identity, attr_eap_identity) >= 0);
+		MEM(pair_append_request(&identity, attr_eap_identity) >= 0);
 		fr_pair_value_bstrdup_buffer(identity, eap_session->identity, true);
 	}
 
@@ -656,7 +656,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	{
 		fr_pair_t	*type_vp;
 
-		MEM(pair_add_request(&type_vp, attr_eap_type) >= 0);
+		MEM(pair_append_request(&type_vp, attr_eap_type) >= 0);
 		type_vp->vp_uint32 = eap_session->type;
 	}
 
@@ -907,7 +907,7 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 		vp = fr_pair_find_by_da(&request->reply_pairs, attr_user_name);
 		if (!vp) {
 			vp = fr_pair_copy(request->reply_ctx, username);
-			fr_pair_add(&request->reply_pairs, vp);
+			fr_pair_append(&request->reply_pairs, vp);
 		}
 
 		/*

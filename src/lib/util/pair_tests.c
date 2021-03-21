@@ -135,7 +135,7 @@ static int load_attr_pairs(fr_pair_list_t *out)
 
 	for (p = test_dict_attrs;
 	     p->attr != -1;
-	     p++) if (fr_pair_add_by_da(autofree, NULL, out, *p->da) < 0) return -1;
+	     p++) if (fr_pair_prepend_by_da(autofree, NULL, out, *p->da) < 0) return -1;
 
 	return 0;
 }
@@ -389,20 +389,20 @@ static void test_fr_pair_find_by_child_num(void)
 	TEST_CHECK(vp && vp->da == attr_test_string);
 }
 
-static void test_fr_pair_add(void)
+static void test_fr_pair_append(void)
 {
 	fr_dcursor_t   cursor;
 	fr_pair_t      *vp;
 	fr_pair_list_t	local_pairs;
 	size_t         count = 0;
 
-	TEST_CASE("Add 3 pairs using fr_pair_add()");
+	TEST_CASE("Add 3 pairs using fr_pair_append()");
 
 	fr_pair_list_init(&local_pairs);
 
-	fr_pair_add(&local_pairs, fr_pair_afrom_da(autofree, attr_test_octets));
-	fr_pair_add(&local_pairs, fr_pair_afrom_da(autofree, attr_test_integer));
-	fr_pair_add(&local_pairs, fr_pair_afrom_da(autofree, attr_test_tlv_root));
+	fr_pair_append(&local_pairs, fr_pair_afrom_da(autofree, attr_test_octets));
+	fr_pair_append(&local_pairs, fr_pair_afrom_da(autofree, attr_test_integer));
+	fr_pair_append(&local_pairs, fr_pair_afrom_da(autofree, attr_test_tlv_root));
 
 	/* lets' count */
 	for (vp = fr_dcursor_init(&cursor, &local_pairs);
@@ -424,10 +424,10 @@ static void test_fr_pair_delete_by_child_num(void)
 	TEST_CHECK(fr_pair_find_by_num(&sample_pairs, 0, FR_TEST_STRING) == NULL);
 
 	TEST_CASE("Add attr_test_string back into 'sample_pairs'");
-	TEST_CHECK(fr_pair_add_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
 }
 
-static void test_fr_pair_add_by_da(void)
+static void test_fr_pair_prepend_by_da(void)
 {
 	fr_dcursor_t   cursor;
 	fr_pair_t      *vp;
@@ -436,8 +436,8 @@ static void test_fr_pair_add_by_da(void)
 
 	fr_pair_list_init(&local_pairs);
 
-	TEST_CASE("Add using fr_pair_add_by_da()");
-	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_string) == 0);
+	TEST_CASE("Add using fr_pair_prepend_by_da()");
+	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, attr_test_string) == 0);
 
 	/* lets' count */
 	for (vp = fr_dcursor_init(&cursor, &local_pairs);
@@ -454,7 +454,7 @@ static void test_fr_pair_update_by_da(void)
 {
 	fr_pair_t *vp;
 
-	TEST_CASE("Update Add using fr_pair_add_by_da()");
+	TEST_CASE("Update Add using fr_pair_prepend_by_da()");
 	TEST_CHECK(fr_pair_update_by_da(autofree, &vp, &sample_pairs, attr_test_integer) == 1); /* attribute already exist */
 	vp->vp_uint32 = 54321;
 
@@ -477,7 +477,7 @@ static void test_fr_pair_delete_by_da(void)
 	TEST_CHECK(fr_pair_find_by_da(&sample_pairs, attr_test_string) == NULL);
 
 	TEST_CASE("Add attr_test_string back into 'sample_pairs'");
-	TEST_CHECK(fr_pair_add_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
 }
 
 static void test_fr_pair_delete(void)
@@ -492,7 +492,7 @@ static void test_fr_pair_delete(void)
 	TEST_CHECK((vp = fr_pair_find_by_num(&sample_pairs, 0, FR_TEST_STRING)) == NULL);
 
 	TEST_CASE("Add attr_test_string back into 'sample_pairs'");
-	TEST_CHECK(fr_pair_add_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
 }
 
 static void test_fr_pair_cmp(void)
@@ -625,12 +625,12 @@ static void test_fr_pair_list_sort(void)
 	fr_pair_list_init(&local_pairs);
 
 	TEST_CASE("Add attr_test_string back into 'local_pairs'");
-	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_date) == 0);
-	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_ipv4_addr) == 0);
-	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_octets) == 0);
-	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_integer) == 0);
-	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_values) == 0); // It will be go to the tail
-	TEST_CHECK(fr_pair_add_by_da(ctx, NULL, &local_pairs, attr_test_string) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, attr_test_date) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, attr_test_ipv4_addr) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, attr_test_octets) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, attr_test_integer) == 0);
+	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, attr_test_values) == 0); // It will be go to the tail
+	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, attr_test_string) == 0);
 
 	TEST_CASE("Sorting 'local_pairs' by fr_pair_list_sort(local_pairs, fr_pair_cmp_by_da)");
 	fr_pair_list_sort(&local_pairs, fr_pair_cmp_by_da);
@@ -1258,8 +1258,8 @@ TEST_LIST = {
 	{ "fr_pair_find_by_da",                   test_fr_pair_find_by_da },
 	{ "fr_pair_find_by_num",                  test_fr_pair_find_by_num },
 	{ "fr_pair_find_by_child_num",            test_fr_pair_find_by_child_num },
-	{ "fr_pair_add",                          test_fr_pair_add },
-	{ "fr_pair_add_by_da",                    test_fr_pair_add_by_da },
+	{ "fr_pair_append",                       test_fr_pair_append },
+	{ "fr_pair_prepend_by_da",                 test_fr_pair_prepend_by_da },
 	{ "fr_pair_delete_by_child_num",          test_fr_pair_delete_by_child_num },
 	{ "fr_pair_update_by_da",                 test_fr_pair_update_by_da },
 	{ "fr_pair_delete",                       test_fr_pair_delete },
