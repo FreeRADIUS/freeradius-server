@@ -54,7 +54,7 @@ typedef void (*unlang_function_signal_t)(request_t *request, fr_state_signal_t a
 
 int		unlang_interpret_push_function(request_t *request,
 					       unlang_function_t func, unlang_function_t repeat,
-					       unlang_function_signal_t signal, void *uctx)
+					       unlang_function_signal_t signal, bool top_frame, void *uctx)
 					       CC_HINT(warn_unused_result);
 
 #ifdef __cplusplus

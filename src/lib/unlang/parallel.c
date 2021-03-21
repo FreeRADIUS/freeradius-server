@@ -337,15 +337,6 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		}
 
 		/*
-		 *	Push a top frame, followed by a frame
-		 *	which signals us that the child is
-		 *	done, followed by the instruction to
-		 *	run in the child.
-		 */
-		if (unlang_interpret_push(child, NULL, RLM_MODULE_NOOP,
-					  UNLANG_NEXT_STOP, UNLANG_TOP_FRAME) < 0) goto error;
-
-		/*
 		 *	Child starts detached, the parent knows
 		 *	and can exit immediately once all
 		 *	the children are initialised.
@@ -386,6 +377,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		    					   NULL,
 		    					   unlang_parallel_child_done,
 		    					   unlang_parallel_child_signal,
+		    					   UNLANG_TOP_FRAME,
 		    					   &state->children[i]) < 0) goto error;
 			child_frame = unlang_current_frame(child);
 			return_point_set(child_frame);		/* Don't unwind this frame */
@@ -403,7 +395,8 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		 */
 		if (unlang_interpret_push(child,
 					  state->children[i].instruction, RLM_MODULE_FAIL,
-					  UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) goto error;
+					  UNLANG_NEXT_STOP,
+					  state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME) < 0) goto error;
 	}
 
 	/*

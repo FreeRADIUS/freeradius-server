@@ -118,7 +118,7 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
  *	- -1 on failure.
  */
 int unlang_interpret_push_function(request_t *request, unlang_function_t func, unlang_function_t repeat,
-				   unlang_function_signal_t signal, void *uctx)
+				   unlang_function_signal_t signal, bool top_frame, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -128,7 +128,7 @@ int unlang_interpret_push_function(request_t *request, unlang_function_t func, u
 	 *	Push module's function
 	 */
 	if (unlang_interpret_push(request, &function_instruction,
-				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) return -1;
+				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 
