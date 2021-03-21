@@ -406,24 +406,23 @@ static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading process %s into %p", namespace, out);
 
+	/*
+	 *	Enforce that the protocol process configuration is in
+	 *	a subsection named for the protocol.
+	 */
 	process_cs = cf_section_find(server_cs, namespace, NULL);
 	if (!process_cs) {
 		process_cs = cf_section_alloc(server_cs, server_cs, namespace, NULL);
 	}
 
+	/*
+	 *	We now require a process module for everything.
+	 *
+	 *	@todo - add one for the "control" virtual server!
+	 */
 	if (dl_module_instance(ctx, &server->process_module, process_cs, NULL, namespace, DL_MODULE_TYPE_PROCESS) < 0) {
 		cf_log_warn(server_cs, "Failed loading process module");
-		return 0;
-	}
-
-	/*
-	 *	Push rules to parse the protocol-specific configuration section.
-	 */
-	if (server->process_module->module->common->config) {
-		if (cf_section_rule_push(process_cs, server->process_module->module->common->config) < 0) {
-			cf_log_err(process_cs, "Failed saving configuration for process_%s", namespace);
-			return -1;
-		};
+		return -1;
 	}
 
 	return 0;
