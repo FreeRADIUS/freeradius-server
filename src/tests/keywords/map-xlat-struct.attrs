@@ -4,3 +4,6 @@ Client-ID.DUID.UUID.Value = 0xc1b91af2314149b4b53f60c5d2d4197d
 
 Packet-Type == Advertise
 Result-Status == "success"
+Status-Code.Value == 0
+Transaction-ID == 0xFFFFFF
+Client-ID.DUID.UUID.Value == 0xc1b91af2314149b4b53f60c5d2d4197d

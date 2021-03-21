@@ -298,13 +298,15 @@ int restore_field(request_t *request, fr_pair_t **to_restore)
 {
 	fr_pair_t			*vp;
 
+	VP_VERIFY(*to_restore);
+
 	vp = fr_pair_find_by_da(&request->reply_pairs, (*to_restore)->da);
 	if (vp) {
 		if (fr_pair_cmp(vp, *to_restore) != 0) {
 			RWDEBUG("&reply.%pP does not match &request.%pP", vp, *to_restore);
 			return 0;
 		}
-	} else if (fr_pair_steal_append(&request->reply_ctx, &request->reply_pairs, *to_restore) < 0) {
+	} else if (fr_pair_steal_append(request->reply_ctx, &request->reply_pairs, *to_restore) < 0) {
 		RPERROR("Failed adding %s", (*to_restore)->da->name);
 		return -1;
 	}
@@ -868,28 +870,23 @@ static fr_process_state_t const process_state[] = {
 		.send = send_generic,
 		.resume = resume_send_to_client,
 		.packet_type = {
-			[RLM_MODULE_NOOP]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_OK]		= FR_DHCPV6_REPLY,
-			[RLM_MODULE_UPDATED]	= FR_DHCPV6_REPLY,
-			/* RLM_MODULE_HANDLED	- Requires the user to set packet-type */
-
-			[RLM_MODULE_FAIL]	= FR_DHCPV6_REPLY,
+			[RLM_MODULE_FAIL]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
-			[RLM_MODULE_REJECT]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
+			[RLM_MODULE_REJECT]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND
 		},
 		.status_codes = {
-			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
+			[RLM_MODULE_NOOP]	= &enum_status_code_success,
 			[RLM_MODULE_OK]		= &enum_status_code_success,
 			[RLM_MODULE_UPDATED]	= &enum_status_code_success,
 			/* RLM_MODULE_HANDLED	- Requires the user to set status-code */
 
-			[RLM_MODULE_FAIL]	= &enum_status_code_unspec_fail,
+			/* RLM_MODULE_FAIL	- No response */
 			/* RLM_MODULE_INVALID	- No response */
-			[RLM_MODULE_REJECT]	= &enum_status_code_unspec_fail,
-			[RLM_MODULE_DISALLOW]	= &enum_status_code_unspec_fail,
-			[RLM_MODULE_NOTFOUND]	= &enum_status_code_unspec_fail
+			/* RLM_MODULE_REJECT	- No response */
+			/* RLM_MODULE_DISALLOW	- No response */
+			/* RLM_MODULE_NOTFOUND	- No response */
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, send_advertise),
@@ -913,10 +910,6 @@ static fr_process_state_t const process_state[] = {
 		.send = send_generic,
 		.resume = resume_send_to_client,
 		.packet_type = {
-			[RLM_MODULE_NOOP]	= FR_DHCPV6_REPLY,
-			[RLM_MODULE_OK]		= FR_DHCPV6_REPLY,
-			[RLM_MODULE_UPDATED]	= FR_DHCPV6_REPLY,
-			/* RLM_MODULE_HANDLED	- Requires the user to set packet-type */
 
 			[RLM_MODULE_FAIL]	= FR_DHCPV6_REPLY,
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
@@ -925,7 +918,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_REPLY
 		},
 		.status_codes = {
-			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
+			[RLM_MODULE_NOOP]	= &enum_status_code_success,
 			[RLM_MODULE_OK]		= &enum_status_code_success,
 			[RLM_MODULE_UPDATED]	= &enum_status_code_success,
 			/* RLM_MODULE_HANDLED	- Requires the user to set status-code */
@@ -953,11 +946,6 @@ static fr_process_state_t const process_state[] = {
 		.send = send_generic,
 		.resume = resume_send_to_relay,
 		.packet_type = {
-			[RLM_MODULE_NOOP]	= FR_DHCPV6_RELAY_REPLY,
-			[RLM_MODULE_OK]		= FR_DHCPV6_RELAY_REPLY,
-			[RLM_MODULE_UPDATED]	= FR_DHCPV6_RELAY_REPLY,
-			/* RLM_MODULE_HANDLED	- Requires the user to set packet-type */
-
 			[RLM_MODULE_FAIL]	= FR_DHCPV6_RELAY_REPLY,
 			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
 			[RLM_MODULE_REJECT]	= FR_DHCPV6_RELAY_REPLY,
@@ -965,7 +953,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_RELAY_REPLY
 		},
 		.status_codes = {
-			[RLM_MODULE_NOOP]	= &enum_status_code_unspec_fail,
+			[RLM_MODULE_NOOP]	= &enum_status_code_success,
 			[RLM_MODULE_OK]		= &enum_status_code_success,
 			[RLM_MODULE_UPDATED]	= &enum_status_code_success,
 			/* RLM_MODULE_HANDLED	- Requires the user to set status-code */
