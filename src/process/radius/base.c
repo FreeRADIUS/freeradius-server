@@ -804,7 +804,7 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_radius_sections_t, accounting_response),
 	},
-	[ FR_RADIUS_CODE_STATUS_SERVER ] = {
+	[ FR_RADIUS_CODE_STATUS_SERVER ] = { /* @todo - negotiation, stats, etc. */
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
 			[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
@@ -902,6 +902,19 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_nak),
+	},
+
+	[ FR_RADIUS_CODE_PROTOCOL_ERROR ] = { /* @todo - fill out required fields */
+		.packet_type = {
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = offsetof(process_radius_sections_t, protocol_error),
 	},
 };
 
