@@ -499,7 +499,7 @@ void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *
 	return c;
 }
 
-/** Find the pair with the matching DAs
+/** Find a pair with a matching da
  *
  * @param[in] list	to search in.
  * @param[in] da	to look for in the list.
@@ -511,7 +511,7 @@ void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *
  */
 fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da)
 {
-	fr_pair_t	*vp;
+	fr_pair_t	*vp = NULL;
 
 	if (fr_dlist_empty(&list->head)) return NULL;
 
@@ -519,10 +519,32 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
 
 	if (!da) return NULL;
 
-	for (vp = fr_pair_list_head(list); vp != NULL; vp = fr_pair_list_next(list, vp)) if (da == vp->da) return vp;
+	while ((vp = fr_pair_list_next(list, vp))) if (da == vp->da) return vp;
 	return NULL;
 }
 
+/** Find a pair which has the specified ancestor
+ *
+ * @param[in] list	to search in.
+ * @param[in] ancestor	to look for in the list.
+ * @return
+ *	- first matching fr_pair_t.
+ *	- NULL if no fr_pair_ts match.
+ *
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_dict_attr_t const *ancestor)
+{
+	fr_pair_t	*vp = NULL;
+
+	while ((vp = fr_pair_list_next(list, vp))) {
+		if (!fr_dict_attr_common_parent(ancestor, vp->da, true)) continue;
+
+		return vp;
+	}
+
+	return NULL;
+}
 
 /** Find the pair with the matching attribute by vendor id and attribute number.
  *
