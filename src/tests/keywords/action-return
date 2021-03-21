@@ -15,7 +15,7 @@ if (1) {
 	}
 
 	actions {
-		noop = return
+		ok = return
 	}
 }
 
