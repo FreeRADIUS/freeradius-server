@@ -98,7 +98,7 @@ size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2] = {
 /*
  * grep VALUE share/dictionary/dhcpv6/dictionary.freeradius.internal  | awk '{print "[" $4 "] = \"" $3 "\"," }'
  */
-char const *fr_dhcpv6_packet_types[FR_DHCPV6_MAX_CODE] = {
+char const *fr_dhcpv6_packet_types[FR_DHCPV6_CODE_MAX] = {
 	 [0]						= "invalid",
 	 [FR_PACKET_TYPE_VALUE_SOLICIT]			= "Solicit",
 	 [FR_PACKET_TYPE_VALUE_ADVERTISE]		= "Advertise",
@@ -892,7 +892,7 @@ static void dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len,
 	}
 
 	fprintf(fp, "%.*s", depth, tabs);
-	if ((packet[0] > 0) && (packet[0] < FR_DHCPV6_MAX_CODE)) {
+	if ((packet[0] > 0) && (packet[0] < FR_DHCPV6_CODE_MAX)) {
 		fprintf(fp, "packet: %s\n", fr_dhcpv6_packet_types[packet[0]]);
 	} else {
 		fprintf(fp, "packet: %02x\n", packet[0]);

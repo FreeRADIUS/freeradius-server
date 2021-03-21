@@ -176,7 +176,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	is *not* our address.  Drop it.
 	 */
 	packet = (fr_dhcpv6_packet_t *) buffer;
-	if (!packet->code || (packet->code >= FR_DHCPV6_MAX_CODE)) {
+	if (!packet->code || (packet->code >= FR_DHCPV6_CODE_MAX)) {
 		RATE_LIMIT_GLOBAL(WARN, "Unsupported packet code %d - ignoring", packet->code);
 		return 0;
 	}

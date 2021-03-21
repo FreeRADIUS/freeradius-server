@@ -381,7 +381,7 @@ RESUME(access_request)
 	 */
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
-					      NULL, NULL);
+					      NULL, rctx);
 }
 
 RESUME(auth_type)
@@ -418,7 +418,7 @@ RESUME(auth_type)
 		fr_assert(state->send != NULL);
 		return unlang_module_yield_to_section(p_result, request,
 						      cs, state->rcode, state->send,
-						      NULL, NULL);
+						      NULL, rctx);
 	}
 
 	/*
@@ -487,10 +487,10 @@ RESUME(auth_type)
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->send,
-					      NULL, NULL);
+					      NULL, rctx);
 }
 
-RESUME(access_accept)
+RESUME_NO_RCTX(access_accept)
 {
 	fr_pair_t			*vp;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
@@ -508,7 +508,7 @@ RESUME(access_accept)
 	RETURN_MODULE_OK;
 }
 
-RESUME(access_reject)
+RESUME_NO_RCTX(access_reject)
 {
 	fr_pair_t			*vp;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
@@ -544,7 +544,7 @@ RESUME(access_challenge)
 		UPDATE_STATE_CS(reply);
 		return unlang_module_yield_to_section(p_result, request,
 						      cs, state->rcode, state->send,
-						      NULL, NULL);
+						      NULL, rctx);
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
@@ -583,7 +583,7 @@ RESUME(acct_type)
 		fr_assert(state->send != NULL);
 		return unlang_module_yield_to_section(p_result, request,
 						      cs, state->rcode, state->send,
-						      NULL, NULL);
+						      NULL, rctx);
 	}
 
 	request->reply->code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
@@ -592,7 +592,7 @@ RESUME(acct_type)
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->send,
-					      NULL, NULL);
+					      NULL, rctx);
 }
 
 RESUME(accounting_request)
@@ -622,7 +622,7 @@ RESUME(accounting_request)
 		fr_assert(state->send != NULL);
 		return unlang_module_yield_to_section(p_result, request,
 						      cs, state->rcode, state->send,
-						      NULL, NULL);
+						      NULL, rctx);
 	}
 
 	/*
@@ -647,7 +647,7 @@ RESUME(accounting_request)
 	 */
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_acct_type,
-					      NULL, NULL);
+					      NULL, rctx);
 }
 
 #if 0
@@ -678,6 +678,11 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	UPDATE_STATE(packet);
 
+	if (request->parent && RDEBUG_ENABLED) {
+		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
+	}
+
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_MODULE_FAIL;
@@ -700,14 +705,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	process_radius_t	*inst = instance;
-	CONF_SECTION		*server_cs;
 
-	server_cs = cf_item_to_section(cf_parent(cs));
-	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
-
-	inst->server_cs = server_cs;
+	inst->server_cs = cf_section_find_in_parent(cs, "server", CF_IDENT_ANY);
+	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
 }
@@ -909,100 +909,97 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 	},
 };
 
-#undef CONF
-#define CONF(_x) .offset = offsetof(process_radius_t, sections._x)
-
 static virtual_server_compile_t const compile_list[] = {
 	{
 		.name = "recv",
 		.name2 = "Access-Request",
 		.component = MOD_AUTHORIZE,
-		CONF(access_request),
+		.offset = PROCESS_CONF_OFFSET(access_request),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Accept",
 		.component = MOD_POST_AUTH,
-		CONF(access_accept),
+		.offset = PROCESS_CONF_OFFSET(access_accept),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Challenge",
 		.component = MOD_POST_AUTH,
-		CONF(access_challenge),
+		.offset = PROCESS_CONF_OFFSET(access_challenge),
 	},
 	{
 		.name = "send",
 		.name2 = "Access-Reject",
 		.component = MOD_POST_AUTH,
-		CONF(access_reject),
+		.offset = PROCESS_CONF_OFFSET(access_reject),
 	},
 
 	{
 		.name = "recv",
 		.name2 = "Accounting-Request",
 		.component = MOD_PREACCT,
-		CONF(accounting_request),
+		.offset = PROCESS_CONF_OFFSET(accounting_request),
 	},
 	{
 		.name = "send",
 		.name2 = "Accounting-Response",
 		.component = MOD_ACCOUNTING,
-		CONF(accounting_response),
+		.offset = PROCESS_CONF_OFFSET(accounting_response),
 	},
 
 	{
 		.name = "recv",
 		.name2 = "Status-Server",
 		.component = MOD_AUTHORIZE,
-		CONF(status_server),
+		.offset = PROCESS_CONF_OFFSET(status_server),
 	},
 	{
 		.name = "recv",
 		.name2 = "CoA-Request",
 		.component = MOD_AUTHORIZE,
-		CONF(coa_request),
+		.offset = PROCESS_CONF_OFFSET(coa_request),
 	},
 	{
 		.name = "send",
 		.name2 = "CoA-ACK",
 		.component = MOD_POST_AUTH,
-		CONF(coa_ack),
+		.offset = PROCESS_CONF_OFFSET(coa_ack),
 	},
 	{
 		.name = "send",.name2 = "CoA-NAK",
 		.component = MOD_AUTHORIZE,
-		CONF(coa_nak),
+		.offset = PROCESS_CONF_OFFSET(coa_nak),
 	},
 	{
 		.name = "recv",
 		.name2 = "Disconnect-Request",
 		.component = MOD_AUTHORIZE,
-		CONF(disconnect_request),
+		.offset = PROCESS_CONF_OFFSET(disconnect_request),
 	},
 	{
 		.name = "send",
 		.name2 = "Disconnect-ACK",
 		.component = MOD_POST_AUTH,
-		CONF(disconnect_ack),
+		.offset = PROCESS_CONF_OFFSET(disconnect_ack),
 	},
 	{
 		.name = "send",
 		.name2 = "Disconnect-NAK",
 		.component = MOD_POST_AUTH,
-		CONF(disconnect_nak),
+		.offset = PROCESS_CONF_OFFSET(disconnect_nak),
 	},
 	{
 		.name = "send",
 		.name2 = "Protocol-Error",
 		.component = MOD_POST_AUTH,
-		CONF(protocol_error),
+		.offset = PROCESS_CONF_OFFSET(protocol_error),
 	},
 	{
 		.name = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
-		CONF(do_not_respond),
+		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 	{
 		.name = "authenticate",

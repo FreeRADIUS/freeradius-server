@@ -34,13 +34,13 @@ RCSIDH(dhcpv6_h, "$Id$")
 
 extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
 
-#define DHCPV6_MSG_TYPE_LEN		1
+#define DHCPV6_MSG_TYPE_LEN		1U
 
-#define DHCPV6_TRANSACTION_ID_LEN	3
+#define DHCPV6_TRANSACTION_ID_LEN	3U
 
-#define DHCPV6_HOP_COUNT_LEN		1
-#define DHCPV6_LINK_ADDRESS_LEN		16
-#define DHCPV6_PEER_ADDRESS_LEN		16
+#define DHCPV6_HOP_COUNT_LEN		1U
+#define DHCPV6_LINK_ADDRESS_LEN		16U
+#define DHCPV6_PEER_ADDRESS_LEN		16U
 
 #define DHCPV6_HDR_LEN			(DHCPV6_MSG_TYPE_LEN + DHCPV6_TRANSACTION_ID_LEN)
 #define DHCPV6_RELAY_HDR_LEN		(DHCPV6_MSG_TYPE_LEN + DHCPV6_HOP_COUNT_LEN + DHCPV6_LINK_ADDRESS_LEN + DHCPV6_PEER_ADDRESS_LEN)
@@ -64,6 +64,7 @@ extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
  *	and edited.
  */
 typedef enum {
+	FR_DHCPV6_INVALID = 0,
 	FR_DHCPV6_SOLICIT = 1,
 	FR_DHCPV6_ADVERTISE = 2,
 	FR_DHCPV6_REQUEST = 3,
@@ -99,10 +100,13 @@ typedef enum {
 	FR_DHCPV6_DISCONNECT = 33,
 	FR_DHCPV6_STATE = 34,
 	FR_DHCPV6_CONTACT = 35,
-	FR_DHCPV6_MAX_CODE = 36,
-} fr_dhcpv6_codes_t;
+	FR_DHCPV6_CODE_MAX = 36,
+	FR_DHCPV6_DO_NOT_RESPOND = 256
+} fr_dhcpv6_packet_code_t;
 
-extern char const		*fr_dhcpv6_packet_types[FR_DHCPV6_MAX_CODE];
+#define FR_DHCPV6_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_DHCPV6_CODE_MAX))
+
+extern char const		*fr_dhcpv6_packet_types[FR_DHCPV6_CODE_MAX];
 
 /** subtype values for DHCPv4 and DHCPv6
  *

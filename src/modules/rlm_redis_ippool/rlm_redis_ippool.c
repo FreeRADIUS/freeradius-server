@@ -548,21 +548,21 @@ static fr_redis_rcode_t ippool_script(redisReply **out, request_t *request, fr_r
 			}
 
 			if (replies[3]->type != REDIS_REPLY_ARRAY) {
-				REDEBUG("Bad response to EXEC, expected array got %s",
-					fr_table_str_by_value(redis_reply_types, replies[3]->type, "<UNKNOWN>"));
+				RERROR("Bad response to EXEC, expected array got %s",
+				       fr_table_str_by_value(redis_reply_types, replies[3]->type, "<UNKNOWN>"));
 			error:
 				fr_redis_pipeline_free(replies, reply_cnt);
 				status = REDIS_RCODE_ERROR;
 				goto finish;
 			}
 			if (replies[3]->elements != 2) {
-				REDEBUG("Bad response to EXEC, expected 2 result elements, got %zu",
-					replies[3]->elements);
+				RERROR("Bad response to EXEC, expected 2 result elements, got %zu",
+				       replies[3]->elements);
 				goto error;
 			}
 			if (replies[3]->element[0]->type != REDIS_REPLY_STRING) {
-				REDEBUG("Bad response to SCRIPT LOAD, expected string got %s",
-					fr_table_str_by_value(redis_reply_types, replies[3]->element[0]->type, "<UNKNOWN>"));
+				RERROR("Bad response to SCRIPT LOAD, expected string got %s",
+				       fr_table_str_by_value(redis_reply_types, replies[3]->element[0]->type, "<UNKNOWN>"));
 				goto error;
 			}
 			if (strcmp(replies[3]->element[0]->str, digest) != 0) {

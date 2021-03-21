@@ -53,6 +53,12 @@ typedef struct fr_process_module_s {
 
 typedef PROCESS_PACKET_TYPE fr_process_rcode_t[RLM_MODULE_NUMCODES];
 
+#ifndef PROCESS_STATE_EXTRA_FIELDS
+#  define PROCESS_STATE_EXTRA_FIELDS
+#endif
+
+#define PROCESS_CONF_OFFSET(_x)	offsetof(PROCESS_INST, sections._x)
+
 /*
  *	Process state machine tables for rcode to packet.
  */
@@ -65,6 +71,7 @@ typedef struct {
 	module_method_t		recv;		//!< Method to call when receiving this type of packet.
 	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
 	unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
+	PROCESS_STATE_EXTRA_FIELDS
 } fr_process_state_t;
 
 /*
@@ -80,8 +87,15 @@ typedef struct {
 static fr_process_state_t const process_state[PROCESS_CODE_MAX];
 
 #define RECV(_x) static inline unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
-#define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+#define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+#define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+#define SEND_NO_RCTX(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+#define RESUME_NO_RCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+
+
+#define CALL_RECV(_x) recv_ ## _x(p_result, mctx, request);
+#define CALL_SEND(_x) send_ ## _x(p_result, mctx, request, rctx)
+#define CALL_RESUME(_x) resume_ ## _x(p_result, mctx, request, rctx)
 
 RECV(generic)
 {
@@ -90,11 +104,6 @@ RECV(generic)
 	PROCESS_INST const		*inst = mctx->instance;
 
 	PROCESS_TRACE;
-
-	if (request->parent && RDEBUG_ENABLED) {
-		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
-	}
 
 	UPDATE_STATE_CS(packet);
 
@@ -111,7 +120,7 @@ RECV(generic)
 
 RESUME(recv_generic)
 {
-	rlm_rcode_t			rcode = request->rcode;
+	rlm_rcode_t			rcode = *p_result;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	PROCESS_INST const   		*inst = mctx->instance;
@@ -129,7 +138,7 @@ RESUME(recv_generic)
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->send,
-					      NULL, NULL);
+					      NULL, rctx);
 }
 
 SEND(generic)
@@ -170,15 +179,14 @@ SEND(generic)
 		RWDEBUG("Ignoring invalid value %u for &reply.Packet-Type", vp->vp_uint32);
 	}
 
-	if (cs) RDEBUG("Running 'send %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, NULL);
+					      NULL, rctx);
 }
 
 RESUME(send_generic)
 {
-	rlm_rcode_t			rcode = request->rcode;
+	rlm_rcode_t			rcode = *p_result;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	PROCESS_INST const   		*inst = mctx->instance;
@@ -214,7 +222,7 @@ RESUME(send_generic)
 
 			return unlang_module_yield_to_section(p_result, request,
 							      cs, state->rcode, state->send,
-							      NULL, NULL);
+							      NULL, rctx);
 		}
 
 		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
@@ -238,22 +246,10 @@ RESUME(send_generic)
 		RETURN_MODULE_OK;
 	}
 
-	if (request->parent && RDEBUG_ENABLED) {
-		RDEBUG("Sending %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
-	}
-
 	RETURN_MODULE_OK;
 }
 
 #endif	/* PROCESS_CODE_MAX */
-
-#undef RECV
-#undef SEND
-#undef RESUME
-#define RECV(_x) static unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
-#define RESUME(_x) static unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
 #ifdef __cplusplus
 }

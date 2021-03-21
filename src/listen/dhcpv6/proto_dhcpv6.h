@@ -33,18 +33,13 @@ typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	char				**allowed_types;		//!< names for for 'type = ...'
-	bool				allowed[FR_DHCPV6_MAX_CODE];	//!< indexed by value
+	bool				allowed[FR_DHCPV6_CODE_MAX];	//!< indexed by value
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
 
-	uint32_t			priorities[FR_DHCPV6_MAX_CODE];       	//!< priorities for individual packets
+	uint32_t			priorities[FR_DHCPV6_CODE_MAX];       	//!< priorities for individual packets
 } proto_dhcpv6_t;
-
-/*
- *	No one outside of proto_dhcpv6 needs this definition.
- */
-#define FR_DHCPV6_DO_NOT_RESPOND (256)
 
 /*
  *	Shorter version of the packet for deduping

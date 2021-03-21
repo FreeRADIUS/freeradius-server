@@ -59,9 +59,9 @@ typedef enum {
  *
  */
 static fr_table_num_sorted_t const pkey_types[] = {
-	{ L("DH"),		EVP_PKEY_DH		},
+	{ L("DH"),	EVP_PKEY_DH		},
 	{ L("DSA"),	EVP_PKEY_DSA		},
-	{ L("EC"),		EVP_PKEY_EC		},
+	{ L("EC"),	EVP_PKEY_EC		},
 	{ L("RSA"),	EVP_PKEY_RSA		}
 };
 static size_t pkey_types_len = NUM_ELEMENTS(pkey_types);

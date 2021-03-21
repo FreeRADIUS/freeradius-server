@@ -692,11 +692,6 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 			}
 
 			/*
-			 *	If we're done, merge the last stack->result / priority in.
-			 */
-			if (is_top_frame(frame)) break;	/* stop */
-
-			/*
 			 *	Close out the section we entered earlier
 			 */
 			if (unlang_ops[frame->instruction->type].debug_braces) {
@@ -714,6 +709,11 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 						fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"));
 				}
 			}
+
+			/*
+			 *	If we're done, merge the last stack->result / priority in.
+			 */
+			if (is_top_frame(frame)) break;	/* stop */
 
 			fa = result_calculate(request, frame, &stack->result, &stack->priority);
 
