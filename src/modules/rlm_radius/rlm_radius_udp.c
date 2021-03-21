@@ -2754,7 +2754,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 
 	*rctx_out = r;
 
-	RETURN_MODULE_YIELD;
+	return UNLANG_ACTION_YIELD;
 }
 
 /** Instantiate thread data for the submodule.

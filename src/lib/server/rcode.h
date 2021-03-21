@@ -62,7 +62,6 @@ typedef enum {
 #define RETURN_MODULE_NOTFOUND		do { *p_result = RLM_MODULE_NOTFOUND; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_MODULE_NOOP		do { *p_result = RLM_MODULE_NOOP; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_MODULE_UPDATED		do { *p_result = RLM_MODULE_UPDATED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_YIELD		do { *p_result = RLM_MODULE_YIELD; return UNLANG_ACTION_YIELD; } while (0)
 #define RETURN_MODULE_RCODE(_rcode)	do { *p_result = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 
 extern fr_table_num_sorted_t const rcode_table[];
