@@ -35,11 +35,12 @@
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/dhcpv6/dhcpv6.h>
+#include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 
 /*
- *	No one outside of proto_dhcpv6 needs this definition.
+ *	Short-hand taken from src/include/protocol/dhcpv6/freeradius.internal.h
  */
-#define FR_DHCPV6_DO_NOT_RESPOND (256)
+#define FR_DHCPV6_DO_NOT_RESPOND FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND
 
 static fr_dict_t const *dict_dhcpv6;
 
