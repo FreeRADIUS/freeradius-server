@@ -83,7 +83,7 @@ typedef struct {
 
 #define UPDATE_STATE(_x) state = &process_state[request->_x->code]
 
-static fr_process_state_t const process_state[PROCESS_CODE_MAX];
+static fr_process_state_t const process_state[];
 
 #define RECV(_x) static inline unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 #define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
@@ -236,9 +236,14 @@ RESUME(send_generic)
 		break;
 
 	case PROCESS_CODE_DO_NOT_RESPOND:
-		RDEBUG("The 'send %s' section returned %s - not sending a response",
-		       fr_table_str_by_value(rcode_table, rcode, "???"),
-		       cf_section_name2(cs));
+		/*
+		 *	There might not be send section defined
+		 */
+		if (cs) {
+			RDEBUG("The 'send %s' section returned %s - not sending a response",
+			       cf_section_name2(cs),
+			       fr_table_str_by_value(rcode_table, rcode, "???"));
+		}
 		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 		break;
 	}

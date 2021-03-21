@@ -37,11 +37,6 @@
 #include <freeradius-devel/dhcpv6/dhcpv6.h>
 #include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 
-/*
- *	Short-hand taken from src/include/protocol/dhcpv6/freeradius.internal.h
- */
-#define FR_DHCPV6_DO_NOT_RESPOND FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND
-
 static fr_dict_t const *dict_dhcpv6;
 
 extern fr_dict_autoload_t process_dhcpv6_dict[];
@@ -195,7 +190,7 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *pa
  *
  */
 static inline CC_HINT(always_inline)
-process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, bool need_server_id)
+process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, bool expect_server_id)
 {
 	fr_pair_t			*transaction_id, *client_id, *server_id;
 	process_dhcpv6_client_fields_t	*rctx;
@@ -212,24 +207,25 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		return NULL;
 	}
 
-	client_id = fr_pair_find_by_da(&request->request_pairs, attr_client_id);
+	client_id = fr_pair_find_by_ancestor(&request->request_pairs, attr_client_id);
 	if (!client_id) {
 		REDEBUG("Missing Client-ID");
 		return NULL;
 	}
 
-	if (need_server_id) {
-		server_id = fr_pair_find_by_da(&request->request_pairs, attr_server_id);
-		if (!server_id) {
-			REDEBUG("Missing Server-ID");
-			return NULL;
-		}
+	server_id = fr_pair_find_by_da(&request->request_pairs, attr_server_id);
+	if (!server_id && expect_server_id) {
+		REDEBUG("Missing Server-ID");
+		return NULL;
+	} else if (server_id && !expect_server_id) {
+		REDEBUG("Server-ID should not be present");
+		return NULL;
 	}
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_client_fields_t));
 	rctx->transaction_id = fr_pair_copy(rctx, transaction_id);
 	rctx->client_id = fr_pair_copy(rctx, client_id);
-	if (need_server_id) rctx->server_id = fr_pair_copy(rctx, server_id);
+	if (expect_server_id) rctx->server_id = fr_pair_copy(rctx, server_id);
 
 	return rctx;
 }
@@ -387,7 +383,7 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 		return NULL;
 	}
 
-	link_address = fr_pair_find_by_da(&request->request_pairs, attr_relay_link_address);
+	link_address = fr_pair_find_by_ancestor(&request->request_pairs, attr_relay_link_address);
 	if (!link_address) {
 		REDEBUG("Missing Link-Address");
 		return NULL;
@@ -399,7 +395,7 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 		return NULL;
 	}
 
-	peer_address = fr_pair_find_by_da(&request->request_pairs, attr_relay_peer_address);
+	peer_address = fr_pair_find_by_ancestor(&request->request_pairs, attr_relay_peer_address);
 	if (!peer_address) {
 		REDEBUG("Missing Peer-Address");
 		return NULL;
@@ -507,7 +503,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
+static fr_process_state_t const process_state[] = {
 	/*
 	 *	A client sends a Solicit message to locate
 	 *	servers.
@@ -983,6 +979,25 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 		.rcode = RLM_MODULE_NOOP,
 		.section_offset = offsetof(process_dhcpv6_sections_t, send_relay_reply),
 	},
+
+	[ FR_DHCPV6_DO_NOT_RESPOND ] = {
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.packet_type = {
+			[RLM_MODULE_NOOP]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_OK]		= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_HANDLED]	= FR_DHCPV6_DO_NOT_RESPOND,
+
+			[RLM_MODULE_FAIL]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW]	= FR_DHCPV6_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND]	= FR_DHCPV6_DO_NOT_RESPOND
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.section_offset = offsetof(process_dhcpv6_sections_t, do_not_respond),
+	}
 };
 
 static const virtual_server_compile_t compile_list[] = {
