@@ -57,6 +57,8 @@ static fr_dict_attr_t const *attr_service_type;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_original_packet_code;
+static fr_dict_attr_t const *attr_error_cause;
 
 extern fr_dict_attr_autoload_t process_radius_dict_attr[];
 fr_dict_attr_autoload_t process_radius_dict_attr[] = {
@@ -74,6 +76,9 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ .out = &attr_original_packet_code, .name = "Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -663,6 +668,44 @@ RESUME(status_server)
 }
 #endif
 
+RESUME(protocol_error)
+{
+	fr_pair_t 			*vp;
+
+	PROCESS_TRACE;
+
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
+
+	/*
+	 *	https://tools.ietf.org/html/rfc7930#section-4
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_original_packet_code);
+	if (!vp) {
+		vp = fr_pair_afrom_da(request->reply_ctx, attr_original_packet_code);
+		if (vp) {
+			vp->vp_uint32 = request->packet->code;
+			fr_pair_append(&request->reply_pairs, vp);
+		}
+	}
+	
+	/*
+	 *	If there's no Error-Cause, then include a generic 404.
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_error_cause);
+	if (!vp) {
+		vp = fr_pair_afrom_da(request->reply_ctx, attr_error_cause);
+		if (vp) {
+			vp->vp_uint32 = FR_ERROR_CAUSE_VALUE_INVALID_REQUEST;
+			fr_pair_append(&request->reply_pairs, vp);
+		}
+	}
+
+	/*
+	 *	And do the generic processing after running a "send" section.
+	 */
+	return CALL_RESUME(send_generic);
+}
+
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
@@ -913,7 +956,7 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
-		.resume = resume_send_generic,
+		.resume = resume_protocol_error,
 		.section_offset = offsetof(process_radius_sections_t, protocol_error),
 	},
 };
