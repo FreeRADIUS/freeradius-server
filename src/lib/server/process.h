@@ -254,11 +254,11 @@ RESUME(send_generic)
 	 *	Check for "do not respond".
 	 */
 	if (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) {
-		RDEBUG("Not sending reply to client.");
-		RETURN_MODULE_OK;
+		RDEBUG("Not sending reply to client");
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RETURN_MODULE_OK;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 #endif	/* PROCESS_CODE_MAX */
