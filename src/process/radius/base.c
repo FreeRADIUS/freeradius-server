@@ -77,7 +77,7 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ .out = &attr_original_packet_code, .name = "Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ NULL }
@@ -687,7 +687,7 @@ RESUME(protocol_error)
 			fr_pair_append(&request->reply_pairs, vp);
 		}
 	}
-	
+
 	/*
 	 *	If there's no Error-Cause, then include a generic 404.
 	 */
