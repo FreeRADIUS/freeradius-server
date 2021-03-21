@@ -1,7 +1,6 @@
 Packet-Type = Solicit
 Transaction-ID = 0xFFFFFF
 Client-ID.DUID.UUID.Value = 0xc1b91af2314149b4b53f60c5d2d4197d
-Server-ID.DUID.UUID.Value = 0x17d1611a10c7403d8638c133a74cf80b
 
 Packet-Type == Advertise
 Result-Status == "success"
