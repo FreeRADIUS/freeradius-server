@@ -170,13 +170,13 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 	unlang_interpret_set(request, intps->intp);
 
 	rcode = unlang_interpret(request);
+	if (unlang_interpret_is_resumable(request)) intps->yielded++;
 
 	while ((dont_wait_for_event = (fr_heap_num_elements(intps->runnable) > 0)) ||
 	       (intps->yielded > 0)) {
 		rlm_rcode_t	sub_rcode;
 		int		num_events;
 
-		DEBUG3("%u runnable, %u yielded", fr_heap_num_elements(intps->runnable), intps->yielded);
 		/*
 		 *	Wait for a timer / IO event.  If there's a
 		 *	failure, all kinds of bad things happen.  Oh
@@ -184,7 +184,10 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 		 */
 		DEBUG3("Gathering events - %s", dont_wait_for_event ? "Will not wait" : "will wait");
 		num_events = fr_event_corral(request->el, fr_time(), !dont_wait_for_event);
-		if (num_events < 0) break;
+		if (num_events < 0) {
+			RPERROR("fr_event_corral");
+			break;
+		}
 
 		DEBUG3("%u event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
@@ -211,7 +214,10 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 		 *	still a timer event left.
 		 */
 		sub_request = fr_heap_pop(intps->runnable);
-		if (!sub_request) continue;
+		if (!sub_request) {
+			DEBUG3("No pending requests");
+			continue;
+		}
 
 		if (unlang_interpret_is_resumable(sub_request)) intps->yielded--;
 
@@ -230,6 +236,8 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 		if (sub_request == request) {
 			rcode = sub_rcode;
 		}
+
+		DEBUG3("%u runnable, %u yielded", fr_heap_num_elements(intps->runnable), intps->yielded);
 	}
 
 	talloc_free(intps);
