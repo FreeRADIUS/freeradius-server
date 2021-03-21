@@ -149,7 +149,8 @@ SEND(generic)
 
 	PROCESS_TRACE;
 
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code) ||
+	          (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND));
 
 	UPDATE_STATE_CS(reply);
 
@@ -192,7 +193,8 @@ RESUME(send_generic)
 
 	PROCESS_TRACE;
 
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code) ||
+		  (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND));
 
 	/*
 	 *	If they delete &reply.Packet-Type, tough for them.
