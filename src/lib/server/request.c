@@ -656,7 +656,7 @@ void request_verify(char const *file, int line, request_t const *request)
 		 *	@todo - a multi-protocol server shouldn't have
 		 *	hard-coded RADIUS.
 		 */
-		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
+		if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
 		    (request->reply && !request->reply->code)) {
 			fr_assert(request->session_state_ctx != NULL);
 		}

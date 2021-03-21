@@ -237,7 +237,7 @@ error:
  *
  */
 rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t **out, rs_t *conf,
-						char const *type, rs_latency_t *stats, FR_CODE code)
+						char const *type, rs_latency_t *stats, fr_radius_packet_code_t code)
 {
 	rs_stats_tmpl_t **tmpl, *last;
 	char *p;

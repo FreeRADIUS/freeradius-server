@@ -225,39 +225,39 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 /** If we get a reply, the request must come from one of a small
  * number of packet types.
  */
-static FR_CODE allowed_replies[FR_RADIUS_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_ACCEPT]		= FR_CODE_ACCESS_REQUEST,
-	[FR_CODE_ACCESS_CHALLENGE]	= FR_CODE_ACCESS_REQUEST,
-	[FR_CODE_ACCESS_REJECT]		= FR_CODE_ACCESS_REQUEST,
+static fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
+	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
+	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
+	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 
-	[FR_CODE_ACCOUNTING_RESPONSE]	= FR_CODE_ACCOUNTING_REQUEST,
+	[FR_RADIUS_CODE_ACCOUNTING_RESPONSE]	= FR_RADIUS_CODE_ACCOUNTING_REQUEST,
 
-	[FR_CODE_COA_ACK]		= FR_CODE_COA_REQUEST,
-	[FR_CODE_COA_NAK]		= FR_CODE_COA_REQUEST,
+	[FR_RADIUS_CODE_COA_ACK]		= FR_RADIUS_CODE_COA_REQUEST,
+	[FR_RADIUS_CODE_COA_NAK]		= FR_RADIUS_CODE_COA_REQUEST,
 
-	[FR_CODE_DISCONNECT_ACK]	= FR_CODE_DISCONNECT_REQUEST,
-	[FR_CODE_DISCONNECT_NAK]	= FR_CODE_DISCONNECT_REQUEST,
+	[FR_RADIUS_CODE_DISCONNECT_ACK]	= FR_RADIUS_CODE_DISCONNECT_REQUEST,
+	[FR_RADIUS_CODE_DISCONNECT_NAK]	= FR_RADIUS_CODE_DISCONNECT_REQUEST,
 
-	[FR_CODE_PROTOCOL_ERROR]	= FR_CODE_PROTOCOL_ERROR,	/* Any */
+	[FR_RADIUS_CODE_PROTOCOL_ERROR]	= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
 /** Turn a reply code into a module rcode;
  *
  */
-static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_ACCEPT]		= RLM_MODULE_OK,
-	[FR_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_UPDATED,
-	[FR_CODE_ACCESS_REJECT]		= RLM_MODULE_REJECT,
+static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_CODE_MAX] = {
+	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= RLM_MODULE_OK,
+	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= RLM_MODULE_UPDATED,
+	[FR_RADIUS_CODE_ACCESS_REJECT]		= RLM_MODULE_REJECT,
 
-	[FR_CODE_ACCOUNTING_RESPONSE]	= RLM_MODULE_OK,
+	[FR_RADIUS_CODE_ACCOUNTING_RESPONSE]	= RLM_MODULE_OK,
 
-	[FR_CODE_COA_ACK]		= RLM_MODULE_OK,
-	[FR_CODE_COA_NAK]		= RLM_MODULE_REJECT,
+	[FR_RADIUS_CODE_COA_ACK]		= RLM_MODULE_OK,
+	[FR_RADIUS_CODE_COA_NAK]		= RLM_MODULE_REJECT,
 
-	[FR_CODE_DISCONNECT_ACK]	= RLM_MODULE_OK,
-	[FR_CODE_DISCONNECT_NAK]	= RLM_MODULE_REJECT,
+	[FR_RADIUS_CODE_DISCONNECT_ACK]	= RLM_MODULE_OK,
+	[FR_RADIUS_CODE_DISCONNECT_NAK]	= RLM_MODULE_REJECT,
 
-	[FR_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
+	[FR_RADIUS_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
 };
 
 static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int fd,
@@ -392,7 +392,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 		/*
 		 *	Allow passwords only in Access-Request packets.
 		 */
-		if ((inst->parent->status_check != FR_CODE_ACCESS_REQUEST) &&
+		if ((inst->parent->status_check != FR_RADIUS_CODE_ACCESS_REQUEST) &&
 		    (tmpl_da(map->lhs) == attr_user_password)) continue;
 
 		(void) map_to_request(request, map, map_to_vp, NULL);
@@ -587,7 +587,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	This is usually used for dynamic configuration
 	 *	on startup.
 	 */
-	if (code == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
+	if (code == FR_RADIUS_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
 
 	/*
 	 *	Last trunk event was a failure, be more careful about
@@ -1211,7 +1211,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	}
 
 	code = data[0];
-	if (!code || (code >= FR_RADIUS_MAX_PACKET_CODE)) {
+	if (!code || (code >= FR_RADIUS_CODE_MAX)) {
 		REDEBUG("Unknown reply code %d", code);
 		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 	}
@@ -1228,8 +1228,8 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	 *
 	 *	Status checks accept any response code.
 	 */
-	if (!u->status_check && (code != FR_CODE_PROTOCOL_ERROR)) {
-		if (allowed_replies[code] != (FR_CODE) u->code) {
+	if (!u->status_check && (code != FR_RADIUS_CODE_PROTOCOL_ERROR)) {
+		if (allowed_replies[code] != (fr_radius_packet_code_t) u->code) {
 			REDEBUG("%s packet received invalid reply code %s",
 				fr_packet_codes[u->code], fr_packet_codes[code]);
 			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
@@ -1300,8 +1300,8 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 *	number...
 	 */
 	switch (u->code) {
-	case FR_CODE_ACCESS_REQUEST:
-	case FR_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_STATUS_SERVER:
 	{
 		size_t i;
 		uint32_t hash, base;
@@ -1333,7 +1333,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		vp = fr_pair_find_by_da(&request->request_pairs, attr_event_timestamp);
 		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
-		if (u->code == FR_CODE_STATUS_SERVER) u->can_retransmit = false;
+		if (u->code == FR_RADIUS_CODE_STATUS_SERVER) u->can_retransmit = false;
 
 	} else if (inst->parent->originate) {
 		/*
@@ -1462,7 +1462,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 *	time difference between now, and when we originally
 	 *	received the request.
 	 */
-	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
+	if ((u->code == FR_RADIUS_CODE_ACCOUNTING_REQUEST) &&
 	    (fr_pair_find_by_da(&request->request_pairs, attr_acct_delay_time) != NULL)) {
 		uint8_t *attr, *end;
 		uint32_t delay;
@@ -1507,9 +1507,9 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 */
 	if (message_authenticator) goto sign;
 	switch (u->code) {
-	case FR_CODE_ACCOUNTING_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
-	case FR_CODE_COA_REQUEST:
+	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+	case FR_RADIUS_CODE_COA_REQUEST:
 	sign:
 		/*
 		 *	Now that we're done mangling the packet, sign it.
@@ -2272,7 +2272,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	/*
 	 *	@todo - do other negotiation and signaling.
 	 */
-	if (h->buffer[0] == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
+	if (h->buffer[0] == FR_RADIUS_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
 
 	if (u->num_replies < inst->num_answers_to_alive) {
 		DEBUG("Received %d / %u replies for status check, on connection - %s",
@@ -2414,7 +2414,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	packet.
 		 */
 		switch (code) {
-		case FR_CODE_PROTOCOL_ERROR:
+		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			protocol_error_reply(u, r, h);
 			break;
 
@@ -2431,13 +2431,13 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	automatically result in it the parent request
 		 *	returning an ok/fail packet code.
 		 */
-		if ((u->code == FR_CODE_ACCESS_REQUEST) && (code == FR_CODE_ACCESS_CHALLENGE)) {
+		if ((u->code == FR_RADIUS_CODE_ACCESS_REQUEST) && (code == FR_RADIUS_CODE_ACCESS_CHALLENGE)) {
 			fr_pair_t	*vp;
 
 			vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
 			if (!vp) {
 				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_packet_type));
-				vp->vp_uint32 = FR_CODE_ACCESS_CHALLENGE;
+				vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 				fr_pair_append(&request->reply_pairs, vp);
 			}
 		}
@@ -2700,9 +2700,9 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 	fr_trunk_request_t		*treq;
 
 	fr_assert(request->packet->code > 0);
-	fr_assert(request->packet->code < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(request->packet->code < FR_RADIUS_CODE_MAX);
 
-	if (request->packet->code == FR_CODE_STATUS_SERVER) {
+	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
 		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
 		RETURN_MODULE_NOOP;
 	}

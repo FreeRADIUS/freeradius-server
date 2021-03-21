@@ -48,8 +48,8 @@
  *	protocols/radius/base.c
  */
 
-extern char const *fr_packet_codes[FR_RADIUS_MAX_PACKET_CODE];
-#define is_radius_code(_x) ((_x > 0) && (_x < FR_RADIUS_MAX_PACKET_CODE))
+extern char const *fr_packet_codes[FR_RADIUS_CODE_MAX];
+#define is_radius_code(_x) ((_x > 0) && (_x < FR_RADIUS_CODE_MAX))
 
 #define AUTH_PASS_LEN (RADIUS_AUTH_VECTOR_LENGTH)
 
@@ -57,7 +57,7 @@ extern char const *fr_packet_codes[FR_RADIUS_MAX_PACKET_CODE];
 extern size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_table_num_sorted_t const fr_request_types[];
 extern size_t fr_request_types_len;
-extern bool const fr_request_packets[FR_RADIUS_MAX_PACKET_CODE + 1];
+extern bool const fr_request_packets[FR_RADIUS_CODE_MAX + 1];
 
 typedef enum {
 	DECODE_FAIL_NONE = 0,

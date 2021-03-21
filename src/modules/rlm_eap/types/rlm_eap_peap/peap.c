@@ -386,21 +386,21 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 	}
 
 	switch (reply->code) {
-	case FR_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eap_peap_success(request, eap_session, tls_session);
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
-	case FR_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
 		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		eap_peap_failure(request, eap_session, tls_session);
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
-	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		RDEBUG2("Got tunneled Access-Challenge");
 
 		/*
@@ -559,7 +559,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		       fake->server_cs ? cf_section_name2(fake->server_cs) : "NULL");
 		rad_virtual_server(&rcode, fake);
 
-		if (fake->reply->code != FR_CODE_ACCESS_ACCEPT) {
+		if (fake->reply->code != FR_RADIUS_CODE_ACCESS_ACCEPT) {
 			RDEBUG2("SoH was rejected");
 			TALLOC_FREE(fake);
 			t->status = PEAP_STATUS_SENT_TLV_FAILURE;

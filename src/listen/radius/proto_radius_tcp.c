@@ -135,7 +135,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	/*
 	 *	We MUST always start with a known RADIUS packet.
 	 */
-	if ((buffer[0] == 0) || (buffer[0] > FR_RADIUS_MAX_PACKET_CODE)) {
+	if ((buffer[0] == 0) || (buffer[0] > FR_RADIUS_CODE_MAX)) {
 		DEBUG("proto_radius_tcp got invalid packet code %d", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return -1;
@@ -253,7 +253,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	connection-level negotiation data, but only the first
 	 *	time the packet is being written.
 	 */
-	if ((written == 0) && (track->packet[0] == FR_CODE_STATUS_SERVER)) {
+	if ((written == 0) && (track->packet[0] == FR_RADIUS_CODE_STATUS_SERVER)) {
 //		status_check_reply(inst, buffer, buffer_len);
 	}
 

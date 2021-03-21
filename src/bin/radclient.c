@@ -59,7 +59,7 @@ static bool do_output = true;
 static rc_stats_t stats;
 
 static uint16_t server_port = 0;
-static int packet_code = FR_CODE_UNDEFINED;
+static int packet_code = FR_RADIUS_CODE_UNDEFINED;
 static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static bool done = true;
@@ -241,31 +241,31 @@ static int getport(char const *name)
 /*
  *	Set a port from the request type if we don't already have one
  */
-static void radclient_get_port(FR_CODE type, uint16_t *port)
+static void radclient_get_port(fr_radius_packet_code_t type, uint16_t *port)
 {
 	switch (type) {
 	default:
-	case FR_CODE_ACCESS_REQUEST:
-	case FR_CODE_ACCESS_CHALLENGE:
-	case FR_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_STATUS_SERVER:
 		if (*port == 0) *port = getport("radius");
 		if (*port == 0) *port = FR_AUTH_UDP_PORT;
 		return;
 
-	case FR_CODE_ACCOUNTING_REQUEST:
+	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
 		if (*port == 0) *port = getport("radacct");
 		if (*port == 0) *port = FR_ACCT_UDP_PORT;
 		return;
 
-	case FR_CODE_DISCONNECT_REQUEST:
+	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
 		if (*port == 0) *port = FR_POD_UDP_PORT;
 		return;
 
-	case FR_CODE_COA_REQUEST:
+	case FR_RADIUS_CODE_COA_REQUEST:
 		if (*port == 0) *port = FR_COA_UDP_PORT;
 		return;
 
-	case FR_CODE_UNDEFINED:
+	case FR_RADIUS_CODE_UNDEFINED:
 		if (*port == 0) *port = 0;
 		return;
 	}
@@ -274,24 +274,24 @@ static void radclient_get_port(FR_CODE type, uint16_t *port)
 /*
  *	Resolve a port to a request type
  */
-static FR_CODE radclient_get_code(uint16_t port)
+static fr_radius_packet_code_t radclient_get_code(uint16_t port)
 {
 	/*
 	 *	getport returns 0 if the service doesn't exist
 	 *	so we need to return early, to avoid incorrect
 	 *	codes.
 	 */
-	if (port == 0) return FR_CODE_UNDEFINED;
+	if (port == 0) return FR_RADIUS_CODE_UNDEFINED;
 
 	if ((port == getport("radius")) || (port == FR_AUTH_UDP_PORT) || (port == FR_AUTH_UDP_PORT_ALT)) {
-		return FR_CODE_ACCESS_REQUEST;
+		return FR_RADIUS_CODE_ACCESS_REQUEST;
 	}
 	if ((port == getport("radacct")) || (port == FR_ACCT_UDP_PORT) || (port == FR_ACCT_UDP_PORT_ALT)) {
-		return FR_CODE_ACCOUNTING_REQUEST;
+		return FR_RADIUS_CODE_ACCOUNTING_REQUEST;
 	}
-	if (port == FR_COA_UDP_PORT) return FR_CODE_COA_REQUEST;
+	if (port == FR_COA_UDP_PORT) return FR_RADIUS_CODE_COA_REQUEST;
 
-	return FR_CODE_UNDEFINED;
+	return FR_RADIUS_CODE_UNDEFINED;
 }
 
 
@@ -550,7 +550,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Use the default set on the command line
 		 */
-		if (request->packet->code == FR_CODE_UNDEFINED) request->packet->code = packet_code;
+		if (request->packet->code == FR_RADIUS_CODE_UNDEFINED) request->packet->code = packet_code;
 
 		/*
 		 *	Default to the filename
@@ -561,41 +561,41 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Automatically set the response code from the request code
 		 *	(if one wasn't already set).
 		 */
-		if (request->filter_code == FR_CODE_UNDEFINED) {
+		if (request->filter_code == FR_RADIUS_CODE_UNDEFINED) {
 			switch (request->packet->code) {
-			case FR_CODE_ACCESS_REQUEST:
-				request->filter_code = FR_CODE_ACCESS_ACCEPT;
+			case FR_RADIUS_CODE_ACCESS_REQUEST:
+				request->filter_code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 				break;
 
-			case FR_CODE_ACCOUNTING_REQUEST:
-				request->filter_code = FR_CODE_ACCOUNTING_RESPONSE;
+			case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+				request->filter_code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
 				break;
 
-			case FR_CODE_COA_REQUEST:
-				request->filter_code = FR_CODE_COA_ACK;
+			case FR_RADIUS_CODE_COA_REQUEST:
+				request->filter_code = FR_RADIUS_CODE_COA_ACK;
 				break;
 
-			case FR_CODE_DISCONNECT_REQUEST:
-				request->filter_code = FR_CODE_DISCONNECT_ACK;
+			case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+				request->filter_code = FR_RADIUS_CODE_DISCONNECT_ACK;
 				break;
 
-			case FR_CODE_STATUS_SERVER:
+			case FR_RADIUS_CODE_STATUS_SERVER:
 				switch (radclient_get_code(request->packet->socket.inet.dst_port)) {
-				case FR_CODE_ACCESS_REQUEST:
-					request->filter_code = FR_CODE_ACCESS_ACCEPT;
+				case FR_RADIUS_CODE_ACCESS_REQUEST:
+					request->filter_code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 					break;
 
-				case FR_CODE_ACCOUNTING_REQUEST:
-					request->filter_code = FR_CODE_ACCOUNTING_RESPONSE;
+				case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+					request->filter_code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
 					break;
 
 				default:
-					request->filter_code = FR_CODE_UNDEFINED;
+					request->filter_code = FR_RADIUS_CODE_UNDEFINED;
 					break;
 				}
 				break;
 
-			case FR_CODE_UNDEFINED:
+			case FR_RADIUS_CODE_UNDEFINED:
 				REDEBUG("Packet-Type must be defined,"
 					"or a well known RADIUS port");
 				goto error;
@@ -609,25 +609,25 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Automatically set the request code from the response code
 		 *	(if one wasn't already set).
 		 */
-		} else if (request->packet->code == FR_CODE_UNDEFINED) {
+		} else if (request->packet->code == FR_RADIUS_CODE_UNDEFINED) {
 			switch (request->filter_code) {
-			case FR_CODE_ACCESS_ACCEPT:
-			case FR_CODE_ACCESS_REJECT:
-				request->packet->code = FR_CODE_ACCESS_REQUEST;
+			case FR_RADIUS_CODE_ACCESS_ACCEPT:
+			case FR_RADIUS_CODE_ACCESS_REJECT:
+				request->packet->code = FR_RADIUS_CODE_ACCESS_REQUEST;
 				break;
 
-			case FR_CODE_ACCOUNTING_RESPONSE:
-				request->packet->code = FR_CODE_ACCOUNTING_REQUEST;
+			case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+				request->packet->code = FR_RADIUS_CODE_ACCOUNTING_REQUEST;
 				break;
 
-			case FR_CODE_DISCONNECT_ACK:
-			case FR_CODE_DISCONNECT_NAK:
-				request->packet->code = FR_CODE_DISCONNECT_REQUEST;
+			case FR_RADIUS_CODE_DISCONNECT_ACK:
+			case FR_RADIUS_CODE_DISCONNECT_NAK:
+				request->packet->code = FR_RADIUS_CODE_DISCONNECT_REQUEST;
 				break;
 
-			case FR_CODE_COA_ACK:
-			case FR_CODE_COA_NAK:
-				request->packet->code = FR_CODE_COA_REQUEST;
+			case FR_RADIUS_CODE_COA_ACK:
+			case FR_RADIUS_CODE_COA_NAK:
+				request->packet->code = FR_RADIUS_CODE_COA_REQUEST;
 				break;
 
 			default:
@@ -1050,14 +1050,14 @@ static int recv_one_packet(fr_time_t wait_time)
 	 *	Increment counters...
 	 */
 	switch (request->reply->code) {
-	case FR_CODE_ACCESS_ACCEPT:
-	case FR_CODE_ACCOUNTING_RESPONSE:
-	case FR_CODE_COA_ACK:
-	case FR_CODE_DISCONNECT_ACK:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_DISCONNECT_ACK:
 		stats.accepted++;
 		break;
 
-	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		break;
 
 	default:
@@ -1070,7 +1070,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	 *	If we had an expected response code, check to see if the
 	 *	packet matched that.
 	 */
-	if ((request->filter_code != FR_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
+	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
 		if (is_radius_code(request->reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_codes[request->filter_code],
 				fr_packet_codes[request->reply->code]);
@@ -1391,7 +1391,7 @@ int main(int argc, char **argv)
 		/*
 		 *	Work backwards from the port to determine the packet type
 		 */
-		if (packet_code == FR_CODE_UNDEFINED) packet_code = radclient_get_code(server_port);
+		if (packet_code == FR_RADIUS_CODE_UNDEFINED) packet_code = radclient_get_code(server_port);
 	}
 	radclient_get_port(packet_code, &server_port);
 

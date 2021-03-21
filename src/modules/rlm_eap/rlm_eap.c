@@ -868,7 +868,7 @@ static unlang_action_t mod_post_proxy(rlm_rcode_t *p_result, module_ctx_t const 
 		 *	says that we MUST include a User-Name attribute in the
 		 *	Access-Accept.
 		 */
-		if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && username) {
+		if ((request->reply->code == FR_RADIUS_CODE_ACCESS_ACCEPT) && username) {
 			MEM(pair_update_reply(&vp, attr_user_name) >= 0);
 			fr_pair_value_copy(vp, username);
 		}
@@ -900,7 +900,7 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Access-Accept.
 	 */
 	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && username) {
+	if ((request->reply->code == FR_RADIUS_CODE_ACCESS_ACCEPT) && username) {
 		/*
 		 *	Doesn't exist, add it in.
 		 */
@@ -927,7 +927,7 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Only synthesize a failure message if something
 	 *	previously rejected the request.
 	 */
-	if (request->reply->code != FR_CODE_ACCESS_REJECT) RETURN_MODULE_NOOP;
+	if (request->reply->code != FR_RADIUS_CODE_ACCESS_REJECT) RETURN_MODULE_NOOP;
 
 	if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_message)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");

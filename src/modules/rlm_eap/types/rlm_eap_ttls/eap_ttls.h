@@ -51,4 +51,4 @@ typedef struct {
 /*
  *	Process the TTLS portion of an EAP-TTLS request.
  */
-FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);
+fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);

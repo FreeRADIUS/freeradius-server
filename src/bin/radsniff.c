@@ -62,20 +62,20 @@ typedef int (*rbcmp)(void const *, void const *);
 static char const *radsniff_version = RADIUSD_VERSION_STRING_BUILD("radsniff");
 
 static int rs_useful_codes[] = {
-	FR_CODE_ACCESS_REQUEST,			//!< RFC2865 - Authentication request
-	FR_CODE_ACCESS_ACCEPT,			//!< RFC2865 - Access-Accept
-	FR_CODE_ACCESS_REJECT,			//!< RFC2865 - Access-Reject
-	FR_CODE_ACCOUNTING_REQUEST,		//!< RFC2866 - Accounting-Request
-	FR_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
-	FR_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
-	FR_CODE_STATUS_SERVER,			//!< RFC2865/RFC5997 - Status Server (request)
-	FR_CODE_STATUS_CLIENT,			//!< RFC2865/RFC5997 - Status Server (response)
-	FR_CODE_DISCONNECT_REQUEST,		//!< RFC3575/RFC5176 - Disconnect-Request
-	FR_CODE_DISCONNECT_ACK,			//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
-	FR_CODE_DISCONNECT_NAK,			//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
-	FR_CODE_COA_REQUEST,			//!< RFC3575/RFC5176 - CoA-Request
-	FR_CODE_COA_ACK,			//!< RFC3575/RFC5176 - CoA-Ack (positive)
-	FR_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
+	FR_RADIUS_CODE_ACCESS_REQUEST,			//!< RFC2865 - Authentication request
+	FR_RADIUS_CODE_ACCESS_ACCEPT,			//!< RFC2865 - Access-Accept
+	FR_RADIUS_CODE_ACCESS_REJECT,			//!< RFC2865 - Access-Reject
+	FR_RADIUS_CODE_ACCOUNTING_REQUEST,		//!< RFC2866 - Accounting-Request
+	FR_RADIUS_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
+	FR_RADIUS_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
+	FR_RADIUS_CODE_STATUS_SERVER,			//!< RFC2865/RFC5997 - Status Server (request)
+	FR_RADIUS_CODE_STATUS_CLIENT,			//!< RFC2865/RFC5997 - Status Server (response)
+	FR_RADIUS_CODE_DISCONNECT_REQUEST,		//!< RFC3575/RFC5176 - Disconnect-Request
+	FR_RADIUS_CODE_DISCONNECT_ACK,			//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
+	FR_RADIUS_CODE_DISCONNECT_NAK,			//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
+	FR_RADIUS_CODE_COA_REQUEST,			//!< RFC3575/RFC5176 - CoA-Request
+	FR_RADIUS_CODE_COA_ACK,			//!< RFC3575/RFC5176 - CoA-Ack (positive)
+	FR_RADIUS_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
 static fr_table_num_sorted_t const rs_events[] = {
@@ -578,7 +578,7 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	}
 }
 
-static void rs_stats_print_code_fancy(rs_latency_t *stats, FR_CODE code)
+static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code_t code)
 {
 	int i;
 	bool have_rt = false;
@@ -1378,15 +1378,15 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	}
 
 	switch (packet->code) {
-	case FR_CODE_ACCOUNTING_RESPONSE:
-	case FR_CODE_ACCESS_REJECT:
-	case FR_CODE_ACCESS_ACCEPT:
-	case FR_CODE_ACCESS_CHALLENGE:
-	case FR_CODE_COA_NAK:
-	case FR_CODE_COA_ACK:
-	case FR_CODE_DISCONNECT_NAK:
-	case FR_CODE_DISCONNECT_ACK:
-	case FR_CODE_STATUS_CLIENT:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_COA_NAK:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_DISCONNECT_NAK:
+	case FR_RADIUS_CODE_DISCONNECT_ACK:
+	case FR_RADIUS_CODE_STATUS_CLIENT:
 	{
 		/* look for a matching request and use it for decoding */
 		search.expect = packet;
@@ -1512,11 +1512,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		break;
 	}
 
-	case FR_CODE_ACCOUNTING_REQUEST:
-	case FR_CODE_ACCESS_REQUEST:
-	case FR_CODE_COA_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
-	case FR_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_COA_REQUEST:
+	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+	case FR_RADIUS_CODE_STATUS_SERVER:
 	{
 		/*
 		 *	Verify this code is allowed
@@ -1532,9 +1532,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		if (conf->verify_radius_authenticator) {
 			switch (packet->code) {
-			case FR_CODE_ACCOUNTING_REQUEST:
-			case FR_CODE_COA_REQUEST:
-			case FR_CODE_DISCONNECT_REQUEST:
+			case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+			case FR_RADIUS_CODE_COA_REQUEST:
+			case FR_RADIUS_CODE_DISCONNECT_REQUEST:
 			{
 				int ret;
 				FILE *log_fp = fr_log_fp;
@@ -1783,7 +1783,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	CoA and Disconnect Messages, as we get the average latency across both
 		 *	response types.
 		 *
-		 *	It also justifies allocating FR_CODE_RADIUS_MAX instances of rs_latency_t.
+		 *	It also justifies allocating FR_RADIUS_CODE_MAXinstances of rs_latency_t.
 		 */
 		rs_stats_update_latency(&stats->exchange[packet->code], &latency);
 		rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);

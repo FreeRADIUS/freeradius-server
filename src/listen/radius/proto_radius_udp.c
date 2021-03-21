@@ -159,7 +159,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		return 0;
 	}
 
-	if ((buffer[0] == 0) || (buffer[0] > FR_RADIUS_MAX_PACKET_CODE)) {
+	if ((buffer[0] == 0) || (buffer[0] > FR_RADIUS_CODE_MAX)) {
 		DEBUG("proto_radius_udp got invalid packet code %d", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return 0;
@@ -261,7 +261,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 *	Root through the reply to determine any
 	 *	connection-level negotiation data.
 	 */
-	if (track->packet[0] == FR_CODE_STATUS_SERVER) {
+	if (track->packet[0] == FR_RADIUS_CODE_STATUS_SERVER) {
 //		status_check_reply(inst, buffer, buffer_len);
 	}
 

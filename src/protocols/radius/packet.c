@@ -136,19 +136,19 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 #endif
 
 	switch (packet->code) {
-	case FR_CODE_ACCESS_REQUEST:
-	case FR_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_STATUS_SERVER:
 		memcpy(packet_ctx.vector, packet->vector, sizeof(packet_ctx.vector));
 		break;
 
-	case FR_CODE_ACCESS_ACCEPT:
-	case FR_CODE_ACCESS_REJECT:
-	case FR_CODE_ACCESS_CHALLENGE:
-	case FR_CODE_ACCOUNTING_RESPONSE:
-	case FR_CODE_COA_ACK:
-	case FR_CODE_COA_NAK:
-	case FR_CODE_DISCONNECT_ACK:
-	case FR_CODE_DISCONNECT_NAK:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_COA_NAK:
+	case FR_RADIUS_CODE_DISCONNECT_ACK:
+	case FR_RADIUS_CODE_DISCONNECT_NAK:
 		/*
 		 *	radsniff doesn't always have a response
 		 */
@@ -160,9 +160,9 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 		}
 		break;
 
-	case FR_CODE_ACCOUNTING_REQUEST:
-	case FR_CODE_COA_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
+	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+	case FR_RADIUS_CODE_COA_REQUEST:
+	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
 		break;
@@ -334,8 +334,8 @@ int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *
 	 *	codes have the Request Authenticator be the packet
 	 *	signature.
 	 */
-	if ((packet->code == FR_CODE_ACCESS_REQUEST) ||
-	    (packet->code == FR_CODE_STATUS_SERVER)) {
+	if ((packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) ||
+	    (packet->code == FR_RADIUS_CODE_STATUS_SERVER)) {
 		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
 	}
 
@@ -536,7 +536,7 @@ void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *pa
 		fr_log(log, L_DBG, file, line, "  Dst Port : %u", packet->socket.inet.dst_port);
 	}
 
-       if ((packet->data[0] > 0) && (packet->data[0] < FR_RADIUS_MAX_PACKET_CODE)) {
+       if ((packet->data[0] > 0) && (packet->data[0] < FR_RADIUS_CODE_MAX)) {
                fr_log(log, L_DBG, file, line, "  Code     : %s", fr_packet_codes[packet->data[0]]);
        } else {
                fr_log(log, L_DBG, file, line, "  Code     : %u", packet->data[0]);

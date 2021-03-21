@@ -126,17 +126,17 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
 fr_table_num_sorted_t const fr_request_types[] = {
-	{ L("acct"),	FR_CODE_ACCOUNTING_REQUEST	},
-	{ L("auth"),	FR_CODE_ACCESS_REQUEST		},
-	{ L("auto"),	FR_CODE_UNDEFINED		},
-	{ L("challenge"),	FR_CODE_ACCESS_CHALLENGE	},
-	{ L("coa"),	FR_CODE_COA_REQUEST		},
-	{ L("disconnect"),	FR_CODE_DISCONNECT_REQUEST	},
-	{ L("status"),	FR_CODE_STATUS_SERVER		}
+	{ L("acct"),	FR_RADIUS_CODE_ACCOUNTING_REQUEST	},
+	{ L("auth"),	FR_RADIUS_CODE_ACCESS_REQUEST		},
+	{ L("auto"),	FR_RADIUS_CODE_UNDEFINED		},
+	{ L("challenge"),	FR_RADIUS_CODE_ACCESS_CHALLENGE	},
+	{ L("coa"),	FR_RADIUS_CODE_COA_REQUEST		},
+	{ L("disconnect"),	FR_RADIUS_CODE_DISCONNECT_REQUEST	},
+	{ L("status"),	FR_RADIUS_CODE_STATUS_SERVER		}
 };
 size_t fr_request_types_len = NUM_ELEMENTS(fr_request_types);
 
-char const *fr_packet_codes[FR_RADIUS_MAX_PACKET_CODE] = {
+char const *fr_packet_codes[FR_RADIUS_CODE_MAX] = {
 	"",					//!< 0
 	"Access-Request",
 	"Access-Accept",
@@ -192,12 +192,12 @@ char const *fr_packet_codes[FR_RADIUS_MAX_PACKET_CODE] = {
 	"Protocol-Error",
 };
 
-bool const fr_request_packets[FR_RADIUS_MAX_PACKET_CODE + 1] = {
-	[FR_CODE_ACCESS_REQUEST] = true,
-	[FR_CODE_ACCOUNTING_REQUEST] = true,
-	[FR_CODE_STATUS_SERVER] = true,
-	[FR_CODE_COA_REQUEST] = true,
-	[FR_CODE_DISCONNECT_REQUEST] = true,
+bool const fr_request_packets[FR_RADIUS_CODE_MAX + 1] = {
+	[FR_RADIUS_CODE_ACCESS_REQUEST] = true,
+	[FR_RADIUS_CODE_ACCOUNTING_REQUEST] = true,
+	[FR_RADIUS_CODE_STATUS_SERVER] = true,
+	[FR_RADIUS_CODE_COA_REQUEST] = true,
+	[FR_RADIUS_CODE_DISCONNECT_REQUEST] = true,
 };
 
 
@@ -389,31 +389,31 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		}
 
 		switch (packet[0]) {
-		case FR_CODE_ACCOUNTING_RESPONSE:
-		case FR_CODE_DISCONNECT_ACK:
-		case FR_CODE_DISCONNECT_NAK:
-		case FR_CODE_COA_ACK:
-		case FR_CODE_COA_NAK:
+		case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+		case FR_RADIUS_CODE_DISCONNECT_ACK:
+		case FR_RADIUS_CODE_DISCONNECT_NAK:
+		case FR_RADIUS_CODE_COA_ACK:
+		case FR_RADIUS_CODE_COA_NAK:
 			if (!original) goto need_original;
-			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
+			if (original[0] == FR_RADIUS_CODE_STATUS_SERVER) goto do_ack;
 			FALL_THROUGH;
 
-		case FR_CODE_ACCOUNTING_REQUEST:
-		case FR_CODE_DISCONNECT_REQUEST:
-		case FR_CODE_COA_REQUEST:
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+		case FR_RADIUS_CODE_COA_REQUEST:
 			memset(packet + 4, 0, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
 
-		case FR_CODE_ACCESS_ACCEPT:
-		case FR_CODE_ACCESS_REJECT:
-		case FR_CODE_ACCESS_CHALLENGE:
+		case FR_RADIUS_CODE_ACCESS_ACCEPT:
+		case FR_RADIUS_CODE_ACCESS_REJECT:
+		case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		do_ack:
 			if (!original) goto need_original;
 			memcpy(packet + 4, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
 
-		case FR_CODE_ACCESS_REQUEST:
-		case FR_CODE_STATUS_SERVER:
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+		case FR_RADIUS_CODE_STATUS_SERVER:
 			/* packet + 4 MUST be the Request Authenticator filled with random data */
 			break;
 
@@ -435,21 +435,21 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	 *	Initialize the request authenticator.
 	 */
 	switch (packet[0]) {
-	case FR_CODE_ACCOUNTING_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
-	case FR_CODE_COA_REQUEST:
+	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+	case FR_RADIUS_CODE_COA_REQUEST:
 		memset(packet + 4, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
-	case FR_CODE_ACCESS_ACCEPT:
-	case FR_CODE_ACCESS_REJECT:
-	case FR_CODE_ACCESS_CHALLENGE:
-	case FR_CODE_ACCOUNTING_RESPONSE:
-	case FR_CODE_DISCONNECT_ACK:
-	case FR_CODE_DISCONNECT_NAK:
-	case FR_CODE_COA_ACK:
-	case FR_CODE_COA_NAK:
-	case FR_CODE_PROTOCOL_ERROR:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+	case FR_RADIUS_CODE_DISCONNECT_ACK:
+	case FR_RADIUS_CODE_DISCONNECT_NAK:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_COA_NAK:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		if (!original) {
 		need_original:
 			fr_strerror_const("Cannot sign response packet without a request packet");
@@ -463,8 +463,8 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		 *	We don't need to sign anything else, so
 		 *	return.
 		 */
-	case FR_CODE_ACCESS_REQUEST:
-	case FR_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_STATUS_SERVER:
 		return 0;
 
 	default:
@@ -538,7 +538,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Code of 16 or greate is not understood.
 	 */
 	if ((packet[0] == 0) ||
-	    (packet[0] >= FR_RADIUS_MAX_PACKET_CODE)) {
+	    (packet[0] >= FR_RADIUS_CODE_MAX)) {
 		FR_DEBUG_STRERROR_PRINTF("unknown packet code %d", packet[0]);
 		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		goto finish;
@@ -548,7 +548,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Message-Authenticator is required in Status-Server
 	 *	packets, otherwise they can be trivially forged.
 	 */
-	if (packet[0] == FR_CODE_STATUS_SERVER) require_ma = true;
+	if (packet[0] == FR_RADIUS_CODE_STATUS_SERVER) require_ma = true;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -852,7 +852,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 *	These are random numbers, so there's no point in
 	 *	comparing them.
 	 */
-	if ((packet[0] == FR_CODE_ACCESS_REQUEST) || (packet[0] == FR_CODE_STATUS_SERVER)) {
+	if ((packet[0] == FR_RADIUS_CODE_ACCESS_REQUEST) || (packet[0] == FR_RADIUS_CODE_STATUS_SERVER)) {
 		return 0;
 	}
 
@@ -926,23 +926,23 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) RADIUS_HEADER_LENGTH);
 
 	switch (code) {
-	case FR_CODE_ACCESS_REQUEST:
-	case FR_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_STATUS_SERVER:
 		/*
 		 * Callers in these cases have preloaded the buffer with the authentication vector.
 		 */
 		FR_DBUFF_OUT_MEMCPY_RETURN(packet_ctx.vector, &work_dbuff, sizeof(packet_ctx.vector));
 		break;
 
-	case FR_CODE_ACCESS_ACCEPT:
-	case FR_CODE_ACCESS_REJECT:
-	case FR_CODE_ACCESS_CHALLENGE:
-	case FR_CODE_ACCOUNTING_RESPONSE:
-	case FR_CODE_COA_ACK:
-	case FR_CODE_COA_NAK:
-	case FR_CODE_DISCONNECT_ACK:
-	case FR_CODE_DISCONNECT_NAK:
-	case FR_CODE_PROTOCOL_ERROR:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_COA_NAK:
+	case FR_RADIUS_CODE_DISCONNECT_ACK:
+	case FR_RADIUS_CODE_DISCONNECT_NAK:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		if (!original) {
 			fr_strerror_const("Cannot encode response without request");
 			return -1;
@@ -951,9 +951,9 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
-	case FR_CODE_ACCOUNTING_REQUEST:
-	case FR_CODE_COA_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
+	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+	case FR_RADIUS_CODE_COA_REQUEST:
+	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
 		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
@@ -968,7 +968,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	 *	Original-Packet-Code manually.  If the user adds it
 	 *	later themselves, well, too bad.
 	 */
-	if (code == FR_CODE_PROTOCOL_ERROR) {
+	if (code == FR_RADIUS_CODE_PROTOCOL_ERROR) {
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_EXTENDED_ATTRIBUTE_1, 0x07, 0x04 /* Original-Packet-Code */,
 					 0x00, 0x00, 0x00, original[0]);
 	}

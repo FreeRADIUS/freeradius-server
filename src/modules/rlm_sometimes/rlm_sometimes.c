@@ -118,20 +118,20 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, void const *insta
 	 */
 	if ((inst->rcode == RLM_MODULE_HANDLED) && reply) {
 		switch (packet->code) {
-		case FR_CODE_ACCESS_REQUEST:
-			reply->code = FR_CODE_ACCESS_ACCEPT;
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+			reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 			break;
 
-		case FR_CODE_ACCOUNTING_REQUEST:
-			reply->code = FR_CODE_ACCOUNTING_RESPONSE;
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+			reply->code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
 			break;
 
-		case FR_CODE_COA_REQUEST:
-			reply->code = FR_CODE_COA_ACK;
+		case FR_RADIUS_CODE_COA_REQUEST:
+			reply->code = FR_RADIUS_CODE_COA_ACK;
 			break;
 
-		case FR_CODE_DISCONNECT_REQUEST:
-			reply->code = FR_CODE_DISCONNECT_ACK;
+		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+			reply->code = FR_RADIUS_CODE_DISCONNECT_ACK;
 			break;
 
 		default:

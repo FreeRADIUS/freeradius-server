@@ -1513,14 +1513,14 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
-	int packet_type = FR_CODE_ACCESS_REQUEST;
+	int packet_type = FR_RADIUS_CODE_ACCESS_REQUEST;
 	fr_pair_t *vp;
 	ssize_t slen;
 
 	vp = fr_pair_find_by_da(vps, attr_packet_type);
 	if (vp) packet_type = vp->vp_uint32;
 
-	if ((packet_type == FR_CODE_ACCESS_REQUEST) || (packet_type == FR_CODE_STATUS_SERVER)) {
+	if ((packet_type == FR_RADIUS_CODE_ACCESS_REQUEST) || (packet_type == FR_RADIUS_CODE_STATUS_SERVER)) {
 		vp = fr_pair_find_by_da(vps, attr_packet_authentication_vector);
 		if (vp && (vp->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
 			memcpy(data + 4, vp->vp_octets, RADIUS_AUTH_VECTOR_LENGTH);

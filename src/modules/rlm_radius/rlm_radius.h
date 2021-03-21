@@ -74,8 +74,8 @@ struct rlm_radius_s {
 	uint32_t		num_answers_to_alive;		//!< How many status check responses we need to
 							///< mark the connection as alive.
 
-	bool			allowed[FR_RADIUS_MAX_PACKET_CODE];
-	fr_retry_config_t      	retry[FR_RADIUS_MAX_PACKET_CODE];
+	bool			allowed[FR_RADIUS_CODE_MAX];
+	fr_retry_config_t      	retry[FR_RADIUS_CODE_MAX];
 
 	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
 };

@@ -251,22 +251,22 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch (reply->code) {
 	case FR_EAP_CODE_RESPONSE:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
 	case FR_EAP_CODE_SUCCESS:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_OK;
 		break;
 
 	case FR_EAP_CODE_FAILURE:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
 
 	case FR_EAP_CODE_REQUEST:
-		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
@@ -280,7 +280,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 		/* Should never enter here */
 		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
 		reply->code = FR_EAP_CODE_FAILURE;
 		rcode = RLM_MODULE_REJECT;
 		break;

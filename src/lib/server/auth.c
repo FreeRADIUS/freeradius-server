@@ -169,11 +169,11 @@ runit:
 	fr_cond_assert(final == RLM_MODULE_OK);
 
 	if (!request->reply->code ||
-	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {
+	    (request->reply->code == FR_RADIUS_CODE_ACCESS_REJECT)) {
 		RETURN_MODULE_REJECT;
 	}
 
-	if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
+	if (request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE) {
 		RETURN_MODULE_HANDLED;
 	}
 

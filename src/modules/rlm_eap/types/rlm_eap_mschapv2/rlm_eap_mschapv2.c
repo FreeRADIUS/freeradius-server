@@ -286,7 +286,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	There is only a limited number of possibilities.
 	 */
 	switch (request->reply->code) {
-	case FR_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		RDEBUG2("Proxied authentication succeeded");
 
 		/*
@@ -297,7 +297,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 		break;
 
 	default:
-	case FR_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
 		REDEBUG("Proxied authentication was rejected");
 		RETURN_MODULE_REJECT;
 	}
@@ -336,7 +336,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	And we need to challenge the user, not ack/reject them,
 	 *	so we re-write the ACK to a challenge.  Yuck.
 	 */
-	request->reply->code = FR_CODE_ACCESS_CHALLENGE;
+	request->reply->code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 	fr_pair_list_free(&response);
 
 	RETURN_MODULE_HANDLED;

@@ -122,7 +122,7 @@ static void eap_fast_send_error(fr_tls_session_t *tls_session, int error)
 	eap_fast_tlv_append(tls_session, attr_eap_fast_error, true, sizeof(value), &value);
 }
 
-static void eap_fast_append_result(fr_tls_session_t *tls_session, FR_CODE code)
+static void eap_fast_append_result(fr_tls_session_t *tls_session, fr_radius_packet_code_t code)
 {
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint16_t		state;
@@ -130,7 +130,7 @@ static void eap_fast_append_result(fr_tls_session_t *tls_session, FR_CODE code)
 
 
 	da = (t->result_final) ? attr_eap_fast_result : attr_eap_fast_intermediate_result;
-	state = htons((code == FR_CODE_ACCESS_REJECT) ? EAP_FAST_TLV_RESULT_FAILURE : EAP_FAST_TLV_RESULT_SUCCESS);
+	state = htons((code == FR_RADIUS_CODE_ACCESS_REJECT) ? EAP_FAST_TLV_RESULT_FAILURE : EAP_FAST_TLV_RESULT_SUCCESS);
 
 	eap_fast_tlv_append(tls_session, da, true, sizeof(state), &state);
 }
@@ -491,7 +491,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 	 * NOT 'eap start', so we should check for that....
 	 */
 	switch (reply->code) {
-	case FR_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		RDEBUG2("Got tunneled Access-Accept");
 
 		rcode = RLM_MODULE_OK;
@@ -535,12 +535,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		RHEXDUMP3((uint8_t *)&t->isk, 2 * RADIUS_CHAP_CHALLENGE_LENGTH, "ISK[j]"); /* FIXME (part of above) */
 		break;
 
-	case FR_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
 		REDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		RDEBUG2("Got tunneled Access-Challenge");
 
 		/*
@@ -565,10 +565,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 	return rcode;
 }
 
-static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_session,
+static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, eap_session_t *eap_session,
 				    fr_tls_session_t *tls_session, fr_pair_t *tlv_eap_payload)
 {
-	FR_CODE			code = FR_CODE_ACCESS_REJECT;
+	fr_radius_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp;
 	eap_fast_tunnel_t	*t;
@@ -732,13 +732,13 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 			/*
 			 *	Didn't authenticate the packet, but we're proxying it.
 			 */
-			code = FR_CODE_STATUS_CLIENT;
+			code = FR_RADIUS_CODE_STATUS_CLIENT;
 
 		} else
 #endif	/* WITH_PROXY */
 		  {
 			  REDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user");
-			  code = FR_CODE_ACCESS_REJECT;
+			  code = FR_RADIUS_CODE_ACCESS_REJECT;
 		  }
 		break;
 
@@ -749,19 +749,19 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 		rcode = process_reply(eap_session, tls_session, request, fake->reply, &fake->reply_pairs);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
-			code = FR_CODE_ACCESS_REJECT;
+			code = FR_RADIUS_CODE_ACCESS_REJECT;
 			break;
 
 		case RLM_MODULE_HANDLED:
-			code = FR_CODE_ACCESS_CHALLENGE;
+			code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 			break;
 
 		case RLM_MODULE_OK:
-			code = FR_CODE_ACCESS_ACCEPT;
+			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 			break;
 
 		default:
-			code = FR_CODE_ACCESS_REJECT;
+			code = FR_RADIUS_CODE_ACCESS_REJECT;
 			break;
 		}
 		break;
@@ -772,7 +772,7 @@ static FR_CODE eap_fast_eap_payload(request_t *request, eap_session_t *eap_sessi
 	return code;
 }
 
-static FR_CODE eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
+static fr_radius_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
 				       fr_tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
@@ -789,13 +789,13 @@ static FR_CODE eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t 
 		RDEBUG2("Crypto-Binding TLV mis-match");
 		RHEXDUMP3((uint8_t const *) binding->compound_mac,
                 sizeof(binding->compound_mac), "Calculated Compound MAC");
-		return FR_CODE_ACCESS_REJECT;
+		return FR_RADIUS_CODE_ACCESS_REJECT;
 	}
 
-	return FR_CODE_ACCESS_ACCEPT;
+	return FR_RADIUS_CODE_ACCESS_ACCEPT;
 }
 
-static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_session,
+static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, eap_session_t *eap_session,
 				     fr_tls_session_t *tls_session, fr_pair_list_t *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -807,14 +807,14 @@ static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_sess
 	for (vp = fr_pair_list_head(fast_vps);
 	     vp;
 	     vp = fr_pair_list_next(fast_vps, vp)) {
-		FR_CODE code = FR_CODE_ACCESS_REJECT;
+		fr_radius_packet_code_t code = FR_RADIUS_CODE_ACCESS_REJECT;
 		if (vp->da->parent == attr_eap_fast_tlv) {
 			if (vp->da == attr_eap_fast_eap_payload) {
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
-				if (code == FR_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
+				if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
 			} else if ((vp->da == attr_eap_fast_result) ||
 				   (vp->da == attr_eap_fast_intermediate_result)) {
-				code = FR_CODE_ACCESS_ACCEPT;
+				code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 				t->stage = EAP_FAST_PROVISIONING;
 			} else {
 				RDEBUG2("ignoring unknown %pP", vp);
@@ -854,7 +854,7 @@ static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_sess
 		} else if (vp->da->parent == attr_eap_fast_pac_tlv) {
 			if (vp->da == attr_eap_fast_pac_acknowledge) {
 				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
-					code = FR_CODE_ACCESS_ACCEPT;
+					code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 					t->pac.expires = UINT32_MAX;
 					t->pac.expired = false;
 					t->stage = EAP_FAST_COMPLETE;
@@ -875,27 +875,27 @@ static FR_CODE eap_fast_process_tlvs(request_t *request, eap_session_t *eap_sess
 			continue;
 		}
 
-		if (code == FR_CODE_ACCESS_REJECT) return FR_CODE_ACCESS_REJECT;
+		if (code == FR_RADIUS_CODE_ACCESS_REJECT) return FR_RADIUS_CODE_ACCESS_REJECT;
 	}
 
 	if (binding) {
-		FR_CODE code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
-		if (code == FR_CODE_ACCESS_ACCEPT) {
+		fr_radius_packet_code_t code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
+		if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) {
 			t->stage = EAP_FAST_PROVISIONING;
 		}
 		return code;
 	}
 
-	return FR_CODE_ACCESS_ACCEPT;
+	return FR_RADIUS_CODE_ACCESS_ACCEPT;
 }
 
 
 /*
  * Process the inner tunnel data
  */
-FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
-	FR_CODE			code;
+	fr_radius_packet_code_t			code;
 	fr_pair_list_t		fast_vps;
 	uint8_t const		*data;
 	size_t			data_len;
@@ -915,7 +915,7 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	/*
 	 * See if the tunneled data is well formed.
 	 */
-	if (!eap_fast_verify(request, tls_session, data, data_len)) return FR_CODE_ACCESS_REJECT;
+	if (!eap_fast_verify(request, tls_session, data, data_len)) return FR_RADIUS_CODE_ACCESS_REJECT;
 
 	if (t->stage == EAP_FAST_TLS_SESSION_HANDSHAKE) {
 		fr_assert(t->mode == EAP_FAST_UNKNOWN);
@@ -946,22 +946,22 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		eap_fast_send_identity_request(request, tls_session, eap_session);
 
 		t->stage = EAP_FAST_AUTHENTICATION;
-		return FR_CODE_ACCESS_CHALLENGE;
+		return FR_RADIUS_CODE_ACCESS_CHALLENGE;
 	}
 
 	if (eap_fast_decode_pair(request, &fast_vps, attr_eap_fast_tlv,
-				 data, data_len, NULL) < 0) return FR_CODE_ACCESS_REJECT;
+				 data, data_len, NULL) < 0) return FR_RADIUS_CODE_ACCESS_REJECT;
 
 	RDEBUG2("Got Tunneled FAST TLVs");
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &fast_vps, NULL);
 	code = eap_fast_process_tlvs(request, eap_session, tls_session, &fast_vps);
 	fr_pair_list_free(&fast_vps);
 
-	if (code == FR_CODE_ACCESS_REJECT) return FR_CODE_ACCESS_REJECT;
+	if (code == FR_RADIUS_CODE_ACCESS_REJECT) return FR_RADIUS_CODE_ACCESS_REJECT;
 
 	switch (t->stage) {
 	case EAP_FAST_AUTHENTICATION:
-		code = FR_CODE_ACCESS_CHALLENGE;
+		code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 		break;
 
 	case EAP_FAST_CRYPTOBIND_CHECK:
@@ -974,7 +974,7 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		eap_fast_update_icmk(request, tls_session, (uint8_t *)&t->isk);
 		eap_fast_append_crypto_binding(request, tls_session);
 
-		code = FR_CODE_ACCESS_CHALLENGE;
+		code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 		break;
 	}
 	case EAP_FAST_PROVISIONING:
@@ -985,7 +985,7 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		if (t->pac.send) {
 			RDEBUG2("Peer requires new PAC");
 			eap_fast_send_pac_tunnel(request, tls_session);
-			code = FR_CODE_ACCESS_CHALLENGE;
+			code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 			break;
 		}
 
@@ -998,13 +998,13 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		 */
 		if (t->pac.type && t->pac.expired) {
 			REDEBUG("Rejecting expired PAC.");
-			code = FR_CODE_ACCESS_REJECT;
+			code = FR_RADIUS_CODE_ACCESS_REJECT;
 			break;
 		}
 
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
 			REDEBUG("Rejecting unauthenticated provisioning");
-			code = FR_CODE_ACCESS_REJECT;
+			code = FR_RADIUS_CODE_ACCESS_REJECT;
 			break;
 		}
 
@@ -1022,7 +1022,7 @@ FR_CODE eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_
 
 	default:
 		RERROR("Internal sanity check failed in EAP-FAST at %d", t->stage);
-		code = FR_CODE_ACCESS_REJECT;
+		code = FR_RADIUS_CODE_ACCESS_REJECT;
 	}
 
 	return code;

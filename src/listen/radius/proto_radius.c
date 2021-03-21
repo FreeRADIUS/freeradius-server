@@ -54,15 +54,15 @@ static CONF_PARSER const limit_config[] = {
 };
 
 static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCESS_REQUEST]),
+	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_ACCESS_REQUEST]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
+	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_ACCOUNTING_REQUEST]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
-	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_COA_REQUEST]),
+	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_COA_REQUEST]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
+	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_DISCONNECT_REQUEST]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
-	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_STATUS_SERVER]),
+	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_STATUS_SERVER]),
 	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "now" },
 
 	CONF_PARSER_TERMINATOR
@@ -132,7 +132,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	value = cf_pair_value(cp);
 
 	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
-	if (!dv || (dv->value->vb_uint32 >= FR_RADIUS_MAX_PACKET_CODE)) {
+	if (!dv || (dv->value->vb_uint32 >= FR_RADIUS_CODE_MAX)) {
 		cf_log_err(ci, "Unknown RADIUS packet type '%s'", value);
 		return -1;
 	}
@@ -197,7 +197,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	RADCLIENT const		*client;
 	fr_dcursor_t		cursor;
 
-	fr_assert(data[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -315,8 +315,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 *	Process layer NAK, or "Do not respond".
 	 */
 	if ((buffer_len == 1) ||
-	    (request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_MAX_PACKET_CODE)) {
+	    (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_RADIUS_CODE_MAX)) {
 		track->do_not_respond = true;
 		return 1;
 	}
@@ -336,7 +336,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		 *	We don't accept the new client, so don't do
 		 *	anything.
 		 */
-		if (request->reply->code != FR_CODE_ACCESS_ACCEPT) {
+		if (request->reply->code != FR_RADIUS_CODE_ACCESS_ACCEPT) {
 			*buffer = true;
 			return 1;
 		}
@@ -417,7 +417,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 
 	fr_assert(buffer[0] > 0);
-	fr_assert(buffer[0] < FR_RADIUS_MAX_PACKET_CODE);
+	fr_assert(buffer[0] < FR_RADIUS_CODE_MAX);
 
 	/*
 	 *	Disallowed packet
@@ -542,7 +542,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	No Access-Request packets, then no cleanup delay.
 	 */
-	if (!inst->allowed[FR_CODE_ACCESS_REQUEST]) {
+	if (!inst->allowed[FR_RADIUS_CODE_ACCESS_REQUEST]) {
 		inst->io.cleanup_delay = 0;
 	}
 #endif

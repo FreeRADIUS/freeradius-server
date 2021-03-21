@@ -121,7 +121,7 @@ static ssize_t test_encode(UNUSED void const *instance, request_t *request, uint
 	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p room %zd\n",
 		request->number, pc, buffer, buffer_len);
 
-	buffer[0] = FR_CODE_ACCESS_ACCEPT;
+	buffer[0] = FR_RADIUS_CODE_ACCESS_ACCEPT;
 	buffer[1] = pc->id;
 	buffer[2] = 0;
 	buffer[3] = 20;
@@ -369,7 +369,7 @@ static void master_process(TALLOC_CTX *ctx)
 			 *	Verify the packet before doing anything more with it.
 			 */
 			packet = cd->m.data;
-			if (packet[0] != FR_CODE_ACCESS_REQUEST) {
+			if (packet[0] != FR_RADIUS_CODE_ACCESS_REQUEST) {
 				MPRINT1("Master ignoring packet code %u\n", packet[0]);
 				goto discard;
 			}

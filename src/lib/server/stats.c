@@ -61,7 +61,7 @@ void request_stats_final(request_t *request)
 	    (request->listener->type != RAD_LISTEN_AUTH)) return;
 #endif
 	/* don't count statistic requests */
-	if (request->packet->code == FR_CODE_STATUS_SERVER)
+	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER)
 		return;
 
 #undef INC_AUTH
@@ -78,8 +78,8 @@ void request_stats_final(request_t *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	if (request->reply && (request->packet->code != FR_CODE_STATUS_SERVER)) switch (request->reply->code) {
-	case FR_CODE_ACCESS_ACCEPT:
+	if (request->reply && (request->packet->code != FR_RADIUS_CODE_STATUS_SERVER)) switch (request->reply->code) {
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		INC_AUTH(total_access_accepts);
 
 		auth_stats:
@@ -96,15 +96,15 @@ void request_stats_final(request_t *request)
 			      request->reply->timestamp);
 		break;
 
-	case FR_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
 		INC_AUTH(total_access_rejects);
 		goto auth_stats;
 
-	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		INC_AUTH(total_access_challenges);
 		goto auth_stats;
 
-	case FR_CODE_ACCOUNTING_RESPONSE:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
 		INC_ACCT(total_responses);
 		fr_stats_bins(&radius_acct_stats,
 			      request->packet->timestamp,
@@ -117,7 +117,7 @@ void request_stats_final(request_t *request)
 		 */
 	case 0:
 		switch (request->packet->code) {
-		case FR_CODE_ACCESS_REQUEST:
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
 			if (request->reply->id == -1) {
 				INC_AUTH(total_bad_authenticators);
 			} else {
@@ -126,7 +126,7 @@ void request_stats_final(request_t *request)
 			break;
 
 
-		case FR_CODE_ACCOUNTING_REQUEST:
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
 			if (request->reply->id == -1) {
 				INC_ACCT(total_bad_authenticators);
 			} else {

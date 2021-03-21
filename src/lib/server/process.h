@@ -43,6 +43,12 @@ typedef struct fr_process_module_s {
 	fr_dict_t const			**dict;			//!< pointer to local fr_dict_t *
 } fr_process_module_t;
 
+#ifndef NDEBUG
+#  define PROCESS_TRACE	RDEBUG3("Entered state %s", __FUNCTION__)
+#else
+#  define PROCESS_TRACE
+#endif
+
 #ifdef __cplusplus
 }
 #endif

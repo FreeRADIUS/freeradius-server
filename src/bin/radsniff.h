@@ -95,7 +95,7 @@ typedef struct rs_stats_value_tmpl rs_stats_value_tmpl_t;
 #endif
 
 typedef struct {
-	uint64_t type[FR_CODE_RADIUS_MAX + 1];
+	uint64_t type[FR_RADIUS_CODE_MAX+ 1];
 } rs_counters_t;
 
 typedef struct CC_HINT(__packed__) {
@@ -163,7 +163,7 @@ typedef struct {
 typedef struct {
 	int			intervals;		//!< Number of stats intervals.
 
-	rs_latency_t		exchange[FR_CODE_RADIUS_MAX + 1];  //!< We end up allocating ~16K, but memory is cheap so
+	rs_latency_t		exchange[FR_RADIUS_CODE_MAX+ 1];  //!< We end up allocating ~16K, but memory is cheap so
 							//!< what the hell.  This is required because instances of
 							//!< FreeRADIUS delay Access-Rejects, which would artificially
 							//!< increase latency stats for Access-Requests.
@@ -294,8 +294,8 @@ struct rs {
 
 	fr_pair_list_t 		filter_request_vps;	//!< Sorted filter vps.
 	fr_pair_list_t 		filter_response_vps;	//!< Sorted filter vps.
-	FR_CODE			filter_request_code;	//!< Filter request packets by code.
-	FR_CODE			filter_response_code;	//!< Filter response packets by code.
+	fr_radius_packet_code_t			filter_request_code;	//!< Filter request packets by code.
+	fr_radius_packet_code_t			filter_response_code;	//!< Filter response packets by code.
 
 	rs_status_t		event_flags;		//!< Events we log and capture on.
 	rs_packet_logger_t	logger;			//!< Packet logger
@@ -350,7 +350,7 @@ struct rs_stats_tmpl
  *	collectd.c - Registration and processing functions
  */
 rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t **out, rs_t *conf,
-						char const *type, rs_latency_t *stats, FR_CODE code);
+						char const *type, rs_latency_t *stats, fr_radius_packet_code_t code);
 void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timeval *now);
 int rs_stats_collectd_open(rs_t *conf);
 int rs_stats_collectd_close(rs_t *conf);

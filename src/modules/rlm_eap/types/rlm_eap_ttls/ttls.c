@@ -497,7 +497,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 *	NOT 'eap start', so we should check for that....
 	 */
 	switch (reply->code) {
-	case FR_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	{
 		RDEBUG2("Got tunneled Access-Accept");
 
@@ -525,7 +525,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	}
 		break;
 
-	case FR_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
 		REDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
@@ -536,7 +536,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 *	an Access-Challenge means that we MUST tunnel
 	 *	a Reply-Message to the client.
 	 */
-	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		RDEBUG2("Got tunneled Access-Challenge");
 
 		/*
@@ -581,9 +581,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
-	FR_CODE			code = FR_CODE_ACCESS_REJECT;
+	fr_radius_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp = NULL;
 	fr_dcursor_t		cursor;
@@ -610,7 +610,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	if (data_len == 0) {
 		if (t->authenticated) {
 			RDEBUG2("Got ACK, and the user was already authenticated");
-			code = FR_CODE_ACCESS_ACCEPT;
+			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 			goto finish;
 		} /* else no session, no data, die. */
 
@@ -619,12 +619,12 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		 *	wrong.
 		 */
 		RDEBUG2("SSL_read Error");
-		code = FR_CODE_ACCESS_REJECT;
+		code = FR_RADIUS_CODE_ACCESS_REJECT;
 		goto finish;
 	}
 
 	if (!diameter_verify(request, data, data_len)) {
-		code = FR_CODE_ACCESS_REJECT;
+		code = FR_RADIUS_CODE_ACCESS_REJECT;
 		goto finish;
 	}
 
@@ -635,7 +635,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	if (eap_ttls_decode_pair(request->request_ctx, &cursor, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
-		code = FR_CODE_ACCESS_REJECT;
+		code = FR_RADIUS_CODE_ACCESS_REJECT;
 		goto finish;
 	}
 
@@ -690,7 +690,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	 */
 	chbind = eap_chbind_vp2packet(request, &request->request_pairs);
 	if (chbind) {
-		FR_CODE chbind_code;
+		fr_radius_packet_code_t chbind_code;
 		CHBIND_REQ *req = talloc_zero(request, CHBIND_REQ);
 
 		RDEBUG2("received chbind request");
@@ -714,7 +714,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		/* clean up chbind req */
 		talloc_free(req);
 
-		if (chbind_code != FR_CODE_ACCESS_ACCEPT) {
+		if (chbind_code != FR_RADIUS_CODE_ACCESS_ACCEPT) {
 			code = chbind_code;
 			goto finish;
 		}
@@ -732,7 +732,7 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 	if (!request->reply->code) {
 		RDEBUG2("No tunneled reply was found for request %" PRIu64 ", and the request was not "
 		       "proxied: rejecting the user", request->number);
-		code = FR_CODE_ACCESS_REJECT;
+		code = FR_RADIUS_CODE_ACCESS_REJECT;
 	} else {
 		/*
 		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
@@ -740,19 +740,19 @@ FR_CODE eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_
 		rcode = process_reply(eap_session, tls_session, request, request->reply, &request->reply_pairs);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
-			code = FR_CODE_ACCESS_REJECT;
+			code = FR_RADIUS_CODE_ACCESS_REJECT;
 			break;
 
 		case RLM_MODULE_HANDLED:
-			code = FR_CODE_ACCESS_CHALLENGE;
+			code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 			break;
 
 		case RLM_MODULE_OK:
-			code = FR_CODE_ACCESS_ACCEPT;
+			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 			break;
 
 		default:
-			code = FR_CODE_ACCESS_REJECT;
+			code = FR_RADIUS_CODE_ACCESS_REJECT;
 			break;
 		}
 	}

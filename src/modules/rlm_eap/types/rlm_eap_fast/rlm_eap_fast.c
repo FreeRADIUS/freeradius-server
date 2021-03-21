@@ -517,14 +517,14 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	 *	Process the FAST portion of the request.
 	 */
 	switch (eap_fast_process(request, eap_session, tls_session)) {
-	case FR_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
 		eap_tls_fail(request, eap_session);
 		RETURN_MODULE_FAIL;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
-	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		fr_tls_session_send(request, tls_session);
 		eap_tls_request(request, eap_session);
 		RETURN_MODULE_HANDLED;
@@ -532,7 +532,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-	case FR_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) RETURN_MODULE_FAIL;
 		RETURN_MODULE_OK;
 
@@ -542,7 +542,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		 *	that the request now has a "proxy" packet, and
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
-	case FR_CODE_STATUS_CLIENT:
+	case FR_RADIUS_CODE_STATUS_CLIENT:
 		RETURN_MODULE_OK;
 
 	default:

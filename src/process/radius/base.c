@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file src/process/radius/base.c
- * @brief RADIUS handler
+ * @brief RADIUS process module
  *
  * @copyright 2021 The FreeRADIUS server project.
  * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
@@ -43,19 +43,16 @@ fr_dict_autoload_t process_radius_dict[] = {
 	{ NULL }
 };
 
-
-static fr_dict_attr_t const *attr_packet_type;
-
-static fr_dict_attr_t const *attr_acct_status_type;
-
 static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_calling_station_id;
-static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_module_failure_message;
 static fr_dict_attr_t const *attr_module_success_message;
 static fr_dict_attr_t const *attr_stripped_user_name;
 
+static fr_dict_attr_t const *attr_acct_status_type;
+static fr_dict_attr_t const *attr_calling_station_id;
+static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_nas_port;
+static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_service_type;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
@@ -63,17 +60,17 @@ static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t process_radius_dict_attr[];
 fr_dict_attr_autoload_t process_radius_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_service_type, .name = "Service-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -85,73 +82,74 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 /*
  *	RADIUS state machine configuration
  */
-typedef struct radius_unlang_packets_s {
+typedef struct {
 	uint64_t	nothing;		// so that "access_request" isn't at offset 0
 
-	CONF_SECTION *access_request;
-	CONF_SECTION *access_accept;
-	CONF_SECTION *access_reject;
-	CONF_SECTION *access_challenge;
+	CONF_SECTION	*access_request;
+	CONF_SECTION	*access_accept;
+	CONF_SECTION	*access_reject;
+	CONF_SECTION	*access_challenge;
 
-	CONF_SECTION *accounting_request;
-	CONF_SECTION *accounting_response;
+	CONF_SECTION	*accounting_request;
+	CONF_SECTION	*accounting_response;
 
-	CONF_SECTION *status_server;
+	CONF_SECTION	*status_server;
 
-	CONF_SECTION *coa_request;
-	CONF_SECTION *coa_ack;
-	CONF_SECTION *coa_nak;
+	CONF_SECTION	*coa_request;
+	CONF_SECTION	*coa_ack;
+	CONF_SECTION	*coa_nak;
 
-	CONF_SECTION *disconnect_request;
-	CONF_SECTION *disconnect_ack;
-	CONF_SECTION *disconnect_nak;
+	CONF_SECTION	*disconnect_request;
+	CONF_SECTION	*disconnect_ack;
+	CONF_SECTION	*disconnect_nak;
 
-	CONF_SECTION *do_not_respond;
-	CONF_SECTION *protocol_error; /* @todo - allow protocol error as a reject reply? */
-} radius_unlang_packets_t;
+	CONF_SECTION	*do_not_respond;
+	CONF_SECTION	*protocol_error;	/* @todo - allow protocol error as a reject reply? */
+} process_radius_sections_t;
 
 typedef struct {
 	bool		log_stripped_names;
-	bool		log_auth;			//!< Log authentication attempts.
-	bool		log_auth_badpass;		//!< Log successful authentications.
-	bool		log_auth_goodpass;		//!< Log failed authentications.
-	char const	*auth_badpass_msg;		//!< Additional text to append to successful auth messages.
-	char const	*auth_goodpass_msg;		//!< Additional text to append to failed auth messages.
+	bool		log_auth;		//!< Log authentication attempts.
+	bool		log_auth_badpass;	//!< Log successful authentications.
+	bool		log_auth_goodpass;	//!< Log failed authentications.
+	char const	*auth_badpass_msg;	//!< Additional text to append to successful auth messages.
+	char const	*auth_goodpass_msg;	//!< Additional text to append to failed auth messages.
 
-	char const	*denied_msg;			//!< Additional text to append if the user is already logged
-							//!< in (simultaneous use check failed).
+	char const	*denied_msg;		//!< Additional text to append if the user is already logged
+						//!< in (simultaneous use check failed).
 
-	uint32_t	session_timeout;		//!< Maximum time between the last response and next request.
-	uint32_t	max_session;			//!< Maximum ongoing session allowed.
+	uint32_t	session_timeout;	//!< Maximum time between the last response and next request.
+	uint32_t	max_session;		//!< Maximum ongoing session allowed.
 
-	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
-							//!< authenticating server to be identified in packet
-							//!< captures.
+	uint8_t       	state_server_id;	//!< Sets a specific byte in the state to allow the
+						//!< authenticating server to be identified in packet
+						//!<captures.
 
-	fr_state_tree_t	*state_tree;			//!< State tree to link multiple requests/responses.
-} radius_auth_t;
+	fr_state_tree_t	*state_tree;		//!< State tree to link multiple requests/responses.
+} process_radius_auth_t;
 
-typedef struct process_radius_s {
-	radius_unlang_packets_t packets;
-	radius_auth_t		auth;
+typedef struct {
+	process_radius_sections_t	sections;	//!< Pointers to various config sections
+							///< we need to execute.
+	process_radius_auth_t		auth;		//!< Authentication configuration.
 } process_radius_t;
 
 static const CONF_PARSER session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, radius_auth_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, radius_auth_t, max_session), .dflt = "4096" },
-	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, radius_auth_t, state_server_id) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, process_radius_auth_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_radius_auth_t, max_session), .dflt = "4096" },
+	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_radius_auth_t, state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER log_config[] = {
-	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, radius_auth_t, log_stripped_names), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, radius_auth_t, log_auth), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, radius_auth_t, log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL,radius_auth_t,  log_auth_goodpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, radius_auth_t, auth_badpass_msg) },
-	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, radius_auth_t, auth_goodpass_msg) },
-	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, radius_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
+	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, process_radius_auth_t, log_stripped_names), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, process_radius_auth_t, log_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, process_radius_auth_t, log_auth_badpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL,process_radius_auth_t,  log_auth_goodpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, process_radius_auth_t, auth_badpass_msg) },
+	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, process_radius_auth_t, auth_goodpass_msg) },
+	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, process_radius_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -174,27 +172,20 @@ static const CONF_PARSER config[] = {
 /*
  *	RADIUS state machine tables for rcode to packet.
  */
-typedef unsigned int fr_packet_rcode_t[RLM_MODULE_NUMCODES];
+typedef struct {
+	fr_radius_packet_code_t	packet_type[RLM_MODULE_NUMCODES];	//!< rcode to packet type mapping.
+	size_t			section_offset;	//!< Where to look in process_radius_sections_t for
+						///< a pointer to the section we should execute.
+	rlm_rcode_t		rcode;		//!< Default rcode
+	fr_radius_packet_code_t	reject;		//!< Reject packet type.
+	module_method_t		recv;		//!< Method to call when receiving this type of packet.
+	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
+	unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
+} process_radius_state_t;
 
-typedef struct radius_state_s {
-	uint32_t		packet_type[RLM_MODULE_NUMCODES];
-	size_t			offset;
-	rlm_rcode_t		rcode;		// default rcode
-	unsigned int	       	reject;		// reject packet
-	module_method_t		recv;		// for incoming requests
-	unlang_module_resume_t	send;		// for sending replies
-	unlang_module_resume_t	resume;
-} radius_state_t;
-
-static const radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE];
+static process_radius_state_t const radius_state[FR_RADIUS_CODE_MAX];
 
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-
-#ifndef NDEBUG
-#  define TRACE	RDEBUG3("Entered state %s", __FUNCTION__)
-#else
-#  define TRACE
-#endif
 
 /*
  *	Return a short string showing the terminal server, port
@@ -226,7 +217,7 @@ static char *auth_name(char *buf, size_t buflen, request_t *request)
  *	Make sure user/pass are clean and then create an attribute
  *	which contains the log message.
  */
-static void CC_HINT(format (printf, 4, 5)) auth_message(radius_auth_t const *inst,
+static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t const *inst,
 							request_t *request, bool goodpass, char const *fmt, ...)
 {
 	va_list		 ap;
@@ -319,7 +310,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(radius_auth_t const *ins
  */
 #define UPDATE_STATE_CS(_x) do { \
 			state = &radius_state[request->_x->code]; \
-			cs = *(CONF_SECTION **) (((uint8_t *) &inst->packets) + state->offset); \
+			cs = *(CONF_SECTION **) (((uint8_t *) &inst->sections) + state->section_offset); \
 		} while (0)
 
 #define UPDATE_STATE(_x) state = &radius_state[request->_x->code]
@@ -329,7 +320,6 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(radius_auth_t const *ins
 #define SEND(_x) static unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 #define RESUME(_x) static unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
-#define RADIUS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_RADIUS_MAX_PACKET_CODE))
 #if 0
 RECV(access_request)
 {
@@ -341,14 +331,14 @@ RESUME(auth_type);
 
 RESUME(access_request)
 {
-	rlm_rcode_t		rcode = request->rcode;
-	fr_pair_t		*vp;
-	CONF_SECTION		*cs;
-	fr_dict_enum_t const	*dv;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t			rcode = request->rcode;
+	fr_pair_t			*vp;
+	CONF_SECTION			*cs;
+	fr_dict_enum_t const		*dv;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
@@ -358,7 +348,7 @@ RESUME(access_request)
 	request->reply->code = state->packet_type[rcode];
 	UPDATE_STATE_CS(reply);
 
-	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Access-Request' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
@@ -396,29 +386,29 @@ RESUME(access_request)
 
 RESUME(auth_type)
 {
-	static const uint32_t auth_type_rcode[RLM_MODULE_NUMCODES] = {
-		[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
-		[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-		[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-		[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_REJECT,
-		[RLM_MODULE_NOTFOUND] =	FR_CODE_ACCESS_REJECT,
-		[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-		[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_REJECT,
-		[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT,
+	static const fr_radius_packet_code_t auth_type_rcode[RLM_MODULE_NUMCODES] = {
+		[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
-	rlm_rcode_t		rcode = request->rcode;
-	fr_pair_t		*vp;
-	CONF_SECTION		*cs;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t			rcode = request->rcode;
+	fr_pair_t			*vp;
+	CONF_SECTION			*cs;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
 
-	if (auth_type_rcode[rcode] == FR_CODE_DO_NOT_RESPOND) {
+	if (auth_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		request->reply->code = auth_type_rcode[rcode];
 		UPDATE_STATE_CS(reply);
 
@@ -437,13 +427,13 @@ RESUME(auth_type)
 	request->reply->code = auth_type_rcode[rcode];
 	if (!request->reply->code) {
 		RDEBUG("No reply code was set.  Forcing to Access-Reject");
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
 
 	} else switch (request->reply->code) {
 	/*
 	 *	Print complaints before running "send Access-Reject"
 	 */
-	case FR_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
 		RDEBUG2("Failed to authenticate the user");
 
 		/*
@@ -472,12 +462,12 @@ RESUME(auth_type)
 		break;
 
 	/*
-	 *	Access-Challenge packets require a State.  If there is
+	 *	Access-Challenge sections require a State.  If there is
 	 *	none, create one here.  This is so that the State
 	 *	attribute is accessible in the "send Access-Challenge"
 	 *	section.
 	 */
-	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		if ((vp = fr_pair_find_by_da(&request->reply_pairs, attr_state)) != NULL) {
 			uint8_t buffer[16];
 
@@ -502,10 +492,10 @@ RESUME(auth_type)
 
 RESUME(access_accept)
 {
-	fr_pair_t *vp;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	fr_pair_t			*vp;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_success_message);
 	if (vp){
@@ -520,10 +510,10 @@ RESUME(access_accept)
 
 RESUME(access_reject)
 {
-	fr_pair_t *vp;
-	process_radius_t *inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	fr_pair_t			*vp;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_failure_message);
 	if (vp) {
@@ -538,11 +528,11 @@ RESUME(access_reject)
 
 RESUME(access_challenge)
 {
-	CONF_SECTION		*cs;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	CONF_SECTION			*cs;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	/*
 	 *	Cache the state context.
@@ -550,39 +540,39 @@ RESUME(access_challenge)
 	 *	If this fails, don't respond to the request.
 	 */
 	if (fr_request_to_state(inst->auth.state_tree, request) < 0) {
-		request->reply->code = FR_CODE_DO_NOT_RESPOND;
+		request->reply->code = FR_RADIUS_CODE_DO_NOT_RESPOND;
 		UPDATE_STATE_CS(reply);
 		return unlang_module_yield_to_section(p_result, request,
 						      cs, state->rcode, state->send,
 						      NULL, NULL);
 	}
 
-	fr_assert(request->reply->code == FR_CODE_ACCESS_CHALLENGE);
+	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
 	RETURN_MODULE_OK;
 }
 
 RESUME(acct_type)
 {
-	static const uint32_t acct_type_rcode[RLM_MODULE_NUMCODES] = {
-		[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
-		[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
-		[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
-		[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
-		[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND,
+	static const fr_radius_packet_code_t acct_type_rcode[RLM_MODULE_NUMCODES] = {
+		[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
 	};
 
-	rlm_rcode_t		rcode = request->rcode;
-	CONF_SECTION		*cs;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t			rcode = request->rcode;
+	CONF_SECTION			*cs;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	if (acct_type_rcode[rcode]) {
-		fr_assert(acct_type_rcode[rcode] == FR_CODE_DO_NOT_RESPOND);
+		fr_assert(acct_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND);
 
 		request->reply->code = acct_type_rcode[rcode];
 		UPDATE_STATE_CS(reply);
@@ -596,7 +586,7 @@ RESUME(acct_type)
 						      NULL, NULL);
 	}
 
-	request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
+	request->reply->code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
 	UPDATE_STATE_CS(reply);
 
 	fr_assert(state->send != NULL);
@@ -607,14 +597,14 @@ RESUME(acct_type)
 
 RESUME(accounting_request)
 {
-	rlm_rcode_t		rcode = request->rcode;
-	fr_pair_t		*vp;
-	CONF_SECTION		*cs;
-	fr_dict_enum_t const	*dv;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t			rcode = request->rcode;
+	fr_pair_t			*vp;
+	CONF_SECTION			*cs;
+	fr_dict_enum_t const		*dv;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
@@ -624,7 +614,7 @@ RESUME(accounting_request)
 	request->reply->code = state->packet_type[rcode];
 	UPDATE_STATE_CS(reply);
 
-	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("The 'recv Accounting-Request' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
@@ -675,11 +665,11 @@ RESUME(status_server)
 
 RECV(generic)
 {
-	CONF_SECTION		*cs;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	CONF_SECTION			*cs;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	if (request->parent && RDEBUG_ENABLED) {
 		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
@@ -704,12 +694,12 @@ RECV(generic)
 
 RESUME(recv_generic)
 {
-	rlm_rcode_t		rcode = request->rcode;
-	CONF_SECTION		*cs;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t			rcode = request->rcode;
+	CONF_SECTION			*cs;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
@@ -727,14 +717,14 @@ RESUME(recv_generic)
 
 SEND(generic)
 {
-	fr_pair_t 		*vp;
-	CONF_SECTION		*cs;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	fr_pair_t 			*vp;
+	CONF_SECTION			*cs;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
-	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	UPDATE_STATE_CS(reply);
 
@@ -755,7 +745,7 @@ SEND(generic)
 					 &request->reply_pairs, attr_packet_type) >= 0);
 		vp->vp_uint32 = request->reply->code;
 
-	} else if (RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
+	} else if ((vp->vp_uint32 != FR_RADIUS_CODE_MAX) && FR_RADIUS_PACKET_CODE_VALID(vp->vp_uint32)) {
 		request->reply->code = vp->vp_uint32;
 		UPDATE_STATE_CS(reply);
 
@@ -771,14 +761,14 @@ SEND(generic)
 
 RESUME(send_generic)
 {
-	rlm_rcode_t		rcode = request->rcode;
-	CONF_SECTION		*cs;
-	radius_state_t const	*state;
-	process_radius_t	*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	rlm_rcode_t			rcode = request->rcode;
+	CONF_SECTION			*cs;
+	process_radius_state_t const	*state;
+	process_radius_t		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
-	TRACE;
+	PROCESS_TRACE;
 
-	fr_assert(RADIUS_PACKET_CODE_VALID(request->reply->code));
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	/*
 	 *	If they delete &reply.Packet-Type, tough for them.
@@ -797,7 +787,7 @@ RESUME(send_generic)
 		 *	And anything can say "don't respond".
 		 */
 		if ((state->packet_type[rcode] != request->reply->code) &&
-		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == FR_CODE_DO_NOT_RESPOND))) {
+		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND))) {
 			char const *old = cf_section_name2(cs);
 
 			request->reply->code = state->packet_type[rcode];
@@ -813,11 +803,11 @@ RESUME(send_generic)
 		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
 		break;
 
-	case FR_CODE_DO_NOT_RESPOND:
+	case FR_RADIUS_CODE_DO_NOT_RESPOND:
 		RDEBUG("The 'send %s' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"),
 		       cf_section_name2(cs));
-		request->reply->code = FR_CODE_DO_NOT_RESPOND;
+		request->reply->code = FR_RADIUS_CODE_DO_NOT_RESPOND;
 		break;
 	}
 
@@ -826,7 +816,7 @@ RESUME(send_generic)
 	/*
 	 *	Check for "do not respond".
 	 */
-	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("Not sending reply to client.");
 		RETURN_MODULE_OK;
 	}
@@ -841,11 +831,11 @@ RESUME(send_generic)
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	radius_state_t 	const	*state;
+	process_radius_state_t const *state;
 
-	TRACE;
+	PROCESS_TRACE;
 
-	fr_assert(RADIUS_PACKET_CODE_VALID(request->packet->code));
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->packet->code));
 
 	UPDATE_STATE(packet);
 
@@ -879,201 +869,201 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static const radius_state_t radius_state[FR_RADIUS_MAX_PACKET_CODE] = {
-	[ FR_CODE_ACCESS_REQUEST ] = {
+static process_radius_state_t const radius_state[FR_RADIUS_CODE_MAX] = {
+	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_ACCEPT,
-			[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
-			[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_ACCEPT,
-			[RLM_MODULE_HANDLED] =	FR_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_HANDLED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
 
-			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_REJECT,
 		.recv = recv_generic,
 		.resume = resume_access_request,
-		.offset = offsetof(radius_unlang_packets_t, access_request),
+		.section_offset = offsetof(process_radius_sections_t, access_request),
 	},
-	[ FR_CODE_ACCESS_ACCEPT ] = {
+	[ FR_RADIUS_CODE_ACCESS_ACCEPT ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_CODE_ACCESS_REJECT,
+		.reject = FR_RADIUS_CODE_ACCESS_REJECT,
 		.send = send_generic,
 		.resume = resume_access_accept,
-		.offset = offsetof(radius_unlang_packets_t, access_accept),
+		.section_offset = offsetof(process_radius_sections_t, access_accept),
 	},
-	[ FR_CODE_ACCESS_REJECT ] = {
+	[ FR_RADIUS_CODE_ACCESS_REJECT ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_access_reject,
-		.offset = offsetof(radius_unlang_packets_t, access_reject),
+		.section_offset = offsetof(process_radius_sections_t, access_reject),
 	},
-	[ FR_CODE_ACCESS_CHALLENGE ] = {
+	[ FR_RADIUS_CODE_ACCESS_CHALLENGE ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_CODE_ACCESS_REJECT,
+		.reject = FR_RADIUS_CODE_ACCESS_REJECT,
 		.send = send_generic,
 		.resume = resume_access_challenge,
-		.offset = offsetof(radius_unlang_packets_t, access_challenge),
+		.section_offset = offsetof(process_radius_sections_t, access_challenge),
 	},
 
-	[ FR_CODE_ACCOUNTING_REQUEST ] = {
+	[ FR_RADIUS_CODE_ACCOUNTING_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] =	FR_CODE_ACCOUNTING_RESPONSE,
-			[RLM_MODULE_OK] =	FR_CODE_ACCOUNTING_RESPONSE,
-			[RLM_MODULE_UPDATED] =	FR_CODE_ACCOUNTING_RESPONSE,
-			[RLM_MODULE_HANDLED] =	FR_CODE_ACCOUNTING_RESPONSE,
+			[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCOUNTING_RESPONSE,
+			[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCOUNTING_RESPONSE,
+			[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCOUNTING_RESPONSE,
+			[RLM_MODULE_HANDLED] =	FR_RADIUS_CODE_ACCOUNTING_RESPONSE,
 
-			[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_accounting_request,
-		.offset = offsetof(radius_unlang_packets_t, accounting_request),
+		.section_offset = offsetof(process_radius_sections_t, accounting_request),
 	},
-	[ FR_CODE_ACCOUNTING_RESPONSE ] = {
+	[ FR_RADIUS_CODE_ACCOUNTING_RESPONSE ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_INVALID] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_REJECT] =	FR_CODE_DO_NOT_RESPOND,
-			[RLM_MODULE_DISALLOW] = FR_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.offset = offsetof(radius_unlang_packets_t, accounting_response),
+		.section_offset = offsetof(process_radius_sections_t, accounting_response),
 	},
-	[ FR_CODE_STATUS_SERVER ] = {
+	[ FR_RADIUS_CODE_STATUS_SERVER ] = {
 		.packet_type = {
-			[RLM_MODULE_OK] =	FR_CODE_ACCESS_ACCEPT,
-			[RLM_MODULE_UPDATED] =	FR_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_OK] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
 
-			[RLM_MODULE_FAIL] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_INVALID] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_NOTFOUND] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_REJECT] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_NOOP] =	FR_CODE_ACCESS_REJECT,
-			[RLM_MODULE_DISALLOW] = FR_CODE_ACCESS_REJECT
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
-		.offset = offsetof(radius_unlang_packets_t, status_server),
+		.section_offset = offsetof(process_radius_sections_t, status_server),
 	},
-	[ FR_CODE_COA_REQUEST ] = {
+	[ FR_RADIUS_CODE_COA_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] =	FR_CODE_COA_ACK,
-			[RLM_MODULE_OK] =	FR_CODE_COA_ACK,
-			[RLM_MODULE_UPDATED] =	FR_CODE_COA_ACK,
-			[RLM_MODULE_NOTFOUND] =	FR_CODE_COA_ACK,
+			[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_COA_ACK,
+			[RLM_MODULE_OK] =	FR_RADIUS_CODE_COA_ACK,
+			[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_COA_ACK,
+			[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_COA_ACK,
 
-			[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_COA_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
-		.offset = offsetof(radius_unlang_packets_t, coa_request),
+		.section_offset = offsetof(process_radius_sections_t, coa_request),
 	},
-	[ FR_CODE_COA_ACK ] = {
+	[ FR_RADIUS_CODE_COA_ACK ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_COA_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_CODE_COA_NAK,
+		.reject = FR_RADIUS_CODE_COA_NAK,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.offset = offsetof(radius_unlang_packets_t, coa_ack),
+		.section_offset = offsetof(process_radius_sections_t, coa_ack),
 	},
-	[ FR_CODE_COA_NAK ] = {
+	[ FR_RADIUS_CODE_COA_NAK ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_INVALID] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_REJECT] =	FR_CODE_COA_NAK,
-			[RLM_MODULE_DISALLOW] = FR_CODE_COA_NAK
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_COA_NAK,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_COA_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.offset = offsetof(radius_unlang_packets_t, coa_nak),
+		.section_offset = offsetof(process_radius_sections_t, coa_nak),
 	},
-	[ FR_CODE_DISCONNECT_REQUEST ] = {
+	[ FR_RADIUS_CODE_DISCONNECT_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] =	FR_CODE_DISCONNECT_ACK,
-			[RLM_MODULE_OK] =	FR_CODE_DISCONNECT_ACK,
-			[RLM_MODULE_UPDATED] =	FR_CODE_DISCONNECT_ACK,
-			[RLM_MODULE_NOTFOUND] =	FR_CODE_DISCONNECT_ACK,
+			[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_DISCONNECT_ACK,
+			[RLM_MODULE_OK] =	FR_RADIUS_CODE_DISCONNECT_ACK,
+			[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_DISCONNECT_ACK,
+			[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_DISCONNECT_ACK,
 
-			[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
-		.offset = offsetof(radius_unlang_packets_t, disconnect_request),
+		.section_offset = offsetof(process_radius_sections_t, disconnect_request),
 	},
-	[ FR_CODE_DISCONNECT_ACK ] = {
+	[ FR_RADIUS_CODE_DISCONNECT_ACK ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_CODE_DISCONNECT_NAK,
+		.reject = FR_RADIUS_CODE_DISCONNECT_NAK,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.offset = offsetof(radius_unlang_packets_t, disconnect_ack),
+		.section_offset = offsetof(process_radius_sections_t, disconnect_ack),
 	},
-	[ FR_CODE_DISCONNECT_NAK ] = {
+	[ FR_RADIUS_CODE_DISCONNECT_NAK ] = {
 		.packet_type = {
-			[RLM_MODULE_FAIL] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_INVALID] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_REJECT] =	FR_CODE_DISCONNECT_NAK,
-			[RLM_MODULE_DISALLOW] = FR_CODE_DISCONNECT_NAK
+			[RLM_MODULE_FAIL] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_INVALID] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_DISCONNECT_NAK,
+			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.offset = offsetof(radius_unlang_packets_t, disconnect_nak),
+		.section_offset = offsetof(process_radius_sections_t, disconnect_nak),
 	},
 };
 
 #undef CONF
-#define CONF(_x) .offset = offsetof(process_radius_t, packets._x)
+#define CONF(_x) .offset = offsetof(process_radius_t, sections._x)
 
-static const virtual_server_compile_t compile_list[] = {
+static virtual_server_compile_t const compile_list[] = {
 	{
 		.name = "recv",
 		.name2 = "Access-Request",

@@ -168,9 +168,9 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 }
 
 
-FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
+fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 {
-	FR_CODE		code;
+	fr_radius_packet_code_t		code;
 	rlm_rcode_t	rcode;
 	request_t	*fake = NULL;
 	uint8_t const	*attr_data;
@@ -223,7 +223,7 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 				talloc_free(packet_ctx.tmp_ctx);
 				talloc_free(packet_ctx.tags);
 
-				return FR_CODE_ACCESS_ACCEPT;
+				return FR_RADIUS_CODE_ACCESS_ACCEPT;
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;
@@ -239,7 +239,7 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 	 *	bindings, this is hard-coded for now.
 	 */
 	fake->server_cs = virtual_server_find("channel_bindings");
-	fake->packet->code = FR_CODE_ACCESS_REQUEST;
+	fake->packet->code = FR_RADIUS_CODE_ACCESS_REQUEST;
 
 	rad_virtual_server(&rcode, fake);
 	switch (rcode) {
@@ -247,14 +247,14 @@ FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:
 		if (chbind_build_response(fake, chbind)) {
-			code = FR_CODE_ACCESS_ACCEPT;
+			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 			break;
 		}
 		FALL_THROUGH;
 
 		/* If we got any other response from the virtual server, it maps to a reject */
 	default:
-		code = FR_CODE_ACCESS_REJECT;
+		code = FR_RADIUS_CODE_ACCESS_REJECT;
 		break;
 	}
 

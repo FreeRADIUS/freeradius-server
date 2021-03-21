@@ -85,7 +85,7 @@ struct rc_request {
 	fr_pair_list_t		reply_list;
 
 	fr_pair_list_t		filter;		//!< If the reply passes the filter, then the request passes.
-	FR_CODE			filter_code;	//!< Expected code of the response packet.
+	fr_radius_packet_code_t	filter_code;	//!< Expected code of the response packet.
 
 	int			resend;
 	int			tries;

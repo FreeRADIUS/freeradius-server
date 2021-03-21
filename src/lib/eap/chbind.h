@@ -57,7 +57,7 @@ typedef struct {
 #define CHBIND_CODE_FAILURE             3
 
 /* Channel binding function prototypes */
-FR_CODE chbind_process(request_t *request, CHBIND_REQ *chbind_req);
+fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind_req);
 
 fr_pair_t *eap_chbind_packet2vp(TALLOC_CTX *ctx, chbind_packet_t *chbind);
 chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps);

@@ -247,7 +247,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 *	Process layer NAK, never respond, or "Do not respond".
 	 */
 	if ((buffer_len == 1) ||
-	    (request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	    (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) ||
 	    (request->reply->code >= FR_VQP_MAX_CODE)) {
 		track->do_not_respond = true;
 		return 1;

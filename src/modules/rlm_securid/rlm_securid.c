@@ -520,7 +520,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		vp->vp_uint32 = 0; /* no echo */
 
 		/* Mark the packet as a Acceess-Challenge Packet */
-		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 		RDEBUG2("Sending Access-Challenge");
 		rcode = RLM_MODULE_HANDLED;
 		break;

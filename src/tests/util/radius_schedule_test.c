@@ -87,7 +87,7 @@ static ssize_t test_encode(void const *instance, request_t *request, uint8_t *bu
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64"- data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
 
-	buffer[0] = FR_CODE_ACCESS_ACCEPT;
+	buffer[0] = FR_RADIUS_CODE_ACCESS_ACCEPT;
 	buffer[1] = tpc.id;
 	buffer[2] = 0;
 	buffer[3] = 20;
