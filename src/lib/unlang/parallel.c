@@ -153,10 +153,6 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
 	 *	Otherwise we're a detached child, and we don't tell
 	 *	the parent anything.  Because we have that kind of
 	 *	relationship.
-	 *
-	 *	Note that we call unlang_interpret_mark_runnable() here
-	 *	because unlang_parallel_process() calls
-	 *	unlang_interpret(), and NOT child->async->process.
 	 */
 	if (child->state == CHILD_RUNNABLE) {
 		/*

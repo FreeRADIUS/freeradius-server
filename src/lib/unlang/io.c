@@ -27,35 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 #include "unlang_priv.h"
 
-/** Run the interpreter after creating a subrequest.
- *
- * Just run some "unlang", but don't do anything else.
- *
- * This is a shim function added to 'fake' requests by the subrequest and parallel keywords.
- */
-unlang_action_t unlang_io_process_interpret(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
-{
-	rlm_rcode_t rcode;
-
-	REQUEST_VERIFY(request);
-
-	rcode = unlang_interpret(request);
-
-	/*
-	 *	We've yielded, and can keep running.  Do so.
-	 */
-	if ((rcode == RLM_MODULE_YIELD) &&
-	    (request->master_state != REQUEST_STOP_PROCESSING)) {
-		*p_result = RLM_MODULE_YIELD;
-		return UNLANG_ACTION_YIELD;
-	}
-
-	/*
-	 *	Don't bother setting request->reply->code.
-	 */
-	RETURN_MODULE_HANDLED;
-}
-
 /** Allocate a child request based on the parent.
  *
  * @param[in] parent		spawning the child request.
@@ -106,13 +77,6 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 #define COPY_FIELD(_x) child->async->_x = parent->async->_x
 	COPY_FIELD(recv_time);
 	fr_assert(request_is_internal(child));
-
-	/*
-	 *	Always set the "process" function to the local
-	 *	bare-bones function which just runs on section of
-	 *	"unlang", and doesn't send replies or anything else.
-	 */
-	child->async->process = unlang_io_process_interpret;
 
 	REQUEST_VERIFY(child);
 
