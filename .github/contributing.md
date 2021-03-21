@@ -1,5 +1,6 @@
-Introduction
-============
+# Contributing
+
+## Introduction
 
 The FreeRADIUS project wouldn't exist without contributions from a significant number of developers.
 
@@ -13,8 +14,7 @@ be acted on and in a timely manner.
 If you choose to ignore these guidelines our response will be a link to this document.
 
 
-GitHub Issue Tracker
-====================
+## GitHub Issue Tracker
 
 The GitHub issue tracker is for non-security related defect reports, feature requests, and
 pull-requests ONLY.
@@ -29,11 +29,10 @@ repositories.
 Security issues should be reported to security@freeradius.org especially if they can be remotely
 exploited.  This ensures that patches can be developed before the exploit is made public.
 
-Defect reporting
-================
 
-Before reporting a defect
--------------------------
+## Defect reporting
+
+### Before reporting a defect
 
 Verify it's still present in the Git HEAD.  Checkout the appropriate branch for the version of the
 server you're working with, as listed [here](http://doc.freeradius.org), build the server and attempt
@@ -47,9 +46,7 @@ Git HEAD.
 Do not report non-security defects for EOL branches (as listed on doc.freeradius.org), or old releases.
 Issues reported for these branches will be closed and locked.
 
-
-Contents of a defect report
----------------------------
+### Contents of a defect report
 
 See [doc/bugs](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/source/bugs.md) for information
 on what to include, and how to obtain it.
@@ -60,8 +57,7 @@ GitHub will automatically link your issue to other pre-existing issues when it e
 string.
 
 
-Pull requests and coding standards
-==================================
+## Pull requests and coding standards
 
 If you're developing a new feature, module, or writing large amounts of code to fix a defect, contact
 a member of the FreeRADIUS development team first.  For simpler one or two line fixes go ahead and
@@ -83,15 +79,15 @@ If you're creating a new module you may wish to read the
 You may also wish to utilise the [doxygen site](http://doc.freeradius.org) to review code documentation.
 
 The doxygen site contains the complete reference of all API functions with doxygen headers as well
-as structs and callback declarations.  http://doc.freeradius.org is updated within one minute of each
+as structs and callback declarations.  <https://doc.freeradius.org> is updated within one minute of each
 commit to the master branch of the freeradius-server repository.
 
 Finally, this file was written to be displayed automatically on the GitHub issue tracker, so
 Git/GitHub knowledge is assumed.  If you're wondering what a pull-request is, this document may be of
-some use http://wiki.freeradius.org/contributing/GitHub.
+some use <http://wiki.freeradius.org/contributing/GitHub>.
 
-Continuous Integration Tests (CIT)
-==================================
+
+## Continuous Integration Tests (CIT)
 
 If possible include test cases in your pull-requests.
 
@@ -108,4 +104,3 @@ way to write new tests is to use the existing tests as examples.
 
 Tests are run via Travis for each pull-request, and on every commit by a developer with repository
 access.
-

@@ -23,7 +23,7 @@ of people, in sites ranging from 10 to 10 million+ users.
 Please see the [documentation](doc/) directory, which has full
 documentation for version 4.
 
-Please also see https://freeradius.org and https://wiki.freeradius.org
+Please also see <https://freeradius.org> and <https://wiki.freeradius.org>
 for additional documentation.
 
 ## Installation
@@ -75,7 +75,7 @@ The debug output is explained in detail in the
 
 Many questions are answered on the Wiki:
 
-https://wiki.freeradius.org
+<https://wiki.freeradius.org>
 
 Read the configuration files.  Many parts of the server are
 documented only with extensive comments in the configuration files.
@@ -84,7 +84,7 @@ Search the mailing lists. For example, using Google, searching
 "site:lists.freeradius.org <search term>" will return results from
 the FreeRADIUS mailing lists.
 
-https://freeradius.org/support/
+<https://freeradius.org/support/>
 
 Instructions for what to post on the mailing list are [on the
 wiki](http://wiki.freeradius.org/list-help).  Please note that we DO
@@ -109,7 +109,7 @@ mailing lists first to determine whether it really is a defect or
 missing feature.
 
 Instructions for gathering data for defect reports can be found in
-[here](doc/antora/modules/developers/pages/bugs.adoc) or on the 
+[here](doc/antora/modules/developers/pages/bugs.adoc) or on the
 [wiki](https://wiki.freeradius.org/project/bug-reports).
 
 Under no circumstances should the issue tracker be used for support

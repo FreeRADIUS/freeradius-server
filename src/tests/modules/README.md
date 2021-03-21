@@ -2,9 +2,7 @@
 
 To test module `foo`, create a directory `foo`, and put a file `all.mk` into it, e.g.
 
-```
-foo/all.mk
-```
+    foo/all.mk
 
 All of the tests for the module should go here.  The tests will be run
 *only* if the module is available, and has been built correctly on the system.
