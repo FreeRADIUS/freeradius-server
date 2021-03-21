@@ -810,6 +810,11 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	}
 
 	/*
+	 *	Don't allow returning _through_ modules
+	 */
+	return_point_set(unlang_current_frame(request));
+
+	/*
 	 *	For logging unresponsive children.
 	 */
 	state->thread->total_calls++;
