@@ -67,7 +67,6 @@ typedef struct {
 	size_t			section_offset;	//!< Where to look in the process instance for
 						///< a pointer to the section we should execute.
 	rlm_rcode_t		rcode;		//!< Default rcode
-	PROCESS_PACKET_TYPE	reject;		//!< Reject packet type.
 	module_method_t		recv;		//!< Method to call when receiving this type of packet.
 	unlang_module_resume_t	resume;		//!< Function to call after running a recv section.
 	unlang_module_resume_t	send;		//!< Method to call when sending this type of packet.
@@ -208,11 +207,17 @@ RESUME(send_generic)
 
 	default:
 		/*
-		 *	ACK can turn into NAK, but not vice versa.
-		 *	And anything can say "don't respond".
+		 *	If we're in the "do not respond" situation,
+		 *	then don't change the packet code to something
+		 *	else.  However, if we're in (say) Accept, and
+		 *	the code says Reject, then go do reject.
+		 *
+		 *	The author of the state machine MUST ensure
+		 *	that there isn't a loop in the state machine
+		 *	definitions.
 		 */
-		if ((state->packet_type[rcode] != request->reply->code) &&
-		    ((state->packet_type[rcode] == state->reject) || (state->packet_type[rcode] == PROCESS_CODE_DO_NOT_RESPOND))) {
+		if ((request->reply->code != PROCESS_CODE_DO_NOT_RESPOND) &&
+		    (state->packet_type[rcode] != request->reply->code)) {
 			char const *old = cf_section_name2(cs);
 
 			request->reply->code = state->packet_type[rcode];

@@ -744,7 +744,6 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_RADIUS_CODE_ACCESS_REJECT,
 		.send = send_generic,
 		.resume = resume_access_accept,
 		.section_offset = offsetof(process_radius_sections_t, access_accept),
@@ -769,7 +768,6 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_RADIUS_CODE_ACCESS_REJECT,
 		.send = send_generic,
 		.resume = resume_access_challenge,
 		.section_offset = offsetof(process_radius_sections_t, access_challenge),
@@ -848,7 +846,6 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_COA_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_RADIUS_CODE_COA_NAK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_radius_sections_t, coa_ack),
@@ -890,7 +887,6 @@ static fr_process_state_t const process_state[PROCESS_CODE_MAX] = {
 			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.reject = FR_RADIUS_CODE_DISCONNECT_NAK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_ack),
