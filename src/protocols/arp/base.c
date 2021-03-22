@@ -60,11 +60,12 @@ fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[] = {
 /*
  *	grep VALUE share/dictionary/arp/dictionary.rfc826  | grep Op | awk '{print "[" $4 "] = \"" $3 "\","}'
  */
-char const *fr_arp_packet_codes[FR_ARP_MAX_PACKET_CODE] = {
+char const *fr_arp_packet_codes[FR_ARP_CODE_MAX] = {
 	[1] = "Request",
 	[2] = "Reply",
 	[3] = "Reverse-Request",
 	[4] = "Reverse-Reply",
+#if 0
 	[5] = "DRARP-Request",
 	[6] = "DRARP-Reply",
 	[7] = "DRARP-Error",
@@ -86,6 +87,7 @@ char const *fr_arp_packet_codes[FR_ARP_MAX_PACKET_CODE] = {
 	[23] = "MAPOS-UNARP",
 	[24] = "OP_EXP1",
 	[25] = "OP_EXP2",
+#endif
 };
 
 static uint8_t const zeros[6] = { 0 };

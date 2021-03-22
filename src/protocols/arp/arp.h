@@ -59,7 +59,16 @@ typedef struct {
 	uint8_t		tpa[4];			//!< Target protocol address.
 } fr_arp_packet_t;
 
-#define FR_ARP_MAX_PACKET_CODE (26)
-#define FR_ARP_CODE_DO_NOT_RESPOND (26)
+typedef enum {
+	FR_ARP_INVALID = 0,
+	FR_ARP_REQUEST = 1,
+	FR_ARP_REPLY = 2,
+	FR_ARP_REVERSE_REQUEST = 3,
+	FR_ARP_REVERSE_REPLY = 4,
+	FR_ARP_CODE_MAX = 5,
+	FR_ARP_DO_NOT_RESPOND = 256,
+} fr_arp_packet_code_t;
 
-extern char const *fr_arp_packet_codes[FR_ARP_MAX_PACKET_CODE];
+#define FR_ARP_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_ARP_CODE_MAX))
+
+extern char const *fr_arp_packet_codes[FR_ARP_CODE_MAX];

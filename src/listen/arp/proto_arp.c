@@ -82,7 +82,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 	arp = (fr_arp_packet_t const *) data;
 	request->packet->code = (arp->op[0] << 8) | arp->op[1];
-	fr_assert(request->packet->code < FR_ARP_MAX_PACKET_CODE);
+	fr_assert(request->packet->code < FR_ARP_CODE_MAX);
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
@@ -112,8 +112,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 *	Process layer NAK, never respond, or "Do not respond".
 	 */
 	if ((buffer_len == 1) || !inst->active ||
-	    (request->reply->code == FR_ARP_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_ARP_MAX_PACKET_CODE)) {
+	    (request->reply->code == FR_ARP_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_ARP_CODE_MAX)) {
 		*buffer = false;
 		return 1;
 	}

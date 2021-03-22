@@ -22,7 +22,6 @@
  * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
  */
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/arp/arp.h>
@@ -44,192 +43,163 @@ fr_dict_attr_autoload_t process_arp_dict_attr[] = {
 	{ NULL }
 };
 
-typedef struct arp_base_s {
-	bool		test;
-} arp_base_t;
+typedef struct {
+	uint64_t	nothing;		// so that the next field isn't at offset 0
 
-static const CONF_PARSER config[] = {
-	{ FR_CONF_OFFSET("test", FR_TYPE_BOOL, arp_base_t, test), .dflt = "yes" },
-	CONF_PARSER_TERMINATOR
+	CONF_SECTION	*request;
+	CONF_SECTION	*reply;
+	CONF_SECTION	*recv_reply;
+	CONF_SECTION	*reverse_request;
+	CONF_SECTION	*reverse_reply;
+	CONF_SECTION	*do_not_respond;
+} process_arp_sections_t;
+
+typedef struct {
+	bool		test;
+
+	process_arp_sections_t	sections;
+} process_arp_t;
+
+#define PROCESS_PACKET_TYPE		fr_arp_packet_code_t
+#define PROCESS_CODE_MAX		FR_ARP_CODE_MAX
+#define PROCESS_CODE_DO_NOT_RESPOND	FR_ARP_DO_NOT_RESPOND
+#define PROCESS_PACKET_CODE_VALID	FR_ARP_PACKET_CODE_VALID
+#define PROCESS_INST			process_arp_t
+#include <freeradius-devel/server/process.h>
+
+static fr_process_state_t const process_state[] = {
+	[ FR_ARP_REQUEST ] = {
+		.packet_type = {
+			[RLM_MODULE_NOOP] = 	FR_ARP_REPLY,
+			[RLM_MODULE_OK] = 	FR_ARP_REPLY,
+			[RLM_MODULE_UPDATED] =	FR_ARP_REPLY,
+
+			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.recv = recv_generic,
+		.resume = resume_recv_generic,
+		.section_offset = PROCESS_CONF_OFFSET(request),
+	},
+	[ FR_ARP_REPLY ] = {
+		.packet_type = {
+			[RLM_MODULE_NOOP] = 	FR_ARP_REPLY,
+			[RLM_MODULE_OK] = 	FR_ARP_REPLY,
+			[RLM_MODULE_UPDATED] =	FR_ARP_REPLY,
+
+			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(reply),
+	},
+
+	[ FR_ARP_REVERSE_REQUEST ] = {
+		.packet_type = {
+			[RLM_MODULE_NOOP] = 	FR_ARP_REVERSE_REPLY,
+			[RLM_MODULE_OK] = 	FR_ARP_REVERSE_REPLY,
+			[RLM_MODULE_UPDATED] =	FR_ARP_REVERSE_REPLY,
+
+			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.recv = recv_generic,
+		.resume = resume_recv_generic,
+		.section_offset = PROCESS_CONF_OFFSET(reverse_request),
+	},
+	[ FR_ARP_REVERSE_REPLY ] = {
+		.packet_type = {
+			[RLM_MODULE_NOOP] = 	FR_ARP_REVERSE_REPLY,
+			[RLM_MODULE_OK] = 	FR_ARP_REVERSE_REPLY,
+			[RLM_MODULE_UPDATED] =	FR_ARP_REVERSE_REPLY,
+
+			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(reverse_reply),
+	},
+
+	// @todo - recv reply, to look at other replies.
+
+	[ FR_ARP_DO_NOT_RESPOND ] = {
+		.packet_type = {
+			[RLM_MODULE_NOOP] = 	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_OK] = 	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED] =	FR_ARP_DO_NOT_RESPOND,
+
+			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(do_not_respond),
+	},
 };
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+/*
+ *	Debug the packet if requested.
+ */
+static void arp_packet_debug(request_t *request, fr_radius_packet_t const *packet, fr_pair_list_t const *list, bool received)
 {
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
-	fr_pair_t *vp;
+	if (!packet) return;
+	if (!RDEBUG_ENABLED) return;
 
-	static int reply_ok[FR_ARP_MAX_PACKET_CODE] = {
-		[FR_PACKET_TYPE_VALUE_REQUEST]	= FR_PACKET_TYPE_VALUE_REPLY,
-		[FR_PACKET_TYPE_VALUE_REVERSE_REQUEST]  = FR_PACKET_TYPE_VALUE_REVERSE_REPLY,
-	};
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
+		    received ? "Received" : "Sending",
+		    fr_arp_packet_codes[packet->code]);
 
-	static int reply_fail[FR_ARP_MAX_PACKET_CODE] = {
-		[FR_PACKET_TYPE_VALUE_REQUEST]	= FR_ARP_CODE_DO_NOT_RESPOND,
-		[FR_PACKET_TYPE_VALUE_REVERSE_REQUEST]  = FR_ARP_CODE_DO_NOT_RESPOND,
-	};
+	if (received || request->parent) {
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	} else {
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	}
+}
 
-	REQUEST_VERIFY(request);
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	fr_process_state_t const *state;
 
-#define REPLY_OK(_code, _default)	((_code < NUM_ELEMENTS(reply_ok)) ? reply_ok[_code] : _default)
-#define REPLY_FAIL(_code, _default)	((_code < NUM_ELEMENTS(reply_fail)) ? reply_fail[_code] : _default)
+	PROCESS_TRACE;
 
-	fr_assert(request->packet->code > 0);
-	fr_assert(request->packet->code < NUM_ELEMENTS(reply_ok));
+	(void)talloc_get_type_abort_const(mctx->instance, process_arp_t);
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
-	switch (request->request_state) {
-	case REQUEST_INIT:
-		if (request->parent && RDEBUG_ENABLED) {
-			RDEBUG("Received ARP %s", fr_arp_packet_codes[request->packet->code]);
-			log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
-		}
+	request->component = "arp";
+	fr_assert(request->dict == dict_arp);
 
-		request->component = "arp";
+	UPDATE_STATE(packet);
 
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
-		if (!dv) {
-			REDEBUG("Failed to find value for &request.Packet-Type");
-			RETURN_MODULE_FAIL;
-		}
-
-		unlang = cf_section_find(unlang_call_current(request), "recv", dv->name);
-		if (!unlang) {
-			RWDEBUG("Failed to find 'recv %s' section", dv->name);
-			request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
-			goto send_reply;
-		}
-
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-
-		request->request_state = REQUEST_RECV;
-		FALL_THROUGH;
-
-	case REQUEST_RECV:
-		rcode = unlang_interpret(request);
-
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-			*p_result = RLM_MODULE_HANDLED;
-			return UNLANG_ACTION_STOP_PROCESSING;
-		}
-
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-
-		/*
-		 *	Allow the admin to explicitly set the reply
-		 *	type.
-		 */
-		vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
-		if (vp) {
-			request->reply->code = vp->vp_uint8;
-		} else switch (rcode) {
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_OK:
-		case RLM_MODULE_UPDATED:
-			request->reply->code = REPLY_OK(request->packet->code, FR_ARP_CODE_DO_NOT_RESPOND);
-			break;
-
-		default:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_FAIL:
-			request->reply->code = REPLY_FAIL(request->packet->code, FR_ARP_CODE_DO_NOT_RESPOND);
-			break;
-
-		case RLM_MODULE_HANDLED:
-			if (!request->reply->code) request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
-			break;
-		}
-
-		/*
-		 *	Some types don't send a reply, and don't run "send Do-Not-Respond"
-		 */
-		if (!request->reply->code) {
-			RETURN_MODULE_HANDLED;
-		}
-
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
-		unlang = NULL;
-		if (dv) unlang = cf_section_find(unlang_call_current(request), "send", dv->name);
-
-		if (!unlang) goto send_reply;
-
-	rerun_nak:
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-
-		request->request_state = REQUEST_SEND;
-		FALL_THROUGH;
-
-	case REQUEST_SEND:
-		rcode = unlang_interpret(request);
-
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-			*p_result = RLM_MODULE_HANDLED;
-			return UNLANG_ACTION_STOP_PROCESSING;
-		}
-
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-
-		switch (rcode) {
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_OK:
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_HANDLED:
-			/* reply is already set */
-			break;
-
-		default:
-			/*
-			 *	If we over-ride an ACK with a NAK, run
-			 *	the NAK section.
-			 */
-			if (request->reply->code != FR_ARP_CODE_DO_NOT_RESPOND) {
-				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint8(request->reply->code));
-				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'", dv->name);
-
-				request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
-
-				dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
-				unlang = NULL;
-				if (!dv) goto send_reply;
-
-				unlang = cf_section_find(unlang_call_current(request), "send", dv->name);
-				if (unlang) goto rerun_nak;
-
-				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
-			}
-			break;
-		}
-
-	send_reply:
-		if (request->reply->code >= FR_ARP_MAX_PACKET_CODE) {
-			request->reply->code = FR_ARP_CODE_DO_NOT_RESPOND;
-		}
-
-		/*
-		 *	Check for "do not respond".
-		 */
-		if (request->reply->code == FR_ARP_CODE_DO_NOT_RESPOND) {
-			RDEBUG("Not sending reply to client");
-			RETURN_MODULE_HANDLED;
-		}
-
-		if (request->parent && RDEBUG_ENABLED) {
-			RDEBUG("Sending %s", fr_arp_packet_codes[request->reply->code]);
-			log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
-		}
-		break;
-
-	default:
+	if (!state->recv) {
+		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}
 
-	RETURN_MODULE_OK;
+	arp_packet_debug(request, request->packet, &request->request_pairs, true);
+
+	return state->recv(p_result, mctx, request);
 }
 
 
@@ -238,32 +208,38 @@ static const virtual_server_compile_t compile_list[] = {
 		.name = "recv",
 		.name2 = "Request",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(request),
 	},
 	{
 		.name = "send",
 		.name2 = "Reply",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(reply),
 	},
 	{			/* we can listen for others ARP replies, too */
 		.name = "recv",
 		.name2 = "Reply",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_reply),
 	},
 	{
 		.name = "recv",
 		.name2 = "Reverse-Request",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(reverse_request),
 	},
 
 	{
 		.name = "send",
 		.name2 = "Reverse-Reply",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(reverse_reply),
 	},
 	{
 		.name = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 
 	COMPILE_TERMINATOR
@@ -274,8 +250,7 @@ extern fr_process_module_t process_arp;
 fr_process_module_t process_arp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "process_arp",
-	.config		= config,
-	.inst_size	= sizeof(arp_base_t),
+	.inst_size	= sizeof(process_arp_t),
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_arp,
