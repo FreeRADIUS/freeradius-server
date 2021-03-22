@@ -124,7 +124,8 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	return client;
 }
 
-static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client, CONF_SECTION *server_cs)
+static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client,
+				    CONF_SECTION *server_cs, fr_event_list_t *el)
 {
 	fr_pair_t	*vp;
 	request_t	*request;
@@ -165,7 +166,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 
 	request->number = number++;
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
-
+	request->el = el;
 	request->master_state = REQUEST_ACTIVE;
 
 	/*
@@ -830,7 +831,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Grab the VPs from stdin, or from the file.
 	 */
-	request = request_from_file(autofree, fp, client, server_cs);
+	request = request_from_file(autofree, fp, client, server_cs, el);
 	if (!request) {
 		fr_perror("Failed reading input from %s", input_file);
 		EXIT_WITH_FAILURE;

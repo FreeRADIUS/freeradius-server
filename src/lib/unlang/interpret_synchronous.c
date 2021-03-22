@@ -110,13 +110,17 @@ static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
 /** Allocate a new temporary interpreter
  *
  */
-static unlang_interpret_synchronous_t *unlang_interpret_alloc(TALLOC_CTX *ctx)
+static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC_CTX *ctx, fr_event_list_t *el)
 {
 	unlang_interpret_synchronous_t *intps;
 
 	MEM(intps = talloc_zero(ctx, unlang_interpret_synchronous_t));
 	MEM(intps->runnable = fr_heap_talloc_alloc(intps, fr_pointer_cmp, request_t, runnable_id));
-	MEM(intps->el = fr_event_list_alloc(intps, NULL, NULL));
+	if (el) {
+		intps->el = el;
+	} else {
+		MEM(intps->el = fr_event_list_alloc(intps, NULL, NULL));
+	}
 	MEM(intps->intp = unlang_interpret_init(intps, intps->el,
 						&(unlang_request_func_t){
 							.init_internal = _request_internal_init,
@@ -164,7 +168,7 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 	old_intp = unlang_interpret_get(request);
 	caller = request->module;
 
-	intps = unlang_interpret_alloc(request);
+	intps = unlang_interpret_synchronous_alloc(request, request->el);
 	request->backlog = intps->runnable;
 	request->el = intps->el;
 	unlang_interpret_set(request, intps->intp);

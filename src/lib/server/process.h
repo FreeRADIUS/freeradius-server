@@ -40,7 +40,7 @@ typedef struct fr_process_module_s {
 
 	module_method_t			process;	//!< Process packets
 	virtual_server_compile_t const	*compile_list;	//!< list of processing sections
-	fr_dict_t const			**dict;			//!< pointer to local fr_dict_t *
+	fr_dict_t const			**dict;		//!< pointer to local fr_dict_t *
 } fr_process_module_t;
 
 #ifndef NDEBUG
@@ -165,18 +165,26 @@ SEND(generic)
 	 *	@todo - enforce that this is an allowed reply for the
 	 *	request.
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
-	if (!vp) {
-		MEM(fr_pair_update_by_da(request->reply_ctx, &vp,
-					 &request->reply_pairs, attr_packet_type) >= 0);
+	switch (fr_pair_update_by_da(request->reply_ctx, &vp,
+				     &request->reply_pairs, attr_packet_type)) {
+	case 0:	/* Does not exist */
+	update_packet_type:
 		vp->vp_uint32 = request->reply->code;
+		break;
 
-	} else if ((vp->vp_uint32 != PROCESS_CODE_MAX) && PROCESS_PACKET_CODE_VALID(vp->vp_uint32)) {
-		request->reply->code = vp->vp_uint32;
-		UPDATE_STATE_CS(reply);
+	case 1:	/* Exists */
+		if ((vp->vp_uint32 != PROCESS_CODE_MAX) && PROCESS_PACKET_CODE_VALID(vp->vp_uint32) &&
+		    process_state[vp->vp_uint32].send) {
+			request->reply->code = vp->vp_uint32;
+			UPDATE_STATE_CS(reply);
+			break;
+		}
 
-	} else {
-		RWDEBUG("Ignoring invalid value %u for &reply.Packet-Type", vp->vp_uint32);
+		RWDEBUG("Ignoring invalid packet-type &reply.%pP", vp);
+		goto update_packet_type;
+
+	default:
+		MEM(0);
 	}
 
 	return unlang_module_yield_to_section(p_result, request,
