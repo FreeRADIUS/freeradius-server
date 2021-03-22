@@ -419,8 +419,6 @@ static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 
 	/*
 	 *	We now require a process module for everything.
-	 *
-	 *	@todo - add one for the "control" virtual server!
 	 */
 	if (dl_module_instance(ctx, &server->process_module, process_cs, NULL, namespace, DL_MODULE_TYPE_PROCESS) < 0) {
 		cf_log_warn(server_cs, "Failed loading process module");
