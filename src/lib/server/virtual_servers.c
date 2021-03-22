@@ -227,8 +227,8 @@ fr_dict_t const *virtual_server_dict(CONF_SECTION *server_cs)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
@@ -237,6 +237,7 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 	char const		*dir = NULL;
 	fr_dict_t		*dict;
 	dl_module_t const      	*module;
+	char			*module_name, *p, *end;
 
 	if (!namespace || !*namespace) {
 		cf_log_err(ci, "Missing value for 'namespace'");
@@ -268,19 +269,29 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 	 *	@todo - print out the entire error stack?
 	 */
 	if (fr_dict_protocol_afrom_file(&dict, file, dir) < 0) {
-		cf_log_err(ci, "Failed loading namespace '%s' - %s", namespace, fr_strerror());
+		cf_log_perr(ci, "Failed loading namespace '%s'", namespace);
 		return -1;
 	}
 
 set:
 	virtual_server_dict_set(server_cs, dict, true);
 
+	module_name = talloc_strdup(ctx, namespace);
+
+	/*
+	 *	Smush all hyphens to underscores for module names
+	 */
+	for (p = module_name, end = module_name + talloc_array_length(module_name) - 1;
+	     p < end;
+	     p++) if (*p == '-') *p = '_';
+
 	/*
 	 *	Pass server_cs, even though it's wrong.  We don't have
 	 *	anything else to pass, and the dl_module() function
 	 *	only uses the CONF_SECTION for printing.
 	 */
-	module = dl_module(server_cs, NULL, namespace, DL_MODULE_TYPE_PROCESS);
+	module = dl_module(server_cs, NULL, module_name, DL_MODULE_TYPE_PROCESS);
+	talloc_free(module_name);
 #ifndef NDEBUG
 	if (module) {
 		fr_process_module_t const *process = (fr_process_module_t const *) module->common;
@@ -298,6 +309,11 @@ set:
 		fr_assert(*process->dict == dict);
 	}
 #endif
+	if (!module) {
+		cf_log_perr(ci, "Failed loading process module");
+		return -1;
+	}
+
 	cf_data_add(server_cs, module, "process module", true);
 
 	return 0;
@@ -399,7 +415,10 @@ static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION		*process_cs;
 	char const		*namespace = cf_pair_value(cf_item_to_pair(ci));
+	char			*module_name = talloc_strdup(ctx, namespace);
+	char			*p, *end;
 	fr_virtual_server_t	*server = (fr_virtual_server_t *) (((uint8_t *) out) - offsetof(fr_virtual_server_t, namespace));
+	int			ret;
 
 	(void) talloc_get_type_abort(server, fr_virtual_server_t);
 	fr_assert(namespace != NULL);
@@ -418,9 +437,18 @@ static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	}
 
 	/*
+	 *	Smush all hyphens to underscores for module names
+	 */
+	for (p = module_name, end = module_name + talloc_array_length(module_name) - 1;
+	     p < end;
+	     p++) if (*p == '-') *p = '_';
+
+	/*
 	 *	We now require a process module for everything.
 	 */
-	if (dl_module_instance(ctx, &server->process_module, process_cs, NULL, namespace, DL_MODULE_TYPE_PROCESS) < 0) {
+	ret = dl_module_instance(ctx, &server->process_module, process_cs, NULL, module_name, DL_MODULE_TYPE_PROCESS);
+	talloc_free(module_name);
+	if (ret < 0) {
 		cf_log_warn(server_cs, "Failed loading process module");
 		return -1;
 	}
