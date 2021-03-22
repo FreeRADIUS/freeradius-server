@@ -742,6 +742,11 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
+	if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+		RDEBUGX(level, "%s%s = <<< secret >>>", prefix ? prefix : "", vp->da->name);
+		return;
+	}
+
 	vp_prints(buffer, sizeof(buffer), vp);
 	RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 }
@@ -766,6 +771,11 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
+
+		if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+			RDEBUGX(level, "%s = <<< secret >>>", vp->da->name);
+			continue;
+		}
 
 		vp_prints(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
@@ -794,6 +804,12 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 		VERIFY_VP(vp);
 		if ((vp->da->vendor == 0) &&
 		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
+
+		if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+			RDEBUGX(level, "%s = <<< secret >>>", vp->da->name);
+			continue;
+		}
+
 		vp_prints(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s", buffer);
 	}

@@ -114,6 +114,7 @@ typedef struct main_config {
 	fr_ipaddr_t	myip;				//!< IP to bind to. Set on command line.
 	uint16_t	port;				//!< Port to bind to. Set on command line.
 
+	bool		suppress_secrets;		//!< for debug levels < 3
 	bool		log_auth;			//!< Log all authentication attempts.
 	bool		log_accept;			//!< Log Access-Accept
 	bool		log_reject;			//!< Log Access-Reject
@@ -312,8 +313,9 @@ struct rad_request {
 #define RAD_REQUEST_LVL_DEBUG3	(3)
 #define RAD_REQUEST_LVL_DEBUG4	(4)
 
-#define RAD_REQUEST_OPTION_COA	(1 << 0)
-#define RAD_REQUEST_OPTION_CTX	(1 << 1)
+#define RAD_REQUEST_OPTION_COA		(1 << 0)
+#define RAD_REQUEST_OPTION_CTX 		(1 << 1)
+#define RAD_REQUEST_OPTION_CANCELLED	(1 << 2)
 
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30

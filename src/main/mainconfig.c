@@ -148,6 +148,7 @@ static const CONF_PARSER log_config[] = {
 	{ "colourise",FR_CONF_POINTER(PW_TYPE_BOOLEAN, &do_colourise), NULL },
 	{ "use_utc", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_dates_utc), NULL },
 	{ "msg_denied", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.denied_msg), "You are already logged in - access denied" },
+	{ "suppress_secrets", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.suppress_secrets), NULL },
 	CONF_PARSER_TERMINATOR
 };
 
