@@ -1519,7 +1519,7 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 				return NULL;
 			}
 
-			switch (unlang_interpret(request)) {
+			switch (unlang_interpret_synchronous(request)) {
 			default:
 				break;
 
