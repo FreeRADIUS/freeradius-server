@@ -117,7 +117,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	value = cf_pair_value(cp);
 
 	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
-	if (!dv || (dv->value->vb_uint32 >= FR_VQP_MAX_CODE)) {
+	if (!dv || (dv->value->vb_uint32 >= FR_VMPS_CODE_MAX)) {
 		cf_log_err(ci, "Unknown VMPS packet type '%s'", value);
 		return -1;
 	}
@@ -181,7 +181,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_radius_packet_t *packet = request->packet;
 	fr_dcursor_t cursor;
 
-	fr_assert(data[0] < FR_VQP_MAX_CODE);
+	fr_assert(data[0] < FR_VMPS_CODE_MAX);
 
 	RHEXDUMP3(data, data_len, "proto_vmps decode packet");
 
@@ -247,8 +247,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 *	Process layer NAK, never respond, or "Do not respond".
 	 */
 	if ((buffer_len == 1) ||
-	    (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code >= FR_VQP_MAX_CODE)) {
+	    (request->reply->code == FR_VMPS_DO_NOT_RESPOND) ||
+	    (request->reply->code >= FR_VMPS_CODE_MAX)) {
 		track->do_not_respond = true;
 		return 1;
 	}

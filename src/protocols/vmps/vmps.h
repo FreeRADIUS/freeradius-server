@@ -31,8 +31,6 @@ RCSIDH(vmps_h, "$Id$")
 extern "C" {
 #endif
 
-#define FR_VQP_MAX_CODE (5)
-#define FR_RADIUS_CODE_DO_NOT_RESPOND (0)
 #define FR_VQP_HDR_LEN (8)
 #define FR_VQP_VERSION (1)
 
@@ -45,9 +43,20 @@ ssize_t fr_vmps_packet_size(uint8_t const *data, size_t data_len);
 void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 
 ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
-				       int code, uint32_t id, fr_dcursor_t *cursor) CC_HINT(nonnull(1));
+		       int code, uint32_t id, fr_dcursor_t *cursor) CC_HINT(nonnull(1));
 
-extern char const	*fr_vmps_codes[FR_VQP_MAX_CODE];
+typedef enum {
+	FR_VMPS_JOIN_REQUEST = 1,
+	FR_VMPS_JOIN_RESPONSE = 2,
+	FR_VMPS_RECONFIRM_REQUEST = 3,
+	FR_VMPS_RECONFIRM_RESPONSE = 4,
+	FR_VMPS_CODE_MAX = 5,
+	FR_VMPS_DO_NOT_RESPOND = 256,
+} fr_vmps_packet_code_t;
+
+#define FR_VMPS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_VMPS_CODE_MAX))
+
+extern char const	*fr_vmps_codes[FR_VMPS_CODE_MAX];
 
 int fr_vmps_init(void);
 

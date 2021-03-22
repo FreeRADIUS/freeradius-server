@@ -66,7 +66,7 @@ RCSID("$Id$")
  * VQP is layered over UDP.  The default destination port is 1589.
  *
  */
-char const *fr_vmps_codes[FR_VQP_MAX_CODE] = {
+char const *fr_vmps_codes[FR_VMPS_CODE_MAX] = {
 	[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = "Join-Request",
 	[FR_PACKET_TYPE_VALUE_JOIN_RESPONSE] = "Join-Response",
 	[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = "Reconfirm-Request",
@@ -497,13 +497,13 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 	fprintf(fp, "  Version:\t\t%u\n", packet[0]);
 
-	if ((packet[1] > 0) && (packet[1] < FR_VQP_MAX_CODE) && fr_vmps_codes[packet[1]]) {
+	if ((packet[1] > 0) && (packet[1] < FR_VMPS_CODE_MAX) && fr_vmps_codes[packet[1]]) {
 		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[1]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[1]);
 	}
 
-	if ((packet[2] > 0) && (packet[2] < FR_VQP_MAX_CODE) && fr_vmps_codes[packet[2]]) {
+	if ((packet[2] > 0) && (packet[2] < FR_VMPS_CODE_MAX) && fr_vmps_codes[packet[2]]) {
 		fprintf(fp, "  OpCode:\t\t%s\n", fr_vmps_codes[packet[2]]);
 	} else {
 		fprintf(fp, "  OpCode:\t\t%u\n", packet[2]);
