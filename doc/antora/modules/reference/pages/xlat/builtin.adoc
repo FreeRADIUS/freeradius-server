@@ -39,9 +39,9 @@ The length of 192.168.0.2 is 4
 ....
 ====
 
-=== %{integer:<&ref>}
+=== %(integer:<value>)
 
-Print the value of the attribute an integer.
+Convert a value to an integer.
 
 In normal operation, `integer` attributes are printed using the name
 given by a `VALUE` statement in a dictionary. Similarly, date
@@ -53,9 +53,9 @@ converted to an integer. For all other inputs, it returns `0`.
 A common usage is to find the difference between two dates.
 
 For example, if a request contains `Service-Type = Login-User`, the
-expansion of `%{integer:&Service-Type}` will yield `1`, which is the
+expansion of `%(integer:%{Service-Type})` will yield `1`, which is the
 value associated with the `Login-User` name. Using
-`%{integer:&Event-Timestamp}` will return the event timestamp as an
+`%(integer:%{Event-Timestamp})` will return the event timestamp as an
 unsigned 32-bit number.
 
 .Return: _string_
@@ -68,7 +68,7 @@ update {
     &control.Service-Type := Login-User
 }
 update reply {
-    &Reply-Message := "The value of Service-Type is %{integer:&control.Service-Type}"
+    &Reply-Message := "The value of Service-Type is %(integer:%{control.Service-Type})"
 }
 ----
 
