@@ -197,6 +197,8 @@ typedef struct attr_flags {
 
 	unsigned int	is_dup : 1;				//!< is a duplicate of another attribute
 
+	unsigned int	secret : 1;				//!< is a secret thingy
+
 	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;

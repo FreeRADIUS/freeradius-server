@@ -883,6 +883,8 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		return -1;
 	}
 
+	if (flags.encrypt) flags.secret = 1;
+
 	if (flags.length && (type != PW_TYPE_OCTETS)) {
 		fr_strerror_printf("The \"length\" flag can only be set for attributes of type \"octets\"");
 		return -1;
@@ -1755,6 +1757,10 @@ static int process_attribute(char const* fn, int const line,
 							   "\"encrypt=3\" flag set", fn, line);
 					return -1;
 				}
+				flags.secret = 1;
+
+			} else if (strncmp(key, "secret", 6) == 0) {
+				flags.secret = 1;
 
 			} else if (strncmp(key, "array", 6) == 0) {
 				flags.array = 1;
