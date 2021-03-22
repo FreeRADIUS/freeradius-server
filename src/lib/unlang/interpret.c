@@ -635,7 +635,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	fr_assert_msg(intp, "request has no interpreter associated");
 
 	RDEBUG4("** [%i] %s - interpret entered", stack->depth, __FUNCTION__);
-	if (is_yielded(frame)) intp->funcs.resume(request, intp->uctx);
+	intp->funcs.resume(request, intp->uctx);
 
 	for (;;) {
 		RDEBUG4("** [%i] %s - frame action %s", stack->depth, __FUNCTION__,
