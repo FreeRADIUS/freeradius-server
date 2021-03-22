@@ -8,7 +8,7 @@ The GitHub issue tracker and mailing lists have a strict code of conduct.
 
 > Only technical discussion related to FreeRADIUS, the protocols it implements, and its dependencies
 > are permitted in GitHub communications and on the mailing list.
-> 
+>
 > Please note that any off-topic discussion will result in a warning. Continued off topic discussion
 > will result in the individual being unsubscribed from the mailing lists and/or permanent
 > banishment from the GitHub repositories.
@@ -18,7 +18,7 @@ it does not require participants to be explicitly "inclusive" or "accepting" of 
 requires participants to be *blind* to non-technical subjects, as those subjects are explicitly off
 topic. The FreeRADIUS community is inclusive by virtue of not being exclusionary.
 
-If you believe that the implicit biases of community members may affect how your contributions are 
+If you believe that the implicit biases of community members may affect how your contributions are
 evaluated, you are invited to anonymise your contributions.  You will not be penalised for use of
 pseudonyms or anonymised identities when creating/signing patches, or posting on the mailing list(s).
 

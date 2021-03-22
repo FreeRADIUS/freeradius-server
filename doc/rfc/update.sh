@@ -4,14 +4,14 @@
 #
 #
 cat >index.html <<EOF
-<HTML>
-<TITLE>Index of FreeRADIUS.org's RFC site</TITLE>
-<BODY>
+<html>
+<title>Index of FreeRADIUS.org's RFC site</title>
+<body>
 
-<H1>Index of FreeRADIUS.org's RFC site</H1>
+<h1>Index of FreeRADIUS.org's RFC site</h1>
 
-List of <A HREF="attributes.html">RADIUS attributes</A>
-<P>
+List of <a href="attributes.html">RADIUS attributes</A>
+<p>
 
 EOF
 
@@ -19,9 +19,9 @@ EOF
 #  include the message, if any exists
 #
 if [ -e message ]; then
-  echo "<PRE>" >> index.html
+  echo "<pre>" >> index.html
   cat .message >> index.html
-  echo "</PRE>" >> index.html
+  echo "</pre>" >> index.html
 fi
 
 #
@@ -33,15 +33,15 @@ EOF
 
 for x in rfc*.html;do
   y=`echo $x | sed 's/rfc//;s/\.html//'`
-  echo "<A HREF=\"$x\">RFC $y</A>" >> index.html
+  echo "<a href=\"$x\">RFC $y</a>" >> index.html
   if [ -e $x.gz ]; then
-    echo "<A HREF=\"$x.gz\">(gzipped)</A>" >> index.html
+    echo "<a href=\"$x.gz\">(gzipped)</a>" >> index.html
   fi
   y="attributes-rfc$y.html";
   if [ -f $y ];then
-    echo "<A HREF=\"$y\">(attributes)</A>" >> index.html
+    echo "<a href=\"$y\">(attributes)</a>" >> index.html
   fi
-  echo "<BR />" >> index.html
+  echo "<br />" >> index.html
 done
 
 cat >>index.html <<EOF
@@ -54,11 +54,11 @@ EOF
 for x in *.txt;do
   y=`echo $x | sed ';s/\.txt/.html/'`
   if [ ! -f $y ];then
-    echo "<A HREF=\"$x\">$x</A>" >> index.html
+    echo "<a href=\"$x\">$x</a>" >> index.html
     if [ -e $x.gz ]; then
-      echo "<A HREF=\"$x.gz\">(gzipped)</A>" >> index.html
+      echo "<a href=\"$x.gz\">(gzipped)</a>" >> index.html
     fi
-    echo "<BR />" >> index.html
+    echo "<br />" >> index.html
   fi
 done
-echo "</BODY></HTML>" >> index.html
+echo "</body></html>" >> index.html

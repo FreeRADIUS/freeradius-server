@@ -1,25 +1,25 @@
-/*
- * $Id$
- *
- * --- Peter Nixon [ codemonkey@peternixon.net ]
- *
- * This is a custom SQL schema for doing H323 and SIP VoIP accounting
- * with FreeRadius and Cisco equipment. It is currently known to work
- * with 3640, 5300 and 5350 series as well as CSPS (Cisco SIP Proxy
- * Server).  It will scale A LOT better than the default radius schema
- * which is designed for simple dialup installations of FreeRadius.
- *
- * For this schema to work properly you MUST use
- * raddb/sql/postgresql/voip-postpaid.conf rather than
- * raddb/sql/postgresql/dialup.conf
- *
- * If you wish to do RADIUS Authentication using the same database,
- * you MUST use use raddb/sql/postgresql/schema.sql as well as this schema.
- */
+--
+-- $Id$
+--
+-- --- Peter Nixon [ codemonkey@peternixon.net ]
+--
+-- This is a custom SQL schema for doing H323 and SIP VoIP accounting
+-- with FreeRadius and Cisco equipment. It is currently known to work
+-- with 3640, 5300 and 5350 series as well as CSPS (Cisco SIP Proxy
+-- Server).  It will scale A LOT better than the default radius schema
+-- which is designed for simple dialup installations of FreeRadius.
+--
+-- For this schema to work properly you MUST use
+-- raddb/sql/postgresql/voip-postpaid.conf rather than
+-- raddb/sql/postgresql/dialup.conf
+--
+-- If you wish to do RADIUS Authentication using the same database,
+-- you MUST use use raddb/sql/postgresql/schema.sql as well as this schema.
+--
 
-/*
- * Table structure for 'Start' tables
- */
+--
+-- Table structure for 'Start' tables
+--
 
 CREATE TABLE StartVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
@@ -60,9 +60,9 @@ create index starttelephonycombo on starttelephony (AcctTime, nasipaddress);
 
 
 
-/*
- * Table structure for 'Stop' tables
- */
+--
+-- Table structure for 'Stop' tables
+--
 CREATE TABLE StopVoIP (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	AcctTime		TIMESTAMP with time zone NOT NULL,
@@ -114,19 +114,19 @@ CREATE TABLE StopTelephony (
 	CallID			VARCHAR(80) NOT NULL,
 	processed		BOOLEAN DEFAULT false
 );
+
 -- You can have more than one record that is identical except for CiscoNASPort if you have a dial peer hungroup
 -- configured for multiple PRIs.
 create UNIQUE index stoptelephonycombo on stoptelephony (AcctTime, nasipaddress, CallID, CiscoNASPort);
 
-/*
- * Table structure for 'gateways'
- *
- * This table should list the IP addresses, names and locations of all your gateways
- * This can be used to make more useful reports.
- *
- * Note: This table should be removed in favour of using the "nas" table.
- */
-
+--
+-- Table structure for 'gateways'
+--
+-- This table should list the IP addresses, names and locations of all your gateways
+-- This can be used to make more useful reports.
+--
+-- Note: This table should be removed in favour of using the "nas" table.
+--
 CREATE TABLE gateways (
 	gw_ip		INET NOT NULL,
 	gw_name		VARCHAR(32) NOT NULL,
@@ -134,26 +134,24 @@ CREATE TABLE gateways (
 );
 
 
-/*
- * Table structure for 'customers'
- *
- * This table should list your Customers names and company
- * This can be used to make more useful reports.
- */
-
+--
+-- Table structure for 'customers'
+--
+-- This table should list your Customers names and company
+-- This can be used to make more useful reports.
+--
 CREATE TABLE customers (
 	cust_id		SERIAL NOT NULL,
 	company		VARCHAR(32),
 	customer	VARCHAR(32)
 );
 
-/*
- * Table structure for 'cust_gw'
- *
- * This table should list the IP addresses and Customer IDs of all your Customers gateways
- * This can be used to make more useful reports.
- */
-
+--
+-- Table structure for 'cust_gw'
+--
+-- This table should list the IP addresses and Customer IDs of all your Customers gateways
+-- This can be used to make more useful reports.
+--
 CREATE TABLE cust_gw (
 	cust_gw		INET PRIMARY KEY,
 	cust_id		INTEGER NOT NULL,
@@ -169,25 +167,22 @@ CREATE VIEW customerip AS
 CREATE FUNCTION "plpgsql_call_handler" () RETURNS LANGUAGE_HANDLER AS '$libdir/plpgsql' LANGUAGE C;
 CREATE TRUSTED LANGUAGE "plpgsql" HANDLER "plpgsql_call_handler";
 
-/*
- * Function 'strip_dot'
- * removes "." from the start of cisco timestamps
- *
- * From the cisco website:
- * "A timestamp that is preceded by an asterisk (*) or a dot (.) may not be accurate.
- *  An asterisk (*) means that after a gateway reboot, the gateway clock was not manually set
- *  and the gateway has not synchronized with an NTP server yet. A dot (.) means the gateway
- *  NTP has lost synchronization with an NTP server."
- *
- * We therefore do not bother to strip asterisks (*) from timestamps, as you NEED ntp setup
- * unless you don't care about billing at all!
- *
- *  * Example useage:
- *      insert into mytable values (strip_dot('.16:46:02.356 EET Wed Dec 11 2002'));
- *
- */
-
-
+--
+-- Function 'strip_dot'
+-- removes "." from the start of cisco timestamps
+--
+-- From the cisco website:
+-- "A timestamp that is preceded by an asterisk (*) or a dot (.) may not be accurate.
+--  An asterisk (*) means that after a gateway reboot, the gateway clock was not manually set
+--  and the gateway has not synchronized with an NTP server yet. A dot (.) means the gateway
+--  NTP has lost synchronization with an NTP server."
+--
+-- We therefore do not bother to strip asterisks (*) from timestamps, as you NEED ntp setup
+-- unless you don't care about billing at all!
+--
+--  * Example useage:
+--      insert into mytable values (strip_dot('.16:46:02.356 EET Wed Dec 11 2002'));
+--
 CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
  DECLARE
 	original_timestamp ALIAS FOR $1;
@@ -220,26 +215,21 @@ CREATE OR REPLACE FUNCTION pick_id (VARCHAR, VARCHAR) RETURNS VARCHAR AS '
 ' LANGUAGE 'plpgsql';
 
 
-
-/*
- * Table structure for 'isdn_error_codes' table
- *
- * Taken from cisco.com this data can be JOINED against h323DisconnectCause to
- * give human readable error reports.
- *
- */
-
-
+--
+-- Table structure for 'isdn_error_codes' table
+--
+-- Taken from cisco.com this data can be JOINED against h323DisconnectCause to
+-- give human readable error reports.
+--
 CREATE TABLE isdn_error_codes (
 	error_code	VARCHAR(2) PRIMARY KEY,
 	desc_short	VARCHAR(90),
 	desc_long	TEXT
 );
 
-/*
- * Data for 'isdn_error_codes' table
- */
-
+--
+-- Data for 'isdn_error_codes' table
+--
 INSERT INTO isdn_error_codes VALUES ('1', 'Unallocated (unassigned) number', 'The ISDN number was sent to the switch in the correct format; however, the number is not assigned to any destination equipment.');
 INSERT INTO isdn_error_codes VALUES ('10', 'Normal call clearing', 'Normal call clearing has occurred.');
 INSERT INTO isdn_error_codes VALUES ('11', 'User busy', 'The called system acknowledges the connection request but is unable to accept the call because all B channels are in use.');
@@ -292,4 +282,3 @@ INSERT INTO isdn_error_codes VALUES ('66', 'Recovery on timer expires', 'An erro
 INSERT INTO isdn_error_codes VALUES ('6F', 'Protocol error, unspecified', 'An unspecified D-channel error when no other standard cause applies.');
 INSERT INTO isdn_error_codes VALUES ('7', 'Call awarded and being delivered in an established channel', 'The user is assigned an incoming call that is being connected to an already-established call channel.');
 INSERT INTO isdn_error_codes VALUES ('7F', 'Internetworking, unspecified', 'An event occurred, but the network does not provide causes for the action that it takes. The precise problem is unknown.');
-

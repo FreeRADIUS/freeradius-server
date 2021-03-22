@@ -30,15 +30,15 @@ foreach $file (@ARGV) {
     #  Print out the HTML header
     #
     print OUTPUT <<EOF;
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<HTML>
+<!DOCTYPE html>
+<html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <meta name="GENERATOR" content="Perl">
    <title>$ref.html</title>
 </head>
 <body>
-<PRE>
+<pre>
 
 EOF
 
@@ -70,10 +70,10 @@ EOF
 	    if ($refs{$_[1]} ne "") {
 		$attribute = $_[1];
 
-		print OUTPUT "<A NAME=\"$attribute\"><H2>$_</H2></a>\n";
+		print OUTPUT "<a name=\"$attribute\"><h2>$_</h2></a>\n";
 
 	    } else {
-		print OUTPUT "<H2>$_</H2>\n";
+		print OUTPUT "<h2>$_</h2>\n";
 		$attribute = "zzzz";
 	    }
 	    next;
@@ -86,12 +86,12 @@ EOF
 	    (/^   Type/) ||
 	    (/^   Length/) ||
 	    (/^   Value/)) {
-	    print OUTPUT "<B>$_</B>\n";
+	    print OUTPUT "<b>$_</b>\n";
 	    next;
 	}
 
 	# Make the current attribute name bold
-	s/$attribute/<B>$attribute<\/B>/g;
+	s/$attribute/<b>$attribute<\/b>/g;
 
 	split;
 
@@ -103,9 +103,9 @@ EOF
 
 	    if ($refs{$word} ne "") {
 		if ($refs{$word} eq $ref) {
-		    s/$word/<A HREF="#$word">$word<\/A>/g;
+		    s/$word/<a href="#$word">$word<\/a>/g;
 		} else {
-		    s/$word/<A HREF="$refs{$word}.html#$word">$word<\/A>/g;
+		    s/$word/<a href="$refs{$word}.html#$word">$word<\/a>/g;
 		}
 	    }
 	}
@@ -113,8 +113,8 @@ EOF
 	print OUTPUT $_, "\n";
     }
 
-    print OUTPUT "</PRE>\n";
-    print OUTPUT "</BODY>\n";
+    print OUTPUT "</pre>\n";
+    print OUTPUT "</body>\n";
     close OUTPUT;
     close FILE;
 }
@@ -128,8 +128,8 @@ open OUTPUT, ">attributes.html" || die "Error creating attributes.html: $!\n";
 #  Print out the HTML header
 #
 print OUTPUT <<EOF;
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<HTML>
+<!DOCTYPE html>
+<html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <meta name="GENERATOR" content="Perl">
@@ -137,23 +137,24 @@ print OUTPUT <<EOF;
 </head>
 <body>
 
-<H2>RADIUS Attribute List</H2>
+<h2>RADIUS Attribute List</h2>
 EOF
 
 $letter = "@";
 
 foreach $key (sort keys %refs) {
     if (substr($key,0,1) ne $letter) {
-	print OUTPUT "</UL>\n" if ($letter ne "@");
+	print OUTPUT "</ul>\n" if ($letter ne "@");
 	$letter = substr($key,0,1);
-	print OUTPUT "\n<H3>$letter</H3>\n\n";
-        print OUTPUT "<UL>\n";
+	print OUTPUT "\n<h3>$letter</h3>\n\n";
+        print OUTPUT "<ul>\n";
     }
 
-    print OUTPUT "<A HREF=\"$refs{$key}.html#$key\">$key</A><BR>\n";
+    print OUTPUT "<a href=\"$refs{$key}.html#$key\">$key</a><br>\n";
 }
 
-print OUTPUT "</UL>\n";
+print OUTPUT "</ul>\n";
 
-print OUTPUT "</BODY>\n";
+print OUTPUT "</body>\n";
+print OUTPUT "</html>\n";
 close OUTPUT;
