@@ -247,7 +247,8 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 	 *	The "control" socket does not have a dictionary.
 	 */
 	if (strcmp(namespace, "control") == 0) {
-		return 0;
+		dict = fr_dict_unconst(fr_dict_internal());
+		goto set;
 	}
 
 	file = namespace;	/* the default */
@@ -271,6 +272,7 @@ static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED vo
 		return -1;
 	}
 
+set:
 	virtual_server_dict_set(server_cs, dict, true);
 
 	/*
@@ -855,7 +857,10 @@ int virtual_servers_instantiate(void)
 
 		fr_assert(virtual_servers[i]->process_module);
 
-		if (!dict) return -1; /* should never happen */
+		if (!dict) {
+			cf_log_err(server_cs, "No dictionary for namespace %s", virtual_servers[i]->namespace);
+			return -1; /* should never happen */
+		}
 
 		if (process_instantiate(server_cs, virtual_servers[i]->process_module, dict->dict) < 0) return -1;
 
