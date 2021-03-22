@@ -24,7 +24,6 @@
  */
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/process.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
@@ -48,188 +47,215 @@ fr_dict_attr_autoload_t process_vmps_dict_attr[] = {
 	{ NULL }
 };
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+typedef struct {
+	uint64_t	nothing;		// so that the next field isn't at offset 0
+
+	CONF_SECTION	*join_request;
+	CONF_SECTION	*join_response;
+	CONF_SECTION	*reconfirm_request;
+	CONF_SECTION	*reconfirm_response;
+	CONF_SECTION	*do_not_respond;
+} process_vmps_sections_t;
+
+typedef struct {
+	process_vmps_sections_t sections;
+} process_vmps_t;
+
+#define PROCESS_PACKET_TYPE		fr_vmps_packet_code_t
+#define PROCESS_CODE_MAX		FR_VMPS_CODE_MAX
+#define PROCESS_CODE_DO_NOT_RESPOND	FR_VMPS_DO_NOT_RESPOND
+#define PROCESS_PACKET_CODE_VALID	FR_VMPS_PACKET_CODE_VALID
+#define PROCESS_INST			process_vmps_t
+#include <freeradius-devel/server/process.h>
+
+static fr_process_state_t const process_state[] = {
+	[FR_PACKET_TYPE_VALUE_JOIN_REQUEST] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_JOIN_RESPONSE,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_JOIN_RESPONSE,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_JOIN_RESPONSE,
+
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.recv = recv_generic,
+		.resume = resume_recv_generic,
+		.section_offset = PROCESS_CONF_OFFSET(join_request),
+	},
+	[FR_PACKET_TYPE_VALUE_JOIN_RESPONSE] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_JOIN_RESPONSE,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_JOIN_RESPONSE,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_JOIN_RESPONSE,
+
+			[RLM_MODULE_REJECT] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(join_response),
+	},
+
+	[FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE,
+
+			[RLM_MODULE_REJECT] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.recv = recv_generic,
+		.resume = resume_recv_generic,
+		.section_offset = PROCESS_CONF_OFFSET(reconfirm_request),
+	},
+	[FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE,
+
+			[RLM_MODULE_REJECT] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(reconfirm_response),
+	},
+
+	[ FR_VMPS_DO_NOT_RESPOND ] = {
+		.packet_type = {
+			[RLM_MODULE_NOOP]	= FR_VMPS_DO_NOT_RESPOND,
+			[RLM_MODULE_OK]		= FR_VMPS_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED]	= FR_VMPS_DO_NOT_RESPOND,
+			[RLM_MODULE_HANDLED]	= FR_VMPS_DO_NOT_RESPOND,
+
+			[RLM_MODULE_NOTFOUND]	= FR_VMPS_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL]	= FR_VMPS_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID]	= FR_VMPS_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT]	= FR_VMPS_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW]	= FR_VMPS_DO_NOT_RESPOND
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(do_not_respond),
+	},
+};
+
+
+/*
+ *	Debug the packet if requested.
+ */
+static void vmps_packet_debug(request_t *request, fr_radius_packet_t const *packet, fr_pair_list_t const *list, bool received)
 {
-	rlm_rcode_t		rcode;
-	CONF_SECTION		*unlang;
-	fr_dict_enum_t const	*dv;
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	char if_name[IFNAMSIZ];
+#endif
 
-	REQUEST_VERIFY(request);
+	if (!packet) return;
+	if (!RDEBUG_ENABLED) return;
 
-	switch (request->request_state) {
-	case REQUEST_INIT:
-		RDEBUG("Received %s ID %08x", fr_vmps_codes[request->packet->code], request->packet->id);
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%pV%s:%i to %s%pV%s:%i "
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+		    "%s%s%s"
+#endif
+		    "",
+		    received ? "Received" : "Sending",
+		    fr_vmps_codes[packet->code],
+		    packet->id,
+		    packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+		    fr_box_ipaddr(packet->socket.inet.src_ipaddr),
+		    packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+		    packet->socket.inet.src_port,
+		    packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+		    fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
+		    packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+		    packet->socket.inet.dst_port
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+		    , packet->socket.inet.ifindex ? "via " : "",
+		    packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
+		    packet->socket.inet.ifindex ? " " : ""
+#endif
+		    );
 
-		request->component = "vmps";
+	if (received || request->parent) {
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	} else {
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	}
+}
 
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
-		if (!dv) {
-			REDEBUG("Failed to find value for &request.VMPS-Packet-Type");
-			RETURN_MODULE_FAIL;
-		}
+static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	fr_process_state_t const *state;
 
-		unlang = cf_section_find(unlang_call_current(request), "recv", dv->name);
-		if (!unlang) {
-			RWDEBUG("Failed to find 'recv %s' section", dv->name);
-			request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
-			goto send_reply;
-		}
+	PROCESS_TRACE;
 
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			RETURN_MODULE_FAIL;
-		}
+	(void)talloc_get_type_abort_const(mctx->instance, process_vmps_t);
+	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
-		request->request_state = REQUEST_RECV;
-		FALL_THROUGH;
+	request->component = "vmps";
+	fr_assert(request->dict == dict_vmps);
 
-	case REQUEST_RECV:
-		rcode = unlang_interpret(request);
+	UPDATE_STATE(packet);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-			*p_result = RLM_MODULE_HANDLED;
-			return UNLANG_ACTION_STOP_PROCESSING;
-		}
-
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-
-		switch (rcode) {
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_OK:
-		case RLM_MODULE_UPDATED:
-			if (request->packet->code == FR_PACKET_TYPE_VALUE_JOIN_REQUEST) {
-				request->reply->code = FR_PACKET_TYPE_VALUE_JOIN_RESPONSE;
-
-			} else if (request->packet->code == FR_PACKET_TYPE_VALUE_RECONFIRM_REQUEST) {
-				request->reply->code = FR_PACKET_TYPE_VALUE_RECONFIRM_RESPONSE;
-
-			} else {
-				request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
-			}
-			break;
-
-		default:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_HANDLED:
-			request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
-			break;
-		}
-
-		dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
-		unlang = NULL;
-		if (dv) unlang = cf_section_find(unlang_call_current(request), "send", dv->name);
-
-		if (!unlang) goto send_reply;
-
-	rerun_nak:
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-
-		request->request_state = REQUEST_SEND;
-		FALL_THROUGH;
-
-	case REQUEST_SEND:
-		rcode = unlang_interpret(request);
-
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-			*p_result = RLM_MODULE_HANDLED;
-			return UNLANG_ACTION_STOP_PROCESSING;
-		}
-
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-
-		switch (rcode) {
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_OK:
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_HANDLED:
-			/* reply is already set */
-			break;
-
-		default:
-			/*
-			 *	If we over-ride an ACK with a NAK, run
-			 *	the NAK section.
-			 */
-			if (request->reply->code != FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
-				dv = fr_dict_enum_by_value(attr_packet_type,
-							   fr_box_uint32(request->reply->code));
-				RWDEBUG("Failed running 'send %s', trying 'send Do-Not-Respond'.", dv->name);
-
-				request->reply->code = FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND;
-
-				dv = fr_dict_enum_by_value(attr_packet_type,
-							   fr_box_uint32(request->reply->code));
-				unlang = NULL;
-				if (!dv) goto send_reply;
-
-				unlang = cf_section_find(unlang_call_current(request), "send", dv->name);
-				if (unlang) goto rerun_nak;
-
-				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
-			}
-			break;
-		}
-
-	send_reply:
-		/*
-		 *	Check for "do not respond".
-		 */
-		if (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) {
-			RDEBUG("Not sending reply to client.");
-			RETURN_MODULE_HANDLED;
-		}
-
-		/*
-		 *	Overwrite the src ip address on the outbound packet
-		 *	with the one specified by the client.
-		 *	This is useful to work around broken DSR implementations
-		 *	and other routing issues.
-		 */
-		if (request->client && (request->client->src_ipaddr.af != AF_UNSPEC)) {
-			request->reply->socket.inet.src_ipaddr = request->client->src_ipaddr;
-		}
-
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, &request->reply_pairs, false);
-		break;
-
-	default:
+	if (!state->recv) {
+		REDEBUG("Invalid packet type (%u)", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}
 
-	RETURN_MODULE_OK;
-}
+	vmps_packet_debug(request, request->packet, &request->request_pairs, true);
 
+	return state->recv(p_result, mctx, request);
+}
 
 static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
 		.name2 = "Join-Request",
 		.component = MOD_AUTHORIZE,
+		.offset = PROCESS_CONF_OFFSET(join_request),
 	},
 	{
 		.name = "send",
 		.name2 = "Join-Response",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(join_response),
 	},
 	{
 		.name = "recv",
 		.name2 = "Reconfirm-Request",
 		.component = MOD_AUTHORIZE,
+		.offset = PROCESS_CONF_OFFSET(reconfirm_request),
 	},
 	{
 		.name = "send",
 		.name2 = "Reconfirm-Response",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(reconfirm_response),
 	},
 	{
 		.name = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 
 	COMPILE_TERMINATOR
@@ -240,6 +266,8 @@ extern fr_process_module_t process_vmps;
 fr_process_module_t process_vmps = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "process_vmps",
+	.inst_size	= sizeof(process_vmps_t),
+
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_vmps,
