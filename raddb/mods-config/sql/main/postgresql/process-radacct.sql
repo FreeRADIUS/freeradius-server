@@ -1,8 +1,8 @@
-#  -*- text -*-
-#
-#  main/postgresql/process-radacct.sql -- Schema extensions for processing radacct entries
-#
-#  $Id$
+-- -*- text -*-
+--
+--  main/postgresql/process-radacct.sql -- Schema extensions for processing radacct entries
+--
+--  $Id$
 
 --  ---------------------------------
 --  - Per-user data usage over time -

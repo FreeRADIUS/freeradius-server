@@ -33,6 +33,10 @@ jobs:
 #    Disable entirely
 #      Has a hair trigger and isn't useful enough to warrant tuning
 #
+#  sql-lint:
+#    Disable entirely
+#      Not suitable as a standalone linter
+#
       - name: Lint
         uses: github/super-linter@v3
         env:
@@ -41,3 +45,4 @@ jobs:
           FILTER_REGEX_EXCLUDE: (.*/)?(configure|config\.sub|config\.guess|missing|install-sh|freeradius\.css|toc_focus\.js|asciidoc/sass/.*\.scss)
           VALIDATE_ALL_CODEBASE: ${{ github.ref == 'refs/heads/linter' || github.ref == 'refs/heads/ci-debug' }}
           VALIDATE_JSCPD: false
+          VALIDATE_SQL: false

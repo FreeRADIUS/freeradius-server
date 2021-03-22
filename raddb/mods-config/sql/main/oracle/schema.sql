@@ -1,16 +1,16 @@
-/*
- * $Id$
- *
- * Oracle schema for FreeRADIUS
- *
- *
- * NOTE: Which columns are NULLable?
- *       Oracle has a non-standard "feature" in that it treats an empty string a NULL!
- */
+--
+-- $Id$
+--
+-- Oracle schema for FreeRADIUS
+--
+--
+-- NOTE: Which columns are NULLable?
+--       Oracle has a non-standard "feature" in that it treats an empty string a NULL!
+--
 
-/*
- * Table structure for table 'radacct'
- */
+--
+-- Table structure for table 'radacct'
+--
 CREATE TABLE radacct (
 	radacctid		INT PRIMARY KEY,
 	acctsessionid		VARCHAR(96) NOT NULL,
@@ -53,7 +53,9 @@ CREATE INDEX radacct_idx2
 
 CREATE SEQUENCE radacct_seq START WITH 1 INCREMENT BY 1;
 
-/* Trigger to emulate a serial # on the primary key */
+--
+-- Trigger to emulate a serial # on the primary key
+--
 CREATE OR REPLACE TRIGGER radacct_serialnumber
 	BEFORE INSERT OR UPDATE OF radacctid ON radacct
 	FOR EACH ROW
@@ -64,9 +66,9 @@ CREATE OR REPLACE TRIGGER radacct_serialnumber
 	END;
 /
 
-/*
- * Table structure for table 'radcheck'
- */
+--
+-- Table structure for table 'radcheck'
+--
 CREATE TABLE radcheck (
 	id 		INT PRIMARY KEY,
 	username	VARCHAR(30) NOT NULL,
@@ -76,7 +78,7 @@ CREATE TABLE radcheck (
 );
 CREATE SEQUENCE radcheck_seq START WITH 1 INCREMENT BY 1;
 
-/* Trigger to emulate a serial # on the primary key */
+-- Trigger to emulate a serial # on the primary key
 CREATE OR REPLACE TRIGGER radcheck_serialnumber
 	BEFORE INSERT OR UPDATE OF id ON radcheck
 	FOR EACH ROW
@@ -87,9 +89,9 @@ CREATE OR REPLACE TRIGGER radcheck_serialnumber
 	END;
 /
 
-/*
- * Table structure for table 'radgroupcheck'
- */
+--
+-- Table structure for table 'radgroupcheck'
+--
 CREATE TABLE radgroupcheck (
 	id 		INT PRIMARY KEY,
 	groupname	VARCHAR(20) UNIQUE NOT NULL,
@@ -99,9 +101,9 @@ CREATE TABLE radgroupcheck (
 );
 CREATE SEQUENCE radgroupcheck_seq START WITH 1 INCREMENT BY 1;
 
-/*
- * Table structure for table 'radgroupreply'
- */
+--
+-- Table structure for table 'radgroupreply'
+--
 CREATE TABLE radgroupreply (
 	id		INT PRIMARY KEY,
 	GroupName	VARCHAR(20) UNIQUE NOT NULL,
@@ -111,9 +113,9 @@ CREATE TABLE radgroupreply (
 );
 CREATE SEQUENCE radgroupreply_seq START WITH 1 INCREMENT BY 1;
 
-/*
- * Table structure for table 'radreply'
- */
+--
+-- Table structure for table 'radreply'
+--
 CREATE TABLE radreply (
 	id		INT PRIMARY KEY,
 	UserName	VARCHAR(30) NOT NULL,
@@ -124,7 +126,9 @@ CREATE TABLE radreply (
 CREATE INDEX radreply_idx1 ON radreply(UserName);
 CREATE SEQUENCE radreply_seq START WITH 1 INCREMENT BY 1;
 
-/* Trigger to emulate a serial # on the primary key */
+--
+-- Trigger to emulate a serial # on the primary key
+--
 CREATE OR REPLACE TRIGGER radreply_serialnumber
 	BEFORE INSERT OR UPDATE OF id ON radreply
 	FOR EACH ROW
@@ -135,9 +139,9 @@ CREATE OR REPLACE TRIGGER radreply_serialnumber
 	END;
 /
 
-/*
- * Table structure for table 'radusergroup'
- */
+--
+-- Table structure for table 'radusergroup'
+--
 CREATE TABLE radusergroup (
 	id		INT PRIMARY KEY,
 	UserName	VARCHAR(30) UNIQUE NOT NULL,
@@ -145,7 +149,9 @@ CREATE TABLE radusergroup (
 );
 CREATE SEQUENCE radusergroup_seq START WITH 1 INCREMENT BY 1;
 
-/* Trigger to emulate a serial # on the primary key */
+--
+-- Trigger to emulate a serial # on the primary key
+--
 CREATE OR REPLACE TRIGGER radusergroup_serialnumber
 	BEFORE INSERT OR UPDATE OF id ON radusergroup
 	FOR EACH ROW
@@ -157,9 +163,9 @@ CREATE OR REPLACE TRIGGER radusergroup_serialnumber
 /
 
 
-/*
- * Table structure for table 'realmgroup'
- */
+--
+-- Table structure for table 'realmgroup'
+--
 CREATE TABLE realmgroup (
 	id 		INT PRIMARY KEY,
 	RealmName	VARCHAR(30) UNIQUE NOT NULL,
@@ -219,9 +225,9 @@ CREATE OR REPLACE TRIGGER radpostauth_TRIG
 
 /
 
-/*
- * Table structure for table 'nas'
- */
+--
+-- Table structure for table 'nas'
+--
 CREATE TABLE nas (
 	id              INT PRIMARY KEY,
 	nasname         VARCHAR(128),
