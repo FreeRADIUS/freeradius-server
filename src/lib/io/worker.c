@@ -1048,6 +1048,14 @@ static void _worker_request_resume(request_t *request, UNUSED void *uctx)
 	fr_time_tracking_resume(&request->async->tracking, fr_time());
 }
 
+/** Check if a request is scheduled
+ *
+ */
+static bool _worker_request_scheduled(request_t const *request, UNUSED void *uctx)
+{
+	return fr_heap_entry_inserted(request->runnable_id);
+}
+
 /** Run a request
  *
  *  Until it either yields, or is done.
@@ -1060,7 +1068,6 @@ static void _worker_request_resume(request_t *request, UNUSED void *uctx)
  */
 static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker, fr_time_t start)
 {
-	rlm_rcode_t	final;
 	request_t	*request;
 	fr_time_t	now;
 
@@ -1080,9 +1087,6 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 		REQUEST_VERIFY(request);
 		fr_assert(request->runnable_id < 0);
 
-		fr_assert(request->parent == NULL);
-		fr_assert(request->async->process != NULL);
-
 		RDEBUG("Running request");
 
 		/*
@@ -1095,21 +1099,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 			return;
 		}
 
-		/*
-		 *	Old syle... should be removed
-		 */
-		if (request->async->process) {
-			request->async->process(&final,
-						&(module_ctx_t){
-							.instance = request->async->process_inst
-						}, request);
-
-		/*
-		 *	New style... just call the interpreter directly
-		 */
-		} else {
-			(void)unlang_interpret(request);
-		}
+		(void)unlang_interpret(request);
 
 		now = fr_time();
 	}
@@ -1224,7 +1214,8 @@ nomem:
 							.done_external = _worker_request_external_done,
 							.mark_runnable = _worker_request_runnable,
 							.yield = _worker_request_yield,
-							.resume = _worker_request_resume
+							.resume = _worker_request_resume,
+							.scheduled = _worker_request_scheduled
 					     },
 					     worker);
 	if (!worker->intp){
