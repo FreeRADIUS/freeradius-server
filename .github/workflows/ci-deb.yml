@@ -34,12 +34,14 @@ jobs:
 
     - name: Package manager performance improvements
       run: |
+        sed -i 's/deb.debian.org/debian-archive.trafficmanager.net/' /etc/apt/sources.list
+        sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/' /etc/apt/sources.list
         echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+        apt-get update
 
     - name: Install recent git
       run: |
-        apt-get update
         apt-get install -y --no-install-recommends git-core ca-certificates
 
     - uses: actions/checkout@v2
@@ -119,12 +121,6 @@ jobs:
 
     steps:
 
-    # For pkill
-    - name: Install procps
-      run: |
-        apt-get update
-        apt-get install -y --no-install-recommends procps
-
     - name: Load DEBs
       uses: actions/download-artifact@v2
       with:
@@ -132,12 +128,20 @@ jobs:
 
     - name: Package manager performance improvements
       run: |
+        sed -i 's/deb.debian.org/debian-archive.trafficmanager.net/' /etc/apt/sources.list
+        sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/' /etc/apt/sources.list
         echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+        apt-get update
+
+    # For pkill
+    - name: Install procps
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends procps
 
     - name: Install DEBs
       run: |
-        apt-get update
         find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y --no-install-recommends
 
     - name: Config test
