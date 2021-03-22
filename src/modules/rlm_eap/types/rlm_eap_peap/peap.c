@@ -553,10 +553,8 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		eap_peap_soh_verify(fake, data, data_len);
 		setup_fake_request(request, fake, t);
 
-		if (t->soh_virtual_server) fake->server_cs = virtual_server_find(t->soh_virtual_server);
+//		if (t->soh_virtual_server) fake->server_cs = virtual_server_find(t->soh_virtual_server);
 
-		RDEBUG2("Sending SoH request to server %s",
-		       fake->server_cs ? cf_section_name2(fake->server_cs) : "NULL");
 		rad_virtual_server(&rcode, fake);
 
 		if (fake->reply->code != FR_RADIUS_CODE_ACCESS_ACCEPT) {

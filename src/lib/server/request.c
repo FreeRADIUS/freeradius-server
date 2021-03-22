@@ -142,8 +142,6 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
 	 *
 	 *	FIXME: Permit different servers for inner && outer sessions?
 	 */
-	child->server_cs = parent->server_cs;
-
 	child->packet = fr_radius_packet_alloc(child, true);
 	if (!child->packet) {
 		talloc_free(child);

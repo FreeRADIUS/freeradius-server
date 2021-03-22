@@ -200,7 +200,6 @@ struct request_s {
 						//!< working with the request, to do something.
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
-	CONF_SECTION		*server_cs;	//!< virtual server which is processing the request.
 
 	fr_rb_node_t		dedup_node;	//!< entry in the deduplication tree.
 	int32_t			runnable_id;	//!< entry in the queue / heap of runnable packets

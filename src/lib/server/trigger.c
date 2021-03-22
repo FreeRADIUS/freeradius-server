@@ -377,7 +377,6 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	 *	radius_exec_program always needs a request.
 	 */
 	fake = request_alloc(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
-	memcpy(&fake->server_cs, &subcs, sizeof(subcs)); /* completely wrong, but we need to use _something_ */
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the

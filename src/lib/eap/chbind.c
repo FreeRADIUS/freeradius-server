@@ -238,7 +238,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 	 *	Set virtual server based on configuration for channel
 	 *	bindings, this is hard-coded for now.
 	 */
-	fake->server_cs = virtual_server_find("channel_bindings");
+//	fake->server_cs = virtual_server_find("channel_bindings");
 	fake->packet->code = FR_RADIUS_CODE_ACCESS_REQUEST;
 
 	rad_virtual_server(&rcode, fake);

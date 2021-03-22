@@ -66,7 +66,6 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	 */
 	child->number = parent->number;
 	child->el = parent->el;
-	child->server_cs = parent->server_cs;
 	child->backlog = parent->backlog;
 
 	/*
