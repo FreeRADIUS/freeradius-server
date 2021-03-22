@@ -107,7 +107,14 @@ RECV(generic)
 	UPDATE_STATE_CS(packet);
 
 	if (!state->recv) {
-		REDEBUG("Invalid reply packet type (%u)", request->reply->code);
+		char const *name;
+
+		name = fr_dict_enum_name_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
+		if (name) {
+			REDEBUG("Invalid packet type (%s)", name);
+		} else {
+			REDEBUG("Invalid packet type (%u)", request->packet->code);
+		}
 		RETURN_MODULE_FAIL;
 	}
 
