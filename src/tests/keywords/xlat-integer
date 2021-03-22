@@ -23,7 +23,7 @@ update request {
 
 # String - network order representation of a 4 char string
 update request {
-	&Tmp-Integer-1 := "%{integer:Tmp-String-0}"
+	&Tmp-Integer-1 := "%(integer:%{Tmp-String-0})"
 }
 if ((<integer>&Tmp-String-0 != &Tmp-Integer-1) || (&Tmp-Integer-1 != 9870)) {
 	test_fail
@@ -31,20 +31,20 @@ if ((<integer>&Tmp-String-0 != &Tmp-Integer-1) || (&Tmp-Integer-1 != 9870)) {
 
 # String - network order representation of a 8 char string
 update request {
-	&Tmp-Integer64-0 := "%{integer:Tmp-String-1}"
+	&Tmp-Integer64-0 := "%(integer:%{Tmp-String-1})"
 }
 if ((<integer64>&Tmp-String-1 != &Tmp-Integer64-0) || (&Tmp-Integer64-0 != 98709870)) {
 	test_fail
 }
 
 # String - Can't convert 12 byte string to integer (our biggest native size is a 64bit unsigned int)
-if ("%{integer:Tmp-String-2}" != '') {
+if ("%(integer:%{Tmp-String-2})" != '') {
 	test_fail
 }
 
 # Octets - network order representation of a 4 byte octet string
 update request {
-	&Tmp-Integer-1 := "%{integer:Tmp-Octets-0}"
+	&Tmp-Integer-1 := "%(integer:%{Tmp-Octets-0})"
 }
 
 #
@@ -59,7 +59,7 @@ if (&Tmp-Integer-1 != 959985457) {
 
 # Octets - network order representation of a 8 byte octet string
 update request {
-	&Tmp-Integer64-0 := "%{integer:Tmp-Octets-1}"
+	&Tmp-Integer64-0 := "%(integer:%{Tmp-Octets-1})"
 }
 
 #
@@ -74,17 +74,17 @@ if (&Tmp-Integer64-0 != 4123106143410599729) {
 }
 
 # String - Can't convert 12 byte octet string to integer (our biggest native size is a 64bit unsigned int)
-if ("%{integer:Tmp-Octets-2}" != '') {
+if ("%(integer:%{Tmp-Octets-2})" != '') {
 	test_fail
 }
 
 update request {
-	&Tmp-String-2        := "%{integer:Tmp-IP-Address-0}"
-	&Tmp-String-3        := "%{integer:Tmp-Date-0}"
-	&Tmp-String-4        := "%{integer:Tmp-Integer-0}"
-	&Tmp-String-6        := "%{integer:Tmp-Cast-Ifid}"
-	&Tmp-String-7        := "%{integer:Tmp-Cast-IPv6Addr}"
-	&Tmp-String-8        := "%{integer:Tmp-Cast-IPv6Prefix}"
+	&Tmp-String-2        := "%(integer:%{Tmp-IP-Address-0})"
+	&Tmp-String-3        := "%(integer:%{Tmp-Date-0})"
+	&Tmp-String-4        := "%(integer:%{Tmp-Integer-0})"
+	&Tmp-String-6        := "%(integer:%{Tmp-Cast-Ifid})"
+	&Tmp-String-7        := "%(integer:%{Tmp-Cast-IPv6Addr})"
+	&Tmp-String-8        := "%(integer:%{Tmp-Cast-IPv6Prefix})"
 }
 
 # IP Address
@@ -121,11 +121,11 @@ if (&Tmp-String-8 != '959985465') {
 	test_fail
 }
 update request {
-	&Tmp-String-0        := "%{integer:Tmp-Cast-Byte}"
-	&Tmp-String-1        := "%{integer:Tmp-Cast-Short}"
-	&Tmp-Integer64-2     := "%{integer:Tmp-Cast-Ether}"
-	&Tmp-String-3        := "%{integer:Tmp-Cast-Integer64}"
-	&Tmp-String-4        := "%{integer:Tmp-Cast-IPv4Prefix}"
+	&Tmp-String-0        := "%(integer:%{Tmp-Cast-Byte})"
+	&Tmp-String-1        := "%(integer:%{Tmp-Cast-Short})"
+	&Tmp-Integer64-2     := "%(integer:%{Tmp-Cast-Ether})"
+	&Tmp-String-3        := "%(integer:%{Tmp-Cast-Integer64})"
+	&Tmp-String-4        := "%(integer:%{Tmp-Cast-IPv4Prefix})"
 }
 
 # byte
@@ -159,6 +159,18 @@ if (&Tmp-String-3 != '1152921505566832445') {
 
 # ipv4prefix
 if (&Tmp-String-4 != '959985470') {
+	test_fail
+}
+
+update request {
+	&Service-Type := Login-User
+}
+
+update request {
+	&Tmp-Integer-2 := "%(integer:%{Service-Type})"
+}
+
+if (&Tmp-Integer-2 != 1) {
 	test_fail
 }
 
