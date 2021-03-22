@@ -873,6 +873,14 @@ post-auth {
 	remove_reply_message_if_eap
 
 	#
+	#  Reject packets where User-Name != TLS-Client-Cert-Common-Name
+	#  There is no reason for users to lie about their names.
+	#
+	#  In general, User-Name == EAP Identity == TLS-Client-Cert-Common-Name
+	#
+#	verify_tls_client_common_name
+
+	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
 	#

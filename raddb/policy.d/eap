@@ -83,3 +83,8 @@ remove_reply_message_if_eap {
 	}
 }
 
+verify_tls_client_common_name {
+	if (&TLS-Client-Cert-Common-Name && (&TLS-Client-Cert-Common-Name != &User-Name)) {
+		reject
+	}
+}
