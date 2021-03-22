@@ -773,7 +773,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 		VERIFY_VP(vp);
 
 		if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
-			RDEBUGX(level, "%s = <<< secret >>>", vp->da->name);
+			RDEBUGX(level, "%s%s = <<< secret >>>"prefix ? prefix : "", vp->da->name);
 			continue;
 		}
 
