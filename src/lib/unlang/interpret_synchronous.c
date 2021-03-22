@@ -74,6 +74,8 @@ static void _request_external_done(request_t *request, UNUSED rlm_rcode_t rcode,
 		      "Request %s bad log indentation - expected 0 got %u", request->name, request->log.unlang_indent);
 	fr_assert_msg(!unlang_interpret_is_resumable(request),
 		      "Request %s is marked as yielded at end of processing", request->name);
+
+	RDEBUG3("Synchronous done external request");
 }
 
 /** Request is now runnable
