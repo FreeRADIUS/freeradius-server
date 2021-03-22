@@ -42,7 +42,7 @@ jobs:
         env:
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FILTER_REGEX_EXCLUDE: (.*/)?(configure|config\.sub|config\.guess|missing|install-sh|freeradius\.css|toc_focus\.js|asciidoc/sass/.*\.scss)
+          FILTER_REGEX_EXCLUDE: (.*/)?(configure|config\.sub|config\.guess|missing|install-sh|freeradius\.css|toc_focus\.js|asciidoc/sass/.*\.scss|doc/templates/.*\.html|doc/doxygen/extra/.*\.html)
           VALIDATE_ALL_CODEBASE: ${{ github.ref == 'refs/heads/linter' || github.ref == 'refs/heads/ci-debug' }}
           VALIDATE_JSCPD: false
           VALIDATE_SQL: false

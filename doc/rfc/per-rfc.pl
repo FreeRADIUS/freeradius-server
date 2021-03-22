@@ -34,8 +34,8 @@ foreach $file (@ARGV) {
     #  Print out the HTML header
     #
     print OUTPUT <<EOF;
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<HTML>
+<!DOCTYPE HTML PUBLIC "-//w3c//dtd html 4.0 transitional//en">
+<html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <meta name="GENERATOR" content="Perl">
@@ -49,17 +49,17 @@ EOF
 
   foreach $key (sort keys %{$defs{$def}}) {
     if (substr($key,0,1) ne $letter) {
-      print OUTPUT "</UL>\n" if ($letter ne "@");
+      print OUTPUT "</ul>\n" if ($letter ne "@");
       $letter = substr($key,0,1);
-      print OUTPUT "\n<H3>$letter</H3>\n\n";
-      print OUTPUT "<UL>\n";
+      print OUTPUT "\n<h3>$letter</h3>\n\n";
+      print OUTPUT "<ul>\n";
     }
 
-    print OUTPUT "<A HREF=\"$refs{$key}.html#$key\">$key</A><BR />\n";
+    print OUTPUT "<a href=\"$refs{$key}.html#$key\">$key</a><br />\n";
 
   }
 
-  print OUTPUT "</UL>\n";
-  print OUTPUT "</BODY>\n";
+  print OUTPUT "</ul>\n";
+  print OUTPUT "</body>\n";
   close OUTPUT;
 }
