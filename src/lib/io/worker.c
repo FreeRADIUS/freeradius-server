@@ -1029,6 +1029,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
 {
 	fr_worker_t	*worker = uctx;
 
+	RDEBUG3("Marked as runnable");
 	fr_heap_insert(worker->runnable, request);
 }
 
@@ -1037,6 +1038,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
  */
 static void _worker_request_yield(request_t *request, UNUSED void *uctx)
 {
+	RDEBUG3("Yielded");
 	fr_time_tracking_yield(&request->async->tracking, fr_time());
 }
 
@@ -1045,6 +1047,7 @@ static void _worker_request_yield(request_t *request, UNUSED void *uctx)
  */
 static void _worker_request_resume(request_t *request, UNUSED void *uctx)
 {
+	RDEBUG3("Resuming");
 	fr_time_tracking_resume(&request->async->tracking, fr_time());
 }
 
