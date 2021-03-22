@@ -758,10 +758,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 static fr_process_state_t const process_state[] = {
 	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP]	= FR_RADIUS_CODE_ACCESS_ACCEPT,
+			[RLM_MODULE_NOOP]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_OK]		= FR_RADIUS_CODE_ACCESS_ACCEPT,
 			[RLM_MODULE_UPDATED]	= FR_RADIUS_CODE_ACCESS_ACCEPT,
-			[RLM_MODULE_HANDLED]	= FR_RADIUS_CODE_ACCESS_ACCEPT,
 
 			[RLM_MODULE_FAIL]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_INVALID]	= FR_RADIUS_CODE_ACCESS_REJECT,
@@ -769,7 +768,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT
 		},
-		.rcode = RLM_MODULE_REJECT,
+		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_access_request,
 		.section_offset = offsetof(process_radius_sections_t, access_request),
