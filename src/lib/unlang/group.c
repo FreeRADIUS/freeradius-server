@@ -37,7 +37,7 @@ unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request, unlang_s
 	 *	and can be empty.
 	 */
 	if (!g->children) {
-		RDEBUG2("} # %s ... <ignoring empty subsection>", frame->instruction->debug_name);
+		RDEBUG2("<ignoring empty subsection>");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
