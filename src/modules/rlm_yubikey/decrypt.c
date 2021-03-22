@@ -70,7 +70,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	/*
 	 *	Private ID used for validation purposes
 	 */
-	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Private-ID", NULL, T_OP_SET);
+	vp = fr_pair_make(request->packet, &request->packet->vps, "Yubikey-Private-ID", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Private-ID");
 
@@ -81,7 +81,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	/*
 	 *	Token timestamp
 	 */
-	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Timestamp", NULL, T_OP_SET);
+	vp = fr_pair_make(request->packet, &request->packet->vps, "Yubikey-Timestamp", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Timestamp");
 
@@ -93,7 +93,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	/*
 	 *	Token random
 	 */
-	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Random", NULL, T_OP_SET);
+	vp = fr_pair_make(request->packet, &request->packet->vps, "Yubikey-Random", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Random");
 
@@ -108,7 +108,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	 */
 	counter = (yubikey_counter(token.ctr) << 16) | token.use;
 
-	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Counter", NULL, T_OP_SET);
+	vp = fr_pair_make(request->packet, &request->packet->vps, "Yubikey-Counter", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Counter");
 

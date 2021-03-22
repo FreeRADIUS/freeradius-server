@@ -110,6 +110,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  full after writing an attribute value, and more attributes needed to be encoded.
 	  Reported by Adrian Smith.
 	* Fix leak with unknown attributes in detail reader.  Fixes #3937.
+	* Fix parenting issues in rlm_yubikey.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
