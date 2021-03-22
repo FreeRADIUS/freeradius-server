@@ -858,16 +858,9 @@ int unlang_interpret_push_instruction(request_t *request, void *instruction, rlm
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	if (top_frame) {
-		if (unlang_interpret_push(request, NULL, default_rcode, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME) < 0) {
-			return -1;
-		}
-	}
-	if (instruction) {
-		if (unlang_interpret_push(request,
-					  instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
-			return -1;
-		}
+	if (unlang_interpret_push(request,
+				  instruction, default_rcode, UNLANG_NEXT_SIBLING, top_frame) < 0) {
+		return -1;
 	}
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
