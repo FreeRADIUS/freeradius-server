@@ -353,6 +353,8 @@ static bool do_xlats(char const *filename, FILE *fp)
 	request->log.lvl = fr_debug_lvl;
 	output[0] = '\0';
 
+	request->async = talloc_zero(request, fr_async_t);
+
 	while (fgets(input, sizeof(input), fp) != NULL) {
 		lineno++;
 
