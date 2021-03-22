@@ -726,11 +726,6 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 	}
 
-	if (!state->recv) {
-		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
-	}
-
 	return state->recv(p_result, mctx, request);
 }
 

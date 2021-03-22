@@ -216,11 +216,6 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	UPDATE_STATE(packet);
 
-	if (!state->recv) {
-		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
-	}
-
 	vmps_packet_debug(request, request->packet, &request->request_pairs, true);
 
 	return state->recv(p_result, mctx, request);
