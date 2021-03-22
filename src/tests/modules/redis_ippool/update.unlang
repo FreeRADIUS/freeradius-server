@@ -73,14 +73,14 @@ update request {
 	&Tmp-Date-0 := "%l"
 }
 
-if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" > 50) {
+if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %(integer:%{Tmp-Date-0})}" > 50) {
 	test_pass
 } else {
 	test_fail
 }
 
 # 9.
-if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %{integer:&Tmp-Date-0}}" < 70) {
+if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %(integer:%{Tmp-Date-0})}" < 70) {
 	test_pass
 } else {
 	test_fail
