@@ -3128,6 +3128,10 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const trigger_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Global initialisation for xlat
  *
@@ -3166,7 +3170,7 @@ int xlat_init(void)
 	xlat_internal(xlat);
 
 	XLAT_REGISTER(integer);
-	xlat_register_legacy(NULL, "trigger", trigger_xlat, NULL, NULL, 0, 0);	/* On behalf of trigger.c */
+	XLAT_REGISTER(map);
 	XLAT_REGISTER(xlat);
 
 #define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
@@ -3186,6 +3190,7 @@ do { \
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
+	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
 do { \
