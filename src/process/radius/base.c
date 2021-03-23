@@ -385,6 +385,7 @@ RESUME(access_request)
 	 *
 	 *	And continue with sending the generic reply.
 	 */
+	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, rctx);
@@ -405,9 +406,7 @@ RESUME(auth_type)
 
 	rlm_rcode_t			rcode = request->rcode;
 	fr_pair_t			*vp;
-	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -416,15 +415,13 @@ RESUME(auth_type)
 
 	if (auth_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND) {
 		request->reply->code = auth_type_rcode[rcode];
-		UPDATE_STATE_CS(reply);
+		UPDATE_STATE(reply);
 
 		RDEBUG("The 'authenticate' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
 		fr_assert(state->send != NULL);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, rctx);
+		return state->send(p_result, mctx, request, rctx);
 	}
 
 	/*
@@ -488,12 +485,10 @@ RESUME(auth_type)
 		break;
 
 	}
-	UPDATE_STATE_CS(reply);
+	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->send,
-					      NULL, rctx);
+	return state->send(p_result, mctx, request, rctx);
 }
 
 RESUME_NO_RCTX(access_accept)
@@ -568,9 +563,7 @@ RESUME(acct_type)
 	};
 
 	rlm_rcode_t			rcode = request->rcode;
-	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -581,24 +574,20 @@ RESUME(acct_type)
 		fr_assert(acct_type_rcode[rcode] == FR_RADIUS_CODE_DO_NOT_RESPOND);
 
 		request->reply->code = acct_type_rcode[rcode];
-		UPDATE_STATE_CS(reply);
+		UPDATE_STATE(reply);
 
 		RDEBUG("The 'accounting' section returned %s - not sending a response",
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
 		fr_assert(state->send != NULL);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, rctx);
+		return state->send(p_result, mctx, request, rctx);
 	}
 
 	request->reply->code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
-	UPDATE_STATE_CS(reply);
+	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->send,
-					      NULL, rctx);
+	return state->send(p_result, mctx, request, rctx);
 }
 
 RESUME(accounting_request)

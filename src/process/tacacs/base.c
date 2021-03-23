@@ -215,7 +215,6 @@ RECV(tacacs)
 RESUME(tacacs_type)
 {
 	rlm_rcode_t			rcode = *p_result;
-	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	PROCESS_INST	 		*inst = mctx->instance;
 
@@ -244,12 +243,10 @@ RESUME(tacacs_type)
 		break;
 	}
 
-	UPDATE_STATE_CS(reply);
+	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->send,
-					      NULL, rctx);
+	return state->send(p_result, mctx, request, rctx);
 }
 
 RESUME(recv_tacacs)
