@@ -64,6 +64,7 @@ typedef PROCESS_PACKET_TYPE fr_process_rcode_t[RLM_MODULE_NUMCODES];
  */
 typedef struct {
 	PROCESS_PACKET_TYPE	packet_type[RLM_MODULE_NUMCODES];	//!< rcode to packet type mapping.
+	PROCESS_PACKET_TYPE	default_reply;	//!< if not otherwise set
 	size_t			section_offset;	//!< Where to look in the process instance for
 						///< a pointer to the section we should execute.
 	rlm_rcode_t		rcode;		//!< Default rcode
@@ -140,9 +141,12 @@ RESUME(recv_generic)
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	UPDATE_STATE(packet);
-	fr_assert(state->packet_type[rcode] != 0);
 
 	request->reply->code = state->packet_type[rcode];
+	if (!request->reply->code) request->reply->code = state->default_reply;
+	if (!request->reply->code) request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
+	fr_assert(request->reply->code != 0);
+
 	UPDATE_STATE_CS(reply);
 
 	fr_assert(state->send != NULL);
