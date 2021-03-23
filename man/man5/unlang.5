@@ -808,12 +808,11 @@ then the length also does not exist, instead of being zero.
 
 The "string" is expanded before the length is taken.
 
-.IP %{integer:Attribute-Name}
-The integer value of the Attribute-Name, instead of the enumerated
-name.
+.IP %(integer:Value)
+The integer value of the Value.
 
 e.g. If a request contains "Service-Type = Login-User", the expansion
-of %{integer:Service-Type} will yield "1".
+of %(integer:%{Service-Type}) will yield "1".
 
 .IP %{hex:Attribute-Name}
 The hex value of the Attribute-Name, as a series of hex digits.

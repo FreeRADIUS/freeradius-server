@@ -215,8 +215,12 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 				 fr_sbuff_t *in, bool brace,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
+static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head,
+					      xlat_flags_t *flags, fr_sbuff_t *in,
+					      tmpl_rules_t const *rules);
+
 static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					    tmpl_rules_t const *t_rules)
+					    tmpl_rules_t const *t_rules, bool func_args)
 {
 	xlat_exp_t	*node;
 
@@ -224,11 +228,16 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 
 	node = xlat_exp_alloc_null(ctx);
 	xlat_exp_set_type(node, XLAT_ALTERNATE);
-	if (xlat_tokenize_expansion(node, &node->child, &node->flags, in, t_rules) < 0) {
-	error:
-		*head = NULL;
-		talloc_free(node);
-		return -1;
+
+	if (func_args) {
+		if (xlat_tokenize_function_args(node, &node->child, &node->flags, in, t_rules) < 0) {
+		error:
+			*head = NULL;
+			talloc_free(node);
+			return -1;
+		}
+	} else {
+		if (xlat_tokenize_expansion(node, &node->child, &node->flags, in, t_rules) < 0) goto error;
 	}
 
 	if (!fr_sbuff_adv_past_str_literal(in, ":-")) {
@@ -488,7 +497,7 @@ static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head
 	XLAT_DEBUG("FUNC <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
-	 *	%{module:args}
+	 *	%(module:args)
 	 */
 	fr_sbuff_marker(&m_s, in);
 	fr_sbuff_adv_past_allowed(in, SIZE_MAX, func_chars, NULL);
@@ -734,7 +743,14 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	 *	%{...}:-bar}
 	 */
 	if (fr_sbuff_adv_past_str_literal(in, "%{")) {
-		return xlat_tokenize_alternation(ctx, head, flags, in, t_rules);
+		return xlat_tokenize_alternation(ctx, head, flags, in, t_rules, false);
+	}
+
+	/*
+	 *	%(...):-bar}
+	 */
+	if (fr_sbuff_adv_past_str_literal(in, "%(")) {
+		return xlat_tokenize_alternation(ctx, head, flags, in, t_rules, true);
 	}
 
 	/*

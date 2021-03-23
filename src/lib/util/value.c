@@ -2776,6 +2776,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, src);
 
 	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
 	{
 		fr_value_box_t	tmp;
 
@@ -2813,13 +2814,15 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		}
 
 		fr_value_box_init(&tmp, FR_TYPE_UINT64, src->enumv, src->tainted);
-#ifdef WORDS_BIGENDIAN
 		memcpy(((uint8_t *)&tmp.vb_uint64) + (sizeof(tmp.vb_uint64) - sizeof(src->vb_ether)),
 		       &src->vb_ether, sizeof(src->vb_ether));
-#else
-		memcpy(&tmp.vb_uint64, &src->vb_ether, sizeof(tmp.vb_ether));
-#endif
+#ifndef WORDS_BIGENDIAN
+		/*
+		 *	Ethernet addresses are always stored bigendian,
+		 *	convert to native on little endian systems
+		 */
 		fr_value_box_hton(&tmp, &tmp);
+#endif
 		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, &tmp);
 	}
 

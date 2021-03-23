@@ -274,7 +274,7 @@ server detail {
 	}
 recv {
 	update request {
-		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %{%{integer:Event-Timestamp}:-%{integer:Packet-Original-Timestamp}}}"
+		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %{%(integer:%{Event-Timestamp}):-%(integer:%{Packet-Original-Timestamp})}}"
 	}
 	ok
 }
