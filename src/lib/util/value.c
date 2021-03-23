@@ -2776,6 +2776,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, src);
 
 	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
 	{
 		fr_value_box_t	tmp;
 
