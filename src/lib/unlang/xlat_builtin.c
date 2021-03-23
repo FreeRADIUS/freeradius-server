@@ -1159,17 +1159,17 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	FR_TYPE_DATE and FR_TYPE_DELTA need to be cast to 
 		 *	uin64_t so they're printed in a numeric format.
 		 */
-		if ((in_vb->type != FR_TYPE_DATE) || (in_vb->type != FR_TYPE_DELTA)) break;
-		FALL-THROUGH;
+		if ((in_vb->type != FR_TYPE_DATE) || (in_vb->type != FR_TYPE_TIME_DELTA)) break;
+		FALL_THROUGH;
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) goto error;
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (in_vb->vb_length > SIZEOF(uint64_t)) goto error;
+		if (in_vb->vb_length > sizeof(uint64_t)) goto error;
 
-		if (in_vb->vb_length > SIZEOF(uint32_t)) {
+		if (in_vb->vb_length > sizeof(uint32_t)) {
 			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL);
 			break;
 		}
