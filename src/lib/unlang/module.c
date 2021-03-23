@@ -694,15 +694,15 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
-	RDEBUG2("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
-		fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
-
 	if (ua == UNLANG_ACTION_YIELD) {
 		if (stack_depth < unlang_current_depth(request)) return UNLANG_ACTION_PUSHED_CHILD;
 		fr_assert(stack_depth == unlang_current_depth(request));
 		*p_result = rcode;
 		return UNLANG_ACTION_YIELD;
 	}
+
+	RDEBUG2("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
+		fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 
 	state->thread->active_callers--;
 
