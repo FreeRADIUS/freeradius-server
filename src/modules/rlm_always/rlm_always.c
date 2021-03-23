@@ -60,6 +60,11 @@ static int always_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp
 	return 0;
 }
 
+static xlat_arg_parser_t const always_xlat_args[] = {
+	{ .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Set module status or rcode
  *
  * Look ma, no locks...
@@ -127,7 +132,7 @@ done:
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_always_t	*inst = instance;
-	xlat_t const	*xlat;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
@@ -135,6 +140,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	xlat = xlat_register(inst, inst->xlat_name, always_xlat, false);
+	xlat_func_args(xlat, always_xlat_args);
 	xlat_async_instantiate_set(xlat, always_xlat_instantiate, rlm_always_t *, NULL, inst);
 
 	return 0;

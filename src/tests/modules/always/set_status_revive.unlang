@@ -1,7 +1,7 @@
 #
 #  Fail a module...
 #
-%{db_status:fail}
+%(db_status:fail)
 db_status {
 	fail = 1
 }
@@ -15,7 +15,7 @@ if (!fail) {
 #
 #  ... Now revive it
 #
-%{db_status:alive}
+%(db_status:alive)
 db_status
 if (ok) {
 	update reply {

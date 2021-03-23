@@ -4359,6 +4359,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 {
 	char const *p = in, *end = in + inlen;
 	char quote;
+	char close;
 	int depth;
 
 	*type = T_INVALID;
@@ -4442,22 +4443,23 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			return_P("Unexpected expansion");
 		}
 
-		if (p[1] != '{') {
+		if ((p[1] != '{') && (p[1] != '(')) {
 			p++;
 			return_P("Invalid character after '%'");
 		}
 
 		/*
-		 *	For now, %{...} is treated as a double-quoted
+		 *	For now, %{...} / %(...) is treated as a double-quoted
 		 *	string.  Once we clean other things up, the
 		 *	xlats will be treated as strongly typed values
 		 *	/ lists on their own.
 		 */
 		*type = T_DOUBLE_QUOTED_STRING;
 		depth = 0;
+		close = (p[1] == '{') ? '}' : ')';
 
 		/*
-		 *	Xlat's are quoted by %{...} nesting, not by
+		 *	Xlat's are quoted by %{...} / %(...) nesting, not by
 		 *	escapes, so we need to do special escaping.
 		 */
 		*out = p;
@@ -4467,7 +4469,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			 *	expansion, including the enclosing %{}
 			 *	characters.
 			 */
-			if (*p == '}') {
+			if (*p == close) {
 				p++;
 				depth--;
 
@@ -4488,7 +4490,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 				continue;
 			}
 
-			if ((p[0] == '%') && (p[1] == '{')) {
+			if ((p[0] == '%') && ((p[1] == '{') || (p[1] == '('))) {
 				if (!p[2]) {
 					return_P("End of string after expansion");
 				}
