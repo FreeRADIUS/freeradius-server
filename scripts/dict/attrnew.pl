@@ -13,7 +13,17 @@
 #  $Id$
 #
 
-$line = 0;
+use strict;
+use warnings;
+
+my %attributes;
+my %values;
+
+my %dup;
+my %first_ref;
+my %name2val;
+
+my $line = 0;
 while (<>) {
     $line++;
 
@@ -21,73 +31,75 @@ while (<>) {
     #  Get attribute.
     #
     if (/^ATTRIBUTE\s+([\w-]+)\s+(\w+)\s+(\w+)(.*)/) {
-	$name=$1;
-	$value = $2;
-	$type = $3;
-	$stuff = $4;
+        my $name = $1;
+        my $value = $2;
+        my $type = $3;
+        my $stuff = $4;
 
-	$value =~ tr/[A-F]/[a-f]/; # normal form for hex
-	$value =~ tr/X/x/;
+        $value =~ tr/[A-F]/[a-f]/; # normal form for hex
+        $value =~ tr/X/x/;
 
-	if ($value =~ /^0x/) {
-	    $index = hex $value;
-	} else {
-	    $index = $value;
-	}
+        my $index;
+        if ($value =~ /^0x/) {
+            $index = hex $value;
+        } else {
+            $index = $value;
+        }
 
-	if (defined $attributes{$index}) {
-	    $dup{$index}++;
-	} else {
-	    $first_ref{$line} = $index;
-	}
+        if (defined $attributes{$index}) {
+            $dup{$index}++;
+        } else {
+            $first_ref{$line} = $index;
+        }
 
-	$attributes{$index} = "$name $value $type$stuff";
-	$name2val{$name} = $index;
-	next;
+        $attributes{$index} = "$name $value $type$stuff";
+        $name2val{$name} = $index;
+        next;
     }
 
     #
     #  Values.
     #
-    if (/^VALUE\s+([\w-]+)\s+([\w-\/,.]+)\s+(\w+)(.*)/) {
-	$attr = $1;
-	$name = $2;
-	$value = $3;
-	$stuff = $d;
+    if (/^VALUE\s+([\w-]+)\s+([\w\/,.-]+)\s+(\w+)(.*)/) {
+    my $attr = $1;
+    my $name = $2;
+    my $value = $3;
+    my $stuff = $4;
 
-	$value =~ tr/[A-F]/[a-f]/; # normal form for hex
-	$value =~ tr/X/x/;
+    $value =~ tr/[A-F]/[a-f]/; # normal form for hex
+    $value =~ tr/X/x/;
 
-	if ($value =~ /^0x/) {
-	    $index = hex $value;
-	} else {
-	    $index = $value;
-	}
+    my $index;
+    if ($value =~ /^0x/) {
+        $index = hex $value;
+    } else {
+        $index = $value;
+    }
 
-	if (!defined $name2val{$attr}) {
-	    print "# FIXME: FORWARD REF?\nVALUE $attr $name $value$stuff\n";
-	    next;
-	}
+    if (!defined $name2val{$attr}) {
+        print "# FIXME: FORWARD REF?\nVALUE $attr $name $value$stuff\n";
+        next;
+    }
 
-	$values{$name2val{$attr}}{$index} = "$attr $name $value$stuff";
-	next;
+    $values{$name2val{$attr}}{$index} = "$attr $name $value$stuff";
+    next;
     }
 }
 
 #
 #  Print out the attributes sorted by number.
 #
-foreach $line (sort {$a <=> $b} keys %first_ref) {
-    $attr_val = $first_ref{$line};
+foreach my $line (sort {$a <=> $b} keys %first_ref) {
+    my $attr_val = $first_ref{$line};
 
     next if (defined $dup{$attr_val});
 
     print "ATTRIBUTE ", $attributes{$attr_val}, "\n";
 
-    next if (!defined %{$values{$attr_val}});
+    next if (!defined $values{$attr_val});
 
-    foreach $value (sort {$a <=> $b} keys %{$values{$attr_val}}) {
-	print "VALUE ", $values{$attr_val}{$value}, "\n";
+    foreach my $value (sort {$a <=> $b} keys %{$values{$attr_val}}) {
+        print "VALUE ", $values{$attr_val}{$value}, "\n";
     }
 
 }

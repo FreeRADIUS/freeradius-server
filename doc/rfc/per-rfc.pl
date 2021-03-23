@@ -1,40 +1,46 @@
 #!/usr/bin/env perl
 
+use strict;
+use warnings;
+
+my %refs;
+my %defs;
+
 #
 #   Read in the references, and put into an associative array
 #
-open FILE, "<refs" || die "Error opening refs: $!\n";
-while (<FILE>) {
+open(my $FILE, "<", "refs") || die "Error opening refs: $!\n";
+while (<$FILE>) {
     chop;
-    split;
+    @_ = split;
 
     $refs{$_[1]} = $_[0];
     $defs{$_[0]}{$_[1]}++;
 }
-close FILE;
+close $FILE;
 
 #
 #  now loop over the input RFC's.
 #
-foreach $file (@ARGV) {
-    $def=$file;
+foreach my $file (@ARGV) {
+    my $def=$file;
     $def =~ s/\.txt//;
 
-    $attribute = "zzzzz";
+    my $attribute = "zzzzz";
 
     # get the current reference
-    $ref = $file;
+    my $ref = $file;
     $ref =~ s/\..*//g;
-    $rfc = $ref;
+    my $rfc = $ref;
     $ref = "attributes-$ref";
 
-    open OUTPUT, ">$ref.html" || die "Error creating $ref.html: $!\n";
+    open(my $OUTPUT, ">", "$ref.html") || die "Error creating $ref.html: $!\n";
 
     #
     #  Print out the HTML header
     #
-    print OUTPUT <<EOF;
-<!DOCTYPE HTML PUBLIC "-//w3c//dtd html 4.0 transitional//en">
+    print $OUTPUT <<EOF;
+<!DOCTYPE html>
 <html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
@@ -45,21 +51,22 @@ foreach $file (@ARGV) {
 <h1>$rfc Attribute List</h1>
 EOF
 
-  $letter = "@";
+  my $letter = "@";
 
-  foreach $key (sort keys %{$defs{$def}}) {
+  foreach my $key (sort keys %{$defs{$def}}) {
     if (substr($key,0,1) ne $letter) {
-      print OUTPUT "</ul>\n" if ($letter ne "@");
+      print $OUTPUT "</ul>\n" if $letter ne "@";
       $letter = substr($key,0,1);
-      print OUTPUT "\n<h3>$letter</h3>\n\n";
-      print OUTPUT "<ul>\n";
+      print $OUTPUT "\n<h3>$letter</h3>\n\n";
+      print $OUTPUT "<ul>\n";
     }
 
-    print OUTPUT "<a href=\"$refs{$key}.html#$key\">$key</a><br />\n";
+    print $OUTPUT "<a href=\"$refs{$key}.html#$key\">$key</a><br />\n";
 
   }
 
-  print OUTPUT "</ul>\n";
-  print OUTPUT "</body>\n";
-  close OUTPUT;
+  print $OUTPUT "</ul>\n";
+  print $OUTPUT "</body>\n";
+  print $OUTPUT "</html>\n";
+  close $OUTPUT;
 }

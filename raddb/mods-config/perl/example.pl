@@ -188,13 +188,12 @@ sub xlat {
 	my ($filename,$a,$b,$c,$d) = @_;
 	radiusd::radlog(L_DBG, "From xlat $filename");
 	radiusd::radlog(L_DBG,"From xlat $a $b $c $d");
-	local *FH;
-	open FH, $filename or die "open '$filename' $!";
+	open(my $FH, '<', $filename) or die "open '$filename' $!";
 	local($/) = undef;
-	my $sub = <FH>;
-	close FH;
+	my $sub = <$FH>;
+	close $FH;
 	my $eval = qq{ sub handler{ $sub;} };
-	eval $eval;
+	eval $eval;  ## no critic
 	eval {main->handler;};
 }
 

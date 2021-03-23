@@ -34,33 +34,32 @@
 #  $Id$
 #
 
-$begin_vendor = 0;
-$blank = 0;
-$previous = "";
-
+use strict;
+use warnings;
 
 sub tabs {
-	my $width = shift;
-	my $name = shift;
-	my $len, $lenx;
+        my $width = shift;
+        my $name = shift;
+        my $len;
+        my $lenx;
 
-	$len = length $name;
+        $len = length $name;
 
-	return " " if ($len >= $width);
+        return " " if ($len >= $width);
 
-	$lenx = $width - $len;
-	$lenx += 7;		# round up
-	$lenx /= 8;
-	$lenx = int $lenx;
-	return "\t" x $lenx;
+        $lenx = $width - $len;
+        $lenx += 7;                # round up
+        $lenx /= 8;
+        $lenx = int $lenx;
+        return "\t" x $lenx;
 }
 
 while (@ARGV) {
-    $filename = shift;
+    my $filename = shift;
 
-    open FILE, "<$filename" or die "Failed to open $filename: $!\n";
+    open(my $FILE, "<", $filename) or die "Failed to open $filename: $!\n";
 
-    @output = ();
+    my @output = ();
 
     my $year = 1900 + (localtime)[5];
 
@@ -76,324 +75,327 @@ while (@ARGV) {
     #
     push @output, "# Version \$", "Id: ", "\$\n";
 
+    my $begin_vendor = 0;
+    my $blank = 0;
+    my $previous = "";
+    my $vendor;
+    my $tabsa;
+    my $tabsn;
 
-    while (<FILE>) {
-	#
-	#  Suppress any existing header
-	#
-	next if (/^# -\*- text/);
-	next if (/^# Copyright/);
-	next if (/^# This work is licensed/);
-	next if (/^# Version \$/);
+    while (<$FILE>) {
+        #
+        #  Suppress any existing header
+        #
+        next if (/^# -\*- text/);
+        next if (/^# Copyright/);
+        next if (/^# This work is licensed/);
+        next if (/^# Version \$/);
 
-	#
-	#  Clear out trailing whitespace
-	#
-	s/[ \t]+$//;
+        #
+        #  Clear out trailing whitespace
+        #
+        s/[ \t]+$//;
 
-	#
-	#  And CR's
-	#
-	s/\r//g;
+        #
+        #  And CR's
+        #
+        s/\r//g;
 
-	#
-	#  Suppress multiple blank lines
-	#
-	if (/^\s+$/) {
-	    next if ($blank == 1);
-	    $blank = 1;
-	    push @output, "\n";
-	    next;
-	}
-	$blank = 0;
+        #
+        #  Suppress multiple blank lines
+        #
+        if (/^\s+$/) {
+            next if ($blank == 1);
+            $blank = 1;
+            push @output, "\n";
+            next;
+        }
+        $blank = 0;
 
-	s/\s*$/\n/;
+        s/\s*$/\n/;
 
-	#
-	#  Suppress leading whitespace, so long as it's
-	#  not followed by a comment..
-	#
-	s/^\s*([^#])/$1/;
+        #
+        #  Suppress leading whitespace, so long as it's
+        #  not followed by a comment..
+        #
+        s/^\s*([^#])/$1/;
 
-	#
-	#  Not an ATTRIBUTE? Suppress "previous" checks.
-	#
-	if (!/^ATTRIBUTE/) {
-	    $previous = "";
-	}
+        #
+        #  Not an ATTRIBUTE? Suppress "previous" checks.
+        #
+        if (!/^ATTRIBUTE/) {
+            $previous = "";
+        }
 
-	#
-	#  Remember the protocol
-	#
-	if (/^PROTOCOL\s+([-\w]+)\s+(\w+)\s+(.*)/) {
-	    $name=$1;
-	    $format = $3;
-	    $tabs = tabs(16, $name);
+        #
+        #  Remember the protocol
+        #
+        if (/^PROTOCOL\s+([-\w]+)\s+(\w+)\s+(.*)/) {
+            my $name = $1;
+            my $format = $3;
+            my $tabs = tabs(16, $name);
 
-	    $format = "\t$format" if ($format);
+            $format = "\t$format" if ($format);
 
-	    push @output, "PROTOCOL\t$name$tabs$2$format\n";
-	    next;
-	}
+            push @output, "PROTOCOL\t$name$tabs$2$format\n";
+            next;
+        }
 
-	#
-	#  Remember the vendor
-	#
-	if (/^VENDOR\s+([-\w]+)\s+(\w+)(.*)/) {
-	    $name=$1;
-	    $tabs = tabs(32, $name);
+        #
+        #  Remember the vendor
+        #
+        if (/^VENDOR\s+([-\w]+)\s+(\w+)(.*)/) {
+            my $name = $1;
+            my $tabs = tabs(32, $name);
 
-	    push @output, "VENDOR\t\t$name$tabs$2$3\n";
-	    $vendor = $name;
-	    next;
-	}
+            push @output, "VENDOR\t\t$name$tabs$2$3\n";
+            $vendor = $name;
+            next;
+        }
 
-	#
-	#  Remember if we did BEGIN-VENDOR format=
-	#
-	if (/^BEGIN-VENDOR\s+([-\w]+)\s+(format=[-\w]+)/) {
-	    $begin_vendor = 1;
-	    if (!defined $vendor) {
-		$vendor = $1;
-	    } elsif ($vendor ne $1) {
-		# do something smart
-	    }
+        #
+        #  Remember if we did BEGIN-VENDOR format=
+        #
+        if (/^BEGIN-VENDOR\s+([-\w]+)\s+(format=[-\w]+)/) {
+            $begin_vendor = 1;
+            if (!defined $vendor) {
+                $vendor = $1;
+            } elsif ($vendor ne $1) {
+                # do something smart
+            }
 
-	    push @output, "BEGIN-VENDOR\t$vendor $2\n";
-	    next;
-	}
+            push @output, "BEGIN-VENDOR\t$vendor $2\n";
+            next;
+        }
 
-	#
-	#  Or just a plain BEGIN-VENDOR
-	#
-	if (/^BEGIN-VENDOR\s+([-\w]+)/) {
-	    $begin_vendor = 1;
-	    if (!defined $vendor) {
-		$vendor = $1;
-	    } elsif ($vendor ne $1) {
-		# do something smart
-	    }
+        #
+        #  Or just a plain BEGIN-VENDOR
+        #
+        if (/^BEGIN-VENDOR\s+([-\w]+)/) {
+            $begin_vendor = 1;
+            if (!defined $vendor) {
+                $vendor = $1;
+            } elsif ($vendor ne $1) {
+                # do something smart
+            }
 
-	    push @output, "BEGIN-VENDOR\t$vendor\n";
-	    next;
-	}
+            push @output, "BEGIN-VENDOR\t$vendor\n";
+            next;
+        }
 
-	#
-	#  Get attribute.
-	#
-	if (/^ATTRIBUTE\s+([-\w]+)\s+([\w.]+)\s+(\w+)(.*)/) {
-	    $name=$1;
-	    $tabs = tabs(40, $name);
+        #
+        #  Get attribute.
+        #
+        if (/^ATTRIBUTE\s+([-\w]+)\s+([\w.]+)\s+(\w+)(.*)/) {
+            my $name = $1;
+            my $tabs = tabs(40, $name);
 
-	    $value = $2;
-	    $type = $3;
-	    $stuff = $4;
+            my $value = $2;
+            my $type = $3;
+            my $stuff = $4;
 
-	    #
-	    #  See if it's old format, with the vendor at the end of
-	    #  the line.  If so, make it the new format.
-	    #
-	    if ($stuff =~ /$vendor/) {
-		if ($begin_vendor == 0) {
-		    push @output, "BEGIN-VENDOR\t$vendor\n\n";
-		    $begin_vendor = 1;
-		}
-		$stuff =~ s/$vendor//;
-		$stuff =~ s/\s+$//;
-	    }
+            #
+            #  See if it's old format, with the vendor at the end of
+            #  the line.  If so, make it the new format.
+            #
+            if (defined $vendor && $stuff =~ /$vendor/) {
+                if ($begin_vendor == 0) {
+                    push @output, "BEGIN-VENDOR\t$vendor\n\n";
+                    $begin_vendor = 1;
+                }
+                $stuff =~ s/$vendor//;
+                $stuff =~ s/\s+$//;
+            }
 
-	    #
-	    #  The numerical value doesn't start with ".".
-	    #
-	    #  If the current attribute is a child of the previous
-	    #  one, then just print out the child values.
-	    #
-	    #  Otherwise, remember this attribute as the new "previous"
-	    #
-	    if ($value !~ /^\./) {
-		if ($value =~ /^$previous(\..+)$/) {
-		    $value = $1;
-		} else {
-		    $previous = $value;
-		}
-	    }
+            #
+            #  The numerical value doesn't start with ".".
+            #
+            #  If the current attribute is a child of the previous
+            #  one, then just print out the child values.
+            #
+            #  Otherwise, remember this attribute as the new "previous"
+            #
+            if ($value !~ /^\./) {
+                if ($value =~ /^$previous(\..+)$/) {
+                    $value = $1;
+                } else {
+                    $previous = $value;
+                }
+            }
 
-	    push @output, "ATTRIBUTE\t$name$tabs$value\t$type$stuff\n";
-	    next;
-	}
+            push @output, "ATTRIBUTE\t$name$tabs$value\t$type$stuff\n";
+            next;
+        }
 
-	#
-	#  Get MEMBER
-	#
-	if (/^MEMBER\s+([-\w]+)\s+(\w+)(.*)/) {
-	    $name=$1;
-	    $tabs = tabs(40, $name);
+        #
+        #  Get MEMBER
+        #
+        if (/^MEMBER\s+([-\w]+)\s+(\w+)(.*)/) {
+            my $name = $1;
+            my $tabs = tabs(40, $name);
 
-	    $type = $2;
-	    $stuff = $3;
+            my $type = $2;
+            my $stuff = $3;
 
-	    push @output, "MEMBER\t\t$name$tabs$type$stuff\n";
-	    next;
-	}
+            push @output, "MEMBER\t\t$name$tabs$type$stuff\n";
+            next;
+        }
 
-	#
-	#  STRUCT name attr value
-	#
-	if (/^STRUCT\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
-	    $attr=$2;
-	    $len = length $attr;
+        #
+        #  STRUCT name attr value
+        #
+        if (/^STRUCT\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
+            my $attr = $2;
+            my $len = length $attr;
 
+            if ($len < 32) {
+                my $lenx = 32 - $len;
+                $lenx += 7;                # round up
+                $lenx /= 8;
+                $lenx = int $lenx;
+                $tabsa = "\t" x $lenx;
+                if ($tabsa eq "") {
+                    $tabsa = " ";
+                    $len += 1;
+                } else {
+                    $len -= $len % 8;
+                    $len += 8 * length $tabsa;
+                }
+            } else {
+                $tabsa = " ";
+                $len += 1;
+            }
 
-	    if ($len < 32) {
-		$lenx = 32 - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabsa = "\t" x $lenx;
-		if ($tabsa eq "") {
-		    $tabsa = " ";
-		    $len += 1;
-		} else {
-		    $len -= $len % 8;
-		    $len += 8 * length $tabsa;
-		}
-	    } else {
-		$tabsa = " ";
-		$len += 1;
-	    }
+            #
+            #  For the code below, we assume that the attribute lengths
+            #
+            my $lena;
+            if ($len < 32) {
+                $lena = 0;
+            } else {
+                $lena = $len - 32;
+            }
 
-	    #
-	    #  For the code below, we assume that the attribute lengths
-	    #
-	    if ($len < 32) {
-		$lena = 0;
-	    } else {
-		$lena = $len - 32;
-	    }
+            my $name = $1;
+            $len = length $name;
+            if ($len < 24) {
+                my $lenx = 24 - $lena - $len;
+                $lenx += 7;                # round up
+                $lenx /= 8;
+                $lenx = int $lenx;
+                $tabsn = "\t" x $lenx;
+                if ($tabsn eq "") {
+                    $tabsn = " ";
+                }
+            } else {
+                $tabsn = " ";
+            }
 
-	    $name = $1;
-	    $len = length $name;
-	    if ($len < 24) {
-		$lenx = 24 - $lena - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabsn = "\t" x $lenx;
-		if ($tabsn eq "") {
-		    $tabsn = " ";
-		}
-	    } else {
-		$tabsn = " ";
-	    }
+            push @output, "STRUCT\t$name$tabsa$attr$tabsn$3$4\n";
+            next;
+        }
 
-	    push @output, "STRUCT\t$name$tabsa$attr$tabsn$3$4\n";
-	    next;
-	}
+        #
+        #  Get ALIAS
+        #
+        if (/^ALIAS\s+([-\w]+)\s+(\w+)(.*)/) {
+            my $name = $1;
+            my $tabs = tabs(40, $name);
 
-	#
-	#  Get ALIAS
-	#
-	if (/^ALIAS\s+([-\w]+)\s+(\w+)(.*)/) {
-	    $name=$1;
-	    $tabs = tabs(40, $name);
+            my $ref = $2;
+            my $stuff = $3;
 
-	    $ref = $2;
-	    $stuff = $3;
+            push @output, "ALIAS\t\t$name$tabs$ref$stuff\n";
+            next;
+        }
 
-	    push @output, "ALIAS\t\t$name$tabs$ref$stuff\n";
-	    next;
-	}
+        #
+        #  VALUE attr name value
+        #
+        if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
+            my $attr = $1;
+            my $len = length $attr;
 
-	#
-	#  VALUE attr name value
-	#
-	if (/^VALUE\s+([-\w]+)\s+([-\w\/,.]+)\s+(\w+)(.*)/) {
-	    $attr=$1;
-	    $len = length $attr;
+            if ($len < 32) {
+                my $lenx = 32 - $len;
+                $lenx += 7;                # round up
+                $lenx /= 8;
+                $lenx = int $lenx;
+                $tabsa = "\t" x $lenx;
+                if ($tabsa eq "") {
+                    $tabsa = " ";
+                    $len += 1;
+                } else {
+                    $len -= $len % 8;
+                    $len += 8 * length $tabsa;
+                }
+            } else {
+                $tabsa = " ";
+                $len += 1;
+            }
 
+            #
+            #  For the code below, we assume that the attribute lengths
+            #
+            my $lena;
+            if ($len < 32) {
+                $lena = 0;
+            } else {
+                $lena = $len - 32;
+            }
 
-	    if ($len < 32) {
-		$lenx = 32 - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabsa = "\t" x $lenx;
-		if ($tabsa eq "") {
-		    $tabsa = " ";
-		    $len += 1;
-		} else {
-		    $len -= $len % 8;
-		    $len += 8 * length $tabsa;
-		}
-	    } else {
-		$tabsa = " ";
-		$len += 1;
-	    }
+            my $name = $2;
+            $len = length $name;
+            if ($len < 24) {
+                my $lenx = 24 - $lena - $len;
+                $lenx += 7;                # round up
+                $lenx /= 8;
+                $lenx = int $lenx;
+                $tabsn = "\t" x $lenx;
+                if ($tabsn eq "") {
+                    $tabsn = " ";
+                }
+            } else {
+                $tabsn = " ";
+            }
 
-	    #
-	    #  For the code below, we assume that the attribute lengths
-	    #
-	    if ($len < 32) {
-		$lena = 0;
-	    } else {
-		$lena = $len - 32;
-	    }
+            push @output, "VALUE\t$attr$tabsa$name$tabsn$3$4\n";
+            next;
+        }
 
-	    $name = $2;
-	    $len = length $name;
-	    if ($len < 24) {
-		$lenx = 24 - $lena - $len;
-		$lenx += 7;		# round up
-		$lenx /= 8;
-		$lenx = int $lenx;
-		$tabsn = "\t" x $lenx;
-		if ($tabsn eq "") {
-		    $tabsn = " ";
-		}
-	    } else {
-		$tabsn = " ";
-	    }
+        #
+        #  Get flags.
+        #
+        if (/^FLAGS\s+([!\w-]+)\s+(.*)/) {
+            my $name = $1;
 
-	    push @output, "VALUE\t$attr$tabsa$name$tabsn$3$4\n";
-	    next;
-	}
+            push @output, "FLAGS\t$name$2\n";
+            next;
+        }
 
-	#
-	#  Get flags.
-	#
-	if (/^FLAGS\s+([!-\w]+)\s+(.*)/) {
-	    $name=$1;
-	    $tabs = tabs(40, $name);
+        #
+        #  Remember if we did this.
+        #
+        if (/^END-VENDOR/) {
+            $begin_vendor = 0;
+        }
 
-	    push @output, "FLAGS\t$name$2\n";
-	    next;
-	}
-
-	#
-	#  Remember if we did this.
-	#
-	if (/^END-VENDOR/) {
-	    $begin_vendor = 0;
-	}
-
-	#
-	#  Everything else gets dumped out as-is.
-	#
-	push @output, $_;
+        #
+        #  Everything else gets dumped out as-is.
+        #
+        push @output, $_;
     }
 
 #
 #  If we changed the format, print the end vendor, too.
 #
     if ($begin_vendor) {
-	push @output, "\nEND-VENDOR\t$vendor\n";
+        push @output, "\nEND-VENDOR\t$vendor\n";
     }
 
-    close FILE;
+    close $FILE;
 
-    open FILE, ">$filename" or die "Failed to open $filename: $!\n";
-
-    print FILE @output;
-
-    close FILE;
+    open($FILE, ">", $filename) or die "Failed to open $filename: $!\n";
+    print $FILE @output;
+    close $FILE;
 }

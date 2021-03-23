@@ -12,6 +12,12 @@
 #	./format.pl dictionary.foo
 #
 
+use strict;
+use warnings;
+
+my $name;
+my $vendor;
+
 while (<>) {
     if (/^MACRO\s+([^ \t\(]+)\(t,s\)\s+26\s+\[vid=(\d+)\s+type1=\%t\%\s+len1=\+2\s+data=\%s\%/) {
 	$name = $1;

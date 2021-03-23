@@ -34,44 +34,55 @@
 #
 ######################################################################
 
+use strict;
+use warnings;
+
 my %processed;
 
-$any_dups = 0;
-$debug = 0;
+my $any_dups = 0;
+my $debug = 0;
+
+my %refs;
+my %include;
+my %maps;
+my %forward;
+my %reverse;
+my %duplicate;
+my %delete_line;
 
 #
 #  Find the #include's for one file.
 #
-sub process($) {
+sub process {
     my $file = shift;
 
     return if ($processed{$file});
 
     $processed{$file}++;
 
-    open FILE, "<$file" or die "Failed to open $file: $!\n";
+    open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
 
-    $line = 0;
-    while (<FILE>) {
-	$line++;
+    my $line = 0;
+    while (<$FILE>) {
+        $line++;
 
-	next if (!/^\s*\#\s*include\s+/);
+        next if (!/^\s*\#\s*include\s+/);
 
-	if (/^\s*\#\s*include\s+"(.+?)"/) {
-	    $refs{$file}{$1} = $line;
+        if (/^\s*\#\s*include\s+"(.+?)"/) {
+            $refs{$file}{$1} = $line;
 
-	    # FIXME: local header files?
-	    # src/foo/bar.c: #include "foo.h"
-	    #   src/foo/foo.h do stuff..
+            # FIXME: local header files?
+            # src/foo/bar.c: #include "foo.h"
+            #   src/foo/foo.h do stuff..
 
-	    $include{$1}++;
-	} elsif (/^\s*\#\s*include\s+<(.+?)>/) {
-	    $refs{$file}{$1} = $line;
-	    $include{$1}++;
-	}
+            $include{$1}++;
+        } elsif (/^\s*\#\s*include\s+<(.+?)>/) {
+            $refs{$file}{$1} = $line;
+            $include{$1}++;
+        }
     }
 
-    close FILE;
+    close $FILE;
 }
 
 #
@@ -79,8 +90,8 @@ sub process($) {
 #
 #  FIXME:
 #
-@directories = ("src/lib", "src");
-$do_it = 0;
+my @directories = ("src/lib", "src");
+my $do_it = 0;
 
 #
 #  Horrid.
@@ -93,7 +104,7 @@ if ($ARGV[0] eq "+n") {
 #
 #  Bootstrap the basic C files.
 #
-foreach $file (@ARGV) {
+foreach my $file (@ARGV) {
     process($file);
 }
 
@@ -104,30 +115,30 @@ foreach $file (@ARGV) {
 #  than walking over %include, because the process() function adds
 #  entries to the %include hash.
 #
-@work = sort keys %include;
-foreach $inc (@work) {
+my @work = sort keys %include;
+foreach my $inc (@work) {
 
-    foreach $dir (@directories) {
-	$path = $dir . "/" . $inc;
+    foreach my $dir (@directories) {
+        my $path = $dir . "/" . $inc;
 
-	# normalize path
-	$path =~ s:/.*?/\.\.::;
-	$path =~ s:/.*?/\.\.::;
+        # normalize path
+        $path =~ s:/.*?/\.\.::;
+        $path =~ s:/.*?/\.\.::;
 
-	next if (! -e $path);
-	process($path);
-	$forward{$inc} = $path;
-	$reverse{$path} = $inc;
+        next if (! -e $path);
+        process($path);
+        $forward{$inc} = $path;
+        $reverse{$path} = $inc;
 
-	# ignore system include files
-	next if ((scalar keys %{$refs{$path}}) == 0);
+        # ignore system include files
+        next if ((scalar keys %{$refs{$path}}) == 0);
 
-	#  Remember that X includes Y, and push Y onto the list
-	#  of files to scan.
-	foreach $inc2 (sort keys %{$refs{$path}}) {
-	    $maps{$inc}{$inc2} = 0;
-	    push @work, $inc2;
-	}
+        #  Remember that X includes Y, and push Y onto the list
+        #  of files to scan.
+        foreach my $inc2 (sort keys %{$refs{$path}}) {
+            $maps{$inc}{$inc2} = 0;
+            push @work, $inc2;
+        }
     }
 }
 
@@ -138,14 +149,14 @@ foreach $inc (@work) {
 #  This doesn't find the shortest path from A to B, but it does
 #  find one path.
 #
-foreach $inc (sort keys %maps) {
-    foreach $inc2 (sort keys %{$maps{$inc}}) {
-	foreach $inc3 (sort keys %{$maps{$inc2}}) {
-	    # map is already there...
-	    next if (defined $maps{$inc}{$inc3});
+foreach my $inc (sort keys %maps) {
+    foreach my $inc2 (sort keys %{$maps{$inc}}) {
+        foreach my $inc3 (sort keys %{$maps{$inc2}}) {
+            # map is already there...
+            next if (defined $maps{$inc}{$inc3});
 
-	    $maps{$inc}{$inc3} = $maps{$inc2}{$inc3} + 1;
-	}
+            $maps{$inc}{$inc3} = $maps{$inc2}{$inc3} + 1;
+        }
     }
 }
 
@@ -153,43 +164,43 @@ foreach $inc (sort keys %maps) {
 #  Walk through the files again, looking for includes that are
 #  unnecessary.  Note that we process header files, too.
 #
-foreach $file (sort keys %refs) {
+foreach my $file (sort keys %refs) {
 
     # print out some debugging information.
     if ($debug > 0) {
-	if (defined $reverse{$file}) {
-	    print $file, "\t(", $reverse{$file}, ")\n";
-	} else {
-	    print $file, "\n";
-	}
+        if (defined $reverse{$file}) {
+            print $file, "\t(", $reverse{$file}, ")\n";
+        } else {
+            print $file, "\n";
+        }
     }
 
     #  walk of the list of include's in this file
-    foreach $ref (sort keys %{$refs{$file}}) {
+    foreach my $ref (sort keys %{$refs{$file}}) {
 
-	#  walk over the include files we include, or included by
-	#  files that we include.
-	foreach $inc2 (sort keys %{$maps{$ref}}) {
-	    #
-	    #  If we include X, and X includes Y, and we include
-	    #  Y ourselves *after* X, it's a definite dupe.
-	    #
-	    #  Note that this is a *guaranteed* duplicate.
-	    #
-	    #  Sometimes order matters, so we can't always delete X if
-	    #  we include Y after X, and Y includes X
-	    #
-	    if (defined $refs{$file}{$inc2} &&
-		($refs{$file}{$inc2} > $refs{$file}{$ref})) {
-		$duplicate{$file}{$inc2} = $ref;
+        #  walk over the include files we include, or included by
+        #  files that we include.
+        foreach my $inc2 (sort keys %{$maps{$ref}}) {
+            #
+            #  If we include X, and X includes Y, and we include
+            #  Y ourselves *after* X, it's a definite dupe.
+            #
+            #  Note that this is a *guaranteed* duplicate.
+            #
+            #  Sometimes order matters, so we can't always delete X if
+            #  we include Y after X, and Y includes X
+            #
+            if (defined $refs{$file}{$inc2} &&
+                ($refs{$file}{$inc2} > $refs{$file}{$ref})) {
+                $duplicate{$file}{$inc2} = $ref;
 
-		# mark the line to be deleted.
-		$delete_line{$file}{$refs{$file}{$inc2}}++;
+                # mark the line to be deleted.
+                $delete_line{$file}{$refs{$file}{$inc2}}++;
 
-		$any_dups++;
-	    }
-	}
-	print "\t", $ref, "\n" if ($debug > 0);
+                $any_dups++;
+            }
+        }
+        print "\t", $ref, "\n" if ($debug > 0);
     }
 }
 
@@ -201,29 +212,32 @@ if ($debug > 0) {
 #  Maybe just print out the dups so that a person can validate them.
 #
 if (!$do_it) {
-    foreach $file (sort keys %duplicate) {
-	print $file, "\n";
+    foreach my $file (sort keys %duplicate) {
+        print $file, "\n";
 
-	foreach $inc (sort keys %{$duplicate{$file}}) {
-	    print "\t[", $refs{$file}{$inc}, "] ", $inc, " (", $duplicate{$file}{$inc}, " at ", $refs{$file}{$duplicate{$file}{$inc}}, ")\n";
-	}
+        foreach my $inc (sort keys %{$duplicate{$file}}) {
+            print "\t[", $refs{$file}{$inc}, "] ", $inc, " (", $duplicate{$file}{$inc}, " at ", $refs{$file}{$duplicate{$file}{$inc}}, ")\n";
+        }
     }
 } else {
-    foreach $file (sort keys %duplicate) {
-	open FILE, "<$file" or die "Failed to open $file: $!\n";
-	open OUTPUT, ">$file.tmp" or die "Failed to create $file.tmp: $!\n";
+    foreach my $file (sort keys %duplicate) {
+        open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
+        open(my $OUTPUT, ">", "$file.tmp") or die "Failed to create $file.tmp: $!\n";
 
-	$line = 0;
-	while (<FILE>) {
-	    $line++;
+        my $line = 0;
+        while (<$FILE>) {
+            $line++;
 
-	    # supposed to delete this line, don't print it to the output.
-	    next if (defined $delete_line{$file}{$line});
+            # supposed to delete this line, don't print it to the output.
+            next if (defined $delete_line{$file}{$line});
 
-	    print OUTPUT;
-	}
+            print $OUTPUT $_;
+        }
 
-	rename "$file.tmp", $file;
+        close $OUTPUT;
+        close $FILE;
+
+        rename "$file.tmp", $file;
     }
 
 }
