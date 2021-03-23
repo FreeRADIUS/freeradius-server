@@ -3049,10 +3049,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Store list poiters to restore later - fr_value_box_cast clears them
 	 */
-	fr_dlist_t entry = {
-		.next = vb->entry.next,
-		.prev = vb->entry.prev
-	};
+	fr_dlist_t entry = vb->entry;
 
 	/*
 	 *	Simple case, destination type and current
@@ -3071,8 +3068,16 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 	 */
 	fr_value_box_copy_shallow(NULL, &tmp, vb);
 
-	if (fr_value_box_cast(ctx, vb, dst_type, dst_enumv, &tmp) < 0) return -1;
-
+	if (fr_value_box_cast(ctx, vb, dst_type, dst_enumv, &tmp) < 0) {
+		/*
+		 *	On error, make sure the original
+		 *	box is left in a consistent state.
+		 */
+		fr_value_box_copy_shallow(NULL, vb, &tmp);
+		vb->entry.next = entry.next;
+		vb->entry.prev = entry.prev;
+		return -1;
+	}
 	fr_value_box_clear(&tmp);	/* Clear out any old buffers */
 
 	/*
