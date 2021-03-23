@@ -19,7 +19,7 @@
  * @file proto_dhcpv6_udp.c
  * @brief DHCPv6 handler for UDP.
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 #define LOG_PREFIX "proto_dhcpv6_udp - "
 

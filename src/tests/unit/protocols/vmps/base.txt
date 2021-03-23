@@ -1,6 +1,6 @@
 #  Test vectors for VMPS/VQP attributes
 #
-#  Copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+#  Copyright 2020 Network RADIUS SARL (legal@networkradius.com)
 #
 proto vmps
 proto-dictionary vmps

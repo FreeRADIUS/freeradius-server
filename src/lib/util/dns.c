@@ -19,7 +19,7 @@
  * @file src/lib/util/dns.c
  *
  * @copyright 2019 The FreeRADIUS server project
- * @copyright 2019 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2019 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSID("$Id$")
 

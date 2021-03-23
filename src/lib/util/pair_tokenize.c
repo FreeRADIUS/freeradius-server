@@ -18,7 +18,7 @@
  *
  * @file src/lib/util/pair_tokenize.c
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSID("$Id$")
 

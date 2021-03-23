@@ -20,7 +20,7 @@
  * @file src/protocols/arp/attrs.h
  * @brief ARP attributes
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSIDH(radius_attrs_h, "$Id$")
 

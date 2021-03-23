@@ -21,7 +21,7 @@
  * @brief Defines functions for calling tmpl__t asynchronously
  *
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 
 RCSID("$Id$")

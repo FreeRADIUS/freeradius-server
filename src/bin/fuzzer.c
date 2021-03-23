@@ -20,7 +20,7 @@
  * @file src/bin/fuzzer.c
  * @brief Functions to fuzz protocol decoding
  *
- * @copyright 2019 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2019 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSID("$Id$")
 

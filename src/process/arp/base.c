@@ -19,7 +19,7 @@
  * @file src/process/arp/base.c
  * @brief ARP processing.
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/unlang/base.h>

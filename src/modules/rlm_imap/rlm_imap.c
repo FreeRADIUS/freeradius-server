@@ -20,7 +20,7 @@
  * @brief imap server authentication.
  *
  * @copyright 2020 The FreeRADIUS server project
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSID("$Id$")
 

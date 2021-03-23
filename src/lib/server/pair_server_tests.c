@@ -18,7 +18,7 @@
  *
  * @file src/lib/server/pair_server_tests.c
  * @author Jorge Pereira <jpereira@freeradius.org>
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 
 /**

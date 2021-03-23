@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/dns.h
  *
- * @copyright 2019 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2019 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSIDH(dns_h, "$Id$")
 

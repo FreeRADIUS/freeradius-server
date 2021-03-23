@@ -20,7 +20,7 @@
  * @brief Load generation algorithms
  * @file io/load.c
  *
- * @copyright 2019 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2019 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSID("$Id$")
 

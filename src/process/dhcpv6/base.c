@@ -24,7 +24,7 @@
  * of the project that required its creation.
  *
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 #define LOG_PREFIX "process_dhcpv6 - "
 

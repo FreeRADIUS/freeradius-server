@@ -21,7 +21,7 @@
  * @file proto_dhcpv6.h
  * @brief Structures for the DHCPV6 protocol
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/dhcpv6/dhcpv6.h>

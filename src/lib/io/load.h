@@ -21,7 +21,7 @@
  * @file io/load.h
  * @brief Load generation
  *
- * @copyright 2019 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2019 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSIDH(load_h, "$Id$")
 

@@ -21,7 +21,7 @@
  * @file proto_arp.h
  * @brief Structures for the ARP protocol
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/arp/arp.h>

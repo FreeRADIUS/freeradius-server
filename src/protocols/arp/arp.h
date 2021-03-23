@@ -21,7 +21,7 @@
  * @file protocols/arp/arp.h
  * @brief Structures and prototypes for base RADIUS functionality.
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/rand.h>

@@ -1,6 +1,6 @@
 #  Test vectors for TACACS attributes
 #
-#  Copyright 2017 Network RADIUS SARL <legal@networkradius.com>
+#  Copyright 2017 Network RADIUS SARL (legal@networkradius.com)
 #
 proto tacacs
 proto-dictionary tacacs

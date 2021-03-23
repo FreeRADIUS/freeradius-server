@@ -19,7 +19,7 @@
  * @file rlm_icmp.c
  * @brief Send ICMP echo requests.
  *
- * @copyright 2020 Network RADIUS SARL <legal@networkradius.com>
+ * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 RCSID("$Id$")
 
