@@ -118,7 +118,11 @@ RECV(generic)
 		RETURN_MODULE_FAIL;
 	}
 
-	if (cs) RDEBUG("Running 'recv %s' from file %s", cf_section_name2(cs), cf_filename(cs));
+
+	if (cs) {
+		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(cs), cf_filename(cs));
+		fr_assert(strcmp(cf_section_name1(cs), "recv") == 0);
+	}
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
 					      NULL, NULL);
@@ -192,6 +196,11 @@ SEND(generic)
 
 	default:
 		MEM(0);
+	}
+
+	if (cs) {
+		RDEBUG("Running 'send %s' from file %s", cf_section_name2(cs), cf_filename(cs));
+		fr_assert(strcmp(cf_section_name1(cs), "send") == 0);
 	}
 
 	return unlang_module_yield_to_section(p_result, request,
