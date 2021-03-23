@@ -1139,38 +1139,37 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	fr_value_box_t	*in_vb = fr_dlist_head(in);
 
+	fr_strerror_clear(); /* Make sure we don't print old errors */
+	
 	switch (in_vb->type) {
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT8:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_BOOL:
+	default:
+	error:
+		RPEDEBUG("Failed converting %pV (%s) to an integer", in_vb,
+			 fr_table_str_by_value(fr_value_box_type_table, in_vb->type, "???"));
+		return XLAT_ACTION_FAIL;
+			
+	case FR_TYPE_NUMERIC:
 		/*
 		 *	Ensure enumeration is NULL so that the integer
 		 *	version of a box is returned
 		 */
 		in_vb->enumv = NULL;
-		break;
+			
+		/*
+		 *	FR_TYPE_DATE and FR_TYPE_DELTA need to be cast to 
+		 *	uin64_t so they're printed in a numeric format.
+		 */
+		if ((in_vb->type != FR_TYPE_DATE) || (in_vb->type != FR_TYPE_DELTA)) break;
+		FALL-THROUGH;
 
-	case FR_TYPE_DATE:
 	case FR_TYPE_STRING:
-		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) {
-		error:
-			RPEDEBUG("Invalid input for casting to an integer");
-			return XLAT_ACTION_FAIL;
-		}
+		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) goto error;
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (in_vb->vb_length > 8) goto error;
+		if (in_vb->vb_length > SIZEOF(uint64_t)) goto error;
 
-		if (in_vb->vb_length > 4) {
+		if (in_vb->vb_length > SIZEOF(uint32_t)) {
 			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL);
 			break;
 		}
@@ -1180,11 +1179,11 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
-		if(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL) < 0) goto error;
+		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL) < 0) goto error;
 		break;
 
 	case FR_TYPE_ETHERNET:
-		if(fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) goto error;
+		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) goto error;
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
@@ -1199,17 +1198,13 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 */
 		memcpy(&ipv6int, &in_vb->vb_ip.addr.v6.s6_addr, sizeof(ipv6int));
 
-		fr_snprint_uint128(buff, 40, ntohlll(ipv6int));
+		fr_snprint_uint128(buff, sizeof(buff), ntohlll(ipv6int));
 
-		MEM(vb=fr_value_box_alloc_null(ctx));
+		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrndup(ctx, vb, NULL, buff, strlen(buff), false);
 		fr_dcursor_append(out, vb);
 		return XLAT_ACTION_DONE;
 	}
-
-	default:
-		REDEBUG("Type '%s' cannot be converted to integer", fr_table_str_by_value(fr_value_box_type_table, in_vb->type, "???"));
-		goto error;
 	}
 
 	fr_dlist_remove(in, in_vb);
