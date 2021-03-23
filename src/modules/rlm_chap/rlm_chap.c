@@ -64,11 +64,16 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ NULL }
 };
 
+static xlat_arg_parser_t const xlat_func_chap_password_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Produce a CHAP-Password hash value
  *
  * Example:
 @verbatim
-"%{chap_password:<password>}" == 0x<id><md5_hash>
+"%(chap_password:<password>)" == 0x<id><md5_hash>
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -83,19 +88,6 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_pair_t	*challenge;
 	uint8_t	const	*vector;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	/*
-	 *	If there's no input, there's no output
-	 */
-	if (!in_head) {
-		REDEBUG("chap requires a password as input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	/*
 	 *	Use Chap-Challenge pair if present,
@@ -311,7 +303,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (!xlat_register(NULL, "chap_password", xlat_func_chap_password, false)) return -1;
+	xlat_t	*xlat;
+
+	xlat = xlat_register(NULL, "chap_password", xlat_func_chap_password, false);
+	if (!xlat) return -1;
+	xlat_func_args(xlat, xlat_func_chap_password_args);
 
 	return 0;
 }

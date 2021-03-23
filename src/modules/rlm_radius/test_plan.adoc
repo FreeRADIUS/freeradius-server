@@ -45,7 +45,7 @@ Class = 0x69616D616E6F706171756576616C756569616D616E6F706171756576616C7565
 ==== CHAP Access-Request - unlang
 ```
 User-Name = "testuser"
-Chap-Password = %{chap_password:supersecret}
+Chap-Password = %(chap_password:supersecret)
 Service-Type = Framed-User
 NAS-IP-Address = 127.0.0.1
 Tunnel-Password = "supersecret"
