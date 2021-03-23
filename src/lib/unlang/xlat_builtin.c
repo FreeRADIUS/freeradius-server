@@ -1141,11 +1141,14 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	fr_strerror_clear(); /* Make sure we don't print old errors */
 
+	fr_dlist_remove(in, in_vb);
+
 	switch (in_vb->type) {
 	default:
 	error:
 		RPEDEBUG("Failed converting %pV (%s) to an integer", in_vb,
 			 fr_table_str_by_value(fr_value_box_type_table, in_vb->type, "???"));
+		talloc_free(in_vb);
 		return XLAT_ACTION_FAIL;
 
 	case FR_TYPE_NUMERIC:
@@ -1203,11 +1206,11 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrndup(ctx, vb, NULL, buff, strlen(buff), false);
 		fr_dcursor_append(out, vb);
+		talloc_free(in_vb);
 		return XLAT_ACTION_DONE;
 	}
 	}
 
-	fr_dlist_remove(in, in_vb);
 	fr_dcursor_append(out, in_vb);
 
 	return XLAT_ACTION_DONE;
