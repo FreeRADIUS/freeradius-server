@@ -105,12 +105,16 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ NULL }
 };
 
-char const *fr_tacacs_packet_codes[] = {
+char const *fr_tacacs_packet_codes[FR_TACACS_CODE_MAX] = {
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START] = "Authentication-Start",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_START_REPLY] = "Authentication-Start-Reply",
+
 	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE] = "Authentication-Continue",
-	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_REPLY] = "Authentication-Reply",
+	[FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_REPLY] = "Authentication-Continue-Reply",
+
 	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST] = "Authorization-Request",
 	[FR_PACKET_TYPE_VALUE_AUTHORIZATION_REPLY] = "Authorization-Reply",
+
 	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST] = "Accounting-Request",
 	[FR_PACKET_TYPE_VALUE_ACCOUNTING_REPLY] = "Accounting-Reply",
 };

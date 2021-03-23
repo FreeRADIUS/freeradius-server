@@ -18,7 +18,6 @@
  * $Id$
  * @file proto_tacacs.c
  * @brief TACACS+ module.
- * @author Jorge Pereira <jpereira@freeradius.org>
  *
  * @copyright 2020 The FreeRADIUS server project.
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
@@ -110,7 +109,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	value = cf_pair_value(cp);
 
 	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
-	if (!dv || (dv->value->vb_uint32 >= FR_PACKET_TYPE_MAX)) {
+	if (!dv || (dv->value->vb_uint32 >= FR_TACACS_CODE_MAX)) {
 		cf_log_err(ci, "Unknown TACACS+ packet type '%s'", value);
 		return -1;
 	}
@@ -333,7 +332,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 */
 	if ((buffer_len == 1) ||
 	    (request->reply->code == FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_PACKET_TYPE_MAX)) {
+	    (request->reply->code == 0) || (request->reply->code >= FR_TACACS_CODE_MAX)) {
 		track->do_not_respond = true;
 		return 1;
 	}

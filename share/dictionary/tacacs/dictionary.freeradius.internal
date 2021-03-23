@@ -17,12 +17,13 @@ FLAGS	internal
 
 ATTRIBUTE	Packet-Type				65536	uint32
 VALUE	Packet-Type			Authentication-Start	1
-VALUE	Packet-Type			Authentication-Continue	2
-VALUE	Packet-Type			Authentication-Reply	3
-VALUE	Packet-Type			Authorization-Request	4
-VALUE	Packet-Type			Authorization-Reply	5
-VALUE	Packet-Type			Accounting-Request	6
-VALUE	Packet-Type			Accounting-Reply	7
-VALUE	Packet-Type			Do-Not-Respond		8
+VALUE	Packet-Type			Authentication-Start-Reply	2
+VALUE	Packet-Type			Authentication-Continue	3
+VALUE	Packet-Type			Authentication-Continue-Reply	4
+VALUE	Packet-Type			Authorization-Request	5
+VALUE	Packet-Type			Authorization-Reply	6
+VALUE	Packet-Type			Accounting-Request	7
+VALUE	Packet-Type			Accounting-Reply	8
+VALUE	Packet-Type			Do-Not-Respond		9
 
 ATTRIBUTE	State				65537	octets

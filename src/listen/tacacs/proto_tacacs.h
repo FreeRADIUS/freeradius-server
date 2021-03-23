@@ -26,8 +26,6 @@
 #include <freeradius-devel/tacacs/tacacs.h>
 #include <freeradius-devel/protocol/tacacs/tacacs.h>
 
-#define FR_PACKET_TYPE_MAX (FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND + 1)
-
 /** An instance of a proto_tacacs listen section
  *
  */
@@ -35,12 +33,12 @@ typedef struct {
 	fr_io_instance_t	io;				//!< wrapper for IO abstraction
 
 	char			**allowed_types;		//!< names for for 'type = ...'
-	bool			allowed[FR_PACKET_TYPE_MAX];	//!< indexed by value
+	bool			allowed[FR_TACACS_CODE_MAX];	//!< indexed by value
 
 	uint32_t		max_packet_size;		//!< for message ring buffer.
 	uint32_t		num_messages;			//!< for message ring buffer.
 
-	uint32_t		priorities[FR_PACKET_TYPE_MAX];	//!< priorities for individual packets
+	uint32_t		priorities[FR_TACACS_CODE_MAX];	//!< priorities for individual packets
 } proto_tacacs_t;
 
 /*
