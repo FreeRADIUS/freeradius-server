@@ -24,7 +24,7 @@ else {
 #  Pass the signature and the original message to the verification function
 #
 update request {
-	&Tmp-String-0 := "%{cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0}}"
+	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 }
 
 if (&Tmp-String-0 != 'yes') {
@@ -41,7 +41,7 @@ update request {
 	&Tmp-String-0 := "Goodbye world!"
 }
 update request {
-	&Tmp-String-0 := "%{cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0}}"
+	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 }
 
 if (&Tmp-String-0 != 'no') {
@@ -80,7 +80,7 @@ else {
 #  Pass the signature and the original message to the verification function
 #
 update request {
-	&Tmp-String-0 := "%{cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0}}"
+	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 }
 
 if (&Tmp-String-0 != 'yes') {
@@ -97,7 +97,7 @@ update request {
 	&Tmp-String-0 := "Goodbye nurse!"
 }
 update request {
-	&Tmp-String-0 := "%{cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0}}"
+	&Tmp-String-0 := "%(cipher_rsa_verify:%{Tmp-Octets-0} %{Tmp-String-0})"
 }
 
 if (&Tmp-String-0 != 'no') {

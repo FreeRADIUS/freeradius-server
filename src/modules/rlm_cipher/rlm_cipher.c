@@ -451,6 +451,12 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 	return 0;
 }
 
+static xlat_arg_parser_t const cipher_rsa_encrypt_xlat_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
+
 /** Encrypt input data
  *
  * Arguments are @verbatim(<plaintext>...)@endverbatim
@@ -479,15 +485,6 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*vb;
 	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!in_head) {
-		REDEBUG("encrypt requires one or arguments (<plaintext>...)");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		fr_tls_log_error(request, "Failed concatenating arguments to form plaintext");
-		return XLAT_ACTION_FAIL;
-	}
 	plaintext = in_head->vb_strvalue;
 	plaintext_len = in_head->vb_length;
 
@@ -515,6 +512,13 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+
+
+static xlat_arg_parser_t const cipher_rsa_sign_xlat_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING,
+};
 
 /** Sign input data
  *
@@ -548,15 +552,6 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*vb;
 	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!in_head) {
-		REDEBUG("sign requires one or arguments (<plaintext>...)");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		REDEBUG("Failed concatenating arguments to form plaintext");
-		return XLAT_ACTION_FAIL;
-	}
 	msg = in_head->vb_strvalue;
 	msg_len = in_head->vb_length;
 
@@ -600,6 +595,12 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const cipher_rsa_decrypt_xlat_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_OCTETS
+};
+
 /** Decrypt input data
  *
  * Arguments are @verbatim(<ciphertext\>...)@endverbatim
@@ -628,15 +629,6 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*vb;
 	fr_value_box_t			*in_head = fr_dlist_head(in);
 
-	if (!in_head) {
-		REDEBUG("decrypt requires one or more arguments (<ciphertext>...)");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_OCTETS, true) < 0) {
-		REDEBUG("Failed concatenating arguments to form plaintext");
-		return XLAT_ACTION_FAIL;
-	}
 	ciphertext = in_head->vb_octets;
 	ciphertext_len = in_head->vb_length;
 
@@ -664,12 +656,20 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const cipher_rsa_verify_xlat_arg[] = {
+	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_VOID,
+	  .func = NULL, .uctx = NULL },
+	{ .required = true, .concat = true, .single = false, .variadic = true, .type = FR_TYPE_STRING,
+	  .func = NULL, .uctx = NULL },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Verify input data
  *
  * Arguments are @verbatim(<signature>, <plaintext>...)@endverbatim
  *
 @verbatim
-%{<inst>_verify:<signature> <plaintext>...}
+%(<inst>_verify:<signature> <plaintext>...)
 @endverbatim
  *
  * If multiple arguments are provided (after @verbatim<signature>@endverbatim)
@@ -698,19 +698,6 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t			*in_head = fr_dlist_pop_head(in);
 	fr_value_box_t			*args;
 
-	if (!in_head) {
-		REDEBUG("verification requires two or more arguments (<signature>, <message>...)");
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Check we have at least two boxed values
-	 */
-	if (fr_dlist_empty(in)) {
-		REDEBUG("Missing message data arg or message data was (null)");
-		return XLAT_ACTION_FAIL;
-	}
-
 	/*
 	 *	Don't auto-cast to octets if the signature
 	 *	isn't already in that form.
@@ -736,23 +723,6 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 	msg = args->vb_strvalue;
 	msg_len = args->vb_length;
-
-	/*
-	 *	Return the first entry to the "in" vb list
-	 */
-	fr_dlist_insert_head(in, in_head);
-
-	/*
-	 *	The argument separator also gets rolled into
-	 *	the concatenate buffer... We should probably
-	 *	figure out a cleaner way of doing this.
-	 */
-	if (*msg != ' ') {
-		REDEBUG("Expected whitespace argument separator");
-		return XLAT_ACTION_FAIL;
-	}
-	msg++;
-	msg_len--;
 
 	if (msg_len == 0) {
 		REDEBUG("Zero length message data");
@@ -1124,13 +1094,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		if (inst->rsa->private_key_file) {
 			char *decrypt_name;
 			char *verify_name;
-			xlat_t const *xlat;
+			xlat_t *xlat;
 
 			/*
 			 *	Register decrypt xlat
 			 */
 			decrypt_name = talloc_asprintf(inst, "%s_decrypt", inst->xlat_name);
 			xlat = xlat_register(inst, decrypt_name, cipher_rsa_decrypt_xlat, false);
+			xlat_func_mono(xlat, &cipher_rsa_decrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,
@@ -1147,6 +1118,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			 */
 			verify_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
 			xlat = xlat_register(inst, verify_name, cipher_rsa_verify_xlat, false);
+			xlat_func_args(xlat, cipher_rsa_verify_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,
@@ -1162,13 +1134,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		if (inst->rsa->certificate_file) {
 			char *encrypt_name;
 			char *sign_name;
-			xlat_t const *xlat;
+			xlat_t *xlat;
 
 			/*
 			 *	Register encrypt xlat
 			 */
 			encrypt_name = talloc_asprintf(inst, "%s_encrypt", inst->xlat_name);
 			xlat = xlat_register(inst, encrypt_name, cipher_rsa_encrypt_xlat, false);
+			xlat_func_mono(xlat, &cipher_rsa_encrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,
@@ -1184,6 +1157,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			 */
 			sign_name = talloc_asprintf(inst, "%s_sign", inst->xlat_name);
 			xlat = xlat_register(inst, sign_name, cipher_rsa_sign_xlat, false);
+			xlat_func_mono(xlat, &cipher_rsa_sign_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,
