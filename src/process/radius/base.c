@@ -335,9 +335,10 @@ RESUME(access_request)
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	UPDATE_STATE(packet);
-	fr_assert(state->packet_type[rcode] != 0);
 
 	request->reply->code = state->packet_type[rcode];
+	if (!request->reply->code) request->reply->code = state->default_reply;
+	if (!request->reply->code) request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 	UPDATE_STATE_CS(reply);
 
 	if (request->reply->code == FR_RADIUS_CODE_DO_NOT_RESPOND) {
