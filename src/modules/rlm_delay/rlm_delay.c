@@ -221,7 +221,7 @@ static xlat_arg_parser_t const xlat_delay_args[] = {
  *
  * Example (delay 2 seconds):
 @verbatim
-"%{delay:2}"
+"%(delay:2)"
 @endverbatim
  *
  * @ingroup xlat_functions
