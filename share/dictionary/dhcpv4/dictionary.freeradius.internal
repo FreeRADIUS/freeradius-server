@@ -88,8 +88,6 @@ VALUE	Hardware-Type		HFI			37
 
 ATTRIBUTE	Packet-Type				273	integer
 
-VALUE	Packet-Type			Do-Not-Respond	0
-VALUE	Packet-Type			Do-Not-Respond		0
 VALUE	Packet-Type			Discover		1
 VALUE	Packet-Type			Offer		2
 VALUE	Packet-Type			Request		3
@@ -105,6 +103,8 @@ VALUE	Packet-Type			Lease-Unknown	12
 VALUE	Packet-Type			Lease-Active	13
 VALUE	Packet-Type			Bulk-Lease-Query	14
 VALUE	Packet-Type			Lease-Query-Done	15
+
+VALUE	Packet-Type			Do-Not-Respond	256
 
 # This subnet is assigned on a hierarchical basis to then determine
 # the subnet which the client belongs to.  Stored as a prefix to

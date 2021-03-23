@@ -128,7 +128,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	value = cf_pair_value(cp);
 
 	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
-	if (!dv || (dv->value->vb_uint32 >= FR_DHCP_MAX)) {
+	if (!dv || (dv->value->vb_uint32 >= FR_DHCP_CODE_MAX)) {
 		cf_log_err(ci, "Unknown DHCPv4 packet type '%s'", value);
 		return -1;
 	}
@@ -257,8 +257,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	 *	send replies to a release.
 	 */
 	if ((buffer_len == 1) ||
-	    (request->reply->code == FR_MESSAGE_TYPE_VALUE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_DHCP_MAX) ||
+	    (request->reply->code == FR_DHCP_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_DHCP_CODE_MAX) ||
 	    (request->packet->code == FR_DHCP_RELEASE)) {
 		track->do_not_respond = true;
 		return 1;
@@ -347,7 +347,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t 
 	fr_assert(code != NULL);
 	fr_assert(code[1] == 1);
 	fr_assert(code[2] != 0);
-	fr_assert(code[2] < FR_DHCP_MAX);
+	fr_assert(code[2] < FR_DHCP_CODE_MAX);
 
 	/*
 	 *	Disallowed packet

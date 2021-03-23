@@ -89,7 +89,6 @@ ATTRIBUTE	IP-Address-Lease-Time		51	integer
 ATTRIBUTE	Overload				52	byte
 ATTRIBUTE	Message-Type			53	byte
 
-VALUE	Message-Type		Do-Not-Respond		0
 VALUE	Message-Type		Discover		1
 VALUE	Message-Type		Offer			2
 VALUE	Message-Type		Request			3

@@ -33,12 +33,12 @@ typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	char				**allowed_types;		//!< names for for 'type = ...'
-	bool				allowed[FR_DHCP_MAX];	//!< indexed by value
+	bool				allowed[FR_DHCP_CODE_MAX];	//!< indexed by value
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
 
-	uint32_t			priorities[FR_DHCP_MAX];       	//!< priorities for individual packets
+	uint32_t			priorities[FR_DHCP_CODE_MAX];	//!< priorities for individual packets
 } proto_dhcpv4_t;
 
 /*
