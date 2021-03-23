@@ -1,7 +1,7 @@
 #
 #  Set status to "notfound". xlat should expand to previous status, "alive"
 #
-if ("%{db_status:notfound}" != "alive") {
+if ("%(db_status:notfound)" != "alive") {
 	update reply {
 		&Reply-Message += "failed"
 	}
@@ -22,7 +22,7 @@ if (!notfound) {
 #
 #  Fetch status using xlat without setting the status
 #
-if ("%{db_status:}" != "notfound") {
+if ("%(db_status:)" != "notfound") {
 	update reply {
 		&Reply-Message += "failed"
 	}
