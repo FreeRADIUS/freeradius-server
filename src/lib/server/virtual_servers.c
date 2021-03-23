@@ -1378,8 +1378,6 @@ int virtual_servers_free(void)
 
 	fr_dict_autofree(virtual_server_dict_autoload);
 
-	TALLOC_FREE(virtual_servers);
-
 	return 0;
 }
 
