@@ -1140,26 +1140,26 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in_vb = fr_dlist_head(in);
 
 	fr_strerror_clear(); /* Make sure we don't print old errors */
-	
+
 	switch (in_vb->type) {
 	default:
 	error:
 		RPEDEBUG("Failed converting %pV (%s) to an integer", in_vb,
 			 fr_table_str_by_value(fr_value_box_type_table, in_vb->type, "???"));
 		return XLAT_ACTION_FAIL;
-			
+
 	case FR_TYPE_NUMERIC:
 		/*
 		 *	Ensure enumeration is NULL so that the integer
 		 *	version of a box is returned
 		 */
 		in_vb->enumv = NULL;
-			
+
 		/*
-		 *	FR_TYPE_DATE and FR_TYPE_DELTA need to be cast to 
+		 *	FR_TYPE_DATE and FR_TYPE_DELTA need to be cast to
 		 *	uin64_t so they're printed in a numeric format.
 		 */
-		if ((in_vb->type != FR_TYPE_DATE) || (in_vb->type != FR_TYPE_TIME_DELTA)) break;
+		if ((in_vb->type != FR_TYPE_DATE) && (in_vb->type != FR_TYPE_TIME_DELTA)) break;
 		FALL_THROUGH;
 
 	case FR_TYPE_STRING:
@@ -3151,7 +3151,6 @@ int xlat_init(void)
 #define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(xlat);
 
-	XLAT_REGISTER(map);
 	XLAT_REGISTER(xlat);
 
 #define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
