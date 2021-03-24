@@ -77,24 +77,9 @@ if (&Tmp-String-2 != '{"pf:User-Name":{"type":"string","value":["john"]},"pf:Fil
 
 update request {
 	&Tmp-String-1 := "%{json_object_encode:!&request[*]}"
-	&Tmp-String-2 := "%{json_object_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Required argument 1 is null') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-1 == '{}') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-2 == '') {
-	test_pass
-} else {
+if (&Tmp-String-1 != '{}') {
 	test_fail
 }
 
@@ -124,24 +109,9 @@ if (&Tmp-String-2 != '{"pf:User-Name":["john"],"pf:Filter-Id":["f1","f2"],"pf:NA
 
 update request {
 	&Tmp-String-1 := "%{json_object_simple_encode:!&request[*]}"
-	&Tmp-String-2 := "%{json_object_simple_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Required argument 1 is null') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-1 == '{}') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-2 == '') {
-	test_pass
-} else {
+if (&Tmp-String-1 != '{}') {
 	test_fail
 }
 
@@ -171,24 +141,9 @@ if (&Tmp-String-2 != '[{"name":"pf:User-Name","type":"string","value":["john"]},
 
 update request {
 	&Tmp-String-1 := "%{json_array_encode:!&request[*]}"
-	&Tmp-String-2 := "%{json_array_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Required argument 1 is null') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-1 == '[]') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-2 == '') {
-	test_pass
-} else {
+if (&Tmp-String-1 != '[]') {
 	test_fail
 }
 
@@ -218,24 +173,9 @@ if (&Tmp-String-2 != '["pf:User-Name","pf:Filter-Id","pf:Filter-Id","pf:NAS-Port
 
 update request {
 	&Tmp-String-1 := "%{json_array_names_encode:!&request[*]}"
-	&Tmp-String-2 := "%{json_array_names_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Required argument 1 is null') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-1 == '[]') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-2 == '') {
-	test_pass
-} else {
+if (&Tmp-String-1 != '[]') {
 	test_fail
 }
 
@@ -265,24 +205,9 @@ if (&Tmp-String-2 != '["john","f1","f2","999","1"]') {
 
 update request {
 	&Tmp-String-1 := "%{json_array_values_encode:!&request[*]}"
-	&Tmp-String-2 := "%{json_array_values_ex_encode:}"
 }
 
-if (&Module-Failure-Message == 'Required argument 1 is null') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-1 == '[]') {
-	test_pass
-} else {
-	test_fail
-}
-
-if (&Tmp-String-2 == '') {
-	test_pass
-} else {
+if (&Tmp-String-1 != '[]') {
 	test_fail
 }
 

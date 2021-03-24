@@ -1,0 +1,7 @@
+#
+#       json xlat input parsing test - error with no input
+#
+
+update request {
+	&Tmp-String-1 := "%{json_object_ex_encode:}"  # ERROR
+}
