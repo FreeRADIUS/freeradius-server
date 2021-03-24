@@ -186,10 +186,10 @@ static char lua_remove_cmd[] =
 	"ret = redis.call('ZREM', '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"', ARGV[1])" EOL	/* 4 */
 	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ARGV[1]" EOL	/* 5 */
 	"found = redis.call('HGET', address_key, 'device')" EOL				/* 6 */
-	"if not found then" EOL								/* 7 */
-	"  return ret"	EOL								/* 8 */
-	"end" EOL									/* 9 */
-	"redis.call('DEL', address_key)" EOL						/* 10 */
+	"redis.call('DEL', address_key)" EOL						/* 7 */
+	"if not found then" EOL								/* 8 */
+	"  return ret"	EOL								/* 9 */
+	"end" EOL									/* 10 */
 
 	/*
 	 *	Remove the association between the device and a lease
