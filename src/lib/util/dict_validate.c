@@ -620,14 +620,13 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		/*
-		 *	Auto-set internal flags for raddb/dictionary.
-		 *	So that the end user doesn't have to know
-		 *	about internal implementation of the server.
+		 *	If the attribute is outside of the bounds of
+		 *	the type size, then it MUST be an internal
+		 *	attribute.  Set the flag in this attribute, so
+		 *	that the encoder doesn't have to do complex
+		 *	checks.
 		 */
-		if ((parent->flags.type_size == 1) &&
-		    (*attr >= 3000) && (*attr < 4000)) {
-			flags->internal = true;
-		}
+		if (*attr >= (1 << (8 * parent->flags.type_size))) flags->internal = true;
 	}
 
 	/*
