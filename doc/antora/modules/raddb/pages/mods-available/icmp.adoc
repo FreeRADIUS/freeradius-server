@@ -68,8 +68,8 @@ Copy of the `icmp` module, as it may be easier to remember `ping` than `icmp`.
 == Default Configuration
 
 ```
-#	`%{icmp:192.0.2.1}`
-#	`%{icmp:%{NAS-IP-Address}}`
+#	`%(icmp:192.0.2.1)`
+#	`%(icmp:%{NAS-IP-Address})`
 #	$ setcap cap_net_raw+ep ${bindir}/radiusd
 icmp {
 #	interface = eth0

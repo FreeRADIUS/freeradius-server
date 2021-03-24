@@ -11,7 +11,7 @@
 #
 #  This module is useful only for `xlat`.  Use it via the following expansion:
 #
-#	`%{icmp:192.0.2.1}`
+#	`%(icmp:192.0.2.1)`
 #
 #  The module will "ping" the given IP address.  If that IP address responds
 #  with an ICMP Echo Reply, then the result of the expansion will be `yes`.
@@ -21,12 +21,12 @@
 #  The IP address does not have to be a fixed string.  It can be another
 #  expansion, such as:
 #
-#	`%{icmp:%{NAS-IP-Address}}`
+#	`%(icmp:%{NAS-IP-Address})`
 #
 #
 # == Capabilities and Permissions
 #
-#  On Linus, you may need to do:
+#  On Linux, you may need to do:
 #
 #	$ setcap cap_net_raw+ep ${bindir}/radiusd
 #
