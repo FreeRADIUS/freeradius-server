@@ -765,7 +765,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op,
 		      const char *hash_name, const char *list_name)
 {
-	char		*val = NULL;
+	char const     	*val = NULL;
 	VALUE_PAIR      *vp;
 	STRLEN len;
 
@@ -794,6 +794,10 @@ static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char
 		VERIFY_VP(vp);
 
 		if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
+	}
+
+	if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+		val = "<<< secret >>>";
 	}
 
 	RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
