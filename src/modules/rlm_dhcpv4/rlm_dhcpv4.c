@@ -142,7 +142,7 @@ static xlat_arg_parser_t const dhcpv4_encode_xlat_args[] = {
  *
  * Example:
 @verbatim
-%{dhcpv4_encode:&request[*]}
+%(dhcpv4_encode:&request[*])
 @endverbatim
  *
  * @ingroup xlat_functions
