@@ -980,7 +980,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
-		case RLM_MODULE_YIELD:	/* Yield not valid in instantiate */
 		error:
 			fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
 			return -1;

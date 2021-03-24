@@ -188,8 +188,6 @@ static unlang_action_t eap_tls_virtual_server(rlm_rcode_t *p_result, rlm_eap_tls
 		RETURN_MODULE_FAIL;
 	}
 
-	*p_result = RLM_MODULE_YIELD;
-
 	return UNLANG_ACTION_YIELD;
 }
 

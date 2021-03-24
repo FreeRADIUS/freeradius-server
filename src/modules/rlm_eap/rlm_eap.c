@@ -405,13 +405,6 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED mod
 		eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 		break;
 
-	/*
-	 *	Definitely shouldn't get this.
-	 */
-	case RLM_MODULE_YIELD:
-		fr_assert(0);
-		break;
-
 	default:
 		break;
 	}

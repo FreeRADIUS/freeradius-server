@@ -511,7 +511,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	called the interpret.
 		 */
 		case UNLANG_ACTION_YIELD:
-			*result = RLM_MODULE_YIELD;	/* Fixup rcode */
 		yield:
 			/*
 			 *	Detach is magic.  The parent "subrequest" function
@@ -741,7 +740,6 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 			continue;
 
 		case UNLANG_FRAME_ACTION_YIELD:
-			fr_assert(stack->result == RLM_MODULE_YIELD);
 			RDEBUG4("** [%i] %s - interpret yielding", stack->depth, __FUNCTION__);
 			intp->funcs.yield(request, intp->uctx);
 			return stack->result;

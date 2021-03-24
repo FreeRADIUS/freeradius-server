@@ -527,7 +527,6 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 
 	frame->process = unlang_tmpl_exec_wait_final;
 
-	*p_result = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_YIELD;
 }
 
