@@ -60,7 +60,7 @@ static char const hextab[] = "0123456789abcdef";
 
 /** Return a VP from the specified request.
  *
- * @note DEPRECATED, TO NOT USE.  @see xlat_fmt_to_cursor instead.
+ * @note DEPRECATED, TO NOT USE.
  *
  * @param out where to write the pointer to the resolved VP. Will be NULL if the attribute couldn't
  *	be resolved.
@@ -87,73 +87,6 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 	talloc_free(vpt);
 
 	return ret;
-}
-
-
-/** Convenience function to convert a string attribute reference to a cursor
- *
- * This is intended to be used by xlat functions which need to iterate over
- * an attribute reference provided as a format string or as a boxed value.
- *
- * We can't add attribute reference support to the xlat parser
- * as the inputs and outputs of xlat functions are all boxed values and
- * couldn't represent a fr_pair_t.
- *
- * @param[in] ctx	To allocate new cursor in.
- * @param[out] out	Where to write heap allocated cursor.  Must be freed
- *			once it's done with.  The heap based cursor is to
- *			simplify memory management, as all tmpls are heap
- *			allocated, and we need to bind the lifetime of the
- *			tmpl and tmpl cursor together.
- * @param[in] tainted	May be NULL.  Set to true if one or more of the pairs
- *			in the cursor's scope have the tainted flag high.
- * @param[in] request	The current request.
- * @param[in] fmt	string.  Leading whitespace will be ignored.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int xlat_fmt_to_cursor(TALLOC_CTX *ctx, fr_dcursor_t **out,
-		       bool *tainted, request_t *request, char const *fmt)
-{
-	tmpl_t			*vpt;
-	fr_pair_t		*vp;
-	fr_dcursor_t		*cursor;
-	tmpl_cursor_ctx_t	cc;
-
-	fr_skip_whitespace(fmt);	/* Not binary safe, but attr refs should only contain printable chars */
-
-	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
-					.dict_def = request->dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-				}) <= 0) {
-		RPEDEBUG("Failed parsing attribute reference");
-		return -1;
-	}
-
-	MEM(cursor = talloc(ctx, fr_dcursor_t));
-	talloc_steal(cursor, vpt);
-	vp = tmpl_cursor_init(NULL, NULL, &cc, cursor, request, vpt);
-	tmpl_cursor_clear(&cc);
-	*out = cursor;
-
-	if (!tainted) return 0;
-
-	*tainted = false;	/* Needed for the rest of the code */
-
-	if (!vp) return 0;
-
-	do {
-		if (vp->vp_tainted) {
-			*tainted = true;
-			break;
-		}
-	} while ((vp = fr_dcursor_next(cursor)));
-
-	fr_dcursor_head(cursor);	/* Reset */
-
-	return 0;
 }
 
 
