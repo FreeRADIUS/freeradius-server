@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+use strict;
+use warnings;
+
 # radius2ldif.pl
 #
 #        To test this program, do the following
@@ -68,11 +71,13 @@
 # -p : give only password
 # -m : set entry to modify ldap attributes
 # -f : read encrypted passwords from file
+
+our ($opt_d, $opt_p, $opt_m, $opt_f);
 use Getopt::Std;
 getopts('dpmf:');
-$debug = $opt_d;
+my $debug = $opt_d;
 
-%passwords;
+my %passwords;
 # This might or might not be necessary depending if your LDAP server
 # when importing from ldif introduces crypted passwords in the LDAP db
 # (not necessary for Netscape's Directory Server)
@@ -80,18 +85,18 @@ read_passwds ($opt_f) if $opt_f;
 
 # USER CONFIGURATION
 # ------------------
-$usermatch = ".*"; # only add users matching this
+my $usermatch = ".*"; # only add users matching this
 # WARNING: in order to add  *all* users set this to ".*" NOT ""
 
 # LDAP configuration
-$domain = "o=icm.es";
-$basedn = ", ou=Hardware, ou=EDUCAMADRID, ou=People, $domain";
-$predn = "dn: cn=";
-$uniquemembers = 1;
-$groupname = "RadiusUser"; # group to add in the LDAP, if null will not add
-$group = "\n\ndn: ou=$groupname, ou=Groups, $domain";
+my $domain = "o=icm.es";
+my $basedn = ", ou=Hardware, ou=EDUCAMADRID, ou=People, $domain";
+my $predn = "dn: cn=";
+my $uniquemembers = 1;
+my $groupname = "RadiusUser"; # group to add in the LDAP, if null will not add
+my $group = "\n\ndn: ou=$groupname, ou=Groups, $domain";
 # Only useful for adding the group (not yet implemented)
-$addgroup = $group."\ndescription: $groupname\nobjectclass: top";
+my $addgroup = $group."\ndescription: $groupname\nobjectclass: top";
 if ( $uniquemembers ) {
 $addgroup = $addgroup."\nobjectclass: groupOfUniqueNames";
 } else {
@@ -107,7 +112,7 @@ $addgroup = $addgroup."\ncn: $groupname";
 # (or objectclass=groupOfNames)
 #cn=$group
 # Required: person (for userpasswords) and radiusprofile (<draft-aboba-radius-02.txt> 5 February 1998)
-@objectClass = ( "top", "person" , "radiusprofile" );
+my @objectClass = ( "top", "person" , "radiusprofile" );
 
 
 # Mapping of entries (use lower case so no check needs to be make)
@@ -154,6 +159,7 @@ $addgroup = $addgroup."\ncn: $groupname";
 # However NDS does the cyphering even if sending plain passwords
 # (do all LDAP's do this?)
 # TODO: test with OpenLDAP
+my %mapping;
 $mapping{'password'} = "userpassword";
 $mapping{'service-type'} = "radiusServiceType";
 $mapping{'framed-protocol'} = "radiusFramedProtocol";
@@ -200,10 +206,13 @@ $mapping{'callback_number'} = "radiusCallbackNumber";
 
 
 # Footer of ldif entries
-$footer = "\n\n";
-$startentry = 0;
+my $header;
+my $footer = "\n\n";
+my $startentry = 0;
 
-while ($line=<STDIN>) {
+my @userlist;
+
+while (my $line=<STDIN>) {
 	chomp $line;
 	if ( $line =~ /^[\s\t]*$/  && $startentry) {
 		$startentry = 0 ;
@@ -211,13 +220,15 @@ while ($line=<STDIN>) {
 	}
 	# Start line is hardcoded must be uid followed by password
 	# this could be changed to use any other parameter however
+	my $uid;
+	my $password;
 	if ( $line =~ /^(\w+)\s*\t*(?:User-)?Password=(\w+)/ ) {
 		$uid = $1;
 		$password= $2;
 		$password = $passwords{$password} if $opt_f;
 	if ( $uid =~ /$usermatch/ ) {
 		$startentry = 1;
-		$dn=$predn.$uid.$basedn; # Start of LDIF entry
+		my $dn=$predn.$uid.$basedn; # Start of LDIF entry
 		$header = "$dn\n";
 		push @userlist, $dn;
 		if ( $opt_m ) {
@@ -244,8 +255,8 @@ while ($line=<STDIN>) {
 		#Take anything that starts with a tab or spaces
 		# and ends (sometimes) with a comma
 		if ( $line =~ /^[\t\s]+(.*?)\s+=\s+(.*?),*$/ ) {
-			$parameter = lc $1;
-			$value = $2;
+			my $parameter = lc $1;
+			my $value = $2;
 			print "DEBUG: Got :$parameter=$value\n" if $debug;
 			if ( defined $mapping{$parameter}  && $mapping{$parameter} ne "" ) {
 				print_entry ($mapping{$parameter},$value);
@@ -268,8 +279,8 @@ if ( $group ) {
 		print "\n\n$group\n";
 		print "changetype: modify\n" ;
 	}
-	foreach $user ( @userlist ) {
-		$member = "member: ";
+	foreach my $user ( @userlist ) {
+		my $member = "member: ";
 		$member = "uniquemember: " if $uniquemembers;
 		print "$member$user\n";
 	}
@@ -282,15 +293,15 @@ sub read_passwds {
 # version, the file must be of the following format:
 # password	cryptedversion
 	my ($file)=@_;
-	open (PASSWD,"< $file") or die ("Could not open $file: $!\n");
+	open (my $PASSWD,"<",$file) or die ("Could not open $file: $!\n");
 
-	while ($line = <PASSWD>) {
+	while (my $line = <$PASSWD>) {
 		chomp $line;
 		if ( $line =~ /^(\w+)[\t\s]+(.*?)$/ ) {
 			$passwords{$1}=$2;
 		}
 	}
-	close PASSWD;
+	close $PASSWD;
 
 	return 0;
 }
