@@ -174,7 +174,7 @@ static void _xlat_icmp_timeout(request_t *request,
  *
  * Example (ping 192.0.2.1):
 @verbatim
-"%{icmp:192.0.2.1}"
+"%(icmp:192.0.2.1)"
 @endverbatim
  *
  * @ingroup xlat_functions
