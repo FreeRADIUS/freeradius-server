@@ -113,6 +113,8 @@ int			unlang_interpret_push_instruction(request_t *request, void *instruction,
 unlang_interpret_t	*unlang_interpret_init(TALLOC_CTX *ctx,
 					       fr_event_list_t *el, unlang_request_func_t *func, void *uctx);
 
+void			unlang_interpet_frame_discard(request_t *request);
+
 void			unlang_interpret_set(request_t *request, unlang_interpret_t *intp);
 
 unlang_interpret_t	*unlang_interpret_get(request_t *request);

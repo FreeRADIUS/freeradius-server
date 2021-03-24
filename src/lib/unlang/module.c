@@ -656,7 +656,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
 	char const 			*caller;
 	rlm_rcode_t			rcode = *p_result;
-	int				stack_depth = unlang_current_depth(request);
+	int				stack_depth = stack_depth_current(request);
 	unlang_action_t			ua;
 
 	fr_assert(state->resume != NULL);
@@ -695,8 +695,8 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	}
 
 	if (ua == UNLANG_ACTION_YIELD) {
-		if (stack_depth < unlang_current_depth(request)) return UNLANG_ACTION_PUSHED_CHILD;
-		fr_assert(stack_depth == unlang_current_depth(request));
+		if (stack_depth < stack_depth_current(request)) return UNLANG_ACTION_PUSHED_CHILD;
+		fr_assert(stack_depth == stack_depth_current(request));
 		*p_result = rcode;
 		return UNLANG_ACTION_YIELD;
 	}
@@ -774,7 +774,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 {
 	unlang_module_t			*mc;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-	int				stack_depth = unlang_current_depth(request);
+	int				stack_depth = stack_depth_current(request);
 	char const 			*caller;
 	rlm_rcode_t			rcode = RLM_MODULE_NOOP;
 	unlang_action_t			ua;
@@ -790,7 +790,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	mc = unlang_generic_to_module(frame->instruction);
 	fr_assert(mc);
 
-	RDEBUG4("[%i] %s - %s (%s)", unlang_current_depth(request), __FUNCTION__,
+	RDEBUG4("[%i] %s - %s (%s)", stack_depth_current(request), __FUNCTION__,
 		mc->instance->name, mc->instance->module->name);
 
 	/*
@@ -812,7 +812,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	Don't allow returning _through_ modules
 	 */
-	return_point_set(unlang_current_frame(request));
+	return_point_set(frame_current(request));
 
 	/*
 	 *	For logging unresponsive children.
@@ -852,8 +852,8 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 
 	if (ua == UNLANG_ACTION_YIELD) {
 		state->thread->active_callers++;
-		if (stack_depth < unlang_current_depth(request)) return UNLANG_ACTION_PUSHED_CHILD;
-		fr_assert(stack_depth == unlang_current_depth(request));
+		if (stack_depth < stack_depth_current(request)) return UNLANG_ACTION_PUSHED_CHILD;
+		fr_assert(stack_depth == stack_depth_current(request));
 		frame->process = unlang_module_resume;
 		return UNLANG_ACTION_YIELD;
 	}

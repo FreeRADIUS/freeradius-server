@@ -173,7 +173,7 @@ CONF_SECTION *unlang_call_current(request_t *request)
 	 *	Work back from the deepest frame
 	 *	looking for modules.
 	 */
-	for (depth = unlang_current_depth(request); depth > 0; depth--) {
+	for (depth = stack_depth_current(request); depth > 0; depth--) {
 		unlang_stack_frame_t	*frame = &stack->frame[depth];
 
 		/*

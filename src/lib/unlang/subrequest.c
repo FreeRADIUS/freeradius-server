@@ -429,7 +429,7 @@ static unlang_action_t unlang_detach(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	Get the PARENT's stack.
 	 */
-	parent_frame = unlang_current_frame(request->parent);
+	parent_frame = frame_current(request->parent);
 	parent_state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 
 	if (!parent_state->detachable) {

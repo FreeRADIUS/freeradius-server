@@ -116,7 +116,7 @@ static void unlang_parallel_child_signal(request_t *request, fr_state_signal_t a
 
 	if (action != FR_SIGNAL_DETACH) return;
 
-	frame = unlang_current_frame(request->parent);
+	frame = frame_current(request->parent);
 	state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 
 	RDEBUG3("parallel - child %s (%d/%d) DETACHED",
@@ -159,7 +159,7 @@ static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, 
 		 *	Reach into the parent to get the unlang_parallel_state_t
 		 *      for the whole parallel block.
 		 */
-		unlang_stack_frame_t		*frame = unlang_current_frame(request->parent);
+		unlang_stack_frame_t		*frame = frame_current(request->parent);
 		unlang_parallel_state_t		*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 
 		RDEBUG3("parallel - child %s (%d/%d) EXITED",
@@ -227,7 +227,7 @@ static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *
 			state->priority = priority;
 
 			RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
-				unlang_current_depth(request), __FUNCTION__,
+				stack_depth_current(request), __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"),
 				priority);
 		}
@@ -375,7 +375,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		    					   unlang_parallel_child_signal,
 		    					   UNLANG_TOP_FRAME,
 		    					   &state->children[i]) < 0) goto error;
-			child_frame = unlang_current_frame(child);
+			child_frame = frame_current(child);
 			return_point_set(child_frame);		/* Don't unwind this frame */
 
 			state->children[i].num = i;

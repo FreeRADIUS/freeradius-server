@@ -108,50 +108,6 @@ static void stack_dump(request_t *request)
 #define DUMP_STACK
 #endif
 
-/** Different operations the interpret can execute
- */
-unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
-
-
-static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t *frame)
-{
-	unlang_t const	*instruction = frame->instruction;
-	unlang_op_t	*op;
-	char const	*name;
-
-	op = &unlang_ops[instruction->type];
-	name = op->frame_state_name ? op->frame_state_name : __location__;
-
-	frame->process = op->interpret;
-	frame->signal = op->signal;
-
-#ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
-	/*
-	 *	Pooled object
-	 */
-	if (op->frame_state_pool_size && op->frame_state_size) {
-		MEM(frame->state = _talloc_zero_pooled_object(stack,
-							      op->frame_state_size, name,
-							      op->frame_state_pool_objects,
-							      op->frame_state_pool_size));
-	} else
-#endif
-	/*
-	 *	Pool
-	 */
-	if (op->frame_state_pool_size && !op->frame_state_size) {
-		MEM(frame->state = talloc_pool(stack,
-					       op->frame_state_pool_size +
-					       ((20 + 68 + 15) * op->frame_state_pool_objects))); /* from samba talloc.c */
-		talloc_set_name_const(frame->state, name);
-	/*
-	 *	Object
-	 */
-	} else if (op->frame_state_size) {
-		MEM(frame->state = _talloc_zero(stack, op->frame_state_size, name));
-	}
-}
-
 /** Push a new frame onto the stack
  *
  * @param[in] request		to push the frame onto.
@@ -343,60 +299,6 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	}
 
 	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;
-}
-
-/** Cleanup any lingering frame state
- *
- */
-static inline CC_HINT(always_inline) void frame_cleanup(unlang_stack_frame_t *frame)
-{
-	/*
-	 *	Don't clear top_frame flag, bad things happen...
-	 */
-	repeatable_clear(frame);
-	break_point_clear(frame);
-	return_point_clear(frame);
-	yielded_clear(frame);
-	if (frame->state) {
-		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
-		TALLOC_FREE(frame->state);
-	}
-}
-
-/** Advance to the next sibling instruction
- *
- */
-static inline CC_HINT(always_inline) void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame)
-{
-	frame_cleanup(frame);
-	frame->instruction = frame->next;
-
-	if (!frame->instruction) return;
-
-	frame->next = frame->instruction->next;
-
-	frame_state_init(stack, frame);
-}
-
-/** Pop a stack frame, removing any associated dynamically allocated state
- *
- * @param[in] stack	frame to pop.
- */
-static inline CC_HINT(always_inline) void frame_pop(unlang_stack_t *stack)
-{
-	unlang_stack_frame_t *frame;
-
-	fr_assert(stack->depth > 1);
-
-	frame = &stack->frame[stack->depth];
-
-	frame_cleanup(frame);
-
-	frame = &stack->frame[--stack->depth];
-
-	if (stack->unwind && is_repeatable(frame) && !is_break_point(frame) && !is_return_point(frame)) {
-		repeatable_clear(frame);
-	}
 }
 
 /** Evaluates all the unlang nodes in a section
@@ -1253,6 +1155,17 @@ unlang_interpret_t *unlang_interpret_init(TALLOC_CTX *ctx,
 	};
 
  	return intp;
+}
+
+/** Discard the bottom most frame on the request's stack
+ *
+ * This is used for cleaning up after errors. i.e. the caller
+ * uses a push function, and experiences an error and needs to
+ * remove the frame that was just pushed.
+ */
+void unlang_interpet_frame_discard(request_t *request)
+{
+	frame_pop(request->stack);
 }
 
 /** Set a specific interpreter for a request

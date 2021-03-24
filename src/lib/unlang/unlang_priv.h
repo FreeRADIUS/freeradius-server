@@ -260,6 +260,15 @@ typedef struct {
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
 
+/** Different operations the interpreter can execute
+ */
+extern unlang_op_t unlang_ops[];
+
+#define MOD_NUM_TYPES (UNLANG_TYPE_XLAT + 1)
+
+extern fr_table_num_sorted_t const mod_rcode_table[];
+extern size_t mod_rcode_table_len;
+
 #define UNWIND_FLAG_NONE		0x00			//!< No flags.
 #define UNWIND_FLAG_REPEAT		0x01			//!< Repeat the frame on the way up the stack.
 #define UNWIND_FLAG_TOP_FRAME		0x02			//!< are we the top frame of the stack?
@@ -305,28 +314,112 @@ static inline unlang_action_t unwind_all(unlang_stack_t *stack)
 	return UNLANG_ACTION_UNWIND;
 }
 
-static inline unlang_stack_frame_t *unlang_current_frame(request_t *request)
+static inline unlang_stack_frame_t *frame_current(request_t *request)
 {
 	unlang_stack_t *stack = request->stack;
 
 	return &stack->frame[stack->depth];
 }
 
-static inline int unlang_current_depth(request_t *request)
+static inline int stack_depth_current(request_t *request)
 {
 	unlang_stack_t *stack = request->stack;
 
 	return stack->depth;
 }
 
-/** Different operations the interpreter can execute
+static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t *frame)
+{
+	unlang_t const	*instruction = frame->instruction;
+	unlang_op_t	*op;
+	char const	*name;
+
+	op = &unlang_ops[instruction->type];
+	name = op->frame_state_name ? op->frame_state_name : __location__;
+
+	frame->process = op->interpret;
+	frame->signal = op->signal;
+
+#ifdef HAVE_TALLOC_ZERO_POOLED_OBJECT
+	/*
+	 *	Pooled object
+	 */
+	if (op->frame_state_pool_size && op->frame_state_size) {
+		MEM(frame->state = _talloc_zero_pooled_object(stack,
+							      op->frame_state_size, name,
+							      op->frame_state_pool_objects,
+							      op->frame_state_pool_size));
+	} else
+#endif
+	/*
+	 *	Pool
+	 */
+	if (op->frame_state_pool_size && !op->frame_state_size) {
+		MEM(frame->state = talloc_pool(stack,
+					       op->frame_state_pool_size +
+					       ((20 + 68 + 15) * op->frame_state_pool_objects))); /* from samba talloc.c */
+		talloc_set_name_const(frame->state, name);
+	/*
+	 *	Object
+	 */
+	} else if (op->frame_state_size) {
+		MEM(frame->state = _talloc_zero(stack, op->frame_state_size, name));
+	}
+}
+
+/** Cleanup any lingering frame state
+ *
  */
-extern unlang_op_t unlang_ops[];
+static inline void frame_cleanup(unlang_stack_frame_t *frame)
+{
+	/*
+	 *	Don't clear top_frame flag, bad things happen...
+	 */
+	repeatable_clear(frame);
+	break_point_clear(frame);
+	return_point_clear(frame);
+	yielded_clear(frame);
+	if (frame->state) {
+		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
+		TALLOC_FREE(frame->state);
+	}
+}
 
-#define MOD_NUM_TYPES (UNLANG_TYPE_XLAT + 1)
+/** Advance to the next sibling instruction
+ *
+ */
+static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame)
+{
+	frame_cleanup(frame);
+	frame->instruction = frame->next;
 
-extern fr_table_num_sorted_t const mod_rcode_table[];
-extern size_t mod_rcode_table_len;
+	if (!frame->instruction) return;
+
+	frame->next = frame->instruction->next;
+
+	frame_state_init(stack, frame);
+}
+
+/** Pop a stack frame, removing any associated dynamically allocated state
+ *
+ * @param[in] stack	frame to pop.
+ */
+static inline void frame_pop(unlang_stack_t *stack)
+{
+	unlang_stack_frame_t *frame;
+
+	fr_assert(stack->depth > 1);
+
+	frame = &stack->frame[stack->depth];
+
+	frame_cleanup(frame);
+
+	frame = &stack->frame[--stack->depth];
+
+	if (stack->unwind && is_repeatable(frame) && !is_break_point(frame) && !is_return_point(frame)) {
+		repeatable_clear(frame);
+	}
+}
 
 /** @name Conversion functions for converting #unlang_t to its specialisations
  *
