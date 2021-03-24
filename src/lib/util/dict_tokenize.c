@@ -370,7 +370,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 		} else if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 			flags->length = 4;
-			flags->type_size = FR_TIME_RES_SEC;
+			flags->flag_time_res = FR_TIME_RES_SEC;
 
 			if (strncmp(key, "uint", 4) == 0) {
 				fr_type_t subtype;
@@ -422,7 +422,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 							   key);
 					return -1;
 				}
-				flags->type_size = precision;
+				flags->flag_time_res = precision;
 			}
 
 		} else if (strcmp(key, "ref") == 0) {

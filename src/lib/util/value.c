@@ -1312,7 +1312,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		if (!value->enumv) {
 			goto date_seconds;
 
-		} else switch (value->enumv->flags.type_size) {
+		} else switch (value->enumv->flags.flag_time_res) {
 		date_seconds:
 		case FR_TIME_RES_SEC:
 			date = fr_unix_time_to_sec(value->vb_date);
@@ -1367,7 +1367,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		if (!value->enumv) {
 			goto delta_seconds;
 
-		} else switch (value->enumv->flags.type_size) {
+		} else switch (value->enumv->flags.flag_time_res) {
 		delta_seconds:
 		case FR_TIME_RES_SEC:
 			date = fr_time_delta_to_sec(value->vb_time_delta);
@@ -1640,7 +1640,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 
 		if (enumv) {
 			length = enumv->flags.length;
-			precision = (fr_time_res_t)enumv->flags.type_size;
+			precision = (fr_time_res_t)enumv->flags.flag_time_res;
 		}
 
 		/*
@@ -1683,7 +1683,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 
 		if (enumv) {
 			length = enumv->flags.length;
-			precision = (fr_time_res_t)enumv->flags.type_size;
+			precision = (fr_time_res_t)enumv->flags.flag_time_res;
 		}
 
 		/*
@@ -2605,7 +2605,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	 */
 	case FR_TYPE_DATE:
 		if (dst->enumv) {
-			switch (dst->enumv->flags.type_size) {
+			switch (dst->enumv->flags.flag_time_res) {
 			date_src_seconds:
 			default:
 			case FR_TIME_RES_SEC:
@@ -2635,7 +2635,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	 */
 	case FR_TYPE_TIME_DELTA:
 		if (dst->enumv) {
-			switch (dst->enumv->flags.type_size) {
+			switch (dst->enumv->flags.flag_time_res) {
 			delta_src_seconds:
 			default:
 			case FR_TIME_RES_SEC:
@@ -2692,7 +2692,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	switch (dst_type) {
 	case FR_TYPE_DATE:
 		if (dst->enumv) {
-			switch (dst->enumv->flags.type_size) {
+			switch (dst->enumv->flags.flag_time_res) {
 			date_dst_seconds:
 			default:
 			case FR_TIME_RES_SEC:
@@ -2716,7 +2716,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 
 	case FR_TYPE_TIME_DELTA:
 		if (dst->enumv) {
-			switch (dst->enumv->flags.type_size) {
+			switch (dst->enumv->flags.flag_time_res) {
 			delta_dst_seconds:
 			default:
 			case FR_TIME_RES_SEC:
@@ -4470,7 +4470,7 @@ parse:
 
 	case FR_TYPE_TIME_DELTA:
 		if (dst_enumv) {
-			if (fr_time_delta_from_str(&dst->datum.time_delta, in, dst_enumv->flags.type_size) < 0) return -1;
+			if (fr_time_delta_from_str(&dst->datum.time_delta, in, dst_enumv->flags.flag_time_res) < 0) return -1;
 		} else {
 			if (fr_time_delta_from_str(&dst->datum.time_delta, in, FR_TIME_RES_SEC) < 0) return -1;
 		}
@@ -4757,7 +4757,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		t = fr_unix_time_to_sec(data->vb_date);
 		(void) gmtime_r(&t, &s_tm);
 
-		if (!data->enumv || (data->enumv->flags.type_size == FR_TIME_RES_SEC)) {
+		if (!data->enumv || (data->enumv->flags.flag_time_res == FR_TIME_RES_SEC)) {
 			len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
 			FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
 			goto done;
@@ -4773,7 +4773,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 *	allows a much more complex set of date
 		 *	formats.  The RFC is much stricter.
 		 */
-		switch (data->enumv->flags.type_size) {
+		switch (data->enumv->flags.flag_time_res) {
 		default:
 			break;
 
@@ -4818,7 +4818,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		uint64_t	lhs, rhs;
 		fr_time_res_t	res = FR_TIME_RES_SEC;
 
-		if (data->enumv) res = data->enumv->flags.type_size;
+		if (data->enumv) res = data->enumv->flags.flag_time_res;
 
 		switch (res) {
 		default:

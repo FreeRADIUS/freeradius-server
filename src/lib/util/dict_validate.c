@@ -266,10 +266,10 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					   flags->length, fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 		}
 
-		if ((flags->type_size != FR_TIME_RES_SEC) &&
-		    (flags->type_size != FR_TIME_RES_MSEC) &&
-		    (flags->type_size != FR_TIME_RES_USEC) &&
-		    (flags->type_size != FR_TIME_RES_NSEC)) {
+		if ((flags->flag_time_res != FR_TIME_RES_SEC) &&
+		    (flags->flag_time_res != FR_TIME_RES_MSEC) &&
+		    (flags->flag_time_res != FR_TIME_RES_USEC) &&
+		    (flags->flag_time_res != FR_TIME_RES_NSEC)) {
 			fr_strerror_printf("Invalid precision for attribute of type '%s'",
 					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
 		}
@@ -447,12 +447,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (flags->type_size) {
 		if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
-			if ((flags->type_size != FR_TIME_RES_SEC) &&
-			    (flags->type_size != FR_TIME_RES_USEC) &&
-			    (flags->type_size != FR_TIME_RES_MSEC) &&
-			    (flags->type_size != FR_TIME_RES_NSEC)) {
+			if ((flags->flag_time_res != FR_TIME_RES_SEC) &&
+			    (flags->flag_time_res != FR_TIME_RES_USEC) &&
+			    (flags->flag_time_res != FR_TIME_RES_MSEC) &&
+			    (flags->flag_time_res != FR_TIME_RES_NSEC)) {
 				fr_strerror_printf("Invalid precision specifier %d for attribute of type 'date'",
-					flags->type_size);
+					flags->flag_time_res);
 				return false;
 			}
 		} else if (!flags->extra) {
