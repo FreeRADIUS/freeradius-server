@@ -1,5 +1,5 @@
 update control {
-	&Tmp-String-0 := "%{ping:127.0.0.1}"
+	&Tmp-String-0 := "%(ping:127.0.0.1)"
 }
 
 #
