@@ -5,6 +5,7 @@ SOURCES	:=	base.c \
 		caller.c \
 		compile.c \
 		condition.c \
+		detach.c \
 		foreach.c \
 		function.c \
 		group.c \
@@ -17,6 +18,7 @@ SOURCES	:=	base.c \
 		parallel.c \
 		return.c \
 		subrequest.c \
+		subrequest_child.c \
 		switch.c \
 		tmpl.c \
 		xlat.c \

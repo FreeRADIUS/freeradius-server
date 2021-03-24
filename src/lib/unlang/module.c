@@ -418,38 +418,6 @@ request_t *unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *na
 	return unlang_io_subrequest_alloc(parent, namespace, UNLANG_NORMAL_CHILD);
 }
 
-/** Yield, spawning a child request, and resuming once the child request is complete
- *
- * @param[in] p_result		Final rcode from when evaluation of the child request finishes.
- * @param[out] child		to yield to.  The child knows about the parent,
- *				which is why the parent isn't passed explicitly.
- * @param[in] resume		function to call when the child has finished executing.
- * @param[in] signal		function to call if a signal is received.
- * @param[in] session		control values.  Whether we restore/store session info.
- * @param[in] rctx		to pass to the resume() and signal() callbacks.
- * @return
- *	- UNLANG_ACTION_YIELD.
- */
-unlang_action_t unlang_module_yield_to_subrequest(rlm_rcode_t *p_result, request_t *child,
-						  unlang_module_resume_t resume,
-						  unlang_module_signal_t signal,
-						  unlang_subrequest_session_t const *session,
-						  void *rctx)
-{
-	/*
-	 *	Push the resumption point BEFORE adding the subrequest
-	 *	to the parents stack.
-	 */
-	(void) unlang_module_yield(child->parent, resume, signal, rctx);
-
-	/*
-	 *	Push the subrequest and immediately run it.
-	 */
-	if (unlang_subrequest_push(p_result, child, session, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_STOP_PROCESSING;
-
-	return UNLANG_ACTION_YIELD;
-}
-
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation
  *
  * In order to use the async unlang processor the calling module needs to establish

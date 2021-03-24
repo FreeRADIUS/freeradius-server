@@ -50,10 +50,6 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	gext = unlang_group_to_call(g);
 
 	/*
-	 *	Push OUR subsection onto the childs stack frame.
-	 */
-
-	/*
 	 *	Work out the current request type.
 	 */
 	type_enum = fr_dict_enum_by_value(gext->attr_packet_type, fr_box_uint32(request->packet->code));

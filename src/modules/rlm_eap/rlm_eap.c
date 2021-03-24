@@ -351,7 +351,6 @@ static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, request_t *
 
 	eap_session = talloc_get_type_abort(rctx, eap_session_t);
 
-	(void)fr_cond_assert(request_detach(eap_session->subrequest) == 0);
 	TALLOC_FREE(eap_session->subrequest);
 
 	/*
@@ -382,7 +381,6 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED mod
 	/*
 	 *	Cleanup the subrequest
 	 */
-	(void)fr_cond_assert(request_detach(eap_session->subrequest) == 0);
 	TALLOC_FREE(eap_session->subrequest);
 
 	/*
@@ -625,11 +623,34 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	}
 
 	/*
-	 *	Push the submodule into the child's stack
+	 *	Push a resumption frame for the parent
+	 *	This will get executed when the child is
+	 *	done (after the subrequest frame in the
+	 *	parent gets popped).
 	 */
-	if (unlang_module_push(NULL,	/* rcode should bubble up and be returned by yield_to_subrequest */
-			       eap_session->subrequest, method->submodule_inst, eap_session->process, true) < 0) {
+	(void)unlang_module_yield(request, mod_authenticate_result_async, mod_authenticate_cancel, eap_session);
+
+	/*
+	 *	This sets up a subrequest frame in the parent
+	 *	and a resumption frame in the child.
+	 *
+	 *	This must be done before pushing frames onto
+	 *	the child's stack.
+	 */
+	if (unlang_subrequest_child_push(&eap_session->submodule_rcode, eap_session->subrequest,
+					 &(unlang_subrequest_session_t){ .enable = true, .unique_ptr = eap_session },
+					 UNLANG_SUB_FRAME) < 0) {
+	child_fail:
+		unlang_interpet_frame_discard(request);	/* Ensure the yield frame doesn't stick around */
 		goto fail;
+	}
+
+	/*
+	 *	Push the EAP submodule into the child's stack
+	 */
+	if (unlang_module_push(NULL,	/* rcode should bubble up and be set in eap_session->submodule_rcode */
+			       eap_session->subrequest, method->submodule_inst, eap_session->process, true) < 0) {
+		goto child_fail;
 	}
 
 	if (eap_session->identity) {
@@ -653,13 +674,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 		type_vp->vp_uint32 = eap_session->type;
 	}
 
-	/*
-	 *	Yield to the subrequest, and start executing it
-	 */
-	return unlang_module_yield_to_subrequest(&eap_session->submodule_rcode, eap_session->subrequest,
-						 mod_authenticate_result_async, mod_authenticate_cancel,
-						 &(unlang_subrequest_session_t){ .enable = true, .unique_ptr = eap_session },
-						 eap_session);
+	return unlang_subrequest_child_run(eap_session->subrequest);
 }
 
 static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

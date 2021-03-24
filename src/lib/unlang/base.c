@@ -30,6 +30,10 @@ RCSID("$Id$")
 
 static uint32_t instance_count;
 
+/** Different operations the interpreter can execute
+ */
+unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
+
 /** Return whether a section has unlang data associated with it
  *
  * @param[in] cs	to check.
@@ -92,6 +96,7 @@ int unlang_init_global(void)
 	unlang_parallel_init();
 	unlang_return_init();
 	if (unlang_subrequest_op_init() < 0) return -1;
+	unlang_detach_init();
 	unlang_switch_init();
 	unlang_call_init();
 	unlang_caller_init();

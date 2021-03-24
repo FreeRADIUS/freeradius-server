@@ -512,6 +512,8 @@ int		unlang_subrequest_op_init(void);
 
 void		unlang_subrequest_op_free(void);
 
+void		unlang_detach_init(void);
+
 void		unlang_switch_init(void);
 
 void		unlang_tmpl_init(void);

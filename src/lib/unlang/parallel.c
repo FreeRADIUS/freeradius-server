@@ -354,7 +354,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 *	Detach the child, and insert
 			 *	it into the backlog.
 			 */
-			if (unlang_detached_child_init(child) < 0) {
+			if (unlang_subrequest_child_detach(child) < 0) {
 				talloc_free(child);
 
 				*p_result = RLM_MODULE_FAIL;
@@ -382,8 +382,9 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			state->children[i].name = talloc_bstrdup(state, child->name);
 			state->children[i].request = child;
 			state->children[i].state = CHILD_RUNNABLE;
-			unlang_interpret_child_init(child);
+
 		}
+		interpret_child_init(child);
 
 		/*
 		 *	Push the first instruction for

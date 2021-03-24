@@ -18,32 +18,23 @@
 /**
  * $Id$
  *
- * @file unlang/subrequest.h
+ * @file unlang/subrequest_child_priv.h
  *
- * @copyright 2019 The FreeRADIUS server project
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include <freeradius-devel/server/request.h>
+#include "subrequest_priv.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/server/rcode.h>
-#include <stdbool.h>
+int	unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_subrequest_t *state);
 
-typedef struct {
-	bool		enable;				//!< Whether we should store/restore sessions.
-	void const	*unique_ptr;			//!< Session unique ptr identifier.
-	int		unique_int;			//!< Session unique int identifier.
-} unlang_subrequest_session_t;
+int	unlang_subrequest_child_op_init(void);
 
-unlang_action_t	unlang_subrequest_child_run(request_t *child);
+void	unlang_subrequest_child_op_free(void);
 
-int		unlang_subrequest_child_detach(request_t *request);
-
-int		unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
-					     unlang_subrequest_session_t const *session,
-					     bool top_frame);
 #ifdef __cplusplus
 }
 #endif

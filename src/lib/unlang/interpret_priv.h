@@ -18,14 +18,15 @@
 /**
  * $Id$
  *
- * @file unlang/interpret.h
- * @brief Declarations for the unlang interpreter.
+ * @file unlang/interpret_priv.h
+ * @brief Private declarations for the unlang interpreter.
  *
- * @copyright 2019 The FreeRADIUS server project
+ * @copyright 2021 The FreeRADIUS server project
  */
 
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include "interpret_priv.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +38,7 @@ struct unlang_interpret_s {
 	void			*uctx;
 };
 
-static inline void unlang_interpret_child_init(request_t *request)
+static inline void interpret_child_init(request_t *request)
 {
 	unlang_interpret_t *intp = unlang_interpret_get(request);
 
