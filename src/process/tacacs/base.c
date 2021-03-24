@@ -327,7 +327,6 @@ RESUME(recv_tacacs)
 
 RESUME(send_tacacs)
 {
-	fr_pair_t *vp;
 	PROCESS_INST const   		*inst = mctx->instance;
 
 	PROCESS_TRACE;
@@ -336,7 +335,7 @@ RESUME(send_tacacs)
 	 *	Save the state
 	 */
 	if (!request->parent &&
-	    ((vp = fr_pair_find_by_da(&request->request_pairs, attr_tacacs_state)) != NULL)) {
+	    (fr_pair_find_by_da(&request->request_pairs, attr_tacacs_state) != NULL)) {
 		fr_tacacs_packet_hdr_t const	*pkt = (fr_tacacs_packet_hdr_t const *) request->packet->data;
 
 		/*
