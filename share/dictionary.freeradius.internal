@@ -148,7 +148,7 @@ VALUE	EAP-IKEv2-IDType		DER_ASN1_GN		10
 VALUE	EAP-IKEv2-IDType		KEY_ID			11
 
 ATTRIBUTE	EAP-IKEv2-ID				1104	string
-ATTRIBUTE	EAP-IKEv2-Secret			1105	string
+ATTRIBUTE	EAP-IKEv2-Secret			1105	string	secret
 ATTRIBUTE	EAP-IKEv2-AuthType			1106	integer
 
 VALUE	EAP-IKEv2-AuthType		none			0
@@ -196,7 +196,7 @@ ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
 VALUE	FreeRADIUS-Client-Require-MA	no			0
 VALUE	FreeRADIUS-Client-Require-MA	yes			1
 
-ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string
+ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string secret
 ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string
 ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string
 ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1126	string
