@@ -539,7 +539,6 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	if (certs) SSL_set_ex_data(ssn->ssl, fr_tls_ex_index_certs, (void *)certs);
 
-	fr_nonblock(fd);
 	SSL_set_fd(ssn->ssl, fd);
 
 	ret = SSL_connect(ssn->ssl);
