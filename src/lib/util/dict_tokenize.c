@@ -203,7 +203,10 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 			return -1;
 		}
 
-		if ((length == 0) || (length > 253)) {
+		/*
+		 *	"length" has to fit into a uint8_t field.
+		 */
+		if ((length == 0) || (length > 255)) {
 			fr_strerror_printf("Invalid length for '%s[...]'", name);
 			return -1;
 		}
@@ -245,7 +248,11 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 			}
 
 			/*
-			 *	We track where on a byte boundary this bit field ends.
+			 *	Cache where on a byte boundary this
+			 *	bit field ends.  We could have the
+			 *	validation function loop through all
+			 *	previous siblings, but that's
+			 *	annoying.
 			 */
 			flags->flag_byte_offset = length;
 
@@ -948,8 +955,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 			 *	located.
 			 */
 			if (flags.extra && (flags.subtype == FLAG_BIT_FIELD)) {
-				flags.flag_byte_offset += previous->flags.flag_byte_offset;
-				flags.flag_byte_offset &= 0x07;
+				flags.flag_byte_offset = (flags.length + previous->flags.flag_byte_offset) & 0x07;
 
 			} else {
 				if (previous->flags.flag_byte_offset != 0) {

@@ -87,23 +87,39 @@ typedef struct {
 
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 
+	/*
+	 *	@todo - if we want to clean these fields up, make
+	 *	"subtype" and "type_size" both 4-bit bitfields.  That
+	 *	gives us an extra 8 bits for adding new flags, and we
+	 *	can likely get rid of "extra", in order to save one
+	 *	more bit.
+	 */
 	unsigned int		extra : 1;			//!< really "subtype is used by dict, not by protocol"
 
+	/*
+	 *	main: extra is set, then this field is is key, bit, or a uint16 length field.
+	 *	radius: is one of 9 options for flags
+	 *	dhcp v4/v6: DNS label, or partial DNS label
+	 */
 	uint8_t			subtype;			//!< protocol-specific values, OR key fields
 
+	/*
+	 *	Length in bytes for most attributes.
+	 *	Length in bits for da_is_bit_field(da)
+	 */
 	uint8_t			length;				//!< length of the attribute
 
 	/*
 	 *	TLVs: 1, 2, or 4.
 	 *	date / time types: fr_time_res_t, which has 4 possible values.
-	 *	bit fields: offset in the byte where this bit field ends.
+	 *	bit fields: offset in the byte where this bit field ends, which is only
+	 *  	used as a caching mechanism during parsing of the dictionaries.
 	 */
 	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
 
 #define flag_time_res type_size
 #define flag_byte_offset type_size
-#define flag_struct_offset type_size
 
 /** subtype values for the dictionary when extra=1
  *

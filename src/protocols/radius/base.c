@@ -1138,6 +1138,11 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return false;
 	}
 
+	if (flags->length > 253) {
+		fr_strerror_printf("Attributes cannot be more than 253 octets in length");
+		return false;
+	}
+
 	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
 		fr_strerror_printf("Invalid flag value %u", flags->subtype);
 		return false;
