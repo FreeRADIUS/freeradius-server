@@ -68,7 +68,7 @@ typedef struct fr_dbuff_s fr_dbuff_t;
  *
  * Markers are used whenever the caller needs to access part of the underlying
  * buffer other than the 'start', 'current' or 'end' positions described by
- * the a #fr_dbuff_t.
+ * a #fr_dbuff_t.
  *
  * Markers are needed because if a #fr_dbuff_t is extended, pointers into the
  * underlying buffer may be invalidated by a realloc or memmove.
