@@ -32,7 +32,7 @@ fi
 #  re-generate these commands.
 #
 if [ ! -f dh ]; then
-  openssl dhparam -out dh 2048 || exit 1
+  openssl dhparam -dsaparam -outform PEM -out dh 2048 || exit 1
   if [ -e /dev/urandom ] ; then
 	ln -sf /dev/urandom random
   else
