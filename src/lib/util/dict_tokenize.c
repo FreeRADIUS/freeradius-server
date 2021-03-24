@@ -247,7 +247,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 			/*
 			 *	We track where on a byte boundary this bit field ends.
 			 */
-			flags->type_size = length;
+			flags->flag_byte_offset = length;
 
 		} else {
 			fr_strerror_const("Only 'octets' types can have a 'length' parameter");
@@ -948,11 +948,11 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 			 *	located.
 			 */
 			if (flags.extra && (flags.subtype == FLAG_BIT_FIELD)) {
-				flags.type_size += previous->flags.type_size;
-				flags.type_size &= 0x07;
+				flags.flag_byte_offset += previous->flags.flag_byte_offset;
+				flags.flag_byte_offset &= 0x07;
 
 			} else {
-				if (previous->flags.type_size != 0) {
+				if (previous->flags.flag_byte_offset != 0) {
 					fr_strerror_printf("Previous bitfield %s did not end on a byte boundary",
 							   previous->name);
 					return -1;

@@ -358,8 +358,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		/*
-		 *	Length isn't set, set it and type_size from
-		 *	the parent.
+		 *	Find an appropriate parent to copy the
+		 *	TLV-specific fields from.
 		 */
 		for (v = parent; v != NULL; v = v->parent) {
 			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
@@ -626,7 +626,7 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 *	that the encoder doesn't have to do complex
 		 *	checks.
 		 */
-		if (*attr >= (1 << (8 * parent->flags.type_size))) flags->internal = true;
+		if ((uint64_t) *attr >= (((uint64_t)1) << (8 * parent->flags.type_size))) flags->internal = true;
 	}
 
 	/*
@@ -679,10 +679,9 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	if ((*attr > UINT8_MAX) && !flags->internal) {
 		for (v = parent; v != NULL; v = v->parent) {
 			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				if ((v->flags.type_size < 4) &&
-				    (*attr >= (1 << (8 * v->flags.type_size)))) {
-					fr_strerror_printf("Attributes must have value between 1..%u",
-							   (1 << (8 * v->flags.type_size)) - 1);
+				if ((uint64_t) *attr >= (((uint64_t) 1) << (8 * v->flags.type_size))) {
+					fr_strerror_printf("Attributes must have value between 1..%llu",
+							   (((uint64_t) 1) << (8 * v->flags.type_size)) - 1);
 					return false;
 				}
 				break;

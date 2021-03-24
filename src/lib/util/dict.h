@@ -89,13 +89,21 @@ typedef struct {
 
 	unsigned int		extra : 1;			//!< really "subtype is used by dict, not by protocol"
 
-	uint8_t			subtype;			//!< for FR_TYPE_STRING encoding
+	uint8_t			subtype;			//!< protocol-specific values, OR key fields
 
 	uint8_t			length;				//!< length of the attribute
+
+	/*
+	 *	TLVs: 1, 2, or 4.
+	 *	date / time types: fr_time_res_t, which has 4 possible values.
+	 *	bit fields: offset in the byte where this bit field ends.
+	 */
 	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
 
 #define flag_time_res type_size
+#define flag_byte_offset type_size
+#define flag_struct_offset type_size
 
 /** subtype values for the dictionary when extra=1
  *
