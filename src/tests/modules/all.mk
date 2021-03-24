@@ -99,7 +99,7 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
+		FOUND=$$(grep -E 'Error : $<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat "$@.log"; \
