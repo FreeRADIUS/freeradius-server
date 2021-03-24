@@ -11,17 +11,15 @@
 #  $Id$
 #
 umask 027
-cd `dirname $0`
+cd "$(dirname "$0")" || exit 1
 
-make -h > /dev/null 2>&1
 
 #
 #  If we have a working "make", then use it.  Otherwise, run the commands
 #  manually.
 #
-if [ "$?" = "0" ]; then
-  make all
-  exit $?
+if make -h > /dev/null 2>&1; then
+  exec make all
 fi
 
 #
@@ -46,7 +44,7 @@ if [ ! -f server.key ]; then
 fi
 
 if [ ! -f ca.key ]; then
-  openssl req -new -x509 -keyout ca.key -out ca.pem -days `grep default_days ca.cnf | sed 's/.*=//;s/^ *//'` -config ./ca.cnf || exit 1
+  openssl req -new -x509 -keyout ca.key -out ca.pem -days "$(grep default_days ca.cnf | sed 's/.*=//;s/^ *//')" -config ./ca.cnf || exit 1
 fi
 
 if [ ! -f index.txt ]; then
@@ -58,16 +56,16 @@ if [ ! -f serial ]; then
 fi
 
 if [ ! -f server.crt ]; then
-  openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key `grep output_password ca.cnf | sed 's/.*=//;s/^ *//'` -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf || exit 1
+  openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key "$(grep output_password ca.cnf | sed 's/.*=//;s/^ *//')" -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf || exit 1
 fi
 
 if [ ! -f server.p12 ]; then
-  openssl pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` -passout pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` || exit 1
+  openssl pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin "pass:$(grep output_password server.cnf | sed 's/.*=//;s/^ *//')" -passout "pass:$(grep output_password server.cnf | sed 's/.*=//;s/^ *//')" || exit 1
   chmod g+r server.p12
 fi
 
 if [ ! -f server.pem ]; then
-  openssl pkcs12 -in server.p12 -out server.pem -passin pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` -passout pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` || exit 1
+  openssl pkcs12 -in server.p12 -out server.pem -passin "pass:$(grep output_password server.cnf | sed 's/.*=//;s/^ *//')" -passout "pass:$(grep output_password server.cnf | sed 's/.*=//;s/^ *//')" || exit 1
   openssl verify -CAfile ca.pem server.pem || exit 1
   chmod g+r server.pem
 fi
@@ -82,5 +80,5 @@ if [ ! -f client.key ]; then
 fi
 
 if [ ! -f client.crt ]; then
-  openssl ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key `grep output_password ca.cnf | sed 's/.*=//;s/^ *//'` -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
+  openssl ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key "$(grep output_password ca.cnf | sed 's/.*=//;s/^ *//')" -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
 fi
