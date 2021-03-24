@@ -578,7 +578,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 	if (unlang_interpret_push_section(request, subcs,
 					  default_rcode, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
-	return UNLANG_ACTION_YIELD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /*
@@ -632,21 +632,6 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	}
 }
 
-/** Return UNLANG_CALCULATE_RESULT only for async async calls
- *
- */
-static unlang_action_t unlang_module_resume_final(rlm_rcode_t *p_result, request_t *request,
-						  unlang_stack_frame_t *frame)
-{
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-
-	request->rcode = state->rcode;
-	if (state->p_result) *state->p_result = state->rcode;
-
-	*p_result = state->rcode;
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
 /** Wrapper to call a module's resumption function
  *
  */
@@ -656,7 +641,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
 	char const 			*caller;
 	rlm_rcode_t			rcode = *p_result;
-	int				stack_depth = stack_depth_current(request);
+
 	unlang_action_t			ua;
 
 	fr_assert(state->resume != NULL);
@@ -678,27 +663,38 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	request->rcode = rcode;
 	request->module = caller;
 
-	/*
-	 *	It is now marked as "stop" when it wasn't before, we
-	 *	must have been blocked.  We do NOT decrement
-	 *	"active_callers" if it's already been cancelled in a
-	 *	signal.
-	 */
-	if ((ua == UNLANG_ACTION_STOP_PROCESSING) || (request->master_state == REQUEST_STOP_PROCESSING)) {
+	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
+
+	switch (ua) {
+	case UNLANG_ACTION_STOP_PROCESSING:
 		RWARN("Module %s or worker signalled to stop processing request", mc->instance->module->name);
 		if (state->p_result) *state->p_result = rcode;
-
 		if (state->signal) state->thread->active_callers--;
 
 		*p_result = rcode;
 		return UNLANG_ACTION_STOP_PROCESSING;
-	}
 
-	if (ua == UNLANG_ACTION_YIELD) {
-		if (stack_depth < stack_depth_current(request)) return UNLANG_ACTION_PUSHED_CHILD;
-		fr_assert(stack_depth == stack_depth_current(request));
-		*p_result = rcode;
+	case UNLANG_ACTION_YIELD:
 		return UNLANG_ACTION_YIELD;
+
+	/*
+	 *	The module is done (for now).  But, running it pushed one or
+	 *	more asynchronous calls onto the stack.  These need to
+	 *	be run before the next module runs.
+	 */
+	case UNLANG_ACTION_PUSHED_CHILD:
+		state->rcode = rcode;
+		repeatable_set(frame);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case UNLANG_ACTION_CALCULATE_RESULT:
+	case UNLANG_ACTION_UNWIND:
+		break;
+
+	case UNLANG_ACTION_EXECUTE_NEXT:
+		fr_assert(0);
+		*p_result = RLM_MODULE_FAIL;
+		break;
 	}
 
 	RDEBUG2("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
@@ -706,23 +702,12 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 
 	state->thread->active_callers--;
 
-	/*
-	 *	The module is done.  But, running it pushed one or
-	 *	more asynchronous calls onto the stack.  These need to
-	 *	be run before the next module runs.
-	 */
-	if (ua == UNLANG_ACTION_PUSHED_CHILD) {
-		state->rcode = rcode;
-		repeatable_set(frame);
-		frame->process = unlang_module_resume_final;
-		return UNLANG_ACTION_PUSHED_CHILD;
-	}
-
 	request->rcode = rcode;
 	if (state->p_result) *state->p_result = rcode;
 
 	*p_result = rcode;
-	return ua;	/* Usually UNLANG_ACTION_CALCULATE_RESULT */
+
+	return ua;
 }
 
 /** Yield a request back to the interpreter from within a module
@@ -774,7 +759,6 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 {
 	unlang_module_t			*mc;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-	int				stack_depth = stack_depth_current(request);
 	char const 			*caller;
 	rlm_rcode_t			rcode = RLM_MODULE_NOOP;
 	unlang_action_t			ua;
@@ -831,16 +815,44 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	safe_unlock(mc->instance);
 	request->module = caller;
 
+	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
+
+	switch (ua) {
 	/*
 	 *	It is now marked as "stop" when it wasn't before, we
 	 *	must have been blocked.
 	 */
-	if ((ua == UNLANG_ACTION_STOP_PROCESSING) || (request->master_state == REQUEST_STOP_PROCESSING)) {
+	case UNLANG_ACTION_STOP_PROCESSING:
 		RWARN("Module %s became unblocked", mc->instance->module->name);
 		if (state->p_result) *state->p_result = rcode;
 
 		*p_result = rcode;
 		return UNLANG_ACTION_STOP_PROCESSING;
+
+	case UNLANG_ACTION_YIELD:
+		state->thread->active_callers++;
+		repeatable_set(frame);
+		frame->process = unlang_module_resume;
+		return UNLANG_ACTION_YIELD;
+
+	/*
+	 *	The module is done (for now).  But, running it pushed one or
+	 *	more asynchronous calls onto the stack.  These need to
+	 *	be run before the next module runs.
+	 */
+	case UNLANG_ACTION_PUSHED_CHILD:
+		state->rcode = rcode;
+		repeatable_set(frame);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case UNLANG_ACTION_CALCULATE_RESULT:
+	case UNLANG_ACTION_UNWIND:
+		break;
+
+	case UNLANG_ACTION_EXECUTE_NEXT:
+		fr_assert(0);
+		*p_result = RLM_MODULE_FAIL;
+		break;
 	}
 
 	/*
@@ -849,31 +861,10 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
 	       fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 
-
-	if (ua == UNLANG_ACTION_YIELD) {
-		state->thread->active_callers++;
-		if (stack_depth < stack_depth_current(request)) return UNLANG_ACTION_PUSHED_CHILD;
-		fr_assert(stack_depth == stack_depth_current(request));
-		frame->process = unlang_module_resume;
-		return UNLANG_ACTION_YIELD;
-	}
-
 done:
 	fr_assert(unlang_indent == request->log.unlang_indent);
 	fr_assert(rcode >= RLM_MODULE_REJECT);
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
-
-	/*
-	 *	The module is done.  But, running it pushed one or
-	 *	more asynchronous calls onto the stack.  These need to
-	 *	be run before the next module runs.
-	 */
-	if (ua == UNLANG_ACTION_PUSHED_CHILD) {
-		state->rcode = rcode;
-		repeatable_set(frame);
-		frame->process = unlang_module_resume_final;
-		return UNLANG_ACTION_PUSHED_CHILD;
-	}
 
 	request->rcode = rcode;
 	if (state->p_result) *state->p_result = rcode;
