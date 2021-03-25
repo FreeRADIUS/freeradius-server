@@ -1676,7 +1676,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %{3gpp_pseudonym_key_index:...}
+#  ### %(3gpp_pseudonym_key_index:...)
 #
 #  TODO
 #

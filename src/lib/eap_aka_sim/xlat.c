@@ -148,7 +148,7 @@ static xlat_arg_parser_t const aka_sim_id_3gpp_pseudonym_key_index_xlat_args[] =
 /** Returns the key index from a 3gpp pseudonym
  *
 @verbatim
-%{3gpp_pseudonym_key_index:&id_attr}
+%(3gpp_pseudonym_key_index:%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions
