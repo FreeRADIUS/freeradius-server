@@ -301,8 +301,10 @@ static int identity_req_pairs_add(request_t *request, eap_aka_sim_session_t *eap
 		if (eap_aka_sim_session->last_id_req != AKA_SIM_NO_ID_REQ) {
 		id_out_of_order:
 			REDEBUG("Cannot send %s, already sent %s",
-				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"),
-				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->last_id_req, "<INVALID>"));
+				fr_table_str_by_value(fr_aka_sim_id_request_table,
+						      eap_aka_sim_session->id_req, "<INVALID>"),
+				fr_table_str_by_value(fr_aka_sim_id_request_table,
+						      eap_aka_sim_session->last_id_req, "<INVALID>"));
 			return -1;
 		}
 		MEM(pair_append_reply(&vp, attr_eap_aka_sim_any_id_req) >= 0);
@@ -467,7 +469,8 @@ static inline bool after_authentication(eap_aka_sim_session_t *eap_aka_sim_sessi
 /** Resume after 'store session { ... }'
  *
  */
-static unlang_action_t session_store_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t session_store_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
 {
 	aka_sim_state_enter_t	state_enter = (aka_sim_state_enter_t)rctx;
 
@@ -491,15 +494,16 @@ static unlang_action_t session_store_resume(rlm_rcode_t *p_result, module_ctx_t 
 /** Resume after 'store pseudonym { ... }'
  *
  */
-static unlang_action_t pseudonym_store_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t pseudonym_store_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					      request_t *request, void *rctx)
 {
-	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
-	eap_session_t		*eap_session = eap_session_get(request->parent);
-	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
-									     eap_aka_sim_session_t);
-	aka_sim_state_enter_t	state_enter = (aka_sim_state_enter_t)rctx;
-	fr_pair_t		*vp;
-	fr_pair_t		*new;
+	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
+	eap_session_t			*eap_session = eap_session_get(request->parent);
+	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
+										     eap_aka_sim_session_t);
+	aka_sim_state_enter_t		state_enter = (aka_sim_state_enter_t)rctx;
+	fr_pair_t			*vp;
+	fr_pair_t			*new;
 
 	switch (request->rcode) {
 	/*
@@ -633,8 +637,8 @@ done:
  *				state.
  */
 static unlang_action_t session_and_pseudonym_store(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					       request_t *request, eap_session_t *eap_session,
-					       aka_sim_state_enter_t state_enter)
+						   request_t *request, eap_session_t *eap_session,
+						   aka_sim_state_enter_t state_enter)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -701,7 +705,8 @@ static unlang_action_t session_and_pseudonym_store(rlm_rcode_t *p_result, module
 /** Resume after 'clear session { ... }'
  *
  */
-static unlang_action_t session_clear_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t session_clear_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
 {
 	aka_sim_state_enter_t	state_enter = (aka_sim_state_enter_t)rctx;
 
@@ -713,7 +718,8 @@ static unlang_action_t session_clear_resume(rlm_rcode_t *p_result, module_ctx_t 
 /** Resume after 'clear pseudonym { ... }'
  *
  */
-static unlang_action_t pseudonym_clear_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t pseudonym_clear_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					      request_t *request, void *rctx)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -764,8 +770,8 @@ static unlang_action_t pseudonym_clear_resume(rlm_rcode_t *p_result, module_ctx_
  *				state.
  */
 static unlang_action_t session_and_pseudonym_clear(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					       request_t *request, eap_session_t *eap_session,
-					       aka_sim_state_enter_t state_enter)
+						   request_t *request, eap_session_t *eap_session,
+						   aka_sim_state_enter_t state_enter)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -835,7 +841,8 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 		case FR_SUBTYPE_VALUE_SIM_START:
 		case FR_SUBTYPE_VALUE_AKA_IDENTITY:
 			RDEBUG2("Sending EAP-Request/%pV (%s)", &subtype_vp->data,
-				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"));
+				fr_table_str_by_value(fr_aka_sim_id_request_table,
+						      eap_aka_sim_session->id_req, "<INVALID>"));
 			break;
 
 		default:
@@ -915,7 +922,7 @@ static unlang_action_t common_eap_failure_send(rlm_rcode_t *p_result, request_t 
  *
  */
 static unlang_action_t common_failure_notification_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						    request_t *request, eap_session_t *eap_session)
+							request_t *request, eap_session_t *eap_session)
 {
 	fr_pair_t		*vp, *notification_vp;
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1109,7 +1116,7 @@ static unlang_action_t common_success_notification_send(rlm_rcode_t *p_result, m
  *
  */
 static unlang_action_t common_reauthentication_request_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-							request_t *request, eap_session_t *eap_session)
+							    request_t *request, eap_session_t *eap_session)
 {
 	/*
 	 *	Encode the packet - AT_IV is handled automatically
@@ -1125,8 +1132,10 @@ static unlang_action_t common_reauthentication_request_send(rlm_rcode_t *p_resul
 /** Send a EAP-Request/(AKA|SIM)-Reauthenticate message to the supplicant
  *
  */
-static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-							   eap_session_t *eap_session)
+static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_result,
+							       module_ctx_t const *mctx,
+							       request_t *request,
+							       eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -1300,7 +1309,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
  *
  */
 static unlang_action_t aka_challenge_request_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					      request_t *request, eap_session_t *eap_session)
+						  request_t *request, eap_session_t *eap_session)
 {
 	/*
 	 *	Encode the packet - AT_IV is handled automatically
@@ -1317,7 +1326,7 @@ static unlang_action_t aka_challenge_request_send(rlm_rcode_t *p_result, module_
  *
  */
 static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						 request_t *request, eap_session_t *eap_session)
+						     request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
 	fr_pair_list_t		*to_peer = &request->reply_pairs;
@@ -1499,7 +1508,7 @@ static unlang_action_t aka_challenge_request_compose(rlm_rcode_t *p_result, modu
  *
  */
 static unlang_action_t sim_challenge_request_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					      request_t *request, eap_session_t *eap_session)
+						  request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -1520,7 +1529,7 @@ static unlang_action_t sim_challenge_request_send(rlm_rcode_t *p_result, module_
  *
  */
 static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						 request_t *request, eap_session_t *eap_session)
+						     request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -1625,7 +1634,7 @@ static unlang_action_t sim_challenge_request_compose(rlm_rcode_t *p_result, modu
  * @param[in] eap_session	to continue.
  */
 static unlang_action_t aka_identity_request_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					     request_t *request, eap_session_t *eap_session)
+						 request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -1706,7 +1715,7 @@ static unlang_action_t aka_identity_request_send(rlm_rcode_t *p_result, module_c
  * @param[in] eap_session	to continue.
  */
 static unlang_action_t sim_start_request_send(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					  request_t *request, eap_session_t *eap_session)
+					      request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -1779,8 +1788,7 @@ static unlang_action_t sim_start_request_send(rlm_rcode_t *p_result, module_ctx_
 /** Print debugging information, and write new state to eap_session->process
  *
  */
-static inline void state_transition(request_t *request, eap_session_t *eap_session,
-					    module_method_t new_state)
+static inline void state_transition(request_t *request, eap_session_t *eap_session, module_method_t new_state)
 {
 	module_method_t		old_state = eap_session->process;
 
@@ -1829,7 +1837,8 @@ static unlang_action_t common_eap_failure_enter(rlm_rcode_t *p_result, module_ct
 	 */
 	if (eap_aka_sim_session->pseudonym_sent || eap_aka_sim_session->fastauth_sent) {
 		return session_and_pseudonym_clear(p_result, mctx,
-						   request, eap_session, common_eap_failure_enter); /* come back when we're done */
+						   request, eap_session, common_eap_failure_enter);
+						   /* come back when we're done */
 	}
 
 	state_transition(request, eap_session, common_eap_failure);
@@ -1912,7 +1921,7 @@ static unlang_action_t common_failure_notification_enter(rlm_rcode_t *p_result, 
  *
  */
 static unlang_action_t common_eap_success_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						  request_t *request, UNUSED void *rctx)
+						       request_t *request, UNUSED void *rctx)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 
@@ -1977,7 +1986,7 @@ static unlang_action_t common_eap_success_enter(rlm_rcode_t *p_result, module_ct
  *
  */
 static unlang_action_t common_success_notification_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-							       request_t *request, UNUSED void *rctx)
+								request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -1992,7 +2001,7 @@ static unlang_action_t common_success_notification_enter_resume(rlm_rcode_t *p_r
  *
  */
 static unlang_action_t common_success_notification_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-							request_t *request, eap_session_t *eap_session)
+							 request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	state_transition(request, eap_session, common_success_notification);
@@ -2010,7 +2019,7 @@ static unlang_action_t common_success_notification_enter(rlm_rcode_t *p_result, 
  *
  */
 static unlang_action_t common_reauthentication_send_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				 		       request_t *request, UNUSED void *rctx)
+							   request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2070,7 +2079,7 @@ static unlang_action_t common_reauthentication_send_resume(rlm_rcode_t *p_result
  *
  */
 static unlang_action_t session_load_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				       request_t *request, UNUSED void *rctx)
+					   request_t *request, UNUSED void *rctx)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -2145,7 +2154,7 @@ static unlang_action_t session_load_resume(rlm_rcode_t *p_result, module_ctx_t c
  *
  */
 static unlang_action_t pseudonym_load_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					 request_t *request, void *rctx)
+					     request_t *request, void *rctx)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -2210,7 +2219,7 @@ static unlang_action_t pseudonym_load_resume(rlm_rcode_t *p_result, module_ctx_t
  *
  */
 static unlang_action_t common_reauthentication_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						 request_t *request, eap_session_t *eap_session)
+						     request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	fr_pair_t		*vp = NULL;
@@ -2239,7 +2248,8 @@ static unlang_action_t common_reauthentication_enter(rlm_rcode_t *p_result, modu
 /** Resume after 'send Challenge-Request { ... }'
  *
  */
-static unlang_action_t aka_challenge_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+static unlang_action_t aka_challenge_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+						  request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2332,7 +2342,8 @@ static unlang_action_t aka_challenge_enter(rlm_rcode_t *p_result, module_ctx_t c
 /** Resume after 'send Challenge-Request { ... }'
  *
  */
-static unlang_action_t sim_challenge_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+static unlang_action_t sim_challenge_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+						  request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2347,7 +2358,7 @@ static unlang_action_t sim_challenge_enter_resume(rlm_rcode_t *p_result, module_
  *
  */
 static unlang_action_t sim_challenge_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				       request_t *request, eap_session_t *eap_session)
+					   request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2389,7 +2400,7 @@ static unlang_action_t sim_challenge_enter(rlm_rcode_t *p_result, module_ctx_t c
  * to enter the correct challenge state.
  */
 static unlang_action_t common_challenge_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				          request_t *request, eap_session_t *eap_session)
+					      request_t *request, eap_session_t *eap_session)
 {
 	switch (eap_session->type) {
 	case FR_EAP_METHOD_SIM:
@@ -2411,7 +2422,7 @@ static unlang_action_t common_challenge_enter(rlm_rcode_t *p_result, module_ctx_
  *
  */
 static unlang_action_t aka_identity_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						   request_t *request, UNUSED void *rctx)
+						 request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2425,7 +2436,8 @@ static unlang_action_t aka_identity_enter_resume(rlm_rcode_t *p_result, module_c
 /** Enter the AKA-IDENTITY state
  *
  */
-static unlang_action_t aka_identity_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, eap_session_t *eap_session)
+static unlang_action_t aka_identity_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					  request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 
@@ -2451,7 +2463,7 @@ static unlang_action_t aka_identity_enter(rlm_rcode_t *p_result, module_ctx_t co
  *
  */
 static unlang_action_t sim_start_enter_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					  request_t *request, UNUSED void *rctx)
+					      request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2465,7 +2477,8 @@ static unlang_action_t sim_start_enter_resume(rlm_rcode_t *p_result, module_ctx_
 /** Enter the SIM-START state
  *
  */
-static unlang_action_t sim_start_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, eap_session_t *eap_session)
+static unlang_action_t sim_start_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+				       request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 
@@ -2488,7 +2501,7 @@ static unlang_action_t sim_start_enter(rlm_rcode_t *p_result, module_ctx_t const
  * to enter the correct Identity-Request state.
  */
 static unlang_action_t common_identity_enter(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				         request_t *request, eap_session_t *eap_session)
+					     request_t *request, eap_session_t *eap_session)
 {
 	switch (eap_session->type) {
 	case FR_EAP_METHOD_SIM:
@@ -2509,8 +2522,8 @@ static unlang_action_t common_identity_enter(rlm_rcode_t *p_result, module_ctx_t
 /** Process a EAP-Response/(AKA|SIM)-Reauthentication message - The response to our EAP-Request/(AKA|SIM)-Reauthentication message
  *
  */
-static unlang_action_t common_reauthentication_response_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-							    eap_session_t *eap_session)
+static unlang_action_t common_reauthentication_response_process(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+								request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -2628,7 +2641,7 @@ static unlang_action_t common_reauthentication_response_process(rlm_rcode_t *p_r
  * Verify that MAC, and RES match what we expect.
  */
 static unlang_action_t aka_challenge_response_process(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						  request_t *request, eap_session_t *eap_session)
+						      request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -2754,7 +2767,7 @@ static unlang_action_t aka_challenge_response_process(rlm_rcode_t *p_result, mod
  * Verify that MAC, and RES match what we expect.
  */
 static unlang_action_t sim_challenge_response_process(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						  request_t *request, eap_session_t *eap_session)
+						      request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_session_t);
@@ -2838,7 +2851,7 @@ static unlang_action_t sim_challenge_response_process(rlm_rcode_t *p_result, mod
  *   - Permanent - Enter the CHALLENGE state.
  */
 static unlang_action_t aka_identity_response_process(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						 request_t *request, eap_session_t *eap_session)
+						     request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -2888,7 +2901,8 @@ static unlang_action_t aka_identity_response_process(rlm_rcode_t *p_result, modu
 			}
 			RDEBUG2("Previous section returned (%s), requesting next most permissive identity (%s)",
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"),
-				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"));
+				fr_table_str_by_value(fr_aka_sim_id_request_table,
+						      eap_aka_sim_session->id_req, "<INVALID>"));
 		}
 		return aka_identity_enter(p_result, mctx, request, eap_session);
 	}
@@ -3019,7 +3033,7 @@ static int sim_start_nonce_mt_check(request_t *request, fr_pair_list_t *from_pee
  *   - Permanent - Verify selected version and AT_NONCE_MT, then enter the CHALLENGE state.
  */
 static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					      request_t *request, eap_session_t *eap_session)
+						  request_t *request, eap_session_t *eap_session)
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -3059,7 +3073,8 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
 			}
 			RDEBUG2("Previous section returned (%s), requesting next most permissive identity (%s)",
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"),
-				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"));
+				fr_table_str_by_value(fr_aka_sim_id_request_table,
+						      eap_aka_sim_session->id_req, "<INVALID>"));
 		}
 		return sim_start_enter(p_result, mctx, request, eap_session);
 	}
@@ -3137,7 +3152,7 @@ static unlang_action_t sim_start_response_process(rlm_rcode_t *p_result, module_
  * - Enter the EAP-FAILURE state.
  */
 static unlang_action_t common_failure_notification_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-							   request_t *request, UNUSED void *rctx)
+							       request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
@@ -3154,7 +3169,7 @@ static unlang_action_t common_failure_notification_recv_resume(rlm_rcode_t *p_re
  * - Enter the EAP-SUCCESS state.
  */
 static unlang_action_t common_success_notification_ack_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-							       request_t *request, UNUSED void *rctx)
+								   request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
@@ -3174,7 +3189,7 @@ static unlang_action_t common_success_notification_ack_recv_resume(rlm_rcode_t *
  * - ...or call a function to process the contents of the AKA-Challenge message.
  */
 static unlang_action_t aka_challenge_response_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						      request_t *request, UNUSED void *rctx)
+							  request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -3191,7 +3206,7 @@ static unlang_action_t aka_challenge_response_recv_resume(rlm_rcode_t *p_result,
  * - ...or call a function to process the contents of the SIM-Challenge message.
  */
 static unlang_action_t sim_challenge_response_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						      request_t *request, UNUSED void *rctx)
+							  request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -3208,7 +3223,7 @@ static unlang_action_t sim_challenge_response_recv_resume(rlm_rcode_t *p_result,
  * - ...or call a function to process the contents of the AKA-Identity message, mainly the AT_IDENTITY value.
  */
 static unlang_action_t aka_identity_response_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						     request_t *request, UNUSED void *rctx)
+							 request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -3225,7 +3240,7 @@ static unlang_action_t aka_identity_response_recv_resume(rlm_rcode_t *p_result, 
  * - ...or call a function to process the contents of the SIM-Start message, mainly the AT_IDENTITY value.
  */
 static unlang_action_t sim_start_response_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						  request_t *request, UNUSED void *rctx)
+						      request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -3241,7 +3256,7 @@ static unlang_action_t sim_start_response_recv_resume(rlm_rcode_t *p_result, mod
  * - Enter the FAILURE-NOTIFICATION state.
  */
 static unlang_action_t aka_authentication_reject_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-							 request_t *request, UNUSED void *rctx)
+							     request_t *request, UNUSED void *rctx)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
@@ -3330,7 +3345,7 @@ static unlang_action_t common_client_error_recv_resume(rlm_rcode_t *p_result, mo
  *   contents of the response.
  */
 static unlang_action_t common_reauthentication_response_recv_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-								request_t *request, UNUSED void *rctx)
+								    request_t *request, UNUSED void *rctx)
 {
 	eap_session_t				*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t			*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
@@ -3406,7 +3421,8 @@ static unlang_action_t common_decode(fr_pair_t **subtype_vp, fr_pair_list_t *vps
  * termination state.  Could equally be a NULL pointer, but then on a logic error
  * we'd get a SEGV instead of a more friendly assert/failure rcode.
  */
-static unlang_action_t common_eap_failure(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t common_eap_failure(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					  UNUSED request_t *request)
 {
 	fr_assert(0);	/* Should never actually be called */
 	RETURN_MODULE_FAIL;
@@ -3459,7 +3475,8 @@ static unlang_action_t common_failure_notification(rlm_rcode_t *p_result, module
  * termination state.  Could equally be a NULL pointer, but then on a logic error
  * we'd get a SEGV instead of a more friendly assert/failure rcode.
  */
-static unlang_action_t common_eap_success(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t common_eap_success(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					  UNUSED request_t *request)
 {
 	fr_assert(0);
 	RETURN_MODULE_FAIL;
@@ -3572,7 +3589,8 @@ static unlang_action_t aka_challenge(rlm_rcode_t *p_result, module_ctx_t const *
 {
 	eap_aka_sim_common_conf_t *inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
-	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_session_t);
+	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(eap_session->opaque,
+									     eap_aka_sim_session_t);
 
 	fr_pair_t		*subtype_vp = NULL;
 	fr_pair_t		*vp;
@@ -3975,7 +3993,6 @@ static unlang_action_t sim_start(rlm_rcode_t *p_result, module_ctx_t const *mctx
 	}
 }
 
-
 /** Resume after 'recv Identity-Response { ... }'
  *
  * - Perform the majority of eap_aka_sim_session_t initialisation.
@@ -3985,7 +4002,8 @@ static unlang_action_t sim_start(rlm_rcode_t *p_result, module_ctx_t const *mctx
  *   - If identity is a fastauth identity, enter the REAUTHENTICATE state.
  *   - If identity is a permanent identity, enter the CHALLENGE state.
  */
-static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+						  request_t *request, UNUSED void *rctx)
 {
 	eap_aka_sim_common_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_common_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
@@ -4100,11 +4118,13 @@ static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_
 			eap_aka_sim_session->id_req = AKA_SIM_ANY_ID_REQ;
 			RDEBUG2("Previous section returned (%s), requesting additional identity (%s)",
 				fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"),
-				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"));
+				fr_table_str_by_value(fr_aka_sim_id_request_table,
+						      eap_aka_sim_session->id_req, "<INVALID>"));
 		} else if (inst->request_identity != AKA_SIM_NO_ID_REQ) {
 			eap_aka_sim_session->id_req = inst->request_identity;
 			RDEBUG2("Requesting additional identity (%s)",
-				fr_table_str_by_value(fr_aka_sim_id_request_table, eap_aka_sim_session->id_req, "<INVALID>"));
+				fr_table_str_by_value(fr_aka_sim_id_request_table,
+						      eap_aka_sim_session->id_req, "<INVALID>"));
 		}
 	}
 
@@ -4115,7 +4135,9 @@ static unlang_action_t common_eap_identity_resume(rlm_rcode_t *p_result, module_
 	 *	can 'decorate' the identity in the identity
 	 *	response.
 	 */
-	if (eap_aka_sim_session->id_req != AKA_SIM_NO_ID_REQ) return common_identity_enter(p_result, mctx, request, eap_session);
+	if (eap_aka_sim_session->id_req != AKA_SIM_NO_ID_REQ) {
+		return common_identity_enter(p_result, mctx, request, eap_session);
+	}
 
 	/*
 	 *	If the identity looks like a fast re-auth id
