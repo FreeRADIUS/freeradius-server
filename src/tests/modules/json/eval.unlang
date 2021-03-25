@@ -484,48 +484,47 @@ update request {
 	&Tmp-String-1 !* ANY
 }
 
-# Disabled until a json-c >= 0.10 is available in travis
-## xx. Unsigned 64bit integers
-#map json &Tmp-String-0 {
-#	&Tmp-Integer64-0 := '$[0]'
-#}
-#if (&Tmp-Integer64-0 != 9223372036854775807) {
-#	test_fail
-#}
-#update request {
-#	&Tmp-Integer64-0 !* ANY
-#}
-#
-## xx. Signed 64bit integers (not supported)
-#redundant {
-#	group {
-#		map json &Tmp-String-0 {
-#			&Tmp-Integer64-0 := '$[1]'
-#		}
-#	}
-#	ok
-#}
-#if (fail || &Tmp-Integer64-0) {
-#	test_fail
-#}
-#update request {
-#	&Tmp-Integer64-0 !* ANY
-#}
-#
-## xx. Signed 64bit integers (not supported)
-#redundant {
-#	group {
-#		map json &Tmp-String-0 {
-#			&Tmp-Integer64-0 := '$[1]'
-#		}
-#	}
-#	ok
-#}
-#if (fail || &Tmp-Integer64-0) {
-#	test_fail
-#}
-#update request {
-#	&Tmp-Integer64-0 !* ANY
-#}
+# 39. Unsigned 64bit integers
+map json &Tmp-String-0 {
+	&Tmp-Integer64-0 := '$[0]'
+}
+if (&Tmp-Integer64-0 != 9223372036854775807) {
+	test_fail
+}
+update request {
+	&Tmp-Integer64-0 !* ANY
+}
+
+# 40. Signed 64bit integers (not supported)
+redundant {
+	group {
+		map json &Tmp-String-0 {
+			&Tmp-Integer64-0 := '$[1]'
+		}
+	}
+	ok
+}
+if (fail || &Tmp-Integer64-0) {
+	test_fail
+}
+update request {
+	&Tmp-Integer64-0 !* ANY
+}
+
+# 41. Signed 64bit integers (not supported)
+redundant {
+	group {
+		map json &Tmp-String-0 {
+			&Tmp-Integer64-0 := '$[1]'
+		}
+	}
+	ok
+}
+if (fail || &Tmp-Integer64-0) {
+	test_fail
+}
+update request {
+	&Tmp-Integer64-0 !* ANY
+}
 
 test_pass
