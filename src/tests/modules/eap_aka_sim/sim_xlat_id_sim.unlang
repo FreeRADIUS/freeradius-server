@@ -1,4 +1,4 @@
-if ("%{aka_sim_id_method:User-Name}" != 'SIM') {
+if ("%(aka_sim_id_method:%{User-Name})" != 'SIM') {
 	test_fail
 } else {
 	test_pass
@@ -23,7 +23,7 @@ update control {
 #
 #  Can we get the EAP method from the encrypted blob correctly?
 #
-if ("%{aka_sim_id_method:control.User-Name}" != 'SIM') {
+if ("%(aka_sim_id_method:%{control.User-Name})" != 'SIM') {
 	test_fail
 } else {
 	test_pass
