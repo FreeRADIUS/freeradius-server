@@ -92,7 +92,7 @@ static xlat_arg_parser_t const aka_sim_xlat_id_type_xlat_args[] = {
 /** Returns the type of identity used
  *
 @verbatim
-%{aka_sim_id_type:&id_attr}
+%(aka_sim_id_type:%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions

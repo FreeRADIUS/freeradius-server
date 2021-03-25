@@ -1714,7 +1714,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %{sim_id_type:...}
+#  ### %(aka_sim_id_type:...)
 #
 #  TODO
 #
