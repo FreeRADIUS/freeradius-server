@@ -654,7 +654,8 @@ static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
 /** Initialize various request fields needed by the worker.
  *
  */
-static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
+static inline CC_HINT(always_inline)
+void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
 	request->el = worker->el;
 	request->backlog = worker->runnable;
@@ -664,13 +665,17 @@ static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time
 	request->reply = fr_radius_packet_alloc(request, false);
 	fr_assert(request->reply != NULL);
 
-	request->number = atomic_fetch_add_explicit(&request_number, 1, memory_order_seq_cst);
-
-	request->name = itoa_internal(request, request->number);
-
 	request->async = talloc_zero(request, fr_async_t);
 	request->async->recv_time = now;
 	request->async->el = worker->el;
+}
+
+static inline CC_HINT(always_inline)
+void worker_request_name_number(request_t *request)
+{
+	request->number = atomic_fetch_add_explicit(&request_number, 1, memory_order_seq_cst);
+	if (request->name) talloc_free(UNCONST(char *, request->name));
+	request->name = itoa_internal(request, request->number);
 }
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
@@ -687,6 +692,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	if (!request) goto nak;
 
 	worker_request_init(worker, request, now);
+	worker_request_name_number(request);
 
 	/*
 	 *	Associate our interpreter with the request
@@ -988,7 +994,7 @@ static void _worker_request_external_done(request_t *request, UNUSED rlm_rcode_t
 
 	worker_send_reply(worker, request, 0, fr_time());
 
-	DEBUG3("Freeing request %s", request->name);
+	DEBUG3("Worker - Request freed (%s)", request->name);
 	talloc_free(request);
 }
 
@@ -999,7 +1005,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
 {
 	fr_worker_t	*worker = uctx;
 
-	RDEBUG3("Marked as runnable");
+	RDEBUG3("Worker - Request marked as runnable");
 	fr_heap_insert(worker->runnable, request);
 }
 
@@ -1008,7 +1014,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
  */
 static void _worker_request_yield(request_t *request, UNUSED void *uctx)
 {
-	RDEBUG3("Yielded");
+	RDEBUG3("Worker - Request yielded");
 	fr_time_tracking_yield(&request->async->tracking, fr_time());
 }
 
@@ -1017,7 +1023,7 @@ static void _worker_request_yield(request_t *request, UNUSED void *uctx)
  */
 static void _worker_request_resume(request_t *request, UNUSED void *uctx)
 {
-	RDEBUG3("Resuming");
+	RDEBUG3("Worker - Request resuming");
 	fr_time_tracking_resume(&request->async->tracking, fr_time());
 }
 
@@ -1311,6 +1317,7 @@ int fr_worker_request_add(request_t *request, module_method_t process, void *uct
 	now = fr_time();
 
 	worker_request_init(worker, request, now);
+	worker_request_name_number(request);
 
 	fr_assert(request_is_internal(request));
 	request->async->process = process;

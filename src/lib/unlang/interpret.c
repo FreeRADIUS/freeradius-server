@@ -972,13 +972,13 @@ void unlang_interpret_mark_runnable(request_t *request)
 	 *	runnable, before the parent request starts running.
 	 */
 	if (!is_yielded(frame) || scheduled) {
-		RDEBUG3("Not marking resumable due to%s%s",
+		RDEBUG3("Not marking runnable due to%s%s",
 			!is_yielded(frame) ?
 			" it not being yielded " : "", scheduled ? " it already being scheduled" : "");
 		return;
 	}
 
-	RDEBUG3("Marked as resumable");
+	RDEBUG3("Interpreter - Request marked as runnable");
 
 	intp->funcs.mark_runnable(request, intp->uctx);
 }
