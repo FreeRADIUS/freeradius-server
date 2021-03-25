@@ -1372,7 +1372,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 			talloc_free(request);
 			return 0;
 		}
-		unlang_interpret(request);
+		unlang_interpret_synchronous(request);
 		DEBUG("}");
 
 		/*

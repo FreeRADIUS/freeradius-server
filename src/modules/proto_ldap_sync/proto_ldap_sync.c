@@ -421,7 +421,7 @@ static void request_running(request_t *request, fr_state_signal_t action)
 		FALL_THROUGH;
 
 	case REQUEST_RECV:
-		rcode = unlang_interpret(request);
+		rcode = unlang_interpret_synchronous(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 

@@ -105,11 +105,9 @@ static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, UNUSED modul
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	eap_round_t	*eap_round = eap_session->this_round;
 
-	rcode = unlang_interpret(request);
+	rcode = unlang_interpret_synchronous(request);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
-
-	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
 
 	if (rcode != RLM_MODULE_OK) {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;

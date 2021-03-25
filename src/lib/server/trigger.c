@@ -219,7 +219,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 		/*
 		 *	Run the interpreter.
 		 */
-		rcode = unlang_interpret(request);
+		rcode = unlang_interpret_synchronous(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) {
 			RETURN_MODULE_HANDLED;
