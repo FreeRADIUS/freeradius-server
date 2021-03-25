@@ -622,8 +622,16 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
  *	are transferred between state entries as the conversation progresses.
  *
  * @note Called with the mutex free.
+ *
+ * @param[in] state	tree to lookup state in.
+ * @param[in] request	to restore state for.
+ * @return
+ *	- 0 on success (state restored)
+ *	- 1 if no state attribute existed.
+ *	- -1 if a state entry matching the value couldn't be found.
+ *	- -2 if a state entry has already been thawed by a another request.
  */
-void fr_state_to_request(fr_state_tree_t *state, request_t *request)
+int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
 	TALLOC_CTX		*old_ctx = NULL;
@@ -634,9 +642,9 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	 */
 	vp = fr_pair_find_by_da(&request->request_pairs, state->da);
 	if (!vp) {
-		RDEBUG3("No &request.State attribute, can't restore &session-state");
+		RDEBUG3("No &request.%s attribute, can't restore &session-state", state->da->name);
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
-		return;
+		return 1;
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
@@ -646,7 +654,7 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 		if (entry->thawed) {
 			REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
 			PTHREAD_MUTEX_UNLOCK(&state->mutex);
-			return;
+			return -2;
 		}
 		if (request->session_state_ctx) old_ctx = request->session_state_ctx;	/* Store for later freeing */
 
@@ -658,8 +666,12 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 
 		entry->ctx = NULL;
 		entry->thawed = request;
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
+	} else {
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
+		REDEBUG("No state entry matching &request.%pP found", vp);
+		return -1;
 	}
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Restored &session-state");
@@ -674,7 +686,7 @@ void fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	RDEBUG3("%s - restored", state->da->name);
 
 	REQUEST_VERIFY(request);
-	return;
+	return 0;
 }
 
 

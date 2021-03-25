@@ -311,13 +311,29 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
 	talloc_free(msg);
 }
 
-
-#if 0
 RECV(access_request)
 {
-	RETURN_MODULE_FAIL;
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+
+	/*
+	 *	Requests with invalid state values
+	 *	are extremely unlikely to result
+	 *	in success, so reject them as quickly
+	 *	as we possible.
+	 */
+	if (fr_state_to_request(inst->auth.state_tree, request) < 0) {
+		fr_process_state_t const	*state;
+		CONF_SECTION			*cs;
+
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+		UPDATE_STATE_CS(reply);
+		return unlang_module_yield_to_section(p_result, request,
+						      cs, state->rcode, state->send,
+						      NULL, NULL);
+	}
+
+	return CALL_RECV(generic);
 }
-#endif
 
 RESUME(auth_type);
 
@@ -425,14 +441,16 @@ RESUME(auth_type)
 	}
 
 	/*
-	 *	Set the reply code.
+	 *	Most cases except handled...
 	 */
-	request->reply->code = auth_type_rcode[rcode];
-	if (!request->reply->code) {
+	if (auth_type_rcode[rcode]) request->reply->code = auth_type_rcode[rcode];
+
+	switch (request->reply->code) {
+	case 0:
 		RDEBUG("No reply code was set.  Forcing to Access-Reject");
 		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+		FALL_THROUGH;
 
-	} else switch (request->reply->code) {
 	/*
 	 *	Print complaints before running "send Access-Reject"
 	 */
@@ -759,7 +777,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.recv = recv_generic,
+		.recv = recv_access_request,
 		.resume = resume_access_request,
 		.section_offset = offsetof(process_radius_sections_t, access_request),
 	},
