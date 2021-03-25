@@ -148,6 +148,11 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
 	return 0;
 }
 
+static xlat_arg_parser_t const redis_remap_xlat_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Force a redis cluster remap
  *
 @verbatim
@@ -164,22 +169,12 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_redis_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_redis_t);
 
-	fr_socket_t		node_addr;
+	fr_socket_t			node_addr;
 	fr_pool_t			*pool;
 	fr_redis_conn_t			*conn;
 	fr_redis_cluster_rcode_t	rcode;
 	fr_value_box_t			*vb;
 	fr_value_box_t			*in_head = fr_dlist_head(in);
-
-	if (!in_head) {
-		REDEBUG("Missing key");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, in_head->vb_strvalue, in_head->vb_length,
 			      AF_UNSPEC, true, true) < 0) {
@@ -208,7 +203,17 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const redis_node_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_UINT32 },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Return the node that is currently servicing a particular key
+ *
+@verbatim
+%(redis_node:<key> [<index>])
+@endverbatim
  *
  * @ingroup xlat_functions
  */
@@ -225,39 +230,15 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_ipaddr_t				ipaddr;
 	uint16_t				port;
 
-	char const				*p;
-	char					*q;
-	char const				*key;
-	size_t					key_len;
 	unsigned long				idx = 0;
 	fr_value_box_t				*vb;
-	fr_value_box_t				*in_head = fr_dlist_head(in);
+	fr_value_box_t				*key = fr_dlist_head(in);
+	fr_value_box_t				*idx_vb = fr_dlist_next(in, key);
 
-	if (!in_head) {
-		REDEBUG("Missing key");
-		return XLAT_ACTION_FAIL;
-	}
+	if (idx_vb) idx = idx_vb->vb_uint32;
 
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	key = p = in_head->vb_strvalue;
-	p = strchr(p, ' ');		/* Look for index */
-	if (p) {
-		key_len = p - key;
-
-		idx = strtoul(p, &q, 10);
-		if (q == p) {
-			REDEBUG("Tailing garbage after node index");
-			return XLAT_ACTION_FAIL;
-		}
-	} else {
-		key_len = in_head->vb_length;
-	}
-
-	key_slot = fr_redis_cluster_slot_by_key(inst->cluster, request, (uint8_t const *)key, key_len);
+	key_slot = fr_redis_cluster_slot_by_key(inst->cluster, request, (uint8_t const *)key->vb_strvalue,
+						key->vb_length);
 	if (idx == 0) {
 		node = fr_redis_cluster_master(inst->cluster, key_slot);
 	} else {
@@ -280,7 +261,6 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
-
 
 /** Xlat to make calls to redis
  *
@@ -496,7 +476,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_redis_t	*inst = instance;
 	char		*name;
-	xlat_t const	*xlat;
+	xlat_t		*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -504,15 +484,17 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat_register_legacy(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	/*
-	 *	%{redis_node:<key>[ idx]}
+	 *	%(redis_node:<key>[ idx])
 	 */
 	name = talloc_asprintf(NULL, "%s_node", inst->name);
 	xlat = xlat_register(inst, name, redis_node_xlat, false);
+	xlat_func_args(xlat, redis_node_xlat_args);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
 	name = talloc_asprintf(NULL, "%s_remap", inst->name);
 	xlat = xlat_register(inst, name, redis_remap_xlat, false);
+	xlat_func_args(xlat, redis_remap_xlat_args);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
