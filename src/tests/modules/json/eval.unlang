@@ -11,9 +11,7 @@ map json &Tmp-String-0 {
 	&Tmp-String-1 := '$.foo'
 }
 
-if (&Tmp-String-1 == 'bar') {
-	test_pass
-} else {
+if (&Tmp-String-1 != 'bar') {
 	test_fail
 }
 
@@ -43,51 +41,37 @@ map json &Tmp-String-0 {
 }
 
 # 1. Array type
-if (&Tmp-String-1[0] == '[ 0, 1, 2, 3, 4, 5 ]') {
-	test_pass
-} else {
+if (&Tmp-String-1[0] != '[ 0, 1, 2, 3, 4, 5 ]') {
 	test_fail
 }
 
 # 2. Object type
-if (&Tmp-String-1[1] == '{ "foo": "bar", "num": 42 }') {
-	test_pass
-} else {
+if (&Tmp-String-1[1] != '{ "foo": "bar", "num": 42 }') {
 	test_fail
 }
 
 # 3. Integer type
-if (&Tmp-String-1[2] == '99') {
-	test_pass
-} else {
+if (&Tmp-String-1[2] != '99') {
 	test_fail
 }
 
 # 4. Double type
-if (&Tmp-String-1[3] == '5.9') {
-	test_pass
-} else {
+if (&Tmp-String-1[3] != '5.9') {
 	test_fail
 }
 
 # 5. null type
-if (&Tmp-String-1[4] == 'null') {
-	test_pass
-} else {
+if (&Tmp-String-1[4] != 'null') {
 	test_fail
 }
 
 # 6. Boolean true
-if (&Tmp-String-1[5] == 'yes') {
-	test_pass
-} else {
+if (&Tmp-String-1[5] != 'yes') {
 	test_fail
 }
 
 # 7. Boolean false
-if (&Tmp-String-1[6] == 'no') {
-	test_pass
-} else {
+if (&Tmp-String-1[6] != 'no') {
 	test_fail
 }
 
@@ -103,9 +87,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-String-1 := '$.my_array'
 }
-if (&Tmp-String-1 == '[ 0, 1, 2, 3, 4, 5 ]') {
-	test_pass
-} else {
+if (&Tmp-String-1 != '[ 0, 1, 2, 3, 4, 5 ]') {
 	test_fail
 }
 update request {
@@ -116,9 +98,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 := '$.my_array[0]'
 }
-if (&Tmp-Integer-0 == 0) {
-	test_pass
-} else {
+if (&Tmp-Integer-0 != 0) {
 	test_fail
 }
 update request {
@@ -129,9 +109,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 := '$.my_array[5]'	# Past the end of the array (should be skipped)
 }
-if (&Tmp-Integer-0 == 5) {
-	test_pass
-} else {
+if (&Tmp-Integer-0 != 5) {
 	test_fail
 }
 update request {
@@ -142,9 +120,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 := '$.my_array[6]'	# Past the end of the array (should be skipped)
 }
-if (!&Tmp-Integer-0) {
-	test_pass
-} else {
+if (&Tmp-Integer-0) {
 	test_fail
 }
 update request {
@@ -155,9 +131,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[0:2]'	# A single value
 }
-if ((&Tmp-Integer-0[0] == 0) && (&Tmp-Integer-0[1] == 1)) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 1)) {
 	test_fail
 }
 update request {
@@ -168,9 +142,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[-1:6]'	# A single value (last eelement of the array)
 }
-if (&Tmp-Integer-0 == 5) {
-	test_pass
-} else {
+if (&Tmp-Integer-0 != 5) {
 	test_fail
 }
 update request {
@@ -181,9 +153,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[-1:-3]'	# Start after end (should be skipped)
 }
-if (!&Tmp-Integer-0) {
-	test_pass
-} else {
+if (&Tmp-Integer-0) {
 	test_fail
 }
 
@@ -191,9 +161,7 @@ if (!&Tmp-Integer-0) {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[1:-3]'
 }
-if ((&Tmp-Integer-0[0] == 1) && (&Tmp-Integer-0[1] == 2)) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 1) && (&Tmp-Integer-0[1] != 2)) {
 	test_fail
 }
 update request {
@@ -204,9 +172,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[4:2:-1]'
 }
-if ((&Tmp-Integer-0[0] == 4) && (&Tmp-Integer-0[1] == 3)) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 4) || (&Tmp-Integer-0[1] != 3)) {
 	test_fail
 }
 update request {
@@ -217,9 +183,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[2:4:-1]'
 }
-if (!&Tmp-Integer-0) {
-	test_pass
-} else {
+if (&Tmp-Integer-0) {
 	test_fail
 }
 update request {
@@ -230,9 +194,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[2:4:1]'
 }
-if ((&Tmp-Integer-0[0] == 2) && (&Tmp-Integer-0[1] == 3)) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 2) || (&Tmp-Integer-0[1] != 3)) {
 	test_fail
 }
 update request {
@@ -243,9 +205,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[1:5:2]'
 }
-if ((&Tmp-Integer-0[0] == 1) && (&Tmp-Integer-0[1] == 3)) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 1) && (&Tmp-Integer-0[1] != 3)) {
 	test_fail
 }
 update request {
@@ -256,9 +216,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[1:5:4]'
 }
-if ((&Tmp-Integer-0[0] == 1) && !&Tmp-Integer-0[1]) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 1) || &Tmp-Integer-0[1]) {
 	test_fail
 }
 update request {
@@ -269,9 +227,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[5:1:-4]'
 }
-if ((&Tmp-Integer-0[0] == 5) && !&Tmp-Integer-0[1]) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 5) || &Tmp-Integer-0[1]) {
 	test_fail
 }
 update request {
@@ -282,9 +238,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[::3]'
 }
-if ((&Tmp-Integer-0[0] == 0) && (&Tmp-Integer-0[1] == 3) && !&Tmp-Integer-0[2]) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 3) || &Tmp-Integer-0[2]) {
 	test_fail
 }
 update request {
@@ -295,9 +249,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[::-3]'
 }
-if ((&Tmp-Integer-0[0] == 5) && (&Tmp-Integer-0[1] == 2) && !&Tmp-Integer-0[2]) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 5) || (&Tmp-Integer-0[1] != 2) || &Tmp-Integer-0[2]) {
 	test_fail
 }
 update request {
@@ -321,9 +273,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[3:0:-3]'
 }
-if ((&Tmp-Integer-0[0] == 3) && !&Tmp-Integer-0[1]) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 3) || &Tmp-Integer-0[1]) {
 	test_fail
 }
 update request {
@@ -334,9 +284,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[0::-3]'
 }
-if ((&Tmp-Integer-0[0] == 0) && !&Tmp-Integer-0[1]) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 0) || &Tmp-Integer-0[1]) {
 	test_fail
 }
 update request {
@@ -348,16 +296,14 @@ map json &Tmp-String-0 {
 	&Tmp-String-1 += '$.*.*'
 }
 
-if ((&Tmp-String-1[0] == '0') && \
-    (&Tmp-String-1[1] == '1') && \
-    (&Tmp-String-1[2] == '2') && \
-    (&Tmp-String-1[3] == '3') && \
-    (&Tmp-String-1[4] == '4') && \
-    (&Tmp-String-1[5] == '5') && \
-    (&Tmp-String-1[6] == 'bar') && \
-    (&Tmp-String-1[7] == '42')) {
-	test_pass
-} else {
+if ((&Tmp-String-1[0] != '0') || \
+    (&Tmp-String-1[1] != '1') || \
+    (&Tmp-String-1[2] != '2') || \
+    (&Tmp-String-1[3] != '3') || \
+    (&Tmp-String-1[4] != '4') || \
+    (&Tmp-String-1[5] != '5') || \
+    (&Tmp-String-1[6] != 'bar') || \
+    (&Tmp-String-1[7] != '42')) {
 	test_fail
 }
 
@@ -370,9 +316,7 @@ map json &Tmp-String-0 {
 	&Tmp-String-1 += '$.*.*.*'
 }
 
-if (!&Tmp-String-1) {
-	test_pass
-} else {
+if (&Tmp-String-1) {
 	test_fail
 }
 
@@ -381,9 +325,7 @@ map json &Tmp-String-0 {
 	&Tmp-String-1 += '$.my_object[0]'
 }
 
-if (!&Tmp-String-1) {
-	test_pass
-} else {
+if (&Tmp-String-1) {
 	test_fail
 }
 
@@ -392,9 +334,7 @@ map json &Tmp-String-0 {
 	&Tmp-String-1 += '$.my_object.my_other_object'
 }
 
-if (!&Tmp-String-1) {
-	test_pass
-} else {
+if (&Tmp-String-1) {
 	test_fail
 }
 
@@ -434,9 +374,7 @@ if (noop || ((&Tmp-Integer-0 == 4294967295) || (&Tmp-Integer-0 == 2147483647))) 
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 := '$[3][0]'
 }
-if (&Tmp-Integer-0 == 2147483647) {
-	test_pass
-} else {
+if (&Tmp-Integer-0 != 2147483647) {
 	test_fail
 }
 update request {
@@ -447,9 +385,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Signed-0 += '$[3][0,1]'
 }
-if ((&Tmp-Signed-0[0] == 2147483647) && (&Tmp-signed-0[1] == -2147483647)) {
-	test_pass
-} else {
+if ((&Tmp-Signed-0[0] != 2147483647) || (&Tmp-signed-0[1] != -2147483647)) {
 	test_fail
 }
 update request {
@@ -463,9 +399,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += "$[3][%{Tmp-Integer-2}]"
 }
-if (&Tmp-Integer-0 == 2147483647) {
-	test_pass
-} else {
+if (&Tmp-Integer-0 != 2147483647) {
 	test_fail
 }
 update request {
@@ -484,9 +418,7 @@ map json &Tmp-String-0 {
 	&Tmp-String-1 := "$.%{Tmp-String-2}"
 }
 
-if (&Tmp-String-1 == 'baz') {
-	test_pass
-} else {
+if (&Tmp-String-1 != 'baz') {
 	test_fail
 }
 update request {
@@ -523,9 +455,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..bool'
 }
-if (("%{Tmp-String-1[#]}" == 1) && (&Tmp-String-1 == 'yes')) {
-	test_pass
-} else {
+if (("%{Tmp-String-1[#]}" != 1) || (&Tmp-String-1 != 'yes')) {
 	test_fail
 }
 update request {
@@ -536,9 +466,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..[1]'
 }
-if (("%{Tmp-String-1[#]}" == 3) && (&Tmp-String-1[0] == '1') && (&Tmp-String-1[1] == 'scratchy') && (&Tmp-String-1[2] == 'clawy')) {
-	test_pass
-} else {
+if (("%{Tmp-String-1[#]}" != 3) || (&Tmp-String-1[0] != '1') || (&Tmp-String-1[1] != 'scratchy') || (&Tmp-String-1[2] != 'clawy')) {
 	test_fail
 }
 update request {
@@ -549,9 +477,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..my_cats[2]'
 }
-if (("%{Tmp-String-1[#]}" == 2) && (&Tmp-String-1[0] == 'flat') && (&Tmp-String-1[1] == 'woofy')) {
-	test_pass
-} else {
+if (("%{Tmp-String-1[#]}" != 2) || (&Tmp-String-1[0] != 'flat') || (&Tmp-String-1[1] != 'woofy')) {
 	test_fail
 }
 update request {
@@ -563,9 +489,7 @@ update request {
 #map json &Tmp-String-0 {
 #	&Tmp-Integer64-0 := '$[0]'
 #}
-#if (&Tmp-Integer64-0 == 9223372036854775807) {
-#	test_pass
-#} else {
+#if (&Tmp-Integer64-0 != 9223372036854775807) {
 #	test_fail
 #}
 #update request {
@@ -581,9 +505,7 @@ update request {
 #	}
 #	ok
 #}
-#if (!fail && !&Tmp-Integer64-0) {
-#	test_pass
-#} else {
+#if (fail || &Tmp-Integer64-0) {
 #	test_fail
 #}
 #update request {
@@ -599,11 +521,11 @@ update request {
 #	}
 #	ok
 #}
-#if (!fail && !&Tmp-Integer64-0) {
-#	test_pass
-#} else {
+#if (fail || &Tmp-Integer64-0) {
 #	test_fail
 #}
 #update request {
 #	&Tmp-Integer64-0 !* ANY
 #}
+
+test_pass
