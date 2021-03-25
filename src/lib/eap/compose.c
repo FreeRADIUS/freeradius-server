@@ -247,9 +247,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		fr_pair_value_memdup(vp, auth_vector, sizeof(auth_vector), false);
 	}
 
-	/* Set request reply code, but only if it's not already set. */
-	rcode = RLM_MODULE_OK;
-	if (!request->reply->code) switch (reply->code) {
+	switch (reply->code) {
 	case FR_EAP_CODE_RESPONSE:
 		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED;
