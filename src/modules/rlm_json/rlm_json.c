@@ -90,6 +90,10 @@ typedef struct {
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;
 
+static xlat_arg_parser_t const json_quote_xlat_arg = {
+	.concat = true, .type = FR_TYPE_STRING
+};
+
 /** Ensure contents are quoted correctly for a JSON document
  *
  * @ingroup xlat_functions
@@ -110,12 +114,7 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request
 	fr_value_box_t *in_head = fr_dlist_head(in);
 	char *tmp;
 
-	if (!in_head) return XLAT_ACTION_DONE;
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
+	if (!in_head) return XLAT_ACTION_DONE;	/* Empty input is allowed */
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
@@ -167,6 +166,10 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 	return ret;
 }
 
+static xlat_arg_parser_t const json_encode_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
+
 /** Convert given attributes to a JSON document
  *
  * Usage is `%{json_encode:attr tmpl list}`
@@ -200,15 +203,6 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reques
 
 	fr_pair_list_init(&json_vps);
 	fr_pair_list_init(&vps);
-	if (!in_head) {
-		REDEBUG("Missing attribute(s)");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	sbuff = FR_SBUFF_IN(in_head->vb_strvalue, in_head->vb_length);
 	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
@@ -296,7 +290,6 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reques
 
 	return XLAT_ACTION_DONE;
 }
-
 
 /** Pre-parse and validate literal jpath expressions for maps
  *
@@ -544,18 +537,20 @@ finish:
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_json_t		*inst = talloc_get_type_abort(instance, rlm_json_t);
-	xlat_t const		*xlat;
+	xlat_t			*xlat;
 	char 			*name;
 	fr_json_format_t	*format = inst->format;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat_register(instance, "jsonquote", json_quote_xlat, false);
+	xlat = xlat_register(instance, "jsonquote", json_quote_xlat, false);
+	xlat_func_mono(xlat, &json_quote_xlat_arg);
 	xlat_register_legacy(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	name = talloc_asprintf(inst, "%s_encode", inst->name);
 	xlat = xlat_register(instance, name, json_encode_xlat, false);
+	xlat_func_mono(xlat, &json_encode_xlat_arg);
 	xlat_async_instantiate_set(xlat, json_xlat_instantiate,
 				   rlm_json_t *, NULL, inst);
 	talloc_free(name);

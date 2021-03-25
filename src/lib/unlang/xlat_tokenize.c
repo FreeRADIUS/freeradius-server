@@ -338,8 +338,7 @@ static inline int xlat_validate_function_mono(xlat_exp_t *node)
 {
 	fr_assert(node->type == XLAT_FUNC);
 
-	if (node->call.func->args && node->call.func->args->required &&
-	    (node->child->type == XLAT_LITERAL) && (talloc_array_length(node->child->fmt) == 1)) {
+	if (node->call.func->args && node->call.func->args->required && !node->child) {
 		fr_strerror_const("Missing required input");
 		return -1;
 	}

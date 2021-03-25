@@ -1,0 +1,10 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'john'
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

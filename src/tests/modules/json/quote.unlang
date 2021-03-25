@@ -12,15 +12,11 @@ update request {
 }
 
 # Check for correct escapes
-if (&Tmp-String-2 == 'foo\/bar') {
-	test_pass
-} else {
+if (&Tmp-String-2 != 'foo\/bar') {
 	test_fail
 }
 
-if (&Tmp-String-3 == 'foo\"bar') {
-	test_pass
-} else {
+if (&Tmp-String-3 != 'foo\"bar') {
 	test_fail
 }
 
@@ -35,17 +31,15 @@ update request {
 	&Tmp-String-4 := "%{jsonquote:}"
 }
 
-if (&Tmp-String-4 == '') {
-	test_pass
-} else {
+if (&Tmp-String-4 != '') {
 	test_fail
 }
 
 #
 #  Quoting nothing is not an error
 #
-if (!&Module-Failure-Message) {
-	test_pass
-} else {
+if (&Module-Failure-Message) {
 	test_fail
 }
+
+test_pass
