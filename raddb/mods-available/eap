@@ -1695,7 +1695,7 @@ eap {
 #  TODO
 #  ```
 #
-#  ### %{sim_id_method:...}
+#  ### %(aka_sim_id_method:...)
 #
 #  TODO
 #

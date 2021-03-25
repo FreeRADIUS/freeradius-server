@@ -148,7 +148,7 @@ server eap-aka-sim {
 	#  allows the supplicant and server to negotiate a mutually acceptable
 	#  EAP type. If, however, you want to avoid the additional round trips
 	#  involved in that negotiation, you can use
-	#  `%{aka_sim_id_method:User-Name}` in the top level virtual server,
+	#  `%(aka_sim_id_method:%{User-Name})` in the top level virtual server,
 	#  which will return the EAP method hinted by the identity, and then
 	#  set `&control.EAP-Type` to an appropriate value before calling the
 	#  EAP module.

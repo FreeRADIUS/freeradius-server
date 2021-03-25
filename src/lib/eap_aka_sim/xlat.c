@@ -36,7 +36,7 @@ static xlat_arg_parser_t const aka_sim_xlat_id_method_xlat_args[] = {
 /** Returns the SIM method EAP-SIM or EAP-AKA hinted at by the user identifier
  *
 @verbatim
-%{aka_sim_id_method:&id_attr}
+%(aka_sim_id_method:%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions
