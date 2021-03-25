@@ -1,13 +1,9 @@
 if ("%(aka_sim_id_method:%{User-Name})" != 'AKA') {
 	test_fail
-} else {
-	test_pass
 }
 
 if ("%(aka_sim_id_type:%{User-Name})" != 'Permanent') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -25,8 +21,6 @@ update control {
 #
 if ("%(aka_sim_id_method:%{control.User-Name})" != 'AKA') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -34,8 +28,6 @@ if ("%(aka_sim_id_method:%{control.User-Name})" != 'AKA') {
 #
 if ("%(aka_sim_id_type:%{control.User-Name})" != 'Pseudonym') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -43,8 +35,6 @@ if ("%(aka_sim_id_type:%{control.User-Name})" != 'Pseudonym') {
 #
 if ("%(3gpp_pseudonym_encrypt:&control.User-Name &control.Tmp-String-0 6)" != '') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -56,8 +46,6 @@ update control {
 
 if (&control.Tmp-String-1 != &User-Name) {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -87,8 +75,6 @@ update control {
 #
 if ("%(aka_sim_id_type:%{control.User-Name[1]})" != 'Pseudonym') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -96,8 +82,6 @@ if ("%(aka_sim_id_type:%{control.User-Name[1]})" != 'Pseudonym') {
 #
 if ("%(3gpp_pseudonym_encrypt:&control.User-Name[1] &control.Tmp-String-0 6)" != '') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -109,6 +93,6 @@ update control {
 
 if (&control.Tmp-String-1 != "0%{User-Name[1]}") {
 	test_fail
-} else {
-	test_pass
 }
+
+test_pass

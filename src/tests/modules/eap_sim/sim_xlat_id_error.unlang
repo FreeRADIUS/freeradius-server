@@ -7,8 +7,6 @@ update request {
 
 if ("%(aka_sim_id_method:%{User-Name})" != '') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -20,6 +18,6 @@ update request {
 
 if ("%(aka_sim_id_method:%{User-Name})" != '') {
 	test_fail
-} else {
-	test_pass
 }
+
+test_pass
