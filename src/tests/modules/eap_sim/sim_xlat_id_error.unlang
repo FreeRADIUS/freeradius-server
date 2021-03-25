@@ -5,10 +5,8 @@ update request {
 	&User-Name := '14200322194552581'
 }
 
-if ("%{aka_sim_id_method:User-Name}" != '') {
+if ("%(aka_sim_id_method:%{User-Name})" != '') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -18,8 +16,8 @@ update request {
 	&User-Name := ''
 }
 
-if ("%{aka_sim_id_method:User-Name}" != '') {
+if ("%(aka_sim_id_method:%{User-Name})" != '') {
 	test_fail
-} else {
-	test_pass
 }
+
+test_pass

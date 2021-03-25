@@ -137,7 +137,7 @@ modules.  Usually this is not an issue because EAP Negotiation
 allows the supplicant and server to negotiate a mutually acceptable
 EAP type. If, however, you want to avoid the additional round trips
 involved in that negotiation, you can use
-`%{aka_sim_id_method:User-Name}` in the top level virtual server,
+`%(aka_sim_id_method:%{User-Name})` in the top level virtual server,
 which will return the EAP method hinted by the identity, and then
 set `&control.EAP-Type` to an appropriate value before calling the
 EAP module.
@@ -300,7 +300,7 @@ The following facilitates may be useful when generating pseudonym
 values:
 
 - The encrypt expansions of the `rlm_cipher` module.
-- The `%{3gpp_pseudonym_encrypt:}` expansion.
+- The `%(3gpp_pseudonym_encrypt:)` expansion.
 - The `%{rand:}` expansion.
 
 NOTE: Add a `&reply.Next-Pseudonym-Id` attribute in this section to

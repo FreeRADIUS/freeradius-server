@@ -257,6 +257,10 @@ int fr_aka_sim_init(void)
 		fr_dict_autofree(libfreeradius_aka_sim_dict);
 		return -1;
 	}
+	if (fr_dict_enum_autoload(libfreeradius_aka_sim_dict_enum) < 0) {
+		PERROR("Failed loading libfreeradius-eap-aka-sim enumerations");
+		return -1;
+	}
 	instance_count++;
 
 	return 0;
