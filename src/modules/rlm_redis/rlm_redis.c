@@ -148,6 +148,11 @@ static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp,
 	return 0;
 }
 
+static xlat_arg_parser_t const redis_remap_xlat_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Force a redis cluster remap
  *
 @verbatim
@@ -170,16 +175,6 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_redis_cluster_rcode_t	rcode;
 	fr_value_box_t			*vb;
 	fr_value_box_t			*in_head = fr_dlist_head(in);
-
-	if (!in_head) {
-		REDEBUG("Missing key");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input");
-		return XLAT_ACTION_FAIL;
-	}
 
 	if (fr_inet_pton_port(&node_addr.inet.dst_ipaddr, &node_addr.inet.dst_port, in_head->vb_strvalue, in_head->vb_length,
 			      AF_UNSPEC, true, true) < 0) {
@@ -499,6 +494,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	name = talloc_asprintf(NULL, "%s_remap", inst->name);
 	xlat = xlat_register(inst, name, redis_remap_xlat, false);
+	xlat_func_args(xlat, redis_remap_xlat_args);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
