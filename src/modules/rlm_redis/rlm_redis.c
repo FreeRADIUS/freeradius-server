@@ -169,7 +169,7 @@ static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_redis_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
 									    rlm_redis_t);
 
-	fr_socket_t		node_addr;
+	fr_socket_t			node_addr;
 	fr_pool_t			*pool;
 	fr_redis_conn_t			*conn;
 	fr_redis_cluster_rcode_t	rcode;
@@ -235,7 +235,7 @@ static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t				*key = fr_dlist_head(in);
 	fr_value_box_t				*idx_vb = fr_dlist_next(in, key);
 
-	if(idx_vb) idx = idx_vb->vb_uint32;
+	if (idx_vb) idx = idx_vb->vb_uint32;
 
 	key_slot = fr_redis_cluster_slot_by_key(inst->cluster, request, (uint8_t const *)key->vb_strvalue,
 						key->vb_length);
