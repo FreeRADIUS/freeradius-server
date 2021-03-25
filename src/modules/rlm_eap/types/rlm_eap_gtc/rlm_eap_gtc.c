@@ -171,7 +171,8 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		/*
 		 *	Call the authenticate section of the *current* virtual server.
 		 */
-		process_authenticate(&rcode, inst->auth_type->value->vb_uint32, request);
+		process_authenticate(&rcode, inst->auth_type->value->vb_uint32,
+				     request, unlang_call_current(request->parent));
 		if (rcode != RLM_MODULE_OK) {
 			eap_round->request->code = FR_EAP_CODE_FAILURE;
 			RETURN_MODULE_RCODE(rcode);

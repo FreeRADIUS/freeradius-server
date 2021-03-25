@@ -89,7 +89,7 @@ int		virtual_server_has_namespace(CONF_SECTION **out,
 					     CONF_ITEM *ci);
 /** @} */
 
-unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request);
+unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request, CONF_SECTION *server_cs);
 
 rlm_rcode_t	virtual_server_process_auth(request_t *request, CONF_SECTION *virtual_server,
 					    rlm_rcode_t default_rcode,

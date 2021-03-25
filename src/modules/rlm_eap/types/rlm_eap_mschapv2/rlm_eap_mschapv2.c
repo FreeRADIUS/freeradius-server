@@ -748,21 +748,13 @@ packet_ready:
 	 */
 	unlang = cf_section_find(unlang_call_current(request), "authenticate", inst->auth_type->name);
 	if (!unlang) {
-		process_authenticate(&rcode, inst->auth_type->value->vb_uint32, request);
+		process_authenticate(&rcode, inst->auth_type->value->vb_uint32,
+				     request, unlang_call_current(request->parent));
 	} else {
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME) < 0) {
 			RETURN_MODULE_FAIL;
 		}
-		rcode = unlang_interpret(request);
-
-		/*
-		 *	If it's yielding, set up the process function
-		 *	to continue after resume.
-		 */
-		if (rcode == RLM_MODULE_YIELD) {
-			eap_session->process = mod_process_auth_type;
-			return UNLANG_ACTION_YIELD;
-		}
+		rcode = unlang_interpret_synchronous(request);
 	}
 
 	return mschap_finalize(p_result, mctx, request, eap_session, rcode);

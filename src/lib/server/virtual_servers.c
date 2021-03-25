@@ -1383,24 +1383,15 @@ int virtual_servers_free(void)
 
 /**
  */
-unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request)
+unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request, CONF_SECTION *server_cs)
 {
 	rlm_rcode_t	rcode;
-	CONF_SECTION	*cs;
 	char const	*module;
 	char const	*component;
 	fr_dict_attr_t const *da;
 	fr_dict_enum_t const *dv;
 	CONF_SECTION	*subcs;
 	fr_dict_t const	*dict_internal;
-
-	cs = cf_section_find(unlang_call_current(request), "authenticate", NULL);
-	if (!cs) {
-		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
-			cf_section_name2(unlang_call_current(request)),
-			fr_table_str_by_value(rcode_table, RLM_MODULE_REJECT, "<invalid>"));
-		RETURN_MODULE_REJECT;
-	}
 
 	/*
 	 *	Figure out which section to run.
@@ -1417,7 +1408,7 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
 	if (!dv) RETURN_MODULE_FAIL;
 
-	subcs = cf_section_find(cs, da->name, dv->name);
+	subcs = cf_section_find(server_cs, "authenticate", dv->name);
 	if (!subcs) {
 		RDEBUG2("%s %s sub-section not found.  Using default return values.",
 			da->name, dv->name);
@@ -1426,7 +1417,6 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 
 	RDEBUG("Running %s %s from file %s",
 	       da->name, dv->name, cf_filename(subcs));
-	cs = subcs;
 
 	/*
 	 *	Cache and restore these, as they're re-set when
@@ -1439,10 +1429,10 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	request->component = "authenticate";
 
 
-	if (unlang_interpret_push_section(request, cs, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+	if (unlang_interpret_push_section(request, subcs, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
 		RETURN_MODULE_FAIL;
 	}
-	rcode = unlang_interpret(request);
+	rcode = unlang_interpret_synchronous(request);
 
 	request->component = component;
 	request->module = module;
