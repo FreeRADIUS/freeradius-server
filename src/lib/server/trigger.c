@@ -225,11 +225,6 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 			RETURN_MODULE_HANDLED;
 		}
 
-		if (rcode == RLM_MODULE_YIELD) {
-			*p_result = RLM_MODULE_YIELD;
-			return UNLANG_ACTION_YIELD;
-		}
-
 		/*
 		 *	Always fall through, no matter what the return code is.
 		 */

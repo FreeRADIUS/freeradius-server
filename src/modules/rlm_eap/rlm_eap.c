@@ -478,9 +478,10 @@ static unlang_action_t mod_authenticate_result_async(rlm_rcode_t *p_result, modu
  * @param[in] mctx		module calling ctx.
  * @param[in] eap_session	State data that persists over multiple rounds of EAP.
  * @return
- *	- RLM_MODULE_INVALID	destroy the EAP session as its invalid.
- *	- RLM_MODULE_YIELD	Yield control back to the interpreter so it can
- *				call the submodule.
+ *	- UNLANG_ACTION_CALCULATE_RESULT	+ *p_result = RLM_MODULE_INVALID.
+ *						Invalid request.
+ *	- UNLANG_ACTION_PUSHED_CHILD		Yield control back to the interpreter so it can
+ *						call the submodule.
  */
 static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t const *mctx, eap_session_t *eap_session)
 {

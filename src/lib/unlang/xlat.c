@@ -312,12 +312,11 @@ static void unlang_xlat_signal(request_t *request, unlang_stack_frame_t *frame, 
  * @param[in] p_result	the result of the xlat function.
  *			  - RLM_MODULE_OK on success.
  *			  - RLM_MODULE_FAIL on failure.
- *			  - RLM_MODULE_YIELD if additional asynchronous
- *			    operations need to be performed.
  * @param[in] request	to resume processing.
  * @param[in] frame	the current stack frame.
  * @return
- *	- UNLANG_ACTION_YIELD	if yielding.
+ *	- UNLANG_ACTION_YIELD if additional asynchronous
+ *	  operations need to be performed.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
 static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -373,7 +372,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
  * @param[in] resume		Called on unlang_interpret_mark_runnable().
  * @param[in] signal		Called on unlang_action().
  * @param[in] rctx		to pass to the callbacks.
- * @return always returns RLM_MODULE_YIELD.
+ * @return always returns XLAT_ACTION_YIELD
  */
 xlat_action_t unlang_xlat_yield(request_t *request,
 				xlat_func_resume_t resume, xlat_func_signal_t signal,

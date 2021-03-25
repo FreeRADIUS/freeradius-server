@@ -41,10 +41,8 @@
  *  "time_order" heap, and ages out requests which have been active
  *  for "too long".
  *
- *  A request may return one of RLM_MODULE_YIELD,
- *  RLM_MODULE_OK, or RLM_MODULE_HANDLED.  If a request is
- *  yielded, it is placed onto the yielded list in the worker
- *  "tracking" data structure.
+ *  If a request is yielded, it is placed onto the yielded list in
+ *  the worker "tracking" data structure.
  *
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */

@@ -424,7 +424,7 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 	RETURN_MODULE_OK;
 }
 
-
+#if 0
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
@@ -437,10 +437,9 @@ static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, module_ctx_t
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-
 	return mschap_finalize(p_result, mctx, request, eap_session, rcode);
 }
+#endif
 
 /*
  *	Authenticate a previously sent challenge.

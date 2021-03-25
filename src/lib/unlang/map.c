@@ -301,7 +301,7 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request,
 	*p_result = map_proc(request, gext->proc_inst, &map_proc_state->src_result);
 	FR_DLIST_VERIFY(&map_proc_state->src_result);
 
-	return *p_result == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

@@ -1523,11 +1523,6 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			default:
 				break;
 
-			case RLM_MODULE_YIELD:
-				RPEDEBUG("xlat yield NYI in conditions");
-				talloc_free(pool);
-				return NULL;
-
 			case RLM_MODULE_REJECT:
 			case RLM_MODULE_FAIL:
 				RPEDEBUG("xlat evaluation failed");

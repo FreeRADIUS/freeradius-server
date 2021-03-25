@@ -324,15 +324,9 @@ static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *requ
 
 	if (state->out) fr_dlist_move(state->out, &state->box);
 
-	if (state->resume) {
-		rlm_rcode_t rcode;
+	if (state->resume) return state->resume(p_result, request, state->rctx);
 
-		rcode = state->resume(request, state->rctx);
-		*p_result = rcode;
-		if (rcode == RLM_MODULE_YIELD) return UNLANG_ACTION_YIELD;
-	} else {
-		*p_result = RLM_MODULE_OK;
-	}
+	*p_result = RLM_MODULE_OK;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }

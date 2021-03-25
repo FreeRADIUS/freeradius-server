@@ -48,7 +48,6 @@ typedef enum {
 	RLM_MODULE_NOOP,				//!< Module succeeded without doing anything.
 	RLM_MODULE_UPDATED,				//!< OK (pairs modified).
 	RLM_MODULE_NUMCODES,				//!< How many valid return codes there are.
-	RLM_MODULE_YIELD,				//!< for unlang.
 	RLM_MODULE_UNKNOWN,				//!< Error resolving rcode (should not be
 							//!< returned by modules).
 } rlm_rcode_t;

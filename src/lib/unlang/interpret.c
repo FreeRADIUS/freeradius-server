@@ -413,7 +413,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	called the interpret.
 		 */
 		case UNLANG_ACTION_YIELD:
-		yield:
 			/*
 			 *	Detach is magic.  The parent "subrequest" function
 			 *	takes care of bumping the instruction
@@ -451,13 +450,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	the section rcode and priority.
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			/*
-			 *	If a module returns yield, then do
-			 *	yield.  Only keywords will return
-			 *	UNLANG_ACTION_YIELD.
-			 */
-			if (*result == RLM_MODULE_YIELD) goto yield;
-
 			fr_assert(*result != RLM_MODULE_UNKNOWN);
 
 			repeatable_clear(frame);
