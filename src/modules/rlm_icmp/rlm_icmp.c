@@ -170,6 +170,11 @@ static void _xlat_icmp_timeout(request_t *request,
 	unlang_interpret_mark_runnable(request);
 }
 
+static xlat_arg_parser_t const xlat_icmp_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Xlat to ping a specified ip address
  *
  * Example (ping 192.0.2.1):
@@ -279,11 +284,6 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, echo);
 }
-
-extern xlat_arg_parser_t xlat_icmp_arg;
-xlat_arg_parser_t xlat_icmp_arg = {
-	.required = false, .concat = true, .variadic = false, .type = FR_TYPE_STRING, .func = NULL, .uctx = NULL
-};
 
 static int echo_cmp(void const *one, void const *two)
 {
@@ -543,7 +543,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = inst->xlat_name;
 
 	xlat = xlat_register(inst, inst->xlat_name, xlat_icmp, true);
-	xlat_func_mono(xlat, &xlat_icmp_arg);
+	xlat_func_args(xlat, xlat_icmp_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);
 
