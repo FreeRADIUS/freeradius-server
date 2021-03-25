@@ -2,24 +2,31 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number: 2 (0x2)
-        Signature Algorithm: ecdsa-with-SHA256
+    Signature Algorithm: ecdsa-with-SHA256
         Issuer: C=FR, ST=Radius, L=Somewhere, O=Example Inc/emailAddress=admin@example.org, CN=Example Certificate Authority
         Validity
-            Not Before: Mar 25 14:12:33 2020 GMT
-            Not After : Mar 25 14:12:33 2021 GMT
+            Not Before: Mar 25 19:12:36 2021 GMT
+            Not After : May 24 19:12:36 2021 GMT
         Subject: C=FR, ST=Radius, O=Example Inc, CN=Example Server Certificate/emailAddress=admin@example.org
         Subject Public Key Info:
             Public Key Algorithm: id-ecPublicKey
                 Public-Key: (256 bit)
-                pub:
-                    04:97:2b:3e:ac:ef:96:86:19:be:5d:70:b4:e7:ec:
-                    20:3b:55:d7:5c:8c:f4:d5:6f:3e:50:7b:10:67:e3:
-                    2b:49:a1:37:45:ad:c7:96:a1:d4:dd:5d:a1:50:2e:
-                    9f:41:64:62:9b:7a:bd:0f:81:52:65:e1:95:81:37:
-                    93:2a:d8:1d:e6
+                pub: 
+                    04:b6:d5:1a:37:f6:69:4b:98:73:2b:b1:21:77:9b:
+                    ec:3c:97:71:b2:fe:3c:12:6c:e8:bd:b5:64:b9:96:
+                    ce:9d:d7:ce:84:20:b9:d6:e4:5c:fc:a2:06:95:3e:
+                    ba:b4:ec:d5:f9:ce:73:10:8b:fe:09:32:83:67:20:
+                    4a:c3:24:22:bc
                 ASN1 OID: prime256v1
                 NIST CURVE: P-256
         X509v3 extensions:
+            X509v3 Subject Key Identifier: 
+                E5:DD:70:A0:30:3E:34:45:B9:A1:02:20:23:3A:46:2E:7B:AC:07:36
+            X509v3 Authority Key Identifier: 
+                keyid:EF:2B:CC:8E:8A:4D:A8:A0:DC:09:0F:AE:88:74:DB:69:C8:C3:DC:F1
+                DirName:/C=FR/ST=Radius/L=Somewhere/O=Example Inc/emailAddress=admin@example.org/CN=Example Certificate Authority
+                serial:C2:67:CE:FE:57:27:4F:6A
+
             X509v3 Basic Constraints: 
                 CA:FALSE
             X509v3 Key Usage: 
@@ -37,25 +44,30 @@ Certificate:
             X509v3 Subject Alternative Name: 
                 DNS:radius.example.org, othername:<unsupported>
     Signature Algorithm: ecdsa-with-SHA256
-         30:46:02:21:00:c0:c6:44:e4:5c:a5:c3:18:e7:2f:0b:af:21:
-         93:2f:e6:f3:b0:3d:2b:8a:96:20:02:e0:77:02:7d:ee:1c:8e:
-         ce:02:21:00:bb:c7:c7:60:a9:96:e5:54:e8:d9:ec:22:0a:21:
-         ae:bd:71:61:36:1f:90:5d:74:65:88:eb:1d:7b:5b:42:f4:e4
+         30:44:02:20:56:34:5e:3e:90:65:b8:68:86:91:26:2e:a9:ed:
+         0f:d2:a9:96:6c:d4:00:bb:16:a5:3b:f6:44:b1:0e:61:af:4c:
+         02:20:58:c8:27:82:2b:d5:f3:05:67:90:5a:a3:c0:7c:3e:dc:
+         bc:ca:04:19:ed:e8:99:11:28:3e:42:cd:0f:b4:eb:53
 -----BEGIN CERTIFICATE-----
-MIIC5jCCAougAwIBAgIBAjAKBggqhkjOPQQDAjCBkjELMAkGA1UEBhMCRlIxDzAN
+MIIDzzCCA3agAwIBAgIBAjAKBggqhkjOPQQDAjCBkjELMAkGA1UEBhMCRlIxDzAN
 BgNVBAgMBlJhZGl1czESMBAGA1UEBwwJU29tZXdoZXJlMRQwEgYDVQQKDAtFeGFt
 cGxlIEluYzEgMB4GCSqGSIb3DQEJARYRYWRtaW5AZXhhbXBsZS5vcmcxJjAkBgNV
-BAMMHUV4YW1wbGUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTIwMDMyNTE0MTIz
-M1oXDTIxMDMyNTE0MTIzM1owezELMAkGA1UEBhMCRlIxDzANBgNVBAgMBlJhZGl1
+BAMMHUV4YW1wbGUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTIxMDMyNTE5MTIz
+NloXDTIxMDUyNDE5MTIzNlowezELMAkGA1UEBhMCRlIxDzANBgNVBAgMBlJhZGl1
 czEUMBIGA1UECgwLRXhhbXBsZSBJbmMxIzAhBgNVBAMMGkV4YW1wbGUgU2VydmVy
 IENlcnRpZmljYXRlMSAwHgYJKoZIhvcNAQkBFhFhZG1pbkBleGFtcGxlLm9yZzBZ
-MBMGByqGSM49AgEGCCqGSM49AwEHA0IABJcrPqzvloYZvl1wtOfsIDtV11yM9NVv
-PlB7EGfjK0mhN0Wtx5ah1N1doVAun0FkYpt6vQ+BUmXhlYE3kyrYHeajgecwgeQw
-CQYDVR0TBAIwADALBgNVHQ8EBAMCBeAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsG
-AQUFBwMOMDYGA1UdHwQvMC0wK6ApoCeGJWh0dHA6Ly93d3cuZXhhbXBsZS5jb20v
-ZXhhbXBsZV9jYS5jcmwwNwYIKwYBBQUHAQEEKzApMCcGCCsGAQUFBzABhhtodHRw
-Oi8vd3d3LmV4YW1wbGUub3JnL29jc3AwOgYDVR0RBDMwMYIScmFkaXVzLmV4YW1w
-bGUub3JnoBsGCCsGAQUFBwgIoA8MDSouZXhhbXBsZS5jb20wCgYIKoZIzj0EAwID
-SQAwRgIhAMDGRORcpcMY5y8LryGTL+bzsD0ripYgAuB3An3uHI7OAiEAu8fHYKmW
-5VTo2ewiCiGuvXFhNh+QXXRliOsde1tC9OQ=
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABLbVGjf2aUuYcyuxIXeb7DyXcbL+PBJs
+6L21ZLmWzp3XzoQgudbkXPyiBpU+urTs1fnOcxCL/gkyg2cgSsMkIryjggHRMIIB
+zTAdBgNVHQ4EFgQU5d1woDA+NEW5oQIgIzpGLnusBzYwgccGA1UdIwSBvzCBvIAU
+7yvMjopNqKDcCQ+uiHTbacjD3PGhgZikgZUwgZIxCzAJBgNVBAYTAkZSMQ8wDQYD
+VQQIDAZSYWRpdXMxEjAQBgNVBAcMCVNvbWV3aGVyZTEUMBIGA1UECgwLRXhhbXBs
+ZSBJbmMxIDAeBgkqhkiG9w0BCQEWEWFkbWluQGV4YW1wbGUub3JnMSYwJAYDVQQD
+DB1FeGFtcGxlIENlcnRpZmljYXRlIEF1dGhvcml0eYIJAMJnzv5XJ09qMAkGA1Ud
+EwQCMAAwCwYDVR0PBAQDAgXgMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcD
+DjA2BgNVHR8ELzAtMCugKaAnhiVodHRwOi8vd3d3LmV4YW1wbGUuY29tL2V4YW1w
+bGVfY2EuY3JsMDcGCCsGAQUFBwEBBCswKTAnBggrBgEFBQcwAYYbaHR0cDovL3d3
+dy5leGFtcGxlLm9yZy9vY3NwMDoGA1UdEQQzMDGCEnJhZGl1cy5leGFtcGxlLm9y
+Z6AbBggrBgEFBQcICKAPDA0qLmV4YW1wbGUuY29tMAoGCCqGSM49BAMCA0cAMEQC
+IFY0Xj6QZbhohpEmLqntD9KplmzUALsWpTv2RLEOYa9MAiBYyCeCK9XzBWeQWqPA
+fD7cvMoEGe3omREoPkLND7TrUw==
 -----END CERTIFICATE-----
