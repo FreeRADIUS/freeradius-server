@@ -247,7 +247,7 @@ static unlang_action_t unlang_subrequest_parent_init(rlm_rcode_t *p_result, requ
 
 	frame->process = unlang_subrequest_parent_resume;
 
-	return unlang_subrequest_child_run(child);	/* returns UNLANG_ACTION_YIELD */
+	return unlang_subrequest_child_run(p_result, request, frame);	/* returns UNLANG_ACTION_YIELD */
 }
 
 /** Free a child request, detaching it from its parent and freeing allocated memory

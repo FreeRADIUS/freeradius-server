@@ -649,7 +649,8 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 *	Push the EAP submodule into the child's stack
 	 */
 	if (unlang_module_push(NULL,	/* rcode should bubble up and be set in eap_session->submodule_rcode */
-			       eap_session->subrequest, method->submodule_inst, eap_session->process, true) < 0) {
+			       eap_session->subrequest, method->submodule_inst, eap_session->process,
+			       UNLANG_SUB_FRAME) < 0) {
 		goto child_fail;
 	}
 
@@ -674,7 +675,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 		type_vp->vp_uint32 = eap_session->type;
 	}
 
-	return unlang_subrequest_child_run(eap_session->subrequest);
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

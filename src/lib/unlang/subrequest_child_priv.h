@@ -29,6 +29,8 @@
 extern "C" {
 #endif
 
+unlang_action_t unlang_subrequest_child_run(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
+
 int	unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_subrequest_t *state);
 
 int	unlang_subrequest_child_op_init(void);

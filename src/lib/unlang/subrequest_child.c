@@ -220,21 +220,28 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 	return 0;
 }
 
-/** Function to call when the parent is ready to execute the child
+/** Function called by the unlang interpreter to start the child running
  *
- * @param[in] child to begin executing.
+ * The reason why we do this on the unlang stack is so that _this_ frame
+ * is marked as resumable in the parent, not whatever frame was previously
+ * being processed by the interpreter when the parent was called.
+ *
+ * i.e. after calling unlang_subrequest_child_push, the code in the parent
+ * can call UNLANG_ACTION_PUSHED_CHILD, which will result in _this_ frame
+ * being executed, and _this_ frame can yield.
  */
-unlang_action_t unlang_subrequest_child_run(request_t *child)
+unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
+					    unlang_stack_frame_t *frame)
 {
-	unlang_frame_state_subrequest_t	*state;
+	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
+	request_t			*child = state->child;
 
 	/*
 	 *	No parent means this is a pre-detached child
 	 *	so the parent should continue executing.
 	 */
-	if (!child->parent) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (!child || !child->parent) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	state = talloc_get_type_abort(frame_current(child->parent)->state, unlang_frame_state_subrequest_t);
 
 	/*
 	 *	Ensure we restore the session state information
@@ -264,6 +271,9 @@ unlang_action_t unlang_subrequest_child_run(request_t *child)
  * This function should be called _before_ pushing any additional frames onto the child's
  * stack for it to execute.
  *
+ * The parent should return UNLANG_ACTION_PUSHED_CHILD, when it's done setting up the
+ * child request.  It should NOT return UNLANG_ACTION_YIELD.
+ *
  * @param[in] out		Where to write the result of the subrequest.
  * @param[in] child		to push.
  * @param[in] session		control values.  Whether we restore/store session info.
@@ -278,6 +288,7 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 				 bool top_frame)
 {
 	unlang_frame_state_subrequest_t	*state;
+	unlang_stack_frame_t		*frame;
 
 	/*
 	 *	Push a new subrequest frame onto the stack
@@ -289,6 +300,9 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
 		return -1;
 	}
+
+	frame = frame_current(child->parent);
+	frame->process = unlang_subrequest_child_run;
 
 	/*
 	 *	Setup the state for the subrequest

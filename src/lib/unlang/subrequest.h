@@ -37,8 +37,6 @@ typedef struct {
 	int		unique_int;			//!< Session unique int identifier.
 } unlang_subrequest_session_t;
 
-unlang_action_t	unlang_subrequest_child_run(request_t *child);
-
 int		unlang_subrequest_child_detach(request_t *request);
 
 int		unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,

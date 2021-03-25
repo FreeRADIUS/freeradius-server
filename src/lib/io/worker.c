@@ -124,6 +124,9 @@ struct fr_worker_s {
 };
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now);
+static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t size, fr_time_t now);
+static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx);
+static void worker_max_request_timer(fr_worker_t *worker);
 
 /** Callback which handles a message being received on the worker side.
  *
@@ -359,8 +362,140 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	worker->stats.out++;
 }
 
-static void worker_max_request_timer(fr_worker_t *worker);
+/** Signal the unlang interpreter that it needs to stop running the request
+ *
+ * Signalling is a synchronous operation.  Whatever I/O requests the request
+ * is currently performing are immediately cancelled, and all the frames are
+ * popped off the unlang stack.
+ *
+ * Modules and unlang keywords explicitly register signal handlers to deal
+ * with their yield points being cancelled/interrupted via this function.
+ *
+ * @param[in] request	to cancel.
+ * @param[in] now	The current time.
+ */
+static void worker_stop_request(request_t *request, fr_time_t now)
+{
+	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
+		fr_time_tracking_resume(&request->async->tracking, now);
+	}
 
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+}
+
+/** Enforce max_request_time
+ *
+ * Run periodically, and tries to clean up requests which were received by the network
+ * thread more than max_request_time seconds ago.  In the interest of not adding a
+ * timer for every packet, the requests are given a 1 second leeway.
+ *
+ * @param[in] el	the worker's event list
+ * @param[in] when	the current time
+ * @param[in] uctx	the fr_worker_t.
+ */
+static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
+{
+	fr_time_t	now = fr_time();
+	request_t		*request;
+	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
+
+	/*
+	 *	Look at the oldest requests, and see if they need to
+	 *	be deleted.
+	 */
+	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
+		fr_time_t cleanup;
+
+		REQUEST_VERIFY(request);
+
+		cleanup = request->async->recv_time;
+		cleanup += worker->config.max_request_time;
+		if (cleanup > now) break;
+
+		/*
+		 *	Waiting too long, delete it.
+		 */
+		REDEBUG("Request has reached max_request_time - signalling it to stop");
+		worker_stop_request(request, now);
+
+		/*
+		 *	Tell the network side that this request is
+		 *	done.  Also make sure that each time stamp is
+		 *	unique.
+		 */
+		worker_send_reply(worker, request, 1, now);
+
+		DEBUG3("Freeing request %s", request->name);
+		talloc_free(request);
+	}
+
+	/*
+	 *	Reset the max request timer.
+	 */
+	worker_max_request_timer(worker);
+}
+
+/** See when we next need to service the time_order heap for "too old" packets
+ *
+ * Inserts a timer into the event list will will trigger when the packet that
+ * was received longest ago, would be older than max_request_time.
+ */
+static void worker_max_request_timer(fr_worker_t *worker)
+{
+	fr_time_t	cleanup;
+	request_t		*request;
+
+	/*
+	 *	No more requests, delete the timer.
+	 */
+	request = fr_heap_peek_tail(worker->time_order);
+	if (!request) return;
+
+	cleanup = request->async->recv_time;
+	cleanup += worker->config.max_request_time;
+
+	DEBUG2("Resetting cleanup timer to +%pV", fr_box_time_delta(worker->config.max_request_time));
+	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
+			      cleanup, worker_max_request_time, worker) < 0) {
+		ERROR("Failed inserting max_request_time timer");
+	}
+}
+
+/** Start time tracking for a request, and mark it as runnable.
+ *
+ */
+static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *request, fr_time_t now)
+{
+	/*
+	 *	New requests are inserted into the time order heap in
+	 *	strict time priority.  Once they are in the list, they
+	 *	are only removed when the request is done / free'd.
+	 */
+	fr_assert(!fr_heap_entry_inserted(request->time_order_id));
+	(void) fr_heap_insert(worker->time_order, request);
+
+	/*
+	 *	Bootstrap the async state machine with the initial
+	 *	state of the request.
+	 */
+	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
+	fr_time_tracking_yield(&request->async->tracking, now);
+	worker->num_active++;
+
+	fr_assert(request->runnable_id < 0);
+	(void) fr_heap_insert(worker->runnable, request);
+
+	if (!worker->ev_cleanup) worker_max_request_timer(worker);
+}
+
+static void worker_request_time_tracking_end(fr_worker_t *worker, request_t *request, fr_time_t now)
+{
+	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
+	fr_assert(worker->num_active > 0);
+	worker->num_active--;
+
+	if (fr_heap_entry_inserted(request->time_order_id)) (void) fr_heap_extract(worker->time_order, request);
+}
 
 /** Send a response packet to the network side
  *
@@ -381,16 +516,6 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	 *	If we're sending a reply, then it's no longer runnable.
 	 */
 	fr_assert(request->runnable_id < 0);
-
-	/*
-	 *	If it's an internally generated request, or we're
-	 *	exiting, don't send a real reply.  Just toss the
-	 *	request.
-	 */
-	if (request_is_internal(request) || worker->exiting) {
-		fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
-		goto finished;
-	}
 
 	if (!size) {
 		size = request->async->listen->app_io->default_reply_size;
@@ -452,9 +577,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	/*
 	 *	The request is done.  Track that.
 	 */
-	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
-	fr_assert(worker->num_active > 0);
-	worker->num_active--;
+	worker_request_time_tracking_end(worker, request, now);
 
 	/*
 	 *	Fill in the rest of the fields in the channel message.
@@ -493,14 +616,6 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 
 	worker->stats.out++;
 
-	/*
-	 *	@todo Use a talloc pool for the request.  Clean it up,
-	 *	and insert it back into a slab allocator.
-	 */
-finished:
-	if (fr_heap_entry_inserted(request->time_order_id)) (void) fr_heap_extract(worker->time_order, request);
-	if (fr_heap_entry_inserted(request->runnable_id)) (void) fr_heap_extract(worker->runnable, request);
-
 	fr_assert(!fr_heap_entry_inserted(request->time_order_id));
 	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 
@@ -511,126 +626,6 @@ finished:
 	request->async->packet_ctx = NULL;
 	request->async->listen = NULL;
 #endif
-}
-
-
-/** Signal the unlang interpreter that it needs to stop running the request
- *
- * Signalling is a synchronous operation.  Whatever I/O requests the request
- * is currently performing are immediately cancelled, and all the frames are
- * popped off the unlang stack.
- *
- * Modules and unlang keywords explicitly register signal handlers to deal
- * with their yield points being cancelled/interrupted via this function.
- *
- * @param[in] worker	running the request.
- * @param[in] request	to cancel.
- * @param[in] now	The current time.
- */
-static void worker_stop_request(fr_worker_t *worker, request_t *request, fr_time_t now)
-{
-	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
-		fr_time_tracking_resume(&request->async->tracking, now);
-	}
-
-	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-
-	/*
-	 *	The request is ALWAYS in the time_order list.
-	 *
-	 *	It MAY be in the runnable list if it has yielded
-	 *	but is ready to be resumed.
-	 *
-	 *	MAY be in the dedup list, but if
-	 *	app_io->track_duplicates is true, i.e. we have
-	 *	been requested by an application via its public
-	 *	interface to track duplicate requests.
-	 */
-	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
-	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
-	if (request->async->listen && request->async->listen->track_duplicates) rbtree_delete_by_data(worker->dedup, request);
-
-#ifndef NDEBUG
-	request->async->process = NULL;
-#endif
-}
-
-/** Enforce max_request_time
- *
- * Run periodically, and tries to clean up requests which were received by the network
- * thread more than max_request_time seconds ago.  In the interest of not adding a
- * timer for every packet, the requests are given a 1 second leeway.
- *
- * @param[in] el	the worker's event list
- * @param[in] when	the current time
- * @param[in] uctx	the fr_worker_t.
- */
-static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
-{
-	fr_time_t	now = fr_time();
-	request_t		*request;
-	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
-
-	/*
-	 *	Look at the oldest requests, and see if they need to
-	 *	be deleted.
-	 */
-	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
-		fr_time_t cleanup;
-
-		REQUEST_VERIFY(request);
-
-		cleanup = request->async->recv_time;
-		cleanup += worker->config.max_request_time;
-		if (cleanup > now) break;
-
-		/*
-		 *	Waiting too long, delete it.
-		 */
-		REDEBUG("Request has reached max_request_time - signalling it to stop");
-		worker_stop_request(worker, request, now);
-
-		/*
-		 *	Tell the network side that this request is
-		 *	done.  Also make sure that each time stamp is
-		 *	unique.
-		 */
-		worker_send_reply(worker, request, 1, now);
-
-		DEBUG3("Freeing request %s", request->name);
-		talloc_free(request);
-	}
-
-	/*
-	 *	Reset the max request timer.
-	 */
-	worker_max_request_timer(worker);
-}
-
-/** See when we next need to service the time_order heap for "too old" packets
- *
- * Inserts a timer into the event list will will trigger when the packet that
- * was received longest ago, would be older than max_request_time.
- */
-static void worker_max_request_timer(fr_worker_t *worker)
-{
-	fr_time_t	cleanup;
-	request_t		*request;
-
-	/*
-	 *	No more requests, delete the timer.
-	 */
-	request = fr_heap_peek_tail(worker->time_order);
-	if (!request) return;
-
-	cleanup = request->async->recv_time;
-	cleanup += worker->config.max_request_time;
-
-	DEBUG2("Resetting cleanup timer to +%pV", fr_box_time_delta(worker->config.max_request_time));
-	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
-			      cleanup, worker_max_request_time, worker) < 0) {
-		ERROR("Failed inserting max_request_time timer");
-	}
 }
 
 /*
@@ -676,33 +671,6 @@ static void worker_request_init(fr_worker_t *worker, request_t *request, fr_time
 	request->async = talloc_zero(request, fr_async_t);
 	request->async->recv_time = now;
 	request->async->el = worker->el;
-}
-
-/** Start time tracking for a request, and mark it as runnable.
- *
- */
-static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *request, fr_time_t now)
-{
-	/*
-	 *	New requests are inserted into the time order heap in
-	 *	strict time priority.  Once they are in the list, they
-	 *	are only removed when the request is done / free'd.
-	 */
-	fr_assert(!fr_heap_entry_inserted(request->time_order_id));
-	(void) fr_heap_insert(worker->time_order, request);
-
-	/*
-	 *	Bootstrap the async state machine with the initial
-	 *	state of the request.
-	 */
-	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
-	fr_time_tracking_yield(&request->async->tracking, now);
-	worker->num_active++;
-
-	fr_assert(request->runnable_id < 0);
-	(void) fr_heap_insert(worker->runnable, request);
-
-	if (!worker->ev_cleanup) worker_max_request_timer(worker);
 }
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
@@ -847,7 +815,7 @@ nak:
 		 */
 		RWARN("Got conflicting packet for request (%" PRIu64 "), telling old request to stop", old->number);
 
-		worker_stop_request(worker, old, now);
+		worker_stop_request(old, now);
 		fr_assert(worker->num_active > 0);
 		worker->num_active--;
 		worker->stats.dropped++;
@@ -929,7 +897,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 			DEBUG("Worker is exiting - telling request %s to stop", request->name);
 			count++;
 		}
-		worker_stop_request(worker, request, now);
+		worker_stop_request(request, now);
 		talloc_free(request);
 	}
 	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
@@ -979,7 +947,7 @@ static void _worker_request_internal_done(request_t *request, UNUSED rlm_rcode_t
 	fr_time_t	now = fr_time();
 	fr_worker_t	*worker = uctx;
 
-	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
+	worker_request_time_tracking_end(worker, request, now);
 
 	DEBUG3("Freeing request %s", request->name);
 	talloc_free(request);
@@ -996,7 +964,9 @@ static void _worker_request_external_done(request_t *request, UNUSED rlm_rcode_t
 	 *	Only real packets are in the dedup tree.  And even
 	 *	then, only some of the time.
 	 */
-	if (request->async->listen->track_duplicates) (void) rbtree_delete_by_data(worker->dedup, request);
+	if (request->async->listen && request->async->listen->track_duplicates) {
+		(void) rbtree_delete_by_data(worker->dedup, request);
+	}
 
 	/*
 	 *	If we're running a real request, then the final
@@ -1097,7 +1067,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 		 *	just stop the request and free it.
 		 */
 		if (request->async->channel && !fr_channel_active(request->async->channel)) {
-			worker_stop_request(worker, request, now);
+			worker_stop_request(request, now);
 			talloc_free(request);
 			return;
 		}
