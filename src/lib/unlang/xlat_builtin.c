@@ -1390,47 +1390,71 @@ static int xlat_func_xlat_escape(UNUSED request_t *request, fr_value_box_t *vb, 
 	}
 }
 
+static xlat_arg_parser_t const xlat_func_xlat_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING,
+	.func = xlat_func_xlat_escape
+};
+
 /** xlat expand string attribute value
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      request_t *request, char const *fmt)
+static xlat_action_t xlat_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				    UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				    fr_value_box_list_t *in)
 {
-	ssize_t		slen;
-	fr_pair_t	*vp;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
+	tmpl_t			*vpt = NULL, *our_vpt = NULL;
+	fr_value_box_t		*vb;
 
-	fr_skip_whitespace(fmt);
+	tmpl_afrom_substr(ctx, &vpt, &FR_SBUFF_IN(in_head->vb_strvalue, in_head->length),
+			  T_DOUBLE_QUOTED_STRING, &value_parse_rules_double_quoted,
+			  &(tmpl_rules_t){
+				  .allow_unknown = false,
+				  .allow_unresolved = false,
+				  .at_runtime = true
+			  });
 
-	if (outlen < 3) {
-	nothing:
-		return 0;
+	if (!vpt) return XLAT_ACTION_FAIL;
+
+	if (tmpl_is_unresolved(vpt)) tmpl_resolve(vpt, NULL);
+
+	if (tmpl_is_xlat(vpt)) {
+		xlat_exp_t const	*child = NULL;
+		xlat_exp_t const	*exp = tmpl_xlat(vpt);
+
+		xlat_frame_eval(ctx, out, &child, request, &exp);
+		return XLAT_ACTION_DONE;
 	}
 
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
-
-	RDEBUG2("EXPAND %s", fmt);
-	RINDENT();
-
-	/*
-	 *	If it's a string, expand it again
-	 */
-	if (vp->vp_type == FR_TYPE_STRING) {
-		slen = xlat_eval(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
-		if (slen <= 0) return slen;
-	/*
-	 *	If it's not a string, treat it as a literal value
-	 */
-	} else {
-		slen = fr_value_box_aprint(ctx, out, &vp->data, NULL);
-		if (!*out) return -1;
+	if (vpt->type != TMPL_TYPE_DATA) {
+		RPEDEBUG("xlat expanded to unsupported type");
+		return XLAT_ACTION_FAIL;
 	}
 
-	REXDENT();
-	RDEBUG2("--> %s", *out);
+	if (tmpl_value_type(vpt) != FR_TYPE_STRING) goto append;
 
-	return slen;
+	/*
+	 *	We have a string - is it actually an attribute ref?
+	 */
+	tmpl_afrom_attr_str(ctx, NULL, &our_vpt, tmpl_value(vpt)->vb_strvalue,
+			    &(tmpl_rules_t) {
+				    .allow_unknown = false,
+				    .allow_unresolved = false,
+				    .at_runtime = true,
+				    .prefix = TMPL_ATTR_REF_PREFIX_AUTO
+			    });
+	if ((our_vpt) && (tmpl_aexpand(ctx, &vb, request, our_vpt, NULL, NULL) >= 0)) {
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
+	}
+append:
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_copy(ctx, vb, tmpl_value(vpt));
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -3393,8 +3417,6 @@ int xlat_init(void)
 #define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(xlat);
 
-	XLAT_REGISTER(xlat);
-
 	/*
 	 *	These are all "pure" functions.
 	 */
@@ -3478,6 +3500,7 @@ do { \
 	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, xlat_func_urlquote_arg);
 	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, xlat_func_urlunquote_arg);
+	XLAT_REGISTER_MONO("xlat", xlat_func_xlat, xlat_func_xlat_arg);
 
 	xlat_register(NULL, "module", xlat_func_module, NULL);
 
