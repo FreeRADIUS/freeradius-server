@@ -14,25 +14,25 @@ update request {
 #
 #  Verify non string types are treated as literals
 #
-if ("%{xlat:Tmp-Integer-0}" != 4) {
+if ("%(xlat:Tmp-Integer-0)" != 4) {
 	test_fail
 }
 
-if ("%{xlat:Tmp-Integer-0[1]}" != 8) {
+if ("%(xlat:Tmp-Integer-0[1])" != 8) {
 	test_fail
 }
 
 #
 #  Check double expansion works
 #
-if ("%{xlat:Tmp-String-0}" != 'foo') {
+if ("%(xlat:Tmp-String-0)" != 'foo') {
 	test_fail
 }
 
 #
 #  Using an attribute as a dynamic index for another attribute
 #
-if ("%{xlat:Tmp-String-1[%{Tmp-Integer-0[2]}]}" != 'bar') {
+if ("%(xlat:Tmp-String-1[%{Tmp-Integer-0[2]}])" != 'bar') {
 	test_fail
 }
 
