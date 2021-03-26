@@ -40,7 +40,7 @@ static unlang_action_t unlang_detach(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	Detach failed...
 	 */
-	if (unlikely(request->parent)) {
+	if (unlikely(request->parent != NULL)) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
