@@ -97,6 +97,36 @@ build/autoconf.mk: src/include/autoconf.h
 	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
 -include build/autoconf.mk
 
+#
+#  Autoload the various libraries needed for building.
+#
+#  If the build is targeting these explicitly, then we are OK if their
+#  features don't exist.  If we're building everything else, then
+#  build these first, and then load the libraries.
+#
+#  Ensure that these libraries are built ONLY when doing a full build,
+#  AND that they are built and loaded before using the rest of the
+#  boilermake framework.
+#
+ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
+_:=$(shell make libfreeradius-make-dlopen.a libfreeradius-make-version.a)
+
+load build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT}(dlopen_gmk_setup)
+load build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}(version_gmk_setup)
+
+else
+#
+#  We're building ONLY the libfreeradius-make-* files.
+#  Leave the outputs at the default location, but take the
+#  inputs from the scripts/build directory.
+#
+BUILD_DIR:=${top_srcdir}/build
+top_builddir:=${top_srcdir}/scripts/build
+endif
+
+#
+#  Load the huge boilermake framework.
+#
 include scripts/boiler.mk
 endif
 endif

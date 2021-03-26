@@ -1,9 +1,6 @@
 TARGET		:= libfreeradius-make-dlopen.a
 SOURCES		:= dlopen.c log.c
 
-TGT_POSTMAKE	:= echo "load ${BUILD_DIR}/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT}(dlopen_gmk_setup)" > ${BUILD_DIR}/make/$(notdir $(lastword $(MAKEFILE_LIST)))
-TGT_POSTCLEAN	:= rm -f ${BUILD_DIR}/make/$(notdir $(lastword $(MAKEFILE_LIST)))
-
 #
 #  If we're building this target, then don't try to use it until we know
 #  that building the target succeeds.
