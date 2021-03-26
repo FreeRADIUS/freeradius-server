@@ -58,7 +58,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  See src/tests/unit/rfc4849.txt
 	* Allow attributes using old names in configuration files, SQL,
 	  or modules to match attributes in the packet which use
-	  new names,
+	  new names.
 	* Allow querying IPv6 stats via FreeRADIUS-Stats-Client-IPv6-Address
 	  and FreeRADIUS-Stats-Server-IPv6-Address,
 
