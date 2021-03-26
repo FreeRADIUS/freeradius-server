@@ -236,11 +236,11 @@ typedef struct {
 	char const	*description;
 } command_entry_t;
 
-static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 UNUSED request_t *request, UNUSED char const *fmt)
+static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+			       UNUSED request_t *request, UNUSED void const *mod_inst,
+			       UNUSED void *xlat_thread_inst, UNUSED fr_value_box_list_t *in)
 {
-	return 0;
+	return XLAT_ACTION_DONE;
 }
 
 static char		proto_name_prev[128];
@@ -2970,7 +2970,6 @@ int main(int argc, char *argv[])
 {
 	int			c;
 	char const		*receipt_file = NULL;
-	int			*inst = &c;
 	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree;
@@ -3126,7 +3125,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (!xlat_register_legacy(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN)) {
+	if (!xlat_register(NULL, "test", xlat_test, false)) {
 		ERROR("Failed registering xlat");
 		EXIT_WITH_FAILURE;
 	}
