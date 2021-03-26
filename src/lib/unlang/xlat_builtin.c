@@ -1317,47 +1317,54 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_xlat_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** xlat expand string attribute value
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      request_t *request, char const *fmt)
+static xlat_action_t xlat_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				    UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				    fr_value_box_list_t *in)
 {
 	ssize_t		slen;
 	fr_pair_t	*vp;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*vb;
 
-	fr_skip_whitespace(fmt);
+	if ((xlat_fmt_get_vp(&vp, request, in_head->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
 
-	if (outlen < 3) {
-	nothing:
-		return 0;
-	}
-
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
-
-	RDEBUG2("EXPAND %s", fmt);
+	RDEBUG2("EXPAND %pV", in_head);
 	RINDENT();
 
+	MEM(vb = fr_value_box_alloc_null(ctx));
 	/*
 	 *	If it's a string, expand it again
 	 */
 	if (vp->vp_type == FR_TYPE_STRING) {
-		slen = xlat_eval(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
-		if (slen <= 0) return slen;
+		char	buff[1024];
+		slen = xlat_eval(buff, 1024, request, vp->vp_strvalue, NULL, NULL);
+		if (slen <= 0) {
+		error:
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+		fr_value_box_bstrndup(ctx, vb, NULL, buff, strlen(buff), vp->vp_tainted);
 	/*
 	 *	If it's not a string, treat it as a literal
 	 */
 	} else {
-		slen = fr_value_box_aprint(ctx, out, &vp->data, NULL);
-		if (!*out) return -1;
+		if (fr_value_box_copy(ctx, vb, &vp->data) < 0) goto error;
 	}
 
 	REXDENT();
-	RDEBUG2("--> %s", *out);
+	RDEBUG2("--> %pV", vb);
+	fr_dcursor_append(out, vb);
 
-	return slen;
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -3087,8 +3094,6 @@ int xlat_init(void)
 #define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(xlat);
 
-	XLAT_REGISTER(xlat);
-
 #define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
 do { \
 	if (!(xlat = xlat_register(NULL, _xlat, _func, false))) return -1; \
@@ -3108,6 +3113,7 @@ do { \
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
+	XLAT_REGISTER_ARGS("xlat", xlat_func_xlat, xlat_func_xlat_args);
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
 do { \
