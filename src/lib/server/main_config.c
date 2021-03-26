@@ -437,58 +437,6 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 
-static size_t config_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
-{
-	size_t len = 0;
-	static char const disallowed[] = "%{}\\'\"`";
-
-	while (in[0]) {
-		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
-		 */
-		if ((in[0] < 32)) {
-			if (outlen <= 3) break;
-
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
-			in++;
-			out += 3;
-			outlen -= 3;
-			len += 3;
-			continue;
-
-		} else if (strchr(disallowed, *in) != NULL) {
-			if (outlen <= 2) break;
-
-			out[0] = '\\';
-			out[1] = *in;
-			in++;
-			out += 2;
-			outlen -= 2;
-			len += 2;
-			continue;
-		}
-
-		/*
-		 *	Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
-		 *	Allowed character.
-		 */
-		*out = *in;
-		out++;
-		in++;
-		outlen--;
-		len++;
-	}
-	*out = '\0';
-	return len;
-}
-
 static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
 {
 	static char const	disallowed[] = "%{}\\'\"`";
