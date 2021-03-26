@@ -680,7 +680,7 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		for (v = parent; v != NULL; v = v->parent) {
 			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
 				if ((uint64_t) *attr >= (((uint64_t) 1) << (8 * v->flags.type_size))) {
-					fr_strerror_printf("Attributes must have value between 1..%llu",
+					fr_strerror_printf("Attributes must have value between 1..%" PRIu64,
 							   (((uint64_t) 1) << (8 * v->flags.type_size)) - 1);
 					return false;
 				}
