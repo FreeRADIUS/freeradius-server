@@ -764,11 +764,6 @@ int xlat_register_legacy_redundant(CONF_SECTION *cs)
 
 
 
-/*
- *	Regular xlat functions
- */
-
-
 static xlat_arg_parser_t const xlat_func_debug_args[] = {
 	{ .single = true, .type = FR_TYPE_INT8 },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1367,9 +1362,6 @@ static xlat_action_t xlat_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_
 	return XLAT_ACTION_DONE;
 }
 
-/*
- *	Async xlat functions
- */
 
 static xlat_arg_parser_t const xlat_func_pad_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
@@ -3090,9 +3082,6 @@ int xlat_init(void)
 		ERROR("%s: Failed to create tree", __FUNCTION__);
 		return -1;
 	}
-
-#define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
-	xlat_internal(xlat);
 
 #define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
 do { \
