@@ -781,11 +781,6 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 
 
-/*
- *	Regular xlat functions
- */
-
-
 static xlat_arg_parser_t const xlat_func_debug_args[] = {
 	{ .single = true, .type = FR_TYPE_INT8 },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1457,9 +1452,6 @@ append:
 	return XLAT_ACTION_DONE;
 }
 
-/*
- *	Async xlat functions
- */
 
 static xlat_arg_parser_t const xlat_func_pad_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
@@ -3413,9 +3405,6 @@ int xlat_init(void)
 	 *	Define encode/decode xlats for the various protocols.
 	 */
 	if (xlat_protocol_init() < 0) return -1;
-
-#define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
-	xlat_internal(xlat);
 
 	/*
 	 *	These are all "pure" functions.
