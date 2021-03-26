@@ -197,7 +197,6 @@ typedef struct {
 static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_trigger_t	*ctx = talloc_get_type_abort(mctx->instance, fr_trigger_t);
-	rlm_rcode_t	rcode;
 
 	if (!ctx->expanded) {
 		RDEBUG("Running trigger %s", ctx->name);
@@ -217,17 +216,15 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 		ctx->expanded = true;
 
 		/*
-		 *	Run the interpreter.
+		 *	Run the interpreter, without caring about the
+		 *	rcode.  We just want a value box as the
+		 *	output.
 		 */
-		rcode = unlang_interpret_synchronous(request);
+		(void) unlang_interpret_synchronous(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) {
 			RETURN_MODULE_HANDLED;
 		}
-
-		/*
-		 *	Always fall through, no matter what the return code is.
-		 */
 	}
 
 	if (fr_dlist_empty(&ctx->box)) {
@@ -239,7 +236,7 @@ static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const
 	 *	Execute the program without waiting for results.
 	 */
 	if (fr_exec_nowait(request, &ctx->box, NULL) < 0) {
-		RPERROR("Failed trigger %s", ctx->name);
+		RPERROR("Failed running trigger %s", ctx->name);
 		RETURN_MODULE_FAIL;
 	}
 
