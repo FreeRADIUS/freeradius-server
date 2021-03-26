@@ -111,6 +111,12 @@ acct_counters64.preacct {
 #  window of opportunity is much smaller.  i.e. milliseconds, instead
 #  of seconds.
 #
+#  This policy can also be used to "bootstrap" accounting sessions.
+#  If there is data which is only available in the Access-Request,
+#  it can be placed in the accounting table.  Then, when accounting
+#  packets are received, they will update the row which contains
+#  the session information.
+#
 sql_session_start.post-auth {
 	acct_unique
 	sql.accounting
