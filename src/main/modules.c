@@ -604,7 +604,7 @@ static int module_conf_parse(module_instance_t *node, void **handle)
  */
 static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 {
-	char const *name1, *name2;
+	char const *name1, *name2, *askedname;
 	module_instance_t *node, myNode;
 	char module_name[256];
 
@@ -612,17 +612,20 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	 *	Figure out which module we want to load.
 	 */
 	name1 = cf_section_name1(cs);
-	name2 = cf_section_name2(cs);
-	if (!name2) name2 = name1;
+	askedname = name2 = cf_section_name2(cs);
+	if (!askedname) {
+		askedname = name1;
+		name2 = "";
+	}
 
-	strlcpy(myNode.name, name2, sizeof(myNode.name));
+	strlcpy(myNode.name, askedname, sizeof(myNode.name));
 
 	/*
 	 *	See if the module already exists.
 	 */
 	node = rbtree_finddata(instance_tree, &myNode);
 	if (node) {
-		ERROR("Duplicate module \"%s %s\", in file %s:%d and file %s:%d",
+		ERROR("Duplicate module \"%s %s { ... }\", in file %s:%d and file %s:%d",
 		      name1, name2,
 		      cf_section_filename(cs),
 		      cf_section_lineno(cs),
@@ -638,7 +641,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	 */
 	node = talloc_zero(instance_tree, module_instance_t);
 	node->cs = cs;
-	strlcpy(node->name, name2, sizeof(node->name));
+	strlcpy(node->name, askedname, sizeof(node->name));
 
 	/*
 	 *	Names in the "modules" section aren't prefixed
