@@ -861,6 +861,22 @@ int rad_virtual_server(REQUEST *request)
 	}
 
 	if (request->reply->code == PW_CODE_ACCESS_ACCEPT) {
+		/*
+		 *	Check that there is a name which can be used
+		 *	to identify the user.  The configuration
+		 *	depends on User-Name or Stripped-User-Name
+		 *	existing, and being (mostly) unique to that
+		 *	user.
+		 */
+		if (!request->parent &&
+		    (request->username->da->attr == PW_USER_NAME) &&
+		    (request->username->vp_strvalue[0] == '@') &&
+		    !fr_pair_find_by_num(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY)) {
+			RWDEBUG("User-Name is anonymized, and no Stripped-User-Name exists.");
+			RWDEBUG("It may be difficult or impossible to identify the user");
+			RWDEBUG("Please update Stripped-User-Name with information which identifies the user");
+		}
+
 		rad_postauth(request);
 	}
 
