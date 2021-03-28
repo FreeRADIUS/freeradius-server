@@ -517,10 +517,25 @@ RESUME_NO_RCTX(access_accept)
 	PROCESS_TRACE;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_success_message);
-	if (vp){
+	if (vp) {
 		auth_message(&inst->auth, request, true, "Login OK (%pV)", &vp->data);
 	} else {
 		auth_message(&inst->auth, request, true, "Login OK");
+	}
+
+	/*
+	 *	Check that there is a name which can be used to
+	 *	identify the user.  The configuration depends on
+	 *	User-Name or Stripped-User-Name existing, and being
+	 *	(mostly) unique to that user.
+	 */
+	if (!request->parent &&
+	    ((vp = fr_pair_find_by_da(&request->request_pairs, attr_user_name)) != NULL) &&
+	    (vp->vp_strvalue[0] == '@') &&
+	    !fr_pair_find_by_da(&request->request_pairs, attr_stripped_user_name)) {
+		RWDEBUG("User-Name is anonymized, and no Stripped-User-Name exists.");
+		RWDEBUG("It may be difficult or impossible to identify the user.");
+		RWDEBUG("Please update Stripped-User-Name with information which identifies the user.");
 	}
 
 	fr_state_discard(inst->auth.state_tree, request);
