@@ -1,5 +1,5 @@
 %(aka_sim_id_type:...)
-%{attr:...}
+%(attr:...)
 %(attr_by_num:...)
 %(attr_by_oid:...)
 %{attr_num:...}

@@ -25,10 +25,7 @@ if ("%(attr_by_oid:26.11344.1)" != 'Proxied-To') {
 	test_fail
 }
 
-if ("%{attr:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'Proxied-To') {
-	test_pass
-}
-else {
+if ("%(attr:Vendor-Specific.FreeRADIUS.Proxied-To)" != 'Proxied-To') {
 	test_fail
 }
 
@@ -47,10 +44,7 @@ if ("%(vendor_num:Vendor-Specific.FreeRADIUS.Proxied-To)" != 11344) {
 	test_fail
 }
 
-if ("%{attr:Reply-Message}" == 'Reply-Message') {
-	test_pass
-}
-else {
+if ("%(attr:Reply-Message)" != 'Reply-Message') {
 	test_fail
 }
 
