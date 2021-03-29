@@ -63,19 +63,21 @@ fr_dict_attr_t const *attr_eap_aka_sim_bidding;
 fr_dict_attr_t const *attr_eap_aka_sim_checkcode;
 fr_dict_attr_t const *attr_eap_aka_sim_ck;
 fr_dict_attr_t const *attr_eap_aka_sim_client_error_code;
-fr_dict_attr_t const *attr_eap_aka_sim_counter_too_small;
 fr_dict_attr_t const *attr_eap_aka_sim_counter;
+fr_dict_attr_t const *attr_eap_aka_sim_counter_too_small;
 fr_dict_attr_t const *attr_eap_aka_sim_encr_data;
 fr_dict_attr_t const *attr_eap_aka_sim_fullauth_id_req;
-fr_dict_attr_t const *attr_eap_aka_sim_identity_type;
 fr_dict_attr_t const *attr_eap_aka_sim_identity;
+fr_dict_attr_t const *attr_eap_aka_sim_identity_type;
 fr_dict_attr_t const *attr_eap_aka_sim_ik;
 fr_dict_attr_t const *attr_eap_aka_sim_iv;
+fr_dict_attr_t const *attr_eap_aka_sim_k_aut;
+fr_dict_attr_t const *attr_eap_aka_sim_k_encr;
 fr_dict_attr_t const *attr_eap_aka_sim_k_re;
 fr_dict_attr_t const *attr_eap_aka_sim_kc;
+fr_dict_attr_t const *attr_eap_aka_sim_kdf;
 fr_dict_attr_t const *attr_eap_aka_sim_kdf_identity;
 fr_dict_attr_t const *attr_eap_aka_sim_kdf_input;
-fr_dict_attr_t const *attr_eap_aka_sim_kdf;
 fr_dict_attr_t const *attr_eap_aka_sim_mac;
 fr_dict_attr_t const *attr_eap_aka_sim_method_hint;
 fr_dict_attr_t const *attr_eap_aka_sim_mk;
@@ -88,10 +90,12 @@ fr_dict_attr_t const *attr_eap_aka_sim_padding;
 fr_dict_attr_t const *attr_eap_aka_sim_permanent_id_req;
 fr_dict_attr_t const *attr_eap_aka_sim_permanent_identity;
 fr_dict_attr_t const *attr_eap_aka_sim_rand;
+fr_dict_attr_t const *attr_eap_aka_sim_hmac_extra_request;
 fr_dict_attr_t const *attr_eap_aka_sim_res;
+fr_dict_attr_t const *attr_eap_aka_sim_hmac_extra_response;
 fr_dict_attr_t const *attr_eap_aka_sim_result_ind;
-fr_dict_attr_t const *attr_eap_aka_sim_sres;
 fr_dict_attr_t const *attr_eap_aka_sim_selected_version;
+fr_dict_attr_t const *attr_eap_aka_sim_sres;
 fr_dict_attr_t const *attr_eap_aka_sim_subtype;
 fr_dict_attr_t const *attr_eap_aka_sim_version_list;
 fr_dict_attr_t const *attr_eap_aka_sim_xres;
@@ -120,19 +124,21 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_checkcode, .name = "Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_ck, .name = "CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_client_error_code, .name = "Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_counter_too_small, .name = "Encr-Data.Counter-Too-Small", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_counter, .name = "Encr-Data.Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_counter_too_small, .name = "Encr-Data.Counter-Too-Small", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_encr_data, .name = "Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_fullauth_id_req, .name = "Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_identity_type, .name = "Identity-Type", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_identity, .name = "Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_identity_type, .name = "Identity-Type", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_ik, .name = "IK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_iv, .name = "IV", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_k_aut, .name = "K-Aut", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_k_encr, .name = "K-Encr", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_k_re, .name = "K-Re", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_kc, .name = "KC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_kdf, .name = "KDF", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_kdf_identity, .name = "KDF-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_kdf_input, .name = "KDF-Input", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_kdf, .name = "KDF", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_mac, .name = "MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_method_hint, .name = "Method-Hint", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_mk, .name = "MK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
@@ -145,10 +151,12 @@ fr_dict_attr_autoload_t libfreeradius_aka_sim_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_permanent_id_req, .name = "Permanent-Id-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_permanent_identity, .name = "Permanent-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_rand, .name = "RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_hmac_extra_request, .name = "HMAC-Extra-Request", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_res, .name = "RES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_hmac_extra_response, .name = "HMAC-Extra-Response", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_result_ind, .name = "Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka_sim },
-	{ .out = &attr_eap_aka_sim_sres, .name = "RES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_selected_version, .name = "Selected-Version", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_sres, .name = "SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_subtype, .name = "Subtype", .type = FR_TYPE_UINT32, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_version_list, .name = "Version-List", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_xres, .name = "XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },

@@ -2,6 +2,10 @@
 server eap-aka {
 	namespace = eap-aka
 
+	eap-aka {
+		network_name = "testing123"
+	}
+
 	recv Identity-Response {
 		"%(debug_attr:&session-state.)"
 		if (!&session-state.Tmp-String-0) {

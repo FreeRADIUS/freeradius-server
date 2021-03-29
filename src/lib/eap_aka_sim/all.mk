@@ -4,12 +4,13 @@ endif
 
 SOURCES	:= \
 	base.c \
-	state_machine.c \
 	crypto.c \
 	decode.c \
 	encode.c \
 	fips186prf.c \
 	id.c \
+	module.c \
+	state_machine.c \
 	vector.c \
 	xlat.c
 

@@ -1,0 +1,337 @@
+/*
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * @file src/lib/eap_aka_sim/module.c
+ * @brief Common encode/decode functions for EAP subtype modules
+ *
+ * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ *
+ * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ */
+RCSID("$Id$")
+
+#include <freeradius-devel/eap/types.h>
+#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/util/rand.h>
+
+#include "attrs.h"
+#include "base.h"
+#include "module.h"
+
+/** Encode EAP session data from attributes
+ *
+ */
+static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+				  request_t *request, UNUSED void *rctx)
+{
+	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_module_conf_t);
+	eap_session_t			*eap_session = eap_session_get(request->parent);
+	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque,
+										eap_aka_sim_mod_session_t);
+	fr_pair_t			*subtype_vp;
+
+	static eap_code_t		rcode_to_eap_code[RLM_MODULE_NUMCODES] = {
+						[RLM_MODULE_REJECT]	= FR_EAP_CODE_FAILURE,
+						[RLM_MODULE_FAIL]	= FR_EAP_CODE_FAILURE,
+						[RLM_MODULE_OK]		= FR_EAP_CODE_SUCCESS,
+						[RLM_MODULE_HANDLED]	= FR_EAP_CODE_REQUEST,
+						[RLM_MODULE_INVALID]	= FR_EAP_CODE_FAILURE,
+						[RLM_MODULE_DISALLOW]	= FR_EAP_CODE_FAILURE,
+						[RLM_MODULE_NOTFOUND]	= FR_EAP_CODE_FAILURE,
+						[RLM_MODULE_NOOP]	= FR_EAP_CODE_FAILURE,
+						[RLM_MODULE_UPDATED]	= FR_EAP_CODE_FAILURE
+					};
+	eap_code_t			code;
+	rlm_rcode_t			rcode = unlang_interpret_stack_result(request);
+	fr_aka_sim_ctx_t		encode_ctx;
+	uint8_t	const			*request_hmac_extra = NULL;
+	size_t				request_hmac_extra_len = 0;
+	int				ret;
+
+	/*
+	 *	If there's no subtype vp, we look at the rcode
+	 *	from the virtual server to determine what kind
+	 *	of EAP response to send.
+	 */
+	subtype_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_subtype);
+	if (!subtype_vp) {
+		eap_session->this_round->request->code = (rcode == RLM_MODULE_OK) ?
+								FR_EAP_CODE_SUCCESS : FR_EAP_CODE_FAILURE;
+		/*
+		 *	RFC 3748 requires the request and response
+		 *	IDs to be identical for EAP-SUCCESS and
+		 *	EAP-FAILURE.
+		 *
+		 *	The EAP common code will do the right thing
+		 *	here if we just tell it we haven't se the
+		 *	request ID.
+		 */
+		eap_session->this_round->set_request_id = false;
+		eap_session->finished = true;
+		TALLOC_FREE(eap_session->opaque);
+
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	If there is a subtype vp, verify the return
+	 *	code allows us send EAP-SIM/AKA/AKA' data back.
+	 */
+	code = rcode_to_eap_code[rcode];
+	if (code != FR_EAP_CODE_REQUEST) {
+		eap_session->this_round->request->code = code;
+		eap_session->this_round->set_request_id = false;
+		eap_session->finished = true;
+		TALLOC_FREE(eap_session->opaque);
+
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	RDEBUG2("Encoding attributes");
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
+
+	/*
+	 *	It's not an EAP-Success or an EAP-Failure
+	 *	it's a real EAP-SIM/AKA/AKA' response.
+	 */
+	eap_session->this_round->request->type.num = inst->type;
+	eap_session->this_round->request->code = code;
+	eap_session->this_round->set_request_id = true;
+
+	/*
+	 *	RFC 3748 says this ID need only be different to
+	 *	the previous ID.
+	 *
+	 *	We need to set the type, code, id here as the
+	 *	HMAC operates on the complete packet we're
+	 *	returning including the EAP headers, so the packet
+	 *	fields must be filled in before we call encode.
+	 */
+	eap_session->this_round->response->id++;
+
+	/*
+	 *	Perform different actions depending on the type
+	 *	of request we're sending.
+	 */
+	switch (subtype_vp->vp_uint16) {
+	case FR_SUBTYPE_VALUE_SIM_START:
+	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
+	{
+		fr_pair_t	*id_vp;
+
+		if (RDEBUG_ENABLED2) break;
+
+		/*
+		 *	Figure out if the state machine is
+		 *	requesting an ID.
+		 */
+		if ((id_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_any_id_req)) ||
+		    (id_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_fullauth_id_req)) ||
+		    (id_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_permanent_id_req))) {
+			RDEBUG2("Sending EAP-Request/%pV (%s)", &subtype_vp->data, id_vp->da->name);
+		} else {
+			RDEBUG2("Sending EAP-Request/%pV", &subtype_vp->data);
+		}
+	}
+		break;
+
+	/*
+	 *	Deal with sending bidding VP
+	 *
+	 *	This can either come from policy or be set by the default
+	 *	virtual server.
+	 *
+	 *	We send AT_BIDDING in our EAP-Request/AKA-Challenge message
+	 *	to tell the supplicant that if it has AKA' available/enabled
+	 *	it should have used that.
+	 */
+	case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
+	{
+		fr_pair_t *bidding_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_bidding);
+
+		/*
+		 *	Explicit NO
+		 */
+		if (inst->aka.send_at_bidding_prefer_prime_is_set &&
+		    !inst->aka.send_at_bidding_prefer_prime) {
+			if (bidding_vp) pair_delete_reply(attr_eap_aka_sim_bidding);
+		/*
+		 *	Implicit or explicit YES
+		 */
+		} else if (inst->aka.send_at_bidding_prefer_prime) {
+			MEM(pair_append_reply(&bidding_vp, attr_eap_aka_sim_bidding) >= 0);
+			bidding_vp->vp_uint16 = FR_BIDDING_VALUE_PREFER_AKA_PRIME;
+		}
+	}
+		FALL_THROUGH;
+
+	case FR_SUBTYPE_VALUE_SIM_CHALLENGE:
+	case FR_SUBTYPE_VALUE_AKA_SIM_REAUTHENTICATION:
+	{
+		fr_pair_t	*vp;
+
+		/*
+		 *	Extra data to append to the packet when signing.
+		 */
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_hmac_extra_request);
+		if (vp) {
+			request_hmac_extra = vp->vp_octets;
+			request_hmac_extra_len = vp->vp_length;
+		}
+
+		/*
+		 *	Extra data to append to the response packet when
+		 *	validating the signature.
+		 */
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_hmac_extra_response);
+		if (vp) {
+			fr_assert(!mod_session->response_hmac_extra);
+			MEM(mod_session->response_hmac_extra = talloc_memdup(mod_session,
+										vp->vp_octets, vp->vp_length));
+			mod_session->response_hmac_extra_len = vp->vp_length;
+		}
+		/*
+		 *	Key we use for encrypting and decrypting attributes.
+		 */
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_k_encr);
+		if (vp) {
+			fr_assert(!mod_session->ctx.k_encr);
+			MEM(mod_session->ctx.k_encr = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
+		}
+
+		/*
+		 *	Key we use for signing and validating mac values.
+		 */
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_k_aut);
+		if (vp) {
+			fr_assert(!mod_session->ctx.k_aut);
+			MEM(mod_session->ctx.k_aut = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
+			mod_session->ctx.k_aut_len = vp->vp_length;
+		}
+
+		fr_assert(mod_session->ctx.k_encr && mod_session->ctx.k_aut);
+	}
+		FALL_THROUGH;
+
+	default:
+		RDEBUG2("Sending EAP-Request/%pV", &subtype_vp->data);
+		break;
+	}
+
+	encode_ctx = mod_session->ctx;
+	encode_ctx.eap_packet = eap_session->this_round->request;
+	encode_ctx.hmac_extra = request_hmac_extra;
+	encode_ctx.hmac_extra_len = request_hmac_extra_len;
+
+	ret = fr_aka_sim_encode(request, &request->reply_pairs, &encode_ctx);
+	if (ret <= 0) {	/* No valid packets have length 0 */
+		RPEDEBUG("Failed encoding response");
+		RETURN_MODULE_FAIL;
+	}
+
+	return UNLANG_ACTION_CALCULATE_RESULT;	/* rcode is already correct */
+}
+
+/** Decode EAP session data into attribute
+ *
+ */
+unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_module_conf_t);
+	eap_session_t			*eap_session = eap_session_get(request->parent);
+	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque,
+									     eap_aka_sim_mod_session_t);
+	fr_pair_t			*subtype_vp;
+	fr_dcursor_t			cursor;
+	int				ret;
+	fr_aka_sim_ctx_t		decode_ctx;
+
+	switch (eap_session->this_round->response->type.num) {
+	case FR_EAP_METHOD_IDENTITY:
+		break;
+
+	/*
+	 *	Only decode data for EAP-SIM/AKA/AKA' responses
+	 */
+	default:
+		fr_dcursor_init(&cursor, &request->request_pairs);
+
+		decode_ctx = mod_session->ctx;
+		decode_ctx.hmac_extra = mod_session->response_hmac_extra;
+		decode_ctx.hmac_extra_len = mod_session->response_hmac_extra_len;
+		decode_ctx.eap_packet = eap_session->this_round->response;
+
+		ret = fr_aka_sim_decode(request,
+					&cursor,
+					dict_eap_aka_sim,
+					eap_session->this_round->response->type.data,
+					eap_session->this_round->response->type.length,
+					&decode_ctx);
+
+		/*
+		 *	Only good for one response packet
+		 */
+		TALLOC_FREE(mod_session->response_hmac_extra);
+		mod_session->response_hmac_extra_len = 0;
+
+		/*
+		 *	RFC 4187 says we *MUST* notify, not just send
+		 *	an EAP-Failure in this case where we cannot
+		 *	decode an EAP-AKA packet.
+		 *
+		 *	We instead call the state machine and allow it
+		 *	to fail when it can't find the necessary
+		 *	attributes.
+		 */
+		if (ret < 0) {
+			RPEDEBUG2("Failed decoding attributes");
+			goto done;
+		}
+
+		if (!fr_pair_list_empty(&request->request_pairs) && RDEBUG_ENABLED2) {
+			RDEBUG2("Decoded attributes");
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
+		}
+
+		subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype);
+		if (subtype_vp) {
+			RDEBUG2("Received EAP-Response/%pV", &(subtype_vp)->data);
+		} else {
+			REDEBUG2("Missing Sub-Type");
+		}
+		break;
+	}
+
+done:
+	/*
+	 *	Setup our encode function as the resumption
+	 *	frame when the state machine finishes with
+	 *	this round.
+	 */
+	(void)unlang_module_yield(request, mod_encode, NULL, NULL);
+
+	if (virtual_server_push(request, inst->virtual_server, UNLANG_SUB_FRAME) < 0) {
+		unlang_interpet_frame_discard(request);
+		RETURN_MODULE_FAIL;
+	}
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}

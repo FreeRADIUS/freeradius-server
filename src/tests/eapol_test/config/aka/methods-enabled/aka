@@ -2,6 +2,5 @@ type = aka
 default_eap_type = aka
 
 aka {
-	network_name = "testing123"
 	virtual_server = "eap-aka"
 }

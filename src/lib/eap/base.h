@@ -45,15 +45,6 @@ RCSIDH(lib_eap_base_h, "$Id$")
 #define REQUEST_DATA_EAP_TUNNEL_CALLBACK FR_EAP_MESSAGE
 #define REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK ((FR_EAP_MESSAGE << 16) | FR_EAP_METHOD_MSCHAPV2)
 
-
-#define EAP_SECTION_DEFINE(_field, _verb, _name) \
-	{ \
-		.name = _verb, \
-		.name2 = _name, \
-		.component = MOD_AUTHORIZE, \
-		.offset = offsetof(eap_aka_sim_actions_t, _field), \
-	}
-
 /*
  *	This is for tunneled callbacks
  */

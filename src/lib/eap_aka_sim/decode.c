@@ -116,7 +116,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 				 uint8_t const *data, size_t const attr_len, size_t const data_len,
 				 void *decode_ctx)
 {
-	fr_aka_sim_decode_ctx_t	*packet_ctx = decode_ctx;
+	fr_aka_sim_ctx_t	*packet_ctx = decode_ctx;
 	EVP_CIPHER_CTX		*evp_ctx;
 	EVP_CIPHER const	*evp_cipher = EVP_aes_128_cbc();
 	size_t			block_size = EVP_CIPHER_block_size(evp_cipher);
@@ -532,7 +532,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_d
 	size_t			prefix = 0;
 	fr_dict_attr_t		*unknown;
 
-	fr_aka_sim_decode_ctx_t	*packet_ctx = decode_ctx;
+	fr_aka_sim_ctx_t	*packet_ctx = decode_ctx;
 
 	if (!fr_cond_assert(attr_len <= data_len)) return -1;
 	if (!fr_cond_assert(parent)) return -1;
@@ -960,7 +960,7 @@ ssize_t fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t 
  *	- -1 on failure.
  */
 int fr_aka_sim_decode(request_t *request, fr_dcursor_t *decoded, fr_dict_t const *dict,
-		  uint8_t const *data, size_t data_len, fr_aka_sim_decode_ctx_t *decode_ctx)
+		  uint8_t const *data, size_t data_len, fr_aka_sim_ctx_t *decode_ctx)
 {
 	ssize_t			ret;
 	uint8_t	const		*p = data;
@@ -1025,23 +1025,21 @@ int fr_aka_sim_decode(request_t *request, fr_dcursor_t *decoded, fr_dict_t const
 	return 0;
 }
 
-static int _test_ctx_free(UNUSED fr_aka_sim_decode_ctx_t *ctx)
+static int _test_ctx_free(UNUSED fr_aka_sim_ctx_t *ctx)
 {
 	fr_aka_sim_free();
 
 	return 0;
 }
 
-static fr_aka_sim_decode_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr, size_t k_encr_len)
+static fr_aka_sim_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr, size_t k_encr_len)
 {
-	fr_aka_sim_decode_ctx_t	*test_ctx;
-	fr_aka_sim_keys_t		*keys;
+	fr_aka_sim_ctx_t	*test_ctx;
 
 	if (fr_aka_sim_init() < 0) return NULL;
 
-	test_ctx = talloc_zero(ctx, fr_aka_sim_decode_ctx_t);
-	test_ctx->keys = keys = talloc_zero(test_ctx, fr_aka_sim_keys_t);
-	memcpy(keys->k_encr, k_encr, k_encr_len);
+	test_ctx = talloc_zero(ctx, fr_aka_sim_ctx_t);
+	test_ctx->k_encr = talloc_memdup(test_ctx, k_encr, k_encr_len);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	return test_ctx;
@@ -1051,7 +1049,7 @@ static fr_aka_sim_decode_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_
  */
 static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
 {
-	fr_aka_sim_decode_ctx_t	*test_ctx;
+	fr_aka_sim_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
 					     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
@@ -1068,7 +1066,7 @@ static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
 
 static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
 {
-	fr_aka_sim_decode_ctx_t *test_ctx;
+	fr_aka_sim_ctx_t *test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
 					     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
@@ -1084,7 +1082,7 @@ static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
 
 static int decode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx)
 {
-	fr_aka_sim_decode_ctx_t *test_ctx;
+	fr_aka_sim_ctx_t *test_ctx;
 	static uint8_t		k_encr[] = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,
 					     0xa6, 0xa8, 0xec, 0x99, 0x86, 0xeb, 0xb6, 0x20 };
 

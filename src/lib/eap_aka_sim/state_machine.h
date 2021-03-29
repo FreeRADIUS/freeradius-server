@@ -28,76 +28,36 @@ RCSIDH(lib_eap_aka_sim_state_machine_h, "$Id$")
 
 #include <freeradius-devel/eap_aka_sim/base.h>
 
-/** Cache sections to call on various protocol events
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct eap_aka_sim_session_s eap_aka_sim_session_t;
+
+/** The state function which should receive any incoming packets
  *
  */
-typedef struct {
-	union {
-		struct {
-			CONF_SECTION	*send_aka_identity_request;	//!< Called when we're about to request a
-									///< different identity.
-			CONF_SECTION	*recv_aka_identity_response;	//!< Called when we receive a new identity.
+typedef unlang_action_t (*eap_aka_sim_state_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					       request_t *request, eap_aka_sim_session_t *eap_aka_sim_session);
 
-			CONF_SECTION	*recv_authentication_reject;	//!< Called if the supplicant rejects the
-									///< authentication attempt.
-			CONF_SECTION	*recv_syncronization_failure;	//!< Called if the supplicant determines
-									///< the AUTN value is invalid.
-									///< Usually used for resyncing with the HLR.
-		} aka;
+/** The function to execute after common code has completed
+ *
+ * Mostly used to set functions to run after pseudonym and session
+ * loading/clearing/storing is complete.
+ */
+typedef unlang_action_t (*eap_aka_sim_next_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					      request_t *request, eap_aka_sim_session_t *eap_aka_sim_session);
 
-		struct {
-			CONF_SECTION	*send_sim_start_request;	//!< Called when we're about to request a
-									///< different identity.
-			CONF_SECTION	*recv_sim_start_response;	//!< Called when we receive a new identity.
+struct eap_aka_sim_session_s {
+	/*
+	 *	State machine management
+	 */
+	eap_aka_sim_state_t		state;				//!< The process function to run when we
+									///< receive the next round of EAP-SIM/AKA/AKA'.
 
-		} sim;
-	};
+	eap_aka_sim_next_t		next;				//!< Resumption function to call after
+									///< executing common code.
 
-	CONF_SECTION	*send_identity_request;		//!< Called when we're about to request a
-							///< different identity.
-	CONF_SECTION	*recv_identity_response;	//!< Called when we receive a new identity.
-
-	CONF_SECTION	*send_challenge_request;	//!< Called when we're about to send a
-							///< a challenge.
-	CONF_SECTION	*recv_challenge_response;	//!< Called when we receive a response
-							///< to a previous challenge.
-
-	CONF_SECTION	*send_fast_reauth_request;	//!< Called when we're about to send a
-							///< Fast-Reauth-Request.
-	CONF_SECTION	*recv_fast_reauth_response;	//!< Called when we receive a response
-							///< to a previous Fast-Reauth-Request.
-
-	CONF_SECTION	*recv_client_error;		//!< Called if the supplicant experiences
-							///< an error of some kind.
-
-	CONF_SECTION	*send_reauthentication_request;	//!< Challenge the supplicant with an MK
-							///< from an existing session.
-
-	CONF_SECTION	*recv_reauthentication_response; //!< Process the reauthentication response
-							///< from the supplicant.
-
-	CONF_SECTION	*send_failure_notification;	//!< Called when we're about to send a
-							///< failure notification.
-	CONF_SECTION	*send_success_notification;	//!< Called when we're about to send a
-							///< success notification.
-	CONF_SECTION	*recv_failure_notification_ack;	//!< Called when the supplicant ACKs our
-							///< failure notification.
-	CONF_SECTION	*recv_success_notification_ack;	//!< Called when the supplicant ACKs our
-							///< success notification.
-
-	CONF_SECTION	*send_eap_success;		//!< Called when we send an EAP-Success message.
-	CONF_SECTION	*send_eap_failure;		//!< Called when we send an EAP-Failure message.
-
-	CONF_SECTION	*load_pseudonym;		//!< Resolve a pseudonym to a permanent ID.
-	CONF_SECTION	*store_pseudonym;		//!< Store a permanent ID to pseudonym mapping.
-	CONF_SECTION	*clear_pseudonym;		//!< Clear pseudonym to permanent ID mapping.
-
-	CONF_SECTION	*load_session;			//!< Load cached authentication vectors.
-	CONF_SECTION	*store_session;			//!< Store authentication vectors.
-	CONF_SECTION	*clear_session;			//!< Clear authentication vectors.
-} eap_aka_sim_actions_t;
-
-typedef struct {
 	eap_type_t			type;				//!< Either FR_TYPE_AKA, or FR_TYPE_AKA_PRIME.
 
 	bool				challenge_success;		//!< Whether we received the correct
@@ -130,8 +90,6 @@ typedef struct {
 	bool				send_result_ind;		//!< Say that we would like to use protected
 									///< result indications
 									///< (AKA-Notification-Success).
-	bool				send_at_bidding_prefer_prime;	//!< Indicate that we prefer EAP-AKA' and
-									///< include an AT_BIDDING attribute.
 
 	bool				prev_recv_sync_failure;		//!< We only allow one sync failure per
 									///< session for sanity.
@@ -153,30 +111,129 @@ typedef struct {
 	EVP_MD const			*mac_md;			//!< HMAC-MD we use to generate the MAC.
 									///< EVP_sha1() for EAP-AKA, EVP_sha256()
 									///< for EAP-AKA'.
+};
 
-	int  				id;				//!< Packet ID. (replay protection).
-} eap_aka_sim_session_t;
+/** Cache sections to call on various protocol events
+ *
+ */
+typedef struct {
+	union {
+		/** @name EAP-AKA specific sections
+		 *
+		 * @{
+		 */
+		 struct {
+			CONF_SECTION	*send_aka_identity_request;	//!< Called when we're about to request a
+									///< different identity.
+			CONF_SECTION	*recv_aka_identity_response;	//!< Called when we receive a new identity.
+
+			CONF_SECTION	*recv_aka_authentication_reject;//!< Called if the supplicant rejects the
+									///< authentication attempt.
+			CONF_SECTION	*recv_aka_syncronization_failure;//!< Called if the supplicant determines
+									///< the AUTN value is invalid.
+									///< Usually used for resyncing with the HLR.
+
+			CONF_SECTION	*send_aka_challenge_request;	//!< Called when we're about to send a
+									///< a challenge.
+			CONF_SECTION	*recv_aka_challenge_response;	//!< Called when we receive a response
+									///< to a previous challenge.
+		};
+		/** @} */
+
+		/** @name EAP-SIM specific sections
+		 *
+		 * @{
+		 */
+		struct {
+			CONF_SECTION	*send_sim_challenge_request;	//!< Called when we're about to send a
+									///< a challenge.
+			CONF_SECTION	*recv_sim_challenge_response;	//!< Called when we receive a response
+									///< to a previous challenge.
+
+			CONF_SECTION	*send_sim_start_request;	//!< Called when we're about to request a
+									///< different identity.
+			CONF_SECTION	*recv_sim_start_response;	//!< Called when we receive a new identity.
+		};
+		/** @} */
+	};
+
+	/** @name Common protocol sections for all methods
+	 *
+	 * @{
+	 */
+	CONF_SECTION	*send_common_identity_request;			//!< Called when we're about to request a
+									///< different identity.
+	CONF_SECTION	*recv_common_identity_response;			//!< Called when we receive a new identity.
+
+	CONF_SECTION	*recv_common_client_error;			//!< Called if the supplicant experiences
+									///< an error of some kind.
+
+	CONF_SECTION	*send_common_reauthentication_request;		//!< Challenge the supplicant with an MK
+									///< from an existing session.
+
+	CONF_SECTION	*recv_common_reauthentication_response; 	//!< Process the reauthentication response
+									///< from the supplicant.
+
+	CONF_SECTION	*recv_common_failure_notification_ack;		//!< Called when the supplicant ACKs our
+									///< failure notification.
+
+	CONF_SECTION	*send_common_failure_notification;		//!< Called when we're about to send a
+									///< failure notification.
+
+	CONF_SECTION	*recv_common_success_notification_ack;		//!< Called when the supplicant ACKs our
+									///< success notification.
+
+	CONF_SECTION	*send_common_success_notification;		//!< Called when we're about to send a
+									///< success notification.
+
+
+	CONF_SECTION	*send_eap_success;				//!< Called when we send an EAP-Success message.
+	CONF_SECTION	*send_eap_failure;				//!< Called when we send an EAP-Failure message.
+	/** @} */
+
+	/** @name Internal sections for caching
+	 *
+	 * @{
+	 */
+	CONF_SECTION	*load_pseudonym;				//!< Resolve a pseudonym to a permanent ID.
+	CONF_SECTION	*store_pseudonym;				//!< Store a permanent ID to pseudonym mapping.
+	CONF_SECTION	*clear_pseudonym;				//!< Clear pseudonym to permanent ID mapping.
+
+	CONF_SECTION	*load_session;					//!< Load cached authentication vectors.
+	CONF_SECTION	*store_session;					//!< Store authentication vectors.
+	CONF_SECTION	*clear_session;					//!< Clear authentication vectors.
+	/** @} */
+} eap_aka_sim_actions_t;
 
 typedef struct {
+	eap_type_t			type;				//!< The preferred EAP-Type of this instance
+									///< of the EAP-SIM/AKA/AKA' state machine.
+
 	char const			*network_name;			//!< Network ID as described by RFC 5448.
 	fr_aka_sim_id_req_type_t	request_identity;		//!< Whether we always request the identity of
 									///< the subscriber.
 	size_t				ephemeral_id_length;		//!< The length of any identities we're
 									///< generating.
-	CONF_SECTION    		*virtual_server;		//!< Virtual server.
+
 	bool				protected_success;		//!< Send a success notification as well as
 									///< and EAP-Success packet.
-	bool				send_at_bidding_prefer_prime;	//!< Include the AT bidding attribute in
-									///< challenge requests.
-	bool				send_at_bidding_prefer_prime_is_set;	//!< Whether the user specified a value.
 
 	bool				strip_permanent_identity_hint;	//!< Control whether the hint byte is stripped
 									///< when populating Permanent-Identity.
 
-	eap_aka_sim_actions_t		actions;			//!< Pre-compiled virtual server sections.
-} eap_aka_sim_common_conf_t;
+	EVP_MD const			*hmac_md;			//!< The hmac used for validating packets.
+									///< EVP_sha1() for EAP-AKA, EVP_sha256()
+									///< for EAP-AKA'.
 
-/*
- *	The main entry point
- */
-unlang_action_t aka_sim_state_machine_start(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+	EVP_MD const			*checkcode_md;			//!< The hmac used for validating packets
+									///< checkcodes.
+
+	eap_aka_sim_actions_t		actions;			//!< Pre-compiled virtual server sections.
+} eap_aka_sim_process_conf_t;
+
+unlang_action_t eap_aka_sim_state_machine_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+
+#ifdef __cplusplus
+}
+#endif
+
