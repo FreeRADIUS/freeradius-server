@@ -24,9 +24,13 @@
 #include <sys/types.h>
 #include <freeradius-devel/util/token.h>
 
-#define AKA_SIM_3GPP_PSEUDONYM_LEN		23	//!< Length of a base64 encoded 3gpp pseudonym.
-#define AKA_SIM_IMSI_MAX_LEN			15	//!< Length of an IMSI number in ASCII.
-#define AKA_SIM_IMSI_MIN_LEN			14	//!< Minimum length of an IMSI number in ASCII.
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define AKA_SIM_3GPP_PSEUDONYM_LEN		23U	//!< Length of a base64 encoded 3gpp pseudonym.
+#define AKA_SIM_IMSI_MAX_LEN			15U	//!< Length of an IMSI number in ASCII.
+#define AKA_SIM_IMSI_MIN_LEN			14U	//!< Minimum length of an IMSI number in ASCII.
 
 /** SIM/AKA method hints
  *
@@ -91,7 +95,7 @@ size_t		fr_aka_sim_id_user_len(char const *nai, size_t nai_len);
 char const	*fr_aka_sim_domain(char const *nai, size_t nai_len);
 
 ssize_t		fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
-						    char const *domain, size_t domain_len);
+							char const *domain, size_t domain_len);
 
 int		fr_aka_sim_id_type(fr_aka_sim_id_type_t *type, fr_aka_sim_method_hint_t *hint,
 				   char const *id, size_t id_len);
@@ -109,3 +113,7 @@ uint8_t		fr_aka_sim_id_3gpp_pseudonym_key_index(char const encr_id[AKA_SIM_3GPP_
 int		fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN],
 				     		     char const encr_id[AKA_SIM_3GPP_PSEUDONYM_LEN],
 				     		     uint8_t const key[16]);
+
+#ifdef __cplusplus
+}
+#endif

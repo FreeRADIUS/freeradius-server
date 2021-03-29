@@ -81,7 +81,7 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_list_t *vps, int idx, 
 	uint8_t		opc_buff[MILENAGE_OPC_SIZE];
 	uint8_t	const	*opc_p;
 	uint32_t	version;
-	int		i;
+	unsigned int	i;
 
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
@@ -398,7 +398,7 @@ static int vector_umts_from_ki(request_t *request, fr_pair_list_t *vps, fr_aka_s
 
 	size_t		ki_size, amf_size;
 	uint32_t	version = FR_SIM_ALGO_VERSION_VALUE_MILENAGE;
-	int		i;
+	unsigned int	i;
 
 	/*
 	 *	Select the algorithm (default to Milenage)

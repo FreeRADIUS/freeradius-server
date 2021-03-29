@@ -31,17 +31,17 @@
 
 fr_table_num_sorted_t const fr_aka_sim_id_request_table[] = {
 	{ L("Any-Id-Req"),		AKA_SIM_ANY_ID_REQ		},
-	{ L("FullAuth-Id-Req"),	AKA_SIM_FULLAUTH_ID_REQ		},
+	{ L("FullAuth-Id-Req"),		AKA_SIM_FULLAUTH_ID_REQ		},
 	{ L("no"),			AKA_SIM_NO_ID_REQ		},	/* Used for config parsing */
-	{ L("none"),		AKA_SIM_NO_ID_REQ		},
+	{ L("none"),			AKA_SIM_NO_ID_REQ		},
 	{ L("Permanent-Id-Req"),	AKA_SIM_PERMANENT_ID_REQ	},
 };
 size_t fr_aka_sim_id_request_table_len = NUM_ELEMENTS(fr_aka_sim_id_request_table);
 
 fr_table_num_sorted_t const fr_aka_sim_id_method_table[] = {
-	{ L("AKA'"),		AKA_SIM_METHOD_HINT_AKA_PRIME	},
-	{ L("AKA"),		AKA_SIM_METHOD_HINT_AKA		},
-	{ L("SIM"),		AKA_SIM_METHOD_HINT_SIM		},
+	{ L("AKA'"),			AKA_SIM_METHOD_HINT_AKA_PRIME	},
+	{ L("AKA"),			AKA_SIM_METHOD_HINT_AKA		},
+	{ L("SIM"),			AKA_SIM_METHOD_HINT_SIM		},
 };
 size_t fr_aka_sim_id_method_table_len = NUM_ELEMENTS(fr_aka_sim_id_method_table);
 
@@ -543,7 +543,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 	char const	*p = encr_id, *end = p + AKA_SIM_3GPP_PSEUDONYM_LEN;
 
 	size_t		len = 0;
-	int		i;
+	unsigned int	i;
 
 	for (i = 0; i < AKA_SIM_3GPP_PSEUDONYM_LEN; i++) {
 		if (!fr_is_base64(encr_id[i])) {

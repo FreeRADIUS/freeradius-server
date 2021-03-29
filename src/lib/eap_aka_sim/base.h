@@ -35,44 +35,44 @@ RCSIDH(sim_h, "$Id$")
 
 #include "id.h"
 
-#define AKA_SIM_MAX_STRING_LENGTH		1016		//!< Maximum size of a SIM/AKA['] string ((4 * 255) - 4).
-#define AKA_SIM_IV_SIZE				16		//!< Length of the IV used when processing AT_ENCR.
-#define AKA_SIM_MAC_DIGEST_SIZE			16		//!< Length of MAC used to prevent packet modification.
-#define AKA_SIM_MAC_SIZE			20		//!< Length of MAC used to prevent packet modification.
-#define AKA_SIM_AUTH_SIZE			16
-#define AKA_SIM_SQN_AK_SIZE			6
-#define AKA_SIM_NONCE_S_SIZE			16		//!< Length of re-authentication nonce
+#define AKA_SIM_MAX_STRING_LENGTH		1016U		//!< Maximum size of a SIM/AKA['] string ((4 * 255) - 4).
+#define AKA_SIM_IV_SIZE				16U		//!< Length of the IV used when processing AT_ENCR.
+#define AKA_SIM_MAC_DIGEST_SIZE			16U		//!< Length of MAC used to prevent packet modification.
+#define AKA_SIM_MAC_SIZE			20U		//!< Length of MAC used to prevent packet modification.
+#define AKA_SIM_AUTH_SIZE			16U
+#define AKA_SIM_SQN_AK_SIZE			6U
+#define AKA_SIM_NONCE_S_SIZE			16U		//!< Length of re-authentication nonce
 
-#define AKA_SIM_KI_SIZE				16		//!< Length of secret data shared between SIM and AuC.
-#define AKA_SIM_OP_SIZE				16		//!< Length of Operator Algorithm Configuration.
-#define AKA_SIM_OPC_SIZE			16		//!< Length of modified Operator Algorithm Configuration.
+#define AKA_SIM_KI_SIZE				16U		//!< Length of secret data shared between SIM and AuC.
+#define AKA_SIM_OP_SIZE				16U		//!< Length of Operator Algorithm Configuration.
+#define AKA_SIM_OPC_SIZE			16U		//!< Length of modified Operator Algorithm Configuration.
 
-#define AKA_SIM_MK_SIZE				20		//!< Master key size
-#define AKA_SIM_K_RE_SIZE			32		//!< Reauthentication key size.
+#define AKA_SIM_MK_SIZE				20U		//!< Master key size
+#define AKA_SIM_K_RE_SIZE			32U		//!< Reauthentication key size.
 
-#define AKA_SIM_SKIPPABLE_MAX			127		//!< The last non-skippable attribute.
+#define AKA_SIM_SKIPPABLE_MAX			127U		//!< The last non-skippable attribute.
 
-#define AKA_SIM_VECTOR_GSM_RAND_SIZE		16		//!< Length of RAND in GSM triplet.
-#define AKA_SIM_VECTOR_GSM_SRES_SIZE		4		//!< Length of SRES in GSM triplet.
-#define AKA_SIM_VECTOR_GSM_KC_SIZE		8		//!< Length of Kc in GSM triplet.
+#define AKA_SIM_VECTOR_GSM_RAND_SIZE		16U		//!< Length of RAND in GSM triplet.
+#define AKA_SIM_VECTOR_GSM_SRES_SIZE		4U		//!< Length of SRES in GSM triplet.
+#define AKA_SIM_VECTOR_GSM_KC_SIZE		8U		//!< Length of Kc in GSM triplet.
 
-#define AKA_SIM_VECTOR_UMTS_AUTN_SIZE		16
-#define AKA_SIM_VECTOR_UMTS_CK_SIZE		16
-#define AKA_SIM_VECTOR_UMTS_IK_SIZE		16
-#define AKA_SIM_VECTOR_UMTS_AK_SIZE		6
-#define AKA_SIM_VECTOR_UMTS_RAND_SIZE		16
-#define AKA_SIM_VECTOR_UMTS_XRES_MAX_SIZE	16
+#define AKA_SIM_VECTOR_UMTS_AUTN_SIZE		16U
+#define AKA_SIM_VECTOR_UMTS_CK_SIZE		16U
+#define AKA_SIM_VECTOR_UMTS_IK_SIZE		16U
+#define AKA_SIM_VECTOR_UMTS_AK_SIZE		6U
+#define AKA_SIM_VECTOR_UMTS_RAND_SIZE		16U
+#define AKA_SIM_VECTOR_UMTS_XRES_MAX_SIZE	16U
 
-#define EAP_SIM_VERSION				1
-#define EAP_SIM_NONCE_MT_SIZE			16		//!< Length of challenge from SIM client.
+#define EAP_SIM_VERSION				1U
+#define EAP_SIM_NONCE_MT_SIZE			16U		//!< Length of challenge from SIM client.
 
-#define EAP_AKA_SIM_AUTH_SIZE			16
+#define EAP_AKA_SIM_AUTH_SIZE			16U
 
 
-#define EAP_AKA_AUTS_SIZE			14		//!< Server sequence number.  SIM checks this
+#define EAP_AKA_AUTS_SIZE			14U		//!< Server sequence number.  SIM checks this
 								//!< is within the correct range.
-#define EAP_AKA_AUTH_SIZE			16
-#define EAP_AKA_PRIME_AUTH_SIZE			32
+#define EAP_AKA_AUTH_SIZE			16U
+#define EAP_AKA_PRIME_AUTH_SIZE			32U
 
 /** The type of auth vector held by a fr_aka_sim_keys_t
  */
