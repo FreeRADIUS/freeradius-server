@@ -280,7 +280,7 @@ recv Access-Request {
 ...
 ```
 
-=== %{interpreter:<state>}
+=== %(interpreter:<state>)
 
 Get information about the interpreter state.
 
@@ -300,7 +300,7 @@ Get information about the interpreter state.
 
 [source,unlang]
 ----
-"Failure in test at line %{interpreter:...filename}:%{interpreter:...line}"
+"Failure in test at line %(interpreter:...filename):%(interpreter:...line)"
 ----
 
 .Output
