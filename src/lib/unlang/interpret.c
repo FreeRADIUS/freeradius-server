@@ -108,6 +108,19 @@ static void stack_dump(request_t *request)
 #define DUMP_STACK
 #endif
 
+static inline CC_HINT(always_inline)
+void request_done(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_interpret_t	*intp = stack->intp;
+
+	if (request_is_internal(request)) {
+		intp->funcs.done_internal(request, stack->result, intp->uctx);
+	} else {
+		intp->funcs.done_external(request, stack->result, intp->uctx);
+	}
+}
+
 /** Push a new frame onto the stack
  *
  * @param[in] request		to push the frame onto.
@@ -683,13 +696,8 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	 *	This usually means the request is complete in its
 	 *	entirety.
 	 */
-	if (stack->depth == 0) {
-		if (request_is_internal(request)) {
-			intp->funcs.done_internal(request, stack->result, intp->uctx);
-		} else {
-			intp->funcs.done_external(request, stack->result, intp->uctx);
-		}
-	}
+	if (stack->depth == 0) request_done(request);
+
 	return rcode;
 }
 
@@ -860,13 +868,9 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 
 	/*
 	 *	If we're stopping, then mark the request as stopped.
-	 *	Then, call the frame signal handler.  The keyword will
-	 *	then take care of calling us for any children, which
-	 *	will then be marked as STOP_PROCESSING.
+	 *	Then, call the frame signal handler.
 	 */
-	if (action == FR_SIGNAL_CANCEL) {
-		request->master_state = REQUEST_STOP_PROCESSING;
-	}
+	if (action == FR_SIGNAL_CANCEL) request->master_state = REQUEST_STOP_PROCESSING;
 
 	/*
 	 *	Requests that haven't been run through the interpret
@@ -874,6 +878,8 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	 *	need to do anything.
 	 */
 	if (stack && (stack->depth > 0)) frame_signal(request, action, 0);
+
+	if (action == FR_SIGNAL_CANCEL) request_done(request);
 }
 
 /** Return the depth of the request's stack
