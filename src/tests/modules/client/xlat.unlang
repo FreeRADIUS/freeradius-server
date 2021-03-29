@@ -1,0 +1,53 @@
+update request {
+        &Tmp-String-0 := "%(client:nas_type)"
+}
+
+if (&Tmp-String-0 != 'a_type') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-0 := "%(client:nas_type 127.0.0.1)"
+}
+
+if (&Tmp-String-0 != 'a_type') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-0 := "%(client:nas_type 127.0.0.2)"
+}
+
+if (&Tmp-String-0 != 'b_type') {
+        test_fail
+}
+
+update request {
+	&Tmp-String-0 := "%(client:nas_type 127.0.0.5)"
+}
+
+if (&Tmp-String-0 != 'b_type') {
+	test_fail
+}
+
+#
+#  Test non-existent client properties
+#
+update request {
+	&Tmp-String-3 := "%(client:non-existent-attr)"
+	&Tmp-String-4 += "%(client:non-existing-attr2)"
+}
+
+if (&Tmp-String-3 != "") {
+	test_fail
+}
+
+if (&Tmp-String-4 != "") {
+	test_fail
+}
+
+#
+#  Tests for multi-valued keys to be added when update takes multiple values
+#
+
+test_pass
