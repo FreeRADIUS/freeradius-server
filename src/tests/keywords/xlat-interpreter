@@ -1,7 +1,7 @@
 #
 #  PRE: update if
 #
-#  Note the test for %(interpreter:.line) is senisitive to the position of the
+#  Note the test for %(interpreter:.line) is sensitive to the position of the
 #  "update request" line in the file
 #
 
