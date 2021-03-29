@@ -60,13 +60,9 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 
 	/*
 	 *	Initialize some basic information for the child.
-	 *
-	 *	Note that we do NOT initialize child->backlog, as the
-	 *	child is never resumable... the parent is resumable.
 	 */
 	child->number = parent->number;
 	child->el = parent->el;
-	child->backlog = parent->backlog;
 
 	/*
 	 *	Initialize all of the async fields.
