@@ -35,8 +35,9 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/eap/types.h>
-#include "base.h"
 #include "attrs.h"
+#include "base.h"
+#include "crypto_priv.h"
 
 /*
  *  EAP-SIM/AKA/AKA' PACKET FORMAT
@@ -173,17 +174,16 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 		}
 	}
 
-	evp_ctx = EVP_CIPHER_CTX_new();
-	if (!evp_ctx) {
-		tls_strerror_printf("%s: Failed initialising EVP ctx", __FUNCTION__);
-		return -1;
+	if (unlikely(!packet_ctx->k_encr)) {
+		fr_strerror_printf("%s: No k_encr set, cannot decrypt attributes", __FUNCTION__);
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	if (!EVP_DecryptInit_ex(evp_ctx, evp_cipher, NULL, packet_ctx->keys->k_encr, packet_ctx->iv)) {
+	evp_ctx = aka_sim_crypto_cipher_ctx();
+	if (!EVP_DecryptInit_ex(evp_ctx, evp_cipher, NULL, packet_ctx->k_encr, packet_ctx->iv)) {
 		tls_strerror_printf("%s: Failed setting decryption parameters", __FUNCTION__);
 	error:
 		talloc_free(decr);
-		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
 	}
 
@@ -210,8 +210,6 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 		goto error;
 	}
 	decr_len += len;
-
-	EVP_CIPHER_CTX_free(evp_ctx);
 
 	/*
 	 *	Note: packet_ctx implicitly validates the length of the padding

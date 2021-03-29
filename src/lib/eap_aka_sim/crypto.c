@@ -42,10 +42,43 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/thread_local.h>
 #include <openssl/evp.h>
 
 #include "base.h"
 #include "attrs.h"
+#include "crypto_priv.h"
+
+/** Used for every non-persistent EVP_CIPHER operation in this library
+ *
+ * Avoids memory churn allocating and freeing the ctx for each operation.
+ */
+static _Thread_local EVP_CIPHER_CTX *evp_chipher_ctx;
+
+static void _evp_cipher_ctx_free_on_exit(void *arg)
+{
+	EVP_CIPHER_CTX_free(arg);
+}
+
+/** Allocate and reset a resumable EVP_CIPHER_CTX for each thread
+ *
+ * No two crypto operations ever occur simultaneously in the same thread,
+ * so it's fine to use a single context that persists for all operations.
+ */
+EVP_CIPHER_CTX *aka_sim_crypto_cipher_ctx(void)
+{
+	EVP_CIPHER_CTX *ctx;
+
+	if (unlikely(!evp_chipher_ctx)) {
+		MEM(ctx = EVP_CIPHER_CTX_new());
+		fr_thread_local_set_destructor(evp_chipher_ctx, _evp_cipher_ctx_free_on_exit, ctx);
+	} else {
+		ctx = evp_chipher_ctx;
+		EVP_CIPHER_CTX_reset(ctx);
+	}
+
+	return ctx;
+}
 
 /** Free OpenSSL memory associated with our checkcode ctx
  *

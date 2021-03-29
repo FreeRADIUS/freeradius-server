@@ -26,6 +26,7 @@
 #include <openssl/evp.h>
 #include "base.h"
 #include "id.h"
+#include "crypto_priv.h"
 
 #define us(x) (uint8_t) x
 
@@ -413,16 +414,10 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 	/*
 	 *	Now we have to encrypt the padded IMSI with AES-ECB
 	 */
-	evp_ctx = EVP_CIPHER_CTX_new();
-	if (!evp_ctx) {
-		tls_strerror_printf("Failed allocating EVP context");
-		return -1;
-	}
-
+	evp_ctx = aka_sim_crypto_cipher_ctx();
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		tls_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
-		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
 	}
 
@@ -456,8 +451,6 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 		fr_strerror_printf("Invalid ciphertext length, expected %zu, got %zu", sizeof(padded), encr_len);
 		goto error;
 	}
-
-	EVP_CIPHER_CTX_free(evp_ctx);
 
 	/*
 	 *	Now encode the entire output as base64.
@@ -564,16 +557,10 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 		p += 4;	/* 32bit input -> 24bit output */
 	}
 
-	evp_ctx = EVP_CIPHER_CTX_new();
-	if (!evp_ctx) {
-		tls_strerror_printf("Failed allocating EVP context");
-		return -1;
-	}
-
+	evp_ctx = aka_sim_crypto_cipher_ctx();
 	if (unlikely(EVP_DecryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		tls_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
-		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
 	}
 
@@ -620,9 +607,6 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 		*out_p++ = ((compressed[i] & 0xf0) >> 4) + '0';
 		*out_p++ = (compressed[i] & 0x0f) + '0';
 	}
-
-	EVP_CIPHER_CTX_free(evp_ctx);
-
 	out[AKA_SIM_IMSI_MAX_LEN] = '\0';
 
 	return 0;

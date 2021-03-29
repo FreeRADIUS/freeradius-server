@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/eap/types.h>
 #include "base.h"
 #include "attrs.h"
+#include "crypto_priv.h"
 
 #define SIM_MAX_ATTRIBUTE_VALUE_LEN	((255 * 4) - 2)		/* max length field value less Type + Length fields */
 
@@ -191,18 +192,17 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), pad_len, "Done padding attribute");
 	}
 
-	evp_ctx = EVP_CIPHER_CTX_new();
-	if (!evp_ctx) {
-		tls_strerror_printf("Failed allocating EVP context");
+	if (unlikely(!packet_ctx->k_encr)) {
+		fr_strerror_printf("%s: No k_encr set, cannot encrypt attributes", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
+	evp_ctx = aka_sim_crypto_cipher_ctx();
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, evp_cipher, NULL,
-					packet_ctx->keys->k_encr, packet_ctx->iv) != 1)) {
+					packet_ctx->k_encr, packet_ctx->iv) != 1)) {
 		tls_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
 		talloc_free(encr);
-		EVP_CIPHER_CTX_free(evp_ctx);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -251,10 +251,10 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
 	 *	Overwrite the plaintext with our encrypted blob
 	 */
 	fr_dbuff_set_to_start(&work_dbuff);
-	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, encr, encr_len);
 
+	slen = fr_dbuff_in_memcpy(&work_dbuff, encr, encr_len);
 	talloc_free(encr);
-	EVP_CIPHER_CTX_free(evp_ctx);
+	if (slen <= 0) return slen;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
