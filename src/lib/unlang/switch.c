@@ -147,7 +147,7 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 		 *
 		 *	Note that we don't need to do any casting of the RHS
 		 */
-		if (cond_eval_map(request, 0, &cond) == 1) {
+		if (cond_eval(request, RLM_MODULE_NOOP, &cond) == 1) {
 			found = this;
 			break;
 		}
