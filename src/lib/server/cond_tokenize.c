@@ -933,6 +933,36 @@ check_short_circuit:
 done:
 	*c_out = c;
 
+	/*
+	 *	Update the total depth.
+	 */
+	if (c->next) {
+		c->depth = c->next->depth;
+		c->conditions = c->next->conditions;
+	}
+
+	switch (c->type) {
+	default:
+		break;
+
+	case COND_TYPE_TMPL:
+		c->conditions++;
+		break;
+
+	case COND_TYPE_MAP:
+		c->conditions += 2;
+		break;
+
+	case COND_TYPE_CHILD:
+		if (c->depth <= c->data.child->depth) {
+			c->depth = c->data.child->depth + 1;
+		}
+		if (c->conditions <= c->data.child->conditions) {
+			c->conditions = c->data.child->conditions;
+		}
+		break;
+	}
+
 	return 0;
 }
 
