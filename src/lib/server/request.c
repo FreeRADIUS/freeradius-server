@@ -299,6 +299,8 @@ static int _request_free(request_t *request)
 		      request->alloc_line,
 		      request->name ? request->name : "(null)", request->runnable_id);
 
+	RDEBUG3("Request freed (%p)", request);
+
 	/*
 	 *	Reinsert into the free list if it's not already
 	 *	in the free list.
@@ -319,7 +321,7 @@ static int _request_free(request_t *request)
 
 		if (request->session_state_ctx) {
 			fr_assert(talloc_parent(request->session_state_ctx) != request);	/* Should never be directly parented */
-			talloc_free(request->session_state_ctx);	/* Not parented from the request */
+			TALLOC_FREE(request->session_state_ctx);				/* Not parented from the request */
 		}
 		free_list = request_free_list;
 
@@ -348,6 +350,7 @@ static int _request_free(request_t *request)
 
 		return -1;	/* Prevent free */
  	}
+
 
 	/*
 	 *	Ensure anything that might reference the request is
@@ -639,24 +642,19 @@ void request_verify(char const *file, int line, request_t const *request)
 	(void)talloc_get_type_abort(request->control_ctx, fr_pair_t);
 	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs);
 	(void)talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
-	fr_assert_msg(talloc_parent(request->session_state_ctx) == NULL,
-		      "session_state_ctx must not be parented by another chunk, but is parented by %s",
-		      talloc_get_name(talloc_parent(request->session_state_ctx)));
+
+	{
+		TALLOC_CTX *parent = talloc_parent(request->session_state_ctx);
+
+		fr_assert_msg((parent == NULL) || (parent == talloc_null_ctx()),
+			      "session_state_ctx must not be parented by another chunk, but is parented by %s",
+			      talloc_get_name(talloc_parent(request->session_state_ctx)));
+	}
 
 	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
 
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, "request");
-#if 0
-		/*
-		 *	@todo - a multi-protocol server shouldn't have
-		 *	hard-coded RADIUS.
-		 */
-		if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
-		    (request->reply && !request->reply->code)) {
-			fr_assert(request->session_state_ctx != NULL);
-		}
-#endif
 	}
 	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
 
