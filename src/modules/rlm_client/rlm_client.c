@@ -207,63 +207,72 @@ finish:
 	return rcode;
 }
 
+static xlat_arg_parser_t const xlat_client_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** xlat to get client config data
  *
  * Example:
 @verbatim
-%{client:[<ipaddr>.]foo}
+%(client:foo [<ipaddr>])
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   request_t *request, char const *fmt)
+static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_list_t *in)
 {
 	char const	*value = NULL;
-	char		buffer[INET6_ADDRSTRLEN], *q;
-	char const	*p = fmt;
 	fr_ipaddr_t	ip;
 	CONF_PAIR	*cp;
 	RADCLIENT	*client = NULL;
+	fr_value_box_t	*field = fr_dlist_head(in);
+	fr_value_box_t	*client_ip = fr_dlist_next(in, field);
+	fr_value_box_t	*vb;
 
-	*out = NULL;
-
-	q = strrchr(p, '.');
-	if (q) {
-		strlcpy(buffer, p, (q + 1) - p);
-		if (fr_inet_pton(&ip, buffer, -1, AF_UNSPEC, false, true) < 0) goto request_client;
-
-		p = q + 1;
+	if (client_ip) {
+		if (fr_inet_pton(&ip, client_ip->vb_strvalue, -1, AF_UNSPEC, false, true) < 0) {
+			RDEBUG("Invalid client IP address \"%s\"", client_ip->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
 
 		client = client_find(NULL, &ip, IPPROTO_IP);
 		if (!client) {
-			RDEBUG("No client found with IP \"%s\"", buffer);
-			return 0;
+			RDEBUG("No client found with IP \"%s\"", client_ip->vb_strvalue);
+			return XLAT_ACTION_FAIL;
 		}
 	} else {
-	request_client:
 		client = request->client;
 		if (!client) {
 			RERROR("No client associated with this request");
-
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 	}
 
-	cp = cf_pair_find(client->cs, p);
+	cp = cf_pair_find(client->cs, field->vb_strvalue);
 	if (!cp || !(value = cf_pair_value(cp))) {
-		if (strcmp(fmt, "shortname") == 0 && request->client->shortname) {
+		if (strcmp(field->vb_strvalue, "shortname") == 0 && request->client->shortname) {
 			value = request->client->shortname;
 		}
-		else if (strcmp(fmt, "nas_type") == 0 && request->client->nas_type) {
+		else if (strcmp(field->vb_strvalue, "nas_type") == 0 && request->client->nas_type) {
 			value = request->client->nas_type;
 		}
-		if (!value) return 0;
+		if (!value) return XLAT_ACTION_DONE;
 	}
 
-	*out = talloc_typed_strdup(ctx, value);
-	return talloc_array_length(*out) - 1;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	if (fr_value_box_strdup(ctx, vb, NULL, value, false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -343,7 +352,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register_legacy(instance, "client", xlat_client, NULL, NULL, 0, 0);
+	xlat_t	*xlat;
+	xlat = xlat_register(instance, "client", xlat_client, false);
+	xlat_func_args(xlat, xlat_client_args);
 	map_proc_register(instance, "client", map_proc_client, NULL, 0);
 
 	return 0;
