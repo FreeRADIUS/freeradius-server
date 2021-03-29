@@ -512,7 +512,6 @@ set_types:
 	return 0;
 }
 
-
 /** Normalise one level of a condition
  *
  *	This function is called after every individual condition is
@@ -670,6 +669,8 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 
 			goto check_true; /* it's no longer a map */
 		}
+
+		c->async_required = tmpl_async_required(c->data.map->lhs) | tmpl_async_required(c->data.map->rhs);
 	}
 
 	/*
@@ -788,6 +789,10 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		default:
 			fr_assert_fail("Internal sanity check failed 2");
 			return -1;
+		}
+
+		if (c->type == COND_TYPE_TMPL) {
+			c->async_required = tmpl_async_required(c->data.vpt);
 		}
 	}
 
@@ -1516,6 +1521,8 @@ static void cond_reparent(fr_cond_t *c, fr_cond_t *parent)
 		c->parent = parent;
 
 		if (c->type == COND_TYPE_CHILD) cond_reparent(c->data.child, c);
+
+		if (parent) parent->async_required |= c->async_required;
 
 		c = c->next;
 	}

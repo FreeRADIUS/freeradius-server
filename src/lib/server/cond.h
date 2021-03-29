@@ -87,6 +87,7 @@ struct fr_cond_s {
 							///< tmpls as it doesn't apply anywhere else.
 	} data;
 
+	bool			async_required;	//!< is async required?
 	bool			negate;		//!< Invert the result of the expression.
 	fr_cond_pass2_t		pass2_fixup;
 

@@ -4769,8 +4769,14 @@ bool tmpl_async_required(tmpl_t const *vpt)
 	switch (vpt->type) {
 	case TMPL_TYPE_EXEC:	/* we don't have "exec no-wait" here */
 	case TMPL_TYPE_XLAT_UNRESOLVED:	/* we have no idea, so be safe */
+#ifndef HAVE_REGEX
+	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+#endif
 		return true;
 
+#ifndef HAVE_REGEX
+	case TMPL_TYPE_REGEX_XLAT:
+#endif
 	case TMPL_TYPE_XLAT:
 		return xlat_async_required(tmpl_xlat(vpt));
 
