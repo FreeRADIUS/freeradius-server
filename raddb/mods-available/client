@@ -76,9 +76,9 @@
 #  [options="header,autowidth"]
 #  |===
 #  | XLAT                          | Description
-#  | `%(client:nas_type)`          | Expands to client's `nas_type` (or "" if nas_type not set).
-#  | `%(client:nas_type <ipaddr>)` | Expands to the `nas_type` of the client specified
-#                                    by `<ipaddr>` (or "" if `nas_type` not set).
+#  | `%(client:<field>)`           | Expands to a field in the client definition.
+#  | `%(client:<field> <ipaddr>)`  | Expands to a field in the client definition specified
+                                     by `<ipaddr>`.
 #  |===
 #
 
