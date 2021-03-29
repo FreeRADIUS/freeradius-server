@@ -1870,12 +1870,17 @@ static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_length_args[] = {
+	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Return the on-the-wire size of the boxes in bytes
  *
  * Example:
 @verbatim
-"%{length:foobar}" == 6
-"%{length:%{bin:0102030005060708}}" == 8
+"%(length:foobar)" == 6
+"%(length:%{bin:0102030005060708})" == 8
 @endverbatim
  *
  * @see #xlat_func_strlen
@@ -1887,12 +1892,9 @@ static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 
 {
-	fr_value_box_t	*vb;
-	fr_dcursor_t	cursor;
+	fr_value_box_t	*vb = NULL;
 
-	for (vb = fr_dcursor_talloc_init(&cursor, in, fr_value_box_t);
-	     vb;
-	     vb = fr_dcursor_next(&cursor)) {
+	while ((vb = fr_dlist_next(in, vb))) {
 		fr_value_box_t *my;
 
 		MEM(my = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL, false));
@@ -3103,6 +3105,7 @@ do { \
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, xlat_func_integer_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
+	XLAT_REGISTER_ARGS("length", xlat_func_length, xlat_func_length_args);
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
@@ -3119,7 +3122,6 @@ do { \
 	XLAT_REGISTER_MONO("base64decode", xlat_func_base64_decode, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, xlat_func_bin_arg);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, xlat_func_hex_arg);
-	xlat_register(NULL, "length", xlat_func_length, false);
 	XLAT_REGISTER_MONO("map", xlat_func_map, xlat_func_map_arg);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);

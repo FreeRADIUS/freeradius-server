@@ -60,7 +60,7 @@ else {
 	test_fail
 }
 
-if ("%{length:%{Tmp-String-1}}" == 11) {
+if ("%(length:%{Tmp-String-1})" == 11) {
 	test_pass
 }
 else {
@@ -91,7 +91,7 @@ else {
 	test_fail
 }
 
-if ("%{length:%{Tmp-String-1}}" == 7) {
+if ("%(length:%{Tmp-String-1})" == 7) {
 	test_pass
 }
 else {
@@ -159,7 +159,7 @@ else {
 	test_fail
 }
 
-if ("%{length:%{Tmp-String-1}}" == 11) {
+if ("%(length:%{Tmp-String-1})" == 11) {
 	test_pass
 }
 else {
@@ -190,7 +190,7 @@ else {
 	test_fail
 }
 
-if ("%{length:%{Tmp-String-1}}" == 7) {
+if ("%(length:%{Tmp-String-1})" == 7) {
 	test_pass
 }
 else {

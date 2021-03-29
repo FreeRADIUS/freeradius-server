@@ -17,11 +17,11 @@ update request {
 }
 
 
-if ("%{length:%{Tmp-String-0}}" != 39) {
+if ("%(length:%{Tmp-String-0})" != 39) {
 	test_fail
 }
 
-if ("%{length:%{Tmp-String-1}}" != 42) {
+if ("%(length:%{Tmp-String-1})" != 42) {
 	test_fail
 }
 

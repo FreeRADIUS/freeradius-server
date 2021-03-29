@@ -1174,6 +1174,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
 	xlat_exp_t const	*node = head;
+	char			close;
 
 	if (!node) return 0;
 
@@ -1198,7 +1199,13 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 			break;
 		}
 
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%{");
+		if ((node->type == XLAT_FUNC) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%(");
+			close = ')';
+		} else {
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%{");
+			close = '}';
+		}
 		switch (node->type) {
 		case XLAT_ATTRIBUTE:
 			slen = tmpl_attr_print(out, node->attr, TMPL_ATTR_REF_PREFIX_NO);
@@ -1259,7 +1266,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 			fr_assert_fail(NULL);
 			break;
 		}
-		FR_SBUFF_IN_CHAR_RETURN(out, '}');
+		FR_SBUFF_IN_CHAR_RETURN(out, close);
 	next:
 		node = node->next;
 	}
