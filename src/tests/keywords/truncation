@@ -76,7 +76,7 @@ a02f4a3ab98d75992d68a15d393387fe9ef01041569570ad6fe884764e55567311bcacfcffae7655
 
 # Actual length of octet string is 4083 bytes
 update request {
-	&Tmp-Integer-0 := "%{length:%{Tmp-Octets-0}}"
+	&Tmp-Integer-0 := "%(length:%{Tmp-Octets-0})"
 }
 
 if (&Tmp-Integer-0 != 4083) {
@@ -92,7 +92,7 @@ update request {
 	&Tmp-String-0 := "%{1}"
 }
 
-if ("%{length:%{Tmp-String-0}}" != 8166) {
+if ("%(length:%{Tmp-String-0})" != 8166) {
 	test_fail
 }
 

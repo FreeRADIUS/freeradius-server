@@ -21,7 +21,7 @@ abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'
 }
 
 update request {
-	&Tmp-Integer-0        := "%{length:%{Tmp-String-0}}"
+	&Tmp-Integer-0        := "%(length:%{Tmp-String-0})"
 }
 
 if (&Tmp-Integer-0 != 260) {
@@ -29,14 +29,14 @@ if (&Tmp-Integer-0 != 260) {
 }
 
 update request {
-	&Tmp-Integer-0        := "%{length:%{Tmp-String-2}}"
-	&Tmp-Integer-1        := "%{length:%{Tmp-Octets-0}}"
-	&Tmp-Integer-2        := "%{length:%{Tmp-IP-Address-0}}"
-	&Tmp-Integer-4        := "%{length:%{Tmp-Integer-0}}"
-	&Tmp-Integer-6        := "%{length:%{Tmp-Cast-Ifid}}"
-	&Tmp-Integer-7        := "%{length:%{Tmp-Cast-IPv6Addr}}"
-	&Tmp-Integer-8        := "%{length:%{Tmp-Cast-IPv6Prefix}}"
-	&Tmp-Integer-9        := "%{length:%{Tmp-Cast-Byte}}"
+	&Tmp-Integer-0        := "%(length:%{Tmp-String-2})"
+	&Tmp-Integer-1        := "%(length:%{Tmp-Octets-0})"
+	&Tmp-Integer-2        := "%(length:%{Tmp-IP-Address-0})"
+	&Tmp-Integer-4        := "%(length:%{Tmp-Integer-0})"
+	&Tmp-Integer-6        := "%(length:%{Tmp-Cast-Ifid})"
+	&Tmp-Integer-7        := "%(length:%{Tmp-Cast-IPv6Addr})"
+	&Tmp-Integer-8        := "%(length:%{Tmp-Cast-IPv6Prefix})"
+	&Tmp-Integer-9        := "%(length:%{Tmp-Cast-Byte})"
 }
 
 # String - bin 0x39383730
@@ -81,10 +81,10 @@ if (&Tmp-Integer-9 != 1) {
 }
 
 update request {
-	&Tmp-Integer-0        := "%{length:%{Tmp-Cast-Short}}"
-	&Tmp-Integer-1        := "%{length:%{Tmp-Cast-Ether}}"
-	&Tmp-Integer-2        := "%{length:%{Tmp-Cast-Integer64}}"
-	&Tmp-Integer-3        := "%{length:%{Tmp-Cast-IPv4Prefix}}"
+	&Tmp-Integer-0        := "%(length:%{Tmp-Cast-Short})"
+	&Tmp-Integer-1        := "%(length:%{Tmp-Cast-Ether})"
+	&Tmp-Integer-2        := "%(length:%{Tmp-Cast-Integer64})"
+	&Tmp-Integer-3        := "%(length:%{Tmp-Cast-IPv4Prefix})"
 }
 
 # short - bin 0x373b

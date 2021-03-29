@@ -42,7 +42,7 @@ if (&Tmp-String-4 != "") {
 #
 #  Check repetition of binary output
 #
-if ("%{length:%{Tmp-String-5}}" != 10) {
+if ("%(length:%{Tmp-String-5})" != 10) {
 	test_fail
 }
 
