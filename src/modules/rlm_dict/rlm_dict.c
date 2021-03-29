@@ -61,29 +61,43 @@ static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out, r
 	return XLAT_ACTION_DONE;
 }
 
-/** Xlat for %{attr_by_oid:\<oid\>}
+static xlat_arg_parser_t const xlat_dict_attr_by_oid_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Xlat for %(attr_by_oid:\<oid\>)
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     request_t *request, char const *fmt)
+static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					   fr_value_box_list_t *in)
 {
 	unsigned int		attr = 0;
 	fr_dict_attr_t const	*parent = fr_dict_root(request->dict);
 	fr_dict_attr_t const	*da;
-	ssize_t		ret;
+	ssize_t			ret;
+	fr_value_box_t		*attr_vb = fr_dlist_head(in);
+	fr_value_box_t		*vb;
 
-	ret = fr_dict_attr_by_oid_legacy(fr_dict_internal(), &parent, &attr, fmt);
+	ret = fr_dict_attr_by_oid_legacy(fr_dict_internal(), &parent, &attr, attr_vb->vb_strvalue);
 	if (ret <= 0) {
-		REMARKER(fmt, -(ret), "%s", fr_strerror());
-		return ret;
+		REMARKER(attr_vb->vb_strvalue, -(ret), "%s", fr_strerror());
+		return XLAT_ACTION_FAIL;
 	}
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 
-	*out = talloc_typed_strdup(ctx, da->name);
-	return talloc_array_length(*out) - 1;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	if (fr_value_box_bstrndup(ctx, vb, NULL, da->name, strlen(da->name), false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -179,7 +193,8 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	xlat_t	*xlat;
 	xlat = xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, false);
 	xlat_func_args(xlat, xlat_dict_attr_by_num_args);
-	xlat_register_legacy(instance, "attr_by_oid", xlat_dict_attr_by_oid, NULL, NULL, 0, 0);
+	xlat = xlat_register(instance, "attr_by_oid", xlat_dict_attr_by_oid, false);
+	xlat_func_args(xlat, xlat_dict_attr_by_oid_args);
 	xlat_register_legacy(instance, "vendor", xlat_vendor, NULL, NULL, 0, 0);
 	xlat_register_legacy(instance, "vendor_num", xlat_vendor_num, NULL, NULL, 0, 0);
 	xlat_register_legacy(instance, "attr", xlat_attr, NULL, NULL, 0, 0);

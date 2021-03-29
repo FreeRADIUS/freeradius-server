@@ -7,33 +7,21 @@ if ("%(attr_by_num:1)" != 'User-Name') {
 	test_fail
 }
 
-if ("%{attr_by_oid:1}" == 'User-Name') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:1)" != 'User-Name') {
 	test_fail
 }
 
 # Should fail
-if ("%{attr_by_oid:26}" == 'Vendor-Specific') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:26)" != 'Vendor-Specific') {
 	test_fail
 }
 
 # Should fail
-if ("%{attr_by_oid:26.11344}" == 'FreeRADIUS') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:26.11344)" != 'FreeRADIUS') {
 	test_fail
 }
 
-if ("%{attr_by_oid:26.11344.1}" == 'Proxied-To') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:26.11344.1)" != 'Proxied-To') {
 	test_fail
 }
 
