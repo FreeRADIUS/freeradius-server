@@ -1238,27 +1238,39 @@ TALLOC_CTX *unlang_interpret_frame_talloc_ctx(request_t *request)
 	return (TALLOC_CTX *) request;
 }
 
+static xlat_arg_parser_t const unlang_interpret_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Get information about the interpreter state
  *
  * @ingroup xlat_functions
  */
-static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     request_t *request, char const *fmt)
+static xlat_action_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					   fr_value_box_list_t *in)
 {
 	unlang_stack_t		*stack = request->stack;
 	int			depth = stack->depth;
 	unlang_stack_frame_t	*frame;
 	unlang_t const		*instruction;
+	fr_value_box_t		*arg = fr_dlist_head(in);
+	char const		*fmt = arg->vb_strvalue;
+	fr_value_box_t		*vb;
 
-	fr_skip_whitespace(fmt);
-
+	MEM(vb = fr_value_box_alloc_null(ctx));
 	/*
 	 *	Find the correct stack frame.
 	 */
 	while (*fmt == '.') {
 		if (depth <= 1) {
-			return snprintf(*out, outlen, "<underflow>");
+			if (fr_value_box_bstrndup(ctx, vb, NULL, "<underflow>", 11, false) < 0) {
+			error:
+				talloc_free(vb);
+				return XLAT_ACTION_FAIL;
+			};
+			goto finish;
 		}
 
 		fmt++;
@@ -1275,29 +1287,33 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 	 *	Nothing there...
 	 */
 	if (!instruction) {
-		**out = '\0';
-		return 0;
+		return XLAT_ACTION_DONE;
 	}
 
 	/*
 	 *	Name of the instruction.
 	 */
 	if (strcmp(fmt, "name") == 0) {
-		return snprintf(*out, outlen, "%s", instruction->name);
+		if (fr_value_box_bstrndup(ctx, vb, NULL, instruction->name,
+					  strlen(instruction->name), false) < 0) goto error;
+		goto finish;
 	}
 
 	/*
 	 *	Unlang type.
 	 */
 	if (strcmp(fmt, "type") == 0) {
-		return snprintf(*out, outlen, "%s", unlang_ops[instruction->type].name);
+		if (fr_value_box_bstrndup(ctx, vb, NULL, unlang_ops[instruction->type].name,
+					  strlen(unlang_ops[instruction->type].name), false) < 0) goto error;
+		goto finish;
 	}
 
 	/*
 	 *	How deep the current stack is.
 	 */
 	if (strcmp(fmt, "depth") == 0) {
-		return snprintf(*out, outlen, "%d", depth);
+		fr_value_box_int32(vb, NULL, depth, false);
+		goto finish;
 	}
 
 	/*
@@ -1307,13 +1323,15 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 		unlang_group_t const *g;
 
 		if (!unlang_ops[instruction->type].debug_braces) {
-			return snprintf(*out, outlen, "???");
+			if (fr_value_box_bstrndup(ctx, vb, NULL, "???", 3, false) < 0) goto error;
+			goto finish;
 		}
 
 		g = (unlang_group_t const *) instruction;
 		fr_assert(g->cs != NULL);
 
-		return snprintf(*out, outlen, "%d", cf_lineno(g->cs));
+		fr_value_box_int32(vb, NULL, cf_lineno(g->cs), false);
+		goto finish;
 	}
 
 	/*
@@ -1323,20 +1341,26 @@ static ssize_t unlang_interpret_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t 
 		unlang_group_t const *g;
 
 		if (!unlang_ops[instruction->type].debug_braces) {
-			return snprintf(*out, outlen, "???");
+			if (fr_value_box_bstrndup(ctx, vb, NULL, "???", 3, false) < 0) goto error;
+			goto finish;
 		}
 
 		g = (unlang_group_t const *) instruction;
 		fr_assert(g->cs != NULL);
 
-		return snprintf(*out, outlen, "%s", cf_filename(g->cs));
+		if (fr_value_box_bstrndup(ctx, vb, NULL, cf_filename(g->cs),
+					  strlen(cf_filename(g->cs)), false) < 0) goto error;
+		goto finish;
 	}
 
-	**out = '\0';
-	return 0;
+finish:
+	if (vb->type != FR_TYPE_NULL) fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 void unlang_interpret_init_global(void)
 {
-	(void) xlat_register_legacy(NULL, "interpreter", unlang_interpret_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_t	*xlat;
+	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, false);
+	xlat_func_args(xlat, unlang_interpret_xlat_args);
 }
