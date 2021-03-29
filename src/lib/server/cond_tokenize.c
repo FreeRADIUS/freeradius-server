@@ -528,10 +528,9 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	/*
 	 *	Normalize the condition before returning.
 	 *
-	 *	We collapse multiple levels of braces to one.  Then
-	 *	convert maps to literals.  Then literals to true/false
-	 *	statements.  Then true/false ||/&& followed by other
-	 *	conditions to just conditions.
+	 *	We convert maps to literals.  Then literals to
+	 *	true/false statements.  Then true/false ||/&& followed
+	 *	by other conditions to just conditions.
 	 *
 	 *	Order is important.  The more complex cases are
 	 *	converted to simpler ones, from the most complex cases
@@ -539,59 +538,33 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 */
 
 	/*
-	 *	Loop because we might hoist a child to a child.
-	 */
-	while (c->type == COND_TYPE_CHILD) {
-		fr_cond_t *child;
-
-		child = c->data.child;
-
-		/*
-		 *	(FOO)     --> FOO
-		 *	(FOO) ... --> FOO ...
-		 */
-		if (!child->next) {
-			(void) talloc_steal(ctx, child);
-			child->parent = c->parent;
-			child->next = talloc_steal(child, c->next);
-
-			/*
-			 *	!(!FOO) --> FOO, etc.
-			 */
-			child->negate = (c->negate != child->negate);
-
-			talloc_free(c);
-			c = child;
-			continue;
-		}
-
-		/*
-		 *	(FOO ...) --> FOO ...
-		 *
-		 *	But don't do !(FOO || BAR) --> !FOO || BAR
-		 *	Because that's different.
-		 */
-		if (!c->next && !c->negate) {
-			(void) talloc_steal(ctx, child);
-			child->parent = c->parent;
-
-			talloc_free(c);
-			c = child;
-			continue;
-		}
-
-		/*
-		 *	Can't do anything else, stop looping.
-		 */
-		break;
-	}
-
-	/*
-	 *	No further optimizations are possible, so we just
-	 *	return.
+	 *	Do some limited normalizations here.
 	 */
 	if (c->type == COND_TYPE_CHILD) {
-		goto check_short_circuit;
+		fr_cond_t *child = c->data.child;
+
+		/*
+		 *	((FOO)) --> (FOO)
+		 *	!(!(FOO)) --> FOO
+		 */
+		if (!c->next && !child->next) {
+			if ((child->type == COND_TYPE_CHILD) ||
+			    (child->type == COND_TYPE_TRUE) ||
+			    (child->type == COND_TYPE_FALSE)) {
+				(void) talloc_steal(ctx, child);
+				child->parent = c->parent;
+				child->negate = (c->negate != child->negate);
+
+				talloc_free(c);
+				c = child;
+			}
+		}
+
+		/*
+		 *	No further optimizations are possible, so we
+		 *	just check for and/or short-circuit.
+		 */
+		 goto check_short_circuit;
 	}
 
 	/*
@@ -1610,7 +1583,27 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 	/*
 	 *	Now that everything has been normalized, reparent the children.
 	 */
-	if (*head) cond_reparent(*head, NULL);
+	if (*head) {
+		fr_cond_t *c = *head;
+
+		/*
+		 *	(FOO) -> FOO
+		 *	!(!(FOO)) -> FOO
+		 */
+		if ((c->type == COND_TYPE_CHILD) && !c->next) {
+			if (!c->negate || !c->data.child->next) {
+				fr_cond_t *child = c->data.child;
+				(void) talloc_steal(cs, child);
+				child->parent = c->parent;
+				child->negate = (c->negate != child->negate);
+
+				talloc_free(c);
+				*head = child;
+			}
+		}
+
+		cond_reparent(*head, NULL);
+	}
 
 	return slen + diff;
 }

@@ -1,4 +1,3 @@
-
 #
 #  Tests for parsing conditional expressions.
 #
@@ -52,7 +51,7 @@ match ERROR offset 4: Invalid operator
 
 # And now we have a bunch of VALID conditions we want to parse.
 
-# sillyness is OK
+# sillyness is OK, but cleaned up.
 condition ((((((ok))))))
 match ok
 
@@ -81,23 +80,23 @@ condition (&User-Name == &User-Password || &Filter-Id == &Reply-Message)
 match &User-Name == &User-Password || &Filter-Id == &Reply-Message
 
 condition ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match &User-Name == &User-Password || &Filter-Id == &Reply-Message
+match (&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
 
 condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match !&User-Name == &User-Password || &Filter-Id == &Reply-Message
+match !(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
 
 #  different from the previous ones.
 condition (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
-match !(&User-Name == &User-Password || &Filter-Id == &Reply-Message)
+match !((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 
 condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match !&User-Name == &User-Password || &Filter-Id == &Reply-Message
+match !(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)
 
 condition ((a == b) || (c == d)))
 match ERROR offset 22: Unexpected closing brace
 
 condition (handled && (&Packet-Type == Access-Challenge))
-match handled && &Packet-Type == Access-Challenge
+match  handled && (&Packet-Type == Access-Challenge)
 
 # This is OK, without the braces
 condition handled && &Packet-Type == Access-Challenge
@@ -655,5 +654,14 @@ match false
 condition (&User-Name == "bob") || (true)
 match true
 
+#
+#  A && (B || C) is not the same as (A && B) || C, for 0/1/1
+#
+#	0 && (1 || 1) = 0 && 1 == 0
+#	(0 && 1) || 1 = 0 || 1 == 1
+#
+condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
+match (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
+
 count
-match 317
+match 319
