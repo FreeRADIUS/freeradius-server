@@ -135,7 +135,11 @@ static void dl_module_unload_func(dl_t const *dl, UNUSED void *symbol, UNUSED vo
 {
 	dl_module_t *dl_module = talloc_get_type_abort(dl->uctx, dl_module_t);
 
-	if (dl_module->common->unload) dl_module->common->unload();
+	/*
+	 *	common is NULL if we couldn't find the
+	 *	symbol and are erroring out.
+	 */
+	if (dl_module->common && dl_module->common->unload) dl_module->common->unload();
 }
 
 /** Check if the magic number in the module matches the one in the library
