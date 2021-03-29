@@ -58,16 +58,21 @@ static void unlang_detached_max_request_time(UNUSED fr_event_list_t *el, UNUSED 
 
 	RDEBUG("Reached Request-Lifetime.  Forcibly stopping request");
 
+	fr_assert(!request->parent);	/* must be detached */
+
 	/*
 	 *	The request is scheduled and isn't running.  Remove it
 	 *	from the backlog.
 	 */
 	if (unlang_request_is_scheduled(request)) {
-		fr_assert(request->backlog != NULL);
-		(void) fr_heap_extract(request->backlog, request);
-	}
+		unlang_stack_t		*stack = request->stack;
+		unlang_interpret_t	*intp = stack->intp;
 
-	talloc_free(request);
+		fr_assert(request_is_internal(request));
+		intp->funcs.done_internal(request, stack->result, intp->uctx);	/* Should free the request */
+	} else {
+		talloc_free(request);
+	}
 }
 
 /** Initialize a detached child
@@ -220,6 +225,15 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 	return 0;
 }
 
+/** Dummy function to run on resumption
+ *
+ */
+static unlang_action_t unlang_subrequest_calculate_result(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
+							  UNUSED unlang_stack_frame_t *frame)
+{
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 /** Function called by the unlang interpreter to start the child running
  *
  * The reason why we do this on the unlang stack is so that _this_ frame
@@ -256,6 +270,11 @@ unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED
 	 *	the interpreter.
 	 */
 	interpret_child_init(child);
+
+	/*
+	 *	Don't run this function again on resumption
+	 */
+	if (frame->process == unlang_subrequest_child_run) frame->process = unlang_subrequest_calculate_result;
 
 	return UNLANG_ACTION_YIELD;
 }
