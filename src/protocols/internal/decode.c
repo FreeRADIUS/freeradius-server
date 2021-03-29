@@ -36,14 +36,14 @@
 #include <freeradius-devel/util/talloc.h>
 
 static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-				    fr_dbuff_t *dbuff, void *decoder_ctx);
+				    fr_dbuff_t *dbuff, void *decode_ctx);
 
 /** Decodes the value of an attribute, potentially producing a pair (added to the cursor)
  *
  */
 static ssize_t internal_decode_pair_value_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 						fr_dbuff_t *dbuff,
-						bool tainted, UNUSED void *decoder_ctx)
+						bool tainted, UNUSED void *decode_ctx)
 {
 	fr_pair_t	*vp;
 	ssize_t		slen;
@@ -70,7 +70,7 @@ static ssize_t internal_decode_pair_value_dbuff(TALLOC_CTX *ctx, fr_pair_list_t 
  *
  */
 static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-				   fr_dbuff_t *dbuff, void *decoder_ctx)
+				   fr_dbuff_t *dbuff, void *decode_ctx)
 {
 
 	ssize_t		slen;
@@ -89,7 +89,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 		FR_PROTO_HEX_MARKER(fr_dbuff_start(&work_dbuff), fr_dbuff_len(&work_dbuff),
 				    fr_dbuff_remaining(&work_dbuff), "Decoding child");
 
-		slen = internal_decode_pair(ctx, &children, parent_da, &work_dbuff, decoder_ctx);
+		slen = internal_decode_pair(ctx, &children, parent_da, &work_dbuff, decode_ctx);
 		if (slen <= 0) return slen;
 	}
 
@@ -122,7 +122,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
  *
  */
 static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-				     fr_dbuff_t *dbuff, void *decoder_ctx)
+				     fr_dbuff_t *dbuff, void *decode_ctx)
 {
 	fr_pair_t	*vp;
 	ssize_t		slen;
@@ -140,7 +140,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 		FR_PROTO_HEX_MARKER(fr_dbuff_current(dbuff), fr_dbuff_remaining(dbuff), fr_dbuff_used(&work_dbuff),
 				    "Decoding child");
 
-		slen = internal_decode_pair(vp, &vp->vp_group, parent_da, &work_dbuff, decoder_ctx);
+		slen = internal_decode_pair(vp, &vp->vp_group, parent_da, &work_dbuff, decode_ctx);
 		if (slen <= 0) {
 			talloc_free(vp);
 			return slen;
@@ -152,7 +152,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 }
 
 static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-				    fr_dbuff_t *dbuff, void *decoder_ctx)
+				    fr_dbuff_t *dbuff, void *decode_ctx)
 {
 	ssize_t			slen = 0;
 	fr_dict_attr_t const	*da;
@@ -295,7 +295,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 		FR_PROTO_TRACE("Decoding %s - %s", da->name,
 			       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 
-		slen = internal_decode_pair(ctx, head, parent_da, &work_dbuff, decoder_ctx);
+		slen = internal_decode_pair(ctx, head, parent_da, &work_dbuff, decode_ctx);
 		if (slen <= 0) goto error;
 		break;
 
@@ -305,12 +305,12 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	case FR_TYPE_TLV:
 		if (unlikely(tainted)) goto bad_tainted;
 
-		slen = internal_decode_tlv(ctx, head, da, &work_dbuff, decoder_ctx);
+		slen = internal_decode_tlv(ctx, head, da, &work_dbuff, decode_ctx);
 		if (slen <= 0) goto error;
 		break;
 
 	case FR_TYPE_GROUP:
-		slen = internal_decode_group(ctx, head, da, &work_dbuff, decoder_ctx);
+		slen = internal_decode_group(ctx, head, da, &work_dbuff, decode_ctx);
 		if (slen <= 0) goto error;
 		break;
 
@@ -319,7 +319,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 		 *	It's ok for this function to return 0
 		 *	we can have zero length strings.
 		 */
-		slen = internal_decode_pair_value_dbuff(ctx, head, da, &work_dbuff, tainted, decoder_ctx);
+		slen = internal_decode_pair_value_dbuff(ctx, head, da, &work_dbuff, tainted, decode_ctx);
 		if (slen < 0) goto error;
 	}
 
@@ -330,13 +330,13 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
  *
  */
 ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-				uint8_t const *data, size_t data_len, void *decoder_ctx)
+				uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	return fr_internal_decode_pair_dbuff(ctx, cursor, dict, &FR_DBUFF_TMP(data, data_len), decoder_ctx);
+	return fr_internal_decode_pair_dbuff(ctx, cursor, dict, &FR_DBUFF_TMP(data, data_len), decode_ctx);
 }
 
 ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-				fr_dbuff_t *dbuff, void *decoder_ctx)
+				fr_dbuff_t *dbuff, void *decode_ctx)
 {
 	fr_pair_list_t	list;
 	fr_dcursor_t	tmp_cursor;
@@ -345,7 +345,7 @@ ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_
 
 	fr_pair_list_init(&list);
 
-	slen = internal_decode_pair(ctx, &list, fr_dict_root(dict), &work_dbuff, decoder_ctx);
+	slen = internal_decode_pair(ctx, &list, fr_dict_root(dict), &work_dbuff, decode_ctx);
 	if (slen <= 0) return slen;
 
 	fr_dcursor_init(&tmp_cursor, &list);

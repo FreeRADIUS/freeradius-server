@@ -260,4 +260,4 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
  */
 ssize_t		eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			     	     uint8_t const *data, size_t data_len,
-			     	     UNUSED void *decoder_ctx);
+			     	     UNUSED void *decode_ctx);

@@ -37,15 +37,15 @@ RCSID("$Id$")
 
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, void *encoder_ctx);
+			    fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
-				       fr_dcursor_t *cursor, void *encoder_ctx);
+				       fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx);
+			      fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Encode a CHAP password
  *
@@ -132,14 +132,14 @@ static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size
 }
 
 
-static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, size_t inlen, void *encoder_ctx)
+static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, size_t inlen, void *encode_ctx)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	uint8_t		tpasswd[RADIUS_MAX_STRING_LENGTH];
 	size_t		i, n;
 	size_t		encrypted_len;
-	fr_radius_ctx_t	*packet_ctx = encoder_ctx;
+	fr_radius_ctx_t	*packet_ctx = encode_ctx;
 	uint32_t	r;
 	size_t		len;
 	ssize_t		slen;
@@ -238,7 +238,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 
 static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
-				       fr_dcursor_t *cursor, void *encoder_ctx)
+				       fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t		slen;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
@@ -257,9 +257,9 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			slen = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		} else {
-			slen = encode_rfc_hdr_internal(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_rfc_hdr_internal(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 
 		if (slen <= 0) return slen;
@@ -283,7 +283,7 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_dbuff_marker_t	len_m;
@@ -310,7 +310,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&len_m, &work_dbuff);		/* Mark the start of the length field */
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);	/* One byte for the length */
 
-	slen = encode_tlv_hdr_internal(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encoder_ctx);
+	slen = encode_tlv_hdr_internal(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	fr_dbuff_in(&len_m, (uint8_t)(slen + 2));
@@ -318,7 +318,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *encoder_ctx)
+static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
@@ -334,7 +334,7 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *e
 		/*
 		 *	Encode an individual VP
 		 */
-		slen = fr_radius_encode_pair(dbuff, &cursor, encoder_ctx);
+		slen = fr_radius_encode_pair(dbuff, &cursor, encode_ctx);
 		if (slen < 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
@@ -357,13 +357,13 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *e
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, void *encoder_ctx)
+			    fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	size_t			len;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_radius_ctx_t		*packet_ctx = encoder_ctx;
+	fr_radius_ctx_t		*packet_ctx = encode_ctx;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_t		value_dbuff;
 	fr_dbuff_marker_t	value_start, src, dest;
@@ -384,13 +384,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	It's a little weird to consider a TLV as a value,
 	 *	but it seems to work OK.
 	 */
-	if (da->type == FR_TYPE_TLV) return encode_tlv_hdr(dbuff, da_stack, depth, cursor, encoder_ctx);
+	if (da->type == FR_TYPE_TLV) return encode_tlv_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
 
 	/*
 	 *	This has special requirements.
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value,
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value,
 					    encode_tlv_hdr_internal);
 		if (slen <= 0) return slen;
 
@@ -763,7 +763,7 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 				   fr_da_stack_t *da_stack, unsigned int depth,
-				   fr_dcursor_t *cursor, void *encoder_ctx)
+				   fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	uint8_t			hlen;
@@ -840,9 +840,9 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
 	}
 
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_hdr_internal(&attr_dbuff, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_tlv_hdr_internal(&attr_dbuff, da_stack, depth, cursor, encode_ctx);
 	} else {
-		slen = encode_value(&attr_dbuff, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(&attr_dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 	if (slen <= 0) return slen;
 
@@ -882,7 +882,7 @@ static ssize_t encode_extended_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_concat(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_dcursor_t *cursor, UNUSED void *encoder_ctx)
+			     fr_dcursor_t *cursor, UNUSED void *encode_ctx)
 {
 	uint8_t const		*p;
 	size_t			left;
@@ -940,7 +940,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
-				       fr_dcursor_t *cursor, void *encoder_ctx)
+				       fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t 		slen;
 	uint8_t			hlen;
@@ -970,7 +970,7 @@ static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 	hlen = 2;
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, hlen);
 
-	slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encoder_ctx);
+	slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	fr_dbuff_advance(&hdr, 1);
@@ -988,7 +988,7 @@ static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 				      fr_da_stack_t *da_stack, unsigned int depth,
-				      fr_dcursor_t *cursor, void *encoder_ctx)
+				      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	size_t			hdr_len;
@@ -1011,7 +1011,7 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 	da = da_stack->da[depth];
 
 	if ((da->type != FR_TYPE_TLV) && (dv->flags.type_size == 1) && (dv->flags.length == 1)) {
-		return encode_rfc_hdr_internal(dbuff, da_stack, depth, cursor, encoder_ctx);
+		return encode_rfc_hdr_internal(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
 	hdr_len = dv->flags.type_size + dv->flags.length;
@@ -1061,9 +1061,9 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 	 *	internal tlv function, else we get a double TLV header.
 	 */
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_hdr_internal(&FR_DBUFF_MAX(&work_dbuff, 255), da_stack, depth, cursor, encoder_ctx);
+		slen = encode_tlv_hdr_internal(&FR_DBUFF_MAX(&work_dbuff, 255), da_stack, depth, cursor, encode_ctx);
 	} else {
-		slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 255), da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 255), da_stack, depth, cursor, encode_ctx);
 	}
 	if (slen <= 0) return slen;
 
@@ -1086,7 +1086,7 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 				fr_da_stack_t *da_stack, unsigned int depth,
-				fr_dcursor_t *cursor, void *encoder_ctx)
+				fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -1132,10 +1132,10 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 	 */
 
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_hdr_internal(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_tlv_hdr_internal(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen <= 0) return slen;
 	} else {
-		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen <= 0) return slen;
 	}
 
@@ -1171,7 +1171,7 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_marker_t	hdr;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -1192,7 +1192,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 	 *	Double-check for WiMAX format
 	 */
 	if (fr_dict_vendor_num_by_da(da_stack->da[depth + 1]) == VENDORPEC_WIMAX) {
-		return encode_wimax_hdr(dbuff, da_stack, depth, cursor, encoder_ctx);
+		return encode_wimax_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
 	/*
@@ -1214,7 +1214,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)da->attr);	/* Copy in the 32bit vendor ID */
 
-	len = encode_vendor_attr_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 6), da_stack, depth, cursor, encoder_ctx);
+	len = encode_vendor_attr_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 6), da_stack, depth, cursor, encode_ctx);
 	if (len < 0) return len;
 
 	fr_dbuff_advance(&hdr, 1);
@@ -1229,7 +1229,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
  *
  */
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -1295,7 +1295,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
-	return encode_rfc_hdr_internal(dbuff, da_stack, depth, cursor, encoder_ctx);
+	return encode_rfc_hdr_internal(dbuff, da_stack, depth, cursor, encode_ctx);
 }
 
 /** Encode a data structure into a RADIUS attribute
@@ -1306,13 +1306,13 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
  *
  * @param[out] dbuff		Where to write encoded data.
  * @param[in] cursor		Specifying attribute to encode.
- * @param[in] encoder_ctx	Additional data such as the shared secret to use.
+ * @param[in] encode_ctx	Additional data such as the shared secret to use.
  * @return
  *	- >0 The number of bytes written to out.
  *	- 0 Nothing to encode (or attribute skipped).
  *	- <0 an error occurred.
  */
-ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx)
+ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const		*vp;
 	ssize_t			len;
@@ -1338,7 +1338,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	 *	Tags are *top-level*, and are never nested.
 	 */
 	if (vp->da->type == FR_TYPE_GROUP) {
-		fr_radius_ctx_t	*packet_ctx = encoder_ctx;
+		fr_radius_ctx_t	*packet_ctx = encode_ctx;
 
 		if (!vp->da->flags.internal ||
 		    !((vp->da->attr > FR_TAG_BASE) && (vp->da->attr < (FR_TAG_BASE + 0x20)))) {
@@ -1351,7 +1351,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		fr_assert(packet_ctx->tag < 0x20);
 
 		// recurse to encode the children of this attribute
-		len = encode_tags(&work_dbuff, &vp->vp_group, encoder_ctx);
+		len = encode_tags(&work_dbuff, &vp->vp_group, encode_ctx);
 		packet_ctx->tag = 0;
 		if (len < 0) return len;
 
@@ -1404,7 +1404,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		da_stack.da[1] = NULL;
 		da_stack.depth = 1;
 		FR_PROTO_STACK_PRINT(&da_stack, 0);
-		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
 		if (len < 0) return len;
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
@@ -1425,14 +1425,14 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 			 *	using a different scheme than the "long
 			 *	extended" one.
 			 */
-			len = encode_concat(&work_dbuff, &da_stack, 0, cursor, encoder_ctx);
+			len = encode_concat(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 			if (len < 0) return len;
 			break;
 		}
 		FALL_THROUGH;
 
 	default:
-		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
 		if (len < 0) return len;
 		break;
 
@@ -1444,19 +1444,19 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 			 *	attributes by fragmenting them inside
 			 *	of the WiMAX VSA space.
 			 */
-			len = encode_wimax_hdr(&work_dbuff, &da_stack, 0, cursor, encoder_ctx);
+			len = encode_wimax_hdr(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 			if (len < 0) return len;
 			break;
 		}
-		len = encode_vsa_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
+		len = encode_vsa_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
 		if (len < 0) return len;
 		break;
 
 	case FR_TYPE_TLV:
 		if (!flag_extended(&da->flags)) {
-			len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
+			len = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
 		} else {
-			len = encode_extended_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encoder_ctx);
+			len = encode_extended_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
 		}
 		if (len < 0) return len;
 		break;

@@ -812,7 +812,7 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 	fr_pair_list_t		head;
 	fr_pair_t		*vp, *subtype_vp;
 	ssize_t			ret;
-	fr_aka_sim_encode_ctx_t	encoder_ctx = {
+	fr_aka_sim_encode_ctx_t	encode_ctx = {
 					.root = fr_dict_root(dict_eap_aka_sim),
 					.keys = &eap_aka_sim_session->keys,
 
@@ -863,7 +863,7 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 	 *	result.
 	 */
 	while ((vp = fr_dcursor_current(&cursor))) {
-		if (!fr_dict_attr_common_parent(encoder_ctx.root, vp->da, true)) {
+		if (!fr_dict_attr_common_parent(encode_ctx.root, vp->da, true)) {
 			fr_dcursor_next(&cursor);
 			continue;
 		}
@@ -894,7 +894,7 @@ static int common_encode(request_t *request, eap_session_t *eap_session, uint16_
 	eap_session->this_round->request->id = eap_aka_sim_session->id++ & 0xff;
 	eap_session->this_round->set_request_id = true;
 
-	ret = fr_aka_sim_encode(request, &head, &encoder_ctx);
+	ret = fr_aka_sim_encode(request, &head, &encode_ctx);
 	fr_dcursor_head(&to_encode);
 	fr_dcursor_free_list(&to_encode);
 

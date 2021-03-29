@@ -425,7 +425,7 @@ unexpected:
  */
 ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			     uint8_t const *data, size_t data_len,
-			     void *decoder_ctx)
+			     void *decode_ctx)
 {
 	fr_dict_attr_t const	*da;
 	uint8_t	const		*p = data, *end = p + data_len;
@@ -449,7 +449,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 			MEM(vp = fr_pair_afrom_child_num(ctx, parent, attr));
 
 		} else if (da->type == FR_TYPE_TLV) {
-			p += (size_t) eap_fast_decode_pair(ctx, out, parent, p, len, decoder_ctx);
+			p += (size_t) eap_fast_decode_pair(ctx, out, parent, p, len, decode_ctx);
 			continue;
 
 		} else {

@@ -41,19 +41,19 @@
 
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, void *encoder_ctx);
+			    fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx);
+			      fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx);
+			      fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encoder_ctx);
+			  fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Macro-like function for encoding an option header
  *
@@ -81,7 +81,7 @@ static inline ssize_t encode_option_hdr(fr_dbuff_marker_t *m, uint16_t option, s
 
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, void *encoder_ctx)
+			    fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -95,7 +95,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encoder_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_tlv);
 		if (slen <= 0) return slen;
 
 		/*
@@ -299,7 +299,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			(void) fr_dcursor_init(&child_cursor, &vp->vp_group);
 
 			while (fr_dcursor_current(&child_cursor) != NULL) {
-				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encoder_ctx);
+				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encode_ctx);
 				if (slen == PAIR_ENCODE_SKIPPED) continue;
 
 				if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
@@ -375,7 +375,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 				   fr_da_stack_t *da_stack, int depth,
-				   fr_dcursor_t *cursor, void *encoder_ctx)
+				   fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	size_t			element_len;
@@ -429,7 +429,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint16_t));	/* Make room for the length field */
 		}
 
-		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen < 0) return slen;
 		if (!fr_cond_assert(slen < UINT16_MAX)) return PAIR_ENCODE_FATAL_ERROR;
 
@@ -463,7 +463,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 
 static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encoder_ctx)
+			  fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
@@ -478,9 +478,9 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		} else {
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 		if (len < 0) return len;
 
@@ -511,7 +511,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr;
@@ -531,9 +531,9 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	Write out the option's value
 	 */
 	if (da->flags.array) {
-		len = encode_array(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		len = encode_array(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	} else {
-		len = encode_value(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 	if (len < 0) return len;
 
@@ -549,7 +549,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr;
@@ -573,7 +573,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN);	/* Make room for option header */
 
-	len = encode_tlv(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+	len = encode_tlv(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (len < 0) return len;
 
 	/*
@@ -605,7 +605,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
-			       fr_dcursor_t *cursor, void *encoder_ctx)
+			       fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr;
@@ -665,12 +665,12 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *	Encode the different data types
 	 */
 	if (da->type == FR_TYPE_TLV) {
-		len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+		len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	} else {
 		/*
 		 *	Normal vendor option
 		 */
-		len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	}
 	if (len < 0) return len;
 
@@ -687,7 +687,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 				    fr_da_stack_t *da_stack, unsigned int depth,
-				    fr_dcursor_t *cursor, UNUSED void *encoder_ctx)
+				    fr_dcursor_t *cursor, UNUSED void *encode_ctx)
 {
 	fr_dbuff_marker_t	start_m;
 	fr_dbuff_marker_t	len_m;
@@ -739,12 +739,12 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
  * @param[out] dbuff		Where to write encoded DHCP attributes.
  * @param[in] cursor		with current VP set to the option to be encoded.
  *				Will be advanced to the next option to encode.
- * @param[in] encoder_ctx	containing parameters for the encoder.
+ * @param[in] encode_ctx	containing parameters for the encoder.
  * @return
  *	- > 0 length of data written.
  *	- < 0 error.
  */
-ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * encoder_ctx)
+ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * encode_ctx)
 {
 	fr_pair_t		*vp;
 	unsigned int		depth = 0;
@@ -772,22 +772,22 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 	 */
 	switch (da_stack.da[depth]->type) {
 	case FR_TYPE_TLV:
-		len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
 	case FR_TYPE_VSA:
-		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
 	case FR_TYPE_GROUP:
 		if (da_stack.da[depth] == attr_relay_message) {
-			len = encode_relay_message(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+			len = encode_relay_message(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 			break;
 		}
 		FALL_THROUGH;
 
 	default:
-		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 	}
 	if (len < 0) return len;

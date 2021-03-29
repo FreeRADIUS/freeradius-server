@@ -58,11 +58,11 @@ RCSID("$Id$")
  */
 
 static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
-					   uint8_t const *data, size_t data_len, void *decoder_ctx);
+					   uint8_t const *data, size_t data_len, void *decode_ctx);
 
 static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const attr_len, size_t const data_len,
-				     void *decoder_ctx);
+				     void *decode_ctx);
 
 /** Extract the IV value from an AT_IV attribute
  *
@@ -107,16 +107,16 @@ static inline int sim_iv_extract(uint8_t out[AKA_SIM_IV_SIZE], uint8_t const *in
  * @param[in] data		to decrypt.
  * @param[in] attr_len		length of encrypted data.
  * @param[in] data_len		length of data remaining in the packet.
- * @param[in] decoder_ctx	containing keys, and the IV (if we already found it).
+ * @param[in] decode_ctx	containing keys, and the IV (if we already found it).
  * @return
  *	- Number of decr bytes decrypted on success.
  *	- < 0 on failure.
  */
 static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 				 uint8_t const *data, size_t const attr_len, size_t const data_len,
-				 void *decoder_ctx)
+				 void *decode_ctx)
 {
-	fr_aka_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
+	fr_aka_sim_decode_ctx_t	*packet_ctx = decode_ctx;
 	EVP_CIPHER_CTX		*evp_ctx;
 	EVP_CIPHER const	*evp_cipher = EVP_aes_128_cbc();
 	size_t			block_size = EVP_CIPHER_block_size(evp_cipher);
@@ -297,7 +297,7 @@ static int sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
 static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 				fr_dict_attr_t const *parent,
 				uint8_t const *data, size_t const attr_len, UNUSED size_t data_len,
-				void *decoder_ctx)
+				void *decode_ctx)
 {
 	uint8_t const	*p = data, *end = p + attr_len;
 	uint16_t	actual_len;
@@ -341,7 +341,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	if (elements < 0) return elements;
 
 	for (i = 0; i < elements; i++) {
-		ret = sim_decode_pair_value(ctx, cursor, parent, p, element_len, end - p, decoder_ctx);
+		ret = sim_decode_pair_value(ctx, cursor, parent, p, element_len, end - p, decode_ctx);
 		if (ret < 0) return ret;
 
 		p += ret;
@@ -360,7 +360,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
  * @param[in] data		to parse. Points to the data field of the attribute.
  * @param[in] attr_len		length of the TLV attribute.
  * @param[in] data_len		remaining data in the packet.
- * @param[in] decoder_ctx	IVs, keys etc...
+ * @param[in] decode_ctx	IVs, keys etc...
  * @return
  *	- Length on success.
  *	- < 0 on malformed attribute.
@@ -368,7 +368,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const attr_len, size_t data_len,
-			      void *decoder_ctx)
+			      void *decode_ctx)
 {
 	uint8_t const		*p = data, *end = p + attr_len;
 	uint8_t			*decr = NULL;
@@ -396,7 +396,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		FR_PROTO_TRACE("found encrypted attribute '%s'", parent->name);
 
 		decr_len = sim_value_decrypt(ctx, &decr, p + 2,
-					     attr_len - 2, data_len - 2, decoder_ctx);	/* Skip reserved */
+					     attr_len - 2, data_len - 2, decode_ctx);	/* Skip reserved */
 		if (decr_len < 0) return -1;
 
 		p = decr;
@@ -498,7 +498,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
 		ret = sim_decode_pair_value(ctx, &tlv_cursor, child, p + 2, sim_at_len - 2, (end - p) - 2,
-					      decoder_ctx);
+					      decode_ctx);
 		if (ret < 0) goto error;
 		p += sim_at_len;
 	}
@@ -518,21 +518,21 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
  * @param[in] data		to parse. Points to the data field of the attribute.
  * @param[in] attr_len		length of the attribute being parsed.
  * @param[in] data_len		length of the remaining data in the packet.
- * @param[in] decoder_ctx	IVs, keys etc...
+ * @param[in] decode_ctx	IVs, keys etc...
  * @return
  *	- Length on success.
  *	- -1 on failure.
  */
 static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const attr_len, size_t const data_len,
-				     void *decoder_ctx)
+				     void *decode_ctx)
 {
 	fr_pair_t		*vp;
 	uint8_t const		*p = data;
 	size_t			prefix = 0;
 	fr_dict_attr_t		*unknown;
 
-	fr_aka_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
+	fr_aka_sim_decode_ctx_t	*packet_ctx = decode_ctx;
 
 	if (!fr_cond_assert(attr_len <= data_len)) return -1;
 	if (!fr_cond_assert(parent)) return -1;
@@ -682,7 +682,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_d
 		 *	attribute, OR they've already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		return sim_decode_tlv(ctx, cursor, parent, p, attr_len, data_len, decoder_ctx);
+		return sim_decode_tlv(ctx, cursor, parent, p, attr_len, data_len, decode_ctx);
 
 	default:
 	raw:
@@ -843,13 +843,13 @@ done:
  * @param[in] data_len		length of data.  For top level attributes packet_ctx must be the length
  *				of the packet (so we can hunt for AT_IV), for Sub-TLVs it should
  *				be the length of the container value.
- * @param[in] decoder_ctx	extra context to pass to the decoder.
+ * @param[in] decode_ctx	extra context to pass to the decoder.
  * @return
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
 static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
-					uint8_t const *data, size_t data_len, void *decoder_ctx)
+					uint8_t const *data, size_t data_len, void *decode_ctx)
 {
 	uint8_t			sim_at;
 	size_t			sim_at_len;
@@ -903,9 +903,9 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, f
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
 	if (da->flags.array) {
-		ret = sim_decode_array(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
+		ret = sim_decode_array(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decode_ctx);
 	} else {
-		ret = sim_decode_pair_value(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
+		ret = sim_decode_pair_value(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decode_ctx);
 	}
 	if (ret < 0) return ret;
 
@@ -921,15 +921,15 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, f
  * @param[in] data_len		length of data.  For top level attributes packet_ctx must be the length
  *				of the packet (so we can hunt for AT_IV), for Sub-TLVs it should
  *				be the length of the container value.
- * @param[in] decoder_ctx	extra context to pass to the decoder.
+ * @param[in] decode_ctx	extra context to pass to the decoder.
  * @return
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
 ssize_t fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-			   uint8_t const *data, size_t data_len, void *decoder_ctx)
+			   uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	return sim_decode_pair_internal(ctx, cursor, fr_dict_root(dict), data, data_len, decoder_ctx);
+	return sim_decode_pair_internal(ctx, cursor, fr_dict_root(dict), data, data_len, decode_ctx);
 }
 
 /** Decode SIM/AKA/AKA' specific packet data
@@ -954,13 +954,13 @@ ssize_t fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t 
  * @param[in] dict		for looking up attributes.
  * @param[in] data		to convert to pairs.
  * @param[in] data_len		length of data to convert.
- * @param[in] decoder_ctx	holds the state of the decoder.
+ * @param[in] decode_ctx	holds the state of the decoder.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int fr_aka_sim_decode(request_t *request, fr_dcursor_t *decoded, fr_dict_t const *dict,
-		  uint8_t const *data, size_t data_len, fr_aka_sim_decode_ctx_t *decoder_ctx)
+		  uint8_t const *data, size_t data_len, fr_aka_sim_decode_ctx_t *decode_ctx)
 {
 	ssize_t			ret;
 	uint8_t	const		*p = data;
@@ -994,7 +994,7 @@ int fr_aka_sim_decode(request_t *request, fr_dcursor_t *decoded, fr_dict_t const
 	 *	in the SIM/AKA/AKA' dict.
 	 */
 	while (p < end) {
-		ret = fr_aka_sim_decode_pair(request->request_ctx, decoded, dict, p, end - p, decoder_ctx);
+		ret = fr_aka_sim_decode_pair(request->request_ctx, decoded, dict, p, end - p, decode_ctx);
 		if (ret <= 0) {
 			RPEDEBUG("Failed decoding AT");
 		error:

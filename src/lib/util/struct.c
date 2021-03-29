@@ -64,7 +64,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
  */
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       void *decoder_ctx,
+			       void *decode_ctx,
 			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv)
 {
 	unsigned int		child_num;
@@ -191,7 +191,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			 *	Decode EVERYTHING as a TLV.
 			 */
 			while (p < end) {
-				slen = decode_tlv(ctx, &child_cursor, fr_dict_by_da(child), child, p, end - p, decoder_ctx);
+				slen = decode_tlv(ctx, &child_cursor, fr_dict_by_da(child), child, p, end - p, decode_ctx);
 				if (slen < 0) goto unknown;
 				p += slen;
 			}
@@ -221,7 +221,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		if (decode_value) {
 			ssize_t slen;
 
-			slen = decode_value(ctx, &child_cursor, fr_dict_by_da(child), child, p, child_length, decoder_ctx);
+			slen = decode_value(ctx, &child_cursor, fr_dict_by_da(child), child, p, child_length, decode_ctx);
 			if (slen < 0) return slen - (p - data);
 
 			p += slen;   	/* not always the same as child->flags.length */
@@ -329,7 +329,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			fr_assert(child->type == FR_TYPE_STRUCT);
 
 			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p,
-						      decoder_ctx, decode_value, decode_tlv);
+						      decode_ctx, decode_value, decode_tlv);
 			if (slen <= 0) goto unknown_child;
 			p += slen;
 		}
@@ -405,7 +405,7 @@ static int8_t pair_sort_increasing(void const *a, void const *b)
 
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
-			     fr_dcursor_t *parent_cursor, void *encoder_ctx,
+			     fr_dcursor_t *parent_cursor, void *encode_ctx,
 			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -600,7 +600,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			 *	Call the protocol encoder for non-bit fields.
 			 */
 			fr_proto_da_stack_build(da_stack, child);
-			len = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 			if (len < 0) return len;
 			vp = fr_dcursor_current(cursor);
 
@@ -649,7 +649,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_proto_da_stack_build(da_stack, vp->da->parent);
 
 			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
-						   cursor, encoder_ctx, encode_value, encode_tlv);
+						   cursor, encode_ctx, encode_value, encode_tlv);
 			if (len < 0) return len;
 			goto done;
 		}
@@ -680,7 +680,7 @@ done:
 		 *	Encode any TLV attributes which are part of this structure.
 		 */
 		while (vp && (da_stack->da[depth] == parent) && (da_stack->depth >= parent->depth)) {
-			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 			if (slen < 0) return slen;
 
 			vp = fr_dcursor_current(cursor);

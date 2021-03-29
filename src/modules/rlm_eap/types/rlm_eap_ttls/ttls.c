@@ -141,12 +141,12 @@ static int diameter_verify(request_t *request, uint8_t const *data, unsigned int
  */
 static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len,
-				    void *decoder_ctx)
+				    void *decode_ctx)
 {
 	uint8_t const		*p = data, *end = p + data_len;
 
 	fr_pair_t		*vp = NULL;
-	SSL			*ssl = decoder_ctx;
+	SSL			*ssl = decode_ctx;
 	fr_dict_t const		*dict_radius;
 	fr_dict_attr_t const   	*attr_radius;
 

@@ -162,12 +162,12 @@ void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
  *	decode.c
  */
 ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-					uint8_t const *data, size_t len, void *decoder_ctx);
+					uint8_t const *data, size_t len, void *decode_ctx);
 
 /*
  *	encode.c
  */
-ssize_t		fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 /*
  *	packet.c

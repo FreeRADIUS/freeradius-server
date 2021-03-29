@@ -43,14 +43,14 @@
  * @param da_stack	da stack corresponding to the value pair
  * @param depth		in da_stack
  * @param cursor	cursor whose current value is the one to be encoded
- * @param encoder_ctx	encoder context
+ * @param encode_ctx	encoder context
  *
  * @return	either a negative number, indicating an error
  * 		or the number of bytes used to encode the value
  */
 static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
-			       fr_dcursor_t *cursor, void *encoder_ctx)
+			       fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	enc_field, len_field, value_field;
@@ -141,7 +141,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-		slen = internal_encode(&value_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+		slen = internal_encode(&value_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (slen < 0) return slen;
 		break;
 
@@ -168,7 +168,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 				fr_proto_da_stack_build_partial(da_stack, da_stack->da[depth], child->da);
 				FR_PROTO_STACK_PRINT(da_stack, depth);
 
-				slen = internal_encode(&value_dbuff, da_stack, depth + 1, &children, encoder_ctx);
+				slen = internal_encode(&value_dbuff, da_stack, depth + 1, &children, encode_ctx);
 				if (slen < 0) return slen;
 			}
 			fr_dcursor_next(cursor);
@@ -178,7 +178,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		/*
 		 *	Still encoding intermediary TLVs...
 		 */
-		slen = internal_encode(&value_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+		slen = internal_encode(&value_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (slen < 0) return slen;
 		break;
 
@@ -199,7 +199,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 		     vp = fr_dcursor_current(&children)) {
 		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);
 
-			slen = fr_internal_encode_pair(&value_dbuff, &children, encoder_ctx);
+			slen = fr_internal_encode_pair(&value_dbuff, &children, encode_ctx);
 			if (slen < 0) return slen;
 		}
 		fr_dcursor_next(cursor);
@@ -247,13 +247,13 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
  *
  * @param[in,out] dbuff		Where to write encoded data and how much one can write.
  * @param[in] cursor		Specifying attribute to encode.
- * @param[in] encoder_ctx	Additional data such as the shared secret to use.
+ * @param[in] encode_ctx	Additional data such as the shared secret to use.
  * @return
  *	- >0 The number of bytes written to out.
  *	- 0 Nothing to encode (or attribute skipped).
  *	- <0 an error occurred.
  */
-ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx)
+ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t		*vp;
 	fr_da_stack_t		da_stack;
@@ -263,7 +263,7 @@ ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 
 	fr_proto_da_stack_build(&da_stack, vp->da);
 
-	return internal_encode(dbuff, &da_stack, 0, cursor, encoder_ctx);
+	return internal_encode(dbuff, &da_stack, 0, cursor, encode_ctx);
 }
 
 /*

@@ -506,10 +506,10 @@ next:
  * @param[in] dict		to lookup attributes in.
  * @param[in] data		to parse.
  * @param[in] data_len		of data to parse.
- * @param[in] decoder_ctx	Unused.
+ * @param[in] decode_ctx	Unused.
  */
 ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
-			        fr_dict_t const *dict, uint8_t const *data, size_t data_len, UNUSED void *decoder_ctx)
+			        fr_dict_t const *dict, uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;

@@ -246,7 +246,7 @@ extern size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2];
  *	decode.c
  */
 ssize_t		fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-					   uint8_t const *data, size_t data_len, void *decoder_ctx);
+					   uint8_t const *data, size_t data_len, void *decode_ctx);
 
 int		fr_aka_sim_decode(request_t *request, fr_dcursor_t *decoded, fr_dict_t const *dict,
 				      uint8_t const *data, size_t data_len, fr_aka_sim_decode_ctx_t *ctx);
@@ -254,7 +254,7 @@ int		fr_aka_sim_decode(request_t *request, fr_dcursor_t *decoded, fr_dict_t cons
 /*
  *	encode.c
  */
-ssize_t		fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 ssize_t		fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *encode_ctx);
 

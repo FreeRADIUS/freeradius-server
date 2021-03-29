@@ -44,14 +44,14 @@
  * @param[in] da_stack		Describing nesting of options.
  * @param[in] depth		in da_stack.
  * @param[in,out] cursor	Current attribute we're encoding.
- * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
+ * @param[in] encode_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- The length of data written.
  *	< 0 if there's not enough space or option type is unsupported
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encoder_ctx)
+			    fr_dcursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encode_ctx)
 {
 	fr_pair_t	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -197,7 +197,7 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
  * @param[in] da_stack		Describing nesting of options.
  * @param[in] depth		in the da_stack.
  * @param[in,out] cursor	Current attribute we're encoding.
- * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
+ * @param[in] encode_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- >0 length of data encoded.
  *	- 0 if we ran out of space.
@@ -205,7 +205,7 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
  */
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
+			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
 {
 	ssize_t			len;
 	uint8_t			option_len = 0;
@@ -248,7 +248,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			break;
 		}
 
-		len = encode_value(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (len < -1) return len;
 		if (len == -1) {
 			FR_PROTO_TRACE("No more space in option");
@@ -291,7 +291,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
  * @param[in] da_stack		Describing nesting of options.
  * @param[in] depth		in the da_stack.
  * @param[in,out] cursor	Current attribute we're encoding.
- * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
+ * @param[in] encode_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- >0 length of data encoded.
  *	- 0 if we ran out of space.
@@ -299,7 +299,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encoder_ctx)
+			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
 {
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -334,9 +334,9 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		} else {
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
@@ -409,7 +409,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
-			       fr_dcursor_t *cursor, void *encoder_ctx)
+			       fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
 	fr_dbuff_marker_t	hdr;
@@ -485,12 +485,12 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 		 *	@todo - encode all options which have the same parent vendor.
 		 */
 		if (da->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		} else {
 			/*
 			 *	Normal vendor option
 			 */
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 		if (len < 0) return len;
 
@@ -520,13 +520,13 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
  * @param[out] dbuff		Where to write encoded DHCP attributes.
  * @param[in] cursor		with current VP set to the option to be encoded.
  *				Will be advanced to the next option to encode.
- * @param[in] encoder_ctx	Containing DHCPv4 dictionary.
+ * @param[in] encode_ctx	Containing DHCPv4 dictionary.
  * @return
  *	- > 0 length of data written.
  *	- < 0 error.
  *	- 0 not valid option for DHCP (skipping).
  */
-ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx)
+ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t		*vp;
 	unsigned int		depth = 0;
@@ -554,15 +554,15 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	 */
 	switch (da_stack.da[depth]->type) {
 	case FR_TYPE_VSA:
-		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
 	case FR_TYPE_TLV:
-		len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
 	default:
-		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encoder_ctx);
+		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 	}
 

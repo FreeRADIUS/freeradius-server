@@ -1252,7 +1252,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
 	fr_dcursor_t 	cursor;
-	void		*decoder_ctx = NULL;
+	void		*decode_ctx = NULL;
 	char		*p, *end;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
@@ -1272,7 +1272,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	p += slen;
 	fr_skip_whitespace(p);
 
-	if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, cc->tmp_ctx) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, cc->tmp_ctx) < 0)) {
 		fr_strerror_const_push("Failed initialising decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
@@ -1307,7 +1307,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	fr_dcursor_init(&cursor, &head);
 	while (to_dec < to_dec_end) {
 		slen = tp->func(cc->tmp_ctx, &cursor, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
-				(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
+				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 		cc->last_ret = slen;
 		if (slen <= 0) {
 			fr_pair_list_free(&head);
@@ -1372,7 +1372,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 				  char *data, size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_proto_decode_t	*tp = NULL;
-	void		*decoder_ctx = NULL;
+	void		*decode_ctx = NULL;
 	char		*p;
 	uint8_t		*to_dec;
 	uint8_t		*to_dec_end;
@@ -1393,7 +1393,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	p += slen;
 	fr_skip_whitespace(p);
 
-	if (tp->test_ctx && (tp->test_ctx(&decoder_ctx, cc->tmp_ctx) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, cc->tmp_ctx) < 0)) {
 		fr_strerror_const_push("Failed initialising decoder testpoint");
 		RETURN_COMMAND_ERROR();
 	}
@@ -1422,7 +1422,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 	ASAN_POISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
 
 	slen = tp->func(cc->tmp_ctx, &head,
-			(uint8_t *)to_dec, (to_dec_end - to_dec), decoder_ctx);
+			(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 	cc->last_ret = slen;
 	if (slen <= 0) {
 		ASAN_UNPOISON_MEMORY_REGION(to_dec_end, COMMAND_OUTPUT_MAX - slen);
@@ -1588,7 +1588,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	fr_test_point_pair_encode_t	*tp = NULL;
 
 	fr_dcursor_t	cursor;
-	void		*encoder_ctx = NULL;
+	void		*encode_ctx = NULL;
 	ssize_t		slen;
 	char		*p = in;
 
@@ -1626,7 +1626,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		fr_skip_whitespace(p);
 	}
 
-	if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, cc->tmp_ctx) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&encode_ctx, cc->tmp_ctx) < 0)) {
 		fr_strerror_const_push("Failed initialising encoder testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
@@ -1671,7 +1671,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 						     cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, fr_pair_t);
 		     vp;
 		     vp = fr_dcursor_current(&cursor)) {
-			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encoder_ctx);
+			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);
 			cc->last_ret = slen;
 
 			if (truncate) DEBUG("%s[%d]: Iteration %zu - Result %zd%s%s",
@@ -1765,7 +1765,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 {
 	fr_test_point_proto_encode_t	*tp = NULL;
 
-	void		*encoder_ctx = NULL;
+	void		*encode_ctx = NULL;
 	ssize_t		slen;
 	char		*p = in;
 
@@ -1781,7 +1781,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 
 	p += ((size_t)slen);
 	fr_skip_whitespace(p);
-	if (tp->test_ctx && (tp->test_ctx(&encoder_ctx, cc->tmp_ctx) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&encode_ctx, cc->tmp_ctx) < 0)) {
 		fr_strerror_const_push("Failed initialising encoder testpoint");
 		CLEAR_TEST_POINT(cc);
 		RETURN_COMMAND_ERROR();
@@ -1793,7 +1793,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_OK_WITH_ERROR();
 	}
 
-	slen = tp->func(cc->tmp_ctx, &head, cc->buffer_start, cc->buffer_end - cc->buffer_start, encoder_ctx);
+	slen = tp->func(cc->tmp_ctx, &head, cc->buffer_start, cc->buffer_end - cc->buffer_start, encode_ctx);
 	fr_pair_list_free(&head);
 	cc->last_ret = slen;
 	if (slen < 0) {

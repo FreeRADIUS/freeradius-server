@@ -58,7 +58,7 @@ RCSID("$Id$")
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx);
+			      fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Evaluation function for EAP-AKA-encodability
  *
@@ -99,9 +99,9 @@ static bool is_eap_aka_encodable(void const *item, void const *uctx)
 	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  @endverbatim
  */
-static ssize_t encode_iv(fr_dbuff_t *dbuff, void *encoder_ctx)
+static ssize_t encode_iv(fr_dbuff_t *dbuff, void *encode_ctx)
 {
-	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
+	fr_aka_sim_encode_ctx_t	*packet_ctx = encode_ctx;
 	uint32_t		iv[4];
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
@@ -151,12 +151,12 @@ static ssize_t encode_iv(fr_dbuff_t *dbuff, void *encoder_ctx)
  @endverbatim
  */
 static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
-			     	      uint8_t const *in, size_t inlen, void *encoder_ctx)
+			     	      uint8_t const *in, size_t inlen, void *encode_ctx)
 {
 	size_t			total_len, pad_len, encr_len, len = 0;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	uint8_t			*encr = NULL;
-	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
+	fr_aka_sim_encode_ctx_t	*packet_ctx = encode_ctx;
 	EVP_CIPHER_CTX		*evp_ctx;
 	EVP_CIPHER const	*evp_cipher = EVP_aes_128_cbc();
 	size_t			block_size = EVP_CIPHER_block_size(evp_cipher);
@@ -268,12 +268,12 @@ static ssize_t encode_encrypted_value(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, int depth,
-			    fr_dcursor_t *cursor, void *encoder_ctx)
+			    fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
+	fr_aka_sim_encode_ctx_t	*packet_ctx = encode_ctx;
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -486,7 +486,7 @@ done:
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
-	vp = fr_dcursor_filter_next(cursor, is_eap_aka_encodable, encoder_ctx);
+	vp = fr_dcursor_filter_next(cursor, is_eap_aka_encodable, encode_ctx);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -512,7 +512,7 @@ done:
  */
 static ssize_t encode_array(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, int depth,
-			    fr_dcursor_t *cursor, void *encoder_ctx)
+			    fr_dcursor_t *cursor, void *encode_ctx)
 {
 	size_t			pad_len;
 	size_t			element_len;
@@ -544,7 +544,7 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 		fr_pair_t	*vp;
 		ssize_t		slen;
 
-		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen == PAIR_ENCODE_FATAL_ERROR) return slen;
 		if (slen < 0) break;
 
@@ -582,7 +582,7 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
  * Otherwise, attribute may be something else.
  */
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	size_t			pad_len;
 	fr_dict_attr_t const	*da;
@@ -623,10 +623,10 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 
 	if (da->flags.array) {
 		slen = encode_array(&FR_DBUFF_MAX(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN - 2),
-				    da_stack, depth, cursor, encoder_ctx);
+				    da_stack, depth, cursor, encode_ctx);
 	} else {
 		slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN - 2),
-				    da_stack, depth, cursor, encoder_ctx);
+				    da_stack, depth, cursor, encode_ctx);
 	}
 	if (slen <= 0) return slen;
 
@@ -648,7 +648,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsign
 
 static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 					  fr_da_stack_t *da_stack, unsigned int depth,
-					  fr_dcursor_t *cursor, void *encoder_ctx)
+					  fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN);
@@ -674,9 +674,9 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			slen = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		} else {
-			slen = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 
 		if (slen <= 0) return slen;
@@ -703,7 +703,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 		ssize_t	value_len = fr_dbuff_used(&work_dbuff) - 2;
 
 		slen = encode_encrypted_value(&value_dbuff, fr_dbuff_current(&value_start),
-					      value_len, encoder_ctx);
+					      value_len, encode_ctx);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 
 		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, (size_t)slen - value_len);
@@ -717,7 +717,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encoder_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	unsigned int		total_len;
 	ssize_t			len;
@@ -745,7 +745,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	this order.
 	 */
 	if (!da_stack->da[depth]->flags.extra && da_stack->da[depth]->flags.subtype) {
-		len = encode_iv(&work_dbuff, encoder_ctx);
+		len = encode_iv(&work_dbuff, encode_ctx);
 		if (len < 0) return len;
 	}
 	tl_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
@@ -755,7 +755,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 	da = da_stack->da[depth];
 	len = encode_tlv_internal(&FR_DBUFF_MAX(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN - 2),
-				  da_stack, depth, cursor, encoder_ctx);
+				  da_stack, depth, cursor, encode_ctx);
 	if (len <= 0) return len;
 
 	/*
@@ -771,7 +771,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
 
-ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx)
+ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const		*vp;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -780,12 +780,12 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 
 	fr_da_stack_t		da_stack;
 	fr_dict_attr_t const	*da = NULL;
-	fr_aka_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
+	fr_aka_sim_encode_ctx_t	*packet_ctx = encode_ctx;
 
 	fr_dbuff_marker(&m, &work_dbuff);
 	if (!cursor) return PAIR_ENCODE_FATAL_ERROR;
 
-	vp = fr_dcursor_filter_current(cursor, is_eap_aka_encodable, encoder_ctx);
+	vp = fr_dcursor_filter_current(cursor, is_eap_aka_encodable, encode_ctx);
 	if (!vp) return 0;
 
 	VP_VERIFY(vp);
@@ -797,7 +797,7 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	}
 
 	if (vp->da->attr == FR_MAC) {
-		fr_dcursor_filter_next(cursor, is_eap_aka_encodable, encoder_ctx);
+		fr_dcursor_filter_next(cursor, is_eap_aka_encodable, encode_ctx);
 		return 0;
 	}
 	/*
@@ -815,7 +815,7 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 		da_stack.depth = 1;
 		FR_PROTO_STACK_PRINT(&da_stack, 0);
 		return encode_rfc_hdr(&FR_DBUFF_MAX(dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
-				      &da_stack, 0, cursor, encoder_ctx);
+				      &da_stack, 0, cursor, encode_ctx);
 	}
 
 	/*
@@ -832,13 +832,13 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	 */
 	default:
 		slen = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
-				      &da_stack, 0, cursor, encoder_ctx);
+				      &da_stack, 0, cursor, encode_ctx);
 		if (slen < 0) return slen;
 		break;
 
 	case FR_TYPE_TLV:
 		slen = encode_tlv_hdr(&FR_DBUFF_MAX(&work_dbuff, SIM_MAX_ATTRIBUTE_VALUE_LEN + 2),
-				      &da_stack, 0, cursor, encoder_ctx);
+				      &da_stack, 0, cursor, encode_ctx);
 		if (slen < 0) return slen;
 		break;
 	}

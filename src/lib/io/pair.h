@@ -104,7 +104,7 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
  *
  * @param[out] out		Where to write the encoded data.
  * @param[in] cursor		Cursor containing the list of attributes to process.
- * @param[in] encoder_ctx	Any encoder specific data such as secrets or configurables.
+ * @param[in] encode_ctx	Any encoder specific data such as secrets or configurables.
  * @return
  *	- PAIR_ENCODE_SKIPPED - The current pair is not valid for encoding and should be skipped.
  *	- PAIR_ENCODE_FATAL_ERROR - Encoding failed in a fatal way. Encoding the packet should be
@@ -113,7 +113,7 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
  *	  integer that would be required to encode the attribute.
  *	- >0 - The number of bytes written to out.
  */
-typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void *encoder_ctx);
+typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void *encode_ctx);
 
 /** A generic interface for decoding fr_pair_ts
  *
@@ -125,10 +125,10 @@ typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void 
  * @param[in] dict		to use to lookup attributes.
  * @param[in] data		to decode.
  * @param[in] data_len		The length of the incoming data.
- * @param[in] decoder_ctx	Any decode specific data such as secrets or configurable.
+ * @param[in] decode_ctx	Any decode specific data such as secrets or configurable.
  * @return
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
 typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-				    uint8_t const *data, size_t data_len, void *decoder_ctx);
+				    uint8_t const *data, size_t data_len, void *decode_ctx);

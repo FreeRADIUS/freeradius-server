@@ -192,7 +192,7 @@ void		fr_radius_encode_chap_password(uint8_t out[static 1 + RADIUS_CHAP_CHALLENG
 					       uint8_t id, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH],
 					       char const *password, size_t password_len) CC_HINT(nonnull(1,3,4));
 
-ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 /*
  *	protocols/radius/decode.c
