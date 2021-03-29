@@ -643,6 +643,7 @@ void request_verify(char const *file, int line, request_t const *request)
 	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs);
 	(void)talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
 
+#ifndef NDEBUG
 	{
 		TALLOC_CTX *parent = talloc_parent(request->session_state_ctx);
 
@@ -650,6 +651,7 @@ void request_verify(char const *file, int line, request_t const *request)
 			      "session_state_ctx must not be parented by another chunk, but is parented by %s",
 			      talloc_get_name(talloc_parent(request->session_state_ctx)));
 	}
+#endif
 
 	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
 
