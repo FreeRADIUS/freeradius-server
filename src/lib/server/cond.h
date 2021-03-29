@@ -90,9 +90,6 @@ struct fr_cond_s {
 	bool			negate;		//!< Invert the result of the expression.
 	fr_cond_pass2_t		pass2_fixup;
 
-	int			depth;		//!< maximum depth of child conditions
-	int			conditions;	//!< number of tmpls need to evaluate this condition
-
 	fr_cond_t		*parent;
 	fr_cond_t		*next;
 };
