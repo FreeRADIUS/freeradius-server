@@ -111,8 +111,8 @@ build/autoconf.mk: src/include/autoconf.h
 ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 _:=$(shell make libfreeradius-make-dlopen.a libfreeradius-make-version.a)
 
-load build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT}(dlopen_gmk_setup)
-load build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}(version_gmk_setup)
+-load build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT}(dlopen_gmk_setup)
+-load build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}(version_gmk_setup)
 
 else
 #
