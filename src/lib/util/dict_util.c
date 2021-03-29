@@ -1168,7 +1168,8 @@ static int dict_attr_compatible(fr_dict_attr_t const *parent, fr_dict_attr_t con
 	}
 
 	if (old->type != n->type) {
-		fr_strerror_printf_push("Cannot add duplicate attribute with different type (old %s has type %s, new %s has type %s)",
+		fr_strerror_printf_push("Cannot add duplicate attribute with different type "
+					"(old attribute \"%s\" has type %s, new attribute \"%s\" has type %s)",
 					old->name,
 					fr_table_str_by_value(fr_value_box_type_table, old->type, "?Unknown?"),
 					n->name,
