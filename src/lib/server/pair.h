@@ -44,7 +44,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define pair_append_reply(_attr, _da) fr_pair_prepend_by_da(request->reply_ctx, _attr, &request->reply_pairs, _da)
+#define pair_append_reply(_attr, _da) fr_pair_append_by_da(request->reply_ctx, _attr, &request->reply_pairs, _da)
 
 /** Allocate and append a fr_pair_t to the control list
  *
@@ -54,7 +54,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define pair_append_control(_attr, _da) fr_pair_prepend_by_da(request->control_ctx, _attr, &request->control_pairs, _da)
+#define pair_append_control(_attr, _da) fr_pair_append_by_da(request->control_ctx, _attr, &request->control_pairs, _da)
 
 /** Allocate and append a fr_pair_t to session-state list
  *
@@ -64,7 +64,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define pair_append_session_state(_attr, _da) fr_pair_prepend_by_da(request->session_state_ctx, _attr, &request->session_state_pairs, _da)
+#define pair_append_session_state(_attr, _da) fr_pair_append_by_da(request->session_state_ctx, _attr, &request->session_state_pairs, _da)
 
 /** Allocate and prepend a fr_pair_t to the request list
  *
