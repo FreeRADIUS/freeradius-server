@@ -166,7 +166,7 @@ The string value of 0x7465737431 is test1
 
 == Server Manipulation
 
-=== %{config:<key>}
+=== %(config:<key>)
 
 Refers to a variable in the configuration file. See the documentation
 on configuration file references.
@@ -177,8 +177,8 @@ on configuration file references.
 
 [source,unlang]
 ----
-"Server installed in %{config:prefix}"
-"Module rlm_exec.shell_escape = %{config:modules.exec.shell_escape}"
+"Server installed in %(config:prefix)"
+"Module rlm_exec.shell_escape = %(config:modules.exec.shell_escape)"
 ----
 
 .Output
