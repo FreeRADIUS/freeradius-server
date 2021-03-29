@@ -106,8 +106,10 @@ build/autoconf.mk: src/include/autoconf.h
 #
 #  Ensure that these libraries are built ONLY when doing a full build,
 #  AND that they are built and loaded before using the rest of the
-#  boilermake framework.
+#  boilermake framework, UNLESS we're doing "make clean", in which case
+#  don't include the magic libraries.
 #
+ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
 ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 _:=$(shell make libfreeradius-make-dlopen.a libfreeradius-make-version.a)
 
@@ -122,6 +124,7 @@ else
 #
 BUILD_DIR:=${top_srcdir}/build
 top_builddir:=${top_srcdir}/scripts/build
+endif
 endif
 
 #

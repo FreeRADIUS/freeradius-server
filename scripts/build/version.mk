@@ -2,6 +2,12 @@ TARGET 		:= libfreeradius-make-version.a
 SOURCES		:= version.c log.c
 
 #
+#  This target is NOT built with static analyzer flags.
+#
+$(TARGET): CFLAGS  :=$(filter-out -fsanitize%,$(CFLAGS))
+$(TARGET): LDFLAGS :=$(filter-out -fsanitize%,$(LDFLAGS))
+
+#
 #  If we're building this target, then don't try to use it until we know
 #  that building the target succeeds.
 #
