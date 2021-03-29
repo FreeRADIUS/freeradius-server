@@ -27,35 +27,38 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
 
-/** Xlat for %{attr_by_num:\<number\>}
+static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Xlat for %(attr_by_num:\<number\>)
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				     request_t *request, char const *fmt)
+static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					  UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					  fr_value_box_list_t *in)
 {
-	char			*q;
-	unsigned int		number;
 	fr_dict_attr_t const	*da;
+	fr_value_box_t		*attr = fr_dlist_head(in);
+	fr_value_box_t		*vb;
 
-	*out = NULL;
-
-	number = (unsigned int)strtoul(fmt, &q, 10);
-	if ((q == fmt) || (*q != '\0')) {
-		REDEBUG("Trailing garbage \"%s\" in attribute number string \"%s\"", q, fmt);
-		return -1;
-	}
-
-	da = fr_dict_attr_child_by_num(fr_dict_root(request->dict), number);
+	da = fr_dict_attr_child_by_num(fr_dict_root(request->dict), attr->vb_uint32);
 	if (!da) {
-		REDEBUG("No attribute found with number %u", number);
-		return -1;
+		REDEBUG("No attribute found with number %pV", attr);
+		return XLAT_ACTION_FAIL;
 	}
 
-	*out = talloc_typed_strdup(ctx, da->name);
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	return talloc_array_length(*out) - 1;
+	if (fr_value_box_bstrndup(ctx, vb, NULL, da->name, strlen(da->name), false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /** Xlat for %{attr_by_oid:\<oid\>}
@@ -173,7 +176,9 @@ static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register_legacy(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0);
+	xlat_t	*xlat;
+	xlat = xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, false);
+	xlat_func_args(xlat, xlat_dict_attr_by_num_args);
 	xlat_register_legacy(instance, "attr_by_oid", xlat_dict_attr_by_oid, NULL, NULL, 0, 0);
 	xlat_register_legacy(instance, "vendor", xlat_vendor, NULL, NULL, 0, 0);
 	xlat_register_legacy(instance, "vendor_num", xlat_vendor_num, NULL, NULL, 0, 0);
