@@ -3,97 +3,58 @@ update request {
 	&Reply-Message := 'foo'
 }
 
-if ("%{attr_by_num:1}" == 'User-Name') {
-	test_pass
-}
-else {
+if ("%(attr_by_num:1)" != 'User-Name') {
 	test_fail
 }
 
-if ("%{attr_by_oid:1}" == 'User-Name') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:1)" != 'User-Name') {
 	test_fail
 }
 
 # Should fail
-if ("%{attr_by_oid:26}" == 'Vendor-Specific') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:26)" != 'Vendor-Specific') {
 	test_fail
 }
 
 # Should fail
-if ("%{attr_by_oid:26.11344}" == 'FreeRADIUS') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:26.11344)" != 'FreeRADIUS') {
 	test_fail
 }
 
-if ("%{attr_by_oid:26.11344.1}" == 'Proxied-To') {
-	test_pass
-}
-else {
+if ("%(attr_by_oid:26.11344.1)" != 'Proxied-To') {
 	test_fail
 }
 
-if ("%{attr:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'Proxied-To') {
-	test_pass
-}
-else {
+if ("%(attr:Vendor-Specific.FreeRADIUS.Proxied-To)" != 'Proxied-To') {
 	test_fail
 }
 
-if ("%{attr_num:Vendor-Specific.FreeRADIUS.Proxied-To}" == 1) {
-	test_pass
-}
-else {
+if ("%(attr_num:Vendor-Specific.FreeRADIUS.Proxied-To)" != 1) {
 	test_fail
 }
 
-if ("%{vendor:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'FreeRADIUS') {
-	test_pass
-}
-else {
+if ("%(vendor:Vendor-Specific.FreeRADIUS.Proxied-To)" != 'FreeRADIUS') {
 	test_fail
 }
 
-if ("%{vendor_num:Vendor-Specific.FreeRADIUS.Proxied-To}" == 11344) {
-	test_pass
-}
-else {
+if ("%(vendor_num:Vendor-Specific.FreeRADIUS.Proxied-To)" != 11344) {
 	test_fail
 }
 
-if ("%{attr:Reply-Message}" == 'Reply-Message') {
-	test_pass
-}
-else {
+if ("%(attr:Reply-Message)" != 'Reply-Message') {
 	test_fail
 }
 
-if ("%{attr_num:Reply-Message}" == 18) {
-	test_pass
-}
-else {
+if ("%(attr_num:Reply-Message)" != 18) {
 	test_fail
 }
 
-if ("%{vendor:Reply-Message}" == '') {
-	test_pass
-}
-else {
+if ("%(vendor:Reply-Message)" != '') {
 	test_fail
 }
 
-if ("%{vendor_num:Reply-Message}" == 0) {
-	test_pass
-}
-else {
+if ("%(vendor_num:Reply-Message)" != 0) {
 	test_fail
 }
 
-
+test_pass

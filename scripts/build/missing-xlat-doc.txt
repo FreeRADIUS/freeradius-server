@@ -1,9 +1,9 @@
 %(aka_sim_id_type:...)
-%{attr:...}
-%{attr_by_num:...}
-%{attr_by_oid:...}
-%{attr_num:...}
+%(attr:...)
+%(attr_by_num:...)
+%(attr_by_oid:...)
+%(attr_num:...)
 %{test:...}
 %(trigger:...)
-%{vendor:...}
-%{vendor_num:...}
+%(vendor:...)
+%(vendor_num:...)

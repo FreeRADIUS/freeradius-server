@@ -57,7 +57,7 @@ if (&Vendor-Specific.FreeRADIUS.Proxied-To != 127.0.0.1) {
 }
 
 update {
-	"%{attr_num:Tmp-String-1}" := 'hello2'
+	"%(attr_num:Tmp-String-1)" := 'hello2'
 }
 
 if (&Tmp-String-1 != 'hello2') {
