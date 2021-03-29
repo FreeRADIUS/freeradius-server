@@ -100,27 +100,38 @@ static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out, r
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_vendor_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Return the vendor of an attribute reference
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_vendor(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   request_t *request, char const *fmt)
+static xlat_action_t xlat_vendor(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_list_t *in)
 {
-	fr_pair_t *vp;
-	fr_dict_vendor_t const *vendor;
+	fr_pair_t		*vp;
+	fr_dict_vendor_t const	*vendor;
+	fr_value_box_t		*attr = fr_dlist_head(in);
+	fr_value_box_t		*vb;
 
-	fr_skip_whitespace(fmt);
-
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
 
 	vendor = fr_dict_vendor_by_da(vp->da);
-	if (!vendor) return 0;
+	if (!vendor) return XLAT_ACTION_FAIL;
 
-	*out = talloc_typed_strdup(ctx, vendor->name);
-	return talloc_array_length(*out) - 1;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	if (fr_value_box_bstrndup(ctx, vb, NULL, vendor->name, strlen(vendor->name), false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /** Return the vendor number of an attribute reference

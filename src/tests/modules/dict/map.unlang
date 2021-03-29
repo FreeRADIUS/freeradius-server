@@ -39,10 +39,7 @@ else {
 	test_fail
 }
 
-if ("%{vendor:Vendor-Specific.FreeRADIUS.Proxied-To}" == 'FreeRADIUS') {
-	test_pass
-}
-else {
+if ("%(vendor:Vendor-Specific.FreeRADIUS.Proxied-To)" != 'FreeRADIUS') {
 	test_fail
 }
 
@@ -67,10 +64,7 @@ else {
 	test_fail
 }
 
-if ("%{vendor:Reply-Message}" == '') {
-	test_pass
-}
-else {
+if ("%(vendor:Reply-Message)" != '') {
 	test_fail
 }
 
