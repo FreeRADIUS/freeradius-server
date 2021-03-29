@@ -134,22 +134,29 @@ static xlat_action_t xlat_vendor(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_vendor_num_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Return the vendor number of an attribute reference
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       request_t *request, char const *fmt)
+static xlat_action_t xlat_vendor_num(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       	     fr_value_box_list_t *in)
 {
-	fr_pair_t *vp;
+	fr_pair_t	*vp;
+	fr_value_box_t	*attr = fr_dlist_head(in);
+	fr_value_box_t	*vb;
 
-	fr_skip_whitespace(fmt);
+	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
 
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	*out = talloc_typed_asprintf(ctx, "%i", fr_dict_vendor_num_by_da(vp->da));
-	return talloc_array_length(*out) - 1;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_uint32(vb, NULL, fr_dict_vendor_num_by_da(vp->da), false);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /** Return the attribute name of an attribute reference
@@ -206,8 +213,10 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	xlat_func_args(xlat, xlat_dict_attr_by_num_args);
 	xlat = xlat_register(instance, "attr_by_oid", xlat_dict_attr_by_oid, false);
 	xlat_func_args(xlat, xlat_dict_attr_by_oid_args);
-	xlat_register_legacy(instance, "vendor", xlat_vendor, NULL, NULL, 0, 0);
-	xlat_register_legacy(instance, "vendor_num", xlat_vendor_num, NULL, NULL, 0, 0);
+	xlat = xlat_register(instance, "vendor", xlat_vendor, false);
+	xlat_func_args(xlat, xlat_vendor_args);
+	xlat = xlat_register(instance, "vendor_num", xlat_vendor_num, false);
+	xlat_func_args(xlat, xlat_vendor_num_args);
 	xlat_register_legacy(instance, "attr", xlat_attr, NULL, NULL, 0, 0);
 	xlat_register_legacy(instance, "attr_num", xlat_attr_num, NULL, NULL, 0, 0);
 

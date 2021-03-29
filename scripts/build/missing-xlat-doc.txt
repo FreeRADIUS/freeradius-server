@@ -5,5 +5,5 @@
 %{attr_num:...}
 %{test:...}
 %(trigger:...)
-%{vendor_num:...}
 %(vendor:...)
+%(vendor_num:...)
