@@ -159,6 +159,7 @@ fr_table_num_ordered_t const fr_log_levels[] = {
 	{ L("Warn  : "),		L_WARN		},
 	{ L("Error : "),		L_ERR		},
 	{ L("Auth  : "),		L_AUTH		},
+	{ L("INFO  : "),		L_DBG_INFO	},
 	{ L("WARN  : "),		L_DBG_WARN	},
 	{ L("ERROR : "),		L_DBG_ERR	},
 	{ L("WARN  : "),		L_DBG_WARN_REQ	},
