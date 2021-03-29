@@ -188,7 +188,7 @@ Server installed in /opt/freeradius
 Module rlm_exec.shell_escape = yes
 ```
 
-=== %{client:<key>}
+=== %(client:<key>)
 
 Refers to a variable that was defined in the client section for the
 current client. See the sections `client { ... }` in `clients.conf`.
@@ -199,7 +199,7 @@ current client. See the sections `client { ... }` in `clients.conf`.
 
 [source,unlang]
 ----
-"The client ipaddr is %{client:ipaddr}"
+"The client ipaddr is %(client:ipaddr)"
 ----
 
 .Output
@@ -922,8 +922,8 @@ The packet type (`Access-Request`, etc.)
 === +%{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}+
 
 The source IPv4 or IPv6 address of the packet. See also the expansions
-`%{client:ipaddr}` and `%{client:ipv6addr}`. The two expansions
-should be identical, unless `%{client:ipaddr}` contains a DNS hostname.
+`%(client:ipaddr)` and `%(client:ipv6addr)`. The two expansions
+should be identical, unless `%(client:ipaddr)` contains a DNS hostname.
 
 === +%{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}+
 
