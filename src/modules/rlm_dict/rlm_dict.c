@@ -189,22 +189,30 @@ static xlat_action_t xlat_attr(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *re
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_attr_num_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Return the attribute number of an attribute reference
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     request_t *request, char const *fmt)
+static xlat_action_t xlat_attr_num(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   fr_value_box_list_t *in)
 {
-	fr_pair_t *vp;
+	fr_pair_t	*vp;
+	fr_value_box_t	*attr = fr_dlist_head(in);
+	fr_value_box_t	*vb;
 
-	fr_skip_whitespace(fmt);
+	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
 
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	*out = talloc_typed_asprintf(ctx, "%i", vp->da->attr);
-	return talloc_array_length(*out) - 1;
+	fr_value_box_uint32(vb, NULL, vp->da->attr, false);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -230,7 +238,8 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	xlat_func_args(xlat, xlat_vendor_num_args);
 	xlat = xlat_register(instance, "attr", xlat_attr, false);
 	xlat_func_args(xlat, xlat_attr_args);
-	xlat_register_legacy(instance, "attr_num", xlat_attr_num, NULL, NULL, 0, 0);
+	xlat = xlat_register(instance, "attr_num", xlat_attr_num, false);
+	xlat_func_args(xlat, xlat_attr_num_args);
 
 	return 0;
 }

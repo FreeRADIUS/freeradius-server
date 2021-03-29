@@ -29,10 +29,7 @@ if ("%(attr:Vendor-Specific.FreeRADIUS.Proxied-To)" != 'Proxied-To') {
 	test_fail
 }
 
-if ("%{attr_num:Vendor-Specific.FreeRADIUS.Proxied-To}" == 1) {
-	test_pass
-}
-else {
+if ("%(attr_num:Vendor-Specific.FreeRADIUS.Proxied-To)" != 1) {
 	test_fail
 }
 
@@ -48,10 +45,7 @@ if ("%(attr:Reply-Message)" != 'Reply-Message') {
 	test_fail
 }
 
-if ("%{attr_num:Reply-Message}" == 18) {
-	test_pass
-}
-else {
+if ("%(attr_num:Reply-Message)" != 18) {
 	test_fail
 }
 
