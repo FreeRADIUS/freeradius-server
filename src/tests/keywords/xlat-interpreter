@@ -1,0 +1,31 @@
+#
+#  PRE: update if
+#
+#  Note the test for %(interpreter:.line) is senisitive to the position of the
+#  "update request" line in the file
+#
+
+update request {
+        &Tmp-String-0 := "%(interpreter:.filename)"
+        &Tmp-Integer-0 := "%(interpreter:.line)"
+        &Tmp-String-1 := "%(interpreter:.name)"
+        &Tmp-String-2 := "%(interpreter:.type)"
+}
+
+if (&Tmp-String-0 != "src/tests/keywords/xlat-interpreter") {
+        test_fail
+}
+
+if (&Tmp-String-1 != "request") {
+        test_fail
+}
+
+if (&Tmp-String-2 != "update") {
+        test_fail
+}
+
+if (&Tmp-Integer-0 != 8) {
+        test_fail
+}
+
+success
