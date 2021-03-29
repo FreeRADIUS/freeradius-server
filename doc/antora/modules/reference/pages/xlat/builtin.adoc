@@ -6,7 +6,7 @@ which operate on inputs, and produce an output.
 
 == Attribute Manipulation
 
-=== %{length: ... }
+=== %(length: ... )
 
 The `length` expansion returns the size of the input as an integer.
 When the input is a string, then the output is identical to the
@@ -27,8 +27,8 @@ update control {
 }
 
 update reply {
-    &Reply-Message := "The length of %{control.Tmp-String-0} is %{length:&control.Tmp-String-0}"
-    &Reply-Message += "The length of %{control.Framed-IP-Address} is %{length:&control.Framed-IP-Address}"
+    &Reply-Message := "The length of %{control.Tmp-String-0} is %(length:&control.Tmp-String-0)"
+    &Reply-Message += "The length of %{control.Framed-IP-Address} is %(length:&control.Framed-IP-Address)"
 }
 ----
 
