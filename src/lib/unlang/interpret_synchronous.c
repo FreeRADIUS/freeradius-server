@@ -52,12 +52,6 @@ static void _request_init_internal(request_t *request, void *uctx)
 static void _request_done_internal(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
 {
 	RDEBUG3("Done synchronous request");
-
-	/*
-	 *	Detached requests have to be freed by us
-	 *	as nothing else can free them.
-	 */
-	if (!request->parent) talloc_free(request);
 }
 
 /** External request is now complete
@@ -247,6 +241,8 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 
 		if (sub_request == request) {
 			rcode = sub_rcode;
+		} else if (!sub_request->parent) {
+			talloc_free(sub_request);	/* Free detached requests */
 		}
 
 		DEBUG3("%u runnable, %u yielded", fr_heap_num_elements(intps->runnable), intps->yielded);
