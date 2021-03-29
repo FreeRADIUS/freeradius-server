@@ -642,6 +642,22 @@ static inline void fr_dlist_talloc_free_tail(fr_dlist_head_t *list_head)
 	talloc_free(fr_dlist_pop_head(list_head));
 }
 
+/** Free the item specified
+ *
+ * @param[in] list_head		to free item in.
+ * @param[in] ptr		to remove and free.
+ * @return
+ *	- NULL if no more items in the list.
+ *	- Previous item in the list
+ */
+static inline void *fr_dlist_talloc_free_item(fr_dlist_head_t *list_head, void *ptr)
+{
+	void *prev;
+	prev = fr_dlist_remove(list_head, ptr);
+	talloc_free(ptr);
+	return prev;
+}
+
 /** Free all items in a doubly linked list (with talloc)
  *
  * @param[in] head of list to free.
