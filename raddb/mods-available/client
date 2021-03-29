@@ -78,7 +78,7 @@
 #  | XLAT                          | Description
 #  | `%(client:<field>)`           | Expands to a field in the client definition.
 #  | `%(client:<field> <ipaddr>)`  | Expands to a field in the client definition specified
-                                     by `<ipaddr>`.
+#                                    by `<ipaddr>`.
 #  |===
 #
 
