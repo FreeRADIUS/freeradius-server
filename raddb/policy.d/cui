@@ -39,7 +39,7 @@ cui_require_operator_name = "no"
 #  }
 #
 cui.authorize {
-	if ("%{client:add_cui}" == 'yes') {
+	if ("%(client:add_cui)" == 'yes') {
 		update request {
 			&Chargeable-User-Identity := 0x00
 		}

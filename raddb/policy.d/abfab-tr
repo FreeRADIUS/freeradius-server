@@ -25,8 +25,8 @@ abfab_psk_authorize {
 
 abfab_client_check {
 	# check that the acceptor host name is correct
-	if ("%{client:gss_acceptor_host_name}" && &GSS-acceptor-host-name) {
-		if ("%{client:gss_acceptor_host_name}" != "%{gss-acceptor-host-name}") {
+	if ("%(client:gss_acceptor_host_name)" && &GSS-acceptor-host-name) {
+		if ("%(client:gss_acceptor_host_name)" != "%{gss-acceptor-host-name}") {
 			update reply {
 				&Reply-Message = "GSS-Acceptor-Host-Name incorrect"
 			}
@@ -35,16 +35,16 @@ abfab_client_check {
 	}
 
 	# set trust-router-coi attribute from the client configuration
-	if ("%{client:trust_router_coi}") {
+	if ("%(client:trust_router_coi)") {
 		update request {
-			&Trust-Router-COI := "%{client:trust_router_coi}"
+			&Trust-Router-COI := "%(client:trust_router_coi)"
 		}
 	}
 
 	# set gss-acceptor-realm-name attribute from the client configuration
-	if ("%{client:gss_acceptor_realm_name}") {
+	if ("%(client:gss_acceptor_realm_name)") {
 		update request {
-			&GSS-Acceptor-Realm-Name := "%{client:gss_acceptor_realm_name}"
+			&GSS-Acceptor-Realm-Name := "%(client:gss_acceptor_realm_name)"
 		}
 	}
 }
