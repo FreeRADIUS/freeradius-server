@@ -43,7 +43,7 @@ RCSID("$Id$")
 
 static int cond_realize_tmpl(request_t *request,
 			     fr_value_box_t **out, fr_value_box_t **to_free,
-			     tmpl_t *in, tmpl_t *other);
+			     tmpl_t *in, tmpl_t *other, fr_value_box_t *async);
 
 /** Map keywords to #pair_list_t values
  */
@@ -121,14 +121,14 @@ void cond_debug(fr_cond_t const *cond)
  * Converts a tmpl_t to a boolean value.
  *
  * @param[in] request the request_t
- * @param[in] depth of the recursion (only used for debugging)
  * @param[in] in the template to evaluate
+ * @param[in] async the asynchronously evaluated value box, for XLAT and EXEC
  * @return
  *	- <0 for failure
  *	- 0 for "no match"
  *	- 1 for "match".
  */
-int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *in)
+static int cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *async)
 {
 	int rcode = -1;
 	fr_pair_t *vp = NULL;
@@ -172,7 +172,7 @@ int cond_eval_tmpl(request_t *request, UNUSED int depth, tmpl_t const *in)
 		/*
 		 *	Realize and cast the tmpl.
 		 */
-		if (cond_realize_tmpl(request, &box, &box_free, vpt, NULL) < 0) {
+		if (cond_realize_tmpl(request, &box, &box_free, vpt, NULL, async) < 0) {
 			fr_strerror_const("Failed evaluating condition");
 			return -1;
 		}
@@ -237,6 +237,7 @@ done:
 	talloc_free(box_free);
 	return rcode;
 }
+
 
 #ifdef HAVE_REGEX
 /** Perform a regular expressions comparison between two operands
@@ -350,7 +351,8 @@ done:
  */
 static int cond_realize_tmpl(request_t *request,
 			     fr_value_box_t **out, fr_value_box_t **to_free,
-			     tmpl_t *in, tmpl_t *other) /* both really should be 'const' */
+			     tmpl_t *in, tmpl_t *other, /* both really should be 'const' */
+			     fr_value_box_t *async)
 {
 	fr_value_box_t		*box;
 	xlat_escape_legacy_t	escape = NULL;
@@ -365,6 +367,7 @@ static int cond_realize_tmpl(request_t *request,
 #ifdef HAVE_REGEX
 	case TMPL_TYPE_REGEX:
 #endif
+		fr_assert(!async);
 		return 0;
 
 	case TMPL_TYPE_ATTR:
@@ -375,6 +378,7 @@ static int cond_realize_tmpl(request_t *request,
 		 *	avoid all of the cost of setting up the
 		 *	cursors?
 		 */
+		fr_assert(!async);
 		return 0;
 
 	/*
@@ -384,6 +388,7 @@ static int cond_realize_tmpl(request_t *request,
 	case TMPL_TYPE_DATA:
 		fr_assert((in->cast == FR_TYPE_NULL) || (in->cast == tmpl_value_type(in)));
 		*out = tmpl_value(in);
+		fr_assert(!async);
 		return 0;
 
 #ifdef HAVE_REGEX
@@ -398,12 +403,6 @@ static int cond_realize_tmpl(request_t *request,
 		ssize_t		ret;
 		fr_type_t	cast_type;
 		fr_dict_attr_t const *da = NULL;
-
-		box = NULL;
-		ret = tmpl_aexpand(request, &box, request, in, escape, NULL);
-		if (ret < 0) return ret;
-
-		fr_assert(box != NULL);
 
 		/*
 		 *	We can't be TMPL_TYPE_ATTR or TMPL_TYPE_DATA,
@@ -433,14 +432,27 @@ static int cond_realize_tmpl(request_t *request,
 			cast_type = FR_TYPE_STRING;
 		}
 
+		if (!async) {
+			box = NULL;
+			ret = tmpl_aexpand(request, &box, request, in, escape, NULL);
+			if (ret < 0) return ret;
+
+			fr_assert(box != NULL);
+			*out = *to_free = box;
+
+		} else {
+			*out = box = async;
+			*to_free = NULL;
+		}
+
 		if (cast_type != box->type) {
 			if (fr_value_box_cast_in_place(box, box, cast_type, da) < 0) {
+				*out = *to_free = NULL;
 				RPEDEBUG("Failed casting!");
 				return -1;
 			}
 		}
 
-		*out = *to_free = box;
 		return 0;
 	}
 
@@ -583,14 +595,16 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 /** Evaluate a map
  *
  * @param[in] request the request_t
- * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
+ * @param[in] async_lhs the asynchronously evaluated value box, for XLAT and EXEC
+ * @param[in] async_rhs the asynchronously evaluated value box, for XLAT and EXEC
  * @return
  *	- -1 on failure.
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
+static int cond_eval_map(request_t *request, fr_cond_t const *c,
+			 fr_value_box_t *async_lhs, fr_value_box_t *async_rhs)
 {
 	int		rcode = 0;
 	map_t const	*map = c->data.map;
@@ -621,7 +635,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 	/*
 	 *	Realize the LHS of a condition.
 	 */
-	if (cond_realize_tmpl(request, &lhs, &lhs_free, map->lhs, map->rhs) < 0) {
+	if (cond_realize_tmpl(request, &lhs, &lhs_free, map->lhs, map->rhs, async_lhs) < 0) {
 		fr_strerror_const("Failed evaluating left side of condition");
 		return -1;
 	}
@@ -629,7 +643,7 @@ int cond_eval_map(request_t *request, UNUSED int depth, fr_cond_t const *c)
 	/*
 	 *	Realize the RHS of a condition.
 	 */
-	if (cond_realize_tmpl(request, &rhs, &rhs_free, map->rhs, map->lhs) < 0) {
+	if (cond_realize_tmpl(request, &rhs, &rhs_free, map->rhs, map->lhs, async_rhs) < 0) {
 		fr_strerror_const("Failed evaluating right side of condition");
 		return -1;
 	}
@@ -828,6 +842,7 @@ done:
 	return rcode;
 }
 
+
 /** Evaluate a fr_cond_t;
  *
  * @param[in] request the request_t
@@ -842,7 +857,6 @@ done:
 int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 {
 	int rcode = -1;
-	int depth = 0;
 
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
@@ -854,7 +868,7 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 	while (c) {
 		switch (c->type) {
 		case COND_TYPE_TMPL:
-			rcode = cond_eval_tmpl(request, depth, c->data.vpt);
+			rcode = cond_eval_tmpl(request, c->data.vpt, NULL);
 			break;
 
 		case COND_TYPE_RCODE:
@@ -862,11 +876,10 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 			break;
 
 		case COND_TYPE_MAP:
-			rcode = cond_eval_map(request, depth, c);
+			rcode = cond_eval_map(request, c, NULL, NULL);
 			break;
 
 		case COND_TYPE_CHILD:
-			depth++;
 			c = c->data.child;
 			continue;
 
@@ -900,9 +913,6 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 return_to_parent:
 			c = c->parent;
 			if (!c) return rcode;
-
-			depth--;
-			fr_assert(depth >= 0);
 		}
 
 		/*
@@ -922,6 +932,7 @@ return_to_parent:
 			break;
 
 		default:
+			fr_assert(0);
 			c = c->next;
 			break;
 		}
@@ -931,4 +942,169 @@ return_to_parent:
 		EVAL_DEBUG("FAIL %d", __LINE__);
 	}
 	return rcode;
+}
+
+/** Asynchronous evaluation of conditions.
+ *
+ * The caller is expected to clear the structure, and then set
+ *	a->ctx = talloc ctx for ephemeral value boxes
+ * 	a->state = COND_EVAL_STATE_INIT
+ *	a->c = condition to evaluate
+ *	a->modreturn the module return code before the condition
+ *	a->result = true
+ *
+ * On return, the caller checks a->state
+ *
+ * COND_EVAL_STATE_EXPAND - a->tmpl_lhs and/or a->tmpl_rhs are
+ * asynchronous templates which need to be pushed onto the unlang
+ * stack in order to be evaluated.  The evaluation results should go
+ * into a->vb_lhs and a->vb_rhs, respectively.  The caller should then
+ * set a->state = COND_EVAL_STATE_EVAL, and call the function again to
+ * evaluate the results.
+ *
+ * COND_EVAL_STATE_DONE - the result of the condition is in a->result.
+ *
+ * @param[in] request the request to evaluate
+ * @param[in,out] a the asynchronous data structure to evaluate
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int cond_eval_async(request_t *request, fr_cond_async_t *a)
+{
+	int rcode;
+	fr_cond_t const *c;
+
+	if (!request || !a || !a->c) return -1;
+
+redo:
+	c = a->c;
+
+	if (a->state == COND_EVAL_STATE_INIT) {
+		while (c->type == COND_TYPE_CHILD) {
+			c = c->data.child;
+		}
+
+		/*
+		 *	Evaluate synchronous conditions as quickly as
+		 *	possible.
+		 */
+		if (!c->async_required) {
+			rcode = cond_eval(request, a->modreturn, a->c);
+			if (rcode < 0) return rcode;
+
+			a->result = (rcode == 1);
+			goto return_to_parent;
+		}
+
+		switch (c->type) {
+		case COND_TYPE_TMPL:
+			fr_assert(tmpl_async_required(c->data.vpt));
+			a->tmpl_lhs = c->data.vpt;
+			a->tmpl_rhs = NULL;
+			break;
+
+		case COND_TYPE_MAP:
+			a->tmpl_lhs = tmpl_async_required(c->data.map->lhs) ? c->data.map->lhs : NULL;
+			a->tmpl_rhs = tmpl_async_required(c->data.map->rhs) ? c->data.map->rhs : NULL;
+
+			fr_assert(a->tmpl_lhs || a->tmpl_rhs);
+			break;
+
+		default:
+			fr_assert(0);
+			return -1;
+		}
+
+		/*
+		 *	Tell the caller to expand the tmpls.
+		 *
+		 *	The caller should then set
+		 *
+		 *		a->state = COND_EVAL_STATE_EVAL
+		 *
+		 *	in order to tell us that we need to evaluate
+		 *	the expanded tmpls.
+		 */
+		a->state = COND_EVAL_STATE_EXPAND;
+		return 0;
+	} /* INIT state */
+
+	if (a->state == COND_EVAL_STATE_EVAL) {
+		switch (c->type) {
+		case COND_TYPE_TMPL:
+			fr_assert(a->vb_lhs);
+			rcode = cond_eval_tmpl(request, c->data.vpt, a->vb_lhs);
+			if (rcode < 0) return rcode;
+
+			a->result = (rcode == 1);
+			break;
+
+		case COND_TYPE_MAP:
+			fr_assert(a->vb_lhs || a->vb_rhs);
+
+			rcode = cond_eval_map(request, c, a->vb_lhs, a->vb_rhs);
+			if (rcode < 0) return rcode;
+			break;
+
+		default:
+			fr_assert(0);
+			return -1;
+		}
+
+		TALLOC_FREE(a->vb_lhs);
+		TALLOC_FREE(a->vb_rhs);
+		a->tmpl_lhs = a->tmpl_rhs = NULL;
+
+		if (c->negate) a->result = !a->result;
+	} /* EVAL state */
+
+	/*
+	 *	We've fallen off of the end of this evaluation
+	 *	string.  Go back up to the parent, and then to
+	 *	the next sibling of the parent.
+	 *
+	 *	Do this repeatedly until we have a c->next.
+	 */
+	while (!c->next) {
+return_to_parent:
+		c = c->parent;
+		if (!c) {
+			a->state = COND_EVAL_STATE_DONE;
+			return 0;
+		}
+	}
+	c = c->next;
+
+	/*
+	 *	Do short-circuit evaluations.
+	 */
+	switch (c->type) {
+	case COND_TYPE_AND:
+		if (!a->result) goto return_to_parent;
+
+		fr_assert(c->next != NULL);
+		c = c->next; /* skip the && */
+		break;
+
+	case COND_TYPE_OR:
+		if (a->result) goto return_to_parent;
+
+		fr_assert(c->next != NULL);
+		c = c->next; /* skip the || */
+		break;
+
+	default:
+		fr_assert(0);
+		break;
+	}
+
+	/*
+	 *	We now have a new condition which needs to be
+	 *	evaluated.  Go back to figuring out if it's async or
+	 *	not.
+	 */
+	a->c = c;
+	a->state = COND_EVAL_STATE_INIT;
+	goto redo;
 }

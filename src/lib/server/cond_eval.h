@@ -38,9 +38,31 @@ typedef struct fr_cond_s fr_cond_t;
 
 void	cond_debug(fr_cond_t const *cond);
 
-int	cond_eval_tmpl(request_t *request, int depth, tmpl_t const *vpt);
-int	cond_eval_map(request_t *request, int depth, fr_cond_t const *c);
 int	cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c);
+
+typedef struct {
+	TALLOC_CTX	*ctx;		//!< for intermediate value boxes
+	fr_cond_t const	*c;		//!< the current condition being evaluated
+	rlm_rcode_t	modreturn;	//!< the previous module return code;
+
+	tmpl_t const	*tmpl_lhs;	//!< the LHS async template to evaluate
+	tmpl_t const	*tmpl_rhs;	//!< the RHS async template to evaluate
+
+	fr_value_box_t	*vb_lhs;	//!< the output of the LHS async evaluation
+	fr_value_box_t	*vb_rhs;	//!< the output of the RHS async evaluation
+
+	enum {
+		COND_EVAL_STATE_INVALID = 0,
+		COND_EVAL_STATE_INIT,
+		COND_EVAL_STATE_EXPAND,
+		COND_EVAL_STATE_EVAL,
+		COND_EVAL_STATE_DONE,
+	} state;
+
+	bool		result;		//!< the final conditional result
+} fr_cond_async_t;
+
+int cond_eval_async(request_t *request, fr_cond_async_t *a);
 
 #ifdef __cplusplus
 }

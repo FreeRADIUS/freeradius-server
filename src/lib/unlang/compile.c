@@ -2491,6 +2491,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 *	them up.
 		 */
 		if (!fr_cond_walk(cond, pass2_cond_callback, cs)) return NULL;
+		fr_cond_async_update(cond);
 		c = compile_section(parent, unlang_ctx, cs, ext);
 	}
 	if (!c) return NULL;

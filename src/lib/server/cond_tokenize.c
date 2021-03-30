@@ -1619,6 +1619,7 @@ bool fr_cond_walk(fr_cond_t *c, bool (*callback)(fr_cond_t *cond, void *uctx), v
 			if (!fr_cond_walk(c->data.child, callback, uctx)) {
 				return false;
 			}
+			break;
 		}
 
 		/*
@@ -1628,6 +1629,62 @@ bool fr_cond_walk(fr_cond_t *c, bool (*callback)(fr_cond_t *cond, void *uctx), v
 	}
 
 	return true;
+}
+
+/** Update the condition with "is async required".
+ *
+ *  This is done only by the compiler, in pass2, after is has resolved
+ *  all of the various TMPLs.  Note that we MUST walk over the entire
+ *  condition, as tmpl_async_required() returns "true" for unresolved
+ *  TMPLs.  Which means that if the TMPL is resolved to a synchronous
+ *  one, then the flag will be set.  So we have to clear the flag, and
+ *  then set it again ourselves.
+ */
+void fr_cond_async_update(fr_cond_t *c)
+{
+	while (c) {
+		c->async_required = false;
+
+		switch (c->type) {
+		case COND_TYPE_INVALID:
+		case COND_TYPE_RCODE:
+		case COND_TYPE_AND:
+		case COND_TYPE_OR:
+		case COND_TYPE_TRUE:
+		case COND_TYPE_FALSE:
+			break;
+
+		case COND_TYPE_TMPL:
+			c->async_required = tmpl_async_required(c->data.vpt);
+			break;
+
+		case COND_TYPE_MAP:
+			c->async_required = tmpl_async_required(c->data.map->lhs) | tmpl_async_required(c->data.map->rhs);
+			break;
+
+		case COND_TYPE_CHILD:
+			c = c->data.child;
+			continue;
+
+		}
+
+		/*
+		 *	Mark up the parent, too.  If any of the
+		 *	children are async, then the parent is async,
+		 *	too.
+		 */
+		if (c->parent) c->parent->async_required |= c->async_required;
+
+		/*
+		 *	Go up if there's no sibling, or to the next
+		 *	sibling if it exists.
+		 */
+		while (!c->next) {
+			c = c->parent;
+			if (!c) return;
+		}
+		c = c->next;
+	}
 }
 
 /** Convert a single map to a condition.
