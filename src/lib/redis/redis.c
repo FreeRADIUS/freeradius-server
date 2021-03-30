@@ -167,9 +167,9 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
 	case REDIS_REPLY_ARRAY:
 		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) array[%zu]", idx, reply->elements);
 		for (i = 0; i < reply->elements; i++) {
-			RINDENT();
+			if (request) RINDENT();
 			fr_redis_reply_print(lvl, reply->element[i], request, i);
-			REXDENT();
+			if (request) REXDENT();
 		}
 		break;
 	}
