@@ -145,27 +145,27 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
 
 	switch (reply->type) {
 	case REDIS_REPLY_ERROR:
-		REDEBUG("(%i) error   : %s", idx, reply->str);
+		ROPTIONAL(REDEBUG, ERROR, "(%i) error   : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_STATUS:
-		RDEBUGX(lvl, "(%i) status  : %s", idx, reply->str);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) status  : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_STRING:
-		RDEBUGX(lvl, "(%i) string  : %s", idx, reply->str);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) string  : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_INTEGER:
-		RDEBUGX(lvl, "(%i) integer : %lld", idx, reply->integer);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) integer : %lld", idx, reply->integer);
 		break;
 
 	case REDIS_REPLY_NIL:
-		RDEBUGX(lvl, "(%i) nil", idx);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) nil", idx);
 		break;
 
 	case REDIS_REPLY_ARRAY:
-		RDEBUGX(lvl, "(%i) array[%zu]", idx, reply->elements);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) array[%zu]", idx, reply->elements);
 		for (i = 0; i < reply->elements; i++) {
 			RINDENT();
 			fr_redis_reply_print(lvl, reply->element[i], request, i);

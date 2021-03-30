@@ -1007,18 +1007,18 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_clu
 	 */
 	if (cluster->remapping) {
 	in_progress:
-		RDEBUG2("Cluster remapping in progress, ignoring remap request");
+		ROPTIONAL(RDEBUG2, DEBUG2, "Cluster remapping in progress, ignoring remap request");
 		return FR_REDIS_CLUSTER_RCODE_IGNORED;
 	}
 
 	now = time(NULL);
 	if (now == cluster->last_updated) {
 	too_soon:
-		RWARN("Cluster was updated less than a second ago, ignoring remap request");
+		ROPTIONAL(RWARN, WARN, "Cluster was updated less than a second ago, ignoring remap request");
 		return FR_REDIS_CLUSTER_RCODE_IGNORED;
 	}
 
-	RINFO("Initiating cluster remap");
+	ROPTIONAL(RINFO, INFO, "Initiating cluster remap");
 
 	/*
 	 *	Get new cluster information
@@ -1041,24 +1041,24 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_clu
 	/*
 	 *	Print the mapping we received
 	 */
-	RINFO("Cluster map consists of %zu key ranges", map->elements);
+	ROPTIONAL(RINFO, INFO, "Cluster map consists of %zu key ranges", map->elements);
 	for (i = 0; i < map->elements; i++) {
 		redisReply *map_node = map->element[i];
 
-		RINFO("%zu - keys %lli-%lli", i,
-		      map_node->element[0]->integer,
-		      map_node->element[1]->integer);
+		ROPTIONAL(RINFO, INFO, "%zu - keys %lli-%lli", i,
+			  map_node->element[0]->integer,
+			  map_node->element[1]->integer);
 
-		RINDENT();
-		RINFO("master: %s:%lli",
-		      map_node->element[2]->element[0]->str,
-		      map_node->element[2]->element[1]->integer);
+		if (request) RINDENT();
+		ROPTIONAL(RINFO, INFO, "master: %s:%lli",
+			  map_node->element[2]->element[0]->str,
+			  map_node->element[2]->element[1]->integer);
 		for (j = 3; j < map_node->elements; j++) {
-			RINFO("slave%zu: %s:%lli", j - 3,
-			      map_node->element[j]->element[0]->str,
-			      map_node->element[j]->element[1]->integer);
+			ROPTIONAL(RINFO, INFO, "slave%zu: %s:%lli", j - 3,
+				  map_node->element[j]->element[0]->str,
+				  map_node->element[j]->element[1]->integer);
 		}
-		REXDENT();
+		if (request) REXDENT();
 	}
 
 	/*
@@ -1231,24 +1231,24 @@ static fr_redis_cluster_rcode_t cluster_node_ping(request_t *request, fr_redis_c
 	redisReply		*reply;
 	fr_redis_rcode_t	rcode;
 
-	RDEBUG2("[%i] Executing command: PING", node->id);
+	ROPTIONAL(RDEBUG2, DEBUG2, "[%i] Executing command: PING", node->id);
 	reply = redisCommand(conn->handle, "PING");
 	rcode = fr_redis_command_status(conn, reply);
 	if (rcode != REDIS_RCODE_SUCCESS) {
-		RPERROR("[%i] PING failed to %s:%i", node->id, node->name, node->addr.inet.dst_port);
+		ROPTIONAL(RPERROR, PERROR, "[%i] PING failed to %s:%i", node->id, node->name, node->addr.inet.dst_port);
 		fr_redis_reply_free(&reply);
 		return FR_REDIS_CLUSTER_RCODE_NO_CONNECTION;
 	}
 
 	if (reply->type != REDIS_REPLY_STATUS) {
-		RERROR("[%i] Bad PING response from %s:%i, expected status got %s",
-		       node->id, node->name, node->addr.inet.dst_port,
-		       fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
+		ROPTIONAL(RERROR, ERROR, "[%i] Bad PING response from %s:%i, expected status got %s",
+			  node->id, node->name, node->addr.inet.dst_port,
+			  fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		fr_redis_reply_free(&reply);
 		return FR_REDIS_CLUSTER_RCODE_BAD_INPUT;
 	}
 
-	RDEBUG2("[%i] Got response: %s", node->id, reply->str);
+	ROPTIONAL(RDEBUG2, DEBUG2, "[%i] Got response: %s", node->id, reply->str);
 	fr_redis_reply_free(&reply);
 	return FR_REDIS_CLUSTER_RCODE_SUCCESS;
 }
@@ -1303,11 +1303,11 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	fr_rb_tree_iter_inorder_t	iter;
 	fr_redis_cluster_node_t		*node;
 
-	RDEBUG2("Searching for live cluster nodes");
+	ROPTIONAL(RDEBUG2, DEBUG2, "Searching for live cluster nodes");
 
 	if (rbtree_num_elements(cluster->used_nodes) == 1) {
 	no_alts:
-		RERROR("No alternative nodes available");
+		ROPTIONAL(RERROR, ERROR, "No alternative nodes available");
 		return -1;
 	}
 
@@ -1340,16 +1340,16 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 		int			first, last, pivot;	/* Must be signed for BS */
 		unsigned int		find, cumulative = 0;
 
-		RDEBUG3("(Re)assigning node weights:");
-		RINDENT();
+		ROPTIONAL(RDEBUG3, DEBUG2, "(Re)assigning node weights:");
+		if (request) RINDENT();
 		for (j = 0; j < live->next; j++) {
 			int weight;
 
 			weight = cluster_node_pool_health(now, live->node[j].pool_state);
-			RDEBUG3("Node %i weight: %i", live->node[j].id, weight);
+			ROPTIONAL(RDEBUG3, DEBUG3, "Node %i weight: %i", live->node[j].id, weight);
 			live->node[j].cumulative = (cumulative += weight);
 		}
-		REXDENT();
+		if (request) REXDENT();
 
 		/*
 		 *	Select a node at random
@@ -1381,11 +1381,11 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 		node = &cluster->node[live->node[pivot].id];
 		fr_assert(live->node[pivot].id == node->id);
 
-		RDEBUG2("Selected node %i (using random value %i)", node->id, find);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Selected node %i (using random value %i)", node->id, find);
 		conn = fr_pool_connection_get(node->pool, request);
 		if (!conn) {
-			RERROR("No connections available to node %i %s:%i", node->id,
-			       node->name, node->addr.inet.dst_port);
+			ROPTIONAL(RERROR, ERROR, "No connections available to node %i %s:%i", node->id,
+				  node->name, node->addr.inet.dst_port);
 		next:
 			/*
 			 *	Remove the node we just discovered was bad
@@ -1423,7 +1423,7 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 		return 0;
 	}
 
-	RERROR("Hit max alt limit %i, and no live connections found", cluster->conf->max_alt);
+	ROPTIONAL(RERROR, ERROR, "Hit max alt limit %i, and no live connections found", cluster->conf->max_alt);
 	talloc_free(live);
 
 	return -1;
@@ -1561,7 +1561,7 @@ fr_redis_cluster_key_slot_t const *fr_redis_cluster_slot_by_key(fr_redis_cluster
 
 	if (!key || (key_len == 0)) {
 		key_slot = &cluster->key_slot[(uint16_t)(fr_rand() & (KEY_SLOTS - 1))];
-		RDEBUG2("Key rand() -> slot %zu", key_slot - cluster->key_slot);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Key rand() -> slot %zu", key_slot - cluster->key_slot);
 
 		return key_slot;
 	}
@@ -1572,12 +1572,12 @@ fr_redis_cluster_key_slot_t const *fr_redis_cluster_slot_by_key(fr_redis_cluster
 	 */
 	if (rbtree_num_elements(cluster->used_nodes) > 1) {
 		key_slot = &cluster->key_slot[cluster_key_hash(key, key_len)];
-		RDEBUG2("Key \"%pV\" -> slot %zu",
-			fr_box_strvalue_len((char const *)key, key_len), key_slot - cluster->key_slot);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Key \"%pV\" -> slot %zu",
+			  fr_box_strvalue_len((char const *)key, key_len), key_slot - cluster->key_slot);
 
 		return key_slot;
 	}
-	RDEBUG3("Single node available, skipping key selection");
+	ROPTIONAL(RDEBUG3, DEBUG3, "Single node available, skipping key selection");
 
 	return &cluster->key_slot[0];
 }
@@ -1710,7 +1710,7 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 
 	used_nodes = rbtree_num_elements(cluster->used_nodes);
 	if (used_nodes == 0) {
-		REDEBUG("No nodes in cluster");
+		ROPTIONAL(REDEBUG, ERROR, "No nodes in cluster");
 		return REDIS_RCODE_RECONNECT;
 	}
 
@@ -1730,8 +1730,8 @@ again:
 			node = &cluster->node[node_id];
 			*conn = fr_pool_connection_get(node->pool, request);
 			if (!*conn) {
-				RDEBUG2("[%i] No connections available (key slot %zu slave %i)",
-					node->id, key_slot - cluster->key_slot, (first + i) % key_slot->slave_num);
+				ROPTIONAL(RDEBUG2, DEBUG2, "[%i] No connections available (key slot %zu slave %i)",
+					  node->id, key_slot - cluster->key_slot, (first + i) % key_slot->slave_num);
 				cluster->remap_needed = true;
 				continue;	/* Continue until we find a live pool */
 			}
@@ -1750,8 +1750,8 @@ again:
 	node = &cluster->node[key_slot->master];
 	*conn = fr_pool_connection_get(node->pool, request);
 	if (!*conn) {
-		RDEBUG2("[%i] No connections available (key slot %zu master)",
-			node->id, key_slot - cluster->key_slot);
+		ROPTIONAL(RDEBUG2, DEBUG2, "[%i] No connections available (key slot %zu master)",
+			  node->id, key_slot - cluster->key_slot);
 		cluster->remap_needed = true;
 
 		if (cluster_node_find_live(&node, conn, request, cluster, node) < 0) return REDIS_RCODE_RECONNECT;
@@ -1766,14 +1766,15 @@ finish:
 			fr_pool_connection_release(node->pool, request, *conn);
 			goto again;	/* New map, try again */
 		}
-		RPDEBUG2("%s", "");
+		ROPTIONAL(RPDEBUG2, PDEBUG2, "%s", "");
 	}
 
 	state->node = node;
 	state->key = key;
 	state->key_len = key_len;
 
-	RDEBUG2("[%i] >>> Sending command(s) to %s:%i", state->node->id, state->node->name, state->node->addr.inet.dst_port);
+	ROPTIONAL(RDEBUG2, DEBUG2, "[%i] >>> Sending command(s) to %s:%i",
+		  state->node->id, state->node->name, state->node->addr.inet.dst_port);
 
 	return REDIS_RCODE_TRY_AGAIN;
 }
@@ -1822,13 +1823,14 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 	if (*reply) fr_redis_reply_print(L_DBG_LVL_3, *reply, request, 0);
 
- 	RDEBUG2("[%i] <<< Returned: %s", state->node->id, fr_table_str_by_value(redis_rcodes, status, "<UNKNOWN>"));
+ 	ROPTIONAL(RDEBUG2, DEBUG2, "[%i] <<< Returned: %s",
+ 		  state->node->id, fr_table_str_by_value(redis_rcodes, status, "<UNKNOWN>"));
 
 	/*
 	 *	Caller indicated we should close the connection
 	 */
 	if (state->close_conn) {
-		RDEBUG2("[%i] Connection no longer viable, closing it", state->node->id);
+		ROPTIONAL(RDEBUG2, DEBUG2, "[%i] Connection no longer viable, closing it", state->node->id);
 		fr_pool_connection_close(state->node->pool, request, *conn);
 		*conn = NULL;
 		state->close_conn = false;
@@ -1850,7 +1852,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		 *	remap_needed flag.
 		 */
 		if (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)
-		RPDEBUG2("%s", "");
+		ROPTIONAL(RPDEBUG2, PDEBUG2, "%s", "");
 	}
 
 	/*
@@ -1868,7 +1870,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	case REDIS_RCODE_NO_SCRIPT:
 	case REDIS_RCODE_ERROR:
-		RPEDEBUG("[%i] Command failed", state->node->id);
+		ROPTIONAL(RPEDEBUG, PERROR, "[%i] Command failed", state->node->id);
 		fr_pool_connection_release(state->node->pool, request, *conn);
 		*conn = NULL;
 		return REDIS_RCODE_ERROR;
@@ -1878,7 +1880,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	case REDIS_RCODE_TRY_AGAIN:
 		if (state->retries++ >= cluster->conf->max_retries) {
-			REDEBUG("[%i] Hit maximum retry attempts", state->node->id);
+			ROPTIONAL(REDEBUG, ERROR, "[%i] Hit maximum retry attempts", state->node->id);
 			fr_pool_connection_release(state->node->pool, request, *conn);
 			*conn = NULL;
 			return REDIS_RCODE_ERROR;
@@ -1897,13 +1899,14 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	{
 		fr_redis_cluster_key_slot_t const *key_slot;
 
-		RPERROR("[%i] Failed communicating with %s:%i", state->node->id, state->node->name,
-		        state->node->addr.inet.dst_port);
+		ROPTIONAL(RPERROR, PERROR, "[%i] Failed communicating with %s:%i",
+			  state->node->id, state->node->name,
+			  state->node->addr.inet.dst_port);
 
 		fr_pool_connection_close(state->node->pool, request, *conn);	/* He's dead jim */
 
 		if (state->reconnects++ > state->in_pool) {
-			REDEBUG("[%i] Hit maximum reconnect attempts", state->node->id);
+			ROPTIONAL(REDEBUG, ERROR, "[%i] Hit maximum reconnect attempts", state->node->id);
 			cluster->remap_needed = true;
 			return REDIS_RCODE_RECONNECT;
 		}
@@ -1916,8 +1919,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		*conn = fr_pool_connection_get(state->node->pool, request);
 		if (!*conn) {
-			REDEBUG("[%i] No connections available for %s:%i", state->node->id, state->node->name,
-				state->node->addr.inet.dst_port);
+			ROPTIONAL(REDEBUG, ERROR, "[%i] No connections available for %s:%i",
+				  state->node->id, state->node->name, state->node->addr.inet.dst_port);
 			cluster->remap_needed = true;
 
 			if (cluster_node_find_live(&state->node, conn, request,
@@ -1938,7 +1941,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		fr_assert(*reply);
 
 		if (*conn && (fr_redis_cluster_remap(request, cluster, *conn) != FR_REDIS_CLUSTER_RCODE_SUCCESS)) {
-			RPDEBUG2("%s", "");
+			ROPTIONAL(RPDEBUG2, PDEBUG2, "%s", "");
 		}
 		FALL_THROUGH;
 
@@ -1953,22 +1956,23 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		if (!fr_cond_assert(*reply)) return REDIS_RCODE_ERROR;
 
-		RDEBUG2("[%i] Processing redirect \"%s\"", state->node->id, (*reply)->str);
+		ROPTIONAL(RDEBUG2, DEBUG2, "[%i] Processing redirect \"%s\"", state->node->id, (*reply)->str);
 		if (state->redirects++ >= cluster->conf->max_redirects) {
-			REDEBUG("[%i] Reached max_redirects (%i)", state->node->id, state->redirects);
+			ROPTIONAL(REDEBUG, ERROR, "[%i] Reached max_redirects (%i)", state->node->id, state->redirects);
 			return REDIS_RCODE_ERROR;
 		}
 
 		switch (cluster_redirect(&new, cluster, *reply)) {
 		case FR_REDIS_CLUSTER_RCODE_SUCCESS:
 			if (new == state->node) {
-				REDEBUG("[%i] %s:%i issued redirect to itself", state->node->id,
-					state->node->name, state->node->addr.inet.dst_port);
+				ROPTIONAL(REDEBUG, ERROR, "[%i] %s:%i issued redirect to itself", state->node->id,
+					  state->node->name, state->node->addr.inet.dst_port);
 				return REDIS_RCODE_ERROR;
 			}
 
-			RDEBUG2("[%i] Redirected from %s:%i to [%i] %s:%i", state->node->id, state->node->name,
-			        state->node->addr.inet.dst_port, new->id, new->name, new->addr.inet.dst_port);
+			ROPTIONAL(RDEBUG2, DEBUG2, "[%i] Redirected from %s:%i to [%i] %s:%i",
+				  state->node->id, state->node->name,
+				  state->node->addr.inet.dst_port, new->id, new->name, new->addr.inet.dst_port);
 			state->node = new;
 
 			*conn = fr_pool_connection_get(state->node->pool, request);
@@ -1994,7 +1998,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	}
 
 try_again:
-	RDEBUG2("[%i] >>> Sending command(s) to %s:%i", state->node->id, state->node->name, state->node->addr.inet.dst_port);
+	ROPTIONAL(RDEBUG2, DEBUG2, "[%i] >>> Sending command(s) to %s:%i",
+		  state->node->id, state->node->name, state->node->addr.inet.dst_port);
 
 	fr_redis_reply_free(&*reply);
 	*reply = NULL;
