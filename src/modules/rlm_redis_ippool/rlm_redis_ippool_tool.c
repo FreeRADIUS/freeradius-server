@@ -446,7 +446,9 @@ static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
-	DEBUG("Retrieving lease info for %s from pool %s", ip_buff, key_prefix);
+	DEBUG("Retrieving lease info for %s from pool %pV", ip_buff,
+	      fr_box_strvalue_len((char const *)key_prefix, key_prefix_len));
+
 	redisAppendCommand(conn->handle, "MULTI");
 	redisAppendCommand(conn->handle, "ZSCORE %b %s", key, key_p - key, ip_buff);
 	redisAppendCommand(conn->handle, "HGET %b device", ip_key, ip_key_p - ip_key);
@@ -494,7 +496,8 @@ static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_re
 
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 
-	DEBUG("Releasing %s to pool \"%s\"", ip_buff, key_prefix);
+	DEBUG("Releasing %pV to pool \"%pV\"", ip_buff,
+	      fr_box_strvalue_len((char const *)key_prefix, key_prefix_len));
 	redisAppendCommand(conn->handle, "EVAL %s 1 %b %s", lua_release_cmd, key_prefix, key_prefix_len, ip_buff);
 	return 1;
 }
@@ -542,7 +545,8 @@ static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 
-	DEBUG("Removing %s from pool \"%s\"", ip_buff, key_prefix);
+	DEBUG("Removing %s from pool \"%pV\"", ip_buff,
+	      fr_box_strvalue_len((char const *)key_prefix, key_prefix_len));
 	redisAppendCommand(conn->handle, "EVAL %s 1 %b %s", lua_remove_cmd, key_prefix, key_prefix_len, ip_buff);
 	return 1;
 }
@@ -598,7 +602,7 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
-	DEBUG("Adding %s to pool \"%.*s\" (%zu)", ip_buff, (int)(key_p - key), key, key_p - key);
+	DEBUG("Adding %s to pool \"%pV\" (%zu)", ip_buff, fr_box_strvalue_len((char *)key, (key_p - key)), key_p - key);
 	redisAppendCommand(conn->handle, "MULTI");
 	enqueued++;
 	redisAppendCommand(conn->handle, "ZADD %b NX %u %s", key, key_p - key, 0, ip_buff);
@@ -669,7 +673,7 @@ static int _driver_modify_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
-	DEBUG("Modifying %s in pool \"%s\"", ip_buff, key_prefix);
+	DEBUG("Modifying %s in pool \"%pV\"", ip_buff, fr_box_strvalue_len((char const *)key_prefix, key_prefix_len));
 	redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
 
 	return 1;
@@ -1413,16 +1417,13 @@ do { \
 		}
 
 		for (i = 0; i < (size_t)slen; i++) {
-			char *pool_str;
 			uint64_t acum = 0;
 
 			if (driver_get_stats(&stats, conf->driver,
 					     pools[i], talloc_array_length(pools[i])) < 0) fr_exit_now(EXIT_FAILURE);
 
-			pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
-			INFO("pool             : %s", pool_str);
-			talloc_free(pool_str);
-
+			INFO("pool             : %pV", fr_box_strvalue_len((char *)pools[i],
+									   talloc_array_length(pools[i])));
 			INFO("total            : %" PRIu64, stats.total);
 			INFO("free             : %" PRIu64, stats.free);
 			INFO("used             : %" PRIu64, stats.total - stats.free);
@@ -1452,11 +1453,7 @@ do { \
 		if (slen < 0) fr_exit_now(EXIT_FAILURE);
 		if (slen > 0) {
 			for (i = 0; i < (size_t)slen; i++) {
-				char *pool_str;
-
-				pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
-				INFO("%s", pool_str);
-				talloc_free(pool_str);
+				INFO("%pV", fr_box_strvalue_len((char *)pools[i], talloc_array_length(pools[i])));
 			}
 			INFO("--");
 		}
