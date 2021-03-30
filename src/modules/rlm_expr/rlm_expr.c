@@ -524,6 +524,10 @@ redo:
 	goto redo;
 }
 
+static xlat_arg_parser_t const expr_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
+
 /** Xlat expressions
  *
  * Example (NAS-Port = 1):
@@ -533,26 +537,28 @@ redo:
  *
  * @ingroup xlat_functions
  */
-static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 request_t *request, char const *fmt)
+static xlat_action_t expr_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_list_t *in)
 {
 	int64_t		result;
-	char const 	*p;
-
-	p = fmt;
+	fr_value_box_t	*arg = fr_dlist_head(in);
+	char const 	*p = arg->vb_strvalue;
+	fr_value_box_t	*vb;
 
 	if (!get_expression(request, &p, &result, TOKEN_NONE)) {
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	if (*p) {
 		REDEBUG("Invalid text after expression: %s", p);
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
-	snprintf(*out, outlen, "%lld", (long long int) result);
-	return strlen(*out);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_int64(vb, NULL, result, false);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -567,14 +573,16 @@ static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_expr_t *inst = instance;
+	rlm_expr_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register_legacy(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(inst, inst->xlat_name, expr_xlat, false);
+	xlat_func_mono(xlat, &expr_xlat_arg);
 
 	return 0;
 }
