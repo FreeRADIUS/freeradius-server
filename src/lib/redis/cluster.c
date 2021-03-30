@@ -2224,7 +2224,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	fr_redis_cluster_t	*cluster;
 
 	fr_assert(triggers_enabled || !trigger_prefix);
-	fr_assert(triggers_enabled || (trigger_args && fr_pair_list_empty(trigger_args)));
+	fr_assert(triggers_enabled || (!trigger_args || fr_pair_list_empty(trigger_args)));
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {
