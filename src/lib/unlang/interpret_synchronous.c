@@ -153,7 +153,6 @@ static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC
 rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 {
 	fr_event_list_t			*old_el;
-	fr_heap_t			*old_backlog;
 	unlang_interpret_t 		*old_intp;
 	char const			*caller;
 
@@ -166,12 +165,10 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 	int				iterations = 0;
 
 	old_el = request->el;
-	old_backlog = request->backlog;
 	old_intp = unlang_interpret_get(request);
 	caller = request->module;
 
 	intps = unlang_interpret_synchronous_alloc(request, request->el);
-	request->backlog = intps->runnable;
 	request->el = intps->el;
 	unlang_interpret_set(request, intps->intp);
 
@@ -251,7 +248,6 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 	talloc_free(intps);
 	unlang_interpret_set(request, old_intp);
 	request->el = old_el;
-	request->backlog = old_backlog;
 	request->module = caller;
 
 	return rcode;

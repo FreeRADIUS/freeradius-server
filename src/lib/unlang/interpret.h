@@ -127,6 +127,8 @@ void			*unlang_interpret_stack_alloc(TALLOC_CTX *ctx);
 
 bool			unlang_request_is_scheduled(request_t const *request);
 
+void			unlang_interpret_request_done(request_t *request);
+
 void			unlang_interpret_mark_runnable(request_t *request);
 
 bool			unlang_interpret_is_resumable(request_t *request);

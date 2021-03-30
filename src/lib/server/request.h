@@ -191,7 +191,6 @@ struct request_s {
 	fr_radius_packet_t	*reply;		//!< Outgoing response.
 
 	fr_event_list_t		*el;		//!< thread-specific event list.
-	fr_heap_t		*backlog;	//!< thread-specific backlog
 	request_state_t		request_state;	//!< state for the various protocol handlers.
 
 	RADCLIENT		*client;	//!< The client that originally sent us the request.

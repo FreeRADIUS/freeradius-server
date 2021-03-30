@@ -56,7 +56,7 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 		/*
 		 *	Remove it from the runnable heap
 		 */
-		(void)fr_heap_extract(child->parent->backlog, child);
+		unlang_interpret_request_done(child);
 
 		/*
 		 *	Free it.
@@ -308,27 +308,19 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 				if (!state->detach) {
 					/*
 					 *	Remove the current child
+					 *
+					 *	Should also free detached children
 					 */
-					if (fr_heap_entry_inserted(child->runnable_id)) {
-						(void)fr_heap_extract(request->backlog, child);
-					}
-					talloc_free(child);
+					unlang_interpret_request_done(child);
 
 					/*
 					 *	Remove all previously
 					 *	spawned children.
 					 */
-					for (--i; i >= 0; i--) {
-						child = state->children[i].request;
-						if (fr_heap_entry_inserted(child->runnable_id)) {
-							(void)fr_heap_extract(request->backlog, child);
-						}
-						talloc_free(child);
-					}
+					for (--i; i >= 0; i--) unlang_interpret_request_done(child);
 				}
 
-				*p_result = RLM_MODULE_FAIL;
-				return UNLANG_ACTION_CALCULATE_RESULT;
+				RETURN_MODULE_FAIL;
 			}
 		}
 
@@ -357,8 +349,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			if (unlang_subrequest_child_detach(child) < 0) {
 				talloc_free(child);
 
-				*p_result = RLM_MODULE_FAIL;
-				return UNLANG_ACTION_CALCULATE_RESULT;
+			        RETURN_MODULE_FAIL;
 			}
 		/*
 		 *	If the children don't start detached

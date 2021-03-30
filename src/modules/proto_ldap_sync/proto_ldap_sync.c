@@ -467,7 +467,7 @@ static void request_queued(request_t *request, fr_state_signal_t action)
 		break;
 
 	case FR_SIGNAL_CANCEL:
-		(void) fr_heap_extract(request->backlog, request);
+//		(void) fr_heap_extract(request->backlog, request);
 		//request_delete(request);
 		break;
 

@@ -108,19 +108,6 @@ static void stack_dump(request_t *request)
 #define DUMP_STACK
 #endif
 
-static inline CC_HINT(always_inline)
-void request_done(request_t *request)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_interpret_t	*intp = stack->intp;
-
-	if (request_is_internal(request)) {
-		intp->funcs.done_internal(request, stack->result, intp->uctx);
-	} else {
-		intp->funcs.done_external(request, stack->result, intp->uctx);
-	}
-}
-
 /** Push a new frame onto the stack
  *
  * @param[in] request		to push the frame onto.
@@ -696,7 +683,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	 *	This usually means the request is complete in its
 	 *	entirety.
 	 */
-	if (stack->depth == 0) request_done(request);
+	if (stack->depth == 0) unlang_interpret_request_done(request);
 
 	return rcode;
 }
@@ -879,7 +866,7 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	 */
 	if (stack && (stack->depth > 0)) frame_signal(request, action, 0);
 
-	if (action == FR_SIGNAL_CANCEL) request_done(request);
+	if (action == FR_SIGNAL_CANCEL) unlang_interpret_request_done(request);
 }
 
 /** Return the depth of the request's stack
@@ -931,6 +918,21 @@ bool unlang_interpret_is_resumable(request_t *request)
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 
 	return is_yielded(frame);
+}
+
+/** Indicate to the caller of the interpreter that this request is complete
+ *
+ */
+void unlang_interpret_request_done(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_interpret_t	*intp = stack->intp;
+
+	if (request_is_internal(request)) {
+		intp->funcs.done_internal(request, stack->result, intp->uctx);
+	} else {
+		intp->funcs.done_external(request, stack->result, intp->uctx);
+	}
 }
 
 /** Mark a request as resumable.
