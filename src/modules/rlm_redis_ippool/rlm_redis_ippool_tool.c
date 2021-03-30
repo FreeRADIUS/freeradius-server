@@ -1370,7 +1370,12 @@ do { \
 	}
 	cp = cf_pair_find(pool_cs, "start");
 	if (!cp) {
-		(void) cf_pair_alloc(pool_cs, "start", "0", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+		/*
+		 *	Start should always default to 1
+		 *	else the cluster code doesn't
+		 *	map the cluster.
+		 */
+		(void) cf_pair_alloc(pool_cs, "start", "1", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 	}
 	cp = cf_pair_find(pool_cs, "spare");
 	if (!cp) {
