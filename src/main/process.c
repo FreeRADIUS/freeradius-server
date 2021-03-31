@@ -2087,7 +2087,11 @@ static void tcp_socket_timer(void *ctx)
 			 *	open to listen for replies to requests we had
 			 *	previously sent.
 			 */
-			if (listener->type == RAD_LISTEN_PROXY) {
+			if (listener->type == RAD_LISTEN_PROXY
+#ifdef WITH_COA_TUNNEL
+			    || listener->send_coa
+#endif
+				) {
 				PTHREAD_MUTEX_LOCK(&proxy_mutex);
 				if (!fr_packet_list_socket_freeze(proxy_list,
 								  listener->fd)) {
@@ -5218,6 +5222,31 @@ static void event_new_fd(rad_listen_t *this)
 					fr_exit(1);
 				}
 			}
+
+#ifdef WITH_COA_TUNNEL
+			/*
+			 *	If we're allowed to send CoA requests
+			 *	back down this incoming socket, then
+			 *	add the socket to the proxy listener
+			 *	list.  We need to check for "parent",
+			 *	as the main incoming listener has
+			 *	"send_coa" set, but it just calls
+			 *	accept(), and doesn't actually send
+			 *	any packets.
+			 */
+			if (this->send_coa && this->parent) {
+				PTHREAD_MUTEX_LOCK(&proxy_mutex);
+				if(!fr_packet_list_socket_add(proxy_list, this->fd,
+							      sock->proto,
+							      &sock->other_ipaddr, sock->other_port,
+							      this)) {
+					ERROR("Failed adding proxy socket");
+					fr_exit_now(1);
+				}
+				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			}
+#endif	/* WITH_COA_TUNNEL */
+
 #endif	/* WITH_TCP */
 			break;
 		} /* switch over listener types */
@@ -5282,7 +5311,11 @@ static void event_new_fd(rad_listen_t *this)
 		/*
 		 *	Tell all requests using this socket that the socket is dead.
 		 */
-		if (this->type == RAD_LISTEN_PROXY) {
+		if (this->type == RAD_LISTEN_PROXY
+#ifdef WITH_COA_TUNNEL
+		    || (this->send_coa && this->parent)
+#endif
+			) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
