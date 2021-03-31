@@ -605,6 +605,9 @@ int dual_tls_recv(rad_listen_t *listener);
 int dual_tls_send(rad_listen_t *listener, REQUEST *request);
 int proxy_tls_recv(rad_listen_t *listener);
 int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
+#ifdef WITH_COA_TUNNEL
+int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request);
+#endif
 #endif
 
 /*

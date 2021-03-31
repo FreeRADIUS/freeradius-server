@@ -735,6 +735,41 @@ static int dual_tcp_accept(rad_listen_t *listener)
 #endif
 	}
 
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *	Originate CoA requests to a NAS.
+	 */
+	if (this->send_coa) {
+		home_server_t *home;
+
+		rad_assert(this->type != RAD_LISTEN_PROXY);
+
+		this->proxy_send = dual_tls_send_coa_request;
+		this->proxy_encode = master_listen[RAD_LISTEN_PROXY].encode;
+		this->proxy_decode = master_listen[RAD_LISTEN_PROXY].decode;
+
+		// @todo - save this listener as being outbound to the NAS IP
+
+		/*
+		 *	Automatically create a home server for this
+		 *	client.  There MAY be one already one for that
+		 *	IP in the configuration files, but it will not
+		 *	have this particular port.
+		 */
+		sock->home = home = talloc_zero(this, home_server_t);
+		home->ipaddr = sock->other_ipaddr;
+		home->port = sock->other_port;
+		home->proto = sock->proto;
+		home->secret = sock->client->secret;
+
+		home->coa_irt = this->coa_irt;
+		home->coa_mrt = this->coa_mrt;
+		home->coa_mrc = this->coa_mrc;
+		home->coa_mrd = this->coa_mrd;
+		home->coa_server = this->server;
+	}
+#endif
+
 	/*
 	 *	FIXME: set O_NONBLOCK on the accept'd fd.
 	 *	See djb's portability rants for details.

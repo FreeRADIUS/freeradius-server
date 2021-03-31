@@ -398,6 +398,9 @@ int dual_tls_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
 	BIO		*rbio;
+#ifdef WITH_COA_TUNNEL
+	bool		is_reply = false;
+#endif
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
@@ -456,6 +459,14 @@ redo:
 		FR_STATS_INC(dsc, total_requests);
 		fun = rad_coa_recv;
 		break;
+
+#ifdef WITH_COA_TUNNEL
+	case PW_CODE_COA_ACK:
+	case PW_CODE_COA_NAK:
+		if (!listener->send_coa) goto bad_packet;
+		is_reply = true;
+                break;
+#endif
 #endif
 
 	case PW_CODE_STATUS_SERVER:
@@ -481,6 +492,15 @@ redo:
 		rad_free(&packet);
 		return 0;
 	} /* switch over packet types */
+
+#ifdef WITH_COA_TUNNEL
+	if (is_reply) {
+		if (!request_proxy_reply(packet)) {
+			rad_free(&packet);
+			return 0;
+		}
+	} else
+#endif
 
 	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
@@ -608,6 +628,58 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	return 0;
 }
+
+#ifdef WITH_COA_TUNNEL
+/*
+ *	Send a CoA request to a NAS, as a proxied packet.
+ *
+ *	The proxied packet MUST already have been encoded.
+ */
+int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
+{
+	listen_socket_t *sock = listener->data;
+
+	VERIFY_REQUEST(request);
+
+	rad_assert(listener->proxy_send == dual_tls_send_coa_request);
+
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+
+	rad_assert(request->proxy->data);
+
+	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
+		      request->proxy->data_len, MAX_PACKET_LEN);
+	}
+
+	PTHREAD_MUTEX_LOCK(&sock->mutex);
+
+	/*
+	 *	Write the packet to the SSL buffers.
+	 */
+	sock->ssn->record_plus(&sock->ssn->clean_in,
+			       request->proxy->data, request->proxy->data_len);
+
+	dump_hex("TUNNELED DATA < ", sock->ssn->clean_in.data, sock->ssn->clean_in.used);
+
+	/*
+	 *	Do SSL magic to get encrypted data.
+	 */
+	tls_handshake_send(request, sock->ssn);
+
+	/*
+	 *	And finally write the data to the socket.
+	 */
+	if (sock->ssn->dirty_out.used > 0) {
+		dump_hex("WRITE TO SSL", sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
+
+//		tls_socket_write(listener, request);
+	}
+	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+
+	return 0;
+}
+#endif
 
 static int try_connect(tls_session_t *ssn)
 {
