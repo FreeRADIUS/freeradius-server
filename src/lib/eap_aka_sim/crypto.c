@@ -1132,7 +1132,7 @@ int fr_aka_sim_crypto_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys)
 {
 #define KDF_1_S_REAUTH_STATIC	"EAP-AKA' re-auth"
 	uint8_t s[(sizeof(KDF_1_S_REAUTH_STATIC) - 1) + AKA_SIM_MAX_STRING_LENGTH + sizeof(uint16_t) + AKA_SIM_NONCE_S_SIZE];
-
+	uint8_t		mk[AKA_PRIME_MK_SIZE];
 	fr_dbuff_t	dbuff;
 
 	if (!fr_cond_assert(((sizeof(KDF_1_S_REAUTH_STATIC) - 1) +
@@ -1189,13 +1189,17 @@ int fr_aka_sim_crypto_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys)
 
 	/*
 	 *	Feed into PRF
+	 *
+	 *	Note, we don't update the mk in the keys structure
+	 *	as the original MK needs to be written into session
+	 *	store, it doesn't change between re-authentication
+	 *	rounds.
 	 */
-	keys->mk_len = AKA_PRIME_MK_SIZE;
-	if (aka_prime_prf(keys->mk, keys->mk_len, keys->k_re, sizeof(keys->k_re),
+	if (aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re),
 			  fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff)) < 0) return -1;
-	FR_PROTO_HEX_DUMP(keys->mk, keys->mk_len, "mk");
+	FR_PROTO_HEX_DUMP(mk, sizeof(mk), "mk");
 
-	fr_dbuff_init(&dbuff, keys->mk, keys->mk_len);				/* dbuff now points to mk */
+	fr_dbuff_init(&dbuff, mk, sizeof(mk));					/* dbuff now points to mk */
 
 	fr_dbuff_out_memcpy(keys->msk, &dbuff, sizeof(keys->msk));		/* 64 bytes for msk */
 	FR_PROTO_HEX_DUMP(keys->msk, sizeof(keys->msk), "K_msk");
