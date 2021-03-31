@@ -81,6 +81,16 @@ struct rad_listen {
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
 	bool		check_client_connections;
+
+#ifdef WITH_COA_TUNNEL
+	bool		send_coa;	/* to the NAS */
+	char const	*key;		/* TCP-Session-Key */
+
+	uint32_t	coa_irt;
+	uint32_t	coa_mrc;
+	uint32_t	coa_mrt;
+	uint32_t	coa_mrd;
+#endif
 #endif
 
 	rad_listen_recv_t recv;
