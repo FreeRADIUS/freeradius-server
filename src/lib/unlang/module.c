@@ -459,7 +459,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_list_t
 	 */
 	if (unlang_xlat_push(ctx, out, request, exp, false) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
-	return UNLANG_ACTION_YIELD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Push a pre-compiled tmpl and resumption state onto the stack for evaluation
@@ -506,7 +506,7 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 	 */
 	if (unlang_tmpl_push(ctx, out, request, vpt, vps, status) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
-	return UNLANG_ACTION_YIELD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
