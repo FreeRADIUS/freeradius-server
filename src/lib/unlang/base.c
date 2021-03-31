@@ -102,6 +102,8 @@ int unlang_init_global(void)
 	unlang_caller_init();
 	unlang_tmpl_init();
 
+	instance_count++;
+
 	return 0;
 }
 
