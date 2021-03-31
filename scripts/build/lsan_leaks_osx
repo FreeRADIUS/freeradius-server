@@ -1,0 +1,14 @@
+#  OSX has all kinds of leaks in its' system files
+#
+#  Note that you MUST include the `pwd`, otherwise LSAN looks in a directory relative
+#  to the binary, which is most definitely not what we want.
+#
+#export LSAN_OPTIONS="suppressions=`pwd`/scripts/lsan_leaks_osx fast_unwind_on_malloc=0 print_suppressions=0"
+#export CC="/usr/local/opt/llvm/bin/clang"
+#export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
+#export ASAN_SYMBOLIZER_PATH="/usr/local/opt/llvm/bin/llvm-symbolizer"
+
+leak:libsystem_notify
+leak:getpwuid_r
+leak:_st_tzset_basic
+leak:newlocale
