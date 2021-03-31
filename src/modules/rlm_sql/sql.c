@@ -68,6 +68,12 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	char buf[MAX_STRING_LEN];
 	char do_xlat = 0;
 	FR_TOKEN token, op = T_EOL;
+	size_t num_fields = talloc_array_length(row) - 1; /* includes a trailing NULL ptr */
+
+	if (num_fields < 4) {
+		REDEBUG("Insufficient fields for 'id,username,attribute,value,operator'");
+		return -1;
+	}
 
 	/*
 	 *	Verify the 'Attribute' field
@@ -80,7 +86,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	/*
 	 *	Verify the 'op' field
 	 */
-	if (row[4] != NULL && row[4][0] != '\0') {
+	if ((num_fields >= 4) && row[4] != NULL && row[4][0] != '\0') {
 		ptr = row[4];
 		op = gettoken(&ptr, buf, sizeof(buf), false);
 		if (!fr_assignment_op[op] && !fr_equality_op[op]) {
