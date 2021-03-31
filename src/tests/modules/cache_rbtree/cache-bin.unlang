@@ -12,18 +12,13 @@ update {
 }
 
 # 0. Sanity check
-if (&Tmp-String-1 == "foo\000bar\000baz") {
-	test_pass
-} else {
+if (&Tmp-String-1 != "foo\000bar\000baz") {
 	test_fail
 }
 
 # 1. Store the entry
 cache_bin_key_octets
-if (ok) {
-	test_pass
-}
-else {
+if (!ok) {
 	test_fail
 }
 
@@ -35,10 +30,7 @@ update {
 
 # 2. Should create a *new* entry and not update the existing one
 cache_bin_key_octets
-if (ok) {
-	test_pass
-}
-else {
+if (!ok) {
 	test_fail
 }
 
@@ -53,24 +45,15 @@ update {
 }
 
 cache_bin_key_octets
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if ("%(length:%{Tmp-String-1})" == 11) {
-	test_pass
-}
-else {
+if ("%(length:%{Tmp-String-1})" != 11) {
 	test_fail
 }
 
-if (&Tmp-String-1 == "foo\000bar\000baz") {
-	test_pass
-}
-else {
+if (&Tmp-String-1 != "foo\000bar\000baz") {
 	test_fail
 }
 
@@ -84,24 +67,15 @@ update {
 }
 
 cache_bin_key_octets
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if ("%(length:%{Tmp-String-1})" == 7) {
-	test_pass
-}
-else {
+if ("%(length:%{Tmp-String-1})" != 7) {
 	test_fail
 }
 
-if (&Tmp-String-1 == "bar\000baz") {
-	test_pass
-}
-else {
+if (&Tmp-String-1 != "bar\000baz") {
 	test_fail
 }
 
@@ -120,10 +94,7 @@ update {
 }
 
 cache_bin_key_ipaddr
-if (ok) {
-	test_pass
-}
-else {
+if (!ok) {
 	test_fail
 }
 
@@ -135,10 +106,7 @@ update {
 }
 
 cache_bin_key_ipaddr
-if (ok) {
-	test_pass
-}
-else {
+if (!ok) {
 	test_fail
 }
 
@@ -152,24 +120,15 @@ update {
 }
 
 cache_bin_key_ipaddr
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if ("%(length:%{Tmp-String-1})" == 11) {
-	test_pass
-}
-else {
+if ("%(length:%{Tmp-String-1})" != 11) {
 	test_fail
 }
 
-if (&Tmp-String-1 == "foo\000bar\000baz") {
-	test_pass
-}
-else {
+if (&Tmp-String-1 != "foo\000bar\000baz") {
 	test_fail
 }
 
@@ -183,27 +142,20 @@ update {
 }
 
 cache_bin_key_ipaddr
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if ("%(length:%{Tmp-String-1})" == 7) {
-	test_pass
-}
-else {
+if ("%(length:%{Tmp-String-1})" != 7) {
 	test_fail
 }
 
-if (&Tmp-String-1 == "bar\000baz") {
-	test_pass
-}
-else {
+if (&Tmp-String-1 != "bar\000baz") {
 	test_fail
 }
 
 update {
 	&Tmp-String-1 !* ANY
 }
+
+test_pass
