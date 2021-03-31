@@ -28,6 +28,8 @@
 extern "C" {
 #endif
 
+void _evp_cipher_ctx_free_on_exit(void *arg);	/* Used as a handle to disable destructors on fr_aka_sim_free */
+
 EVP_CIPHER_CTX *aka_sim_crypto_cipher_ctx(void);
 
 #ifdef __cplusplus

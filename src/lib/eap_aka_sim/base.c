@@ -40,6 +40,8 @@ RCSID("$Id$")
 #include <freeradius-devel/eap_aka_sim/base.h>
 #include <freeradius-devel/eap_aka_sim/attrs.h>
 
+#include "crypto_priv.h"
+
 static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_freeradius;
@@ -279,6 +281,8 @@ void fr_aka_sim_free(void)
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_aka_sim_dict);
+
+	fr_thread_local_atexit_trigger(_evp_cipher_ctx_free_on_exit);
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {

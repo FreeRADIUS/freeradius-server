@@ -55,7 +55,7 @@ RCSID("$Id$")
  */
 static _Thread_local EVP_CIPHER_CTX *evp_chipher_ctx;
 
-static void _evp_cipher_ctx_free_on_exit(void *arg)
+void _evp_cipher_ctx_free_on_exit(void *arg)
 {
 	EVP_CIPHER_CTX_free(arg);
 }

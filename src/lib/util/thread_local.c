@@ -313,3 +313,36 @@ void fr_thread_local_atexit_disarm_all(void)
 	}
 }
 
+/** Iterates through all thread local destructor lists, causing destructor to be triggered
+ *
+ * This should only be called by the main process, and not by threads.
+ *
+ * @param[in] func	Entries matching this function will be triggered.
+ * @return How many triggers fired.
+ */
+int fr_thread_local_atexit_trigger(fr_thread_local_atexit_t func)
+{
+	fr_exit_handler_entry_t		*e = NULL, *ee;
+	fr_exit_handler_list_t		*list;
+	unsigned int			count = 0;
+
+	if (global_atexit) return 0;
+
+	/*
+	 *	Iterate over the list of thread local destructor
+	 *	lists.
+	 */
+	while ((e = fr_dlist_next(&global_atexit->head, e))) {
+		if (!e->func) continue;	/* thread already joined */
+
+		list = talloc_get_type_abort(e->uctx, fr_exit_handler_list_t);
+		while ((ee = fr_dlist_next(&list->head, ee))) {
+			if (ee->func != func) continue;
+
+			count++;
+			ee = fr_dlist_talloc_free_item(&list->head, ee);
+		}
+	}
+
+	return count;
+}

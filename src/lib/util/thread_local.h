@@ -65,6 +65,8 @@ do { \
 	_n = _v; \
 } while (0);
 
+int fr_thread_local_atexit_trigger(fr_thread_local_atexit_t func);
+
 #ifdef __cplusplus
 }
 #endif
