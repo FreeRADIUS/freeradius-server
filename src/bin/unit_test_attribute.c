@@ -40,8 +40,11 @@ typedef struct request_s request_t;
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/unlang/xlat.h>
+#ifdef WITH_TLS
+#  include <freeradius-devel/tls/base.h>
+#endif
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/conf.h>
 
 #include <ctype.h>
@@ -3085,6 +3088,15 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+#ifdef WITH_TLS
+	/*
+	 *	OpenSSL can only be initialised once during the lifetime
+	 *	of a process.  Initialise it here so that we don't attempt
+	 *	to unload and load it multiple times.
+	 */
+	fr_openssl_init();
+#endif
+
 	dl_modules = dl_module_loader_init(NULL);
 	if (!dl_modules) {
 		fr_perror("unit_test_attribute");
@@ -3199,6 +3211,10 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 cleanup:
+#ifdef WITH_TLS
+	fr_openssl_free();
+#endif
+
 	if (talloc_free(dl_modules) < 0) {
 		fr_perror("unit_test_attribute - dl_modules - ");	/* Print free order issues */
 	}
