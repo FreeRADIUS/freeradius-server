@@ -797,6 +797,12 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 	}
 #endif
 
+#ifdef WITH_COA_TUNNEL
+	if (this->send_coa) {
+		ADDSTRING("+coa");
+	}
+#endif
+
 	if (sock->interface) {
 		ADDSTRING(" interface ");
 		ADDSTRING(sock->interface);
@@ -932,6 +938,15 @@ static CONF_PARSER limit_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef WITH_COA_TUNNEL
+static CONF_PARSER coa_config[] = {
+	{ "irt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_irt), STRINGIFY(2) },
+	{ "mrt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrt), STRINGIFY(16) },
+	{ "mrc",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrc), STRINGIFY(5) },
+	{ "mrd",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrd), STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+#endif
 
 #ifdef WITH_TCP
 /*
@@ -2943,9 +2958,15 @@ static const FR_NAME_NUMBER listen_compare[] = {
 	{ "status",	RAD_LISTEN_NONE },
 #endif
 	{ "auth",	RAD_LISTEN_AUTH },
+#ifdef WITH_COA_TUNNEL
+	{ "auth+coa",	RAD_LISTEN_AUTH },
+#endif
 #ifdef WITH_ACCOUNTING
 	{ "acct",	RAD_LISTEN_ACCT },
 	{ "auth+acct",	RAD_LISTEN_AUTH },
+#ifdef WITH_COA__TUNNEL
+	{ "auth+acct+coa",	RAD_LISTEN_AUTH },
+#endif
 #endif
 #ifdef WITH_DETAIL
 	{ "detail",	RAD_LISTEN_DETAIL },
@@ -2983,6 +3004,9 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	char const	*value;
 	fr_dlhandle	handle;
 	CONF_SECTION	*server_cs;
+#ifdef WITH_COA_TUNNEL
+	char const	*p;
+#endif
 	char		buffer[32];
 
 	cp = cf_pair_find(cs, "type");
@@ -3093,10 +3117,20 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 #ifdef WITH_TCP
 	/*
-	 *	Special-case '+' for "auth+acct".
+	 *	Add special flags '+' for "auth+acct".
 	 */
-	if (strchr(listen_type, '+') != NULL) {
-		this->dual = true;
+	p = strchr(listen_type, '+');
+	if (p) {
+		if (strncmp(p + 1, "acct", 4) == 0) {
+			this->dual = true;
+			p += 5;
+		}
+
+#ifdef WITH_COA_TUNNEL
+		if (strcmp(p, "+coa") == 0) {
+			this->send_coa = true;
+		}
+#endif
 	}
 #endif
 
@@ -3115,6 +3149,44 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		listen_free(&this);
 		return NULL;
 	}
+
+#ifdef WITH_COA_TUNNEL
+	if (this->send_coa) {
+		CONF_SECTION	*coa;
+
+		if (!this->tls) {
+			cf_log_err_cs(cs, "TLS is required in order to use \"+coa\"");
+			listen_free(&this);
+			return NULL;
+		}
+
+		/*
+		 *	Parse the configuration if it exists.
+		 */
+		coa = cf_section_sub_find(cs, "coa");
+		if (coa) {
+			rcode = cf_section_parse(cs, this, coa_config);
+			if (rcode < 0) {
+				listen_free(&this);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Use the same boundary checks as for home
+		 *	server. See realm_home_server_sanitize().
+		 */
+		FR_INTEGER_BOUND_CHECK("coa_irt", this->coa_irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("coa_irt", this->coa_irt, <=, 5);
+
+		FR_INTEGER_BOUND_CHECK("coa_mrc", this->coa_mrc, <=, 20);
+
+		FR_INTEGER_BOUND_CHECK("coa_mrt", this->coa_mrt, <=, 30);
+
+		FR_INTEGER_BOUND_CHECK("coa_mrd", this->coa_mrd, >=, 5);
+		FR_INTEGER_BOUND_CHECK("coa_mrd", this->coa_mrd, <=, 60);
+	}
+#endif	/* WITH_COA_TUNNEL */
 
 	cf_log_info(cs, "}");
 
