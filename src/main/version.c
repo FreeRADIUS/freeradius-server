@@ -348,6 +348,14 @@ void version_init_features(CONF_SECTION *cs)
 				);
 
 
+	version_add_feature(cs, "recv-coa-from-home-server",
+#ifdef WITH_COA_TUNNEL
+			        true
+#else
+				false
+#endif
+				);
+
 	version_add_feature(cs, "control-socket",
 #ifdef WITH_COMMAND_SOCKET
 				true
