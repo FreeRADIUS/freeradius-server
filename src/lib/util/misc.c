@@ -991,7 +991,7 @@ uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod)
  */
 int8_t fr_pointer_cmp(void const *a, void const *b)
 {
-	return (a > b) - (a < b);
+	return CMP(a, b);
 }
 
 /** Quick sort an array of pointers using a comparator

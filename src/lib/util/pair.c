@@ -989,7 +989,7 @@ int8_t fr_pair_cmp_by_da(void const *a, void const *b)
 	VP_VERIFY(my_a);
 	VP_VERIFY(my_b);
 
-	return fr_pointer_cmp(my_a->da, my_b->da);
+	return CMP(my_a->da, my_b->da);
 }
 
 /** Order attributes by their attribute number, and tag
@@ -1009,7 +1009,7 @@ static inline int8_t pair_cmp_by_num(void const *a, void const *b)
 	VP_VERIFY(my_a);
 	VP_VERIFY(my_b);
 
-	return (my_a->da->attr < my_b->da->attr) - (my_a->da->attr > my_b->da->attr);
+	return CMP(my_a->da->attr, my_b->da->attr);
 }
 
 /** Order attributes by their parent(s), attribute number, and tag
@@ -1045,7 +1045,7 @@ int8_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
 	fr_proto_da_stack_build(&da_stack_b, da_b);
 
 	for (i = 0; (da_a = da_stack_a.da[i]) && (da_b = da_stack_b.da[i]); i++) {
-		cmp = (da_a->attr > da_b->attr) - (da_a->attr < da_b->attr);
+		cmp = CMP(da_a->attr, da_b->attr);
 		if (cmp != 0) return cmp;
 	}
 
