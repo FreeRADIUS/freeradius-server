@@ -501,8 +501,9 @@ int fr_aka_sim_crypto_gsm_kdf_0(fr_aka_sim_keys_t *keys)
 	fr_sha1_init(&context);
 	fr_sha1_update(&context, buf, p - buf);
 	fr_sha1_final(keys->mk, &context);
+	keys->mk_len = AKA_SIM_MK_SIZE;
 
-	FR_PROTO_HEX_DUMP(keys->mk, sizeof(keys->mk), "Master key");
+	FR_PROTO_HEX_DUMP(keys->mk, keys->mk_len, "Master key");
 
 	/*
 	 *	Now use the PRF to expand it, generated
@@ -586,6 +587,7 @@ int fr_aka_sim_crypto_umts_kdf_0(fr_aka_sim_keys_t *keys)
 	fr_sha1_init(&context);
 	fr_sha1_update(&context, buf, blen);
 	fr_sha1_final(keys->mk, &context);
+	keys->mk_len = AKA_SIM_MK_SIZE;
 
 	/*
    	 * now use the PRF to expand it, generated k_aut, k_encr,
@@ -839,8 +841,6 @@ int fr_aka_sim_crypto_umts_kdf_1(fr_aka_sim_keys_t *keys)
 #define KDF_1_S_STATIC	"EAP-AKA'"
 	uint8_t s[(sizeof(KDF_1_S_STATIC) - 1) + AKA_SIM_MAX_STRING_LENGTH];
 	uint8_t *p = s;
-
-	uint8_t	mk[208];
 	size_t	s_len;
 
 	ck_ik_prime_derive(keys);
@@ -872,12 +872,13 @@ int fr_aka_sim_crypto_umts_kdf_1(fr_aka_sim_keys_t *keys)
 	/*
 	 *	Feed into PRF
 	 */
-	if (aka_prime_prf(mk, sizeof(mk), k, sizeof(k), s, s_len) < 0) return -1;
+	keys->mk_len = AKA_PRIME_MK_SIZE;
+	if (aka_prime_prf(keys->mk, keys->mk_len, k, sizeof(k), s, s_len) < 0) return -1;
 
 	/*
 	 *	Split the PRF output into separate keys
 	 */
-	p = mk;
+	p = keys->mk;
 	memcpy(keys->k_encr, p, 16);    			/* 128 bits for encryption    */
 	p += 16;
 
@@ -885,8 +886,8 @@ int fr_aka_sim_crypto_umts_kdf_1(fr_aka_sim_keys_t *keys)
 	p += EAP_AKA_PRIME_AUTH_SIZE;
 	keys->k_aut_len = EAP_AKA_PRIME_AUTH_SIZE;
 
-	memcpy(keys->k_re, p, 32);				/* 256 bits for reauthentication key */
-	p += 32;
+	memcpy(keys->k_re, p, AKA_SIM_K_RE_SIZE);		/* 256 bits for reauthentication key */
+	p += AKA_SIM_K_RE_SIZE;
 
 	memcpy(keys->msk, p, sizeof(keys->msk));		/* 64 bytes for Master Session Key */
 	p += sizeof(keys->msk);
@@ -910,10 +911,13 @@ void fr_aka_sim_crypto_keys_init_kdf_0_reauth(fr_aka_sim_keys_t *keys,
 {
 	uint32_t nonce_s[4];
 
+	static_assert(sizeof(keys->mk) >= AKA_SIM_MK_SIZE, "mk buffer is too small");
+
 	/*
 	 *	Copy in master key
 	 */
-	memcpy(keys->mk, mk, sizeof(keys->mk));
+	keys->mk_len = AKA_SIM_MK_SIZE;
+	memcpy(keys->mk, mk, keys->mk_len);
 
 	keys->reauth.counter = counter;
 
@@ -929,18 +933,21 @@ void fr_aka_sim_crypto_keys_init_kdf_0_reauth(fr_aka_sim_keys_t *keys,
  * Generates a new nonce_s and copies the mk and counter values into the fr_aka_sim_keys_t.
  *
  * @param[out] keys	structure to populate.
- * @param[in] k_re	from original authentication.
+ * @param[in] mk	from original authentication.
  * @param[in] counter	re-authentication counter.
  */
 void fr_aka_sim_crypto_keys_init_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys,
-						   uint8_t const k_re[static AKA_SIM_K_RE_SIZE], uint16_t counter)
+						   uint8_t const mk[static AKA_PRIME_MK_REAUTH_SIZE], uint16_t counter)
 {
 	uint32_t nonce_s[4];
+
+	static_assert(sizeof(keys->mk) >= AKA_PRIME_MK_REAUTH_SIZE, "mk buffer is too small");
 
 	/*
 	 *	Copy in master key
 	 */
-	memcpy(keys->k_re, k_re, sizeof(keys->k_re));
+	keys->mk_len = AKA_PRIME_MK_REAUTH_SIZE;
+	memcpy(keys->mk, mk, keys->mk_len);
 
 	keys->reauth.counter = counter;
 
@@ -994,7 +1001,13 @@ int fr_aka_sim_crypto_kdf_0_reauth(fr_aka_sim_keys_t *keys)
 		return -1;
 	}
 
-	need = keys->identity_len + sizeof(uint16_t) + AKA_SIM_NONCE_S_SIZE + sizeof(keys->mk);
+	if (keys->mk_len != AKA_SIM_MK_SIZE) {
+		fr_strerror_printf("Master key is incorrect length, expected %u, got %zu", AKA_SIM_MK_SIZE,
+				   keys->mk_len);
+		return -1;
+	}
+
+	need = keys->identity_len + sizeof(uint16_t) + AKA_SIM_NONCE_S_SIZE + keys->mk_len;
 	if (need > sizeof(buf)) {
 		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
 				   need, sizeof(buf));
@@ -1047,8 +1060,8 @@ int fr_aka_sim_crypto_kdf_0_reauth(fr_aka_sim_keys_t *keys)
 	/*
 	 *	Master key
 	 */
-	memcpy(p, keys->mk, sizeof(keys->mk));
-	p += sizeof(keys->mk);
+	memcpy(p, keys->mk, keys->mk_len);
+	p += keys->mk_len;
 
 	FR_PROTO_HEX_DUMP(buf, p - buf, "Identity || counter || NONCE_S || MK");
 
@@ -1119,55 +1132,75 @@ int fr_aka_sim_crypto_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys)
 {
 #define KDF_1_S_REAUTH_STATIC	"EAP-AKA' re-auth"
 	uint8_t s[(sizeof(KDF_1_S_REAUTH_STATIC) - 1) + AKA_SIM_MAX_STRING_LENGTH + sizeof(uint16_t) + AKA_SIM_NONCE_S_SIZE];
-	uint8_t *p = s;
 
-	uint8_t	mk[128];
+	fr_dbuff_t	dbuff;
 
 	if (!fr_cond_assert(((sizeof(KDF_1_S_REAUTH_STATIC) - 1) +
 			     keys->identity_len +
 			     sizeof(uint16_t) +
 			     AKA_SIM_NONCE_S_SIZE) <= sizeof(s))) return -1;
 
+	fr_dbuff_init(&dbuff, keys->mk, keys->mk_len);
+
+	/*
+	 *	k_encr - Taken from original MK
+	 */
+	fr_dbuff_out_memcpy(keys->k_encr, &dbuff, sizeof(keys->k_encr));
+	FR_PROTO_HEX_DUMP(keys->k_encr, sizeof(keys->k_encr), "K_encr");
+
+	/*
+	 *	k_aut - Taken from original MK
+	 */
+	fr_dbuff_out_memcpy(keys->k_aut, &dbuff, EAP_AKA_PRIME_AUTH_SIZE);
+	keys->k_aut_len = EAP_AKA_PRIME_AUTH_SIZE;
+	FR_PROTO_HEX_DUMP(keys->k_aut, keys->k_aut_len, "K_aut");
+
+	/*
+	 *	k_re - Taken from original MK
+	 */
+	fr_dbuff_out_memcpy(keys->k_re, &dbuff, AKA_SIM_K_RE_SIZE);
+	FR_PROTO_HEX_DUMP(keys->k_aut, AKA_SIM_K_RE_SIZE, "K_re");
+
+	fr_dbuff_init(&dbuff, s, sizeof(s));	/* dbuff now points to s */
+
 	/*
 	 *	"EAP-AKA' re-auth"
 	 */
-	memcpy(p, KDF_1_S_REAUTH_STATIC, sizeof(KDF_1_S_REAUTH_STATIC) - 1);
-	p += sizeof(KDF_1_S_REAUTH_STATIC) - 1;
+	fr_dbuff_in_memcpy(&dbuff, KDF_1_S_REAUTH_STATIC, sizeof(KDF_1_S_REAUTH_STATIC) - 1);
 
 	/*
 	 *	Identity
 	 */
-	memcpy(p, keys->identity, keys->identity_len);
-	p += keys->identity_len;
+	fr_dbuff_in_memcpy(&dbuff, keys->identity, keys->identity_len);
 	FR_PROTO_HEX_DUMP(keys->identity, keys->identity_len, "identity");
 
 	/*
 	 *	Counter
 	 */
-	*p++ = ((keys->reauth.counter & 0xff00) >> 8);
-	*p++ = (keys->reauth.counter & 0x00ff);
+	fr_dbuff_in_bytes(&dbuff, ((keys->reauth.counter & 0xff00) >> 8), (keys->reauth.counter & 0x00ff));
 
 	/*
 	 *	nonce_s
 	 */
-	memcpy(p, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s));
-	p += sizeof(keys->reauth.nonce_s);
+	fr_dbuff_in_memcpy(&dbuff, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s));
 
-	FR_PROTO_HEX_DUMP(s, p - s, "\"EAP-AKA' re-auth\" || Identity || counter || NONCE_S");
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff),
+			  "\"EAP-AKA' re-auth\" || Identity || counter || NONCE_S");
 
 	/*
 	 *	Feed into PRF
 	 */
-	if (aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re), s, p - s) < 0) return -1;
+	keys->mk_len = AKA_PRIME_MK_SIZE;
+	if (aka_prime_prf(keys->mk, keys->mk_len, keys->k_re, sizeof(keys->k_re),
+			  fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff)) < 0) return -1;
+	FR_PROTO_HEX_DUMP(keys->mk, keys->mk_len, "mk");
 
-	FR_PROTO_HEX_DUMP(mk, sizeof(mk), "mk");
+	fr_dbuff_init(&dbuff, keys->mk, keys->mk_len);				/* dbuff now points to mk */
 
-	p = mk;
-	memcpy(keys->msk, p, sizeof(keys->msk));			/* 64 bytes for Master Session Key */
-	p += sizeof(keys->msk);
+	fr_dbuff_out_memcpy(keys->msk, &dbuff, sizeof(keys->msk));		/* 64 bytes for msk */
 	FR_PROTO_HEX_DUMP(keys->msk, sizeof(keys->msk), "K_msk");
 
-	memcpy(keys->emsk, p, sizeof(keys->msk));			/* 64 bytes for Extended Master Session Key */
+	fr_dbuff_out_memcpy(keys->emsk, &dbuff, sizeof(keys->emsk));		/* 64 bytes for Extended Master Session Key */
 	FR_PROTO_HEX_DUMP(keys->emsk, sizeof(keys->emsk), "K_emsk");
 
 	return 0;
@@ -1231,7 +1264,7 @@ void fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys)
 		break;
 
 	case AKA_SIM_VECTOR_UMTS_REAUTH_KDF_0_REAUTH:
-		RHEXDUMP_INLINE3(keys->mk, sizeof(keys->mk),
+		RHEXDUMP_INLINE3(keys->mk, keys->mk_len,
 				"MK           :");
 		RDEBUG3(
 				"counter      : %u", keys->reauth.counter);
@@ -1240,12 +1273,12 @@ void fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys)
 		break;
 
 	case AKA_SIM_VECTOR_UMTS_REAUTH_KDF_1_REAUTH:
-		RHEXDUMP_INLINE3(keys->k_re, sizeof(keys->k_re),
-				"k_re         :");
+		RHEXDUMP_INLINE3(keys->mk, keys->mk_len,
+				 "MK           :");
 		RDEBUG3(
-				"counter      : %u", keys->reauth.counter);
+				 "counter      : %u", keys->reauth.counter);
 		RHEXDUMP_INLINE3(keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s),
-				"nonce_s      :");
+				 "nonce_s      :");
 		break;
 
 	case AKA_SIM_VECTOR_NONE:
@@ -1268,7 +1301,7 @@ void fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys)
 
 	RDEBUG3("PRF output");
 	RINDENT();
-	RHEXDUMP_INLINE3(keys->mk, sizeof(keys->mk),
+	RHEXDUMP_INLINE3(keys->mk, keys->mk_len,
 			 "MK           :");
 	RHEXDUMP_INLINE3(keys->k_re, sizeof(keys->k_re),
 			 "k_re         :");

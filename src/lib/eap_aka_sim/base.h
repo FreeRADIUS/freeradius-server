@@ -47,7 +47,15 @@ RCSIDH(sim_h, "$Id$")
 #define AKA_SIM_OP_SIZE				16U		//!< Length of Operator Algorithm Configuration.
 #define AKA_SIM_OPC_SIZE			16U		//!< Length of modified Operator Algorithm Configuration.
 
-#define AKA_SIM_MK_SIZE				20U		//!< Master key size
+#define AKA_SIM_MK_MAX_SIZE			208U		//!< Master key size, 20 for EAP-SIM/EAP-AKA
+								///< 208 for EAP-AKA'.
+#define AKA_SIM_MK_SIZE				20U
+#define AKA_PRIME_MK_SIZE			208U
+
+#define AKA_PRIME_MK_REAUTH_SIZE		80U		//!< The portion of the MK used for re-auth.
+								///< The MSK and EMSK are omitted as they're
+								///< recalculated each round.
+
 #define AKA_SIM_K_RE_SIZE			32U		//!< Reauthentication key size.
 
 #define AKA_SIM_SKIPPABLE_MAX			127U		//!< The last non-skippable attribute.
@@ -198,7 +206,7 @@ typedef struct {
 	/*
 	 *	Inputs/outputs
 	 */
-	uint8_t		mk[AKA_SIM_MK_SIZE];			//!< Master key from session attributes.
+	uint8_t		mk[AKA_SIM_MK_MAX_SIZE];			//!< Master key from session attributes.
 	size_t		mk_len;
 	uint8_t		k_re[AKA_SIM_K_RE_SIZE];		//!< Derived reauthentication key for AKA'(kdf 1).
 
@@ -295,7 +303,7 @@ void		fr_aka_sim_crypto_keys_init_kdf_0_reauth(fr_aka_sim_keys_t *keys,
 							 uint16_t counter);
 
 void		fr_aka_sim_crypto_keys_init_umts_kdf_1_reauth(fr_aka_sim_keys_t *keys,
-							      uint8_t const k_re[static AKA_SIM_K_RE_SIZE],
+							      uint8_t const mk[static AKA_PRIME_MK_REAUTH_SIZE],
 							      uint16_t counter);
 
 int		fr_aka_sim_crypto_kdf_0_reauth(fr_aka_sim_keys_t *keys);

@@ -620,9 +620,12 @@ RESUME(store_pseudonym)
 		 */
 		case FR_EAP_METHOD_SIM:
 		case FR_EAP_METHOD_AKA:
+			fr_assert(eap_aka_sim_session->keys.mk_len >= AKA_SIM_MK_SIZE);
+
 			MEM(pair_update_session_state(&vp, attr_session_data) >= 0);
-			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.mk,
-					     sizeof(eap_aka_sim_session->keys.mk), false);
+			fr_pair_value_memdup(vp,
+					     eap_aka_sim_session->keys.mk, eap_aka_sim_session->keys.mk_len,
+					     false);
 			break;
 		/*
 		 *	AKA' KDF 1 generates an additional key k_re
@@ -630,9 +633,12 @@ RESUME(store_pseudonym)
 		 *	of the MK.
 		 */
 		case FR_EAP_METHOD_AKA_PRIME:
+			fr_assert(eap_aka_sim_session->keys.mk_len >= AKA_PRIME_MK_REAUTH_SIZE);
+
 			MEM(pair_update_session_state(&vp, attr_session_data) >= 0);
-			fr_pair_value_memdup(vp, eap_aka_sim_session->keys.k_re,
-					     sizeof(eap_aka_sim_session->keys.k_re), false);
+			fr_pair_value_memdup(vp,
+					     eap_aka_sim_session->keys.mk, AKA_PRIME_MK_REAUTH_SIZE,
+					     false);	/* truncates */
 			break;
 
 		default:

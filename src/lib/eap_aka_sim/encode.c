@@ -680,7 +680,6 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 		}
 
 		if (slen <= 0) {
-			DEBUG("OUT OF BUFFER");
 			return slen;
 		}
 
@@ -688,7 +687,6 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 		 *	If nothing updated the attribute, stop
 		 */
 		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) {
-			DEBUG("NO ADVNACE");
 			break;
 		}
 
@@ -698,7 +696,6 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 		 *	at this depth is the same.
 		 */
 		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) {
-			DEBUG("WRONG DEPTH");
 			break;
 		}
 		vp = fr_dcursor_current(cursor);

@@ -845,10 +845,9 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pa
 		return 1;
 	}
 
-	if (mk_vp->vp_length != AKA_SIM_MK_SIZE) {
-		REDEBUG("&session-state.%s incorrect length.  Expected "
-			STRINGIFY(AKA_SIM_MK_SIZE) " bytes, got %zu bytes",
-			attr_eap_aka_sim_mk->name, mk_vp->vp_length);
+	if (mk_vp->vp_length != AKA_SIM_MK_MAX_SIZE) {
+		REDEBUG("&session-state.%s incorrect length.  Expected %u bytes, got %zu bytes",
+			attr_eap_aka_sim_mk->name, AKA_SIM_MK_MAX_SIZE, mk_vp->vp_length);
 		return -1;
 	}
 
@@ -873,7 +872,7 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pa
 int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_list_t *vps, fr_aka_sim_keys_t *keys)
 {
 	fr_pair_t *counter_vp;
-	fr_pair_t *k_re_vp;
+	fr_pair_t *mk_vp;
 
 	/*
 	 *	This is the *old* counter value increment
@@ -887,22 +886,22 @@ int fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request_t *request, fr_pair_l
 	}
 	counter_vp->vp_uint16++;
 
-	k_re_vp = fr_pair_find_by_da(vps, attr_session_data);
-	if (!k_re_vp) k_re_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_k_re);
-	if (!k_re_vp) {
+	mk_vp = fr_pair_find_by_da(vps, attr_session_data);
+	if (!mk_vp) mk_vp = fr_pair_find_by_da(vps, attr_eap_aka_sim_mk);
+	if (!mk_vp) {
 		RDEBUG2("Neither &session-state.%s or &session-sate:%s attributes found, "
-			"can't calculate re-auth keys", attr_session_data->name, attr_eap_aka_sim_k_re->name);
+			"can't calculate re-auth keys", attr_session_data->name, attr_eap_aka_sim_mk->name);
 		return 1;
 	}
 
-	if (k_re_vp->vp_length != AKA_SIM_K_RE_SIZE) {
+	if (mk_vp->vp_length != AKA_PRIME_MK_REAUTH_SIZE) {
 		REDEBUG("&session-state.%s incorrect length.  Expected "
-			STRINGIFY(AKA_SIM_K_RE_SIZE) " bytes, got %zu bytes",
-			attr_eap_aka_sim_mk->name, k_re_vp->vp_length);
+			"%u bytes, got %zu bytes",
+			attr_eap_aka_sim_mk->name, AKA_PRIME_MK_REAUTH_SIZE, mk_vp->vp_length);
 		return -1;
 	}
 
-	fr_aka_sim_crypto_keys_init_umts_kdf_1_reauth(keys, k_re_vp->vp_octets, counter_vp->vp_uint16);
+	fr_aka_sim_crypto_keys_init_umts_kdf_1_reauth(keys, mk_vp->vp_octets, counter_vp->vp_uint16);
 
 	keys->vector_type = AKA_SIM_VECTOR_UMTS_REAUTH_KDF_1_REAUTH;	/* Didn't come from a vector */
 	keys->vector_src = AKA_SIM_VECTOR_SRC_REAUTH;

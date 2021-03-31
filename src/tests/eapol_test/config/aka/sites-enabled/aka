@@ -35,6 +35,14 @@ server eap-aka {
 		}
 	}
 
+	send Reauthentication-Request {
+		update reply {
+			&Encr-Data.Next-Reauth-Id := ""
+			&Encr-Data.Next-Pseudonym := ""
+		}
+		ok
+	}
+
 	store session {
 		eap_aka_cache
 	}
