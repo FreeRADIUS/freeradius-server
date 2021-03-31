@@ -578,6 +578,21 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (request->reply->code == 0) return 0;
 
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *	Save the key, if we haven't already done that.
+	 */
+	if (listener->send_coa && !listener->key) {
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_find_by_num(request->config, PW_TCP_SESSION_KEY, 0, TAG_ANY);
+		if (vp) {
+			RDEBUG("Adding send CoA listener with key %s" vp->vp_strvalue);
+//			listener_store_bykey(request->listener, vp->vp_strvalue);
+		}
+	}
+#endif
+
 	/*
 	 *	Pack the VPs
 	 */
