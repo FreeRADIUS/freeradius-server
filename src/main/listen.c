@@ -2790,8 +2790,14 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 	this->recv = master_listen[this->type].recv;
 	this->send = master_listen[this->type].send;
 	this->print = master_listen[this->type].print;
-	this->encode = master_listen[this->type].encode;
-	this->decode = master_listen[this->type].decode;
+
+	if (type != RAD_LISTEN_PROXY) {
+		this->encode = master_listen[this->type].encode;
+		this->decode = master_listen[this->type].decode;
+	} else {
+		this->proxy_encode = master_listen[this->type].encode;
+		this->proxy_decode = master_listen[this->type].decode;
+	}
 
 	talloc_set_destructor(this, _listener_free);
 

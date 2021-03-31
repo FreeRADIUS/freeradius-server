@@ -2486,7 +2486,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		 *	Decode the packet if required.
 		 */
 		if (request->proxy_listener) {
-			rcode = request->proxy_listener->decode(request->proxy_listener, request);
+			rcode = request->proxy_listener->proxy_decode(request->proxy_listener, request);
 			debug_packet(request, reply, true);
 
 			/*
@@ -3453,7 +3453,7 @@ static int request_proxy(REQUEST *request)
 	/*
 	 *	Encode the packet before we do anything else.
 	 */
-	request->proxy_listener->encode(request->proxy_listener, request);
+	request->proxy_listener->proxy_encode(request->proxy_listener, request);
 	debug_packet(request, request->proxy, false);
 
 	/*
@@ -4468,7 +4468,7 @@ static void request_coa_originate(REQUEST *request)
 	/*
 	 *	Encode the packet before we do anything else.
 	 */
-	coa->proxy_listener->encode(coa->proxy_listener, coa);
+	coa->proxy_listener->proxy_encode(coa->proxy_listener, coa);
 	debug_packet(coa, coa->proxy, false);
 
 #ifdef DEBUG_STATE_MACHINE

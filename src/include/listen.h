@@ -87,6 +87,8 @@ struct rad_listen {
 	rad_listen_send_t send;
 	rad_listen_encode_t encode;
 	rad_listen_decode_t decode;
+	rad_listen_encode_t proxy_encode;
+	rad_listen_decode_t proxy_decode;
 	rad_listen_print_t print;
 
 	CONF_SECTION const *cs;
