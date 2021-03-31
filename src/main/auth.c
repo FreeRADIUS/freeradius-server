@@ -868,7 +868,7 @@ int rad_virtual_server(REQUEST *request)
 		 *	existing, and being (mostly) unique to that
 		 *	user.
 		 */
-		if (!request->parent &&
+		if (!request->parent && request->username &&
 		    (request->username->da->attr == PW_USER_NAME) &&
 		    (request->username->vp_strvalue[0] == '@') &&
 		    !fr_pair_find_by_num(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY)) {
