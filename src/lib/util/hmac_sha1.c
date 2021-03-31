@@ -32,7 +32,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 unsigned int sha1_data_problems = 0;
@@ -66,7 +66,7 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t 
 	if (unlikely(!sha1_hmac_ctx)) {
 		ctx = HMAC_CTX_new();
 		if (unlikely(!ctx)) return;
-		fr_thread_local_set_destructor(sha1_hmac_ctx, _hmac_sha1_ctx_free_on_exit, ctx);
+		fr_atexit_thread_local(sha1_hmac_ctx, _hmac_sha1_ctx_free_on_exit, ctx);
 	} else {
 		ctx = sha1_hmac_ctx;
 	}

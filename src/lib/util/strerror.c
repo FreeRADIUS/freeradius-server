@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #include <stdbool.h>
 
@@ -103,7 +103,7 @@ static fr_log_buffer_t *fr_strerror_init(void)
 
 		buffer->pool = buffer->pool_a;
 
-		fr_thread_local_set_destructor(fr_strerror_buffer, _fr_logging_free, buffer);
+		fr_atexit_thread_local(fr_strerror_buffer, _fr_logging_free, buffer);
 
 		fr_dlist_talloc_init(&buffer->entries, fr_log_entry_t, list);
 	}

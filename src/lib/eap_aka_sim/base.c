@@ -282,7 +282,7 @@ void fr_aka_sim_free(void)
 
 	fr_dict_autofree(libfreeradius_aka_sim_dict);
 
-	fr_thread_local_atexit_trigger(_evp_cipher_ctx_free_on_exit);
+	fr_atexit_trigger(_evp_cipher_ctx_free_on_exit);
 }
 
 static fr_table_num_ordered_t const subtype_table[] = {

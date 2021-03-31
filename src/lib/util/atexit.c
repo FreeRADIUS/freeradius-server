@@ -18,7 +18,7 @@
  *
  * Simplifies calling thread local destructors (called when the thread exits).
  *
- * @file lib/util/thread_local.c
+ * @file lib/util/atexit.c
  *
  * @copyright 2020-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2020 The FreeRADIUS server project
@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
@@ -43,23 +43,23 @@ RCSID("$Id$")
 #  define THREAD_LOCAL_DEBUG(...)
 #endif
 
-typedef struct fr_exit_handler_list_s fr_exit_handler_list_t;
+typedef struct fr_exit_handler_list_s fr_atexit_list_t;
 
 /** Entry in exit handler list
  *
  */
 typedef struct {
 	fr_dlist_t			entry;		//!< Entry in the handler dlist.
-	fr_exit_handler_list_t		*list;		//!< List this entry is in.
+	fr_atexit_list_t		*list;		//!< List this entry is in.
 
-	fr_thread_local_atexit_t	func;		//!< Function to call.
+	fr_atexit_t			func;		//!< Function to call.
 	void				*uctx;		//!< uctx to pass.
 
 #ifndef NDEBUG
 	char const			*file;		//!< File where this exit handler was added.
 	int				line;		//!< Line where this exit handler was added.
 #endif
-} fr_exit_handler_entry_t;
+} fr_atexit_entry_t;
 
 /** Head of a list of exit handlers
  *
@@ -68,20 +68,20 @@ struct fr_exit_handler_list_s {
 	fr_dlist_head_t			head;		//!< Head of the list of destructors
 
 	pthread_key_t			key;		//!< Key used to trigger thread local destructors.
-	fr_exit_handler_entry_t 	*e;		//!< Inserted into the global exit handler list
+	fr_atexit_entry_t 		*e;		//!< Inserted into the global exit handler list
 							///< to ensure this memory is cleaned up.
 };
 
-static _Thread_local fr_exit_handler_list_t	*thread_local_atexit = NULL;
-static fr_exit_handler_list_t			*global_atexit = NULL;
-static pthread_mutex_t				global_atexit_mutex = PTHREAD_MUTEX_INITIALIZER;
-static bool					is_exiting;
+static _Thread_local fr_atexit_list_t	*fr_atexit_thread_local = NULL;
+static fr_atexit_list_t			*fr_atexit_global = NULL;
+static pthread_mutex_t			fr_atexit_global_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool				is_exiting;
 
 
 /** Call the exit handler
  *
  */
-static int _exit_handler_entry_free(fr_exit_handler_entry_t *e)
+static int _atexit_entry_free(fr_atexit_entry_t *e)
 {
 	THREAD_LOCAL_DEBUG("%s - Thread %u freeing %p/%p func=%p, uctx=%p (alloced %s:%u)",
 			   __FUNCTION__, (unsigned int)pthread_self(),
@@ -100,13 +100,13 @@ static int _exit_handler_entry_free(fr_exit_handler_entry_t *e)
 /** Allocate a new exit handler entry
  *
  */
-static fr_exit_handler_entry_t *exit_handler_entry_alloc(NDEBUG_LOCATION_ARGS
-							 fr_exit_handler_list_t *list,
-							 fr_thread_local_atexit_t func, void const *uctx)
+static fr_atexit_entry_t *atexit_entry_alloc(NDEBUG_LOCATION_ARGS
+					     fr_atexit_list_t *list,
+					     fr_atexit_t func, void const *uctx)
 {
-	fr_exit_handler_entry_t *e;
+	fr_atexit_entry_t *e;
 
-	e = talloc_zero(list, fr_exit_handler_entry_t);
+	e = talloc_zero(list, fr_atexit_entry_t);
 	if (unlikely(!e)) return NULL;
 
 	e->list = list;
@@ -123,7 +123,7 @@ static fr_exit_handler_entry_t *exit_handler_entry_alloc(NDEBUG_LOCATION_ARGS
 			   list, e, e->func, e->uctx, e->file, e->line);
 
 	fr_dlist_insert_head(&list->head, e);
-	talloc_set_destructor(e, _exit_handler_entry_free);
+	talloc_set_destructor(e, _atexit_entry_free);
 
 	return e;
 }
@@ -131,34 +131,34 @@ static fr_exit_handler_entry_t *exit_handler_entry_alloc(NDEBUG_LOCATION_ARGS
 /** Talloc destructor for freeing list elements in order
  *
  */
-static int _thread_local_list_free(fr_exit_handler_list_t *ehl)
+static int _thread_local_list_free(fr_atexit_list_t *list)
 {
 	THREAD_LOCAL_DEBUG("%s - Freeing _Thread_local destructor list %p",
-			   __FUNCTION__, ehl);
+			   __FUNCTION__, list);
 
-	fr_dlist_talloc_free(&ehl->head);	/* Free in order */
-	ehl->e->func = NULL;			/* Disarm the global entry that'd free the thread-specific list */
+	fr_dlist_talloc_free(&list->head);	/* Free in order */
+	list->e->func = NULL;			/* Disarm the global entry that'd free the thread-specific list */
 	return 0;
 }
 
 /** Run all the thread local destructors
  *
- * @param[in] ehl	The thread-specific exit handler list.
+ * @param[in] list	The thread-specific exit handler list.
  */
-static void _thread_local_free(void *ehl)
+static void _thread_local_free(void *list)
 {
-	talloc_free(ehl);
+	talloc_free(list);
 }
 
 /** Talloc destructor for freeing list elements in order
  *
  */
-static int _global_list_free(fr_exit_handler_list_t *ehl)
+static int _global_list_free(fr_atexit_list_t *list)
 {
 	THREAD_LOCAL_DEBUG("%s - Freeing global destructor list %p",
-			   __FUNCTION__, ehl);
+			   __FUNCTION__, list);
 
-	fr_dlist_talloc_free(&ehl->head);	/* Free in order */
+	fr_dlist_talloc_free(&list->head);	/* Free in order */
 	return 0;
 }
 
@@ -167,29 +167,28 @@ static int _global_list_free(fr_exit_handler_list_t *ehl)
  */
 static void _global_free(void)
 {
-	pthread_mutex_lock(&global_atexit_mutex);
+	pthread_mutex_lock(&fr_atexit_global_mutex);
 	fr_cond_assert_msg(!is_exiting, "Global free function called multiple times");
 	is_exiting = true;
-	pthread_mutex_unlock(&global_atexit_mutex);
+	pthread_mutex_unlock(&fr_atexit_global_mutex);
 
-	TALLOC_FREE(global_atexit);
+	TALLOC_FREE(fr_atexit_global);
 }
 
 /** Setup the atexit handler, should be called at the start of a program's execution
  *
  */
-int fr_thread_local_atexit_setup(void)
+int fr_atexit_global_setup(void)
 {
-	if (global_atexit) return 0;
+	if (fr_atexit_global) return 0;
 
-	global_atexit = talloc_zero(NULL, fr_exit_handler_list_t);
-	if (unlikely(!global_atexit)) return -1;
+	fr_atexit_global = talloc_zero(NULL, fr_atexit_list_t);
+	if (unlikely(!fr_atexit_global)) return -1;
 
-	THREAD_LOCAL_DEBUG("%s - Alloced global destructor list %p",
-			   __FUNCTION__, global_atexit);
+	THREAD_LOCAL_DEBUG("%s - Alloced global destructor list %p", __FUNCTION__, fr_atexit_global);
 
-	fr_dlist_talloc_init(&global_atexit->head, fr_exit_handler_entry_t, entry);
-	talloc_set_destructor(global_atexit, _global_list_free);
+	fr_dlist_talloc_init(&fr_atexit_global->head, fr_atexit_entry_t, entry);
+	talloc_set_destructor(fr_atexit_global, _global_list_free);
 	atexit(_global_free);	/* Call all remaining destructors at process exit */
 
 	return 0;
@@ -201,8 +200,8 @@ int fr_thread_local_atexit_setup(void)
  *	- 0 on success.
  *      - -1 on memory allocation failure;
  */
-int _fr_thread_local_atexit(NDEBUG_LOCATION_ARGS
-			    fr_thread_local_atexit_t func, void const *uctx)
+int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
+			    fr_atexit_t func, void const *uctx)
 {
 	int ret = 0;
 
@@ -210,30 +209,32 @@ int _fr_thread_local_atexit(NDEBUG_LOCATION_ARGS
 	 *	Initialise the global list containing all the thread-local
 	 *	dlist destructors.
 	 */
-	pthread_mutex_lock(&global_atexit_mutex);
+	pthread_mutex_lock(&fr_atexit_global_mutex);
 	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated whilst exiting");
-	if (!global_atexit) ret = fr_thread_local_atexit_setup();
-	pthread_mutex_unlock(&global_atexit_mutex);
+	if (!fr_atexit_global) ret = fr_atexit_global_setup();
+	pthread_mutex_unlock(&fr_atexit_global_mutex);
 	if (ret < 0) return ret;
 
 	/*
 	 *	Initialise the thread local list, just for pthread_exit().
 	 */
-	if (!thread_local_atexit) {
+	if (!fr_atexit_thread_local) {
+		fr_atexit_list_t *list;
+
 		/*
 		 *	Must be heap allocated, because thread local
 		 *	structures can be freed before the key
 		 *	destructor is run (depending on platform).
 		 */
-		thread_local_atexit = talloc_zero(NULL, fr_exit_handler_list_t);
-		if (unlikely(!thread_local_atexit)) return -1;
+		list = talloc_zero(NULL, fr_atexit_list_t);
+		if (unlikely(!list)) return -1;
 
 		THREAD_LOCAL_DEBUG("%s - Thread %u alloced _Thread_local destructor list %p",
 				   __FUNCTION__,
-				   (unsigned int)pthread_self(), thread_local_atexit);
+				   (unsigned int)pthread_self(), list);
 
-		fr_dlist_talloc_init(&thread_local_atexit->head, fr_exit_handler_entry_t, entry);
-		(void) pthread_key_create(&thread_local_atexit->key, _thread_local_free);
+		fr_dlist_talloc_init(&list->head, fr_atexit_entry_t, entry);
+		(void) pthread_key_create(&list->key, _thread_local_free);
 
 		/*
 		 *	We need to pass in a pointer to the heap
@@ -242,8 +243,8 @@ int _fr_thread_local_atexit(NDEBUG_LOCATION_ARGS
 		 *	by the time the thread destructor is
 		 *	called.
 		 */
-		(void) pthread_setspecific(thread_local_atexit->key, thread_local_atexit);
-		talloc_set_destructor(thread_local_atexit, _thread_local_list_free);
+		(void) pthread_setspecific(list->key, list);
+		talloc_set_destructor(list, _thread_local_list_free);
 
 		/*
 		 *	Add a destructor for the thread-local list
@@ -252,19 +253,21 @@ int _fr_thread_local_atexit(NDEBUG_LOCATION_ARGS
 		 *	it doesn't, thus ensuring the memory is
 		 *	*always* freed one way or another.
 		 */
-		pthread_mutex_lock(&global_atexit_mutex);
-		thread_local_atexit->e = exit_handler_entry_alloc(NDEBUG_LOCATION_VALS
-								  global_atexit,
-								  _thread_local_free,
-								  thread_local_atexit);
-		pthread_mutex_unlock(&global_atexit_mutex);
+		pthread_mutex_lock(&fr_atexit_global_mutex);
+		list->e = atexit_entry_alloc(NDEBUG_LOCATION_VALS
+					     fr_atexit_global,
+					     _thread_local_free,
+					     list);
+
+		pthread_mutex_unlock(&fr_atexit_global_mutex);
+
+		fr_atexit_thread_local = list;
 	}
 
 	/*
 	 *	Now allocate the actual atexit handler entry
 	 */
-	if (exit_handler_entry_alloc(NDEBUG_LOCATION_VALS
-				     thread_local_atexit, func, uctx) == NULL) return -1;
+	if (atexit_entry_alloc(NDEBUG_LOCATION_VALS fr_atexit_thread_local, func, uctx) == NULL) return -1;
 
 	return 0;
 }
@@ -275,19 +278,19 @@ int _fr_thread_local_atexit(NDEBUG_LOCATION_ARGS
  *	- 0 on success.
  *      - -1 if function and uctx could not be found.
  */
-int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uctx)
+int fr_atexit_thread_local_disarm(fr_atexit_t func, void const *uctx)
 {
-	fr_exit_handler_entry_t *e = NULL;
+	fr_atexit_entry_t *e = NULL;
 
-	if (!thread_local_atexit) return -1;
+	if (!fr_atexit_thread_local) return -1;
 
-	while ((e = fr_dlist_next(&thread_local_atexit->head, e))) {
+	while ((e = fr_dlist_next(&fr_atexit_thread_local->head, e))) {
 		if ((e->func == func) && (e->uctx == uctx)) {
 			THREAD_LOCAL_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
 					   __FUNCTION__,
 					   (unsigned int)pthread_self(),
-					   thread_local_atexit, e, e->func, e->uctx, e->file, e->line);
-			fr_dlist_remove(&thread_local_atexit->head, e);
+					   fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
+			fr_dlist_remove(&fr_atexit_thread_local->head, e);
 			talloc_set_destructor(e, NULL);
 			talloc_free(e);
 			return 0;
@@ -297,17 +300,17 @@ int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uct
 	return -1;
 }
 
-void fr_thread_local_atexit_disarm_all(void)
+void fr_atexit_thread_local_disarm_all(void)
 {
-	fr_exit_handler_entry_t *e = NULL;
+	fr_atexit_entry_t *e = NULL;
 
-	if (!thread_local_atexit) return;
+	if (!fr_atexit_thread_local) return;
 
-	while ((e = fr_dlist_pop_head(&thread_local_atexit->head))) {
+	while ((e = fr_dlist_pop_head(&fr_atexit_thread_local->head))) {
 		THREAD_LOCAL_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
 				   __FUNCTION__,
 				   (unsigned int)pthread_self(),
-				   thread_local_atexit, e, e->func, e->uctx, e->file, e->line);
+				   fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
 		talloc_set_destructor(e, NULL);
 		talloc_free(e);
 	}
@@ -320,22 +323,23 @@ void fr_thread_local_atexit_disarm_all(void)
  * @param[in] func	Entries matching this function will be triggered.
  * @return How many triggers fired.
  */
-int fr_thread_local_atexit_trigger(fr_thread_local_atexit_t func)
+int fr_atexit_trigger(fr_atexit_t func)
 {
-	fr_exit_handler_entry_t		*e = NULL, *ee;
-	fr_exit_handler_list_t		*list;
+	fr_atexit_entry_t		*e = NULL, *ee;
+	fr_atexit_list_t		*list;
 	unsigned int			count = 0;
 
-	if (global_atexit) return 0;
+	if (!fr_atexit_global) return 0;
 
 	/*
 	 *	Iterate over the list of thread local destructor
 	 *	lists.
 	 */
-	while ((e = fr_dlist_next(&global_atexit->head, e))) {
+	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
 		if (!e->func) continue;	/* thread already joined */
 
-		list = talloc_get_type_abort(e->uctx, fr_exit_handler_list_t);
+		list = talloc_get_type_abort(e->uctx, fr_atexit_list_t);
+		ee = NULL;
 		while ((ee = fr_dlist_next(&list->head, ee))) {
 			if (ee->func != func) continue;
 

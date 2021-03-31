@@ -59,7 +59,7 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
 			return NULL;
 		}
 
-		fr_thread_local_set_destructor(krb5_error_buffer, _krb5_logging_free, buffer);
+		fr_atexit_thread_local(krb5_error_buffer, _krb5_logging_free, buffer);
 	}
 
 	msg = krb5_get_error_message(context, code);

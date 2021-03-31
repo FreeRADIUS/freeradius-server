@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/rbtree.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/io/channel.h>
@@ -213,7 +213,7 @@ static inline fr_ring_buffer_t *fr_network_rb_init(void)
 		return NULL;
 	}
 
-	fr_thread_local_set_destructor(fr_network_rb, _fr_network_rb_free, rb);
+	fr_atexit_thread_local(fr_network_rb, _fr_network_rb_free, rb);
 
 	return rb;
 }

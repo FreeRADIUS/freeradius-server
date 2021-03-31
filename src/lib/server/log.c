@@ -300,7 +300,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			fr_perror("Failed allocating memory for vlog_request_pool");
 			return;
 		}
-		fr_thread_local_set_destructor(fr_vlog_request_pool, _fr_vlog_request_pool_free, pool);
+		fr_atexit_thread_local(fr_vlog_request_pool, _fr_vlog_request_pool_free, pool);
 	}
 
 	filename = log_dst->file;
@@ -742,7 +742,7 @@ static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
 
 		fr_sbuff_init_talloc(sbuff, sbuff, tctx, 1024, (FR_DICT_ATTR_MAX_NAME_LEN + 1) * FR_DICT_MAX_TLV_STACK);
 
-		fr_thread_local_set_destructor(fr_log_request_oid_buff, _fr_log_request_oid_buff_free, sbuff);
+		fr_atexit_thread_local(fr_log_request_oid_buff, _fr_log_request_oid_buff_free, sbuff);
 	} else {
 		fr_sbuff_set(sbuff, fr_sbuff_start(sbuff));	/* Reset position */
 	}

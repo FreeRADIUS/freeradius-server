@@ -514,7 +514,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Must be called first, so the handler is called last
 	 */
-	fr_thread_local_atexit_setup();
+	fr_atexit_global_setup();
 
 	autofree = talloc_autofree_context();
 	thread_ctx = talloc_new(autofree);

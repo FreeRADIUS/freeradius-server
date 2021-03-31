@@ -9,7 +9,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 /*
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!
@@ -79,7 +79,7 @@ static fr_md4_ctx_t *fr_md4_openssl_ctx_alloc(bool thread_local)
 				fr_strerror_const("Out of memory");
 				return NULL;
 			}
-			fr_thread_local_set_destructor(md4_ctx, _md4_ctx_openssl_free_on_exit, md_ctx);
+			fr_atexit_thread_local(md4_ctx, _md4_ctx_openssl_free_on_exit, md_ctx);
 			EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL);
 		} else {
 			md_ctx = md4_ctx;
@@ -374,7 +374,7 @@ static fr_md4_ctx_t *fr_md4_local_ctx_alloc(bool thread_local)
 			ctx_local = talloc(NULL, fr_md4_ctx_local_t);
 			if (unlikely(!ctx_local)) return NULL;
 			fr_md4_local_ctx_reset(ctx_local);
-			fr_thread_local_set_destructor(md4_ctx, _md4_ctx_local_free_on_exit, ctx_local);
+			fr_atexit_thread_local(md4_ctx, _md4_ctx_local_free_on_exit, ctx_local);
 		} else {
 			ctx_local = md4_ctx;
 		}

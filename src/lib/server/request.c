@@ -438,7 +438,7 @@ request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx, request_i
 	if (unlikely(!request_free_list)) {
 		MEM(free_list = talloc(NULL, fr_dlist_head_t));
 		fr_dlist_init(free_list, request_t, free_entry);
-		fr_thread_local_set_destructor(request_free_list, _request_free_list_free_on_exit, free_list);
+		fr_atexit_thread_local(request_free_list, _request_free_list_free_on_exit, free_list);
 	} else {
 		free_list = request_free_list;
 	}

@@ -66,7 +66,7 @@ SOURCES		:= \
 		   syserror.c \
 		   table.c \
 		   talloc.c \
-		   thread_local.c \
+		   atexit.c \
 		   time.c \
 		   timeval.c \
 		   token.c \

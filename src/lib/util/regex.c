@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
@@ -165,7 +165,7 @@ static int fr_pcre2_tls_init(void)
 	/*
 	 *	Free on thread exit
 	 */
-	fr_thread_local_set_destructor(fr_pcre2_tls, _pcre2_tls_free_on_exit, tls);
+	fr_atexit_thread_local(fr_pcre2_tls, _pcre2_tls_free_on_exit, tls);
 	fr_pcre2_tls = tls;	/* Assign to thread local storage */
 
 	return 0;
@@ -876,7 +876,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 		/*
 		 *	Starts at 128K, max is 512K per thread.
 		 */
-		fr_thread_local_set_destructor(fr_pcre_jit_stack, _pcre_jit_stack_free,
+		fr_atexit_thread_local(fr_pcre_jit_stack, _pcre_jit_stack_free,
 					       pcre_jit_stack_alloc(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX));
 		if (!fr_pcre_jit_stack) {
 			fr_strerror_const("Allocating JIT stack failed");

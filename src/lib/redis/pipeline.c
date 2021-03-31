@@ -222,7 +222,7 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 	if (unlikely(!command_set_free_list)) {
 		MEM(free_list = talloc(NULL, fr_dlist_head_t));
 		fr_dlist_init(free_list, fr_redis_command_set_t, entry);
-		fr_thread_local_set_destructor(command_set_free_list, _command_set_free_list_free_on_exit, free_list);
+		fr_atexit_thread_local(command_set_free_list, _command_set_free_list_free_on_exit, free_list);
 	} else {
 		free_list = command_set_free_list;
 	}

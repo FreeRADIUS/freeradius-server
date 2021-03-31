@@ -9,7 +9,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
@@ -110,7 +110,7 @@ static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
 		free_list = talloc_zero_array(NULL, fr_md5_free_list_t, ARRAY_SIZE);
 		if (unlikely(!free_list)) goto oom;
 
-		fr_thread_local_set_destructor(md5_array, _md5_ctx_openssl_free_on_exit, free_list);
+		fr_atexit_thread_local(md5_array, _md5_ctx_openssl_free_on_exit, free_list);
 
 		/*
 		 *	Initialize all MD5 contexts
@@ -411,7 +411,7 @@ static fr_md5_ctx_t *fr_md5_local_ctx_alloc(bool thread_local)
 			ctx_local = talloc(NULL, fr_md5_ctx_local_t);
 			if (unlikely(!ctx_local)) return NULL;
 			fr_md5_local_ctx_reset(ctx_local);
-			fr_thread_local_set_destructor(md5_ctx, _md5_ctx_local_free_on_exit, ctx_local);
+			fr_atexit_thread_local(md5_ctx, _md5_ctx_local_free_on_exit, ctx_local);
 		} else {
 			ctx_local = md5_ctx;
 		}

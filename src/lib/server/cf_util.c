@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 static inline int cf_ident2_cmp(void const *a, void const *b);
 static int _cf_ident1_cmp(void const *a, void const *b);

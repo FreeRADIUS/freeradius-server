@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
@@ -236,7 +236,7 @@ static NEVER_RETURNS void fr_exec_child(request_t *request, char **argv, char **
 	 *	FIXME - Leaving them enabled causes issues in child
 	 *	execd processes, but we should really track down why.
 	 */
-	fr_thread_local_atexit_disarm_all();
+	fr_atexit_thread_local_disarm_all();
 
 	/*
 	 *	I swear the signature for execve is wrong and should

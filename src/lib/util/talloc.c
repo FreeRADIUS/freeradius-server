@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #include <string.h>
 #include <unistd.h>
@@ -750,7 +750,7 @@ static void _autofree_on_thread_exit(void *af)
  */
 static int _autofree_destructor(TALLOC_CTX *af)
 {
-	return fr_thread_local_atexit_disarm(_autofree_on_thread_exit, af);
+	return fr_atexit_thread_local_disarm(_autofree_on_thread_exit, af);
 }
 
 /** Get a thread-safe autofreed ctx that will be freed when the thread or process exits
@@ -769,7 +769,7 @@ TALLOC_CTX *talloc_autofree_context_thread_local(void)
 		talloc_set_destructor(af, _autofree_destructor);
 		if (unlikely(!af)) return NULL;
 
-		if (unlikely(fr_thread_local_atexit(_autofree_on_thread_exit, af) < 0)) return NULL;
+		fr_atexit_thread_local(thread_local_ctx, _autofree_on_thread_exit, af);
 	}
 
 	return af;

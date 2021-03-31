@@ -31,7 +31,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/hmac.h>
@@ -61,7 +61,7 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t in
 	if (unlikely(!md5_hmac_ctx)) {
 		ctx = HMAC_CTX_new();
 		if (unlikely(!ctx)) return;
-		fr_thread_local_set_destructor(md5_hmac_ctx, _hmac_md5_ctx_free_on_exit, ctx);
+		fr_atexit_thread_local(md5_hmac_ctx, _hmac_md5_ctx_free_on_exit, ctx);
 	} else {
 		ctx = md5_hmac_ctx;
 	}

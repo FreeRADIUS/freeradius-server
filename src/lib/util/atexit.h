@@ -15,16 +15,16 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Macros to abstract Thread Local Storage
+/** Functions to help with thread local destructors
  *
  * Simplifies calling thread local destructors (called when the thread exits).
  *
- * @file lib/util/thread_local.h
+ * @file lib/util/atexit.h
  *
  * @copyright 2020-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2013-2016 The FreeRADIUS server project
  */
-RCSIDH(thread_local_h, "$Id$")
+RCSIDH(atexit_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,17 +37,13 @@ extern "C" {
 #  define _Thread_local TLS_STORAGE_CLASS
 #endif
 
-typedef void(*fr_thread_local_atexit_t)(void *uctx);
+/** Destructor callback
+ *
+ * @param[in] uctx	to free.
+ */
+typedef void(*fr_atexit_t)(void *uctx);
 
-int fr_thread_local_atexit_setup(void);
-
-int _fr_thread_local_atexit(NDEBUG_LOCATION_ARGS
-			    fr_thread_local_atexit_t func, void const *uctx);
-#define	fr_thread_local_atexit(...) _fr_thread_local_atexit(NDEBUG_LOCATION_EXP __VA_ARGS__)
-
-int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uctx);
-
-void fr_thread_local_atexit_disarm_all(void);
+int	fr_atexit_global_setup(void);
 
 /** Set a destructor for thread local storage to free the memory on thread exit
  *
@@ -59,13 +55,19 @@ void fr_thread_local_atexit_disarm_all(void);
  * @param _f	Destructor, called when the thread exits to clean up any data.
  * @param _v	Memory to free.
  */
-#  define fr_thread_local_set_destructor(_n, _f, _v) \
+#  define fr_atexit_thread_local(_n, _f, _v) \
 do { \
-	fr_thread_local_atexit(_f, _v); \
+	_fr_atexit_thread_local(NDEBUG_LOCATION_EXP _f, _v); \
 	_n = _v; \
 } while (0);
+int	_fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
+				fr_atexit_t func, void const *uctx);
 
-int fr_thread_local_atexit_trigger(fr_thread_local_atexit_t func);
+int	fr_atexit_thread_local_disarm(fr_atexit_t func, void const *uctx);
+
+void	fr_atexit_thread_local_disarm_all(void);
+
+int	fr_atexit_trigger(fr_atexit_t func);
 
 #ifdef __cplusplus
 }

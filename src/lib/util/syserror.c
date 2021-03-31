@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <errno.h>
@@ -189,7 +189,7 @@ char const *fr_syserror(int num)
 			fr_perror("Failed allocating memory for system error buffer");
 			return NULL;
 		}
- 		fr_thread_local_set_destructor(fr_syserror_buffer, _fr_logging_free, buffer);
+ 		fr_atexit_thread_local(fr_syserror_buffer, _fr_logging_free, buffer);
 	}
 
 	if (num == 0) return "No additional error information";

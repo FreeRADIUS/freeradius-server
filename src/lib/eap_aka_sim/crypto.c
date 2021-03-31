@@ -42,7 +42,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 #include <openssl/evp.h>
 
 #include "base.h"
@@ -71,7 +71,7 @@ EVP_CIPHER_CTX *aka_sim_crypto_cipher_ctx(void)
 
 	if (unlikely(!evp_chipher_ctx)) {
 		MEM(ctx = EVP_CIPHER_CTX_new());
-		fr_thread_local_set_destructor(evp_chipher_ctx, _evp_cipher_ctx_free_on_exit, ctx);
+		fr_atexit_thread_local(evp_chipher_ctx, _evp_cipher_ctx_free_on_exit, ctx);
 	} else {
 		ctx = evp_chipher_ctx;
 		EVP_CIPHER_CTX_reset(ctx);

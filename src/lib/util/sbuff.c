@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -1369,7 +1369,7 @@ static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
 			fr_strerror_const("Out of Memory");
 			return -1;
 		}
-		fr_thread_local_set_destructor(sbuff_scratch, _sbuff_scratch_free, scratch);
+		fr_atexit_thread_local(sbuff_scratch, _sbuff_scratch_free, scratch);
 	}
 
 	*out = scratch;

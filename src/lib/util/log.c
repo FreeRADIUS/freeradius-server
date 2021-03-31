@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/value.h>
 
 #include <fcntl.h>
@@ -234,7 +234,7 @@ TALLOC_CTX *fr_log_pool_init(void)
 			fr_perror("Failed allocating memory for vlog_request_pool");
 			return NULL;
 		}
-		fr_thread_local_set_destructor(fr_log_pool, _fr_log_pool_free, pool);
+		fr_atexit_thread_local(fr_log_pool, _fr_log_pool_free, pool);
 	}
 
 	return pool;

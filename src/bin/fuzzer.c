@@ -69,7 +69,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 *	Setup atexit handlers to free any thread local
 	 *	memory on exit
 	 */
-	fr_thread_local_atexit_setup();
+	fr_atexit_global_setup();
 
 	/*
 	 *	Initialise the error stack _before_ we run any
