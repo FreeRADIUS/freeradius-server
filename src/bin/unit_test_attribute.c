@@ -3214,7 +3214,6 @@ cleanup:
 #ifdef WITH_TLS
 	fr_openssl_free();
 #endif
-	FR_FAULT_LOG("After openssl_free");
 
 	if (talloc_free(dl_modules) < 0) {
 		fr_perror("unit_test_attribute - dl_modules - ");	/* Print free order issues */
