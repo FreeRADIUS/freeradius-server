@@ -926,7 +926,10 @@ bool unlang_interpret_is_resumable(request_t *request)
 void unlang_interpret_request_done(request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
-	unlang_interpret_t	*intp = stack->intp;
+	unlang_interpret_t	*intp;
+
+	fr_assert(stack != NULL);
+	intp = stack->intp;
 
 	if (request_is_internal(request)) {
 		intp->funcs.done_internal(request, stack->result, intp->uctx);
