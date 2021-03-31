@@ -21,6 +21,7 @@
  *
  * @file lib/util/thread_local.h
  *
+ * @copyright 2020-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2013-2016 The FreeRADIUS server project
  */
 RCSIDH(thread_local_h, "$Id$")
@@ -40,7 +41,9 @@ typedef void(*fr_thread_local_atexit_t)(void *uctx);
 
 int fr_thread_local_atexit_setup(void);
 
-int fr_thread_local_atexit(fr_thread_local_atexit_t func, void const *uctx);
+int _fr_thread_local_atexit(NDEBUG_LOCATION_ARGS
+			    fr_thread_local_atexit_t func, void const *uctx);
+#define	fr_thread_local_atexit(...) _fr_thread_local_atexit(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
 int fr_thread_local_atexit_disarm(fr_thread_local_atexit_t func, void const *uctx);
 

@@ -770,8 +770,6 @@ TALLOC_CTX *talloc_autofree_context_thread_local(void)
 		if (unlikely(!af)) return NULL;
 
 		if (unlikely(fr_thread_local_atexit(_autofree_on_thread_exit, af) < 0)) return NULL;
-
-		thread_local_ctx = af;
 	}
 
 	return af;
