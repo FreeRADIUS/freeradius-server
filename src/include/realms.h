@@ -21,10 +21,15 @@ typedef enum {
 	HOME_TYPE_INVALID = 0,
 	HOME_TYPE_AUTH,		//!< Authentication server
 	HOME_TYPE_ACCT,		//!< Accounting server
-	HOME_TYPE_AUTH_ACCT	//!< Authentication and accounting server
+	HOME_TYPE_AUTH_ACCT,	//!< Authentication and accounting server
 
 #ifdef WITH_COA
-	,HOME_TYPE_COA		//!< CoA destination (NAS or Proxy)
+	HOME_TYPE_COA,		//!< CoA destination (NAS or Proxy)
+
+#ifdef WITH_COA_TUNNEL
+	HOME_TYPE_AUTH_COA,	//!< auth + coa
+	HOME_TYPE_AUTH_ACCT_COA, //!< auth + acct + coa
+#endif
 #endif
 } home_type_t;
 
@@ -60,6 +65,9 @@ typedef struct home_server {
 
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
 	bool			dynamic;		//!< is this a dynamically added home server?
+#ifdef WITH_COA_TUNNEL
+	bool			recv_coa;		//!< receive CoA packets, too
+#endif
 	char const		*server;		//!< For internal proxying
 	char const		*parent_server;
 
@@ -120,6 +128,9 @@ typedef struct home_server {
 	uint32_t		coa_mrc;
 	uint32_t		coa_mrt;
 	uint32_t		coa_mrd;
+#ifdef WITH_COA_TUNNEL
+	char const		*coa_server;		//!< for accepting incoming CoA requests
+#endif
 #endif
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
