@@ -1,0 +1,17 @@
+#
+#  Tests for the EAP-SIM/AKA/AKA' encoder and decoder
+#
+
+# Only run the tests if we have TLS support
+need-feature tls
+
+# Load the EAP-AKA/SIM encoder/decoder
+proto eap-aka-sim
+proto-dictionary eap-aka-sim eap/aka-sim
+
+# Encr-Data attributes should not be split between multiple outer TLVs (regression test)
+encode-pair.sim_tp_encode_rfc4186 IV = 0xd585ac7786b90336657c77b46575b9c4, Encr-Data.Next-Reauth-ID = "8osafwilQBCdof4", Encr-Data.Next-Pseudonym = "7QSzGAfgFKU8De9", Encr-Data.Nonce-S = 0xd61d1c6124106953f6f7283ae680a5ed, Encr-Data.Counter = 1
+match 81 05 00 00 d5 85 ac 77 86 b9 03 36 65 7c 77 b4 65 75 b9 c4 82 11 00 00 6e a1 2b 5c d1 57 fa fc be a9 c9 7c ad 30 07 ff 72 dc cb c8 a9 96 b3 33 1f 71 aa 06 bb f0 1d 04 6b 51 9e fa 83 31 11 67 c6 93 1e 9c 06 5c 1f 2c 62 0d 1d 6d b0 b1 59 2f 91 f1 56 98 a9 e2 dc 3c
+
+decode-pair.sim_tp_decode_rfc4186 -
+match IV = 0xd585ac7786b90336657c77b46575b9c4, Encr-Data.Next-Reauth-ID = "8osafwilQBCdof4", Encr-Data.Next-Pseudonym = "7QSzGAfgFKU8De9", Encr-Data.Nonce-S = 0xd61d1c6124106953f6f7283ae680a5ed, Encr-Data.Counter = 1
