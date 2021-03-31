@@ -73,6 +73,10 @@ static const FR_NAME_NUMBER home_server_types[] = {
 	{ "acct",		HOME_TYPE_ACCT },
 	{ "auth+acct",		HOME_TYPE_AUTH_ACCT },
 	{ "coa",		HOME_TYPE_COA },
+#ifdef WITH_COA_TUNNEL
+	{ "auth+coa",		HOME_TYPE_AUTH_COA },
+	{ "auth+acct+coa",	HOME_TYPE_AUTH_ACCT_COA },
+#endif
 	{ NULL, 0 }
 };
 
@@ -433,6 +437,16 @@ static CONF_PARSER home_server_coa[] = {
 	{ "mrd",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrd), STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
+
+
+
+#ifdef WITH_COA_TUNNEL
+static CONF_PARSER home_server_recv_coa[] = {
+	{ "virtual_server",  FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, coa_server), NULL },
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
 #endif
 
 static CONF_PARSER home_server_config[] = {
@@ -482,6 +496,9 @@ static CONF_PARSER home_server_config[] = {
 
 #ifdef WITH_COA
 	{ "coa", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) home_server_coa },
+#ifdef WITH_COA_TUNNEL
+	{ "recv_coa", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) home_server_recv_coa },
+#endif
 #endif
 
 	CONF_PARSER_TERMINATOR
@@ -681,6 +698,20 @@ bool realm_home_server_add(home_server_t *home)
 		}
 	}
 
+#ifdef WITH_COA_TUNNEL
+	if (home->recv_coa) {
+		if (!home->tls) {
+			ERROR("TLS is required in order to accept CoA requests from a home server");
+			return false;
+		}
+
+		if (!home->coa_server) {
+			ERROR("A 'virtual_server' configuration is required in order to accept CoA requests from a home server");
+			return false;
+		}
+	}
+#endif
+
 	/*
 	 *	Mark it as already processed
 	 */
@@ -745,7 +776,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		}
 
 		/*
-		 *	Try and find a 'server' section off the root of
+		 *	Try and find a "server" section off the root of
 		 *	the config with a name that matches the
 		 *	virtual_server.
 		 */
@@ -793,6 +824,17 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				goto error;
 			}
 			break;
+
+#ifdef WITH_COA_TUNNEL
+		case HOME_TYPE_AUTH_ACCT_COA:
+			home->dual = true;
+			home->recv_coa = true;
+			break;
+
+		case HOME_TYPE_AUTH_COA:
+			home->recv_coa = true;
+			break;
+#endif
 #endif
 
   		case HOME_TYPE_INVALID:
@@ -819,6 +861,10 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			}
 
 			if (((home->type == HOME_TYPE_AUTH) ||
+#ifdef WITH_COA_TUNNEL
+			     (home->type == HOME_TYPE_AUTH_COA) ||
+			     (home->type == HOME_TYPE_AUTH_ACCT_COA) ||
+#endif
 			     (home->type == HOME_TYPE_AUTH_ACCT)) && !home->ping_user_password) {
 				cf_log_err_cs(cs, "You must supply a 'password' to enable status_check=request");
 				goto error;
@@ -880,6 +926,38 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	if (tls) {
 		cf_log_err_cs(cs, "TLS transport is not available in this executable");
 		goto error;
+	}
+#endif
+
+	/*
+	 *	Check the reverse CoA configuration.
+	 */
+#ifdef WITH_COA_TUNNEL
+	if (home->recv_coa) {
+		if (!tls) {
+			ERROR("TLS is required in order to accept CoA requests from a home server");
+			goto error;
+		}
+
+		if (!home->coa_server) {
+			ERROR("A 'virtual_server' configuration is required in order to accept CoA requests from a home server");
+			goto error;
+		}
+
+		/*
+		 *	Try and find a 'server' section off the root of
+		 *	the config with a name that matches the coa
+		 *	virtual_server.
+		 */
+		if (!rc) {
+			ERROR("Dynamic home servers cannot accept CoA requests");
+			goto error;
+		}
+
+		if (!cf_section_sub_find_name2(rc->cs, "server", home->coa_server)) {
+			cf_log_err_cs(cs, "No such coa server %s", home->coa_server);
+			goto error;
+		}
 	}
 #endif
 
@@ -1127,6 +1205,16 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 	case HOME_TYPE_ACCT:
 		myhome.type = HOME_TYPE_AUTH_ACCT;
 		home = rbtree_finddata(home_servers_byname, &myhome);
+#ifdef WITH_COA_TUNNEL
+		if (!home) {
+			myhome.type = HOME_TYPE_AUTH_COA;
+			home = rbtree_finddata(home_servers_byname, &myhome);
+			if(!home) {
+				myhome.type = HOME_TYPE_AUTH_ACCT_COA;
+				home = rbtree_finddata(home_servers_byname, &myhome);
+			}
+		}
+#endif
 		if (home) {
 			*phome = home;
 			return 1;
@@ -1418,6 +1506,16 @@ static int server_pool_add(realm_config_t *rc,
 			case HOME_TYPE_ACCT:
 				myhome.type = HOME_TYPE_AUTH_ACCT;
 				home = rbtree_finddata(home_servers_byname, &myhome);
+#ifdef WITH_COA_TUNNEL
+				if (!home) {
+					myhome.type = HOME_TYPE_AUTH_COA;
+					home = rbtree_finddata(home_servers_byname, &myhome);
+					if (!home) {
+						myhome.type = HOME_TYPE_AUTH_ACCT_COA;
+						home = rbtree_finddata(home_servers_byname, &myhome);
+					}
+				}
+#endif
 				break;
 
 			default:
@@ -2986,6 +3084,14 @@ int home_server_afrom_file(char const *filename)
 		talloc_free(home);
 		goto error;
 	}
+
+#ifdef COA_TUNNEL
+	if (home->recv_coa) {
+		fr_strerror_printf("Dynamic home_server '%s' cannot receive CoA requests'", p);
+		talloc_free(home);
+		goto error;
+	}
+#endif
 
 	if (!realm_home_server_add(home)) {
 		fr_strerror_printf("Failed adding home_server to the internal data structures");
