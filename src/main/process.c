@@ -3473,7 +3473,7 @@ static int request_proxy(REQUEST *request)
 	/*
 	 *	And send the packet.
 	 */
-	request->proxy_listener->send(request->proxy_listener, request);
+	request->proxy_listener->proxy_send(request->proxy_listener, request);
 	return 1;
 }
 

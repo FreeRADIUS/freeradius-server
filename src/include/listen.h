@@ -85,6 +85,16 @@ struct rad_listen {
 
 	rad_listen_recv_t recv;
 	rad_listen_send_t send;
+
+	/*
+	 *	We don't need a proxy_recv, because the main loop in
+	 *	process.c calls listener->recv(), and we don't know
+	 *	what kind of packet we're receiving until we receive
+	 *	it.
+	 */
+	rad_listen_send_t proxy_send;
+
+
 	rad_listen_encode_t encode;
 	rad_listen_decode_t decode;
 	rad_listen_encode_t proxy_encode;

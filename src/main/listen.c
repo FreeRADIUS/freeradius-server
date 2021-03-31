@@ -1408,7 +1408,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->proxy_listener == listener);
-	rad_assert(listener->send == proxy_socket_send);
+	rad_assert(listener->proxy_send == proxy_socket_send);
 
 	if (rad_send(request->proxy, NULL,
 		     request->home_server->secret) < 0) {
@@ -2795,6 +2795,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 		this->encode = master_listen[this->type].encode;
 		this->decode = master_listen[this->type].decode;
 	} else {
+		this->proxy_send = master_listen[this->type].send;
 		this->proxy_encode = master_listen[this->type].encode;
 		this->proxy_decode = master_listen[this->type].decode;
 	}
@@ -2895,7 +2896,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		}
 
 		this->recv = proxy_tls_recv;
-		this->send = proxy_tls_send;
+		this->proxy_send = proxy_tls_send;
 	}
 #endif
 #endif
