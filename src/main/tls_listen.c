@@ -102,8 +102,8 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 	p = sock->ssn->dirty_out.data;
 
 	while (p < (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used)) {
-		RDEBUG3("Writing to socket %d", request->packet->sockfd);
-		rcode = write(request->packet->sockfd, p,
+		RDEBUG3("Writing to socket %d", listener->fd);
+		rcode = write(listener->fd, p,
 			      (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used) - p);
 		if (rcode <= 0) {
 			RDEBUG("Error writing to TLS socket: %s", fr_syserror(errno));
@@ -673,7 +673,7 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 	if (sock->ssn->dirty_out.used > 0) {
 		dump_hex("WRITE TO SSL", sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
 
-//		tls_socket_write(listener, request);
+		tls_socket_write(listener, request);
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
