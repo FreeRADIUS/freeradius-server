@@ -2342,8 +2342,8 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	}
 
 	dict_path = dict_subdir ?
-		    talloc_asprintf(NULL, "%s%c%s", fr_dict_global_dir(), FR_DIR_SEP, dict_subdir) :
-		    talloc_strdup(NULL, fr_dict_global_dir());
+		    talloc_asprintf(NULL, "%s%c%s", fr_dict_global_ctx_dir(), FR_DIR_SEP, dict_subdir) :
+		    talloc_strdup(NULL, fr_dict_global_ctx_dir());
 
 	dict = dict_alloc(dict_gctx);
 	if (!dict) {
@@ -2446,9 +2446,9 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	}
 
 	if (!proto_dir) {
-		dict_dir = talloc_asprintf(NULL, "%s%c%s", fr_dict_global_dir(), FR_DIR_SEP, proto_name);
+		dict_dir = talloc_asprintf(NULL, "%s%c%s", fr_dict_global_ctx_dir(), FR_DIR_SEP, proto_name);
 	} else {
-		dict_dir = talloc_asprintf(NULL, "%s%c%s", fr_dict_global_dir(), FR_DIR_SEP, proto_dir);
+		dict_dir = talloc_asprintf(NULL, "%s%c%s", fr_dict_global_ctx_dir(), FR_DIR_SEP, proto_dir);
 	}
 
 	/*

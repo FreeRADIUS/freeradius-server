@@ -3097,28 +3097,39 @@ int main(int argc, char *argv[])
 	fr_openssl_init();
 #endif
 
+	FR_FAULT_LOG("Before dl_module_load_init");
+	fr_dict_global_ctx_debug();
 	dl_modules = dl_module_loader_init(NULL);
 	if (!dl_modules) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
 
+	FR_FAULT_LOG("After dl_module_loader_init");
+	fr_dict_global_ctx_debug();
 	dl_loader = dl_loader_init(autofree, NULL, false, false);
 	if (!dl_loader) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
 
+	FR_FAULT_LOG("After dl_loader_init");
+	fr_dict_global_ctx_debug();
 	config.dict_gctx = fr_dict_global_ctx_init(autofree, config.dict_dir);
 	if (!config.dict_gctx) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
 
+	FR_FAULT_LOG("After fr_dict_global_ctx_init");
+	fr_dict_global_ctx_debug();
 	if (fr_dict_internal_afrom_file(&config.dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
+
+	FR_FAULT_LOG("After fr_dict_internal_afrom_file");
+	fr_dict_global_ctx_debug();
 
 	/*
 	 *	Load the custom dictionary
@@ -3128,6 +3139,9 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	FR_FAULT_LOG("fr_dict_read");
+	fr_dict_global_ctx_debug();
+
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 *	Needed because some keywords also register xlats.
@@ -3136,6 +3150,9 @@ int main(int argc, char *argv[])
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
+
+	FR_FAULT_LOG("After unlang_init_global and before requests");
+	fr_dict_global_ctx_debug();
 
 	if (!xlat_register(NULL, "test", xlat_test, false)) {
 		ERROR("Failed registering xlat");
@@ -3206,6 +3223,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	FR_FAULT_LOG("After running tests");
+	fr_dict_global_ctx_debug();
+
 	/*
 	 *	Try really hard to free any allocated
 	 *	memory, so we get clean talloc reports.
@@ -3214,6 +3234,7 @@ cleanup:
 #ifdef WITH_TLS
 	fr_openssl_free();
 #endif
+	FR_FAULT_LOG("After openssl_free");
 
 	if (talloc_free(dl_modules) < 0) {
 		fr_perror("unit_test_attribute - dl_modules - ");	/* Print free order issues */
@@ -3222,7 +3243,13 @@ cleanup:
 		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
 	}
 	fr_dict_free(&config.dict);
+	FR_FAULT_LOG("After freeing config.dict");
+	fr_dict_global_ctx_debug();
+
 	unlang_free_global();
+
+	FR_FAULT_LOG("After unlang_free");
+	fr_dict_global_ctx_debug();
 
 	/*
 	 *	Dictionaries get freed towards the end

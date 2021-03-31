@@ -3388,7 +3388,7 @@ int fr_dict_global_ctx_dir_set(char const *dict_dir)
 	return 0;
 }
 
-char const *fr_dict_global_dir(void)
+char const *fr_dict_global_ctx_dir(void)
 {
 	return dict_gctx->dict_dir_default;
 }
@@ -3397,7 +3397,7 @@ char const *fr_dict_global_dir(void)
  *
  * Any attempts to add new attributes will now fail.
  */
-void fr_dict_global_read_only(void)
+void fr_dict_global_ctx_read_only(void)
 {
 	fr_hash_iter_t	iter;
 	fr_dict_t	*dict;
@@ -3418,6 +3418,31 @@ void fr_dict_global_read_only(void)
 	dict_hash_tables_finalise(dict);
 	dict->read_only = true;
 	dict_gctx->read_only = true;
+}
+
+/** Dump information about currently loaded dictionaries
+ *
+ * Intended to be called from a debugger
+ */
+void fr_dict_global_ctx_debug(void)
+{
+	fr_hash_iter_t	iter;
+	fr_dict_t	*dict;
+
+	if (!dict_gctx) {
+		FR_FAULT_LOG("gctx not initialised");
+		return;
+	}
+
+	FR_FAULT_LOG("gctx %p report", dict_gctx);
+	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
+		FR_FAULT_LOG("\t%s refs %zu", dict->root->name, talloc_reference_count(dict));
+	}
+
+	if (dict_gctx->internal) FR_FAULT_LOG("\t%s refs %zu", dict_gctx->internal->root->name,
+					      talloc_reference_count(dict_gctx->internal));
 }
 
 /** Coerce to non-const

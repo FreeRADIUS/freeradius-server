@@ -607,9 +607,11 @@ int			fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx);
 
 int			fr_dict_global_ctx_dir_set(char const *dict_dir);
 
-void			fr_dict_global_read_only(void);
+void			fr_dict_global_ctx_read_only(void);
 
-char const		*fr_dict_global_dir(void);
+void			fr_dict_global_ctx_debug(void);
+
+char const		*fr_dict_global_ctx_dir(void);
 
 fr_dict_t		*fr_dict_unconst(fr_dict_t const *dict);
 

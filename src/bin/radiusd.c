@@ -863,7 +863,7 @@ int main(int argc, char *argv[])
 	 *	Prevent anything from modifying the dictionaries
 	 *	they're now immutable.
 	 */
-	fr_dict_global_read_only();
+	fr_dict_global_ctx_read_only();
 
 	/*
 	 *  Protect global memory - If something attempts
