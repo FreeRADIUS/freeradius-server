@@ -1335,25 +1335,23 @@ do { \
 	 *	Unescape sequences in the pool name
 	 */
 	if (argv[1] && (argv[1][0] != '\0')) {
-		size_t			len;
 		fr_sbuff_t		out;
 		fr_sbuff_uctx_talloc_t	tctx;
 
 		MEM(fr_sbuff_init_talloc(conf, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
-		len = fr_value_str_unescape(&out,
-					    &FR_SBUFF_IN(argv[1], strlen(argv[1])), SIZE_MAX, '"');
+		(void) fr_value_str_unescape(&out,
+					     &FR_SBUFF_IN(argv[1], strlen(argv[1])), SIZE_MAX, '"');
 		talloc_realloc(conf, out.buff, uint8_t, fr_sbuff_used(&out));
 		pool_arg = (uint8_t *)out.buff;
 	}
 
 	if (argc >= 3 && (argv[2][0] != '\0')) {
-		size_t			len;
 		fr_sbuff_t		out;
 		fr_sbuff_uctx_talloc_t	tctx;
 
 		MEM(fr_sbuff_init_talloc(conf, &out, &tctx, strlen(argv[1]) + 1, SIZE_MAX));
-		len = fr_value_str_unescape(&out,
-					    &FR_SBUFF_IN(argv[2], strlen(argv[2])), SIZE_MAX, '"');
+		(void) fr_value_str_unescape(&out,
+					     &FR_SBUFF_IN(argv[2], strlen(argv[2])), SIZE_MAX, '"');
 		talloc_realloc(conf, out.buff, uint8_t, fr_sbuff_used(&out));
 		range_arg = (uint8_t *)out.buff;
 	}
