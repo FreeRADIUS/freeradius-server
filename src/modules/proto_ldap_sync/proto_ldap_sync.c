@@ -835,7 +835,11 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 
 	*cookie = NULL;
 
-	rcode = unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP, true);
+	if (unlang_interpret_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+		ret = -1;
+		goto finish;
+	}
+	rcode = unlang_interpret_synchronous(request);
 	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:

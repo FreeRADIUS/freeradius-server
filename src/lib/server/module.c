@@ -1158,7 +1158,13 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
 		ti = talloc_get_type_abort(array[i], module_thread_instance_t);
 
 		DEBUG4("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
-		if (ti->module->thread_detach) (void) ti->module->thread_detach(ti->el, ti->data);
+
+		/*
+		 *	Check for ti->module is a hack
+		 *	and should be removed along with
+		 *	starting the instance number at 0
+		 */
+		if (ti->module && ti->module->thread_detach) (void) ti->module->thread_detach(ti->el, ti->data);
 
 		talloc_free(ti);
 	}
@@ -1189,6 +1195,15 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 		MEM(module_thread_inst_array = talloc_zero_array(ctx, module_thread_instance_t *, instance_num + 1));
 		talloc_set_destructor(module_thread_inst_array, _module_thread_inst_array_free);
 	}
+
+	/*
+	 *	Index 0 is populated with a catchall entry
+	 *	FIXME - This is only required so we can
+	 *      fake out module instance data.  As soon
+	 *	as we have multiple module lists this can
+	 *	be removed.
+	 */
+	MEM(module_thread_inst_array[0] = talloc_zero(module_thread_inst_array, module_thread_instance_t));
 
 	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
 	     instance;

@@ -507,6 +507,8 @@ int virtual_server_entry_point_set(request_t *request)
 	if (!server) return -1;
 
 	mi->name = server->process_module->name;
+	mi->module = (module_t *)server->process_module;
+	mi->number = 0;	/* Hacky hack hack */
 
 	if (unlikely(track && track->dynamic && server->dynamic_client_module)) {
 		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
@@ -1415,7 +1417,11 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	request->module = NULL;
 	request->component = "authenticate";
 
-	rcode = unlang_interpret_section(request, cs, RLM_MODULE_REJECT);
+
+	if (unlang_interpret_push_section(request, cs, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+	rcode = unlang_interpret(request);
 
 	request->component = component;
 	request->module = module;

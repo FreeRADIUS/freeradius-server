@@ -250,6 +250,8 @@ struct unlang_stack_frame_s {
  *
  */
 typedef struct {
+	unlang_interpret_t	*intp;				//!< Interpreter that the request is currently
+								///< associated with.
 	int			priority;			//!< Current priority.
 	rlm_rcode_t		result;				//!< The current stack rcode.
 	int			depth;				//!< Current depth we're executing at.

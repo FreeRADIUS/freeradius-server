@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/base.h>
 
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/call.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/radius/radius.h>
@@ -457,87 +458,10 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
 	return RLM_MODULE_FAIL;
 }
 
-static void request_run(fr_event_list_t *el, request_t *request)
+static void request_run(request_t *request)
 {
-	rlm_rcode_t	rcode;
-	module_method_t	process;
-	void		*inst;
-	fr_dict_enum_t	*dv;
-	fr_heap_t	*backlog;
-	/*
-	 *	Record the number of FDs and timers
-	 *      inserted by modules before we start
-	 *      running requests.
-	 */
-	uint64_t	base_timers = fr_event_list_num_timers(el);
-	uint64_t	base_fds = fr_event_list_num_fds(el);
-
-	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(request->packet->code));
-	if (!dv) return;
-
-	if (virtual_server_get_process_by_name(request->server_cs, dv->name, &process, &inst) < 0) {
-		REDEBUG("Cannot run virtual server '%s' - %s", cf_section_name2(request->server_cs), fr_strerror());
-		return;
-	}
-
-	MEM(backlog = fr_heap_talloc_alloc(request, fr_pointer_cmp, request_t, runnable_id));
-	request->backlog = backlog;
-	request->el = el;
-
-	/*
-	 *	Don't check unlang_action_t, this may have
-	 *	added detached children, in which case
-	 *	we need to run them...
-	 */
-	(void)process(&rcode, &(module_ctx_t){ .instance = inst }, request);
-
-	while ((fr_event_list_num_timers(el) > base_timers) ||
-	       (fr_event_list_num_fds(el) > base_fds) ||
-	       (fr_heap_num_elements(backlog) > 0)) {
-		request_t	*runnable;
-		bool 		wait_for_event;
-		int		num_events;
-
-		/*
-		 *	Check if we need to wait for I/O
-		 */
-		wait_for_event = (fr_heap_num_elements(backlog) == 0);
-
-		num_events = fr_event_corral(el, fr_time(), wait_for_event);
-		if (num_events < 0) {
-			PERROR("Failed retrieving events");
-			break;
-		}
-
-		/*
-		 *	Service outstanding events.
-		 */
-		if (num_events > 0) fr_event_service(el);
-
-		/*
-		 *	If there's requests in the backlog
-		 *      run all of them.
-		 */
-		while ((runnable = fr_heap_pop(backlog))) {
-			if (runnable->async->process(&rcode,
-						     &(module_ctx_t){ .instance = inst },
-						     runnable) != UNLANG_ACTION_YIELD) {
-				/*
-				 *	It's a detached child, and
-				 *	it's done, free it!
-				 */
-				if ((runnable != request) && !runnable->parent) talloc_free(runnable);
-			}
-		}
-	};
-
-	DEBUG2("No more requests remaining");
-
-	/*
-	 *	We do NOT run detached child requests.  We just ignore
-	 *	them.
-	 */
-	talloc_free(backlog);
+	virtual_server_entry_point_set(request);
+	(void)unlang_interpret_synchronous(request);
 }
 
 static request_t *request_clone(request_t *old)
@@ -962,7 +886,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		request_run(el, request);
+		request_run(request);
 	} else {
 		int i;
 		request_t *old = request_clone(request);
@@ -970,7 +894,7 @@ int main(int argc, char *argv[])
 
 		for (i = 0; i < count; i++) {
 			request = request_clone(old);
-			request_run(el, request);
+			request_run(request);
 			talloc_free(request);
 		}
 	}

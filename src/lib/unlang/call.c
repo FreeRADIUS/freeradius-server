@@ -50,6 +50,8 @@ static unlang_action_t unlang_call_process(rlm_rcode_t *p_result, request_t *req
 	ua = state->process(&rcode, &(module_ctx_t){ .instance = state->instance }, request);
 	switch (ua) {
 	case UNLANG_ACTION_YIELD:
+		break;
+
 	case UNLANG_ACTION_STOP_PROCESSING:
 	case UNLANG_ACTION_PUSHED_CHILD:	/* Wants to do more processing */
 		return ua;
@@ -208,8 +210,8 @@ int unlang_call_push(request_t *request, CONF_SECTION *server_cs,
 		.prev_request_state = request->request_state,
 		.prev_server_cs = request->server_cs
 	};
-	frame->process = unlang_call_process;	/* Skip the initialisation */
-	talloc_steal(frame, c);			/* Bind our temporary unlang_call_t to the frame */
+	frame->process = unlang_call_process;		/* Skip the initialisation */
+	talloc_steal(frame->state, c);			/* Bind our temporary unlang_call_t to the frame */
 
 	return 0;
 }

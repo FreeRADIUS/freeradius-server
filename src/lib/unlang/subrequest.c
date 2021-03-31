@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/state.h>
 #include "unlang_priv.h"
+#include "interpret_priv.h"
 #include "subrequest_priv.h"
 
 /** Parameters for initialising the subrequest
@@ -397,10 +398,7 @@ int unlang_detached_child_init(request_t *request)
 	 *	Mark the child as runnable.
 	 */
 	fr_assert(request->parent == NULL);
-	if (fr_heap_insert(request->backlog, request) < 0) {
-		RPERROR("Failed inserting ourself into the backlog.");
-		return -1;
-	}
+	unlang_interpret_child_init(request);
 
 	return 0;
 }

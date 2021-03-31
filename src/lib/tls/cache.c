@@ -103,8 +103,10 @@ unlang_action_t fr_tls_cache_process(rlm_rcode_t *p_result, request_t *request, 
 	 *	Run it through the appropriate virtual server.
 	 *	FIXME - This is still blocking.
 	 */
-	rcode = unlang_interpret_synchronous(request, action, RLM_MODULE_NOOP, true);
-
+	if (unlang_interpret_push_section(request, action, RLM_MODULE_NOOP, UNLANG_TOP_FRAME) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+	rcode = unlang_interpret_synchronous(request);
 	/*
 	 *	Restore the original status of the request.
 	 */

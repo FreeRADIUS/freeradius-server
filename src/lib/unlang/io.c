@@ -67,7 +67,7 @@ unlang_action_t unlang_io_process_interpret(rlm_rcode_t *p_result, UNUSED module
  */
 request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable)
 {
-	request_t			*child;
+	request_t		*child;
 
 	child = request_alloc(detachable ? NULL : parent,
 			      (&(request_init_args_t){
@@ -78,9 +78,13 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	if (!child) return NULL;
 
 	/*
+	 *	Child gets its parent's interpreter
+	 */
+	((unlang_stack_t *)child->stack)->intp = ((unlang_stack_t *)parent->stack)->intp;
+
+	/*
 	 *	Push the child, and set it's top frame to be true.
 	 */
-
 	child->log.unlang_indent = parent->log.unlang_indent;
 
 	/*

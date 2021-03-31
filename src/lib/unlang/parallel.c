@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include "function.h"
+#include "interpret_priv.h"
 #include "module_priv.h"
 #include "parallel_priv.h"
 #include "subrequest_priv.h"
@@ -393,7 +394,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			state->children[i].name = talloc_bstrdup(state, child->name);
 			state->children[i].request = child;
 			state->children[i].state = CHILD_RUNNABLE;
-			fr_heap_insert(request->backlog, child);
+			unlang_interpret_child_init(child);
 		}
 
 		/*

@@ -9,6 +9,7 @@ SOURCES	:=	base.c \
 		function.c \
 		group.c \
 		interpret.c \
+		interpret_synchronous.c \
 		io.c \
 		load_balance.c \
 		map.c \
