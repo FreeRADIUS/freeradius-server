@@ -847,6 +847,10 @@ int proxy_tls_recv(rad_listen_t *listener)
 	RADIUS_PACKET *packet;
 	uint8_t *data;
 	ssize_t data_len;
+#ifdef WITH_COA_TUNNEL
+	bool is_request = false;
+	RADCLIENT *client = sock->client;
+#endif
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
@@ -900,9 +904,26 @@ int proxy_tls_recv(rad_listen_t *listener)
 	case PW_CODE_DISCONNECT_ACK:
 	case PW_CODE_DISCONNECT_NAK:
 		break;
+
+#ifdef WITH_COA_TUNNEL
+	case PW_CODE_COA_REQUEST:
+		if (!listener->send_coa) goto bad_packet;
+		FR_STATS_INC(coa, total_requests);
+		is_request = true;
+		break;
+
+	case PW_CODE_DISCONNECT_REQUEST:
+		if (!listener->send_coa) goto bad_packet;
+		FR_STATS_INC(dsc, total_requests);
+		is_request = true;
+		break;
+#endif
 #endif
 
 	default:
+#ifdef WITH_COA_TUNNEL
+	bad_packet:
+#endif
 		/*
 		 *	FIXME: Update MIB for packet types?
 		 */
@@ -915,6 +936,15 @@ int proxy_tls_recv(rad_listen_t *listener)
 		return 0;
 	}
 
+#ifdef WITH_COA_TUNNEL
+	if (is_request) {
+		if (!request_receive(NULL, listener, packet, client, rad_coa_recv)) {
+			FR_STATS_INC(auth, total_packets_dropped);
+			rad_free(&packet);
+			return 0;
+		}
+	} else
+#endif
 	if (!request_proxy_reply(packet)) {
 		rad_free(&packet);
 		return 0;
@@ -985,6 +1015,71 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	return 1;
 }
+
+#ifdef WITH_COA_TUNNEL
+int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
+{
+	int rcode;
+	listen_socket_t *sock = listener->data;
+
+	VERIFY_REQUEST(request);
+
+	rad_assert(sock->ssn->connected);
+
+	if ((listener->status != RAD_LISTEN_STATUS_INIT &&
+	    (listener->status != RAD_LISTEN_STATUS_KNOWN))) return 0;
+
+	/*
+	 *	Pack the VPs
+	 */
+	if (rad_encode(request->reply, request->packet,
+		       request->client->secret) < 0) {
+		RERROR("Failed encoding packet: %s", fr_strerror());
+		return 0;
+	}
+
+	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
+		      request->reply->data_len, MAX_PACKET_LEN);
+	}
+
+	/*
+	 *	Sign the packet.
+	 */
+	if (rad_sign(request->reply, request->packet,
+		       request->client->secret) < 0) {
+		RERROR("Failed signing packet: %s", fr_strerror());
+		return 0;
+	}
+
+	DEBUG3("Proxy is writing %u bytes to SSL",
+	       (unsigned int) request->reply->data_len);
+	PTHREAD_MUTEX_LOCK(&sock->mutex);
+	rcode = SSL_write(sock->ssn->ssl, request->reply->data,
+			  request->reply->data_len);
+	if (rcode < 0) {
+		int err;
+
+		err = ERR_get_error();
+		switch (err) {
+		case SSL_ERROR_NONE:
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:
+			break;	/* let someone else retry */
+
+		default:
+			tls_error_log(NULL, "Failed in proxy send");
+			DEBUG("Closing TLS socket to home server");
+			tls_socket_close(listener);
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			return 0;
+		}
+	}
+	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+
+	return 1;
+}
+#endif	/* WITH_COA_TUNNEL */
 #endif	/* WITH_PROXY */
 
 #endif	/* WITH_TLS */

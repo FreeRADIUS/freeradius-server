@@ -748,7 +748,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		this->proxy_encode = master_listen[RAD_LISTEN_PROXY].encode;
 		this->proxy_decode = master_listen[RAD_LISTEN_PROXY].decode;
 
-		// @todo - save this listener as being outbound to the NAS IP
+//		listener_store_byaddr(this, &sock->other_ipaddr);
 
 		/*
 		 *	Automatically create a home server for this
@@ -2947,6 +2947,42 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 		this->recv = proxy_tls_recv;
 		this->proxy_send = proxy_tls_send;
+
+#ifdef WITH_COA_TUNNEL
+		if (home->recv_coa) {
+			RADCLIENT *client;
+
+			/*
+			 *	Don't set this->send_coa, as we are
+			 *	not sending CoA-Request packets to
+			 *	this home server.  Instead, we are
+			 *	receiving CoA packets from this home
+			 *	server.
+			 */
+			this->send = proxy_tls_send_reply;
+			this->encode = master_listen[RAD_LISTEN_AUTH].encode;
+			this->decode = master_listen[RAD_LISTEN_AUTH].decode;
+
+			/*
+			 *	Automatically create a client for this
+			 *	home server.  There MAY be one already
+			 *	one for that IP in the configuration
+			 *	files, but there's no guarantee that
+			 *	it exists.
+			 *
+			 *	The only real reason to use an
+			 *	existing client is to track various
+			 *	statistics.
+			 */
+			sock->client = client = talloc_zero(sock, RADCLIENT);
+			client->ipaddr = sock->other_ipaddr;
+			client->src_ipaddr = sock->my_ipaddr;
+			client->longname = client->shortname = talloc_typed_strdup(client, home->name);
+			client->secret = talloc_typed_strdup(client, home->secret);
+			client->nas_type = "none";
+			client->server = talloc_typed_strdup(client, home->coa_server);
+		}
+#endif
 	}
 #endif
 #endif
