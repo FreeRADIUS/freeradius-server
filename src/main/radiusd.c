@@ -694,6 +694,13 @@ cleanup:
 	 */
 	main_config_free();
 
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *	This should be after freeing all of the listeners.
+	 */
+	listen_coa_free();
+#endif
+
 #ifdef WIN32
 	WSACleanup();
 #endif
