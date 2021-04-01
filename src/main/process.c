@@ -4346,7 +4346,7 @@ static void request_coa_originate(REQUEST *request)
 	 *	Proxy-To-Originating-Realm is preferred to any other
 	 *	method of originating CoA requests.
 	 */
-	vp = fr_pair_find_by_num(coa->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(coa->proxy->vps, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
 	if (vp) {
 		/*
 		 *	This function will set request->home_server,
