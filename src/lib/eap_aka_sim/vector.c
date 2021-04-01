@@ -845,9 +845,9 @@ int fr_aka_sim_vector_gsm_umts_kdf_0_reauth_from_attrs(request_t *request, fr_pa
 		return 1;
 	}
 
-	if (mk_vp->vp_length != AKA_SIM_MK_MAX_SIZE) {
+	if (mk_vp->vp_length != AKA_SIM_MK_SIZE) {
 		REDEBUG("&session-state.%s incorrect length.  Expected %u bytes, got %zu bytes",
-			attr_eap_aka_sim_mk->name, AKA_SIM_MK_MAX_SIZE, mk_vp->vp_length);
+			attr_eap_aka_sim_mk->name, AKA_SIM_MK_SIZE, mk_vp->vp_length);
 		return -1;
 	}
 
