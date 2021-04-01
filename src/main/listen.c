@@ -748,8 +748,6 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		this->proxy_encode = master_listen[RAD_LISTEN_PROXY].encode;
 		this->proxy_decode = master_listen[RAD_LISTEN_PROXY].decode;
 
-//		listener_store_byaddr(this, &sock->other_ipaddr);
-
 		/*
 		 *	Automatically create a home server for this
 		 *	client.  There MAY be one already one for that
@@ -3648,3 +3646,52 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, i
 
 	return NULL;
 }
+
+#ifdef WITH_COA_TUNNEL
+/*
+ *	Adds a listener to the hash of listeners, based on key.
+ */
+void listen_coa_add(rad_listen_t *this, char const *key)
+{
+	rad_assert(this->send_coa);
+	rad_assert(this->parent);
+
+	/*
+	 *	We can use "this" as a context, because it's created
+	 *	in the NULL context, so it's thread-safe.
+	 */
+	this->key = talloc_strdup(this, key);
+
+	/*
+	 *	Do more things here.
+	 */
+}
+
+/*
+ *	Delete a listener from the hash of listeners.
+ *
+ *	Note that all requests using this MUST be removed from the
+ *	listener, and MUST NOT point to the listener any more.
+ */
+void listen_coa_delete(rad_listen_t *this)
+{
+	rad_assert(this->send_coa);
+	rad_assert(this->parent);
+
+
+	/*
+	 *	Do more things here.
+	 */
+}
+
+/*
+ *	Find an active listener by key.
+ */
+rad_listen_t *listen_coa_find(UNUSED REQUEST *request, UNUSED char const *key)
+{
+	/*
+	 *	Do more things here.
+	 */
+	return NULL;
+}
+#endif

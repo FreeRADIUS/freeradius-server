@@ -2325,8 +2325,8 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		RDEBUG3("proxy: Trying to allocate ID (%d/2)", tries);
 		success = fr_packet_list_id_alloc(proxy_list,
-						request->home_server->proto,
-						&request->proxy, &proxy_listener);
+						  request->home_server->proto,
+						  &request->proxy, &proxy_listener);
 		if (success) break;
 
 		if (tries > 0) continue; /* try opening new socket only once */
@@ -5241,11 +5241,11 @@ static void event_new_fd(rad_listen_t *this)
 			 */
 			if (this->send_coa && this->parent) {
 				PTHREAD_MUTEX_LOCK(&proxy_mutex);
-				if(!fr_packet_list_socket_add(proxy_list, this->fd,
-							      sock->proto,
-							      &sock->other_ipaddr, sock->other_port,
-							      this)) {
-					ERROR("Failed adding proxy socket");
+				if (!fr_packet_list_socket_add(proxy_list, this->fd,
+							       sock->proto,
+							       &sock->other_ipaddr, sock->other_port,
+							       this)) {
+					ERROR("Failed adding coa proxy socket");
 					fr_exit_now(1);
 				}
 				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -5415,7 +5415,11 @@ static void event_new_fd(rad_listen_t *this)
 		 *	to stop using it.  And then remove it from the
 		 *	list of outgoing sockets.
 		 */
-		if (this->type == RAD_LISTEN_PROXY) {
+		if ((this->type == RAD_LISTEN_PROXY)
+#ifdef WITH_COA_TUNNEL
+		    || (this->send_coa && this->parent)
+#endif
+			) {
 			home_server_t *home;
 
 			home = sock->home;
@@ -5444,6 +5448,18 @@ static void event_new_fd(rad_listen_t *this)
 			 *	EOL all requests using this socket.
 			 */
 			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
+
+#ifdef WITH_COA_TUNNEL
+			/*
+			 *	Delete the listener from the set of
+			 *	listeners by key.  This is done early,
+			 *	so that it won't be used while the
+			 *	cleanup timers are being run.
+			 */
+			if (this->key) {
+				listen_coa_delete(this);
+			}
+#endif
 		}
 
 		/*
