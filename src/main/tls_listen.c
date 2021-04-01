@@ -585,7 +585,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	if (listener->send_coa && !listener->key) {
 		VALUE_PAIR *vp = NULL;
 
-		vp = fr_pair_find_by_num(request->config, PW_TCP_SESSION_KEY, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->config, PW_ORIGINATING_REALM_KEY, 0, TAG_ANY);
 		if (vp) {
 			RDEBUG("Adding send CoA listener with key %s", vp->vp_strvalue);
 			listen_coa_add(request->listener, vp->vp_strvalue);

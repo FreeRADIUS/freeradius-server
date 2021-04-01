@@ -764,7 +764,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		home->coa_mrt = this->coa_mrt;
 		home->coa_mrc = this->coa_mrc;
 		home->coa_mrd = this->coa_mrd;
-		home->coa_server = this->server;
+		home->server = this->server;
 	}
 #endif
 
@@ -3686,12 +3686,15 @@ void listen_coa_delete(rad_listen_t *this)
 
 /*
  *	Find an active listener by key.
+ *
+ *	This function will update request->home_server, and
+ *	request->proxy_listener.
  */
-rad_listen_t *listen_coa_find(UNUSED REQUEST *request, UNUSED char const *key)
+int listen_coa_find(UNUSED REQUEST *request, UNUSED char const *key)
 {
 	/*
 	 *	Do more things here.
 	 */
-	return NULL;
+	return -1;
 }
 #endif

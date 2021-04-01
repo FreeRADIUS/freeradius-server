@@ -3171,7 +3171,25 @@ static int request_will_proxy(REQUEST *request)
 
 		return 0;
 
+#ifdef WITH_COA_TUNNEL
+	} else if (((request->packet->code == PW_CODE_COA_REQUEST) ||
+		    (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) &&
+		   ((vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL)) {
+
+		/*
+		 *	This function will set request->home_server,
+		 *	and also request->proxy_listener.
+		 */
+		if (listen_coa_find(request, vp->vp_strvalue) < 0) return 0;
+
+		/*
+		 *	Initialise request->proxy, and copy VPs over.
+		 */
+		home_server_update_request(request->home_server, request);
+		goto add_proxy_state;
+
 	} else {
+#endif
 		return 0;
 	}
 
@@ -3267,6 +3285,10 @@ do_home:
 	 *	The RFC's say we have to do this, but FreeRADIUS
 	 *	doesn't need it.
 	 */
+#ifdef WITH_COA_TUNNEL
+add_proxy_state:
+#endif
+
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
 	fr_pair_value_sprintf(vp, "%u", request->packet->id);
 

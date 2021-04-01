@@ -286,7 +286,8 @@ ATTRIBUTE	SSHA3-512-Password			1185	octets
 
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
 ATTRIBUTE	Home-Server-Name			1193	string
-ATTRIBUTE	TCP-Session-Key				1194	string
+ATTRIBUTE	Originating-Realm-Key			1194	string
+ATTRIBUTE	Proxy-To-Originating-Realm		1195	string
 
 #
 #	Range:	1200-1279
