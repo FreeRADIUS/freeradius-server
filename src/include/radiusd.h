@@ -562,7 +562,6 @@ void hup_logfile(void);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);
-void listen_free_all(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head, bool spawn_flag);
 rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener, fr_ipaddr_t const *ipaddr, uint16_t src_port);
@@ -609,6 +608,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
 #ifdef WITH_COA_TUNNEL
 int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request);
 int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request);
+void listen_coa_free(void);
 void listen_coa_add(rad_listen_t *listener, char const *key);
 void listen_coa_delete(rad_listen_t *listener);
 int listen_coa_find(REQUEST *request, char const *key);

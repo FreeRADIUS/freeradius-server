@@ -79,7 +79,6 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
 
 #ifdef WITH_COA_TUNNEL
 static int listen_coa_init(void);
-static void listen_coa_free(void);
 #endif
 
 static fr_protocol_t master_listen[];
@@ -3601,15 +3600,6 @@ void listen_free(rad_listen_t **head)
 	*head = NULL;
 }
 
-void listen_free_all(rad_listen_t **head)
-{
-	listen_free(head);
-
-#ifdef WITH_COA_TUNNEL
-	listen_coa_free();
-#endif
-}
-
 #ifdef WITH_STATS
 RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t port, int proto)
 {
@@ -3728,7 +3718,7 @@ static int listen_coa_init(void)
 	return 0;
 }
 
-static void listen_coa_free(void)
+void listen_coa_free(void)
 {
 	/*
 	 *	If we are freeing the tree, then all of the listeners
