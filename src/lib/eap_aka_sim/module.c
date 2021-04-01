@@ -360,8 +360,8 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 			}
 			break;
 
-		case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
 		case FR_SUBTYPE_VALUE_AKA_SIM_REAUTHENTICATION:
+		case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
 			/*
 			 *	Include our copy of the checkcode if we've been
 			 *      calculating it.  This is put in the control list
@@ -374,7 +374,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 				uint8_t		*checkcode;
 				fr_pair_t	*vp;
 
-				MEM(pair_update_control(&vp, attr_eap_aka_sim_checkcode) >= 0);
+				MEM(pair_append_control(&vp, attr_eap_aka_sim_checkcode) >= 0);
 				if (fr_aka_sim_crypto_finalise_checkcode(vp, &checkcode, mod_session->checkcode_state) < 0) {
 					RPWDEBUG("Failed calculating checkcode");
 					pair_delete_control(vp);
@@ -382,6 +382,29 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 				fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
 
 			}
+			FALL_THROUGH;
+
+		case FR_SUBTYPE_VALUE_SIM_CHALLENGE:
+		{
+			fr_pair_t	*vp;
+			ssize_t		slen;
+			uint8_t		*buff;
+
+			MEM(pair_append_control(&vp, attr_eap_aka_sim_mac) >= 0);
+			fr_pair_value_mem_alloc(vp, &buff, AKA_SIM_MAC_DIGEST_SIZE, false);
+
+			slen = fr_aka_sim_crypto_sign_packet(buff, eap_session->this_round->response, true,
+							     mod_session->ctx.hmac_md,
+							     mod_session->ctx.k_aut,
+							     mod_session->ctx.k_aut_len,
+							     mod_session->response_hmac_extra,
+							     mod_session->response_hmac_extra_len);
+			if (slen <= 0) {
+				RPEDEBUG("AT_MAC calculation failed");
+				pair_delete_control(vp);
+				RETURN_MODULE_FAIL;
+			}
+		}
 			break;
 
 		default:

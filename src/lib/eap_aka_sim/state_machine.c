@@ -529,10 +529,10 @@ static int checkcode_validate(request_t *request)
 		peer_checkcode = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_checkcode);
 		if (peer_checkcode) {
 			if (fr_pair_cmp(peer_checkcode, our_checkcode) == 0) {
-				RDEBUG2("Received checkcode matches calculated checkcode");
+				RDEBUG2("Received AT_CHECKCODE matches calculated AT_CHECKCODE");
 				return 0;
 			} else {
-				REDEBUG("Received checkcode does not match calculated checkcode");
+				REDEBUG("Received AT_CHECKCODE does not match calculated AT_CHECKCODE");
 				RHEXDUMP_INLINE2(peer_checkcode->vp_octets, peer_checkcode->vp_length, "Received");
 				RHEXDUMP_INLINE2(our_checkcode->vp_octets, our_checkcode->vp_length, "Expected");
 				return -1;
@@ -545,6 +545,52 @@ static int checkcode_validate(request_t *request)
 		}
 	}
 	return 1;
+}
+
+/** Check &control.mac matches &reply.mac
+ *
+ * @param[in] request	The current request.
+ * @return
+ *	- 0 if the check was successful.
+ *	- -1 if the check failed.
+ */
+static int mac_validate(request_t *request)
+{
+	fr_pair_t		*peer_mac, *our_mac;
+	/*
+	 *	mac validation
+	 *
+	 *	The actual cryptographic calculations are
+	 *	done by the calling module, we just check
+	 *      the result.
+	 */
+	our_mac = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_mac);
+	if (!our_mac) {
+		REDEBUG("Missing &control.%s", attr_eap_aka_sim_mac->name);
+		return -1;
+
+	}
+
+	/*
+	 *	If the peer doesn't include a mac then that
+	 *	means they don't support it, and we can't validate
+	 *	their view of the identity packets.
+	 */
+	peer_mac = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_mac);
+	if (!peer_mac) {
+		REDEBUG("Peer didn't include AT_MAC");
+		return -1;
+	}
+
+	if (fr_pair_cmp(peer_mac, our_mac) != 0) {
+		REDEBUG("Received AT_MAC does not match calculated AT_MAC");
+		RHEXDUMP_INLINE2(peer_mac->vp_octets, peer_mac->vp_length, "Received");
+		RHEXDUMP_INLINE2(our_mac->vp_octets, our_mac->vp_length, "Expected");
+		return -1;
+	}
+
+	RDEBUG2("Received AT_MAC matches calculated AT_MAC");
+	return 0;
 }
 
 /** Set the crypto identity from a received identity
@@ -1591,47 +1637,16 @@ RESUME(recv_common_client_error)
  */
 RESUME(recv_common_reauthentication_response)
 {
-	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(rctx, eap_aka_sim_session_t);
-	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
-	ssize_t			slen;
-	fr_pair_t		*mac;
 
 	SECTION_RCODE_PROCESS;
 
-	mac = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_mac);
-	if (!mac) {
-		REDEBUG("Missing AT_MAC attribute");
+	/*
+	 *	Validate mac
+	 */
+	if (mac_validate(request) < 0) {
 	failure:
 		return STATE_TRANSITION(common_failure_notification);
-	}
-	if (mac->vp_length != AKA_SIM_MAC_DIGEST_SIZE) {
-		REDEBUG("MAC has incorrect length, expected %u bytes got %zu bytes",
-			AKA_SIM_MAC_DIGEST_SIZE, mac->vp_length);
-		goto failure;
-	}
-
-	// TODO: MAC validation should happen in the decoder not the module
-	slen = fr_aka_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true,
-					     eap_aka_sim_session->mac_md,
-					     eap_aka_sim_session->keys.k_aut, eap_aka_sim_session->keys.k_aut_len,
-					     eap_aka_sim_session->keys.reauth.nonce_s,
-					     sizeof(eap_aka_sim_session->keys.reauth.nonce_s));
-	if (slen < 0) {
-		RPEDEBUG("Failed calculating MAC");
-		goto failure;
-	} else if (slen == 0) {
-		REDEBUG("Zero length AT_MAC attribute");
-		goto failure;
-	}
-
-	if (memcmp(mac->vp_octets, calc_mac, sizeof(calc_mac)) == 0) {
-		RDEBUG2("Received MAC matches calculated MAC");
-	} else {
-		REDEBUG("Received MAC does not match calculated MAC");
-		RHEXDUMP_INLINE2(mac->vp_octets, AKA_SIM_MAC_DIGEST_SIZE, "Received");
-		RHEXDUMP_INLINE2(calc_mac, AKA_SIM_MAC_DIGEST_SIZE, "Expected");
-		goto failure;
 	}
 
 	/*
@@ -2147,47 +2162,17 @@ RESUME(recv_aka_authentication_reject)
  */
 RESUME(recv_aka_challenge_response)
 {
-	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(rctx, eap_aka_sim_session_t);
-	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
-	ssize_t			slen;
-	fr_pair_t		*vp = NULL, *mac;
+	fr_pair_t		*vp = NULL;
 
 	SECTION_RCODE_PROCESS;
 
-
-	mac = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_mac);
-	if (!mac) {
-		REDEBUG("Missing AT_MAC attribute");
+	/*
+	 *	Validate mac
+	 */
+	if (mac_validate(request) < 0) {
 	failure:
 		return STATE_TRANSITION(common_failure_notification);
-	}
-	if (mac->vp_length != AKA_SIM_MAC_DIGEST_SIZE) {
-		REDEBUG("MAC has incorrect length, expected %u bytes got %zu bytes",
-			AKA_SIM_MAC_DIGEST_SIZE, mac->vp_length);
-		goto failure;
-	}
-
-	// TODO: MAC validation should happen in the decoder not the state machine
-	slen = fr_aka_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true,
-					     eap_aka_sim_session->mac_md,
-					     eap_aka_sim_session->keys.k_aut, eap_aka_sim_session->keys.k_aut_len,
-					     NULL, 0);
-	if (slen < 0) {
-		RPEDEBUG("Failed calculating MAC");
-		goto failure;
-	} else if (slen == 0) {
-		REDEBUG("Zero length AT_MAC attribute");
-		goto failure;
-	}
-
-	if (memcmp(mac->vp_octets, calc_mac, sizeof(calc_mac)) == 0) {
-		RDEBUG2("Received MAC matches calculated MAC");
-	} else {
-		REDEBUG("Received MAC does not match calculated MAC");
-		RHEXDUMP_INLINE2(mac->vp_octets, AKA_SIM_MAC_DIGEST_SIZE, "Received");
-		RHEXDUMP_INLINE2(calc_mac, AKA_SIM_MAC_DIGEST_SIZE, "Expected");
-		goto failure;
 	}
 
 	/*
@@ -2556,14 +2541,9 @@ STATE_GUARD(aka_challenge)
  */
 RESUME(recv_sim_challenge_response)
 {
-	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(rctx, eap_aka_sim_session_t);
 	uint8_t			sres_cat[AKA_SIM_VECTOR_GSM_SRES_SIZE * 3];
 	uint8_t			*p = sres_cat;
-
-	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
-	ssize_t			slen;
-	fr_pair_t		*mac;
 
 	SECTION_RCODE_PROCESS;
 
@@ -2573,39 +2553,10 @@ RESUME(recv_sim_challenge_response)
 	p += AKA_SIM_VECTOR_GSM_SRES_SIZE;
 	memcpy(p, eap_aka_sim_session->keys.gsm.vector[2].sres, AKA_SIM_VECTOR_GSM_SRES_SIZE);
 
-	mac = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_mac);
-	if (!mac) {
-		REDEBUG("Missing AT_MAC attribute");
-	failure:
-		return STATE_TRANSITION(common_failure_notification);
-	}
-	if (mac->vp_length != AKA_SIM_MAC_DIGEST_SIZE) {
-		REDEBUG("MAC has incorrect length, expected %u bytes got %zu bytes",
-			AKA_SIM_MAC_DIGEST_SIZE, mac->vp_length);
-		goto failure;
-	}
-
-	// TODO: MAC validation should be in the decoder
-	slen = fr_aka_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true,
-					     eap_aka_sim_session->mac_md,
-					     eap_aka_sim_session->keys.k_aut, eap_aka_sim_session->keys.k_aut_len,
-					     sres_cat, sizeof(sres_cat));
-	if (slen < 0) {
-		RPEDEBUG("Failed calculating MAC");
-		goto failure;
-	} else if (slen == 0) {
-		REDEBUG("Zero length AT_MAC attribute");
-		goto failure;
-	}
-
-	if (memcmp(mac->vp_octets, calc_mac, sizeof(calc_mac)) == 0) {
-		RDEBUG2("Received MAC matches calculated MAC");
-	} else {
-		REDEBUG("Received MAC does not match calculated MAC");
-		RHEXDUMP_INLINE2(mac->vp_octets, AKA_SIM_MAC_DIGEST_SIZE, "Received");
-		RHEXDUMP_INLINE2(calc_mac, AKA_SIM_MAC_DIGEST_SIZE, "Expected");
-		goto failure;
-	}
+	/*
+	 *	Validate mac
+	 */
+	if (mac_validate(request) < 0) return STATE_TRANSITION(common_failure_notification);
 
 	eap_aka_sim_session->challenge_success = true;
 
