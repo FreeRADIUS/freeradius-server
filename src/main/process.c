@@ -2520,6 +2520,11 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	if (request->home_server && request->home_server->server) {
 		request->server = request->home_server->server;
 
+#ifdef WITH_COA_TUNNEL
+	} else if (request->home_server && request->home_server->coa_server) {
+		request->server = request->home_server->coa_server;
+#endif
+
 	} else if (request->home_pool && request->home_pool->virtual_server) {
 		request->server = request->home_pool->virtual_server;
 	}
