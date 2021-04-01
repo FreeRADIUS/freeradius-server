@@ -84,7 +84,14 @@ remove_reply_message_if_eap {
 }
 
 verify_tls_client_common_name {
-	if (&TLS-Client-Cert-Common-Name && (&TLS-Client-Cert-Common-Name != &User-Name)) {
+	#
+	#  If the User-Name is anonymized, then don't check it.
+	#
+	#  But if User-Name is realm AND there's a certificate name, then check
+	#  if they match.  This is not always the case, but it is the case
+	#  often enough that it matters.
+	#
+	if ((&User-Name !~ /^@/) && &TLS-Client-Cert-Common-Name && (&TLS-Client-Cert-Common-Name != &User-Name)) {
 		reject
 	}
 }

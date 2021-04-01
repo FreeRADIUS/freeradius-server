@@ -726,6 +726,48 @@ post-auth {
 #	}
 
 	#
+	#  Reject packets where User-Name != TLS-Client-Cert-Common-Name
+	#  There is no reason for users to lie about their names.
+	#
+	#  In general, User-Name == EAP Identity == TLS-Client-Cert-Common-Name
+	#
+#	verify_tls_client_common_name
+
+	#
+	#  If there is no Stripped-User-Name in the request, AND we have a client cert,
+	#  then create a Stripped-User-Name from the TLS client certificate information.
+	#
+	#  Note that this policy MUST be edited for your local system!
+	#  We do not know which fields exist in which certificate, as
+	#  there is no standard here.  There is no way for us to have
+	#  a default configuration which "just works" everywhere.  We
+	#  can only make recommendations.
+	#
+	#  The Stripped-User-Name is updated so that it is logged in
+	#  the various "username" fields.  This logging means that you
+	#  can associate a particular session with a particular client
+	#  certificate.
+	#
+#	if (&EAP-Message && !&Stripped-User-Name && &TLS-Client-Cert-Serial) {
+#		update request {
+#			&Stripped-User-Name := "%{%{TLS-Client-Cert-Subject-Alt-Name-Email}:-%{%{TLS-Client-Cert-Common-Name}:-%{TLS-Client-Cert-Serial}}}"
+#		}
+#
+		#
+		#  Create a Class attribute which is a hash of a bunch
+		#  of information which we hope exists.  This
+		#  attribute should be echoed back in
+		#  Accounting-Request packets, which will let the
+		#  administrator correlate authentication and
+		#  accounting.
+		#
+#		update reply {
+#			Class += "%{md5:%{Calling-Station-Id}%{Called-Station-Id}%{TLS-Client-Cert-Subject-Alt-Name-Email}%{TLS-Client-Cert-Common-Name}%{TLS-Client-Cert-Serial}%{NAS-IPv6-Address}%{NAS-IP-Address}%{NAS-Identifier}%{NAS-Port}"
+		}
+#
+#	}
+
+	#
 	#  For EAP-TTLS and PEAP, add the cached attributes to the reply.
 	#  The "session-state" attributes are automatically cached when
 	#  an Access-Challenge is sent, and automatically retrieved
@@ -871,14 +913,6 @@ post-auth {
 
 	#  Remove reply message if the response contains an EAP-Message
 	remove_reply_message_if_eap
-
-	#
-	#  Reject packets where User-Name != TLS-Client-Cert-Common-Name
-	#  There is no reason for users to lie about their names.
-	#
-	#  In general, User-Name == EAP Identity == TLS-Client-Cert-Common-Name
-	#
-#	verify_tls_client_common_name
 
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
