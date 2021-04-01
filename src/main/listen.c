@@ -3192,14 +3192,14 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	if (p) {
 		if (strncmp(p + 1, "acct", 4) == 0) {
 			this->dual = true;
+#ifdef WITH_COA_TUNNEL
 			p += 5;
 		}
 
-#ifdef WITH_COA_TUNNEL
 		if (strcmp(p, "+coa") == 0) {
 			this->send_coa = true;
-		}
 #endif
+		}
 	}
 #endif
 
