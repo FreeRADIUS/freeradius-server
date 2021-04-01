@@ -90,6 +90,8 @@ struct rad_listen {
 	uint32_t	coa_mrc;
 	uint32_t	coa_mrt;
 	uint32_t	coa_mrd;
+
+	int		num_ids_used;	/* for proxying CoA packets */
 #endif
 #endif
 
