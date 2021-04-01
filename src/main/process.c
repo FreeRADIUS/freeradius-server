@@ -5479,7 +5479,7 @@ static void event_new_fd(rad_listen_t *this)
 		 *	to stop using it.  And then remove it from the
 		 *	list of outgoing sockets.
 		 */
-		if ((this->type == RAD_LISTEN_PROXY)
+		if (this->type == RAD_LISTEN_PROXY
 #ifdef WITH_COA_TUNNEL
 		    || (this->send_coa && this->parent)
 #endif
