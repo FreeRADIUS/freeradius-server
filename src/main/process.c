@@ -2505,19 +2505,18 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		remove_from_proxy_hash(request);
 	}
 
-	old_server = request->server;
 
 	/*
-	 *	If the home server is virtual, just run pre_proxy from
-	 *	that section.
+	 *	Run the request through the virtual server for the
+	 *	home server, OR through the virtual server for the
+	 *	home server pool.
 	 */
+	old_server = request->server;
 	if (request->home_server && request->home_server->server) {
 		request->server = request->home_server->server;
 
-	} else {
-		if (request->home_pool && request->home_pool->virtual_server) {
-			request->server = request->home_pool->virtual_server;
-		}
+	} else if (request->home_pool && request->home_pool->virtual_server) {
+		request->server = request->home_pool->virtual_server;
 	}
 
 	/*
@@ -3260,12 +3259,12 @@ do_home:
 		pre_proxy_type = vp->vp_integer;
 	}
 
-	old_server = request->server;
-
 	/*
-	 *	If the home server is virtual, just run pre_proxy from
-	 *	that section.
+	 *	Run the request through the virtual server for the
+	 *	home server, OR through the virtual server for the
+	 *	home server pool.
 	 */
+	old_server = request->server;
 	if (request->home_server && request->home_server->server) {
 		request->server = request->home_server->server;
 
@@ -4256,6 +4255,7 @@ static void request_coa_originate(REQUEST *request)
 	VALUE_PAIR *vp;
 	REQUEST *coa;
 	fr_ipaddr_t ipaddr;
+	char const *old_server;
 	char buffer[256];
 
 	VERIFY_REQUEST(request);
@@ -4399,19 +4399,26 @@ static void request_coa_originate(REQUEST *request)
 		pre_proxy_type = vp->vp_integer;
 	}
 
-	if (coa->home_pool && coa->home_pool->virtual_server) {
-		char const *old_server = coa->server;
+	/*
+	 *	Run the request through the virtual server for the
+	 *	home server, OR through the virtual server for the
+	 *	home server pool.
+	 */
+	old_server = request->server;
+	if (coa->home_server && coa->home_server->server) {
+		coa->server = coa->home_server->server;
 
+	} else if (coa->home_pool && coa->home_pool->virtual_server) {
 		coa->server = coa->home_pool->virtual_server;
-		RDEBUG2("server %s {", coa->server);
-		RINDENT();
-		rcode = process_pre_proxy(pre_proxy_type, coa);
-		REXDENT();
-		RDEBUG2("}");
-		coa->server = old_server;
-	} else {
-		rcode = process_pre_proxy(pre_proxy_type, coa);
 	}
+
+	RDEBUG2("server %s {", coa->server);
+	RINDENT();
+	rcode = process_pre_proxy(pre_proxy_type, coa);
+	REXDENT();
+	RDEBUG2("}");
+	coa->server = old_server;
+
 	switch (rcode) {
 	default:
 		goto fail;
