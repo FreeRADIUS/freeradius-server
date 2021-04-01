@@ -158,6 +158,8 @@ int fr_aka_sim_crypto_update_checkcode(fr_aka_sim_checkcode_t *checkcode, eap_pa
 	memcpy(&eap_hdr.length, &packet_len, sizeof(packet_len));
 	eap_hdr.data[0] = eap_packet->type.num;
 
+	FR_PROTO_HEX_DUMP((void *)&eap_hdr, sizeof(eap_hdr), "Ingesting checkcode EAP header");
+
 	/*
 	 *	Digest the header
 	 */
@@ -165,6 +167,8 @@ int fr_aka_sim_crypto_update_checkcode(fr_aka_sim_checkcode_t *checkcode, eap_pa
 		tls_strerror_printf("Failed digesting EAP header");
 		return -1;
 	}
+
+	FR_PROTO_HEX_DUMP((void *)eap_packet->type.data, eap_packet->type.length, "Ingesting checkcode EAP data");
 
 	/*
 	 *	Digest the packet
