@@ -73,6 +73,7 @@ typedef struct {
 							///< before validating.
 	size_t			response_hmac_extra_len;
 
+	fr_aka_sim_checkcode_t	*checkcode_state;	//!< Digest of all identity packets we've seen.
 	fr_aka_sim_ctx_t	ctx;
 } eap_aka_sim_mod_session_t;
 

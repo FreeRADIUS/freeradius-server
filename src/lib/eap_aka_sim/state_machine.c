@@ -501,6 +501,52 @@ static int identity_to_permanent_identity(request_t *request, fr_pair_t *in, eap
 	return 0;
 }
 
+/** Check &control.checkcode matches &reply.checkcode
+ *
+ * @param[in] request	The current request.
+ * @return
+ *	- 1 if the check was skipped.
+ *	- 0 if the check was successful.
+ *	- -1 if the check failed.
+ */
+static int checkcode_validate(request_t *request)
+{
+	fr_pair_t		*peer_checkcode, *our_checkcode;
+	/*
+	 *	Checkcode validation
+	 *
+	 *	The actual cryptographic calculations are
+	 *	done by the calling module, we just check
+	 *      the result.
+	 */
+	our_checkcode = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_checkcode);
+	if (our_checkcode) {
+		/*
+		 *	If the peer doesn't include a checkcode then that
+		 *	means they don't support it, and we can't validate
+		 *	their view of the identity packets.
+		 */
+		peer_checkcode = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_checkcode);
+		if (peer_checkcode) {
+			if (fr_pair_cmp(peer_checkcode, our_checkcode) == 0) {
+				RDEBUG2("Received checkcode matches calculated checkcode");
+				return 0;
+			} else {
+				REDEBUG("Received checkcode does not match calculated checkcode");
+				RHEXDUMP_INLINE2(peer_checkcode->vp_octets, peer_checkcode->vp_length, "Received");
+				RHEXDUMP_INLINE2(our_checkcode->vp_octets, our_checkcode->vp_length, "Expected");
+				return -1;
+			}
+		/*
+		 *	Only print something if we calculated a checkcode
+		 */
+		} else {
+			RDEBUG2("Peer didn't include AT_CHECKCODE, skipping checkcode validation");
+		}
+	}
+	return 1;
+}
+
 /** Set the crypto identity from a received identity
  *
  */
@@ -1551,10 +1597,6 @@ RESUME(recv_common_reauthentication_response)
 	ssize_t			slen;
 	fr_pair_t		*mac;
 
-#if 0
-	*checkcode;
-#endif
-
 	SECTION_RCODE_PROCESS;
 
 	mac = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_mac);
@@ -1592,37 +1634,10 @@ RESUME(recv_common_reauthentication_response)
 		goto failure;
 	}
 
-#if 0
 	/*
-	 *	If the peer doesn't include a checkcode then that
-	 *	means they don't support it, and we can't validate
-	 *	their view of the identity packets.
+	 *	Validate the checkcode
 	 */
-	checkcode = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_checkcode);
-	if (checkcode) {
-		if (checkcode->vp_length != eap_aka_sim_session->checkcode_len) {
-			REDEBUG("Received checkcode's length (%zu) does not match calculated checkcode's length (%zu)",
-				checkcode->vp_length, eap_aka_sim_session->checkcode_len);
-			goto failure;
-		}
-
-		if (memcmp(checkcode->vp_octets, eap_aka_sim_session->checkcode,
-			   eap_aka_sim_session->checkcode_len) == 0) {
-			RDEBUG2("Received checkcode matches calculated checkcode");
-		} else {
-			REDEBUG("Received checkcode does not match calculated checkcode");
-			RHEXDUMP_INLINE2(checkcode->vp_octets, checkcode->vp_length, "Received");
-			RHEXDUMP_INLINE2(eap_aka_sim_session->checkcode,
-					 eap_aka_sim_session->checkcode_len, "Expected");
-			goto failure;
-		}
-	/*
-	 *	Only print something if we calculated a checkcode
-	 */
-	} else if (eap_aka_sim_session->checkcode_len > 0){
-		RDEBUG2("Peer didn't include AT_CHECKCODE, skipping checkcode validation");
-	}
-#endif
+	if (checkcode_validate(request) < 0) goto failure;
 
 	/*
 	 *	Check to see if the supplicant sent
@@ -1840,41 +1855,6 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_mac) >= 0);
 	fr_pair_value_memdup(vp, NULL, 0, false);
-
-#if 0
-	/*
-	 *	If there's no checkcode_md we're not doing
-	 *	checkcodes.
-	 */
-	if (eap_aka_sim_session->checkcode_md) {
-		/*
-		 *	If we have checkcode data, send that to the peer
-		 *	in AT_CHECKCODE for validation.
-		 */
-		if (eap_aka_sim_session->checkcode_state) {
-			ssize_t	slen;
-
-			slen = fr_aka_sim_crypto_finalise_checkcode(eap_aka_sim_session->checkcode,
-								    &eap_aka_sim_session->checkcode_state);
-			if (slen < 0) {
-				RPEDEBUG("Failed calculating checkcode");
-				goto failure;
-			}
-			eap_aka_sim_session->checkcode_len = slen;
-
-			MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-			fr_pair_value_memdup(vp, eap_aka_sim_session->checkcode, slen, false);
-		/*
-		 *	If we don't have checkcode data, then we exchanged
-		 *	no identity packets, so checkcode is zero.
-		 */
-		} else {
-			MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-			fr_pair_value_memdup(vp, NULL, 0, false);
-			eap_aka_sim_session->checkcode_len = 0;
-		}
-	}
-#endif
 
 	/*
 	 *	We've sent the challenge so the peer should now be able
@@ -2172,9 +2152,7 @@ RESUME(recv_aka_challenge_response)
 	uint8_t			calc_mac[AKA_SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	fr_pair_t		*vp = NULL, *mac;
-#if 0
-	*checkcode;
-#endif
+
 	SECTION_RCODE_PROCESS;
 
 
@@ -2213,39 +2191,9 @@ RESUME(recv_aka_challenge_response)
 	}
 
 	/*
-	 *	If the peer doesn't include a checkcode then that
-	 *	means they don't support it, and we can't validate
-	 *	their view of the identity packets.
+	 *	Validate the checkcode
 	 */
-#if 0
-	if (eap_aka_sim_session->checkcode_md) {
-		checkcode = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_checkcode);
-		if (checkcode) {
-			if (checkcode->vp_length != eap_aka_sim_session->checkcode_len) {
-				REDEBUG("Received checkcode's length (%zu) does not match "
-					"calculated checkcode's length (%zu)",
-					checkcode->vp_length, eap_aka_sim_session->checkcode_len);
-				goto failure;
-			}
-
-			if (memcmp(checkcode->vp_octets,
-				   eap_aka_sim_session->checkcode, eap_aka_sim_session->checkcode_len) == 0) {
-				RDEBUG2("Received checkcode matches calculated checkcode");
-			} else {
-				REDEBUG("Received checkcode does not match calculated checkcode");
-				RHEXDUMP_INLINE2(checkcode->vp_octets, checkcode->vp_length, "Received");
-				RHEXDUMP_INLINE2(eap_aka_sim_session->checkcode,
-						 eap_aka_sim_session->checkcode_len, "Expected");
-				goto failure;
-			}
-		/*
-		 *	Only print something if we calculated a checkcode
-		 */
-		} else if (eap_aka_sim_session->checkcode_len > 0){
-			RDEBUG2("Peer didn't include AT_CHECKCODE, skipping checkcode validation");
-		}
-	}
-#endif
+	if (checkcode_validate(request) < 0) goto failure;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_res);
 	if (!vp) {
@@ -2524,35 +2472,6 @@ RESUME(send_aka_challenge_request)
 	 */
 	MEM(pair_update_reply(&vp, attr_eap_aka_sim_mac) >= 0);
 	fr_pair_value_memdup(vp, NULL, 0, false);
-
-#if 0
-	/*
-	 *	If we have checkcode data, send that to the peer
-	 *	in AT_CHECKCODE for validation.
-	 */
-	if (eap_aka_sim_session->checkcode_state) {
-		ssize_t	slen;
-
-		slen = fr_aka_sim_crypto_finalise_checkcode(eap_aka_sim_session->checkcode,
-							    &eap_aka_sim_session->checkcode_state);
-		if (slen < 0) {
-			RPEDEBUG("Failed calculating checkcode");
-			goto failure;
-		}
-		eap_aka_sim_session->checkcode_len = slen;
-
-		MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-		fr_pair_value_memdup(vp, eap_aka_sim_session->checkcode, slen, false);
-	/*
-	 *	If we don't have checkcode data, then we exchanged
-	 *	no identity packets, so AT_CHECKCODE is zero.
-	 */
-	} else {
-		MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
-		fr_pair_value_memdup(vp, NULL, 0, false);
-		eap_aka_sim_session->checkcode_len = 0;
-	}
-#endif
 
 	/*
 	 *	We've sent the challenge so the peer should now be able
@@ -2913,21 +2832,6 @@ RESUME(recv_aka_identity_response)
 
 	SECTION_RCODE_PROCESS;
 
-#if 0
-	/*
-	 *	Digest the identity response
-	 */
-	if (eap_aka_sim_session->checkcode_md) {
-		// TODO: Need another way of doing this
-		if (fr_aka_sim_crypto_update_checkcode(eap_aka_sim_session->checkcode_state,
-						       eap_session->this_round->response) < 0) {
-			RPEDEBUG("Failed updating checkcode");
-		failure:
-			return STATE_TRANSITION(common_failure_notification);
-		}
-	}
-#endif
-
 	/*
 	 *	See if the user wants us to request another
 	 *	identity.
@@ -3139,26 +3043,6 @@ RESUME(send_aka_identity_request)
 	 *	Encode the packet
 	 */
 	common_reply(request, eap_aka_sim_session, FR_SUBTYPE_VALUE_AKA_IDENTITY);
-
-#if 0
-	/*
-	 *	Digest the packet contents, updating our checkcode.
-	 */
-	if (eap_aka_sim_session->checkcode_md) {
-		if (!eap_aka_sim_session->checkcode_state &&
-		    fr_aka_sim_crypto_init_checkcode(eap_aka_sim_session, &eap_aka_sim_session->checkcode_state,
-						     eap_aka_sim_session->checkcode_md) < 0) {
-			RPEDEBUG("Failed initialising checkcode");
-			goto failure;
-		}
-		// TODO: Need another way of doing this
-		if (fr_aka_sim_crypto_update_checkcode(eap_aka_sim_session->checkcode_state,
-						       eap_session->this_round->request) < 0) {
-			RPEDEBUG("Failed updating checkcode");
-			goto failure;
-		}
-	}
-#endif
 
 	RETURN_MODULE_HANDLED;
 }
@@ -3582,7 +3466,7 @@ RESUME(recv_common_identity_response)
 		running = AKA_SIM_METHOD_HINT_SIM;
 
 		eap_aka_sim_session->type = FR_EAP_METHOD_SIM;
-		eap_aka_sim_session->mac_md = EVP_sha1();	/* no checkcode support, so no checkcode_md */
+		eap_aka_sim_session->mac_md = EVP_sha1();
 		break;
 
 	case FR_EAP_METHOD_AKA:
@@ -3591,7 +3475,7 @@ RESUME(recv_common_identity_response)
 		running = AKA_SIM_METHOD_HINT_AKA;
 
 		eap_aka_sim_session->type = FR_EAP_METHOD_AKA;
-		eap_aka_sim_session->checkcode_md = eap_aka_sim_session->mac_md = EVP_sha1();
+		eap_aka_sim_session->mac_md = EVP_sha1();
 		break;
 
 	case FR_EAP_METHOD_AKA_PRIME:
@@ -3601,7 +3485,7 @@ RESUME(recv_common_identity_response)
 
 		eap_aka_sim_session->type = FR_EAP_METHOD_AKA_PRIME;
 		eap_aka_sim_session->kdf = FR_KDF_VALUE_PRIME_WITH_CK_PRIME_IK_PRIME;
-		eap_aka_sim_session->checkcode_md = eap_aka_sim_session->mac_md = EVP_sha256();
+		eap_aka_sim_session->mac_md = EVP_sha256();
 		break;
 
 	default:

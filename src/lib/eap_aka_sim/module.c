@@ -64,6 +64,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	fr_aka_sim_ctx_t		encode_ctx;
 	uint8_t	const			*request_hmac_extra = NULL;
 	size_t				request_hmac_extra_len = 0;
+	fr_pair_t			*vp;
 	int				ret;
 
 	/*
@@ -105,9 +106,6 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RDEBUG2("Encoding attributes");
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
-
 	/*
 	 *	It's not an EAP-Success or an EAP-Failure
 	 *	it's a real EAP-SIM/AKA/AKA' response.
@@ -132,25 +130,21 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	 *	of request we're sending.
 	 */
 	switch (subtype_vp->vp_uint16) {
-	case FR_SUBTYPE_VALUE_SIM_START:
 	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
-	{
-		fr_pair_t	*id_vp;
-
+	case FR_SUBTYPE_VALUE_SIM_START:
 		if (RDEBUG_ENABLED2) break;
 
 		/*
 		 *	Figure out if the state machine is
 		 *	requesting an ID.
 		 */
-		if ((id_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_any_id_req)) ||
-		    (id_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_fullauth_id_req)) ||
-		    (id_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_permanent_id_req))) {
-			RDEBUG2("Sending EAP-Request/%pV (%s)", &subtype_vp->data, id_vp->da->name);
+		if ((vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_any_id_req)) ||
+		    (vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_fullauth_id_req)) ||
+		    (vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_permanent_id_req))) {
+			RDEBUG2("Sending EAP-Request/%pV (%s)", &subtype_vp->data, vp->da->name);
 		} else {
 			RDEBUG2("Sending EAP-Request/%pV", &subtype_vp->data);
 		}
-	}
 		break;
 
 	/*
@@ -164,29 +158,39 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	 *	it should have used that.
 	 */
 	case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
-	{
-		fr_pair_t *bidding_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_bidding);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_bidding);
 
 		/*
 		 *	Explicit NO
 		 */
 		if (inst->aka.send_at_bidding_prefer_prime_is_set &&
 		    !inst->aka.send_at_bidding_prefer_prime) {
-			if (bidding_vp) pair_delete_reply(attr_eap_aka_sim_bidding);
+			if (vp) pair_delete_reply(attr_eap_aka_sim_bidding);
 		/*
 		 *	Implicit or explicit YES
 		 */
 		} else if (inst->aka.send_at_bidding_prefer_prime) {
-			MEM(pair_append_reply(&bidding_vp, attr_eap_aka_sim_bidding) >= 0);
-			bidding_vp->vp_uint16 = FR_BIDDING_VALUE_PREFER_AKA_PRIME;
+			MEM(pair_append_reply(&vp, attr_eap_aka_sim_bidding) >= 0);
+			vp->vp_uint16 = FR_BIDDING_VALUE_PREFER_AKA_PRIME;
 		}
-	}
 		FALL_THROUGH;
 
 	case FR_SUBTYPE_VALUE_SIM_CHALLENGE:
 	case FR_SUBTYPE_VALUE_AKA_SIM_REAUTHENTICATION:
-	{
-		fr_pair_t	*vp;
+		/*
+		 *	Include our copy of the checkcode if we've been
+		 *      calculating it.
+		 */
+		if (mod_session->checkcode_state) {
+			uint8_t *checkcode;
+
+			MEM(pair_update_reply(&vp, attr_eap_aka_sim_checkcode) >= 0);
+			if (fr_aka_sim_crypto_finalise_checkcode(vp, &checkcode, mod_session->checkcode_state) < 0) {
+				RPWDEBUG("Failed calculating checkcode");
+				pair_delete_reply(vp);
+			}
+			fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
+		}
 
 		/*
 		 *	Extra data to append to the packet when signing.
@@ -228,7 +232,6 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		}
 
 		fr_assert(mod_session->ctx.k_encr && mod_session->ctx.k_aut);
-	}
 		FALL_THROUGH;
 
 	default:
@@ -241,10 +244,34 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	encode_ctx.hmac_extra = request_hmac_extra;
 	encode_ctx.hmac_extra_len = request_hmac_extra_len;
 
+	RDEBUG2("Encoding attributes");
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
 	ret = fr_aka_sim_encode(request, &request->reply_pairs, &encode_ctx);
-	if (ret <= 0) {	/* No valid packets have length 0 */
-		RPEDEBUG("Failed encoding response");
-		RETURN_MODULE_FAIL;
+	if (ret <= 0) RETURN_MODULE_FAIL;
+
+	switch (subtype_vp->vp_uint16) {
+	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
+		/*
+		 *	Ingest the identity message into the checkcode
+		 */
+		if (mod_session->ctx.checkcode_md) {
+			RDEBUG2("Updating checkcode");
+			if (!mod_session->checkcode_state &&
+			    (fr_aka_sim_crypto_init_checkcode(mod_session, &mod_session->checkcode_state,
+							      mod_session->ctx.checkcode_md) < 0)) {
+				RPWDEBUG("Failed initialising checkcode");
+				break;
+			}
+
+			if (fr_aka_sim_crypto_update_checkcode(mod_session->checkcode_state,
+							       eap_session->this_round->request) < 0) {
+				RPWDEBUG("Failed updating checkcode");
+			}
+		}
+		break;
+
+	default:
+		break;
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;	/* rcode is already correct */
@@ -312,10 +339,53 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 		}
 
 		subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype);
-		if (subtype_vp) {
-			RDEBUG2("Received EAP-Response/%pV", &(subtype_vp)->data);
-		} else {
-			REDEBUG2("Missing Sub-Type");
+		if (!subtype_vp) {
+			REDEBUG2("Missing Sub-Type");	/* Let the state machine enter the right state */
+			break;
+		}
+
+		RDEBUG2("Received EAP-Response/%pV", &(subtype_vp)->data);
+
+		switch (subtype_vp->vp_uint16) {
+		/*
+		 *	Ingest the identity message into the checkcode
+		 */
+		case FR_SUBTYPE_VALUE_AKA_IDENTITY:
+			if (mod_session->checkcode_state) {
+				RDEBUG2("Updating checkcode");
+				if (fr_aka_sim_crypto_update_checkcode(mod_session->checkcode_state,
+								       eap_session->this_round->response) < 0) {
+					RPWDEBUG("Failed updating checkcode");
+				}
+			}
+			break;
+
+		case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
+		case FR_SUBTYPE_VALUE_AKA_SIM_REAUTHENTICATION:
+			/*
+			 *	Include our copy of the checkcode if we've been
+			 *      calculating it.  This is put in the control list
+			 *	so the state machine can check they're identical.
+			 *
+			 *	This lets us simulate checkcode failures easily
+			 *	when testing the state machine.
+			 */
+			if (mod_session->checkcode_state) {
+				uint8_t		*checkcode;
+				fr_pair_t	*vp;
+
+				MEM(pair_update_control(&vp, attr_eap_aka_sim_checkcode) >= 0);
+				if (fr_aka_sim_crypto_finalise_checkcode(vp, &checkcode, mod_session->checkcode_state) < 0) {
+					RPWDEBUG("Failed calculating checkcode");
+					pair_delete_control(vp);
+				}
+				fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
+
+			}
+			break;
+
+		default:
+			break;
 		}
 		break;
 	}

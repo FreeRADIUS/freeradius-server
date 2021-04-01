@@ -179,26 +179,28 @@ int fr_aka_sim_crypto_update_checkcode(fr_aka_sim_checkcode_t *checkcode, eap_pa
 
 /** Write out the final checkcode value
  *
- * @param[out] out		Where to write the checkcode value.  Must be at least 20
+ * @param[in] ctx		ctx to allocate buffer containing the checkcode.
+ * @param[out] out		talloced buffer containing the checkcode.
  *				bytes if MD was SHA1, or 32 bytes if MD was SHA256.
  * @param[in,out] checkcode	structure to get final digest from and to tree.
  * @return
  *	- <= 0 on failure.
  *	- > 0 the number of bytes written to out.
  */
-ssize_t fr_aka_sim_crypto_finalise_checkcode(uint8_t *out, fr_aka_sim_checkcode_t **checkcode)
+ssize_t fr_aka_sim_crypto_finalise_checkcode(TALLOC_CTX *ctx, uint8_t **out, fr_aka_sim_checkcode_t *checkcode)
 {
-	unsigned int len;
+	size_t	len;
+	uint8_t	*buff;
 
-	if (EVP_DigestFinal_ex((*checkcode)->md_ctx, out, &len) != 1) {
+	len = (size_t)EVP_MD_CTX_size((*checkcode).md_ctx);
+	MEM(buff = talloc_array(ctx, uint8_t, len));
+	if (EVP_DigestFinal_ex((*checkcode).md_ctx, buff, NULL) != 1) {
 		tls_strerror_printf("Failed finalising checkcode digest");
-		TALLOC_FREE(*checkcode);
 		return -1;
 	}
+	*out = buff;
 
-	TALLOC_FREE(*checkcode);
-
-	return len;
+	return (size_t)len;
 }
 
 /** Locate the start of the AT_MAC value in the buffer

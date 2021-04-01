@@ -285,7 +285,7 @@ int		fr_aka_sim_crypto_init_checkcode(TALLOC_CTX *ctx, fr_aka_sim_checkcode_t **
 
 int		fr_aka_sim_crypto_update_checkcode(fr_aka_sim_checkcode_t *checkcode, eap_packet_t *eap_packet);
 
-ssize_t		fr_aka_sim_crypto_finalise_checkcode(uint8_t *out, fr_aka_sim_checkcode_t **checkcode);
+ssize_t 	fr_aka_sim_crypto_finalise_checkcode(TALLOC_CTX *ctx, uint8_t **out, fr_aka_sim_checkcode_t *checkcode);
 
 ssize_t		fr_aka_sim_crypto_sign_packet(uint8_t out[static AKA_SIM_MAC_DIGEST_SIZE],
 					      eap_packet_t *eap_packet, bool zero_mac,

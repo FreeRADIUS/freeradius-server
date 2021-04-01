@@ -97,13 +97,6 @@ struct eap_aka_sim_session_s {
 
 	fr_aka_sim_keys_t		keys;				//!< Various EAP-AKA/AKA'/SIMkeys.
 
-	EVP_MD const			*checkcode_md;			//!< Message digest we use to generate the
-									///< checkcode. EVP_sha1() for EAP-AKA/SIM,
-									///< EVP_sha256() for EAP-AKA'.
-	fr_aka_sim_checkcode_t		*checkcode_state;		//!< Digest of all identity packets we've seen.
-	uint8_t				checkcode[32];			//!< Checkcode we calculated.
-	size_t				checkcode_len;			//!< 0, 20 or 32 bytes.
-
 
 	uint16_t			kdf;				//!< The key derivation function used to derive
 									///< session keys.
@@ -224,9 +217,6 @@ typedef struct {
 	EVP_MD const			*hmac_md;			//!< The hmac used for validating packets.
 									///< EVP_sha1() for EAP-AKA, EVP_sha256()
 									///< for EAP-AKA'.
-
-	EVP_MD const			*checkcode_md;			//!< The hmac used for validating packets
-									///< checkcodes.
 
 	eap_aka_sim_actions_t		actions;			//!< Pre-compiled virtual server sections.
 } eap_aka_sim_process_conf_t;

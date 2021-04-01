@@ -123,13 +123,6 @@ typedef struct {
 	bool				send_at_bidding;		//!< Indicate that we prefer EAP-AKA' and
 									///< include an AT_BIDDING attribute.
 
-	EVP_MD const			*checkcode_md;			//!< Message digest we use to generate the
-									///< checkcode. EVP_sha1() for EAP-AKA,
-									///< EVP_sha256() for EAP-AKA'.
-	fr_sim_checkcode_t		*checkcode_state;		//!< Digest of all identity packets we've seen.
-	uint8_t				checkcode[32];			//!< Checkcode we calculated.
-	size_t				checkcode_len;			//!< 0, 20 or 32 bytes.
-
 	EVP_MD const			*mac_md;			//!< HMAC-MD we use to generate the MAC.
 									///< EVP_sha1() for EAP-AKA, EVP_sha256()
 									///< for EAP-AKA'.
