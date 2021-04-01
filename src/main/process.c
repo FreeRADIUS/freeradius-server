@@ -2545,7 +2545,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 #endif
 
 	} else if (request->home_pool && request->home_pool->virtual_server) {
-		request->server = request->home_pool->virtual_server;
+			request->server = request->home_pool->virtual_server;
 	}
 
 	/*
