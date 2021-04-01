@@ -1,0 +1,4 @@
+delay 2.5
+Received CoA-ACK
+Acct-Session-Id = "coa-buffered-reader:accounting:coa-request"  "default:pre-proxy"  "coa_tls:recv-coa"  "proxy-originate-coa-relay:pre-proxy"  "coa:recv-coa"  "coa:send-coa"  "proxy-originate-coa-relay:post-proxy-coa-ack"  "coa_tls:send-coa"  "default:post-proxy-coa-ack"
+
