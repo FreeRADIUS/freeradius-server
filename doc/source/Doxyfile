@@ -1939,6 +1939,7 @@ PREDEFINED             = WITH_PROXY \
                          WITH_STATS \
                          WITH_COMMAND_SOCKET \
                          WITH_COA \
+			 WITH_COA_TUNNEL \
                          WITH_TCP \
                          WITH_DHCP \
                          WITH_VMPS \
