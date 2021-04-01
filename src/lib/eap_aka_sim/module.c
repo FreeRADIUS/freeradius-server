@@ -123,7 +123,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	 *	returning including the EAP headers, so the packet
 	 *	fields must be filled in before we call encode.
 	 */
-	eap_session->this_round->response->id++;
+	eap_session->this_round->request->id = mod_session->id++;
 
 	/*
 	 *	Perform different actions depending on the type
