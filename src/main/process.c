@@ -4341,6 +4341,26 @@ static void request_coa_originate(REQUEST *request)
 	coa = request->coa;
 	coa->listener = NULL;	/* copied here by request_alloc_fake(), but not needed */
 
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *	Proxy-To-Originating-Realm is preferred to any other
+	 *	method of originating CoA requests.
+	 */
+	vp = fr_pair_find_by_num(coa->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
+	if (vp) {
+		/*
+		 *	This function will set request->home_server,
+		 *	and also request->proxy_listener.
+		 */
+		if (listen_coa_find(coa, vp->vp_strvalue) < 0) {
+			RWDEBUG("Unknown Originating realm '%s'", vp->vp_strvalue);
+			return;
+		}
+
+		goto set_packet_type;
+	}
+#endif
+
 	/*
 	 *	src_ipaddr will be set up in proxy_encode.
 	 */
@@ -4406,6 +4426,9 @@ static void request_coa_originate(REQUEST *request)
 		}
 	}
 
+#ifdef WITH_COA_TUNNEL
+set_packet_type:
+#endif
 	vp = fr_pair_find_by_num(coa->proxy->vps, PW_PACKET_TYPE, 0, TAG_ANY);
 	if (vp) {
 		switch (vp->vp_integer) {
