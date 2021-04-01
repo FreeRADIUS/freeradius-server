@@ -92,6 +92,9 @@ struct rad_listen {
 	uint32_t	coa_mrd;
 
 	int		num_ids_used;	/* for proxying CoA packets */
+
+	void		*coa_key;	/* parent, to avoid more mutexes */
+	rad_listen_t	*next_key;	/* for lists of listeners with the same key */
 #endif
 #endif
 

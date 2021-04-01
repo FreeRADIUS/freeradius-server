@@ -77,6 +77,11 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
 #endif
 
+#ifdef WITH_COA_TUNNEL
+static int listen_coa_init(void);
+static void listen_coa_free(void);
+#endif
+
 static fr_protocol_t master_listen[];
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -1364,6 +1369,11 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 */
 		this->recv = dual_tcp_accept;
 
+		/*
+		 *	@todo - add a free function?  Though this only
+		 *	matters when we're tearing down the server, so
+		 *	perhaps it's less relevant.
+		 */
 		this->children = rbtree_create(this, listener_cmp, NULL, 0);
 		if (!this->children) {
 			cf_log_err_cs(cs, "Failed to create child list for TCP socket.");
@@ -2818,6 +2828,10 @@ static int _listener_free(rad_listen_t *this)
 #endif
 		}
 #endif	/* WITH_TLS */
+
+#ifdef WITH_COA_TUNNEL
+		if (this->coa_key) listen_coa_delete(this);
+#endif
 	}
 #endif				/* WITH_TCP */
 
@@ -3561,6 +3575,10 @@ add_sockets:
 	 */
 	if (!*head) return -1;
 
+#ifdef WITH_COA_TUNNEL
+	if (listen_coa_init() < 0) return -1;
+#endif
+
 	return 0;
 }
 
@@ -3581,6 +3599,15 @@ void listen_free(rad_listen_t **head)
 	}
 
 	*head = NULL;
+}
+
+void listen_free_all(rad_listen_t **head)
+{
+	listen_free(head);
+
+#ifdef WITH_COA_TUNNEL
+	listen_coa_free();
+#endif
 }
 
 #ifdef WITH_STATS
@@ -3649,22 +3676,113 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, i
 
 #ifdef WITH_COA_TUNNEL
 /*
+ *	This is easier than putting ifdef's everywhere.  And
+ *	realistically, there aren't many systems which have OpenSSL,
+ *	but not pthreads.
+ */
+#ifndef HAVE_PTHREAD_H
+#error CoA tunnels require pthreads
+#endif
+
+#include <pthread.h>
+
+static rbtree_t *coa_tree = NULL;
+
+typedef struct {
+	char		*key;
+	rad_listen_t	*first;
+
+	pthread_mutex_t	mutex;		/* per key, to lower contention */
+} coa_key_t;
+
+static int coa_key_cmp(void const *one, void const *two)
+{
+	coa_key_t const *a = one;
+	coa_key_t const *b = two;
+
+	return strcmp(a->key, b->key);
+}
+
+static void coa_key_free(void *data)
+{
+	coa_key_t *coa_key = data;
+
+	talloc_free(coa_key->key);
+	rad_assert(coa_key->first == NULL);
+	pthread_mutex_destroy(&coa_key->mutex);
+}
+
+static int listen_coa_init(void)
+{
+	/*
+	 *	We will be looking up listeners by key.  Each key
+	 *	points us to a list of listeners.  Each key has it's
+	 *	own mutex, so that it's thread-safe.
+	 */
+	coa_tree = rbtree_create(NULL, coa_key_cmp, coa_key_free, RBTREE_FLAG_LOCK);
+	if (!coa_tree) {
+		ERROR("Failed creating internal tracking tree for Originating-Realm-Key");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void listen_coa_free(void)
+{
+	/*
+	 *	If we are freeing the tree, then all of the listeners
+	 *	must have been freed first.
+	 */
+	rad_assert(rbtree_num_elements(coa_tree) == 0);
+
+	rbtree_free(coa_tree);
+	coa_tree = NULL;
+}
+
+/*
  *	Adds a listener to the hash of listeners, based on key.
  */
 void listen_coa_add(rad_listen_t *this, char const *key)
 {
+	coa_key_t my_key, *coa_key;
+
 	rad_assert(this->send_coa);
 	rad_assert(this->parent);
+	rad_assert(!this->key);
 
 	/*
-	 *	We can use "this" as a context, because it's created
-	 *	in the NULL context, so it's thread-safe.
+	 *	Find the key.  If we can't find it, then create it.
 	 */
-	this->key = talloc_strdup(this, key);
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) {
+		coa_key = talloc_zero(NULL, coa_key_t);
+		if (!coa_key) return;
+		coa_key->key = talloc_strdup(coa_key, key);
+		if (!coa_key->key) {
+			talloc_free(coa_key);
+			return;
+		}
+		(void) pthread_mutex_init(&coa_key->mutex, NULL);
+
+		if (!rbtree_insert(coa_tree, coa_key)) {
+			talloc_free(coa_key);
+			return;
+		}
+	}
+
+	this->key = coa_key->key; /* no reason to duplicate the key */
+	this->coa_key = coa_key;
 
 	/*
-	 *	Do more things here.
+	 *	We have a linked list of listeners for this key.  It
+	 *	typically won't be large.
 	 */
+	pthread_mutex_lock(&coa_key->mutex);
+	this->next_key = coa_key->first;
+	coa_key->first = this;
+	pthread_mutex_unlock(&coa_key->mutex);
 }
 
 /*
@@ -3675,13 +3793,33 @@ void listen_coa_add(rad_listen_t *this, char const *key)
  */
 void listen_coa_delete(rad_listen_t *this)
 {
+	coa_key_t *coa_key;
+	rad_listen_t **last;
+
 	rad_assert(this->send_coa);
 	rad_assert(this->parent);
+	rad_assert(this->key);
+	rad_assert(this->coa_key);
 
+	coa_key = this->coa_key;
+	last = &coa_key->first;
+
+	pthread_mutex_lock(&coa_key->mutex);
+	while (*last) {
+		if (*last == this) {
+			*last = this->next_key;
+			break;
+		}
+		last = &((*last)->next_key);
+	}
+	pthread_mutex_unlock(&coa_key->mutex);
 
 	/*
-	 *	Do more things here.
+	 *	No longer used for anything
 	 */
+	this->key = NULL;
+	this->coa_key = NULL;
+	this->next_key = NULL;
 }
 
 /*
@@ -3690,11 +3828,61 @@ void listen_coa_delete(rad_listen_t *this)
  *	This function will update request->home_server, and
  *	request->proxy_listener.
  */
-int listen_coa_find(UNUSED REQUEST *request, UNUSED char const *key)
+int listen_coa_find(REQUEST *request, char const *key)
 {
+	coa_key_t my_key, *coa_key;
+	rad_listen_t *this, *found;
+	listen_socket_t *sock;
+
 	/*
-	 *	Do more things here.
+	 *	Find the key.  If we can't find it, then error out.
 	 */
-	return -1;
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) return -1;
+
+	/*
+	 *	We've found it.  Now find a listener which has free
+	 *	IDs.  i.e. where the number of used IDs is less tahn
+	 *	256.
+	 */
+	found = NULL;
+	pthread_mutex_lock(&coa_key->mutex);
+	for (this = coa_key->first;
+	     this != NULL;
+	     this = this->next_key) {
+		if (!found && (this->num_ids_used < 256)) {
+			found = this;
+			continue;
+		}
+
+		/*
+		 *	Try to spread the load across all available
+		 *	sockets.
+		 */
+		if (found->num_ids_used > this->num_ids_used) {
+			found = this;
+			continue;
+		}
+
+		/*
+		 *	If they are equal, pick one at random.
+		 */
+		if (found->num_ids_used == this->num_ids_used) {
+			if ((fr_rand() & 0x01) == 0) {
+				found = this;
+				continue;
+			}
+		}
+	}
+
+	pthread_mutex_lock(&coa_key->mutex);
+	if (!found) return -1;
+
+	request->proxy_listener = found;
+
+	sock = found->data;
+	request->home_server = sock->home;
+	return 0;
 }
 #endif

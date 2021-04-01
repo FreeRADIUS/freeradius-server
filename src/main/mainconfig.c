@@ -1205,7 +1205,7 @@ int main_config_free(void)
 	 */
 	client_list_free(NULL);
 	realms_free();
-	listen_free(&main_config.listen);
+	listen_free_all(&main_config.listen);
 
 	/*
 	 *	Frees current config and any previous configs.
