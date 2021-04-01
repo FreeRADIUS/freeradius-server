@@ -1,0 +1,208 @@
+server proxy-default {
+
+	listen {
+		type = auth+acct
+		ipaddr = 127.0.0.1
+		port = ${{port-proxy-auth}}
+	}
+
+	authorize {
+		update control {
+			&Proxy-To-Realm := "tls"
+		}
+	}
+
+	authenticate {
+		Auth-Type PAP {
+			pap
+		}
+
+		Auth-Type MS-CHAP {
+			mschap
+		}
+
+		Auth-Type EAP {
+			eap
+		}
+	}
+
+	pre-proxy {
+		update {
+			&Acct-Session-Id += "proxy-default:pre-proxy"
+		}
+	}
+
+	post-proxy {
+		update {
+			&Acct-Session-Id += "proxy-default:post-proxy"
+		}
+		detail_test.recv-coa
+	}
+
+	recv-coa {
+		update {
+			&Acct-Session-Id += "proxy-default:recv-coa"
+		}
+		detail_test.recv-coa
+	}
+
+	send-coa {
+		update {
+			&Acct-Session-Id += "proxy-default:send-coa"
+		}
+	}
+}
+
+server proxy-tls-default {
+
+	listen {
+		type = coa
+		ipaddr = 127.0.0.1
+		port = ${{port-proxy-coa}}
+	}
+
+	recv-coa {
+		update {
+			&control:Home-Server-Pool := coa-nas
+			&request:Acct-Session-Id += "proxy-tls-default:recv-coa"
+		}
+	}
+
+	send-coa {
+		update {
+			&reply:Acct-Session-Id += "proxy-tls-default:send-coa"
+		}
+	}
+}
+
+#
+# Proxy To CoA server
+#
+server proxy-originate-coa-relay {
+	pre-proxy {
+		update {
+			&proxy-request:Acct-Session-Id += "proxy-originate-coa-relay:pre-proxy"
+		}
+	}
+	post-proxy {
+		switch &proxy-reply:Packet-Type {
+			case CoA-ACK {
+				update {
+					&proxy-reply:Acct-Session-Id += "proxy-originate-coa-relay:post-proxy-coa-ack"
+				}
+			}
+
+			case CoA-NAK {
+				update {
+					&proxy-reply:Acct-Session-Id += "proxy-originate-coa-relay:post-proxy-coa-nak"
+				}
+			}
+
+			case Disconnect-ACK {
+				update {
+					&proxy-reply:Acct-Session-Id += "proxy-originate-coa-relay:post-proxy-disconnect-ack"
+				}
+			}
+
+			case Disconnect-NAK {
+				update {
+					&proxy-reply:Acct-Session-Id += "proxy-originate-coa-relay:post-proxy-disconnect-nak"
+				}
+			}
+
+			case {
+				fail
+			}
+		}
+
+		Post-Proxy-Type Fail-CoA {
+			ok
+		}
+
+		Post-Proxy-Type Fail-Disconnect {
+			ok
+		}
+	}
+}
+
+home_server coa-nas {
+	type = coa
+	ipaddr = 127.0.0.1
+	port = ${{port-coa}} # A placeholder to be set in test makefile
+	secret =  testing123
+
+	coa {
+		irt = 2
+		mrt = 16
+		mrc = 5
+		mrd = 30
+	}
+}
+
+home_server_pool coa-nas {
+	type = fail-over
+	home_server = coa-nas
+	virtual_server = proxy-originate-coa-relay
+}
+
+
+#
+# Proxy To RADSEC Home server
+#
+server coa_tls {
+	recv-coa {
+		update control {
+			&request:Acct-Session-Id += "coa_tls:recv-coa"
+			&Home-Server-Pool := coa-nas
+		}
+	}
+
+	#  When a packet is sent, it is processed through the
+	#  send-coa section.  This applies to *both* CoA-Request and
+	#  Disconnect-Request packets.
+	send-coa {
+		update control {
+			&reply:Acct-Session-Id += "coa_tls:send-coa"
+		}
+	}
+
+	#  You can use pre-proxy and post-proxy sections here, too.
+	#  They will be processed for sending && receiving proxy packets.
+}
+
+home_server tls {
+	ipaddr = 127.0.0.1
+	port = ${{port-home-auth}} # A placeholder to be set in test makefile
+	type = auth+acct+coa
+	secret = radsec
+	proto = tcp
+	status_check = none
+
+	tls {
+		tls_max_version="1.2"
+		private_key_password = whatever
+		private_key_file = ${certdir}/client.key
+		certificate_file = ${certdir}/client.pem
+		ca_file = ${certdir}/ca.pem
+		dh_file = ${certdir}/dh
+		random_file = /dev/urandom
+		fragment_size = 8192
+		ca_path = ${cadir}
+		cipher_list = "DEFAULT"
+	}
+
+	coa {
+		virtual_server = coa_tls
+	}
+}
+
+home_server_pool tls {
+	type = fail-over
+	home_server = tls
+	virtual_server = coa_tls
+}
+
+realm tls {
+	auth_pool = tls
+}
+

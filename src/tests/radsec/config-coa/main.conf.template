@@ -1,0 +1,37 @@
+listen {
+	type = coa
+	ipaddr = 127.0.0.1
+	port = ${{port-coa}}
+	virtual_server = coa
+}
+
+server coa {
+
+	authenticate {
+		Auth-Type PAP {
+			pap
+		}
+
+		Auth-Type MS-CHAP {
+			mschap
+		}
+
+		Auth-Type EAP {
+			eap
+		}
+	}
+
+	recv-coa {
+		update request {
+			&Acct-Session-Id += "coa:recv-coa"
+		}
+	}
+
+	send-coa {
+		update reply {
+			&reply: += request:[*]
+			&reply:Acct-Session-Id += "coa:send-coa"
+		}
+	}
+}
+
