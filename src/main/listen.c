@@ -3841,8 +3841,14 @@ int listen_coa_find(REQUEST *request, char const *key)
 	for (this = coa_key->first;
 	     this != NULL;
 	     this = this->next_key) {
-		if (!found && (this->num_ids_used < 256)) {
-			found = this;
+		if (!found) {
+			if (this->num_ids_used < 256) {
+				found = this;
+			}
+
+			/*
+			 *	Skip listeners which have all used IDs.
+			 */
 			continue;
 		}
 
