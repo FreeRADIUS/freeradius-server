@@ -2963,6 +2963,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		if (home->recv_coa) {
 			RADCLIENT *client;
 
+			this->send_coa = true;
+
 			/*
 			 *	Don't set this->send_coa, as we are
 			 *	not sending CoA-Request packets to
