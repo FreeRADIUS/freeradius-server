@@ -1210,6 +1210,8 @@ void unlang_interpret_set_thread_default(unlang_interpret_t *intp)
  */
 unlang_interpret_t *unlang_interpret_get_thread_default(void)
 {
+	if (!intp_thread_default) return NULL;
+
 	return talloc_get_type_abort(intp_thread_default, unlang_interpret_t);
 }
 
