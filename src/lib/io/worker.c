@@ -971,10 +971,15 @@ static void _worker_request_external_done(request_t *request, UNUSED rlm_rcode_t
 	fr_worker_t	*worker = uctx;
 
 	/*
+	 *	All external requests MUST have a listener.
+	 */
+	fr_assert(request->async->listen != NULL);
+
+	/*
 	 *	Only real packets are in the dedup tree.  And even
 	 *	then, only some of the time.
 	 */
-	if (request->async->listen && request->async->listen->track_duplicates) {
+	if (request->async->listen->track_duplicates) {
 		(void) rbtree_delete_by_data(worker->dedup, request);
 	}
 
