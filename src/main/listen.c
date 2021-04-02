@@ -1068,6 +1068,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 #endif
 
+
+			rcode = cf_item_parse(cs, "check_client_connections", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->check_client_connections), "no");
+			if (rcode < 0) return -1;
+
 		}
 #else  /* WITH_TLS */
 		/*
@@ -2114,6 +2118,14 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 
 static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
+#ifdef WITH_TLS
+	/*
+	 *	Don't encode fake packets.
+	 */
+	listen_socket_t *sock = listener->data;
+	if (sock->state == LISTEN_TLS_CHECKING) return 0;
+#endif
+
 	if (!request->reply->code) return 0;
 
 	if (rad_encode(request->reply, request->packet, request->client->secret) < 0) {
