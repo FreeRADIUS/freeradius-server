@@ -264,7 +264,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 */
 get_application_data:
 	status = tls_application_data(sock->ssn, request);
-	RDEBUG("Application data status %d", status);
+	RDEBUG3("Application data status %d", status);
 
 	if (status == FR_TLS_MORE_FRAGMENTS) {
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);

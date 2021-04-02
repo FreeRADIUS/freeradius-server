@@ -4603,7 +4603,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	if (err <= 0) {
 		int code;
 
-		RDEBUG("SSL_read Error");
+		RDEBUG3("SSL_read Error");
 
 		code = SSL_get_error(ssn->ssl, err);
 		switch (code) {
@@ -4620,8 +4620,12 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			err = 0;
 			break;
 
+		case SSL_ERROR_ZERO_RETURN:
+			RDEBUG2("Other end closed the TLS tunnel.");
+			return FR_TLS_FAIL;
+
 		default:
-			REDEBUG("Error in fragmentation logic");
+			REDEBUG("Error in fragmentation logic - code %d", code);
 			tls_error_io_log(request, ssn, err,
 					 "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)");
 			return FR_TLS_FAIL;
