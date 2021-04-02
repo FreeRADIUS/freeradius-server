@@ -924,6 +924,10 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 #ifdef WITH_TCP
 		if (pl->sockets[start].proto == IPPROTO_TCP) {
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, 0);
+			if (!packet) {
+				fr_strerror_printf("TCP connection has been closed");
+				return NULL;
+			}
 
 			/*
 			 *	We always know src/dst ip/port for TCP
