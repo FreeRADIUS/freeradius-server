@@ -44,7 +44,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 	state = state ? state : "<none>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		RDEBUG2("%s: %s", str, state);
+		RDEBUG3("%s: %s", str, state);
 		return;
 	}
 

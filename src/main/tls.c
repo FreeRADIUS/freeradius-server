@@ -1038,6 +1038,7 @@ void tls_session_information(tls_session_t *tls_session)
 	char const *str_write_p, *str_version, *str_content_type = "";
 	char const *str_details1 = "", *str_details2= "";
 	REQUEST *request;
+	char content_type[16], alert[16];
 	char buffer[32];
 
 	/*
@@ -1045,6 +1046,15 @@ void tls_session_information(tls_session_t *tls_session)
 	 *	operations.
 	 */
 	if (rad_debug_lvl == 0) return;
+
+	/*
+	 *	OpenSSL calls this function with 'pseudo' content
+	 *	types.  The user doesn't care about them, so suppress them.
+	 */
+	if (tls_session->info.content_type > UINT8_MAX) return;
+
+	request = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST);
+	if (!request) return;
 
 	str_write_p = tls_session->info.origin ? ">>> send" : "<<< recv";
 
@@ -1080,8 +1090,7 @@ void tls_session_information(tls_session_t *tls_session)
 		break;
 	}
 
-	if (tls_session->info.version == SSL3_VERSION ||
-	    tls_session->info.version == TLS1_VERSION) {
+	if (1) {
 		switch (tls_session->info.content_type) {
 		case SSL3_RT_CHANGE_CIPHER_SPEC:
 			str_content_type = "ChangeCipherSpec";
@@ -1100,7 +1109,8 @@ void tls_session_information(tls_session_t *tls_session)
 			break;
 
 		default:
-			str_content_type = "UnknownContentType";
+			snprintf(content_type, sizeof(content_type), "content=%d", tls_session->info.content_type);
+			str_content_type = content_type;
 			break;
 		}
 
@@ -1216,7 +1226,7 @@ void tls_session_information(tls_session_t *tls_session)
 		}
 
 		if (tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
-			str_details1 = "???";
+			str_details1 = "";
 
 			if (tls_session->info.record_len > 0) switch (tls_session->info.handshake_type) {
 			case SSL3_MT_HELLO_REQUEST:
@@ -1258,19 +1268,26 @@ void tls_session_information(tls_session_t *tls_session)
 			case SSL3_MT_FINISHED:
 				str_details1 = ", Finished";
 				break;
+
+#ifdef SSL3_MT_ENCRYPTED_EXTENSIONS
+			case SSL3_MT_ENCRYPTED_EXTENSIONS:
+				str_details1 = ", EncryptedExtensions";
+				break;
+#endif
+
+			default:
+				snprintf(alert, sizeof(alert), ", type=%d", tls_session->info.handshake_type);
+				str_details1 = alert;
+				break;
 			}
 		}
 	}
 
 	snprintf(tls_session->info.info_description,
 		 sizeof(tls_session->info.info_description),
-		 "%s %s%s [length %04lx]%s%s\n",
+		 "%s %s%s%s%s\n",
 		 str_write_p, str_version, str_content_type,
-		 (unsigned long)tls_session->info.record_len,
 		 str_details1, str_details2);
-
-	request = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST);
-	if (!request) return;
 
 	RDEBUG2("%s", tls_session->info.info_description);
 }
