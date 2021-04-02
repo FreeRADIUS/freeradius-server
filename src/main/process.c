@@ -2540,7 +2540,11 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		request->server = request->home_server->virtual_server;
 
 #ifdef WITH_COA_TUNNEL
-	} else if (request->home_server && request->home_server->recv_coa_server) {
+	} else if (request->proxy_listener && (request->proxy_listener->type != RAD_LISTEN_PROXY)) {
+		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
+			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
+		rad_assert(request->home_server != NULL);
+		rad_assert(request->home_server->recv_coa_server != NULL);
 		request->server = request->home_server->recv_coa_server;
 #endif
 
@@ -3318,6 +3322,15 @@ add_proxy_state:
 	old_server = request->server;
 	if (request->home_server && request->home_server->virtual_server) {
 		request->server = request->home_server->virtual_server;
+
+#ifdef WITH_COA_TUNNEL
+	} else if (request->proxy_listener && (request->proxy_listener->type != RAD_LISTEN_PROXY)) {
+		rad_assert((request->packet->code == PW_CODE_COA_REQUEST) ||
+			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST));
+		rad_assert(request->home_server != NULL);
+		rad_assert(request->home_server->recv_coa_server != NULL);
+		request->server = request->home_server->recv_coa_server;
+#endif
 
 	} else {
 		char buffer[128];
@@ -4481,6 +4494,15 @@ set_packet_type:
 	old_server = request->server;
 	if (coa->home_server && coa->home_server->virtual_server) {
 		coa->server = coa->home_server->virtual_server;
+
+#ifdef WITH_COA_TUNNEL
+	} else if (coa->proxy_listener && (coa->proxy_listener->type != RAD_LISTEN_PROXY)) {
+		rad_assert((coa->proxy->code == PW_CODE_COA_REQUEST) ||
+			   (coa->proxy->code == PW_CODE_DISCONNECT_REQUEST));
+		rad_assert(coa->home_server != NULL);
+		rad_assert(coa->home_server->recv_coa_server != NULL);
+		coa->server = coa->home_server->recv_coa_server;
+#endif
 
 	} else if (coa->home_pool && coa->home_pool->virtual_server) {
 		coa->server = coa->home_pool->virtual_server;
