@@ -3872,7 +3872,7 @@ int listen_coa_find(REQUEST *request, char const *key)
 		}
 	}
 
-	pthread_mutex_lock(&coa_key->mutex);
+	pthread_mutex_unlock(&coa_key->mutex);
 	if (!found) return -1;
 
 	request->proxy_listener = found;
