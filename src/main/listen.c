@@ -2993,7 +2993,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			client->longname = client->shortname = talloc_typed_strdup(client, home->name);
 			client->secret = talloc_typed_strdup(client, home->secret);
 			client->nas_type = "none";
-			client->server = talloc_typed_strdup(client, home->coa_server);
+			client->server = talloc_typed_strdup(client, home->recv_coa_server);
 		}
 #endif
 	}

@@ -438,7 +438,7 @@ static CONF_PARSER home_server_coa[] = {
 
 #ifdef WITH_COA_TUNNEL
 static CONF_PARSER home_server_recv_coa[] = {
-	{ "virtual_server",  FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, coa_server), NULL },
+	{ "virtual_server",  FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, recv_coa_server), NULL },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -701,7 +701,7 @@ bool realm_home_server_add(home_server_t *home)
 			return false;
 		}
 
-		if (!home->coa_server) {
+		if (!home->recv_coa_server) {
 			ERROR("A 'virtual_server' configuration is required in order to accept CoA requests from a home server");
 			return false;
 		}
@@ -935,7 +935,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			goto error;
 		}
 
-		if (!home->coa_server) {
+		if (!home->recv_coa_server) {
 			ERROR("A 'virtual_server' configuration is required in order to accept CoA requests from a home server");
 			goto error;
 		}
@@ -950,8 +950,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			goto error;
 		}
 
-		if (!cf_section_sub_find_name2(rc->cs, "server", home->coa_server)) {
-			cf_log_err_cs(cs, "No such coa server %s", home->coa_server);
+		if (!cf_section_sub_find_name2(rc->cs, "server", home->recv_coa_server)) {
+			cf_log_err_cs(cs, "No such coa server %s", home->recv_coa_server);
 			goto error;
 		}
 	}

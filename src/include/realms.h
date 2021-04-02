@@ -129,7 +129,7 @@ typedef struct home_server {
 	uint32_t		coa_mrt;
 	uint32_t		coa_mrd;
 #ifdef WITH_COA_TUNNEL
-	char const		*coa_server;		//!< for accepting incoming CoA requests
+	char const		*recv_coa_server;      	//!< for accepting incoming CoA requests
 #endif
 #endif
 #ifdef WITH_TLS
