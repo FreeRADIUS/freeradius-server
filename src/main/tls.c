@@ -1038,7 +1038,7 @@ void tls_session_information(tls_session_t *tls_session)
 	char const *str_write_p, *str_version, *str_content_type = "";
 	char const *str_details1 = "", *str_details2= "";
 	REQUEST *request;
-	char content_type[16], alert[16];
+	char content_type[16], alert_buf[16];
 	char buffer[32];
 
 	/*
@@ -1276,8 +1276,8 @@ void tls_session_information(tls_session_t *tls_session)
 #endif
 
 			default:
-				snprintf(alert, sizeof(alert), ", type=%d", tls_session->info.handshake_type);
-				str_details1 = alert;
+				snprintf(alert_buf, sizeof(alert_buf), ", type=%d", tls_session->info.handshake_type);
+				str_details1 = alert_buf;
 				break;
 			}
 		}
