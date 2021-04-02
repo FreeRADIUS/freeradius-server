@@ -552,7 +552,7 @@ int request_detach(request_t *child)
 {
 	request_t		*request = child->parent;
 
-	fr_assert(request != NULL);
+	if (!request) return 0;	/* Already detached */
 
 	/*
 	 *	Let any signal handler that cares
