@@ -113,6 +113,14 @@ ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
 ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 _:=$(shell $(MAKE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)
 
+ifeq "${LIBRARY_EXT}" ""
+ifneq "$(findstring Darwin,$(shell hostinfo))" ""
+LIBRARY_EXT := dylib
+else
+LIBRARY_EXT := so
+endif
+endif
+
 load build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT}(dlopen_gmk_setup)
 load build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}(version_gmk_setup)
 
