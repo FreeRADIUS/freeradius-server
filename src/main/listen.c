@@ -1789,6 +1789,10 @@ static int do_proxy(REQUEST *request)
 	vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
 	if (!vp) vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
 
+#ifdef WITH_COA_TUNNEL
+	if (!vp) vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
+#endif
+
 	if (!vp) return 0;
 
 	return 1;
