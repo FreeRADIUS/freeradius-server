@@ -1647,7 +1647,7 @@ static void request_running(REQUEST *request, int action)
 			 */
 		retry_proxy:
 			if (request_proxy(request) < 0) {
-				if (request->home_server && request->home_server->server) goto req_finished;
+				if (request->home_server && request->home_server->virtual_server) goto req_finished;
 
 				if (request->home_pool && request->home_server &&
 				    (request->home_server->state >= HOME_STATE_IS_DEAD)) {
@@ -2445,7 +2445,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	/*
 	 *	There may be a proxy reply, but it may be too late.
 	 */
-	if ((request->home_server && !request->home_server->server) && !request->proxy_listener) return 0;
+	if ((request->home_server && !request->home_server->virtual_server) && !request->proxy_listener) return 0;
 
 	/*
 	 *	Delete any reply we had accumulated until now.
@@ -2536,8 +2536,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	home server pool.
 	 */
 	old_server = request->server;
-	if (request->home_server && request->home_server->server) {
-		request->server = request->home_server->server;
+	if (request->home_server && request->home_server->virtual_server) {
+		request->server = request->home_server->virtual_server;
 
 #ifdef WITH_COA_TUNNEL
 	} else if (request->home_server && request->home_server->recv_coa_server) {
@@ -3316,8 +3316,8 @@ add_proxy_state:
 	 *	home server pool.
 	 */
 	old_server = request->server;
-	if (request->home_server && request->home_server->server) {
-		request->server = request->home_server->server;
+	if (request->home_server && request->home_server->virtual_server) {
+		request->server = request->home_server->virtual_server;
 
 	} else {
 		char buffer[128];
@@ -3376,7 +3376,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	}
 
 	DEBUG("Proxying to virtual server %s",
-	      request->home_server->server);
+	      request->home_server->virtual_server);
 
 	/*
 	 *	Packets to virtual servers don't get
@@ -3391,7 +3391,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	fake->packet->vps = fr_pair_list_copy(fake->packet, request->packet->vps);
 	talloc_free(request->proxy);
 
-	fake->server = request->home_server->server;
+	fake->server = request->home_server->virtual_server;
 	fake->handle = request->handle;
 	fake->process = NULL; /* should never be run for anything */
 
@@ -3460,7 +3460,7 @@ static int request_proxy(REQUEST *request)
 	 *
 	 *	So, we have some horrible hacks to get around that.
 	 */
-	if (request->home_server->server) return proxy_to_virtual_server(request);
+	if (request->home_server->virtual_server) return proxy_to_virtual_server(request);
 
 	/*
 	 *	We're actually sending a proxied packet.  Do that now.
@@ -3589,7 +3589,7 @@ static int request_proxy_anew(REQUEST *request)
 	 *	If so, run that instead of doing proxying to a real
 	 *	server.
 	 */
-	if (home->server) {
+	if (home->virtual_server) {
 		request->home_server = home;
 		TALLOC_FREE(request->proxy);
 
@@ -4056,7 +4056,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	The request was proxied to a virtual server.
 		 *	Ignore the retransmit.
 		 */
-		if (request->home_server->server) return;
+		if (request->home_server->virtual_server) return;
 
 		/*
 		 *	Failed connections get the home server marked
@@ -4479,8 +4479,8 @@ set_packet_type:
 	 *	home server pool.
 	 */
 	old_server = request->server;
-	if (coa->home_server && coa->home_server->server) {
-		coa->server = coa->home_server->server;
+	if (coa->home_server && coa->home_server->virtual_server) {
+		coa->server = coa->home_server->virtual_server;
 
 	} else if (coa->home_pool && coa->home_pool->virtual_server) {
 		coa->server = coa->home_pool->virtual_server;

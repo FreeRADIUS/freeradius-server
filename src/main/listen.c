@@ -768,7 +768,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		home->coa_mrt = this->coa_mrt;
 		home->coa_mrc = this->coa_mrc;
 		home->coa_mrd = this->coa_mrd;
-		home->server = this->server;
+		home->recv_coa_server = this->server;
 	}
 #endif
 
@@ -2884,7 +2884,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 	if (!home) return NULL;
 
-	rad_assert(home->server == NULL); /* we only open real sockets */
+	rad_assert(home->virtual_server == NULL); /* we only open real sockets */
 
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {

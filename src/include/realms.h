@@ -68,7 +68,7 @@ typedef struct home_server {
 #ifdef WITH_COA_TUNNEL
 	bool			recv_coa;		//!< receive CoA packets, too
 #endif
-	char const		*server;		//!< For internal proxying
+	char const		*virtual_server;		//!< For internal proxying
 	char const		*parent_server;
 
 	fr_ipaddr_t		ipaddr;			//!< IP address of home server.

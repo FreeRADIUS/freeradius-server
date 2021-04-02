@@ -163,12 +163,12 @@ static int home_server_addr_cmp(void const *one, void const *two)
 	home_server_t const *a = one;
 	home_server_t const *b = two;
 
-	if (a->server && !b->server) return -1;
-	if (!a->server && b->server) return +1;
-	if (a->server && b->server) {
+	if (a->virtual_server && !b->virtual_server) return -1;
+	if (!a->virtual_server && b->virtual_server) return +1;
+	if (a->virtual_server && b->virtual_server) {
 		rcode = a->type - b->type;
 		if (rcode != 0) return rcode;
-		return strcmp(a->server, b->server);
+		return strcmp(a->virtual_server, b->virtual_server);
 	}
 
 	if (a->port < b->port) return -1;
@@ -449,7 +449,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, server), NULL },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, virtual_server), NULL },
 
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
 
@@ -601,7 +601,7 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 		return false;
 	}
 
-	if (!home->server && !rbtree_insert(home_servers_byaddr, home)) {
+	if (!home->virtual_server && !rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
 		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
@@ -643,7 +643,7 @@ bool realm_home_server_add(home_server_t *home)
 		return false;
 	}
 
-	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
+	if (!home->virtual_server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
 		char buffer[INET6_ADDRSTRLEN + 3];
 
 		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
@@ -766,7 +766,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	} else if (cf_pair_find(cs, "virtual_server") != NULL) {
 		home->ipaddr.af = AF_UNSPEC;	/* mark ipaddr as unused */
 
-		if (!home->server) {
+		if (!home->virtual_server) {
 			cf_log_err_cs(cs, "Invalid value for virtual_server");
 			goto error;
 		}
@@ -778,13 +778,13 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 */
 		if (!rc) goto error;
 
-		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
-			cf_log_err_cs(cs, "No such server %s", home->server);
+		if (!cf_section_sub_find_name2(rc->cs, "server", home->virtual_server)) {
+			cf_log_err_cs(cs, "No such server %s", home->virtual_server);
 			goto error;
 		}
 
 		home->secret = "";
-		home->log_name = talloc_typed_strdup(home, home->server);
+		home->log_name = talloc_typed_strdup(home, home->virtual_server);
 	/*
 	 *	Otherwise it's an invalid config section and we
 	 *	raise an error.
@@ -815,7 +815,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 #ifdef WITH_COA
  		case HOME_TYPE_COA:
-			if (home->server != NULL) {
+			if (home->virtual_server != NULL) {
 				cf_log_err_cs(cs, "Home servers of type \"coa\" cannot point to a virtual server");
 				goto error;
 			}
@@ -909,7 +909,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		home->proto = proto;
 	}
 
-	if (!home->server && rbtree_finddata(home_servers_byaddr, home)) {
+	if (!home->virtual_server && rbtree_finddata(home_servers_byaddr, home)) {
 		cf_log_err_cs(cs, "Duplicate home server");
 		goto error;
 	}
@@ -976,7 +976,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	/*
 	 *	Virtual servers have some TLS restrictions.
 	 */
-	if (home->server) {
+	if (home->virtual_server) {
 		if (tls) {
 			cf_log_err_cs(cs, "Virtual home_servers cannot have a \"tls\" subsection");
 			goto error;
@@ -1420,7 +1420,7 @@ static int server_pool_add(realm_config_t *rc,
 			goto error;
 		}
 
-		if (!pool->fallback->server) {
+		if (!pool->fallback->virtual_server) {
 			cf_log_err_cs(cs, "Fallback home_server %s does NOT contain a virtual_server directive",
 				      pool->fallback->log_name);
 			goto error;
@@ -1706,7 +1706,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			home->src_ipaddr.af = home->ipaddr.af;
 		} else {
 			home->ipaddr.af = AF_UNSPEC;
-			home->server = server;
+			home->virtual_server = server;
 		}
 		talloc_free(q);
 
@@ -2866,7 +2866,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		found = pool->fallback;
 
 		WARN("Home server pool %s failing over to fallback %s",
-		      pool->name, found->server);
+		      pool->name, found->virtual_server);
 		if (pool->in_fallback) goto update_and_return;
 
 		pool->in_fallback = true;
@@ -2965,7 +2965,7 @@ home_server_t *home_server_find(fr_ipaddr_t *ipaddr, uint16_t port,
 #else
 	myhome.proto = IPPROTO_UDP;
 #endif
-	myhome.server = NULL;	/* we're not called for internal proxying */
+	myhome.virtual_server = NULL;	/* we're not called for internal proxying */
 
 	return rbtree_finddata(home_servers_byaddr, &myhome);
 }
@@ -2989,7 +2989,7 @@ home_server_t *home_server_find_bysrc(fr_ipaddr_t *ipaddr, uint16_t port,
 #else
 	myhome.proto = IPPROTO_UDP;
 #endif
-	myhome.server = NULL;	/* we're not called for internal proxying */
+	myhome.virtual_server = NULL;	/* we're not called for internal proxying */
 
 	return rbtree_finddata(home_servers_byaddr, &myhome);
 }
@@ -3014,7 +3014,7 @@ home_server_t *home_server_bynumber(int number)
 
 	memset(&myhome, 0, sizeof(myhome));
 	myhome.number = number;
-	myhome.server = NULL;	/* we're not called for internal proxying */
+	myhome.virtual_server = NULL;	/* we're not called for internal proxying */
 
 	return rbtree_finddata(home_servers_bynumber, &myhome);
 }
@@ -3075,7 +3075,7 @@ int home_server_afrom_file(char const *filename)
 
 	home->dynamic = true;
 
-	if (home->server || home->dual) {
+	if (home->virtual_server || home->dual) {
 		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server' or 'auth+acct'", p);
 		talloc_free(home);
 		goto error;
