@@ -217,7 +217,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	If the client also defines a server, do that now.
 	 */
-	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_server)) return false;
+	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_home_server)) return false;
 
 	/*
 	 *	If there's no client list, BUT there's a virtual
@@ -328,8 +328,8 @@ check_list:
 #endif
 #ifdef WITH_COA
 		    namecmp(coa_name) &&
-		    (old->coa_server == client->coa_server) &&
-		    (old->coa_pool == client->coa_pool) &&
+		    (old->coa_home_server == client->coa_home_server) &&
+		    (old->coa_home_pool == client->coa_home_pool) &&
 #endif
 		    (old->message_authenticator == client->message_authenticator)) {
 			WARN("Ignoring duplicate client %s", client->longname);
@@ -876,7 +876,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param in_server Whether the client should belong to a specific virtual server.
- * @param with_coa If true and coa_server or coa_pool aren't specified automatically,
+ * @param with_coa If true and coa_server or coa_home_pool aren't specified automatically,
  *	create a coa home_server section and add it to the client CONF_SECTION.
  * @return new RADCLIENT struct.
  */
@@ -1106,11 +1106,11 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 		cp = cf_pair_find(cs, "coa_server");
 		if (cp) {
 			c->coa_name = cf_pair_value(cp);
-			c->coa_pool = home_pool_byname(c->coa_name, HOME_TYPE_COA);
-			if (!c->coa_pool) {
-				c->coa_server = home_server_byname(c->coa_name, HOME_TYPE_COA);
+			c->coa_home_pool = home_pool_byname(c->coa_name, HOME_TYPE_COA);
+			if (!c->coa_home_pool) {
+				c->coa_home_server = home_server_byname(c->coa_name, HOME_TYPE_COA);
 			}
-			if (!c->coa_pool && !c->coa_server) {
+			if (!c->coa_home_pool && !c->coa_home_server) {
 				cf_log_err_cs(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
 				goto error;
 			}
@@ -1148,7 +1148,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 
 			rad_assert(home->type == HOME_TYPE_COA);
 
-			c->coa_server = home;
+			c->coa_home_server = home;
 			c->defines_coa_server = true;
 		}
 	}
