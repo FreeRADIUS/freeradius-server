@@ -377,6 +377,25 @@ log {
 	#  The message when the user exceeds the Simultaneous-Use limit.
 	#
 	msg_denied = "You are already logged in - access denied"
+
+	#  Suppress "secret" attributes when printing them in debug mode.
+	#
+	#  Secrets are NOT tracked across xlat expansions.  If your
+	#  configuration puts secrets into other strings, they will
+	#  still get printed.
+	#
+	#  Setting this to "yes" means that the server prints
+	#
+	#	<<< secret >>>
+	#
+	#  instead of the value, for attriburtes which contain secret
+	#  information.  e.g. User-Name, Tunnel-Password, etc.
+	#
+	#  This configuration is disabled by default.  It is extremely
+	#  important for administrators to be able to debug user logins
+	#  by seeing what is actually being sent.
+	#
+#	suppress_secrets = no
 }
 
 #  The program to execute to do concurrency checks.
