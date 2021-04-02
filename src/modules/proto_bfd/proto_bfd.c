@@ -407,7 +407,7 @@ static void bfd_trigger(bfd_state_t *session)
 
 	bfd_request(session, request, &packet);
 
-	trigger_exec(request, NULL, buffer, false, NULL);
+	trigger_exec(unlang_interpret_get_thread_default(), request, NULL, buffer, false, NULL);
 }
 
 
@@ -1329,7 +1329,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 
 		bfd_request(session, &request, &packet);
 
-		trigger_exec(&request, NULL, "server.bfd.warn", false, NULL);
+		trigger_exec(unlang_interpret_get_thread_default(), &request, NULL, "server.bfd.warn", false, NULL);
 	}
 
 

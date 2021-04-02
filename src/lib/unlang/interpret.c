@@ -1196,11 +1196,12 @@ unlang_interpret_t *unlang_interpret_get(request_t *request)
 
 /** Set the default interpreter for this thread
  *
-
  */
 void unlang_interpret_set_thread_default(unlang_interpret_t *intp)
 {
-	intp_thread_default = talloc_get_type_abort(intp, unlang_interpret_t);
+	if (intp) (void)talloc_get_type_abort(intp, unlang_interpret_t);
+
+	intp_thread_default = intp;
 }
 
 /** Get the default interpreter for this thread

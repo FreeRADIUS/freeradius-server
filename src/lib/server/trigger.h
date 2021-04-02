@@ -30,8 +30,9 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
 
@@ -41,9 +42,10 @@ xlat_action_t	trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 
 int		trigger_exec_init(CONF_SECTION const *cs);
 
-int		trigger_exec(request_t *request, CONF_SECTION const *cs,
+int		trigger_exec(unlang_interpret_t *intp,
+			     request_t *request, CONF_SECTION const *cs,
 			     char const *name, bool quench, fr_pair_list_t *args)
-			     CC_HINT(nonnull (3));
+			     CC_HINT(nonnull (4));
 
 void		trigger_exec_free(void);
 

@@ -94,7 +94,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 	fr_dcursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(request, ef->conf, name, false, &args);
+	trigger_exec(unlang_interpret_get_thread_default(), request, ef->conf, name, false, &args);
 
 	fr_pair_list_free(&args);
 }

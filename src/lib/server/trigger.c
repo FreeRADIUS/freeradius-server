@@ -184,6 +184,8 @@ typedef struct {
 	char			*name;
 	xlat_exp_t		*xlat;
 	fr_value_box_list_t	args;
+	bool			synchronous;
+	pid_t			pid;	//!< for synchronous execution.
 } fr_trigger_t;
 
 
@@ -198,11 +200,28 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	}
 
 	/*
-	 *	Execute the program without waiting for argss.
+	 *	Execute the program and wait for it to finish before
+	 *      continuing. This blocks the executing thread.
 	 */
-	if (fr_exec_nowait(request, &trigger->args, NULL) < 0) {
-		RPERROR("Failed running trigger %s", trigger->name);
-		RETURN_MODULE_FAIL;
+	if (trigger->synchronous) {
+		if (fr_exec_wait_start(&trigger->pid, NULL, NULL, NULL, request, &trigger->args, NULL) < 0) {
+			RPERROR("Failed running trigger %s", trigger->name);
+			RETURN_MODULE_FAIL;
+		}
+		/*
+		 *      Wait for the trigger to finish
+		 *
+		 *      FIXME - We really need to log stdout/stderr
+		 */
+		waitpid(&trigger->pid, NULL, 0);
+	/*
+	 *	Execute the program without waiting for the result.
+	 */
+	} else {
+		if (fr_exec_nowait(request, &trigger->args, NULL) < 0) {
+			RPERROR("Failed running trigger %s", trigger->name);
+			RETURN_MODULE_FAIL;
+		}
 	}
 
 	RETURN_MODULE_OK;
@@ -225,19 +244,24 @@ static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, 
  *
  * @note Calls to this function will be ignored if #trigger_exec_init has not been called.
  *
- * @param request	The current request.
- * @param cs		to search for triggers in.
- *			If cs is not NULL, the portion after the last '.' in name is used for the trigger.
- *			If cs is NULL, the entire name is used to find the trigger in the global trigger
- *			section.
- * @param name		the path relative to the global trigger section ending in the trigger name
- *			e.g. module.ldap.pool.start.
- * @param rate_limit	whether to rate limit triggers.
- * @param args		to make available via the @verbatim %(trigger:<arg>) @endverbatim xlat.
- * @return 		- 0 on success.
- *			- -1 on failure.
+ * @param[in] intp		Interpreter to run the trigger with.  If this is NULL the
+ *				trigger will be executed synchronously.
+ *
+ * @param[in] request		The current request.
+ * @param[in] cs			to search for triggers in.
+ *				If cs is not NULL, the portion after the last '.' in name is used for the trigger.
+ *				If cs is NULL, the entire name is used to find the trigger in the global trigger
+ *				section.
+ * @param[in] name		the path relative to the global trigger section ending in the trigger name
+ *				e.g. module.ldap.pool.start.
+ * @param[in] rate_limit	whether to rate limit triggers.
+ * @param[in] args		to make available via the @verbatim %(trigger:<arg>) @endverbatim xlat.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
+int trigger_exec(unlang_interpret_t *intp, request_t *request,
+		 CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_SECTION const	*subcs;
 
@@ -399,18 +423,33 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	}
 
 	/*
-	 *	Always run triggers in the default interpreter
+	 *	If we're not running it locally use the default
+	 *	interpreter for the thread.
 	 */
-	unlang_interpret_set(child, unlang_interpret_get_thread_default());
-
-	if (unlang_subrequest_child_push_and_detach(child) < 0) goto error;
+	if (intp) {
+		unlang_interpret_set(child, intp);
+		if (unlang_subrequest_child_push_and_detach(child) < 0) {
+		error:
+			ROPTIONAL(RPEDEBUG, PERROR, "Running trigger failed");
+			talloc_free(child);
+			return -1;
+		}
+	}
 
 	if (unlang_interpret_push_function(child, trigger_run, trigger_resume,
-					   NULL, UNLANG_TOP_FRAME, trigger) < 0) {
-	error:
-		ROPTIONAL(RPEDEBUG, PERROR, "Running trigger failed");
+					   NULL, UNLANG_TOP_FRAME, trigger) < 0) goto error;
+
+	if (!intp) {
+		/*
+		 *	Wait for the exec to finish too,
+		 *	so where there are global events
+		 *	the child processes don't race
+		 *	with something like the server
+		 *	shutting down.
+		 */
+		trigger->synchronous = true;
+		unlang_interpret_synchronous(child);
 		talloc_free(child);
-		return -1;
 	}
 
 	/*

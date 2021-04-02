@@ -884,6 +884,11 @@ void fr_worker_destroy(fr_worker_t *worker)
 //	WORKER_VERIFY;
 
 	/*
+	 *	Stop any new requests running with this interpreter
+	 */
+	unlang_interpret_set_thread_default(NULL);
+
+	/*
 	 *	Destroy all of the active requests.  These are ones
 	 *	which are still waiting for timers or file descriptor
 	 *	events.

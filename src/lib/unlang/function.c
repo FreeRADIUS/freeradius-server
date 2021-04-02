@@ -32,6 +32,7 @@ RCSID("$Id$")
  *	Some functions differ mainly in their parsing
  */
 typedef struct {
+	bool				done_func;		//!< Set to true after func has been executed.
 	unlang_function_t		func;			//!< To call when going down the stack.
 	unlang_function_t		repeat;			//!< To call when going back up the stack.
 	unlang_function_signal_t	signal;			//!< Signal function to call.
@@ -92,8 +93,9 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	 */
 	caller = request->module;
 	request->module = NULL;
-	if (!is_repeatable(frame)) {
+	if (!state->done_func) {
 		ua = state->func(p_result, &frame->priority, request, state->uctx);
+		state->done_func = true;
 	} else {
 		ua = state->repeat(p_result, &frame->priority, request, state->uctx);
 	}

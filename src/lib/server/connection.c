@@ -29,11 +29,11 @@ typedef struct fr_connection_s fr_connection_t;
 #define _CONNECTION_PRIVATE 1
 #include <freeradius-devel/server/connection.h>
 
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/cond_eval.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/trigger.h>
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/talloc.h>
@@ -126,7 +126,8 @@ struct fr_connection_s {
 
 #define CONN_TRIGGER(_state) do { \
 	if (conn->pub.triggers) { \
-		trigger_exec(NULL, NULL, fr_table_str_by_value(fr_connection_trigger_names, _state, "<INVALID>"), true, NULL); \
+		trigger_exec(unlang_interpret_get_thread_default(), \
+			     NULL, NULL, fr_table_str_by_value(fr_connection_trigger_names, _state, "<INVALID>"), true, NULL); \
 	} \
 } while (0)
 
@@ -164,13 +165,13 @@ typedef enum {
 } connection_dsignal_t;
 
 static fr_table_num_ordered_t const connection_dsignals[] = {
-	{ L("INIT"),		CONNECTION_DSIGNAL_INIT			},
+	{ L("INIT"),			CONNECTION_DSIGNAL_INIT			},
 	{ L("CONNECTING"),		CONNECTION_DSIGNAL_CONNECTED		},
 	{ L("RECONNECT-FAILED"),	CONNECTION_DSIGNAL_RECONNECT_FAILED	},
 	{ L("RECONNECT-EXPIRED"),	CONNECTION_DSIGNAL_RECONNECT_EXPIRED	},
 	{ L("SHUTDOWN"),		CONNECTION_DSIGNAL_SHUTDOWN		},
-	{ L("HALT"),		CONNECTION_DSIGNAL_HALT			},
-	{ L("FREE"),		CONNECTION_DSIGNAL_FREE			}
+	{ L("HALT"),			CONNECTION_DSIGNAL_HALT			},
+	{ L("FREE"),			CONNECTION_DSIGNAL_FREE			}
 };
 static size_t connection_dsignals_len = NUM_ELEMENTS(connection_dsignals);
 

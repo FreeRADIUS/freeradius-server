@@ -256,7 +256,7 @@ static inline void fr_pool_trigger_exec(fr_pool_t *pool, request_t *request, cha
 	if (!pool->triggers_enabled) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, event);
-	trigger_exec(request, pool->cs, name, true, &pool->trigger_args);
+	trigger_exec(unlang_interpret_get_thread_default(), request, pool->cs, name, true, &pool->trigger_args);
 }
 
 /** Find a connection handle in the connection list

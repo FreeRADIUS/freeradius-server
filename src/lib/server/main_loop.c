@@ -131,7 +131,7 @@ static void main_loop_signal_process(int flag)
 
 		last_hup = when;
 
-		trigger_exec(NULL, NULL, "server.signal.hup", true, NULL);
+		trigger_exec(unlang_interpret_get_thread_default(), NULL, NULL, "server.signal.hup", true, NULL);
 		fr_event_loop_exit(event_list, 0x80);
 	}
 }

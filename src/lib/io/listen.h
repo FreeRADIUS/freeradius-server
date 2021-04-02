@@ -64,7 +64,7 @@ struct fr_async_s {
 	uint32_t		priority;	//!< higher == higher priority
 };
 
-#define request_is_external(_x) (_x->async->listen != NULL)
+#define request_is_external(_x) (_x->async && (_x->async->listen != NULL))
 #define request_is_internal(_x) (!request_is_external(_x))
 
 int fr_io_listen_free(fr_listen_t *li);

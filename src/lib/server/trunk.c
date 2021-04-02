@@ -393,7 +393,8 @@ static size_t fr_trunk_connection_events_len = NUM_ELEMENTS(fr_trunk_connection_
 
 #define CONN_TRIGGER(_state) do { \
 	if (trunk->pub.triggers) { \
-		trigger_exec(NULL, NULL, fr_table_str_by_value(fr_trunk_conn_trigger_names, _state, \
+		trigger_exec(unlang_interpret_get_thread_default(), \
+			     NULL, NULL, fr_table_str_by_value(fr_trunk_conn_trigger_names, _state, \
 							       "<INVALID>"), true, NULL); \
 	} \
 } while (0)
@@ -423,7 +424,8 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 
 #define REQUEST_TRIGGER(_state) do { \
 	if (trunk->pub.triggers) { \
-		trigger_exec(NULL, NULL, fr_table_str_by_value(fr_trunk_req_trigger_names, _state, \
+		trigger_exec(unlang_interpret_get_thread_default(), \
+			     NULL, NULL, fr_table_str_by_value(fr_trunk_req_trigger_names, _state, \
 							       "<INVALID>"), true, NULL); \
 	} \
 } while (0)
