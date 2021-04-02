@@ -214,7 +214,7 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 		 *
 		 *      FIXME - We really need to log stdout/stderr
 		 */
-		waitpid(&trigger->pid, NULL, 0);
+		waitpid(trigger->pid, NULL, 0);
 	/*
 	 *	Execute the program without waiting for the result.
 	 */
