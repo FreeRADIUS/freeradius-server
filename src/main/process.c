@@ -4581,7 +4581,7 @@ set_packet_type:
 	/*
 	 *	And send the packet.
 	 */
-	coa->proxy_listener->send(coa->proxy_listener, coa);
+	coa->proxy_listener->proxy_send(coa->proxy_listener, coa);
 }
 
 
@@ -4725,8 +4725,8 @@ static void coa_retransmit(REQUEST *request)
 		request->proxy->dst_port,
 		request->proxy->id);
 
-	request->proxy_listener->send(request->proxy_listener,
-				      request);
+	request->proxy_listener->proxy_send(request->proxy_listener,
+					    request);
 }
 
 
