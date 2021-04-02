@@ -52,7 +52,7 @@ listen {
 	#	auth	  = only Access-Request
 	#	acct	  = only Accounting-Request
 	#	auth+acct = both
-	*	coa	  = only CoA / Disconnect requests
+	#	coa	  = only CoA / Disconnect requests
 	#
 	type = auth+acct
 
