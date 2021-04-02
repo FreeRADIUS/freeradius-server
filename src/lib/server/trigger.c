@@ -32,12 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 
-/*
- *	Public "thunk" API so that the various binaries can link to
- *	libfreeradius-server.a, and don't need to be linked to libfreeradius-io.a
- */
-fr_trigger_worker_t trigger_worker_request_add = NULL;
-
 /** Whether triggers are enabled globally
  *
  */
@@ -137,7 +131,7 @@ static int _trigger_last_fired_cmp(void const *a, void const *b)
  * We don't register the trigger xlat here, as we may inadvertently initialise
  * the xlat code, which is annoying when this is called from a utility.
  *
- * @param cs	to use as global trigger section.
+ * @param[in] cs	to use as global trigger section.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -164,7 +158,6 @@ int trigger_exec_init(CONF_SECTION const *cs)
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
-
 	triggers_init = true;
 
 	return 0;
@@ -404,6 +397,11 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 		talloc_free(text);
 		return -1;
 	}
+
+	/*
+	 *	Always run triggers in the default interpreter
+	 */
+	unlang_interpret_set(child, unlang_interpret_get_thread_default());
 
 	if (unlang_subrequest_child_push_and_detach(child) < 0) goto error;
 

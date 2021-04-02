@@ -310,11 +310,6 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	unlang_stack_frame_t		*frame;
 
 	/*
-	 *	Run in the same interpreter as the parent
-	 */
-	unlang_interpret_set(child, unlang_interpret_get(child->parent));
-
-	/*
 	 *	Push a new subrequest frame onto the stack
 	 *
 	 *	This allocates memory for the frame state
@@ -348,11 +343,6 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 
 int unlang_subrequest_child_push_and_detach(request_t *child)
 {
-	/*
-	 *	Run in the same interpreter as the parent
-	 */
-	unlang_interpret_set(child, unlang_interpret_get(child->parent));
-
 	/*
 	 *	Ensures the child is setup correctly and adds
 	 *	it into the runnable queue of whatever owns

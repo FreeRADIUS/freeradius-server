@@ -420,11 +420,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		return NULL;
 	}
 
-	/*
-	 *	Glue workers into the trigger code.
-	 */
-	trigger_worker_request_add = fr_worker_request_add;
-
 	sc->config = config;
 	sc->el = el;
 	sc->log = logger;

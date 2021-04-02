@@ -34,6 +34,10 @@ RCSID("$Id$")
 #include "parallel_priv.h"
 #include "unlang_priv.h"
 
+/** The default interpreter instance for this thread
+ */
+static _Thread_local unlang_interpret_t *intp_thread_default;
+
 static fr_table_num_ordered_t const unlang_action_table[] = {
 	{ L("unwind"), 		UNLANG_ACTION_UNWIND },
 	{ L("calculate-result"),	UNLANG_ACTION_CALCULATE_RESULT },
@@ -1188,6 +1192,24 @@ unlang_interpret_t *unlang_interpret_get(request_t *request)
 	unlang_stack_t	*stack = request->stack;
 
 	return stack->intp;
+}
+
+/** Set the default interpreter for this thread
+ *
+
+ */
+void unlang_interpret_set_thread_default(unlang_interpret_t *intp)
+{
+	intp_thread_default = talloc_get_type_abort(intp, unlang_interpret_t);
+}
+
+/** Get the default interpreter for this thread
+ *
+ * This allows detached requests to be executed asynchronously
+ */
+unlang_interpret_t *unlang_interpret_get_thread_default(void)
+{
+	return talloc_get_type_abort(intp_thread_default, unlang_interpret_t);
 }
 
 void unlang_interpret_init_global(void)

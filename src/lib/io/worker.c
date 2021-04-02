@@ -70,8 +70,6 @@ static void worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY
 #endif
 
-static _Thread_local fr_worker_t *thread_local_worker;
-
 #define CACHE_LINE_SIZE	64
 static alignas(CACHE_LINE_SIZE) atomic_uint64_t request_number = 0;
 
@@ -915,7 +913,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 		fr_channel_responder_ack_close(worker->channel[i]);
 	}
 
-	thread_local_worker = NULL;
 	talloc_free(worker);
 }
 
@@ -1200,8 +1197,7 @@ nomem:
 		fr_strerror_const("Failed initialising interpreter");
 		goto fail;
 	}
-
-	thread_local_worker = worker;
+	unlang_interpret_set_thread_default(worker->intp);
 
 	return worker;
 }
@@ -1289,42 +1285,6 @@ void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
 	worker_run_request(worker, fr_time());	/* Event loop time can be too old, and trigger asserts */
-}
-
-/** Asynchronously add a request_t to a worker thread
- *
- *  When we don't know what the worker is...
- *
- * @param[in] request		to add.
- * @param[in] process		module method to call when the request is executed.
- * @param[in] uctx		to pass to the process method.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_worker_request_add(request_t *request, module_method_t process, void *uctx)
-{
-	fr_worker_t *worker;
-	fr_time_t now;
-
-	worker = thread_local_worker;
-	if (unlikely(!worker)) {
-		fr_strerror_const("No worker has been defined");
-		return -1;
-	}
-
-	now = fr_time();
-
-	worker_request_init(worker, request, now);
-	worker_request_name_number(request);
-
-	fr_assert(request_is_internal(request));
-	request->async->process = process;
-	request->async->process_inst = uctx;
-
-	worker_request_time_tracking_start(worker, request, now);
-
-	return 0;
 }
 
 /** Print debug information about the worker structure

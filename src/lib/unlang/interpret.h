@@ -119,6 +119,10 @@ void			unlang_interpret_set(request_t *request, unlang_interpret_t *intp);
 
 unlang_interpret_t	*unlang_interpret_get(request_t *request);
 
+void			unlang_interpret_set_thread_default(unlang_interpret_t *intp);
+
+unlang_interpret_t	*unlang_interpret_get_thread_default(void);
+
 rlm_rcode_t		unlang_interpret(request_t *request) CC_HINT(hot);
 
 rlm_rcode_t		unlang_interpret_synchronous(request_t *request);
