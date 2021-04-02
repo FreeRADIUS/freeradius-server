@@ -154,7 +154,7 @@ static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, bool secr
  */
 int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
-	int		rcode = 0;
+	int		ret = 0;
 	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists, nonblock;
 
 	ssize_t		slen;
@@ -201,10 +201,9 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	if ((cp->value[0] == '\0') && cant_be_empty) {
 		cf_log_err(cp, "Configuration pair \"%s\" must not be empty (zero length)", cp->attr);
 		if (!required) cf_log_err(cp, "Comment item to silence this message");
-		rcode = -1;
-
 	error:
-		return rcode;
+		ret = -1;
+		return ret;
 	}
 
 	if (tmpl) {
@@ -293,7 +292,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		} else {
 			cf_log_err(cs, "Invalid value \"%s\" for boolean variable %s",
 				   cp->value, cp->attr);
-			rcode = -1;
 			goto error;
 		}
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
@@ -313,7 +311,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (v > INT32_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
 				   cp->attr, INT32_MAX);
-			rcode = -1;
 			goto error;
 		}
 
@@ -329,7 +326,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (v > UINT8_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
 				   cp->attr, UINT8_MAX);
-			rcode = -1;
 			goto error;
 		}
 		*(uint8_t *)out = (uint8_t) v;
@@ -344,7 +340,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (v > UINT16_MAX) {
 			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
 				   cp->attr, UINT16_MAX);
-			rcode = -1;
 			goto error;
 		}
 		*(uint16_t *)out = (uint16_t) v;
@@ -361,7 +356,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	{
 		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
 			cf_log_perr(cs, "Invalid value \"%s\" for variable %s", cp->value, cp->attr);
-			rcode = -1;
 			goto error;
 		}
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cp->attr, *(size_t *)out);
@@ -385,15 +379,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	to be caught as early as possible, during
 		 *	server startup.
 		 */
-		if (file_input && !cf_file_check(cs, cp->value, true)) {
-			rcode = -1;
-			goto error;
-		}
-
-		if (file_exists && !cf_file_check(cs, cp->value, false)) {
-			rcode = -1;
-			goto error;
-		}
+		if (file_input && !cf_file_check(cs, cp->value, true)) goto error;
+		if (file_exists && !cf_file_check(cs, cp->value, false)) goto error;
 
 		/*
 		 *	Free any existing buffers
@@ -410,14 +397,10 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
-			rcode = -1;
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
-			rcode = -1;
-			goto error;
-		}
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) goto error;
 	}
 		break;
 
@@ -428,14 +411,10 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
-			rcode = -1;
 			goto error;
 		}
 		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
-			rcode = -1;
-			goto error;
-		}
+		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) goto error;
 	}
 		break;
 
@@ -450,7 +429,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		slen = tmpl_cast_from_substr(&our_type, &sbuff);
 		if (slen < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
-			rcode = -1;
 			goto error;
 		}
 
@@ -467,7 +445,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 				default:
 					cf_log_perr(cp, "Invalid cast, expecting 'ipv4addr' or 'ipv6addr'");
-					rcode = -1;
 					goto error;
 				}
 			} else if (type == FR_TYPE_COMBO_IP_PREFIX) {
@@ -482,7 +459,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 				default:
 					cf_log_perr(cp, "Invalid cast, expecting 'ipv4prefix' or 'ipv6prefix'");
-					rcode = -1;
 					goto error;
 				}
 			}
@@ -490,12 +466,10 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (fr_inet_pton(ipaddr, cp->value, -1, af, true, true) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
-			rcode = -1;
 			goto error;
 		}
 		/* Also prints the IP to the log */
 		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
-			rcode = -1;
 			goto error;
 		}
 	}
@@ -507,7 +481,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (fr_time_delta_from_str(&delta, cp->value, FR_TIME_RES_SEC) < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
-			rcode = -1;
 			goto error;
 		}
 
@@ -528,7 +501,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (sscanf(cp->value, "%f", &num) != 1) {
 			cf_log_err(cp, "Failed parsing floating point number");
-			rcode = -1;
 			goto error;
 		}
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr,
@@ -543,7 +515,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (sscanf(cp->value, "%lf", &num) != 1) {
 			cf_log_err(cp, "Failed parsing floating point number");
-			rcode = -1;
 			goto error;
 		}
 		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr, num);
@@ -562,7 +533,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
 			   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"), type);
-		rcode = -1;
 		goto error;
 	}
 
@@ -570,7 +540,7 @@ finish:
 	cp->parsed = true;
 	cp->printed = true;
 
-	return rcode;
+	return ret;
 }
 
 /** Allocate a pair using the dflt value and quotation
@@ -634,7 +604,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	cp->parsed = true;
 
 	/*
-	 *	Set the rcode to indicate we used a default value
+	 *	Set the ret to indicate we used a default value
 	 */
 	*out = cp;
 
