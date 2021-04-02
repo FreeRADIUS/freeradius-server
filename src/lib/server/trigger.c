@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
+#include <waitpid.h>
 
 /** Whether triggers are enabled globally
  *
