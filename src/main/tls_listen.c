@@ -292,7 +292,7 @@ check_for_setup:
 		 *	or any other contents.
 		 */
 		request->packet->code = PW_CODE_STATUS_SERVER;
-		request->packet->data = talloc_zero_array(packet, uint8_t, 20);
+		request->packet->data = talloc_zero_array(request->packet, uint8_t, 20);
 		request->packet->data[0] = PW_CODE_STATUS_SERVER;
 		request->packet->data[3] = 20;
 		sock->state = LISTEN_TLS_CHECKING;
