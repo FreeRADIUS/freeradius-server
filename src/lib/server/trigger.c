@@ -408,7 +408,7 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	if (unlang_interpret_push_function(child, trigger_run, trigger_resume,
 					   NULL, UNLANG_TOP_FRAME, trigger) < 0) {
 	error:
-		RPEDEBUG("Running trigger failed");
+		ROPTIONAL(RPEDEBUG, PERROR, "Running trigger failed");
 		talloc_free(child);
 		return -1;
 	}
