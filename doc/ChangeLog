@@ -60,7 +60,12 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  or modules to match attributes in the packet which use
 	  new names.
 	* Allow querying IPv6 stats via FreeRADIUS-Stats-Client-IPv6-Address
-	  and FreeRADIUS-Stats-Server-IPv6-Address,
+	  and FreeRADIUS-Stats-Server-IPv6-Address
+	* Add warnings if there is no "real" User-Name to identify users.
+	* Add sample configuration to update Stripped-User-Name and/or
+	  Class for user sessions. See sites-available/default
+	* Add configuration to suppress printing values for User-Name, etc.
+	  See radiusd.conf, "suppress_secrets"
 
 	Bug fixes
 	* Fix long-term double free due to PCRE calling our "free"
@@ -110,7 +115,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  full after writing an attribute value, and more attributes needed to be encoded.
 	  Reported by Adrian Smith.
 	* Fix leak with unknown attributes in detail reader.  Fixes #3937.
-	* Fix parenting issues in rlm_yubikey.
+	* Fix parenting issues in rlm_yubikey.  Fixes #4012.
+	* Update Mongo examples to be correct.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
