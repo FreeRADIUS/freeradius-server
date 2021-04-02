@@ -37,7 +37,7 @@ else
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 ifeq "$(EAPOL_TEST)" ""
-EAPOL_TEST := $(shell which eapol_test)
+EAPOL_TEST := $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh)
 endif
 
 endif # check for eapol_test
@@ -172,7 +172,7 @@ clean.tests.eap:
 #
 $(BUILD_PATH)/tests/eap/%.ok: NO_MPPE = $(filter eap-md5,$(basename $(notdir $@)))
 
-$(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap
+$(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(BUILD_PATH)/tests/eap radiusd.pid radiusd.kill
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	@if ! $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
 		echo "    " FAILED; \
@@ -216,7 +216,9 @@ endef
 $(foreach FILE,$(patsubst %.conf,%,$(EAP_TLS_FILES)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
 endif # there's no "prefix", so we don't run the full EAP tests
 
-tests.eap: $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES) $(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
+EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES) $(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
+
+tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
 
 endif # we have eapol_test built
 
