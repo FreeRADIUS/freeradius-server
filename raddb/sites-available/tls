@@ -259,6 +259,13 @@ listen {
 		cipher_server_preference = no
 
 		#
+		#  Older TLS versions are deprecated.  But for RadSec,
+		#  we CAN allow TLS 1.3.
+		#
+		tls_min_version = "1.2"
+		tls_max_version = "1.3"
+
+		#
 		#  Session resumption / fast reauthentication
 		#  cache.
 		#

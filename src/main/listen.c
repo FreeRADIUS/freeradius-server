@@ -1055,7 +1055,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			 */
 			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
 
-			this->tls = tls_server_conf_parse(tls);
+			this->tls = tls_server_conf_parse(tls, true);
 			if (!this->tls) {
 				return -1;
 			}

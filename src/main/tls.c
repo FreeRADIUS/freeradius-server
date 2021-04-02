@@ -3660,7 +3660,7 @@ post_ca:
 	 *	UNLESS they set the magic / undocumented flag saying
 	 *	"please, let me use TLS 1.3".
 	 */
-	if (!conf->tls13_enable_magic) {
+	if (!conf->tls13_internal_enable && !conf->tls13_enable_magic) {
 		if (min_version >= TLS1_3_VERSION) {
 			ERROR("tls_min_version '%s' MUST NOT be 1.3, as the standards have not been finalized.",
 			      conf->tls_min_version);
@@ -4096,7 +4096,7 @@ static int store_cmp(void const *a, void const *b)
 	return one - two;
 }
 
-fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
+fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool allow_tls13)
 {
 	fr_tls_server_conf_t *conf;
 
@@ -4122,6 +4122,11 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
+
+	/*
+	 *	Allow TLS 1.3 for RadSec
+	 */
+	conf->tls13_internal_enable = allow_tls13;
 
 	/*
 	 *	Only check for certificate things if we don't have a
@@ -4154,7 +4159,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize configuration mutex
 	 */
-	 pthread_mutex_init(&conf->mutex, NULL);
+	pthread_mutex_init(&conf->mutex, NULL);
 
 	/*
 	 *	Initialize TLS
@@ -4292,6 +4297,11 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
+
+	/*
+	 *	Allow TLS 1.3 for outgoing RadSec connections.
+	 */
+	conf->tls13_internal_enable = true;
 
 	/*
 	 *	Initialize TLS
