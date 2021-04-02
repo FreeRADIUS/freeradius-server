@@ -93,7 +93,7 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	 */
 	caller = request->module;
 	request->module = NULL;
-	if (!state->done_func) {
+	if (!state->done_func && state->func) {
 		ua = state->func(p_result, &frame->priority, request, state->uctx);
 		state->done_func = true;
 	} else {
