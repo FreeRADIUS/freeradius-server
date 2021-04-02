@@ -341,6 +341,20 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	return 0;
 }
 
+int unlang_subrequest_child_push_and_detach(request_t *child)
+{
+	/*
+	 *	Ensures the child is setup correctly and adds
+	 *	it into the runnable queue of whatever owns
+	 *	the interpreter.
+	 */
+	interpret_child_init(child);
+
+	if (unlang_subrequest_child_detach(child) < 0) return -1;
+
+	return 0;
+}
+
 int unlang_subrequest_child_op_init(void)
 {
 	if (fr_dict_autoload(subrequest_dict) < 0) {

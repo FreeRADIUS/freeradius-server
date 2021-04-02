@@ -25,11 +25,12 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	Public "thunk" API so that the various binaries can link to
@@ -189,58 +190,41 @@ bool trigger_enabled(void)
 typedef struct {
 	char			*name;
 	xlat_exp_t		*xlat;
-	fr_pair_list_t		vps;
-	fr_value_box_list_t	box;
-	bool			expanded;
+	fr_value_box_list_t	args;
 } fr_trigger_t;
 
-static unlang_action_t trigger_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+
+static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+				      request_t *request, void *rctx)
 {
-	fr_trigger_t	*ctx = talloc_get_type_abort(mctx->instance, fr_trigger_t);
+	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
 
-	if (!ctx->expanded) {
-		RDEBUG("Running trigger %s", ctx->name);
-
-		/*
-		 *	Bootstrap these for simpliciy.
-		 */
-		(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &ctx->vps);
-
-		if (unlang_interpret_push_instruction(request, NULL,
-						      RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-		if (unlang_xlat_push(request, &ctx->box, request, ctx->xlat, true) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-		ctx->expanded = true;
-
-		/*
-		 *	Run the interpreter, without caring about the
-		 *	rcode.  We just want a value box as the
-		 *	output.
-		 */
-		(void) unlang_interpret_synchronous(request);
-
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-			RETURN_MODULE_HANDLED;
-		}
-	}
-
-	if (fr_dlist_empty(&ctx->box)) {
-		RERROR("Failed trigger %s - did not expand to anything", ctx->name);
+	if (fr_dlist_empty(&trigger->args)) {
+		RERROR("Failed trigger %s - did not expand to anything", trigger->name);
 		RETURN_MODULE_FAIL;
 	}
 
 	/*
-	 *	Execute the program without waiting for results.
+	 *	Execute the program without waiting for argss.
 	 */
-	if (fr_exec_nowait(request, &ctx->box, NULL) < 0) {
-		RPERROR("Failed running trigger %s", ctx->name);
+	if (fr_exec_nowait(request, &trigger->args, NULL) < 0) {
+		RPERROR("Failed running trigger %s", trigger->name);
 		RETURN_MODULE_FAIL;
 	}
 
 	RETURN_MODULE_OK;
+}
+
+static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	fr_trigger_t	*trigger = talloc_get_type_abort(uctx, fr_trigger_t);
+
+	RDEBUG("Running trigger %s", trigger->name);
+
+	if (unlang_xlat_push(request, &trigger->args, request,
+			     trigger->xlat, UNLANG_SUB_FRAME) < 0) RETURN_MODULE_FAIL;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 
@@ -270,14 +254,14 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	char const		*attr;
 	char const		*value;
 
-	request_t			*fake;
-	fr_trigger_t		*ctx;
+	request_t		*child;
+	fr_trigger_t		*trigger;
 	ssize_t			slen;
 
 	/*
 	 *	noop if trigger_exec_init was never called
 	 */
-	if (!triggers_init || !trigger_worker_request_add) return 0;
+	if (!triggers_init) return 0;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
@@ -368,15 +352,15 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 	/*
 	 *	radius_exec_program always needs a request.
 	 */
-	fake = request_alloc(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
+	child = request_alloc(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the
 	 *	trigger_xlat function.
 	 */
-	if (args && (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
+	if (args && (request_data_add(child, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
-		talloc_free(fake);
+		talloc_free(child);
 		return -1;
 	}
 
@@ -385,56 +369,54 @@ int trigger_exec(request_t *request, CONF_SECTION const *cs, char const *name, b
 
 		memcpy(&name_tmp, &name, sizeof(name_tmp));
 
-		if (request_data_add(fake, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
+		if (request_data_add(child, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
-			talloc_free(fake);
+			talloc_free(child);
 			return -1;
 		}
 	}
 
-	MEM(ctx = talloc_zero(fake, fr_trigger_t));
-	fr_pair_list_init(&ctx->vps);
-	fr_value_box_list_init(&ctx->box);
-	ctx->name = talloc_strdup(ctx, value);
+	MEM(trigger = talloc_zero(child, fr_trigger_t));
+	fr_value_box_list_init(&trigger->args);
+	trigger->name = talloc_strdup(trigger, value);
 
+	/*
+	 *	Automatically populate the trigger's
+	 *	request list from the parent's.
+	 */
 	if (request && !fr_pair_list_empty(&request->request_pairs)) {
-		(void) fr_pair_list_copy(ctx, &ctx->vps, &request->request_pairs);
+		(void) fr_pair_list_copy(child->request_ctx, &child->request_pairs, &request->request_pairs);
 	}
 
-	slen = xlat_tokenize_argv(ctx, &ctx->xlat, NULL,
-				  &FR_SBUFF_IN(ctx->name, talloc_array_length(ctx->name) - 1), NULL, NULL);
+	slen = xlat_tokenize_argv(trigger, &trigger->xlat, NULL,
+				  &FR_SBUFF_IN(trigger->name, talloc_array_length(trigger->name) - 1), NULL, NULL);
 	if (slen <= 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(ctx, &spaces, &text, slen, fr_strerror());
+		fr_canonicalize_error(trigger, &spaces, &text, slen, fr_strerror());
 
 		cf_log_err(cp, "Syntax error");
-		cf_log_err(cp, "%s", ctx->name);
+		cf_log_err(cp, "%s", trigger->name);
 		cf_log_err(cp, "%s^ %s", spaces, text);
 
-		talloc_free(fake);
+		talloc_free(child);
 		talloc_free(spaces);
 		talloc_free(text);
 		return -1;
 	}
 
+	if (unlang_subrequest_child_push_and_detach(child) < 0) goto error;
 
-	/*
-	 *	Ensure the trigger request is no longer associated
-	 *	with the parent.
-	 */
-	if (request) request_detach(fake);
-
-	/*
-	 *	Run the trigger asynchronously.
-	 */
-	if (trigger_worker_request_add(fake, trigger_process, ctx) < 0) {
-		talloc_free(fake);
+	if (unlang_interpret_push_function(child, trigger_run, trigger_resume,
+					   NULL, UNLANG_TOP_FRAME, trigger) < 0) {
+	error:
+		RPEDEBUG("Running trigger failed");
+		talloc_free(child);
 		return -1;
 	}
 
 	/*
-	 *	Otherwise the worker cleans up the fake request.
+	 *	Otherwise the worker cleans up the child request.
 	 */
 	return 0;
 }

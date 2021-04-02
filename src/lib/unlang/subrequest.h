@@ -42,6 +42,9 @@ int		unlang_subrequest_child_detach(request_t *request);
 int		unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 					     unlang_subrequest_session_t const *session,
 					     bool top_frame);
+
+int		unlang_subrequest_child_push_and_detach(request_t *child);
+
 #ifdef __cplusplus
 }
 #endif
