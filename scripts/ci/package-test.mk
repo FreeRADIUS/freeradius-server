@@ -30,14 +30,12 @@ RADDB_PATH := /etc/freeradius/
 endif
 
 #
-#  We assume a preinstalled version of eapol_test
+#  We prefer to use our exactly eapol_test version
 #
-EAPOL_TEST := $(shell which eapol_test)
+EAPOL_TEST := $(shell ./scripts/ci/eapol_test-build.sh)
 
 MAKE_ARGS := RADIUSD_BIN=$(RADIUSD_BIN) PORT=$(PORT) SECRET="$(SECRET)" DICT_PATH=$(DICT_PATH) RADDB_PATH=$(RADDB_PATH)
 
 .PHONY: package-test
 package-test:
-	$(MAKE) -C src/tests $(MAKE_ARGS) radiusd.pid
 	$(MAKE) -C src/tests $(MAKE_ARGS) tests.eap
-	$(MAKE) -C src/tests $(MAKE_ARGS) radiusd.kill
