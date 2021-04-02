@@ -191,6 +191,9 @@ ifneq "$(prefix)" ""
 define EAP_TLS_CONFIG
 $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
 	@sed 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' < $$< > $$@
+#   Just keep the TLS versions that we want to disable. e.g: tls_disable_tlsv1_XX=1
+	@sed '/phase1=/s/tls_disable_tlsv1_[0-9]=0//g' < $$@ > $$@.tmp
+	@mv -f $$@.tmp $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
