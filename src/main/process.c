@@ -1506,7 +1506,8 @@ static void request_finish(REQUEST *request, int action)
 	/*
 	 *	See if we need to delay an Access-Reject packet.
 	 */
-	if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
+	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    (request->reply->code == PW_CODE_ACCESS_REJECT) &&
 	    (request->root->reject_delay.tv_sec > 0)) {
 		request->response_delay = request->root->reject_delay;
 
