@@ -3763,7 +3763,6 @@ retry:
 			talloc_free(coa_key);
 			return;
 		}
-		(void) pthread_mutex_init(&coa_key->mutex, NULL);
 
 		if (!rbtree_insert(coa_tree, coa_key)) {
 			talloc_free(coa_key);
@@ -3779,6 +3778,8 @@ retry:
 			tries++;
 			return;
 		}
+
+		(void) pthread_mutex_init(&coa_key->mutex, NULL);
 	}
 
 	this->key = coa_key->key; /* no reason to duplicate the key */
