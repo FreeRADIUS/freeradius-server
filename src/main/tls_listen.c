@@ -529,7 +529,6 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (sock->state == LISTEN_TLS_CHECKING) {
 		if (request->reply->code != PW_CODE_ACCESS_ACCEPT) {
-			REDEBUG("Rejecting client TLS connection");
 			listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 			listener->tls = NULL; /* parent owns this! */
 
@@ -542,7 +541,6 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 
 		rad_assert(sock->request->packet != request->packet);
 
-		RDEBUG("Accepting client TLS connection");
 		sock->state = LISTEN_TLS_SETUP;
 		(void) dual_tls_recv(listener);
 		return 0;

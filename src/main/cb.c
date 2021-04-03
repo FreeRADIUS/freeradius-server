@@ -33,41 +33,41 @@ void cbtls_info(SSL const *s, int where, int ret)
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
-		str="TLS_connect";
+		str="connect";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
-		str="TLS_accept";
+		str="accept";
 	} else {
-		str="(other)";
+		str="other";
 	}
 
 	state = SSL_state_string_long(s);
 	state = state ? state : "<none>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		RDEBUG3("%s: %s", str, state);
+		RDEBUG3("(TLS) %s: %s", str, state);
 		return;
 	}
 
 	if (where & SSL_CB_ALERT) {
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
-		RERROR("TLS Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
+		RERROR("(TLS) Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
 		       SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
 		return;
 	}
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			RERROR("%s: Failed in %s", str, state);
+			RERROR("(TLS) %s: Failed in %s", str, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(s)) {
-				RDEBUG2("%s: Need to read more data: %s", str, state);
+				RDEBUG2("(TLS) %s: Need to read more data: %s", str, state);
 				return;
 			}
-			ERROR("tls: %s: Error in %s", str, state);
+			RERROR("(TLS) %s: Error in %s", str, state);
 		}
 	}
 }
@@ -88,13 +88,13 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 *	the SSL Session state.
 	 */
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
-		DEBUG4("Ignoring cbtls_msg call with pseudo content type %i, version %i",
+		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i, version %i",
 		       content_type, msg_version);
 		return;
 	}
 
 	if ((write_p != 0) && (write_p != 1)) {
-		DEBUG4("Ignoring cbtls_msg call with invalid write_p %d", write_p);
+		DEBUG4("(TLS) Ignoring cbtls_msg call with invalid write_p %d", write_p);
 		return;
 	}
 
