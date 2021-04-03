@@ -364,6 +364,33 @@ int rad_status_server(REQUEST *request)
 	int rcode = RLM_MODULE_OK;
 	DICT_VALUE *dval;
 
+#ifdef WITH_TLS
+	if (request->listener->tls) {
+		listen_socket_t *sock = request->listener->data;
+
+		if (sock->state == LISTEN_TLS_CHECKING) {
+			RDEBUG("Checking TLS connection to see if it is authorized.");
+
+			dval = dict_valbyname(PW_AUTZ_TYPE, 0, "New-TLS-Connection");
+			if (dval) {
+				rcode = process_authorize(dval->value, request);
+			} else {
+				rcode = RLM_MODULE_OK;
+				RWDEBUG("Did not find 'Autz-Type New-TLS-Connection' - defaulting to accept");
+			}
+
+			if ((rcode == RLM_MODULE_OK) || (rcode == RLM_MODULE_UPDATED)) {
+				request->reply->code = PW_CODE_ACCESS_ACCEPT;
+			} else {
+				request->reply->code = PW_CODE_ACCESS_REJECT;
+			}
+
+			return 0;
+		}
+	}
+#endif
+
+
 	switch (request->listener->type) {
 #ifdef WITH_STATS
 	case RAD_LISTEN_NONE:
