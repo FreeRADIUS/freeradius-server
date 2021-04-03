@@ -589,7 +589,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 
 	rad_assert(request != NULL);
 
-	RDEBUG2("Initiating new TLS session");
+	RDEBUG2("(TLS) Initiating new session");
 
 	/*
 	 *	Replace X509 store if it is time to update CRLs/certs in ca_path
@@ -686,7 +686,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	Verify the peer certificate, if asked.
 	 */
 	if (client_cert) {
-		RDEBUG2("Setting verify mode to require certificate from client");
+		RDEBUG2("(TLS) Setting verify mode to require certificate from client");
 		verify_mode = SSL_VERIFY_PEER;
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
