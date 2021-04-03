@@ -467,6 +467,23 @@ authorize {
 #	Autz-Type Status-Server {
 #
 #	}
+
+	#
+	#  RADIUS/TLS (or RadSec) connections are processed through
+	#  this section.  See sites-available/tls, and the configuration
+	#  item "check_client_connections" for more information.
+	#
+	#  The request contains TLS client certificate attributes,
+	#  and nothing else.  The debug output will print which
+	#  attributes are available on your system.
+	#
+	#  If the section returns "ok" or "updated", then the
+	#  connection is accepted.  Otherwise the connection is
+	#  terminated.
+	#
+	Autz-Type New-TLS-Connection {
+		  ok
+	}
 }
 
 

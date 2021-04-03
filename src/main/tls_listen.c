@@ -282,9 +282,7 @@ check_for_setup:
 			goto get_application_data;
 		}
 
-		RDEBUG("Checking initial connection");
 		request->packet->vps = fr_pair_list_copy(request->packet, sock->certs);
-		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "&request:");
 
 		/*
 		 *	Fake out a Status-Server packet, which

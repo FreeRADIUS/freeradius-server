@@ -65,6 +65,24 @@ listen {
 	clients = radsec
 
 	#
+	#  When this is set to "yes", new TLS connections
+	#  are processed through a section called
+	#
+	#	Autz-Type New-TLS-Connection {
+	#		  ...
+	#	}
+	#
+	#  The request contains TLS client certificate attributes,
+	#  and nothing else.  The debug output will print which
+	#  attributes are available on your system.
+	#
+	#  If the section returns "ok" or "updated", then the
+	#  connection is accepted.  Otherwise the connection is
+	#  terminated.
+	#
+#	check_client_connections = yes
+
+	#
 	#  Connection limiting for sockets with "proto = tcp".
 	#
 	limit {
