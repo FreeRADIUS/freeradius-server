@@ -135,7 +135,7 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 	vb->vb_bool = echo->replied;
 
-	(void) rbtree_delete_by_data(thread->t->tree, echo);
+	(void) rbtree_delete(thread->t->tree, echo);
 	talloc_free(echo);
 
 	fr_dcursor_insert(out, vb);
@@ -153,7 +153,7 @@ static void xlat_icmp_cancel(request_t *request, UNUSED void *xlat_inst, void *x
 
 	RDEBUG2("Cancelling ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
 
-	(void) rbtree_delete_by_data(thread->t->tree, echo);
+	(void) rbtree_delete(thread->t->tree, echo);
 	talloc_free(echo);
 }
 
@@ -233,7 +233,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	if (unlang_xlat_event_timeout_add(request, _xlat_icmp_timeout, echo, fr_time() + inst->timeout) < 0) {
 		RPEDEBUG("Failed adding timeout");
-		(void) rbtree_delete_by_data(thread->t->tree, echo);
+		(void) rbtree_delete(thread->t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
@@ -270,14 +270,14 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	rcode = sendto(thread->t->fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &dst, salen);
 	if (rcode < 0) {
 		REDEBUG("Failed sending ICMP request to %pV: %s", echo->ip, fr_syserror(errno));
-		(void) rbtree_delete_by_data(thread->t->tree, echo);
+		(void) rbtree_delete(thread->t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
 
 	if ((size_t) rcode < sizeof(icmp)) {
 		REDEBUG("Failed sending entire ICMP packet");
-		(void) rbtree_delete_by_data(thread->t->tree, echo);
+		(void) rbtree_delete(thread->t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
@@ -365,13 +365,13 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	 *	Look up the packet by the fields which determine *our* ICMP packets.
 	 */
 	my_echo.counter = icmp->counter;
-	echo = rbtree_find_data(t->tree, &my_echo);
+	echo = rbtree_find(t->tree, &my_echo);
 	if (!echo) {
 		DEBUG("Can't find packet counter=%d in tree", icmp->counter);
 		return;
 	}
 
-	(void) rbtree_delete_by_data(t->tree, echo);
+	(void) rbtree_delete(t->tree, echo);
 
 	/*
 	 *	We have a reply!

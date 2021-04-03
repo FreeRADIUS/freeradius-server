@@ -760,7 +760,7 @@ fr_listen_t *listen_find_any(fr_listen_t *li)
 {
 	if (!listen_addr_root) return false;
 
-	return rbtree_find_data(listen_addr_root, li);
+	return rbtree_find(listen_addr_root, li);
 }
 
 
@@ -858,7 +858,7 @@ int virtual_servers_instantiate(void)
 			fr_virtual_namespace_t	find = { .namespace = virtual_servers[i]->namespace };
 			fr_virtual_namespace_t	*found;
 
-			found = rbtree_find_data(vns_tree, &find);
+			found = rbtree_find(vns_tree, &find);
 			if (found) {
 				fr_assert(dict && (dict->dict == found->dict));
 
@@ -1616,7 +1616,7 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 
 	fr_assert(server_section_name_tree != NULL);
 
-	old = rbtree_find_data(server_section_name_tree, entry);
+	old = rbtree_find(server_section_name_tree, entry);
 	if (old) return 0;
 
 #ifndef NDEBUG
@@ -1668,7 +1668,7 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 	 *	define both "accounting on", and "accounting *".
 	 */
 	if (name2 != CF_IDENT_ANY) {
-		entry = rbtree_find_data(server_section_name_tree,
+		entry = rbtree_find(server_section_name_tree,
 					&(virtual_server_compile_t) {
 						.name = name1,
 						.name2 = name2,
@@ -1679,7 +1679,7 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 	/*
 	 *	Then look up the wildcard, if we didn't find any matching name2.
 	 */
-	entry = rbtree_find_data(server_section_name_tree,
+	entry = rbtree_find(server_section_name_tree,
 				&(virtual_server_compile_t) {
 					.name = name1,
 					.name2 = CF_IDENT_ANY,

@@ -607,7 +607,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 		session->pthread_id = pthread_self();
 	} else {
 		if (!bfd_pthread_create(session)) {
-			rbtree_delete_by_data(sock->session_tree, session);
+			rbtree_delete(sock->session_tree, session);
 			talloc_free(session);
 			return NULL;
 		}
@@ -1488,7 +1488,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	fr_ipaddr_from_sockaddr(&my_session.socket.inet.dst_ipaddr,
 				&my_session.socket.inet.dst_port, &src, sizeof_src);
 
-	session = rbtree_find_data(sock->session_tree, &my_session);
+	session = rbtree_find(sock->session_tree, &my_session);
 	if (!session) {
 		DEBUG("BFD unknown peer");
 		return 0;
@@ -1590,7 +1590,7 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 
 	       my_session.socket.inet.dst_ipaddr = ipaddr;
 	       my_session.socket.inet.dst_port = port;
-	       if (rbtree_find_data(sock->session_tree, &my_session) != NULL) {
+	       if (rbtree_find(sock->session_tree, &my_session) != NULL) {
 		       cf_log_err(ci, "Peers must have unique IP addresses");
 		       return -1;
 	       }

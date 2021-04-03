@@ -56,6 +56,8 @@ struct rbtree_s {
 #  define RBTREE_MAGIC (0x5ad09c42)
 #endif
 
+static fr_rb_node_t	*rbtree_insert_node(rbtree_t *tree, void *data) CC_HINT(nonnull);
+
 static inline void rbtree_free_data(rbtree_t *tree, fr_rb_node_t *node)
 {
 	if (!tree->free || unlikely(node->being_freed)) return;
@@ -314,7 +316,7 @@ static void insert_fixup(rbtree_t *tree, fr_rb_node_t *x)
 /** Insert an element into the tree
  *
  */
-fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
+static fr_rb_node_t *rbtree_insert_node(rbtree_t *tree, void *data)
 {
 	fr_rb_node_t *current, *parent, *x;
 
@@ -570,36 +572,11 @@ static void rbtree_delete_internal(rbtree_t *tree, fr_rb_node_t *z, bool skiploc
 	}
 }
 
-void rbtree_delete(rbtree_t *tree, fr_rb_node_t *z)
-{
-	if (unlikely(tree->being_freed) || unlikely(z->being_freed)) return;
-
-	rbtree_delete_internal(tree, z, false);
-}
-
-/** Delete a node from the tree, based on given data, which MUST have come from rbtree_find_data().
- *
- *
- */
-bool rbtree_delete_by_data(rbtree_t *tree, void const *data)
-{
-	fr_rb_node_t *node;
-
-	if (unlikely(tree->being_freed)) return false;
-
-	node = rbtree_find(tree, data);
-	if (!node) return false;
-
-	rbtree_delete(tree, node);
-
-	return true;
-}
-
 
 /* Find user data, returning the node
  *
  */
-fr_rb_node_t *rbtree_find(rbtree_t *tree, void const *data)
+static fr_rb_node_t *rbtree_find_node(rbtree_t *tree, void const *data)
 {
 	fr_rb_node_t *current;
 
@@ -628,16 +605,36 @@ fr_rb_node_t *rbtree_find(rbtree_t *tree, void const *data)
  *
  * @hidecallergraph
  */
-void *rbtree_find_data(rbtree_t *tree, void const *data)
+void *rbtree_find(rbtree_t *tree, void const *data)
 {
 	fr_rb_node_t *x;
 
 	if (unlikely(tree->being_freed)) return NULL;
 
-	x = rbtree_find(tree, data);
+	x = rbtree_find_node(tree, data);
 	if (!x) return NULL;
 
 	return x->data;
+}
+
+/** Delete a node from the tree, based on given data
+ *
+ *
+ */
+bool rbtree_delete(rbtree_t *tree, void const *data)
+{
+	fr_rb_node_t *node;
+
+	if (unlikely(tree->being_freed)) return false;
+
+	node = rbtree_find_node(tree, data);
+	if (!node) return false;
+
+	if (unlikely(tree->being_freed) || unlikely(node->being_freed)) return true;
+
+	rbtree_delete_internal(tree, node, false);
+
+	return true;
 }
 
 /** Return how many nodes there are in a tree

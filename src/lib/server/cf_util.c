@@ -133,12 +133,12 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	/*
 	 *	No ident2, use the ident1 tree.
 	 */
-	if (IS_WILDCARD(ident2)) return rbtree_find_data(parent->ident1, find);
+	if (IS_WILDCARD(ident2)) return rbtree_find(parent->ident1, find);
 
 	/*
 	 *	Both ident1 and ident2 use the ident2 tree.
 	 */
-	return rbtree_find_data(parent->ident2, find);
+	return rbtree_find(parent->ident2, find);
 }
 
 /** Return the next child that's of the specified type with the specified identifiers
@@ -411,14 +411,14 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	fr_dlist_remove(&parent->children, found);
 	if (!fr_cond_assert(found == child)) return NULL;
 
-	in_ident1 = (rbtree_find_data(parent->ident1, child) == child);
-	if (in_ident1 && (!rbtree_delete_by_data(parent->ident1, child))) {
+	in_ident1 = (rbtree_find(parent->ident1, child) == child);
+	if (in_ident1 && (!rbtree_delete(parent->ident1, child))) {
 		fr_assert(0);
 		return NULL;
 	}
 
-	in_ident2 = (rbtree_find_data(parent->ident2, child) == child);
-	if (in_ident2 && (!rbtree_delete_by_data(parent->ident2, child))) {
+	in_ident2 = (rbtree_find(parent->ident2, child) == child);
+	if (in_ident2 && (!rbtree_delete(parent->ident2, child))) {
 		fr_assert(0);
 		return NULL;
 	}
@@ -2081,8 +2081,8 @@ void _cf_debug(CONF_ITEM const *ci)
 	while ((child = fr_dlist_next(&ci->children, child))) {
 	     	char const *in_ident1, *in_ident2;
 
-		in_ident1 = rbtree_find_data(ci->ident1, child) == child? "in ident1 " : "";
-		in_ident2 = rbtree_find_data(ci->ident2, child) == child? "in ident2 " : "";
+		in_ident1 = rbtree_find(ci->ident1, child) == child? "in ident1 " : "";
+		in_ident2 = rbtree_find(ci->ident2, child) == child? "in ident2 " : "";
 
 		switch (child->type) {
 		case CONF_ITEM_SECTION:

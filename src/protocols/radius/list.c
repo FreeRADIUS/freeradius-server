@@ -331,7 +331,7 @@ fr_radius_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t
 {
 	if (!pl || !request) return 0;
 
-	return rbtree_find_data(pl->tree, request);
+	return rbtree_find(pl->tree, request);
 }
 
 
@@ -373,7 +373,7 @@ fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_
 	my_request.id = reply->id;
 	request = &my_request;
 
-	return rbtree_find_data(pl->tree, request);
+	return rbtree_find(pl->tree, request);
 }
 
 
@@ -381,7 +381,7 @@ bool fr_packet_list_yank(fr_packet_list_t *pl, fr_radius_packet_t *request)
 {
 	if (!pl || !request) return false;
 
-	return rbtree_delete_by_data(pl->tree, request);
+	return rbtree_delete(pl->tree, request);
 }
 
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)

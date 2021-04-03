@@ -536,7 +536,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 		if (stat(filename, &my_file.buf) < 0) goto error;
 
-		file = rbtree_find_data(tree, &my_file);
+		file = rbtree_find(tree, &my_file);
 
 		/*
 		 *	The file was previously read by including it

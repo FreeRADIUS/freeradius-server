@@ -266,7 +266,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 
 	fr_dlist_remove(&state->to_expire, entry);
 
-	rbtree_delete_by_data(state->tree, entry);
+	rbtree_delete(state->tree, entry);
 
 	DEBUG4("State ID %" PRIu64 " unlinked", entry->id);
 }
@@ -564,7 +564,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, fr_value_box_t
 	 */
 	my_entry.state_comp.context_id ^= state->context_id;
 
-	entry = rbtree_find_data(state->tree, &my_entry);
+	entry = rbtree_find(state->tree, &my_entry);
 
 	if (entry) (void) talloc_get_type_abort(entry, fr_state_entry_t);
 

@@ -774,7 +774,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 		if (!sync || (sync->msgid != msgid)) {
 			find.msgid = msgid;
 
-			sync = rbtree_find_data(tree, &find);
+			sync = rbtree_find(tree, &find);
 			if (!sync) {
 				WARN("Ignoring msgid %i, doesn't match any outstanding syncs",
 				     find.msgid);
@@ -876,7 +876,7 @@ static int _sync_state_free(sync_state_t *sync)
 	 *	Tell the remote server to stop sending results
 	 */
 	ldap_abandon_ext(sync->conn->handle, sync->msgid, NULL, NULL);
-	rbtree_delete_by_data(tree, &find);
+	rbtree_delete(tree, &find);
 
 	return 0;
 }
@@ -918,7 +918,7 @@ void sync_state_destroy(fr_ldap_connection_t *conn, int msgid)
 
 	find.msgid = msgid;
 
-	sync = rbtree_find_data(tree, &find);
+	sync = rbtree_find(tree, &find);
 	talloc_free(sync);	/* Will inform the server */
 }
 
@@ -938,7 +938,7 @@ sync_config_t const *sync_state_config_get(fr_ldap_connection_t *conn, int msgid
 
 	find.msgid = msgid;
 
-	sync = rbtree_find_data(tree, &find);
+	sync = rbtree_find(tree, &find);
 	return sync->config;
 }
 

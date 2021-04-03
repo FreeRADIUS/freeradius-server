@@ -428,7 +428,7 @@ static int _dl_free(dl_t *dl)
 
 	dl->handle = NULL;
 
-	if (dl->in_tree) rbtree_delete_by_data(dl->loader->tree, dl);
+	if (dl->in_tree) rbtree_delete(dl->loader->tree, dl);
 
 	return 0;
 }
@@ -458,7 +458,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 *	There's already something in the tree,
 	 *	just return that instead.
 	 */
-	dl = rbtree_find_data(dl_loader->tree, &(dl_t){ .name = name });
+	dl = rbtree_find(dl_loader->tree, &(dl_t){ .name = name });
 	if (dl) {
 		talloc_increase_ref_count(dl);
 		return dl;

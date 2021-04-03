@@ -294,7 +294,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		}
 	}
 
-	old = rbtree_find_data(clients->tree[client->ipaddr.prefix], client);
+	old = rbtree_find(clients->tree[client->ipaddr.prefix], client);
 #endif
 	if (old) {
 		/*
@@ -363,7 +363,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!clients->tree[client->ipaddr.prefix]) return;
 
-	(void) rbtree_delete_by_data(clients->tree[client->ipaddr.prefix], client);
+	(void) rbtree_delete(clients->tree[client->ipaddr.prefix], client);
 #endif
 }
 
@@ -409,7 +409,7 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 
 		my_client.ipaddr = *ipaddr;
 		fr_ipaddr_mask(&my_client.ipaddr, i);
-		client = rbtree_find_data(clients->tree[i], &my_client);
+		client = rbtree_find(clients->tree[i], &my_client);
 		if (client) {
 			return client;
 		}

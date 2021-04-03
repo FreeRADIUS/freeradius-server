@@ -241,7 +241,7 @@ int radius_track_entry_release(
 		 *	This entry MAY be in a subtree.  If so, delete
 		 *	it.
 		 */
-		if (tt->subtree[te->id]) (void) rbtree_delete_by_data(tt->subtree[te->id], te);
+		if (tt->subtree[te->id]) (void) rbtree_delete(tt->subtree[te->id], te);
 
 		goto done;
 	}
@@ -255,7 +255,7 @@ int radius_track_entry_release(
 	 *	Delete it from the tracking subtree.
 	 */
 	fr_assert(tt->subtree[te->id] != NULL);
-	(void) rbtree_delete_by_data(tt->subtree[te->id], te);
+	(void) rbtree_delete(tt->subtree[te->id], te);
 
 	/*
 	 *	Try to free memory if the system gets idle.  If the
@@ -297,7 +297,7 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 	/*
 	 *	The authentication vector may have changed.
 	 */
-	if (tt->subtree[te->id]) (void) rbtree_delete_by_data(tt->subtree[te->id], te);
+	if (tt->subtree[te->id]) (void) rbtree_delete(tt->subtree[te->id], te);
 
 	memcpy(te->vector, vector, sizeof(te->vector));
 
@@ -362,7 +362,7 @@ radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet
 	 */
 	memcpy(&my_te.vector, vector, sizeof(my_te.vector));
 
-	te = rbtree_find_data(tt->subtree[packet_id], &my_te);
+	te = rbtree_find(tt->subtree[packet_id], &my_te);
 
 	/*
 	 *	Not found, the packet MAY have been allocated in the

@@ -165,7 +165,7 @@ static int _xlat_inst_detach(xlat_inst_t *inst)
 	 *	Remove permanent data from the instance tree.
 	 */
 	if (!inst->node->call.ephemeral) {
-		rbtree_delete_by_data(xlat_inst_tree, inst);
+		rbtree_delete(xlat_inst_tree, inst);
 		if (rbtree_num_elements(xlat_inst_tree) == 0) TALLOC_FREE(xlat_inst_tree);
 	}
 
@@ -329,7 +329,7 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 
 	if (node->call.ephemeral) return node->call.thread_inst;
 
-	found = rbtree_find_data(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
+	found = rbtree_find(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
 	fr_assert(found);
 
 	return found;

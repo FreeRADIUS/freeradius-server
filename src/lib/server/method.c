@@ -162,7 +162,7 @@ int module_method_insert(module_method_set_t *set, module_method_id_t id, module
 {
 	module_method_entry_t	*found, find = { .id = id, .method = method };
 
-	found = rbtree_find_data(set->tree, &find);
+	found = rbtree_find(set->tree, &find);
 	if (found) {
 		if (unlikely(found->method != method)) {
 			fr_strerror_printf("Conflict for method id %u (old %p vs new %p)",
@@ -198,7 +198,7 @@ module_method_t	module_method_find(module_method_set_t *set, module_method_id_t 
 {
 	module_method_entry_t	*found;
 
-	found = rbtree_find_data(set->tree, &(module_method_entry_t){ .id = id });
+	found = rbtree_find(set->tree, &(module_method_entry_t){ .id = id });
 	if (!found) return NULL;
 
 	return found->method;

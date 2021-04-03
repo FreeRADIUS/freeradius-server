@@ -646,7 +646,7 @@ module_instance_t *module_by_name(module_instance_t const *parent, char const *a
 	inst_name = asked_name;
 	if (inst_name[0] == '-') inst_name++;
 
-	inst = rbtree_find_data(module_instance_name_tree,
+	inst = rbtree_find(module_instance_name_tree,
 			       &(module_instance_t){
 					.dl_inst = &(dl_module_inst_t){ .parent = parent ? parent->dl_inst : NULL },
 					.name = inst_name
@@ -1051,7 +1051,7 @@ module_instance_t *module_by_data(void const *data)
 {
 	module_instance_t *mi;
 
-	mi = rbtree_find_data(module_instance_data_tree,
+	mi = rbtree_find(module_instance_data_tree,
 			     &(module_instance_t){
 				.dl_inst = &(dl_module_inst_t){ .data = UNCONST(void *, data) },
 			     });
@@ -1427,8 +1427,8 @@ static int _module_instance_free(module_instance_t *mi)
 {
 	DEBUG3("Freeing %s (%p)", mi->name, mi);
 
-	if (mi->in_name_tree) if (!fr_cond_assert(rbtree_delete_by_data(module_instance_name_tree, mi))) return 1;
-	if (mi->in_data_tree) if (!fr_cond_assert(rbtree_delete_by_data(module_instance_data_tree, mi))) return 1;
+	if (mi->in_name_tree) if (!fr_cond_assert(rbtree_delete(module_instance_name_tree, mi))) return 1;
+	if (mi->in_data_tree) if (!fr_cond_assert(rbtree_delete(module_instance_data_tree, mi))) return 1;
 	if (mi->mutex) {
 		/*
 		 *	FIXME

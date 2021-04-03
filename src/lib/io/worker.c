@@ -752,7 +752,7 @@ nak:
 	if (request->async->listen->track_duplicates) {
 		request_t *old;
 
-		old = rbtree_find_data(worker->dedup, request);
+		old = rbtree_find(worker->dedup, request);
 		if (!old) {
 			/*
 			 *	Ignore duplicate packets where we've
@@ -980,7 +980,7 @@ static void _worker_request_external_done(request_t *request, UNUSED rlm_rcode_t
 	 *	then, only some of the time.
 	 */
 	if (request->async->listen->track_duplicates) {
-		(void) rbtree_delete_by_data(worker->dedup, request);
+		(void) rbtree_delete(worker->dedup, request);
 	}
 
 	/*

@@ -265,7 +265,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	for a matching list header already in the tree.
 		 */
 		search_list.name = entry->name;
-		user_list = rbtree_find_data(tree, &search_list);
+		user_list = rbtree_find(tree, &search_list);
 		if (!user_list) {
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);
@@ -328,10 +328,10 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 	if (!tree) RETURN_MODULE_NOOP;
 
 	my_list.name = name;
-	user_list = rbtree_find_data(tree, &my_list);
+	user_list = rbtree_find(tree, &my_list);
 	user_pl = (user_list) ? fr_dlist_head(&user_list->head) : NULL;
 	my_list.name = "DEFAULT";
-	default_list = rbtree_find_data(tree, &my_list);
+	default_list = rbtree_find(tree, &my_list);
 	default_pl = (default_list) ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
