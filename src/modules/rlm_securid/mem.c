@@ -229,17 +229,12 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, request_t *reques
 /************ private functions *************/
 static SECURID_SESSION *securid_sessionlist_delete(rlm_securid_t *inst, SECURID_SESSION *session)
 {
-	fr_rb_node_t *node;
-
-	node = rbtree_find(inst->session_tree, session);
-	if (!node) return NULL;
-
-	session = rbtree_node2data(inst->session_tree, node);
+	fr_assert(rbtree_find_data(inst->session_tree, session) == session);
 
 	/*
 	 *	Delete old session from the tree.
 	 */
-	rbtree_delete(inst->session_tree, node);
+	rbtree_delete_by_data(inst->session_tree, node);
 
 	/*
 	 *	And unsplice it from the linked list.
@@ -274,10 +269,7 @@ static void securid_sessionlist_clean_expired(rlm_securid_t *inst, request_t *re
 	 */
 	while((session = inst->session_head)) {
 		if ((timestamp - session->timestamp) > inst->timer_limit) {
-			fr_rb_node_t *node;
-			node = rbtree_find(inst->session_tree, session);
-			fr_assert(node != NULL);
-			rbtree_delete(inst->session_tree, node);
+			rbtree_delete_by_data(inst->session_tree, session);
 
 			/*
 			 *	session == inst->session_head
