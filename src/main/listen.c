@@ -3741,7 +3741,7 @@ void listen_coa_free(void)
  */
 void listen_coa_add(rad_listen_t *this, char const *key)
 {
-	int trues = 0;
+	int tries = 0;
 	coa_key_t my_key, *coa_key;
 
 	rad_assert(this->send_coa);
