@@ -379,15 +379,9 @@ fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_
 
 bool fr_packet_list_yank(fr_packet_list_t *pl, fr_radius_packet_t *request)
 {
-	fr_rb_node_t *node;
-
 	if (!pl || !request) return false;
 
-	node = rbtree_find(pl->tree, request);
-	if (!node) return false;
-
-	rbtree_delete(pl->tree, node);
-	return true;
+	return rbtree_delete_by_data(pl->tree, request);
 }
 
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
