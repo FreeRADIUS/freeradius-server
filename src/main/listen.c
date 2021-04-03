@@ -3741,6 +3741,7 @@ void listen_coa_free(void)
  */
 void listen_coa_add(rad_listen_t *this, char const *key)
 {
+	int trues = 0;
 	coa_key_t my_key, *coa_key;
 
 	rad_assert(this->send_coa);
@@ -3751,6 +3752,8 @@ void listen_coa_add(rad_listen_t *this, char const *key)
 	 *	Find the key.  If we can't find it, then create it.
 	 */
 	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+
+retry:
 	coa_key = rbtree_finddata(coa_tree, &my_key);
 	if (!coa_key) {
 		coa_key = talloc_zero(NULL, coa_key_t);
@@ -3764,6 +3767,16 @@ void listen_coa_add(rad_listen_t *this, char const *key)
 
 		if (!rbtree_insert(coa_tree, coa_key)) {
 			talloc_free(coa_key);
+
+			/*
+			 *	The lookups are mutex protected, but
+			 *	if there's time between the lookup and
+			 *	the insert, another thread may have
+			 *	created the node.  In which case we
+			 *	try again.
+			 */
+			if (tries < 3) goto retry;
+			tries++;
 			return;
 		}
 	}
