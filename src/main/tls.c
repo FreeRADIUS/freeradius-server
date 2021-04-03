@@ -776,7 +776,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (ssn->dirty_in.used > 0) {
 		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 		if (err != (int) ssn->dirty_in.used) {
-			REDEBUG("TLS - Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+			REDEBUG("(TLS) Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
 			record_init(&ssn->dirty_in);
 			return 0;
 		}
@@ -797,14 +797,16 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		VALUE_PAIR *vp;
 		char const *str_version;
 
-		RDEBUG2("TLS - Connection Established");
+		RDEBUG2("(TLS) Connection Established");
 		ssn->is_init_finished = true;
 
 		vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_CIPHER_SUITE, 0);
 		if (vp) {
 			fr_pair_value_strcpy(vp, SSL_CIPHER_get_name(SSL_get_current_cipher(ssn->ssl)));
 			fr_pair_add(&request->state, vp);
+			RINDENT();
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+			REXDENT();
 		}
 
 		switch (ssn->info.version) {
@@ -841,13 +843,16 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		if (vp) {
 			fr_pair_value_strcpy(vp, str_version);
 			fr_pair_add(&request->state, vp);
+			RINDENT();
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+			REXDENT();
+
 		}
 	}
-	else if (SSL_in_init(ssn->ssl)) { RDEBUG2("TLS - In Handshake Phase"); }
-	else if (SSL_in_before(ssn->ssl)) { RDEBUG2("TLS - Before Handshake Phase"); }
-	else if (SSL_in_accept_init(ssn->ssl)) { RDEBUG2("TLS - In Accept mode"); }
-	else if (SSL_in_connect_init(ssn->ssl)) { RDEBUG2("TLS - In Connect mode"); }
+	else if (SSL_in_init(ssn->ssl)) { RDEBUG2("(TLS) In Handshake Phase"); }
+	else if (SSL_in_before(ssn->ssl)) { RDEBUG2("(TLS) Before Handshake Phase"); }
+	else if (SSL_in_accept_init(ssn->ssl)) { RDEBUG2("(TLS) In Accept mode"); }
+	else if (SSL_in_connect_init(ssn->ssl)) { RDEBUG2("(TLS) In Connect mode"); }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	/*
@@ -865,7 +870,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		 *	to get the session is a hard fail.
 		 */
 		if (!ssn->ssl_session && ssn->is_init_finished) {
-			RDEBUG("TLS - Failed getting session");
+			RDEBUG("(TLS) Failed getting session");
 			return 0;
 		}
 	}
@@ -879,23 +884,23 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
 			       sizeof(ssn->dirty_out.data));
 		if (err > 0) {
-			RDEBUG2("TLS - got %d bytes of data", err);
+			RDEBUG2("(TLS) got %d bytes of data", err);
 			ssn->dirty_out.used = err;
 
 		} else if (BIO_should_retry(ssn->from_ssl)) {
 			record_init(&ssn->dirty_in);
-			RDEBUG2("TLS - Asking for more data in tunnel.");
+			RDEBUG2("(TLS) Asking for more data in tunnel.");
 			return 1;
 
 		} else {
 			tls_error_log(NULL, "Error reading from SSL BIO");
 			record_init(&ssn->dirty_in);
-			RDEBUG2("TLS - Tunnel data is established.");
+			RDEBUG2("(TLS) Tunnel data is established.");
 			return 0;
 		}
 	} else {
 
-		RDEBUG2("TLS - Application data.");
+		RDEBUG2("(TLS) Application data.");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}
@@ -1056,7 +1061,7 @@ void tls_session_information(tls_session_t *tls_session)
 	request = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST);
 	if (!request) return;
 
-	str_write_p = tls_session->info.origin ? ">>> send" : "<<< recv";
+	str_write_p = tls_session->info.origin ? "(TLS) send" : "(TLS) recv";
 
 	switch (tls_session->info.version) {
 	case SSL2_VERSION:
@@ -2578,6 +2583,10 @@ static char const *cert_attr_names[9][2] = {
 #define FR_TLS_SAN_UPN          (7)
 #define FR_TLS_VALID_SINCE	(8)
 
+static const char *cert_names[2] = {
+	"client", "server",
+};
+
 /*
  *	Before trusting a certificate, you must make sure that the
  *	certificate is 'valid'. There are several steps that your
@@ -2674,8 +2683,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
-	RDEBUG2("TLS - Creating attributes from certificate OIDs");
-	RINDENT();
+	RDEBUG2("(TLS) Creating attributes from %s certificate", cert_names[lookup]);
+ 	RINDENT();
 
 	/*
 	 *	For this next bit, we create the attributes *only* if
@@ -4625,24 +4634,24 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		code = SSL_get_error(ssn->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
-			RDEBUG("Error in fragmentation logic: SSL_WANT_READ");
+			RDEBUG("(TLS) OpenSSL says that it needs to read more data.");
 			return FR_TLS_MORE_FRAGMENTS;
 
 		case SSL_ERROR_WANT_WRITE:
-			RDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
+			RDEBUG("(TLS) Error in fragmentation logic: SSL_WANT_WRITE");
 			return FR_TLS_FAIL;
 
 		case SSL_ERROR_NONE:
-			RDEBUG2("No application data received.  Assuming handshake is continuing...");
+			RDEBUG2("(TLS) No application data received.  Assuming handshake is continuing...");
 			err = 0;
 			break;
 
 		case SSL_ERROR_ZERO_RETURN:
-			RDEBUG2("Other end closed the TLS tunnel.");
+			RDEBUG2("(TLS) Other end closed the TLS tunnel.");
 			return FR_TLS_FAIL;
 
 		default:
-			REDEBUG("Error in fragmentation logic - code %d", code);
+			REDEBUG("(TLS) Error in fragmentation logic - code %d", code);
 			tls_error_io_log(request, ssn, err,
 					 "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)");
 			return FR_TLS_FAIL;
@@ -4675,27 +4684,27 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 {
 	if (ssn == NULL){
-		REDEBUG("Unexpected ACK received:  No ongoing SSL session");
+		REDEBUG("(TLS) Unexpected ACK received:  No ongoing SSL session");
 		return FR_TLS_INVALID;
 	}
 	if (!ssn->info.initialized) {
-		RDEBUG("No SSL info available.  Waiting for more SSL data");
+		RDEBUG("(TLS) No SSL info available.  Waiting for more SSL data");
 		return FR_TLS_REQUEST;
 	}
 
 	if ((ssn->info.content_type == handshake) && (ssn->info.origin == 0)) {
-		REDEBUG("Unexpected ACK received:  We sent no previous messages");
+		REDEBUG("(TLS) Unexpected ACK received:  We sent no previous messages");
 		return FR_TLS_INVALID;
 	}
 
 	switch (ssn->info.content_type) {
 	case alert:
-		RDEBUG2("Peer ACKed our alert");
+		RDEBUG2("(TLS) Peer ACKed our alert");
 		return FR_TLS_FAIL;
 
 	case handshake:
 		if ((ssn->is_init_finished) && (ssn->dirty_out.used == 0)) {
-			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
+			RDEBUG2("(TLS) Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
 			 *	From now on all the content is
@@ -4706,12 +4715,12 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 			return FR_TLS_SUCCESS;
 		} /* else more data to send */
 
-		RDEBUG2("Peer ACKed our handshake fragment");
+		RDEBUG2("(TLS) Peer ACKed our handshake fragment");
 		/* Fragmentation handler, send next fragment */
 		return FR_TLS_REQUEST;
 
 	case application_data:
-		RDEBUG2("Peer ACKed our application data fragment");
+		RDEBUG2("(TLS) Peer ACKed our application data fragment");
 		return FR_TLS_REQUEST;
 
 		/*
@@ -4719,7 +4728,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		 *	to the default section below.
 		 */
 	default:
-		REDEBUG("Invalid ACK received: %d", ssn->info.content_type);
+		REDEBUG("(TLS) Invalid ACK received: %d", ssn->info.content_type);
 		return FR_TLS_INVALID;
 	}
 }
