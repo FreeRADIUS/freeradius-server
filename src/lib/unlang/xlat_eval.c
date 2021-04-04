@@ -402,6 +402,12 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 					REDEBUG("Missing required argument %u", (unsigned int)((arg_p - args) + 1));
 					return XLAT_ACTION_FAIL;
 				}
+
+				/*
+				 *	Add a placeholder 'null' box
+				 */
+				MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL, false));
+				fr_dlist_insert_tail(list, vb);
 				return XLAT_ACTION_DONE;
 			}
 
@@ -425,8 +431,20 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			 *	argument with the head of the group.
 			 */
 			if (arg_p->single || arg_p->concat) {
-				fr_dlist_replace(list, vb, fr_dlist_pop_head(&vb->vb_group));
-				talloc_free(vb);
+				/*
+				 *	If the group is empty, convert
+				 *	it to a null box to maintain
+				 *	correct ordering in the argument
+				 *	list.
+				 */
+				if (fr_dlist_empty(&vb->vb_group)) {
+					fr_value_box_t *prev = fr_dlist_remove(list, vb);
+					fr_value_box_init_null(vb);
+					fr_dlist_insert_after(list, prev, vb);
+				} else {
+					fr_dlist_replace(list, vb, fr_dlist_pop_head(&vb->vb_group));
+					talloc_free(vb);
+				}
 			}
 
 			if (arg_p->variadic) {
@@ -1366,6 +1384,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 		case XLAT_GROUP:
 			XLAT_DEBUG("** [%i] %s(child) - %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
+			if (!node->child) return XLAT_ACTION_DONE;
 
 			/*
 			 *	Hand back the child node to the caller

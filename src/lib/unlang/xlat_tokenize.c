@@ -1022,35 +1022,11 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 				goto error;
 			}
 		/*
-		 *	We're parsing the string *containing* the xlat
-		 *	expansions.
+		 *	Empty input, emit no arguments
 		 */
-		} else {
-			/*	If we have an empty node, finish building it and
-			 *	emit it.
-			 *
-			 *	We're about to return, and it's a useful
-			 *	indication to the caller that this wasn't a parse
-			 *	error but just an empty string.
-			 */
-			if (len == 0) {
-				/*
-				 *	This isn't the only node in the sequence
-				 *	don't emit an empty trailing literal.
-				 */
-				if (*head) {
-					talloc_free(node);
-					break;
-				}
-
-				xlat_exp_set_type(node, XLAT_LITERAL);
-				xlat_exp_set_name_buffer_shallow(node, str);
-
-				XLAT_DEBUG("LITERAL <-- (empty)");
-				node->flags.needs_async = false; /* literals are always true */
-				xlat_flags_merge(flags, &node->flags);
-				fr_cursor_insert(&cursor, node);
-			}
+		} else if (len == 0) {
+			talloc_free(node);
+			XLAT_DEBUG("LITERAL <-- (empty)");
 		}
 		break;
 	}
@@ -1303,13 +1279,16 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 	*head = NULL;
 
 	fr_strerror_clear();	/* Clear error buffer */
-	if (xlat_tokenize_literal(ctx, head, flags,
-				  &our_in, false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
+	if (xlat_tokenize_literal(ctx, head, flags, &our_in,
+				  false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
 
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
-	if (fr_sbuff_used(&our_in) == 0) *head = xlat_exp_alloc(ctx, XLAT_LITERAL, "", 0);
+	if (!*head) {
+		*head = xlat_exp_alloc(ctx, XLAT_LITERAL, "", 0);
+		return 0;
+	}
 
 	/*
 	 *	Create ephemeral instance data for the xlat
@@ -1522,8 +1501,16 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
 
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_literal(ctx, head, flags,
-				  &our_in, false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
+	if (xlat_tokenize_literal(ctx, head, flags, &our_in,
+				  false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
+
+	/*
+	 *	Zero length expansion, return a zero length node.
+	 */
+	if (!*head) {
+		*head = xlat_exp_alloc(ctx, XLAT_LITERAL, "", 0);
+		return fr_sbuff_set(in, &our_in);
+	}
 
 	/*
 	 *	Add nodes that need to be bootstrapped to

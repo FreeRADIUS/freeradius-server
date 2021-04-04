@@ -801,8 +801,7 @@ static xlat_action_t xlat_func_debug(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *  Assume we just want to get the current value and NOT set it to 0
 	 */
-	if (!in_head)
-		goto done;
+	if (in_head->type == FR_TYPE_NULL) goto done;
 
 	level = in_head->vb_int8;
 	if (level == 0) {
@@ -1403,7 +1402,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Fill is optional
 	 */
-	if (fill) {
+	if (fill->type != FR_TYPE_NULL) {
 		fill_str = fill->vb_strvalue;
 		fill_len = talloc_array_length(fill_str) - 1;
 	}
@@ -1485,7 +1484,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Fill is optional
 	 */
-	if (fill) {
+	if (fill->type != FR_TYPE_NULL) {
 		fill_str = fill->vb_strvalue;
 		fill_len = talloc_array_length(fill_str) - 1;
 	}

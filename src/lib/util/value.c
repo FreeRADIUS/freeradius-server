@@ -168,7 +168,7 @@ size_t fr_value_box_type_table_len = NUM_ELEMENTS(fr_value_box_type_table);
 #define network_min_size(_x) (fr_value_box_network_sizes[_x][0])
 #define network_max_size(_x) (fr_value_box_network_sizes[_x][1])
 static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_NULL]			= {~0, 0},
+	[FR_TYPE_NULL]				= {~0, 0},
 
 	[FR_TYPE_STRING]			= {0, ~0},
 	[FR_TYPE_OCTETS]			= {0, ~0},
