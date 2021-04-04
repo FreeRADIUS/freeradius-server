@@ -507,7 +507,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			 *	the first member.
 			 */
 			if (sibling->flags.length == 0) switch (sibling->type) {
-			case FR_TYPE_VALUE:
+			case FR_TYPE_VALUES:
 				break;
 
 			default:

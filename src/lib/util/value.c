@@ -4425,7 +4425,8 @@ parse:
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_BAD:
+	case FR_TYPE_MAX:
+	case FR_TYPE_NULL:
 		fr_strerror_printf("Invalid dst_type %s",
 				   fr_table_str_by_value(fr_value_box_type_table, *dst_type, "<INVALID>"));
 		return -1;
@@ -4611,7 +4612,8 @@ parse:
 	case FR_TYPE_VARIABLE_SIZE:	/* Should have been dealt with above */
 	case FR_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
 	case FR_TYPE_VOID:
-	case FR_TYPE_BAD:
+	case FR_TYPE_MAX:
+	case FR_TYPE_NULL:
 		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
 		return -1;
 	}
@@ -4894,7 +4896,8 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VOID:
-	case FR_TYPE_BAD:
+	case FR_TYPE_MAX:
+	case FR_TYPE_NULL:
 		(void)fr_cond_assert(0);
 		return 0;
 	}

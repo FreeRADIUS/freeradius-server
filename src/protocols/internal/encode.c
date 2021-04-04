@@ -77,7 +77,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	/*
 	 *	Only leaf attributes can be tainted
 	 */
-	case FR_TYPE_VALUE:
+	case FR_TYPE_VALUES:
 		if (vp->vp_tainted) enc_byte |= FR_INTERNAL_FLAG_TAINTED;
 		break;
 
@@ -117,7 +117,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&value_field, &value_dbuff);
 
 	switch (da->type) {
-	case FR_TYPE_VALUE:
+	case FR_TYPE_VALUES:
 		slen = fr_value_box_to_network(&value_dbuff, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&value_dbuff), slen, "value %s",

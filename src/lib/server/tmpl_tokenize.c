@@ -2781,7 +2781,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 	if (fr_sbuff_next_if_char(&our_in, '<')) {
 		fr_sbuff_marker(&m, &our_in);
 		fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_value_box_type_table, &our_in, FR_TYPE_NULL);
-		if (cast == FR_TYPE_NULL) {
+		if (fr_type_is_null(cast)) {
 			fr_strerror_const("Unknown data type");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -2828,7 +2828,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	 *	Only "base" data types are allowed.  Structural types
 	 *	and horrid WiMAX crap is forbidden.
 	 */
-	case FR_TYPE_VALUE:
+	case FR_TYPE_VALUES:
 		break;
 	}
 
@@ -4269,7 +4269,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 					     file, line);
 		}
 
-		if (tmpl_value_type(vpt) == FR_TYPE_NULL) {
+		if (fr_type_is_null(tmpl_value_type(vpt))) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
 					     "FR_TYPE_NULL (uninitialised)", file, line);
 		}
@@ -4386,7 +4386,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		}
 
 		cast = fr_table_value_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_NULL);
-		if (cast == FR_TYPE_NULL) {
+		if (fr_type_is_null(cast)) {
 			return_P("Unknown data type");
 		}
 

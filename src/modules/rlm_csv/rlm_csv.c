@@ -436,14 +436,14 @@ static int csv_map_verify(map_t *map, void *instance)
 			return -1;
 		}
 
-		if ((type == FR_TYPE_NULL) || (offset < 0)) break;
+		if (fr_type_is_null(type) || (offset < 0)) break;
 
 		/*
 		 *	Try to set the data type of the field.  But if
 		 *	they map the same field to two different data
 		 *	types, that's an error.
 		 */
-		if (inst->field_types[offset] == FR_TYPE_NULL) {
+		if (fr_type_is_null(inst->field_types[offset])) {
 			inst->field_types[offset] = type;
 			break;
 		}
@@ -541,7 +541,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (inst->key) {
 		inst->key_data_type = tmpl_expanded_type(inst->key);
 		switch (inst->key_data_type) {
-		case FR_TYPE_VALUE:
+		case FR_TYPE_VALUES:
 			break;
 
 		case FR_TYPE_NULL:

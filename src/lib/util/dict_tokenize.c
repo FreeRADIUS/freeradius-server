@@ -270,7 +270,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 	 *	find the type of the attribute.
 	 */
 	type = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_NULL);
-	if (type == FR_TYPE_NULL) {
+	if (fr_type_is_null(type)) {
 		fr_strerror_printf("Unknown data type '%s'", name);
 		return -1;
 	}
@@ -383,7 +383,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				fr_type_t subtype;
 
 				subtype = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_NULL);
-				if (subtype == FR_TYPE_NULL) {
+				if (fr_type_is_null(subtype)) {
 				unknown_type:
 					fr_strerror_printf("Unknown or unsupported %s type '%s'",
 							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),

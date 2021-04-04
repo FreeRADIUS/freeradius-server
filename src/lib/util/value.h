@@ -274,6 +274,62 @@ struct value_box_s {
 #define fr_box_time_delta_usec(_val)		fr_box_time_delta_with_res((_val), FR_TIME_RES_USEC)
 /** @} */
 
+/** @name Type checking macros
+ *
+ * Convenience macros for checking if a box is a
+ * specific type.
+ *
+ * @{
+ */
+#define fr_box_is_null(_x)			fr_type_is_null((_x)->type)
+#define fr_box_is_string(_x)			fr_type_is_string((_x)->type)
+#define fr_box_is_octets(_x)			fr_type_is_octets((_x)->type)
+#define fr_box_is_ipv4addr(_x)			fr_type_is_ipv4addr((_x)->type)
+#define fr_box_is_ipv4prefix(_x)		fr_type_is_ipv4prefix((_x)->type)
+#define fr_box_is_ipv6addr(_x)			fr_type_is_ipv6addr((_x)->type)
+#define fr_box_is_ipv6prefix(_x)		fr_type_is_ipv6prefix((_x)->type)
+#define fr_box_is_ifid(_x)			fr_type_is_ifid((_x)->type)
+#define fr_box_is_combo_ipaddr(_x)		fr_type_is_combo_ipaddr((_x)->type)
+#define fr_box_is_combo_ipprefix(_x)		fr_type_is_combo_ipprefix((_x)->type)
+#define fr_box_is_ethernet(_x)			fr_type_is_ethernet((_x)->type)
+#define fr_box_is_bool(_x)			fr_type_is_bool((_x)->type)
+#define fr_box_is_uint8(_x)			fr_type_is_uint8((_x)->type)
+#define fr_box_is_uint16(_x)			fr_type_is_uint16((_x)->type)
+#define fr_box_is_uint32(_x)			fr_type_is_uint32((_x)->type)
+#define fr_box_is_uint64(_x)			fr_type_is_uint64((_x)->type)
+#define fr_box_is_int8(_x)			fr_type_is_int8((_x)->type)
+#define fr_box_is_int16(_x)			fr_type_is_int16((_x)->type)
+#define fr_box_is_int32(_x)			fr_type_is_int32((_x)->type)
+#define fr_box_is_int64(_x)			fr_type_is_int64((_x)->type)
+#define fr_box_is_float32(_x)			fr_type_is_float32((_x)->type)
+#define fr_box_is_float64(_x)			fr_type_is_float64((_x)->type)
+#define fr_box_is_date(_x)			fr_type_is_date((_x)->type)
+#define fr_box_is_time_delta(_x)		fr_type_is_time_delta((_x)->type)
+#define fr_box_is_size(_x)			fr_type_is_size((_x)->type)
+#define fr_box_is_tlv(_x)			fr_type_is_tlv((_x)->type)
+#define fr_box_is_struct(_x)			fr_type_is_struct((_x)->type)
+#define fr_box_is_vsa(_x)			fr_type_is_vsa((_x)->type)
+#define fr_box_is_vendor(_x)			fr_type_is_vendor((_x)->type)
+#define fr_box_is_group(_x)			fr_type_is_group((_x)->type)
+#define fr_box_is_value_box(_x)			fr_type_is_value_box((_x)->type)
+#define fr_box_is_void(_x)			fr_type_is_void((_x)->type)
+
+#define fr_box_is_integer_except_bool(_x)	fr_type_is_integer_except_bool((_x)->type)
+#define fr_box_is_integer(_x)			fr_type_is_integer((_x)->type)
+#define fr_box_is_numeric(_x)			fr_type_is_numeric((_x)->type)
+
+#define fr_box_is_ip(_x)			fr_type_is_ip((_x)->type)
+
+#define fr_box_is_fixed_size(_x)		fr_type_is_fixed_size((_x)->type)
+#define fr_box_is_variable_size(_x)		fr_type_is_variable_size((_x)->type)
+#define fr_box_is_value(_x)			fr_type_is_value((_x)->type)
+#define fr_box_is_quoted(_x)			fr_type_is_quoted((_x)->type)
+
+#define fr_box_is_structural_except_vsa(_x)	fr_type_is_structural_except_vsa((_x)->type)
+#define fr_box_is_structural(_x)		fr_type_is_structural((_x)->type)
+#define fr_box_is_non_value(_x)			fr_type_is_non_value((_x)->type)
+/** @} */
+
 /** @name Convenience functions
  *
  * These macros and inline functions simplify working

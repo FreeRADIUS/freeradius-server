@@ -239,7 +239,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			FR_PROTO_TRACE("fr_struct_from_network - unknown child type");
 			goto unknown;
 
-		case FR_TYPE_VALUE:
+		case FR_TYPE_VALUES:
 			break;
 		}
 

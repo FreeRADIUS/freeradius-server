@@ -950,7 +950,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	}
 
 	type = isc2fr_type(state);
-	if (type == FR_TYPE_NULL) goto error;
+	if (fr_type_is_null(type)) goto error;
 
 	/*
 	 *	Now that we've parsed everything, look up the name.

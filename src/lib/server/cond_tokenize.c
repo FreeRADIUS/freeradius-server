@@ -226,7 +226,7 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 	 *	Which means we no longer need the cast.
 	 */
 	fr_assert(tmpl_is_data(vpt));
-	fr_assert((vpt->cast == FR_TYPE_NULL) || (vpt->cast == tmpl_value_type(vpt)));
+	fr_assert(fr_type_is_null(vpt->cast) || (vpt->cast == tmpl_value_type(vpt)));
 	(void) tmpl_cast_set(vpt, FR_TYPE_NULL);
 	return 0;
 }
@@ -247,7 +247,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	if (tmpl_contains_regex(c->data.map->rhs)) {
 		fr_assert((c->data.map->op == T_OP_REG_EQ) || (c->data.map->op == T_OP_REG_NE));
 		fr_assert(!tmpl_is_list(c->data.map->lhs));
-		fr_assert(c->data.map->rhs->cast == FR_TYPE_NULL);
+		fr_assert(fr_type_is_null(c->data.map->rhs->cast));
 
 		/*
 		 *	Can't use casts with regular expressions, on
@@ -422,7 +422,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 *	Both sides are have unresolved issues.  Leave
 		 *	them alone...
 		 */
-		if (lhs_type == FR_TYPE_NULL) {
+		if (fr_type_is_null(lhs_type)) {
 			/*
 			 *	If we still have unresolved data, then
 			 *	ensure that they are converted to
@@ -457,12 +457,12 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	 *	because we will just check it again after the pass2
 	 *	fixups.
 	 */
-	if ((lhs_type != FR_TYPE_NULL) && (rhs_type == FR_TYPE_NULL)) {
+	if (!fr_type_is_null(lhs_type) && fr_type_is_null(rhs_type)) {
 		cast_type = lhs_type;
 		goto set_types;
 	}
 
-	if ((rhs_type != FR_TYPE_NULL) && (lhs_type == FR_TYPE_NULL)) {
+	if (!fr_type_is_null(rhs_type) && fr_type_is_null(lhs_type)) {
 		cast_type = rhs_type;
 		goto set_types;
 	}
@@ -928,7 +928,7 @@ static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_
 	if (!tmpl_is_attr(vpt)) return 0;
 
 	switch (tmpl_da(vpt)->type) {
-	case FR_TYPE_VALUE:
+	case FR_TYPE_VALUES:
 		break;
 
 	default:

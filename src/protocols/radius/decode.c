@@ -1236,7 +1236,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 	}
 
 	switch (parent->type) {
-	case FR_TYPE_VALUE:
+	case FR_TYPE_VALUES:
 		break;
 
 	case FR_TYPE_COMBO_IP_PREFIX:

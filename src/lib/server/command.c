@@ -244,9 +244,11 @@ static bool fr_command_valid_syntax(fr_cmd_argv_t *argv)
 
 		type = fr_table_value_by_str(fr_value_box_type_table, argv->name, FR_TYPE_NULL);
 		switch (type) {
-		case FR_TYPE_VALUE_BOX:
-		case FR_TYPE_BAD:
+		case FR_TYPE_MAX:
+		case FR_TYPE_NULL:
 		case FR_TYPE_STRUCTURAL:
+		case FR_TYPE_VALUE_BOX:
+		case FR_TYPE_VOID:
 			fr_strerror_printf("Syntax command '%s' has unknown data type", argv->name);
 			return false;
 

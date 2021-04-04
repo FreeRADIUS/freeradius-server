@@ -144,7 +144,7 @@ static int cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *
 		/*
 		 *	No cast means that it's an existence check.
 		 */
-		if (vpt->cast == FR_TYPE_NULL) {
+		if (fr_type_is_null(vpt->cast)) {
 			return (tmpl_find_vp(NULL, request, vpt) == 0);
 		}
 
@@ -184,7 +184,7 @@ static int cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *
 		 *	We don't yet have xlats returning lists of
 		 *	value boxes, so there's an assert.
 		 */
-		if (vpt->cast == FR_TYPE_NULL) {
+		if (fr_type_is_null(vpt->cast)) {
 			switch (box->type) {
 			case FR_TYPE_STRING:
 			case FR_TYPE_OCTETS:
@@ -386,7 +386,7 @@ static int cond_realize_tmpl(request_t *request,
 	 *	converted to the correct thing.
 	 */
 	case TMPL_TYPE_DATA:
-		fr_assert((in->cast == FR_TYPE_NULL) || (in->cast == tmpl_value_type(in)));
+		fr_assert((fr_type_is_null(in->cast)) || (in->cast == tmpl_value_type(in)));
 		*out = tmpl_value(in);
 		fr_assert(!async);
 		return 0;
@@ -523,7 +523,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dict_attr_t const	*da = NULL;
 
-	if (tmpl_is_attr(map->lhs) && (map->lhs->cast == FR_TYPE_NULL)) da = tmpl_da(map->lhs);
+	if (tmpl_is_attr(map->lhs) && fr_type_is_null(map->lhs->cast)) da = tmpl_da(map->lhs);
 
 	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_clear(&rhs_cast);

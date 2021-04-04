@@ -26,6 +26,25 @@ RCSID("$Id$")
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
 
+#define ARRAY_BEG(_type)	{ [_type] = true,
+#define ARRAY_MID(_type)	[_type] = true,
+#define ARRAY_END(_type)	[_type] = true }
+
+bool const fr_type_integer_except_bool[FR_TYPE_MAX + 1] = FR_TYPE_INTEGER_EXCEPT_BOOL_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_integer[FR_TYPE_MAX + 1] = FR_TYPE_INTEGER_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_numeric[FR_TYPE_MAX + 1] = FR_TYPE_NUMERIC_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+
+bool const fr_type_ip[FR_TYPE_MAX + 1] = FR_TYPE_IP_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+
+bool const fr_type_fixed_size[FR_TYPE_MAX + 1] = FR_TYPE_FIXED_SIZE_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_variable_size[FR_TYPE_MAX + 1] = FR_TYPE_VARIABLE_SIZE_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_values[FR_TYPE_MAX + 1] = FR_TYPE_VALUES_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_quoted[FR_TYPE_MAX + 1] = FR_TYPE_QUOTED_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+
+bool const fr_type_structural_except_vsa[FR_TYPE_MAX + 1] = FR_TYPE_STRUCTURAL_EXCEPT_VSA_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_structural[FR_TYPE_MAX + 1] = FR_TYPE_STRUCTURAL_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_non_values[FR_TYPE_MAX + 1] = FR_TYPE_NON_VALUES_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+
 #define O(_x) [FR_TYPE_ ## _x] = true
 
 /*

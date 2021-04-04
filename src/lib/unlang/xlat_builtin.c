@@ -331,7 +331,7 @@ static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool la
 	}
 
 	switch (arg->type) {
-	case FR_TYPE_VALUE:
+	case FR_TYPE_VALUES:
 	case FR_TYPE_VOID:
 		break;
 
@@ -801,7 +801,7 @@ static xlat_action_t xlat_func_debug(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *  Assume we just want to get the current value and NOT set it to 0
 	 */
-	if (in_head->type == FR_TYPE_NULL) goto done;
+	if (fr_box_is_null(in_head)) goto done;
 
 	level = in_head->vb_int8;
 	if (level == 0) {
