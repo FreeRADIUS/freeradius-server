@@ -648,12 +648,15 @@ static inline CC_HINT(always_inline)
 void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
 	request->el = worker->el;
-	MEM(request->packet = fr_radius_packet_alloc(request, false));
+
+	/*
+	 *	For internal requests request->packet
+	 *	and request->reply are already populated.
+	 */
+	if (!request->packet) MEM(request->packet = fr_radius_packet_alloc(request, false));
+	if (!request->reply) MEM(request->reply = fr_radius_packet_alloc(request, false));
+
 	request->packet->timestamp = now;
-
-	request->reply = fr_radius_packet_alloc(request, false);
-	fr_assert(request->reply != NULL);
-
 	request->async = talloc_zero(request, fr_async_t);
 	request->async->recv_time = now;
 	request->async->el = worker->el;
