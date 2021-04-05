@@ -1145,8 +1145,6 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 		REQUEST_VERIFY(request);
 		fr_assert(request->runnable_id < 0);
 
-		RDEBUG("Running request");
-
 		/*
 		 *	For real requests, if the channel is gone,
 		 *	just stop the request and free it.
