@@ -1726,13 +1726,13 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 
 	case FR_RETRY_MRD:
-		DEBUG("%s - Reached maximum_retransmit_duration (%pVs > %pVs), failing status checks",
-		      h->module_name, fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
+		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
+			fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
-		RDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
-		       u->retry.count, u->retry.config->mrc);
+		REDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
+		        u->retry.count, u->retry.config->mrc);
 		break;
 	}
 
@@ -2378,10 +2378,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	Validate and decode the incoming packet
 		 */
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
-		if (reason != DECODE_FAIL_NONE) {
-			RWDEBUG("Ignoring invalid response");
-			continue;
-		}
+		if (reason != DECODE_FAIL_NONE) continue;
 
 		/*
 		 *	Only valid packets are processed
