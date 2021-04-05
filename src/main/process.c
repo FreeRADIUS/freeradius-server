@@ -2439,6 +2439,9 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	int post_proxy_type = 0;
 	VALUE_PAIR *vp;
 	char const *old_server;
+#ifdef WITH_COA_TUNNEL
+	bool reverse_coa = false;
+#endif
 
 	VERIFY_REQUEST(request);
 
@@ -2526,6 +2529,14 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 			rad_assert(!request->in_proxy_hash);
 		}
 	} else if (request->in_proxy_hash) {
+#ifdef WITH_COA_TUNNEL
+		/*
+		 *	Cache this, as request->proxy_listener will be
+		 *	NULL after removing the request from the proxy
+		 *	hash.
+		 */
+		reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
+#endif
 		remove_from_proxy_hash(request);
 	}
 
@@ -2540,7 +2551,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		request->server = request->home_server->virtual_server;
 
 #ifdef WITH_COA_TUNNEL
-	} else if (request->proxy_listener && (request->proxy_listener->type != RAD_LISTEN_PROXY)) {
+	} else if (reverse_coa) {
 		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
 			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
 		rad_assert(request->home_server != NULL);
