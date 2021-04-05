@@ -5554,9 +5554,21 @@ static void event_new_fd(rad_listen_t *this)
 				fr_exit(1);
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+#ifdef WITH_COA_TUNNEL
+			/*
+			 *	Clean up the proxied packets AND the
+			 *	normal one.
+			 */
+			if (this->send_coa && this->parent) goto shutdown;
+#endif
+
 		} else
 #endif	/* WITH_PROXY */
 		{
+#ifdef WITH_COA_TUNNEL
+		shutdown:
+#endif
 			INFO(" ... shutting down socket %s", buffer);
 
 			/*
