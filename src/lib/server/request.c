@@ -195,7 +195,6 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 #ifndef NDEBUG
 		.magic = REQUEST_MAGIC,
 #endif
-		.request_state = REQUEST_INIT,
 		.master_state = REQUEST_ACTIVE,
 		.dict = args->namespace,
 		.component = "<pre-core>",

@@ -161,7 +161,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 
 
 	fr_pair_t *vp;
-	rlm_stats_data_t mydata, *stats;
+	rlm_stats_data_t mydata;
 	char buffer[64];
 	uint64_t local_stats[NUM_ELEMENTS(inst->stats)];
 
@@ -169,9 +169,13 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	 *	Increment counters only in "send foo" sections.
 	 *
 	 *	i.e. only when we have a reply to send.
+	 *
+	 *	FIXME - Nothing sets request_state anymore
 	 */
+#if 0
 	if (request->request_state == REQUEST_SEND) {
 		int src_code, dst_code;
+		rlm_stats_data_t *stats;
 
 		src_code = request->packet->code;
 		if (src_code >= FR_RADIUS_CODE_MAX) src_code = 0;
@@ -237,12 +241,12 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 
 		RETURN_MODULE_UPDATED;
 	}
+#endif
 
 	/*
 	 *	Ignore "authenticate" and anything other than Status-Server
 	 */
-	if ((request->request_state != REQUEST_RECV) ||
-	    (request->packet->code != FR_RADIUS_CODE_STATUS_SERVER)) {
+	if ((request->packet->code != FR_RADIUS_CODE_STATUS_SERVER)) {
 		RETURN_MODULE_NOOP;
 	}
 
