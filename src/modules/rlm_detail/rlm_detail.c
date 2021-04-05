@@ -379,7 +379,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	 *	suppress the write.  This check prevents an infinite
 	 *	loop.
 	 */
-	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+	if (request->listener && (request->listener->type == RAD_LISTEN_DETAIL) &&
 	    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
 		     buffer, FNM_FILE_NAME | FNM_PERIOD ) == 0)) {
 		RWDEBUG2("Suppressing infinite loop");
