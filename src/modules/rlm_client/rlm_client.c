@@ -253,7 +253,7 @@ static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 		client = client_from_request(request);
 		if (!client) {
 			REDEBUG("No client associated with this request");
-			return RLM_MODULE_FAIL;
+			return XLAT_ACTION_FAIL;
 		}
 	}
 
