@@ -178,8 +178,6 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 		break;
 
 	case REQUEST_TYPE_INTERNAL:
-		if (!fr_cond_assert_msg(args->parent,
-					"Internal requests must have a parent (args->parent == NULL)")) return -1;
 		break;
 
 	case REQUEST_TYPE_DETACHED:

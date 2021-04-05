@@ -1343,7 +1343,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		request_t *request;
 		fr_radius_packet_t *packet, *reply;
 
-		request = request_alloc_external(session, NULL);
+		request = request_alloc_internal(session, NULL);
 		packet = fr_radius_packet_alloc(request, 0);
 		reply = fr_radius_packet_alloc(request, 0);
 

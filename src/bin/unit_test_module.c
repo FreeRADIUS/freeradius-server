@@ -344,7 +344,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc_external(NULL, NULL);
+	request = request_alloc_internal(NULL, NULL);
 
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;
@@ -464,7 +464,7 @@ static request_t *request_clone(request_t *old)
 {
 	request_t *request;
 
-	request = request_alloc_external(NULL, NULL);
+	request = request_alloc_internal(NULL, NULL);
 	if (!request) return NULL;
 
 	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
