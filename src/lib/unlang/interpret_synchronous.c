@@ -83,12 +83,6 @@ static void _request_done_internal(request_t *request, UNUSED rlm_rcode_t rcode,
 static void _request_done_detached(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
 {
 	RDEBUG3("Done synchronous detached request");
-
-	/*
-	 *	If we're the top level interpreter
-	 *      then free the detached request.
-	 */
-	if (unlang_interpret_stack_depth(request) == 0) talloc_free(request);
 }
 
 /** We don't need to do anything for internal -> detached
