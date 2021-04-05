@@ -314,7 +314,6 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  *
  */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
-extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
 
 /** @name Dictionary structure extensions
  *
@@ -536,8 +535,6 @@ ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent,
 					      char const *attr)
 					      CC_HINT(nonnull(2,3));
-
-fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type);
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child) CC_HINT(nonnull);
 

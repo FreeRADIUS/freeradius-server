@@ -942,8 +942,6 @@ int			tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p);
 
 void			tmpl_attr_to_raw(tmpl_t *vpt);
 
-int			tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type);
-
 int			tmpl_attr_unknown_add(tmpl_t *vpt);
 
 int			tmpl_attr_unresolved_add(fr_dict_t *dict, tmpl_t *vpt,

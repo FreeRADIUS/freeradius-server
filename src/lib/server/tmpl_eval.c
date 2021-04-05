@@ -618,7 +618,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = fr_value_box_from_str(tmp_ctx, &tmp, &src_type, NULL,
+		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
 					    value.vb_strvalue, value.vb_length, '"', false);
 		if (ret < 0) goto error;
 
@@ -648,7 +648,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = fr_value_box_from_str(tmp_ctx, &tmp, &src_type, NULL,
+		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
 					    value.vb_strvalue, value.vb_length, '"', false);
 		if (ret < 0) goto error;
 

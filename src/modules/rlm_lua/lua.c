@@ -90,6 +90,8 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIME_DELTA:
 	{
@@ -172,7 +174,7 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 		lua_pushinteger(L, (lua_Integer)vp->vp_size);
 		break;
 
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		REDEBUG("Cannot convert %s to Lua type", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
 		return -1;
 	}

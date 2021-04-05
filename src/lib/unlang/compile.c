@@ -972,14 +972,6 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
 			return -1;
 		}
-
-		/*
-		 *	Fixup LHS da if it doesn't match the type
-		 *	of the RHS.
-		 */
-		if (tmpl_da(map->lhs)->type != tmpl_value_type(map->rhs)) {
-			if (tmpl_attr_abstract_to_concrete(map->lhs, tmpl_value_type(map->rhs)) < 0) return -1;
-		}
 	} /* else we can't precompile the data */
 
 	return 0;
@@ -1089,14 +1081,6 @@ static int unlang_fixup_filter(map_t *map, UNUSED void *ctx)
 				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
 				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
 			return -1;
-		}
-
-		/*
-		 *	Fixup LHS da if it doesn't match the type
-		 *	of the RHS.
-		 */
-		if (tmpl_da(map->lhs)->type != tmpl_value_type(map->rhs)) {
-			if (tmpl_attr_abstract_to_concrete(map->lhs, tmpl_value_type(map->rhs)) < 0) return -1;
 		}
 	} /* else we can't precompile the data */
 

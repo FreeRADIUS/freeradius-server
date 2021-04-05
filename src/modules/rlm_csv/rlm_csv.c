@@ -245,7 +245,7 @@ static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t
 	talloc_set_type(e, rlm_csv_entry_t);
 
 	e->key = talloc_zero(e, fr_value_box_t);
-	if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
+	if (fr_value_box_from_str(e->key, e->key, type, NULL, p, -1, 0, false) < 0) {
 		cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 			   fr_strerror());
 		return false;
@@ -328,7 +328,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			 *	Set the last entry to use 'e'
 			 */
 			e->key = talloc_zero(e, fr_value_box_t);
-			if (fr_value_box_from_str(e->key, e->key, &type, NULL, p, -1, 0, false) < 0) {
+			if (fr_value_box_from_str(e->key, e->key, type, NULL, p, -1, 0, false) < 0) {
 				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 					   fr_strerror());
 			fail:
@@ -350,7 +350,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			fr_value_box_t box;
 			fr_type_t type = inst->field_types[i];
 
-			if (fr_value_box_from_str(e, &box, &type, NULL, p, -1, 0, false) < 0) {
+			if (fr_value_box_from_str(e, &box, type, NULL, p, -1, 0, false) < 0) {
 				cf_log_err(conf, "Failed parsing field '%s' in file %s line %d - %s", inst->field_names[i],
 					   inst->filename, lineno, fr_strerror());
 				goto fail;
@@ -541,7 +541,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (inst->key) {
 		inst->key_data_type = tmpl_expanded_type(inst->key);
 		switch (inst->key_data_type) {
-		case FR_TYPE_VALUES:
+		case FR_TYPE_LEAF:
 			break;
 
 		case FR_TYPE_NULL:

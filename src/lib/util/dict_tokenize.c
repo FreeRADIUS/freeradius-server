@@ -1132,13 +1132,9 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		break;
 	}
 
-	{
-		fr_type_t type = da->type;	/* Might change - Stupid combo IP */
-
-		if (fr_value_box_from_str(NULL, &value, &type, NULL, argv[2], -1, '\0', false) < 0) {
-			fr_strerror_printf_push("Invalid VALUE for Attribute '%s'", da->name);
-			return -1;
-		}
+	if (fr_value_box_from_str(NULL, &value, da->type, NULL, argv[2], -1, '\0', false) < 0) {
+		fr_strerror_printf_push("Invalid VALUE for Attribute '%s'", da->name);
+		return -1;
 	}
 
 	if (fr_dict_enum_add_name(da, argv[1], &value, false, true) < 0) {
@@ -1190,7 +1186,6 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	fr_dict_attr_t const   		*da;
 	fr_dict_attr_t const	       	*parent = NULL;
 	fr_value_box_t			value;
-	fr_type_t			type;
 	unsigned int			attr;
 	fr_dict_attr_flags_t		flags;
 	char				*key_attr = argv[1];
@@ -1243,8 +1238,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Parse the value.
 	 */
-	type = parent->type;	/* because of combo-IP nonsense */
-	if (fr_value_box_from_str(NULL, &value, &type, NULL, argv[2], -1, '\0', false) < 0) {
+	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], -1, '\0', false) < 0) {
 		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
 		return -1;
 	}
@@ -1252,7 +1246,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	@todo - auto-number from a parent UNION, instead of overloading the value.
 	 */
-	switch (type) {
+	switch (parent->type) {
 	case FR_TYPE_UINT8:
 		attr = value.vb_uint8;
 		break;
@@ -2201,7 +2195,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 					goto error;
 				}
 
-				if (dict_attr_add_to_namespace(ctx->dict, UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
+				if (dict_attr_add_to_namespace(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
 					talloc_free(new);
 					goto error;
 				}
@@ -2381,7 +2375,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 			goto error;
 		}
 
-		if (dict_attr_add_to_namespace(dict, dict->root, n) < 0) {
+		if (dict_attr_add_to_namespace(dict->root, n) < 0) {
 			fr_strerror_printf_push("Failed inserting '%s' into internal dictionary", type_name);
 			talloc_free(type_name);
 			goto error;

@@ -1640,11 +1640,7 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
  */
 int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char quote, bool tainted)
 {
-	fr_type_t type;
-
 	if (!value) return -1;
-
-	type = vp->da->type;
 
 	/*
 	 *	This is not yet supported because the rest of the APIs
@@ -1653,10 +1649,10 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char
 	 *	haven't yet audited the uses of this function for that
 	 *	behavior.
 	 */
-	switch (type) {
+	switch (vp->da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("Attributes of type '%s' are not yet supported",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+				   fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"));
 		return -1;
 
 	default:
@@ -1667,29 +1663,7 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs unescaping
 	 */
-	if (fr_value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, quote, tainted) < 0) return -1;
-
-	/*
-	 *	If we parsed to a different type than the DA associated with
-	 *	the fr_pair_t we now need to fixup the DA.
-	 *
-	 *	This is for types COMBO_IP.  fr_pair_ts have a fixed
-	 *	data type, and not a polymorphic one.  So instead of
-	 *	hacking polymorphic crap through the entire server
-	 *	code, we have this hack to make them static.
-	 */
-	if (type != vp->da->type) {
-		fr_dict_attr_t const *da;
-
-		da = fr_dict_attr_by_type(vp->da, type);
-		if (!da) {
-			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-					   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"), vp->da->name);
-			return -1;
-		}
-		vp->da = da;
-		vp->data.enumv = da;
-	}
+	if (fr_value_box_from_str(vp, &vp->data, vp->da->type, vp->da, value, inlen, quote, tainted) < 0) return -1;
 	vp->type = VT_DATA;
 
 	VP_VERIFY(vp);
@@ -2220,11 +2194,7 @@ char const *fr_pair_value_enum(fr_pair_t const *vp, char buff[20])
 	char const		*str;
 	fr_dict_enum_t const	*enumv = NULL;
 
-	switch (vp->vp_type) {
-	case FR_TYPE_NUMERIC:
-		break;
-
-	default:
+	if (!fr_box_is_numeric(&vp->data)) {
 		fr_strerror_printf("Pair %s is not numeric", vp->da->name);
 		return NULL;
 	}
@@ -2414,18 +2384,6 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 		fr_dict_attr_t const *da;
 
 		da = vp->da;
-
-		if (da->type == FR_TYPE_COMBO_IP_ADDR) {
-			da = fr_dict_attr_by_type(vp->da, vp->da->type);
-			if (!da) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
-						     "variant (%s) not found in global dictionary",
-						     file, line, vp->da, vp->da->name,
-						     fr_table_str_by_value(fr_value_box_type_table,
-						     			   vp->da->type, "<INVALID>"));
-			}
-		}
-
 		if (da != vp->da) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t "
 					     "dictionary pointer %p \"%s\" (%s) "

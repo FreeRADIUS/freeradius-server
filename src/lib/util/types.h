@@ -135,13 +135,17 @@ typedef enum {
 
 /** Types which can fit in an #fr_ipaddr_t
  *
+ * - Combo IP addresses
+ * - Combo IP prefixes
  * - IPv4 addresses
  * - IPv6 addresses
  * - IPv4 prefix
  * - IPv6 prefix
  */
 #define FR_TYPE_IP_DEF(_beg, _mid, _end) \
-	_beg(FR_TYPE_IPV4_ADDR) \
+	_beg(FR_TYPE_COMBO_IP_ADDR) \
+	_mid(FR_TYPE_COMBO_IP_PREFIX) \
+	_mid(FR_TYPE_IPV4_ADDR) \
 	_mid(FR_TYPE_IPV4_PREFIX) \
 	_mid(FR_TYPE_IPV6_ADDR) \
 	_end(FR_TYPE_IPV6_PREFIX)
@@ -155,10 +159,17 @@ typedef enum {
 #define FR_TYPE_FIXED_SIZE_DEF(_beg, _mid, _end) \
 	_beg(FR_TYPE_ETHERNET) \
 	_mid(FR_TYPE_IFID) \
-	FR_TYPE_IP_DEF(_mid, _mid, _mid) \
+	_mid(FR_TYPE_IPV4_ADDR) \
+	_mid(FR_TYPE_IPV4_PREFIX) \
+	_mid(FR_TYPE_IPV6_ADDR) \
+	_mid(FR_TYPE_IPV6_PREFIX) \
 	FR_TYPE_NUMERIC_DEF(_mid, _mid, _end)
 
 /** Match all variable length types
+ *
+ * @note Whilst combo IP addresses and prefixes may technically be
+ *	 variable length on the wire, these groupings are referring
+ *	 to our internal box representation which is fixed size.
  *
  * - Strings
  * - Octets
@@ -166,20 +177,6 @@ typedef enum {
 #define FR_TYPE_VARIABLE_SIZE_DEF(_beg, _mid, _end) \
 	_beg(FR_TYPE_STRING) \
 	_end(FR_TYPE_OCTETS)
-
-/** Types which represent concrete values
- *
- * - Network addresses
- * - Strings
- * - Octets
- * - Numbers
- */
-#define FR_TYPE_VALUES_DEF(_beg, _mid, _end) \
-	_beg(FR_TYPE_ETHERNET) \
-	_mid(FR_TYPE_IFID) \
-	FR_TYPE_IP_DEF(_mid, _mid, _mid) \
-	FR_TYPE_VARIABLE_SIZE_DEF(_mid, _mid, _mid) \
-	FR_TYPE_NUMERIC_DEF(_mid, _mid, _end)
 
 /** Types which should be wrapped in double quotes when printed
  *
@@ -215,20 +212,30 @@ typedef enum {
 	_beg(FR_TYPE_VSA) \
 	FR_TYPE_STRUCTURAL_EXCEPT_VSA_DEF(_mid, _mid, _end)
 
-/** Types which do not represent concrete values
+/** Types which represent concrete values
  *
- * - Combo IPs
- * - Combo prefixes
+ * - Network addresses
+ * - Strings
+ * - Octets
+ * - Numbers
+ */
+#define FR_TYPE_LEAF_DEF(_beg, _mid, _end) \
+	_beg(FR_TYPE_ETHERNET) \
+	_mid(FR_TYPE_IFID) \
+	FR_TYPE_IP_DEF(_mid, _mid, _mid) \
+	FR_TYPE_VARIABLE_SIZE_DEF(_mid, _mid, _mid) \
+	FR_TYPE_NUMERIC_DEF(_mid, _mid, _end)
+
+/** Types which do not represent leaf values
+ *
  * - Structural
  * - Boxes (can represent any type)
  * - Void (opaque types)
  * - Null (lack of value)
  * - Invalid values
  */
-#define FR_TYPE_NON_VALUES_DEF(_beg, _mid, _end) \
-	_beg(FR_TYPE_COMBO_IP_ADDR) \
-	_mid(FR_TYPE_COMBO_IP_PREFIX) \
-	_mid(FR_TYPE_VALUE_BOX) \
+#define FR_TYPE_NON_LEAF_DEF(_beg, _mid, _end) \
+	_beg(FR_TYPE_VALUE_BOX) \
 	_mid(FR_TYPE_VOID) \
 	_mid(FR_TYPE_NULL) \
 	_mid(FR_TYPE_MAX) \
@@ -251,12 +258,12 @@ typedef enum {
 
 #define FR_TYPE_FIXED_SIZE			FR_TYPE_FIXED_SIZE_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_VARIABLE_SIZE			FR_TYPE_VARIABLE_SIZE_DEF(CASE_BEG, CASE_MID, CASE_END)
-#define FR_TYPE_VALUES				FR_TYPE_VALUES_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_QUOTED				FR_TYPE_QUOTED_DEF(CASE_BEG, CASE_MID, CASE_END)
 
 #define FR_TYPE_STRUCTURAL_EXCEPT_VSA		FR_TYPE_STRUCTURAL_EXCEPT_VSA_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_STRUCTURAL			FR_TYPE_STRUCTURAL_DEF(CASE_BEG, CASE_MID, CASE_END)
-#define FR_TYPE_NON_VALUES			FR_TYPE_NON_VALUES_DEF(CASE_BEG, CASE_MID, CASE_END)
+#define FR_TYPE_LEAF				FR_TYPE_LEAF_DEF(CASE_BEG, CASE_MID, CASE_END)
+#define FR_TYPE_NON_LEAF			FR_TYPE_NON_LEAF_DEF(CASE_BEG, CASE_MID, CASE_END)
 /** @} */
 
 /** @name Bool arrays that group types
@@ -271,12 +278,12 @@ extern bool const fr_type_ip[FR_TYPE_MAX + 1];
 
 extern bool const fr_type_fixed_size[FR_TYPE_MAX + 1];
 extern bool const fr_type_variable_size[FR_TYPE_MAX + 1];
-extern bool const fr_type_values[FR_TYPE_MAX + 1];
 extern bool const fr_type_quoted[FR_TYPE_MAX + 1];
 
 extern bool const fr_type_structural_except_vsa[FR_TYPE_MAX + 1];
 extern bool const fr_type_structural[FR_TYPE_MAX + 1];
-extern bool const fr_type_non_values[FR_TYPE_MAX + 1];
+extern bool const fr_type_leaf[FR_TYPE_MAX + 1];
+extern bool const fr_type_non_leaf[FR_TYPE_MAX + 1];
 /** @} */
 
 /** @name Type checking macros
@@ -323,13 +330,13 @@ extern bool const fr_type_non_values[FR_TYPE_MAX + 1];
 #define fr_type_is_ip(_x)			(fr_type_ip[_x])
 
 #define fr_type_is_fixed_size(_x)		(fr_type_fixed_size[_x])
-#define fr_type_is_variable_size(_x)		(fr_variable_size[_x])
-#define fr_type_is_value(_x)			(fr_type_values[_x])
+#define fr_type_is_variable_size(_x)		(fr_type_variable_size[_x])
 #define fr_type_is_quoted(_x)			(fr_type_quoted[_x])
 
 #define fr_type_is_structural_except_vsa(_x)	(fr_type_structural_except_vsa[_x])
 #define fr_type_is_structural(_x)		(fr_type_structural[_x])
-#define fr_type_is_non_value(_x)		(fr_type_non_values[_x])
+#define fr_type_is_leaf(_x)			(fr_type_leaf[_x])
+#define fr_type_is_non_leaf(_x)			(fr_type_non_leaf[_x])
 /** @} */
 
 bool		fr_type_cast(fr_type_t dst, fr_type_t src);

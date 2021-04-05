@@ -435,6 +435,8 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_ETHERNET:
 	{
 		ssize_t slen;
@@ -452,7 +454,7 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 	}
 		break;
 
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		fr_assert(0);
 		return -1;
 	}

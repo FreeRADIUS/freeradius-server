@@ -75,8 +75,6 @@ struct fr_dict {
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
 	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
 
-	fr_hash_table_t		*attributes_combo;	//!< Lookup variants of polymorphic attributes.
-
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
@@ -154,8 +152,7 @@ int			dict_protocol_add(fr_dict_t *dict);
 
 int			dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num);
 
-int			dict_attr_add_to_namespace(fr_dict_t *dict,
-						   fr_dict_attr_t const *parent, fr_dict_attr_t *da) CC_HINT(nonnull);
+int			dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da) CC_HINT(nonnull);
 
 bool			dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					      UNUSED char const *name, int *attr, fr_type_t type,

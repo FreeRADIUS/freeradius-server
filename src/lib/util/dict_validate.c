@@ -298,7 +298,13 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_COMBO_IP_ADDR:
 		flags->length = 16;
+		break;
+
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_PREFIX:
+		flags->length = 17;
 		break;
 
 	case FR_TYPE_STRUCT:
@@ -410,30 +416,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 		break;
 
-	case FR_TYPE_COMBO_IP_ADDR:
-		if (strcasecmp(dict->root->name, "RADIUS") != 0) {
-			fr_strerror_const("The 'combo-ip' type can only be used in the RADIUS dictionary.");
-			return false;
-		}
-
-		/*
-		 *	RFC 6929 says that this is a terrible idea.
-		 */
-		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type == FR_TYPE_VSA) {
-				break;
-			}
-		}
-
-		if (!v) {
-			fr_strerror_const("Attributes of type 'combo-ip' can only be used in VSA dictionaries");
-			return false;
-		}
-		break;
-
 	case FR_TYPE_NULL:
 	case FR_TYPE_FLOAT64:
-	case FR_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 		return false;
@@ -507,7 +491,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			 *	the first member.
 			 */
 			if (sibling->flags.length == 0) switch (sibling->type) {
-			case FR_TYPE_VALUES:
+			case FR_TYPE_LEAF:
 				break;
 
 			default:

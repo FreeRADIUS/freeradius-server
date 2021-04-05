@@ -77,17 +77,6 @@ bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
 	['z'] = true
 };
 
-/** Structural data types
- *
- */
-bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
-	[FR_TYPE_GROUP] = true,
-	[FR_TYPE_STRUCT] = true,
-	[FR_TYPE_TLV] = true,
-	[FR_TYPE_VENDOR] = true,
-	[FR_TYPE_VSA] = true
-};
-
 /*
  *	Create the hash of the name.
  *
@@ -192,36 +181,6 @@ static int dict_attr_name_cmp(void const *one, void const *two)
 	fr_dict_attr_t const *a = one, *b = two;
 
 	return strcasecmp(a->name, b->name);
-}
-
-/** Hash a combo attribute
- *
- */
-static uint32_t dict_attr_combo_hash(void const *data)
-{
-	uint32_t hash;
-	fr_dict_attr_t const *attr = data;
-
-	hash = fr_hash(&attr->parent, sizeof(attr->parent));			//-V568
-	hash = fr_hash_update(&attr->type, sizeof(attr->type), hash);
-	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
-}
-
-/** Compare two combo attribute entries
- *
- */
-static int dict_attr_combo_cmp(void const *one, void const *two)
-{
-	fr_dict_attr_t const *a = one, *b = two;
-	int ret;
-
-	ret = (a->parent < b->parent) - (a->parent > b->parent);
-	if (ret != 0) return ret;
-
-	ret = (a->type < b->type) - (a->type > b->type);
-	if (ret != 0) return ret;
-
-	return (a->attr > b->attr) - (a->attr < b->attr);
 }
 
 /** Wrap name hash function for fr_dict_vendor_t
@@ -733,7 +692,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 
 		if (dict_attr_child_add(dst, copy) < 0) return -1;
 
-		if (dict_attr_add_to_namespace(dict, dst, copy) < 0) return -1;
+		if (dict_attr_add_to_namespace(dst, copy) < 0) return -1;
 
 		if (!dict_attr_children(child)) continue;
 
@@ -1021,14 +980,13 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 
 /** Add an attribute to the name table for an attribute
  *
- * @param[in] dict		of protocol context we're operating in.
  * @param[in] parent		containing the namespace to add this attribute to.
  * @param[in] da		to add to the name lookup tables.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr_dict_attr_t *da)
+int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 {
 	fr_hash_table_t		*namespace;
 
@@ -1083,71 +1041,6 @@ int dict_attr_add_to_namespace(fr_dict_t *dict, fr_dict_attr_t const *parent, fr
 			fr_strerror_const("Internal error storing attribute");
 			goto error;
 		}
-	}
-
-	/*
-	 *	Insert copies of the attribute into the
-	 *	polymorphic attribute table.
-	 *
-	 *	This allows an abstract attribute type
-	 *	like combo IP to be resolved to a
-	 *	concrete one later.
-	 */
-	switch (da->type) {
-	case FR_TYPE_COMBO_IP_ADDR:
-	{
-		fr_dict_attr_t *v4, *v6;
-
-		fr_assert(dict->attributes_combo);
-
-		v4 = dict_attr_acopy(dict->pool, da, NULL);
-		if (!v4) goto error;
-		v4->type = FR_TYPE_IPV4_ADDR;
-
-		v6 = dict_attr_acopy(dict->pool, da, NULL);
-		if (!v6) goto error;
-		v6->type = FR_TYPE_IPV6_ADDR;
-
-		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
-			fr_strerror_const("Failed inserting IPv4 version of combo attribute");
-			goto error;
-		}
-
-		if (!fr_hash_table_replace(dict->attributes_combo, v6)) {
-			fr_strerror_const("Failed inserting IPv6 version of combo attribute");
-			goto error;
-		}
-		break;
-	}
-
-	case FR_TYPE_COMBO_IP_PREFIX:
-	{
-		fr_dict_attr_t *v4, *v6;
-
-		fr_assert(dict->attributes_combo);
-
-		v4 = dict_attr_acopy(dict->pool, da, NULL);
-		if (!v4) goto error;
-		v4->type = FR_TYPE_IPV4_PREFIX;
-
-		v6 = dict_attr_acopy(dict->pool, da, NULL);
-		if (!v6) goto error;
-		v6->type = FR_TYPE_IPV6_PREFIX;
-
-		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
-			fr_strerror_const("Failed inserting IPv4 version of combo attribute");
-			goto error;
-		}
-
-		if (!fr_hash_table_replace(dict->attributes_combo, v6)) {
-			fr_strerror_const("Failed inserting IPv6 version of combo attribute");
-			goto error;
-		}
-		break;
-	}
-
-	default:
-		break;
 	}
 
 	return 0;
@@ -1248,7 +1141,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	old = fr_dict_attr_child_by_num(parent, n->attr);
 	if (old && (dict_attr_compatible(parent, old, n) < 0)) goto error;
 
-	if (dict_attr_add_to_namespace(dict, parent, n) < 0) {
+	if (dict_attr_add_to_namespace(parent, n) < 0) {
 	error:
 		talloc_free(n);
 		return -1;
@@ -2623,27 +2516,6 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 	return dict_attr_by_name(err, parent, name);
 }
 
-
-/** Lookup a attribute by its its vendor and attribute numbers and data type
- *
- * @note Only works with FR_TYPE_COMBO_IP
- *
- * @param[in] da		to look for type variant of.
- * @param[in] type		Variant of attribute to lookup.
- * @return
- * 	- Attribute matching parent/attr/type.
- * 	- NULL if no matching attribute could be found.
- */
-fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
-{
-	return fr_hash_table_find_by_data(dict_by_da(da)->attributes_combo,
-				      &(fr_dict_attr_t){
-				      		.parent = da->parent,
-				      		.attr = da->attr,
-				      		.type = type
-				      });
-}
-
 /** Check if a child attribute exists in a parent using a pointer (da)
  *
  * @param[in] parent		to check for child in.
@@ -2875,7 +2747,6 @@ static int _dict_free(fr_dict_t *dict)
 	 *	are still there.
 	 */
 	talloc_free(dict->vendors_by_name);
-	talloc_free(dict->attributes_combo);
 
 	if (dict->autoref &&
 	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, NULL) < 0)) {
@@ -2959,15 +2830,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	dict->autoref = fr_hash_table_create(dict, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
 	if (!dict->autoref) {
 		fr_strerror_printf("Failed allocating \"autoref\" table");
-		goto error;
-	}
-
-	/*
-	 *	Horrible hacks for combo-IP.
-	 */
-	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, hash_pool_free);
-	if (!dict->attributes_combo) {
-		fr_strerror_printf("Failed allocating \"attributes_combo\" table");
 		goto error;
 	}
 

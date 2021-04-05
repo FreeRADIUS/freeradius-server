@@ -173,7 +173,7 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
 	da = fr_dict_attr_unconst(da_const);
 	type = da->type;
 
-	if (fr_value_box_from_str(fixup, &value, &type, NULL,
+	if (fr_value_box_from_str(fixup, &value, type, NULL,
 				  fixup->value, talloc_array_length(fixup->value) - 1, '\0', false) < 0) {
 		fr_strerror_printf_push("Invalid VALUE for Attribute '%s' at %s[%d]",
 					da->name,
@@ -460,7 +460,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		return -1;
 	}
 
-	if (dict_attr_add_to_namespace(dict, fixup->parent, cloned) < 0) return -1;
+	if (dict_attr_add_to_namespace(fixup->parent, cloned) < 0) return -1;
 
 	return 0;
 }

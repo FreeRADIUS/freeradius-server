@@ -519,10 +519,9 @@ static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx,
 static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
 	fr_value_box_t box;
-	fr_type_t type = FR_TYPE_BOOL;
 	struct ProfilerState state;
 
-	if (fr_value_box_from_str(NULL, &box, &type, NULL, info->argv[0], strlen(info->argv[0]), '\0', false) < 0) {
+	if (fr_value_box_from_str(NULL, &box, FR_TYPE_BOOL, NULL, info->argv[0], strlen(info->argv[0]), '\0', false) < 0) {
 		fprintf(fp_err, "Failed setting profile status '%s' - %s\n", info->argv[0], fr_strerror());
 		return -1;
 	}

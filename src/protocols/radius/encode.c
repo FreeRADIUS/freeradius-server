@@ -413,14 +413,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
+	if (fr_type_is_structural(da->type)) {
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
-
-	default:
-		break;
 	}
 
 	/*
@@ -957,7 +953,7 @@ static ssize_t encode_rfc_hdr_internal(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	case FR_TYPE_STRUCT:
-	case FR_TYPE_VALUES:
+	case FR_TYPE_LEAF:
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
 		    (da_stack->da[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,

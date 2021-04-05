@@ -2257,7 +2257,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
-	if (fr_value_box_from_str(vpt, &vpt->data.literal, &type, NULL,
+	if (fr_value_box_from_str(vpt, &vpt->data.literal, type, NULL,
 				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), '\0', false) < 0) {
 		talloc_free(vpt);
 		goto error;
@@ -2373,7 +2373,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
-	if (fr_value_box_from_str(vpt, &vpt->data.literal, &type, NULL,
+	if (fr_value_box_from_str(vpt, &vpt->data.literal, type, NULL,
 				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), '\0', false) < 0) {
 		talloc_free(vpt);
 		goto error;
@@ -2785,7 +2785,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 			fr_strerror_const("Unknown data type");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
-		if (fr_dict_non_data_types[cast]) {
+		if (fr_type_is_non_leaf(cast)) {
 			fr_strerror_const("Forbidden data type in cast");
 			FR_SBUFF_MARKER_ERROR_RETURN(&m);
 		}
@@ -2828,7 +2828,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	 *	Only "base" data types are allowed.  Structural types
 	 *	and horrid WiMAX crap is forbidden.
 	 */
-	case FR_TYPE_VALUES:
+	case FR_TYPE_LEAF:
 		break;
 	}
 
@@ -2963,7 +2963,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		 *	Why do we pass a pointer to a temporary type
 		 *	variable? Goddamn WiMAX.
 		 */
-		if (fr_value_box_from_str(vpt, &vpt->data.literal, &type,
+		if (fr_value_box_from_str(vpt, &vpt->data.literal, type,
 					  enumv, unescaped, talloc_array_length(unescaped) - 1,
 					  '\0', false) < 0) return -1;
 		talloc_free(unescaped);
@@ -3375,41 +3375,6 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 void tmpl_attr_to_raw(tmpl_t *vpt)
 {
 	attr_to_raw(vpt, fr_dlist_tail(&vpt->data.attribute.ar));
-}
-
-/** Convert an abstract da into a concrete one
- *
- * Usually used to fixup combo ip addresses
- */
-int tmpl_attr_abstract_to_concrete(tmpl_t *vpt, fr_type_t type)
-{
-	fr_dict_attr_t const	*abstract;
-	fr_dict_attr_t const	*concrete;
-	tmpl_attr_t	*ref;
-
-	tmpl_assert_type(tmpl_is_attr(vpt));
-
-	abstract = tmpl_da(vpt);
-	if (abstract->type != FR_TYPE_COMBO_IP_ADDR) {
-		fr_strerror_printf("Abstract attribute \"%s\" is of incorrect type '%s'", abstract->name,
-				   fr_table_str_by_value(fr_value_box_type_table, abstract->type, "<INVALID>"));
-		return -1;
-	}
-
-	concrete = fr_dict_attr_by_type(abstract, type);
-	if (!concrete) {
-		fr_strerror_printf("Can't convert abstract type '%s' to concrete type '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, abstract->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
-		return -1;
-	}
-
-	ref = fr_dlist_tail(&vpt->data.attribute.ar);
-	ref->da = concrete;
-
-	TMPL_ATTR_VERIFY(vpt);
-
-	return 0;
 }
 
 /** Add an unknown #fr_dict_attr_t specified by a #tmpl_t to the main dictionary
@@ -4210,18 +4175,6 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 			}
 
 			da = tmpl_da(vpt);
-
-			if ((da->type == FR_TYPE_COMBO_IP_ADDR) && (da->type != tmpl_da(vpt)->type)) {
-				da = fr_dict_attr_by_type(tmpl_da(vpt), tmpl_da(vpt)->type);
-				if (!da) {
-					fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-							     "attribute \"%s\" variant (%s) not found in dictionary (%s)",
-							     file, line, tmpl_da(vpt)->name,
-							     fr_table_str_by_value(fr_value_box_type_table, tmpl_da(vpt)->type, "<INVALID>"),
-							     fr_dict_root(dict)->name);
-				}
-			}
-
 			if (!tmpl_da(vpt)->flags.is_unknown && !tmpl_da(vpt)->flags.is_raw && (da != tmpl_da(vpt))) {
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "dictionary pointer %p \"%s\" (%s) "
@@ -4394,7 +4347,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	We can only cast to basic data types.  Complex ones
 		 *	are forbidden.
 		 */
-		if (fr_dict_non_data_types[cast]) {
+		if (fr_type_is_non_leaf(cast)) {
 			return_P("Forbidden data type in cast");
 		}
 

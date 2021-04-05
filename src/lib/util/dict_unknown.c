@@ -114,7 +114,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
 		 *	if it so desires.
 		 */
-		if (dict_attr_add_to_namespace(dict, parent, n) < 0) {
+		if (dict_attr_add_to_namespace(parent, n) < 0) {
 			talloc_free(n);
 			return NULL;
 		}
@@ -291,11 +291,7 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 					.is_unknown = true,
 				};
 
-	switch (parent->type) {
-	case FR_TYPE_STRUCTURAL_EXCEPT_VSA:
-		break;
-
-	default:
+	if (!fr_type_is_structural_except_vsa(parent->type)) {
 		fr_strerror_printf("%s: Cannot allocate unknown tlv attribute (%u) with parent type %s",
 				   __FUNCTION__,
 				   num,
@@ -321,11 +317,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 					.is_unknown = true,
 				};
 
-	switch (parent->type) {
-	case FR_TYPE_STRUCTURAL_EXCEPT_VSA:
-		break;
-
-	default:
+	if (!fr_type_is_structural_except_vsa(parent->type)) {
 		fr_strerror_printf("%s: Cannot allocate unknown octets attribute (%u) with parent type %s",
 				   __FUNCTION__,
 				   num,

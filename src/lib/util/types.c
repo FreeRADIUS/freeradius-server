@@ -38,12 +38,12 @@ bool const fr_type_ip[FR_TYPE_MAX + 1] = FR_TYPE_IP_DEF(ARRAY_BEG, ARRAY_MID, AR
 
 bool const fr_type_fixed_size[FR_TYPE_MAX + 1] = FR_TYPE_FIXED_SIZE_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 bool const fr_type_variable_size[FR_TYPE_MAX + 1] = FR_TYPE_VARIABLE_SIZE_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
-bool const fr_type_values[FR_TYPE_MAX + 1] = FR_TYPE_VALUES_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 bool const fr_type_quoted[FR_TYPE_MAX + 1] = FR_TYPE_QUOTED_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 
 bool const fr_type_structural_except_vsa[FR_TYPE_MAX + 1] = FR_TYPE_STRUCTURAL_EXCEPT_VSA_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 bool const fr_type_structural[FR_TYPE_MAX + 1] = FR_TYPE_STRUCTURAL_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
-bool const fr_type_non_values[FR_TYPE_MAX + 1] = FR_TYPE_NON_VALUES_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_leaf[FR_TYPE_MAX + 1] = FR_TYPE_LEAF_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
+bool const fr_type_non_leaf[FR_TYPE_MAX + 1] = FR_TYPE_NON_LEAF_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 
 #define O(_x) [FR_TYPE_ ## _x] = true
 
@@ -125,7 +125,7 @@ bool fr_type_cast(fr_type_t dst, fr_type_t src)
 	 *	Invalid casts.
 	 */
 	switch (dst) {
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		return false;
 
 	default:
@@ -133,7 +133,7 @@ bool fr_type_cast(fr_type_t dst, fr_type_t src)
 	}
 
 	switch (src) {
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		return false;
 
 	default:
@@ -414,7 +414,7 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 	 *	Invalid types
 	 */
 	switch (a) {
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		return FR_TYPE_NULL;
 
 	default:
@@ -422,7 +422,7 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 	}
 
 	switch (b) {
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		return FR_TYPE_NULL;
 
 	default:

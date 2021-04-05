@@ -928,7 +928,7 @@ static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_
 	if (!tmpl_is_attr(vpt)) return 0;
 
 	switch (tmpl_da(vpt)->type) {
-	case FR_TYPE_VALUES:
+	case FR_TYPE_LEAF:
 		break;
 
 	default:

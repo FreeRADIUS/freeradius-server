@@ -331,7 +331,7 @@ static inline int xlat_arg_parser_validate(xlat_arg_parser_t const *arg, bool la
 	}
 
 	switch (arg->type) {
-	case FR_TYPE_VALUES:
+	case FR_TYPE_LEAF:
 	case FR_TYPE_VOID:
 		break;
 
@@ -911,13 +911,8 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 		if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
 		RIDEBUG3("type       : %s", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
 
-		switch (vp->vp_type) {
-		case FR_TYPE_VARIABLE_SIZE:
+		if (fr_box_is_variable_size(&vp->data)) {
 			RIDEBUG3("length     : %zu", vp->vp_length);
-			break;
-
-		default:
-			break;
 		}
 
 		if (!RDEBUG_ENABLED4) continue;
@@ -932,7 +927,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 			if ((fr_type_t) type->value == vp->vp_type) goto next_type;
 
 			switch (type->value) {
-			case FR_TYPE_NON_VALUES:	/* Skip everything that's not a value */
+			case FR_TYPE_NON_LEAF:	/* Skip everything that's not a value */
 				goto next_type;
 
 			default:

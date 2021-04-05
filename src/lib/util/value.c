@@ -177,6 +177,8 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_IPV4_PREFIX]			= {5, 5},
 	[FR_TYPE_IPV6_ADDR]			= {16, 17},
 	[FR_TYPE_IPV6_PREFIX]			= {17, 18},
+	[FR_TYPE_COMBO_IP_ADDR]			= {4, 17},
+	[FR_TYPE_COMBO_IP_PREFIX]		= {16, 18},
 	[FR_TYPE_IFID]				= {8, 8},
 	[FR_TYPE_ETHERNET]			= {6, 6},
 
@@ -636,6 +638,8 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
 		compare = memcmp(&a->vb_ip, &b->vb_ip, sizeof(a->vb_ip));
 		break;
 
@@ -646,7 +650,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	/*
 	 *	These should be handled at some point
 	 */
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		(void)fr_cond_assert(0);	/* unknown type */
 		return -2;
 
@@ -1063,7 +1067,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		fr_assert_fail(NULL);
 		return -1; /* shouldn't happen */
 	}
@@ -1241,6 +1245,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 
 	switch (value->type) {
 	case FR_TYPE_IPV4_ADDR:
+	ipv4addr:
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
 					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
 					  sizeof(value->vb_ip.addr.v4.s_addr));
@@ -1249,6 +1254,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	 *	Needs special mangling
 	 */
 	case FR_TYPE_IPV4_PREFIX:
+	ipv4prefix:
 		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
 					  (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
@@ -1256,11 +1262,13 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
+	ipv6addr:
 		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
+	ipv6prefix:
 		if (value->vb_ip.scope_id > 0) FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.scope_id);
 		FR_DBUFF_IN_RETURN(&work_dbuff, value->vb_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
@@ -1269,6 +1277,36 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	case FR_TYPE_BOOL:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, value->datum.boolean);
 		break;
+
+	case FR_TYPE_COMBO_IP_ADDR:
+		switch (value->vb_ip.af) {
+		case AF_INET:
+			goto ipv4addr;
+
+		case AF_INET6:
+			goto ipv6addr;
+
+		default:
+			break;
+		}
+
+		fr_strerror_const("Combo IP value missing af");
+		return 0;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+		switch (value->vb_ip.af) {
+		case AF_INET:
+			goto ipv4prefix;
+
+		case AF_INET6:
+			goto ipv6prefix;
+
+		default:
+			break;
+		}
+
+		fr_strerror_const("Combo IP value missing af");
+		return 0;
 
 	/*
 	 *	Already in network byte-order
@@ -1426,7 +1464,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		goto unsupported;
 	}
 
@@ -1524,6 +1562,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 	 *	Already in network byte order
 	 */
 	case FR_TYPE_IPV4_ADDR:
+	ipv4addr:
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET,
 			.prefix = 32,
@@ -1532,6 +1571,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
+	ipv4prefix:
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET,
 		};
@@ -1540,6 +1580,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
+	ipv6addr:
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET6,
 			.scope_id = 0,
@@ -1556,6 +1597,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
+	ipv6prefix:
 		dst->vb_ip = (fr_ipaddr_t){
 			.af = AF_INET6,
 			.scope_id = 0,
@@ -1570,6 +1612,22 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 		FR_DBUFF_OUT_RETURN(&dst->vb_ip.prefix, &work_dbuff);
 		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)&dst->vb_ip.addr.v6, &work_dbuff, len - 1);
 		break;
+
+	case FR_TYPE_COMBO_IP_ADDR:
+		if ((len >= network_min_size(FR_TYPE_IPV6_ADDR)) &&
+		    (len <= network_max_size(FR_TYPE_IPV6_ADDR))) goto ipv6addr;	/* scope is optional */
+		else if ((len >= network_min_size(FR_TYPE_IPV4_ADDR)) &&
+		    	 (len <= network_max_size(FR_TYPE_IPV4_ADDR))) goto ipv4addr;
+		fr_strerror_const("Invalid combo ip address value");
+		return 0;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+		if ((len >= network_min_size(FR_TYPE_IPV6_PREFIX)) &&
+		    (len <= network_max_size(FR_TYPE_IPV6_PREFIX))) goto ipv6prefix;	/* scope is optional */
+		else if ((len >= network_min_size(FR_TYPE_IPV4_PREFIX)) &&
+		    	 (len <= network_max_size(FR_TYPE_IPV4_PREFIX))) goto ipv4prefix;
+		fr_strerror_const("Invalid combo ip prefix value");
+		return 0;
 
 	case FR_TYPE_BOOL:
 		{
@@ -1723,7 +1781,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 		break;		/* Already dealt with */
 
 	case FR_TYPE_SIZE:
-	case FR_TYPE_NON_VALUES:
+	case FR_TYPE_NON_LEAF:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
 		break;
@@ -1745,13 +1803,7 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
-	switch (dst_type) {
-	case FR_TYPE_FIXED_SIZE:
-		break;
-
-	default:
-		if (!fr_cond_assert(false)) return -1;
-	}
+	if (!fr_type_is_fixed_size(dst_type)) if (!fr_cond_assert(false)) return -1;
 
 	if (src->vb_length < network_min_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
@@ -2028,7 +2080,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
@@ -2136,7 +2188,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 				             src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
@@ -2247,7 +2299,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
@@ -2352,7 +2404,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	default:
@@ -2442,7 +2494,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
@@ -2501,7 +2553,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
@@ -2766,7 +2818,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 {
 	switch (src->type) {
 	case FR_TYPE_STRING:
-		return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 				             src->vb_strvalue, src->vb_length, '\0', src->tainted);
 
 	case FR_TYPE_OCTETS:
@@ -2879,7 +2931,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (!fr_cond_assert(src != dst)) return -1;
 	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
-	if (fr_dict_non_data_types[dst_type]) {
+	if (fr_type_is_non_leaf(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
 				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
@@ -2939,12 +2991,13 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_IPV6_PREFIX:
 		return fr_value_box_cast_to_ipv6prefix(ctx, dst, dst_type, dst_enumv, src);
 
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+		break;
 	/*
 	 *	Need func
 	 */
 	case FR_TYPE_IFID:
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
 		break;
 
 	case FR_TYPE_ETHERNET:
@@ -2977,7 +3030,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Deserialise a fr_value_box_t
 	 */
-	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 								      src->vb_strvalue,
 								      src->vb_length, '\0', src->tainted);
 
@@ -3136,11 +3189,7 @@ int fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, fr_ipa
  */
 int fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
 {
-	switch (src->type) {
-	case FR_TYPE_IP:
-		break;
-
-	default:
+	if (!fr_type_is_ip(src->type)) {
 		fr_strerror_printf("Unboxing failed.  Needed IPv4/6 addr/prefix, had type %s",
 				   fr_table_str_by_value(fr_value_box_type_table, src->type, "?Unknown?"));
 		return -1;
@@ -4271,21 +4320,21 @@ static int fr_value_box_from_integer_str(fr_value_box_t *dst, fr_type_t dst_type
  *	- -1 on parse error.
  */
 int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
-			  fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
+			  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			  char const *in, ssize_t inlen, char quote, bool tainted)
 {
 	size_t		len;
 	ssize_t		ret;
 	char		buffer[256];
 
-	if (!fr_cond_assert(*dst_type != FR_TYPE_NULL)) return -1;
+	if (!fr_cond_assert(dst_type != FR_TYPE_NULL)) return -1;
 
 	len = (inlen < 0) ? strlen(in) : (size_t)inlen;
 
 	/*
 	 *	Set size for all fixed length attributes.
 	 */
-	ret = network_max_size(*dst_type);
+	ret = network_max_size(dst_type);
 
 	/*
 	 *	Lookup any names before continuing
@@ -4322,7 +4371,7 @@ parse:
 	 *	It's a variable ret src->dst_type so we just alloc a new buffer
 	 *	of size len and copy.
 	 */
-	switch (*dst_type) {
+	switch (dst_type) {
 	case FR_TYPE_STRING:
 	{
 		char *buff;
@@ -4428,7 +4477,7 @@ parse:
 	case FR_TYPE_MAX:
 	case FR_TYPE_NULL:
 		fr_strerror_printf("Invalid dst_type %s",
-				   fr_table_str_by_value(fr_value_box_type_table, *dst_type, "<INVALID>"));
+				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
 
@@ -4447,7 +4496,7 @@ parse:
 		in = buffer;
 	}
 
-	switch (*dst_type) {
+	switch (dst_type) {
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
@@ -4462,7 +4511,7 @@ parse:
 	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
-		if (fr_value_box_from_integer_str(dst, *dst_type, in) < 0) return -1;
+		if (fr_value_box_from_integer_str(dst, dst_type, in) < 0) return -1;
 		break;
 
 	case FR_TYPE_SIZE:
@@ -4574,24 +4623,37 @@ parse:
 	 *	and attribute as the original.
 	 */
 	case FR_TYPE_COMBO_IP_ADDR:
-	{
 		if (fr_inet_pton(&dst->vb_ip, in, inlen, AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
 		switch (dst->vb_ip.af) {
 		case AF_INET:
-			*dst_type = FR_TYPE_IPV4_ADDR;
-			ret = network_min_size(*dst_type);
+			ret = network_max_size(FR_TYPE_IPV4_ADDR);
 			break;
 
 		case AF_INET6:
-			*dst_type = FR_TYPE_IPV6_ADDR;
-			ret = network_max_size(*dst_type);
+			ret = network_max_size(FR_TYPE_IPV6_ADDR);
 			break;
 
 		default:
 			fr_strerror_printf("Bad address family %i", dst->vb_ip.af);
 			return -1;
 		}
-	}
+		break;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+		if (fr_inet_pton(&dst->vb_ip, in, inlen, AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
+		switch (dst->vb_ip.af) {
+		case AF_INET:
+			ret = network_max_size(FR_TYPE_IPV4_PREFIX);
+			break;
+
+		case AF_INET6:
+			ret = network_max_size(FR_TYPE_IPV6_PREFIX);
+			break;
+
+		default:
+			fr_strerror_printf("Bad address family %i", dst->vb_ip.af);
+			return -1;
+		}
 		break;
 
 	case FR_TYPE_BOOL:
@@ -4605,22 +4667,19 @@ parse:
 		}
 		break;
 
-	case FR_TYPE_COMBO_IP_PREFIX:
-		break;
-
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VARIABLE_SIZE:	/* Should have been dealt with above */
 	case FR_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
 	case FR_TYPE_NULL:
-		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
+		fr_strerror_printf("Unknown attribute dst_type %d", dst_type);
 		return -1;
 	}
 
 finish:
 	dst->vb_length = ret;
-	dst->type = *dst_type;
+	dst->type = dst_type;
 	dst->tainted = tainted;
 
 	/*
@@ -4683,12 +4742,14 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	 */
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_COMBO_IP_ADDR:
 		if (!fr_inet_ntop(buf, sizeof(buf), &data->vb_ip)) return 0;
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, buf);
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_PREFIX:
 		if (!fr_inet_ntop_prefix(buf, sizeof(buf), &data->vb_ip)) return 0;
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, buf);
 		break;
@@ -4892,8 +4953,6 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_STRUCT:		/* Not a box type */
 	case FR_TYPE_VSA:		/* Not a box type */
 	case FR_TYPE_VENDOR:		/* Not a box type */
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:

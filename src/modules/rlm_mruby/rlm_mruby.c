@@ -286,7 +286,7 @@ static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb
 			val = mrb_convert_type(mrb, to_cast, MRB_TT_FLOAT, "Float", "to_f");
 			break;
 
-		case FR_TYPE_NON_VALUES:
+		case FR_TYPE_NON_LEAF:
 			fr_assert(0);
 			return -1;
 		}

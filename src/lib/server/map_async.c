@@ -452,7 +452,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		fr_dcursor_init(&values, &head);
 
 		if (fr_value_box_from_str(fr_dlist_head(&n->mod),
-					  tmpl_value(fr_map_list_head(&n->mod)->rhs), &type,
+					  tmpl_value(fr_map_list_head(&n->mod)->rhs), type,
 					  tmpl_da(mutated->lhs),
 					  mutated->rhs->name, mutated->rhs->len, mutated->rhs->quote, false)) {
 			RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);

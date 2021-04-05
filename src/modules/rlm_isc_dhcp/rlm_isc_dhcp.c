@@ -531,7 +531,8 @@ redo:
  */
 static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_isc_dhcp_info_t *info)
 {
-	int ret, type;
+	int ret;
+	fr_type_t type;
 	int semicolon = NO_SEMICOLON;
 	bool multi = false;
 	char *p;
@@ -652,8 +653,8 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 		semicolon = MAYBE_SEMICOLON;
 	}
 
-	type = fr_table_value_by_str(fr_value_box_type_table, type_name, -1);
-	if (type < 0) {
+	type = fr_table_value_by_str(fr_value_box_type_table, type_name, FR_TYPE_NULL);
+	if (type == FR_TYPE_NULL) {
 		fr_strerror_printf("unknown data type '%.*s'",
 				   (int) (next - cmd), cmd);
 		return -1;	/* internal error */
@@ -692,7 +693,7 @@ redo_multi:
 	 */
 	info->argv[info->argc] = talloc_zero(info, fr_value_box_t);
 
-	ret = fr_value_box_from_str(info, info->argv[info->argc], (fr_type_t *) &type, NULL,
+	ret = fr_value_box_from_str(info, info->argv[info->argc], type, NULL,
 				      state->token, state->token_len, 0, false);
 	if (ret < 0) return ret;
 
@@ -882,7 +883,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	}
 
 	type = FR_TYPE_UINT32;
-	ret = fr_value_box_from_str(NULL, &box, &type, NULL,
+	ret = fr_value_box_from_str(NULL, &box, type, NULL,
 				      state->token, state->token_len, 0, false);
 	if (ret < 0) goto error;
 

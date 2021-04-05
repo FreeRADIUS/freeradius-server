@@ -1587,7 +1587,7 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			fr_value_box_t data;
 
 			type = FR_TYPE_STRING;
-			if (fr_value_box_from_str(ctx, &data, &type, NULL, child,
+			if (fr_value_box_from_str(ctx, &data, type, NULL, child,
 						  talloc_array_length(child) - 1, '"', false) < 0) {
 				talloc_free(child);
 				return NULL;

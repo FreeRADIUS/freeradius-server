@@ -165,15 +165,15 @@ size_t const fr_sim_attr_sizes[FR_TYPE_MAX + 1][2] = {
 size_t fr_sim_attr_len(fr_pair_t const *vp)
 {
 	switch (vp->vp_type) {
+	case FR_TYPE_STRUCTURAL:
+		fr_assert_fail(NULL);
+		return 0;
+
 	case FR_TYPE_VARIABLE_SIZE:
 		return vp->vp_length;
 
 	default:
 		return fr_sim_attr_sizes[vp->vp_type][0];
-
-	case FR_TYPE_STRUCTURAL:
-		fr_assert_fail(NULL);
-		return 0;
 	}
 }
 

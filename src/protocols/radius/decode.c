@@ -1236,39 +1236,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 	}
 
 	switch (parent->type) {
-	case FR_TYPE_VALUES:
-		break;
-
-	case FR_TYPE_COMBO_IP_PREFIX:
-		if (data_len == min) {
-			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV4_PREFIX);
-		} else if (data_len == max) {
-			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_PREFIX);
-		} else {
-			FR_PROTO_TRACE("Combo attribute len %zu incorrect, must be %zu or %zu", data_len, min, max);
-			goto raw;
-		}
-		if (!child) {
-			FR_PROTO_TRACE("Missing type variant for combo attribute len %zu", data_len);
-			goto raw;
-		}
-		parent = child;	/* re-write it */
-		break;
-
-	case FR_TYPE_COMBO_IP_ADDR:
-		if (data_len == min) {
-			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV4_ADDR);
-		} else if (data_len == max) {
-			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_ADDR);
-		} else {
-			FR_PROTO_TRACE("Combo attribute len %zu incorrect, must be %zu or %zu", data_len, min, max);
-			goto raw;
-		}
-		if (!child) {
-			FR_PROTO_TRACE("Missing type variant for combo attribute len %zu", data_len);
-			goto raw;
-		}
-		parent = child;	/* re-write it */
+	case FR_TYPE_LEAF:
 		break;
 
 	case FR_TYPE_VSA:

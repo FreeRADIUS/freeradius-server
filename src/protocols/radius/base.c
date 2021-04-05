@@ -94,7 +94,7 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_IPV6_ADDR]		= {16, 16},
 	[FR_TYPE_IPV6_PREFIX]		= {2, 18},
 	[FR_TYPE_COMBO_IP_PREFIX]	= {6, 18},
-	[FR_TYPE_COMBO_IP_ADDR]		= {4, 16},
+	[FR_TYPE_COMBO_IP_ADDR]		= {4, 17},
 	[FR_TYPE_IFID]			= {8, 8},
 	[FR_TYPE_ETHERNET]		= {6, 6},
 
@@ -213,12 +213,12 @@ size_t fr_radius_attr_len(fr_pair_t const *vp)
 		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
 		return vp->vp_length;
 
-	default:
-		return fr_radius_attr_sizes[vp->vp_type][0];
-
 	case FR_TYPE_STRUCTURAL:
 		fr_assert_fail(NULL);
 		return 0;
+
+	default:
+		return fr_radius_attr_sizes[vp->vp_type][0];
 	}
 }
 
