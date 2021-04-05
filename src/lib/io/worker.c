@@ -1004,7 +1004,14 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
 	 *	worker_request_time_tracking_end.
 	 */
 	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
-	fr_assert(!fr_heap_entry_inserted(request->time_order_id));
+
+	/*
+	 *	Normally worker_request_time_tracking_end
+	 *	would remove the request from the time
+	 *	order heap, but we need to do that for
+	 *	detached requests.
+	 */
+	if (fr_heap_entry_inserted(request->time_order_id)) (void) fr_heap_extract(worker->time_order, request);
 
 	/*
 	 *	Detached requests have to be freed by us
