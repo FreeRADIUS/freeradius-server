@@ -1062,7 +1062,7 @@ static void _worker_request_stop(request_t *request, void *uctx)
 	 *      yank it back out, so it's not "runnable"
 	 *	when we call request done.
 	 */
-	if (fr_heap_entry_inserted(worker->runnable)) fr_heap_extract(worker->runnable, request);
+	if (fr_heap_entry_inserted(request->runnable_id)) fr_heap_extract(worker->runnable, request);
 }
 
 /** Request is now runnable
