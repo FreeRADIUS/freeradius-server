@@ -80,14 +80,9 @@ static void unlang_detached_max_request_time(UNUSED fr_event_list_t *el, UNUSED 
  *  Detach it from the parent, set up it's lifetime, and mark it as
  *  runnable.
  */
-int unlang_subrequest_child_detach(request_t *request)
+int unlang_subrequest_lifetime_set(request_t *request)
 {
 	fr_pair_t		*vp;
-
-	if (request_detach(request) < 0) {
-		ERROR("Failed detaching child");
-		return -1;
-	}
 
 	/*
 	 *	Set Request Lifetime
@@ -149,7 +144,7 @@ static void unlang_subrequest_child_signal(request_t *request, fr_state_signal_t
 							    state->session.unique_ptr,
 							    state->session.unique_int);
 
-	if (!fr_cond_assert(unlang_subrequest_child_detach(request) == 0)) {
+	if (!fr_cond_assert(unlang_subrequest_lifetime_set(request) == 0)) {
 		REDEBUG("Child could not be detached");
 		return;
 	}
@@ -344,7 +339,7 @@ int unlang_subrequest_child_push_and_detach(request_t *child)
 	 */
 	interpret_child_init(child);
 
-	if (unlang_subrequest_child_detach(child) < 0) return -1;
+	if ((unlang_subrequest_lifetime_set(child) < 0) || (request_detach(child) < 0)) return -1;
 
 	return 0;
 }

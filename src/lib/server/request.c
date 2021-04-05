@@ -555,14 +555,15 @@ int request_detach(request_t *child)
 {
 	request_t		*request = child->parent;
 
-	if (!request) return 0;	/* Already detached */
-
 	/*
-	 *	Let any signal handler that cares
-	 *	know that the child is about to
-	 *	be detached.
+	 *	Already detached or not detachable
 	 */
-	unlang_interpret_signal(child, FR_SIGNAL_DETACH);
+	if (request_is_detached(child)) return 0;
+
+	if (!request_is_detachable(child)) {
+		RERROR("Request is not detachable");
+		return -1;
+	}
 
 	/*
 	 *	Unlink the child from the parent.
@@ -570,6 +571,11 @@ int request_detach(request_t *child)
 	request_data_get(request, child, 0);
 
 	child->parent = NULL;
+
+	/*
+	 *	Request is now detached
+	 */
+	child->type = REQUEST_TYPE_DETACHED;
 
 	return 0;
 }
