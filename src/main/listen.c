@@ -3081,7 +3081,7 @@ static const FR_NAME_NUMBER listen_compare[] = {
 #ifdef WITH_ACCOUNTING
 	{ "acct",	RAD_LISTEN_ACCT },
 	{ "auth+acct",	RAD_LISTEN_AUTH },
-#ifdef WITH_COA__TUNNEL
+#ifdef WITH_COA_TUNNEL
 	{ "auth+acct+coa",	RAD_LISTEN_AUTH },
 #endif
 #endif
@@ -3732,9 +3732,9 @@ static void coa_key_free(void *data)
 {
 	coa_key_t *coa_key = data;
 
-	talloc_free(coa_key->key);
 	rad_assert(coa_key->first == NULL);
 	pthread_mutex_destroy(&coa_key->mutex);
+	talloc_free(coa_key);
 }
 
 static int listen_coa_init(void)
