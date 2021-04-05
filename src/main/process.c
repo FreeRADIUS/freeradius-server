@@ -2316,6 +2316,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 	int tries;
 	bool success = false;
 	void *proxy_listener;
+#ifdef WITH_COA_TUNNEL
+	bool reverse_coa = request->proxy_listener && (request->proxy_listener->type != RAD_LISTEN_PROXY);
+#endif
 
 	VERIFY_REQUEST(request);
 
@@ -2325,7 +2328,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	proxy_listener = NULL;
+	proxy_listener = request->proxy_listener; /* may or may not be NULL */
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
 
@@ -2338,6 +2341,21 @@ static int insert_into_proxy_hash(REQUEST *request)
 						  request->home_server->proto,
 						  &request->proxy, &proxy_listener);
 		if (success) break;
+
+#ifdef WITH_COA_TUNNEL
+		/*
+		 *	Can't allocate an ID here, try to grab another
+		 *	listener by key.
+		 */
+		if (reverse_coa) {
+			rad_assert(request->proxy_listener != NULL);
+
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			if (listen_coa_find(request, request->proxy_listener->key) < 0) break;
+			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			continue;
+		}
+#endif
 
 		if (tries > 0) continue; /* try opening new socket only once */
 
