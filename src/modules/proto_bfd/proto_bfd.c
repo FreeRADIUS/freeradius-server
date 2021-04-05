@@ -399,7 +399,7 @@ static void bfd_request(bfd_state_t *session, request_t *request, fr_radius_pack
 static void bfd_trigger(bfd_state_t *session)
 {
 	fr_radius_packet_t	packet;
-	request_t		*request = request_local_alloc(session, NULL);
+	request_t		*request = request_local_alloc_external(session, NULL);
 	char			buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "server.bfd.%s",
@@ -1343,7 +1343,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		request_t *request;
 		fr_radius_packet_t *packet, *reply;
 
-		request = request_alloc(session, NULL);
+		request = request_alloc_external(session, NULL);
 		packet = fr_radius_packet_alloc(request, 0);
 		reply = fr_radius_packet_alloc(request, 0);
 

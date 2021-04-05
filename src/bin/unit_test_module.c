@@ -136,7 +136,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc(ctx, NULL);
+	request = request_local_alloc_external(ctx, NULL);
 	/*
 	 *	FIXME - Should be less RADIUS centric, but everything
 	 *	else assumes RADIUS at the moment so we can fix this later.
@@ -339,12 +339,12 @@ static bool do_xlats(char const *filename, FILE *fp)
 	char		*p;
 	char		input[8192];
 	char		output[8192];
-	request_t		*request;
+	request_t	*request;
 
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(NULL, NULL);
+	request = request_alloc_external(NULL, NULL);
 
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;
@@ -464,7 +464,7 @@ static request_t *request_clone(request_t *old)
 {
 	request_t *request;
 
-	request = request_alloc(NULL, NULL);
+	request = request_alloc_external(NULL, NULL);
 	if (!request) return NULL;
 
 	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);

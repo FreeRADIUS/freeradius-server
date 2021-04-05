@@ -54,6 +54,12 @@ typedef void (*unlang_request_init_t)(request_t *request, void *uctx);
  */
 typedef void (*unlang_request_done_t)(request_t *request, rlm_rcode_t rcode, void *uctx);
 
+/** Stop a request from running
+ *
+ * This is called whenever a request has been signalled to stop
+ */
+typedef void (*unlang_request_stop_t)(request_t *request, void *uctx);
+
 /** Signal the owner of the interpreter that a request has yielded
  *
  * This is called whenever a request has given control back to the interpeter.
@@ -91,9 +97,19 @@ typedef bool (*unlang_request_scheduled_t)(request_t const *request, void *uctx)
  * request management than FeeRADIUS worker threads.
  */
 typedef struct {
-	unlang_request_init_t		init_internal;	//!< Function called to initialise a request.
+	/*
+	 *	There's no init_external as this is done
+	 *	before the external request is handed off
+	 *	to the interpreter.
+	 */
+	unlang_request_init_t		init_internal;	//!< Function called to initialise an internal request.
+
+	unlang_request_done_t		done_external;	//!< Function called when a external request completes.
 	unlang_request_done_t		done_internal;	//!< Function called when an internal request completes.
-	unlang_request_done_t		done_external;	//!< Function called when an internal request completes.
+	unlang_request_done_t		done_detached;	//!< Function called when a detached request completes.
+
+	unlang_request_init_t		detach;		//!< Function called when a request is detached.
+	unlang_request_stop_t		stop;		//!< function called when a request is signalled to stop.
 	unlang_request_yield_t		yield;		//!< Function called when a request yields.
 	unlang_request_resume_t		resume;		//!< Function called when a request is resumed.
 	unlang_request_runnable_t	mark_runnable;	//!< Function called when a request needs to be

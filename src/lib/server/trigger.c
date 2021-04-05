@@ -370,7 +370,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	/*
 	 *	radius_exec_program always needs a request.
 	 */
-	child = request_alloc(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
+	child = request_alloc_internal(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the

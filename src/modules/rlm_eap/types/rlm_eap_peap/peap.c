@@ -548,7 +548,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		break;
 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
-		fake = request_alloc(request, &(request_init_args_t){ .parent = request });
+		fake = request_alloc_internal(request, &(request_init_args_t){ .parent = request });
 		fr_assert(fr_pair_list_empty(&fake->request_pairs));
 		eap_peap_soh_verify(fake, data, data_len);
 		setup_fake_request(request, fake, t);
@@ -647,7 +647,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 			goto finish;
 	}
 
-	fake = request_alloc(request, &(request_init_args_t){ .parent = request });
+	fake = request_alloc_internal(request, &(request_init_args_t){ .parent = request });
 	fr_assert(fr_pair_list_empty(&fake->request_pairs));
 
 	switch (t->status) {

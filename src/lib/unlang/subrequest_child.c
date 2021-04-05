@@ -143,12 +143,6 @@ static void unlang_subrequest_child_signal(request_t *request, fr_state_signal_t
 	state = talloc_get_type_abort(frame_current(request->parent), unlang_frame_state_subrequest_t);
 
 	/*
-	 *	Ignore signals if the parent didn't want the child
-	 *      to be detached.
-	 */
-	if (!state->detachable) return;
-
-	/*
 	 *	Place child's state back inside the parent
 	 */
 	if (state->session.enable) fr_state_store_in_parent(request,

@@ -140,12 +140,26 @@ typedef struct {
 	fr_pair_t		*state;		//!< Pair containing the state list.
 } request_pair_lists_t;
 
+typedef enum {
+	REQUEST_TYPE_EXTERNAL = 0,		//!< A request received on the wire.
+	REQUEST_TYPE_INTERNAL,			//!< A request generated internally.
+	REQUEST_TYPE_DETACHED 			//!< A request that was generated internally, but is now detached
+						///< (not associated with a parent request.)
+} request_type_t;
+
+#define request_is_external(_x) ((_x)->type == REQUEST_TYPE_EXTERNAL)
+#define request_is_internal(_x) ((_x)->type == REQUEST_TYPE_INTERNAL)
+#define request_is_detached(_x) ((_x)->type == REQUEST_TYPE_DETACHED)
+#define request_is_detachable(_x) ((_x)->flags.detachable == 1)
+
 struct request_s {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
 						//!< or request structs that have not been properly initialised.
 #endif
 	void			*stack;		//!< unlang interpreter stack.
+
+	request_type_t		type;		//!< What type of request this is.
 
 	request_t		*parent;	//!< Request that generated this request.
 
@@ -169,7 +183,14 @@ struct request_s {
 	 */
 	request_pair_lists_t	pair_list;	//!< Structure containing all pair lists.
 
-	fr_dlist_head_t		data;		//!< Request metadata.
+	fr_dlist_head_t		data;		//!< Request data.
+
+	/** Capabilities flags for this request
+	 *
+	 */
+	struct {
+		uint8_t			detachable : 1;		//!< This request may be detached from its parent..
+	} flags;
 
 	/** Logging information
 	 *
@@ -251,21 +272,47 @@ typedef struct {
 #define RAD_REQUEST_OPTION_CTX	(1 << 1)
 #define RAD_REQUEST_OPTION_DETAIL (1 << 2)
 
-/** Allocate a new request
+/** Allocate a new external request
+ *
+ * Use for requests produced by listeners
  *
  * @param[in] _ctx	Talloc ctx to bind the request to.
  * @param[in] _args	Optional arguments that control how the request is initialised.
  */
-#define		request_alloc(_ctx, _args) _request_alloc( __FILE__, __LINE__, (_ctx), (_args))
-request_t	*_request_alloc(char const *file, int line, TALLOC_CTX *ctx, request_init_args_t const *args);
+#define		request_alloc_external(_ctx, _args) \
+		_request_alloc( __FILE__, __LINE__, (_ctx), REQUEST_TYPE_EXTERNAL, (_args))
 
-/** Allocate a new request outside of the request pool
+/** Allocate a new internal request
+ *
+ * Use for requests produced by modules and unlang
+ *
+ * @param[in] _ctx	Talloc ctx to bind the request to.
+ * @param[in] _args	Optional arguments that control how the request is initialised.
+ */
+#define		request_alloc_internal(_ctx, _args) \
+		_request_alloc( __FILE__, __LINE__, (_ctx), REQUEST_TYPE_INTERNAL, (_args))
+
+request_t	*_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
+				request_type_t type, request_init_args_t const *args);
+
+/** Allocate a new external request outside of the request pool
  *
  * @param[in] _ctx	Talloc ctx to allocate the request in.
  * @param[in] _args	Optional arguments that control how the request is initialised.
  */
-#define		request_local_alloc(_ctx, _args) _request_local_alloc(__FILE__, __LINE__, (_ctx), (_args))
-request_t	*_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx, request_init_args_t const *args);
+#define		request_local_alloc_external(_ctx, _args) \
+		_request_local_alloc(__FILE__, __LINE__, (_ctx), REQUEST_TYPE_EXTERNAL, (_args))
+
+/** Allocate a new internal request outside of the request pool
+ *
+ * @param[in] _ctx	Talloc ctx to allocate the request in.
+ * @param[in] _args	Optional arguments that control how the request is initialised.
+ */
+#define		request_local_alloc_internal(_ctx, _args) \
+		_request_local_alloc(__FILE__, __LINE__, (_ctx), REQUEST_TYPE_INTERNAL, (_args))
+
+request_t	*_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
+				      request_type_t type, request_init_args_t const *args);
 
 int		request_detach(request_t *child);
 

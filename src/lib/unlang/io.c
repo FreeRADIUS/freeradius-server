@@ -40,12 +40,12 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 {
 	request_t		*child;
 
-	child = request_alloc(detachable ? NULL : parent,
-			      (&(request_init_args_t){
-			      		.parent = parent,
-			      		.namespace = namespace,
-			      		.detachable = detachable
-			      }));
+	child = request_alloc_internal(detachable ? NULL : parent,
+				       (&(request_init_args_t){
+						.parent = parent,
+						.namespace = namespace,
+						.detachable = detachable
+				       }));
 	if (!child) return NULL;
 
 	/*

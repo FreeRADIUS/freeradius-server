@@ -359,7 +359,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	head before the module destructor
 	 *      runs.
 	 */
-	request = request_local_alloc(u, NULL);
+	request = request_local_alloc_external(u, NULL);
 	request->async = talloc_zero(request, fr_async_t);
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->module_name);

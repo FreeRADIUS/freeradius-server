@@ -1613,7 +1613,7 @@ fr_tls_session_t *fr_tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *con
 		return NULL;
 	}
 
-	request = request_alloc(session, NULL);
+	request = request_alloc_internal(session, NULL);
 
 	fr_tls_session_request_bind(request, session->ssl);
 

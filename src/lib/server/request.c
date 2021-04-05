@@ -123,6 +123,7 @@ static inline CC_HINT(always_inline) int request_detachable_init(request_t *chil
 static inline CC_HINT(always_inline) int request_child_init(request_t *child, request_t *parent)
 {
 	child->number = parent->child_number++;
+	if (!child->dict) child->dict = parent->dict;
 
 	if ((parent->seq_start == 0) || (parent->number == parent->seq_start)) {
 		child->name = talloc_typed_asprintf(child, "%s.%" PRIu64, parent->name, child->number);
@@ -132,8 +133,6 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
 	}
 	child->seq_start = 0;	/* children always start with their own sequence */
 	child->parent = parent;
-	child->dict = parent->dict;
-	child->client = parent->client;
 
 	/*
 	 *	For new server support.
@@ -154,30 +153,6 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
 		return -1;
 	}
 
-	/*
-	 *	Fill in the child request.
-	 */
-	child->packet->socket = parent->packet->socket;
-	child->packet->socket.inet.dst_port = 0;
-	child->packet->socket.fd = -1;
-
-	/*
-	 *	This isn't STRICTLY required, as the child request MUST NEVER
-	 *	be put into the request list.  However, it's still reasonable
-	 *	practice.
-	 */
-	child->packet->id = child->number & 0xff;
-	child->packet->code = parent->packet->code;
-	child->packet->timestamp = parent->packet->timestamp;
-
-	/*
-	 *	Fill in the child reply, based on the child request.
-	 */
-	fr_socket_addr_swap(&child->reply->socket, &child->packet->socket);
-	child->reply->id = child->packet->id;
-	child->reply->code = 0; /* UNKNOWN code */
-	child->reply->socket.fd = -1;
-
 	return 0;
 }
 
@@ -186,23 +161,51 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
  * @param[in] file		the request was allocated in.
  * @param[in] line		the request was allocated on.
  * @param[in] request		to (re)-initialise.
+ * @param[in] type		of request to initialise.
+ * @param[in] args		Other optional arguments.
  */
 static inline CC_HINT(always_inline) int request_init(char const *file, int line,
-						      request_t *request, request_init_args_t const *args)
+						      request_t *request, request_type_t type,
+						      request_init_args_t const *args)
 {
+
+	/*
+	 *	Sanity checks for different requests types
+	 */
+	switch (type) {
+	case REQUEST_TYPE_EXTERNAL:
+		if (!fr_cond_assert_msg(!args->parent, "External requests must NOT have a parent")) return -1;
+		break;
+
+	case REQUEST_TYPE_INTERNAL:
+		if (!fr_cond_assert_msg(args->parent,
+					"Internal requests must have a parent (args->parent == NULL)")) return -1;
+		break;
+
+	case REQUEST_TYPE_DETACHED:
+		fr_assert_fail("Detached requests should start as type == REQUEST_TYPE_INTERNAL, "
+			       "args->detachable and be detached later");
+		return -1;
+	}
 
 	*request = (request_t){
 #ifndef NDEBUG
 		.magic = REQUEST_MAGIC,
 #endif
+		.type = type,
 		.master_state = REQUEST_ACTIVE,
 		.dict = args->namespace,
 		.component = "<pre-core>",
+		.flags = {
+			.detachable = args->detachable
+		},
 		.runnable_id = -1,
 		.time_order_id = -1,
+
 		.alloc_file = file,
 		.alloc_line = line
 	};
+
 
 	/*
 	 *	Initialise the stack
@@ -418,12 +421,14 @@ static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *c
  * @param[in] file	where the request was allocated.
  * @param[in] line	where the request was allocated.
  * @param[in] ctx	to bind the request to.
+ * @param[in] type	what type of request to alloc.
  * @param[in] args	Optional arguments.
  * @return
  *	- A request on success.
  *	- NULL on error.
  */
-request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx, request_init_args_t const *args)
+request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
+			  request_type_t type, request_init_args_t const *args)
 {
 	request_t		*request;
 	fr_dlist_head_t		*free_list;
@@ -458,7 +463,7 @@ request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx, request_i
 		fr_dlist_remove(free_list, request);
 	}
 
-	if (request_init(file, line, request, args) < 0) {
+	if (request_init(file, line, request, type, args) < 0) {
 		talloc_free(request);
 		return NULL;
 	}
@@ -524,14 +529,15 @@ static int _request_local_free(request_t *request)
  * which needs to be outside of the normal free list, so that it can be freed
  * when the module requires, not when the thread destructor runs.
  */
-request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx, request_init_args_t const *args)
+request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
+				request_type_t type, request_init_args_t const *args)
 {
 	request_t *request;
 
 	if (!args) args = &default_args;
 
 	request = request_alloc_pool(ctx);
-	if (request_init(file, line, request, args) < 0) return NULL;
+	if (request_init(file, line, request, type, args) < 0) return NULL;
 
 	talloc_set_destructor(request, _request_local_free);
 

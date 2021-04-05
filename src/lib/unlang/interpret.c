@@ -843,6 +843,57 @@ static inline CC_HINT(always_inline) void frame_signal(request_t *request, fr_st
 	stack->depth = depth;				/* Reset */
 }
 
+/** Indicate to the caller of the interpreter that this request is complete
+ *
+ */
+void unlang_interpret_request_done(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_interpret_t	*intp;
+
+	if (!fr_cond_assert(stack != NULL)) return;
+
+	intp = stack->intp;
+
+	switch (request->type) {
+	case REQUEST_TYPE_EXTERNAL:
+		intp->funcs.done_external(request, stack->result, intp->uctx);
+		break;
+
+	case REQUEST_TYPE_INTERNAL:
+		intp->funcs.done_internal(request, stack->result, intp->uctx);
+		break;
+
+	case REQUEST_TYPE_DETACHED:
+		intp->funcs.done_detached(request, stack->result, intp->uctx);
+		break;
+	}
+}
+
+static inline CC_HINT(always_inline)
+void unlang_interpret_request_stop(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_interpret_t	*intp;
+
+	if (!fr_cond_assert(stack != NULL)) return;
+
+	intp = stack->intp;
+	intp->funcs.stop(request, intp->uctx);
+}
+
+static inline CC_HINT(always_inline)
+void unlang_interpret_request_detach(request_t *request)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_interpret_t	*intp;
+
+	if (!fr_cond_assert(stack != NULL)) return;
+
+	intp = stack->intp;
+	intp->funcs.detach(request, intp->uctx);
+}
+
 /** Send a signal (usually stop) to a request
  *
  * This is typically called via an "async" action, i.e. an action
@@ -857,11 +908,26 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 {
 	unlang_stack_t		*stack = request->stack;
 
+	switch (action) {
 	/*
 	 *	If we're stopping, then mark the request as stopped.
 	 *	Then, call the frame signal handler.
 	 */
-	if (action == FR_SIGNAL_CANCEL) request->master_state = REQUEST_STOP_PROCESSING;
+	case FR_SIGNAL_CANCEL:
+		request->master_state = REQUEST_STOP_PROCESSING;
+		break;
+
+	case FR_SIGNAL_DETACH:
+		/*
+		 *	Ensure the request is able to be detached
+		 *      else don't signal.
+		 */
+		if (!fr_cond_assert(request_is_detachable(request))) return;
+		break;
+
+	default:
+		break;
+	}
 
 	/*
 	 *	Requests that haven't been run through the interpret
@@ -870,7 +936,19 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	 */
 	if (stack && (stack->depth > 0)) frame_signal(request, action, 0);
 
-	if (action == FR_SIGNAL_CANCEL) unlang_interpret_request_done(request);
+	switch (action) {
+	case FR_SIGNAL_CANCEL:
+		unlang_interpret_request_stop(request);		/* Stop gets the request in a consistent state */
+		unlang_interpret_request_done(request);		/* Done signals the request is complete */
+		break;
+
+	case FR_SIGNAL_DETACH:
+		unlang_interpret_request_detach(request);	/* Tell our caller that the request is being detached */
+		break;
+
+	default:
+		break;
+	}
 }
 
 /** Return the depth of the request's stack
@@ -922,25 +1000,6 @@ bool unlang_interpret_is_resumable(request_t *request)
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 
 	return is_yielded(frame);
-}
-
-/** Indicate to the caller of the interpreter that this request is complete
- *
- */
-void unlang_interpret_request_done(request_t *request)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_interpret_t	*intp;
-
-	if (!fr_cond_assert(stack != NULL)) return;
-
-	intp = stack->intp;
-
-	if (request_is_internal(request)) {
-		intp->funcs.done_internal(request, stack->result, intp->uctx);
-	} else {
-		intp->funcs.done_external(request, stack->result, intp->uctx);
-	}
 }
 
 /** Mark a request as resumable.
@@ -1154,6 +1213,19 @@ unlang_interpret_t *unlang_interpret_init(TALLOC_CTX *ctx,
 					  fr_event_list_t *el, unlang_request_func_t *funcs, void *uctx)
 {
 	unlang_interpret_t *intp;
+
+	fr_assert(funcs->init_internal);
+
+	fr_assert(funcs->done_internal);
+	fr_assert(funcs->done_detached);
+	fr_assert(funcs->done_external);
+
+	fr_assert(funcs->detach);
+	fr_assert(funcs->stop);
+	fr_assert(funcs->yield);
+	fr_assert(funcs->resume);
+	fr_assert(funcs->mark_runnable);
+	fr_assert(funcs->scheduled);
 
 	MEM(intp = talloc(ctx, unlang_interpret_t));
 	*intp = (unlang_interpret_t){
