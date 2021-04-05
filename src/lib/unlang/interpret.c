@@ -932,7 +932,8 @@ void unlang_interpret_request_done(request_t *request)
 	unlang_stack_t		*stack = request->stack;
 	unlang_interpret_t	*intp;
 
-	fr_assert(stack != NULL);
+	if (!fr_cond_assert(stack != NULL)) return;
+
 	intp = stack->intp;
 
 	if (request_is_internal(request)) {
