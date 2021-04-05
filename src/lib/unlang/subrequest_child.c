@@ -330,16 +330,19 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	return 0;
 }
 
-int unlang_subrequest_child_push_and_detach(request_t *child)
+int unlang_subrequest_child_push_and_detach(request_t *request)
 {
 	/*
 	 *	Ensures the child is setup correctly and adds
 	 *	it into the runnable queue of whatever owns
 	 *	the interpreter.
 	 */
-	interpret_child_init(child);
+	interpret_child_init(request);
 
-	if ((unlang_subrequest_lifetime_set(child) < 0) || (request_detach(child) < 0)) return -1;
+	if ((unlang_subrequest_lifetime_set(request) < 0) || (request_detach(request) < 0)) {
+		RPEDEBUG("Failed detaching request");
+		return -1;
+	}
 
 	return 0;
 }

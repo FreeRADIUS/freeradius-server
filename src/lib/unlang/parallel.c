@@ -346,7 +346,9 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 			 *	Detach the child, and insert
 			 *	it into the backlog.
 			 */
-			if ((unlang_subrequest_lifetime_set(child) < 0) || (request_detach(request) < 0)) {
+			if ((unlang_subrequest_lifetime_set(child) < 0) || (request_detach(child) < 0)) {
+				request = child;
+				RPEDEBUG("Failed detaching request");
 				talloc_free(child);
 
 			        RETURN_MODULE_FAIL;

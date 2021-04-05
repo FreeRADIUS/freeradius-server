@@ -150,7 +150,7 @@ typedef enum {
 #define request_is_external(_x) ((_x)->type == REQUEST_TYPE_EXTERNAL)
 #define request_is_internal(_x) ((_x)->type == REQUEST_TYPE_INTERNAL)
 #define request_is_detached(_x) ((_x)->type == REQUEST_TYPE_DETACHED)
-#define request_is_detachable(_x) ((_x)->flags.detachable == 1)
+#define request_is_detachable(_x) ((_x)->flags.detachable)
 
 struct request_s {
 #ifndef NDEBUG

@@ -163,7 +163,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	}
 
 	request->client = client;
-
 	request->number = number++;
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 	request->el = el;

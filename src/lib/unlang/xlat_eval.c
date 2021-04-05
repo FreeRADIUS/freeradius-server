@@ -675,10 +675,11 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 	 *	Some non-packet expansions
 	 */
 	if (tmpl_da(vpt) == attr_client_shortname) {
-		if (!request->client || !request->client->shortname) return XLAT_ACTION_DONE;
+		RADCLIENT *client = client_from_request(request);
+		if (!client || !client->shortname) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt), request->client->shortname, false) < 0) {
+		if (fr_value_box_bstrdup_buffer(ctx, value, tmpl_da(vpt), client->shortname, false) < 0) {
 		error:
 			talloc_free(value);
 			return XLAT_ACTION_FAIL;
@@ -735,9 +736,10 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 		fr_value_box_memdup(ctx, value, tmpl_da(vpt), packet->vector, sizeof(packet->vector), true);
 
 	} else if (tmpl_da(vpt) == attr_client_ip_address) {
-		if (request->client) {
+		RADCLIENT *client = client_from_request(request);
+		if (client) {
 			MEM(value = fr_value_box_alloc_null(ctx));
-			fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
+			fr_value_box_ipaddr(value, NULL, &client->ipaddr, false);	/* Enum might not match type */
 			goto done;
 		}
 		goto src_ip_address;

@@ -944,7 +944,7 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 
 	case FR_SIGNAL_DETACH:
 		unlang_interpret_request_detach(request);	/* Tell our caller that the request is being detached */
-		request_detach(request);			/* Finish detaching the request */
+		if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
 		break;
 
 	default:

@@ -1102,3 +1102,18 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 
 	return c;
 }
+
+/** Search up a list of requests trying to locate one which has a client
+ *
+ */
+RADCLIENT *client_from_request(request_t *request)
+{
+	RADCLIENT *client;
+	request_t *parent = request;
+
+	do {
+		client = parent->client;
+	} while (!client && (parent = request->parent));
+
+	return client;
+}

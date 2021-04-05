@@ -387,7 +387,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_opendirectory_t);
 	struct passwd			*userdata = NULL;
 	int				ismember = 0;
-	RADCLIENT			*rad_client = NULL;
+	RADCLIENT			*client = NULL;
 	uuid_t				uuid;
 	uuid_t				guid_sacl;
 	uuid_t				guid_nasgroup;
@@ -422,23 +422,23 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/* resolve client access list */
 	uuid_clear(guid_nasgroup);
 
-	rad_client = request->client;
+	client = client_from_request(request);
 #if 0
-	if (rad_client->community[0] != '\0' ) {
+	if (client->community[0] != '\0' ) {
 		/*
 		 *	The "community" can be a GUID (Globally Unique ID) or
 		 *	a group name
 		 */
-		if (uuid_parse(rad_client->community, guid_nasgroup) != 0) {
+		if (uuid_parse(client->community, guid_nasgroup) != 0) {
 			/* attempt to resolve the name */
-			groupdata = getgrnam(rad_client->community);
+			groupdata = getgrnam(client->community);
 			if (!groupdata) {
-				REDEBUG("The group \"%s\" does not exist on this system", rad_client->community);
+				REDEBUG("The group \"%s\" does not exist on this system", client->community);
 				RETURN_MODULE_FAIL;
 			}
 			err = mbr_gid_to_uuid(groupdata->gr_gid, guid_nasgroup);
 			if (err != 0) {
-				REDEBUG("The group \"%s\" does not have a GUID", rad_client->community);
+				REDEBUG("The group \"%s\" does not have a GUID", client->community);
 				RETURN_MODULE_FAIL;
 			}
 		}
@@ -446,7 +446,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	else
 #endif
 	{
-		if (!rad_client) {
+		if (!client) {
 			RDEBUG2("The client record could not be found for host %s",
 			       fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		} else {

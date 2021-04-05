@@ -553,7 +553,7 @@ request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
  */
 int request_detach(request_t *child)
 {
-	request_t		*request = child->parent;
+	request_t	*request = child->parent;
 
 	/*
 	 *	Already detached or not detachable
@@ -561,7 +561,7 @@ int request_detach(request_t *child)
 	if (request_is_detached(child)) return 0;
 
 	if (!request_is_detachable(child)) {
-		RERROR("Request is not detachable");
+		fr_strerror_const("Request is not detachable");
 		return -1;
 	}
 

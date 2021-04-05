@@ -435,6 +435,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	rlm_radius_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 	rlm_rcode_t		rcode;
 	unlang_action_t		ua;
+	RADCLIENT		*client;
 
 	void			*rctx = NULL;
 
@@ -464,7 +465,8 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		RETURN_MODULE_FAIL;
 	}
 
-	if (request->client->dynamic && !request->client->active) {
+	client = client_from_request(request);
+	if (client && client->dynamic && !client->active) {
 		REDEBUG("Cannot proxy packets which define dynamic clients");
 		RETURN_MODULE_FAIL;
 	}

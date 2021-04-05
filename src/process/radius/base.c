@@ -203,6 +203,7 @@ static char *auth_name(char *buf, size_t buflen, request_t *request)
 	fr_pair_t	*pair;
 	uint32_t	port = 0;	/* RFC 2865 NAS-Port is 4 bytes */
 	char const	*tls = "";
+	RADCLIENT	*client = client_from_request(request);
 
 	cli = fr_pair_find_by_da(&request->request_pairs, attr_calling_station_id);
 
@@ -212,7 +213,7 @@ static char *auth_name(char *buf, size_t buflen, request_t *request)
 	if (request->packet->socket.inet.dst_port == 0) tls = " via proxy to virtual server";
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
-		 request->client->shortname, port,
+		 client ? client->shortname : "", port,
 		 (cli ? " cli " : ""), (cli ? cli->vp_strvalue : ""),
 		 tls);
 

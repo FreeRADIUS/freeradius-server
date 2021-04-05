@@ -143,6 +143,7 @@ RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
 
 RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
 
+RADCLIENT	*client_from_request(request_t *request);
 #ifdef __cplusplus
 }
 #endif

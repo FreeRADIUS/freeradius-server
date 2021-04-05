@@ -344,7 +344,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	struct utmp		ut;
 	time_t			t;
 	char			buf[64];
-	char const		*s;
+	char const		*s = NULL;
 	int			delay = 0;
 	int			status = -1;
 	int			nas_address = 0;
@@ -354,7 +354,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 #endif
 	uint32_t		nas_port = 0;
 	bool			port_seen = true;
-
+	RADCLIENT		*client;
 
 	/*
 	 *	No radwtmp.  Don't do anything.
@@ -442,7 +442,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	if (nas_address == 0) {
 		nas_address = request->packet->socket.inet.src_ipaddr.addr.v4.s_addr;
 	}
-	s = request->client->shortname;
+
+	client = client_from_request(request);
+	if (client) s = client->shortname;
 	if (!s || s[0] == 0) s = uue(&(nas_address));
 
 #ifdef __linux__

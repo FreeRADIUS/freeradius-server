@@ -236,7 +236,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	/*
 	 *	Set the rest of the fields.
 	 */
-	memcpy(&request->client, &client, sizeof(client)); /* const issues */
+	request->client = UNCONST(RADCLIENT *, client);
 
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);

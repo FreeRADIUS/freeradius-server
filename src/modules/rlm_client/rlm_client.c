@@ -165,7 +165,11 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 			}
 		}
 	} else {
-		client = request->client;
+		client = client_from_request(request);
+		if (!client) {
+			REDEBUG("No client associated with this request");
+			return RLM_MODULE_FAIL;
+		}
 	}
 	uctx.cs = client->cs;
 
@@ -246,20 +250,20 @@ static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 			return XLAT_ACTION_FAIL;
 		}
 	} else {
-		client = request->client;
+		client = client_from_request(request);
 		if (!client) {
-			RERROR("No client associated with this request");
-			return XLAT_ACTION_FAIL;
+			REDEBUG("No client associated with this request");
+			return RLM_MODULE_FAIL;
 		}
 	}
 
 	cp = cf_pair_find(client->cs, field->vb_strvalue);
 	if (!cp || !(value = cf_pair_value(cp))) {
-		if (strcmp(field->vb_strvalue, "shortname") == 0 && request->client->shortname) {
-			value = request->client->shortname;
+		if (strcmp(field->vb_strvalue, "shortname") == 0 && client->shortname) {
+			value = client->shortname;
 		}
-		else if (strcmp(field->vb_strvalue, "nas_type") == 0 && request->client->nas_type) {
-			value = request->client->nas_type;
+		else if (strcmp(field->vb_strvalue, "nas_type") == 0 && client->nas_type) {
+			value = client->nas_type;
 		}
 		if (!value) return XLAT_ACTION_DONE;
 	}
@@ -281,11 +285,11 @@ static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	size_t length;
-	char const *value;
-	CONF_PAIR *cp;
-	RADCLIENT *c;
-	char buffer[2048];
+	size_t		length;
+	char const	*value;
+	CONF_PAIR	*cp;
+	char		buffer[2048];
+	RADCLIENT	*client;
 
 	/*
 	 *	Ensure we're only being called from the main thread,
@@ -297,12 +301,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 		RETURN_MODULE_NOOP;
 	}
 
-	if (!request->client || !request->client->cs) {
+	client = client_from_request(request);
+	if (!client || !client->cs) {
 		REDEBUG("Unknown client definition");
 		RETURN_MODULE_NOOP;
 	}
 
-	cp = cf_pair_find(request->client->cs, "directory");
+	cp = cf_pair_find(client->cs, "directory");
 	if (!cp) {
 		REDEBUG("No directory configuration in the client");
 		RETURN_MODULE_NOOP;
@@ -326,16 +331,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	/*
 	 *	Read the buffer and generate the client.
 	 */
-	if (!request->client->server) RETURN_MODULE_FAIL;
+	if (!client->server) RETURN_MODULE_FAIL;
 
-	c = client_read(buffer, request->client->server_cs, true);
-	if (!c) RETURN_MODULE_FAIL;
+	client = client_read(buffer, client->server_cs, true);
+	if (!client) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Replace the client.  This is more than a bit of a
 	 *	hack.
 	 */
-	request->client = c;
+	request->client = client;
 
 	RETURN_MODULE_OK;
 }

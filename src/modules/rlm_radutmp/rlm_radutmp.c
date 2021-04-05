@@ -195,6 +195,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	char			*filename = NULL;
 	char			*expanded = NULL;
+	RADCLIENT		*client;
 
 	if (request->dict != dict_radius) RETURN_MODULE_NOOP;
 
@@ -294,18 +295,24 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	 *	originator's IP address.
 	 */
 	if (ut.nas_address == htonl(INADDR_NONE)) {
+		client = client_from_request(request);
+		if (!client) goto no_client;
+
 		ut.nas_address = request->packet->socket.inet.src_ipaddr.addr.v4.s_addr;
-		nas = request->client->shortname;
+		nas = client->shortname;
 
 	} else if (request->packet->socket.inet.src_ipaddr.addr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
-		nas = request->client->shortname;
+		client = client_from_request(request);
+		if (!client) goto no_client;
 
+		nas = client->shortname;
 	/*
 	 *	The NAS isn't a client, it's behind
 	 *	a proxy server.  In that case, just
 	 *	get the IP address.
 	 */
 	} else {
+	no_client:
 		nas = inet_ntop(AF_INET, &ut.nas_address, ip_name, sizeof(ip_name));
 	}
 
