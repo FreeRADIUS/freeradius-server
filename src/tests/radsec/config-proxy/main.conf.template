@@ -191,7 +191,7 @@ home_server tls {
 		cipher_list = "DEFAULT"
 	}
 
-	coa {
+	recv_coa {
 		virtual_server = coa_tls
 	}
 }

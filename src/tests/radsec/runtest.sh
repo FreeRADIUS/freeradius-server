@@ -54,10 +54,12 @@ tailproxy=$(echo $!)
 
 $BIN_PATH/radclient -f $TEST_NAME.request -xF -D ./ 127.0.0.1:$PORT $TYPE $SECRET 1> $OUTPUT
 
-delay=$(grep delay $TEST_NAME.reply | awk '{print $2}')
+# skip comments
+sed '/^\s*#/d' $TEST_NAME.reply > $TEST_NAME.reply.tmp
 
-sed '/delay/d' $TEST_NAME.reply > $TEST_NAME.reply.tmp
-
+# wait if needed
+delay=$(grep delay $TEST_NAME.reply.tmp | awk '{print $2}')
+sed '/delay/d' $TEST_NAME.reply.tmp > $TEST_NAME.reply.tmp
 sleep $delay 2>&1 > /dev/null
 
 cat radclient.log > $RES

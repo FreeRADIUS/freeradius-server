@@ -27,6 +27,9 @@ config-proxy, config-home.
 
 Each test is a pair of two files ending with \*.request and \*.reply.
 
+To run these tests separately, make sure you run 'make test' from the root
+directory beforehand.
+
 Request files.
 ==============
 
