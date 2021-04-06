@@ -826,24 +826,25 @@ static int local_command(char *line)
 
 int main(int argc, char **argv)
 {
-	int		c;
-	bool		quiet = false;
-	char		*line = NULL;
-	ssize_t		result;
-	char const	*file = NULL;
-	char const	*name = "radiusd";
-	char const	*input_file = NULL;
-	FILE		*inputfp = stdin;
-	char const	*server = NULL;
-	fr_dict_t	*dict = NULL;
+	int			c;
+	bool			quiet = false;
+	char			*line = NULL;
+	ssize_t			result;
+	char const		*file = NULL;
+	char const		*name = "radiusd";
+	char const		*input_file = NULL;
+	FILE			*inputfp = stdin;
+	char const		*server = NULL;
+	fr_dict_t		*dict = NULL;
 
-	char const	*raddb_dir = RADIUS_DIR;
-	char const	*dict_dir = DICTDIR;
+	char const		*raddb_dir = RADIUS_DIR;
+	char const		*dict_dir = DICTDIR;
 #ifdef USE_READLINE_HISTORY
-	char 		history_file[PATH_MAX];
+	char 			history_file[PATH_MAX];
 #endif
 
-	TALLOC_CTX	*autofree;
+	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -975,12 +976,13 @@ int main(int argc, char **argv)
 		 *	Need to read in the dictionaries, else we may get
 		 *	validation errors when we try and parse the config.
 		 */
-		if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
+		dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+		if (!dict_gctx) {
 			fr_perror("radmin");
 			fr_exit_now(64);
 		}
 
-		if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+		if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 			fr_perror("radmin");
 			fr_exit_now(64);
 		}
@@ -1319,6 +1321,10 @@ int main(int argc, char **argv)
 	}
 
 exit:
+	fr_dict_free(&dict, __FILE__);
+
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) fr_perror("radmin");
+
 	if (inputfp != stdin) fclose(inputfp);
 
 	if (radmin_log.dst == L_DST_FILES) close(radmin_log.fd);

@@ -118,7 +118,7 @@ static int load_dicts(char const *dict_dir)
 				}
 
 				INFO("Loading dictionary: %s/dictionary", file_str);
-				if (fr_dict_protocol_afrom_file(dict_end, dp->d_name, NULL) < 0) {
+				if (fr_dict_protocol_afrom_file(dict_end, dp->d_name, NULL, __FILE__) < 0) {
 					goto error;
 				}
 				dict_end++;
@@ -233,13 +233,14 @@ static void fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_
  */
 int main(int argc, char *argv[])
 {
-	char const	*dict_dir = DICTDIR;
-	char		c;
-	int		ret = 0;
-	bool		found = false;
-	bool		export = false;
+	char const		*dict_dir = DICTDIR;
+	char			c;
+	int			ret = 0;
+	bool			found = false;
+	bool			export = false;
 
-	TALLOC_CTX	*autofree;
+	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*our_dict_gctx = NULL;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -295,7 +296,8 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
+	our_dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+	if (!our_dict_gctx) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;
@@ -303,7 +305,7 @@ int main(int argc, char *argv[])
 
 	INFO("Loading dictionary: %s/%s", dict_dir, FR_DICTIONARY_FILE);
 
-	if (fr_dict_internal_afrom_file(dict_end++, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(dict_end++, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;
@@ -360,6 +362,18 @@ int main(int argc, char *argv[])
 	}
 
 finish:
-	talloc_free(autofree);
+	/*
+	 *	Release our references on all the dicts
+	 *	we loaded.
+	 */
+	{
+		fr_dict_t	**dict_p = dicts;
+
+		do {
+			fr_dict_free(dict_p, __FILE__);
+		} while (++dict_p < dict_end);
+	}
+	if (fr_dict_global_ctx_free(our_dict_gctx) < 0) fr_perror("radict");
+	if (talloc_free(autofree) < 0) fr_perror("radict");
 	return found ? ret : 64;
 }

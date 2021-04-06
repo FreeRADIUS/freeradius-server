@@ -179,7 +179,7 @@ static void pair_tests_init(void)
 
 	if (!fr_dict_global_ctx_init(autofree, dict_dir)) goto error;
 
-	if (fr_dict_internal_afrom_file(&dict_internal, FR_DICTIONARY_INTERNAL_DIR) < 0) goto error;
+	if (fr_dict_internal_afrom_file(&dict_internal, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) goto error;
 
 	/*
 	 *	Set the root name of the dictionary

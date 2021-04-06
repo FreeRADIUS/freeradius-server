@@ -198,9 +198,11 @@ int main(int argc, char **argv)
 	int			zap = 0;
 	fr_dict_t		*dict = NULL;
 	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	char const		*p;
 	main_config_t		*config;
+	int			ret = EXIT_SUCCESS;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -305,13 +307,14 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (!fr_dict_global_ctx_init(autofree, config->dict_dir)) {
+	dict_gctx = fr_dict_global_ctx_init(autofree, config->dict_dir);
+	if (!dict_gctx) {
 		fr_perror("%s", main_config->name);
 		fr_exit_now(EXIT_FAILURE);
 	}
 
 
-	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("%s", config->name);
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -560,7 +563,11 @@ int main(int argc, char **argv)
 	}
 	fclose(fp);
 
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("radwho");
+		ret = EXIT_FAILURE;
+	}
 	main_config_free(&config);
 
-	return 0;
+	return ret;
 }

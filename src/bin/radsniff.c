@@ -2245,21 +2245,22 @@ static NEVER_RETURNS void usage(int status)
  */
 int main(int argc, char *argv[])
 {
-	fr_pcap_t	*in = NULL, *in_p;
-	fr_pcap_t	**in_head = &in;
-	fr_pcap_t	*out = NULL;
+	fr_pcap_t		*in = NULL, *in_p;
+	fr_pcap_t		**in_head = &in;
+	fr_pcap_t		*out = NULL;
 
-	int		ret = EXIT_SUCCESS;				/* Exit status */
+	int			ret = EXIT_SUCCESS;				/* Exit status */
 
-	char		errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
-	int		port = FR_AUTH_UDP_PORT;
+	char			errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
+	int			port = FR_AUTH_UDP_PORT;
 
-	int		c;
-	char const	*raddb_dir = RADDBDIR;
-	char const	*dict_dir = DICTDIR;
-	TALLOC_CTX	*autofree;
+	int			c;
+	char const		*raddb_dir = RADDBDIR;
+	char const		*dict_dir = DICTDIR;
+	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*dict_gctx = NULL;
 
-	rs_stats_t	*stats;
+	rs_stats_t		*stats;
 
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
@@ -2608,7 +2609,8 @@ int main(int argc, char *argv[])
 							 conf->pcap_filter, conf->pcap_filter);
 	}
 
-	if (!fr_dict_global_ctx_init(conf, dict_dir)) {
+	dict_gctx = fr_dict_global_ctx_init(conf, dict_dir);
+	if (!dict_gctx) {
 		fr_perror("radsniff");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -3047,6 +3049,11 @@ finish:
 
 	fr_dict_autofree(radsniff_dict);
 	fr_radius_free();
+
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("radsniff");
+		ret = EXIT_FAILURE;
+	}
 
 	return ret;
 }

@@ -249,7 +249,7 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 
 		if (p) *p = '\0';
 
-		if (fr_dict_protocol_afrom_file(&other, ref, NULL) < 0) {
+		if (fr_dict_protocol_afrom_file(&other, ref, NULL, filename) < 0) {
 			return NULL;
 		}
 

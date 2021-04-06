@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (fr_dict_internal_afrom_file(&conf->dict, FR_DICTIONARY_FILE) < 0) {
+	if (fr_dict_internal_afrom_file(&conf->dict, FR_DICTIONARY_FILE, __FILE__) < 0) {
 		fr_perror("sync_touch");
 		fr_exit_now(EXIT_FAILURE);
 	}

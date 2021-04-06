@@ -741,6 +741,8 @@ int dict_protocol_add(fr_dict_t *dict)
 	}
 	dict->in_protocol_by_num = true;
 
+	dict_dependent_add(dict, "global");
+
 	return 0;
 }
 
@@ -2721,13 +2723,111 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	return 0;
 }
 
-static int _dict_free_autoref(void *data, UNUSED void *uctx)
+static int _dict_free_autoref(void *data, void *uctx)
 {
+	fr_dict_t *referer = talloc_get_type_abort(uctx, fr_dict_t);
 	fr_dict_t *dict = talloc_get_type_abort(data, fr_dict_t);
 
-	(void)fr_dict_free(&dict);
+	if (fr_dict_free(&dict, referer->root->name) < 0) return -1;
 
 	return 0;
+}
+
+/** Find a dependent in the tree of dependents
+ *
+ */
+static int _dict_dependent_cmp(void const *a, void const *b)
+{
+	fr_dict_dependent_t const *dep_a = a;
+	fr_dict_dependent_t const *dep_b = b;
+
+	return strcmp(dep_a->dependent, dep_b->dependent);
+}
+
+/** Record a new dependency on a dictionary
+ *
+ * These are used to determine what is currently depending on a dictionary.
+ *
+ * @param[in] dict	to record dependency on.
+ * @param[in] dependent	Either C src file, or another dictionary.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int dict_dependent_add(fr_dict_t *dict, char const *dependent)
+{
+	fr_dict_dependent_t *found;
+
+	found = rbtree_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
+	if (!found) {
+		fr_dict_dependent_t *new;
+
+		new = talloc_zero(dict->dependents, fr_dict_dependent_t);
+		if (unlikely(!new)) return -1;
+
+		/*
+		 *	If the dependent is in a module that gets
+		 *	unloaded, any strings in the text area also
+		 *	get unloaded (including dependent locations).
+		 *
+		 *	Strdup the string here so we don't get
+		 *	random segfaults if a module forgets to unload
+		 *	a dictionary.
+		 */
+		new->dependent = talloc_typed_strdup(new, dependent);
+		rbtree_insert(dict->dependents, new);
+
+		new->count = 1;
+
+		return 0;
+	}
+
+	found->count++;	/* Increase ref count */
+
+	return 0;
+}
+
+/** Decrement ref count for a dependent in a dictionary
+ *
+ * @param[in] dict	to remove dependency from.
+ * @param[in] dependent	Either C src, or another dictionary dependent.
+ *			What depends on this dictionary.
+ */
+int dict_dependent_remove(fr_dict_t *dict, char const *dependent)
+{
+	fr_dict_dependent_t *found;
+
+	found = rbtree_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
+	if (!found) {
+		fr_strerror_printf("Dependent \"%s\" not found in dictionary \"%s\"", dependent, dict->root->name);
+		return -1;
+	}
+
+	if (found->count == 0) {
+		fr_strerror_printf("Zero ref count invalid for dependent \"%s\", dictionary \"%s\"",
+				   dependent, dict->root->name);
+		return -1;
+	}
+
+	if (--found->count == 0) {
+		rbtree_delete(dict->dependents, found);
+		talloc_free(found);
+		return 0;
+	}
+
+	return 1;
+}
+
+/** Check if a dictionary still has dependents
+ *
+ * @param[in] dict	to check
+ * @return
+ *	- true if there's still at least one dependent.
+ *	- false if there are no dependents.
+ */
+bool dict_has_dependents(fr_dict_t *dict)
+{
+	return (rbtree_num_elements(dict->dependents) > 0);
 }
 
 static int _dict_free(fr_dict_t *dict)
@@ -2736,8 +2836,25 @@ static int _dict_free(fr_dict_t *dict)
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
 		return -1;
 	}
+	dict->in_protocol_by_name = false;
+
 	if (!fr_cond_assert(!dict->in_protocol_by_num || fr_hash_table_delete(dict->gctx->protocol_by_num, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol number_hash \"%s\"", dict->root->name);
+		return -1;
+	}
+	dict->in_protocol_by_num = false;
+
+	if (dict_has_dependents(dict)) {
+		fr_rb_tree_iter_inorder_t	iter;
+		fr_dict_dependent_t		*dep;
+
+		fr_strerror_printf("Refusing to free dictionary \"%s\", still has dependents", dict->root->name);
+
+		for (dep = rbtree_iter_init_inorder(&iter, dict->dependents);
+		     dep;
+		     dep = rbtree_iter_next_inorder(&iter)) {
+			fr_strerror_printf_push("%s (%u)", dep->dependent, dep->count);
+		}
 		return -1;
 	}
 
@@ -2749,7 +2866,7 @@ static int _dict_free(fr_dict_t *dict)
 	talloc_free(dict->vendors_by_name);
 
 	if (dict->autoref &&
-	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, NULL) < 0)) {
+	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, dict) < 0)) {
 		return -1;
 	}
 
@@ -2834,6 +2951,11 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	}
 
 	/*
+	 *	Who/what depends on this dictionary
+	 */
+	dict->dependents = rbtree_alloc(dict, fr_dict_dependent_t, node, _dict_dependent_cmp, NULL, 0);
+
+	/*
 	 *	Set default type size and length.
 	 */
 	dict->default_type_size = 1;
@@ -2849,46 +2971,69 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
  *
  * @param[in] dict	to increase the reference count for.
  */
-void fr_dict_reference(fr_dict_t *dict)
+void fr_dict_dependent_add(fr_dict_t *dict, char const *dependent)
 {
-	talloc_increase_ref_count(dict);
+	dict_dependent_add(dict, dependent);
 }
 
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] dict	to free.
- * @return how many references to the dictionary remain.
+ * @param[in] dependent	that originally allocated this dictionary.
+ * @return
+ *	- 0 on success (dictionary freed).
+ *	- 1 if other things still depend on the dictionary.
+ *	- -1 on error (dependent doesn't exist)
  */
-int fr_dict_free(fr_dict_t **dict)
+int fr_dict_const_free(fr_dict_t const **dict, char const *dependent)
 {
-	int ret;
+	fr_dict_t **our_dict = UNCONST(fr_dict_t **, dict);
 
-	if (!*dict) return 0;
+	if (!*our_dict) return 0;
 
-	ret = talloc_decrease_ref_count(*dict);
-	*dict = NULL;
+	switch (dict_dependent_remove(*our_dict, dependent)) {
+	case 0:		/* dependent has no more refs */
+		if (!dict_has_dependents(*our_dict)) {
+			talloc_free(*our_dict);
+			return 0;
+		}
+		FALL_THROUGH;
 
-	return ret;
+	case 1:		/* dependent has more refs */
+		return 1;
+
+	default:	/* error */
+		return -1;
+	}
 }
 
 /** Decrement the reference count on a previously loaded dictionary
  *
  * @param[in] dict	to free.
- * @return how many references to the dictionary remain.
+ * @param[in] dependent	that originally allocated this dictionary.
+ * @return
+ *	- 0 on success (dictionary freed).
+ *	- 1 if other things still depend on the dictionary.
+ *	- -1 on error (dependent doesn't exist)
  */
-int fr_dict_const_free(fr_dict_t const **dict)
+int fr_dict_free(fr_dict_t **dict, char const *dependent)
 {
-	int ret;
-	fr_dict_t *our_dict;
-
 	if (!*dict) return 0;
 
-	memcpy(&our_dict, dict, sizeof(our_dict));
+	switch (dict_dependent_remove(*dict, dependent)) {
+	case 0:		/* dependent has no more refs */
+		if (!dict_has_dependents(*dict)) {
+			talloc_free(*dict);
+			return 0;
+		}
+		FALL_THROUGH;
 
-	ret = talloc_decrease_ref_count(our_dict);
-	*dict = NULL;
+	case 1:		/* dependent has more refs */
+		return 1;
 
-	return ret;
+	default:	/* error */
+		return -1;
+	}
 }
 
 /** Process a dict_attr_autoload element to load/verify a dictionary attribute
@@ -2983,7 +3128,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_autoload(fr_dict_autoload_t const *to_load)
+int _fr_dict_autoload(fr_dict_autoload_t const *to_load, char const *dependent)
 {
 	fr_dict_autoload_t const	*p;
 
@@ -2999,9 +3144,9 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
 		 *	Load the internal dictionary
 		 */
 		if (strcmp(p->proto, "freeradius") == 0) {
-			if (fr_dict_internal_afrom_file(&dict, p->proto) < 0) return -1;
+			if (fr_dict_internal_afrom_file(&dict, p->proto, dependent) < 0) return -1;
 		} else {
-			if (fr_dict_protocol_afrom_file(&dict, p->proto, p->base_dir) < 0) return -1;
+			if (fr_dict_protocol_afrom_file(&dict, p->proto, p->base_dir, dependent) < 0) return -1;
 		}
 
 		*(p->out) = dict;
@@ -3015,17 +3160,21 @@ int fr_dict_autoload(fr_dict_autoload_t const *to_load)
  *
  * @param[in] to_free	previously loaded dictionary to free.
  */
-void fr_dict_autofree(fr_dict_autoload_t const *to_free)
+int _fr_dict_autofree(fr_dict_autoload_t const *to_free, char const *dependent)
 {
-	fr_dict_t			**dict;
-	fr_dict_autoload_t const	*p;
+	fr_dict_autoload_t const *p;
 
 	for (p = to_free; p->out; p++) {
-		memcpy(&dict, &p->out, sizeof(dict)); /* const issues */
-		if (!*dict) continue;
+		int ret;
 
-		if (fr_dict_free(dict) == 0) *dict = NULL;
+		if (!*p->out) continue;
+		ret = fr_dict_const_free(p->out, dependent);
+
+		if (ret == 0) *p->out = NULL;
+		if (ret < 0) return -1;
 	}
+
+	return 0;
 }
 
 /** Callback to automatically resolve enum values
@@ -3129,17 +3278,18 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	bool		still_loaded = false;
 
 	if (gctx->internal) {
-		fr_strerror_const("Refusing to free dict gctx.  Internal dictionary is still loaded");
-		still_loaded = true;
+		dict_dependent_remove(gctx->internal, "global");	/* remove our dependency */
+
+	    	if (talloc_free(gctx->internal) < 0) still_loaded = true;
 	}
 
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
 	     	(void)talloc_get_type_abort(dict, fr_dict_t);
-		fr_strerror_printf_push("Refusing to free dict gctx.  %s protocol dictionary is still loaded",
-					dict->root->name);
-		still_loaded = true;
+	     	dict_dependent_remove(dict, "global");			/* remove our dependency */
+
+	    	if (talloc_free(dict) < 0) still_loaded = true;
 	}
 
 	if (still_loaded) return -1;
@@ -3288,8 +3438,10 @@ void fr_dict_global_ctx_read_only(void)
  */
 void fr_dict_global_ctx_debug(void)
 {
-	fr_hash_iter_t	iter;
-	fr_dict_t	*dict;
+	fr_hash_iter_t			dict_iter;
+	fr_dict_t			*dict;
+	fr_rb_tree_iter_inorder_t	dep_iter;
+	fr_dict_dependent_t		*dep;
 
 	if (!dict_gctx) {
 		FR_FAULT_LOG("gctx not initialised");
@@ -3297,14 +3449,23 @@ void fr_dict_global_ctx_debug(void)
 	}
 
 	FR_FAULT_LOG("gctx %p report", dict_gctx);
-	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
+	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &dict_iter);
 	     dict;
-	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
-		FR_FAULT_LOG("\t%s refs %zu", dict->root->name, talloc_reference_count(dict));
+	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &dict_iter)) {
+		for (dep = rbtree_iter_init_inorder(&dep_iter, dict->dependents);
+		     dep;
+		     dep = rbtree_iter_next_inorder(&dep_iter)) {
+			FR_FAULT_LOG("\t%s refs %s (%u)", dict->root->name, dep->dependent, dep->count);
+		}
 	}
 
-	if (dict_gctx->internal) FR_FAULT_LOG("\t%s refs %zu", dict_gctx->internal->root->name,
-					      talloc_reference_count(dict_gctx->internal));
+	if (dict_gctx->internal) {
+		for (dep = rbtree_iter_init_inorder(&dep_iter, dict_gctx->internal->dependents);
+		     dep;
+		     dep = rbtree_iter_next_inorder(&dep_iter)) {
+			FR_FAULT_LOG("\t%s refs %s (%u)", dict_gctx->internal->root->name, dep->dependent, dep->count);
+		}
+	}
 }
 
 /** Coerce to non-const

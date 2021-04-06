@@ -1460,7 +1460,7 @@ post_option:
 		return 0;
 	}
 
-	dict = dict_alloc(NULL);
+	dict = dict_alloc(dict_gctx);
 
 	/*
 	 *	Try to load protocol-specific validation routines.
@@ -2309,11 +2309,12 @@ static int dict_from_file(fr_dict_t *dict,
  *
  * @param[out] out		Where to write pointer to the internal dictionary.
  * @param[in] dict_subdir	name of the internal dictionary dir (may be NULL).
+ * @param[in] dependent		Either C src file, or another dictionary.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
+int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char const *dependent)
 {
 	fr_dict_t		*dict;
 	char			*dict_path = NULL;
@@ -2330,7 +2331,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 	 *	Increase the reference count of the internal dictionary.
 	 */
 	if (dict_gctx->internal) {
-		 talloc_increase_ref_count(dict_gctx->internal);
+		 dict_dependent_add(dict_gctx->internal, dependent);
 		 *out = dict_gctx->internal;
 		 return 0;
 	}
@@ -2393,8 +2394,14 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
 
 	talloc_free(dict_path);
 
+	dict_dependent_add(dict, dependent);
+
+	if (!dict_gctx->internal) {
+		dict_gctx->internal = dict;
+		dict_dependent_add(dict, "global");
+	}
+
 	*out = dict;
-	if (!dict_gctx->internal) dict_gctx->internal = dict;
 
 	return 0;
 }
@@ -2407,11 +2414,12 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir)
  *				dictionary if files have changed and *out is not NULL.
  * @param[in] proto_name	that we're loading the dictionary for.
  * @param[in] proto_dir		Explicitly set where to hunt for the dictionary files.  May be NULL.
+ * @param[in] dependent		Either C src file, or another dictionary.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir)
+int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir, char const *dependent)
 {
 	char		*dict_dir = NULL;
 	fr_dict_t	*dict;
@@ -2434,7 +2442,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	 */
 	dict = dict_by_protocol_name(proto_name);
 	if (dict && dict->autoloaded) {
-		talloc_increase_ref_count(dict);
+		 dict_dependent_add(dict, dependent);
 		*out = dict;
 		return 0;
 	}
@@ -2475,10 +2483,9 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	 *	If we're autoloading a previously defined dictionary,
 	 *	then mark up the dictionary as now autoloaded.
 	 */
-	if (!dict->autoloaded) {
-//		talloc_increase_ref_count(dict);
-		dict->autoloaded = true;
-	}
+	if (!dict->autoloaded) dict->autoloaded = true;
+
+	dict_dependent_add(dict, dependent);
 
 	*out = dict;
 

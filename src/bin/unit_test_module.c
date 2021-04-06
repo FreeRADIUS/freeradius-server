@@ -490,7 +490,7 @@ int main(int argc, char *argv[])
 	const char		*output_file = NULL;
 	const char		*filter_file = NULL;
 	FILE			*fp;
-	request_t			*request = NULL;
+	request_t		*request = NULL;
 	fr_pair_t		*vp;
 	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
@@ -501,6 +501,7 @@ int main(int argc, char *argv[])
 	char const 		*receipt_file = NULL;
 
 	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*dict_gctx = NULL;
 	TALLOC_CTX		*thread_ctx;
 
 	char			*p;
@@ -680,12 +681,13 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (!fr_dict_global_ctx_init(autofree, config->dict_dir)) {
+	dict_gctx = fr_dict_global_ctx_init(autofree, config->dict_dir);
+	if (!dict_gctx) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
@@ -975,11 +977,33 @@ cleanup:
 	/*
 	 *	Free our explicitly loaded internal dictionary
 	 */
-	fr_dict_free(&dict);
+	if (fr_dict_free(&dict, __FILE__) < 0) {
+		fr_perror("unit_test_module");
+		ret = EXIT_FAILURE;
+	}
 
 	if (dl_modules) talloc_free(dl_modules);
 
+	/*
+	 *	Free any openssl resources and the TLS dictionary
+	 */
+	fr_openssl_free();
+
+	/*
+	 *	Free all the dictionaries, and complain/fail if
+	 *	they still have dependents.
+	 */
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("unit_test_module");
+		ret = EXIT_FAILURE;
+	}
+
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
+		fr_perror("unit_test_module");
+		ret = EXIT_FAILURE;
+	}
+
+	if (talloc_free(autofree) < 0) {
 		fr_perror("unit_test_module");
 		ret = EXIT_FAILURE;
 	}

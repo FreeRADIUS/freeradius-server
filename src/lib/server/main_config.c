@@ -906,7 +906,7 @@ int main_config_init(main_config_t *config)
 	 */
 	config->talloc_pool_size = 8 * 1024; /* default */
 
-	if (fr_dict_internal_afrom_file(&config->dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&config->dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		PERROR("Failed reading internal dictionaries");
 		goto failure;
 	}
@@ -1242,7 +1242,7 @@ int main_config_free(main_config_t **config)
 	 *	Frees current config and any previous configs.
 	 */
 	TALLOC_FREE((*config)->root_cs);
-	talloc_decrease_ref_count((*config)->dict);
+	fr_dict_free(&(*config)->dict, __FILE__);
 	TALLOC_FREE(*config);
 
 	return 0;

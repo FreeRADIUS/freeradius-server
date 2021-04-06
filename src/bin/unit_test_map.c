@@ -165,6 +165,7 @@ int main(int argc, char *argv[])
 	char const		*receipt_file = NULL;
 
 	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -233,12 +234,13 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
+	dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+	if (!dict_gctx) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
@@ -276,9 +278,20 @@ cleanup:
 	/*
 	 *	Free any autoload dictionaries
 	 */
-	fr_dict_autofree(unit_test_module_dict);
+	if (fr_dict_autofree(unit_test_module_dict) < 0) {
+		fr_perror("unit_test_map");
+		ret = EXIT_FAILURE;
+	}
 
-	fr_dict_free(&dict);
+	if (fr_dict_free(&dict, __FILE__) < 0) {
+		fr_perror("unit_test_map");
+		ret = EXIT_FAILURE;
+	}
+
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("unit_test_map");
+		ret = EXIT_FAILURE;
+	}
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_map");

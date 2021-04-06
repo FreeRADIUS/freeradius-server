@@ -551,9 +551,11 @@ fr_dict_enum_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name
  *
  * @{
  */
-int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name);
+int			fr_dict_internal_afrom_file(fr_dict_t **out, char const *internal_name,
+						    char const *dependent);
 
-int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir);
+int			fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char const *proto_dir,
+						    char const *dependent);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
 /** @} */
@@ -566,9 +568,11 @@ int			fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load);
 
 int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
 
-int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
+#define			fr_dict_autoload(_to_load) _fr_dict_autoload(_to_load, __FILE__)
+int			_fr_dict_autoload(fr_dict_autoload_t const *to_load, char const *dependent);
 
-void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
+#define			fr_dict_autofree(_to_free) _fr_dict_autofree(_to_free, __FILE__)
+int			_fr_dict_autofree(fr_dict_autoload_t const *to_free, char const *dependent);
 
 int			fr_dl_dict_enum_autoload(dl_t const *module, void *symbol, void *user_ctx);
 
@@ -585,11 +589,11 @@ void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx);
  */
 fr_dict_t 		*fr_dict_alloc(char const *proto_name, unsigned int proto_number) CC_HINT(nonnull);
 
-void			fr_dict_reference(fr_dict_t *dict);
+void			fr_dict_dependent_add(fr_dict_t *dict, char const *dependent) CC_HINT(nonnull);
 
-int			fr_dict_free(fr_dict_t **dict);
+int			fr_dict_free(fr_dict_t **dict, char const *dependent) CC_HINT(nonnull);
 
-int			fr_dict_const_free(fr_dict_t const **dict);
+int			fr_dict_const_free(fr_dict_t const **dict, char const *dependent) CC_HINT(nonnull);
 /** @} */
 
 /** @name Global dictionary management

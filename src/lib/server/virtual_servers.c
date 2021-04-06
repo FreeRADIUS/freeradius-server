@@ -161,8 +161,8 @@ const CONF_PARSER virtual_servers_config[] = {
 };
 
 typedef struct {
-	bool	do_free;
-	fr_dict_t const *dict;
+	fr_dict_t const		*dict;
+	char const		*server;
 } virtual_server_dict_t;
 
 /** Decrement references on dictionaries as the config sections are freed
@@ -170,16 +170,12 @@ typedef struct {
  */
 static int _virtual_server_dict_free(virtual_server_dict_t *cd)
 {
-	if (cd->do_free) {
-		fr_dict_t *dict;
-		memcpy(&dict, &cd->dict, sizeof(dict));
-		fr_dict_free(&dict);
-	}
+	fr_dict_const_free(&cd->dict, cd->server);
 	return 0;
 }
 
 
-void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free)
+void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool reference)
 {
 	virtual_server_dict_t *p;
 	CONF_DATA const *cd;
@@ -194,11 +190,12 @@ void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, boo
 		return;
 	}
 
-	fr_dict_reference(fr_dict_unconst(dict));
 	p = talloc_zero(server_cs, virtual_server_dict_t);
-	p->do_free = do_free;
 	p->dict = dict;
+	p->server = talloc_strdup(p, cf_section_name2(server_cs));
 	talloc_set_destructor(p, _virtual_server_dict_free);
+
+	if (reference) fr_dict_dependent_add(fr_dict_unconst(dict), p->server);
 
 	cf_data_add(server_cs, p, "dictionary", true);
 }
@@ -268,13 +265,13 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	/*
 	 *	@todo - print out the entire error stack?
 	 */
-	if (fr_dict_protocol_afrom_file(&dict, file, dir) < 0) {
+	if (fr_dict_protocol_afrom_file(&dict, file, dir, cf_section_name2(server_cs)) < 0) {
 		cf_log_perr(ci, "Failed loading namespace '%s'", namespace);
 		return -1;
 	}
 
 set:
-	virtual_server_dict_set(server_cs, dict, true);
+	virtual_server_dict_set(server_cs, dict, false);
 
 	module_name = talloc_strdup(ctx, namespace);
 
@@ -371,7 +368,7 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	if (!set_dict) return 0;
 
 	app = (fr_app_t const *) module->common;
-	if (app->dict) virtual_server_dict_set(server_cs, *app->dict, false);
+	if (app->dict) virtual_server_dict_set(server_cs, *app->dict, true);
 
 	return 0;
 }

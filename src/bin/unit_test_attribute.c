@@ -912,7 +912,9 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	/*
 	 *	Decrease ref count if we're loading in a new dictionary
 	 */
-	if (cc->tmpl_rules.dict_def) fr_dict_const_free(&cc->tmpl_rules.dict_def);
+	if (cc->tmpl_rules.dict_def) {
+		if (fr_dict_const_free(&cc->tmpl_rules.dict_def, __FILE__) < 0) return -1;
+	}
 
 	q = strchr(in, ' ');
 	if (q) {
@@ -924,7 +926,7 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 		dir = default_subdir;
 	}
 
-	ret = fr_dict_protocol_afrom_file(&dict, name, dir);
+	ret = fr_dict_protocol_afrom_file(&dict, name, dir, __FILE__);
 	talloc_free(tmp);
 	if (ret < 0) RETURN_COMMAND_ERROR();
 
@@ -2620,7 +2622,10 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 
 static int _command_ctx_free(command_file_ctx_t *cc)
 {
-	fr_dict_free(&cc->test_internal_dict);
+	if (fr_dict_free(&cc->test_internal_dict, __FILE__) < 0) {
+		fr_perror("unit_test_attribute");
+		return -1;
+	}
 	return 0;
 }
 
@@ -2662,7 +2667,7 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	}
 
 	fr_dict_global_ctx_set(cc->test_gctx);
-	if (fr_dict_internal_afrom_file(&cc->test_internal_dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&cc->test_internal_dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("Failed loading test dict_gctx internal dictionary");
 		return NULL;
 	}
@@ -2829,7 +2834,11 @@ finish:
 	/*
 	 *	Free any residual resources we loaded.
 	 */
-	if (cc) fr_dict_const_free(&cc->tmpl_rules.dict_def);
+	if (cc && (fr_dict_const_free(&cc->tmpl_rules.dict_def, __FILE__) < 0)) {
+		fr_perror("unit_test_attribute");
+		ret = -1;
+	}
+
 	fr_dict_global_ctx_set(config->dict_gctx);	/* Switch back to the main dict ctx */
 	unload_proto_library();
 	talloc_free(cc);
@@ -3114,7 +3123,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_internal_afrom_file(&config.dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&config.dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
@@ -3220,7 +3229,10 @@ cleanup:
 	if (talloc_free(dl_loader) < 0) {
 		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
 	}
-	fr_dict_free(&config.dict);
+	if (fr_dict_free(&config.dict, __FILE__) < 0) {
+		fr_perror("unit_test_attribute");
+		ret = EXIT_FAILURE;
+	}
 
 	unlang_free_global();
 
@@ -3230,6 +3242,7 @@ cleanup:
 	 */
 	if (fr_dict_global_ctx_free(config.dict_gctx) < 0) {
 		fr_perror("unit_test_attribute");	/* Print free order issues */
+		ret = EXIT_FAILURE;
 	}
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
@@ -3241,7 +3254,10 @@ cleanup:
 	 *	Explicitly free the autofree context
 	 *	to make errors less confusing.
 	 */
-	talloc_free(autofree);
+	if (talloc_free(autofree) < 0) {
+		fr_perror("unit_test_attribute");
+		ret = EXIT_FAILURE;
+	}
 
 	return ret;
 }

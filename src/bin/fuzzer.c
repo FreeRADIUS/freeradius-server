@@ -36,19 +36,24 @@ RCSID("$Id$")
  *	./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer_radius -D share/dictionary /path/to/corpus/directory/
  */
 
-static bool			     init	= false;
-static void *			     decode_ctx = NULL;
-static fr_test_point_proto_decode_t *tp		= NULL;
-static fr_dict_t *		     dict	= NULL;
+static bool			init = false;
+static void 			*decode_ctx = NULL;
+static fr_test_point_proto_decode_t *tp	= NULL;
+static dl_t			*dl = NULL;
+static dl_loader_t		*dl_loader;
 
-static dl_t *	    dl = NULL;
-static dl_loader_t *dl_loader;
+static fr_dict_t		*dict = NULL;
+static fr_dict_gctx_t const	*dict_gctx = NULL;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
-static void exitHandler()
+static void exitHandler(void)
 {
+	fr_dict_free(&dict, __FILE__);
+
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) fr_perror("fuzzer");
+
 	if (dl && dl->handle) {
 		dlclose(dl->handle);
 		dl->handle = NULL;
@@ -58,10 +63,10 @@ static void exitHandler()
 
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
-	char const *lib_dir  = getenv("FR_LIBRARY_PATH");
-	char const *proto    = getenv("FR_LIBRARY_FUZZ_PROTOCOL");
-	char const *dict_dir = getenv("FR_DICTIONARY_DIR");
-	char	    buffer[1024];
+	char const		*lib_dir  = getenv("FR_LIBRARY_PATH");
+	char const		*proto    = getenv("FR_LIBRARY_FUZZ_PROTOCOL");
+	char const		*dict_dir = getenv("FR_DICTIONARY_DIR");
+	char			buffer[1024];
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
 
@@ -132,12 +137,13 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (!fr_dict_global_ctx_init(NULL, dict_dir)) {
+	dict_gctx = fr_dict_global_ctx_init(NULL, dict_dir);
+	if (!dict_gctx) {
 		fr_perror("dict_global");
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("fuzzer: Failed initializing internal dictionary");
 		fr_exit_now(EXIT_FAILURE);
 	}

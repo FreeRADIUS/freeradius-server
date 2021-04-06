@@ -188,24 +188,26 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
  */
 int main(int argc, char *argv[])
 {
-	int		status;
-	int		c;
-	bool		display_version = false;
-	bool		radmin = false;
-	int		from_child[2] = {-1, -1};
-	char		*program;
-	fr_schedule_t	*sc = NULL;
-	int		ret = EXIT_SUCCESS;
+	int			status;
+	int			c;
+	bool			display_version = false;
+	bool			radmin = false;
+	int			from_child[2] = {-1, -1};
+	char			*program;
+	fr_schedule_t		*sc = NULL;
+	int			ret = EXIT_SUCCESS;
 
-	TALLOC_CTX	*global_ctx = NULL;
-	main_config_t	*config = NULL;
-	bool		talloc_memory_report = false;
+	TALLOC_CTX		*global_ctx = NULL;
+	main_config_t		*config = NULL;
+	bool			talloc_memory_report = false;
 
-	bool		raddb_dir_set = false;
+	bool			raddb_dir_set = false;
 
-	size_t		pool_size = 0;
-	void		*pool_page_start = NULL, *pool_page_end = NULL;
-	bool		do_mprotect;
+	size_t			pool_size = 0;
+	void			*pool_page_start = NULL, *pool_page_end = NULL;
+	bool			do_mprotect;
+
+	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	dl_module_loader_t *dl_modules = NULL;
 
@@ -514,7 +516,8 @@ int main(int argc, char *argv[])
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
-	if (!fr_dict_global_ctx_init(global_ctx, config->dict_dir)) {
+	dict_gctx = fr_dict_global_ctx_init(global_ctx, config->dict_dir);
+	if (!dict_gctx) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
@@ -1007,9 +1010,25 @@ cleanup:
 	if (dl_modules) talloc_free(dl_modules);
 
 	/*
+	 *	Complain in debug builds about dictionaries
+	 *	that haven't been freed.
+	 */
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+#ifndef NDEBUG
+		fr_perror("radiusd");
+		ret = EXIT_FAILURE;
+#endif
+	}
+
+	/*
 	 *  Cleanup everything else
 	 */
-	talloc_free(global_ctx);
+	if (talloc_free(global_ctx) < 0) {
+#ifndef NDEBUG
+		fr_perror("radiusd");
+		ret = EXIT_FAILURE;
+#endif
+	}
 
 	/*
 	 *  Anything not cleaned up by the above is allocated in

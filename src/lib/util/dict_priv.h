@@ -52,6 +52,15 @@ extern "C" {
 		} \
 	} while (0)
 
+/** Entry recording dictionary reference holders by file
+ */
+typedef struct {
+	fr_rb_node_t		node;
+	int			count;			//!< How many references are held by this file.
+							///< Signed to help figure out when things go wrong...
+	char const	        *dependent;		//!< File holding the reference.
+} fr_dict_dependent_t;
+
 /** Vendors and attribute names
  *
  * It's very likely that the same vendors will operate in multiple
@@ -96,6 +105,8 @@ struct fr_dict {
 	fr_dict_attr_valid_func_t attr_valid;		//!< validation function for new attributes
 
 	fr_dict_attr_t		**fixups;		//!< Attributes that need fixing up.
+
+	rbtree_t		*dependents;		//!< Which files are using this dictionary.
 };
 
 struct fr_dict_gctx_s {
@@ -125,6 +136,12 @@ extern fr_dict_gctx_t *dict_gctx;
 
 extern fr_table_num_ordered_t const	date_precision_table[];
 extern size_t				date_precision_table_len;
+
+bool			dict_has_dependents(fr_dict_t *dict);
+
+int			dict_dependent_add(fr_dict_t *dict, char const *dependent);
+
+int			dict_dependent_remove(fr_dict_t *dict, char const *dependent);
 
 fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
 
