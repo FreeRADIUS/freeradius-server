@@ -3024,7 +3024,7 @@ void fr_dict_autofree(fr_dict_autoload_t const *to_free)
 		memcpy(&dict, &p->out, sizeof(dict)); /* const issues */
 		if (!*dict) continue;
 
-		fr_dict_free(dict);
+		if (fr_dict_free(dict) == 0) *dict = NULL;
 	}
 }
 

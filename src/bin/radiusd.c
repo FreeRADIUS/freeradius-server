@@ -700,7 +700,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_init_global() < 0) return -1;
+	if (unlang_init_global() < 0) EXIT_WITH_FAILURE;
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
@@ -1005,13 +1005,6 @@ cleanup:
 	 *	Free the modules that we loaded.
 	 */
 	if (dl_modules) talloc_free(dl_modules);
-
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	/*
-	 *	Make sure we clean up the TLS dictionary...
-	 */
-	fr_tls_dict_free();
-#endif
 
 	/*
 	 *  Cleanup everything else
