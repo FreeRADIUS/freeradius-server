@@ -651,7 +651,8 @@ int mod_ensure_start_timestamp(json_object *json, fr_pair_list_t *vps)
 			/* debugging */
 			DEBUG("calculated start timestamp: %s", value);
 			/* store new value in json body */
-			json_object_object_add(json, "startTimestamp", json_object_new_string(value));
+			json_object_object_add_ex(json, "startTimestamp", json_object_new_string(value),
+						  JSON_C_OBJECT_KEY_IS_CONSTANT);
 		} else {
 			/* debugging */
 			DEBUG("failed to format calculated timestamp");

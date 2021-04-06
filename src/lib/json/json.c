@@ -583,21 +583,21 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 			 */
 			MEM(type_name = json_object_new_string(fr_table_str_by_value(fr_value_box_type_table,
 										     vp->vp_type, "<INVALID>")));
-			json_object_object_add(vp_object, "type", type_name);
+			json_object_object_add_ex(vp_object, "type", type_name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 
 			/*
 			 *	Create a "value" array to hold any attribute values for this attribute...
 			 */
 			if (format->value.value_as_array) {
 				MEM(values = json_object_new_array());
-				json_object_object_add(vp_object, "value", values);
+				json_object_object_add_ex(vp_object, "value", values, JSON_C_OBJECT_KEY_IS_CONSTANT);
 			} else {
 				/*
 				 *	...unless this is the first time we've seen the attribute and
 				 *	value_as_array is false, in which case just add the value directly
 				 *	and move on to the next attribute.
 				 */
-				json_object_object_add(vp_object, "value", value);
+				json_object_object_add_ex(vp_object, "value", value, JSON_C_OBJECT_KEY_IS_CONSTANT);
 				continue;
 			}
 		} else {
@@ -625,7 +625,8 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 					MEM(values = json_object_new_array());
 					json_object_array_add(values, json_object_get(convert_value));
 					json_object_object_del(vp_object, "value");
-					json_object_object_add(vp_object, "value", values);
+					json_object_object_add_ex(vp_object, "value", values,
+								  JSON_C_OBJECT_KEY_IS_CONSTANT);
 				}
 			}
 		}
@@ -721,7 +722,11 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 				 */
 				MEM(values = json_object_new_array());
 				json_object_array_add(values, json_object_get(vp_object));
-				json_object_object_del(obj, attr_name);
+
+				/*
+				 *	Existing key will have refcount decremented
+				 *	and will be freed if thise drops to zero.
+				 */
 				json_object_object_add(obj, attr_name, values);
 			}
 		}
@@ -824,11 +829,11 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 			 * Add the attribute name in the "name" key and the type in the "type" key
 			 */
 			MEM(name = json_object_new_string(attr_name));
-			json_object_object_add(attrobj, "name", name);
+			json_object_object_add_ex(attrobj, "name", name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 
 			MEM(type_name = json_object_new_string(fr_table_str_by_value(fr_value_box_type_table,
 										     vp->vp_type, "<INVALID>")));
-			json_object_object_add(attrobj, "type", type_name);
+			json_object_object_add_ex(attrobj, "type", type_name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 		}
 
 		if (format->value.value_as_array) {
@@ -841,7 +846,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 				/*
 				 * Add "value":[] key to the attribute object
 				 */
-				json_object_object_add(attrobj, "value", values);
+				json_object_object_add_ex(attrobj, "value", values, JSON_C_OBJECT_KEY_IS_CONSTANT);
 
 				/*
 				 * Also add to "seen_attributes" to check later
@@ -857,7 +862,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 			/*
 			 * This is simpler; just add a "value": key to the attribute object.
 			 */
-			json_object_object_add(attrobj, "value", value);
+			json_object_object_add_ex(attrobj, "value", value, JSON_C_OBJECT_KEY_IS_CONSTANT);
 		}
 
 	}
