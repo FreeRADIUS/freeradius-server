@@ -791,58 +791,6 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	return stack;
 }
 
-/** Send a signal (usually stop) to a request
- *
- * This is typically called via an "async" action, i.e. an action
- * outside of the normal processing of the request.
- *
- * If there is no #unlang_module_signal_t callback defined, the action is ignored.
- *
- * The signaling stops at the "limit" frame.  This is so that keywords
- * such as "timeout" and "limit" can signal frames *lower* than theirs
- * to stop, but then continue with their own work.
- *
- * @param[in] request		The current request.
- * @param[in] action		to signal.
- * @param[in] limit		the frame at which to stop signaling.
- */
-static inline CC_HINT(always_inline) void frame_signal(request_t *request, fr_state_signal_t action, int limit)
-{
-	unlang_stack_frame_t	*frame;
-	unlang_stack_t		*stack = request->stack;
-	int			i, depth = stack->depth;
-
-	(void)talloc_get_type_abort(request, request_t);	/* Check the request hasn't already been freed */
-
-	fr_assert(stack->depth > 0);
-
-	/*
-	 *	Walk back up the stack, calling signal handlers
-	 *	to cancel any pending operations and free/release
-	 *	any resources.
-	 *
-	 *	There may be multiple resumption points in the
-	 *	stack, as modules can push xlats and function
-	 *	calls.
-	 */
-	for (i = depth; i > limit; i--) {
-		stack->depth = i;			/* We could also pass in the frame to the signal function */
-		frame = &stack->frame[stack->depth];
-
-		if (is_top_frame(frame)) continue;		/* Skip top frames as they have no instruction */
-
-		/*
-		 *	Be gracious in errors.
-		 */
-		if (!is_yielded(frame)) continue;
-
-		if (!frame->signal) continue;
-
-		frame->signal(request, frame, action);
-	}
-	stack->depth = depth;				/* Reset */
-}
-
 /** Indicate to the caller of the interpreter that this request is complete
  *
  */
@@ -901,6 +849,64 @@ void unlang_interpret_request_detach(request_t *request)
  *
  * If there is no #unlang_module_signal_t callback defined, the action is ignored.
  *
+ * The signaling stops at the "limit" frame.  This is so that keywords
+ * such as "timeout" and "limit" can signal frames *lower* than theirs
+ * to stop, but then continue with their own work.
+ *
+ * @param[in] request		The current request.
+ * @param[in] action		to signal.
+ * @param[in] limit		the frame at which to stop signaling.
+ */
+static inline CC_HINT(always_inline) void frame_signal(request_t *request, fr_state_signal_t action, int limit)
+{
+	unlang_stack_frame_t	*frame;
+	unlang_stack_t		*stack = request->stack;
+	int			i, depth = stack->depth;
+
+	(void)talloc_get_type_abort(request, request_t);	/* Check the request hasn't already been freed */
+
+	fr_assert(stack->depth > 0);
+
+	/*
+	 *	Destructive signal where we clean each of the
+	 *	stack frames up in turn.
+	 *
+	 *	We do this to avoid possible free ordering
+	 *	issues where memory allocated by modules higher
+	 *	in the stack is used by modules lower in the
+	 *	stack.
+	 */
+	if (action == FR_SIGNAL_CANCEL) {
+		for (i = depth; i > limit; i--) {
+			frame = &stack->frame[i];
+			if (frame->signal) frame->signal(request, frame, action);
+			frame_pop(request->stack);
+		}
+		return;
+	}
+
+	/*
+	 *	Walk back up the stack, calling signal handlers
+	 *	to cancel any pending operations and free/release
+	 *	any resources.
+	 *
+	 *	There may be multiple resumption points in the
+	 *	stack, as modules can push xlats and function
+	 *	calls.
+	 */
+	for (i = depth; i > limit; i--) {
+		frame = &stack->frame[i];
+		if (frame->signal) frame->signal(request, frame, action);
+	}
+}
+
+/** Send a signal (usually stop) to a request
+ *
+ * This is typically called via an "async" action, i.e. an action
+ * outside of the normal processing of the request.
+ *
+ * If there is no #unlang_module_signal_t callback defined, the action is ignored.
+ *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
@@ -909,14 +915,6 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	unlang_stack_t		*stack = request->stack;
 
 	switch (action) {
-	/*
-	 *	If we're stopping, then mark the request as stopped.
-	 *	Then, call the frame signal handler.
-	 */
-	case FR_SIGNAL_CANCEL:
-		request->master_state = REQUEST_STOP_PROCESSING;
-		break;
-
 	case FR_SIGNAL_DETACH:
 		/*
 		 *	Ensure the request is able to be detached
@@ -930,7 +928,7 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	}
 
 	/*
-	 *	Requests that haven't been run through the interpret
+	 *	Requests that haven't been run through the interpreter
 	 *	yet should have a stack depth of zero, so we don't
 	 *	need to do anything.
 	 */

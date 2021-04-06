@@ -971,9 +971,10 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	 */
 	fr_assert_msg(request_is_internal(request) || request_is_detached(request) || (request->log.unlang_indent == 0),
 		      "Request %s bad log indentation - expected 0 got %u", request->name, request->log.unlang_indent);
-	fr_assert_msg((request->master_state == REQUEST_STOP_PROCESSING) || !unlang_interpret_is_resumable(request),
+	fr_assert_msg(!unlang_interpret_is_resumable(request),
 		      "Request %s is marked as yielded at end of processing", request->name);
-
+	fr_assert_msg(unlang_interpret_stack_depth(request) == 0,
+		      "Request %s stack depth %u > 0", request->name, unlang_interpret_stack_depth(request));
 	RDEBUG("Done request");
 
 	worker_send_reply(worker, request, request->master_state == REQUEST_STOP_PROCESSING ? 1 : 0, fr_time());
@@ -1068,6 +1069,12 @@ static void _worker_request_stop(request_t *request, void *uctx)
 	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
 		fr_time_tracking_resume(&request->async->tracking, fr_time());
 	}
+
+	/*
+	 *	Let everyone know the request is being
+	 *	stopped.
+	 */
+	request->master_state = REQUEST_STOP_PROCESSING;
 
 	/*
 	 *	If the request is in the runnable queue
