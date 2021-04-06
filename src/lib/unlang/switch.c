@@ -24,8 +24,6 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/cond.h>
-
 #include "group_priv.h"
 #include "switch_priv.h"
 #include "unlang_priv.h"
@@ -37,59 +35,51 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	unlang_group_t		*switch_g;
 	unlang_switch_t		*switch_gext;
 
-	fr_cond_t		cond;
-	map_t			map;
-	tmpl_t			vpt, *switch_vpt;
+	tmpl_t			vpt;
+	fr_value_box_t const	*box;
+
+	fr_pair_t		*vp;
 
 	switch_g = unlang_generic_to_group(frame->instruction);
 	switch_gext = unlang_group_to_switch(switch_g);
 
-	memset(&cond, 0, sizeof(cond));
-	memset(&map, 0, sizeof(map));
-	memset(&vpt, 0, sizeof(vpt));
-
-	cond.type = COND_TYPE_MAP;
-	cond.data.map = &map;
-
-	map.op = T_OP_CMP_EQ;
-	map.ci = cf_section_to_item(switch_g->cs);
-
-	fr_assert(switch_gext->vpt != NULL);
-
 	null_case = found = NULL;
-	switch_vpt = switch_gext->vpt;
 
 	/*
 	 *	The attribute doesn't exist.  We can skip
 	 *	directly to the default 'case' statement.
 	 */
-	if (tmpl_is_attr(switch_gext->vpt) && (tmpl_find_vp(NULL, request, switch_gext->vpt) < 0)) {
-	find_null_case:
-		for (this = switch_g->children; this; this = this->next) {
-			unlang_group_t		*case_g;
-			unlang_case_t	*case_gext;
+	if (tmpl_is_attr(switch_gext->vpt)) {
+		if (tmpl_find_vp(&vp, request, switch_gext->vpt) < 0) {
+		find_null_case:
+			for (this = switch_g->children; this; this = this->next) {
+				unlang_group_t		*case_g;
+				unlang_case_t	*case_gext;
 
-			fr_assert(this->type == UNLANG_TYPE_CASE);
+				fr_assert(this->type == UNLANG_TYPE_CASE);
 
-			case_g = unlang_generic_to_group(this);
-			case_gext = unlang_group_to_case(case_g);
-			if (case_gext->vpt) continue;
+				case_g = unlang_generic_to_group(this);
+				case_gext = unlang_group_to_case(case_g);
+				if (case_gext->vpt) continue;
 
-			found = this;
-			break;
+				found = this;
+				break;
+			}
+
+			box = NULL;
+			goto do_null_case;
+		} else {
+			box = &vp->data;
 		}
 
-		goto do_null_case;
-	}
-
-	/*
-	 *	Expand the template if necessary, so that it
-	 *	is evaluated once instead of for each 'case'
-	 *	statement.
-	 */
-	if (tmpl_is_xlat(switch_gext->vpt) ||
-	    tmpl_is_xlat_unresolved(switch_gext->vpt) ||
-	    tmpl_is_exec(switch_gext->vpt)) {
+		/*
+		 *	Expand the template if necessary, so that it
+		 *	is evaluated once instead of for each 'case'
+		 *	statement.
+		 */
+	} else if (tmpl_is_xlat(switch_gext->vpt) ||
+	     tmpl_is_xlat_unresolved(switch_gext->vpt) ||
+	     tmpl_is_exec(switch_gext->vpt)) {
 		char *p;
 		ssize_t len;
 
@@ -98,7 +88,7 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 
 		tmpl_init_shallow(&vpt, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, p, len);
 		fr_value_box_bstrndup_shallow(&vpt.data.literal, NULL, p, len, false);
-		switch_vpt = &vpt;
+		box = tmpl_value(&vpt);
 	}
 
 	/*
@@ -123,31 +113,9 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 		}
 
 		/*
-		 *	Create the map for comparisons.
-		 *
-		 *	Try to ensure that any attribute is on the
-		 *	LHS, as that's what cond_eval() expects to
-		 *	see.
+		 *	We have two values, just compare them.
 		 */
-		if (tmpl_is_attr(switch_vpt)) {
-			map.lhs = switch_vpt;
-			map.rhs = case_gext->vpt;
-
-		} else if (tmpl_is_attr(case_gext->vpt)) {
-			map.lhs = case_gext->vpt;
-			map.rhs = switch_vpt;
-
-		} else {
-			map.lhs = switch_vpt;
-			map.rhs = case_gext->vpt;
-		}
-
-		/*
-		 *	Evaluate the 'switch' statement.
-		 *
-		 *	Note that we don't need to do any casting of the RHS
-		 */
-		if (cond_eval(request, RLM_MODULE_NOOP, &cond) == 1) {
+		if (fr_value_box_cmp(box, &case_gext->vpt->data.literal) == 0) {
 			found = this;
 			break;
 		}
@@ -156,7 +124,7 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	if (!found) found = null_case;
 
 do_null_case:
-	if (vpt.type == TMPL_TYPE_DATA) fr_value_box_clear_value(&vpt.data.literal);
+	if (box == tmpl_value(&vpt)) fr_value_box_clear_value(&vpt.data.literal);
 
 	/*
 	 *	Nothing found.  Just continue, and ignore the "switch"
