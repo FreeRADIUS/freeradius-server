@@ -616,7 +616,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 #else
-		cf_log_err_cs(conf, "'winbind' auth not enabled at compiled time");
+		cf_log_err_cs(conf, "'winbind' is not enabled in this build.");
 		return -1;
 #endif
 	}
