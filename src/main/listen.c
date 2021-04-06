@@ -2980,10 +2980,14 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 #ifdef WITH_TCP
 #ifdef WITH_TLS
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
-		DEBUG("Trying SSL to port %d\n", home->port);
+		DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
+
+		/*
+		 *	This is blocking.  :(
+		 */
 		sock->ssn = tls_new_client_session(sock, home->tls, this->fd, &sock->certs);
 		if (!sock->ssn) {
-			ERROR("Failed starting SSL to new proxy socket '%s'", buffer);
+			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
