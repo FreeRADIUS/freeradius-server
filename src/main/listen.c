@@ -365,14 +365,22 @@ int rad_status_server(REQUEST *request)
 		listen_socket_t *sock = request->listener->data;
 
 		if (sock->state == LISTEN_TLS_CHECKING) {
+			int autz_type = PW_AUTZ_TYPE;
+			char const *name = "Autz-Type";
+
+			if (request->listener->type == RAD_LISTEN_ACCT) {
+				autz_type = PW_ACCT_TYPE;
+				name = "Acct-Type";
+			}
+
 			RDEBUG("(TLS) Checking connection to see if it is authorized.");
 
-			dval = dict_valbyname(PW_AUTZ_TYPE, 0, "New-TLS-Connection");
+			dval = dict_valbyname(autz_type, 0, "New-TLS-Connection");
 			if (dval) {
 				rcode = process_authorize(dval->value, request);
 			} else {
 				rcode = RLM_MODULE_OK;
-				RWDEBUG("(TLS) Did not find 'Autz-Type New-TLS-Connection' - defaulting to accept");
+				RWDEBUG("(TLS) Did not find '%s New-TLS-Connection' - defaulting to accept", name);
 			}
 
 			if ((rcode == RLM_MODULE_OK) || (rcode == RLM_MODULE_UPDATED)) {
