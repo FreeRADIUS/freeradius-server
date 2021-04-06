@@ -5316,6 +5316,19 @@ static void event_new_fd(rad_listen_t *this)
 					rad_panic("Failed to insert event");
 				}
 			}
+
+			/*
+			 *	Run a callback to do any specific
+			 *	signalling on "connection up".
+			 *
+			 *	For TLS sockets and WITH_COA_TUNNEL,
+			 *	this function should be similar to
+			 *	ping_home_server(), except that it
+			 *	should send a Status-Server packet,
+			 *	with Originating-Realm-Key as a VSA.
+			 */
+//			process_listener_up(this);
+
 #endif	/* WITH_TCP */
 			break;
 #endif	/* WITH_PROXY */
