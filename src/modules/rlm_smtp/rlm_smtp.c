@@ -225,14 +225,14 @@ static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t
 	int 				count = 0;
 
 	/* Iterate over the VP and add the string value to the curl_slist */
-	vp = tmpl_cursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
+	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
 	while (vp) {
 		count += 1;
 		*out = curl_slist_append(*out, vp->vp_strvalue);
 		vp = fr_dcursor_next(&uctx->cursor);
 	}
 	/* Return the number of elements that were found */
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	return count;
 }
 
@@ -274,7 +274,7 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t co
 	ssize_t			copied = 0;
 
 	/* Loop through the elements to be added to the sbuff */
-	vp = tmpl_cursor_init(NULL, NULL, &cc, &uctx->cursor, uctx->request, vpt);
+	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &uctx->cursor, uctx->request, vpt);
 	while (vp) {
 		copied += fr_sbuff_in_bstrncpy(out, vp->vp_strvalue, vp->vp_length);
 		vp = fr_dcursor_next(&uctx->cursor);
@@ -283,7 +283,7 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t co
 			copied += fr_sbuff_in_strcpy(out, delimeter);
 		}
 	}
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	return copied;
 }
 
@@ -383,7 +383,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tm
 	int 			attachments_set = 0;
 
 	/* Check for any file attachments */
-	for( vp = tmpl_cursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
+	for( vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
 	vp;
        	vp = fr_dcursor_next(&uctx->cursor)){
 		if(vp->vp_tainted) {
@@ -392,7 +392,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tm
 		}
 		attachments_set += str_to_attachments(uctx, mime, vp->vp_strvalue, vp->vp_length, path_buffer, m);
 	}
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	return attachments_set;
 }
 

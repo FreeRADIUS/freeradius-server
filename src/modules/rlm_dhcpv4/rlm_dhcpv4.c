@@ -174,7 +174,7 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(cursor = talloc(ctx, fr_dcursor_t));
 	talloc_steal(cursor, vpt);
-	vp = tmpl_cursor_init(NULL, NULL, &cc, cursor, request, vpt);
+	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, cursor, request, vpt);
 
 	if (!vp) return XLAT_ACTION_DONE; /* Nothing to encode */
 
@@ -186,13 +186,13 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (len < 0) {
 			RPEDEBUG("DHCP option encoding failed");
 			talloc_free(cursor);
-			tmpl_cursor_clear(&cc);
+			tmpl_pair_cursor_clear(&cc);
 			return XLAT_ACTION_FAIL;
 		}
 		p += len;
 	}
 	talloc_free(cursor);
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 
 	/*
 	 *	Pass the options string back

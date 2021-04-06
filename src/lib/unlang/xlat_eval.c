@@ -826,7 +826,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	 *	This allows users to manipulate virtual attributes as if
 	 *	they were real ones.
 	 */
-	vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 
 	/*
 	 *	We didn't find the VP in a list, check to see if it's
@@ -900,7 +900,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	default:
 		/*
 		 *	The cursor was set to the correct
-		 *	position above by tmpl_cursor_init.
+		 *	position above by tmpl_pair_cursor_init.
 		 */
 		vp = fr_dcursor_current(&cursor);			/* NULLness checked above */
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
@@ -913,7 +913,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	}
 
 done:
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	return ret;
 }
 

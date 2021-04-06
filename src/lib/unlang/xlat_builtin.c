@@ -865,7 +865,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	RIDEBUG("Attributes matching \"%s\"", fmt);
 
 	RINDENT();
-	for (vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		fr_dict_vendor_t const		*vendor;
@@ -950,7 +950,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 			talloc_free(dst);
 		}
 	}
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	REXDENT();
 
 	talloc_free(vpt);
@@ -2089,7 +2089,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	for (vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		fr_token_t op = vp->op;
@@ -2106,7 +2106,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_dcursor_append(out, vb);
 	}
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	talloc_free(vpt);
 
 	return XLAT_ACTION_DONE;

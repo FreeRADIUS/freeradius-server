@@ -1332,7 +1332,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	the dst_list and vp pointing to the attribute or the VP
 	 *	being NULL (no attribute at that index).
 	 */
-	dst = tmpl_cursor_init(NULL, tmp_ctx, &cc, &dst_list, request, map->lhs);
+	dst = tmpl_pair_cursor_init(NULL, tmp_ctx, &cc, &dst_list, request, map->lhs);
 	/*
 	 *	The destination is an attribute
 	 */
@@ -1630,7 +1630,7 @@ update:
 	fr_assert(fr_pair_list_empty(&src_list));
 
 finish:
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	talloc_free(tmp_ctx);
 	return rcode;
 }

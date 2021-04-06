@@ -568,7 +568,7 @@ build_vector:
 		int			alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));
-		for (vp = tmpl_cursor_init(NULL, NULL, &cc, &cursor, request, vpt_p), i = 0;
+		for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt_p), i = 0;
 		     vp;
 		     vp = fr_dcursor_next(&cursor), i++) {
 		     	/* need extra for line terminator */
@@ -600,7 +600,7 @@ build_vector:
 				vector[i].iov_len = inst->delimiter_len;
 			}
 		}
-		tmpl_cursor_clear(&cc);
+		tmpl_pair_cursor_clear(&cc);
 		vector_p = vector;
 		vector_len = i;
 	}

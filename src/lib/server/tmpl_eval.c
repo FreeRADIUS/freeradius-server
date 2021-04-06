@@ -43,7 +43,7 @@ RCSID("$Id$")
  *	name couldn't be resolved.
  * @return a pointer to the HEAD of a list in the #request_t.
  *
- * @see tmpl_cursor_init
+ * @see tmpl_pair_cursor_init
  */
 fr_pair_list_t *tmpl_list_head(request_t *request, tmpl_pair_list_t list)
 {
@@ -1097,7 +1097,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_c
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_pair_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
 {
 	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
 	case FR_TYPE_TLV:
@@ -1149,7 +1149,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 			ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
 			if (ar) {
 				list_head = &vp->vp_group;
-				_tmpl_cursor_init(vp, list_head, ar, cc);
+				_tmpl_pair_cursor_init(vp, list_head, ar, cc);
 				curr = fr_pair_list_head(list_head);
 				list = &list_head->head;
 				continue;
@@ -1205,8 +1205,8 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
  *
  * @see tmpl_cursor_next
  */
-fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
-			     fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
+fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
+				 fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
 	fr_pair_list_t		*list_head;
@@ -1230,7 +1230,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 						   fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
 			}
 		error:
-			memset(cc, 0, sizeof(*cc));	/* so tmpl_cursor_clear doesn't explode */
+			memset(cc, 0, sizeof(*cc));	/* so tmpl_pair_cursor_clear doesn't explode */
 			return NULL;
 		}
 	}
@@ -1265,7 +1265,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		_tmpl_cursor_init(list_ctx, cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
+		_tmpl_pair_cursor_init(list_ctx, cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	case TMPL_TYPE_LIST:
@@ -1299,7 +1299,7 @@ fr_pair_t *tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 /** Clear any temporary state allocations
  *
  */
-void tmpl_cursor_clear(tmpl_cursor_ctx_t *cc)
+void tmpl_pair_cursor_clear(tmpl_cursor_ctx_t *cc)
 {
 	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
 
@@ -1340,7 +1340,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 
 	fr_assert(tmpl_is_attr(vpt) || tmpl_is_list(vpt));
 
-	for (vp = tmpl_cursor_init(&err, NULL, &cc, &from, request, vpt);
+	for (vp = tmpl_pair_cursor_init(&err, NULL, &cc, &from, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&from)) {
 		vp = fr_pair_copy(ctx, vp);
@@ -1352,7 +1352,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 		}
 		fr_pair_append(out, vp);
 	}
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 
 	return err;
 }
@@ -1387,7 +1387,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 
 	fr_pair_list_free(out);
 
-	for (vp = tmpl_cursor_init(&err, NULL, &cc, &from, request, vpt);
+	for (vp = tmpl_pair_cursor_init(&err, NULL, &cc, &from, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&from)) {
 	     	switch (vp->da->type) {
@@ -1403,7 +1403,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 	     	}
 	}
 done:
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 
 	return err;
 }
@@ -1432,8 +1432,8 @@ int tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 
 	TMPL_VERIFY(vpt);
 
-	vp = tmpl_cursor_init(&err, request, &cc, &cursor, request, vpt);
-	tmpl_cursor_clear(&cc);
+	vp = tmpl_pair_cursor_init(&err, request, &cc, &cursor, request, vpt);
+	tmpl_pair_cursor_clear(&cc);
 
 	if (out) *out = vp;
 
@@ -1464,8 +1464,8 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 
 	*out = NULL;
 
-	vp = tmpl_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
-	tmpl_cursor_clear(&cc);
+	vp = tmpl_pair_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
+	tmpl_pair_cursor_clear(&cc);
 
 	switch (err) {
 	case 0:
@@ -1611,7 +1611,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	/*
 	 *	Prime the stack!
 	 */
-	_tmpl_cursor_init(list_ctx, cc.list, fr_dlist_head(&vpt->data.attribute.ar), &cc);
+	_tmpl_pair_cursor_init(list_ctx, cc.list, fr_dlist_head(&vpt->data.attribute.ar), &cc);
 
 	/*
 	 *	- Continue until there are no evaluation contexts
@@ -1646,7 +1646,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 			ar = n_ar;
 			list_head = &curr->vp_group;
 			list_ctx = curr;	/* Allocations are under the group */
-			_tmpl_cursor_init(list_ctx, list_head, ar, &cc);
+			_tmpl_pair_cursor_init(list_ctx, list_head, ar, &cc);
 			curr = fr_pair_list_head(list_head);
 			continue;
 		}

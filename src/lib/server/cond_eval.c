@@ -528,7 +528,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_clear(&rhs_cast);
 
-	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
+	for (vp = tmpl_pair_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, da) < 0) {
@@ -546,7 +546,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 		if (rcode != 0) break;
 	}
 
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	return rcode;
 }
 
@@ -564,7 +564,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_clear(&rhs_cast);
 
-	for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
+	for (vp = tmpl_pair_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, NULL) < 0) {
@@ -588,7 +588,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 		if (rcode != 0) break;
 	}
 
-	tmpl_cursor_clear(&cc);
+	tmpl_pair_cursor_clear(&cc);
 	return rcode;
 }
 
@@ -757,7 +757,7 @@ check_attrs:
 
 		fr_assert(!lhs);
 
-		for (vp = tmpl_cursor_init(&rcode, request, &cc, &cursor, request, map->lhs);
+		for (vp = tmpl_pair_cursor_init(&rcode, request, &cc, &cursor, request, map->lhs);
 		     vp;
 	     	     vp = fr_dcursor_next(&cursor)) {
 			fr_value_box_t lhs_cast;
@@ -818,7 +818,7 @@ check_attrs:
 			continue;
 		}
 
-		tmpl_cursor_clear(&cc);
+		tmpl_pair_cursor_clear(&cc);
 	}
 		break;
 

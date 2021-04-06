@@ -45,7 +45,7 @@
  * functions which can be used to iterate over only the #fr_pair_t that match a
  * tmpl_t in a given list.
  *
- * @see tmpl_cursor_init
+ * @see tmpl_pair_cursor_init
  * @see tmpl_cursor_next
  *
  * Or for simplicity, there are functions which wrap the cursor functions, to copy or
@@ -715,17 +715,17 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    fr_pair_t        *vp;
 
    // Iterate over all pairs in the request list
-   for (vp = tmpl_cursor_init(NULL, &cursor, request, &list);
+   for (vp = tmpl_pair_cursor_init(NULL, &cursor, request, &list);
    	vp;
    	vp = tmpl_cursor_next(&cursor, &list)) {
    	// Do something
    }
-   tmpl_cursor_clear(&cc);
+   tmpl_pair_cursor_clear(&cc);
  @endcode
  *
  * @param _request to locate the list in.
  * @param _list to set as the target for the template.
- * @see tmpl_cursor_init
+ * @see tmpl_pair_cursor_init
  * @see tmpl_cursor_next
  */
 #define	tmpl_init_initialiser_list(_request, _list)\
@@ -983,11 +983,11 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
-fr_pair_t		*tmpl_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
+fr_pair_t		*tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
 					  fr_dcursor_t *cursor, request_t *request,
 					  tmpl_t const *vpt);
 
-void			tmpl_cursor_clear(tmpl_cursor_ctx_t *cc);
+void			tmpl_pair_cursor_clear(tmpl_cursor_ctx_t *cc);
 
 int			tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					request_t *request, tmpl_t const *vpt);

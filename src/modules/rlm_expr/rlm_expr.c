@@ -244,7 +244,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 		}
 
 		x = 0;
-		for (i = 0, vp = tmpl_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
+		for (i = 0, vp = tmpl_pair_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
 		     i++, vp = fr_dcursor_next(&cursor)) {
 			int64_t		y;
@@ -255,7 +255,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
 						 vpt->name);
 				error:
-					tmpl_cursor_clear(&cc);
+					tmpl_pair_cursor_clear(&cc);
 					return false;
 				}
 				if (value.vb_uint64 > INT64_MAX) {
@@ -291,7 +291,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 
 			x += y;
 		} /* loop over all found VPs */
-		tmpl_cursor_clear(&cc);
+		tmpl_pair_cursor_clear(&cc);
 
 		if (err != 0) {
 			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt->len, vpt->name);
