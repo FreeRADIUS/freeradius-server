@@ -3214,7 +3214,20 @@ static int request_will_proxy(REQUEST *request)
 		 *	This function will set request->home_server,
 		 *	and also request->proxy_listener.
 		 */
-		if (listen_coa_find(request, vp->vp_strvalue) < 0) return 0;
+		if (listen_coa_find(request, vp->vp_strvalue) < 0) {
+			vp_cursor_t cursor;
+
+			(void) fr_cursor_init(&cursor, &request->config); /* already checked it above */
+			
+			while ((vp = fr_cursor_next(&cursor)) != NULL) {
+				if (listen_coa_find(request, vp->vp_strvalue) == 0) break;
+			}
+
+			/*
+			 *	Not found.
+			 */
+			return 0;
+		}
 
 		/*
 		 *	Initialise request->proxy, and copy VPs over.
