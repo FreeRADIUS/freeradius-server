@@ -2523,6 +2523,15 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
 					 dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
 
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *	Cache this, as request->proxy_listener will be
+	 *	NULL after removing the request from the proxy
+	 *	hash.
+	 */
+	reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
+#endif
+
 	if (reply) {
 		VERIFY_PACKET(reply);
 
@@ -2547,14 +2556,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 			rad_assert(!request->in_proxy_hash);
 		}
 	} else if (request->in_proxy_hash) {
-#ifdef WITH_COA_TUNNEL
-		/*
-		 *	Cache this, as request->proxy_listener will be
-		 *	NULL after removing the request from the proxy
-		 *	hash.
-		 */
-		reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
-#endif
 		remove_from_proxy_hash(request);
 	}
 
