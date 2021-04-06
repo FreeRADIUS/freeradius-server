@@ -565,11 +565,6 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	}
 
 	/*
-	 *	The request is done.  Track that.
-	 */
-	worker_request_time_tracking_end(worker, request, now);
-
-	/*
 	 *	Fill in the rest of the fields in the channel message.
 	 *
 	 *	sequence / ack will be filled in by fr_channel_send_reply()
@@ -943,6 +938,7 @@ static void _worker_request_internal_init(request_t *request, void *uctx)
 static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t rcode, void *uctx)
 {
 	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
+	fr_time_t 	now = fr_time();
 
 	/*
 	 *	All external requests MUST have a listener.
@@ -978,6 +974,11 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	RDEBUG("Done request");
 
 	/*
+	 *	The request is done.  Track that.
+	 */
+	worker_request_time_tracking_end(worker, request, now);
+
+	/*
 	 *	These conditions are true when the server is
 	 *	exiting and we're stopping all the requests.
 	 *
@@ -989,7 +990,7 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 		return;
 	}
 
-	worker_send_reply(worker, request, request->master_state == REQUEST_STOP_PROCESSING ? 1 : 0, fr_time());
+	worker_send_reply(worker, request, request->master_state == REQUEST_STOP_PROCESSING ? 1 : 0, now);
 	talloc_free(request);
 }
 
