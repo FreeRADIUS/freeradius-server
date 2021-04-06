@@ -42,9 +42,13 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 
 	switch (state->children[i].state) {
 	case CHILD_INIT:
-	case CHILD_EXITED:
-		fr_assert(!state->children[i].request);
 		state->children[i].state = CHILD_CANCELLED;
+		fr_assert(!state->children[i].request);
+		break;
+
+	case CHILD_EXITED:
+		state->children[i].state = CHILD_CANCELLED;
+		TALLOC_FREE(state->children[i].request);
 		break;
 
 	case CHILD_RUNNABLE:	/* Don't check runnable_id, may be yielded */
