@@ -57,27 +57,27 @@ fr_dict_autoload_t rlm_yubikey_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_user_password;
-static fr_dict_attr_t const *attr_yubikey_key;
-static fr_dict_attr_t const *attr_yubikey_public_id;
-static fr_dict_attr_t const *attr_yubikey_private_id;
-static fr_dict_attr_t const *attr_yubikey_counter;
-static fr_dict_attr_t const *attr_yubikey_timestamp;
-static fr_dict_attr_t const *attr_yubikey_random;
-static fr_dict_attr_t const *attr_yubikey_otp;
+fr_dict_attr_t const *attr_auth_type;
+fr_dict_attr_t const *attr_user_password;
+fr_dict_attr_t const *attr_yubikey_key;
+fr_dict_attr_t const *attr_yubikey_public_id;
+fr_dict_attr_t const *attr_yubikey_private_id;
+fr_dict_attr_t const *attr_yubikey_counter;
+fr_dict_attr_t const *attr_yubikey_timestamp;
+fr_dict_attr_t const *attr_yubikey_random;
+fr_dict_attr_t const *attr_yubikey_otp;
 
 extern fr_dict_attr_autoload_t rlm_yubikey_dict_attr[];
 fr_dict_attr_autoload_t rlm_yubikey_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_yubikey_key, .name = "Yubikey-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_yubikey_public_id, .name = "Yubikey-Public-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_yubikey_private_id, .name = "Yubikey-Private-ID", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_yubikey_counter, .name = "Yubikey-Counter", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_yubikey_timestamp, .name = "Yubikey-Timestamp", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_yubikey_random, .name = "Yubikey-Random", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_yubikey_otp, .name = "Yubikey-OTP", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_yubikey_key, .name = "Vendor-Specific.Yubico.Yubikey-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_yubikey_public_id, .name = "Vendor-Specific.Yubico.Yubikey-Public-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_yubikey_private_id, .name = "Vendor-Specific.Yubico.Yubikey-Private-ID", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_yubikey_counter, .name = "Vendor-Specific.Yubico.Yubikey-Counter", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_timestamp, .name = "Vendor-Specific.Yubico.Yubikey-Timestamp", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_random, .name = "Vendor-Specific.Yubico.Yubikey-Random", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_otp, .name = "Vendor-Specific.Yubico.Yubikey-OTP", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -161,6 +161,22 @@ static xlat_action_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t * o
 	return XLAT_ACTION_DONE;
 }
 
+static int mod_load(void)
+{
+	if (fr_dict_autoload(rlm_yubikey_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(rlm_yubikey_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(rlm_yubikey_dict);
+		return -1;
+	}
+
+	return 0;
+
+}
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
@@ -441,6 +457,7 @@ module_t rlm_yubikey = {
 	.name		= "yubikey",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_yubikey_t),
+	.onload		= mod_load,
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
