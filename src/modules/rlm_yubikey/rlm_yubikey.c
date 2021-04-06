@@ -126,6 +126,10 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 	return i;
 }
 
+static xlat_arg_parser_t const modhex_to_hex_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
+
 /** Xlat to convert Yubikey modhex to standard hex
  *
  * Example:
@@ -135,30 +139,33 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
  *
  * @ingroup xlat_functions
  */
-static ssize_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			  	  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			  	  request_t *request, char const *fmt)
+static xlat_action_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t * out, request_t *request,
+					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					fr_value_box_list_t *in)
 {
-	ssize_t len;
-
-	if (outlen < strlen(fmt)) return 0;
+	ssize_t 	len;
+	fr_value_box_t	*arg = fr_dlist_pop_head(in);
+	char		*p = UNCONST(char *, arg->vb_strvalue);
 
 	/*
 	 *	mod2hex allows conversions in place
 	 */
-	len = modhex2hex(fmt, (uint8_t *) *out, strlen(fmt));
+	len = modhex2hex(p, p, arg->vb_length);
 	if (len <= 0) {
 		REDEBUG("Modhex string invalid");
-		return -1;
+		talloc_free(arg);
+		return XLAT_ACTION_FAIL;
 	}
 
-	return len;
+	fr_dcursor_append(out, arg);
+	return XLAT_ACTION_DONE;
 }
 
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_yubikey_t *inst = instance;
+	rlm_yubikey_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -170,9 +177,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 #endif
 
-	if (!cf_section_name2(conf)) return 0;
+	if (cf_section_name2(conf)) return 0;
 
-	xlat_register_legacy(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(inst, "modhextohex", modhex_to_hex_xlat, false);
+	xlat_func_mono(xlat, &modhex_to_hex_xlat_arg);
 
 	return 0;
 }
