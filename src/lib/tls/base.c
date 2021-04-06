@@ -39,6 +39,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/debug.h>
 
 static uint32_t instance_count = 0;
+static uint32_t dict_ref_count = 0;
 
 /** The context which holds any memory OpenSSL allocates
  *
@@ -568,6 +569,19 @@ int fr_openssl_init(void)
  */
 int fr_tls_dict_init(void)
 {
+	/*
+	 *	Needs to be tracked separately in case
+	 *	this is called before the TLS library
+	 *	is initialised.
+	 *
+	 *	fr_dict_autofree will only decrement the
+	 *	dict ref count once.
+	 */
+	if (dict_ref_count > 0) {
+		dict_ref_count++;
+		return 0;
+	}
+
 	if (fr_dict_autoload(tls_dict) < 0) {
 		PERROR("Failed initialising protocol library");
 		fr_openssl_free();
@@ -580,11 +594,15 @@ int fr_tls_dict_init(void)
 		return -1;
 	}
 
+	dict_ref_count++;
+
 	return 0;
 }
 
 void fr_tls_dict_free(void)
 {
+	if (--dict_ref_count > 0) return;
+
 	fr_dict_autofree(tls_dict);
 }
 #endif /* WITH_TLS */
