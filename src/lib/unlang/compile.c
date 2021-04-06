@@ -1974,6 +1974,12 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
+	if (tmpl_is_data(gext->vpt)) {
+		cf_log_err(cs, "Cannot use constant data for 'switch' statement");
+		talloc_free(g);
+		return NULL;
+	}
+
 	if (!tmpl_is_attr(gext->vpt)) (void) tmpl_cast_set(gext->vpt, FR_TYPE_STRING);
 
 	/*
