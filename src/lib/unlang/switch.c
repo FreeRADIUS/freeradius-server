@@ -36,7 +36,7 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	unlang_switch_t		*switch_gext;
 
 	tmpl_t			vpt;
-	fr_value_box_t const	*box;
+	fr_value_box_t const	*box = NULL;
 
 	fr_pair_t		*vp;
 
@@ -66,7 +66,6 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 				break;
 			}
 
-			box = NULL;
 			goto do_null_case;
 		} else {
 			box = &vp->data;
