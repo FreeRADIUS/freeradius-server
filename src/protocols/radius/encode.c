@@ -465,12 +465,23 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	switch (da->type) {
+		/*
+		 *	IPv4 addresses are normal, but IPv6 addresses are special to RADIUS.
+		 */
+	case FR_TYPE_COMBO_IP_ADDR:
+		if (vp->vp_ip.af == AF_INET) goto encode;
+		FALL_THROUGH;
+
 	/*
-	 *	Common encoder might add scope byte
+	 *	Common encoder might add scope byte, which we don't want.
 	 */
 	case FR_TYPE_IPV6_ADDR:
 		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 		break;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+		if (vp->vp_ip.af == AF_INET) goto ipv4_prefix;
+		FALL_THROUGH;
 
 	/*
 	 *	Common encoder doesn't add reserved byte
@@ -486,6 +497,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Common encoder doesn't add reserved byte
 	 */
 	case FR_TYPE_IPV4_PREFIX:
+	ipv4_prefix:
 		FR_DBUFF_IN_BYTES_RETURN(&value_dbuff, 0x00, vp->vp_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&value_dbuff, (uint8_t const *)&vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
 		break;
@@ -508,6 +520,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Simple data types use the common encoder.
 	 */
 	default:
+	encode:
 		slen = fr_value_box_to_network(&value_dbuff, &vp->data);
 		if (slen < 0) return slen;
 		break;

@@ -243,5 +243,14 @@ match 1a 1d 00 00 60 b5 1c 17 00 0b 14 05 12 01 06 7f 00 00 01 04 04 08 40 05 06
 decode-pair -
 match Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.IP-Address = 127.0.0.1, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range.Start = 2112, Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Port-Range.End = 6809
 
+encode-pair Framed-IP-Address = ::1
+match Failed resolving "::1" to IPv4 address: nodename nor servname provided, or not known
+
+encode-pair Vendor-Specific.WiMAX.DNS-Server = ::1
+match 1a 19 00 00 60 b5 34 13 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+
+encode-pair Vendor-Specific.WiMAX.DNS-Server = 127.0.0.1
+match 1a 0d 00 00 60 b5 34 07 00 7f 00 00 01
+
 count
-match 112
+match 118
