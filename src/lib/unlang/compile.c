@@ -2107,42 +2107,20 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 		}
 
-		if (tmpl_is_attr_unresolved(vpt)) {
-			if (!pass2_fixup_tmpl(parent, cf_section_to_item(cs), &vpt)) {
-				talloc_free(vpt);
-				return NULL;
-			}
-		}
-
 		switch_g = unlang_generic_to_group(parent);
 		switch_gext = unlang_group_to_switch(switch_g);
 		fr_assert(switch_gext->vpt != NULL);
 
 		/*
-		 *	Do type-specific checks on the case statement
-		 */
-		if (tmpl_is_list(vpt)) {
-			cf_log_perr(cs, "Cannot use list for target of 'case' statement");
-			talloc_free(vpt);
-			return NULL;
-		}
-
-		if (tmpl_contains_regex(vpt)) {
-			cf_log_err(cs, "Cannot use regular expression for target of 'case' statement");
-			talloc_free(vpt);
-			return NULL;
-		}
-
-		/*
-		 *	This "case" statement is unresolved.  Try to
-		 *	resolve it to the data type of the parent
-		 *	"switch" tmpl.
+		 *      This "case" statement is unresolved.  Try to
+		 *      resolve it to the data type of the parent
+		 *      "switch" tmpl.
 		 */
 		if (tmpl_is_unresolved(vpt)) {
 			fr_type_t cast_type = switch_gext->vpt->cast;
 			fr_dict_attr_t const *da = NULL;
 
-			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_da(switch_gext->vpt);
+ 			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_da(switch_gext->vpt);
 
 			if (fr_type_is_null(cast_type) && da) cast_type = da->type;
 
@@ -2153,26 +2131,10 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			}
 		}
 
-		/*
-		 *	Compile and sanity check xlat
-		 *	expansions.
-		 */
-		if (tmpl_is_xlat_unresolved(vpt)) {
-			/*
-			 *	Don't expand xlat's into an
-			 *	attribute of a different type.
-			 */
-			if (!pass2_fixup_tmpl(parent, cf_section_to_item(cs), &vpt)) {
-				talloc_free(vpt);
-				return NULL;
-			}
-		}
-
-		if (tmpl_is_exec(vpt)) {
-			if (!pass2_fixup_tmpl(parent, cf_section_to_item(cs), &vpt)) {
-				talloc_free(vpt);
-				return NULL;
-			}
+		if (!tmpl_is_data(vpt)) {
+			talloc_free(vpt);
+			cf_log_err(cs, "arguments to 'case' statements MUST be static data.");
+			return NULL;
 		}
 	} /* else it's a default 'case' statement */
 

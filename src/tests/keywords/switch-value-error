@@ -2,10 +2,6 @@
 #  PRE: switch
 #
 switch &Service-Type {
-	case "%{expr: 1 + 2}" {
-		test_fail
-	}
-
 	case Login-User {
 		test_fail
 	}
