@@ -212,11 +212,17 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 		fr_value_box_aprint(ctx, &p, data, NULL);
 		if (!p) return NULL;
 
-		obj = json_object_new_string(p);
+		obj = json_object_new_string_len(p, talloc_array_length(p) - 1);
 		talloc_free(p);
 
 		return obj;
 	}
+
+	case FR_TYPE_STRING:
+		return json_object_new_string_len(data->vb_strvalue, data->vb_length);
+
+	case FR_TYPE_OCTETS:
+		return json_object_new_string_len((char *)data->vb_octets, data->vb_length);
 
 	case FR_TYPE_BOOL:
 		return json_object_new_boolean(data->vb_uint8);
