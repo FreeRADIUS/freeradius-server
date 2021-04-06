@@ -54,13 +54,12 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 	case CHILD_RUNNABLE:	/* Don't check runnable_id, may be yielded */
 		/*
 		 *	Signal the child to stop
+		 *
+		 *	The signal function cleans up the request
+		 *	and signals anything that was tracking it
+		 *	that it's now complete.
 		 */
 		unlang_interpret_signal(child, FR_SIGNAL_CANCEL);
-
-		/*
-		 *	Remove it from the runnable heap
-		 */
-		unlang_interpret_request_done(child);
 
 		/*
 		 *	Free it.
