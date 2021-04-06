@@ -633,7 +633,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_dcursor_t *out, re
 		break;
 
 	default:
-		fr_assert(0);
+		fr_assert_fail("%%%c is not a valid one letter expansion", letter);
 		return XLAT_ACTION_FAIL;
 	}
 
