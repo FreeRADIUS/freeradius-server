@@ -911,7 +911,6 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 						L("%n"),
 						L("%s"),
 						L("%t"),
-						L("%v"),
 						L("%{")
 					);
 	fr_sbuff_term_t			*tokens;
