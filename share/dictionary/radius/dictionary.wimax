@@ -113,8 +113,7 @@ ATTRIBUTE	Device-Authentication-Indicator		2	byte
 ATTRIBUTE	GMT-Timezone-offset			3	signed
 ATTRIBUTE	AAA-Session-Id				4	octets
 
-# 32 octets in length
-ATTRIBUTE	MSK					5	octets encrypt=2
+ATTRIBUTE	MSK					5	octets[32] encrypt=2
 ATTRIBUTE	hHA-IP-MIP4				6	ipaddr
 ATTRIBUTE	hHA-IP-MIP6				7	ipv6addr
 ATTRIBUTE	DHCPv4-Server				8	combo-ip
