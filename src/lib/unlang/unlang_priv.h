@@ -375,10 +375,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 	/*
 	 *	Don't clear top_frame flag, bad things happen...
 	 */
-	repeatable_clear(frame);
-	break_point_clear(frame);
-	return_point_clear(frame);
-	yielded_clear(frame);
+	frame->uflags &= UNWIND_FLAG_TOP_FRAME;
 	if (frame->state) {
 		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
 		TALLOC_FREE(frame->state);
