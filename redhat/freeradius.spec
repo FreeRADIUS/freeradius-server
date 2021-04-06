@@ -505,8 +505,19 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
 %if %{?_with_developer:1}%{!?_with_developer:0}
         --enable-developer=yes \
-        --enable-address-sanitizer \
         --with-gperftools \
+%endif
+%if %{?_with_address_sanitizer:1}%{!?_with_address_sanitizer:0}
+        --enable-address-sanitizer \
+%endif
+%if %{?_with_leak_sanitizer:1}%{!?_with_leak_sanitizer:0}
+        --enable-leak-sanitizer \
+%endif
+%if %{?_with_thread_sanitizer:1}%{!?_with_thread_sanitizer:0}
+        --enable-thread-sanitizer \
+%endif
+%if %{?_with_undefined_behaviour_sanitizer:1}%{!?_with_undefined_behaviour_sanitizer:0}
+        --enable-undefined-behaviour-sanitizer \
 %endif
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
