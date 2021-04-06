@@ -865,8 +865,6 @@ static inline CC_HINT(always_inline) void frame_signal(request_t *request, fr_st
 
 	(void)talloc_get_type_abort(request, request_t);	/* Check the request hasn't already been freed */
 
-	if (limit == 0) limit = 1;	/* Never signal frame 0 */
-
 	fr_assert(stack->depth > 0);
 
 	/*
