@@ -1062,8 +1062,8 @@ static void _worker_request_stop(request_t *request, void *uctx)
 
 	/*
 	 *	Make sure time tracking is always in a
-	 *      consistent state when we mark the request
-	 *      as done.
+	 *	consistent state when we mark the request
+	 *	as done.
 	 */
 	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
 		fr_time_tracking_resume(&request->async->tracking, fr_time());
@@ -1071,10 +1071,17 @@ static void _worker_request_stop(request_t *request, void *uctx)
 
 	/*
 	 *	If the request is in the runnable queue
-	 *      yank it back out, so it's not "runnable"
+	 *	yank it back out, so it's not "runnable"
 	 *	when we call request done.
 	 */
 	if (fr_heap_entry_inserted(request->runnable_id)) fr_heap_extract(worker->runnable, request);
+
+	/*
+	 *	The interpreter doesn't currently fix
+	 *	this for us, so we set the indent to 0
+	 *	to avoid nasty asserts later.
+	 */
+	request->log.unlang_indent = 0;
 }
 
 /** Request is now runnable
