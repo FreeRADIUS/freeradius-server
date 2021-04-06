@@ -3714,7 +3714,7 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, i
 static rbtree_t *coa_tree = NULL;
 
 typedef struct {
-	char		*key;
+	char const     	*key;
 	rad_listen_t	*first;
 
 	pthread_mutex_t	mutex;		/* per key, to lower contention */
@@ -3780,7 +3780,7 @@ void listen_coa_add(rad_listen_t *this, char const *key)
 	/*
 	 *	Find the key.  If we can't find it, then create it.
 	 */
-	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	my_key.key = key;
 
 retry:
 	coa_key = rbtree_finddata(coa_tree, &my_key);
