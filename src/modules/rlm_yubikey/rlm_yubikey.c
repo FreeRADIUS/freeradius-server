@@ -99,24 +99,24 @@ static char const hextab[] = "0123456789abcdef";
  *	- The number of bytes written to the output buffer.
  *	- -1 on failure.
  */
-static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
+static ssize_t modhex2hex(char const *modhex, char *hex, size_t len)
 {
 	size_t i;
 	char *c1, *c2;
 
-	for (i = 0; i < len; i++) {
-		if (modhex[i << 1] == '\0') {
+	for (i = 0; i < len; i += 2) {
+		if (modhex[i] == '\0') {
 			break;
 		}
 
 		/*
 		 *	We only deal with whole bytes
 		 */
-		if (modhex[(i << 1) + 1] == '\0')
+		if (modhex[i + 1] == '\0')
 			return -1;
 
-		if (!(c1 = memchr(modhextab, tolower((int) modhex[i << 1]), 16)) ||
-		    !(c2 = memchr(modhextab, tolower((int) modhex[(i << 1) + 1]), 16)))
+		if (!(c1 = memchr(modhextab, tolower((int) modhex[i]), 16)) ||
+		    !(c2 = memchr(modhextab, tolower((int) modhex[i + 1]), 16)))
 			return -1;
 
 		hex[i] = hextab[c1 - modhextab];
