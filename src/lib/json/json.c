@@ -65,6 +65,16 @@ CONF_PARSER const fr_json_format_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static inline CC_HINT(always_inline)
+void json_object_put_assert(json_object *obj)
+{
+	int ret;
+
+	ret = json_object_put(obj);
+	if (ret == 1) return;
+
+	fr_assert_fail("json_object_put did not free object (returned %u), likely leaking memory", ret);
+}
 
 /** Convert json object to fr_value_box_t
  *
@@ -275,7 +285,11 @@ char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
 		}
 	}
 
-	json_object_put(json);
+	/*
+	 * Free the JSON structure, it's not needed any more
+	 */
+	json_object_put_assert(json);
+
 	return out;
 }
 
@@ -542,7 +556,8 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
 		error:
-			json_object_put(obj);
+			json_object_put_assert(obj);
+
 			return NULL;
 		}
 
@@ -662,7 +677,8 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
-			json_object_put(obj);
+
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
@@ -774,7 +790,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
-			json_object_put(obj);
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
@@ -844,7 +860,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 	 *	No longer need the "seen_attributes" object, it was just used for tracking.
 	 */
 	if (format->value.value_as_array) {
-		json_object_put(seen_attributes);
+		json_object_put_assert(seen_attributes);
 	}
 
 	return obj;
@@ -889,7 +905,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
-			json_object_put(obj);
+			json_object_put_assert(obj);
 			return NULL;
 		}
 
@@ -1009,13 +1025,17 @@ char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 		fr_assert(0);
 	}
 
+	/*
+	 *	p is a buff inside obj, and will be freed
+	 *	when it is freed.
+	 */
 	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
 	MEM(out = talloc_typed_strdup(ctx, p));
 
 	/*
 	 * Free the JSON structure, it's not needed any more
 	 */
-	json_object_put(obj);
+	json_object_put_assert(obj);
 
 	return out;
 }
