@@ -534,7 +534,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	case TMPL_TYPE_ATTR:
 	{
 		fr_dcursor_t		from;
-		tmpl_cursor_ctx_t	cc_attr;
+		tmpl_pair_cursor_ctx_t	cc_attr;
 		fr_pair_t		*vp;
 		fr_value_box_t		*n_vb;
 		int			err;
@@ -959,7 +959,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	TALLOC_CTX		*parent;
 
 	fr_dcursor_t		list;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 
 	memset(&cc, 0, sizeof(cc));
 

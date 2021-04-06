@@ -221,7 +221,7 @@ static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t
 {
 	request_t 			*request = ((fr_mail_ctx *)uctx)->request;
 	fr_pair_t			*vp;
-	tmpl_cursor_ctx_t       	cc;
+	tmpl_pair_cursor_ctx_t       	cc;
 	int 				count = 0;
 
 	/* Iterate over the VP and add the string value to the curl_slist */
@@ -269,7 +269,7 @@ static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct cu
 static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimeter)
 {
 	fr_pair_t		*vp;
-	tmpl_cursor_ctx_t       cc;
+	tmpl_pair_cursor_ctx_t       cc;
 
 	ssize_t			copied = 0;
 
@@ -379,7 +379,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tm
 {
 	fr_pair_t 		*vp;
 	request_t			*request = uctx->request;
-	tmpl_cursor_ctx_t       cc;
+	tmpl_pair_cursor_ctx_t       cc;
 	int 			attachments_set = 0;
 
 	/* Check for any file attachments */

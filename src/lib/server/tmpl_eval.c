@@ -833,7 +833,7 @@ static fr_pair_t *_tmpl_cursor_tlv_eval(UNUSED fr_dlist_head_t *list_head, UNUSE
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_pool_init(tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_pool_init(tmpl_pair_cursor_ctx_t *cc)
 {
 	if (!cc->pool) MEM(cc->pool = talloc_pool(cc->ctx, sizeof(tmpl_cursor_nested_t) * 5));
 }
@@ -842,7 +842,7 @@ void _tmpl_cursor_pool_init(tmpl_cursor_ctx_t *cc)
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
 {
 	tmpl_attr_t		*prev = fr_dlist_prev(&cc->vpt->data.attribute.ar, ar);
 
@@ -936,7 +936,7 @@ static fr_pair_t *_tmpl_cursor_group_eval(UNUSED fr_dlist_head_t *list_head, UNU
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
@@ -976,7 +976,7 @@ static fr_pair_t *_tmpl_cursor_leaf_eval(fr_dlist_head_t *list_head, fr_pair_t *
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_leaf_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t	*ns = &cc->leaf;
 
@@ -998,7 +998,7 @@ static fr_pair_t *_tmpl_cursor_list_eval(UNUSED fr_dlist_head_t *list_head, fr_p
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
@@ -1012,7 +1012,7 @@ void _tmpl_cursor_list_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
-static inline CC_HINT(always_inline) void _tmpl_cursor_eval_pop(tmpl_cursor_ctx_t *cc)
+static inline CC_HINT(always_inline) void _tmpl_cursor_eval_pop(tmpl_pair_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns = fr_dlist_pop_tail(&cc->nested);
 
@@ -1030,7 +1030,7 @@ static inline CC_HINT(always_inline) void _tmpl_cursor_eval_pop(tmpl_cursor_ctx_
  * @return the vp evaluated.
  */
 static inline CC_HINT(always_inline)
-fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_cursor_ctx_t *cc)
+fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_pair_cursor_ctx_t *cc)
 {
 	tmpl_attr_t const	*ar;
 	tmpl_cursor_nested_t	*ns;
@@ -1097,7 +1097,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_c
 }
 
 static inline CC_HINT(always_inline)
-void _tmpl_pair_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_cursor_ctx_t *cc)
+void _tmpl_pair_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
 {
 	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
 	case FR_TYPE_TLV:
@@ -1120,7 +1120,7 @@ void _tmpl_pair_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 
 static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 {
-	tmpl_cursor_ctx_t	*cc = uctx;
+	tmpl_pair_cursor_ctx_t	*cc = uctx;
 	tmpl_t const		*vpt = cc->vpt;
 
 	fr_pair_t		*vp;
@@ -1205,7 +1205,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
  *
  * @see tmpl_cursor_next
  */
-fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *cc,
+fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_pair_cursor_ctx_t *cc,
 				 fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
@@ -1252,7 +1252,7 @@ fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *c
 	/*
 	 *	Initialise the temporary cursor context
 	 */
-	*cc = (tmpl_cursor_ctx_t){
+	*cc = (tmpl_pair_cursor_ctx_t){
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
@@ -1299,7 +1299,7 @@ fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_cursor_ctx_t *c
 /** Clear any temporary state allocations
  *
  */
-void tmpl_pair_cursor_clear(tmpl_cursor_ctx_t *cc)
+void tmpl_pair_cursor_clear(tmpl_pair_cursor_ctx_t *cc)
 {
 	if (!fr_dlist_num_elements(&cc->nested)) return;/* Help simplify dealing with unused cursor ctxs */
 
@@ -1332,7 +1332,7 @@ int tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, tm
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		from;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 
 	TMPL_VERIFY(vpt);
 
@@ -1377,7 +1377,7 @@ int tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		from;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 
 	TMPL_VERIFY(vpt);
 
@@ -1426,7 +1426,7 @@ done:
 int tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 {
 	fr_dcursor_t		cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 	fr_pair_t		*vp;
 	int			err;
 
@@ -1455,7 +1455,7 @@ int tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 {
 	fr_dcursor_t		cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 	fr_pair_t		*vp;
 	int			err;
 
@@ -1526,7 +1526,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 
 	TALLOC_CTX		*list_ctx = NULL;
 
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 	tmpl_cursor_nested_t	*ns = NULL;
 
 	tmpl_request_t		*rr = NULL;
@@ -1600,7 +1600,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	/*
 	 *	Initialise the temporary cursor context
 	 */
-	cc = (tmpl_cursor_ctx_t){
+	cc = (tmpl_pair_cursor_ctx_t){
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,

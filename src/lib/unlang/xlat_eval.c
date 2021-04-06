@@ -814,7 +814,7 @@ static xlat_action_t xlat_eval_pair_real(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	fr_value_box_t		*value;
 
 	fr_dcursor_t		cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 

@@ -563,7 +563,7 @@ build_vector:
 	{
 		#define VECTOR_INCREMENT 20
 		fr_dcursor_t		cursor;
-		tmpl_cursor_ctx_t	cc;
+		tmpl_pair_cursor_ctx_t	cc;
 		fr_pair_t		*vp;
 		int			alloced = VECTOR_INCREMENT, i;
 

@@ -154,7 +154,7 @@ static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	tmpl_t		*vpt;
 	fr_pair_t	*vp;
 	fr_dcursor_t	*cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
 

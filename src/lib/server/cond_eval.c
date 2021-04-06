@@ -519,7 +519,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 	int	       		rcode;
 	fr_pair_t		*vp;
 	fr_dcursor_t		cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dict_attr_t const	*da = NULL;
 
@@ -556,7 +556,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 	fr_pair_t		*virt, *vp;
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dcursor_t		cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(tmpl_is_attr(map->rhs));
@@ -753,7 +753,7 @@ check_attrs:
 	{
 		fr_pair_t		*vp;
 		fr_dcursor_t		cursor;
-		tmpl_cursor_ctx_t	cc;
+		tmpl_pair_cursor_ctx_t	cc;
 
 		fr_assert(!lhs);
 

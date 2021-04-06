@@ -1152,7 +1152,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	tmpl_request_ref_t	request_ref;
 	tmpl_pair_list_t	list_ref;
 
-	tmpl_cursor_ctx_t	cc = {};
+	tmpl_pair_cursor_ctx_t	cc = {};
 
 	fr_pair_list_init(&src_list);
 	MAP_VERIFY(map);

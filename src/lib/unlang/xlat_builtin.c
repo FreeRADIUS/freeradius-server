@@ -844,7 +844,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 	tmpl_t			*vpt;
 	fr_value_box_t		*attr = fr_dlist_head(in);
 	char const		*fmt;
@@ -2074,7 +2074,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	tmpl_t			*vpt = NULL;
 	fr_dcursor_t		cursor;
-	tmpl_cursor_ctx_t	cc;
+	tmpl_pair_cursor_ctx_t	cc;
 	fr_value_box_t		*vb;
 	fr_value_box_t		*in_head = fr_dlist_head(in);
 

@@ -219,7 +219,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 		ssize_t			slen;
 		fr_pair_t		*vp;
 		fr_dcursor_t		cursor;
-		tmpl_cursor_ctx_t	cc;
+		tmpl_pair_cursor_ctx_t	cc;
 
 		slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
 					      &FR_SBUFF_IN(p, strlen(p)),
