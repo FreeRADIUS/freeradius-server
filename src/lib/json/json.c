@@ -222,7 +222,7 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 		return json_object_new_string_len(data->vb_strvalue, data->vb_length);
 
 	case FR_TYPE_OCTETS:
-		return json_object_new_string_len((char *)data->vb_octets, data->vb_length);
+		return json_object_new_string_len((char const *)data->vb_octets, data->vb_length);
 
 	case FR_TYPE_BOOL:
 		return json_object_new_boolean(data->vb_uint8);
