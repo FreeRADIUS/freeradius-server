@@ -977,6 +977,18 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 		      "Request %s stack depth %u > 0", request->name, unlang_interpret_stack_depth(request));
 	RDEBUG("Done request");
 
+	/*
+	 *	These conditions are true when the server is
+	 *	exiting and we're stopping all the requests.
+	 *
+	 *	This should never happen otherwise.
+	 */
+	if (unlikely((request->master_state == REQUEST_STOP_PROCESSING) &&
+		     !fr_channel_active(request->async->channel))) {
+		talloc_free(request);
+		return;
+	}
+
 	worker_send_reply(worker, request, request->master_state == REQUEST_STOP_PROCESSING ? 1 : 0, fr_time());
 	talloc_free(request);
 }
