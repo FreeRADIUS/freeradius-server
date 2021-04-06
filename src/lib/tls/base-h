@@ -429,6 +429,8 @@ void		fr_openssl_free(void);
 
 int		fr_tls_dict_init(void);
 
+void		fr_tls_dict_free(void);
+
 /*
  *	tls/log.c
  */

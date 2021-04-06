@@ -1006,6 +1006,13 @@ cleanup:
 	 */
 	if (dl_modules) talloc_free(dl_modules);
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	/*
+	 *	Make sure we clean up the TLS dictionary...
+	 */
+	fr_tls_dict_free();
+#endif
+
 	/*
 	 *  Cleanup everything else
 	 */

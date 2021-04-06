@@ -481,7 +481,7 @@ void fr_openssl_free(void)
 
 	TALLOC_FREE(global_mutexes);
 
-	fr_dict_autofree(tls_dict);
+	fr_tls_dict_free();
 }
 #else
 /** Free any memory alloced by libssl
@@ -499,7 +499,7 @@ void fr_openssl_free(void)
 
 	OPENSSL_cleanup();
 
-	fr_dict_autofree(tls_dict);
+	fr_tls_dict_free();
 }
 #endif
 
@@ -583,4 +583,8 @@ int fr_tls_dict_init(void)
 	return 0;
 }
 
+void fr_tls_dict_free(void)
+{
+	fr_dict_autofree(tls_dict);
+}
 #endif /* WITH_TLS */
