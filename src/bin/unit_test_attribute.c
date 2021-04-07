@@ -2688,8 +2688,16 @@ static void command_ctx_reset(command_file_ctx_t *cc, TALLOC_CTX *ctx)
 	cc->tmp_ctx = talloc_named_const(ctx, 0, "tmp_ctx");
 	cc->test_count = 0;
 
-	fr_dict_global_ctx_free(cc->test_gctx);
+	if (fr_dict_free(&cc->test_internal_dict, __FILE__) < 0) {
+		fr_perror("unit_test_attribute");
+	}
+
+	if (fr_dict_global_ctx_free(cc->test_gctx) < 0) fr_perror("unit_test_attribute");
+
 	cc->test_gctx = fr_dict_global_ctx_init(cc, cc->config->dict_dir);
+	if (fr_dict_internal_afrom_file(&cc->test_internal_dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
+		fr_perror("Failed loading test dict_gctx internal dictionary");
+	}
 }
 
 static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const *config,
