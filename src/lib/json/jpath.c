@@ -89,7 +89,7 @@ struct fr_jpath_node {
 	fr_jpath_node_t		*next;		//!< Next in the jpath chain.
 };
 
-static char const escape_chars[] = "[],*.:\\()?";
+static char const escape_chars[] = "[],*.:()?";
 
 
 /** Escapes special chars
