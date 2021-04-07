@@ -643,7 +643,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	/*
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
 	 *  here than segfault later.
@@ -692,7 +692,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	if (fr_tls_dict_init() < 0) EXIT_WITH_FAILURE;
 #endif
 
@@ -987,7 +987,9 @@ cleanup:
 	/*
 	 *	Free any openssl resources and the TLS dictionary
 	 */
+#ifdef WITH_TLS
 	fr_openssl_free();
+#endif
 
 	/*
 	 *	Free all the dictionaries, and complain/fail if
