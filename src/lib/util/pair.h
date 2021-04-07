@@ -397,7 +397,7 @@ static inline size_t	fr_pair_aprint(TALLOC_CTX *ctx, char **out, fr_pair_t const
 			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print, parent, vp)
 }
 
-void			fr_pair_fprint(FILE *, fr_pair_t const *parent, fr_pair_t const *vp);
+void			fr_pair_fprint(FILE *, fr_pair_t const *vp);
 
 #define			fr_pair_list_log(_log, _list) _fr_pair_list_log(_log, 4, _list, __FILE__, __LINE__);
 void			_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_list_t const *list, char const *file, int line);

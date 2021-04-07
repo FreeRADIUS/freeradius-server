@@ -221,7 +221,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
 
 	memcpy(vp, stacked, sizeof(*vp));
 	vp->op = T_OP_EQ;
-	fr_pair_fprint(out, NULL, vp);
+	fr_pair_fprint(out, vp);
 	talloc_free(vp);
 }
 
@@ -339,7 +339,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 			 */
 			op = vp->op;
 			vp->op = T_OP_EQ;
-			fr_pair_fprint(out, NULL, vp);
+			fr_pair_fprint(out, vp);
 			vp->op = op;
 		}
 	}

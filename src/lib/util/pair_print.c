@@ -135,7 +135,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
  * @param fp to output to.
  * @param vp to print.
  */
-void fr_pair_fprint(FILE *fp, fr_pair_t const *parent, fr_pair_t const *vp)
+void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 {
 	char		buff[1024];
 	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
@@ -144,7 +144,7 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *parent, fr_pair_t const *vp)
 	VP_VERIFY(vp);
 
 	fr_sbuff_in_char(&sbuff, '\t');
-	fr_pair_print(&sbuff, parent, vp);
+	fr_pair_print(&sbuff, NULL, vp);
 	fr_sbuff_in_char(&sbuff, '\n');
 
 	fputs(buff, fp);
