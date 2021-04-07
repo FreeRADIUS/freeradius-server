@@ -367,7 +367,6 @@ static int mod_populate_vptuple(rlm_python_t const *inst, request_t *request, Py
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
 
-	/* Look at the fr_pair_fprint_name? */
 	attribute = PyUnicode_FromString(vp->da->name);
 	if (!attribute) return -1;
 
