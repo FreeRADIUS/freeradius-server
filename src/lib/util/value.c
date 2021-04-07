@@ -1718,11 +1718,12 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 			break;
 
 		case FR_TIME_RES_MSEC:
-			date *= 1000000;
+			fprintf(stderr, "mSEC %lld --> nSEC %lld\n", date, date * (NSEC / MSEC));
+			date *= (NSEC / MSEC);
 			break;
 
 		case FR_TIME_RES_USEC:
-			date *= 1000;
+			date *= (NSEC / USEC);
 			break;
 
 		case FR_TIME_RES_NSEC:
@@ -4552,7 +4553,11 @@ parse:
 
 	case FR_TYPE_DATE:
 	{
-		if (fr_unix_time_from_str(&dst->vb_date, in) < 0) return -1;
+		if (dst_enumv) {
+			if (fr_unix_time_from_str(&dst->vb_date, in, dst_enumv->flags.flag_time_res) < 0) return -1;
+		} else {
+			if (fr_unix_time_from_str(&dst->vb_date, in, FR_TIME_RES_SEC) < 0) return -1;
+		}
 
 		dst->enumv = dst_enumv;
 	}
@@ -4841,12 +4846,12 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 			break;
 
 		case FR_TIME_RES_MSEC:
-			subseconds /= 1000000;
+			subseconds /= (NSEC / MSEC);
 			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%03" PRIi64, subseconds);
 			break;
 
 		case FR_TIME_RES_USEC:
-			subseconds /= 1000;
+			subseconds /= (NSEC / USEC);
 			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%06" PRIi64, subseconds);
 			break;
 

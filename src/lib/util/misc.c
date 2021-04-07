@@ -570,11 +570,12 @@ static int get_part(char **str, int *date, int min, int max, char term, char con
  *
  * @param date_str input date string.
  * @param date time_t to write result to.
+ * @param[in] hint	scale for the parsing.  Default is "seconds"
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
+int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint)
 {
 	int		i;
 	time_t		t;
@@ -591,7 +592,29 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str)
 	 */
 	t = strtoul(date_str, &tail, 10);
 	if (*tail == '\0') {
-		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		switch (hint) {
+		case FR_TIME_RES_SEC:
+			t = fr_unix_time_from_sec(t);
+			break;
+
+		case FR_TIME_RES_MSEC:
+			t = fr_unix_time_from_msec(t);
+			break;
+
+		case FR_TIME_RES_USEC:
+			t = fr_unix_time_from_usec(t);
+			break;
+
+		case FR_TIME_RES_NSEC:
+			t = fr_unix_time_from_nsec(t);
+			break;
+
+		default:
+			fr_strerror_printf("Invalid hint %d for time delta", hint);
+			return -1;
+		}
+
+		*date = t;
 		return 0;
 	}
 
