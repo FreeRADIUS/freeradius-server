@@ -6,7 +6,7 @@
 
 The FreeRADIUS Server Project is a high performance and highly
 configurable multi-protocol policy server, supporting RADIUS, DHCPv4
-DHCPv6 and VMPS. It is available under the terms of the GNU GPLv2.
+DHCPv6, TACACS+ and VMPS. It is available under the terms of the GNU GPLv2.
 Using RADIUS allows authentication and authorization for a network
 to be centralized, and minimizes the number of changes that have to
 be done when adding or deleting new users to a network.
