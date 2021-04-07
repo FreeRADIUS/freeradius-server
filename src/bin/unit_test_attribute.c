@@ -2626,11 +2626,15 @@ static int _command_ctx_free(command_file_ctx_t *cc)
 		fr_perror("unit_test_attribute");
 		return -1;
 	}
+	if (fr_dict_global_ctx_free(cc->test_gctx) < 0) {
+		fr_perror("unit_test_attribute");
+		return -1;
+	}
 	return 0;
 }
 
 static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
-					command_config_t const *config, char const *path, char const *filename)
+					     command_config_t const *config, char const *path, char const *filename)
 {
 	command_file_ctx_t *cc;
 
