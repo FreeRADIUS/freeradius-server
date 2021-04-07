@@ -42,7 +42,7 @@ encode-pair Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 1, Extended
 match f1 0f f3 01 06 00 00 00 01 01 06 00 00 00 02
 
 decode-pair -
-match Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 1, Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 2
+match Extended-Attribute-1.Unit-Ext-241-TLV = { Unit-TLV-Integer = 1, Unit-TLV-Integer = 2 }
 
 #
 #  And "long extended" EVS
@@ -77,8 +77,11 @@ encode-pair -
 match fe 08 02 06 00 00 00 05
 
 decode-pair -
-match Unit-TLV.Delta-MSec = 5
+match Unit-TLV = { Delta-MSec = 5 }
 
+#
+#  @todo - not yet converted to make nested TLVs!
+#
 attribute Unit-TLV.Delta-Sec = 10
 match Unit-TLV.Delta-Sec = 10
 
@@ -86,7 +89,7 @@ encode-pair -
 match fe 08 03 06 00 00 00 0a
 
 decode-pair -
-match Unit-TLV.Delta-Sec = 10
+match Unit-TLV = { Delta-Sec = 10 }
 
 #
 #  Allow encoding as nested VPs
