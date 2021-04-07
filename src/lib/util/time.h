@@ -111,7 +111,7 @@ extern uint64_t				our_mach_epoch;
 
 static inline CC_HINT(nonnull) fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
 {
-	return (((fr_unix_time_t) tv->tv_sec) * NSEC) + (((fr_unix_time_t) tv->tv_usec) * 1000);
+	return (((fr_unix_time_t) tv->tv_sec) * NSEC) + (((fr_unix_time_t) tv->tv_usec) * (NSEC / USEC));
 }
 
 static inline fr_time_delta_t fr_time_delta_from_nsec(int64_t nsec)
@@ -121,12 +121,12 @@ static inline fr_time_delta_t fr_time_delta_from_nsec(int64_t nsec)
 
 static inline fr_time_delta_t fr_time_delta_from_usec(int64_t usec)
 {
-	return (usec * MSEC);
+	return (usec * (NSEC / USEC));
 }
 
 static inline fr_time_delta_t fr_time_delta_from_msec(int64_t msec)
 {
-	return (msec * USEC);
+	return (msec * (NSEC / MSEC));
 }
 
 static inline fr_time_delta_t fr_time_delta_from_sec(int64_t sec)
@@ -136,7 +136,7 @@ static inline fr_time_delta_t fr_time_delta_from_sec(int64_t sec)
 
 static inline CC_HINT(nonnull) fr_time_delta_t fr_time_delta_from_timeval(struct timeval const *tv)
 {
-	return (((fr_time_delta_t) tv->tv_sec) * NSEC) + (((fr_time_delta_t) tv->tv_usec) * 1000);
+	return (((fr_time_delta_t) tv->tv_sec) * NSEC) + (((fr_time_delta_t) tv->tv_usec) * (NSEC / USEC));
 }
 
 static inline CC_HINT(nonnull) fr_time_delta_t fr_time_delta_from_timespec(struct timespec const *ts)
@@ -146,12 +146,12 @@ static inline CC_HINT(nonnull) fr_time_delta_t fr_time_delta_from_timespec(struc
 
 static inline int64_t fr_time_delta_to_usec(fr_time_delta_t delta)
 {
-	return (delta / 1000);
+	return delta / (NSEC / USEC);
 }
 
 static inline int64_t fr_time_delta_to_msec(fr_time_delta_t delta)
 {
-	return (delta / 1000000);
+	return (delta / (NSEC / MSEC));
 }
 
 static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
@@ -164,7 +164,7 @@ static inline int64_t fr_time_delta_to_sec(fr_time_delta_t delta)
  * @param[in] _delta	in nanoseconds.
  */
 #define fr_time_delta_to_timeval(_delta) \
-	(struct timeval){ .tv_sec = (_delta) / NSEC, .tv_usec = ((_delta) % NSEC) / 1000 }
+	(struct timeval){ .tv_sec = (_delta) / NSEC, .tv_usec = ((_delta) % NSEC) / (NSEC / USEC) }
 
 /** Convert a delta to a timespec
  *
@@ -207,7 +207,7 @@ static inline fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
  */
 static inline int64_t fr_time_to_usec(fr_time_t when)
 {
-	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000);
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / (NSEC / USEC));
 }
 
 /** Convert an fr_time_t (internal time) to number of msec since the unix epoch (wallclock time)
@@ -215,7 +215,7 @@ static inline int64_t fr_time_to_usec(fr_time_t when)
  */
 static inline int64_t fr_time_to_msec(fr_time_t when)
 {
-	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / 1000000);
+	return ((when + atomic_load_explicit(&our_realtime, memory_order_consume)) / (NSEC / MSEC));
 }
 
 /** Convert an fr_time_t (internal time) to number of sec since the unix epoch (wallclock time)
