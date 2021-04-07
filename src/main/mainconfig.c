@@ -508,6 +508,16 @@ static ssize_t xlat_listen_common(REQUEST *request, rad_listen_t *listen,
 	}
 #endif
 
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *      Look for RADSEC CoA tunnel key.
+	 */
+	if (listen->key && (strcmp(fmt, "Originating-Realm-Key") == 0)) {
+		strlcpy(out, listen->key, outlen);
+		return strlen(out);
+	}
+#endif
+
 	cp = cf_pair_find(listen->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
 		RDEBUG("Listener does not contain config item \"%s\"", fmt);
