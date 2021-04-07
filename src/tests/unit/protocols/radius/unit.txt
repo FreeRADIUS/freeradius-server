@@ -88,5 +88,14 @@ match fe 08 03 06 00 00 00 0a
 decode-pair -
 match Unit-TLV.Delta-Sec = 10
 
+#
+#  Allow encoding as nested VPs
+#
+encode-pair Unit-TLV.Milliseconds = 1
+match fe 08 01 06 00 00 00 01
+
+encode-pair Unit-TLV = { Milliseconds = 1 }
+match fe 08 01 06 00 00 00 01
+
 count
-match 44
+match 48

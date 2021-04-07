@@ -256,8 +256,27 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
-		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
+		if (!da_stack->da[depth + 1]) {
+			fr_dcursor_t child_cursor;
+
+			if (vp->da != da_stack->da[depth]) {
+				fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
+				return PAIR_ENCODE_SKIPPED;
+			}
+
+			fr_dcursor_init(&child_cursor, &vp->vp_group);
+			vp = fr_dcursor_current(&child_cursor);
+			fr_proto_da_stack_build(da_stack, vp->da);
+
+			slen = encode_tlv_hdr_internal(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
+			if (slen <= 0) return slen;
+
+			vp = fr_dcursor_next(cursor);
+			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+		} else if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
 			slen = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+
 		} else {
 			slen = encode_rfc_hdr_internal(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
@@ -296,11 +315,6 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
-	if (!da_stack->da[depth + 1]) {
-		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
-		return PAIR_ENCODE_SKIPPED;
 	}
 
 	/*
