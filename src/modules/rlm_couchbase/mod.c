@@ -391,7 +391,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 	/*
 	 *	Check the key representing the list is a JSON object
 	 */
-	if (!fr_json_object_is_type(list_obj, json_type_object)) {
+	if (!json_object_is_type(list_obj, json_type_object)) {
 		RERROR("Invalid json type for \"%s\" key - Attribute lists must be json objects", list_name);
 
 		return -1;
@@ -411,7 +411,7 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 	 	fr_dict_attr_t const	*da;
 		fr_token_t		op;
 
-		if (!fr_json_object_is_type(attr_value_obj, json_type_object)) {
+		if (!json_object_is_type(attr_value_obj, json_type_object)) {
 			REDEBUG("Invalid json type for \"%s\" key - Attributes must be json objects", attr_name);
 
 		error:
@@ -792,7 +792,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	DEBUG3("jrows == %s", json_object_to_json_string(jrows));
 
 	/* check for valid row value */
-	if (!fr_json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
+	if (!json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
 		/* log error */
 		ERROR("no valid rows returned from view: %s", vpath);
 		/* set return */

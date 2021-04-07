@@ -73,7 +73,9 @@ if test x$with_[]modname_useropt != xno; then
 
 	have_json="yes"
 	smart_try_dir="$jsonc_include_dir"
+
 	FR_SMART_CHECK_INCLUDE([json/json.h])
+
 	if test "x$ac_cv_header_json_json_h" != "xyes"; then
 		FR_SMART_CHECK_INCLUDE([json-c/json.h])
 		if test "x$ac_cv_header_jsonmc_json_h" != "xyes"; then
@@ -92,22 +94,18 @@ if test x$with_[]modname_useropt != xno; then
 	dnl ############################################################
 
 	smart_try_dir="$jsonc_lib_dir"
-	dnl # Use a json-c specific function which is only
-	dnl # available in newer versions.
-	FR_SMART_CHECK_LIB([json-c], [json_c_version])
-	if test "x$ac_cv_lib_json_c_json_c_version" != "xyes"
+	dnl # We need json-c-0.13 at a minimum to get the variant
+	dnl # of json_object_object_set_ex which supports constant
+	dnl # keys.
+	dnl # There's not a good way to work around this lack of functionality.
+	FR_SMART_CHECK_LIB([json-c], [json_object_object_add_ex])
+	if test "x$ac_cv_lib_json_c_json_object_object_add_ex" != "xyes"
 	then
-		dnl # Use a function which is included in legacy versions
-		dnl # but which may be available in other json libraries
-		FR_SMART_CHECK_LIB([json], [json_tokener_new])
-		if test "x$ac_cv_lib_json_json_tokener_new" != "xyes"
-		then
-			have_json="no"
-		fi
+		have_json="no"
 	fi
 
 	if test "x$have_json" = "xyes"; then
-		dnl # Ensure we use the library we just found the json of the checks
+		dnl # Ensure we use the library we just found
 		LDFLAGS="$SMART_LIBS"
 
 		dnl # Add any optional functions here
@@ -115,6 +113,7 @@ if test x$with_[]modname_useropt != xno; then
 			json_c_version \
 			json_object_get_string_len \
 			json_object_object_get_ex \
+			json_object_object_add_ex \
 			json_object_new_int64 \
 			json_object_get_int64 \
 			json_tokener_error_desc \

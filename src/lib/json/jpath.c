@@ -154,7 +154,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 	 */
 	for (node = jpath; node; node = node->next) switch (node->selector->type) {
 	case JPATH_SELECTOR_FIELD:
-		if (!fr_json_object_is_type(object, json_type_object)) return 0;
+		if (!json_object_is_type(object, json_type_object)) return 0;
 		if (!json_object_object_get_ex(object, node->selector->field, &object)) return 0;
 		continue;
 
@@ -170,7 +170,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 
 			fr_assert(selector->slice[0] != SELECTOR_INDEX_UNSET);
 
-			if (!fr_json_object_is_type(object, json_type_array)) return 0;
+			if (!json_object_is_type(object, json_type_array)) return 0;
 			array_obj = json_object_get_array(object);
 			if ((selector->slice[0] < 0) ||
 			    (selector->slice[0] >= (int32_t)(array_obj->length & INT32_MAX))) continue;
@@ -187,7 +187,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 			struct array_list *array_obj;
 			int32_t start, end, step, i;
 
-			if (!fr_json_object_is_type(object, json_type_array)) return 0;
+			if (!json_object_is_type(object, json_type_array)) return 0;
 			array_obj = json_object_get_array(object);
 
 			/*
@@ -242,7 +242,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 	{
 		int i;
 
-		if (fr_json_object_is_type(object, json_type_array)) {
+		if (json_object_is_type(object, json_type_array)) {
 			struct array_list *array_obj;
 
 			array_obj = json_object_get_array(object);
@@ -253,7 +253,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 				if (ret == 1) child_matched = true;
 			}
 			return child_matched ? 1 : 0;
-		} else if (fr_json_object_is_type(object, json_type_object)) {
+		} else if (json_object_is_type(object, json_type_object)) {
 			json_object_object_foreach(object, field_name, field_value) {
 #ifndef NDEBUG
 				fr_assert(field_name);
@@ -276,7 +276,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 	{
 		int i;
 
-		if (fr_json_object_is_type(object, json_type_array)) {
+		if (json_object_is_type(object, json_type_array)) {
 			struct array_list *array_obj;
 
 			/*
@@ -299,7 +299,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 			if (ret == 1) child_matched = true;
 
 			return child_matched ? 1 : 0;
-		} else if (fr_json_object_is_type(object, json_type_object)) {
+		} else if (json_object_is_type(object, json_type_object)) {
 			/*
 			 *	Descend into each field of the object
 			 */

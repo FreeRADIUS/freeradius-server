@@ -45,8 +45,6 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 #  else
 #    error "Need json-c headers"
 #  endif
-#  include "json_missing.h"
-
 #  include <freeradius-devel/server/base.h>
 
 extern fr_table_num_sorted_t const fr_json_format_table[];

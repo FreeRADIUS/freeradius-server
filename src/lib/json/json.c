@@ -93,7 +93,7 @@ void json_object_put_assert(json_object *obj)
 int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_object *object,
 				fr_dict_attr_t const *enumv, bool tainted)
 {
-	switch (fr_json_object_get_type(object)) {
+	switch (json_object_get_type(object)) {
 	case json_type_string:
 	{
 		char const	*value;

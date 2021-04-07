@@ -859,7 +859,7 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 
 	fr_value_box_t		src;
 
-	if (fr_json_object_is_type(leaf, json_type_null)) {
+	if (json_object_is_type(leaf, json_type_null)) {
 		RDEBUG3("Got null value for attribute \"%s\" (skipping)", da->name);
 		return NULL;
 	}
@@ -989,7 +989,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 	int max_attrs = max;
 	tmpl_t *dst = NULL;
 
-	if (!fr_json_object_is_type(object, json_type_object)) {
+	if (!json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
 		REDEBUG("Can't process VP container, expected JSON object"
 			"got \"%s\" (skipping)",
@@ -1064,7 +1064,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		 *	  - {}	Nested Valuepair
 		 *	  - *	Integer or string value
 		 */
-		if (fr_json_object_is_type(value, json_type_object)) {
+		if (json_object_is_type(value, json_type_object)) {
 			/*
 			 *  Process operator if present.
 			 */
@@ -1108,7 +1108,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		/*
 		 *  Setup fr_pair_afrom_da / recursion loop.
 		 */
-		if (!flags.is_json && fr_json_object_is_type(value, json_type_array)) {
+		if (!flags.is_json && json_object_is_type(value, json_type_array)) {
 			elements = json_object_array_length(value);
 			if (!elements) {
 				RWDEBUG("Zero length value array (skipping)");
@@ -1138,7 +1138,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 				flags.op = T_OP_ADD;
 			}
 
-			if (fr_json_object_is_type(element, json_type_object) && !flags.is_json) {
+			if (json_object_is_type(element, json_type_object) && !flags.is_json) {
 				/* TODO: Insert nested VP into VP structure...*/
 				RWDEBUG("Found nested VP, these are not yet supported (skipping)");
 
