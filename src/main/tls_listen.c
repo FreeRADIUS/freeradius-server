@@ -254,6 +254,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 			goto do_close;
 		}
 
+check_for_setup:
 		/*
 		 *	More ACK data to send.  Do so.
 		 */
@@ -273,9 +274,24 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	order to see if we like the certificate
 	 *	presented by the client.
 	 */
-check_for_setup:
 	if (sock->state == LISTEN_TLS_INIT) {
-		rad_assert(SSL_is_init_finished(sock->ssn->ssl));
+		/*
+		 *	If INIT isn't finished, but there's no data,
+		 *	just close the connection.  The other end is
+		 *	being unfriendly.
+		 */
+		if (!SSL_is_init_finished(sock->ssn->ssl)) {
+			listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+			listener->tls = NULL; /* parent owns this! */
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+
+			/*
+			 *	Tell the event handler that an FD has disappeared.
+			 */
+			radius_update_listener(listener);
+			return 0;
+		}
+
 		sock->ssn->is_init_finished = true;
 		if (!listener->check_client_connections) {
 			sock->state = LISTEN_TLS_RUNNING;
