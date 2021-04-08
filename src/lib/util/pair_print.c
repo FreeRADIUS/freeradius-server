@@ -132,10 +132,6 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
  * Complete string with '\\t' and '\\n' is written to buffer before printing to
  * avoid issues when running with multiple threads.
  *
- * This function will print *flattened* lists, as is suitable for use
- * with rlm_detail.  In fact, the only user of this function is
- * rlm_detail.
- *
  * @param fp to output to.
  * @param vp to print.
  */
