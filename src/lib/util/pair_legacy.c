@@ -376,7 +376,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		/*
 		 *	Allow grouping attributes.
 		 */
-		if ((da->type == FR_TYPE_GROUP) || (da->type == FR_TYPE_TLV) || (da->type == FR_TYPE_STRUCT)) {
+		switch (da->type) {
+			fr_token_t quote;
+			char const *q;
+
+		case FR_TYPE_NON_LEAF:
 			if (*p != '{') {
 				fr_strerror_printf("Group list for %s MUST start with '{'", da->name);
 				goto error;
@@ -409,11 +413,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			fr_skip_whitespace(p);
 			if (*p != '}') goto failed_group;
 			p++;
+			break;
 
-		} else {
-			fr_token_t quote;
-			char const *q;
-
+		case FR_TYPE_LEAF:
 			/*
 			 *	Get the RHS thing.
 			 */
