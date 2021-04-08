@@ -74,12 +74,16 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 	}
 
 	/*
-	 *	EEXIST is only OK when we're calling
-	 *	mkdir on the whole path, and it exists
-	 *	which should have been caught by
-	 *      fr_mkdir before calling this function.
+	 *	EEXIST is only OK when we're calling mkdir on the
+	 *	whole path, and it exists which should have been
+	 *	caught by fr_mkdir before calling this function.
+	 *
+	 *	Unless we're running in an environment with multiple
+	 *	processes, in which case EEXIST means that another
+	 *	process created this directory in between our check
+	 *	and our creation.
 	 */
-	if (errno != ENOENT) {
+	if ((errno != ENOENT) && (errno != EEXIST)) {
 		fr_strerror_printf("Unexpected error creating directory: %s",
 				   fr_syserror(errno));
 		goto mkdir_error;
