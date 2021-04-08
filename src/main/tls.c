@@ -310,11 +310,11 @@ int tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char con
 	 *	being regarded as "dead".
 	 */
 	case SSL_ERROR_SYSCALL:
-		ROPTIONAL(REDEBUG, ERROR, "System call (I/O) error (%i)", ret);
+		ROPTIONAL(REDEBUG, ERROR, "(TLS) System call (I/O) error (%i)", ret);
 		return 0;
 
 	case SSL_ERROR_SSL:
-		ROPTIONAL(REDEBUG, ERROR, "TLS protocol error (%i)", ret);
+		ROPTIONAL(REDEBUG, ERROR, "(TLS) Protocol error (%i)", ret);
 		return 0;
 
 	/*
@@ -324,7 +324,7 @@ int tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char con
 	 *	the code needs updating here.
 	 */
 	default:
-		ROPTIONAL(REDEBUG, ERROR, "TLS session error %i (%i)", error, ret);
+		ROPTIONAL(REDEBUG, ERROR, "(TLS) Session error %i (%i)", error, ret);
 		return 0;
 	}
 
@@ -4393,7 +4393,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	not allowed,
 		 */
 		if (SSL_session_reused(ssn->ssl)) {
-			RDEBUG("TLS cache - Forcibly stopping session resumption as it is administratively disabled.");
+			RDEBUG("(TLS) cache - Forcibly stopping session resumption as it is administratively disabled.");
 			return -1;
 		}
 
@@ -4407,7 +4407,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
 
-		RDEBUG("TLS cache - Setting up attributes for session resumption");
+		RDEBUG("(TLS) cache - Setting up attributes for session resumption");
 
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
@@ -4548,7 +4548,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	Else the session WAS allowed.  Copy the cached reply.
 	 */
 	} else {
-		RDEBUG("TLS cache - Refreshing entry for session resumption");
+		RDEBUG("(TLS) cache - Refreshing entry for session resumption");
 
 		/*
 		 *	The "restore VPs from OpenSSL cache" code is

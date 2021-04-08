@@ -191,7 +191,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 				     tls_session->ssl, tls_session->label,
 				     context, context_size);
 	} else if (handler->type != PW_EAP_FAST) {
-		RWDEBUG("Not adding MPPE keys because there is no PRF label");
+		RWDEBUG("(TLS) Not adding MPPE keys because there is no PRF label");
 	}
 
 	eaptls_gen_eap_key(handler);
@@ -318,7 +318,7 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
 	EAPTLS_PACKET 	reply;
 	REQUEST		*request = handler->request;
 
-	RDEBUG2("ACKing Peer's TLS record fragment");
+	RDEBUG2("(TLS) ACKing fragment, the peer should send more data.");
 	reply.code = FR_TLS_ACK;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/;
 	reply.flags = peap_flag;
@@ -370,7 +370,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		/*
 		 *	First output the flags (for debugging)
 		 */
-		RDEBUG3("Peer sent flags %c%c%c",
+		RDEBUG3("(TLS) Peer sent flags %c%c%c",
 			TLS_START(eaptls_packet->flags) ? 'S' : '-',
 			TLS_MORE_FRAGMENTS(eaptls_packet->flags) ? 'M' : '-',
 			TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 'L' : '-');
@@ -391,7 +391,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		if (prev_eap_ds && (prev_eap_ds->request->id == eap_ds->response->id)) {
 			return tls_ack_handler(handler->opaque, request);
 		} else {
-			REDEBUG("Received Invalid TLS ACK");
+			REDEBUG("(TLS) Received Unexpected ACK - rejection the connection");
 			return FR_TLS_INVALID;
 		}
 	}
@@ -400,7 +400,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	We send TLS_START, but do not receive it.
 	 */
 	if (TLS_START(eaptls_packet->flags)) {
-		REDEBUG("Peer sent EAP-TLS Start message (only the server is allowed to do this)");
+		REDEBUG("(TLS) Peer sent EAP-TLS Start message (only the server is allowed to do this)");
 		return FR_TLS_INVALID;
 	}
 
@@ -427,11 +427,11 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		size_t total_len = eaptls_packet->data[2] * 256 | eaptls_packet->data[3];
 
 		if (frag_len > total_len) {
-			RWDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)", frag_len,
+			RWDEBUG("(TLS) Fragment length (%zu bytes) is greater than TLS record length (%zu bytes)", frag_len,
 				total_len);
 		}
 
-		RDEBUG2("Peer indicated complete TLS record size will be %zu bytes", total_len);
+		RDEBUG2("(TLS) Peer says that the final record size will be %zu bytes", total_len);
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 			/*
 			 *	The supplicant is free to send fragments of wildly varying
@@ -442,7 +442,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			 *	as they won't contain the length field.
 			 */
 			if (frag_len + 4) {	/* check for wrap, else clang scan gets excited */
-				RDEBUG2("Expecting %i TLS record fragments",
+				RDEBUG2("(TLS) Expecting %i fragments",
 					(int)((((total_len - frag_len) + ((frag_len + 4) - 1)) / (frag_len + 4)) + 1));
 			}
 
@@ -454,24 +454,24 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			 */
 			if (!prev_eap_ds || (!prev_eap_ds->response) || (!eaptls_prev) ||
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
-			    	RDEBUG2("Got first TLS record fragment (%zu bytes).  Peer indicated more fragments "
-			    		"to follow", frag_len);
+			    	RDEBUG2("(TLS) Got first TLS fragment (%zu bytes).  Peer says more fragments "
+			    		"will follow", frag_len);
 			    	tls_session->tls_record_in_total_len = total_len;
 			    	tls_session->tls_record_in_recvd_len = frag_len;
 
 				return FR_TLS_FIRST_FRAGMENT;
 			}
 
-			RDEBUG2("Got additional TLS record fragment with length (%zu bytes).  "
-				"Peer indicated more fragments to follow", frag_len);
+			RDEBUG2("(TLS) Got additional fragment with length (%zu bytes).  "
+				"Peer says more fragments will follow", frag_len);
 
 			/*
 			 *	Check we've not exceeded the originally indicated TLS record size.
 			 */
 			tls_session->tls_record_in_recvd_len += frag_len;
 			if (tls_session->tls_record_in_recvd_len > tls_session->tls_record_in_total_len) {
-				RWDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
-					"total TLS record length (%zu bytes)", frag_len, total_len);
+				RWDEBUG("(TLS) Total received fragments (%zu bytes), exceeds "
+					"total data length (%zu bytes)", frag_len, total_len);
 			}
 
 			return FR_TLS_MORE_FRAGMENTS_WITH_LENGTH;
@@ -482,13 +482,13 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		 *	value of the four octet TLS length field.
 		 */
 		if (total_len != frag_len) {
-			RWDEBUG("Peer indicated no more fragments, but TLS record length (%zu bytes) "
+			RWDEBUG("(TLS) Peer says no more fragments, but expected data length (%zu bytes) "
 				"does not match EAP-TLS data length (%zu bytes)", total_len, frag_len);
 		}
 
 		tls_session->tls_record_in_total_len = total_len;
 		tls_session->tls_record_in_recvd_len = frag_len;
-		RDEBUG2("Got complete TLS record (%zu bytes)", frag_len);
+		RDEBUG2("(TLS) Got all data (%zu bytes)", frag_len);
 		return FR_TLS_LENGTH_INCLUDED;
 	}
 
@@ -497,22 +497,22 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	this must be the final record fragment
 	 */
 	if ((eaptls_prev && TLS_MORE_FRAGMENTS(eaptls_prev->flags)) && !TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-		RDEBUG2("Got final TLS record fragment (%zu bytes)", frag_len);
+		RDEBUG2("(TLS) Got final fragment (%zu bytes)", frag_len);
 		tls_session->tls_record_in_recvd_len += frag_len;
 		if (tls_session->tls_record_in_recvd_len != tls_session->tls_record_in_total_len) {
-			RWDEBUG("Total received TLS record fragments (%zu bytes), does not equal indicated "
-				"TLS record length (%zu bytes)",
+			RWDEBUG("(TLS) Total received record fragments (%zu bytes), does not equal expected "
+				"expected data length (%zu bytes)",
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
 		}
 	}
 
 	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-		RDEBUG2("Got additional TLS record fragment (%zu bytes).  Peer indicated more fragments to follow",
+		RDEBUG2("(TLS) Got additional fragment (%zu bytes).  Peer says more fragments will follow",
 			frag_len);
 		tls_session->tls_record_in_recvd_len += frag_len;
 		if (tls_session->tls_record_in_recvd_len > tls_session->tls_record_in_total_len) {
-			RWDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
-				"indicated TLS record length (%zu bytes)",
+			RWDEBUG("(TLS) Total received fragments (%zu bytes), exceeds "
+				"expected length (%zu bytes)",
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
 		}
 		return FR_TLS_MORE_FRAGMENTS;
@@ -603,7 +603,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	 */
 	if (TLS_LENGTH_INCLUDED(tlspacket->flags) &&
 	    (tlspacket->length < 5)) { /* flags + TLS message length */
-		REDEBUG("Invalid EAP-TLS packet received:  Length bit is set, "
+		REDEBUG("(TLS) Invalid EAP-TLS packet received:  Length bit is set, "
 			"but packet too short to contain length field");
 		talloc_free(tlspacket);
 		return NULL;
@@ -620,8 +620,8 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
 		data_len = ntohl(data_len);
 		if (data_len > MAX_RECORD_SIZE) {
-			REDEBUG("Reassembled TLS record will be %u bytes, "
-				"greater than our maximum record size (" STRINGIFY(MAX_RECORD_SIZE) " bytes)",
+			REDEBUG("(TLS) Reassembled data will be %u bytes, "
+				"greater than the size that we can handle (" STRINGIFY(MAX_RECORD_SIZE) " bytes)",
 				data_len);
 			talloc_free(tlspacket);
 			return NULL;
@@ -642,7 +642,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	case FR_TLS_LENGTH_INCLUDED:
 	case FR_TLS_MORE_FRAGMENTS_WITH_LENGTH:
 		if (tlspacket->length < 5) { /* flags + TLS message length */
-			REDEBUG("Invalid EAP-TLS packet received: Expected length, got none");
+			REDEBUG("(TLS) Invalid EAP-TLS packet received: Expected length, got none");
 			talloc_free(tlspacket);
 			return NULL;
 		}
@@ -675,7 +675,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 		break;
 
 	default:
-		REDEBUG("Invalid EAP-TLS packet received");
+		REDEBUG("(TLS) Invalid EAP-TLS packet received");
 		talloc_free(tlspacket);
 		return NULL;
 	}
@@ -746,7 +746,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	is required then send another request.
 	 */
 	if (!tls_handshake_recv(handler->request, tls_session)) {
-		REDEBUG("TLS receive handshake failed during operation");
+		REDEBUG("(TLS) Receive handshake failed during operation");
 		tls_fail(tls_session);
 		return FR_TLS_FAIL;
 	}
@@ -774,7 +774,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 		if ((handler->type == PW_EAP_TLS) || SSL_session_reused(tls_session->ssl)) {
 			tls_session->authentication_success = true;
 
-			RDEBUG("TLS send Commitment Message");
+			RDEBUG("(TLS) Sending final Commitment Message.");
 			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
 		}
 
@@ -802,7 +802,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	/*
 	 *	Who knows what happened...
 	 */
-	REDEBUG("TLS failed during operation");
+	REDEBUG("T(LS) Cannot continue, as the peer is misbehaving.");
 	return FR_TLS_FAIL;
 }
 
@@ -843,7 +843,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 
 	if (!request) return FR_TLS_FAIL;
 
-	RDEBUG2("Continuing EAP-TLS");
+	RDEBUG2("(TLS) Continuing EAP-TLS ...");
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
@@ -856,9 +856,9 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 */
 	status = eaptls_verify(handler);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eaptls verify] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		REDEBUG("(TLS) Verification failed with %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls verify] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("(TLS) Verification says %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
 	switch (status) {
@@ -889,7 +889,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	data" phase.
 	 */
 	case FR_TLS_OK:
-		RDEBUG2("Done initial handshake");
+		RDEBUG2("(TLS) Done initial handshake");
 
 	/*
 	 *	Get the rest of the fragments.
@@ -905,7 +905,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	Extract the TLS packet from the buffer.
 	 */
 	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL) {
-		REDEBUG("Failed extracting TLS packet from EAP-Message");
+		REDEBUG("(TLS) Failed extracting TLS packet from EAP-Message");
 		status = FR_TLS_FAIL;
 		goto done;
 	}
@@ -923,7 +923,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	if (tlspacket->dlen !=
 	    (tls_session->record_plus)(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
 		talloc_free(tlspacket);
-		REDEBUG("Exceeded maximum record size");
+		REDEBUG("(TLS) Exceeded maximum record size");
 		status = FR_TLS_FAIL;
 		goto done;
 	}
@@ -952,7 +952,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 			 *	Send the ACK.
 			 */
 			eaptls_send_ack(handler, tls_session->peap_flag);
-			RDEBUG2("Init is done, but tunneled data is fragmented");
+			RDEBUG2("(TLS) Init is done, but tunneled data is fragmented");
 			status = FR_TLS_HANDLED;
 			goto done;
 		}
@@ -978,13 +978,13 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 
 		vps = SSL_SESSION_get_ex_data(tls_session->ssl_session, fr_tls_ex_index_vps);
 		if (!vps) {
-			RWDEBUG("No information in cached session %s", buffer);
+			RWDEBUG("(TLS) No information in cached session %s", buffer);
 		} else {
 			vp_cursor_t cursor;
 			VALUE_PAIR *vp;
 			fr_tls_server_conf_t *conf;
 
-			RDEBUG("Adding cached attributes from session %s", buffer);
+			RDEBUG("(TLS) Adding cached attributes from session %s", buffer);
 
 			conf = (fr_tls_server_conf_t *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
 			rad_assert(conf != NULL);
