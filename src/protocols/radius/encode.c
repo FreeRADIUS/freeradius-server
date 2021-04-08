@@ -1037,6 +1037,7 @@ static ssize_t encode_vendor_attr_hdr(fr_dbuff_t *dbuff,
 	}
 
 	da = da_stack->da[depth];
+	fr_assert(da != NULL);
 
 	if ((da->type != FR_TYPE_TLV) && (dv->flags.type_size == 1) && (dv->flags.length == 1)) {
 		return encode_rfc_hdr_internal(dbuff, da_stack, depth, cursor, encode_ctx);
@@ -1199,9 +1200,9 @@ static ssize_t encode_vendor_hdr(fr_dbuff_t *dbuff,
 				 fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_marker_t	hdr;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 253);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	ssize_t			len;
+	ssize_t			slen;
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
@@ -1232,8 +1233,32 @@ static ssize_t encode_vendor_hdr(fr_dbuff_t *dbuff,
 
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)da->attr);	/* Copy in the 32bit vendor ID */
 
-	len = encode_vendor_attr_hdr(&FR_DBUFF_MAX(&work_dbuff, 255 - 6), da_stack, depth, cursor, encode_ctx);
-	if (len < 0) return len;
+	if (da_stack->da[depth + 1]) {
+		slen = encode_vendor_attr_hdr(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		if (slen < 0) return slen;
+	} else {
+		fr_pair_t *vp;
+		fr_dcursor_t child_cursor;
+
+		vp = fr_dcursor_current(cursor);
+		fr_assert(vp->da == da);
+
+		fr_dcursor_init(&child_cursor, &vp->vp_group);
+		while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
+			fr_proto_da_stack_build(da_stack, vp->da);
+
+			/*
+			 *	@todo - if we run out of room, re-do
+			 *	the header, redo the work buffer, and
+			 *	continue.
+			 */
+			slen = encode_vendor_attr_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			if (slen < 0) return slen;
+		}
+
+		vp = fr_dcursor_next(cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+	}
 
 	fr_dbuff_advance(&hdr, 1);
 	fr_dbuff_in_bytes(&hdr, (uint8_t) fr_dbuff_used(&work_dbuff));
@@ -1296,8 +1321,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 	 *	attribute.
 	 */
 	fr_dcursor_init(&child_cursor, &vp->vp_group);
-	vp = fr_dcursor_current(&child_cursor);
-	while (vp) {
+	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
 		fr_assert(da_stack->da[depth + 1]->type == FR_TYPE_VENDOR);
@@ -1313,8 +1337,6 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 			slen = encode_vendor_hdr(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
 		}
 		if (slen <= 0) return slen;
-
-		vp = fr_dcursor_current(&child_cursor);
 	}
 
 	/*

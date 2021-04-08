@@ -1,6 +1,9 @@
 proto radius
 proto-dictionary radius
 
+encode-pair Vendor-Specific = { Starent = { VPN-Name = "foo" } }
+match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
+
 encode-pair Vendor-Specific.Starent.VPN-Name = "foo"
 match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
 
@@ -34,8 +37,8 @@ match Vendor-Specific.3com.User-Access-Level = Visitor, Vendor-Specific.3com.Ip-
 #
 #  Vendor-Specific is of type "vsa", and therefore cannot be assigned values.
 #
-encode-pair Vendor-Specific = 0xabcdef
-match Attributes of type 'vsa' are not yet supported
+encode-pair raw.Vendor-Specific = 0xabcdef
+match 1a 05 ab cd ef
 
 encode-pair raw.26 = 0x00000009abcdef
 match 1a 09 00 00 00 09 ab cd ef
@@ -85,4 +88,4 @@ decode-pair 1a 39 00 00 01 37 01 33 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78
 match raw.Vendor-Specific.Microsoft.CHAP-Response = 0x78787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878
 
 count
-match 40
+match 42
