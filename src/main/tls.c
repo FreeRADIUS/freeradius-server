@@ -1300,7 +1300,7 @@ void tls_session_information(tls_session_t *tls_session)
 static CONF_PARSER cache_config[] = {
 	{ "enable", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, session_cache_enable), "no" },
 
-	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_timeout), "24" },
+	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_lifetime), "24" },
 	{ "name", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_id_name), NULL },
 
 	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), "255" },
@@ -4036,9 +4036,9 @@ post_ca:
 					       (unsigned int) strlen(conf->session_context_id));
 
 		/*
-		 *	Our timeout is in hours, this is in seconds.
+		 *	Our lifetime is in hours, this is in seconds.
 		 */
-		SSL_CTX_set_timeout(ctx, conf->session_timeout * 3600);
+		SSL_CTX_set_timeout(ctx, conf->session_lifetime * 3600);
 
 		/*
 		 *	Set the maximum number of entries in the
@@ -4162,7 +4162,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool allow_tls13)
 	 *	Because there's just no reason to have month-long TLS
 	 *	sessions.
 	 */
-	if (conf->session_timeout > (7 * 24)) conf->session_timeout = 7 * 24;
+	if (conf->session_lifetime > (7 * 24)) conf->session_lifetime = 7 * 24;
 
 	/*
 	 *	Only check for certificate things if we don't have a
