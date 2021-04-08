@@ -268,8 +268,11 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 			vp = fr_dcursor_current(&child_cursor);
 			fr_proto_da_stack_build(da_stack, vp->da);
 
-			slen = encode_tlv_hdr_internal(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
-			if (slen <= 0) return slen;
+			slen = encode_tlv_hdr_internal(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			if (slen <= 0) {
+				if (slen == PAIR_ENCODE_SKIPPED) continue;
+				return slen;
+			}
 
 			vp = fr_dcursor_next(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
@@ -280,8 +283,10 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 		} else {
 			slen = encode_rfc_hdr_internal(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
-
-		if (slen <= 0) return slen;
+		if (slen <= 0) {
+			if (slen == PAIR_ENCODE_SKIPPED) continue;
+			return slen;
+		}
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -536,7 +541,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	default:
 	encode:
 		slen = fr_value_box_to_network(&value_dbuff, &vp->data);
-		if (slen < 0) return slen;
+		if (slen <= 0) return slen;
 		break;
 	}
 
@@ -1235,7 +1240,7 @@ static ssize_t encode_vendor_hdr(fr_dbuff_t *dbuff,
 
 	if (da_stack->da[depth + 1]) {
 		slen = encode_vendor_attr_hdr(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-		if (slen < 0) return slen;
+		if (slen <= 0) return slen;
 	} else {
 		fr_pair_t *vp;
 		fr_dcursor_t child_cursor;
@@ -1253,7 +1258,10 @@ static ssize_t encode_vendor_hdr(fr_dbuff_t *dbuff,
 			 *	continue.
 			 */
 			slen = encode_vendor_attr_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
-			if (slen < 0) return slen;
+			if (slen <= 0) {
+				if (slen == PAIR_ENCODE_SKIPPED) continue;
+				return slen;
+			}
 		}
 
 		vp = fr_dcursor_next(cursor);
@@ -1336,7 +1344,10 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 		} else {
 			slen = encode_vendor_hdr(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
 		}
-		if (slen <= 0) return slen;
+		if (slen <= 0) {
+			if (slen == PAIR_ENCODE_SKIPPED) continue;
+			return slen;
+		}
 	}
 
 	/*
