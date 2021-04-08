@@ -172,7 +172,8 @@ typedef struct {
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
 	int			salt_offset;		//!< for tunnel passwords
-	bool 			tunnel_password_zeros;
+	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
+	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
 
 	uint8_t			tag;			//!< current tag for encoding
 	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes

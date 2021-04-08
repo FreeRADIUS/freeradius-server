@@ -569,6 +569,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	case FLAG_TAGGED_TUNNEL_PASSWORD:
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		if (packet_ctx->disallow_tunnel_passwords) {
+			fr_strerror_const("Attributes with 'encrypt=2' set cannot go into this packet.");
+			return PAIR_ENCODE_SKIPPED;
+		}
+
 		/*
 		 *	Always encode the tag even if it's zero.
 		 *

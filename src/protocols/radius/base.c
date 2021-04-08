@@ -928,13 +928,14 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	switch (code) {
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
+		packet_ctx.disallow_tunnel_passwords = true;
+
 		/*
-		 * Callers in these cases have preloaded the buffer with the authentication vector.
+		 *	Callers in these cases have preloaded the buffer with the authentication vector.
 		 */
 		FR_DBUFF_OUT_MEMCPY_RETURN(packet_ctx.vector, &work_dbuff, sizeof(packet_ctx.vector));
 		break;
 
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
@@ -943,6 +944,10 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	case FR_RADIUS_CODE_DISCONNECT_ACK:
 	case FR_RADIUS_CODE_DISCONNECT_NAK:
 	case FR_RADIUS_CODE_PROTOCOL_ERROR:
+		packet_ctx.disallow_tunnel_passwords = true;
+		FALL_THROUGH;
+
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		if (!original) {
 			fr_strerror_const("Cannot encode response without request");
 			return -1;
@@ -952,8 +957,20 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 		break;
 
 	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
-	case FR_RADIUS_CODE_COA_REQUEST:
 	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+		packet_ctx.disallow_tunnel_passwords = true;
+		FALL_THROUGH;
+
+		/*
+		 *	Tunnel-Password encoded attributes are allowed
+		 *	in CoA-Request packets, by RFC 5176 Section
+		 *	3.6.  HOWEVER, the tunnel passwords are
+		 *	"encrypted" using the Request Authenticator,
+		 *	which is all zeros!  That makes them much
+		 *	easier to decrypt.  The only solution here is
+		 *	to say "don't do that!"
+		 */
+	case FR_RADIUS_CODE_COA_REQUEST:
 		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
