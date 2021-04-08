@@ -11,6 +11,11 @@ FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 $(eval $(call TEST_BOOTSTRAP))
 
 #
+#  Ensure that the digest tests are run if the server or rlm_digest module changes
+#
+$(FILES.$(TEST)): $(BUILD_DIR)/lib/rlm_digest.la $(BUILD_DIR)/bin/radiusd $(BUILD_DIR)/bin/radclient
+
+#
 #	Config settings
 #
 DIGEST_BUILD_DIR  := $(BUILD_DIR)/tests/digest
