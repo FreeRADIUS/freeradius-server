@@ -3351,8 +3351,9 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
 				       dict_validation_onload_func, NULL) < 0) goto error;
 
+	talloc_set_destructor(new_ctx, _dict_global_free);
+
 	if (!dict_gctx) dict_gctx = new_ctx;	/* Set as the default */
-	talloc_set_destructor(dict_gctx, _dict_global_free);
 
 	return new_ctx;
 }
