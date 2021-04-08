@@ -1,0 +1,14 @@
+proto radius
+proto-dictionary radius
+
+#
+#  See share/dictionary/radius/dictionary.iana for these attributes.
+#
+encode-pair Digest-Attributes = { Realm = "biloxi.com", Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093", Method = "INVITE", URI = "sip:bob@biloxi.com", User-Name = "bob", QOP = "auth", Algorithm = "MD5", Nonce-Count = "00000001", CNonce = "0a4f113b" }
+match cf 72 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d 02 24 64 63 64 39 38 62 37 31 30 32 64 64 32 66 30 65 38 62 31 31 64 30 66 36 30 30 62 66 62 30 63 30 39 33 03 08 49 4e 56 49 54 45 04 14 73 69 70 3a 62 6f 62 40 62 69 6c 6f 78 69 2e 63 6f 6d 0a 05 62 6f 62 05 06 61 75 74 68 06 05 4d 44 35 09 0a 30 30 30 30 30 30 30 31 08 0a 30 61 34 66 31 31 33 62
+
+decode-pair -
+match Digest-Attributes = { Realm = "biloxi.com", Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093", Method = "INVITE", URI = "sip:bob@biloxi.com", User-Name = "bob", QOP = "auth", Algorithm = "MD5", Nonce-Count = "00000001", CNonce = "0a4f113b" }
+
+count
+match 6
