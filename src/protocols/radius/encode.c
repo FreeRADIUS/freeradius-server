@@ -1194,12 +1194,9 @@ static ssize_t encode_wimax_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-/** Encode a Vendor-Specific attribute
- *
- */
-static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
-			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encode_ctx)
+static ssize_t encode_vendor_hdr(fr_dbuff_t *dbuff,
+				 fr_da_stack_t *da_stack, unsigned int depth,
+				 fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_dbuff_marker_t	hdr;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -1214,13 +1211,6 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
-	/*
-	 *	Double-check for WiMAX format
-	 */
-	if (fr_dict_vendor_num_by_da(da_stack->da[depth + 1]) == VENDORPEC_WIMAX) {
-		return encode_wimax_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
 	/*
@@ -1251,6 +1241,37 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), 6, "header vsa");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
+
+}
+
+/** Encode a Vendor-Specific attribute
+ *
+ */
+static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
+			      fr_da_stack_t *da_stack, unsigned int depth,
+			      fr_dcursor_t *cursor, void *encode_ctx)
+{
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	if (da->type != FR_TYPE_VSA) {
+		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	/*
+	 *	Double-check for WiMAX format, it's extremely non-standard.
+	 */
+	if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
+		return encode_wimax_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+	}
+
+	/*
+	 *	Encode one vendor, in the standard format.
+	 */
+	return encode_vendor_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
 }
 
 /** Encode an RFC standard attribute 1..255
