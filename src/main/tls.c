@@ -4155,6 +4155,16 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool allow_tls13)
 	conf->tls13_internal_enable = allow_tls13;
 
 	/*
+	 *	Disallow sessions of more than 7 days, as per RFC
+	 *	8446.
+	 *
+	 *	Note that we also enforce this on TLS 1.2, etc.
+	 *	Because there's just no reason to have month-long TLS
+	 *	sessions.
+	 */
+	if (conf->session_timeout > (7 * 24)) conf->session_timeout = 7 * 24;
+
+	/*
 	 *	Only check for certificate things if we don't have a
 	 *	PSK query.
 	 */
