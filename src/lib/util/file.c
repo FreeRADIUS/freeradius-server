@@ -64,8 +64,8 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 		}
 
 		if (fchmod(fd, mode) < 0) {
-			fr_strerror_printf("Failed setting permissions on "
-					   "directory we created: %s", fr_syserror(errno));
+			fr_strerror_printf("Failed setting permissions on directory "
+					   "we created: %s", fr_syserror(errno));
 			close(fd);
 			goto mkdir_error;
 		}
@@ -80,8 +80,8 @@ static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_fu
 	 *      fr_mkdir before calling this function.
 	 */
 	if (errno != ENOENT) {
-		fr_strerror_printf("Unexpected error creating "
-				   "directory: %s", fr_syserror(errno));
+		fr_strerror_printf("Unexpected error creating directory: %s",
+				   fr_syserror(errno));
 		goto mkdir_error;
 	}
 
