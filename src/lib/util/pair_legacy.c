@@ -377,9 +377,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		 *	Allow grouping attributes.
 		 */
 		switch (da->type) {
-			fr_token_t quote;
-			char const *q;
-
 		case FR_TYPE_NON_LEAF:
 			if (*p != '{') {
 				fr_strerror_printf("Group list for %s MUST start with '{'", da->name);
@@ -415,7 +412,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			p++;
 			break;
 
-		case FR_TYPE_LEAF:
+		case FR_TYPE_LEAF: {
+			fr_token_t quote;
+			char const *q;
+
 			/*
 			 *	Get the RHS thing.
 			 */
@@ -503,6 +503,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 					goto error;
 				}
 			}
+			} break;
 		}
 
 	next:
