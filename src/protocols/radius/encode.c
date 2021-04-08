@@ -1448,14 +1448,20 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	/*
 	 *	Fast path for the common case.
 	 */
-	if (vp->da->parent->flags.is_root && !vp->da->flags.subtype && (vp->vp_type != FR_TYPE_TLV)) {
-		da_stack.da[0] = vp->da;
-		da_stack.da[1] = NULL;
-		da_stack.depth = 1;
-		FR_PROTO_STACK_PRINT(&da_stack, 0);
-		len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
-		if (len < 0) return len;
-		return fr_dbuff_set(dbuff, &work_dbuff);
+	if (vp->da->parent->flags.is_root && !vp->da->flags.subtype) {
+		switch (vp->da->type) {
+		case FR_TYPE_LEAF:
+			da_stack.da[0] = vp->da;
+			da_stack.da[1] = NULL;
+			da_stack.depth = 1;
+			FR_PROTO_STACK_PRINT(&da_stack, 0);
+			len = encode_rfc_hdr(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
+			if (len < 0) return len;
+			return fr_dbuff_set(dbuff, &work_dbuff);
+
+		default:
+			break;
+		}
 	}
 
 	/*
