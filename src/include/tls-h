@@ -367,8 +367,8 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1_2;
 #ifdef TLS1_3_VERSION
 	bool		tls13_enable_magic;
-#endif
 	bool		tls13_internal_enable;	//!< for radsec
+#endif
 
 	char const	*tls_min_version;
 	char const	*tls_max_version;

@@ -4148,10 +4148,12 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool allow_tls13)
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
 
+#ifdef TLS1_3_VERSION
 	/*
 	 *	Allow TLS 1.3 for RadSec
 	 */
 	conf->tls13_internal_enable = allow_tls13;
+#endif
 
 	/*
 	 *	Disallow sessions of more than 7 days, as per RFC
@@ -4333,10 +4335,12 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
 
+#ifdef TLS1_3_VERSION
 	/*
 	 *	Allow TLS 1.3 for outgoing RadSec connections.
 	 */
 	conf->tls13_internal_enable = true;
+#endif
 
 	/*
 	 *	Initialize TLS
