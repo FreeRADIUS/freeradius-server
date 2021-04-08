@@ -13,7 +13,7 @@ update control {
 	&Tmp-String-0 := '1234567812345678'
 }
 update control {
-	&User-Name := "%(3gpp_pseudonym_encrypt:User-Name control.Tmp-String-0 6)"
+	&User-Name := "%(3gpp_pseudonym_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
 }
 
 #
@@ -33,7 +33,7 @@ if ("%(aka_sim_id_type:%{control.User-Name})" != 'Pseudonym') {
 #
 #  We should refuse to re-encrypt an encrypted NAI
 #
-if ("%(3gpp_pseudonym_encrypt:control.User-Name &control.Tmp-String-0 6)" != '') {
+if ("%(3gpp_pseudonym_encrypt:%{control.User-Name} %{control.Tmp-String-0} 6)" != '') {
 	test_fail
 }
 
