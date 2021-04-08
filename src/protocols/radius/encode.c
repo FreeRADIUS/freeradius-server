@@ -1320,7 +1320,7 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Fix up the da stack, and return the data we've encoded.
 	 */
-	vp = fr_dcursor_current(cursor);
+	vp = fr_dcursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), 6, "header vsa");
