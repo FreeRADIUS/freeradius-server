@@ -528,7 +528,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 		 *	frame->result will be overwritten
 		 *	anyway when we return.
 		 */
-		request->rcode = frame->result = default_rcode;
+		stack->result = frame->result = default_rcode;
 
 		return resume(p_result,
 			      &(module_ctx_t){

@@ -976,6 +976,18 @@ rlm_rcode_t unlang_interpret_stack_result(request_t *request)
 	return stack->result;
 }
 
+/** Overwrite the current stack rcode
+ *
+ * @param[in] request	The current request.
+ * @param[in] rcode	to set.
+ */
+void unlang_interpret_stack_result_set(request_t *request, rlm_rcode_t rcode)
+{
+	unlang_stack_t		*stack = request->stack;
+
+	stack->result = rcode;
+}
+
 /** Return whether a request is currently scheduled
  *
  */
