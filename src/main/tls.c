@@ -884,7 +884,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
 			       sizeof(ssn->dirty_out.data));
 		if (err > 0) {
-			RDEBUG2("(TLS) got %d bytes of data", err);
+			RDEBUG3("(TLS) got %d bytes of data", err);
 			ssn->dirty_out.used = err;
 
 		} else if (BIO_should_retry(ssn->from_ssl)) {

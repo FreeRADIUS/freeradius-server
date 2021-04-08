@@ -392,7 +392,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG3("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
 	/*
