@@ -1251,7 +1251,11 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
+	ssize_t			slen;
+	fr_pair_t		*vp;
+	fr_dcursor_t		child_cursor;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
+	fr_dbuff_t		work_dbuff;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1262,16 +1266,66 @@ static ssize_t encode_vsa_hdr(fr_dbuff_t *dbuff,
 	}
 
 	/*
-	 *	Double-check for WiMAX format, it's extremely non-standard.
+	 *	Loop over the contents of Vendor-Specific, each of
+	 *	which MUST be of type FR_TYPE_VENDOR.
 	 */
-	if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
-		return encode_wimax_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+	if (da_stack->da[depth + 1]) {
+		/*
+		 *	WiMAX is special.
+		 */
+		if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
+			return encode_wimax_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+		}
+
+		/*
+		 *	Encode one vendor, in the standard format.
+		 */
+		return encode_vendor_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+	}
+
+	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+
+	vp = fr_dcursor_current(cursor);
+	if (vp->da != da_stack->da[depth]) {
+		fr_strerror_printf("%s: Can't encode empty Vendor-Specific", __FUNCTION__);
+		return PAIR_ENCODE_SKIPPED;
 	}
 
 	/*
-	 *	Encode one vendor, in the standard format.
+	 *	Loop over the children of this Vendor-Specific
+	 *	attribute.
 	 */
-	return encode_vendor_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+	fr_dcursor_init(&child_cursor, &vp->vp_group);
+	vp = fr_dcursor_current(&child_cursor);
+	while (vp) {
+		fr_proto_da_stack_build(da_stack, vp->da);
+
+		fr_assert(da_stack->da[depth + 1]->type == FR_TYPE_VENDOR);
+
+		/*
+		 *	Note that each of these functions will encode
+		 *	*all* of the Vendor-Specific, including the
+		 *	normal RADIUS header, 4-byte vendor, etc.
+		 */
+		if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
+			slen = encode_wimax_hdr(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
+		} else {
+			slen = encode_vendor_hdr(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
+		}
+		if (slen <= 0) return slen;
+
+		vp = fr_dcursor_current(&child_cursor);
+	}
+
+	/*
+	 *	Fix up the da stack, and return the data we've encoded.
+	 */
+	vp = fr_dcursor_current(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), 6, "header vsa");
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode an RFC standard attribute 1..255
