@@ -1718,7 +1718,6 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 			break;
 
 		case FR_TIME_RES_MSEC:
-			fprintf(stderr, "mSEC %lld --> nSEC %lld\n", date, date * (NSEC / MSEC));
 			date *= (NSEC / MSEC);
 			break;
 
