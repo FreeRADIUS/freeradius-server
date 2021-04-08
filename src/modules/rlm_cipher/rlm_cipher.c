@@ -113,6 +113,7 @@ typedef struct {
 
 	EVP_PKEY		*private_key_file;		//!< Private key file.
 	EVP_PKEY		*certificate_file;		//!< Public (certificate) file.
+	X509			*x509_certificate_file;		//!< Needed for extracting certificate attributes.
 
 	int			padding;			//!< Type of padding to apply to the plaintext
 								///< or ciphertext before feeding it to RSA crypto
@@ -315,6 +316,18 @@ static int _evp_pkey_free(EVP_PKEY *pkey)
 	return 0;
 }
 
+/** Talloc destructor for freeing an X509 struct (representing a public certificate)
+ *
+ * @param[in] cert	to free.
+ * @return 0
+ */
+static int _x509_cert_free(X509 *cert)
+{
+	X509_free(cert);
+
+	return 0;
+}
+
 /** Load and (optionally decrypt) an RSA private key using OpenSSL functions
  *
  * @param[in] ctx	UNUSED. Although the EVP_PKEY struct will be allocated
@@ -329,12 +342,12 @@ static int _evp_pkey_free(EVP_PKEY *pkey)
  *	- -1 on failure.
  *	- 0 on success.
  */
-static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *parent,
 					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	FILE		*fp;
 	char const	*filename;
-	cipher_rsa_t	*rsa_inst = talloc_get_type_abort(ctx, cipher_rsa_t);	/* Yeah this is a bit hacky */
+	cipher_rsa_t	*rsa_inst = talloc_get_type_abort(parent, cipher_rsa_t);
 	EVP_PKEY	*pkey;
 	int		pkey_type;
 
@@ -393,6 +406,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 {
 	FILE		*fp;
 	char const	*filename;
+	cipher_rsa_t	*rsa_inst = talloc_get_type_abort(parent, cipher_rsa_t);
 
 	X509		*cert;		/* X509 certificate */
 	EVP_PKEY	*pkey;		/* Wrapped public key */
@@ -420,11 +434,18 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 	}
 
 	/*
+	 *	Keep the x509 structure around as we may want
+	 *	to extract information from fields in the cert
+	 *	or calculate its fingerprint.
+	 */
+	talloc_set_type(cert, X509);
+	(void)talloc_steal(ctx, cert);			/* Bind lifetime to config */
+	talloc_set_destructor(cert, _x509_cert_free);	/* Free x509 cert correctly on chunk free */
+
+	/*
 	 *	Extract the public key from the certificate
 	 */
 	pkey = X509_get_pubkey(cert);
-	X509_free(cert);	/* Decrease reference count or free cert */
-
 	if (!pkey) {
 		tls_strerror_printf(NULL);
 		cf_log_perr(ci, "Failed extracting public key from certificate");
@@ -446,6 +467,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 	(void)talloc_steal(ctx, pkey);			/* Bind lifetime to config */
 	talloc_set_destructor(pkey, _evp_pkey_free);	/* Free pkey correctly on chunk free */
 
+	rsa_inst->x509_certificate_file = cert;		/* Not great, but shouldn't cause any issues */
 	*(EVP_PKEY **)out = pkey;
 
 	return 0;
@@ -768,6 +790,52 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_tls_log_error(request, "Failed validating signature");
 		return XLAT_ACTION_FAIL;
 	}
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_arg_parser_t const cipher_fingerprint_xlat_args[] = {
+	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Return the fingerprint of the public certificate
+ *
+ * Arguments are @verbatim(<digest>)@endverbatim
+ *
+@verbatim
+%(<inst>_fingerprint:<digest>)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					     request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					     fr_value_box_list_t *in)
+{
+	rlm_cipher_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst), rlm_cipher_t);
+	char const		*md_name = ((fr_value_box_t *)fr_dlist_head(in))->vb_strvalue;
+	EVP_MD const		*md;
+	size_t			md_len;
+	fr_value_box_t		*vb;
+	uint8_t			*digest;
+
+	md = EVP_get_digestbyname(md_name);
+	if (!md) {
+		REDEBUG("Specified digest \"%s\" is not a valid digest type", md_name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	md_len = EVP_MD_size(md);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_mem_alloc(vb, &digest, vb, NULL, md_len, false) == 0);
+
+	if (X509_digest(inst->rsa->x509_certificate_file, md, digest, (unsigned int *)&md_len) != 1) {
+		fr_tls_log_error(request, "Failed calculating certificate fingerprint");
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1134,6 +1202,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		if (inst->rsa->certificate_file) {
 			char *encrypt_name;
 			char *sign_name;
+			char *fingerprint_name;
 			xlat_t *xlat;
 
 			/*
@@ -1167,6 +1236,36 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 							  NULL,
 							  inst);
 			talloc_free(sign_name);
+
+			fingerprint_name = talloc_asprintf(inst, "%s_fingerprint", inst->xlat_name);
+			xlat = xlat_register(inst, fingerprint_name, cipher_fingerprint_xlat, false);
+			xlat_func_args(xlat, cipher_fingerprint_xlat_args);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat,
+							  cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
+			talloc_free(fingerprint_name);
+
+			/*
+			 *	If we have both public and private keys check they're
+			 *	part of the same keypair.  This isn't technically a requirement
+			 *	but it fixes some obscure errors where the user uses the serial
+			 *	xlat, expecting it to be the serial of the keypair containing
+			 *	the private key.
+			 */
+			if (inst->rsa->private_key_file && inst->rsa->x509_certificate_file) {
+				if (X509_check_private_key(inst->rsa->x509_certificate_file,
+							   inst->rsa->private_key_file) == 0) {
+					tls_strerror_printf(NULL);
+					cf_log_perr(conf, "Private key does not match the certificate public key");
+					return -1;
+				}
+			}
 		}
 		break;
 

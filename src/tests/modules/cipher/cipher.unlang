@@ -1,0 +1,23 @@
+#
+#  We can't really check the values here as the certs change periodically
+#  but we can test the digest length, and for smoke...
+#
+update request {
+	&Tmp-Octets-0 := "%(cipher_rsa_fingerprint:sha1)"
+}
+
+if ("%(length:%{Tmp-Octets-0})" != 20) {
+	test_fail
+} else {
+	test_pass
+}
+
+update request {
+	&Tmp-Octets-0 := "%(cipher_rsa_fingerprint:sha256)"
+}
+
+if ("%(length:%{Tmp-Octets-0})" != 32) {
+	test_fail
+} else {
+	test_pass
+}

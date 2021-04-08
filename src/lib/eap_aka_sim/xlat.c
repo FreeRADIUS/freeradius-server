@@ -252,7 +252,7 @@ static xlat_action_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 	 *	Recombine unencrypted IMSI with tag
 	 */
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_bstr_alloc(ctx, &buff, vb, NULL, AKA_SIM_IMSI_MAX_LEN + 1, false);
+	fr_value_box_bstr_alloc(vb, &buff, vb, NULL, AKA_SIM_IMSI_MAX_LEN + 1, false);
 	*buff = out_tag;
 	strncpy(buff + 1, decrypted, AKA_SIM_IMSI_MAX_LEN + 1);
 	fr_dcursor_append(out, vb);
