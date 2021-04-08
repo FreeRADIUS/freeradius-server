@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS radacct (
   framedipv6prefix varchar(45) NOT NULL default '',
   framedinterfaceid varchar(44) NOT NULL default '',
   delegatedipv6prefix varchar(45) NOT NULL default '',
+  class varchar(64) default NULL,
   PRIMARY KEY (radacctid),
   UNIQUE KEY acctuniqueid (acctuniqueid),
   KEY username (username),

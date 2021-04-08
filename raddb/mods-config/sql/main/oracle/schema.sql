@@ -39,7 +39,8 @@ CREATE TABLE radacct (
 	delegatedipv6prefix	VARCHAR(45),
 	acctstartdelay		NUMERIC(12),
 	acctstopdelay		NUMERIC(12),
-	XAscendSessionSvrKey	VARCHAR(10)
+	XAscendSessionSvrKey	VARCHAR(10),
+	Class			VARCHAR(64)
 );
 
 CREATE UNIUQE INDEX radacct_idx0

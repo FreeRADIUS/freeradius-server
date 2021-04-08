@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS radacct (
 	FramedIPv6Address	inet,
 	FramedIPv6Prefix	inet,
 	FramedInterfaceId	text,
-	DelegatedIPv6Prefix	inet
+	DelegatedIPv6Prefix	inet,
+	Class			text
 );
 -- This index may be useful..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
