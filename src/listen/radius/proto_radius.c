@@ -281,20 +281,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		}
 	}
 
-	if (RDEBUG_ENABLED) {
-		RDEBUG("Received %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
-		       fr_packet_codes[request->packet->code],
-		       request->packet->id,
-		       fr_box_ipaddr(request->packet->socket.inet.src_ipaddr),
-		       request->packet->socket.inet.src_port,
-		       fr_box_ipaddr(request->packet->socket.inet.dst_ipaddr),
-		       request->packet->socket.inet.dst_port,
-		       request->packet->data_len,
-		       request->async->listen->name);
-
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
-	}
-
 	if (!inst->io.app_io->decode) return 0;
 
 	/*
