@@ -10,5 +10,27 @@ match cf 72 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d 02 24 64 63 64 39 38 62 37 31 30
 decode-pair -
 match Digest-Attributes = { Realm = "biloxi.com", Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093", Method = "INVITE", URI = "sip:bob@biloxi.com", User-Name = "bob", QOP = "auth", Algorithm = "MD5", Nonce-Count = "00000001", CNonce = "0a4f113b" }
 
+encode-pair Digest-Attributes = { Realm = "biloxi.com" }
+match cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d
+
+encode-pair Digest-Attributes = { User-Name = "bob" }
+match cf 07 0a 05 62 6f 62
+
+#
+#  The two previous things, concatenated as attributes.
+#
+#  The Digest-Attributes dictionary entry is marked "concat",
+#  so the decoder MUST create one Digest-Attributes VP, instead of two.
+#
+decode-pair cf 0e 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d cf 07 0a 05 62 6f 62
+match Digest-Attributes = { Realm = "biloxi.com", User-Name = "bob" }
+
+#
+#  And on encoding it, we mash everything together.
+#
+encode-pair -
+match cf 13 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d 0a 05 62 6f 62
+
+
 count
 match 6
