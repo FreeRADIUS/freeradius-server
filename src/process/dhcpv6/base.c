@@ -482,6 +482,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "dhcpv6";
+	request->module = NULL;
 	fr_assert(request->dict == dict_dhcpv6);
 
 	UPDATE_STATE(packet);
