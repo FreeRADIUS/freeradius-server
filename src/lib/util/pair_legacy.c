@@ -280,9 +280,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 					 fr_pair_list_t *list, fr_token_t *token, int depth)
 {
 	fr_pair_list_t	tmp_list;
-	fr_pair_t	*vp;
-	char const	*p, *next;
-	fr_token_t	last_token = T_INVALID;
+	fr_pair_t	*vp = NULL;
+	char const	*p, *q, *next;
+	fr_token_t	quote, last_token = T_INVALID;
 	fr_pair_t_RAW	raw;
 	fr_dict_attr_t	const *internal = fr_dict_root(fr_dict_internal());
 
@@ -412,10 +412,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			p++;
 			break;
 
-		case FR_TYPE_LEAF: {
-			fr_token_t quote;
-			char const *q;
-
+		case FR_TYPE_LEAF:
 			/*
 			 *	Get the RHS thing.
 			 */
@@ -461,57 +458,49 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 *	@todo - note that they will also be escaped,
 			 *	so we may need to fix that later.
 			 */
+			vp = fr_pair_afrom_da(ctx, da);
+			if (!vp) goto error;
+			vp->op = raw.op;
+
 			if ((raw.op == T_OP_REG_EQ) || (raw.op == T_OP_REG_NE)) {
-				vp = fr_pair_afrom_da(ctx, da);
-				if (!vp) goto error;
-				vp->op = raw.op;
-
 				fr_pair_value_bstrndup(vp, raw.r_opand, strlen(raw.r_opand), false);
-			} else {
-				/*
-				 *	All other attributes get the name
-				 *	parsed.
-				 */
-				vp = fr_pair_afrom_da(ctx, da);
-				if (!vp) goto error;
-				vp->op = raw.op;
 
+			} else if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) {
 				/*
 				 *	We don't care what the value is, so
 				 *	ignore it.
 				 */
-				if ((raw.op == T_OP_CMP_TRUE) || (raw.op == T_OP_CMP_FALSE)) goto next;
+				break;
 
 				/*
 				 *	fr_pair_raw_from_str() only returns this when
 				 *	the input looks like it needs to be xlat'd.
 				 */
-				if (raw.quote == T_DOUBLE_QUOTED_STRING) {
-					if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
-						talloc_free(vp);
-						goto error;
-					}
-
-					/*
-					 *	Parse it ourselves.  The RHS
-					 *	might NOT be tainted, but we
-					 *	don't know.  So just mark it
-					 *	as such to be safe.
-					 */
-				} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
+			} if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+				if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
 					talloc_free(vp);
 					goto error;
 				}
+
+				/*
+				 *	Parse it ourselves.  The RHS
+				 *	might NOT be tainted, but we
+				 *	don't know.  So just mark it
+				 *	as such to be safe.
+				 */
+			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
+				talloc_free(vp);
+				goto error;
 			}
-			} break;
+			break;
 		}
 
-	next:
 		/*
 		 *	Free the unknown attribute, we don't need it any more.
 		 */
 		fr_dict_unknown_free(&da);
 
+		fr_assert(vp != NULL);
 		fr_pair_append(&tmp_list, vp);
 
 		/*
