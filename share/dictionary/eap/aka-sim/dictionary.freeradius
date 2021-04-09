@@ -64,9 +64,9 @@ VALUE	Method-Hint			SIM			2
 
 ATTRIBUTE	Identity-Type				310	integer
 
-VALUE	Identity-Type			Permanent		0
-VALUE	Identity-Type			Pseudonym		1
-VALUE	Identity-Type			Fastauth		2
+VALUE	Identity-Type			permanent		0
+VALUE	Identity-Type			pseudonym		1
+VALUE	Identity-Type			fastauth		2
 
 ATTRIBUTE	Permanent-Identity			311	string
 ATTRIBUTE	KDF-Identity				312	string	# Allow override of KDF Identity input

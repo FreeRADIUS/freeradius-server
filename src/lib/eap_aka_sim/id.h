@@ -87,8 +87,11 @@ extern fr_table_num_sorted_t const fr_aka_sim_id_method_table[];
 extern size_t fr_aka_sim_id_method_table_len;
 
 #define ID_TAG_SIM_PSEUDONYM_B64		55
+#define ID_TAG_SIM_FASTAUTH_B64			57
 #define ID_TAG_AKA_PSEUDONYM_B64		54
+#define ID_TAG_AKA_FASTAUTH_B64			56
 #define ID_TAG_AKA_PRIME_PSEUDONYM_B64		59
+#define ID_TAG_AKA_PRIME_FASTAUTH_B64		60
 
 size_t		fr_aka_sim_id_user_len(char const *nai, size_t nai_len);
 

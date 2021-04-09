@@ -2,7 +2,7 @@ if ("%(aka_sim_id_method:%{User-Name})" != 'AKA') {
 	test_fail
 }
 
-if ("%(aka_sim_id_type:%{User-Name})" != 'Permanent') {
+if ("%(aka_sim_id_type:%{User-Name})" != 'permanent') {
 	test_fail
 }
 
@@ -13,7 +13,7 @@ update control {
 	&Tmp-String-0 := '1420032219455258'
 }
 update control {
-	&User-Name := "%(3gpp_pseudonym_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
+	&User-Name := "%(3gpp_temporary_id_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
 }
 
 #
@@ -26,14 +26,14 @@ if ("%(aka_sim_id_method:%{control.User-Name})" != 'AKA') {
 #
 #  0.3 - Can we identify the encrypted blob correctly?
 #
-if ("%(aka_sim_id_type:%{control.User-Name})" != 'Pseudonym') {
+if ("%(aka_sim_id_type:%{control.User-Name})" != 'pseudonym') {
 	test_fail
 }
 
 #
 #  0.4 - We should refuse to re-encrypt an encrypted NAI
 #
-if ("%(3gpp_pseudonym_encrypt:%{control.User-Name} %{control.Tmp-String-0} 6)" != '') {
+if ("%(3gpp_temporary_id_encrypt:%{control.User-Name} %{control.Tmp-String-0} 6)" != '') {
 	test_fail
 }
 
@@ -41,7 +41,7 @@ if ("%(3gpp_pseudonym_encrypt:%{control.User-Name} %{control.Tmp-String-0} 6)" !
 #  0.5 - Get the original IMSI back again
 #
 update control {
-	&Tmp-String-1 := "%(3gpp_pseudonym_decrypt:%{control.User-Name} %{control.Tmp-String-0})"
+	&Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name} %{control.Tmp-String-0})"
 }
 
 if (&control.Tmp-String-1 != &User-Name) {
@@ -67,20 +67,20 @@ update control {
 	&Tmp-String-0 := '1420032219455259'
 }
 update control {
-	&User-Name[1] := "%(3gpp_pseudonym_encrypt:%{User-Name[1]} %{control.Tmp-String-0} 6)"
+	&User-Name[1] := "%(3gpp_temporary_id_encrypt:%{User-Name[1]} %{control.Tmp-String-0} 6)"
 }
 
 #
 #  1.2 - Can we identify the encrypted blob correctly?
 #
-if ("%(aka_sim_id_type:%{control.User-Name[1]})" != 'Pseudonym') {
+if ("%(aka_sim_id_type:%{control.User-Name[1]})" != 'pseudonym') {
 	test_fail
 }
 
 #
 #  1.3 - We should refuse to re-encrypt an encrypted NAI
 #
-if ("%(3gpp_pseudonym_encrypt:%{control.User-Name[1]} %{control.Tmp-String-0} 6)" != '') {
+if ("%(3gpp_temporary_id_encrypt:%{control.User-Name[1]} %{control.Tmp-String-0} 6)" != '') {
 	test_fail
 }
 
@@ -88,11 +88,47 @@ if ("%(3gpp_pseudonym_encrypt:%{control.User-Name[1]} %{control.Tmp-String-0} 6)
 #  1.4 - Get the original IMSI back again
 #
 update control {
-	&Tmp-String-1 := "%(3gpp_pseudonym_decrypt:%{control.User-Name[1]} %{control.Tmp-String-0})"
+	&Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name[1]} %{control.Tmp-String-0})"
 }
 
 if (&control.Tmp-String-1 != "0%{User-Name[1]}") {
 	test_fail
 }
+
+#
+#  2.1 - Encrypt the permanent ID for fastauth
+#
+update control {
+	&Tmp-String-0 := '1420032219455259'
+}
+update control {
+	&User-Name[1] := "%(3gpp_temporary_id_encrypt:%{User-Name[1]} %{control.Tmp-String-0} 6 fastauth)"
+}
+
+#
+#  2.2 - Can we identify the encrypted blob correctly?
+#
+if ("%(aka_sim_id_type:%{control.User-Name[1]})" != 'fastauth') {
+	test_fail
+}
+
+#
+#  2.3 - We should refuse to re-encrypt an encrypted NAI
+#
+if ("%(3gpp_temporary_id_encrypt:%{control.User-Name[1]} %{control.Tmp-String-0} 6 fastauth)" != '') {
+	test_fail
+}
+
+#
+#  2.4 - Get the original IMSI back again
+#
+update control {
+	&Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name[1]} %{control.Tmp-String-0})"
+}
+
+if (&control.Tmp-String-1 != "0%{User-Name[1]}") {
+	test_fail
+}
+
 
 test_pass

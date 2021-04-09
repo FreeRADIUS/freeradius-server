@@ -18,6 +18,9 @@
  * @file src/lib/eap_aka_sim/xlat.c
  * @brief EAP-SIM/EAP-AKA identity detection, creation, and decyption.
  *
+ * Implements the encrypted IMSI scheme described in TS 33.402 Release 14,
+ * section 14.
+ *
  * @copyright 2017 The FreeRADIUS server project
  */
 
@@ -119,17 +122,17 @@ static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *ou
 
 	case AKA_SIM_ID_TYPE_PERMANENT:
 		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
-						   fr_box_uint32(FR_IDENTITY_TYPE_VALUE_PERMANENT));
+						  fr_box_uint32(FR_IDENTITY_TYPE_VALUE_PERMANENT));
 		break;
 
 	case AKA_SIM_ID_TYPE_PSEUDONYM:
 		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
-						   fr_box_uint32(FR_IDENTITY_TYPE_VALUE_PSEUDONYM));
+						  fr_box_uint32(FR_IDENTITY_TYPE_VALUE_PSEUDONYM));
 		break;
 
 	case AKA_SIM_ID_TYPE_FASTAUTH:
 		type = fr_dict_enum_name_by_value(attr_eap_aka_sim_identity_type,
-						   fr_box_uint32(FR_IDENTITY_TYPE_VALUE_FASTAUTH));
+						  fr_box_uint32(FR_IDENTITY_TYPE_VALUE_FASTAUTH));
 		break;
 	}
 
@@ -140,20 +143,20 @@ static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *ou
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const aka_sim_id_3gpp_pseudonym_key_index_xlat_args[] = {
+static xlat_arg_parser_t const aka_sim_id_3gpp_temporary_id_key_index_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Returns the key index from a 3gpp pseudonym
+/** Returns the key index from a 3gpp temporary id
  *
 @verbatim
-%(3gpp_pseudonym_key_index:%{id_attr})
+%(3gpp_temporary_id_key_index:%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_id_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+static xlat_action_t aka_sim_id_3gpp_temporary_id_key_index_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
 							      UNUSED void const *xlat_inst,
 							      UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
@@ -173,8 +176,8 @@ static xlat_action_t aka_sim_id_3gpp_pseudonym_key_index_xlat(TALLOC_CTX *ctx, f
 	return XLAT_ACTION_DONE;
 }
 
-extern xlat_arg_parser_t aka_sim_3gpp_pseudonym_decrypt_xlat_args[];
-xlat_arg_parser_t aka_sim_3gpp_pseudonym_decrypt_xlat_args[] = {
+extern xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[];
+xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[] = {
 	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_STRING,
 	  .func = NULL, .uctx = NULL },
 	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
@@ -182,17 +185,43 @@ xlat_arg_parser_t aka_sim_3gpp_pseudonym_decrypt_xlat_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Decrypt a 3gpp pseudonym
+/** Decrypt a 3gpp temporary id
  *
-@verbatim
-%(3gpp_pseudonym_decrypt:<id> <key>)
-@endverbatim
+ @verbatim
+ %(3gpp_temporary_id_decrypt:<id> <key>)
+ @endverbatim
+ *
+ * The pseudonym is in the format
+ @verbatim
+     0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Tag    | KeyID |             Encrypted IMSI
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                                                                   |
+   |                   Encrypted IMSI (cont)                       |
+   |                                                               |
+   |                   |-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   +-+-+-+-+-+-+-+-+-+-+
+ @endverbatim
+ *
+ * Tag (6 bits) - Used to mark the identity as a temporary pseudonym
+ * or re-authentication identity.  The idea of this being 6 bits is
+ * so that we can choose values that match base64 sextets, so the
+ * first character in the base64 output matches one of the known tags
+ * for EAP-SIM/AKA/AKA' identities.
+ *
+ * Key Indicator (4 bits) - Used to select the appropriate key from
+ * multiple keys the server may have used to encrypt IMSIs.
+ *
+ * Encrypted IMSI (128 bits) - The original IMSI encrypted with
+ * AES-128-ECB.
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-							 UNUSED void const *xlat_inst,
-							 UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+							    UNUSED void const *xlat_inst,
+							    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	uint8_t		tag;
@@ -225,14 +254,17 @@ static xlat_action_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 	tag = fr_aka_sim_id_3gpp_pseudonym_tag(id);
 	switch (tag) {
 	case ID_TAG_SIM_PSEUDONYM_B64:
+	case ID_TAG_SIM_FASTAUTH_B64:
 		out_tag = ID_TAG_SIM_PERMANENT;
 		break;
 
 	case ID_TAG_AKA_PSEUDONYM_B64:
+	case ID_TAG_AKA_FASTAUTH_B64:
 		out_tag = ID_TAG_AKA_PERMANENT;
 		break;
 
 	case ID_TAG_AKA_PRIME_PSEUDONYM_B64:
+	case ID_TAG_AKA_PRIME_FASTAUTH_B64:
 		out_tag = ID_TAG_AKA_PRIME_PERMANENT;
 		break;
 
@@ -260,28 +292,26 @@ static xlat_action_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 	return XLAT_ACTION_DONE;
 }
 
-extern xlat_arg_parser_t aka_sim_3gpp_pseudonym_encrypt_xlat_args[];
-xlat_arg_parser_t aka_sim_3gpp_pseudonym_encrypt_xlat_args[] = {
-	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_STRING,
-	  .func = NULL, .uctx = NULL },
-	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
-	  .func = NULL, .uctx = NULL },
-	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_UINT8,
-	  .func = NULL, .uctx = NULL },
+extern xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[];
+xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[] = {
+	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_STRING	},
+	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS	},
+	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_UINT8	},
+	{ .required = false, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_STRING	},
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Encrypts a 3gpp pseudonym
  *
 @verbatim
-%(3gpp_pseudonym_encrypt:<id> <key> <index>)
+%(3gpp_temporary_id_encrypt:<id> <key> <index> [(pseudonym|fastauth)])
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-							 UNUSED void const *xlat_inst,
-							 UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+							    UNUSED void const *xlat_inst,
+							    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	char				encrypted[AKA_SIM_3GPP_PSEUDONYM_LEN + 1];
@@ -302,6 +332,10 @@ static xlat_action_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 	fr_value_box_t			*index_vb = fr_dlist_next(in, key_vb);
 	uint8_t				key_index = index_vb->vb_uint8;
 
+	fr_value_box_t			*type_vb = fr_dlist_next(in, index_vb);
+
+	bool				fastauth = false;
+
 	fr_value_box_t			*vb;
 
 	/*
@@ -316,6 +350,33 @@ static xlat_action_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 	if (key_len != 16) {
 		REDEBUG2("Encryption key incorrect length, expected %i bytes, got %zu bytes", 16, key_len);
 		goto error;
+	}
+
+	/*
+	 *	Check for the optional type argument
+	 */
+	if (!fr_type_is_null(type_vb->type)) {
+		fr_dict_enum_t const		*type_enum;
+
+		type_enum = fr_dict_enum_by_name(attr_eap_aka_sim_identity_type,
+						 type_vb->vb_strvalue, type_vb->vb_length);
+		if (!type_enum) {
+		bad_type:
+			REDEBUG2("Bad type %pV, must be one of 'fastauth' or 'pseudonym'", type_vb);
+			goto error;
+		}
+
+		switch (type_enum->value->vb_uint32) {
+		case FR_IDENTITY_TYPE_VALUE_PSEUDONYM:
+			break;
+
+		case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
+			fastauth = true;
+			break;
+
+		default:
+			goto bad_type;
+		}
 	}
 
 	/*
@@ -334,15 +395,15 @@ static xlat_action_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 
 		switch (method_hint) {
 		case AKA_SIM_METHOD_HINT_SIM:
-			tag = ID_TAG_SIM_PSEUDONYM_B64;
+			tag = !fastauth ? ID_TAG_SIM_PSEUDONYM_B64 : ID_TAG_SIM_FASTAUTH_B64;
 			break;
 
 		case AKA_SIM_METHOD_HINT_AKA:
-			tag = ID_TAG_AKA_PSEUDONYM_B64;
+			tag = !fastauth ? ID_TAG_AKA_PSEUDONYM_B64 : ID_TAG_AKA_FASTAUTH_B64;
 			break;
 
 		case AKA_SIM_METHOD_HINT_AKA_PRIME:
-			tag = ID_TAG_AKA_PRIME_PSEUDONYM_B64;
+			tag = !fastauth ? ID_TAG_AKA_PRIME_PSEUDONYM_B64 : ID_TAG_AKA_PRIME_FASTAUTH_B64;
 			break;
 
 		case AKA_SIM_METHOD_HINT_UNKNOWN:
@@ -367,11 +428,11 @@ static xlat_action_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 		}
 
 		if (eap_type->vp_uint32 == enum_eap_type_sim->vb_uint32) {
-			tag = ID_TAG_SIM_PSEUDONYM_B64;
+			tag = !fastauth ? ID_TAG_SIM_PSEUDONYM_B64 : ID_TAG_SIM_FASTAUTH_B64;
 		} else if (eap_type->vp_uint32 == enum_eap_type_aka->vb_uint32) {
-			tag = ID_TAG_AKA_PSEUDONYM_B64;
+			tag = !fastauth ? ID_TAG_AKA_PSEUDONYM_B64 : ID_TAG_AKA_FASTAUTH_B64;
 		} else if (eap_type->vp_uint32 == enum_eap_type_aka_prime->vb_uint32) {
-			tag = ID_TAG_AKA_PRIME_PSEUDONYM_B64;
+			tag = !fastauth ? ID_TAG_AKA_PRIME_PSEUDONYM_B64 : ID_TAG_AKA_PRIME_FASTAUTH_B64;
 		} else {
 			REDEBUG("&control.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
 		}
@@ -416,12 +477,12 @@ void fr_aka_sim_xlat_register(void)
 	xlat_func_args(xlat, aka_sim_xlat_id_method_xlat_args);
 	xlat = xlat_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, false);
 	xlat_func_args(xlat, aka_sim_xlat_id_type_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_pseudonym_key_index", aka_sim_id_3gpp_pseudonym_key_index_xlat, false);
-	xlat_func_args(xlat, aka_sim_id_3gpp_pseudonym_key_index_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_pseudonym_decrypt", aka_sim_3gpp_pseudonym_decrypt_xlat, false);
-	xlat_func_args(xlat, aka_sim_3gpp_pseudonym_decrypt_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_pseudonym_encrypt", aka_sim_3gpp_pseudonym_encrypt_xlat, false);
-	xlat_func_args(xlat, aka_sim_3gpp_pseudonym_encrypt_xlat_args);
+	xlat = xlat_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, false);
+	xlat_func_args(xlat, aka_sim_id_3gpp_temporary_id_key_index_xlat_args);
+	xlat = xlat_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, false);
+	xlat_func_args(xlat, aka_sim_3gpp_temporary_id_decrypt_xlat_args);
+	xlat = xlat_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, false);
+	xlat_func_args(xlat, aka_sim_3gpp_temporary_id_encrypt_xlat_args);
 	aka_sim_xlat_refs = 1;
 }
 
