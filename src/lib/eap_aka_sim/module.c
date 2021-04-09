@@ -292,13 +292,20 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 	fr_aka_sim_ctx_t		decode_ctx;
 
 	switch (eap_session->this_round->response->type.num) {
+	default:
+		REDEBUG2("Unsupported EAP type (%u)", eap_session->this_round->response->type.num);
+		RETURN_MODULE_REJECT;
+
 	case FR_EAP_METHOD_IDENTITY:
+	case FR_EAP_METHOD_NAK:	/* Peer NAK'd our original suggestion */
 		break;
 
 	/*
 	 *	Only decode data for EAP-SIM/AKA/AKA' responses
 	 */
-	default:
+	case FR_EAP_METHOD_SIM:
+	case FR_EAP_METHOD_AKA:
+	case FR_EAP_METHOD_AKA_PRIME:
 		fr_dcursor_init(&cursor, &request->request_pairs);
 
 		decode_ctx = mod_session->ctx;
