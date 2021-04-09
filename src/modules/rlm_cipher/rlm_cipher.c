@@ -464,7 +464,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 	}
 
 	talloc_set_type(pkey, EVP_PKEY);
-	(void)talloc_steal(ctx, pkey);			/* Bind lifetime to config */
+	(void)talloc_steal(cert, pkey);			/* Bind lifetime to config */
 	talloc_set_destructor(pkey, _evp_pkey_free);	/* Free pkey correctly on chunk free */
 
 	rsa_inst->x509_certificate_file = cert;		/* Not great, but shouldn't cause any issues */
