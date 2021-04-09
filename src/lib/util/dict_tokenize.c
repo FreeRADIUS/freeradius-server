@@ -300,6 +300,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 			subtype = fr_table_value_by_str(ctx->dict->subtype_table, key, -1);
 			if (subtype >= 0) {
+				if (flags->subtype != 0) {
+					fr_strerror_printf("Conflicting flag '%s'", key);
+					return -1;
+				}
+
 				flags->subtype = subtype;
 				break;
 			}
