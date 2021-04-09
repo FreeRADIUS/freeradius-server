@@ -832,9 +832,61 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (X509_digest(inst->rsa->x509_certificate_file, md, digest, (unsigned int *)&md_len) != 1) {
 		fr_tls_log_error(request, "Failed calculating certificate fingerprint");
+		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
 
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_arg_parser_t const cipher_serial_xlat_args[] = {
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Return the serial of the public certificate
+ *
+@verbatim
+%(<inst>_serial:)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					UNUSED fr_value_box_list_t *in)
+{
+	rlm_cipher_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst), rlm_cipher_t);
+	ASN1_INTEGER const	*serial;
+	uint8_t			*serial_bin;
+    	BIGNUM			*bn;
+    	fr_value_box_t		*vb;
+    	size_t			bn_len;
+
+	serial = X509_get0_serialNumber(inst->rsa->x509_certificate_file);
+	if (!serial) {
+	error:
+		fr_tls_log_error(request, "Failed retrieving certificate serial");
+		return XLAT_ACTION_FAIL;
+	}
+
+	bn = ASN1_INTEGER_to_BN(serial, NULL);
+	if (!bn) goto error;
+
+	bn_len = BN_num_bytes(bn);
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	MEM(fr_value_box_mem_alloc(vb, &serial_bin, vb, NULL, bn_len, true) == 0);
+
+	/*
+	 *	Copy the serial number into an octets buffer
+	 */
+	if (BN_bn2bin(bn, (unsigned char *)serial_bin) != 1) {
+		BN_free(bn);
+		talloc_free(vb);
+		goto error;
+	}
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1160,15 +1212,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		}
 
 		if (inst->rsa->private_key_file) {
-			char *decrypt_name;
-			char *verify_name;
+			char *xlat_name;
 			xlat_t *xlat;
 
 			/*
 			 *	Register decrypt xlat
 			 */
-			decrypt_name = talloc_asprintf(inst, "%s_decrypt", inst->xlat_name);
-			xlat = xlat_register(inst, decrypt_name, cipher_rsa_decrypt_xlat, false);
+			xlat_name = talloc_asprintf(inst, "%s_decrypt", inst->xlat_name);
+			xlat = xlat_register(inst, xlat_name, cipher_rsa_decrypt_xlat, false);
 			xlat_func_mono(xlat, &cipher_rsa_decrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
@@ -1179,13 +1230,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 							  rlm_cipher_rsa_thread_inst_t *,
 							  NULL,
 							  inst);
-			talloc_free(decrypt_name);
+			talloc_free(xlat_name);
 
 			/*
 			 *	Verify sign xlat
 			 */
-			verify_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
-			xlat = xlat_register(inst, verify_name, cipher_rsa_verify_xlat, false);
+			xlat_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
+			xlat = xlat_register(inst, xlat_name, cipher_rsa_verify_xlat, false);
 			xlat_func_args(xlat, cipher_rsa_verify_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
@@ -1196,60 +1247,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 							  rlm_cipher_rsa_thread_inst_t *,
 							  NULL,
 							  inst);
-			talloc_free(verify_name);
+			talloc_free(xlat_name);
 		}
 
 		if (inst->rsa->certificate_file) {
-			char *encrypt_name;
-			char *sign_name;
-			char *fingerprint_name;
+			char *xlat_name;
 			xlat_t *xlat;
-
-			/*
-			 *	Register encrypt xlat
-			 */
-			encrypt_name = talloc_asprintf(inst, "%s_encrypt", inst->xlat_name);
-			xlat = xlat_register(inst, encrypt_name, cipher_rsa_encrypt_xlat, false);
-			xlat_func_mono(xlat, &cipher_rsa_encrypt_xlat_arg);
-			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
-						   rlm_cipher_t *,
-						   NULL,
-						   inst);
-			xlat_async_thread_instantiate_set(xlat, cipher_xlat_thread_instantiate,
-							  rlm_cipher_rsa_thread_inst_t *,
-							  NULL,
-							  inst);
-			talloc_free(encrypt_name);
-
-			/*
-			 *	Register sign xlat
-			 */
-			sign_name = talloc_asprintf(inst, "%s_sign", inst->xlat_name);
-			xlat = xlat_register(inst, sign_name, cipher_rsa_sign_xlat, false);
-			xlat_func_mono(xlat, &cipher_rsa_sign_xlat_arg);
-			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
-						   rlm_cipher_t *,
-						   NULL,
-						   inst);
-			xlat_async_thread_instantiate_set(xlat, cipher_xlat_thread_instantiate,
-							  rlm_cipher_rsa_thread_inst_t *,
-							  NULL,
-							  inst);
-			talloc_free(sign_name);
-
-			fingerprint_name = talloc_asprintf(inst, "%s_fingerprint", inst->xlat_name);
-			xlat = xlat_register(inst, fingerprint_name, cipher_fingerprint_xlat, false);
-			xlat_func_args(xlat, cipher_fingerprint_xlat_args);
-			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
-						   rlm_cipher_t *,
-						   NULL,
-						   inst);
-			xlat_async_thread_instantiate_set(xlat,
-							  cipher_xlat_thread_instantiate,
-							  rlm_cipher_rsa_thread_inst_t *,
-							  NULL,
-							  inst);
-			talloc_free(fingerprint_name);
 
 			/*
 			 *	If we have both public and private keys check they're
@@ -1266,6 +1269,66 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 					return -1;
 				}
 			}
+
+			/*
+			 *	Register encrypt xlat
+			 */
+			xlat_name = talloc_asprintf(inst, "%s_encrypt", inst->xlat_name);
+			xlat = xlat_register(inst, xlat_name, cipher_rsa_encrypt_xlat, false);
+			xlat_func_mono(xlat, &cipher_rsa_encrypt_xlat_arg);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat, cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
+			talloc_free(xlat_name);
+
+			/*
+			 *	Register sign xlat
+			 */
+			xlat_name = talloc_asprintf(inst, "%s_sign", inst->xlat_name);
+			xlat = xlat_register(inst, xlat_name, cipher_rsa_sign_xlat, false);
+			xlat_func_mono(xlat, &cipher_rsa_sign_xlat_arg);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat, cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
+			talloc_free(xlat_name);
+
+			xlat_name = talloc_asprintf(inst, "%s_fingerprint", inst->xlat_name);
+			xlat = xlat_register(inst, xlat_name, cipher_fingerprint_xlat, false);
+			xlat_func_args(xlat, cipher_fingerprint_xlat_args);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat,
+							  cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
+			talloc_free(xlat_name);
+
+			xlat_name = talloc_asprintf(inst, "%s_serial", inst->xlat_name);
+			xlat = xlat_register(inst, xlat_name, cipher_serial_xlat, false);
+			xlat_func_args(xlat, cipher_serial_xlat_args);
+			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
+						   rlm_cipher_t *,
+						   NULL,
+						   inst);
+			xlat_async_thread_instantiate_set(xlat,
+							  cipher_xlat_thread_instantiate,
+							  rlm_cipher_rsa_thread_inst_t *,
+							  NULL,
+							  inst);
+			talloc_free(xlat_name);
 		}
 		break;
 

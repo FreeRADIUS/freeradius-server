@@ -1,0 +1,15 @@
+update request {
+	&Tmp-Octets-0 := "%(cipher_rsa_serial:)"
+}
+
+if ("%(length:%{Tmp-Octets-0})" != 1) {
+	test_fail
+} else {
+	test_pass
+}
+
+if ("%{hex:%{Tmp-Octets-0}}" != "01") {
+	test_fail
+} else {
+	test_pass
+}
