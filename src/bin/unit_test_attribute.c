@@ -1169,7 +1169,7 @@ static size_t command_radmin_tab(command_result_t *result, command_file_ctx_t *c
 	len = snprintf(p, end - p, "%d - ", num_expansions);
 	if (is_truncated(len, end - p)) {
 	oob:
-		fr_strerror_const("Out of output buffer space");
+		fr_strerror_const("Out of output buffer space for radmin command");
 		RETURN_COMMAND_ERROR();
 	}
 	p += len;
@@ -1352,7 +1352,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 		     vp = fr_pair_list_next(&head, vp)) {
 			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
 			oob:
-				fr_strerror_const("Out of output buffer space");
+				fr_strerror_const("Out of output buffer space for printed pairs");
 				CLEAR_TEST_POINT(cc);
 				RETURN_COMMAND_ERROR();
 			}
@@ -1453,7 +1453,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 		     vp = fr_pair_list_next(&head, vp)) {
 			if ((slen = fr_pair_print(&sbuff, NULL, vp)) < 0) {
 			oob:
-				fr_strerror_printf("Out of output buffer space (%zd)", slen);
+				fr_strerror_printf("Out of output buffer space (%zd) for decoded data", slen);
 				CLEAR_TEST_POINT(cc);
 				RETURN_COMMAND_ERROR();
 			}
