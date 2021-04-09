@@ -783,6 +783,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "radius";
+	request->module = NULL;
 	fr_assert(request->dict == dict_radius);
 
 	UPDATE_STATE(packet);
