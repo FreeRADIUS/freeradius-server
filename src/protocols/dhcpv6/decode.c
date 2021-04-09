@@ -259,7 +259,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 			talloc_free(vp);
 			goto raw;
 		}
-		fr_tmp_pair_list_move(&vp->vp_group, &head);
+		fr_pair_list_append(&vp->vp_group, &head);
 		break;
 	}
 

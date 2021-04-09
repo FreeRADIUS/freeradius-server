@@ -914,25 +914,25 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 		fr_pair_list_init(&vps);
 		if ((get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "RAD_REQUEST", "request")) == 0) {
 			fr_pair_list_free(&request->request_pairs);
-			fr_tmp_pair_list_move(&request->request_pairs, &vps);
+			fr_pair_list_append(&request->request_pairs, &vps);
 			fr_pair_list_init(&vps);
 		}
 
 		if ((get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "RAD_REPLY", "reply")) == 0) {
 			fr_pair_list_free(&request->reply_pairs);
-			fr_tmp_pair_list_move(&request->reply_pairs, &vps);
+			fr_pair_list_append(&request->reply_pairs, &vps);
 			fr_pair_list_init(&vps);
 		}
 
 		if ((get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "RAD_CONFIG", "control")) == 0) {
 			fr_pair_list_free(&request->control_pairs);
-			fr_tmp_pair_list_move(&request->control_pairs, &vps);
+			fr_pair_list_append(&request->control_pairs, &vps);
 			fr_pair_list_init(&vps);
 		}
 
 		if ((get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "RAD_STATE", "session-state")) == 0) {
 			fr_pair_list_free(&request->session_state_pairs);
-			fr_tmp_pair_list_move(&request->session_state_pairs, &vps);
+			fr_pair_list_append(&request->session_state_pairs, &vps);
 			fr_pair_list_init(&vps);
 		}
 	}

@@ -858,7 +858,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 			REDEBUG("No valid attributes received from program");
 			return -2;
 		}
-		fr_tmp_pair_list_move(out, &output_pairs);
+		fr_pair_list_append(out, &output_pairs);
 		return 0;
 
 	case TMPL_TYPE_ATTR:
@@ -943,7 +943,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 			vp->op = T_OP_ADD;
 		}
 
-		fr_tmp_pair_list_move(out, &found);
+		fr_pair_list_append(out, &found);
 
 		return 0;
 	}
@@ -1053,7 +1053,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 			vp->da = tmpl_da(map->lhs);
 			vp->op = map->op;
 		}
-		fr_tmp_pair_list_move(out, &found);
+		fr_pair_list_append(out, &found);
 	}
 		break;
 
@@ -1305,7 +1305,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		case T_OP_SET:
 			if (tmpl_is_list(map->rhs)) {
 				fr_pair_list_free(list);
-				fr_tmp_pair_list_move(list, &src_list);
+				fr_pair_list_append(list, &src_list);
 				fr_pair_list_init(&src_list);
 			} else {
 				FALL_THROUGH;

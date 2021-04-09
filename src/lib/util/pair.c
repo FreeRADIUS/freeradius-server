@@ -1434,7 +1434,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
 		fr_pair_append(&tmp_list, new_vp);
 	}
 
-	fr_tmp_pair_list_move(to, &tmp_list);
+	fr_pair_list_append(to, &tmp_list);
 
 	return cnt;
 }
@@ -1484,7 +1484,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 		fr_pair_append(&tmp_list, new_vp); /* fr_pair_list_copy sets next pointer to NULL */
 	}
 
-	fr_tmp_pair_list_move(to, &tmp_list);
+	fr_pair_list_append(to, &tmp_list);
 
 	return cnt;
 }
@@ -2558,14 +2558,14 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	fr_pair_list_tainted(out);
 }
 
-/** Move a list of fr_pair_t from a temporary list to a destination list
+/** Appends a list of fr_pair_t from a temporary list to a destination list
  *
  * @param dst list to move pairs into
- * @param tmp_list from which to take pairs
+ * @param src list from which to take pairs
  */
-void fr_tmp_pair_list_move(fr_pair_list_t *dst, fr_pair_list_t *tmp_list)
+void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
 {
-	fr_dlist_move(&dst->head, &tmp_list->head);
+	fr_dlist_move(&dst->head, &src->head);
 }
 
 /** Evaluation function for matching if vp matches a given da

@@ -468,7 +468,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 		p += p[1];
 	}
 
-	fr_tmp_pair_list_move(&vp->vp_group, &head);
+	fr_pair_list_append(&vp->vp_group, &head);
 	fr_dcursor_append(cursor, vp);
 
 	return data_len;

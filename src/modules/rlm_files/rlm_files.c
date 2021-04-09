@@ -382,7 +382,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			}
 			LIST_VERIFY(&tmp_list);
 
-			fr_tmp_pair_list_move(&list, &tmp_list);
+			fr_pair_list_append(&list, &tmp_list);
 		}
 
 		if (paircmp(request, &request->request_pairs, &list) != 0) {
