@@ -45,7 +45,9 @@ int	fr_state_to_request(fr_state_tree_t *state, request_t *request);
 int	fr_request_to_state(fr_state_tree_t *state, request_t *request);
 
 void	fr_state_store_in_parent(request_t *request, void const *unique_ptr, int unique_int);
-void	fr_state_restore_to_child(request_t *request, void const *unique_ptr, int unique_int);
+void	fr_state_restore_to_child(request_t *child, void const *unique_ptr, int unique_int);
+void	fr_state_discard_child(request_t *parent, void const *unique_ptr, int unique_int);
+
 /*
  *	Stats
  */

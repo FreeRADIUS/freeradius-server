@@ -569,6 +569,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 		 *	the memory it alloced.
 		 */
 		TALLOC_FREE(eap_session->opaque);
+		fr_state_discard_child(eap_session->request, eap_session, 0);
 		next = eap_process_nak(mctx, eap_session->request, eap_session->type, type);
 		if (!next) RETURN_MODULE_REJECT;
 

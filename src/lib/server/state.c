@@ -855,6 +855,32 @@ void fr_state_restore_to_child(request_t *child, void const *unique_ptr, int uni
 	talloc_free(child_entry);
 }
 
+/** Remove state from a child
+ *
+ * This is useful for modules like EAP, where we keep a persistent eap_session
+ * but may call multiple EAP method modules during negotiation, and need to
+ * discard the state between each module call.
+ *
+ * @param[in] parent		Holding the child's state.
+ * @param[in] unique_ptr	A parent may have multiple subrequests spawned
+ *				by different modules.  This identifies the module
+ *      			or other facility that spawned the subrequest.
+ * @param[in] unique_int	Further identification.
+ */
+void fr_state_discard_child(request_t *parent, void const *unique_ptr, int unique_int)
+{
+	state_child_entry_t	*child_entry;
+	request_t		*request = parent; /* Stupid logging */
+
+	child_entry = request_data_get(parent, unique_ptr, unique_int);
+	if (!child_entry) {
+		RDEBUG3("No child state found in parent %s", parent->name);
+		return;
+	}
+
+	talloc_free(child_entry);
+}
+
 /** Return number of entries created
  *
  */
