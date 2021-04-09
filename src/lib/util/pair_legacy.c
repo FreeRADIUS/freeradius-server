@@ -317,6 +317,14 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		}
 
 		/*
+		 *	Stop at '}', too, if we're inside of a group.
+		 */
+		if ((depth > 0) && (*p == '}')) {
+			last_token = T_RCBRACE;
+			break;
+		}
+
+		/*
 		 *	Hacky hack...
 		 */
 		if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
