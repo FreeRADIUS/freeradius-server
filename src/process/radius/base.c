@@ -191,6 +191,48 @@ static const CONF_PARSER config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	Debug the packet if requested.
+ */
+static void radius_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
+{
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	char if_name[IFNAMSIZ];
+#endif
+
+	if (!packet) return;
+	if (!RDEBUG_ENABLED) return;
+
+	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s ID %d from %s%pV%s:%i to %s%pV%s:%i "
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+		       "%s%s%s"
+#endif
+		       "",
+		       received ? "Received" : "Sending",
+		       fr_packet_codes[packet->code],
+		       packet->id,
+		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),
+		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->socket.inet.src_port,
+		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       fr_box_ipaddr(packet->socket.inet.dst_ipaddr),
+		       packet->socket.inet.dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->socket.inet.dst_port
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+		       , packet->socket.inet.ifindex ? "via " : "",
+		       packet->socket.inet.ifindex ? fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex) : "",
+		       packet->socket.inet.ifindex ? " " : ""
+#endif
+		       );
+
+	if (received || request->parent) {
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	} else {
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+	}
+}
+
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
 /*
@@ -745,10 +787,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	UPDATE_STATE(packet);
 
-	if (request->parent && RDEBUG_ENABLED) {
-		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
-	}
+	radius_packet_debug(request, request->packet, &request->request_pairs, true);
 
 	return state->recv(p_result, mctx, request);
 }
