@@ -522,7 +522,7 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_pair_list_t *list,
 void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line)
 {
 	uint8_t const *attr, *end;
-	char buffer[256];
+	char buffer[1024];
 
 	if (!packet->data) return;
 
@@ -554,30 +554,35 @@ void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *pa
                int		i, len, offset = 2;
                unsigned int	vendor = 0;
 	       char		*p;
+	       char const	*truncated = "";
 
 #ifndef NDEBUG
                if (attr[1] < 2) break; /* Coverity */
 #endif
 
 	       snprintf(buffer, sizeof(buffer), "%02x %02x  ", attr[0], attr[1]);
+	       p = buffer + strlen(buffer);
                if ((attr[0] == FR_VENDOR_SPECIFIC) &&
                    (attr[1] > 6)) {
                        vendor = (attr[2] << 25) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
 
-		       snprintf(buffer + 12, sizeof(buffer) - 12, "%02x%02x%02x%02x (%u)  ",
+		       snprintf(p, buffer + sizeof(buffer) - p, "%02x%02x%02x%02x (%u)  ",
 				attr[2], attr[3], attr[4], attr[5], vendor);
                        offset = 6;
+		       p += strlen(p);
                }
-	       p = buffer + strlen(buffer);
 
 	       len = attr[1] - offset;
-	       if (len > 16) len = 16;
+	       if (len > 15) {
+		       len = 15;
+		       truncated = "...";
+	       }
 
 	       for (i = 0; i < len; i++) {
 		       snprintf(p, buffer + sizeof(buffer) - p, "%02x ", attr[offset + i]);
 		       p += 3;
 	       }
 
-	       fr_log(log, L_DBG, file, line, "      %s\n", buffer);
+	       fr_log(log, L_DBG, file, line, "      %s%s\n", buffer, truncated);
        }
 }
