@@ -775,27 +775,28 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 	for (vp = fr_pair_list_head(m_vp);
 	     vp;
 	     vp = fr_pair_list_next(m_vp, vp)) {
+		fr_sbuff_t *oid_buff = log_request_oid_buff();
+
 		VP_VERIFY(vp);
+
+		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
-		{
-			fr_sbuff_t *oid_buff = log_request_oid_buff();
-
-			if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
-			if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
-
 			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
 				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
 			log_request_pair_list(lvl, request, vp, &vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s}", prefix ? prefix : "");	/* don't add extra space between closing brace and prefix */
 			continue;
-		}
+
 		default:
-			RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+			RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
+				&vp->data);
 			break;
 		}
 	}
@@ -824,30 +825,30 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
+		fr_sbuff_t *oid_buff = log_request_oid_buff();
+
 		VP_VERIFY(vp);
 
 		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
+
+		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
-		{
-			fr_sbuff_t *oid_buff = log_request_oid_buff();
-
-			if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
-			if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
-
 			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
 				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
 			log_request_proto_pair_list(lvl, request, vp, &vp->vp_group, prefix);
 			RDEBUGX(lvl, "%s}", prefix ? prefix : "");
 			continue;
-		}
 
 		default:
-			RDEBUGX(lvl, "%s%pP", prefix ? prefix : "", vp);
+			RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
+				&vp->data);
 			break;
 		}
 	}
