@@ -1178,8 +1178,8 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_const("Attributes with the 'concat' flag MUST be of data type 'octets'");
+		if ((type != FR_TYPE_OCTETS) && (type != FR_TYPE_TLV)) {
+			fr_strerror_const("Attributes with the 'concat' flag MUST be of data type 'octets' or 'tlv'");
 			return false;
 		}
 

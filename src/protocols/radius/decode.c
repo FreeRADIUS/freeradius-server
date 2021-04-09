@@ -356,6 +356,8 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	uint8_t		*p;
 	fr_pair_t	*vp;
 
+	fr_assert(parent->type == FR_TYPE_OCTETS);
+
 	total = 0;
 	attr = ptr[0];
 
@@ -1631,7 +1633,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t c
 	/*
 	 *	Pass the entire thing to the decoding function
 	 */
-	if (flag_concat(&da->flags)) {
+	if ((da->type == FR_TYPE_OCTETS && flag_concat(&da->flags))) {
 		FR_PROTO_TRACE("Concat attribute");
 		return decode_concat(ctx, cursor, da, data, data_len);
 	}

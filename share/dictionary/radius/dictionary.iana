@@ -14,7 +14,7 @@
 #	This is bad... at some point the IETF will allocate these.
 #
 ATTRIBUTE	Digest-Response				206	string
-ATTRIBUTE	Digest-Attributes			207	tlv
+ATTRIBUTE	Digest-Attributes			207	tlv concat
 ATTRIBUTE	Realm					.1	string
 ATTRIBUTE	Nonce					.2	string
 ATTRIBUTE	Method					.3	string
