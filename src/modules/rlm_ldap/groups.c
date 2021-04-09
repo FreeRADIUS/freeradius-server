@@ -402,7 +402,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 		}
 	}
 
-	fr_tmp_pair_list_move(list, &groups);
+	fr_pair_list_append(list, &groups);
 
 	for (dn_p = group_dn; *dn_p; dn_p++) {
 		MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));

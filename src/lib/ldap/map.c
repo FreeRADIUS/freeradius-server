@@ -133,7 +133,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 				goto next_pair;
 			}
 
-			fr_tmp_pair_list_move(&head, &tmp_list);
+			fr_pair_list_append(&head, &tmp_list);
 			talloc_free(attr);
 
 			/*
@@ -178,7 +178,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 		fr_assert(0);
 	}
 
-	fr_tmp_pair_list_move(out, &head);
+	fr_pair_list_append(out, &head);
 
 	return 0;
 }

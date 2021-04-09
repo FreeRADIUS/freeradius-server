@@ -1026,7 +1026,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_pair_list_init(&tmp_list);
 			fr_pair_list_free(vp_list);				/* Clear the existing list */
 			map_list_mod_to_vps(parent, &tmp_list, vlm);		/* Replace with a new list */
-			fr_tmp_pair_list_move(vp_list, &tmp_list);
+			fr_pair_list_append(vp_list, &tmp_list);
 			goto finish;
 		}
 
@@ -1080,7 +1080,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			map_list_mod_to_vps(parent, &vp_from, vlm);
 			fr_assert(!fr_pair_list_empty(&vp_from));
 
-			fr_tmp_pair_list_move(vp_list, &vp_from);
+			fr_pair_list_append(vp_list, &vp_from);
 		}
 			goto finish;
 
@@ -1197,7 +1197,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		map_list_mod_to_vps(parent, &vp_from, vlm);
 		if (fr_pair_list_empty(&vp_from)) goto finish;
 
-		fr_tmp_pair_list_move(vp_list, &vp_from);
+		fr_pair_list_append(vp_list, &vp_from);
 	}
 		goto finish;
 

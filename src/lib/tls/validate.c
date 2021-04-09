@@ -168,7 +168,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			 *	Print out all the pairs we have so far
 			 */
 			log_request_pair_list(L_DBG_LVL_2, request, NULL, &cert_vps, "&session-state.");
-			fr_tmp_pair_list_move(&request->session_state_pairs, &cert_vps);
+			fr_pair_list_append(&request->session_state_pairs, &cert_vps);
 		}
 	}
 

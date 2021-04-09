@@ -540,7 +540,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		last_token = T_COMMA;
 	}
 
-	if (!fr_pair_list_empty(&tmp_list)) fr_tmp_pair_list_move(list, &tmp_list);
+	if (!fr_pair_list_empty(&tmp_list)) fr_pair_list_append(list, &tmp_list);
 
 	/*
 	 *	And return the last token which we read.
@@ -628,7 +628,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		}
 
 		found = true;
-		fr_tmp_pair_list_move(out, &tmp_list);
+		fr_pair_list_append(out, &tmp_list);
 	}
 
 	*pfiledone = true;
@@ -740,5 +740,5 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from)
 	/*
 	 *	Take the "new" list, and append it to the "to" list.
 	 */
-	fr_tmp_pair_list_move(to, &head_new);
+	fr_pair_list_append(to, &head_new);
 }

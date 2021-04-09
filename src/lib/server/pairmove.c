@@ -299,7 +299,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	 *	And finally add in the attributes we're appending to
 	 *	the tail of the "to" list.
 	 */
-	fr_tmp_pair_list_move(to, &append);
+	fr_pair_list_append(to, &append);
 
 	fr_assert(request->packet != NULL);
 

@@ -110,7 +110,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 			p += len;
 		}
-		fr_tmp_pair_list_move(&head, &vps);
+		fr_pair_list_append(&head, &vps);
 	}
 
 	while ((vp = fr_pair_list_next(&head, vp))) {
