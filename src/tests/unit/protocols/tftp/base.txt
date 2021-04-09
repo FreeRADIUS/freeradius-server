@@ -1,0 +1,63 @@
+#  Test vectors for TFTP attributes
+#
+#  Copyright 2021 Network RADIUS SARL <legal@networkradius.com>
+#
+proto tftp
+proto-dictionary tftp
+
+#
+#	Client -> Server (Read-Request) - Without block-size
+#
+decode-proto 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00
+match Opcode = Read-Request, Filename = "scald_law.txt", Mode = ASCII
+
+encode-proto -
+match 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00
+
+#
+#	Client -> Server (Read-Request) - With block-size
+#
+decode-proto 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00 62 6c 6b 73 69 7a 65 00 31 32 33 34 35 00
+match Opcode = Read-Request, Filename = "scald_law.txt", Mode = ASCII, Block-Size = 12345
+
+encode-proto -
+match 00 01 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00 62 6c 6b 73 69 7a 65 00 31 32 33 34 35 00
+
+#
+#	Client -> Server (Write-Request)
+#
+decode-proto 00 02 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00
+match Opcode = Write-Request, Filename = "scald_law.txt", Mode = ASCII
+
+encode-proto -
+match 00 02 73 63 61 6c 64 5f 6c 61 77 2e 74 78 74 00 61 73 63 69 69 00
+
+#
+#	Client -> Server (Data)
+#
+decode-proto 00 03 12 34 31 32 33 34 35
+match Opcode = Data, Block = 4660, Data = 0x3132333435
+
+encode-proto -
+match 00 03 12 34 31 32 33 34 35
+
+#
+#	Client -> Server (Acknowledgement)
+#
+decode-proto 00 04 12 34
+match Opcode = Acknowledgement, Block = 4660
+
+encode-proto -
+match 00 04 12 34
+
+#
+#	Server -> Client (Error)
+#
+decode-proto 00 05 00 04 4b 61 6c 6f 73 20 46 61 75 6c 74 00
+match Opcode = Error, Error-Code = Illegal-Operation, Error-Message = "Kalos Fault"
+
+encode-proto -
+match 00 05 00 04 4b 61 6c 6f 73 20 46 61 75 6c 74 00
+
+count
+match 26
