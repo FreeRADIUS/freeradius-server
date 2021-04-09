@@ -11,17 +11,15 @@
 Packet-Type = Access-Request
 User-Name = "bob",
 Digest-Response = "bdbeebb2da6adb6bca02599c2239e192"
-Digest-Attributes = { Realm = "biloxi.com", Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093", Method = "INVITE", URI = "sip:bob@biloxi.com", Algorithm = "MD5", User-Name = "bob", QOP = "auth-int", Nonce-Count = "00000001", CNonce = "0a4f113b", Body-Digest = "c1ed018b8ec4a3b170c0921f5b564e48" }
-
-#Digest-Attributes.Realm = "biloxi.com",
-#Digest-Attributes.Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093",
-#Digest-Attributes.Method = "INVITE",
-#Digest-Attributes.URI = "sip:bob@biloxi.com",
-#Digest-Attributes.Algorithm = "MD5",
-#Digest-Attributes.User-Name = "bob",
-#Digest-Attributes.QOP = "auth-int",
-#Digest-Attributes.Nonce-Count = "00000001",
-#Digest-Attributes.CNonce = "0a4f113b",
-#Digest-Attributes.Body-Digest = "c1ed018b8ec4a3b170c0921f5b564e48",
+Digest-Attributes = { Realm = "biloxi.com" },
+.Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093",
+.Method = "INVITE",
+.URI = "sip:bob@biloxi.com",
+.Algorithm = "MD5",
+.User-Name = "bob",
+.QOP = "auth-int",
+.Nonce-Count = "00000001",
+.CNonce = "0a4f113b",
+.Body-Digest = "c1ed018b8ec4a3b170c0921f5b564e48"
 
 Packet-Type == Access-Accept
