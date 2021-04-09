@@ -272,19 +272,23 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @param[in,out] token	The last token we parsed
  * @param[in] depth	the nesting depth for FR_TYPE_GROUP
+ * @param[in,out] relative_vp for relative attributes
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer,
-					 fr_pair_list_t *list, fr_token_t *token, int depth)
+					 fr_pair_list_t *list, fr_token_t *token, int depth, fr_pair_t **relative_vp)
 {
 	fr_pair_list_t	tmp_list;
 	fr_pair_t	*vp = NULL;
+	fr_pair_t	*my_relative_vp;
 	char const	*p, *q, *next;
 	fr_token_t	quote, last_token = T_INVALID;
 	fr_pair_t_RAW	raw;
 	fr_dict_attr_t	const *internal = fr_dict_root(fr_dict_internal());
+	fr_pair_list_t	*my_list;
+	TALLOC_CTX	*my_ctx;
 
 	if (internal == parent) internal = NULL;
 
@@ -329,29 +333,48 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		 */
 		if (strncmp(p, "raw.", 4) == 0) goto do_unknown;
 
-		/*
-		 *	Parse the name.
-		 */
-		slen = fr_dict_attr_by_oid_substr(NULL, &da, parent,
-						  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
-		if ((slen <= 0) && internal) {
-			slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
-							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
-		}
-		if (slen <= 0) {
-		do_unknown:
-			slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
-								&FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
-			if (slen <= 0) {
-				p += -slen;
+		if (*p == '.') {
+			p++;
 
-			error:
-				fr_pair_list_free(&tmp_list);
-				*token = T_INVALID;
-				return -(p - buffer);
+			if (!*relative_vp) {
+				fr_strerror_const("Relative attributes can only be used immediately after an attribute of type 'group'");
+				goto error;
 			}
 
-			da = da_unknown;
+			slen = fr_dict_attr_by_oid_substr(NULL, &da, (*relative_vp)->da,
+							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+			if (slen <= 0) goto error;
+
+			my_list = &(*relative_vp)->vp_group;
+			my_ctx = *relative_vp;
+		} else {
+			/*
+			 *	Parse the name.
+			 */
+			slen = fr_dict_attr_by_oid_substr(NULL, &da, parent,
+							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+			if ((slen <= 0) && internal) {
+				slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
+							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+			}
+			if (slen <= 0) {
+			do_unknown:
+				slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
+									&FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+				if (slen <= 0) {
+					p += -slen;
+
+				error:
+					fr_pair_list_free(&tmp_list);
+					*token = T_INVALID;
+					return -(p - buffer);
+				}
+
+				da = da_unknown;
+			}
+
+			my_list = &tmp_list;
+			my_ctx = ctx;
 		}
 
 		next = p + slen;
@@ -392,7 +415,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			}
 			p++;
 
-			vp = fr_pair_afrom_da(ctx, da);
+			vp = fr_pair_afrom_da(my_ctx, da);
 			if (!vp) goto error;
 
 			/*
@@ -401,7 +424,13 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			parent = fr_dict_attr_ref(da);
 			if (!parent) parent = da;
 
-			slen = fr_pair_list_afrom_substr(vp, vp->da, p, &vp->vp_group, &last_token, depth + 1);
+			/*
+			 *	Parse nested attributes, but the
+			 *	attributes here are relative to each
+			 *	other, and not to our parent relative VP.
+			 */
+			my_relative_vp = NULL;
+			slen = fr_pair_list_afrom_substr(vp, vp->da, p, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
 			if (slen <= 0) {
 				talloc_free(vp);
 				goto error;
@@ -418,6 +447,12 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			fr_skip_whitespace(p);
 			if (*p != '}') goto failed_group;
 			p++;
+
+			/*
+			 *	Cache which VP is now the one for
+			 *	relative references.
+			 */
+			*relative_vp = vp;
 			break;
 
 		case FR_TYPE_LEAF:
@@ -466,7 +501,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 *	@todo - note that they will also be escaped,
 			 *	so we may need to fix that later.
 			 */
-			vp = fr_pair_afrom_da(ctx, da);
+			vp = fr_pair_afrom_da(my_ctx, da);
 			if (!vp) goto error;
 			vp->op = raw.op;
 
@@ -509,7 +544,17 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		fr_dict_unknown_free(&da);
 
 		fr_assert(vp != NULL);
-		fr_pair_append(&tmp_list, vp);
+		fr_pair_append(my_list, vp);
+
+		/*
+		 *	If there's a relative VP, and it's not the one
+		 *	we just added above, and we're not adding this
+		 *	VP to the relative one, then nuke the relative
+		 *	VP.
+		 */
+		if (*relative_vp && (vp != *relative_vp) && (my_ctx != *relative_vp)) {
+			*relative_vp = NULL;
+		}
 
 		/*
 		 *	Now look for EOL, hash, etc.
@@ -565,8 +610,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list)
 {
 	fr_token_t token;
+	fr_pair_t	*relative_vp = NULL;
 
-	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, list, &token, 0);
+	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, list, &token, 0, &relative_vp);
 	return token;
 }
 
@@ -586,6 +632,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 	fr_token_t	last_token = T_EOL;
 	bool		found = false;
 	char		buf[8192];
+	fr_pair_t	*relative_vp = NULL;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		fr_pair_list_t tmp_list;
@@ -617,12 +664,27 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		/*
 		 *	Call our internal function, instead of the public wrapper.
 		 */
-		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buf, &tmp_list, &last_token, 0) < 0) {
+		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buf, &tmp_list, &last_token, 0, &relative_vp) < 0) {
 			goto fail;
 		}
 
+		/*
+		 *	@todo - rely on actually checking the syntax, and "OK" result, instead of guessing.
+		 *
+		 *	The main issue is that it's OK to read no
+		 *	attributes on a particular line, but only if
+		 *	it's comments.
+		 */
 		if (fr_dlist_empty(&tmp_list.head)) {
 			if (last_token == T_EOL) break;
+
+			/*
+			 *	This is allowed for relative attributes.
+			 */
+			if (relative_vp && (last_token == T_COMMA)) {
+				found = true;
+				continue;
+			}
 
 		fail:
 			/*
