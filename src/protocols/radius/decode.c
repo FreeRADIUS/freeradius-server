@@ -422,6 +422,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 	fr_pair_list_t		head;
 	fr_dcursor_t		tlv_cursor;
 	fr_pair_t		*vp;
+	bool			concat;
 
 	fr_pair_list_init(&head);
 	if (data_len < 3) return -1; /* type, length, value */
@@ -434,7 +435,18 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 
 	if (fr_radius_decode_tlv_ok(p, data_len, 1, 1) < 0) return -1;
 
-	vp = fr_pair_afrom_da(ctx, parent);
+	/*
+	 *	We don't have a "pair find in cursor"
+	 */
+	if (flag_concat(&parent->flags)) {
+		vp = fr_pair_find_by_da(fr_pair_list_from_dcursor(cursor), parent);
+		concat = (vp != NULL);
+	} else {
+		vp = NULL;
+		concat = false;
+	}
+
+	if (!vp) vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return PAIR_DECODE_OOM;
 
 	/*
@@ -455,7 +467,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 			child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
 			if (!child) {
 			error:
-				talloc_free(vp);
+				if (!concat) talloc_free(vp);
 				return -1;
 			}
 		}
@@ -469,7 +481,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 	}
 
 	fr_pair_list_append(&vp->vp_group, &head);
-	fr_dcursor_append(cursor, vp);
+	if (!concat) fr_dcursor_append(cursor, vp);
 
 	return data_len;
 }
