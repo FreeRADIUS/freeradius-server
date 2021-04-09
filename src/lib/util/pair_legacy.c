@@ -401,7 +401,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			parent = fr_dict_attr_ref(da);
 			if (!parent) parent = da;
 
-			slen = fr_pair_list_afrom_substr(vp, parent, p, &vp->vp_group, &last_token, depth + 1);
+			slen = fr_pair_list_afrom_substr(vp, vp->da, p, &vp->vp_group, &last_token, depth + 1);
 			if (slen <= 0) {
 				talloc_free(vp);
 				goto error;
