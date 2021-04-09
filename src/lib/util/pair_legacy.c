@@ -613,10 +613,18 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		 *	If we get nothing but an EOL, it's likely OK.
 		 */
 		fr_pair_list_init(&tmp_list);
-		last_token = fr_pair_list_afrom_str(ctx, dict, buf, &tmp_list);
+
+		/*
+		 *	Call our internal function, instead of the public wrapper.
+		 */
+		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buf, &tmp_list, &last_token, 0) < 0) {
+			goto fail;
+		}
+
 		if (fr_dlist_empty(&tmp_list.head)) {
 			if (last_token == T_EOL) break;
 
+		fail:
 			/*
 			 *	Didn't read anything, but the previous
 			 *	line wasn't EOL.  The input file has a
