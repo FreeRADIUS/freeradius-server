@@ -217,7 +217,6 @@ static xlat_action_t aka_sim_3gpp_pseudonym_decrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 		return XLAT_ACTION_FAIL;
 	}
 
-	key_len = talloc_array_length(key);
 	if (key_len != 16) {
 		REDEBUG2("Decryption key incorrect length, expected %i bytes, got %zu bytes", 16, key_len);
 		goto error;
@@ -308,7 +307,6 @@ static xlat_action_t aka_sim_3gpp_pseudonym_encrypt_xlat(TALLOC_CTX *ctx, fr_dcu
 	/*
 	 *	Get the key index
 	 */
-	key_index = index_vb->vb_uint8;
 	if (key_index > 15) {
 		REDEBUG2("Key index must be between 0-15");
 	error:
