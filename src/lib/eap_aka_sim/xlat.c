@@ -402,12 +402,12 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	 */
 	if (id_len == (AKA_SIM_IMSI_MAX_LEN + 1)) {	/* +1 for ID tag */
 		if (fr_aka_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
-			RPEDEBUG2("SIM ID \"%pV\" has unrecognised format", fr_box_strvalue_len(id, id_len));
+			RPEDEBUG2("ID \"%pV\" has unrecognised format", fr_box_strvalue_len(id, id_len));
 			goto error;
 		}
 
 		if (type_hint != AKA_SIM_ID_TYPE_PERMANENT) {
-			REDEBUG2("SIM ID \"%pV\" is not a permanent identity (IMSI)", fr_box_strvalue_len(id, id_len));
+			REDEBUG2("ID \"%pV\" is not a permanent identity (IMSI)", fr_box_strvalue_len(id, id_len));
 			goto error;
 		}
 
@@ -426,7 +426,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 
 		case AKA_SIM_METHOD_HINT_UNKNOWN:
 		case AKA_SIM_METHOD_HINT_MAX:
-			REDEBUG2("AKA/SIM ID \"%pV\" does not contain a method hint", fr_box_strvalue_len(id, id_len));
+			REDEBUG2("ID \"%pV\" does not contain a method hint", fr_box_strvalue_len(id, id_len));
 			goto error;
 		}
 
@@ -440,7 +440,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 
 		eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type);
 		if (!eap_type) {
-			REDEBUG("SIM ID does not contain method hint, and no &request.EAP-Type found.  "
+			REDEBUG("ID does not contain method hint, and no &request.EAP-Type found.  "
 				"Don't know what tag to prepend to encrypted identity");
 			goto error;
 		}
