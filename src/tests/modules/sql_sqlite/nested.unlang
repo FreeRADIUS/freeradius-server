@@ -1,0 +1,45 @@
+#
+#  Clear out old data.  We don't care if the deletion deletes any rows.
+#
+"%{sql:DELETE FROM radcheck WHERE username = 'user_auth_nested'}"
+"%{sql:DELETE FROM radreply WHERE username = 'user_auth_nested'}"
+
+#
+#  Add in the check items.
+#
+if ("%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('user_auth_nested', 'NAS-IP-Address', '==', '1.2.3.4')}" != "1") {
+	test_fail
+}
+
+if ("%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('user_auth_nested', 'Password.Cleartext', ':=', 'password')}" != "1") {
+	test_fail
+}
+
+#
+#  Add in the reply items.
+#
+if ("%{sql:INSERT INTO radreply (username, attribute, op, value) VALUES ('user_auth_nested', 'Idle-Timeout', ':=', '3600')}" != "1") {
+	test_fail
+}
+
+if ("%{sql:INSERT INTO radreply (username, attribute, op, value) VALUES ('user_auth_nested', 'Digest-Attributes', ':=', '')}" != "1") {
+	test_fail
+}
+
+
+if ("%{sql:INSERT INTO radreply (username, attribute, op, value) VALUES ('user_auth_nested', '.Nonce', ':=', 'dcd98b7102dd2f0e8b11d0f600bfb0c093')}" != "1") {
+	test_fail
+}
+
+if ("%{sql:INSERT INTO radreply (username, attribute, op, value) VALUES ('user_auth_nested', '.Method', ':=', 'Invite')}" != "1") {
+	test_fail
+}
+
+if ("%{sql:INSERT INTO radreply (username, attribute, op, value) VALUES ('user_auth_nested', '.URI', ':=', 'sip:bob@biloxi.com')}" != "1") {
+	test_fail
+}
+
+#
+#  Run the SQL module to get the replies.
+#
+sql
