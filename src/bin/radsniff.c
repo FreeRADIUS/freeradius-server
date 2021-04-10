@@ -2031,7 +2031,7 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 	fr_pair_t *vp;
 	fr_token_t code;
 
-	code = fr_pair_list_afrom_str(conf, dict_radius, filter, out);
+	code = fr_pair_list_afrom_str(conf, dict_radius, filter, strlen(filter), out);
 	if (code == T_INVALID) {
 		fr_perror("Invalid RADIUS filter \"%s\"", filter);
 		return -1;

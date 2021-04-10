@@ -40,7 +40,7 @@ fr_pair_t	*fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict,
 int 		fr_pair_mark_xlat(fr_pair_t *vp, char const *value);
 
 fr_token_t	fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict,
-				       char const *buffer, fr_pair_list_t *head);
+				       char const *buffer, size_t len, fr_pair_list_t *head);
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
 					fr_pair_list_t *out, FILE *fp, bool *pfiledone);
 

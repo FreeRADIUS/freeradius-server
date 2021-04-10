@@ -2548,7 +2548,7 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	 */
 	if (last_comma) *last_comma = '\0';
 
-	if (fr_pair_list_afrom_str(ctx, dict, box->vb_strvalue, out) == T_INVALID) {
+	if (fr_pair_list_afrom_str(ctx, dict, box->vb_strvalue, box->vb_length, out) == T_INVALID) {
 		return;
 	}
 

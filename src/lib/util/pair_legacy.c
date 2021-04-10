@@ -269,6 +269,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  * @param[in] ctx	for talloc
  * @param[in] parent	parent to start referencing from
  * @param[in] buffer	to read valuepairs from.
+ * @param[in] end	end of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @param[in,out] token	The last token we parsed
  * @param[in] depth	the nesting depth for FR_TYPE_GROUP
@@ -277,7 +278,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer,
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, char const *end,
 					 fr_pair_list_t *list, fr_token_t *token, int depth, fr_pair_t **relative_vp)
 {
 	fr_pair_list_t	tmp_list;
@@ -342,7 +343,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			}
 
 			slen = fr_dict_attr_by_oid_substr(NULL, &da, (*relative_vp)->da,
-							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
 			if (slen <= 0) goto error;
 
 			my_list = &(*relative_vp)->vp_group;
@@ -352,15 +353,15 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 *	Parse the name.
 			 */
 			slen = fr_dict_attr_by_oid_substr(NULL, &da, parent,
-							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
 			if ((slen <= 0) && internal) {
 				slen = fr_dict_attr_by_oid_substr(NULL, &da, internal,
-							  &FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+							  &FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
 			}
 			if (slen <= 0) {
 			do_unknown:
 				slen = fr_dict_unknown_afrom_oid_substr(ctx, NULL, &da_unknown, parent,
-									&FR_SBUFF_IN(p, strlen(p)), &bareword_terminals);
+									&FR_SBUFF_IN(p, (end - p)), &bareword_terminals);
 				if (slen <= 0) {
 					p += -slen;
 
@@ -430,7 +431,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 *	other, and not to our parent relative VP.
 			 */
 			my_relative_vp = NULL;
-			slen = fr_pair_list_afrom_substr(vp, vp->da, p, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
+			slen = fr_pair_list_afrom_substr(vp, vp->da, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
 			if (slen <= 0) {
 				talloc_free(vp);
 				goto error;
@@ -604,15 +605,16 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
  * @param[in] ctx	for talloc
  * @param[in] dict	to resolve attributes in.
  * @param[in] buffer	to read valuepairs from.
+ * @param[in] len	length of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, fr_pair_list_t *list)
+fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, size_t len, fr_pair_list_t *list)
 {
 	fr_token_t token;
 	fr_pair_t	*relative_vp = NULL;
 
-	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, list, &token, 0, &relative_vp);
+	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, buffer + len, list, &token, 0, &relative_vp);
 	return token;
 }
 
@@ -664,7 +666,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		/*
 		 *	Call our internal function, instead of the public wrapper.
 		 */
-		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buf, &tmp_list, &last_token, 0, &relative_vp) < 0) {
+		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buf, buf + sizeof(buf), &tmp_list, &last_token, 0, &relative_vp) < 0) {
 			goto fail;
 		}
 

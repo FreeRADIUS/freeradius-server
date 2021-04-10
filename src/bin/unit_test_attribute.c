@@ -1035,14 +1035,14 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
  *
  */
 static size_t command_normalise_attribute(command_result_t *result, command_file_ctx_t *cc,
-					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+					  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
 
 	fr_pair_list_init(&head);
 
-	if (fr_pair_list_afrom_str(NULL, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, in, &head) != T_EOL) {
+	if (fr_pair_list_afrom_str(NULL, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, in, inlen, &head) != T_EOL) {
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1587,7 +1587,7 @@ static size_t command_decode_dns_label(command_result_t *result, command_file_ct
 }
 
 static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *cc,
-				  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_pair_encode_t	*tp = NULL;
 
@@ -1637,7 +1637,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	}
 
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
-				   p, &head) != T_EOL) {
+				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -1765,7 +1765,7 @@ static size_t command_returned(command_result_t *result, command_file_ctx_t *cc,
 }
 
 static size_t command_encode_proto(command_result_t *result, command_file_ctx_t *cc,
-				  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_proto_encode_t	*tp = NULL;
 
@@ -1792,7 +1792,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	}
 
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
-				   p, &head) != T_EOL) {
+				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
