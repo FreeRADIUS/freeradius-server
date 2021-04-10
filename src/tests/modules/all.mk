@@ -41,9 +41,6 @@ else ifeq "$(wildcard src/tests/modules/${1}/all.mk)" ""
   FILES_SKIP += ${2}
 
 else
-  # the output file depends on the library, too.
-  $(BUILD_DIR)/tests/modules/${2}.out: rlm_${1}.la
-
   -include src/tests/modules/${1}/all.mk
 
   ifdef ${1}_require_test_server
@@ -72,6 +69,11 @@ $(eval $(call TEST_BOOTSTRAP))
 #  module is re-built, then the tests are re-run.
 #
 $(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_%.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x)))))))
+
+#
+#  sql_foo depends on rlm_sql, too.
+#
+$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_sql.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x)))))))
 
 
 #
