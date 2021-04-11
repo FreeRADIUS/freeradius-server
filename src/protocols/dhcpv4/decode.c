@@ -513,7 +513,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;
-	fr_dict_attr_t const	*child;
+	fr_dict_attr_t const	*da;
 	fr_dict_attr_t const	*parent;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
@@ -525,19 +525,10 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	parent = fr_dict_root(dict);
 
 	/*
-	 *	DHCPv4 options don't overflow one field.  So limit the
-	 *	maximum size of decoded data to the option header,
-	 *	plus a maximum of 255 octets of data.
-	 */
-	if (data_len > (2 + 255)) data_len = 2 +255;
-
-	/*
 	 *	Padding / End of options
 	 */
-	if (p[0] == 0) return 1;		/* 0x00 - Padding option */
-	if (p[0] == 255) {			/* 0xff - End of options signifier */
-		return data_len;
-	}
+	if (p[0] == 0) return data_len;		/* 0x00 - Padding option */
+	if (p[0] == 255) return data_len;	/* 0xff - End of options signifier */
 
 	/*
 	 *	Everything else should be real options
@@ -547,24 +538,24 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		return -1;
 	}
 
-	child = fr_dict_attr_child_by_num(parent, p[0]);
-	if (!child) {
+	da = fr_dict_attr_child_by_num(parent, p[0]);
+	if (!da) {
 		/*
 		 *	Unknown attribute, create an octets type
 		 *	attribute with the contents of the sub-option.
 		 */
-		child = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
-		if (!child) return -1;
+		da = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
+		if (!da) return -1;
 	}
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
 		       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
-		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
+		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name);
 
-	if (child->type == FR_TYPE_VSA) return decode_vsa(ctx, cursor, child, data + 2, data[1]);
+	if (da->type == FR_TYPE_VSA) return decode_vsa(ctx, cursor, da, data + 2, data[1]);
 
-	ret = decode_value(ctx, cursor, child, data + 2, data[1]);
+	ret = decode_value(ctx, cursor, da, data + 2, data[1]);
 	if (ret < 0) {
-		fr_dict_unknown_free(&child);
+		fr_dict_unknown_free(&da);
 		return ret;
 	}
 	ret += 2; /* For header */
