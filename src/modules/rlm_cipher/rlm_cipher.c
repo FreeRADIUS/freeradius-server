@@ -401,7 +401,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *pa
  *	- -1 on failure.
  *	- 0 on success.
  */
-static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *parent,
 					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	FILE		*fp;
