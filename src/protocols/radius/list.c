@@ -47,19 +47,16 @@ int fr_packet_cmp(void const *a_v, void const *b_v)
 	int ret;
 
 	/*
-	 *	256-way fanout.
+	 *	256-way fanout for RADIUS IDs, then by FD.  And then
+	 *	since there are sometimes multiple clients for one FD,
+	 *	source port.  The comparison on dst_port is largely
+	 *	redundant with the comparison on FD, but it's not
+	 *	_completely_ redundant.
 	 */
-	if (a->id < b->id) return -1;
-	if (a->id > b->id) return +1;
-
-	if (a->socket.fd < b->socket.fd) return -1;
-	if (a->socket.fd > b->socket.fd) return +1;
-
-	/*
-	 *	Source ports are pretty much random.
-	 */
-	ret = (int) a->socket.inet.src_port - (int) b->socket.inet.src_port;
-	if (ret != 0) return ret;
+	CMP_RETURN(id);
+	CMP_RETURN(socket.fd);
+	CMP_RETURN(socket.inet.src_port);
+	CMP_RETURN(socket.inet.dst_port);
 
 	/*
 	 *	Usually many client IPs, and few server IPs
@@ -67,22 +64,7 @@ int fr_packet_cmp(void const *a_v, void const *b_v)
 	ret = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
 	if (ret != 0) return ret;
 
-	/*
-	 *	One socket can receive packets for multiple
-	 *	destination IPs, so we check that before checking the
-	 *	file descriptor.
-	 */
-	ret = fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
-	if (ret != 0) return ret;
-
-	/*
-	 *	At this point, the order of comparing socket FDs
-	 *	and/or destination ports doesn't matter.  One of those
-	 *	fields will make the socket unique, and the other is
-	 *	pretty much redundant.
-	 */
-	ret = (int) a->socket.inet.dst_port - (int) b->socket.inet.dst_port;
-	return ret;
+	return fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
 }
 
 /*

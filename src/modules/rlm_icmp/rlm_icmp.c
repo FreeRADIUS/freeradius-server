@@ -293,7 +293,7 @@ static int echo_cmp(void const *one, void const *two)
 	/*
 	 *	No need to check IP, because "counter" is unique for each packet.
 	 */
-	return (a->counter < b->counter) - (a->counter > b->counter);
+	return CMP(a->counter, b->counter);
 }
 
 static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)

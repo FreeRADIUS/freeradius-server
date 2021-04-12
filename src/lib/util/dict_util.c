@@ -156,7 +156,7 @@ static int dict_protocol_num_cmp(void const *one, void const *two)
 	fr_dict_t const *a = one;
 	fr_dict_t const *b = two;
 
-	return a->root->attr - b->root->attr;
+	return CMP(a->root->attr, b->root->attr);
 }
 
 /** Wrap name hash function for fr_dict_attr_t
@@ -225,7 +225,7 @@ static int dict_vendor_pen_cmp(void const *one, void const *two)
 	fr_dict_vendor_t const *a = one;
 	fr_dict_vendor_t const *b = two;
 
-	return a->pen - b->pen;
+	return CMP(a->pen, b->pen);
 }
 
 /** Hash a enumeration name

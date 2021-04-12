@@ -58,18 +58,15 @@ static uint32_t	txn_tree_inst = 0;
 /** Compare rounds of a transaction
  *
  */
-static int sigtran_txn_cmp(void const *a, void const *b)
+static int sigtran_txn_cmp(void const *one, void const *two)
 {
-	sigtran_transaction_t const *a_tx = a;	/* May be stack allocated */
-	sigtran_transaction_t const *b_tx = b;	/* May be stack allocated */
+	sigtran_transaction_t const *a = one;	/* May be stack allocated */
+	sigtran_transaction_t const *b = two;	/* May be stack allocated */
+	int ret;
 
-	if (a_tx->ctx.otid > b_tx->ctx.otid) return +1;
-	if (a_tx->ctx.otid < b_tx->ctx.otid) return -1;
+	CMP_RETURN(ctx.otid);
 
-	if (a_tx->ctx.invoke_id > b_tx->ctx.invoke_id) return +1;
-	if (a_tx->ctx.invoke_id < b_tx->ctx.invoke_id) return -1;
-
-	return 0;
+	return CMP(a->ctx.invoke_id, b->ctx.invoke_id);
 }
 
 static void sigtran_tcap_timeout(void *data)

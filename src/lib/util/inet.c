@@ -1284,19 +1284,23 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
  */
 int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 {
-	if (a->af != b->af) return a->af - b->af;
-	if (a->prefix != b->prefix) return a->prefix - b->prefix;
+	int ret;
+
+	CMP_RETURN(af);
+	CMP_RETURN(prefix);
 
 	switch (a->af) {
 	case AF_INET:
-		return memcmp(&a->addr.v4,
-			      &b->addr.v4,
-			      sizeof(a->addr.v4));
+		ret = memcmp(&a->addr.v4,
+			     &b->addr.v4,
+			     sizeof(a->addr.v4));
+		return CMP(ret, 0);
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
-		if (a->scope_id != b->scope_id) return a->scope_id - b->scope_id;
-		return memcmp(&a->addr.v6, &b->addr.v6, sizeof(a->addr.v6));
+		CMP_RETURN(scope_id);
+		ret = memcmp(&a->addr.v6, &b->addr.v6, sizeof(a->addr.v6));
+		return CMP(ret, 0);
 #endif
 
 	default:

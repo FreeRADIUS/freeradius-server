@@ -76,7 +76,7 @@ static int dl_module_inst_data_cmp(void const *one, void const *two)
 	fr_assert(a->data);
 	fr_assert(b->data);
 
-	return (a->data > b->data) - (a->data < b->data);
+	return CMP(a->data, b->data);
 }
 
 static int dl_module_cmp(void const *one, void const *two)

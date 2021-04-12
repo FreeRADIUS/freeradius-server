@@ -794,9 +794,9 @@ static int host_uid_cmp(void const *one, void const *two)
 {
 	isc_host_uid_t const *a = one;
 	isc_host_uid_t const *b = two;
-
-	if ( a->client->vb_length < b->client->vb_length) return -1;
-	if ( a->client->vb_length > b->client->vb_length) return +1;
+	int ret;
+	
+	CMP_RETURN(client->vb_length);
 
 	return memcmp(a->client->vb_octets, b->client->vb_octets, a->client->vb_length);
 }

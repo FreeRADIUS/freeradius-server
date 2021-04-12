@@ -512,26 +512,20 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 
 /** Compare two terminal elements for ordering purposes
  *
- * @param[in] a		first terminal to compare.
- * @param[in] b		second terminal to compare.
- * @return
- *	- >0 	if a > b.
- *	- 0	if a == b.
- *	- <0	if a < b.
+ * @param[in] one      	first terminal to compare.
+ * @param[in] two	second terminal to compare.
+ * @return CMP(one, two)
  */
-static inline int8_t terminal_cmp(void const *a, void const *b)
+static inline int8_t terminal_cmp(void const *one, void const *two)
 {
-	fr_sbuff_term_elem_t const	*our_a = a;
-	fr_sbuff_term_elem_t const	*our_b = b;
+	fr_sbuff_term_elem_t const	*a = one;
+	fr_sbuff_term_elem_t const	*b = two;
+	int ret;
 
-	int8_t	ret;
-	int	i_ret;
+	CMP_RETURN(len);
 
-	ret = (our_a->len > our_b->len) - (our_a->len < our_b->len);
-	if (ret != 0) return ret;
-
-	i_ret = memcmp(our_a->str, our_b->str, our_a->len);
-	return (i_ret > 0) - (i_ret < 0);
+	ret = memcmp(a->str, b->str, a->len);
+	return CMP(ret, 0);
 }
 
 /** Merge two sets of terminal strings

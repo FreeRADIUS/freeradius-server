@@ -41,10 +41,12 @@ static rbtree_t *map_proc_root = NULL;
 static int map_proc_cmp(void const *one, void const *two)
 {
 	map_proc_t const *a = one, *b = two;
+	int ret;
 
-	if (a->length != b->length) return a->length - b->length;
+	CMP_RETURN(length);
 
-	return memcmp(a->name, b->name, a->length);
+	ret = memcmp(a->name, b->name, a->length);
+	return CMP(ret, 0);
 }
 
 /** Unregister a map processor

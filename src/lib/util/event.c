@@ -400,30 +400,26 @@ static int8_t fr_event_timer_cmp(void const *a, void const *b)
 
 /** Compare two file descriptor handles
  *
- * @param[in] a the first file descriptor handle.
- * @param[in] b the second file descriptor handle.
- * @return
- *	- +1 if a is more than b.
- *	- -1 if a is less than b.
- *	- 0 if both handles refer to the same file descriptor.
+ * @param[in] one the first file descriptor handle.
+ * @param[in] two the second file descriptor handle.
+ * @return CMP(one, two)
  */
-static int fr_event_fd_cmp(void const *a, void const *b)
+static int fr_event_fd_cmp(void const *one, void const *two)
 {
-	fr_event_fd_t const	*ev_a = a, *ev_b = b;
+	fr_event_fd_t const	*a = one, *b = two;
 	int			ret;
 
-	ret = (ev_a->fd < ev_b->fd) - (ev_a->fd > ev_b->fd);
-	if (ret != 0) return ret;
+	CMP_RETURN(fd);
 
-	return (ev_a->filter > ev_b->filter) - (ev_a->filter < ev_b->filter);
+	return CMP(a->filter, b->filter);
 }
 
 #ifdef LOCAL_PID
-static int8_t fr_event_pid_cmp(void const *a, void const *b)
+static int8_t fr_event_pid_cmp(void const *one, void const *two)
 {
-	fr_event_pid_t const	*ev_a = a, *ev_b = b;
+	fr_event_pid_t const	*a = one, *b = two;
 
-	return CMP(ev_a->pid, ev_b->pid);
+	return CMP(a->pid, b->pid);
 }
 #endif
 
@@ -2377,10 +2373,9 @@ static int event_timer_location_cmp(void const *one, void const *two)
 	fr_event_counter_t const	*b = two;
 	int				ret;
 
-	ret = (a->file > b->file) - (a->file < b->file);
-	if (ret != 0) return ret;
+	CMP_RETURN(file);
 
-	return (a->line > b->line) - (a->line < b->line);
+	return CMP(line);
 }
 
 

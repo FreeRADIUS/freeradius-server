@@ -689,7 +689,7 @@ static int listen_addr_cmp(void const *one, void const *two)
 	fr_listen_t const *a = one;
 	fr_listen_t const *b = two;
 	fr_ipaddr_t aip, bip;
-	int rcode;
+	int ret;
 
 	/*
 	 *	The caller must ensure that the address field is set.
@@ -701,14 +701,12 @@ static int listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	UDP vs TCP
 	 */
-	rcode = a->app_io_addr->proto - b->app_io_addr->proto;
-	if (rcode != 0) return rcode;
+	CMP_RETURN(app_io_addr->proto);
 
 	/*
 	 *	Check ports.
 	 */
-	rcode = a->app_io_addr->inet.src_port - b->app_io_addr->inet.src_port;
-	if (rcode != 0) return rcode;
+	CMP_RETURN(app_io_addr->inet.src_port);
 
 	/*
 	 *	Don't call fr_ipaddr_cmp(), as we need to do our own
@@ -719,19 +717,17 @@ static int listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	Different address families.
 	 */
-	rcode = a->app_io_addr->inet.src_ipaddr.af - b->app_io_addr->inet.src_ipaddr.af;
-	if (rcode != 0) return rcode;
+	CMP_RETURN(app_io_addr->inet.src_ipaddr.af);
 
 	/*
 	 *	If both are bound to interfaces, AND the interfaces
 	 *	are different, then there is no conflict.
 	 */
 	if (a->app_io_addr->inet.src_ipaddr.scope_id && b->app_io_addr->inet.src_ipaddr.scope_id) {
-		rcode = a->app_io_addr->inet.src_ipaddr.scope_id - b->app_io_addr->inet.src_ipaddr.scope_id;
-		if (rcode != 0) return rcode;
+		CMP_RETURN(app_io_addr->inet.src_ipaddr.scope_id);
 	}
 
-	rcode = a->app_io_addr->inet.src_ipaddr.prefix - b->app_io_addr->inet.src_ipaddr.prefix;
+	ret = a->app_io_addr->inet.src_ipaddr.prefix - b->app_io_addr->inet.src_ipaddr.prefix;
 	aip = a->app_io_addr->inet.src_ipaddr;
 	bip = b->app_io_addr->inet.src_ipaddr;
 
@@ -739,10 +735,10 @@ static int listen_addr_cmp(void const *one, void const *two)
 	 *	Mask out the longer prefix to match the shorter
 	 *	prefix.
 	 */
-	if (rcode < 0) {
+	if (ret < 0) {
 		fr_ipaddr_mask(&bip, a->app_io_addr->inet.src_ipaddr.prefix);
 
-	} else if (rcode > 0) {
+	} else if (ret > 0) {
 		fr_ipaddr_mask(&aip, b->app_io_addr->inet.src_ipaddr.prefix);
 
 	}
@@ -1187,12 +1183,14 @@ static void _virtual_namespace_free(void *data)
 /** Compare two virtual namespace callbacks
  *
  */
-static int _virtual_namespace_cmp(void const *a, void const *b)
+static int _virtual_namespace_cmp(void const *one, void const *two)
 {
-	fr_virtual_namespace_t const *ns_a = a;
-	fr_virtual_namespace_t const *ns_b = b;
+	fr_virtual_namespace_t const *a = one;
+	fr_virtual_namespace_t const *b = two;
+	int ret;
 
-	return strcmp(ns_a->namespace, ns_b->namespace);
+	ret = strcmp(a->namespace, b->namespace);
+	return CMP(ret, 0);
 }
 
 /** Add a callback for a specific namespace
@@ -1588,18 +1586,20 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 
 static int server_section_name_cmp(void const *one, void const *two)
 {
-	int rcode;
 	virtual_server_compile_t const *a = one;
 	virtual_server_compile_t const *b = two;
+	int ret;
 
-	rcode = strcmp(a->name, b->name);
-	if (rcode != 0) return rcode;
+	ret = strcmp(a->name, b->name);
+	ret = CMP(ret, 0);
+	if (ret != 0) return ret;
 
 	if (a->name2 == b->name2) return 0;
 	if ((a->name2 == CF_IDENT_ANY) && (b->name2 != CF_IDENT_ANY)) return -1;
 	if ((a->name2 != CF_IDENT_ANY) && (b->name2 == CF_IDENT_ANY)) return +1;
 
-	return strcmp(a->name2, b->name2);
+	ret = strcmp(a->name2, b->name2);
+	return CMP(ret, 0);
 }
 
 /** Register name1 / name2 as allowed processing sections

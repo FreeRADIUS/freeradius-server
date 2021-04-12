@@ -87,6 +87,14 @@ extern "C" {
  */
 #define CMP(_a, _b)			CMP_PREFER_SMALLER(_a, _b)
 
+/*
+ *	Callbacks which make comparisons easier.
+ */
+#define CMP_RETURN(_field) do { \
+		ret = CMP(a->_field, b->_field); \
+		if (ret != 0) return ret; \
+	} while (0)
+
 /** Remove const qualification from a pointer
  *
  * @param[in] _type	The non-const version of the type.

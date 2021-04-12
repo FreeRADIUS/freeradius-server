@@ -42,34 +42,28 @@ static _Thread_local rbtree_t *xlat_thread_inst_tree;
 
 /** Compare two xlat instances based on node pointer
  *
- * @param[in] a		First xlat expansion instance.
- * @param[in] b		Second xlat expansion instance.
- * @return
- *	- +1 if a > b.
- *	- -1 if a < b.
- *	- 0 if a == b.
+ * @param[in] one      	First xlat expansion instance.
+ * @param[in] two	Second xlat expansion instance.
+ * @return CMP(one, two)
  */
-static int _xlat_inst_cmp(void const *a, void const *b)
+static int _xlat_inst_cmp(void const *one, void const *two)
 {
-	xlat_inst_t const *my_a = a, *my_b = b;
+	xlat_inst_t const *a = one, *b = two;
 
-	return (my_a->node > my_b->node) - (my_a->node < my_b->node);
+	return CMP(a->node, b->node);
 }
 
 /** Compare two thread instances based on node pointer
  *
- * @param[in] a		First thread specific xlat expansion instance.
- * @param[in] b		Second thread specific xlat expansion instance.
- * @return
- *	- +1 if a > b.
- *	- -1 if a < b.
- *	- 0 if a == b.
+ * @param[in] one	First thread specific xlat expansion instance.
+ * @param[in] two	Second thread specific xlat expansion instance.
+ * @return CMP(one, two)
  */
-static int _xlat_thread_inst_cmp(void const *a, void const *b)
+static int _xlat_thread_inst_cmp(void const *one, void const *two)
 {
-	xlat_thread_inst_t const *my_a = a, *my_b = b;
+	xlat_thread_inst_t const *a = one, *b = two;
 
-	return (my_a->node > my_b->node) - (my_a->node < my_b->node);
+	return CMP(a->node, b->node);
 }
 
 /** Destructor for xlat_thread_inst_t

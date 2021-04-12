@@ -235,50 +235,47 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
  * For CONF_ITEM_SECTION this is 'name1'.
  * For CONF_ITEM_DATA this is 'type'.
  *
- * @param[in] a	First CONF_ITEM to compare.
- * @param[in] b Second CONF_ITEM to compare.
- * @return
- *	- >0 if a > b.
- *	- <0 if a < b.
- *	- 0 if a == b.
+ * @param[in] one	First CONF_ITEM to compare.
+ * @param[in] two	Second CONF_ITEM to compare.
+ * @return CMP(one, two)
  */
-static inline int _cf_ident1_cmp(void const *a, void const *b)
+static inline int _cf_ident1_cmp(void const *one, void const *two)
 {
+	int ret;
+
 	CONF_ITEM_TYPE type;
 
 	{
-		CONF_ITEM const *one = a;
-		CONF_ITEM const *two = b;
+		CONF_ITEM const *a = one;
+		CONF_ITEM const *b = two;
 
-		if (one->type > two->type) return +1;
-		if (one->type < two->type) return -1;
-
-		type = one->type;
+		CMP_RETURN(type);
+		type = a->type;
 	}
 
 	switch (type) {
 	case CONF_ITEM_PAIR:
 	{
-		CONF_PAIR const *one = a;
-		CONF_PAIR const *two = b;
+		CONF_PAIR const *a = one;
+		CONF_PAIR const *b = two;
 
-		return strcmp(one->attr, two->attr);
+		return strcmp(a->attr, b->attr);
 	}
 
 	case CONF_ITEM_SECTION:
 	{
-		CONF_SECTION const *one = a;
-		CONF_SECTION const *two = b;
+		CONF_SECTION const *a = one;
+		CONF_SECTION const *b = two;
 
-		return strcmp(one->name1, two->name1);
+		return strcmp(a->name1, b->name1);
 	}
 
 	case CONF_ITEM_DATA:
 	{
-		CONF_DATA const *one = a;
-		CONF_DATA const *two = b;
+		CONF_DATA const *a = one;
+		CONF_DATA const *b = two;
 
-		return strcmp(one->type, two->type);
+		return strcmp(a->type, b->type);
 	}
 
 	default:
@@ -292,16 +289,13 @@ static inline int _cf_ident1_cmp(void const *a, void const *b)
  * For CONF_ITEM_SECTION this is 'name2'.
  * For CONF_ITEM_DATA this is 'name'.
  *
- * @param[in] a	First CONF_ITEM to compare.
- * @param[in] b Second CONF_ITEM to compare.
- * @return
- *	- >0 if a > b.
- *	- <0 if a < b.
- *	- 0 if a == b.
+ * @param[in] one	First CONF_ITEM to compare.
+ * @param[in] two	Second CONF_ITEM to compare.
+ * @return CMP(one,two)
  */
-static inline int cf_ident2_cmp(void const *a, void const *b)
+static inline int cf_ident2_cmp(void const *one, void const *two)
 {
-	CONF_ITEM const *ci = a;
+	CONF_ITEM const *ci = one;
 
 	switch (ci->type) {
 	case CONF_ITEM_PAIR:
@@ -309,26 +303,26 @@ static inline int cf_ident2_cmp(void const *a, void const *b)
 
 	case CONF_ITEM_SECTION:
 	{
-		CONF_SECTION const *one = a;
-		CONF_SECTION const *two = b;
+		CONF_SECTION const *a = one;
+		CONF_SECTION const *b = two;
 
-		if (!two->name2 && one->name2) return +1;
-		if (two->name2 && !one->name2) return -1;
-		if (!two->name2 && !one->name2) return 0;
+		if (!b->name2 && a->name2) return +1;
+		if (b->name2 && !a->name2) return -1;
+		if (!b->name2 && !a->name2) return 0;
 
-		return strcmp(one->name2, two->name2);
+		return strcmp(a->name2, b->name2);
 	}
 
 	case CONF_ITEM_DATA:
 	{
-		CONF_DATA const *one = a;
-		CONF_DATA const *two = b;
+		CONF_DATA const *a = one;
+		CONF_DATA const *b = two;
 
-		if (!two->name && one->name) return +1;
-		if (two->name && !one->name) return -1;
-		if (!two->name && !one->name) return 0;
+		if (!b->name && a->name) return +1;
+		if (b->name && !a->name) return -1;
+		if (!b->name && !a->name) return 0;
 
-		return strcmp(one->name, two->name);
+		return strcmp(a->name, b->name);
 	}
 
 	default:
@@ -344,10 +338,7 @@ static inline int cf_ident2_cmp(void const *a, void const *b)
  *
  * @param[in] a	First CONF_ITEM to compare.
  * @param[in] b Second CONF_ITEM to compare.
- * @return
- *	- >0 if a > b.
- *	- <0 if a < b.
- *	- 0 if a == b.
+ * @return CMP(a, b)
  */
 static int _cf_ident2_cmp(void const *a, void const *b)
 {

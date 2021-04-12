@@ -885,13 +885,13 @@ static int _sync_state_free(sync_state_t *sync)
  *
  * @param[in] one first sync to compare.
  * @param[in] two second sync to compare.
- * @return the difference between the msgids.
+ * @return CMP(one, two)
  */
 static int _sync_cmp(void const *one, void const *two)
 {
 	sync_state_t const *a = one, *b = two;
 
-	return a->msgid - b->msgid;
+	return CMP(a->msgid, b->msgid);
 }
 
 /** Destroy a sync (does not free config)

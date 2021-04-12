@@ -109,18 +109,15 @@ static void _trigger_last_fired_free(void *data)
 
 /** Compares two last fired structures
  *
- * @param a first pointer to compare.
- * @param b second pointer to compare.
- * @return
- *	- -1 if a < b.
- *	- +1 if b > a.
- *	- 0 if both equal.
+ * @param one first pointer to compare.
+ * @param two second pointer to compare.
+ * @return CMP(one, two)
  */
-static int _trigger_last_fired_cmp(void const *a, void const *b)
+static int _trigger_last_fired_cmp(void const *one, void const *two)
 {
-	trigger_last_fired_t const *lf_a = a, *lf_b = b;
+	trigger_last_fired_t const *a = one, *b = two;
 
-	return (lf_a->ci < lf_b->ci) - (lf_a->ci > lf_b->ci);
+	return CMP(a->ci, b->ci);
 }
 
 /** Set the global trigger section trigger_exec will search in, and register xlats

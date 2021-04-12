@@ -102,10 +102,11 @@ static int xlat_cmp(void const *one, void const *two)
 	a_len = strlen(a->name);
 	b_len = strlen(b->name);
 
-	ret = (a_len > b_len) - (a_len < b_len);
+	ret = CMP(a_len, b_len);
 	if (ret != 0) return ret;
 
-	return memcmp(a->name, b->name, a_len);
+	ret = memcmp(a->name, b->name, a_len);
+	return CMP(ret, 0);
 }
 
 

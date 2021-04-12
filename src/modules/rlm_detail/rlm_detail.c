@@ -124,7 +124,7 @@ static uint32_t detail_hash(void const *data)
 
 static int detail_cmp(void const *a, void const *b)
 {
-	return (a < b) - (a > b);
+	return CMP(a, b);
 }
 
 /*

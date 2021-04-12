@@ -500,15 +500,14 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 /*
  *	Functions for tracking files by inode
  */
-static int _inode_cmp(void const *a, void const *b)
+static int _inode_cmp(void const *one, void const *two)
 {
-	cf_file_t const *one = a, *two = b;
+	cf_file_t const *a = one, *b = two;
 	int ret;
 
-	ret = (one->buf.st_dev < two->buf.st_dev) - (one->buf.st_dev > two->buf.st_dev);
-	if (ret != 0) return ret;
+	CMP_RETURN(buf.st_dev);
 
-	return (one->buf.st_ino < two->buf.st_ino) - (one->buf.st_ino > two->buf.st_ino);
+	return CMP(a->buf.st_ino, b->buf.st_ino);
 }
 
 static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, FILE **fp_p)
@@ -824,14 +823,12 @@ typedef struct cf_file_heap_t {
 
 static int8_t filename_cmp(void const *one, void const *two)
 {
-	int rcode;
+	int ret;
 	cf_file_heap_t const *a = one;
 	cf_file_heap_t const *b = two;
 
-	rcode = strcmp(a->filename, b->filename);
-	if (rcode < 0) return -1;
-	if (rcode > 0) return +1;
-	return 0;
+	ret = strcmp(a->filename, b->filename);
+	return CMP(ret, 0);
 }
 
 

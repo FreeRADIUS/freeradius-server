@@ -77,7 +77,7 @@ static int client_cmp(void const *one, void const *two)
 	 */
 	if ((a->proto == IPPROTO_IP) || (b->proto == IPPROTO_IP)) return 0;
 
-	return a->proto - b->proto;
+	return CMP(a->proto, b->proto);
 }
 
 #endif

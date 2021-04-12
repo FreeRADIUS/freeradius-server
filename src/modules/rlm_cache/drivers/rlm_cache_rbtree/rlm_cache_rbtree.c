@@ -49,10 +49,10 @@ static int cache_entry_cmp(void const *one, void const *two)
 	rlm_cache_entry_t const *a = one, *b = two;
 	int ret;
 
-	ret = (a->key_len > b->key_len) - (a->key_len < b->key_len);
-	if (ret != 0) return ret;
+	CMP_RETURN(key_len);
 
-	return memcmp(a->key, b->key, a->key_len);
+	ret = memcmp(a->key, b->key, a->key_len);
+	return CMP(ret, 0);
 }
 
 /** Compare two entries by expiry time
@@ -63,7 +63,7 @@ static int8_t cache_heap_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
-	return (a->expires > b->expires) - (a->expires < b->expires);
+	return CMP(a->expires, b->expires);
 }
 
 /** Cleanup a cache_rbtree instance
