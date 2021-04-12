@@ -404,7 +404,7 @@ static int8_t fr_event_timer_cmp(void const *a, void const *b)
  * @param[in] two the second file descriptor handle.
  * @return CMP(one, two)
  */
-static int fr_event_fd_cmp(void const *one, void const *two)
+static int8_t fr_event_fd_cmp(void const *one, void const *two)
 {
 	fr_event_fd_t const	*a = one, *b = two;
 	int			ret;

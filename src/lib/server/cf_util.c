@@ -32,9 +32,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
 
-static inline int cf_ident2_cmp(void const *a, void const *b);
-static int _cf_ident1_cmp(void const *a, void const *b);
-static int _cf_ident2_cmp(void const *a, void const *b);
+static inline int8_t cf_ident2_cmp(void const *a, void const *b);
+static int8_t _cf_ident1_cmp(void const *a, void const *b);
+static int8_t _cf_ident2_cmp(void const *a, void const *b);
 
 /** Return the next child that's of the specified type
  *
@@ -239,7 +239,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
  * @param[in] two	Second CONF_ITEM to compare.
  * @return CMP(one, two)
  */
-static inline int _cf_ident1_cmp(void const *one, void const *two)
+static inline int8_t _cf_ident1_cmp(void const *one, void const *two)
 {
 	int ret;
 
@@ -259,7 +259,8 @@ static inline int _cf_ident1_cmp(void const *one, void const *two)
 		CONF_PAIR const *a = one;
 		CONF_PAIR const *b = two;
 
-		return strcmp(a->attr, b->attr);
+		ret = strcmp(a->attr, b->attr);
+		return CMP(ret, 0);
 	}
 
 	case CONF_ITEM_SECTION:
@@ -267,7 +268,8 @@ static inline int _cf_ident1_cmp(void const *one, void const *two)
 		CONF_SECTION const *a = one;
 		CONF_SECTION const *b = two;
 
-		return strcmp(a->name1, b->name1);
+		ret = strcmp(a->name1, b->name1);
+		return CMP(ret, 0);
 	}
 
 	case CONF_ITEM_DATA:
@@ -275,7 +277,8 @@ static inline int _cf_ident1_cmp(void const *one, void const *two)
 		CONF_DATA const *a = one;
 		CONF_DATA const *b = two;
 
-		return strcmp(a->type, b->type);
+		ret = strcmp(a->type, b->type);
+		return CMP(ret, 0);
 	}
 
 	default:
@@ -293,9 +296,10 @@ static inline int _cf_ident1_cmp(void const *one, void const *two)
  * @param[in] two	Second CONF_ITEM to compare.
  * @return CMP(one,two)
  */
-static inline int cf_ident2_cmp(void const *one, void const *two)
+static inline int8_t cf_ident2_cmp(void const *one, void const *two)
 {
 	CONF_ITEM const *ci = one;
+	int ret;
 
 	switch (ci->type) {
 	case CONF_ITEM_PAIR:
@@ -310,7 +314,8 @@ static inline int cf_ident2_cmp(void const *one, void const *two)
 		if (b->name2 && !a->name2) return -1;
 		if (!b->name2 && !a->name2) return 0;
 
-		return strcmp(a->name2, b->name2);
+		ret = strcmp(a->name2, b->name2);
+		return CMP(ret, 0);
 	}
 
 	case CONF_ITEM_DATA:
@@ -322,7 +327,8 @@ static inline int cf_ident2_cmp(void const *one, void const *two)
 		if (b->name && !a->name) return -1;
 		if (!b->name && !a->name) return 0;
 
-		return strcmp(a->name, b->name);
+		ret = strcmp(a->name, b->name);
+		return CMP(ret, 0);
 	}
 
 	default:
@@ -340,7 +346,7 @@ static inline int cf_ident2_cmp(void const *one, void const *two)
  * @param[in] b Second CONF_ITEM to compare.
  * @return CMP(a, b)
  */
-static int _cf_ident2_cmp(void const *a, void const *b)
+static int8_t _cf_ident2_cmp(void const *a, void const *b)
 {
 	int ret;
 

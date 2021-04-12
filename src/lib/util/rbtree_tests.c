@@ -34,7 +34,7 @@ typedef struct {
 	fr_rb_node_t	node;
 } fr_rb_test_node_t;
 
-static int fr_rb_test_cmp(void const *one, void const *two)
+static int8_t fr_rb_test_cmp(void const *one, void const *two)
 {
 	fr_rb_test_node_t const *a = one, *b = two;
 	return CMP(a->num, b->num);

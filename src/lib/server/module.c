@@ -236,7 +236,7 @@ static fr_cmd_table_t cmd_table[] = {
  * The reason why we need parent, is because we could have submodules with names
  * that conflict with their parent.
  */
-static int module_instance_name_cmp(void const *one, void const *two)
+static int8_t module_instance_name_cmp(void const *one, void const *two)
 {
 	module_instance_t const *a = one;
 	module_instance_t const *b = two;
@@ -252,7 +252,7 @@ static int module_instance_name_cmp(void const *one, void const *two)
 	for (dl_inst = a->dl_inst; dl_inst; dl_inst = dl_inst->parent) a_depth++;
 	for (dl_inst = b->dl_inst; dl_inst; dl_inst = dl_inst->parent) b_depth++;
 
-	ret = (a_depth > b_depth) - (a_depth < b_depth);
+	ret = CMP(a_depth, b_depth);
 	if (ret != 0) return ret;
 
 	/*
@@ -264,21 +264,22 @@ static int module_instance_name_cmp(void const *one, void const *two)
 	if (!fr_cond_assert(b->dl_inst)) return -1;
 #endif
 
-	ret = (a->dl_inst->parent > b->dl_inst->parent) - (a->dl_inst->parent < b->dl_inst->parent);
+	ret = CMP(a->dl_inst->parent, b->dl_inst->parent);
 	if (ret != 0) return ret;
 
-	return strcmp(a->name, b->name);
+	ret = strcmp(a->name, b->name);
+	return CMP(ret, 0);
 }
 
 /** Compare module's by their private instance data
  *
  */
-static int module_instance_data_cmp(void const *one, void const *two)
+static int8_t module_instance_data_cmp(void const *one, void const *two)
 {
 	void const *a = (((module_instance_t const *)one)->dl_inst)->data;
 	void const *b = (((module_instance_t const *)two)->dl_inst)->data;
 
-	return (a > b) - (a < b);
+	return CMP(a, b);
 }
 /** Initialise a module specific exfile handle
  *

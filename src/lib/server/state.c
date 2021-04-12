@@ -159,11 +159,13 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
 /** Compare two fr_state_entry_t based on their state value i.e. the value of the attribute
  *
  */
-static int state_entry_cmp(void const *one, void const *two)
+static int8_t state_entry_cmp(void const *one, void const *two)
 {
 	fr_state_entry_t const *a = one, *b = two;
+	int ret;
 
-	return memcmp(a->state, b->state, sizeof(a->state));
+	ret = memcmp(a->state, b->state, sizeof(a->state));
+	return CMP(ret, 0);
 }
 
 /** Free the state tree

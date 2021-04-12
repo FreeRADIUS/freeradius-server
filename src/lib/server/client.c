@@ -63,7 +63,7 @@ struct rad_client_list {
 static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
 
 #ifndef WITH_TRIE
-static int client_cmp(void const *one, void const *two)
+static int8_t client_cmp(void const *one, void const *two)
 {
 	int ret;
 	RADCLIENT const *a = one;

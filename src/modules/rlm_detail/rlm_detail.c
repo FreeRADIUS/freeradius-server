@@ -122,7 +122,7 @@ static uint32_t detail_hash(void const *data)
 	return fr_hash(&da, sizeof(da));
 }
 
-static int detail_cmp(void const *a, void const *b)
+static int8_t detail_cmp(void const *a, void const *b)
 {
 	return CMP(a, b);
 }

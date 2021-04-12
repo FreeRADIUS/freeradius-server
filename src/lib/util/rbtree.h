@@ -97,7 +97,7 @@ struct fr_rb_node_s {
 		)
 
 rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
-			       fr_tmp_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
+			       fr_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
 
 void		rbtree_unlock(rbtree_t *tree) CC_HINT(nonnull);
 

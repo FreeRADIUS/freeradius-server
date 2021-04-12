@@ -56,7 +56,7 @@ struct fr_hash_table_s {
 
 	fr_free_t		free;
 	fr_hash_t		hash;
-	fr_tmp_cmp_t		cmp;
+	fr_cmp_t		cmp;
 
 	fr_hash_entry_t		null;
 
@@ -281,7 +281,7 @@ static int _fr_hash_table_free(fr_hash_table_t *ht)
  */
 fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
 				      fr_hash_t hash_func,
-				      fr_tmp_cmp_t cmp_func,
+				      fr_cmp_t cmp_func,
 				      fr_free_t free_func)
 {
 	fr_hash_table_t *ht;

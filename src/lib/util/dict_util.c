@@ -132,12 +132,14 @@ static uint32_t dict_protocol_name_hash(void const *data)
 /** Compare two protocol names
  *
  */
-static int dict_protocol_name_cmp(void const *one, void const *two)
+static int8_t dict_protocol_name_cmp(void const *one, void const *two)
 {
 	fr_dict_t const *a = one;
 	fr_dict_t const *b = two;
+	int ret;
 
-	return strcasecmp(a->root->name, b->root->name);
+	ret = strcasecmp(a->root->name, b->root->name);
+	return CMP(ret, 0);
 }
 
 /** Hash a protocol number
@@ -151,7 +153,7 @@ static uint32_t dict_protocol_num_hash(void const *data)
 /** Compare two protocol numbers
  *
  */
-static int dict_protocol_num_cmp(void const *one, void const *two)
+static int8_t dict_protocol_num_cmp(void const *one, void const *two)
 {
 	fr_dict_t const *a = one;
 	fr_dict_t const *b = two;
@@ -176,11 +178,13 @@ static uint32_t dict_attr_name_hash(void const *data)
 /** Compare two attribute names
  *
  */
-static int dict_attr_name_cmp(void const *one, void const *two)
+static int8_t dict_attr_name_cmp(void const *one, void const *two)
 {
 	fr_dict_attr_t const *a = one, *b = two;
+	int ret;
 
-	return strcasecmp(a->name, b->name);
+	ret = strcasecmp(a->name, b->name);
+	return CMP(ret, 0);
 }
 
 /** Wrap name hash function for fr_dict_vendor_t
@@ -200,12 +204,14 @@ static uint32_t dict_vendor_name_hash(void const *data)
 /** Compare two attribute names
  *
  */
-static int dict_vendor_name_cmp(void const *one, void const *two)
+static int8_t dict_vendor_name_cmp(void const *one, void const *two)
 {
 	fr_dict_vendor_t const *a = one;
 	fr_dict_vendor_t const *b = two;
+	int ret;
 
-	return strcasecmp(a->name, b->name);
+	ret = strcasecmp(a->name, b->name);
+	return CMP(ret, 0);
 }
 
 /** Hash a vendor number
@@ -220,7 +226,7 @@ static uint32_t dict_vendor_pen_hash(void const *data)
 /** Compare two vendor numbers
  *
  */
-static int dict_vendor_pen_cmp(void const *one, void const *two)
+static int8_t dict_vendor_pen_cmp(void const *one, void const *two)
 {
 	fr_dict_vendor_t const *a = one;
 	fr_dict_vendor_t const *b = two;
@@ -241,12 +247,14 @@ static uint32_t dict_enum_name_hash(void const *data)
 /** Compare two dictionary attribute enum values
  *
  */
-static int dict_enum_name_cmp(void const *one, void const *two)
+static int8_t dict_enum_name_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_t const *a = one;
 	fr_dict_enum_t const *b = two;
+	int ret;
 
-	return strcasecmp(a->name, b->name);
+	ret = strcasecmp(a->name, b->name);
+	return CMP(ret, 0);
 }
 
 /** Hash a dictionary enum value
@@ -262,12 +270,14 @@ static uint32_t dict_enum_value_hash(void const *data)
 /** Compare two dictionary enum values
  *
  */
-static int dict_enum_value_cmp(void const *one, void const *two)
+static int8_t dict_enum_value_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_t const *a = one;
 	fr_dict_enum_t const *b = two;
+	int ret;
 
-	return fr_value_box_cmp(a->value, b->value);
+	ret = fr_value_box_cmp(a->value, b->value); /* not yet int8_t! */
+	return CMP(ret, 0);
 }
 
 /** Set a dictionary attribute's name
@@ -2736,12 +2746,14 @@ static int _dict_free_autoref(void *data, void *uctx)
 /** Find a dependent in the tree of dependents
  *
  */
-static int _dict_dependent_cmp(void const *a, void const *b)
+static int8_t _dict_dependent_cmp(void const *a, void const *b)
 {
 	fr_dict_dependent_t const *dep_a = a;
 	fr_dict_dependent_t const *dep_b = b;
+	int ret;
 
-	return strcmp(dep_a->dependent, dep_b->dependent);
+	ret = strcmp(dep_a->dependent, dep_b->dependent);
+	return CMP(ret, 0);
 }
 
 /** Record a new dependency on a dictionary

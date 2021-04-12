@@ -285,7 +285,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, xlat_icmp_resume, xlat_icmp_cancel, echo);
 }
 
-static int echo_cmp(void const *one, void const *two)
+static int8_t echo_cmp(void const *one, void const *two)
 {
 	rlm_icmp_echo_t const *a = one;
 	rlm_icmp_echo_t const *b = two;

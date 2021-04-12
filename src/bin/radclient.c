@@ -721,15 +721,17 @@ static int radclient_sane(rc_request_t *request)
 /*
  *	For request handling.
  */
-static int filename_cmp(void const *one, void const *two)
+static int8_t filename_cmp(void const *one, void const *two)
 {
 	rc_file_pair_t const *a = one, *b = two;
-	int cmp;
+	int ret;
 
-	cmp = strcmp(a->packets, b->packets);
-	if (cmp != 0) return cmp;
+	ret = strcmp(a->packets, b->packets);
+	ret = CMP(ret, 0);
+	if (ret != 0) return ret;
 
-	return strcmp(a->filters, b->filters);
+	ret = strcmp(a->filters, b->filters);
+	return CMP(ret, 0);
 }
 
 /*

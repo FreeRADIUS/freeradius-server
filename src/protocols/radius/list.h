@@ -29,7 +29,7 @@ RCSIDH(list_h, "$Id$")
 #include <stdbool.h>
 #include <stdint.h>
 
-int fr_packet_cmp(void const *a, void const *b);
+int8_t fr_packet_cmp(void const *a, void const *b);
 void fr_request_from_reply(fr_radius_packet_t *request,
 			     fr_radius_packet_t const *reply);
 

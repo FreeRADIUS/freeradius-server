@@ -500,7 +500,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 /*
  *	Functions for tracking files by inode
  */
-static int _inode_cmp(void const *one, void const *two)
+static int8_t _inode_cmp(void const *one, void const *two)
 {
 	cf_file_t const *a = one, *b = two;
 	int ret;

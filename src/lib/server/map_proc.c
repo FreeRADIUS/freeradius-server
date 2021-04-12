@@ -38,7 +38,7 @@ static rbtree_t *map_proc_root = NULL;
  * @param[in] two Second map struct.
  * @return Integer specifying order of map func instances.
  */
-static int map_proc_cmp(void const *one, void const *two)
+static int8_t map_proc_cmp(void const *one, void const *two)
 {
 	map_proc_t const *a = one, *b = two;
 	int ret;

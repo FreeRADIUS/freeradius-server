@@ -332,7 +332,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 }
 
 
-static int data_cmp(const void *one, const void *two)
+static int8_t data_cmp(const void *one, const void *two)
 {
 	rlm_stats_data_t const *a = one;
 	rlm_stats_data_t const *b = two;

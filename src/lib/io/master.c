@@ -254,7 +254,7 @@ static uint32_t connection_hash(void const *ctx)
 	return fr_hash_update(&c->address->socket.inet.dst_port, sizeof(c->address->socket.inet.dst_port), hash);
 }
 
-static int connection_cmp(void const *one, void const *two)
+static int8_t connection_cmp(void const *one, void const *two)
 {
 	fr_io_connection_t const *a = talloc_get_type_abort_const(one, fr_io_connection_t);
 	fr_io_connection_t const *b = talloc_get_type_abort_const(two, fr_io_connection_t);
@@ -263,7 +263,7 @@ static int connection_cmp(void const *one, void const *two)
 }
 
 
-static int track_cmp(void const *one, void const *two)
+static int8_t track_cmp(void const *one, void const *two)
 {
 	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
 	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
@@ -285,17 +285,19 @@ static int track_cmp(void const *one, void const *two)
 	/*
 	 *	Call the per-protocol comparison function.
 	 */
-	return a->client->inst->app_io->compare(a->client->inst->app_io_instance,
-						a->client->thread->child->thread_instance,
-						a->client->radclient,
-						a->packet, b->packet);
+	ret = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
+					       a->client->thread->child->thread_instance,
+					       a->client->radclient,
+					       a->packet, b->packet);
+	return CMP(ret, 0);
 }
 
 
-static int track_connected_cmp(void const *one, void const *two)
+static int8_t track_connected_cmp(void const *one, void const *two)
 {
 	fr_io_track_t const *a = talloc_get_type_abort_const(one, fr_io_track_t);
 	fr_io_track_t const *b = talloc_get_type_abort_const(two, fr_io_track_t);
+	int ret;
 
 	fr_assert(a->client != NULL);
 	fr_assert(b->client != NULL);
@@ -309,10 +311,11 @@ static int track_connected_cmp(void const *one, void const *two)
 	 *	Note that we pass the connection "client", as
 	 *	we may do negotiation specific to this connection.
 	 */
-	return a->client->inst->app_io->compare(a->client->inst->app_io_instance,
-						a->client->connection->child->thread_instance,
-						a->client->connection->client->radclient,
-						a->packet, b->packet);
+	ret = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
+					       a->client->connection->child->thread_instance,
+					       a->client->connection->client->radclient,
+					       a->packet, b->packet);
+	return CMP(ret, 0);
 }
 
 

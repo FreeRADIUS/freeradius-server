@@ -44,7 +44,7 @@ typedef struct {
  *
  * There may only be one entry with the same key.
  */
-static int cache_entry_cmp(void const *one, void const *two)
+static int8_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 	int ret;

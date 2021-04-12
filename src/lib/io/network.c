@@ -151,6 +151,7 @@ static void fr_network_post_event(fr_event_list_t *el, fr_time_t now, void *uctx
 static int fr_network_pre_event(fr_time_t wake, void *uctx);
 static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s);
 static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx);
+
 static int8_t reply_cmp(void const *one, void const *two)
 {
 	fr_channel_data_t const *a = one, *b = two;
@@ -173,18 +174,18 @@ static int8_t waiting_cmp(void const *one, void const *two)
 	return (a->reply.request_time > b->reply.request_time) - (a->reply.request_time < b->reply.request_time);
 }
 
-static int socket_listen_cmp(void const *one, void const *two)
+static int8_t socket_listen_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
-
-	return (a->listen > b->listen) - (a->listen < b->listen);
+	
+	return CMP(a->listen, b->listen);
 }
 
-static int socket_num_cmp(void const *one, void const *two)
+static int8_t socket_num_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
 
-	return (a->number > b->number) - (a->number < b->number);
+	return CMP(a->number, b->number);
 }
 
 /*

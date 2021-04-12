@@ -56,7 +56,7 @@ typedef int (*fr_hash_table_walk_t)(void *data, void *uctx);
 
 fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
 				      fr_hash_t hashNode,
-				      fr_tmp_cmp_t cmpNode,
+				      fr_cmp_t cmpNode,
 				      fr_free_t freeNode);
 
 int		fr_hash_table_insert(fr_hash_table_t *ht, void const *data);

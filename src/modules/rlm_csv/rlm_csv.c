@@ -89,12 +89,14 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int csv_entry_cmp(void const *one, void const *two)
+static int8_t csv_entry_cmp(void const *one, void const *two)
 {
 	rlm_csv_entry_t const *a = one;
 	rlm_csv_entry_t const *b = two;
+	int ret;
 
-	return fr_value_box_cmp(a->key, b->key);
+	ret = fr_value_box_cmp(a->key, b->key); /* NOT int8_t safe */
+	return CMP(ret, 0);
 }
 
 /*

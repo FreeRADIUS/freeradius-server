@@ -113,7 +113,7 @@ static void _trigger_last_fired_free(void *data)
  * @param two second pointer to compare.
  * @return CMP(one, two)
  */
-static int _trigger_last_fired_cmp(void const *one, void const *two)
+static int8_t _trigger_last_fired_cmp(void const *one, void const *two)
 {
 	trigger_last_fired_t const *a = one, *b = two;
 

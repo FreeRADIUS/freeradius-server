@@ -124,7 +124,7 @@ module_method_entry_t *module_method_next(module_method_set_t *set, module_metho
 /** Compare two module_method_entry_t structs by id
  *
  */
-static int module_method_cmp(void const *one, void const *two)
+static int8_t module_method_cmp(void const *one, void const *two)
 {
 	module_method_entry_t const *a = one, *b = two;
 

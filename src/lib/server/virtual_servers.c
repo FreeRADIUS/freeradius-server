@@ -98,7 +98,7 @@ static rbtree_t *listen_addr_root = NULL;
  */
 static rbtree_t *server_section_name_tree = NULL;
 
-static int server_section_name_cmp(void const *one, void const *two);
+static int8_t server_section_name_cmp(void const *one, void const *two);
 
 static int namespace_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -684,7 +684,7 @@ static fr_cmd_table_t cmd_table[] = {
  *
  *  Only works for IP addresses, and will blow up on file names
  */
-static int listen_addr_cmp(void const *one, void const *two)
+static int8_t listen_addr_cmp(void const *one, void const *two)
 {
 	fr_listen_t const *a = one;
 	fr_listen_t const *b = two;
@@ -1183,7 +1183,7 @@ static void _virtual_namespace_free(void *data)
 /** Compare two virtual namespace callbacks
  *
  */
-static int _virtual_namespace_cmp(void const *one, void const *two)
+static int8_t _virtual_namespace_cmp(void const *one, void const *two)
 {
 	fr_virtual_namespace_t const *a = one;
 	fr_virtual_namespace_t const *b = two;
@@ -1584,7 +1584,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 	return found;
 }
 
-static int server_section_name_cmp(void const *one, void const *two)
+static int8_t server_section_name_cmp(void const *one, void const *two)
 {
 	virtual_server_compile_t const *a = one;
 	virtual_server_compile_t const *b = two;

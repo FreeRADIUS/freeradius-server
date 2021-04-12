@@ -302,22 +302,20 @@ static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
 
 /** Compare two redis nodes to check equality
  *
- * @param[in] a first node.
- * @param[in] b second node.
- * @return
- *	- 0 if nodes are equal.
- *	- +1 if nodes are unequal.
- *	- -1 if nodes are unequal.
+ * @param[in] one first node.
+ * @param[in] two second node.
+ * @return CMP(one, two)
  */
-static int _cluster_node_cmp(void const *a, void const *b)
+static int8_t _cluster_node_cmp(void const *one, void const *two)
 {
-	fr_redis_cluster_node_t const *my_a = a, *my_b = b;
+	fr_redis_cluster_node_t const *a = one;
+	fr_redis_cluster_node_t const *b = two;
 	int ret;
 
-	ret = fr_ipaddr_cmp(&my_a->addr.inet.dst_ipaddr, &my_b->addr.inet.dst_ipaddr);
+	ret = fr_ipaddr_cmp(&a->addr.inet.dst_ipaddr, &b->addr.inet.dst_ipaddr);
 	if (ret != 0) return ret;
 
-	return my_a->addr.inet.dst_port - my_b->addr.inet.dst_port;
+	return CMP(a->addr.inet.dst_port, b->addr.inet.dst_port);
 }
 
 /** Reconnect callback to apply new pool config

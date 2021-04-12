@@ -93,7 +93,7 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 /*
  *	Compare two xlat_t structs, based ONLY on the module name.
  */
-static int xlat_cmp(void const *one, void const *two)
+static int8_t xlat_cmp(void const *one, void const *two)
 {
 	xlat_t const *a = one, *b = two;
 	size_t a_len, b_len;

@@ -1626,7 +1626,7 @@ static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED request_t *re
 	return 0;
 }
 
-static int bfd_session_cmp(const void *one, const void *two)
+static int8_t bfd_session_cmp(const void *one, const void *two)
 {
 	const bfd_state_t *a = one, *b = two;
 

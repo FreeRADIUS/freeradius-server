@@ -66,12 +66,14 @@ radius_track_t *radius_track_alloc(TALLOC_CTX *ctx)
 /** Compare two radius_track_entry_t
  *
  */
-static int te_cmp(void const *one, void const *two)
+static int8_t te_cmp(void const *one, void const *two)
 {
 	radius_track_entry_t const *a = one;
 	radius_track_entry_t const *b = two;
+	int ret;
 
-	return memcmp(a->vector, b->vector, sizeof(a->vector));
+	ret = memcmp(a->vector, b->vector, sizeof(a->vector));
+	return CMP(ret, 0);
 }
 
 /** Ensures the entry is released when the ctx passed to radius_track_entry_reserve is freed

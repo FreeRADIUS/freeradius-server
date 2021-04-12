@@ -69,7 +69,7 @@ fr_table_num_sorted_t const dl_module_type_prefix[] = {
 };
 size_t dl_module_type_prefix_len = NUM_ELEMENTS(dl_module_type_prefix);
 
-static int dl_module_inst_data_cmp(void const *one, void const *two)
+static int8_t dl_module_inst_data_cmp(void const *one, void const *two)
 {
 	dl_module_inst_t const *a = one, *b = two;
 
@@ -79,14 +79,16 @@ static int dl_module_inst_data_cmp(void const *one, void const *two)
 	return CMP(a->data, b->data);
 }
 
-static int dl_module_cmp(void const *one, void const *two)
+static int8_t dl_module_cmp(void const *one, void const *two)
 {
 	dl_module_t const *a = one, *b = two;
+	int ret;
 
 	fr_assert(a->dl);
 	fr_assert(b->dl);
 
-	return strcmp(a->dl->name, b->dl->name);
+	ret = strcmp(a->dl->name, b->dl->name);
+	return CMP(ret, 0);
 }
 
 /** Call the load() function in a module's exported structure

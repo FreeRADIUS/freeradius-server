@@ -57,8 +57,6 @@ static bool cleanup;
 
 static int self_pipe[2] = {-1, -1};		//!< Signals from sig handlers
 
-typedef int (*rbcmp)(void const *, void const *);
-
 static char const *radsniff_version = RADIUSD_VERSION_STRING_BUILD("radsniff");
 
 static int rs_useful_codes[] = {
@@ -1086,8 +1084,11 @@ static void _rs_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ct
 /** Wrapper around fr_packet_cmp to strip off the outer request struct
  *
  */
-static int rs_packet_cmp(rs_request_t const *a, rs_request_t const *b)
+static int8_t rs_packet_cmp(void const *one, void const *two)
 {
+	rs_request_t const *a = one;
+	rs_request_t const *b = two;
+
 	return fr_packet_cmp(a->expect, b->expect);
 }
 
@@ -1967,18 +1968,17 @@ static int  _rs_event_status(fr_time_delta_t wake_t, UNUSED void *uctx)
 /** Compare requests using packet info and lists of attributes
  *
  */
-static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
+static int8_t rs_rtx_cmp(void const *one, void const *two)
 {
+	rs_request_t const *a = one;
+	rs_request_t const *b = two;
 	int ret;
 
 	RS_ASSERT(!fr_pair_list_empty(&a->link_vps));
 	RS_ASSERT(!fr_pair_list_empty(&b->link_vps));
 
-	ret = (int) a->expect->code - (int) b->expect->code;
-	if (ret != 0) return ret;
-
-	ret = a->expect->socket.fd - b->expect->socket.fd;
-	if (ret != 0) return ret;
+	CMP_RETURN(expect->code);
+	CMP_RETURN(expect->socket.fd);
 
 	ret = fr_ipaddr_cmp(&a->expect->socket.inet.src_ipaddr, &b->expect->socket.inet.src_ipaddr);
 	if (ret != 0) return ret;
@@ -1986,7 +1986,8 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	ret = fr_ipaddr_cmp(&a->expect->socket.inet.dst_ipaddr, &b->expect->socket.inet.dst_ipaddr);
 	if (ret != 0) return ret;
 
-	return fr_pair_list_cmp(&a->link_vps, &b->link_vps);
+	ret = fr_pair_list_cmp(&a->link_vps, &b->link_vps);
+	return CMP(ret, 0);
 }
 
 static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)
@@ -2657,7 +2658,7 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 
-		link_tree = rbtree_talloc_alloc(conf, rs_request_t, link_node, (rbcmp) rs_rtx_cmp, _unmark_link, 0);
+		link_tree = rbtree_talloc_alloc(conf, rs_request_t, link_node, rs_rtx_cmp, _unmark_link, 0);
 		if (!link_tree) {
 			ERROR("Failed creating RTX tree");
 			goto finish;
@@ -2715,7 +2716,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup the request tree
 	 */
-	request_tree = rbtree_talloc_alloc(conf, rs_request_t, request_node, (rbcmp) rs_packet_cmp, _unmark_request, 0);
+	request_tree = rbtree_talloc_alloc(conf, rs_request_t, request_node, rs_packet_cmp, _unmark_request, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree");
 		goto finish;

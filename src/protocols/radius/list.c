@@ -41,7 +41,7 @@ RCSID("$Id$")
  *	That's because if the authentication vector is different,
  *	it means that the NAS has given up on the earlier request.
  */
-int fr_packet_cmp(void const *a_v, void const *b_v)
+int8_t fr_packet_cmp(void const *a_v, void const *b_v)
 {
 	fr_radius_packet_t const *a = a_v, *b = b_v;
 	int ret;

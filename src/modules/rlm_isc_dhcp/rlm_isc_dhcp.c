@@ -770,12 +770,14 @@ static uint32_t host_ether_hash(void const *data)
 	return fr_hash(self->ether, sizeof(self->ether));
 }
 
-static int host_ether_cmp(void const *one, void const *two)
+static int8_t host_ether_cmp(void const *one, void const *two)
 {
 	isc_host_ether_t const *a = one;
 	isc_host_ether_t const *b = two;
+	int ret;
 
-	return memcmp(a->ether, b->ether, 6);
+	ret = memcmp(a->ether, b->ether, 6);
+	return CMP(ret, 0);
 }
 
 typedef struct {
@@ -790,7 +792,7 @@ static uint32_t host_uid_hash(void const *data)
 	return fr_hash(self->client->vb_octets, self->client->vb_length);
 }
 
-static int host_uid_cmp(void const *one, void const *two)
+static int8_t host_uid_cmp(void const *one, void const *two)
 {
 	isc_host_uid_t const *a = one;
 	isc_host_uid_t const *b = two;
@@ -798,7 +800,8 @@ static int host_uid_cmp(void const *one, void const *two)
 	
 	CMP_RETURN(client->vb_length);
 
-	return memcmp(a->client->vb_octets, b->client->vb_octets, a->client->vb_length);
+	ret = memcmp(a->client->vb_octets, b->client->vb_octets, a->client->vb_length);
+	return CMP(ret, 0);
 }
 
 

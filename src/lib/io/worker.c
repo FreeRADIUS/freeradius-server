@@ -845,7 +845,7 @@ static int8_t worker_time_order_cmp(void const *one, void const *two)
 /**
  *  Track a request_t in the "dedup" tree
  */
-static int worker_dedup_cmp(void const *one, void const *two)
+static int8_t worker_dedup_cmp(void const *one, void const *two)
 {
 	int ret;
 	request_t const *a = one, *b = two;

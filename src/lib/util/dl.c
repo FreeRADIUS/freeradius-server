@@ -108,7 +108,7 @@ struct dl_loader_s {
 	bool			defer_symbol_init;	//!< Do not call dl_symbol_init in dl_loader_init.
 };
 
-static int dl_symbol_init_cmp(void const *one, void const *two)
+static int8_t dl_symbol_init_cmp(void const *one, void const *two)
 {
 	dl_symbol_init_t const *a = one, *b = two;
 	int ret;
@@ -127,10 +127,11 @@ static int dl_symbol_init_cmp(void const *one, void const *two)
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
 #endif
 
-	return strcmp(a->symbol, b->symbol);
+	ret = strcmp(a->symbol, b->symbol);
+	return CMP(ret, 0);
 }
 
-static int dl_symbol_free_cmp(void const *one, void const *two)
+static int8_t dl_symbol_free_cmp(void const *one, void const *two)
 {
 	dl_symbol_free_t const *a = one, *b = two;
 	int ret;
@@ -149,15 +150,19 @@ static int dl_symbol_free_cmp(void const *one, void const *two)
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
 #endif
 
-	return strcmp(a->symbol, b->symbol);
+	ret = strcmp(a->symbol, b->symbol);
+	return CMP(ret, 0);
 }
 
 /** Compare the name of two dl_t
  *
  */
-static int dl_handle_cmp(void const *one, void const *two)
+static int8_t dl_handle_cmp(void const *one, void const *two)
 {
-	return strcmp(((dl_t const *)one)->name, ((dl_t const *)two)->name);
+	int ret;
+
+	ret = strcmp(((dl_t const *)one)->name, ((dl_t const *)two)->name);
+	return CMP(ret, 0);
 }
 
 /** Utility function to dlopen the library containing a particular symbol

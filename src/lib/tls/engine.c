@@ -67,23 +67,25 @@ static rbtree_t	*tls_engines;
 /** Compares two engines
  *
  */
-static int tls_engine_cmp(void const *a, void const *b)
+static int8_t tls_engine_cmp(void const *one, void const *two)
 {
-	tls_engine_t const *our_a = talloc_get_type_abort_const(a, tls_engine_t);
-	tls_engine_t const *our_b = talloc_get_type_abort_const(b, tls_engine_t);
+	tls_engine_t const *a = talloc_get_type_abort_const(one, tls_engine_t);
+	tls_engine_t const *b = talloc_get_type_abort_const(two, tls_engine_t);
 	int8_t ret;
 
-	ret = strcmp(our_a->id, our_b->id);
+	ret = strcmp(a->id, b->id);
+	ret = CMP(ret, 0);
 	if (ret != 0) return ret;
 
 	/*
 	 *	May not have an instance ID
 	 */
-	if (!our_a->instance && !our_b->instance) return 0;
-	if (!our_a->instance) return -1;
-	if (!our_b->instance) return +1;
+	if (!a->instance && !b->instance) return 0;
+	if (!a->instance) return -1;
+	if (!b->instance) return +1;
 
-	return strcmp(our_a->instance, our_b->instance);
+	ret = strcmp(a->instance, b->instance);
+	return CMP(ret, 0);
 }
 
 /** Add the list of supported engine commands to the error stack

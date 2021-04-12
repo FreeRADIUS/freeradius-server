@@ -46,7 +46,7 @@ static _Thread_local rbtree_t *xlat_thread_inst_tree;
  * @param[in] two	Second xlat expansion instance.
  * @return CMP(one, two)
  */
-static int _xlat_inst_cmp(void const *one, void const *two)
+static int8_t _xlat_inst_cmp(void const *one, void const *two)
 {
 	xlat_inst_t const *a = one, *b = two;
 
@@ -59,7 +59,7 @@ static int _xlat_inst_cmp(void const *one, void const *two)
  * @param[in] two	Second thread specific xlat expansion instance.
  * @return CMP(one, two)
  */
-static int _xlat_thread_inst_cmp(void const *one, void const *two)
+static int8_t _xlat_thread_inst_cmp(void const *one, void const *two)
 {
 	xlat_thread_inst_t const *a = one, *b = two;
 
