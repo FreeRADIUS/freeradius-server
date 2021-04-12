@@ -10,11 +10,11 @@ typedef struct {
 	fr_rb_node_t	node;
 } fr_rb_test_node_t;
 
-static int comp(void const *a, void const *b)
+static int8_t comp(void const *a, void const *b)
 {
 	fr_rb_test_node_t const *our_a = a, *our_b = b;
 
-	return (our_a->num > our_b->num) - (our_a->num < our_b->num);
+	return CMP(our_a->num, our_b->num);
 }
 
 #if 0
