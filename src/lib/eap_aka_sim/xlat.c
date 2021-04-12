@@ -329,7 +329,6 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 							    UNUSED void const *xlat_inst,
 							    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
-	TALLOC_CTX			*our_ctx = talloc_init_const("aka_sim_xlat");
 	char				encrypted[AKA_SIM_3GPP_PSEUDONYM_LEN + 1];
 	uint8_t				tag = 0;
 
@@ -475,7 +474,6 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 	fr_value_box_bstrndup(ctx, vb, NULL, encrypted, strlen(encrypted), false);
 	fr_dcursor_append(out, vb);
-	talloc_free(our_ctx);
 
 	return XLAT_ACTION_DONE;
 }
