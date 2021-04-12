@@ -1191,14 +1191,6 @@ void tls_session_information(tls_session_t *tls_session)
 					str_details2 = " illegal_parameter";
 					break;
 
-				case TLS1_AD_DECRYPTION_FAILED:
-					str_details2 = " decryption_failed";
-					break;
-
-				case TLS1_AD_RECORD_OVERFLOW:
-					str_details2 = " record_overflow";
-					break;
-
 				case TLS1_AD_UNKNOWN_CA:
 					str_details2 = " unknown_ca";
 					break;
