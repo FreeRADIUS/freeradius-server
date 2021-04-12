@@ -975,10 +975,10 @@ e.g. "%{base64:foo}" == "Zm9v"
 .IP %(explode:&<value_ref>\ <delim>)
 Split an attribute into multiple new attributes based on a delimiter
 
-.IP %{nexttime:<epoch>}
+.IP %(nexttime:<epoch>)
 Calculate number of seconds until the end of the next epoch.
 
-e.g. if it were 16:18, %{nexttime:1h} would expand to 2520
+e.g. if it were 16:18, %(nexttime:1h) would expand to 2520
 
 .RS
 .IP <num>h
@@ -999,15 +999,15 @@ Number of seconds remaining in the current year + if <num> > 1, the number of
 seconds in the additional years specified.
 .RE
 
-.IP %{lpad:&{<value_ref>\ <rep>\ <pad>}}
+.IP %(lpad:<string>\ <rep>\ <pad>)
 Left-pad a string.
 
-e.g. if User-Name is "foo": "%{lpad:&User-Name 6 x}" == "xxxfoo"
+e.g. if User-Name is "foo": "%(lpad:%{User-Name} 6 x)" == "xxxfoo"
 
-.IP %{rpad:&{<value_ref>\ <rep>\ <pad>}}
+.IP %(rpad:<string>\ <rep>\ <pad>)
 Right-pad a string.
 
-e.g. if User-Name is "foo": "%{rpad:&User-Name 5 -}" == "foo--"
+e.g. if User-Name is "foo": "%(rpad:%{User-Name} 5 -)" == "foo--"
 
 .SH ATTRIBUTE ASSIGNMENTS
 The attribute lists described above may be edited by listing one or
