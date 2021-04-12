@@ -891,6 +891,7 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_tls_log_error(request, "Failed converting serial bignum to binary data");
 		goto error;
 	}
+	BN_free(bn);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
