@@ -27,9 +27,7 @@ RCSIDH(rbtree_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/build.h>
-#include <freeradius-devel/missing.h>
-#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/misc.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -57,9 +55,6 @@ struct fr_rb_node_s {
 #define RBTREE_FLAG_NONE    (0)
 #define RBTREE_FLAG_REPLACE (1 << 0)
 #define RBTREE_FLAG_LOCK    (1 << 1)
-
-typedef int (*fr_rb_cmp_t)(void const *one, void const *two);
-typedef void (*fr_rb_free_t)(void *data);
 
 /** Creates a red black that verifies elements are of a specific talloc type
  *
@@ -102,7 +97,7 @@ typedef void (*fr_rb_free_t)(void *data);
 		)
 
 rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
-			       fr_rb_cmp_t compare, fr_rb_free_t node_free, int flags) CC_HINT(warn_unused_result);
+			       fr_tmp_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
 
 void		rbtree_unlock(rbtree_t *tree) CC_HINT(nonnull);
 

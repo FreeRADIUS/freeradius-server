@@ -42,8 +42,8 @@ struct rbtree_s {
 	char const		*type;		//!< Talloc type to check elements against.
 
 	size_t			num_elements;	//!< How many elements are inside the tree.
-	fr_rb_cmp_t		compare;	//!< The comparator.
-	fr_rb_free_t		free;		//!< Free function called when a node is freed.
+	fr_tmp_cmp_t		compare;	//!< The comparator.
+	fr_free_t		free;		//!< Free function called when a node is freed.
 
 	bool			replace;	//!< Allow replacements.
 	bool			lock;		//!< Ensure exclusive access.
@@ -159,7 +159,7 @@ static int _tree_free(rbtree_t *tree)
  */
 rbtree_t *_rbtree_alloc(TALLOC_CTX *ctx,
 			size_t offset, char const *type,
-			fr_rb_cmp_t compare, fr_rb_free_t node_free,
+			fr_tmp_cmp_t compare, fr_free_t node_free,
 			int flags)
 {
 	rbtree_t *tree;

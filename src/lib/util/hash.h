@@ -27,9 +27,7 @@ RCSIDH(hash_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/build.h>
-#include <freeradius-devel/missing.h>
-#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/misc.h>
 
 #include <stddef.h>
 #include <stdint.h>
@@ -54,15 +52,12 @@ uint32_t fr_hash_string(char const *p);
 uint32_t fr_hash_case_string(char const *p);
 
 typedef struct fr_hash_table_s fr_hash_table_t;
-typedef void (*fr_hash_table_free_t)(void *);
-typedef uint32_t (*fr_hash_table_hash_t)(void const *);
-typedef int (*fr_hash_table_cmp_t)(void const *, void const *);
 typedef int (*fr_hash_table_walk_t)(void *data, void *uctx);
 
 fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
-				      fr_hash_table_hash_t hashNode,
-				      fr_hash_table_cmp_t cmpNode,
-				      fr_hash_table_free_t freeNode);
+				      fr_hash_t hashNode,
+				      fr_tmp_cmp_t cmpNode,
+				      fr_free_t freeNode);
 
 int		fr_hash_table_insert(fr_hash_table_t *ht, void const *data);
 

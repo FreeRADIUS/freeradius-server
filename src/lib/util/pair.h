@@ -263,9 +263,6 @@ fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp);
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head);
 
-/* Sorting */
-typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
-
 /** Compare two attributes using and operator.
  *
  * @return

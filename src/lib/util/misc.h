@@ -36,6 +36,9 @@ extern "C" {
 #include <signal.h>
 
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
+typedef		int    (*fr_tmp_cmp_t)(void const *a, void const *b);
+typedef		void (*fr_free_t)(void *);
+typedef		uint32_t (*fr_hash_t)(void const *);
 
 
 /*
