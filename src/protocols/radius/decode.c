@@ -435,6 +435,9 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 
 	if (fr_radius_decode_tlv_ok(p, data_len, 1, 1) < 0) return -1;
 
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (!vp) return PAIR_DECODE_OOM;
+
 	/*
 	 *	We don't have a "pair find in cursor"
 	 */
@@ -451,6 +454,8 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 
 	/*
 	 *  Record where we were in the list when this function was called
+	 *	 Create a temporary sub-list, so decode errors don't
+	 *	 affect the main list.
 	 */
 	fr_dcursor_init(&tlv_cursor, &head);
 	while (p < end) {
