@@ -401,7 +401,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *pa
  *	- -1 on failure.
  *	- 0 on success.
  */
-static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *parent,
 					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	FILE		*fp;
@@ -891,6 +891,7 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_tls_log_error(request, "Failed converting serial bignum to binary data");
 		goto error;
 	}
+	BN_free(bn);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

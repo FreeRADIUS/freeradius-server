@@ -49,13 +49,13 @@ if (&control.Tmp-String-1 != &User-Name) {
 }
 
 #
-#  1.0 Now try with the hint coming from &control.EAP-Type
+#  1.0 Now try with the hint coming from &request.EAP-Type
 #
 if (&User-Name =~ /^[0-9](.*)/) {
 	update request {
 		&User-Name[1] := "%{1}"
 	}
-	update control {
+	update request {
 		&EAP-Type := AKA
 	}
 }
