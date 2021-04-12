@@ -40,6 +40,12 @@ static int8_t fr_rb_test_cmp(void const *one, void const *two)
 	return CMP(a->num, b->num);
 }
 
+static int fr_rb_qsort_cmp(void const *one, void const *two)
+{
+	fr_rb_test_node_t const *a = one, *b = two;
+	return CMP(a->num, b->num);
+}
+
 static void test_rbtree_iter_inorder(void)
 {
 	rbtree_t 		*t;
@@ -65,7 +71,7 @@ static void test_rbtree_iter_inorder(void)
 		rbtree_insert(t, p);
 	}
 
-	qsort(sorted, n, sizeof(fr_rb_test_node_t), fr_rb_test_cmp);
+	qsort(sorted, n, sizeof(fr_rb_test_node_t), fr_rb_qsort_cmp);
 
 	for (p = rbtree_iter_init_inorder(&iter, t), i = 0;
 	     p;
