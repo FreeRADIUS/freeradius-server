@@ -223,7 +223,6 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 							    UNUSED void const *xlat_inst,
 							    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
-	TALLOC_CTX	*our_ctx = talloc_init_const("aka_sim_xlat");
 	uint8_t		tag;
 	char		out_tag, *buff;
 
@@ -305,7 +304,6 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	*buff = out_tag;
 	strncpy(buff + 1, decrypted, AKA_SIM_IMSI_MAX_LEN + 1);
 	fr_dcursor_append(out, vb);
-	talloc_free(our_ctx);
 
 	return XLAT_ACTION_DONE;
 }
