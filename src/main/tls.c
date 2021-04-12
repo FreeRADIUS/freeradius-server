@@ -1163,6 +1163,10 @@ void tls_session_information(tls_session_t *tls_session)
 					str_details2 = " handshake_failure";
 					break;
 
+				case SSL3_AD_NO_CERTIFICATE:
+					str_details2 = " no_certificate";
+					break;
+
 				case SSL3_AD_BAD_CERTIFICATE:
 					str_details2 = " bad_certificate";
 					break;
@@ -1185,6 +1189,14 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case SSL3_AD_ILLEGAL_PARAMETER:
 					str_details2 = " illegal_parameter";
+					break;
+
+				case TLS1_AD_DECRYPTION_FAILED:
+					str_details2 = " decryption_failed";
+					break;
+
+				case TLS1_AD_RECORD_OVERFLOW:
+					str_details2 = " record_overflow";
 					break;
 
 				case TLS1_AD_UNKNOWN_CA:
@@ -1226,6 +1238,60 @@ void tls_session_information(tls_session_t *tls_session)
 				case TLS1_AD_NO_RENEGOTIATION:
 					str_details2 = " no_renegotiation";
 					break;
+
+#ifdef TLS13_AD_MISSING_EXTENSIONS
+				case TLS13_AD_MISSING_EXTENSIONS:
+					str_details2 = " missing_extensions";
+					break;
+#endif
+
+#ifdef TLS13_AD_CERTIFICATE_REQUIRED
+				case TLS13_AD_CERTIFICATE_REQUIRED:
+					str_details2 = " certificate_required";
+					break;
+#endif
+
+#ifdef TLS1_AD_UNSUPPORTED_EXTENSION
+				case TLS1_AD_UNSUPPORTED_EXTENSION:
+					str_details2 = " unsupported_extension";
+					break;
+#endif
+
+#ifdef TLS1_AD_CERTIFICATE_UNOBTAINABLE
+				case TLS1_AD_CERTIFICATE_UNOBTAINABLE:
+					str_details2 = " certificate_unobtainable";
+					break;
+#endif
+
+#ifdef TLS1_AD_UNRECOGNIZED_NAME
+				case TLS1_AD_UNRECOGNIZED_NAME:
+					str_details2 = " unrecognized_name";
+					break;
+#endif
+
+#ifdef TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE
+				case TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE:
+					str_details2 = " bad_certificate_status_response";
+					break;
+#endif
+
+#ifdef TLS1_AD_BAD_CERTIFICATE_HASH_VALUE
+				case TLS1_AD_BAD_CERTIFICATE_HASH_VALUE:
+					str_details2 = " bad_certificate_hash_value";
+					break;
+#endif
+
+#ifdef TLS1_AD_UNKNOWN_PSK_IDENTITY
+				case TLS1_AD_UNKNOWN_PSK_IDENTITY:
+					str_details2 = " unknown_psk_identity";
+					break;
+#endif
+
+#ifdef TLS1_AD_NO_APPLICATION_PROTOCOL
+				case TLS1_AD_NO_APPLICATION_PROTOCOL:
+					str_details2 = " no_application_protocol";
+					break;
+#endif
 				}
 			}
 		}
@@ -1245,6 +1311,18 @@ void tls_session_information(tls_session_t *tls_session)
 			case SSL3_MT_SERVER_HELLO:
 				str_details1 = ", ServerHello";
 				break;
+
+#ifdef SSL3_MT_NEWSESSION_TICKET
+			case SSL3_MT_NEWSESSION_TICKET:
+				str_details1 = ", NewSessionTicket";
+				break;
+#endif
+
+#ifdef SSL3_MT_ENCRYPTED_EXTENSIONS
+			case SSL3_MT_ENCRYPTED_EXTENSIONS:
+				str_details1 = ", EncryptedExtensions";
+				break;
+#endif
 
 			case SSL3_MT_CERTIFICATE:
 				str_details1 = ", Certificate";
@@ -1274,9 +1352,9 @@ void tls_session_information(tls_session_t *tls_session)
 				str_details1 = ", Finished";
 				break;
 
-#ifdef SSL3_MT_ENCRYPTED_EXTENSIONS
-			case SSL3_MT_ENCRYPTED_EXTENSIONS:
-				str_details1 = ", EncryptedExtensions";
+#ifdef SSL3_MT_KEY_UPDATE
+			case SSL3_MT_KEY_UPDATE:
+				str_content_type = "KeyUpdate";
 				break;
 #endif
 
