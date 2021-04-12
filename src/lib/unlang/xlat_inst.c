@@ -51,7 +51,7 @@ static _Thread_local rbtree_t *xlat_thread_inst_tree;
  */
 static int _xlat_inst_cmp(void const *a, void const *b)
 {
-	xlat_thread_inst_t const *my_a = a, *my_b = b;
+	xlat_inst_t const *my_a = a, *my_b = b;
 
 	return (my_a->node > my_b->node) - (my_a->node < my_b->node);
 }
