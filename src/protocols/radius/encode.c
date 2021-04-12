@@ -274,7 +274,7 @@ static ssize_t encode_tlv_hdr_internal(fr_dbuff_t *dbuff,
 				return slen;
 			}
 
-			vp = fr_dcursor_current(cursor);
+			vp = fr_dcursor_next(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 		} else if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
