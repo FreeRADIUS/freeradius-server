@@ -3230,6 +3230,10 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 	int      nid;
 	EC_KEY  *ecdh;
 
+	if (!disable_single_dh_use) {
+		SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
+	}
+
 	if (!ecdh_curve || !*ecdh_curve) return 0;
 
 	nid = OBJ_sn2nid(ecdh_curve);
@@ -3245,10 +3249,6 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 	}
 
 	SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-
-	if (!disable_single_dh_use) {
-		SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
-	}
 
 	EC_KEY_free(ecdh);
 
