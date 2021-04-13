@@ -425,7 +425,18 @@ eap {
 
 		#  Elliptical cryptography configuration
 		#
-		#  Only for OpenSSL >= 0.9.8.f
+		#  This configuration should be one of the following:
+		#
+		#  * a name of the curve to use, e.g. "prime256v1".
+		#
+		#  * a colon separated list of curve NIDs or names.
+		#
+		#  * an empty string, in which case OpenSSL will choose
+		#    the "best" curve for the situation.
+		#
+		#  For supported curve names, please run
+		#
+		#	openssl ecparam -list_curves
 		#
 		ecdh_curve = "prime256v1"
 
