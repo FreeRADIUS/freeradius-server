@@ -893,6 +893,7 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 	xlat_exp_t			*node = NULL;
 	size_t				len;
 	fr_sbuff_term_t			expansions = FR_SBUFF_TERMS(
+						L("%%"),
 						L("%("),
 						L("%C"),
 						L("%D"),
@@ -988,7 +989,7 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 		/*
 		 *	%[a-z] - A one letter expansion
 		 */
-		if (fr_sbuff_next_if_char(in, '%') && fr_sbuff_is_alpha(in)) {
+		if (fr_sbuff_next_if_char(in, '%') && (fr_sbuff_is_alpha(in) || fr_sbuff_is_char(in, '%'))) {
 			XLAT_DEBUG("ONE-LETTER <-- %pV",
 				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
 
