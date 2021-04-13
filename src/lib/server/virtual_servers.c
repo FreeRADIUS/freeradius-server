@@ -1510,6 +1510,12 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			if (!subcs) {
 				DEBUG3("Warning: Skipping %s %s { ... } as it was not found.",
 				       list[i].name, list[i].name2);
+				/*
+				 *	Initialise CONF_SECTION pointer for missing section
+				 */
+				if ((uctx) && (list[i].offset > 0)) {
+					*(CONF_SECTION **) (((uint8_t *) uctx) + list[i].offset) = NULL;
+				}
 				continue;
 			}
 
