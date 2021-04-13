@@ -17,6 +17,12 @@ static int8_t comp(void const *a, void const *b)
 	return CMP(our_a->num, our_b->num);
 }
 
+static int qsort_comp(void const *a, void const *b)
+{
+	return comp(a, b);
+}
+
+
 #if 0
 static int print_cb(void *i, UNUSED void *uctx)
 {
@@ -162,7 +168,7 @@ again:
 	fprintf(stderr,"After insert rbcount is %i\n", i);
 	if (i < 0) return i;
 
-	qsort(vals, n, sizeof(fr_rb_test_node_t), comp);
+	qsort(vals, n, sizeof(fr_rb_test_node_t), qsort_comp);
 
 	/*
 	 * For testing deletebydata instead
