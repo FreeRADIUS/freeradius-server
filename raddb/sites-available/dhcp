@@ -225,7 +225,7 @@ recv Request {
 
 	if (ok) {
 		update reply {
-			&Your-IP-Address := "%{%{request.Requested-IP-Address}:-{request.Client-IP-Address}}"
+			&Your-IP-Address := "%{%{request.Requested-IP-Address}:-%{request.Client-IP-Address}}"
 		}
 	}
 
