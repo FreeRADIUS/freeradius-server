@@ -249,7 +249,7 @@ static void test_fr_pair_list_afrom_str(void)
 	fr_pair_list_init(&list);
 
 	TEST_CASE("Create 'vp' using fr_pair_list_afrom_str()");
-	TEST_CHECK(fr_pair_list_afrom_str(autofree, dict_test, buffer, sizeof(buffer) - 1, &list) == T_EOL);
+	TEST_CHECK(fr_pair_list_afrom_str(autofree, dict_test, buffer, strlen(buffer), &list) == T_EOL);
 
 	TEST_CASE("Looking for Test-Integer");
 	TEST_CHECK((vp = fr_pair_find_by_da(&list, attr_test_integer)) != NULL);
