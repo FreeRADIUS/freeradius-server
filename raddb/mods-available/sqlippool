@@ -35,6 +35,14 @@ sqlippool {
 	ippool_table = "fr_ippool"
 
 	#
+	#  offer_duration:: IP offer duration.
+	#
+	#  For DHCPv4 use, the reservation of an IP from the pool can be much shorter
+	#  when responding to Discover packets, reducing the risk of rogue client(s)
+	#  exhausting the pool with repeated Discovers never followed by a Request.
+	offer_duration = 10
+
+	#
 	#  lease_duration:: IP lease duration.
 	#
 	lease_duration = 3600
@@ -49,6 +57,8 @@ sqlippool {
 	#  e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 	#  ====
 	allocated_address_attr = radius.Framed-IP-Address
+
+#	allocated_address_attr = dhcpv4.Your-IP-Address
 
 	#
 	#  owner:: Expansion which identifies the owner of the lease.
@@ -141,6 +151,8 @@ sqlippool {
 	#  If you want to have them logged to a file, see the `linelog` module,
 	#  and create an entry which writes `Module-Success-Message` message.
 	#
+	#  Alternate versions of the messages suit DHCP use of sqlippools
+	#
 	#  WARNING: MySQL (MyISAM) has certain limitations that means it can hand out
 	#  the same IP address to 2 different users.
 	#  *We suggest* using an SQL DB with proper transaction support, such as PostgreSQL,
@@ -148,14 +160,19 @@ sqlippool {
 	#
 	messages {
 		exists = "Existing IP: %{reply.${..allocated_address_attr}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+#		exists = "Existing IP: %{reply.${..allocated_address_attr}} (cli ${..owner} via ${..gateway})"
 
 		success = "Allocated IP: %{reply.${..allocated_address_attr}} from %{control.IP-Pool.Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+#		success = "Allocated IP: %{reply.${..allocated_address_attr}} from %{control.IP-Pool.Name} (cli ${..owner} via ${..gateway})"
 
 		clear = "Released IP ${..requested_address} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+#		clear = "Released IP ${..requested_address} (cli ${..owner} via ${..gateway})"
 
 		failed = "IP Allocation FAILED from %{control.IP-Pool.Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+#		failed = "IP Allocation FAILED from %{control.IP-Pool.Name} (cli ${..owner} via ${..gateway})"
 
 		nopool = "No IP-Pool.Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+#		nopool = "No IP-Pool.Name defined (cli ${..owner} via ${..gateway})"
 	}
 
 	#
