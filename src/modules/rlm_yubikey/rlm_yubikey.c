@@ -178,6 +178,11 @@ static int mod_load(void)
 
 }
 
+static void mod_unload(void)
+{
+	fr_dict_autofree(rlm_yubikey_dict);
+}
+
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_yubikey_t	*inst = instance;
@@ -458,6 +463,7 @@ module_t rlm_yubikey = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_yubikey_t),
 	.onload		= mod_load,
+	.unload		= mod_unload,
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
