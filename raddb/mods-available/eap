@@ -535,7 +535,11 @@ eap {
 		#
 		#  ecdh_curve:: Elliptical cryptography configuration.
 		#
-		#  Only for OpenSSL >= 0.9.8.f
+		#  Should be a colin-separated list of curve names.
+		#
+		#  For supported curve names, please run the command:a
+		#
+		#	openssl ecparam -list_curves
 		#
 		ecdh_curve = prime256v1
 

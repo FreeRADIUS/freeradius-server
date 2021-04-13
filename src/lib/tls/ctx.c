@@ -44,31 +44,23 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
 {
-	int      nid;
-	EC_KEY  *ecdh;
-
-	if (!ecdh_curve || !*ecdh_curve) return 0;
-
-	nid = OBJ_sn2nid(ecdh_curve);
-	if (!nid) {
-		ERROR("Unknown ecdh_curve \"%s\"", ecdh_curve);
-		return -1;
-	}
-
-	ecdh = EC_KEY_new_by_curve_name(nid);
-	if (!ecdh) {
-		ERROR("Unable to create new curve \"%s\"", ecdh_curve);
-		return -1;
-	}
-
-	SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+	char *list;
 
 	if (!disable_single_dh_use) {
 		SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
 	}
 
-	EC_KEY_free(ecdh);
+	if (!ecdh_curve || !*ecdh_curve) return 0;
 
+	list = strdup(ecdh_curve);
+	if (SSL_CTX_set1_curves_list(ctx, list) == 0) {
+		free(list);
+		ERROR("Unknown ecdh_curve \"%s\"", ecdh_curve);
+		return -1;
+	}
+	free(list);
+
+	(void) SSL_CTX_set_ecdh_auto(ctx, 1);
 	return 0;
 }
 #endif
