@@ -34,7 +34,7 @@ RUN apt-get install -y nodejs
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc
 WORKDIR /tmp
-RUN curl -OL $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*deb" | cut -d '"' -f 4)
+RUN curl -L --remote-name-all $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*amd64\.deb" | cut -d '"' -f 4)
 RUN apt-get install -y ./pandoc-*.deb
 #  - asciidoctor
 RUN apt-get install -y ruby-dev

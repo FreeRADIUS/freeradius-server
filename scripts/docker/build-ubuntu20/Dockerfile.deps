@@ -48,7 +48,7 @@ RUN bash -c "$(wget -O - https://deb.nodesource.com/setup_10.x)" && \
         nodejs
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc
-RUN wget $(wget -qO - https://api.github.com/repos/jgm/pandoc/releases/latest | sed -ne 's/.*"browser_download_url".*"\(.*deb\)"/\1/ p') && \
+RUN wget $(wget -qO - https://api.github.com/repos/jgm/pandoc/releases/latest | sed -ne 's/.*"browser_download_url".*"\(.*amd64\.deb\)"/\1/ p') && \
     find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -print0 | \
         xargs -0 -r apt-get install $APT_OPTS && \
     find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -delete
