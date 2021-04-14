@@ -3928,6 +3928,14 @@ post_ca:
 		return NULL;
 	}
 
+	/*
+	 *	Cache min / max TLS version so that we can
+	 *	programatically disable TLS 1.3 for TTLS, PEAP, and
+	 *	FAST.
+	 */
+	conf->min_version = min_version;
+	conf->max_version = max_version;
+
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET;
 #endif
