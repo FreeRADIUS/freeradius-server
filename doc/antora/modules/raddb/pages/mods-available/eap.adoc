@@ -1585,7 +1585,6 @@ TODO
 eap {
 	default_eap_type = md5
 	ignore_unknown_eap_types = no
-	cisco_accounting_username_bug = no
 	type = md5
 #	type = pwd
 	type = gtc

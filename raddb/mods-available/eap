@@ -54,16 +54,6 @@ eap {
 	ignore_unknown_eap_types = no
 
 	#
-	#  cisco_accounting_username_bug::
-	#
-	#  Cisco AP1230B firmware 12.2(13)JA1 has a bug.  When given a `User-Name`
-	#  attribute in an `Access-Accept`, it copies one more byte than it should.
-	#
-	#  We can work around it by using this configuration option to add an extra zero byte.
-	#
-	cisco_accounting_username_bug = no
-
-	#
 	#  ## Allowed EAP-types
 	#
 	#  type:: Only EAP types listed below with a `type = <EAP-Type>` pair will be allowed.

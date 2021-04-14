@@ -61,10 +61,11 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, submodule_cs),
 			 .func = submodule_parse },
 
-	{ FR_CONF_DEPRECATED("timer_expire", FR_TYPE_UINT32, rlm_eap_t, timer_limit), .dflt = "60" },
 	{ FR_CONF_OFFSET("ignore_unknown_eap_types", FR_TYPE_BOOL, rlm_eap_t, ignore_unknown_types), .dflt = "no" },
-	{ FR_CONF_OFFSET("cisco_accounting_username_bug", FR_TYPE_BOOL, rlm_eap_t,
-			 cisco_accounting_username_bug), .dflt = "no" },
+
+	{ FR_CONF_DEPRECATED("timer_expire", FR_TYPE_UINT32, rlm_eap_t, timer_limit), .dflt = "60" },
+	{ FR_CONF_DEPRECATED("cisco_accounting_username_bug", FR_TYPE_BOOL, rlm_eap_t,
+			     cisco_accounting_username_bug), .dflt = "no" },
 	{ FR_CONF_DEPRECATED("max_sessions", FR_TYPE_UINT32, rlm_eap_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
@@ -919,18 +920,6 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 		if (!vp) {
 			vp = fr_pair_copy(request->reply_ctx, username);
 			fr_pair_append(&request->reply_pairs, vp);
-		}
-
-		/*
-		 *	Cisco AP1230 has a bug and needs a zero
-		 *	terminated string in Access-Accept.
-		 */
-		if (inst->cisco_accounting_username_bug) {
-			char *new;
-
-			MEM(new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1));	/* \0 + \0 */
-			memcpy(new, vp->vp_strvalue, vp->vp_length);
-			fr_pair_value_bstrdup_buffer_shallow(vp, new, vp->vp_tainted);	/* Also frees existing buffer */
 		}
 	}
 

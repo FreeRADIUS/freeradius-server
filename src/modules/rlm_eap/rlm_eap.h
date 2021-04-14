@@ -44,7 +44,6 @@ typedef struct {
 	eap_type_t			default_method;			//!< Resolved default_method_name.
 
 	bool				ignore_unknown_types;		//!< Ignore unknown types (for later proxying).
-	bool				cisco_accounting_username_bug;
 
 	char const			*name;				//!< Name of this instance.
 	fr_dict_enum_t			*auth_type;
