@@ -131,7 +131,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 #ifdef TLS1_3_VERSION
-	if (inst->tls_conf->min_version == TLS1_3_VERSION) {
+	if ((inst->tls_conf->min_version == TLS1_3_VERSION) && !inst->tls_conf->tls13_enable_magic) {
 		ERROR("There are no standards for using TLS 1.3 with TTLS.");
 		ERROR("You MUST enable TLS 1.2 for TTLS to work.");
 		return -1;
@@ -193,7 +193,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	Don't allow TLS 1.3 for us, even if it's allowed
 	 *	elsewhere.
 	 */
-	ssn = eaptls_session(handler, inst->tls_conf, client_cert, false);
+	ssn = eaptls_session(handler, inst->tls_conf, client_cert, inst->tls_conf->tls13_enable_magic);
 	if (!ssn) {
 		return 0;
 	}
