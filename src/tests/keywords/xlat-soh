@@ -1,0 +1,86 @@
+#
+# PRE: update
+#
+
+update control {
+        &Tmp-String-0 := %(soh:OS)
+}
+
+# SoH-Supported not set - should be no response
+if ("%{control.Tmp-String-0}" != "") {
+        test_fail
+}
+
+update request {
+        &SoH-Supported := yes
+        &SoH-MS-Machine-OS-release := 0
+        &SoH-MS-Machine-OS-build := 6001
+        &SoH-MS-Machine-SP-version := 1
+        &SoH-MS-Machine-SP-release := 0
+}
+
+update control {
+        &Tmp-String-0 := %(soh:OS)
+}
+
+# SoH-MS-Machine-OS-vendor not set - should be no response
+if ("%{control.Tmp-String-0}" != "") {
+        test_fail
+}
+
+update request {
+        &SoH-Supported := yes
+        &SoH-MS-Machine-OS-vendor := Microsoft
+}
+
+update control {
+        &Tmp-String-0 := %(soh:OS)
+}
+
+# OS version not set
+if ("%{control.Tmp-String-0}" != "Windows unknown") {
+        test_fail
+}
+
+update request {
+        &SoH-MS-Machine-OS-version := 6
+}
+
+update control {
+        &Tmp-String-0 := %(soh:OS)
+}
+
+# Complete set of data should match a real version of Windows
+if ("%{control.Tmp-String-0}" != "Windows Vista / Server 2008 6.0.6001 sp 1.0" ) {
+        test_fail
+}
+
+update request {
+        &SoH-MS-Machine-OS-release := 5
+}
+
+update control {
+        &Tmp-String-0 := %(soh:OS)
+}
+
+# Version and Release combination that does not exist
+if ("%{control.Tmp-String-0}" != "Windows Other 6.5.6001 sp 1.0") {
+        test_fail
+}
+
+update request {
+        &SoH-MS-Machine-OS-version := 8
+        &SoH-MS-Machine-OS-release := 0
+}
+
+update control {
+        &Tmp-String-0 := %(soh:OS)
+}
+
+# Version that does not exist
+if ("%{control.Tmp-String-0}" != "Windows Other 8.0.6001 sp 1.0") {
+        test_fail
+}
+
+debug_control
+success
