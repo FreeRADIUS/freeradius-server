@@ -130,6 +130,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+#ifdef TLS1_3_VERSION
+	if (inst->tls_conf->min_version == TLS1_3_VERSION) {
+		ERROR("There are no standards for using TLS 1.3 with TTLS.");
+		ERROR("You MUST enable TLS 1.2 for TTLS to work.");
+		return -1;
+	}
+#endif
+
 	return 0;
 }
 

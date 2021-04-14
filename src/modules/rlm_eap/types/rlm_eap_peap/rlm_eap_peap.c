@@ -135,6 +135,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		inst->auth_type_eap = dv->value;
 	}
 
+#ifdef TLS1_3_VERSION
+	if (inst->tls_conf->min_version == TLS1_3_VERSION) {
+		ERROR("There are no standards for using TLS 1.3 with PEAP.");
+		ERROR("You MUST enable TLS 1.2 for PEAP to work.");
+		return -1;
+	}
+#endif
+
 	return 0;
 }
 
