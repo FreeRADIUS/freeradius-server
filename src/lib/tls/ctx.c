@@ -574,7 +574,9 @@ post_ca:
 	 *
 	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
 	 *
-	 *	TLS1_4_VERSION in speculative.
+	 *	TLS1_4_VERSION does not exist yet.  But we allow it
+	 *	only if it is explictly permitted by the
+	 *	administrator.
 	 */
 	if (conf->tls_max_version > (float) 0.0) {
 		int max_version = 0;
@@ -604,6 +606,14 @@ post_ca:
 		else if (conf->tls_max_version >= (float) 1.1) max_version = TLS1_1_VERSION;
 		else max_version = TLS1_VERSION;
 
+		/*
+		 *	Complain about insecure TLS versions.
+		 */
+		if (max_version < TLS1_2_VERSION) {
+			WARN("TLS 1.0 and 1.1 are insecure and SHOULD NOT be used");
+			WARN("tls_max_version SHOULD be 1.2 or greater");
+		}
+
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
 			fr_tls_log_error(NULL, "Failed setting TLS maximum version");
 			goto error;
@@ -625,6 +635,14 @@ post_ca:
 #  endif
 		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
 		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
+
+		/*
+		 *	Complain about insecure TLS versions.
+		 */
+		if (min_version < TLS1_2_VERSION) {
+			WARN("TLS 1.0 and 1.1 are insecure and SHOULD NOT be used");
+			WARN("tls_min_version SHOULD be 1.2 or greater");
+		}
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
 			fr_tls_log_error(NULL, "Failed setting TLS minimum version");
