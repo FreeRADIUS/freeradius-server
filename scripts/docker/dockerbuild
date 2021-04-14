@@ -6,7 +6,7 @@
 #  Example usage: ./dockerbuild build-debian9
 #
 
-set -eu
+set -e
 
 usage ()
 {
@@ -41,6 +41,8 @@ DIR="$1"
 
 [ -z "$DIR" ] && usage 1
 [ ! -d "$DIR" ] && echo "Directory '$DIR' does not exist" && exit 1
+
+set -u
 
 #
 #  Work out which OS to base our image on from the dir name
