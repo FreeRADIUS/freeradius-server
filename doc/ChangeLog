@@ -1,17 +1,27 @@
 FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* Many new "unlang" documentation files.  See "make docsite"
-	  and doc/antora
-	* Update dictionary.bskyb.  Fixes #3339.
-	* Update alcatel.sr. #3495
-	* Abfab-tls updates from Alejandro Perez.
+	  and then see build/docsite/freeradius-server/*/index.html
+	* The default minimum TLS version is now TLS 1.2, as per RFC 8996.
+	  Older versions can be allowed by setting tls_min_version
+	* Significantly improve the readability and contents of TLS debug messages.
 	* Allow CoA and Disconnect messages over TLS sockets.
 	  Fixes #3356.
+	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
+	  works, and no longer requires manual changes to the configuration.
+	* Add TLS 1.2 support for EAP-Fast.  Patches from Alex Clouter.
+	* Add a_path_reload_interval option for tls.  See mods-available/eap.
+	  Fixes #1831.  Patch from Boris Lytochkin.
+	* Abfab-tls updates from Alejandro Perez.
+	* Add "tls_min_version" to ldap module configuration.
+	* We now support running policies when receiving a RadSec connection.
+	  See sites-available/default, "New-TLS-Connection".
+	* Update TLS "ecdh_curve" code to allow for multiple curves.
+	* Allow delta CRLs.  Fixes #3393.
 	* New xlat for setting status of rlm_always instances and new
 	  resource-check example virtual server for manipulating control flow
 	  in unlang policies based on status of some external resource.
 	  Patches from Terry Burton.
-	* Allow delta CRLs.  Fixes #3393.
 	* Limited support for dynamic home servers.  See proxy.conf
 	  and doc/configuration/dynamic_home_servers.md
 	* Update radmin to show more information about the home servers
@@ -23,28 +33,22 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  Patch from Alexander Scheel.
 	* Remove native support for Cisco LEAP.  It is insecure, and
 	  should not be used.  Proxying LEAP is still supported.
-	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
-	  works, and no longer requires manual changes to the configuration.
 	* Allow use of password preparation methods with rlm_eap_pwd.
 	  Patch from Michael Braun.
-	* Add TLS 1.2 support for EAP-Fast.  Patches from Alex Clouter.
-	* Add a_path_reload_interval option for tls.  See mods-available/eap.
-	  Fixes #1831.  Patch from Boris Lytochkin.
 	* Many, many, improvements for DHCP from Nick Porter and Terry Burton.
+	* More RFC complaince for various corner cases of DHCP,
 	* Use DHCP-specific schemas.
 	* Add stored procedures for DHCP lease allocation
 	* Add support for DHCP-Decline.
-	* More RFC complaince for various corner cases of DHCP,
-	* Treat DHCP Discover and Request differently for lease allocation times.
-	* Add support for PBKDF2 keys. Fixes #2649
-	* Update dictionary.mikrotik, dictionary.aruba, dictionary.paloalto, dictionary.juniper.
-	* Update default PostgreSQL schema to use "text" instead of
-	  a fixed-size "varchar".
-	* The default minimum TLS version is not TLS 1.2
-	  Older versions can be allowed by setting tls_min_version
-	* Add "tls_min_version" to ldap module configuration.
 	* Added mods-available/dhcp_sql which is a DHCP-specific instance
 	  of the SQL module.
+	* Treat DHCP Discover and Request differently for lease allocation times.
+	* Add support for PBKDF2 keys. Fixes #2649
+	* Update dictionary.mikrotik, dictionary.aruba, dictionary.paloalto,
+	   dictionary.juniper, dictionary.bskyb (#3339),
+	  dictionary.alcatel.sr (#3495).
+	* Update default PostgreSQL schema to use "text" instead of
+	  a fixed-size "varchar".
 	* Add radmin command "show client list verbose", which gives a lot
 	  more information about each client.
 	* Add support for EAPS-AKA authentication to rlm_wimax.
@@ -66,11 +70,6 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  Class for user sessions. See sites-available/default
 	* Add configuration to suppress printing values for User-Name, etc.
 	  See radiusd.conf, "suppress_secrets"
-	* Make the TLS debug output significantly more understandable.
-	* Significantly improve the readability and contents of TLS debug messages.
-	* We now support policies for new RadSec connections.  See
-	  sites-available/default, "Autz-Type New-TLS-Connection".
-	* Update TLS "ecdh_curve" code to allow for multiple curves.
 
 	Bug fixes
 	* Fix long-term double free due to PCRE calling our "free"
