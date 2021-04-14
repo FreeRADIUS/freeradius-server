@@ -6,14 +6,6 @@
 
 #######################################################################
 #
-#  = Templates
-#
-#  Templates are configurations that can be used in multiple places.
-#
-#  Use templates by adding a line in radiusd.conf:
-#
-#      $INCLUDE templates.conf
-#
 #  The goal of the templates is to have common configuration located
 #  in this file, and to list only the _differences_ in the individual
 #  sections.  This feature is most useful for sections like `clients`
@@ -35,78 +27,64 @@
 #  Within the main server configuration, a section can reference a
 #  template by using `$template name`.
 #
-#  For now, you can use templates only for sections in
-#  radiusd.conf, not sub-sections.  So you still have to use the
-#  `$INCLUDE file...` method for things like defining multiple
-#  "sql" modules, each with similar configuration.
-#
 
 #
-#  ## Template example
+#  Unlike v3, the Access-Request log configuration is different
+#  for each `listen` section.  Templates can be used to regain
+#  a global configuration.  Simply configure the following
+#  section as you like, and then in every Access-Request
+#  subsection, put:
 #
-#  Define the main template section:
+#      Access-Request {
+#          $template Access-Request
+#      }
 #
-templates {
+Access-Request {
 	#
-	#  Unlike v3, Access-Request log configuration is different
-	#  for each `listen` section.  Templates can be used to regain
-	#  a global configuration.  Simply configure the following
-	#  section as you like, and then in every Access-Request
-	#  subsection, put:
+	#  stripped_names:: Log the full User-Name
+	#  attribute, as it was found in the request.
 	#
-	#      Access-Request {
-	#          $template Access-Request
-	#      }
+	#  Allowed values: {no, yes}
 	#
-	#  then enable `templates.conf` as described above.
+	stripped_names = no
+
 	#
-	Access-Request {
-		#
-		#  stripped_names:: Log the full User-Name
-		#  attribute, as it was found in the request.
-		#
-		#  Allowed values: {no, yes}
-		#
-		stripped_names = no
+	#  auth:: Log authentication requests to the log file.
+	#
+	#  Allowed values: {no, yes}
+	#
+	auth = no
 
-		#
-		#  auth:: Log authentication requests to the log file.
-		#
-		#  Allowed values: {no, yes}
-		#
-		auth = no
+	#
+	#  Should we log passwords with the authentication requests?
+	#
+	#  auth_badpass:: logs password if it's rejected
+	#  auth_goodpass:: logs password if it's correct
+	#
+	#  Allowed values: {no, yes}
+	#
+	auth_badpass = no
+	auth_goodpass = no
 
-		#
-		#  Should we log passwords with the authentication requests?
-		#
-		#  auth_badpass:: logs password if it's rejected
-		#  auth_goodpass:: logs password if it's correct
-		#
-		#  Allowed values: {no, yes}
-		#
-		auth_badpass = no
-		auth_goodpass = no
+	#
+	#  Log additional text at the end of the "Login OK" messages.
+	#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
+	#  configurations above have to be set to "yes".
+	#
+	#  The strings below are dynamically expanded, which means that
+	#  you can put anything you want in them.  However, note that
+	#  this expansion can be slow, and can negatively impact server
+	#  performance.
+	#
+	#  msg_goodpass:: text to log after a correct password
+	#  msg_badpass:: text to log after an incorrect password
+	#
+	msg_goodpass = ""
+	msg_badpass = ""
 
-		#
-		#  Log additional text at the end of the "Login OK" messages.
-		#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-		#  configurations above have to be set to "yes".
-		#
-		#  The strings below are dynamically expanded, which means that
-		#  you can put anything you want in them.  However, note that
-		#  this expansion can be slow, and can negatively impact server
-		#  performance.
-		#
-		#  msg_goodpass:: text to log after a correct password
-		#  msg_badpass:: text to log after an incorrect password
-		#
-		msg_goodpass = ""
-		msg_badpass = ""
-
-		#
-		#  msg_denied:: The message when the user exceeds
-		#  the Simultaneous-Use limit.
-		#
-		msg_denied = "You are already logged in - access denied"
-	}
+	#
+	#  msg_denied:: The message when the user exceeds
+	#  the Simultaneous-Use limit.
+	#
+	msg_denied = "You are already logged in - access denied"
 }
