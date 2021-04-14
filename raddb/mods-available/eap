@@ -535,7 +535,7 @@ eap {
 		#
 		#  ecdh_curve:: Elliptical cryptography configuration.
 		#
-		#  Should be a colin-separated list of curve names.
+		#  Should be a colon-separated list of curve names.
 		#
 		#  For supported curve names, please run the command:a
 		#
