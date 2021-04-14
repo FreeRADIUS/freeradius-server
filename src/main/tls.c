@@ -577,9 +577,10 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
  * @param conf to use to configure the tls session.
  * @param request The current #REQUEST.
  * @param client_cert Whether to require a client_cert.
+ * @param allow_tls13 Whether to allow or forbid TLS 1.3.
  * @return a new session on success, or NULL on error.
  */
-tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert)
+tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert, bool allow_tls13)
 {
 	tls_session_t	*state = NULL;
 	SSL		*new_tls = NULL;
@@ -633,6 +634,21 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		tls_error_log(request, "Error creating new TLS session");
 		return NULL;
 	}
+
+#ifdef TLS1_3_VERSION
+	/*
+	 *	Disallow TLS 1.3 for TTLS, PEAP, and FAST.
+	 *
+	 *	We need another magic configuration option to allow
+	 *	it.
+	 */
+	if (!allow_tls13 && (conf->max_version == TLS1_3_VERSION)) {
+		if (SSL_set_max_proto_version(new_tls, TLS1_2_VERSION) == 0) {
+			tls_error_log(request, "Failed limiting maximum verrsion to TLS 1.3");
+			return NULL;
+		}
+	}
+#endif
 
 	/* We use the SSL's "app_data" to indicate a call-back */
 	SSL_set_app_data(new_tls, NULL);

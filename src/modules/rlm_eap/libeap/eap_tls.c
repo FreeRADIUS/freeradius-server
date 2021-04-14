@@ -61,7 +61,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  *	Fragment length is Framed-MTU - 4.
  */
-tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert)
+tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert, bool allow_tls13)
 {
 	tls_session_t	*ssn;
 	REQUEST		*request = handler->request;
@@ -75,7 +75,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = tls_new_session(handler, tls_conf, request, client_cert);
+	ssn = tls_new_session(handler, tls_conf, request, client_cert, allow_tls13);
 	if (!ssn) {
 		return NULL;
 	}

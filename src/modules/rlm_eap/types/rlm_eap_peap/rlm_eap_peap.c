@@ -192,7 +192,11 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		client_cert = inst->req_client_cert;
 	}
 
-	ssn = eaptls_session(handler, inst->tls_conf, client_cert);
+	/*
+	 *	Don't allow TLS 1.3 for us, even if it's allowed
+	 *	elsewhere.
+	 */
+	ssn = eaptls_session(handler, inst->tls_conf, client_cert, false);
 	if (!ssn) {
 		return 0;
 	}

@@ -553,7 +553,12 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	} else {
 		client_cert = inst->req_client_cert;
 	}
-	handler->opaque = tls_session = eaptls_session(handler, inst->tls_conf, client_cert);
+
+	/*
+	 *	Don't allow TLS 1.3 for us, even if it's allowed
+	 *	elsewhere.
+	 */
+	handler->opaque = tls_session = eaptls_session(handler, inst->tls_conf, client_cert, false);
 
 	if (!tls_session) return 0;
 

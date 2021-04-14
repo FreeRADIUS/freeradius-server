@@ -90,9 +90,10 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->tls = true;
 
 	/*
-	 *	EAP-TLS always requires a client certificate.
+	 *	EAP-TLS always requires a client certificate, and
+	 *	allows for TLS 1.3 if permitted.
 	 */
-	ssn = eaptls_session(handler, inst->tls_conf, true);
+	ssn = eaptls_session(handler, inst->tls_conf, true, true);
 	if (!ssn) {
 		return 0;
 	}

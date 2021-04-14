@@ -100,7 +100,7 @@ typedef struct tls_packet {
 /* EAP-TLS framework */
 EAPTLS_PACKET	*eaptls_alloc(void);
 void		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
-tls_session_t	*eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert);
+tls_session_t	*eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert, bool allow_tls13);
 int		eaptls_start(EAP_DS *eap_ds, int peap);
 int		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
 
