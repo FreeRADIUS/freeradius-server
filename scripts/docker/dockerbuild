@@ -12,13 +12,13 @@ usage ()
 {
 	[ "0$1" -gt 0 ] && exec 1>&2
 	echo "Syntax: $0 [options] <dir>"
-	echo "  -c	disable docker cache"
-	echo "  -j	build jenkins image instead of main image"
-	echo "  -l	build with clang rather than gcc"
-	echo "  -d	build with faster for dev only (smaller key sizes)"
-	echo "  -s	build with alternative git source"
-	echo "  -b	build with alternative git branch"
-	echo "  -h	this help"
+	echo "  -c          disable docker cache"
+	echo "  -j          build jenkins image instead of main image"
+	echo "  -l          build with clang rather than gcc"
+	echo "  -d          build with faster for dev only (smaller key sizes)"
+	echo "  -s <src>    build with alternative git source"
+	echo "  -b <branch> build with alternative git branch"
+	echo "  -h          this help"
 	exit $1
 }
 
