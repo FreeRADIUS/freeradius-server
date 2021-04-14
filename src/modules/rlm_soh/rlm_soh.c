@@ -115,16 +115,45 @@ static xlat_action_t soh_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *req
 				fr_value_box_bstrndup(ctx, vb, NULL, "Windows unknown", 15, false);
 			} else {
 				switch (vp[1]->vp_uint32) {
-				case 7:
-					osname = "7";
+				case 10:
+					osname = "10";
 					break;
 
 				case 6:
-					osname = "Vista";
+					switch (vp[2]->vp_uint32) {
+					case 0:
+						osname = "Vista / Server 2008";
+						break;
+					case 1:
+						osname = "7 / Server 2008 R2";
+						break;
+					case 2:
+						osname = "8 / Server 2012";
+						break;
+					case 3:
+						osname = "8.1 / Server 2012 R2";
+						break;
+					default:
+						osname = "Other";
+						break;
+					}
 					break;
 
 				case 5:
-					osname = "XP";
+					switch (vp[2]->vp_uint32) {
+					case 0:
+						osname = "2000";
+						break;
+					case 1:
+						osname = "XP";
+						break;
+					case 2:
+						osname = "Server 2003";
+						break;
+					default:
+						osname = "Other";
+						break;
+					}
 					break;
 
 				default:

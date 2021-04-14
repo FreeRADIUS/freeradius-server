@@ -134,8 +134,8 @@ recv Access-Request {
 }
 ```
 
-…will give you a string like ``Windows Vista 6.1.100 sp 1.0'' or
-``Windows XP 5.x.x sp 3.0''
+…will give you a string like ``Windows Vista / Server 2008 6.0.100 sp 1.0''
+or ``Windows XP 5.x.x sp 3.0''
 
 At the moment, this is the only dynamic expansion; in future, we will
 make various bits of info available, for example non-Microsoft SoH
