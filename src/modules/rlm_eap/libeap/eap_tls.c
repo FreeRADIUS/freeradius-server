@@ -1160,7 +1160,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *attr)
 	if (!tls_cs)
 		return NULL;
 
-	tls_conf = tls_server_conf_parse(tls_cs, false);
+	tls_conf = tls_server_conf_parse(tls_cs);
 
 	if (!tls_conf)
 		return NULL;

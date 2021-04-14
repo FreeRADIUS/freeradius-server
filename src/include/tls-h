@@ -315,7 +315,7 @@ int		tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char co
 void		tls_global_cleanup(void);
 tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert, bool allow_tls13);
 tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd, VALUE_PAIR **certs);
-fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs, bool allow_tls13);
+fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx);
 SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);
@@ -367,7 +367,6 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1_2;
 #ifdef TLS1_3_VERSION
 	bool		tls13_enable_magic;
-	bool		tls13_internal_enable;	//!< for radsec
 #endif
 
 	int		min_version;
