@@ -67,6 +67,10 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Add configuration to suppress printing values for User-Name, etc.
 	  See radiusd.conf, "suppress_secrets"
 	* Make the TLS debug output significantly more understandable.
+	* Significantly improve the readability and contents of TLS debug messages.
+	* We now support policies for new RadSec connections.  See
+	  sites-available/default, "Autz-Type New-TLS-Connection".
+	* Update TLS "ecdh_curve" code to allow for multiple curves.
 
 	Bug fixes
 	* Fix long-term double free due to PCRE calling our "free"
