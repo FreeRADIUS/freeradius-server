@@ -197,7 +197,9 @@ $(eval $(call ADD_INSTALL_RULE.file,doc/doxygen/html/index.html,$(R)$(docdir)/do
 #  of the files over manually.
 #
 install.doxygen: $(R)$(docdir)/doxygen/html/index.html
-	${Q}cp -RP doc/doxygen/html $(R)$(docdir)/doc/doxygen/html
+	${Q}cp -RP doc/doxygen/html $(R)$(docdir)/doxygen/
+
+$(eval $(call ADD_INSTALL_RULE.dir,$(R)$(docdir)/doxygen/html))
 
 #
 #  Add the doxygen files to the install targt
