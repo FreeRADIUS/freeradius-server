@@ -192,9 +192,9 @@ static int tls_verror_log(REQUEST *request, char const *msg, va_list ap)
 
 			/* Extra verbose */
 			if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
-				ROPTIONAL(REDEBUG, ERROR, "%s: %s[%i]:%s", p, file, line, buffer);
+				ROPTIONAL(REDEBUG, ERROR, "(TLS) %s: %s[%i]:%s", p, file, line, buffer);
 			} else {
-				ROPTIONAL(REDEBUG, ERROR, "%s: %s", p, buffer);
+				ROPTIONAL(REDEBUG, ERROR, "(TLS) %s: %s", p, buffer);
 			}
 
 			talloc_free(p);
@@ -557,7 +557,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	}
 
 	if (ret <= 0) {
-		tls_error_io_log(NULL, ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
+		tls_error_io_log(NULL, ssn, ret, "Failed in connecting TLS session.");
 		talloc_free(ssn);
 
 		return NULL;
@@ -644,7 +644,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 */
 	if (!allow_tls13 && (conf->max_version == TLS1_3_VERSION)) {
 		if (SSL_set_max_proto_version(new_tls, TLS1_2_VERSION) == 0) {
-			tls_error_log(request, "Failed limiting maximum verrsion to TLS 1.3");
+			tls_error_log(request, "Failed limiting maximum version to TLS 1.3");
 			return NULL;
 		}
 	}
@@ -806,7 +806,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		return 1;
 	}
 
-	if (!tls_error_io_log(request, ssn, err, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)")) return 0;
+	if (!tls_error_io_log(request, ssn, err, "Failed reading from OpenSSL")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
 	if (!ssn->is_init_finished && SSL_is_init_finished(ssn->ssl)) {
@@ -909,7 +909,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			return 1;
 
 		} else {
-			tls_error_log(NULL, "Error reading from SSL BIO");
+			tls_error_log(NULL, "Error reading from OpenSSL");
 			record_init(&ssn->dirty_in);
 			RDEBUG2("(TLS) Tunnel data is established.");
 			return 0;
@@ -955,8 +955,7 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 		if (err > 0) {
 			ssn->dirty_out.used += err;
 		} else {
-			if (!tls_error_io_log(request, ssn, err,
-					      "Failed in " STRINGIFY(__FUNCTION__) " (SSL_write)")) {
+			if (!tls_error_io_log(request, ssn, err, "Failed writing to OpenSSL")) {
 				return 0;
 			}
 		}
@@ -3450,7 +3449,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 
 	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
-		tls_error_log(NULL, "Failed creating TLS context");
+		tls_error_log(NULL, "Failed creating OpenSSL context");
 		return NULL;
 	}
 
@@ -4782,8 +4781,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 
 		default:
 			REDEBUG("(TLS) Error in fragmentation logic - code %d", code);
-			tls_error_io_log(request, ssn, err,
-					 "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)");
+			tls_error_io_log(request, ssn, err, "Failed reading application data from OpenSSL");
 			return FR_TLS_FAIL;
 		}
 	}
