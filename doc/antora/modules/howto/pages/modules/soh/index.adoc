@@ -129,7 +129,7 @@ some dynamic variables available, for example:
 ```
 recv Access-Request {
 	soh update request {
-		Tmp-String-0 = %{soh:OS}
+		Tmp-String-0 = %(soh:OS)
 	}
 }
 ```

@@ -70,28 +70,36 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
 	{ NULL }
 };
 
+static xlat_arg_parser_t const soh_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** SoH xlat
  *
  * Not sure how to make this useful yet...
  *
  * @ingroup xlat_functions
  */
-static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			request_t *request, char const *fmt)
+static xlat_action_t soh_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			      fr_value_box_list_t *in)
 {
-	fr_pair_t* vp[6];
-	char const *osname;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*vb;
+	fr_pair_t*	vp[6];
+	char const	*osname;
+	char		buff[128];
 
 	/*
 	 * There will be no point unless SoH-Supported = yes
 	 */
 	vp[0] = fr_pair_find_by_da(&request->request_pairs, attr_soh_supported);
 	if (!vp[0])
-		return 0;
+		return XLAT_ACTION_FAIL;
 
 
-	if (strncasecmp(fmt, "OS", 2) == 0) {
+	if (strncasecmp(in_head->vb_strvalue, "OS", 2) == 0) {
 		/* OS vendor */
 		vp[0] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_os_vendor);
 		vp[1] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_os_version);
@@ -101,8 +109,10 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		vp[5] = fr_pair_find_by_da(&request->request_pairs, attr_soh_ms_machine_sp_release);
 
 		if (vp[0] && vp[0]->vp_uint32 == attr_ms_vendor->attr) {
+			MEM(vb=fr_value_box_alloc_null(ctx));
+
 			if (!vp[1]) {
-				snprintf(*out, outlen, "Windows unknown");
+				fr_value_box_bstrndup(ctx, vb, NULL, "Windows unknown", 15, false);
 			} else {
 				switch (vp[1]->vp_uint32) {
 				case 7:
@@ -121,17 +131,19 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 					osname = "Other";
 					break;
 				}
-				snprintf(*out, outlen, "Windows %s %d.%d.%d sp %d.%d", osname, vp[1]->vp_uint32,
+				snprintf(buff, 127, "Windows %s %d.%d.%d sp %d.%d", osname, vp[1]->vp_uint32,
 					 vp[2] ? vp[2]->vp_uint32 : 0,
 					 vp[3] ? vp[3]->vp_uint32 : 0,
 					 vp[4] ? vp[4]->vp_uint32 : 0,
 					 vp[5] ? vp[5]->vp_uint32 : 0);
+				fr_value_box_bstrndup(ctx, vb, NULL, buff, strlen(buff), false);
 			}
-			return strlen(*out);
+			fr_dcursor_append(out, vb);
+			return XLAT_ACTION_DONE;
 		}
 	}
 
-	return 0;
+	return XLAT_ACTION_FAIL;
 }
 
 
@@ -232,13 +244,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	char const	*name;
 	rlm_soh_t	*inst = instance;
+	xlat_t		*xlat;
 
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = name;
 	if (!inst->xlat_name) return -1;
 
-	xlat_register_legacy(inst, inst->xlat_name, soh_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(inst, inst->xlat_name, soh_xlat, false);
+	xlat_func_args(xlat, soh_xlat_args);
 
 	return 0;
 }
