@@ -451,7 +451,7 @@ void *fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *d
 	return UNCONST(void *, node->data);
 }
 
-/** Insert data
+/** Insert data into a hash table
  *
  * @param[in] ht	to insert data into.
  * @param[in] data 	to insert.  Will be passed to the

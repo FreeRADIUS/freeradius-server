@@ -118,7 +118,7 @@ int map_proc_register(void *mod_inst, char const *name,
 
 	if (!map_proc_root) {
 		map_proc_root = fr_rb_talloc_alloc(NULL, map_proc_t, node,
-						    map_proc_cmp, _map_proc_tree_free, RB_FLAG_REPLACE);
+						    map_proc_cmp, _map_proc_tree_free, 0);
 		if (!map_proc_root) {
 			DEBUG("map_proc: Failed to create tree");
 			return -1;
@@ -134,7 +134,7 @@ int map_proc_register(void *mod_inst, char const *name,
 		strlcpy(proc->name, name, sizeof(proc->name));
 		proc->length = strlen(proc->name);
 
-		if (!fr_rb_insert(map_proc_root, proc)) {
+		if (fr_rb_replace(map_proc_root, proc) < 0) {
 			talloc_free(proc);
 			return -1;
 		}

@@ -53,8 +53,9 @@ struct fr_rb_node_s {
 };
 
 #define RB_FLAG_NONE    (0)
-#define RB_FLAG_REPLACE (1 << 0)
-#define RB_FLAG_LOCK    (1 << 1)
+#define RB_FLAG_LOCK    (1)
+
+void		fr_rb_node_talloc_free(void *data) CC_HINT(nonnull);
 
 /** Creates a red black that verifies elements are of a specific talloc type
  *
@@ -99,18 +100,20 @@ struct fr_rb_node_s {
 fr_rb_tree_t	*_fr_rb_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
 			       fr_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
 
-void		fr_rb_unlock(fr_rb_tree_t *tree) CC_HINT(nonnull);
-
-void		fr_rb_node_talloc_free(void *data) CC_HINT(nonnull);
-
-bool		fr_rb_insert(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
-
-bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
-
 /** @hidecallergraph */
 void		*fr_rb_find(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
+bool		fr_rb_insert(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+
+int		fr_rb_replace(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+
+bool		fr_rb_remove(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+
+bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+
 uint64_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
+
+void		fr_rb_unlock(fr_rb_tree_t *tree) CC_HINT(nonnull);
 
 /** Given a Node, return the data
  */

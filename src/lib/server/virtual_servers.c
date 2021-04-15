@@ -1227,7 +1227,7 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 		MEM(vns_tree = fr_rb_talloc_alloc(NULL,
 						   fr_virtual_namespace_t, node,
 						   _virtual_namespace_cmp,
-						   _virtual_namespace_free, RB_FLAG_REPLACE));
+						   _virtual_namespace_free, 0));
 
 		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
 			ERROR("Failed adding namespace tree data to config");
@@ -1236,7 +1236,7 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 		}
 	}
 
-	if (!fr_rb_insert(vns_tree, vns)) {
+	if (fr_rb_replace(vns_tree, vns) < 0) {
 		ERROR("Failed inserting namespace into tree");
 		return -1;
 	}
