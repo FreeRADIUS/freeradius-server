@@ -58,7 +58,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/snprintf.h>

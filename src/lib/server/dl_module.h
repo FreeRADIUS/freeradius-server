@@ -33,7 +33,7 @@ RCSIDH(dl_module_h, "$Id$")
 
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/dl.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/version.h>
 
 #ifdef __cplusplus

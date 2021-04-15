@@ -31,7 +31,7 @@ RCSIDH(dl_h, "$Id$")
 #  include <dlfcn.h>
 #endif
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/version.h>
 

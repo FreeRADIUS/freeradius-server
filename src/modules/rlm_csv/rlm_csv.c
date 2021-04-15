@@ -58,7 +58,7 @@ typedef struct {
 	char const     	**field_names;
 	int		*field_offsets; /* field X from the file maps to array entry Y here */
 	fr_type_t	*field_types;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 	fr_trie_t	*trie;
 
 	tmpl_t		*key;
@@ -185,7 +185,7 @@ static rlm_csv_entry_t *find_entry(rlm_csv_t const *inst, fr_value_box_t const *
 
 	memcpy(&my_e.key, &key, sizeof(key)); /* const issues */
 
-	return rbtree_find(inst->tree, &my_e);
+	return fr_rb_find(inst->tree, &my_e);
 }
 
 static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e, int lineno)
@@ -226,7 +226,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 			goto fail;
 		}
 
-	} else if (!rbtree_insert(inst->tree, e)) {
+	} else if (!fr_rb_insert(inst->tree, e)) {
 		cf_log_err(conf, "Failed inserting entry for file %s line %d: duplicate entry",
 			      inst->filename, lineno);
 		goto fail;
@@ -567,7 +567,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	    (inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
 		MEM(inst->trie = fr_trie_alloc(inst));
 	} else {
-		MEM(inst->tree = rbtree_talloc_alloc(inst, rlm_csv_entry_t, node, csv_entry_cmp, NULL, 0));
+		MEM(inst->tree = fr_rb_tree_talloc_alloc(inst, rlm_csv_entry_t, node, csv_entry_cmp, NULL, 0));
 	}
 
 	if ((*inst->index_field_name == ',') || (*inst->index_field_name == *inst->delimiter)) {

@@ -30,7 +30,7 @@ RCSIDH(cf_file_h, "$Id$")
 
 #include <freeradius-devel/server/cf_util.h>
 
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/print.h>

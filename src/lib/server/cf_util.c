@@ -133,12 +133,12 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	/*
 	 *	No ident2, use the ident1 tree.
 	 */
-	if (IS_WILDCARD(ident2)) return rbtree_find(parent->ident1, find);
+	if (IS_WILDCARD(ident2)) return fr_rb_find(parent->ident1, find);
 
 	/*
 	 *	Both ident1 and ident2 use the ident2 tree.
 	 */
-	return rbtree_find(parent->ident2, find);
+	return fr_rb_find(parent->ident2, find);
 }
 
 /** Return the next child that's of the specified type with the specified identifiers
@@ -370,13 +370,13 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	/*
 	 *	New child, add child trees.
 	 */
-	if (!parent->ident1) parent->ident1 = rbtree_alloc(parent, CONF_ITEM, ident1_node,
-							   _cf_ident1_cmp, NULL, RBTREE_FLAG_NONE);
-	if (!parent->ident2) parent->ident2 = rbtree_alloc(parent, CONF_ITEM, ident2_node,
-							   _cf_ident2_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!parent->ident1) parent->ident1 = fr_rb_alloc(parent, CONF_ITEM, ident1_node,
+							   _cf_ident1_cmp, NULL, RB_FLAG_NONE);
+	if (!parent->ident2) parent->ident2 = fr_rb_alloc(parent, CONF_ITEM, ident2_node,
+							   _cf_ident2_cmp, NULL, RB_FLAG_NONE);
 
-	rbtree_insert(parent->ident1, child);
-	rbtree_insert(parent->ident2, child);		/* NULL ident2 is still a value */
+	fr_rb_insert(parent->ident1, child);
+	fr_rb_insert(parent->ident2, child);		/* NULL ident2 is still a value */
  	fr_dlist_insert_tail(&parent->children, child);	/* Append to the list of children */
 }
 
@@ -408,14 +408,14 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	fr_dlist_remove(&parent->children, found);
 	if (!fr_cond_assert(found == child)) return NULL;
 
-	in_ident1 = (rbtree_find(parent->ident1, child) == child);
-	if (in_ident1 && (!rbtree_delete(parent->ident1, child))) {
+	in_ident1 = (fr_rb_find(parent->ident1, child) == child);
+	if (in_ident1 && (!fr_rb_delete(parent->ident1, child))) {
 		fr_assert(0);
 		return NULL;
 	}
 
-	in_ident2 = (rbtree_find(parent->ident2, child) == child);
-	if (in_ident2 && (!rbtree_delete(parent->ident2, child))) {
+	in_ident2 = (fr_rb_find(parent->ident2, child) == child);
+	if (in_ident2 && (!fr_rb_delete(parent->ident2, child))) {
 		fr_assert(0);
 		return NULL;
 	}
@@ -427,12 +427,12 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	     found && (in_ident1 || in_ident2);
 	     found = fr_dlist_next(&parent->children, found)) {
 		if (in_ident1 && (_cf_ident1_cmp(found, child) == 0)) {
-			rbtree_insert(parent->ident1, child);
+			fr_rb_insert(parent->ident1, child);
 			in_ident1 = false;
 		}
 
 		if (in_ident2 && (_cf_ident2_cmp(found, child) == 0)) {
-			rbtree_insert(parent->ident2, child);
+			fr_rb_insert(parent->ident2, child);
 			in_ident2 = false;
 		}
 	}
@@ -1683,14 +1683,14 @@ void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 {
 	CONF_DATA			*cd;
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	int				ret = 0;
 
 	if (!ci->ident2) return 0;
 
-	for (ci = rbtree_iter_init_inorder(&iter, ci->ident2);
+	for (ci = fr_rb_iter_init_inorder(&iter, ci->ident2);
 	     ci;
-	     ci = rbtree_iter_next_inorder(&iter)) {
+	     ci = fr_rb_iter_next_inorder(&iter)) {
 		/*
 		 *	We're walking ident2, not all of the items will be data
 		 */
@@ -1701,7 +1701,7 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 
 		ret = cb(UNCONST(void *, cd->data), ctx);
 		if (ret) {
-			rbtree_iter_done(&iter);
+			fr_rb_iter_done(&iter);
 			break;
 		}
 	}
@@ -2065,8 +2065,8 @@ void _cf_debug(CONF_ITEM const *ci)
 	DEBUG("  next          : %p", fr_dlist_next(&ci->parent->children, ci));
 	DEBUG("  parent        : %p", ci->parent);
 	DEBUG("  children      : %s", !fr_dlist_empty(&ci->children) ? "yes" : "no");
-	DEBUG("  ident1 tree   : %p (%" PRIu64 "entries)", ci->ident1, ci->ident1 ? rbtree_num_elements(ci->ident1) : 0);
-	DEBUG("  ident2 tree   : %p (%" PRIu64 "entries)", ci->ident2, ci->ident2 ? rbtree_num_elements(ci->ident2) : 0);
+	DEBUG("  ident1 tree   : %p (%" PRIu64 "entries)", ci->ident1, ci->ident1 ? fr_rb_num_elements(ci->ident1) : 0);
+	DEBUG("  ident2 tree   : %p (%" PRIu64 "entries)", ci->ident2, ci->ident2 ? fr_rb_num_elements(ci->ident2) : 0);
 
 	if (fr_dlist_empty(&ci->children)) return;
 
@@ -2078,8 +2078,8 @@ void _cf_debug(CONF_ITEM const *ci)
 	while ((child = fr_dlist_next(&ci->children, child))) {
 	     	char const *in_ident1, *in_ident2;
 
-		in_ident1 = rbtree_find(ci->ident1, child) == child? "in ident1 " : "";
-		in_ident2 = rbtree_find(ci->ident2, child) == child? "in ident2 " : "";
+		in_ident1 = fr_rb_find(ci->ident1, child) == child? "in ident1 " : "";
+		in_ident2 = fr_rb_find(ci->ident2, child) == child? "in ident2 " : "";
 
 		switch (child->type) {
 		case CONF_ITEM_SECTION:

@@ -2,17 +2,17 @@
 #include <stdio.h>
 #include <netdb.h>
 
-#include <freeradius-devel/util/rbtree.c>
+#include <freeradius-devel/util/rb.c>
 #include <freeradius-devel/util/rand.h>
 
 typedef struct {
 	uint32_t	num;
 	fr_rb_node_t	node;
-} fr_rb_test_node_t;
+} fr_rb_tree_test_node_t;
 
 static int8_t comp(void const *a, void const *b)
 {
-	fr_rb_test_node_t const *our_a = a, *our_b = b;
+	fr_rb_tree_test_node_t const *our_a = a, *our_b = b;
 
 	return CMP(our_a->num, our_b->num);
 }
@@ -26,7 +26,7 @@ static int qsort_comp(void const *a, void const *b)
 #if 0
 static int print_cb(void *i, UNUSED void *uctx)
 {
-	fprintf(stderr, "%i\n", (fr_rb_test_node_t *)i->num);
+	fprintf(stderr, "%i\n", (fr_rb_tree_test_node_t *)i->num);
 	return 0;
 }
 #endif
@@ -34,13 +34,13 @@ static int print_cb(void *i, UNUSED void *uctx)
 #define MAXSIZE 1024
 
 static int cb_stored = 0;
-static fr_rb_test_node_t rvals[MAXSIZE];
+static fr_rb_tree_test_node_t rvals[MAXSIZE];
 
 static uint32_t mask;
 
 static int filter_cb(void *i, void *uctx)
 {
-	if ((((fr_rb_test_node_t *)i)->num & mask) == (((fr_rb_test_node_t *)uctx)->num & mask)) {
+	if ((((fr_rb_tree_test_node_t *)i)->num & mask) == (((fr_rb_tree_test_node_t *)uctx)->num & mask)) {
 		return 2;
 	}
 	return 0;
@@ -50,7 +50,7 @@ static int filter_cb(void *i, void *uctx)
  * Returns the count of BLACK nodes from root to child leaves, or a
  * negative number indicating which RED-BLACK rule was broken.
  */
-static int rbcount(rbtree_t *t)
+static int rbcount(fr_rb_tree_t *t)
 {
 	fr_rb_node_t *n;
 	int count, count_expect;
@@ -131,13 +131,13 @@ static void freenode(void *data)
 
 int main(UNUSED int argc, UNUSED char *argv[])
 {
-	rbtree_t		*t;
+	fr_rb_tree_t		*t;
 	int			i, j;
-	fr_rb_test_node_t	thresh = {};
+	fr_rb_tree_test_node_t	thresh = {};
 	int			n, rep;
-	fr_rb_test_node_t	vals[MAXSIZE];
-	fr_rb_tree_iter_inorder_t	iter;
-	fr_rb_test_node_t const		*node;
+	fr_rb_tree_test_node_t	vals[MAXSIZE];
+	fr_rb_iter_inorder_t	iter;
+	fr_rb_tree_test_node_t const		*node;
 
 	memset(&vals, 0, sizeof(vals));
 
@@ -154,44 +154,44 @@ again:
 
 	fprintf(stderr, "filter = %x mask = %x n = %i\n", thresh.num, mask, n);
 
-	t = rbtree_alloc(NULL, fr_rb_test_node_t, node, comp, freenode, RBTREE_FLAG_LOCK);
+	t = fr_rb_alloc(NULL, fr_rb_tree_test_node_t, node, comp, freenode, RB_FLAG_LOCK);
 	for (i = 0; i < n; i++) {
-		fr_rb_test_node_t *p;
+		fr_rb_tree_test_node_t *p;
 
-		p = talloc(t, fr_rb_test_node_t);	/* Do not use talloc_zero, rbcode should initialise fr_rb_node_t */
+		p = talloc(t, fr_rb_tree_test_node_t);	/* Do not use talloc_zero, rbcode should initialise fr_rb_node_t */
 		p->num = fr_rand();
 		vals[i].num = p->num;
-		rbtree_insert(t, p);
+		fr_rb_insert(t, p);
 	}
 
 	i = rbcount(t);
 	fprintf(stderr,"After insert rbcount is %i\n", i);
 	if (i < 0) return i;
 
-	qsort(vals, n, sizeof(fr_rb_test_node_t), qsort_comp);
+	qsort(vals, n, sizeof(fr_rb_tree_test_node_t), qsort_comp);
 
 	/*
 	 * For testing deletebydata instead
 
 	 for (i = 0; i < n; i++) {
-		if (filter_cb(&vals[i], &thresh) == 2) rbtree_delete(t, &vals[i]);
+		if (filter_cb(&vals[i], &thresh) == 2) fr_rb_delete(t, &vals[i]);
 	 }
 
 	 *
 	 */
-	for (node = rbtree_iter_init_inorder(&iter, t);
+	for (node = fr_rb_iter_init_inorder(&iter, t);
 	     node;
-	     node = rbtree_iter_next_inorder(&iter)) {
-		if ((node->num & mask) == (thresh.num & mask)) rbtree_iter_delete_inorder(&iter);
+	     node = fr_rb_iter_next_inorder(&iter)) {
+		if ((node->num & mask) == (thresh.num & mask)) fr_rb_iter_delete_inorder(&iter);
 	}
 	i = rbcount(t);
 	fprintf(stderr,"After delete rbcount is %i\n", i);
 	if (i < 0) return i;
 
 	cb_stored = 0;
-	for (node = rbtree_iter_init_inorder(&iter, t);
+	for (node = fr_rb_iter_init_inorder(&iter, t);
 	     node;
-	     node = rbtree_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(&iter)) {
 		rvals[cb_stored++].num = node->num;
 	}
 

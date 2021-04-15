@@ -6,7 +6,7 @@ SUBMAKEFILES := \
 	libfreeradius-util.mk \
 	pair_legacy_tests.mk \
 	pair_tests.mk \
-	rbtree_tests.mk \
+	rb_tests.mk \
 	sbuff_tests.mk \
 	strerror_tests.mk
 

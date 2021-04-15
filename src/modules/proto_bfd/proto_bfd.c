@@ -228,7 +228,7 @@ typedef struct {
 	uint8_t		secret[BFD_MAX_SECRET_LENGTH];
 	size_t		secret_len;
 
-	rbtree_t	*session_tree;
+	fr_rb_tree_t	*session_tree;
 } bfd_socket_t;
 
 static fr_dict_t const *dict_bfd;
@@ -587,7 +587,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	fr_ipaddr_to_sockaddr(&session->remote_sockaddr, &session->salen,
 			      ipaddr, port);
 
-	if (!rbtree_insert(sock->session_tree, session)) {
+	if (!fr_rb_insert(sock->session_tree, session)) {
 		ERROR("FAILED creating new session!");
 		talloc_free(session);
 		return NULL;
@@ -607,7 +607,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 		session->pthread_id = pthread_self();
 	} else {
 		if (!bfd_pthread_create(session)) {
-			rbtree_delete(sock->session_tree, session);
+			fr_rb_delete(sock->session_tree, session);
 			talloc_free(session);
 			return NULL;
 		}
@@ -1488,7 +1488,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	fr_ipaddr_from_sockaddr(&my_session.socket.inet.dst_ipaddr,
 				&my_session.socket.inet.dst_port, &src, sizeof_src);
 
-	session = rbtree_find(sock->session_tree, &my_session);
+	session = fr_rb_find(sock->session_tree, &my_session);
 	if (!session) {
 		DEBUG("BFD unknown peer");
 		return 0;
@@ -1590,7 +1590,7 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 
 	       my_session.socket.inet.dst_ipaddr = ipaddr;
 	       my_session.socket.inet.dst_port = port;
-	       if (rbtree_find(sock->session_tree, &my_session) != NULL) {
+	       if (fr_rb_find(sock->session_tree, &my_session) != NULL) {
 		       cf_log_err(ci, "Peers must have unique IP addresses");
 		       return -1;
 	       }
@@ -1715,7 +1715,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
-	sock->session_tree = rbtree_talloc_alloc(sock, bfd_state_t, node, bfd_session_cmp, bfd_session_free, 0);
+	sock->session_tree = fr_rb_tree_talloc_alloc(sock, bfd_state_t, node, bfd_session_cmp, bfd_session_free, 0);
 	if (!sock->session_tree) {
 		ERROR("Failed creating session tree!");
 		return -1;

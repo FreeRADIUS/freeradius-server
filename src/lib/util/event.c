@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
@@ -347,7 +347,7 @@ typedef struct {
  */
 struct fr_event_list {
 	fr_heap_t		*times;			//!< of timer events to be executed.
-	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
+	fr_rb_tree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 #ifdef LOCAL_PID
 	fr_heap_t		*pids;			//!< PIDs to wait for
 #endif
@@ -430,7 +430,7 @@ uint64_t fr_event_list_num_fds(fr_event_list_t *el)
 {
 	if (unlikely(!el)) return -1;
 
-	return rbtree_num_elements(el->fds);
+	return fr_rb_num_elements(el->fds);
 }
 
 /** Return the number of timer events currently scheduled
@@ -721,7 +721,7 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 			}
 		}
 
-		rbtree_delete(el->fds, ef);
+		fr_rb_delete(el->fds, ef);
 		ef->is_registered = false;
 	}
 
@@ -783,7 +783,7 @@ int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
 	/*
 	 *	Ensure this exists
 	 */
-	ef = rbtree_find(src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = fr_rb_find(src->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -829,7 +829,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 	struct kevent		evset[10];
 	int			count = 0;
 
-	ef = rbtree_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -925,7 +925,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 	}
 
 	if (!ef_out || !*ef_out) {
-		ef = rbtree_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+		ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	} else {
 		ef = *ef_out;
 		fr_assert((fd < 0) || (ef->fd == fd));
@@ -992,7 +992,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 		}
 
 		ef->filter = filter;
-		rbtree_insert(el->fds, ef);
+		fr_rb_insert(el->fds, ef);
 		ef->is_registered = true;
 
 	/*
@@ -1084,7 +1084,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef;
 
-	ef = rbtree_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1122,7 +1122,7 @@ int fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t filter, ui
 {
 	fr_event_fd_t	*ef;
 
-	ef = rbtree_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -1152,7 +1152,7 @@ int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, 
 {
 	fr_event_fd_t	*ef;
 
-	ef = rbtree_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
@@ -2281,7 +2281,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		return NULL;
 	}
 
-	el->fds = rbtree_talloc_alloc(el, fr_event_fd_t, node, fr_event_fd_cmp, NULL, 0);
+	el->fds = fr_rb_tree_talloc_alloc(el, fr_event_fd_t, node, fr_event_fd_cmp, NULL, 0);
 	if (!el->fds) {
 		fr_strerror_const("Failed allocating FD tree");
 		goto error;
@@ -2338,7 +2338,7 @@ void fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t fun
  */
 bool fr_event_list_empty(fr_event_list_t *el)
 {
-	return !fr_heap_num_elements(el->times) && !rbtree_num_elements(el->fds);
+	return !fr_heap_num_elements(el->times) && !fr_rb_num_elements(el->fds);
 }
 
 #ifdef WITH_EVENT_DEBUG
@@ -2389,7 +2389,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	size_t			i;
 
 	size_t			array[NUM_ELEMENTS(decades)] = { 0 };
-	rbtree_t		*locations[NUM_ELEMENTS(decades)];
+	fr_rb_tree_t		*locations[NUM_ELEMENTS(decades)];
 	TALLOC_CTX		*tmp_ctx;
 	static pthread_mutex_t	print_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -2402,7 +2402,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-		locations[i] = rbtree_alloc(tmp_ctx, fr_event_counter_t, node, event_timer_location_cmp, NULL, 0);
+		locations[i] = fr_rb_alloc(tmp_ctx, fr_event_counter_t, node, event_timer_location_cmp, NULL, 0);
 		if (!locations[i]) goto oom;
 	}
 
@@ -2420,14 +2420,14 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 				fr_event_counter_t find = { .file = ev->file, .line = ev->line };
 				fr_event_counter_t *counter;
 
-				counter = rbtree_find(locations[i], &find);
+				counter = fr_rb_find(locations[i], &find);
 				if (!counter) {
 					counter = talloc(locations[i], fr_event_counter_t);
 					if (!counter) goto oom;
 					counter->file = ev->file;
 					counter->line = ev->line;
 					counter->count = 1;
-					rbtree_insert(locations[i], counter);
+					fr_rb_insert(locations[i], counter);
 				} else {
 					counter->count++;
 				}
@@ -2445,7 +2445,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	EVENT_DEBUG("    num timer events     : %u", fr_event_list_num_timers(el));
 
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-		fr_rb_tree_iter_inorder_t	iter;
+		fr_rb_iter_inorder_t	iter;
 		void				*node;
 
 		if (!array[i]) continue;
@@ -2458,9 +2458,9 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 			EVENT_DEBUG("    events %5s - %5s : %zu", decade_names[i - 1], decade_names[i], array[i]);
 		}
 
-		for (node = rbtree_iter_init_inorder(&iter, locations[i]);
+		for (node = fr_rb_iter_init_inorder(&iter, locations[i]);
 		     node;
-		     node = rbtree_iter_next_inorder(&iter)) {
+		     node = fr_rb_iter_next_inorder(&iter)) {
 			fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
 
 			EVENT_DEBUG("                         : %u allocd at %s[%u]",
@@ -2498,7 +2498,7 @@ void fr_event_timer_dump(fr_event_list_t *el)
 #ifdef TESTING
 
 /*
- *  cc -g -I .. -c rbtree.c -o rbtree.o && cc -g -I .. -c isaac.c -o isaac.o && cc -DTESTING -I .. -c event.c  -o event_mine.o && cc event_mine.o rbtree.o isaac.o -o event
+ *  cc -g -I .. -c rb.c -o rbtree.o && cc -g -I .. -c isaac.c -o isaac.o && cc -DTESTING -I .. -c event.c  -o event_mine.o && cc event_mine.o rbtree.o isaac.o -o event
  *
  *  ./event
  *

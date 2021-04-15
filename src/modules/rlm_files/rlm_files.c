@@ -36,24 +36,24 @@ typedef struct {
 	tmpl_t *key;
 
 	char const *filename;
-	rbtree_t *common;
+	fr_rb_tree_t *common;
 
 	/* autz */
 	char const *usersfile;
-	rbtree_t *users;
+	fr_rb_tree_t *users;
 
 
 	/* authenticate */
 	char const *auth_usersfile;
-	rbtree_t *auth_users;
+	fr_rb_tree_t *auth_users;
 
 	/* preacct */
 	char const *acct_usersfile;
-	rbtree_t *acct_users;
+	fr_rb_tree_t *acct_users;
 
 	/* post-authenticate */
 	char const *postauth_usersfile;
-	rbtree_t *postauth_users;
+	fr_rb_tree_t *postauth_users;
 } rlm_files_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -95,14 +95,14 @@ static int8_t pairlist_cmp(void const *a, void const *b)
 	return CMP(ret, 0);
 }
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **ptree)
 {
 	int rcode;
 	PAIR_LIST_LIST users;
 	PAIR_LIST_LIST search_list;	// Temporary list header used for matching in rbtree
 	PAIR_LIST *entry, *next;
 	PAIR_LIST_LIST *user_list, *default_list;
-	rbtree_t *tree;
+	fr_rb_tree_t *tree;
 
 	if (!filename) {
 		*ptree = NULL;
@@ -204,7 +204,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		}
 	}
 
-	tree = rbtree_alloc(ctx, PAIR_LIST_LIST, node, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+	tree = fr_rb_alloc(ctx, PAIR_LIST_LIST, node, pairlist_cmp, NULL, RB_FLAG_NONE);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;
@@ -247,7 +247,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 				/*
 				 *	Insert the DEFAULT list into the tree.
 				 */
-				if (!rbtree_insert(tree, default_list)) {
+				if (!fr_rb_insert(tree, default_list)) {
 				error:
 					pairlist_free(&users);
 					talloc_free(next);
@@ -268,7 +268,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	for a matching list header already in the tree.
 		 */
 		search_list.name = entry->name;
-		user_list = rbtree_find(tree, &search_list);
+		user_list = fr_rb_find(tree, &search_list);
 		if (!user_list) {
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);
@@ -276,7 +276,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			/*
 			 *	Insert the new list header.
 			 */
-			if (!rbtree_insert(tree, user_list)) goto error;
+			if (!fr_rb_insert(tree, user_list)) goto error;
 		}
 		/*
 		 *	Append the entry to the user list
@@ -314,7 +314,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
-				   request_t *request, char const *filename, rbtree_t *tree)
+				   request_t *request, char const *filename, fr_rb_tree_t *tree)
 {
 	char const		*name;
 	PAIR_LIST_LIST const	*user_list, *default_list;
@@ -331,10 +331,10 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 	if (!tree) RETURN_MODULE_NOOP;
 
 	my_list.name = name;
-	user_list = rbtree_find(tree, &my_list);
+	user_list = fr_rb_find(tree, &my_list);
 	user_pl = (user_list) ? fr_dlist_head(&user_list->head) : NULL;
 	my_list.name = "DEFAULT";
-	default_list = rbtree_find(tree, &my_list);
+	default_list = fr_rb_find(tree, &my_list);
 	default_pl = (default_list) ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*

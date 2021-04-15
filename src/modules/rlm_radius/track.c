@@ -24,7 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/debug.h>
@@ -160,8 +160,8 @@ retry:
 	 *	If needed, allocate a subtree.
 	 */
 	if (!tt->subtree[tt->next_id]) {
-		MEM(tt->subtree[tt->next_id] = rbtree_talloc_alloc(tt, radius_track_entry_t, node,
-								   te_cmp, NULL, RBTREE_FLAG_NONE));
+		MEM(tt->subtree[tt->next_id] = fr_rb_tree_talloc_alloc(tt, radius_track_entry_t, node,
+								   te_cmp, NULL, RB_FLAG_NONE));
 	}
 
 	/*
@@ -243,7 +243,7 @@ int radius_track_entry_release(
 		 *	This entry MAY be in a subtree.  If so, delete
 		 *	it.
 		 */
-		if (tt->subtree[te->id]) (void) rbtree_delete(tt->subtree[te->id], te);
+		if (tt->subtree[te->id]) (void) fr_rb_delete(tt->subtree[te->id], te);
 
 		goto done;
 	}
@@ -257,7 +257,7 @@ int radius_track_entry_release(
 	 *	Delete it from the tracking subtree.
 	 */
 	fr_assert(tt->subtree[te->id] != NULL);
-	(void) rbtree_delete(tt->subtree[te->id], te);
+	(void) fr_rb_delete(tt->subtree[te->id], te);
 
 	/*
 	 *	Try to free memory if the system gets idle.  If the
@@ -299,7 +299,7 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 	/*
 	 *	The authentication vector may have changed.
 	 */
-	if (tt->subtree[te->id]) (void) rbtree_delete(tt->subtree[te->id], te);
+	if (tt->subtree[te->id]) (void) fr_rb_delete(tt->subtree[te->id], te);
 
 	memcpy(te->vector, vector, sizeof(te->vector));
 
@@ -321,7 +321,7 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 	 *	array.  That way if the server responds with
 	 *	Original-Request-Authenticator, we can easily find it.
 	 */
-	if (!rbtree_insert(tt->subtree[te->id], te)) return -1;
+	if (!fr_rb_insert(tt->subtree[te->id], te)) return -1;
 
 	return 0;
 }
@@ -364,7 +364,7 @@ radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet
 	 */
 	memcpy(&my_te.vector, vector, sizeof(my_te.vector));
 
-	te = rbtree_find(tt->subtree[packet_id], &my_te);
+	te = fr_rb_find(tt->subtree[packet_id], &my_te);
 
 	/*
 	 *	Not found, the packet MAY have been allocated in the

@@ -514,12 +514,12 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 {
 	cf_file_t *file;
 	CONF_SECTION *top;
-	rbtree_t *tree;
+	fr_rb_tree_t *tree;
 	int fd;
 	FILE *fp;
 
 	top = cf_root(cs);
-	tree = cf_data_value(cf_data_find(top, rbtree_t, "filename"));
+	tree = cf_data_value(cf_data_find(top, fr_rb_tree_t, "filename"));
 	fr_assert(tree);
 
 	/*
@@ -535,7 +535,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 
 		if (stat(filename, &my_file.buf) < 0) goto error;
 
-		file = rbtree_find(tree, &my_file);
+		file = fr_rb_find(tree, &my_file);
 
 		/*
 		 *	The file was previously read by including it
@@ -585,7 +585,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	 *
 	 *	Though the admin should really use templates for that.
 	 */
-	if (!rbtree_insert(tree, file)) talloc_free(file);
+	if (!fr_rb_insert(tree, file)) talloc_free(file);
 
 	*fp_p = fp;
 	return 0;
@@ -607,11 +607,11 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 {
 	cf_file_t	*file;
 	CONF_SECTION	*top;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 	int		fd = -1;
 
 	top = cf_root(cs);
-	tree = cf_data_value(cf_data_find(top, rbtree_t, "filename"));
+	tree = cf_data_value(cf_data_find(top, fr_rb_tree_t, "filename"));
 	if (!tree) return false;
 
 	file = talloc(tree, cf_file_t);
@@ -692,7 +692,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 	/*
 	 *	It's OK to include the same file twice...
 	 */
-	if (!rbtree_insert(tree, file)) talloc_free(file);
+	if (!fr_rb_insert(tree, file)) talloc_free(file);
 
 	return true;
 }
@@ -2295,7 +2295,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	int		i;
 	char		*p;
 	CONF_PAIR	*cp;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 	cf_stack_t	stack;
 	cf_stack_frame_t	*frame;
 
@@ -2305,7 +2305,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
 
-	MEM(tree = rbtree_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL, 0));
+	MEM(tree = fr_rb_tree_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL, 0));
 
 	cf_data_add(cs, tree, "filename", false);
 

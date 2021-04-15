@@ -31,7 +31,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/ext.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>

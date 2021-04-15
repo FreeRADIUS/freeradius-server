@@ -102,7 +102,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,request_t *request, SECURID_SESS
 	/*
 	 *	If we have a DoS attack, discard new sessions.
 	 */
-	if (rbtree_num_elements(inst->session_tree) >= inst->max_sessions) {
+	if (fr_rb_num_elements(inst->session_tree) >= inst->max_sessions) {
 		securid_sessionlist_clean_expired(inst, request, session->timestamp);
 		goto done;
 	}
@@ -127,7 +127,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,request_t *request, SECURID_SESS
 	MEM(pair_update_reply(&state, attr_state) >= 0);
 	fr_pair_value_memdup(state, session->state, sizeof(session->state), true);
 
-	status = rbtree_insert(inst->session_tree, session);
+	status = fr_rb_insert(inst->session_tree, session);
 	if (status) {
 		/* tree insert SUCCESS */
 		/* insert the session to the linked list of sessions */
@@ -229,12 +229,12 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, request_t *reques
 /************ private functions *************/
 static SECURID_SESSION *securid_sessionlist_delete(rlm_securid_t *inst, SECURID_SESSION *session)
 {
-	fr_assert(rbtree_find(inst->session_tree, session) == session);
+	fr_assert(fr_rb_find(inst->session_tree, session) == session);
 
 	/*
 	 *	Delete old session from the tree.
 	 */
-	rbtree_delete(inst->session_tree, node);
+	fr_rb_delete(inst->session_tree, node);
 
 	/*
 	 *	And unsplice it from the linked list.
@@ -260,7 +260,7 @@ static void securid_sessionlist_clean_expired(rlm_securid_t *inst, request_t *re
 	uint64_t num_sessions;
 	SECURID_SESSION *session;
 
-	num_sessions = rbtree_num_elements(inst->session_tree);
+	num_sessions = fr_rb_num_elements(inst->session_tree);
 	RDEBUG2("There are %d sessions in the tree\n",num_sessions);
 
 	/*
@@ -269,7 +269,7 @@ static void securid_sessionlist_clean_expired(rlm_securid_t *inst, request_t *re
 	 */
 	while((session = inst->session_head)) {
 		if ((timestamp - session->timestamp) > inst->timer_limit) {
-			rbtree_delete(inst->session_tree, session);
+			fr_rb_delete(inst->session_tree, session);
 
 			/*
 			 *	session == inst->session_head

@@ -99,7 +99,7 @@ struct dl_loader_s {
 
 	bool			do_dlclose;	//!< dlclose modules when we're done with them.
 
-	rbtree_t		*tree;		//!< Tree of shared objects loaded.
+	fr_rb_tree_t		*tree;		//!< Tree of shared objects loaded.
 
 	void			*uctx;		//!< dl private extension data.
 
@@ -433,7 +433,7 @@ static int _dl_free(dl_t *dl)
 
 	dl->handle = NULL;
 
-	if (dl->in_tree) rbtree_delete(dl->loader->tree, dl);
+	if (dl->in_tree) fr_rb_delete(dl->loader->tree, dl);
 
 	return 0;
 }
@@ -463,7 +463,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 *	There's already something in the tree,
 	 *	just return that instead.
 	 */
-	dl = rbtree_find(dl_loader->tree, &(dl_t){ .name = name });
+	dl = fr_rb_find(dl_loader->tree, &(dl_t){ .name = name });
 	if (dl) {
 		talloc_increase_ref_count(dl);
 		return dl;
@@ -592,7 +592,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	};
 	talloc_set_destructor(dl, _dl_free);
 
-	dl->in_tree = rbtree_insert(dl_loader->tree, dl);
+	dl->in_tree = fr_rb_insert(dl_loader->tree, dl);
 	if (!dl->in_tree) {
 		talloc_free(dl);
 		return NULL;
@@ -635,17 +635,17 @@ static int _dl_loader_free(dl_loader_t *dl_loader)
 	 *	We do reference counting, we know exactly what
 	 *	should still be active.
 	 */
-	if (rbtree_num_elements(dl_loader->tree) > 0) {
+	if (fr_rb_num_elements(dl_loader->tree) > 0) {
 #ifndef NDEBUG
-		fr_rb_tree_iter_inorder_t	iter;
+		fr_rb_iter_inorder_t	iter;
 		void				*data;
 
 		/*
 		 *	Yes, this is the correct call order
 		 */
-		for (data = rbtree_iter_init_inorder(&iter, dl_loader->tree);
+		for (data = fr_rb_iter_init_inorder(&iter, dl_loader->tree);
 		     data;
-		     data = rbtree_iter_next_inorder(&iter)) {
+		     data = fr_rb_iter_next_inorder(&iter)) {
 			dl_t *dl = talloc_get_type_abort(data, dl_t);
 
 			fr_strerror_printf_push("  %s (%zu)", dl->name, talloc_reference_count(dl));
@@ -795,7 +795,7 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool de
 		return NULL;
 	}
 
-	dl_loader->tree = rbtree_talloc_alloc(dl_loader, dl_t, node, dl_handle_cmp, NULL, 0);
+	dl_loader->tree = fr_rb_tree_talloc_alloc(dl_loader, dl_t, node, dl_handle_cmp, NULL, 0);
 	if (!dl_loader->tree) {
 		fr_strerror_const("Failed initialising dl->tree");
 	error:

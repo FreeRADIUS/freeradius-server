@@ -97,7 +97,7 @@ struct fr_worker_s {
 
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
-	rbtree_t		*dedup;		//!< de-dup tree
+	fr_rb_tree_t		*dedup;		//!< de-dup tree
 
 	fr_io_stats_t		stats;		//!< input / output stats
 	fr_time_elapsed_t	cpu_time;	//!< histogram of total CPU time per request
@@ -745,7 +745,7 @@ nak:
 	if (request->async->listen->track_duplicates) {
 		request_t *old;
 
-		old = rbtree_find(worker->dedup, request);
+		old = fr_rb_find(worker->dedup, request);
 		if (!old) {
 			/*
 			 *	Ignore duplicate packets where we've
@@ -812,7 +812,7 @@ nak:
 		worker->stats.dropped++;
 
 	insert_new:
-		(void) rbtree_insert(worker->dedup, request);
+		(void) fr_rb_insert(worker->dedup, request);
 	}
 
 	worker_request_time_tracking_start(worker, request, now);
@@ -951,7 +951,7 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	 *	then, only some of the time.
 	 */
 	if (request->async->listen->track_duplicates) {
-		(void) rbtree_delete(worker->dedup, request);
+		(void) fr_rb_delete(worker->dedup, request);
 	}
 
 	/*
@@ -1205,9 +1205,9 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const *
 	fr_worker_t *worker;
 
 #ifndef NDEBUG
-	int rbflags = RBTREE_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
+	int rbflags = RB_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
 #else
-	int rbflags = RBTREE_FLAG_NONE;
+	int rbflags = RB_FLAG_NONE;
 #endif
 
 	worker = talloc_zero(ctx, fr_worker_t);
@@ -1283,7 +1283,7 @@ nomem:
 		goto fail;
 	}
 
-	worker->dedup = rbtree_talloc_alloc(worker, request_t, dedup_node, worker_dedup_cmp, NULL, rbflags);
+	worker->dedup = fr_rb_tree_talloc_alloc(worker, request_t, dedup_node, worker_dedup_cmp, NULL, rbflags);
 	if (!worker->dedup) {
 		fr_strerror_const("Failed creating de_dup tree");
 		goto fail;
@@ -1479,7 +1479,7 @@ static void worker_verify(fr_worker_t *worker)
 	(void) talloc_get_type_abort(worker->runnable, fr_heap_t);
 
 	fr_assert(worker->dedup != NULL);
-	(void) talloc_get_type_abort(worker->dedup, rbtree_t);
+	(void) talloc_get_type_abort(worker->dedup, fr_rb_tree_t);
 
 	for (i = 0; i < worker->config.max_channels; i++) {
 		if (!worker->channel[i]) continue;

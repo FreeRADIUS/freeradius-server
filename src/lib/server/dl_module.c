@@ -42,8 +42,8 @@ RCSID("$Id$")
  * Provides space to store instance data.
  */
 struct dl_module_loader_s {
-	rbtree_t	*module_tree;
-	rbtree_t	*inst_data_tree;
+	fr_rb_tree_t	*module_tree;
+	fr_rb_tree_t	*inst_data_tree;
 	dl_loader_t	*dl_loader;
 };
 
@@ -209,7 +209,7 @@ dl_module_inst_t const *dl_module_instance_by_data(void const *data)
 
 	if (dl_inst_cache.data == data) return dl_inst_cache.inst;
 
-	return rbtree_find(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = UNCONST(void *, data) });
+	return fr_rb_find(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = UNCONST(void *, data) });
 }
 
 /** Lookup instance name via instance data
@@ -293,7 +293,7 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
          *      with the data.
          */
 	fr_assert(dl_module_loader != NULL);
-	rbtree_insert(dl_module_loader->inst_data_tree, dl_inst);	/* Duplicates not possible */
+	fr_rb_insert(dl_module_loader->inst_data_tree, dl_inst);	/* Duplicates not possible */
 
 	talloc_set_destructor(data, _dl_module_instance_data_free);
 }
@@ -316,7 +316,7 @@ static int _dl_module_free(dl_module_t *dl_module)
 	}
 
 	if (dl_module->in_tree) {
-		rbtree_delete(dl_module_loader->module_tree, dl_module);
+		fr_rb_delete(dl_module_loader->module_tree, dl_module);
 		dl_module->in_tree = false;
 	}
 
@@ -372,7 +372,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	If the module's already been loaded, increment the reference count.
 	 */
-	dl_module = rbtree_find(dl_module_loader->module_tree,
+	dl_module = fr_rb_find(dl_module_loader->module_tree,
 				    &(dl_module_t){ .dl = &(dl_t){ .name = module_name }});
 	if (dl_module) {
 		talloc_free(module_name);
@@ -427,7 +427,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	Add the module to the dl cache
 	 */
-	dl_module->in_tree = rbtree_insert(dl_module_loader->module_tree, dl_module);
+	dl_module->in_tree = fr_rb_insert(dl_module_loader->module_tree, dl_module);
 	if (!dl_module->in_tree) {
 		cf_log_err(conf, "Failed caching module \"%s\"", module_name);
 		goto error;
@@ -465,7 +465,7 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
          *	Remove this instance from the tracking tree.
          */
         fr_assert(dl_module_loader != NULL);
-        rbtree_delete(dl_module_loader->inst_data_tree, dl_inst);
+        fr_rb_delete(dl_module_loader->inst_data_tree, dl_inst);
 
         /*
          *	Decrements the reference count. The module object
@@ -576,15 +576,15 @@ static int _dl_module_loader_free(dl_module_loader_t *dl_module_l)
 {
 	int ret = 0;
 
-	if (rbtree_num_elements(dl_module_l->inst_data_tree) > 0) {
+	if (fr_rb_num_elements(dl_module_l->inst_data_tree) > 0) {
 #ifndef NDEBUG
-		fr_rb_tree_iter_inorder_t	iter;
+		fr_rb_iter_inorder_t	iter;
 		void				*data;
 
 		WARN("Refusing to cleanup dl loader, the following module instances are still in use:");
-		for (data = rbtree_iter_init_inorder(&iter, dl_module_l->inst_data_tree);
+		for (data = fr_rb_iter_init_inorder(&iter, dl_module_l->inst_data_tree);
 		     data;
-		     data = rbtree_iter_next_inorder(&iter)) {
+		     data = fr_rb_iter_next_inorder(&iter)) {
 			dl_module_inst_t *dl_inst = talloc_get_type_abort(data, dl_module_inst_t);
 
 			WARN("  %s (%s)", dl_inst->module->dl->name, dl_inst->name);
@@ -655,7 +655,7 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	}
 	dl_search_path_prepend(dl_module_loader->dl_loader, lib_dir);
 
-	dl_module_loader->inst_data_tree = rbtree_talloc_alloc(dl_module_loader,
+	dl_module_loader->inst_data_tree = fr_rb_tree_talloc_alloc(dl_module_loader,
 							       dl_module_inst_t, node,
 							       dl_module_inst_data_cmp, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {
@@ -663,7 +663,7 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 		goto error;
 	}
 
-	dl_module_loader->module_tree = rbtree_talloc_alloc(dl_module_loader,
+	dl_module_loader->module_tree = fr_rb_tree_talloc_alloc(dl_module_loader,
 							    dl_module_t, node,
 							    dl_module_cmp, NULL, 0);
 	if (!dl_module_loader->inst_data_tree) {

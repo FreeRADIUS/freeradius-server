@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc_priv.h>
 #include <freeradius-devel/util/debug.h>
 
-static rbtree_t *map_proc_root = NULL;
+static fr_rb_tree_t *map_proc_root = NULL;
 
 /** Compare two map_proc_t structs, based ONLY on the name
  *
@@ -63,10 +63,10 @@ static int _map_proc_talloc_free(map_proc_t *proc)
 	strlcpy(find.name, proc->name, sizeof(find.name));
 	find.length = strlen(find.name);
 
-	found = rbtree_find(map_proc_root, &find);
+	found = fr_rb_find(map_proc_root, &find);
 	if (!found) return 0;
 
-	rbtree_delete(map_proc_root, found);
+	fr_rb_delete(map_proc_root, found);
 
 	return 0;
 }
@@ -92,7 +92,7 @@ map_proc_t *map_proc_find(char const *name)
 	strlcpy(find.name, name, sizeof(find.name));
 	find.length = strlen(find.name);
 
-	return rbtree_find(map_proc_root, &find);
+	return fr_rb_find(map_proc_root, &find);
 }
 
 /** Register a map processor
@@ -117,8 +117,8 @@ int map_proc_register(void *mod_inst, char const *name,
 	fr_assert(name && name[0]);
 
 	if (!map_proc_root) {
-		map_proc_root = rbtree_talloc_alloc(NULL, map_proc_t, node,
-						    map_proc_cmp, _map_proc_tree_free, RBTREE_FLAG_REPLACE);
+		map_proc_root = fr_rb_tree_talloc_alloc(NULL, map_proc_t, node,
+						    map_proc_cmp, _map_proc_tree_free, RB_FLAG_REPLACE);
 		if (!map_proc_root) {
 			DEBUG("map_proc: Failed to create tree");
 			return -1;
@@ -134,7 +134,7 @@ int map_proc_register(void *mod_inst, char const *name,
 		strlcpy(proc->name, name, sizeof(proc->name));
 		proc->length = strlen(proc->name);
 
-		if (!rbtree_insert(map_proc_root, proc)) {
+		if (!fr_rb_insert(map_proc_root, proc)) {
 			talloc_free(proc);
 			return -1;
 		}
@@ -210,7 +210,7 @@ rlm_rcode_t map_proc(request_t *request, map_proc_inst_t const *inst, fr_value_b
  */
 void map_proc_free(void)
 {
-	rbtree_t *mpr = map_proc_root;
+	fr_rb_tree_t *mpr = map_proc_root;
 
 	map_proc_root = NULL;
 	talloc_free(mpr);

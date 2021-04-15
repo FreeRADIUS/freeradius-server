@@ -17,11 +17,11 @@
 
 /** Red/black tree implementation
  *
- * @file src/lib/util/rbtree.h
+ * @file src/lib/util/rb.h
  *
  * @copyright 2016 The FreeRADIUS server project
  */
-RCSIDH(rbtree_h, "$Id$")
+RCSIDH(fr_rb_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,8 +32,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-/* rbtree.c */
-typedef struct rbtree_s rbtree_t;
+/* rb.c */
+typedef struct fr_rb_s fr_rb_tree_t;
 
 /* Red-Black tree description */
 typedef enum {
@@ -52,9 +52,9 @@ struct fr_rb_node_s {
 	void			*data;		//!< data stored in node
 };
 
-#define RBTREE_FLAG_NONE    (0)
-#define RBTREE_FLAG_REPLACE (1 << 0)
-#define RBTREE_FLAG_LOCK    (1 << 1)
+#define RB_FLAG_NONE    (0)
+#define RB_FLAG_REPLACE (1 << 0)
+#define RB_FLAG_LOCK    (1 << 1)
 
 /** Creates a red black that verifies elements are of a specific talloc type
  *
@@ -71,9 +71,9 @@ struct fr_rb_node_s {
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_talloc_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
+#define		fr_rb_tree_talloc_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _rbtree_alloc(_ctx, offsetof(_type, _field), #_type, _cmp, _node_free, _flags) \
+			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), #_type, _cmp, _node_free, _flags) \
 		)
 
 /** Creates a red black tree
@@ -91,30 +91,30 @@ struct fr_rb_node_s {
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		rbtree_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
+#define		fr_rb_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _rbtree_alloc(_ctx, offsetof(_type, _field), NULL, _cmp, _node_free, _flags) \
+			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), NULL, _cmp, _node_free, _flags) \
 		)
 
-rbtree_t	*_rbtree_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
+fr_rb_tree_t	*_fr_rb_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
 			       fr_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
 
-void		rbtree_unlock(rbtree_t *tree) CC_HINT(nonnull);
+void		fr_rb_unlock(fr_rb_tree_t *tree) CC_HINT(nonnull);
 
-void		rbtree_node_talloc_free(void *data) CC_HINT(nonnull);
+void		fr_rb_node_talloc_free(void *data) CC_HINT(nonnull);
 
-bool		rbtree_insert(rbtree_t *tree, void const *data) CC_HINT(nonnull);
+bool		fr_rb_insert(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
-bool		rbtree_delete(rbtree_t *tree, void const *data) CC_HINT(nonnull);
+bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		*rbtree_find(rbtree_t *tree, void const *data) CC_HINT(nonnull);
+void		*fr_rb_find(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
-uint64_t	rbtree_num_elements(rbtree_t *tree) CC_HINT(nonnull);
+uint64_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
 
 /** Given a Node, return the data
  */
-static inline void *rbtree_node_to_data(UNUSED rbtree_t *tree, fr_rb_node_t *node)
+static inline void *fr_rb_node_to_data(UNUSED fr_rb_tree_t *tree, fr_rb_node_t *node)
 {
 	if (!node) return NULL;
 
@@ -124,58 +124,58 @@ static inline void *rbtree_node_to_data(UNUSED rbtree_t *tree, fr_rb_node_t *nod
 /** Iterator structure for in-order traversal of an rbtree
  */
 typedef struct {
-	rbtree_t	*tree;			//!< Tree being iterated over.
-	fr_rb_node_t	*node;			///< current node--set to NULL (not NIL) by rbtree_iter_delete()
-	fr_rb_node_t	*next;			///< if non-NULL, next node cached by rbtree_iter_delete()
-} fr_rb_tree_iter_inorder_t;
+	fr_rb_tree_t	*tree;			//!< Tree being iterated over.
+	fr_rb_node_t	*node;			///< current node--set to NULL (not NIL) by fr_rb_iter_delete()
+	fr_rb_node_t	*next;			///< if non-NULL, next node cached by fr_rb_iter_delete()
+} fr_rb_iter_inorder_t;
 
-void		*rbtree_iter_init_inorder(fr_rb_tree_iter_inorder_t *iter, rbtree_t *tree) CC_HINT(nonnull);
+void		*fr_rb_iter_init_inorder(fr_rb_iter_inorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
 
-void		*rbtree_iter_next_inorder(fr_rb_tree_iter_inorder_t *iter) CC_HINT(nonnull);
+void		*fr_rb_iter_next_inorder(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 
-void		rbtree_iter_delete_inorder(fr_rb_tree_iter_inorder_t *iter) CC_HINT(nonnull);
+void		fr_rb_iter_delete_inorder(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 
 /** Iterator structure for pre-order traversal of an rbtree
  */
 typedef struct {
-	rbtree_t	*tree;			//!< Tree being iterated over.
+	fr_rb_tree_t	*tree;			//!< Tree being iterated over.
 	fr_rb_node_t	*node;			///< current node
-} fr_rb_tree_iter_preorder_t;
+} fr_rb_iter_preorder_t;
 
-void		*rbtree_iter_init_preorder(fr_rb_tree_iter_preorder_t *iter, rbtree_t *tree) CC_HINT(nonnull);
+void		*fr_rb_iter_init_preorder(fr_rb_iter_preorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
 
-void		*rbtree_iter_next_preorder(fr_rb_tree_iter_preorder_t *iter) CC_HINT(nonnull);
+void		*fr_rb_iter_next_preorder(fr_rb_iter_preorder_t *iter) CC_HINT(nonnull);
 
 /** Iterator structure for post-order traversal of an rbtree
  */
 typedef struct {
-	rbtree_t	*tree;			//!< Tree being iterated over.
+	fr_rb_tree_t	*tree;			//!< Tree being iterated over.
 	fr_rb_node_t	*node;			///< current node
-} fr_rb_tree_iter_postorder_t;
+} fr_rb_iter_postorder_t;
 
-void		*rbtree_iter_init_postorder(fr_rb_tree_iter_postorder_t *iter, rbtree_t *tree) CC_HINT(nonnull);
+void		*fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
 
-void		*rbtree_iter_next_postorder(fr_rb_tree_iter_postorder_t *iter) CC_HINT(nonnull);
+void		*fr_rb_iter_next_postorder(fr_rb_iter_postorder_t *iter) CC_HINT(nonnull);
 
 /** Explicitly unlock the tree
  *
  * @note Must be called if iterating over the tree ends early.
  *
- * @param[in] iter	previously initialised with #rbtree_iter_init
+ * @param[in] iter	previously initialised with #fr_rb_iter_init
  */
-#define rbtree_iter_done(_iter) \
+#define fr_rb_iter_done(_iter) \
 	(_Generic((_iter), \
-		fr_rb_tree_iter_inorder_t *	: rbtree_unlock(((fr_rb_tree_iter_inorder_t *)(_iter))->tree),  \
-		fr_rb_tree_iter_preorder_t *	: rbtree_unlock(((fr_rb_tree_iter_preorder_t *)(_iter))->tree),  \
-		fr_rb_tree_iter_postorder_t *	: rbtree_unlock(((fr_rb_tree_iter_postorder_t *)(_iter))->tree)  \
+		fr_rb_iter_inorder_t *		: fr_rb_unlock(((fr_rb_iter_inorder_t *)(_iter))->tree),  \
+		fr_rb_iter_preorder_t *		: fr_rb_unlock(((fr_rb_iter_preorder_t *)(_iter))->tree),  \
+		fr_rb_iter_postorder_t *	: fr_rb_unlock(((fr_rb_iter_postorder_t *)(_iter))->tree)  \
 	))
 
 
-int		rbtree_flatten_inorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+int		fr_rb_flatten_inorder(TALLOC_CTX *ctx, void **out[], fr_rb_tree_t *tree);
 
-int		rbtree_flatten_preorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+int		fr_rb_flatten_preorder(TALLOC_CTX *ctx, void **out[], fr_rb_tree_t *tree);
 
-int		rbtree_flatten_postorder(TALLOC_CTX *ctx, void **out[], rbtree_t *tree);
+int		fr_rb_flatten_postorder(TALLOC_CTX *ctx, void **out[], fr_rb_tree_t *tree);
 #ifdef __cplusplus
 }
 #endif

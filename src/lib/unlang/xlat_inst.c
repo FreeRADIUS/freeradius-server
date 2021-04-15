@@ -34,11 +34,11 @@ RCSID("$Id$")
 
 /** Holds instance data created by xlat_instantiate
  */
-static rbtree_t *xlat_inst_tree;
+static fr_rb_tree_t *xlat_inst_tree;
 
 /** Holds thread specific instance data created by xlat_instantiate
  */
-static _Thread_local rbtree_t *xlat_thread_inst_tree;
+static _Thread_local fr_rb_tree_t *xlat_thread_inst_tree;
 
 /** Compare two xlat instances based on node pointer
  *
@@ -159,8 +159,8 @@ static int _xlat_inst_detach(xlat_inst_t *inst)
 	 *	Remove permanent data from the instance tree.
 	 */
 	if (!inst->node->call.ephemeral) {
-		rbtree_delete(xlat_inst_tree, inst);
-		if (rbtree_num_elements(xlat_inst_tree) == 0) TALLOC_FREE(xlat_inst_tree);
+		fr_rb_delete(xlat_inst_tree, inst);
+		if (fr_rb_num_elements(xlat_inst_tree) == 0) TALLOC_FREE(xlat_inst_tree);
 	}
 
 	if (inst->node->call.func->detach) (void) inst->node->call.func->detach(inst->data, inst->node->call.func->uctx);
@@ -302,7 +302,7 @@ static int _xlat_thread_instantiate(void *data, void *uctx)
 		}
 	}
 
-	rbtree_insert(xlat_thread_inst_tree, thread_inst);
+	fr_rb_insert(xlat_thread_inst_tree, thread_inst);
 
 	return 0;
 }
@@ -323,7 +323,7 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 
 	if (node->call.ephemeral) return node->call.thread_inst;
 
-	found = rbtree_find(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
+	found = fr_rb_find(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
 	fr_assert(found);
 
 	return found;
@@ -343,25 +343,25 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
  */
 int xlat_thread_instantiate(TALLOC_CTX *ctx)
 {
-	fr_rb_tree_iter_preorder_t	iter;
+	fr_rb_iter_preorder_t	iter;
 	void				*data;
 
 	if (!xlat_inst_tree) return 0;
 
 	if (!xlat_thread_inst_tree) {
-		MEM(xlat_thread_inst_tree = rbtree_talloc_alloc(ctx, xlat_thread_inst_t, inst_node,
+		MEM(xlat_thread_inst_tree = fr_rb_tree_talloc_alloc(ctx, xlat_thread_inst_t, inst_node,
 								_xlat_thread_inst_cmp, _xlat_thread_inst_free, 0));
 	}
 
 	/*
 	 *	Walk the inst tree, creating thread specific instances.
 	 */
-	for (data = rbtree_iter_init_preorder(&iter, xlat_inst_tree);
+	for (data = fr_rb_iter_init_preorder(&iter, xlat_inst_tree);
 	     data;
-	     data = rbtree_iter_next_preorder(&iter)) {
+	     data = fr_rb_iter_next_preorder(&iter)) {
 		if (_xlat_thread_instantiate(data, xlat_thread_inst_tree) < 0) {
 			TALLOC_FREE(xlat_thread_inst_tree);
-			rbtree_iter_done(&iter);
+			fr_rb_iter_done(&iter);
 			return -1;
 		}
 	}
@@ -386,8 +386,8 @@ static int xlat_instantiate_init(void)
 {
 	if (xlat_inst_tree) return 0;
 
-	xlat_inst_tree = rbtree_talloc_alloc(NULL, xlat_inst_t, inst_node,
-					     _xlat_inst_cmp, _xlat_inst_free, RBTREE_FLAG_NONE);
+	xlat_inst_tree = fr_rb_tree_talloc_alloc(NULL, xlat_inst_t, inst_node,
+					     _xlat_inst_cmp, _xlat_inst_free, RB_FLAG_NONE);
 	if (!xlat_inst_tree) return -1;
 
 	return 0;
@@ -399,19 +399,19 @@ static int xlat_instantiate_init(void)
  */
 int xlat_instantiate(void)
 {
-	fr_rb_tree_iter_preorder_t	iter;
+	fr_rb_iter_preorder_t	iter;
 	void				*data;
 
 	if (!xlat_inst_tree) xlat_instantiate_init();
 
-	for (data = rbtree_iter_init_preorder(&iter, xlat_inst_tree);
+	for (data = fr_rb_iter_init_preorder(&iter, xlat_inst_tree);
 	     data;
-	     data = rbtree_iter_next_preorder(&iter)) {
+	     data = fr_rb_iter_next_preorder(&iter)) {
 		xlat_inst_t *inst = talloc_get_type_abort(data, xlat_inst_t);
 
 		if (inst->node->call.func->instantiate &&
 		    (inst->node->call.func->instantiate(inst->data, inst->node, inst->node->call.func->uctx) < 0)) {
-			rbtree_iter_done(&iter);
+			fr_rb_iter_done(&iter);
 			return -1;
 		}
 	}
@@ -442,7 +442,7 @@ int xlat_bootstrap_func(xlat_exp_t *node)
 
 	DEBUG3("Instantiating xlat \"%s\" node %p, new instance %p", node->call.func->name, node, node->call.inst);
 
-	ret = rbtree_insert(xlat_inst_tree, node->call.inst);
+	ret = fr_rb_insert(xlat_inst_tree, node->call.inst);
 	if (!fr_cond_assert(ret)) {
 		TALLOC_FREE(node->call.inst);
 		return -1;

@@ -1,5 +1,5 @@
-TARGET      := rbtree_tests
-SOURCES     := rbtree_tests.c
+TARGET      := rb_tests
+SOURCES     := rb_tests.c
 
 TGT_PREREQS += libfreeradius-util.a
 

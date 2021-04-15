@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/talloc.h>
@@ -131,8 +131,8 @@ struct fr_network_s {
 
 	fr_io_stats_t		stats;
 
-	rbtree_t		*sockets;		//!< list of sockets we're managing, ordered by the listener
-	rbtree_t		*sockets_by_num;       	//!< ordered by number;
+	fr_rb_tree_t		*sockets;		//!< list of sockets we're managing, ordered by the listener
+	fr_rb_tree_t		*sockets_by_num;       	//!< ordered by number;
 
 	int			num_workers;		//!< number of active workers
 	int			num_blocked;		//!< number of blocked workers
@@ -244,7 +244,7 @@ int fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_network_socket_t *s;
 
-	s = rbtree_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
 	fr_network_socket_dead(nr, s);
@@ -297,7 +297,7 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t *li)
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	s = rbtree_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return;
 
 	/*
@@ -394,14 +394,14 @@ static void fr_network_suspend(fr_network_t *nr)
 		FR_EVENT_SUSPEND(fr_event_io_func_t, read),
 		{ 0 }
 	};
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	fr_network_socket_t		*socket;
 
 	if (nr->suspended) return;
 
-	for (socket = rbtree_iter_init_inorder(&iter, nr->sockets);
+	for (socket = fr_rb_iter_init_inorder(&iter, nr->sockets);
 	     socket;
-	     socket = rbtree_iter_next_inorder(&iter)) {
+	     socket = fr_rb_iter_next_inorder(&iter)) {
 		fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, pause_read);
 	}
 	nr->suspended = true;
@@ -413,14 +413,14 @@ static void fr_network_unsuspend(fr_network_t *nr)
 		FR_EVENT_RESUME(fr_event_io_func_t, read),
 		{ 0 }
 	};
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	fr_network_socket_t		*socket;
 
 	if (!nr->suspended) return;
 
-	for (socket = rbtree_iter_init_inorder(&iter, nr->sockets);
+	for (socket = fr_rb_iter_init_inorder(&iter, nr->sockets);
 	     socket;
-	     socket = rbtree_iter_next_inorder(&iter)) {
+	     socket = fr_rb_iter_next_inorder(&iter)) {
 		fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, resume_read);
 	}
 	nr->suspended = false;
@@ -1046,8 +1046,8 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_network_t *nr = s->nr;
 	fr_channel_data_t *cd;
 
-	rbtree_delete(nr->sockets, s);
-	rbtree_delete(nr->sockets_by_num, s);
+	fr_rb_delete(nr->sockets, s);
+	fr_rb_delete(nr->sockets_by_num, s);
 
 	fr_event_fd_delete(nr->el, s->listen->fd, s->filter);
 
@@ -1143,8 +1143,8 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 
 	if (app_io->event_list_set) app_io->event_list_set(s->listen, nr->el, nr);
 
-	(void) rbtree_insert(nr->sockets, s);
-	(void) rbtree_insert(nr->sockets_by_num, s);
+	(void) fr_rb_insert(nr->sockets, s);
+	(void) fr_rb_insert(nr->sockets_by_num, s);
 
 	/*
 	 *	We use fr_log() here to avoid the "Network - " prefix.
@@ -1215,8 +1215,8 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 		return;
 	}
 
-	(void) rbtree_insert(nr->sockets, s);
-	(void) rbtree_insert(nr->sockets_by_num, s);
+	(void) fr_rb_insert(nr->sockets, s);
+	(void) fr_rb_insert(nr->sockets_by_num, s);
 
 	DEBUG3("Using new socket with FD %d", s->listen->fd);
 }
@@ -1284,7 +1284,7 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
 	fr_assert(data_size == sizeof(my_inject));
 
 	memcpy(&my_inject, data, data_size);
-	s = rbtree_find(nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
+	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = my_inject.listen });
 	if (!s) {
 		talloc_free(my_inject.packet); /* MUST be it's own TALLOC_CTX */
 		return;
@@ -1344,7 +1344,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 		 *	@todo - cache this somewhere so we don't need
 		 *	to do an rbtree lookup for every packet.
 		 */
-		s = rbtree_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
+		s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
 
 		/*
 		 *	This shouldn't happen, but be safe...
@@ -1414,7 +1414,7 @@ int fr_network_destroy(fr_network_t *nr)
 		size_t			len;
 		size_t			i;
 
-		if (rbtree_flatten_inorder(nr, (void ***)&sockets, nr->sockets) < 0) return -1;
+		if (fr_rb_flatten_inorder(nr, (void ***)&sockets, nr->sockets) < 0) return -1;
 		len = talloc_array_length(sockets);
 
 		for (i = 0; i < len; i++) talloc_free(sockets[i]);
@@ -1585,9 +1585,9 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	fr_network_t *nr;
 
 #ifndef NDEBUG
-	int rbflags = RBTREE_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
+	int rbflags = RB_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
 #else
-	int rbflags = RBTREE_FLAG_NONE;
+	int rbflags = RB_FLAG_NONE;
 #endif
 
 	nr = talloc_zero(ctx, fr_network_t);
@@ -1663,13 +1663,13 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = rbtree_talloc_alloc(nr, fr_network_socket_t, listen_node, socket_listen_cmp, NULL, rbflags);
+	nr->sockets = fr_rb_tree_talloc_alloc(nr, fr_network_socket_t, listen_node, socket_listen_cmp, NULL, rbflags);
 	if (!nr->sockets) {
 		fr_strerror_const_push("Failed creating listen tree for sockets");
 		goto fail2;
 	}
 
-	nr->sockets_by_num = rbtree_talloc_alloc(nr, fr_network_socket_t, num_node, socket_num_cmp, NULL, rbflags);
+	nr->sockets_by_num = fr_rb_tree_talloc_alloc(nr, fr_network_socket_t, num_node, socket_num_cmp, NULL, rbflags);
 	if (!nr->sockets_by_num) {
 		fr_strerror_const_push("Failed creating number tree for sockets");
 		goto fail2;
@@ -1744,7 +1744,7 @@ static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cm
 	fprintf(fp, "count.out\t%" PRIu64 "\n", nr->stats.out);
 	fprintf(fp, "count.dup\t%" PRIu64 "\n", nr->stats.dup);
 	fprintf(fp, "count.dropped\t%" PRIu64 "\n", nr->stats.dropped);
-	fprintf(fp, "count.sockets\t%"PRIu64"\n", rbtree_num_elements(nr->sockets));
+	fprintf(fp, "count.sockets\t%"PRIu64"\n", fr_rb_num_elements(nr->sockets));
 
 	return 0;
 }
@@ -1752,14 +1752,14 @@ static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cm
 static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
 {
 	fr_network_t const		*nr = ctx;
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	fr_network_socket_t		*socket;
 
 	// @todo - note that this isn't thread-safe!
 
-	for (socket = rbtree_iter_init_inorder(&iter, nr->sockets);
+	for (socket = fr_rb_iter_init_inorder(&iter, nr->sockets);
 	     socket;
-	     socket = rbtree_iter_next_inorder(&iter)) {
+	     socket = fr_rb_iter_next_inorder(&iter)) {
 		if (!socket->listen->app_io->get_name) {
 			fprintf(fp, "%s\n", socket->listen->app_io->name);
 		} else {
@@ -1774,7 +1774,7 @@ static int cmd_stats_socket(FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t con
 	fr_network_t const *nr = ctx;
 	fr_network_socket_t *s;
 
-	s = rbtree_find(nr->sockets_by_num, &(fr_network_socket_t){ .number = info->box[0]->vb_uint32 });
+	s = fr_rb_find(nr->sockets_by_num, &(fr_network_socket_t){ .number = info->box[0]->vb_uint32 });
 	if (!s) {
 		fprintf(fp_err, "No such socket number '%s'.\n", info->argv[0]);
 		return -1;

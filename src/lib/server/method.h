@@ -44,7 +44,7 @@
 RCSIDH(methods_h, "$Id$")
 
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 
 /** Unique identifier for an abstract method
  *
@@ -67,7 +67,7 @@ typedef struct {
  *
  */
 typedef struct {
-	rbtree_t		*tree;		//!< Index of methods.
+	fr_rb_tree_t		*tree;		//!< Index of methods.
 						///< Helps with efficient lookups.
 
 	fr_dlist_head_t		list;		//!< Ordered list of methods.

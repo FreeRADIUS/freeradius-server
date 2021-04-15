@@ -73,8 +73,8 @@ typedef struct {
 
 	fr_time_t		last_manage;			//!< when we deleted old things
 
-	rbtree_t		*src;				//!< stats by source
-	rbtree_t		*dst;				//!< stats by destination
+	fr_rb_tree_t		*src;				//!< stats by source
+	fr_rb_tree_t		*dst;				//!< stats by destination
 
 	uint64_t		stats[FR_RADIUS_CODE_MAX];
 } rlm_stats_thread_t;
@@ -108,16 +108,16 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 {
 	rlm_stats_data_t *stats;
 	rlm_stats_thread_t *other;
-	rbtree_t **tree;
+	fr_rb_tree_t **tree;
 	uint64_t local_stats[FR_RADIUS_CODE_MAX];
 
-	tree = (rbtree_t **) (((uint8_t *) t) + tree_offset);
+	tree = (fr_rb_tree_t **) (((uint8_t *) t) + tree_offset);
 
 	/*
 	 *	Bootstrap with my statistics, where we don't need a
 	 *	lock.
 	 */
-	stats = rbtree_find(*tree, mydata);
+	stats = fr_rb_find(*tree, mydata);
 	if (!stats) {
 		memset(final_stats, 0, sizeof(uint64_t) * FR_RADIUS_CODE_MAX);
 	} else {
@@ -135,8 +135,8 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 
 		if (other == t) continue;
 
-		tree = (rbtree_t **) (((uint8_t *) other) + tree_offset);
-		stats = rbtree_find(*tree, mydata);
+		tree = (fr_rb_tree_t **) (((uint8_t *) other) + tree_offset);
+		stats = fr_rb_find(*tree, mydata);
 		if (!stats) {
 			continue;
 		}
@@ -190,14 +190,14 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		 *	Update source statistics
 		 */
 		mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
-		stats = rbtree_find(t->src, &mydata);
+		stats = fr_rb_find(t->src, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
 			stats->ipaddr = request->packet->socket.inet.src_ipaddr;
 			stats->created = request->async->recv_time;
 
-			(void) rbtree_insert(t->src, stats);
+			(void) fr_rb_insert(t->src, stats);
 		}
 
 		stats->last_packet = request->async->recv_time;
@@ -208,14 +208,14 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		 *	Update destination statistics
 		 */
 		mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
-		stats = rbtree_find(t->dst, &mydata);
+		stats = fr_rb_find(t->dst, &mydata);
 		if (!stats) {
 			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
 			stats->ipaddr = request->packet->socket.inet.dst_ipaddr;
 			stats->created = request->async->recv_time;
 
-			(void) rbtree_insert(t->dst, stats);
+			(void) fr_rb_insert(t->dst, stats);
 		}
 
 		stats->last_packet = request->async->recv_time;
@@ -352,8 +352,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->inst = inst;
 
-	t->src = rbtree_talloc_alloc(t, rlm_stats_data_t, src_node, data_cmp, NULL, RBTREE_FLAG_LOCK);
-	t->dst = rbtree_talloc_alloc(t, rlm_stats_data_t, dst_node, data_cmp, NULL, RBTREE_FLAG_LOCK);
+	t->src = fr_rb_tree_talloc_alloc(t, rlm_stats_data_t, src_node, data_cmp, NULL, RB_FLAG_LOCK);
+	t->dst = fr_rb_tree_talloc_alloc(t, rlm_stats_data_t, dst_node, data_cmp, NULL, RB_FLAG_LOCK);
 
 	pthread_mutex_lock(&inst->mutex);
 	fr_dlist_insert_head(&inst->list, t);

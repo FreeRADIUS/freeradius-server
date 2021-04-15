@@ -105,7 +105,7 @@ typedef struct {
  *	that should be managed.
  */
 struct fr_packet_list_s {
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 
 	int		alloc_id;
 	uint32_t	num_outgoing;
@@ -281,7 +281,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 
 	pl = talloc_zero(NULL, fr_packet_list_t);
 	if (!pl) return NULL;
-	pl->tree = rbtree_alloc(pl, fr_radius_packet_t, node, fr_packet_cmp, NULL, 0);	/* elements not talloc safe */
+	pl->tree = fr_rb_alloc(pl, fr_radius_packet_t, node, fr_packet_cmp, NULL, 0);	/* elements not talloc safe */
 	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;
@@ -306,14 +306,14 @@ bool fr_packet_list_insert(fr_packet_list_t *pl,
 {
 	if (!pl || !request) return 0;
 
-	return rbtree_insert(pl->tree, request);
+	return fr_rb_insert(pl->tree, request);
 }
 
 fr_radius_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t *request)
 {
 	if (!pl || !request) return 0;
 
-	return rbtree_find(pl->tree, request);
+	return fr_rb_find(pl->tree, request);
 }
 
 
@@ -355,7 +355,7 @@ fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_
 	my_request.id = reply->id;
 	request = &my_request;
 
-	return rbtree_find(pl->tree, request);
+	return fr_rb_find(pl->tree, request);
 }
 
 
@@ -363,14 +363,14 @@ bool fr_packet_list_yank(fr_packet_list_t *pl, fr_radius_packet_t *request)
 {
 	if (!pl || !request) return false;
 
-	return rbtree_delete(pl->tree, request);
+	return fr_rb_delete(pl->tree, request);
 }
 
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
 {
 	if (!pl) return 0;
 
-	return rbtree_num_elements(pl->tree);
+	return fr_rb_num_elements(pl->tree);
 }
 
 
@@ -709,7 +709,7 @@ uint64_t fr_packet_list_num_incoming(fr_packet_list_t *pl)
 
 	if (!pl) return 0;
 
-	num_elements = rbtree_num_elements(pl->tree);
+	num_elements = fr_rb_num_elements(pl->tree);
 	if (num_elements < pl->num_outgoing) return 0; /* panic! */
 
 	return num_elements - pl->num_outgoing;

@@ -45,7 +45,7 @@ typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary da
 #include <unistd.h>
 #include <sys/time.h>
 
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/log.h>

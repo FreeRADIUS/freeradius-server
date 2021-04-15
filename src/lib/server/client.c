@@ -56,7 +56,7 @@ struct rad_client_list {
 	fr_trie_t	*v4_tcp;
 	fr_trie_t	*v6_tcp;
 #else
-	rbtree_t	*tree[129];
+	fr_rb_tree_t	*tree[129];
 #endif
 };
 
@@ -287,14 +287,14 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #else  /* WITH_TRIE */
 
 	if (!clients->tree[client->ipaddr.prefix]) {
-		clients->tree[client->ipaddr.prefix] = rbtree_talloc_alloc(clients, RADCLIENT, node, client_cmp,
-									   NULL, RBTREE_FLAG_NONE);
+		clients->tree[client->ipaddr.prefix] = fr_rb_tree_talloc_alloc(clients, RADCLIENT, node, client_cmp,
+									   NULL, RB_FLAG_NONE);
 		if (!clients->tree[client->ipaddr.prefix]) {
 			return false;
 		}
 	}
 
-	old = rbtree_find(clients->tree[client->ipaddr.prefix], client);
+	old = fr_rb_find(clients->tree[client->ipaddr.prefix], client);
 #endif
 	if (old) {
 		/*
@@ -325,7 +325,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		return false;
 	}
 #else
-	if (!rbtree_insert(clients->tree[client->ipaddr.prefix], client)) {
+	if (!fr_rb_insert(clients->tree[client->ipaddr.prefix], client)) {
 		client_free(client);
 		return false;
 	}
@@ -363,7 +363,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!clients->tree[client->ipaddr.prefix]) return;
 
-	(void) rbtree_delete(clients->tree[client->ipaddr.prefix], client);
+	(void) fr_rb_delete(clients->tree[client->ipaddr.prefix], client);
 #endif
 }
 
@@ -409,7 +409,7 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 
 		my_client.ipaddr = *ipaddr;
 		fr_ipaddr_mask(&my_client.ipaddr, i);
-		client = rbtree_find(clients->tree[i], &my_client);
+		client = fr_rb_find(clients->tree[i], &my_client);
 		if (client) {
 			return client;
 		}

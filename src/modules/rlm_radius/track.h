@@ -71,7 +71,7 @@ struct radius_track_s {
 
 	radius_track_entry_t	id[UINT8_MAX + 1];	//!< which ID was used
 
-	rbtree_t	*subtree[UINT8_MAX + 1];	//!< for Original-Request-Authenticator
+	fr_rb_tree_t	*subtree[UINT8_MAX + 1];	//!< for Original-Request-Authenticator
 
 #ifndef NDEBUG
 	uint64_t	operation;		//!< Incremented each alloc and de-alloc

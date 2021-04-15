@@ -136,7 +136,7 @@ struct fr_state_tree_s {
 	uint64_t		timed_out;			//!< Number of states that were cleaned up due to
 								//!< timeout.
 	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
-	rbtree_t		*tree;				//!< rbtree used to lookup state value.
+	fr_rb_tree_t		*tree;				//!< rbtree used to lookup state value.
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
 	fr_time_delta_t		timeout;			//!< How long to wait before cleaning up state entires.
@@ -241,7 +241,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 	 *	are freed before it's destroyed.  Hence
 	 *	it being parented from the NULL ctx.
 	 */
-	state->tree = rbtree_talloc_alloc(NULL, fr_state_entry_t, node, state_entry_cmp, NULL, 0);
+	state->tree = fr_rb_tree_talloc_alloc(NULL, fr_state_entry_t, node, state_entry_cmp, NULL, 0);
 	if (!state->tree) {
 		talloc_free(state);
 		return NULL;
@@ -268,7 +268,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 
 	fr_dlist_remove(&state->to_expire, entry);
 
-	rbtree_delete(state->tree, entry);
+	fr_rb_delete(state->tree, entry);
 
 	DEBUG4("State ID %" PRIu64 " unlinked", entry->id);
 }
@@ -358,7 +358,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	state->timed_out += timed_out;
 
-	if (!old && (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions)) too_many = true;
+	if (!old && (fr_rb_num_elements(state->tree) >= (uint32_t) state->max_sessions)) too_many = true;
 
 	/*
 	 *	Record the information from the old state, we may base the
@@ -516,7 +516,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 */
 	*((uint32_t *)(&entry->state_comp.context_id)) ^= state->context_id;
 
-	if (!rbtree_insert(state->tree, entry)) {
+	if (!fr_rb_insert(state->tree, entry)) {
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
 		fr_pair_delete_by_da(reply_list, state->da);
 		talloc_free(entry);
@@ -566,7 +566,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, fr_value_box_t
 	 */
 	my_entry.state_comp.context_id ^= state->context_id;
 
-	entry = rbtree_find(state->tree, &my_entry);
+	entry = fr_rb_find(state->tree, &my_entry);
 
 	if (entry) (void) talloc_get_type_abort(entry, fr_state_entry_t);
 
@@ -904,5 +904,5 @@ uint64_t fr_state_entries_timeout(fr_state_tree_t *state)
  */
 uint64_t fr_state_entries_tracked(fr_state_tree_t *state)
 {
-	return rbtree_num_elements(state->tree);
+	return fr_rb_num_elements(state->tree);
 }

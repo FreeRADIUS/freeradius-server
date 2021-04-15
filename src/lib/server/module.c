@@ -48,11 +48,11 @@ static _Thread_local module_thread_instance_t **module_thread_inst_array;
 
 /** Lookup module instances by name and lineage
  */
-static rbtree_t *module_instance_name_tree;
+static fr_rb_tree_t *module_instance_name_tree;
 
 /** Lookup module by instance data
  */
-static rbtree_t *module_instance_data_tree;
+static fr_rb_tree_t *module_instance_data_tree;
 
 /** Module command table
  */
@@ -85,7 +85,7 @@ static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 
 static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions)
 {
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	void				*instance;
 	char const			*text;
 	int				count;
@@ -95,13 +95,13 @@ static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uc
 	text = info->argv[info->argc - 1];
 	count = 0;
 
-	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	for (instance = fr_rb_iter_init_inorder(&iter, module_instance_name_tree);
 	     instance;
-	     instance = rbtree_iter_next_inorder(&iter)) {
+	     instance = fr_rb_iter_next_inorder(&iter)) {
 		module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
 
 		if (count >= max_expansions) {
-			rbtree_iter_done(&iter);
+			fr_rb_iter_done(&iter);
 			break;
 		}
 		if (fr_command_strncmp(text, mi->name)) {
@@ -116,12 +116,12 @@ static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uc
 
 static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
 {
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	void				*instance;
 
-	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	for (instance = fr_rb_iter_init_inorder(&iter, module_instance_name_tree);
 	     instance;
-	     instance = rbtree_iter_next_inorder(&iter)) {
+	     instance = fr_rb_iter_next_inorder(&iter)) {
 		module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
 
 		fprintf(fp, "\t%s\n", mi->name);
@@ -647,7 +647,7 @@ module_instance_t *module_by_name(module_instance_t const *parent, char const *a
 	inst_name = asked_name;
 	if (inst_name[0] == '-') inst_name++;
 
-	inst = rbtree_find(module_instance_name_tree,
+	inst = fr_rb_find(module_instance_name_tree,
 			       &(module_instance_t){
 					.dl_inst = &(dl_module_inst_t){ .parent = parent ? parent->dl_inst : NULL },
 					.name = inst_name
@@ -1052,7 +1052,7 @@ module_instance_t *module_by_data(void const *data)
 {
 	module_instance_t *mi;
 
-	mi = rbtree_find(module_instance_data_tree,
+	mi = fr_rb_find(module_instance_data_tree,
 			     &(module_instance_t){
 				.dl_inst = &(dl_module_inst_t){ .data = UNCONST(void *, data) },
 			     });
@@ -1116,15 +1116,15 @@ void module_free(module_instance_t *mi)
 void modules_free(void)
 {
 	if (module_instance_name_tree) {
-		fr_rb_tree_iter_inorder_t	iter;
+		fr_rb_iter_inorder_t	iter;
 		module_instance_t		*mi;
 
-		for (mi = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+		for (mi = fr_rb_iter_init_inorder(&iter, module_instance_name_tree);
 		     mi;
-		     mi = rbtree_iter_next_inorder(&iter)) {
+		     mi = fr_rb_iter_next_inorder(&iter)) {
 			mi->in_name_tree = false; /* about to be deleted */
 			talloc_free(mi);
-			rbtree_iter_delete_inorder(&iter);
+			fr_rb_iter_delete_inorder(&iter);
 		}
 		TALLOC_FREE(module_instance_name_tree);
 	}
@@ -1135,10 +1135,10 @@ void modules_free(void)
 
 int modules_init(void)
 {
-	MEM(module_instance_name_tree = rbtree_alloc(NULL, module_instance_t, name_node,
-						     module_instance_name_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(module_instance_data_tree = rbtree_alloc(NULL, module_instance_t, data_node,
-						     module_instance_data_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(module_instance_name_tree = fr_rb_alloc(NULL, module_instance_t, name_node,
+						     module_instance_name_cmp, NULL, RB_FLAG_NONE));
+	MEM(module_instance_data_tree = fr_rb_alloc(NULL, module_instance_t, data_node,
+						     module_instance_data_cmp, NULL, RB_FLAG_NONE));
 	instance_ctx = talloc_init("module instance context");
 
 	return 0;
@@ -1187,7 +1187,7 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
 int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 {
 	void				*instance;
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 
 	/*
 	 *	Initialise the thread specific tree if this is the first time through
@@ -1206,9 +1206,9 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 	 */
 	MEM(module_thread_inst_array[0] = talloc_zero(module_thread_inst_array, module_thread_instance_t));
 
-	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	for (instance = fr_rb_iter_init_inorder(&iter, module_instance_name_tree);
 	     instance;
-	     instance = rbtree_iter_next_inorder(&iter)) {
+	     instance = fr_rb_iter_next_inorder(&iter)) {
 		module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
 		module_thread_instance_t	*ti;
 
@@ -1235,7 +1235,7 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 		if (mi->module->thread_instantiate) {
 			if (mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data, el, ti->data) < 0) {
 				PERROR("Thread instantiation failed for module \"%s\"", mi->name);
-				rbtree_iter_done(&iter);
+				fr_rb_iter_done(&iter);
 				TALLOC_FREE(module_thread_inst_array);
 				return -1;
 			}
@@ -1332,15 +1332,15 @@ static int _module_instantiate(void *instance)
 int modules_instantiate(void)
 {
 	void				*instance;
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 
 	DEBUG2("#### Instantiating modules ####");
 
-	for (instance = rbtree_iter_init_inorder(&iter, module_instance_name_tree);
+	for (instance = fr_rb_iter_init_inorder(&iter, module_instance_name_tree);
 	     instance;
-	     instance = rbtree_iter_next_inorder(&iter)) {
+	     instance = fr_rb_iter_next_inorder(&iter)) {
 		if (_module_instantiate(instance) < 0) {
-			rbtree_iter_done(&iter);
+			fr_rb_iter_done(&iter);
 			return -1;
 		}
 	}
@@ -1428,8 +1428,8 @@ static int _module_instance_free(module_instance_t *mi)
 {
 	DEBUG3("Freeing %s (%p)", mi->name, mi);
 
-	if (mi->in_name_tree) if (!fr_cond_assert(rbtree_delete(module_instance_name_tree, mi))) return 1;
-	if (mi->in_data_tree) if (!fr_cond_assert(rbtree_delete(module_instance_data_tree, mi))) return 1;
+	if (mi->in_name_tree) if (!fr_cond_assert(fr_rb_delete(module_instance_name_tree, mi))) return 1;
+	if (mi->in_data_tree) if (!fr_cond_assert(fr_rb_delete(module_instance_data_tree, mi))) return 1;
 	if (mi->mutex) {
 		/*
 		 *	FIXME
@@ -1529,7 +1529,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	/*
 	 *	Remember the module for later.
 	 */
-	if (!fr_cond_assert(rbtree_insert(module_instance_name_tree, mi))) goto error;
+	if (!fr_cond_assert(fr_rb_insert(module_instance_name_tree, mi))) goto error;
 	mi->in_name_tree = true;
 
 	/*
@@ -1539,7 +1539,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	 *	and for bootstrapping submodules.
 	 */
 	if (mi->dl_inst->data) {
-		if (!fr_cond_assert(rbtree_insert(module_instance_data_tree, mi))) goto error;
+		if (!fr_cond_assert(fr_rb_insert(module_instance_data_tree, mi))) goto error;
 		mi->in_data_tree = true;
 	}
 

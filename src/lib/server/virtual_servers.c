@@ -92,11 +92,11 @@ static fr_virtual_server_t **virtual_servers;
  */
 static CONF_SECTION *virtual_server_root;
 
-static rbtree_t *listen_addr_root = NULL;
+static fr_rb_tree_t *listen_addr_root = NULL;
 
 /** Lookup allowed section names for modules
  */
-static rbtree_t *server_section_name_tree = NULL;
+static fr_rb_tree_t *server_section_name_tree = NULL;
 
 static int8_t server_section_name_cmp(void const *one, void const *two);
 
@@ -753,7 +753,7 @@ fr_listen_t *listen_find_any(fr_listen_t *li)
 {
 	if (!listen_addr_root) return false;
 
-	return rbtree_find(listen_addr_root, li);
+	return fr_rb_find(listen_addr_root, li);
 }
 
 
@@ -768,7 +768,7 @@ bool listen_record(fr_listen_t *li)
 
 	if (listen_find_any(li) != NULL) return false;
 
-	return rbtree_insert(listen_addr_root, li);
+	return fr_rb_insert(listen_addr_root, li);
 }
 
 static int process_instantiate(CONF_SECTION *server_cs, dl_module_inst_t *dl_inst, fr_dict_t const *dict)
@@ -810,7 +810,7 @@ static int process_instantiate(CONF_SECTION *server_cs, dl_module_inst_t *dl_ins
 int virtual_servers_instantiate(void)
 {
 	size_t		i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
-	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
+	fr_rb_tree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, fr_rb_tree_t, "vns_tree"));
 
 	fr_assert(virtual_servers);
 
@@ -851,7 +851,7 @@ int virtual_servers_instantiate(void)
 			fr_virtual_namespace_t	find = { .namespace = virtual_servers[i]->namespace };
 			fr_virtual_namespace_t	*found;
 
-			found = rbtree_find(vns_tree, &find);
+			found = fr_rb_find(vns_tree, &find);
 			if (found) {
 				fr_assert(dict && (dict->dict == found->dict));
 
@@ -1207,7 +1207,7 @@ static int8_t _virtual_namespace_cmp(void const *one, void const *two)
 int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 			       fr_virtual_server_compile_t func)
 {
-	rbtree_t		*vns_tree;
+	fr_rb_tree_t		*vns_tree;
 	fr_virtual_namespace_t	*vns;
 
 	fr_assert(virtual_server_root);	/* Virtual server bootstrap must be called first */
@@ -1217,17 +1217,17 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 	vns->dict = dict;
 	vns->func = func;
 
-	vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
+	vns_tree = cf_data_value(cf_data_find(virtual_server_root, fr_rb_tree_t, "vns_tree"));
 	if (!vns_tree) {
 		/*
 		 *	Tree will be freed when the cf_data is freed
 		 *	so it shouldn't be parented from
 		 *	virtual_server_root.
 		 */
-		MEM(vns_tree = rbtree_talloc_alloc(NULL,
+		MEM(vns_tree = fr_rb_tree_talloc_alloc(NULL,
 						   fr_virtual_namespace_t, node,
 						   _virtual_namespace_cmp,
-						   _virtual_namespace_free, RBTREE_FLAG_REPLACE));
+						   _virtual_namespace_free, RB_FLAG_REPLACE));
 
 		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
 			ERROR("Failed adding namespace tree data to config");
@@ -1236,7 +1236,7 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 		}
 	}
 
-	if (!rbtree_insert(vns_tree, vns)) {
+	if (!fr_rb_insert(vns_tree, vns)) {
 		ERROR("Failed inserting namespace into tree");
 		return -1;
 	}
@@ -1341,9 +1341,9 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 int virtual_servers_init(CONF_SECTION *config)
 {
 #ifndef NDEBUG
-	int rbflags = RBTREE_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
+	int rbflags = RB_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
 #else
-	int rbflags = RBTREE_FLAG_NONE;
+	int rbflags = RB_FLAG_NONE;
 #endif
 
 	virtual_server_root = config;
@@ -1358,9 +1358,9 @@ int virtual_servers_init(CONF_SECTION *config)
 		return -1;
 	}
 
-	MEM(listen_addr_root = rbtree_alloc(NULL, fr_listen_t, virtual_server_node,
+	MEM(listen_addr_root = fr_rb_alloc(NULL, fr_listen_t, virtual_server_node,
 					    listen_addr_cmp, NULL, rbflags));
-	MEM(server_section_name_tree = rbtree_alloc(NULL, virtual_server_compile_t, node,
+	MEM(server_section_name_tree = fr_rb_alloc(NULL, virtual_server_compile_t, node,
 						    server_section_name_cmp, NULL, rbflags));
 
 	return 0;
@@ -1619,7 +1619,7 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 
 	fr_assert(server_section_name_tree != NULL);
 
-	old = rbtree_find(server_section_name_tree, entry);
+	old = fr_rb_find(server_section_name_tree, entry);
 	if (old) return 0;
 
 #ifndef NDEBUG
@@ -1649,7 +1649,7 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 	}
 #endif
 
-	if (!rbtree_insert(server_section_name_tree, entry)) {
+	if (!fr_rb_insert(server_section_name_tree, entry)) {
 		fr_strerror_const("Failed inserting entry into internal tree");
 		return -1;
 	}
@@ -1671,7 +1671,7 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 	 *	define both "accounting on", and "accounting *".
 	 */
 	if (name2 != CF_IDENT_ANY) {
-		entry = rbtree_find(server_section_name_tree,
+		entry = fr_rb_find(server_section_name_tree,
 					&(virtual_server_compile_t) {
 						.name = name1,
 						.name2 = name2,
@@ -1682,7 +1682,7 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 	/*
 	 *	Then look up the wildcard, if we didn't find any matching name2.
 	 */
-	entry = rbtree_find(server_section_name_tree,
+	entry = fr_rb_find(server_section_name_tree,
 				&(virtual_server_compile_t) {
 					.name = name1,
 					.name2 = CF_IDENT_ANY,

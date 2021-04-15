@@ -106,7 +106,7 @@ struct fr_dict {
 
 	fr_dict_attr_t		**fixups;		//!< Attributes that need fixing up.
 
-	rbtree_t		*dependents;		//!< Which files are using this dictionary.
+	fr_rb_tree_t		*dependents;		//!< Which files are using this dictionary.
 };
 
 struct fr_dict_gctx_s {

@@ -50,8 +50,8 @@ static rs_t *conf;
 static struct timeval start_pcap = {0, 0};
 static char timestr[50];
 
-static rbtree_t *request_tree = NULL;
-static rbtree_t *link_tree = NULL;
+static fr_rb_tree_t *request_tree = NULL;
+static fr_rb_tree_t *link_tree = NULL;
 static fr_event_list_t *events;
 static bool cleanup;
 
@@ -978,12 +978,12 @@ static int _request_free(rs_request_t *request)
 	 *	something has gone very badly wrong.
 	 */
 	if (request->in_request_tree) {
-		ret = rbtree_delete(request_tree, request);
+		ret = fr_rb_delete(request_tree, request);
 		RS_ASSERT(ret);
 	}
 
 	if (request->in_link_tree) {
-		ret = rbtree_delete(link_tree, request);
+		ret = fr_rb_delete(link_tree, request);
 		RS_ASSERT(ret);
 	}
 
@@ -1391,7 +1391,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	{
 		/* look for a matching request and use it for decoding */
 		search.expect = packet;
-		original = rbtree_find(request_tree, &search);
+		original = fr_rb_find(request_tree, &search);
 
 		/*
 		 *	Verify this code is allowed
@@ -1609,8 +1609,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (!fr_pair_list_empty(&search.link_vps)) {
 			rs_request_t *tuple;
 
-			original = rbtree_find(link_tree, &search);
-			tuple = rbtree_find(request_tree, &search);
+			original = fr_rb_find(link_tree, &search);
+			tuple = fr_rb_find(request_tree, &search);
 
 			/*
 			 *	If the packet we matched using attributes is not the same
@@ -1624,7 +1624,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Detect duplicates using the normal 5-tuple of src/dst ips/ports id
 		 */
 		} else {
-			original = rbtree_find(request_tree, &search);
+			original = fr_rb_find(request_tree, &search);
 			if (original && (memcmp(original->expect->vector, packet->vector,
 			    			sizeof(original->expect->vector)) != 0)) {
 				/*
@@ -1674,7 +1674,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 			/* Request may need to be reinserted as the 5 tuple of the response may of changed */
 			if (rs_packet_cmp(original, &search) != 0) {
-				rbtree_delete(request_tree, original);
+				fr_rb_delete(request_tree, original);
 			}
 
 			/* replace expected packets and vps */
@@ -1715,7 +1715,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				fr_pair_list_move(&original->link_vps, &search.link_vps);
 
 				/* We should never have conflicts */
-				ret = rbtree_insert(link_tree, original);
+				ret = fr_rb_insert(link_tree, original);
 				RS_ASSERT(ret);
 				original->in_link_tree = true;
 			}
@@ -1735,7 +1735,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			bool ret;
 
 			/* We should never have conflicts */
-			ret = rbtree_insert(request_tree, original);
+			ret = fr_rb_insert(request_tree, original);
 			RS_ASSERT(ret);
 			original->in_request_tree = true;
 		}
@@ -2658,7 +2658,7 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 
-		link_tree = rbtree_talloc_alloc(conf, rs_request_t, link_node, rs_rtx_cmp, _unmark_link, 0);
+		link_tree = fr_rb_tree_talloc_alloc(conf, rs_request_t, link_node, rs_rtx_cmp, _unmark_link, 0);
 		if (!link_tree) {
 			ERROR("Failed creating RTX tree");
 			goto finish;
@@ -2716,7 +2716,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup the request tree
 	 */
-	request_tree = rbtree_talloc_alloc(conf, rs_request_t, request_node, rs_packet_cmp, _unmark_request, 0);
+	request_tree = fr_rb_tree_talloc_alloc(conf, rs_request_t, request_node, rs_packet_cmp, _unmark_request, 0);
 	if (!request_tree) {
 		ERROR("Failed creating request tree");
 		goto finish;

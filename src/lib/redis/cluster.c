@@ -78,7 +78,7 @@
  *     - An array of #fr_redis_cluster_node_t.  These are pre-allocated on startup and are
  *       never added to, or removed from.
  *     - An #fr_fifo_t.  This contains the queue of nodes that may be re-used.
- *     - An #rbtree_t.  This contains a tree of nodes which are active.  The tree is built on IP
+ *     - An #fr_rb_tree_t.  This contains a tree of nodes which are active.  The tree is built on IP
  *       address and port.
  *
  *   Each #fr_redis_cluster_node_t contains a master ID, and an array of slave IDs.  The IDs are array
@@ -99,7 +99,7 @@
  *     2. Validating the result of this command.  We need to do extensive validation to
  *        avoid SEGV on invalid data, due to the way libhiredis presents the result.
  *     3. Determining the intersection between nodes described in the result, and those already
- *        in our #rbtree_t.
+ *        in our #fr_rb_tree_t.
  *     4. Connecting to nodes that were in the result, but not in the tree.
  *        Note: If we can't connect to any of the masters, we count the map as invalid, roll
  *        back any newly connected nodes, and error out. Slave failure is OK.
@@ -256,7 +256,7 @@ struct fr_redis_cluster {
 							//!< a pool of its connections.
 
 	fr_fifo_t		*free_nodes;		//!< Queue of free nodes (or nodes waiting to be reused).
-	rbtree_t		*used_nodes;		//!< Tree of used nodes.
+	fr_rb_tree_t		*used_nodes;		//!< Tree of used nodes.
 
 	fr_redis_cluster_key_slot_t	key_slot[KEY_SLOTS];		//!< Lookup table of slots to pools.
 	fr_redis_cluster_key_slot_t	key_slot_pending[KEY_SLOTS];	//!< Pending key slot table.
@@ -551,14 +551,14 @@ do { \
 do { \
 	(_node)->is_active = false; \
 	(_node)->is_master = false; \
-	rbtree_delete(cluster->used_nodes, _node); \
+	fr_rb_delete(cluster->used_nodes, _node); \
 	fr_fifo_push(cluster->free_nodes, _node); \
 } while (0)
 
 #define SET_ACTIVE(_node) \
 do { \
 	(_node)->is_active = true; \
-	rbtree_insert(cluster->used_nodes, _node); \
+	fr_rb_insert(cluster->used_nodes, _node); \
 	fr_fifo_pop(cluster->free_nodes); \
 	active[(_node)->id] = true; \
 	rollback[r++] = (_node)->id; \
@@ -599,7 +599,7 @@ do { \
 		memset(&tmpl_slot, 0, sizeof(tmpl_slot));
 
 		SET_ADDR(find.addr, map->element[2]);
-		found = rbtree_find(cluster->used_nodes, &find);
+		found = fr_rb_find(cluster->used_nodes, &find);
 		if (found) {
 			active[found->id] = true;
 			goto reuse_master_node;
@@ -651,7 +651,7 @@ do { \
 		 */
 		for (j = 3; (j < map->elements); j++) {
 			SET_ADDR(find.addr, map->element[j]);
-			found = rbtree_find(cluster->used_nodes, &find);
+			found = fr_rb_find(cluster->used_nodes, &find);
 			if (found) {
 				active[found->id] = true;
 				goto next;
@@ -726,7 +726,7 @@ do { \
 
 		if (cluster->node[i].is_active) {
 			/* Sanity check for duplicates that are active */
-			found = rbtree_find(cluster->used_nodes, &cluster->node[i]);
+			found = fr_rb_find(cluster->used_nodes, &cluster->node[i]);
 			fr_assert(found);
 			fr_assert(found->is_active);
 			fr_assert(found->id == i);
@@ -751,7 +751,7 @@ do { \
 	/*
 	 *	Sanity checks
 	 */
-	fr_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
+	fr_assert(((talloc_array_length(cluster->node) - 1) - fr_rb_num_elements(cluster->used_nodes)) ==
 		   fr_fifo_num_elements(cluster->free_nodes));
 
 	return FR_REDIS_CLUSTER_RCODE_SUCCESS;
@@ -1117,7 +1117,7 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 	 *	If we have already have a pool for the
 	 *	host we were redirected to, use that.
 	 */
-	found = rbtree_find(cluster->used_nodes, &find);
+	found = fr_rb_find(cluster->used_nodes, &find);
 	if (found) {
 		/* We have the new pool, don't need to hold the lock */
 		pthread_mutex_unlock(&cluster->mutex);
@@ -1140,7 +1140,7 @@ static fr_redis_cluster_rcode_t cluster_redirect(fr_redis_cluster_node_t **out, 
 		pthread_mutex_unlock(&cluster->mutex);
 		return FR_REDIS_CLUSTER_RCODE_NO_CONNECTION;
 	}
-	rbtree_insert(cluster->used_nodes, spare);
+	fr_rb_insert(cluster->used_nodes, spare);
 	fr_fifo_pop(cluster->free_nodes);
 	found = spare;
 
@@ -1298,12 +1298,12 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 
 	cluster_nodes_live_t	*live;
 	fr_time_t		now;
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	fr_redis_cluster_node_t		*node;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Searching for live cluster nodes");
 
-	if (rbtree_num_elements(cluster->used_nodes) == 1) {
+	if (fr_rb_num_elements(cluster->used_nodes) == 1) {
 	no_alts:
 		ROPTIONAL(RERROR, ERROR, "No alternative nodes available");
 		return -1;
@@ -1313,9 +1313,9 @@ static int cluster_node_find_live(fr_redis_cluster_node_t **live_node, fr_redis_
 	live->skip = skip->id;
 
 	pthread_mutex_lock(&cluster->mutex);
-	for (node = rbtree_iter_init_inorder(&iter, cluster->used_nodes);
+	for (node = fr_rb_iter_init_inorder(&iter, cluster->used_nodes);
 	     node;
-	     node = rbtree_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(&iter)) {
 		fr_assert(node->pool);
 		if (live->skip == node->id) continue;	/* Skip dead nodes */
 
@@ -1568,7 +1568,7 @@ fr_redis_cluster_key_slot_t const *fr_redis_cluster_slot_by_key(fr_redis_cluster
 	 *	Avoid CRC16 if we're operating with one cluster node or
 	 *	without clustering.
 	 */
-	if (rbtree_num_elements(cluster->used_nodes) > 1) {
+	if (fr_rb_num_elements(cluster->used_nodes) > 1) {
 		key_slot = &cluster->key_slot[cluster_key_hash(key, key_len)];
 		ROPTIONAL(RDEBUG2, DEBUG2, "Key \"%pV\" -> slot %zu",
 			  fr_box_strvalue_len((char const *)key, key_len), key_slot - cluster->key_slot);
@@ -1706,7 +1706,7 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 	memset(state, 0, sizeof(*state));
 	*conn = NULL;	/* Better safe than exploding */
 
-	used_nodes = rbtree_num_elements(cluster->used_nodes);
+	used_nodes = fr_rb_num_elements(cluster->used_nodes);
 	if (used_nodes == 0) {
 		ROPTIONAL(REDEBUG, ERROR, "No nodes in cluster");
 		return REDIS_RCODE_RECONNECT;
@@ -2028,7 +2028,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 	find.addr.inet.dst_port = node_addr->inet.dst_port;
 
 	pthread_mutex_lock(&cluster->mutex);
-	found = rbtree_find(cluster->used_nodes, &find);
+	found = fr_rb_find(cluster->used_nodes, &find);
 	if (!found) {
 		fr_redis_cluster_node_t *spare;
 		char buffer[INET6_ADDRSTRLEN];
@@ -2055,14 +2055,14 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 			pthread_mutex_unlock(&cluster->mutex);
 			return -1;
 		}
-		rbtree_insert(cluster->used_nodes, spare);
+		fr_rb_insert(cluster->used_nodes, spare);
 		fr_fifo_pop(cluster->free_nodes);
 		found = spare;
 	}
 	/*
 	 *	Sanity checks
 	 */
-	fr_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
+	fr_assert(((talloc_array_length(cluster->node) - 1) - fr_rb_num_elements(cluster->used_nodes)) ==
 		   fr_fifo_num_elements(cluster->free_nodes));
 	pthread_mutex_unlock(&cluster->mutex);
 
@@ -2086,8 +2086,8 @@ int fr_redis_cluster_pool_by_node_addr(fr_pool_t **pool, fr_redis_cluster_t *clu
 ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 					   fr_redis_cluster_t *cluster, bool is_master, bool is_slave)
 {
-	uint64_t 			in_use = rbtree_num_elements(cluster->used_nodes);
-	fr_rb_tree_iter_inorder_t	iter;
+	uint64_t 			in_use = fr_rb_num_elements(cluster->used_nodes);
+	fr_rb_iter_inorder_t	iter;
 	fr_redis_cluster_node_t		*node;
 	uint8_t				count;
 	fr_socket_t			*found;
@@ -2106,9 +2106,9 @@ ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_t *out[],
 
 	pthread_mutex_lock(&cluster->mutex);
 
-	for (node = rbtree_iter_init_inorder(&iter, cluster->used_nodes);
+	for (node = fr_rb_iter_init_inorder(&iter, cluster->used_nodes);
 	     node;
-	     node = rbtree_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(&iter)) {
 		if ((is_master && node->is_master) || (is_slave && !node->is_master)) found[count++] = node->addr;
 	}
 
@@ -2150,7 +2150,7 @@ static int _fr_redis_cluster_free(fr_redis_cluster_t *cluster)
 bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_version)
 {
 	fr_redis_cluster_node_t		*node;
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 	fr_redis_conn_t			*conn;
 	int				ret;
 	char				buffer[40];
@@ -2158,9 +2158,9 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
 
 	pthread_mutex_lock(&cluster->mutex);
 
-	for (node = rbtree_iter_init_inorder(&iter, cluster->used_nodes);
+	for (node = fr_rb_iter_init_inorder(&iter, cluster->used_nodes);
 	     node;
-	     node = rbtree_iter_next_inorder(&iter)) {
+	     node = fr_rb_iter_next_inorder(&iter)) {
 		conn = fr_pool_connection_get(node->pool, NULL);
 		if (!conn) continue;
 
@@ -2177,7 +2177,7 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
 			fr_strerror_printf("Redis node %s:%i (currently v%s) needs update to >= v%s",
 					   node->name, node->addr.inet.dst_port, buffer, min_version);
 			all_above = false;
-			rbtree_iter_done(&iter);
+			fr_rb_iter_done(&iter);
 			break;
 		}
 	}
@@ -2314,7 +2314,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	cluster->node = talloc_zero_array(cluster, fr_redis_cluster_node_t, conf->max_nodes + 1);
 	if (!cluster->node) goto oom;
 
-	cluster->used_nodes = rbtree_alloc(cluster, fr_redis_cluster_node_t, rbnode, _cluster_node_cmp, NULL, 0);
+	cluster->used_nodes = fr_rb_alloc(cluster, fr_redis_cluster_node_t, rbnode, _cluster_node_cmp, NULL, 0);
 	if (!cluster->used_nodes) goto oom;
 
 	cluster->free_nodes = fr_fifo_create(cluster, conf->max_nodes, NULL);
@@ -2380,7 +2380,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 			continue;
 		}
 
-		if (!rbtree_insert(cluster->used_nodes, node)) {
+		if (!fr_rb_insert(cluster->used_nodes, node)) {
 			WARN("%s - Skipping duplicate bootstrap server \"%s\"", cluster->log_prefix, server);
 			continue;
 		}
@@ -2470,7 +2470,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	/*
 	 *	Catch pool.start != 0
 	 */
-	num_nodes = rbtree_num_elements(cluster->used_nodes);
+	num_nodes = fr_rb_num_elements(cluster->used_nodes);
 	if (!num_nodes) {
 		ERROR("%s - Can't contact any bootstrap servers", cluster->log_prefix);
 		goto error;

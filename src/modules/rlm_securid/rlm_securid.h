@@ -64,7 +64,7 @@ typedef struct {
  */
 typedef struct {
 	pthread_mutex_t	session_mutex;
-	rbtree_t*	session_tree;
+	fr_rb_tree_t*	session_tree;
 	SECURID_SESSION	*session_head, *session_tail;
 
 	unsigned int	 last_session_id;

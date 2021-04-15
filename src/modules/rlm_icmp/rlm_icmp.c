@@ -48,7 +48,7 @@ typedef struct {
 
 typedef struct {
 	rlm_icmp_t	*inst;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 	int		fd;
 	fr_event_list_t *el;
 
@@ -135,7 +135,7 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 	vb->vb_bool = echo->replied;
 
-	(void) rbtree_delete(thread->t->tree, echo);
+	(void) fr_rb_delete(thread->t->tree, echo);
 	talloc_free(echo);
 
 	fr_dcursor_insert(out, vb);
@@ -153,7 +153,7 @@ static void xlat_icmp_cancel(request_t *request, UNUSED void *xlat_inst, void *x
 
 	RDEBUG2("Cancelling ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
 
-	(void) rbtree_delete(thread->t->tree, echo);
+	(void) fr_rb_delete(thread->t->tree, echo);
 	talloc_free(echo);
 }
 
@@ -225,7 +225,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	This insert will never fail, because of the unique
 	 *	counter above.
 	 */
-	if (!rbtree_insert(thread->t->tree, echo)) {
+	if (!fr_rb_insert(thread->t->tree, echo)) {
 		RPEDEBUG("Failed inserting IP into tracking table");
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
@@ -233,7 +233,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	if (unlang_xlat_event_timeout_add(request, _xlat_icmp_timeout, echo, fr_time() + inst->timeout) < 0) {
 		RPEDEBUG("Failed adding timeout");
-		(void) rbtree_delete(thread->t->tree, echo);
+		(void) fr_rb_delete(thread->t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
@@ -270,14 +270,14 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	rcode = sendto(thread->t->fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &dst, salen);
 	if (rcode < 0) {
 		REDEBUG("Failed sending ICMP request to %pV: %s", echo->ip, fr_syserror(errno));
-		(void) rbtree_delete(thread->t->tree, echo);
+		(void) fr_rb_delete(thread->t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
 
 	if ((size_t) rcode < sizeof(icmp)) {
 		REDEBUG("Failed sending entire ICMP packet");
-		(void) rbtree_delete(thread->t->tree, echo);
+		(void) fr_rb_delete(thread->t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
@@ -313,7 +313,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	/*
 	 *	Ignore packets if we haven't sent any requests.
 	 */
-	if (rbtree_num_elements(t->tree) == 0) {
+	if (fr_rb_num_elements(t->tree) == 0) {
 		return;
 	}
 
@@ -365,13 +365,13 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	 *	Look up the packet by the fields which determine *our* ICMP packets.
 	 */
 	my_echo.counter = icmp->counter;
-	echo = rbtree_find(t->tree, &my_echo);
+	echo = fr_rb_find(t->tree, &my_echo);
 	if (!echo) {
 		DEBUG("Can't find packet counter=%d in tree", icmp->counter);
 		return;
 	}
 
-	(void) rbtree_delete(t->tree, echo);
+	(void) fr_rb_delete(t->tree, echo);
 
 	/*
 	 *	We have a reply!
@@ -431,7 +431,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
 	fr_ipaddr_t ipaddr, *src;
 
-	MEM(t->tree = rbtree_alloc(t, rlm_icmp_echo_t, node, echo_cmp, NULL, RBTREE_FLAG_NONE));
+	MEM(t->tree = fr_rb_alloc(t, rlm_icmp_echo_t, node, echo_cmp, NULL, RB_FLAG_NONE));
 	t->inst = inst;
 	t->el = el;
 

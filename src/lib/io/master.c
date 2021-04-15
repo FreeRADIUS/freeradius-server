@@ -98,7 +98,7 @@ struct fr_io_client_s {
 	fr_io_instance_t const		*inst;		//!< parent instance for master IO handler
 	fr_io_thread_t			*thread;
 	fr_event_timer_t const		*ev;		//!< when we clean up the client
-	rbtree_t			*table;		//!< tracking table for packets
+	fr_rb_tree_t			*table;		//!< tracking table for packets
 
 	fr_heap_t			*pending;	//!< pending packets for this client
 	fr_hash_table_t			*addresses;	//!< list of src/dst addresses used by this client
@@ -158,9 +158,9 @@ static int track_free(fr_io_track_t *track)
 static int track_dedup_free(fr_io_track_t *track)
 {
 	fr_assert(track->client->table != NULL);
-	fr_assert(rbtree_find(track->client->table, track) != NULL);
+	fr_assert(fr_rb_find(track->client->table, track) != NULL);
 
-	if (!rbtree_delete(track->client->table, track)) {
+	if (!fr_rb_delete(track->client->table, track)) {
 		fr_assert(0);
 	}
 
@@ -531,8 +531,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	#todo - unify the code with static clients?
 	 */
 	if (inst->app_io->track_duplicates) {
-		MEM(connection->client->table = rbtree_talloc_alloc(client, fr_io_track_t, node,
-								    track_connected_cmp, NULL, RBTREE_FLAG_NONE));
+		MEM(connection->client->table = fr_rb_tree_talloc_alloc(client, fr_io_track_t, node,
+								    track_connected_cmp, NULL, RB_FLAG_NONE));
 	}
 
 	/*
@@ -898,7 +898,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	/*
 	 *	No existing duplicate.  Return the new tracking entry.
 	 */
-	old = rbtree_find(client->table, track);
+	old = fr_rb_find(client->table, track);
 	if (!old) goto do_insert;
 
 	fr_assert(old->client == client);
@@ -967,7 +967,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	} else {
 		fr_assert(client == old->client);
 
-		if (!rbtree_delete(client->table, old)) {
+		if (!fr_rb_delete(client->table, old)) {
 			fr_assert(0);
 		}
 		if (old->ev) (void) fr_event_timer_delete(&old->ev);
@@ -978,7 +978,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	}
 
 do_insert:
-	if (!rbtree_insert(client->table, track)) {
+	if (!fr_rb_insert(client->table, track)) {
 		fr_assert(0);
 	}
 
@@ -1463,8 +1463,8 @@ do_read:
 		 */
 		if (inst->app_io->track_duplicates) {
 			fr_assert(inst->app_io->compare != NULL);
-			MEM(client->table = rbtree_talloc_alloc(client, fr_io_track_t, node, track_cmp,
-								NULL, RBTREE_FLAG_NONE));
+			MEM(client->table = fr_rb_tree_talloc_alloc(client, fr_io_track_t, node, track_cmp,
+								NULL, RB_FLAG_NONE));
 		}
 
 		/*

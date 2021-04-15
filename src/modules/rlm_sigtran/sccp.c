@@ -52,7 +52,7 @@
 #include "libosmo-m3ua/include/sctp_m3ua.h"
 
 static uint32_t	last_txn_id = 0;	//!< Global transaction ID
-static rbtree_t *txn_tree = NULL;	//!< Global transaction tree... Should really be per module.
+static fr_rb_tree_t *txn_tree = NULL;	//!< Global transaction tree... Should really be per module.
 static uint32_t	txn_tree_inst = 0;
 
 /** Compare rounds of a transaction
@@ -78,7 +78,7 @@ static void sigtran_tcap_timeout(void *data)
 	/*
 	 *	Remove the outstanding transaction
 	 */
-	if (!rbtree_delete(txn_tree, txn)) ERROR("Transaction removed before timeout");
+	if (!fr_rb_delete(txn_tree, txn)) ERROR("Transaction removed before timeout");
 
 	txn->response.type = SIGTRAN_RESPONSE_FAIL;
 
@@ -138,7 +138,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 		return -1;
 	}
 
-	if (rbtree_num_elements(txn_tree) > UINT8_MAX) {
+	if (fr_rb_num_elements(txn_tree) > UINT8_MAX) {
 		ERROR("Too many outstanding requests, dropping the request");
 
 		return -1;
@@ -183,7 +183,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	txn->ctx.invoke_id &= 0x7f;					/* Invoke ID is 7bits */
 	DEBUG2("Sending request with OTID %u Invoke ID %u", txn->ctx.otid, txn->ctx.invoke_id);
 
-	if (!rbtree_insert(txn_tree, txn)) {
+	if (!fr_rb_insert(txn_tree, txn)) {
 		ERROR("Failed inserting transaction, maybe at txn limit?");
 
 		msgb_free(msg);
@@ -245,7 +245,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 	/*
 	 *	Lookup the transaction in our tree of outstanding transactions
 	 */
-	found = rbtree_find(txn_tree, &find);
+	found = fr_rb_find(txn_tree, &find);
 	if (!found) {
 		/*
 		 *	Not an error, could be a retransmission
@@ -253,7 +253,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 		ERROR("No outstanding transaction with DTID %u Invoke ID %u", find.ctx.otid, find.ctx.invoke_id);
 		return 0;
 	}
-	if (!rbtree_delete(txn_tree, found)) {		/* Remove the outstanding transaction */
+	if (!fr_rb_delete(txn_tree, found)) {		/* Remove the outstanding transaction */
 		ERROR("Failed removing transaction");
 		fr_assert(0);
 	}
@@ -376,7 +376,7 @@ int sigtran_sccp_global_init(void)
 		return 0;
 	}
 
-	txn_tree = rbtree_talloc_alloc(NULL, sigtran_transaction_t, node, sigtran_txn_cmp, false, 0);
+	txn_tree = fr_rb_tree_talloc_alloc(NULL, sigtran_transaction_t, node, sigtran_txn_cmp, false, 0);
 	if (!txn_tree) return -1;
 
 	txn_tree_inst++;

@@ -33,7 +33,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/tls/engine.h>
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/value.h>
 
@@ -62,7 +62,7 @@ typedef struct {
  * work well for dynamically loaded engines, where we may want one
  * instance of the engine per thread.
  */
-static rbtree_t	*tls_engines;
+static fr_rb_tree_t	*tls_engines;
 
 /** Compares two engines
  *
@@ -251,7 +251,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 	fr_tls_engine_ctrl_t	*ctrl = NULL, *n;
 
 	if (!tls_engines) {
-		tls_engines = rbtree_alloc(NULL, tls_engine_t, node, tls_engine_cmp, rbtree_node_talloc_free, 0);
+		tls_engines = fr_rb_alloc(NULL, tls_engine_t, node, tls_engine_cmp, fr_rb_node_talloc_free, 0);
 		if (unlikely(!tls_engines)) {
 		oom:
 			fr_strerror_const("Out of memory");
@@ -260,7 +260,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 	} else {
 		tls_engine_t *found = NULL;
 
-		found = rbtree_find(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
+		found = fr_rb_find(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
 		if (found) {
 			fr_strerror_printf("engine %s%s%s%salready initialised", id,
 					   instance ? " (" : "",
@@ -436,7 +436,7 @@ int fr_tls_engine(ENGINE **e_out, char const *id, char const *instance, bool aut
 	}
 
 
-	found = rbtree_find(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
+	found = fr_rb_find(tls_engines, &(tls_engine_t){ .id = id, .instance = instance });
 	if (!found) {
 		if (!auto_init) goto not_init;
 		goto do_init;
@@ -456,7 +456,7 @@ void fr_tls_engine_load_builtin(void)
 	/*
 	 *	Mitigate against CrossTalk (CVE-2020-0543)
 	 */
-	if (!tls_engines || !rbtree_find(tls_engines, &(tls_engine_t){ .id = "rdrand" })) {
+	if (!tls_engines || !fr_rb_find(tls_engines, &(tls_engine_t){ .id = "rdrand" })) {
 		ENGINE *rand_engine;
 
 		ENGINE_register_all_RAND();	/* Give rand engines a chance to register */

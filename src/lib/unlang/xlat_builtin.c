@@ -54,7 +54,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static rbtree_t *xlat_root = NULL;
+static fr_rb_tree_t *xlat_root = NULL;
 
 static char const hextab[] = "0123456789abcdef";
 
@@ -120,7 +120,7 @@ xlat_t *xlat_func_find(char const *in, ssize_t inlen)
 	if (!xlat_root) return NULL;
 
 	if (inlen < 0) {
-		return rbtree_find(xlat_root, &(xlat_t){ .name = in });
+		return fr_rb_find(xlat_root, &(xlat_t){ .name = in });
 	}
 
 	if ((size_t) inlen >= sizeof(buffer)) return NULL;
@@ -128,7 +128,7 @@ xlat_t *xlat_func_find(char const *in, ssize_t inlen)
 	memcpy(buffer, in, inlen);
 	buffer[inlen] = '\0';
 
-	return rbtree_find(xlat_root, &(xlat_t){ .name = buffer });
+	return fr_rb_find(xlat_root, &(xlat_t){ .name = buffer });
 }
 
 
@@ -141,8 +141,8 @@ static int _xlat_func_talloc_free(xlat_t *xlat)
 {
 	if (!xlat_root) return 0;
 
-	rbtree_delete(xlat_root, xlat);
-	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
+	fr_rb_delete(xlat_root, xlat);
+	if (fr_rb_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 
 	return 0;
 }
@@ -194,7 +194,7 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	c = rbtree_find(xlat_root, &(xlat_t){ .name = name });
+	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
@@ -221,7 +221,7 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
-	if (is_new && !rbtree_insert(xlat_root, c)) {
+	if (is_new && !fr_rb_insert(xlat_root, c)) {
 		ERROR("Failed inserting xlat registration for %s",
 		      c->name);
 		talloc_free(c);
@@ -256,7 +256,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	c = rbtree_find(xlat_root, &(xlat_t){ .name = name });
+	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
@@ -292,7 +292,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 	talloc_set_destructor(c, _xlat_func_talloc_free);
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
-	if (!rbtree_insert(xlat_root, c)) {
+	if (!fr_rb_insert(xlat_root, c)) {
 		ERROR("%s: Failed inserting xlat registration for %s", __FUNCTION__, c->name);
 		talloc_free(c);
 		return NULL;
@@ -481,7 +481,7 @@ void xlat_unregister(char const *name)
 
 	if (!name || !xlat_root) return;
 
-	c = rbtree_find(xlat_root, &(xlat_t){ .name = name });
+	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
 	if (!c) return;
 
 	(void) talloc_get_type_abort(c, xlat_t);
@@ -493,15 +493,15 @@ void xlat_unregister(char const *name)
 void xlat_unregister_module(void *instance)
 {
 	xlat_t				*c;
-	fr_rb_tree_iter_inorder_t	iter;
+	fr_rb_iter_inorder_t	iter;
 
 	if (!xlat_root) return;	/* All xlats have already been freed */
 
-	for (c = rbtree_iter_init_inorder(&iter, xlat_root);
+	for (c = fr_rb_iter_init_inorder(&iter, xlat_root);
 	     c;
-	     c = rbtree_iter_next_inorder(&iter)) {
+	     c = fr_rb_iter_next_inorder(&iter)) {
 		if (c->mod_inst != instance) continue;
-		rbtree_iter_delete_inorder(&iter);
+		fr_rb_iter_delete_inorder(&iter);
 	}
 }
 
@@ -3075,7 +3075,7 @@ int xlat_init(void)
 	/*
 	 *	Create the function tree
 	 */
-	xlat_root = rbtree_talloc_alloc(NULL, xlat_t, node, xlat_cmp, _xlat_func_tree_free, RBTREE_FLAG_REPLACE);
+	xlat_root = fr_rb_tree_talloc_alloc(NULL, xlat_t, node, xlat_cmp, _xlat_func_tree_free, RB_FLAG_REPLACE);
 	if (!xlat_root) {
 		ERROR("%s: Failed to create tree", __FUNCTION__);
 		return -1;
@@ -3165,7 +3165,7 @@ do { \
  */
 void xlat_free(void)
 {
-	rbtree_t *xr = xlat_root;		/* Make sure the tree can't be freed multiple times */
+	fr_rb_tree_t *xr = xlat_root;		/* Make sure the tree can't be freed multiple times */
 
 	if (!xr) return;
 

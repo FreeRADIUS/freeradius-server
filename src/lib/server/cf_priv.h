@@ -33,7 +33,7 @@ extern "C" {
 #include <sys/stat.h>
 
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/dlist.h>
 
 typedef enum conf_type {
@@ -57,8 +57,8 @@ struct cf_item {
 
 	fr_dlist_head_t		children;	//!< The head of the ordered list of children.
 
-	rbtree_t		*ident1;	//!< Tree to store the first identifier (name1 || type || attr).
-	rbtree_t		*ident2;	//!< Tree to store the second identifier (name2 || name).
+	fr_rb_tree_t		*ident1;	//!< Tree to store the first identifier (name1 || type || attr).
+	fr_rb_tree_t		*ident2;	//!< Tree to store the second identifier (name2 || name).
 
 	int			lineno;		//!< The line number the config item began on.
 	char const		*filename;	//!< The file the config item was parsed from.

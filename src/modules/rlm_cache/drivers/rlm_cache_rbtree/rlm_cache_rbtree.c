@@ -27,18 +27,18 @@
 #include "../../rlm_cache.h"
 
 typedef struct {
-	rbtree_t		*cache;		//!< Tree for looking up cache keys.
+	fr_rb_tree_t		*cache;		//!< Tree for looking up cache keys.
 	fr_heap_t		*heap;		//!< For managing entry expiry.
 
 	pthread_mutex_t		mutex;		//!< Protect the tree from multiple readers/writers.
-} rlm_cache_rbtree_t;
+} rlm_cache_rb_t;
 
 typedef struct {
 	rlm_cache_entry_t	fields;		//!< Entry data.
 
 	fr_rb_node_t		node;		//!< Entry used for lookups.
 	int32_t			heap_id;	//!< Offset used for expiry heap.
-} rlm_cache_rbtree_entry_t;
+} rlm_cache_rb_entry_t;
 
 /** Compare two entries by key
  *
@@ -71,17 +71,17 @@ static int8_t cache_heap_cmp(void const *one, void const *two)
  */
 static int mod_detach(void *instance)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 	if (driver->cache) {
-		fr_rb_tree_iter_inorder_t	iter;
+		fr_rb_iter_inorder_t	iter;
 		void				*data;
 
-		for (data = rbtree_iter_init_inorder(&iter, driver->cache);
+		for (data = fr_rb_iter_init_inorder(&iter, driver->cache);
 		     data;
-		     data = rbtree_iter_next_inorder(&iter)) {
+		     data = fr_rb_iter_next_inorder(&iter)) {
 			talloc_free(data);
-			rbtree_iter_delete_inorder(&iter);
+			fr_rb_iter_delete_inorder(&iter);
 		}
 		talloc_free(driver->cache);
 	}
@@ -103,12 +103,12 @@ static int mod_detach(void *instance)
  */
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 	/*
 	 *	The cache.
 	 */
-	driver->cache = rbtree_talloc_alloc(NULL, rlm_cache_rbtree_entry_t, node, cache_entry_cmp, NULL, 0);
+	driver->cache = fr_rb_tree_talloc_alloc(NULL, rlm_cache_rb_entry_t, node, cache_entry_cmp, NULL, 0);
 	if (!driver->cache) {
 		ERROR("Failed to create cache");
 		return -1;
@@ -118,7 +118,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The heap of entries to expire.
 	 */
-	driver->heap = fr_heap_talloc_alloc(driver, cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
+	driver->heap = fr_heap_talloc_alloc(driver, cache_heap_cmp, rlm_cache_rb_entry_t, heap_id);
 	if (!driver->heap) {
 		ERROR("Failed to create heap for the cache");
 		return -1;
@@ -141,9 +141,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
 					    request_t *request)
 {
-	rlm_cache_rbtree_entry_t *c;
+	rlm_cache_rb_entry_t *c;
 
-	c = talloc_zero(NULL, rlm_cache_rbtree_entry_t);
+	c = talloc_zero(NULL, rlm_cache_rb_entry_t);
 	if (!c) {
 		RERROR("Failed allocating cache entry");
 		return NULL;
@@ -163,7 +163,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
 				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 	rlm_cache_entry_t *c;
 
@@ -175,14 +175,14 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	c = fr_heap_peek(driver->heap);
 	if (c && (c->expires < fr_time_to_unix_time(request->packet->timestamp))) {
 		fr_heap_extract(driver->heap, c);
-		rbtree_delete(driver->cache, c);
+		fr_rb_delete(driver->cache, c);
 		talloc_free(c);
 	}
 
 	/*
 	 *	Is there an entry for this key?
 	 */
-	c = rbtree_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
+	c = fr_rb_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
 	if (!c) {
 		*out = NULL;
 		return CACHE_MISS;
@@ -202,16 +202,16 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 					 request_t *request, UNUSED void *handle,
 					 uint8_t const *key, size_t key_len)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 	rlm_cache_entry_t *c;
 
 	if (!request) return CACHE_ERROR;
 
-	c = rbtree_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
+	c = fr_rb_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
 	if (!c) return CACHE_MISS;
 
 	fr_heap_extract(driver->heap, c);
-	rbtree_delete(driver->cache, c);
+	fr_rb_delete(driver->cache, c);
 	talloc_free(c);
 
 	return CACHE_OK;
@@ -229,7 +229,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 {
 	cache_status_t status;
 
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 	fr_assert(handle == request);
 
@@ -238,11 +238,11 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	/*
 	 *	Allow overwriting
 	 */
-	if (!rbtree_insert(driver->cache, c)) {
+	if (!fr_rb_insert(driver->cache, c)) {
 		status = cache_entry_expire(config, instance, request, handle, c->key, c->key_len);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
-		if (!rbtree_insert(driver->cache, c)) {
+		if (!fr_rb_insert(driver->cache, c)) {
 			RERROR("Failed adding entry");
 
 			return CACHE_ERROR;
@@ -250,7 +250,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	}
 
 	if (fr_heap_insert(driver->heap, UNCONST(rlm_cache_entry_t *, c)) < 0) {
-		rbtree_delete(driver->cache, c);
+		fr_rb_delete(driver->cache, c);
 		RERROR("Failed adding entry to expiry heap");
 
 		return CACHE_ERROR;
@@ -269,7 +269,7 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 					  request_t *request, UNUSED void *handle,
 					  rlm_cache_entry_t *c)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 #ifdef NDEBUG
 	if (!request) return CACHE_ERROR;
@@ -281,7 +281,7 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 	}
 
 	if (fr_heap_insert(driver->heap, c) < 0) {
-		rbtree_delete(driver->cache, c);	/* make sure we don't leak entries... */
+		fr_rb_delete(driver->cache, c);	/* make sure we don't leak entries... */
 		RERROR("Failed updating entry TTL.  Entry was forcefully expired");
 		return CACHE_ERROR;
 	}
@@ -297,11 +297,11 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *instance,
 				  request_t *request, UNUSED void *handle)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 	if (!request) return CACHE_ERROR;
 
-	return rbtree_num_elements(driver->cache);
+	return fr_rb_num_elements(driver->cache);
 }
 
 /** Lock the rbtree
@@ -313,7 +313,7 @@ static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
 static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *instance,
 			 request_t *request)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 	pthread_mutex_lock(&driver->mutex);
 
@@ -333,7 +333,7 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
 static void cache_release(UNUSED rlm_cache_config_t const *config, void *instance, request_t *request,
 			  UNUSED rlm_cache_handle_t *handle)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
 
 	pthread_mutex_unlock(&driver->mutex);
 
@@ -346,7 +346,7 @@ rlm_cache_driver_t rlm_cache_rbtree = {
 	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
-	.inst_size	= sizeof(rlm_cache_rbtree_t),
+	.inst_size	= sizeof(rlm_cache_rb_t),
 	.alloc		= cache_entry_alloc,
 
 	.find		= cache_entry_find,

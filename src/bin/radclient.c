@@ -1126,7 +1126,7 @@ int main(int argc, char **argv)
 	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
 	TALLOC_CTX	*autofree;
-	rbtree_t	*filename_tree = NULL;
+	fr_rb_tree_t	*filename_tree = NULL;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1152,7 +1152,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	filename_tree = rbtree_talloc_alloc(NULL, rc_file_pair_t, node, filename_cmp, NULL, 0);
+	filename_tree = fr_rb_tree_talloc_alloc(NULL, rc_file_pair_t, node, filename_cmp, NULL, 0);
 	if (!filename_tree) {
 	oom:
 		ERROR("Out of memory");
@@ -1219,7 +1219,7 @@ int main(int argc, char **argv)
 				files->packets = optarg;
 				files->filters = NULL;
 			}
-			rbtree_insert(filename_tree, (void *) files);
+			fr_rb_insert(filename_tree, (void *) files);
 		}
 			break;
 
@@ -1403,7 +1403,7 @@ int main(int argc, char **argv)
 	/*
 	 *	If no '-f' is specified, we're reading from stdin.
 	 */
-	if (rbtree_num_elements(filename_tree) == 0) {
+	if (fr_rb_num_elements(filename_tree) == 0) {
 		rc_file_pair_t *files;
 
 		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
@@ -1415,12 +1415,12 @@ int main(int argc, char **argv)
 	 *	Walk over the list of filenames, creating the requests.
 	 */
 	{
-		fr_rb_tree_iter_inorder_t	iter;
+		fr_rb_iter_inorder_t	iter;
 		rc_file_pair_t			*files;
 
-		for (files = rbtree_iter_init_inorder(&iter, filename_tree);
+		for (files = fr_rb_iter_init_inorder(&iter, filename_tree);
 		     files;
-		     files = rbtree_iter_next_inorder(&iter)) {
+		     files = fr_rb_iter_next_inorder(&iter)) {
 			if (radclient_init(files, files)) {
 				ERROR("Failed parsing input files");
 				fr_exit_now(1);

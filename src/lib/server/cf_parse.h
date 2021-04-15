@@ -31,7 +31,7 @@ RCSIDH(cf_parse_h, "$Id$")
 #include <unistd.h>
 #include <sys/time.h>
 #include <freeradius-devel/util/table.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/server/cf_util.h>
 
 #ifdef __cplusplus

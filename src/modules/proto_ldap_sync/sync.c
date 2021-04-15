@@ -724,9 +724,9 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 	int			ret = 0;
 	fr_ldap_rcode_t		rcode;
 	sync_state_t		find = { .msgid = -1 }, *sync = NULL;
-	rbtree_t		*tree;
+	fr_rb_tree_t		*tree;
 
-	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 
 	fr_assert(conn);
 
@@ -774,7 +774,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 		if (!sync || (sync->msgid != msgid)) {
 			find.msgid = msgid;
 
-			sync = rbtree_find(tree, &find);
+			sync = fr_rb_find(tree, &find);
 			if (!sync) {
 				WARN("Ignoring msgid %i, doesn't match any outstanding syncs",
 				     find.msgid);
@@ -863,7 +863,7 @@ static int _sync_state_free(sync_state_t *sync)
 {
 
 	fr_ldap_connection_t	*conn = talloc_get_type_abort(sync->conn, fr_ldap_connection_t);	/* check for premature free */
-	rbtree_t	*tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	fr_rb_tree_t	*tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 	sync_state_t	find = { .msgid = sync->msgid };
 
 	fr_assert(sync->conn->handle);
@@ -876,7 +876,7 @@ static int _sync_state_free(sync_state_t *sync)
 	 *	Tell the remote server to stop sending results
 	 */
 	ldap_abandon_ext(sync->conn->handle, sync->msgid, NULL, NULL);
-	rbtree_delete(tree, &find);
+	fr_rb_delete(tree, &find);
 
 	return 0;
 }
@@ -910,15 +910,15 @@ static int8_t _sync_cmp(void const *one, void const *two)
 void sync_state_destroy(fr_ldap_connection_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 
 	if (!conn->uctx) return;
 
-	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 
 	find.msgid = msgid;
 
-	sync = rbtree_find(tree, &find);
+	sync = fr_rb_find(tree, &find);
 	talloc_free(sync);	/* Will inform the server */
 }
 
@@ -930,15 +930,15 @@ void sync_state_destroy(fr_ldap_connection_t *conn, int msgid)
 sync_config_t const *sync_state_config_get(fr_ldap_connection_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 
 	if (!conn->uctx) return NULL;
 
-	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 
 	find.msgid = msgid;
 
-	sync = rbtree_find(tree, &find);
+	sync = fr_rb_find(tree, &find);
 	return sync->config;
 }
 
@@ -982,7 +982,7 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 	int			ret;
 	int			mode;
 	sync_state_t		*sync;
-	rbtree_t		*tree;
+	fr_rb_tree_t		*tree;
 
 	fr_assert(conn);
 	fr_assert(config);
@@ -994,10 +994,10 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 	 *	these are specific to the connection.
 	 */
 	if (!conn->uctx) {
-		MEM(tree = rbtree_talloc_alloc(conn, sync_state_t, node, _sync_cmp, NULL, RBTREE_FLAG_NONE));
+		MEM(tree = fr_rb_tree_talloc_alloc(conn, sync_state_t, node, _sync_cmp, NULL, RB_FLAG_NONE));
 		conn->uctx = tree;
 	} else {
-		tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+		tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 	}
 
 	/*
@@ -1061,7 +1061,7 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 		return -1;
 	}
 
-	if (!rbtree_insert(tree, sync)) {
+	if (!fr_rb_insert(tree, sync)) {
 		ERROR("Duplicate sync (msgid %i)", sync->msgid);
 		return -1;
 	}

@@ -89,7 +89,7 @@ struct rad_listen {
 
 	int			count;
 	bool			dual;
-	rbtree_t		*children;
+	fr_rb_tree_t		*children;
 	rad_listen_t		*parent;
 	bool			nodup;
 

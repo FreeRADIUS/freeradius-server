@@ -2770,7 +2770,7 @@ int dict_dependent_add(fr_dict_t *dict, char const *dependent)
 {
 	fr_dict_dependent_t *found;
 
-	found = rbtree_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
+	found = fr_rb_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
 	if (!found) {
 		fr_dict_dependent_t *new;
 
@@ -2787,7 +2787,7 @@ int dict_dependent_add(fr_dict_t *dict, char const *dependent)
 		 *	a dictionary.
 		 */
 		new->dependent = talloc_typed_strdup(new, dependent);
-		rbtree_insert(dict->dependents, new);
+		fr_rb_insert(dict->dependents, new);
 
 		new->count = 1;
 
@@ -2809,7 +2809,7 @@ int dict_dependent_remove(fr_dict_t *dict, char const *dependent)
 {
 	fr_dict_dependent_t *found;
 
-	found = rbtree_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
+	found = fr_rb_find(dict->dependents, &(fr_dict_dependent_t){ .dependent = dependent } );
 	if (!found) {
 		fr_strerror_printf("Dependent \"%s\" not found in dictionary \"%s\"", dependent, dict->root->name);
 		return -1;
@@ -2822,7 +2822,7 @@ int dict_dependent_remove(fr_dict_t *dict, char const *dependent)
 	}
 
 	if (--found->count == 0) {
-		rbtree_delete(dict->dependents, found);
+		fr_rb_delete(dict->dependents, found);
 		talloc_free(found);
 		return 0;
 	}
@@ -2839,7 +2839,7 @@ int dict_dependent_remove(fr_dict_t *dict, char const *dependent)
  */
 bool dict_has_dependents(fr_dict_t *dict)
 {
-	return (rbtree_num_elements(dict->dependents) > 0);
+	return (fr_rb_num_elements(dict->dependents) > 0);
 }
 
 static int _dict_free(fr_dict_t *dict)
@@ -2857,14 +2857,14 @@ static int _dict_free(fr_dict_t *dict)
 	dict->in_protocol_by_num = false;
 
 	if (dict_has_dependents(dict)) {
-		fr_rb_tree_iter_inorder_t	iter;
+		fr_rb_iter_inorder_t	iter;
 		fr_dict_dependent_t		*dep;
 
 		fr_strerror_printf("Refusing to free dictionary \"%s\", still has dependents", dict->root->name);
 
-		for (dep = rbtree_iter_init_inorder(&iter, dict->dependents);
+		for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
 		     dep;
-		     dep = rbtree_iter_next_inorder(&iter)) {
+		     dep = fr_rb_iter_next_inorder(&iter)) {
 			fr_strerror_printf_push("%s (%u)", dep->dependent, dep->count);
 		}
 		return -1;
@@ -2965,7 +2965,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	/*
 	 *	Who/what depends on this dictionary
 	 */
-	dict->dependents = rbtree_alloc(dict, fr_dict_dependent_t, node, _dict_dependent_cmp, NULL, 0);
+	dict->dependents = fr_rb_alloc(dict, fr_dict_dependent_t, node, _dict_dependent_cmp, NULL, 0);
 
 	/*
 	 *	Set default type size and length.
@@ -3453,7 +3453,7 @@ void fr_dict_global_ctx_debug(void)
 {
 	fr_hash_iter_t			dict_iter;
 	fr_dict_t			*dict;
-	fr_rb_tree_iter_inorder_t	dep_iter;
+	fr_rb_iter_inorder_t	dep_iter;
 	fr_dict_dependent_t		*dep;
 
 	if (!dict_gctx) {
@@ -3465,17 +3465,17 @@ void fr_dict_global_ctx_debug(void)
 	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &dict_iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &dict_iter)) {
-		for (dep = rbtree_iter_init_inorder(&dep_iter, dict->dependents);
+		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
 		     dep;
-		     dep = rbtree_iter_next_inorder(&dep_iter)) {
+		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
 			FR_FAULT_LOG("\t%s refs %s (%u)", dict->root->name, dep->dependent, dep->count);
 		}
 	}
 
 	if (dict_gctx->internal) {
-		for (dep = rbtree_iter_init_inorder(&dep_iter, dict_gctx->internal->dependents);
+		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict_gctx->internal->dependents);
 		     dep;
-		     dep = rbtree_iter_next_inorder(&dep_iter)) {
+		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
 			FR_FAULT_LOG("\t%s refs %s (%u)", dict_gctx->internal->root->name, dep->dependent, dep->count);
 		}
 	}

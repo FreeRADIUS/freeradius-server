@@ -38,7 +38,7 @@ RCSID("$Id$")
  */
 static bool			triggers_init;
 static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
-static rbtree_t			*trigger_last_fired_tree;
+static fr_rb_tree_t			*trigger_last_fired_tree;
 static pthread_mutex_t		*trigger_mutex;
 
 #define REQUEST_INDEX_TRIGGER_NAME	1
@@ -149,7 +149,7 @@ int trigger_exec_init(CONF_SECTION const *cs)
 		return 0;
 	}
 
-	MEM(trigger_last_fired_tree = rbtree_talloc_alloc(talloc_null_ctx(),
+	MEM(trigger_last_fired_tree = fr_rb_tree_talloc_alloc(talloc_null_ctx(),
 							  trigger_last_fired_t, node,
 							  _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
 
@@ -346,13 +346,13 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 
 		pthread_mutex_lock(trigger_mutex);
 
-		found = rbtree_find(trigger_last_fired_tree, &find);
+		found = fr_rb_find(trigger_last_fired_tree, &find);
 		if (!found) {
 			MEM(found = talloc(NULL, trigger_last_fired_t));
 			found->ci = ci;
 			found->last_fired = 0;
 
-			rbtree_insert(trigger_last_fired_tree, found);
+			fr_rb_insert(trigger_last_fired_tree, found);
 		}
 
 		pthread_mutex_unlock(trigger_mutex);

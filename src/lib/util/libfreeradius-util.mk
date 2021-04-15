@@ -52,7 +52,7 @@ SOURCES		:= \
 		   print.c \
 		   proto.c \
 		   rand.c \
-		   rbtree.c \
+		   rb.c \
 		   regex.c \
 		   retry.c \
 		   sbuff.c \

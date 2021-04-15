@@ -143,7 +143,7 @@ module_method_set_t *module_method_alloc_set(TALLOC_CTX *ctx)
 	module_method_set_t *set;
 
 	MEM(set = talloc_zero(ctx, module_method_set_t));
-	MEM(set->tree = rbtree_talloc_alloc(set, module_method_entry_t, node, module_method_cmp, NULL, 0));
+	MEM(set->tree = fr_rb_tree_talloc_alloc(set, module_method_entry_t, node, module_method_cmp, NULL, 0));
 	fr_dlist_talloc_init(&set->list, module_method_entry_t, entry);
 
 	return set;
@@ -162,7 +162,7 @@ int module_method_insert(module_method_set_t *set, module_method_id_t id, module
 {
 	module_method_entry_t	*found, find = { .id = id, .method = method };
 
-	found = rbtree_find(set->tree, &find);
+	found = fr_rb_find(set->tree, &find);
 	if (found) {
 		if (unlikely(found->method != method)) {
 			fr_strerror_printf("Conflict for method id %u (old %p vs new %p)",
@@ -175,7 +175,7 @@ int module_method_insert(module_method_set_t *set, module_method_id_t id, module
 	MEM(found = talloc(set, module_method_entry_t));
 	*found = find;
 
-	if (!rbtree_insert(set->tree, found)) {
+	if (!fr_rb_insert(set->tree, found)) {
 		fr_strerror_printf("Failed inserting method id %u", id);
 		return -1;
 	}
@@ -198,7 +198,7 @@ module_method_t	module_method_find(module_method_set_t *set, module_method_id_t 
 {
 	module_method_entry_t	*found;
 
-	found = rbtree_find(set->tree, &(module_method_entry_t){ .id = id });
+	found = fr_rb_find(set->tree, &(module_method_entry_t){ .id = id });
 	if (!found) return NULL;
 
 	return found->method;

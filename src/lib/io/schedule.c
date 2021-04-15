@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/server/trigger.h>
 
