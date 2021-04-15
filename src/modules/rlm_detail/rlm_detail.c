@@ -182,7 +182,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Be kind to minor mistakes.
 			 */
-			if (fr_hash_table_find_by_data(inst->ht, da)) {
+			if (fr_hash_table_find(inst->ht, da)) {
 				WARN("Ignoring duplicate entry '%s'", attr);
 				continue;
 			}
@@ -327,7 +327,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		     vp = fr_pair_list_next(list, vp)) {
 			fr_token_t op;
 
-			if (inst->ht && fr_hash_table_find_by_data(inst->ht, vp->da)) continue;
+			if (inst->ht && fr_hash_table_find(inst->ht, vp->da)) continue;
 
 			/*
 			 *	Don't print passwords in old format...

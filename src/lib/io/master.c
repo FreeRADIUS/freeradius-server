@@ -753,8 +753,10 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	client->ready_to_delete = false;
 	pthread_mutex_unlock(&client->mutex);
 
-	if (ret < 0) {
-		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->app_io->name, connection->name);
+	if (!ret) {
+		ERROR("proto_%s - Failed inserting connection into tracking table.  "
+		      "Closing it, and discarding all packets for connection %s.",
+		      inst->app_io->name, connection->name);
 		goto cleanup;
 	}
 
@@ -772,7 +774,9 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
 	connection->nr = fr_schedule_listen_add(thread->sc, connection->listen);
 	if (!connection->nr) {
-		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->app_io->name, connection->name);
+		ERROR("proto_%s - Failed inserting connection into scheduler.  "
+		      "Closing it, and diuscarding all packets for connection %s.",
+		      inst->app_io->name, connection->name);
 		pthread_mutex_lock(&client->mutex);
 		(void) fr_hash_table_delete(client->ht, connection);
 		pthread_mutex_unlock(&client->mutex);
@@ -1684,7 +1688,7 @@ have_client:
 		my_connection.address = &address;
 
 		pthread_mutex_lock(&client->mutex);
-		connection = fr_hash_table_find_by_data(client->ht, &my_connection);
+		connection = fr_hash_table_find(client->ht, &my_connection);
 		if (connection) nak = (connection->client->state == PR_CLIENT_NAK);
 		pthread_mutex_unlock(&client->mutex);
 

@@ -38,7 +38,7 @@ typedef struct fr_hash_entry_s fr_hash_entry_t;
  *
  */
 typedef struct {
-	int			bucket;
+	uint32_t		bucket;
 	fr_hash_entry_t		*node;
 } fr_hash_iter_t;
 
@@ -55,33 +55,31 @@ typedef struct fr_hash_table_s fr_hash_table_t;
 typedef int (*fr_hash_table_walk_t)(void *data, void *uctx);
 
 fr_hash_table_t *fr_hash_table_alloc(TALLOC_CTX *ctx,
-				      fr_hash_t hashNode,
-				      fr_cmp_t cmpNode,
-				      fr_free_t freeNode);
+				     fr_hash_t hash_node,
+				     fr_cmp_t cmp_node,
+				     fr_free_t free_node) CC_HINT(nonnull(2,3));
 
-int		fr_hash_table_insert(fr_hash_table_t *ht, void const *data);
+void		*fr_hash_table_find(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-int		fr_hash_table_delete(fr_hash_table_t *ht, void const *data);
+void		*fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data) CC_HINT(nonnull);
 
-void		*fr_hash_table_yank(fr_hash_table_t *ht, void const *data);
+bool		fr_hash_table_insert(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-int		fr_hash_table_replace(fr_hash_table_t *ht, void const *data);
+int		fr_hash_table_replace(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-void		*fr_hash_table_find_by_data(fr_hash_table_t *ht, void const *data);
+void		*fr_hash_table_remove(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-void		*fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data);
+bool		fr_hash_table_delete(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-int		fr_hash_table_num_elements(fr_hash_table_t *ht);
+uint64_t	fr_hash_table_num_elements(fr_hash_table_t *ht) CC_HINT(nonnull);
 
-int		fr_hash_table_walk(fr_hash_table_t *ht,
-				   fr_hash_table_walk_t callback,
-				   void *uctx);
+void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter) CC_HINT(nonnull);
 
-void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter);
+void		*fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter) CC_HINT(nonnull);
 
-void		*fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter);
+int		fr_hash_table_flatten(TALLOC_CTX *ctx, void **out[], fr_hash_table_t *ht) CC_HINT(nonnull(2,3));
 
-void		fr_hash_table_fill(fr_hash_table_t *ht);
+void		fr_hash_table_fill(fr_hash_table_t *ht) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

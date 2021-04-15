@@ -729,7 +729,7 @@ int dict_protocol_add(fr_dict_t *dict)
 	if (!fr_hash_table_insert(dict_gctx->protocol_by_name, dict)) {
 		fr_dict_t *old_proto;
 
-		old_proto = fr_hash_table_find_by_data(dict_gctx->protocol_by_name, dict);
+		old_proto = fr_hash_table_find(dict_gctx->protocol_by_name, dict);
 		if (!old_proto) {
 			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
 			return -1;
@@ -800,7 +800,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	if (!fr_hash_table_insert(dict->vendors_by_name, vendor)) {
 		fr_dict_vendor_t const *old_vendor;
 
-		old_vendor = fr_hash_table_find_by_data(dict->vendors_by_name, vendor);
+		old_vendor = fr_hash_table_find(dict->vendors_by_name, vendor);
 		if (!old_vendor) {
 			fr_strerror_printf("%s: Failed inserting vendor name %s", __FUNCTION__, name);
 			return -1;
@@ -827,7 +827,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!fr_hash_table_replace(dict->vendors_by_num, vendor)) {
+	if (fr_hash_table_replace(dict->vendors_by_num, vendor) < 0) {
 		fr_strerror_printf("%s: Failed inserting vendor %s", __FUNCTION__, name);
 		return -1;
 	}
@@ -1033,7 +1033,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 		 *	but the parent, or number, or type are
 		 *	different, that's an error.
 		 */
-		a = fr_hash_table_find_by_data(namespace, da);
+		a = fr_hash_table_find(namespace, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name \"%s\"", da->name);
@@ -1049,7 +1049,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 		 *	dictionary but entry in the name hash table is
 		 *	updated to point to the new definition.
 		 */
-		if (!fr_hash_table_replace(namespace, da)) {
+		if (fr_hash_table_replace(namespace, da) < 0) {
 			fr_strerror_const("Internal error storing attribute");
 			goto error;
 		}
@@ -1316,7 +1316,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	take care of that here.
 	 */
 	if (takes_precedence) {
-		if (!fr_hash_table_replace(ext->name_by_value, enumv)) {
+		if (fr_hash_table_replace(ext->name_by_value, enumv) < 0) {
 			fr_strerror_printf("%s: Failed inserting value %s", __FUNCTION__, name);
 			return -1;
 		}
@@ -1885,7 +1885,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	}
 
 	root.name = buffer;
-	dict = fr_hash_table_find_by_data(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
+	dict = fr_hash_table_find(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
 
 	if (!dict) {
 		fr_strerror_printf("Unknown protocol '%s'", root.name);
@@ -1931,7 +1931,7 @@ fr_dict_t *dict_by_protocol_name(char const *name)
 {
 	if (!dict_gctx || !name) return NULL;
 
-	return fr_hash_table_find_by_data(dict_gctx->protocol_by_name,
+	return fr_hash_table_find(dict_gctx->protocol_by_name,
 				      &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
 }
 
@@ -1945,7 +1945,7 @@ fr_dict_t *dict_by_protocol_num(unsigned int num)
 {
 	if (!dict_gctx) return NULL;
 
-	return fr_hash_table_find_by_data(dict_gctx->protocol_by_num,
+	return fr_hash_table_find(dict_gctx->protocol_by_num,
 				      &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
 }
 
@@ -2047,7 +2047,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
 
 	dict = dict_by_da(da);
 
-	return fr_hash_table_find_by_data(dict->vendors_by_num, &dv);
+	return fr_hash_table_find(dict->vendors_by_num, &dv);
 }
 
 /** Look up a vendor by its name
@@ -2067,7 +2067,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
 
 	if (!name) return 0;
 
-	found = fr_hash_table_find_by_data(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
+	found = fr_hash_table_find(dict->vendors_by_name, &(fr_dict_vendor_t) { .name = name });
 	if (!found) return 0;
 
 	return found;
@@ -2086,7 +2086,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t ve
 {
 	INTERNAL_IF_NULL(dict, NULL);
 
-	return fr_hash_table_find_by_data(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
+	return fr_hash_table_find(dict->vendors_by_num, &(fr_dict_vendor_t) { .pen = vendor_pen });
 }
 
 /** Return vendor attribute for the specified dictionary and pen
@@ -2473,7 +2473,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		return -1;
 	}
 
-	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t){ .name = buffer });
+	da = fr_hash_table_find(namespace, &(fr_dict_attr_t){ .name = buffer });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", buffer, parent->name);
@@ -2501,7 +2501,7 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 		return NULL;
 	}
 
-	da = fr_hash_table_find_by_data(namespace, &(fr_dict_attr_t) { .name = name });
+	da = fr_hash_table_find(namespace, &(fr_dict_attr_t) { .name = name });
 	if (!da) {
 		if (err) *err = FR_DICT_ATTR_NOTFOUND;
 		fr_strerror_printf("Attribute '%s' not found in namespace '%s'", name, parent->name);
@@ -2658,7 +2658,7 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 	 */
 	if (value->type != da->type) return NULL;
 
-	return fr_hash_table_find_by_data(ext->name_by_value, &(fr_dict_enum_t){ .value = value });
+	return fr_hash_table_find(ext->name_by_value, &(fr_dict_enum_t){ .value = value });
 }
 
 /** Lookup the name of an enum value in a #fr_dict_attr_t
@@ -2702,7 +2702,7 @@ fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name,
 
 	if (len < 0) len = strlen(name);
 
-	return fr_hash_table_find_by_data(ext->value_by_name, &(fr_dict_enum_t){ .name = name, .name_len = len});
+	return fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_t){ .name = name, .name_len = len});
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
@@ -2730,16 +2730,6 @@ int dict_dlopen(fr_dict_t *dict, char const *name)
 	}
 
 	talloc_free(module_name);
-	return 0;
-}
-
-static int _dict_free_autoref(void *data, void *uctx)
-{
-	fr_dict_t *referer = talloc_get_type_abort(uctx, fr_dict_t);
-	fr_dict_t *dict = talloc_get_type_abort(data, fr_dict_t);
-
-	if (fr_dict_free(&dict, referer->root->name) < 0) return -1;
-
 	return 0;
 }
 
@@ -2877,9 +2867,17 @@ static int _dict_free(fr_dict_t *dict)
 	 */
 	talloc_free(dict->vendors_by_name);
 
-	if (dict->autoref &&
-	    (fr_hash_table_walk(dict->autoref, _dict_free_autoref, dict) < 0)) {
-		return -1;
+	if (dict->autoref) {
+		fr_dict_t **refd_list;
+		unsigned int i;
+
+		if (fr_hash_table_flatten(NULL, (void ***)&refd_list, dict->autoref) < 0) return -1;
+
+		for (i = 0; i < talloc_array_length(refd_list); i++) {
+		     if (fr_dict_free(&refd_list[i], dict->root->name) < 0) return -1;
+		}
+
+		talloc_free(refd_list);
 	}
 
 	/*
