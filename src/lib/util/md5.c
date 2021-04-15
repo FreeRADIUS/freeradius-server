@@ -250,12 +250,14 @@ static void fr_md5_local_transform(uint32_t state[static 4], uint8_t const block
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 
-	for (a = 0; a < MD5_BLOCK_LENGTH / 4; a++) {
+	for (a = 0; a < (MD5_BLOCK_LENGTH / 4); a++) {
+		size_t idx = a * 4;
+
 		in[a] = (uint32_t)(
-		    (uint32_t)(block[a * 4 + 0]) |
-		    (uint32_t)(block[a * 4 + 1]) <<  8 |
-		    (uint32_t)(block[a * 4 + 2]) << 16 |
-		    (uint32_t)(block[a * 4 + 3]) << 24);
+		    (uint32_t)(block[idx + 0]) |
+		    (uint32_t)(block[idx + 1]) <<  8 |
+		    (uint32_t)(block[idx + 2]) << 16 |
+		    (uint32_t)(block[idx + 3]) << 24);
 	}
 
 	a = state[0];
@@ -459,7 +461,7 @@ static void fr_md5_local_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inl
 	 *	ubsan doesn't like arithmetic on
 	 *	NULL pointers.
 	 */
-	if (!in) in = (uint8_t[]){ 0x00 };
+	if (!in) in = (uint8_t[MD5_BLOCK_LENGTH]){ 0x00 };
 
 	/* Check how many bytes we already have and how many more we need. */
 	have = (size_t)((ctx_local->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
