@@ -122,6 +122,5 @@ rlm_eap_submodule_t rlm_eap_aka = {
 	.instantiate	= mod_instantiate,
 
 	.session_init	= mod_session_init,
-	.entry_point	= eap_aka_sim_process,
 	.namespace	= &dict_eap_aka_sim
 };

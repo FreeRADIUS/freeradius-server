@@ -126,7 +126,7 @@ typedef struct {
 typedef struct {
 	eap_tls_status_t	state;			//!< The state of the EAP-TLS session.
 
-	fr_tls_session_t		*tls_session;		//!< TLS session used to authenticate peer
+	fr_tls_session_t	*tls_session;		//!< TLS session used to authenticate peer
 							//!< or tunnel sensitive data.
 
 	bool			phase2;			//!< Whether we're in phase 2

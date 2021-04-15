@@ -175,5 +175,4 @@ rlm_eap_submodule_t rlm_eap_md5 = {
 	.provides	= { FR_EAP_METHOD_MD5 },
 	.magic		= RLM_MODULE_INIT,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.entry_point	= mod_process		/* Process next round of EAP method */
 };

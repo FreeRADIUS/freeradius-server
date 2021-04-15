@@ -39,8 +39,6 @@ typedef struct {
 								///< than one EAP-Method.
 
 	module_method_t		session_init;		//!< Callback for creating a new #eap_session_t.
-	module_method_t		entry_point;		//!< Callback for processing the next #eap_round_t of an
-							//!< #eap_session_t.
 
 	fr_dict_t const		**namespace;		//!< Namespace children should be allocated in.
 

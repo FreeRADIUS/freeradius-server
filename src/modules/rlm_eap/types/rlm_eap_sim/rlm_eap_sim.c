@@ -99,6 +99,5 @@ rlm_eap_submodule_t rlm_eap_sim = {
 	.instantiate	= mod_instantiate,
 
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.entry_point	= eap_aka_sim_process,
 	.namespace	= &dict_eap_aka_sim
 };
