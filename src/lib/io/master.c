@@ -413,7 +413,7 @@ error:
  *  are closed.  The alternative is to walk through all connections
  *  for each client, which would be a long time.
  */
-static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED size_t keylen, void *data)
+static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, void *data, void *ctx)
 {
 	fr_io_client_t *client = talloc_get_type_abort(data, fr_io_client_t);
 	int connections;
@@ -1084,7 +1084,7 @@ static int _client_live_free(fr_io_client_t *client)
 
 	if (client->pending) TALLOC_FREE(client->pending);
 
-	(void) fr_trie_remove(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
+	(void) fr_trie_remove_by_key(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 	(void) fr_heap_extract(client->thread->alive_clients, client);
 
 	return 0;
@@ -1329,7 +1329,7 @@ do_read:
 	 *	connected socket).
 	 */
 	if (!connection) {
-		client = fr_trie_lookup(thread->trie,
+		client = fr_trie_lookup_by_key(thread->trie,
 					&address.socket.inet.src_ipaddr.addr, address.socket.inet.src_ipaddr.prefix);
 		fr_assert(!client || !client->connection);
 
@@ -1394,7 +1394,7 @@ do_read:
 			/*
 			 *	Look up the allowed networks.
 			 */
-			network = fr_trie_lookup(inst->networks, &address.socket.inet.src_ipaddr.addr,
+			network = fr_trie_lookup_by_key(inst->networks, &address.socket.inet.src_ipaddr.addr,
 						 address.socket.inet.src_ipaddr.prefix);
 			if (!network) goto ignore;
 
@@ -1488,7 +1488,7 @@ do_read:
 		 *	Add the newly defined client to the trie of
 		 *	allowed clients.
 		 */
-		if (fr_trie_insert(thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
+		if (fr_trie_insert_by_key(thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
 			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packets for it.",
 			      inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
@@ -2744,7 +2744,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		/*
 		 *	Duplicates are bad.
 		 */
-		network = fr_trie_match(trie,
+		network = fr_trie_match_by_key(trie,
 					&allow[i].addr, allow[i].prefix);
 		if (network) {
 			fr_strerror_printf("Cannot add duplicate entry 'allow = %pV'",
@@ -2764,7 +2764,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		 *	fr_trie_alloc() saying "we can only
 		 *	have terminal fr_trie_user_t nodes"
 		 */
-		network = fr_trie_lookup(trie,
+		network = fr_trie_lookup_by_key(trie,
 					 &allow[i].addr, allow[i].prefix);
 		if (network && (network->prefix <= allow[i].prefix)) {
 			fr_strerror_printf("Cannot add overlapping entry 'allow = %pV'", fr_box_ipaddr(allow[i]));
@@ -2778,7 +2778,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		 *	Lookups will return the fr_ipaddr_t of
 		 *	the network.
 		 */
-		if (fr_trie_insert(trie,
+		if (fr_trie_insert_by_key(trie,
 				   &allow[i].addr, allow[i].prefix,
 				   &allow[i]) < 0) {
 			fr_strerror_printf("Failed adding 'allow = %pV' to tracking table", fr_box_ipaddr(allow[i]));
@@ -2813,7 +2813,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		/*
 		 *	Duplicates are bad.
 		 */
-		network = fr_trie_match(trie,
+		network = fr_trie_match_by_key(trie,
 					&deny[i].addr, deny[i].prefix);
 		if (network) {
 			fr_strerror_printf("Cannot add duplicate entry 'deny = %pV'", fr_box_ipaddr(deny[i]));
@@ -2824,7 +2824,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		/*
 		 *	A "deny" can only be within a previous "allow".
 		 */
-		network = fr_trie_lookup(trie,
+		network = fr_trie_lookup_by_key(trie,
 					 &deny[i].addr, deny[i].prefix);
 		if (!network) {
 			fr_strerror_printf("The network in entry %zd - 'deny = %pV' is not "
@@ -2850,7 +2850,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 		 *	Lookups will return the fr_ipaddr_t of
 		 *	the network.
 		 */
-		if (fr_trie_insert(trie,
+		if (fr_trie_insert_by_key(trie,
 				   &deny[i].addr, deny[i].prefix,
 				   &deny[i]) < 0) {
 			fr_strerror_printf("Failed adding 'deny = %pV' to tracking table", fr_box_ipaddr(deny[i]));

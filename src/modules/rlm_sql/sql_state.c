@@ -129,8 +129,8 @@ int sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const tabl
 		size_t	len = strlen(entry->sql_state) * 8;
 		int	ret;
 
-		fr_trie_remove(states, entry->sql_state, len);	/* Remove any old entries */
-		ret = fr_trie_insert(states, entry->sql_state, len, entry);
+		fr_trie_remove_by_key(states, entry->sql_state, len);	/* Remove any old entries */
+		ret = fr_trie_insert_by_key(states, entry->sql_state, len, entry);
 		if (ret < 0) {
 			PERROR("Failed inserting state");
 		}
@@ -175,13 +175,13 @@ int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 		/*
 		 *	No existing match, create a new entry
 		 */
-		entry = fr_trie_match(states, state, len );
+		entry = fr_trie_match_by_key(states, state, len );
 		if (!entry) {
 			MEM(entry = talloc(states, sql_state_entry_t));
 			entry->sql_state = talloc_strdup(entry, state);
 			entry->meaning = "USER DEFINED";
 			entry->rcode = rcode;
-			(void) fr_trie_insert(states, state, len, entry);
+			(void) fr_trie_insert_by_key(states, state, len, entry);
 		} else {
 			entry->rcode = rcode;	/* Override previous sql rcode */
 		}
@@ -202,5 +202,5 @@ int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
  */
 sql_state_entry_t const *sql_state_entry_find(fr_trie_t const *states, char const *sql_state)
 {
-	return fr_trie_lookup(states, sql_state, strlen(sql_state) * 8);
+	return fr_trie_lookup_by_key(states, sql_state, strlen(sql_state) * 8);
 }

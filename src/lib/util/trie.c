@@ -117,18 +117,18 @@ DIAG_OFF(unused-macros)
    /* define this to be MPRINT for additional debugging */
 #  define MPRINT2(...)
 #  define MPRINT3(...)
-static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int lineno);
+static void trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, int lineno);
 #else
 #  define MPRINT(...)
 #  define MPRINT2(...)
 #  define MPRINT3(...)
-#define fr_trie_sprint(_trie, _key, _start_bit, _lineno)
+#define trie_sprint(_trie, _key, _start_bit, _lineno)
 #endif
 
 #ifdef WITH_TRIE_VERIFY
-static int fr_trie_verify(fr_trie_t *trie);
-//#define VERIFY(_x) fr_cond_assert(fr_trie_verify((fr_trie_t *) _x) == 0)
-#define VERIFY(_x) do { if (fr_trie_verify((fr_trie_t *) _x) < 0) { fprintf(stderr, "FAIL VERIFY at %d - %s\n", __LINE__, fr_strerror()); fr_cond_assert(0);} } while (0)
+static int trie_verify(fr_trie_t *trie);
+//#define VERIFY(_x) fr_cond_assert(trie_verify((fr_trie_t *) _x) == 0)
+#define VERIFY(_x) do { if (trie_verify((fr_trie_t *) _x) < 0) { fprintf(stderr, "FAIL VERIFY at %d - %s\n", __LINE__, fr_strerror()); fr_cond_assert(0);} } while (0)
 #else
 #define VERIFY(_x)
 #endif
@@ -527,7 +527,7 @@ typedef struct {
 
 /* ALLOC FUNCTIONS */
 
-static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, int bits)
+static fr_trie_node_t *trie_node_alloc(TALLOC_CTX *ctx, int bits)
 {
 	fr_trie_node_t *node;
 	int size;
@@ -561,14 +561,14 @@ static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, int bits)
  *  nodes frome each other, as talloc_steal() is O(N).  So, we just
  *  recurse manually.
  */
-static void fr_trie_free(fr_trie_t *trie)
+static void trie_free(fr_trie_t *trie)
 {
 	if (!trie) return;
 
 	if (trie->type == FR_TRIE_USER) {
 		fr_trie_user_t *user = (fr_trie_user_t *) trie;
 
-		fr_trie_free(user->trie);
+		trie_free(user->trie);
 		talloc_free(user);
 		return;
 	}
@@ -580,7 +580,7 @@ static void fr_trie_free(fr_trie_t *trie)
 		for (i = 0; i < (1 << node->bits); i++) {
 			if (!node->trie[i]) continue; /* save a function call in the common case */
 
-			fr_trie_free(node->trie[i]);
+			trie_free(node->trie[i]);
 		}
 
 		talloc_free(node);
@@ -591,7 +591,7 @@ static void fr_trie_free(fr_trie_t *trie)
 	if (trie->type == FR_TRIE_PATH) {
 		fr_trie_path_t *path = (fr_trie_path_t *) trie;
 
-		fr_trie_free(path->trie);
+		trie_free(path->trie);
 		talloc_free(path);
 		return;
 	}
@@ -603,7 +603,7 @@ static void fr_trie_free(fr_trie_t *trie)
 		int i;
 
 		for (i = 0; i < comp->used; i++) {
-			fr_trie_free(comp->trie[i]);
+			trie_free(comp->trie[i]);
 		}
 
 		talloc_free(comp);
@@ -612,9 +612,7 @@ static void fr_trie_free(fr_trie_t *trie)
 #endif
 }
 
-static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, void const *data) CC_HINT(nonnull(2));
-
-static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, void const *data)
+static CC_HINT(nonnull(2)) fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, void const *data)
 {
 	fr_trie_user_t *user;
 
@@ -625,7 +623,7 @@ static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, void const *data)
 	}
 
 	user->type = FR_TRIE_USER;
-	memcpy(&user->data, &data, sizeof(user->data));
+	user->data = UNCONST(void *, data);
 
 #ifdef TESTING
 	user->number = trie_number++;
@@ -635,9 +633,7 @@ static fr_trie_user_t *fr_trie_user_alloc(TALLOC_CTX *ctx, void const *data)
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit) CC_HINT(nonnull(2));
-
-static fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit)
+static CC_HINT(nonnull(2)) fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit)
 {
 	fr_trie_path_t *path;
 
@@ -758,9 +754,7 @@ fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
 /** Split a node at bits
  *
  */
-static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_node_t *node, int bits) CC_HINT(nonnull(2));
-
-static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_node_t *node, int bits)
+static CC_HINT(nonnull(2)) fr_trie_node_t *trie_node_split(TALLOC_CTX *ctx, fr_trie_node_t *node, int bits)
 {
 	fr_trie_node_t *split;
 	int i, remaining_bits;
@@ -774,7 +768,7 @@ static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_node_t *node,
 		return NULL;
 	}
 
-	split = fr_trie_node_alloc(ctx, bits);
+	split = trie_node_alloc(ctx, bits);
 	if (!split) return NULL;
 
 	remaining_bits = node->bits - bits;
@@ -787,9 +781,9 @@ static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_node_t *node,
 		int j;
 		fr_trie_node_t *child;
 
-		child = fr_trie_node_alloc(ctx, remaining_bits);
+		child = trie_node_alloc(ctx, remaining_bits);
 		if (!child) {
-			fr_trie_free((fr_trie_t *) split);
+			trie_free((fr_trie_t *) split);
 			return NULL;
 		}
 
@@ -818,9 +812,7 @@ static fr_trie_node_t *fr_trie_node_split(TALLOC_CTX *ctx, fr_trie_node_t *node,
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_path_t *path, int start_bit, int lcp) CC_HINT(nonnull(2));
-
-static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_path_t *path, int start_bit, int lcp)
+static CC_HINT(nonnull(2)) fr_trie_path_t *trie_path_split(TALLOC_CTX *ctx, fr_trie_path_t *path, int start_bit, int lcp)
 {
 	fr_trie_path_t *split, *child;
 #ifdef TESTING
@@ -876,10 +868,7 @@ static fr_trie_path_t *fr_trie_path_split(TALLOC_CTX *ctx, fr_trie_path_t *path,
 	return split;
 }
 
-
-static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2));
-
-static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *data)
+static CC_HINT(nonnull(2)) fr_trie_t *trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_path_t *path;
 	int next_bit;
@@ -908,7 +897,7 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int sta
 	path = fr_trie_path_alloc(ctx,  key, start_bit, next_bit);
 	if (!path) return NULL;
 
-	path->trie = (fr_trie_t *) fr_trie_key_alloc(ctx, key, next_bit, end_bit, data);
+	path->trie = (fr_trie_t *) trie_key_alloc(ctx, key, next_bit, end_bit, data);
 	if (!path->trie) {
 		talloc_free(path); /* no children */
 		return NULL;
@@ -917,9 +906,7 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int sta
 	return (fr_trie_t *) path;
 }
 #else  /* WITH_PATH_COMPRESSION */
-static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2));
-
-static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *data)
+static CC_HINT(nonnull(2)) fr_trie_t *trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_node_t *node;
 	uint16_t chunk;
@@ -935,11 +922,11 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int sta
 	/*
 	 *	We only want one edge here.
 	 */
-	node = fr_trie_node_alloc(ctx, bits);
+	node = trie_node_alloc(ctx, bits);
 	if (!node) return NULL;
 
 	chunk = get_chunk(key, start_bit, node->bits);
-	node->trie[chunk] = fr_trie_key_alloc(ctx, key, start_bit + node->bits, end_bit, data);
+	node->trie[chunk] = trie_key_alloc(ctx, key, start_bit + node->bits, end_bit, data);
 	if (!node->trie[chunk]) {
 		talloc_free(node); /* no children */
 		return NULL;
@@ -956,7 +943,7 @@ static fr_trie_t *fr_trie_key_alloc(TALLOC_CTX *ctx, uint8_t const *key, int sta
  *
  */
 #ifdef WITH_NODE_COMPRESSION
-static fr_trie_t *fr_trie_comp_split(TALLOC_CTX *ctx, fr_trie_comp_t *comp, int start_bit, int bits)
+static fr_trie_t *trie_comp_split(TALLOC_CTX *ctx, fr_trie_comp_t *comp, int start_bit, int bits)
 {
 	int i;
 	fr_trie_comp_t *split;
@@ -1040,7 +1027,7 @@ fail:
  *  This function is so that we can abstract 2^N-way nodes, or
  *  compressed edge nodes.
  */
-static int fr_trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
+static int trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
 {
 	fr_trie_node_t *node;
 
@@ -1100,11 +1087,11 @@ static int fr_trie_add_edge(fr_trie_t *trie, uint16_t chunk, fr_trie_t *child)
 
 /* MATCH FUNCTIONS */
 
-typedef void *(*fr_trie_key_match_t)(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
+typedef void *(*trie_key_match_t)(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
 
-static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
+static void *trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact);
 
-static void *fr_trie_user_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+static void *trie_user_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
 	void *data;
@@ -1120,7 +1107,7 @@ static void *fr_trie_user_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	 *	deeper match.  If a match is found, return
 	 *	that.
 	 */
-	data = fr_trie_key_match(user->trie, key, start_bit, end_bit, exact);
+	data = trie_key_match(user->trie, key, start_bit, end_bit, exact);
 	if (data) return data;
 
 	/*
@@ -1139,7 +1126,7 @@ static void *fr_trie_user_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	return user->data;
 }
 
-static void *fr_trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+static void *trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
 {
 	uint16_t chunk;
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
@@ -1150,11 +1137,11 @@ static void *fr_trie_node_match(fr_trie_t *trie, uint8_t const *key, int start_b
 		return NULL;
 	}
 
-	return fr_trie_key_match(node->trie[chunk], key, start_bit + node->bits, end_bit, exact);
+	return trie_key_match(node->trie[chunk], key, start_bit + node->bits, end_bit, exact);
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static void *fr_trie_path_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+static void *trie_path_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
 {
 	uint16_t chunk;
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
@@ -1162,12 +1149,12 @@ static void *fr_trie_path_match(fr_trie_t *trie, uint8_t const *key, int start_b
 	chunk = get_chunk(key, start_bit, path->bits);
 	if (chunk != path->chunk) return NULL;
 
-	return fr_trie_key_match(path->trie, key, start_bit + path->bits, end_bit, exact);
+	return trie_key_match(path->trie, key, start_bit + path->bits, end_bit, exact);
 }
 #endif
 
 #ifdef WITH_NODE_COMPRESSION
-static void *fr_trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+static void *trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
 {
 	int i;
 	uint16_t chunk;
@@ -1179,7 +1166,7 @@ static void *fr_trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_b
 		if (comp->index[i] < chunk) continue;
 
 		if (comp->index[i] == chunk) {
-			return fr_trie_key_match(comp->trie[i], key, start_bit + comp->bits, end_bit, exact);
+			return trie_key_match(comp->trie[i], key, start_bit + comp->bits, end_bit, exact);
 		}
 
 		/*
@@ -1194,14 +1181,14 @@ static void *fr_trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_b
 }
 #endif
 
-static fr_trie_key_match_t trie_match[FR_TRIE_MAX] = {
-	[ FR_TRIE_USER ] = fr_trie_user_match,
-	[ FR_TRIE_NODE ] = fr_trie_node_match,
+static trie_key_match_t trie_match[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = trie_user_match,
+	[ FR_TRIE_NODE ] = trie_node_match,
 #ifdef WITH_PATH_COMPRESSION
-	[ FR_TRIE_PATH ] = fr_trie_path_match,
+	[ FR_TRIE_PATH ] = trie_path_match,
 #endif
 #ifdef WITH_NODE_COMPRESSION
-	[ FR_TRIE_COMP ] = fr_trie_comp_match,
+	[ FR_TRIE_COMP ] = trie_comp_match,
 #endif
 };
 
@@ -1220,7 +1207,7 @@ static fr_trie_key_match_t trie_match[FR_TRIE_MAX] = {
  *	- NULL on not found
  *	- void* user ctx on found
  */
-static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
+static void *trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, bool exact)
 {
 	if (!trie) return NULL;
 
@@ -1256,7 +1243,7 @@ static void *fr_trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bi
  *	- NULL on not found
  *	- void* user ctx on found
  */
-void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
+void *fr_trie_lookup_by_key(fr_trie_t const *ft, void const *key, size_t keylen)
 {
 	fr_trie_user_t *user;
 
@@ -1264,9 +1251,9 @@ void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
 
 	if (!ft->trie) return NULL;
 
-	memcpy(&user, &ft, sizeof(user)); /* const issues */
+	user = UNCONST(fr_trie_user_t *, ft);
 
-	return fr_trie_key_match(user->trie, key, 0, keylen, false);
+	return trie_key_match(user->trie, key, 0, keylen, false);
 }
 
 /** Match a key and length in a trie and return user ctx, if any
@@ -1280,7 +1267,7 @@ void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
  *	- NULL on not found
  *	- void* user ctx on found
  */
-void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
+void *fr_trie_match_by_key(fr_trie_t const *ft, void const *key, size_t keylen)
 {
 	fr_trie_user_t *user;
 
@@ -1288,21 +1275,21 @@ void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
 
 	if (!ft->trie) return NULL;
 
-	memcpy(&user, &ft, sizeof(user)); /* const issues */
+	user = UNCONST(fr_trie_user_t *, ft);
 
-	return fr_trie_key_match(user->trie, key, 0, keylen, true);
+	return trie_key_match(user->trie, key, 0, keylen, true);
 }
 
 /* INSERT FUNCTIONS */
 
 #ifdef TESTING
-static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, void *data, int lineno)
+static void trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, int end_bit, void *data, int lineno)
 {
 	void *answer;
 
-	fr_trie_sprint(trie, key, start_bit, lineno);
+	trie_sprint(trie, key, start_bit, lineno);
 
-	answer = fr_trie_key_match(trie, key, start_bit, end_bit, true);
+	answer = trie_key_match(trie, key, start_bit, end_bit, true);
 	if (!answer) {
 		fr_strerror_printf("Failed trie check answer at %d", lineno);
 
@@ -1321,14 +1308,14 @@ static void fr_trie_check(fr_trie_t *trie, uint8_t const *key, int start_bit, in
 	}
 }
 #else
-#define fr_trie_check(_trie, _key, _start_bit, _end_bit, _data, _lineno)
+#define trie_check(_trie, _key, _start_bit, _end_bit, _data, _lineno)
 #endif
 
-static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,6));
+static int trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,6));
 
-typedef int (*fr_trie_key_insert_t)(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data);
+typedef int (*trie_key_insert_t)(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data);
 
-static int fr_trie_user_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
+static int trie_user_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_t *trie = *trie_p;
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
@@ -1339,10 +1326,10 @@ static int fr_trie_user_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	 *	Just insert the key into user->trie.
 	 */
 	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-	return fr_trie_key_insert(ctx, &user->trie, key, start_bit, end_bit, data);
+	return trie_key_insert(ctx, &user->trie, key, start_bit, end_bit, data);
 }
 
-static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
+static int trie_node_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_t *trie = *trie_p;
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
@@ -1366,7 +1353,7 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 			node->bits, start_bit - end_bit,
 			start_bit, end_bit, (char *) data);
 
-		split = fr_trie_node_split(ctx, node, end_bit - start_bit);
+		split = trie_node_split(ctx, node, end_bit - start_bit);
 		if (!split) {
 			fr_strerror_printf("Failed splitting node at %d\n", __LINE__);
 			return -1;
@@ -1383,10 +1370,10 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	 *	the key.
 	 */
 	if (!node->trie[chunk]) {
-		node->trie[chunk] = fr_trie_key_alloc(ctx, key, start_bit + node->bits, end_bit, data);
+		node->trie[chunk] = trie_key_alloc(ctx, key, start_bit + node->bits, end_bit, data);
 		if (!node->trie[chunk]) {
 			fr_strerror_printf("Failed key_alloc at %d\n", __LINE__);
-			if (trie_to_free) fr_trie_free(trie_to_free);
+			if (trie_to_free) trie_free(trie_to_free);
 			return -1;
 		}
 		node->used++;
@@ -1397,28 +1384,26 @@ static int fr_trie_node_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 		 *	into the current node.
 		 */
 		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-		if (fr_trie_key_insert(ctx, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
+		if (trie_key_insert(ctx, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
 			MPRINT("Failed recursing at %d\n", __LINE__);
-			if (trie_to_free) fr_trie_free(trie_to_free);
+			if (trie_to_free) trie_free(trie_to_free);
 			return -1;
 		}
 	}
 
-	fr_trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
+	trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
 
 	MPRINT3("%.*snode insert returning at %d\n",
 		start_bit, spaces, __LINE__);
 
-	if (trie_to_free) fr_trie_free(trie_to_free);
+	if (trie_to_free) trie_free(trie_to_free);
 	*trie_p = (fr_trie_t *) node;
 	VERIFY(node);
 	return 0;
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,6));
-
-static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
+static CC_HINT(nonnull(2,3,6)) int trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_t *trie = *trie_p;
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
@@ -1433,7 +1418,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 		start_bit, spaces, start_bit, end_bit, key[0], key[1], (char *) data);
 
 	VERIFY(path);
-	fr_trie_sprint((fr_trie_t *) path, key, start_bit, __LINE__);
+	trie_sprint((fr_trie_t *) path, key, start_bit, __LINE__);
 
 	/*
 	 *	The key exactly matches the path.  Recurse.
@@ -1449,11 +1434,11 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 			MPRINT3("%.*spath chunk matches %04x bits of %d\n",
 				start_bit, spaces, chunk, path->bits);
 			MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-			if (fr_trie_key_insert(ctx, &path->trie, key, start_bit + path->bits, end_bit, data) < 0) {
+			if (trie_key_insert(ctx, &path->trie, key, start_bit + path->bits, end_bit, data) < 0) {
 				return -1;
 			}
 
-			fr_trie_check((fr_trie_t *) path, key, start_bit, end_bit, data, __LINE__);
+			trie_check((fr_trie_t *) path, key, start_bit, end_bit, data, __LINE__);
 
 			MPRINT3("%.*spath returning at %d\n", start_bit, spaces, __LINE__);
 			VERIFY(path);
@@ -1517,15 +1502,15 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 			key[0], key[1],
 			start_bit2);
 
-		split = fr_trie_path_split(ctx, path, start_bit2, lcp);
+		split = trie_path_split(ctx, path, start_bit2, lcp);
 		if (!split) {
 			fr_strerror_printf("failed path split at %d\n", __LINE__);
 			return -1;
 		}
 
-		fr_trie_sprint((fr_trie_t *) path, key, start_bit, __LINE__);
-		fr_trie_sprint((fr_trie_t *) split, key, start_bit, __LINE__);
-		fr_trie_sprint((fr_trie_t *) split->trie, key, start_bit + split->bits, __LINE__);
+		trie_sprint((fr_trie_t *) path, key, start_bit, __LINE__);
+		trie_sprint((fr_trie_t *) split, key, start_bit, __LINE__);
+		trie_sprint((fr_trie_t *) split->trie, key, start_bit + split->bits, __LINE__);
 
 		/*
 		 *	Recurse to insert the key into the child node.
@@ -1533,7 +1518,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 		 *	have to split "path" again.
 		 */
 		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-		if (fr_trie_key_insert(ctx, &split->trie, key, start_bit + split->bits, end_bit, data) < 0) {
+		if (trie_key_insert(ctx, &split->trie, key, start_bit + split->bits, end_bit, data) < 0) {
 			talloc_free(split->trie);
 			talloc_free(split);
 			return -1;
@@ -1546,7 +1531,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 		fr_cond_assert(split->type == FR_TRIE_PATH);
 		fr_cond_assert(split->trie->type != FR_TRIE_PATH);
 
-		fr_trie_check((fr_trie_t *) split, key, start_bit, end_bit, data, __LINE__);
+		trie_check((fr_trie_t *) split, key, start_bit, end_bit, data, __LINE__);
 
 		MPRINT3("%.*spath returning at %d\n", start_bit, spaces, __LINE__);
 		talloc_free(path);
@@ -1579,7 +1564,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 		if (bits > MAX_NODE_BITS) bits = MAX_NODE_BITS;
 
 		MPRINT3("%.*sFanout to node %d at depth %d data %s\n", start_bit, spaces, bits, start_bit, (char *) data);
-		node = (fr_trie_t *) fr_trie_node_alloc(ctx, bits);
+		node = (fr_trie_t *) trie_node_alloc(ctx, bits);
 	}
 	if (!node) return -1;
 
@@ -1621,7 +1606,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	 *	split "path" again.
 	 */
 	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-	if (fr_trie_key_insert(ctx, &trie, key, start_bit + node->bits, end_bit, data) < 0) {
+	if (trie_key_insert(ctx, &trie, key, start_bit + node->bits, end_bit, data) < 0) {
 		talloc_free(node);
 		if (child != path->trie) talloc_free(child);
 		return -1;
@@ -1630,7 +1615,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	/*
 	 *	Copy the first edge over to the first chunk.
 	 */
-	if (fr_trie_add_edge(node, chunk, child) < 0) {
+	if (trie_add_edge(node, chunk, child) < 0) {
 		fr_strerror_printf("chunk failure in insert node %d at %d", node->bits, __LINE__);
 		talloc_free(node);
 		if (child != path->trie) talloc_free(child);
@@ -1641,14 +1626,14 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	 *	Copy the second edge from the new chunk.
 	 */
 	chunk = get_chunk(key, start_bit, node->bits);
-	if (fr_trie_add_edge(node, chunk, trie) < 0) {
+	if (trie_add_edge(node, chunk, trie) < 0) {
 		fr_strerror_printf("chunk failure in insert node %d at %d", node->bits, __LINE__);
 		talloc_free(node);
-		fr_trie_free(trie);
+		trie_free(trie);
 		return -1;
 	}
 
-	fr_trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
+	trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
 
 	MPRINT3("%.*spath returning at %d\n", start_bit, spaces, __LINE__);
 
@@ -1663,9 +1648,7 @@ static int fr_trie_path_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 #endif
 
 #ifdef WITH_NODE_COMPRESSION
-static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data) CC_HINT(nonnull(2,3,6));
-
-static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
+static CC_HINT(nonnull(2,3,6)) int trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	int i, bits;
 	fr_trie_t *trie = *trie_p;
@@ -1695,12 +1678,12 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 		 */
 		if (comp->index[i] == chunk) {
 			MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-			if (fr_trie_key_insert(ctx, &comp->trie[i], key, start_bit + comp->bits, end_bit, data) < 0) {
+			if (trie_key_insert(ctx, &comp->trie[i], key, start_bit + comp->bits, end_bit, data) < 0) {
 				MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
 				return -1;
 			}
 
-			fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+			trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
 
 			MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
 			VERIFY(comp);
@@ -1722,18 +1705,18 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	if (comp->used < MAX_COMP_EDGES) {
 		MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
 		trie = NULL;
-		if (fr_trie_key_insert(ctx, &trie, key, start_bit + comp->bits, end_bit, data) < 0) {
+		if (trie_key_insert(ctx, &trie, key, start_bit + comp->bits, end_bit, data) < 0) {
 			MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
 			return -1;
 		}
 		fr_cond_assert(trie != NULL);
 
-		if (fr_trie_add_edge((fr_trie_t *) comp, chunk, trie) < 0) {
+		if (trie_add_edge((fr_trie_t *) comp, chunk, trie) < 0) {
 			talloc_free(trie); // @todo - there may be multiple nodes here?
 			return -1;
 		}
 
-		fr_trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
+		trie_check((fr_trie_t *) comp, key, start_bit, end_bit, data, __LINE__);
 
 		VERIFY(comp);
 		return 0;
@@ -1745,13 +1728,13 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 
 	/*
 	 *	@todo - limit bits by calling
-	 *	fr_trie_comp_split()?
+	 *	trie_comp_split()?
 	 */
 	bits = comp->bits;
 
 	MPRINT3("%.*scomp swapping to node bits %d at %d\n", start_bit, spaces, bits, __LINE__);
 
-	node = fr_trie_node_alloc(ctx, bits);
+	node = trie_node_alloc(ctx, bits);
 	if (!node) return -1;
 
 	for (i = 0; i < comp->used; i++) {
@@ -1766,13 +1749,13 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 	 *	with an existing one.
 	 */
 	MPRINT3("%.*srecurse at %d\n", start_bit, spaces, __LINE__);
-	if (fr_trie_key_insert(ctx, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
+	if (trie_key_insert(ctx, &node->trie[chunk], key, start_bit + node->bits, end_bit, data) < 0) {
 		MPRINT3("%.*scomp failed recursing at %d", start_bit, spaces, __LINE__);
 		talloc_free(node);
 		return -1;
 	}
 
-	fr_trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
+	trie_check((fr_trie_t *) node, key, start_bit, end_bit, data, __LINE__);
 
 	MPRINT3("%.*scomp returning at %d", start_bit, spaces, __LINE__);
 
@@ -1783,14 +1766,14 @@ static int fr_trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t cons
 }
 #endif
 
-static fr_trie_key_insert_t trie_insert[FR_TRIE_MAX] = {
-	[ FR_TRIE_USER ] = fr_trie_user_insert,
-	[ FR_TRIE_NODE ] = fr_trie_node_insert,
+static trie_key_insert_t trie_insert[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = trie_user_insert,
+	[ FR_TRIE_NODE ] = trie_node_insert,
 #ifdef WITH_PATH_COMPRESSION
-	[ FR_TRIE_PATH ] = fr_trie_path_insert,
+	[ FR_TRIE_PATH ] = trie_path_insert,
 #endif
 #ifdef WITH_NODE_COMPRESSION
-	[ FR_TRIE_COMP ] = fr_trie_comp_insert,
+	[ FR_TRIE_COMP ] = trie_comp_insert,
 #endif
 };
 
@@ -1808,7 +1791,7 @@ static fr_trie_key_insert_t trie_insert[FR_TRIE_MAX] = {
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
+static int trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit, void *data)
 {
 	fr_trie_t *trie = *trie_p;
 
@@ -1817,13 +1800,13 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const
 	 *	key bits to insert.
 	 */
 	if (!trie) {
-		*trie_p = fr_trie_key_alloc(ctx, key, start_bit, end_bit, data);
+		*trie_p = trie_key_alloc(ctx, key, start_bit, end_bit, data);
 		if (!*trie_p) return -1;
 		return 0;
 	}
 
 	MPRINT3("%.*sIN recurse at %d\n", start_bit, spaces, __LINE__);
-	fr_trie_sprint(trie, key, start_bit, __LINE__);
+	trie_sprint(trie, key, start_bit, __LINE__);
 
 	/*
 	 *	We've reached the end of the key.  Insert a user node
@@ -1857,7 +1840,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const
 		return -1;
 	}
 
-	fr_trie_check(*trie_p, key, start_bit, end_bit, data, __LINE__);
+	trie_check(*trie_p, key, start_bit, end_bit, data, __LINE__);
 
 	return 0;
 #endif
@@ -1873,7 +1856,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const
  *	- <0 on error
  *	- 0 on success
  */
-int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *data)
+int fr_trie_insert_by_key(fr_trie_t *ft, void const *key, size_t keylen, void const *data)
 {
 	void *my_data;
 	fr_trie_user_t *user;
@@ -1892,25 +1875,25 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void const *da
 	 *	ensures that the insertion can modify the trie in
 	 *	place without worry.
 	 */
-	if (fr_trie_key_match(user->trie, key, 0, keylen, true) != NULL) {
+	if (trie_key_match(user->trie, key, 0, keylen, true) != NULL) {
 		fr_strerror_const("Cannot insert due to pre-existing key");
 		return -1;
 	}
 
-	memcpy(&my_data, &data, sizeof(data)); /* const issues */
+	my_data = UNCONST(void *, data);
 	MPRINT2("No match for data, inserting...\n");
 
 	MPRINT3("%.*srecurse STARTS at %d with %.*s=%s\n", 0, spaces, __LINE__,
 		(int) keylen, key, my_data);
-	return fr_trie_key_insert(user->data, &user->trie, key, 0, keylen, my_data);
+	return trie_key_insert(user->data, &user->trie, key, 0, keylen, my_data);
 }
 
 /* REMOVE FUNCTIONS */
-static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
+static void *trie_key_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
 
-typedef void *(*fr_trie_key_remove_t)(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
+typedef void *(*trie_key_remove_t)(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit);
 
-static void *fr_trie_user_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+static void *trie_user_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	fr_trie_t *trie = *trie_p;
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
@@ -1929,10 +1912,10 @@ static void *fr_trie_user_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 		return data;
 	}
 
-	return fr_trie_key_remove(ctx, &user->trie, key, start_bit, end_bit);
+	return trie_key_remove(ctx, &user->trie, key, start_bit, end_bit);
 }
 
-static void *fr_trie_node_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+static void *trie_node_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	fr_trie_t *trie = *trie_p;
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
@@ -1942,7 +1925,7 @@ static void *fr_trie_node_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 	chunk = get_chunk(key, start_bit, node->bits);
 	if (!node->trie[chunk]) return NULL;
 
-	data = fr_trie_key_remove(ctx, &node->trie[chunk], key, start_bit + node->bits, end_bit);
+	data = trie_key_remove(ctx, &node->trie[chunk], key, start_bit + node->bits, end_bit);
 	if (!data) return NULL;
 
 	/*
@@ -1972,7 +1955,7 @@ static void *fr_trie_node_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static void *fr_trie_path_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+static void *trie_path_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	fr_trie_t *trie = *trie_p;
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
@@ -1986,7 +1969,7 @@ static void *fr_trie_path_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 	 */
 	if (path->chunk != chunk) return NULL;
 
-	data = fr_trie_key_remove(ctx, &path->trie, key, start_bit + path->bits, end_bit);
+	data = trie_key_remove(ctx, &path->trie, key, start_bit + path->bits, end_bit);
 	if (!data) return NULL;
 
 	/*
@@ -2004,7 +1987,7 @@ static void *fr_trie_path_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 #endif
 
 #ifdef WITH_NODE_COMPRESSION
-static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+static void *trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	int i, j;
 	uint16_t chunk;
@@ -2015,7 +1998,7 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 	chunk = get_chunk(key, start_bit, comp->bits);
 
 	MPRINT3("%.*sremove at %d\n", start_bit, spaces, __LINE__);
-	fr_trie_sprint(*trie_p, key, start_bit, __LINE__);
+	trie_sprint(*trie_p, key, start_bit, __LINE__);
 
 	for (i = 0; i < comp->used; i++) {
 		if (comp->index[i] < chunk) continue;
@@ -2039,7 +2022,7 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 
 	fr_cond_assert(chunk == comp->index[i]);
 
-	data = fr_trie_key_remove(ctx, &comp->trie[i], key, start_bit + comp->bits, end_bit);
+	data = trie_key_remove(ctx, &comp->trie[i], key, start_bit + comp->bits, end_bit);
 	if (!data) return NULL;
 
 	/*
@@ -2047,7 +2030,7 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 	 */
 	if (comp->trie[i]) {
 		MPRINT3("%.*sremove at %d\n", start_bit, spaces, __LINE__);
-		fr_trie_sprint((fr_trie_t *) comp, key, start_bit, __LINE__);
+		trie_sprint((fr_trie_t *) comp, key, start_bit, __LINE__);
 		VERIFY(comp);
 		return data;
 	}
@@ -2110,21 +2093,21 @@ static void *fr_trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t co
 }
 #endif
 
-static fr_trie_key_remove_t trie_remove[FR_TRIE_MAX] = {
-	[ FR_TRIE_USER ] = fr_trie_user_remove,
-	[ FR_TRIE_NODE ] = fr_trie_node_remove,
+static trie_key_remove_t trie_remove[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = trie_user_remove,
+	[ FR_TRIE_NODE ] = trie_node_remove,
 #ifdef WITH_PATH_COMPRESSION
-	[ FR_TRIE_PATH ] = fr_trie_path_remove,
+	[ FR_TRIE_PATH ] = trie_path_remove,
 #endif
 #ifdef WITH_NODE_COMPRESSION
-	[ FR_TRIE_COMP ] = fr_trie_comp_remove,
+	[ FR_TRIE_COMP ] = trie_comp_remove,
 #endif
 };
 
 /** Remove a key from a trie, and return the user data.
  *
  */
-static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
+static void *trie_key_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	fr_trie_t *trie = *trie_p;
 
@@ -2152,7 +2135,7 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t con
  *	- NULL on not found
  *	- user ctx data on success
  */
-void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
+void *fr_trie_remove_by_key(fr_trie_t *ft, void const *key, size_t keylen)
 {
 	fr_trie_user_t *user;
 
@@ -2165,7 +2148,7 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
 	/*
 	 *	Remove the user trie, not ft->trie.
 	 */
-	return fr_trie_key_remove(user->data, &user->trie, key, 0, (int) keylen);
+	return trie_key_remove(user->data, &user->trie, key, 0, (int) keylen);
 }
 
 /* WALK FUNCTIONS */
@@ -2174,11 +2157,11 @@ typedef struct fr_trie_callback_s fr_trie_callback_t;
 
 typedef int (*fr_trie_key_walk_t)(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
 
-static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
+static int trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more);
 
 struct fr_trie_callback_s {
-	uint8_t		*start;
-	uint8_t const	*end;
+	uint8_t			*start;
+	uint8_t const		*end;
 
 	void			*ctx;
 
@@ -2186,16 +2169,16 @@ struct fr_trie_callback_s {
 	fr_trie_walk_t		user_callback;
 };
 
-static int fr_trie_user_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+static int trie_user_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
 
 	if (!user->trie) return 0;
 
-	return fr_trie_key_walk(user->trie, cb, depth, more);
+	return trie_key_walk(user->trie, cb, depth, more);
 }
 
-static int fr_trie_node_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+static int trie_node_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
 {
 	int i, used;
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
@@ -2207,7 +2190,7 @@ static int fr_trie_node_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 		write_chunk(cb->start, depth, node->bits, (uint16_t) i);
 		used++;
 
-		if (fr_trie_key_walk(node->trie[i], cb, depth + node->bits,
+		if (trie_key_walk(node->trie[i], cb, depth + node->bits,
 				     more || (used < node->used)) < 0) {
 			return -1;
 		}
@@ -2217,19 +2200,19 @@ static int fr_trie_node_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static int fr_trie_path_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+static int trie_path_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
 {
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
 
 	write_chunk(cb->start, depth, path->bits, path->chunk);
 
 	fr_cond_assert(path->trie != NULL);
-	return fr_trie_key_walk(path->trie, cb, depth + path->bits, more);
+	return trie_key_walk(path->trie, cb, depth + path->bits, more);
 }
 #endif
 
 #ifdef WITH_NODE_COMPRESSION
-static int fr_trie_comp_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+static int trie_comp_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
 {
 	int i, used;
 	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
@@ -2241,7 +2224,7 @@ static int fr_trie_comp_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 		fr_cond_assert(comp->trie[i] != NULL);
 
 		used++;
-		if (fr_trie_key_walk(comp->trie[i], cb, depth + comp->bits,
+		if (trie_key_walk(comp->trie[i], cb, depth + comp->bits,
 				     more || (used < comp->used)) < 0) {
 			return -1;
 		}
@@ -2252,17 +2235,17 @@ static int fr_trie_comp_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth,
 #endif
 
 static fr_trie_key_walk_t trie_walk[FR_TRIE_MAX] = {
-	[ FR_TRIE_USER ] = fr_trie_user_walk,
-	[ FR_TRIE_NODE ] = fr_trie_node_walk,
+	[ FR_TRIE_USER ] = trie_user_walk,
+	[ FR_TRIE_NODE ] = trie_node_walk,
 #ifdef WITH_PATH_COMPRESSION
-	[ FR_TRIE_PATH ] = fr_trie_path_walk,
+	[ FR_TRIE_PATH ] = trie_path_walk,
 #endif
 #ifdef WITH_NODE_COMPRESSION
-	[ FR_TRIE_COMP ] = fr_trie_comp_walk,
+	[ FR_TRIE_COMP ] = trie_comp_walk,
 #endif
 };
 
-static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
+static int trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bool more)
 {
 	/*
 	 *	Do the callback before anything else.
@@ -2287,9 +2270,9 @@ static int fr_trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, 
 #ifdef WITH_TRIE_VERIFY
 /* VERIFY FUNCTIONS */
 
-typedef int (*fr_trie_verify_t)(fr_trie_t *trie);
+typedef int (*trie_verify_t)(fr_trie_t *trie);
 
-static int fr_trie_user_verify(fr_trie_t *trie)
+static int trie_user_verify(fr_trie_t *trie)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
 
@@ -2300,10 +2283,10 @@ static int fr_trie_user_verify(fr_trie_t *trie)
 
 	if (!user->trie) return 0;
 
-	return fr_trie_verify(user->trie);
+	return trie_verify(user->trie);
 }
 
-static int fr_trie_node_verify(fr_trie_t *trie)
+static int trie_node_verify(fr_trie_t *trie)
 {
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
 	int i, used;
@@ -2324,7 +2307,7 @@ static int fr_trie_node_verify(fr_trie_t *trie)
 	for (i = 0; i < (1 << node->bits); i++) {
 		if (!node->trie[i]) continue;
 
-		if (fr_trie_verify(node->trie[i]) < 0) return -1;
+		if (trie_verify(node->trie[i]) < 0) return -1;
 
 		used++;
 	}
@@ -2339,7 +2322,7 @@ static int fr_trie_node_verify(fr_trie_t *trie)
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static int fr_trie_path_verify(fr_trie_t *trie)
+static int trie_path_verify(fr_trie_t *trie)
 {
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
 
@@ -2354,12 +2337,12 @@ static int fr_trie_path_verify(fr_trie_t *trie)
 		return -1;
 	}
 
-	return fr_trie_verify(path->trie);
+	return trie_verify(path->trie);
 }
 #endif
 
 #ifdef WITH_NODE_COMPRESSION
-static int fr_trie_comp_verify(fr_trie_t *trie)
+static int trie_comp_verify(fr_trie_t *trie)
 {
 	int i, used;
 	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
@@ -2385,7 +2368,7 @@ static int fr_trie_comp_verify(fr_trie_t *trie)
 			}
 		}
 
-		if (fr_trie_verify(comp->trie[i]) < 0) return -1;
+		if (trie_verify(comp->trie[i]) < 0) return -1;
 		used++;
 	}
 
@@ -2399,14 +2382,14 @@ static int fr_trie_comp_verify(fr_trie_t *trie)
 }
 #endif
 
-static fr_trie_verify_t trie_verify[FR_TRIE_MAX] = {
-	[ FR_TRIE_USER ] = fr_trie_user_verify,
-	[ FR_TRIE_NODE ] = fr_trie_node_verify,
+static trie_verify_t trie_verify[FR_TRIE_MAX] = {
+	[ FR_TRIE_USER ] = trie_user_verify,
+	[ FR_TRIE_NODE ] = trie_node_verify,
 #ifdef WITH_PATH_COMPRESSION
-	[ FR_TRIE_PATH ] = fr_trie_path_verify,
+	[ FR_TRIE_PATH ] = trie_path_verify,
 #endif
 #ifdef WITH_NODE_COMPRESSION
-	[ FR_TRIE_COMP ] = fr_trie_comp_verify,
+	[ FR_TRIE_COMP ] = trie_comp_verify,
 #endif
 };
 
@@ -2414,7 +2397,7 @@ static fr_trie_verify_t trie_verify[FR_TRIE_MAX] = {
 /**  Verify the trie nodes
  *
  */
-static int fr_trie_verify(fr_trie_t *trie)
+static int trie_verify(fr_trie_t *trie)
 {
 	if (!trie) return 0;
 
@@ -2430,7 +2413,7 @@ static int fr_trie_verify(fr_trie_t *trie)
 /** Dump a trie edge in canonical form.
  *
  */
-static void fr_trie_dump_edge(FILE *fp, fr_trie_t *trie)
+static void trie_dump_edge(FILE *fp, fr_trie_t *trie)
 {
 	fr_cond_assert(trie != NULL);
 
@@ -2441,7 +2424,7 @@ static void fr_trie_dump_edge(FILE *fp, fr_trie_t *trie)
 
 typedef void (*fr_trie_dump_t)(FILE *fp, fr_trie_t *trie, char const *key, int keylen);
 
-static void fr_trie_user_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
+static void trie_user_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) trie;
 	int bytes = BYTES(keylen);
@@ -2457,11 +2440,11 @@ static void fr_trie_user_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 	}
 
 	fprintf(fp, "\tnext\t");
-	fr_trie_dump_edge(fp, user->trie);
+	trie_dump_edge(fp, user->trie);
 	fprintf(fp, "}\n\n");
 }
 
-static void fr_trie_node_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
+static void trie_node_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
 {
 	fr_trie_node_t *node = (fr_trie_node_t *) trie;
 	int i;
@@ -2478,13 +2461,13 @@ static void fr_trie_node_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 		if (!node->trie[i]) continue;
 
 		fprintf(fp, "\t%02x\t", (int) i);
-		fr_trie_dump_edge(fp, node->trie[i]);
+		trie_dump_edge(fp, node->trie[i]);
 	}
 	fprintf(fp, "}\n\n");
 }
 
 #ifdef WITH_PATH_COMPRESSION
-static void fr_trie_path_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
+static void trie_path_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
 {
 	fr_trie_path_t *path = (fr_trie_path_t *) trie;
 	int bytes = BYTES(keylen);
@@ -2501,14 +2484,14 @@ static void fr_trie_path_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 	fprintf(fp, "\n");
 
 	fprintf(fp, "\tnext\t");
-	fr_trie_dump_edge(fp, path->trie);
+	trie_dump_edge(fp, path->trie);
 
 	fprintf(fp, "}\n\n");
 }
 #endif
 
 #ifdef WITH_NODE_COMPRESSION
-static void fr_trie_comp_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
+static void trie_comp_dump(FILE *fp, fr_trie_t *trie, char const *key, int keylen)
 {
 	fr_trie_comp_t *comp = (fr_trie_comp_t *) trie;
 	int i;
@@ -2523,7 +2506,7 @@ static void fr_trie_comp_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 
 	for (i = 0; i < comp->used; i++) {
 		fprintf(fp, "\t%d = %02x\t", i, comp->index[i]);
-		fr_trie_dump_edge(fp, comp->trie[i]);
+		trie_dump_edge(fp, comp->trie[i]);
 	}
 	fprintf(fp, "}\n\n");
 }
@@ -2531,13 +2514,13 @@ static void fr_trie_comp_dump(FILE *fp, fr_trie_t *trie, char const *key, int ke
 #endif
 
 static fr_trie_dump_t trie_dump[FR_TRIE_MAX] = {
-	[ FR_TRIE_USER ] = fr_trie_user_dump,
-	[ FR_TRIE_NODE ] = fr_trie_node_dump,
+	[ FR_TRIE_USER ] = trie_user_dump,
+	[ FR_TRIE_NODE ] = trie_node_dump,
 #ifdef WITH_PATH_COMPRESSION
-	[ FR_TRIE_PATH ] = fr_trie_path_dump,
+	[ FR_TRIE_PATH ] = trie_path_dump,
 #endif
 #ifdef WITH_NODE_COMPRESSION
-	[ FR_TRIE_COMP ] = fr_trie_comp_dump,
+	[ FR_TRIE_COMP ] = trie_comp_dump,
 #endif
 };
 
@@ -2545,7 +2528,7 @@ static fr_trie_dump_t trie_dump[FR_TRIE_MAX] = {
 /**  Dump the trie nodes
  *
  */
-static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+static int _trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
 {
 	FILE *fp = cb->ctx;
 
@@ -2560,7 +2543,7 @@ static int fr_trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, 
 /**  Print the strings accepted by a trie to a file
  *
  */
-static int fr_trie_print_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+static int _trie_print_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
 {
 	int bytes;
 	FILE *fp = cb->ctx;
@@ -2587,7 +2570,7 @@ static int fr_trie_print_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen,
 /**  Implement the user-visible side of the walk callback.
  *
  */
-static int fr_trie_user_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
+static int _trie_user_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UNUSED bool more)
 {
 	fr_trie_user_t *user;
 
@@ -2598,7 +2581,7 @@ static int fr_trie_user_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, 
 	/*
 	 *	Call the user function with the key, key length, and data.
 	 */
-	if (cb->user_callback(cb->ctx, cb->start, keylen, UNCONST(void *, user->data)) < 0) {
+	if (cb->user_callback(cb->start, keylen, UNCONST(void *, user->data), cb->ctx) < 0) {
 		return -1;
 	}
 
@@ -2611,7 +2594,7 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 	fr_trie_callback_t my_cb = {
 		.start = buffer,
 		.end = buffer + sizeof(buffer),
-		.callback = fr_trie_user_cb,
+		.callback = _trie_user_cb,
 		.user_callback = callback,
 		.ctx = ctx
 	};
@@ -2621,7 +2604,7 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 	/*
 	 *	Call the internal walk function to do the work.
 	 */
-	return fr_trie_key_walk(ft->trie, &my_cb, 0, false);
+	return trie_key_walk(ft->trie, &my_cb, 0, false);
 }
 
 #ifdef TESTING
@@ -2631,15 +2614,15 @@ typedef struct {
 	char	*start;
 	char	*buffer;
 	size_t	buflen;
-} fr_trie_sprint_ctx_t;
+} trie_sprint_ctx_t;
 
 
 /**  Print the strings accepted by a trie to one line
  */
-static int fr_trie_sprint_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, bool more)
+static int _trie_sprint_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, bool more)
 {
 	int bytes, len;
-	fr_trie_sprint_ctx_t *ctx;
+	trie_sprint_ctx_t *ctx;
 	fr_trie_user_t *user;
 
 	ctx = cb->ctx;
@@ -2670,10 +2653,10 @@ done:
 }
 
 
-static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, UNUSED int lineno)
+static void trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, UNUSED int lineno)
 {
 	fr_trie_callback_t my_cb;
-	fr_trie_sprint_ctx_t my_sprint;
+	trie_sprint_ctx_t my_sprint;
 	uint8_t buffer[MAX_KEY_BYTES + 1];
 	char out[8192];
 
@@ -2698,14 +2681,14 @@ static void fr_trie_sprint(fr_trie_t *trie, uint8_t const *key, int start_bit, U
 	 */
 	my_cb.start = buffer;
 	my_cb.end = buffer + sizeof(buffer);
-	my_cb.callback = fr_trie_sprint_cb;
+	my_cb.callback = _trie_sprint_cb;
 	my_cb.user_callback = NULL;
 	my_cb.ctx = &my_sprint;
 
 	/*
 	 *	Call the internal walk function to do the work.
 	 */
-	(void) fr_trie_key_walk(trie, &my_cb, start_bit, false);
+	(void) trie_key_walk(trie, &my_cb, start_bit, false);
 
 	MPRINT3("%.*s%s at %d\n", start_bit, spaces, out, lineno);
 }
@@ -2783,7 +2766,7 @@ static int command_insert(fr_trie_t *ft, UNUSED int argc, char **argv, UNUSED ch
 		return -1;
 	}
 
-	if (fr_trie_insert(ft, key, bits, data) < 0) {
+	if (fr_trie_insert_by_key(ft, key, bits, data) < 0) {
 		MPRINT("Failed inserting key %s=%s - %s\n", key, argv[1], fr_strerror());
 		return -1;
 	}
@@ -2809,7 +2792,7 @@ static int command_verify(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, UN
 		return -1;
 	}
 
-	if (fr_trie_verify(ft->trie) < 0) {
+	if (trie_verify(ft->trie) < 0) {
 		fprintf(stderr, "Verify failed: %s\n", fr_strerror());
 		return -1;
 	}
@@ -2829,14 +2812,14 @@ static int command_keys(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, char
 
 	my_cb.start = (uint8_t *) out;
 	my_cb.end = (uint8_t *) (out + outlen);
-	my_cb.callback = fr_trie_print_cb;
+	my_cb.callback = _trie_print_cb;
 	my_cb.user_callback = NULL;
 	my_cb.ctx = stdout;
 
 	/*
 	 *	Call the internal walk function to do the work.
 	 */
-	return fr_trie_key_walk(ft->trie, &my_cb, 0, false);
+	return trie_key_walk(ft->trie, &my_cb, 0, false);
 }
 
 
@@ -2855,14 +2838,14 @@ static int command_dump(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, char
 
 	my_cb.start = (uint8_t *) out;
 	my_cb.end = (uint8_t *) (out + outlen);
-	my_cb.callback = fr_trie_dump_cb;
+	my_cb.callback = _trie_dump_cb;
 	my_cb.user_callback = NULL;
 	my_cb.ctx = stdout;
 
 	/*
 	 *	Call the internal walk function to do the work.
 	 */
-	return fr_trie_key_walk(ft->trie, &my_cb, 0, false);
+	return trie_key_walk(ft->trie, &my_cb, 0, false);
 }
 
 
@@ -2873,7 +2856,7 @@ static int command_clear(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, UNU
 {
 	if (!ft->trie) return 0;
 
-	fr_trie_free(ft->trie);
+	trie_free(ft->trie);
 	ft->trie = NULL;
 
 	/*
@@ -2920,7 +2903,7 @@ static int command_match(fr_trie_t *ft, UNUSED int argc, char **argv, char *out,
 		return -1;
 	}
 
-	answer = fr_trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
+	answer = trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
 	if (!answer) {
 		strlcpy(out, "{}", outlen);
 		return 0;
@@ -2946,7 +2929,7 @@ static int command_lookup(fr_trie_t *ft, UNUSED int argc, char **argv, char *out
 		return -1;
 	}
 
-	answer = fr_trie_lookup(ft, key, bits);
+	answer = fr_trie_lookup_by_key(ft, key, bits);
 	if (!answer) {
 		strlcpy(out, "{}", outlen);
 		return 0;
@@ -2972,7 +2955,7 @@ static int command_remove(fr_trie_t *ft, UNUSED int argc, char **argv, char *out
 		return -1;
 	}
 
-	answer = fr_trie_remove(ft, key, bits);
+	answer = fr_trie_remove_by_key(ft, key, bits);
 	if (!answer) {
 		MPRINT("Could not remove key %s\n", key);
 		return -1;
@@ -2986,7 +2969,7 @@ static int command_remove(fr_trie_t *ft, UNUSED int argc, char **argv, char *out
 	 *	We now try to find an exact match.  i.e. we don't want
 	 *	to find a shorter prefix.
 	 */
-	answer = fr_trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
+	answer = trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
 	if (answer) {
 		MPRINT("Still in trie after 'remove' for key %s, found data %s\n", key, (char const *) answer);
 		return -1;
@@ -3010,7 +2993,7 @@ static int command_try_to_remove(fr_trie_t *ft, UNUSED int argc, char **argv, ch
 		return -1;
 	}
 
-	answer = fr_trie_remove(ft, key, bits);
+	answer = fr_trie_remove_by_key(ft, key, bits);
 	if (!answer) {
 		strlcpy(out, ".", outlen);
 		return 0;
@@ -3024,7 +3007,7 @@ static int command_try_to_remove(fr_trie_t *ft, UNUSED int argc, char **argv, ch
 	 *	We now try to find an exact match.  i.e. we don't want
 	 *	to find a shorter prefix.
 	 */
-	answer = fr_trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
+	answer = trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
 	if (answer) {
 		MPRINT("Still in trie after 'remove' for key %s, found data %s\n", key, (char const *) answer);
 		return -1;
@@ -3043,7 +3026,7 @@ static int command_try_to_remove(fr_trie_t *ft, UNUSED int argc, char **argv, ch
 static int command_print(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, char *out, size_t outlen)
 {
 	fr_trie_callback_t my_cb;
-	fr_trie_sprint_ctx_t my_sprint;
+	trie_sprint_ctx_t my_sprint;
 	uint8_t buffer[MAX_KEY_BYTES + 1];
 
 	/*
@@ -3058,7 +3041,7 @@ static int command_print(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, cha
 	 */
 	my_cb.start = buffer;
 	my_cb.end = buffer + sizeof(buffer);
-	my_cb.callback = fr_trie_sprint_cb;
+	my_cb.callback = _trie_sprint_cb;
 	my_cb.user_callback = NULL;
 	my_cb.ctx = &my_sprint;
 
@@ -3067,7 +3050,7 @@ static int command_print(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, cha
 	/*
 	 *	Call the internal walk function to do the work.
 	 */
-	return fr_trie_key_walk(ft->trie, &my_cb, 0, false);
+	return trie_key_walk(ft->trie, &my_cb, 0, false);
 }
 
 
@@ -3087,12 +3070,12 @@ static int command_path(fr_trie_t *ft, int argc, char **argv, char *out, size_t 
 		return -1;
 	}
 
-	if (fr_trie_insert(ft, argv[0], BITSOF(strlen(argv[0])), data) < 0) {
+	if (fr_trie_insert_by_key(ft, argv[0], BITSOF(strlen(argv[0])), data) < 0) {
 		MPRINT("Could not insert key %s=%s - %s\n", argv[0], argv[1], fr_strerror());
 		return -1;
 	}
 
-	answer = fr_trie_lookup(ft, argv[0], BITSOF(strlen(argv[0])));
+	answer = fr_trie_lookup_by_key(ft, argv[0], BITSOF(strlen(argv[0])));
 	if (!answer) {
 		MPRINT("Could not look up key %s\n", argv[0]);
 		return -1;
@@ -3108,7 +3091,7 @@ static int command_path(fr_trie_t *ft, int argc, char **argv, char *out, size_t 
 	 */
 	(void) command_print(ft, argc, argv, out, outlen);
 
-	answer = fr_trie_remove(ft, (uint8_t const *) argv[0], BITSOF(strlen(argv[0])));
+	answer = fr_trie_remove_by_key(ft, (uint8_t const *) argv[0], BITSOF(strlen(argv[0])));
 	if (!answer) {
 		MPRINT("Could not remove key %s\n", argv[0]);
 		return -1;
@@ -3346,7 +3329,7 @@ int main(int argc, char **argv)
 
 	fclose(fp);
 
-	fr_trie_free(ft);
+	trie_free(ft);
 	talloc_free(data_ctx);
 
 	talloc_report_full(NULL, stdout);	/* Print details of any leaked memory */

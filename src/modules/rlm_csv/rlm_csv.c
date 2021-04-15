@@ -175,12 +175,12 @@ static rlm_csv_entry_t *find_entry(rlm_csv_t const *inst, fr_value_box_t const *
 	rlm_csv_entry_t my_e;
 
 	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX)) {
-		return fr_trie_lookup(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
+		return fr_trie_lookup_by_key(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
 
 	}
 
 	if ((inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
-		return fr_trie_lookup(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
+		return fr_trie_lookup_by_key(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
 	}
 
 	memcpy(&my_e.key, &key, sizeof(key)); /* const issues */
@@ -211,7 +211,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 	}
 
 	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX)) {
-		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
+		if (fr_trie_insert_by_key(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
 		fail:
@@ -220,7 +220,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 		}
 
 	} else if ((inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
-		if (fr_trie_insert(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
+		if (fr_trie_insert_by_key(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
 			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
 				   inst->filename, lineno, fr_strerror());
 			goto fail;

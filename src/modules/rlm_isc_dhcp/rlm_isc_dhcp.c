@@ -1569,7 +1569,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 		/*
 		 *	Duplicate or overlapping "subnet" entries aren't allowd.
 		 */
-		old = fr_trie_lookup(parent->subnets, &(info->argv[0]->vb_ipv4addr), bits);
+		old = fr_trie_lookup_by_key(parent->subnets, &(info->argv[0]->vb_ipv4addr), bits);
 		if (old) {
 			fr_strerror_printf("subnet %pV netmask %pV' overlaps with existing subnet", info->argv[0], info->argv[1]);
 			return -1;
@@ -1587,7 +1587,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 	 *	"subnet" entries in the parent->child list.
 	 */
 
-	ret = fr_trie_insert(parent->subnets, &(info->argv[0]->vb_ipv4addr), bits, info);
+	ret = fr_trie_insert_by_key(parent->subnets, &(info->argv[0]->vb_ipv4addr), bits, info);
 	if (ret < 0) {
 		fr_strerror_printf("Failed inserting 'subnet %pV netmask %pV' into trie",
 				   info->argv[0], info->argv[1]);
@@ -1828,7 +1828,7 @@ subnet:
 	 *	subnets that match.
 	 */
 	if (head->subnets && yiaddr) {
-		info = fr_trie_lookup(head->subnets, &yiaddr->vp_ipv4addr, 32);
+		info = fr_trie_lookup_by_key(head->subnets, &yiaddr->vp_ipv4addr, 32);
 		if (!info) goto recurse;
 
 		child_ret = apply(inst, request, info);

@@ -282,7 +282,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Cannot insert the same client twice.
 	 */
-	old = fr_trie_match(trie, &client->ipaddr.addr, client->ipaddr.prefix);
+	old = fr_trie_match_by_key(trie, &client->ipaddr.addr, client->ipaddr.prefix);
 
 #else  /* WITH_TRIE */
 
@@ -320,7 +320,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Other error adding client: likely is fatal.
 	 */
-	if (fr_trie_insert(trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
+	if (fr_trie_insert_by_key(trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
 		client_free(client);
 		return false;
 	}
@@ -358,7 +358,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Don't free the client.  The caller is responsible for that.
 	 */
-	(void) fr_trie_remove(trie, &client->ipaddr.addr, client->ipaddr.prefix);
+	(void) fr_trie_remove_by_key(trie, &client->ipaddr.addr, client->ipaddr.prefix);
 #else
 
 	if (!clients->tree[client->ipaddr.prefix]) return;
@@ -392,7 +392,7 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 #ifdef WITH_TRIE
 	trie = clients_trie(clients, ipaddr, proto);
 
-	return fr_trie_lookup(trie, &ipaddr->addr, ipaddr->prefix);
+	return fr_trie_lookup_by_key(trie, &ipaddr->addr, ipaddr->prefix);
 #else
 
 	if (proto == AF_INET) {

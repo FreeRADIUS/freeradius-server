@@ -456,7 +456,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			/*
 			 *	Duplicates are bad.
 			 */
-			network = fr_trie_match(inst->trie,
+			network = fr_trie_match_by_key(inst->trie,
 						&inst->allow[i].addr, inst->allow[i].prefix);
 			if (network) {
 				cf_log_err(cs, "Cannot add duplicate entry 'allow = %pV'",
@@ -475,7 +475,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			 *	fr_trie_alloc() saying "we can only
 			 *	have terminal fr_trie_user_t nodes"
 			 */
-			network = fr_trie_lookup(inst->trie,
+			network = fr_trie_lookup_by_key(inst->trie,
 						 &inst->allow[i].addr, inst->allow[i].prefix);
 			if (network && (network->prefix <= inst->allow[i].prefix)) {
 				cf_log_err(cs, "Cannot add overlapping entry 'allow = %pV'",
@@ -489,7 +489,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			 *	Lookups will return the fr_ipaddr_t of
 			 *	the network.
 			 */
-			if (fr_trie_insert(inst->trie,
+			if (fr_trie_insert_by_key(inst->trie,
 					   &inst->allow[i].addr, inst->allow[i].prefix,
 					   &inst->allow[i]) < 0) {
 				cf_log_err(cs, "Failed adding 'allow = %pV' to tracking table",
@@ -523,7 +523,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			/*
 			 *	Duplicates are bad.
 			 */
-			network = fr_trie_match(inst->trie,
+			network = fr_trie_match_by_key(inst->trie,
 						&inst->deny[i].addr, inst->deny[i].prefix);
 			if (network) {
 				cf_log_err(cs, "Cannot add duplicate entry 'deny = %pV'", fr_box_ipaddr(inst->deny[i]));
@@ -533,7 +533,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			/*
 			 *	A "deny" can only be within a previous "allow".
 			 */
-			network = fr_trie_lookup(inst->trie,
+			network = fr_trie_lookup_by_key(inst->trie,
 						&inst->deny[i].addr, inst->deny[i].prefix);
 			if (!network) {
 				cf_log_err(cs, "The network in entry %zd - 'deny = %pV' is not contained "
@@ -557,7 +557,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			 *	Lookups will return the fr_ipaddr_t of
 			 *	the network.
 			 */
-			if (fr_trie_insert(inst->trie,
+			if (fr_trie_insert_by_key(inst->trie,
 					   &inst->deny[i].addr, inst->deny[i].prefix,
 					   &inst->deny[i]) < 0) {
 				cf_log_err(cs, "Failed adding 'deny = %pV' to tracking table",
