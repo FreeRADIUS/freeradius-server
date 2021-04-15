@@ -31,7 +31,7 @@ typedef struct {
 	fr_heap_t		*heap;		//!< For managing entry expiry.
 
 	pthread_mutex_t		mutex;		//!< Protect the tree from multiple readers/writers.
-} rlm_cache_rb_t;
+} rlm_cache_rbtree_t;
 
 typedef struct {
 	rlm_cache_entry_t	fields;		//!< Entry data.
@@ -71,7 +71,7 @@ static int8_t cache_heap_cmp(void const *one, void const *two)
  */
 static int mod_detach(void *instance)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	if (driver->cache) {
 		fr_rb_iter_inorder_t	iter;
@@ -103,7 +103,7 @@ static int mod_detach(void *instance)
  */
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	/*
 	 *	The cache.
@@ -163,7 +163,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
 				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	rlm_cache_entry_t *c;
 
@@ -202,7 +202,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 					 request_t *request, UNUSED void *handle,
 					 uint8_t const *key, size_t key_len)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 	rlm_cache_entry_t *c;
 
 	if (!request) return CACHE_ERROR;
@@ -229,7 +229,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 {
 	cache_status_t status;
 
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	fr_assert(handle == request);
 
@@ -269,7 +269,7 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 					  request_t *request, UNUSED void *handle,
 					  rlm_cache_entry_t *c)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 #ifdef NDEBUG
 	if (!request) return CACHE_ERROR;
@@ -297,7 +297,7 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *instance,
 				  request_t *request, UNUSED void *handle)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	if (!request) return CACHE_ERROR;
 
@@ -313,7 +313,7 @@ static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
 static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *instance,
 			 request_t *request)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	pthread_mutex_lock(&driver->mutex);
 
@@ -333,7 +333,7 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
 static void cache_release(UNUSED rlm_cache_config_t const *config, void *instance, request_t *request,
 			  UNUSED rlm_cache_handle_t *handle)
 {
-	rlm_cache_rb_t *driver = talloc_get_type_abort(instance, rlm_cache_rb_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	pthread_mutex_unlock(&driver->mutex);
 
@@ -346,7 +346,7 @@ rlm_cache_driver_t rlm_cache_rbtree = {
 	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
-	.inst_size	= sizeof(rlm_cache_rb_t),
+	.inst_size	= sizeof(rlm_cache_rbtree_t),
 	.alloc		= cache_entry_alloc,
 
 	.find		= cache_entry_find,
