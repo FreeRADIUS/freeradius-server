@@ -473,7 +473,7 @@ static int trie_number = 0;
 #define TRIE_HEADER uint8_t type; uint8_t bits; int number
 #define TRIE_TYPE_CHECK(_x, _r) do { if ((trie->type == FR_TRIE_INVALID) || \
 					 (trie->type >= FR_TRIE_MAX) || \
-					 !trie_ ## _x [trie->type]) { \
+					 !trie_ ## _x ##_table [trie->type]) { \
 						fr_strerror_printf("unknown trie type %d", trie->type); \
 						return _r; \
 				     } } while (0)
@@ -1181,7 +1181,7 @@ static void *trie_comp_match(fr_trie_t *trie, uint8_t const *key, int start_bit,
 }
 #endif
 
-static trie_key_match_t trie_match[FR_TRIE_MAX] = {
+static trie_key_match_t trie_match_table[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = trie_user_match,
 	[ FR_TRIE_NODE ] = trie_node_match,
 #ifdef WITH_PATH_COMPRESSION
@@ -1228,7 +1228,7 @@ static void *trie_key_match(fr_trie_t *trie, uint8_t const *key, int start_bit, 
 	/*
 	 *	Recursively match each type.
 	 */
-	return trie_match[trie->type](trie, key, start_bit, end_bit, exact);
+	return trie_match_table[trie->type](trie, key, start_bit, end_bit, exact);
 }
 
 /** Lookup a key in a trie and return user ctx, if any
@@ -1766,7 +1766,7 @@ static CC_HINT(nonnull(2,3,6)) int trie_comp_insert(TALLOC_CTX *ctx, fr_trie_t *
 }
 #endif
 
-static trie_key_insert_t trie_insert[FR_TRIE_MAX] = {
+static trie_key_insert_t trie_insert_table[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = trie_user_insert,
 	[ FR_TRIE_NODE ] = trie_node_insert,
 #ifdef WITH_PATH_COMPRESSION
@@ -1832,11 +1832,11 @@ static int trie_key_insert(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const *k
 	TRIE_TYPE_CHECK(insert, -1);
 
 #ifndef TESTING
-	return trie_insert[trie->type](ctx, trie_p, key, start_bit, end_bit, data);
+	return trie_insert_table[trie->type](ctx, trie_p, key, start_bit, end_bit, data);
 #else
 	MPRINT3("%.*srecurse at start %d end %d with data %s\n", start_bit, spaces, start_bit, end_bit, (char *) data);
 
-	if (trie_insert[trie->type](ctx, trie_p, key, start_bit, end_bit, data) < 0) {
+	if (trie_insert_table[trie->type](ctx, trie_p, key, start_bit, end_bit, data) < 0) {
 		return -1;
 	}
 
@@ -2093,7 +2093,7 @@ static void *trie_comp_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const
 }
 #endif
 
-static trie_key_remove_t trie_remove[FR_TRIE_MAX] = {
+static trie_key_remove_t trie_remove_table[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = trie_user_remove,
 	[ FR_TRIE_NODE ] = trie_node_remove,
 #ifdef WITH_PATH_COMPRESSION
@@ -2121,7 +2121,7 @@ static void *trie_key_remove(TALLOC_CTX *ctx, fr_trie_t **trie_p, uint8_t const 
 
 	TRIE_TYPE_CHECK(remove, NULL);
 
-	return trie_remove[trie->type](ctx, trie_p, key, start_bit, end_bit);
+	return trie_remove_table[trie->type](ctx, trie_p, key, start_bit, end_bit);
 }
 
 /** Remove a key and return the associated user ctx
@@ -2234,7 +2234,7 @@ static int trie_comp_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, bo
 }
 #endif
 
-static fr_trie_key_walk_t trie_walk[FR_TRIE_MAX] = {
+static fr_trie_key_walk_t trie_walk_table[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = trie_user_walk,
 	[ FR_TRIE_NODE ] = trie_node_walk,
 #ifdef WITH_PATH_COMPRESSION
@@ -2264,7 +2264,7 @@ static int trie_key_walk(fr_trie_t *trie, fr_trie_callback_t *cb, int depth, boo
 	 */
 	if ((cb->start + BYTEOF(depth + trie->bits + 8)) >= cb->end) return 0;
 
-	return trie_walk[trie->type](trie, cb, depth, more);
+	return trie_walk_table[trie->type](trie, cb, depth, more);
 }
 
 #ifdef WITH_TRIE_VERIFY
@@ -2513,7 +2513,7 @@ static void trie_comp_dump(FILE *fp, fr_trie_t *trie, char const *key, int keyle
 
 #endif
 
-static fr_trie_dump_t trie_dump[FR_TRIE_MAX] = {
+static fr_trie_dump_t trie_dump_table[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = trie_user_dump,
 	[ FR_TRIE_NODE ] = trie_node_dump,
 #ifdef WITH_PATH_COMPRESSION
@@ -2536,7 +2536,7 @@ static int _trie_dump_cb(fr_trie_t *trie, fr_trie_callback_t *cb, int keylen, UN
 
 	TRIE_TYPE_CHECK(dump, -1);
 
-	trie_dump[trie->type](fp, trie, (char const *) cb->start, keylen);
+	trie_dump_table[trie->type](fp, trie, (char const *) cb->start, keylen);
 	return 0;
 }
 
