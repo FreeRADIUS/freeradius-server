@@ -349,7 +349,7 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx)
 	if (!xlat_inst_tree) return 0;
 
 	if (!xlat_thread_inst_tree) {
-		MEM(xlat_thread_inst_tree = fr_rb_tree_talloc_alloc(ctx, xlat_thread_inst_t, inst_node,
+		MEM(xlat_thread_inst_tree = fr_rb_talloc_alloc(ctx, xlat_thread_inst_t, inst_node,
 								_xlat_thread_inst_cmp, _xlat_thread_inst_free, 0));
 	}
 
@@ -386,7 +386,7 @@ static int xlat_instantiate_init(void)
 {
 	if (xlat_inst_tree) return 0;
 
-	xlat_inst_tree = fr_rb_tree_talloc_alloc(NULL, xlat_inst_t, inst_node,
+	xlat_inst_tree = fr_rb_talloc_alloc(NULL, xlat_inst_t, inst_node,
 					     _xlat_inst_cmp, _xlat_inst_free, RB_FLAG_NONE);
 	if (!xlat_inst_tree) return -1;
 

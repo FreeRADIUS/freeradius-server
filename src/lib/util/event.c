@@ -2281,7 +2281,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		return NULL;
 	}
 
-	el->fds = fr_rb_tree_talloc_alloc(el, fr_event_fd_t, node, fr_event_fd_cmp, NULL, 0);
+	el->fds = fr_rb_talloc_alloc(el, fr_event_fd_t, node, fr_event_fd_cmp, NULL, 0);
 	if (!el->fds) {
 		fr_strerror_const("Failed allocating FD tree");
 		goto error;

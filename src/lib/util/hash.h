@@ -54,7 +54,7 @@ uint32_t fr_hash_case_string(char const *p);
 typedef struct fr_hash_table_s fr_hash_table_t;
 typedef int (*fr_hash_table_walk_t)(void *data, void *uctx);
 
-fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
+fr_hash_table_t *fr_hash_table_alloc(TALLOC_CTX *ctx,
 				      fr_hash_t hashNode,
 				      fr_cmp_t cmpNode,
 				      fr_free_t freeNode);

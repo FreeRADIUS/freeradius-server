@@ -352,8 +352,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->inst = inst;
 
-	t->src = fr_rb_tree_talloc_alloc(t, rlm_stats_data_t, src_node, data_cmp, NULL, RB_FLAG_LOCK);
-	t->dst = fr_rb_tree_talloc_alloc(t, rlm_stats_data_t, dst_node, data_cmp, NULL, RB_FLAG_LOCK);
+	t->src = fr_rb_talloc_alloc(t, rlm_stats_data_t, src_node, data_cmp, NULL, RB_FLAG_LOCK);
+	t->dst = fr_rb_talloc_alloc(t, rlm_stats_data_t, dst_node, data_cmp, NULL, RB_FLAG_LOCK);
 
 	pthread_mutex_lock(&inst->mutex);
 	fr_dlist_insert_head(&inst->list, t);

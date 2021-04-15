@@ -3075,7 +3075,7 @@ int xlat_init(void)
 	/*
 	 *	Create the function tree
 	 */
-	xlat_root = fr_rb_tree_talloc_alloc(NULL, xlat_t, node, xlat_cmp, _xlat_func_tree_free, RB_FLAG_REPLACE);
+	xlat_root = fr_rb_talloc_alloc(NULL, xlat_t, node, xlat_cmp, _xlat_func_tree_free, RB_FLAG_REPLACE);
 	if (!xlat_root) {
 		ERROR("%s: Failed to create tree", __FUNCTION__);
 		return -1;

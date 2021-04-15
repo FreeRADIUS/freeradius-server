@@ -1224,7 +1224,7 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 		 *	so it shouldn't be parented from
 		 *	virtual_server_root.
 		 */
-		MEM(vns_tree = fr_rb_tree_talloc_alloc(NULL,
+		MEM(vns_tree = fr_rb_talloc_alloc(NULL,
 						   fr_virtual_namespace_t, node,
 						   _virtual_namespace_cmp,
 						   _virtual_namespace_free, RB_FLAG_REPLACE));

@@ -71,7 +71,7 @@ struct fr_rb_node_s {
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_tree_talloc_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
+#define		fr_rb_talloc_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
 		_Generic((((_type *)0)->_field), \
 			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), #_type, _cmp, _node_free, _flags) \
 		)

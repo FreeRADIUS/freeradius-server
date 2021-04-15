@@ -567,7 +567,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	    (inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
 		MEM(inst->trie = fr_trie_alloc(inst));
 	} else {
-		MEM(inst->tree = fr_rb_tree_talloc_alloc(inst, rlm_csv_entry_t, node, csv_entry_cmp, NULL, 0));
+		MEM(inst->tree = fr_rb_talloc_alloc(inst, rlm_csv_entry_t, node, csv_entry_cmp, NULL, 0));
 	}
 
 	if ((*inst->index_field_name == ',') || (*inst->index_field_name == *inst->delimiter)) {

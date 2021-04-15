@@ -279,7 +279,7 @@ static int _fr_hash_table_free(fr_hash_table_t *ht)
  *
  *	Memory usage in bytes is (20/3) * number of entries.
  */
-fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
+fr_hash_table_t *fr_hash_table_alloc(TALLOC_CTX *ctx,
 				      fr_hash_t hash_func,
 				      fr_cmp_t cmp_func,
 				      fr_free_t free_func)
@@ -871,7 +871,7 @@ int main(int argc, char **argv)
 	fr_hash_table_t *ht;
 	int *array;
 
-	ht = fr_hash_table_create(NULL, hash_int, NULL, NULL);
+	ht = fr_hash_table_alloc(NULL, hash_int, NULL, NULL);
 	if (!ht) {
 		fprintf(stderr, "Hash create failed\n");
 		fr_exit(1);

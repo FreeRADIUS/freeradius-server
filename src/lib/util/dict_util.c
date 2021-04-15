@@ -455,7 +455,7 @@ static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t
 	 *	namespace hash table.
 	 */
 	if (!ext->namespace) {
-		ext->namespace = fr_hash_table_create(*da_p, dict_attr_name_hash, dict_attr_name_cmp, NULL);
+		ext->namespace = fr_hash_table_alloc(*da_p, dict_attr_name_hash, dict_attr_name_cmp, NULL);
 		if (!ext->namespace) {
 			fr_strerror_printf("Failed allocating \"namespace\" table");
 			return -1;
@@ -1222,13 +1222,13 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Initialise enumv hash tables
 	 */
 	if (!ext->value_by_name || !ext->name_by_value) {
-		ext->value_by_name = fr_hash_table_create(da, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
+		ext->value_by_name = fr_hash_table_alloc(da, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
 		if (!ext->value_by_name) {
 			fr_strerror_printf("Failed allocating \"value_by_name\" table");
 			return -1;
 		}
 
-		ext->name_by_value = fr_hash_table_create(da, dict_enum_value_hash, dict_enum_value_cmp, NULL);
+		ext->name_by_value = fr_hash_table_alloc(da, dict_enum_value_hash, dict_enum_value_cmp, NULL);
 		if (!ext->name_by_value) {
 			fr_strerror_printf("Failed allocating \"name_by_value\" table");
 			return -1;
@@ -2937,7 +2937,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 *	Create the table of vendor by name.   There MAY NOT
 	 *	be multiple vendors of the same name.
 	 */
-	dict->vendors_by_name = fr_hash_table_create(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
+	dict->vendors_by_name = fr_hash_table_alloc(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
 	if (!dict->vendors_by_name) {
 		fr_strerror_printf("Failed allocating \"vendors_by_name\" table");
 		goto error;
@@ -2947,7 +2947,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_pen_hash, dict_vendor_pen_cmp, NULL);
+	dict->vendors_by_num = fr_hash_table_alloc(dict, dict_vendor_pen_hash, dict_vendor_pen_cmp, NULL);
 	if (!dict->vendors_by_num) {
 		fr_strerror_printf("Failed allocating \"vendors_by_num\" table");
 		goto error;
@@ -2956,7 +2956,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	/*
 	 *	Inter-dictionary reference caching
 	 */
-	dict->autoref = fr_hash_table_create(dict, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
+	dict->autoref = fr_hash_table_alloc(dict, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
 	if (!dict->autoref) {
 		fr_strerror_printf("Failed allocating \"autoref\" table");
 		goto error;
@@ -3340,7 +3340,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 		return NULL;
 	}
 
-	new_ctx->protocol_by_name = fr_hash_table_create(new_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
+	new_ctx->protocol_by_name = fr_hash_table_alloc(new_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
 	if (!new_ctx->protocol_by_name) {
 		fr_strerror_const("Failed initializing protocol_by_name hash");
 	error:
@@ -3348,7 +3348,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 		return NULL;
 	}
 
-	new_ctx->protocol_by_num = fr_hash_table_create(new_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
+	new_ctx->protocol_by_num = fr_hash_table_alloc(new_ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
 	if (!new_ctx->protocol_by_num) {
 		fr_strerror_const("Failed initializing protocol_by_num hash");
 		goto error;

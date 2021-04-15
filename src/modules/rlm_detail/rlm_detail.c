@@ -160,7 +160,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (cs) {
 		CONF_ITEM	*ci;
 
-		inst->ht = fr_hash_table_create(inst, detail_hash, detail_cmp, NULL);
+		inst->ht = fr_hash_table_alloc(inst, detail_hash, detail_cmp, NULL);
 
 		for (ci = cf_item_next(cs, NULL);
 		     ci != NULL;

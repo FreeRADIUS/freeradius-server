@@ -160,7 +160,7 @@ retry:
 	 *	If needed, allocate a subtree.
 	 */
 	if (!tt->subtree[tt->next_id]) {
-		MEM(tt->subtree[tt->next_id] = fr_rb_tree_talloc_alloc(tt, radius_track_entry_t, node,
+		MEM(tt->subtree[tt->next_id] = fr_rb_talloc_alloc(tt, radius_track_entry_t, node,
 								   te_cmp, NULL, RB_FLAG_NONE));
 	}
 

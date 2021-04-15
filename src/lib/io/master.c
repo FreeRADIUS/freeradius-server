@@ -531,7 +531,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	#todo - unify the code with static clients?
 	 */
 	if (inst->app_io->track_duplicates) {
-		MEM(connection->client->table = fr_rb_tree_talloc_alloc(client, fr_io_track_t, node,
+		MEM(connection->client->table = fr_rb_talloc_alloc(client, fr_io_track_t, node,
 								    track_connected_cmp, NULL, RB_FLAG_NONE));
 	}
 
@@ -1463,7 +1463,7 @@ do_read:
 		 */
 		if (inst->app_io->track_duplicates) {
 			fr_assert(inst->app_io->compare != NULL);
-			MEM(client->table = fr_rb_tree_talloc_alloc(client, fr_io_track_t, node, track_cmp,
+			MEM(client->table = fr_rb_talloc_alloc(client, fr_io_track_t, node, track_cmp,
 								NULL, RB_FLAG_NONE));
 		}
 
@@ -1475,7 +1475,7 @@ do_read:
 			fr_assert(client->state == PR_CLIENT_STATIC);
 
 			(void) pthread_mutex_init(&client->mutex, NULL);
-			MEM(client->ht = fr_hash_table_create(client, connection_hash, connection_cmp, NULL));
+			MEM(client->ht = fr_hash_table_alloc(client, connection_hash, connection_cmp, NULL));
 		}
 
 		/*
@@ -2470,7 +2470,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	defined.
 		 */
 		(void) pthread_mutex_init(&client->mutex, NULL);
-		MEM(client->ht = fr_hash_table_create(client, connection_hash, connection_cmp, NULL));
+		MEM(client->ht = fr_hash_table_alloc(client, connection_hash, connection_cmp, NULL));
 
 	} else {
 		/*

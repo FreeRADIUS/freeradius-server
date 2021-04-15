@@ -1482,7 +1482,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	 *	thousands of "host" entries in the parent->child list.
 	 */
 	if (!parent->hosts_by_ether) {
-		parent->hosts_by_ether = fr_hash_table_create(parent, host_ether_hash, host_ether_cmp, NULL);
+		parent->hosts_by_ether = fr_hash_table_alloc(parent, host_ether_hash, host_ether_cmp, NULL);
 		if (!parent->hosts_by_ether) {
 			return -1;
 		}
@@ -1499,7 +1499,7 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	 */
 	if (my_uid) {
 		if (!parent->hosts_by_uid) {
-			parent->hosts_by_uid = fr_hash_table_create(parent, host_uid_hash, host_uid_cmp, NULL);
+			parent->hosts_by_uid = fr_hash_table_alloc(parent, host_uid_hash, host_uid_cmp, NULL);
 			if (!parent->hosts_by_uid) {
 				return -1;
 			}
@@ -2192,10 +2192,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	fr_pair_list_init(&info->options);
 	info->last = &(info->child);
 
-	inst->hosts_by_ether = fr_hash_table_create(inst, host_ether_hash, host_ether_cmp, NULL);
+	inst->hosts_by_ether = fr_hash_table_alloc(inst, host_ether_hash, host_ether_cmp, NULL);
 	if (!inst->hosts_by_ether) return -1;
 
-	inst->hosts_by_uid = fr_hash_table_create(inst, host_uid_hash, host_uid_cmp, NULL);
+	inst->hosts_by_uid = fr_hash_table_alloc(inst, host_uid_hash, host_uid_cmp, NULL);
 	if (!inst->hosts_by_uid) return -1;
 
 	ret = read_file(inst, info, inst->filename);

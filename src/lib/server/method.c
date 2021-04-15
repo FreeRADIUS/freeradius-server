@@ -143,7 +143,7 @@ module_method_set_t *module_method_alloc_set(TALLOC_CTX *ctx)
 	module_method_set_t *set;
 
 	MEM(set = talloc_zero(ctx, module_method_set_t));
-	MEM(set->tree = fr_rb_tree_talloc_alloc(set, module_method_entry_t, node, module_method_cmp, NULL, 0));
+	MEM(set->tree = fr_rb_talloc_alloc(set, module_method_entry_t, node, module_method_cmp, NULL, 0));
 	fr_dlist_talloc_init(&set->list, module_method_entry_t, entry);
 
 	return set;
