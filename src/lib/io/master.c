@@ -743,6 +743,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		connection->child->name = connection->name;
 	}
 
+	fr_assert(client->ht);
+
 	/*
 	 *	Add the connection to the set of connections for this
 	 *	client.
