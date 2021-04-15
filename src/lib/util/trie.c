@@ -2382,7 +2382,7 @@ static int trie_comp_verify(fr_trie_t *trie)
 }
 #endif
 
-static trie_verify_t trie_verify[FR_TRIE_MAX] = {
+static trie_verify_t trie_verify_table[FR_TRIE_MAX] = {
 	[ FR_TRIE_USER ] = trie_user_verify,
 	[ FR_TRIE_NODE ] = trie_node_verify,
 #ifdef WITH_PATH_COMPRESSION
@@ -2403,7 +2403,7 @@ static int trie_verify(fr_trie_t *trie)
 
 	TRIE_TYPE_CHECK(verify, -1);
 
-	return trie_verify[trie->type](trie);
+	return trie_verify_table[trie->type](trie);
 }
 #endif	/* WITH_TRIE_VERIFY */
 
