@@ -33,6 +33,7 @@ extern "C" {
 #include <stdint.h>
 
 typedef struct fr_hash_entry_s fr_hash_entry_t;
+typedef	uint32_t (*fr_hash_t)(void const *);
 
 /** Stores the state of the current iteration operation
  *

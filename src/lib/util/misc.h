@@ -37,7 +37,6 @@ extern "C" {
 
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 typedef		void (*fr_free_t)(void *);
-typedef		uint32_t (*fr_hash_t)(void const *);
 
 /*
  *	Define TALLOC_DEBUG to check overflows with talloc.
