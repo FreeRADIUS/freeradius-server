@@ -59,12 +59,18 @@ typedef struct {
 /** Find the dlist pointers within a list item
  *
  */
-#define fr_dlist_item_to_entry(_offset, _item) (fr_dlist_t *) (((uintptr_t) _item) + _offset);
+static inline fr_dlist_t *fr_dlist_item_to_entry(size_t offset, void const *item)
+{
+	return (fr_dlist_t *)(((uintptr_t) item) + offset);
+}
 
 /** Get the item from a fr_dlist_t
  *
  */
-#define fr_dlist_entry_to_item(_offset, _entry) (void *) (((uintptr_t) _entry) - _offset);
+static inline void *fr_dlist_entry_to_item(size_t offset, fr_dlist_t const *entry)
+{
+	return (void *) (((uintptr_t) entry) - offset);
+}
 
 /** Initialise a linked list without metadata
  *
@@ -748,7 +754,7 @@ static inline void fr_dlist_sort_split(fr_dlist_head_t *head, void **source, voi
 
 	*front = *source;
 
-	if (*source) entry = fr_dlist_item_to_entry(head, *source);
+	if (*source) entry = fr_dlist_item_to_entry(head->offset, *source);
 	/*
 	 *	Stopping condition - no more elements left to split
 	 */
@@ -774,7 +780,7 @@ static inline void fr_dlist_sort_split(fr_dlist_head_t *head, void **source, voi
 	*back = fr_dlist_next(head, slow);
 
 	if (slow) {
-		entry = fr_dlist_item_to_entry(head, slow);
+		entry = fr_dlist_item_to_entry(head->offset, slow);
 		entry->next = NULL;
 	}
 }
@@ -812,8 +818,8 @@ static inline void *fr_dlist_sort_merge(fr_dlist_head_t *head, void **a, void **
 		next = fr_dlist_sort_merge(head, a, &next, cmp);
 	}
 
-	result_entry = fr_dlist_item_to_entry(head, result);
-	next_entry = fr_dlist_item_to_entry(head, next);
+	result_entry = fr_dlist_item_to_entry(head->offset, result);
+	next_entry = fr_dlist_item_to_entry(head->offset, next);
 	result_entry->next = next_entry;
 
 	return result;
@@ -831,7 +837,7 @@ static inline void fr_dlist_recursive_sort(fr_dlist_head_t *head, void **ptr, fr
 	void *b;
 	fr_dlist_t *entry = NULL;
 
-	if (*ptr) entry = fr_dlist_item_to_entry(head, *ptr);
+	if (*ptr) entry = fr_dlist_item_to_entry(head->offset, *ptr);
 
 	if (!*ptr || (!entry->next)) return;
 	fr_dlist_sort_split(head, ptr, &a, &b);		/* Split into sublists */
@@ -870,12 +876,12 @@ static inline void fr_dlist_sort (fr_dlist_head_t *list, fr_cmp_t cmp)
 	/*
 	 *	Reset "prev" pointers broken during sort
 	 */
-	entry = fr_dlist_item_to_entry(list, head);
+	entry = fr_dlist_item_to_entry(list->offset, head);
 	list->entry.next = entry;
 	entry->prev = &list->entry;
 
 	while (head) {
-		entry = fr_dlist_item_to_entry(list, head);
+		entry = fr_dlist_item_to_entry(list->offset, head);
 		if (entry->next) {
 			/*
 			 * There is a "next" entry, point it back to the current one
