@@ -97,6 +97,32 @@ static inline CC_HINT(nonnull) bool fr_dlist_entry_in_list(fr_dlist_t const *ent
 	return true;
 }
 
+/** Link in an entry after the current entry
+ *
+ * @param[in] entry	to link in entry after.
+ * @param[in] to_link 	entry to link in after.
+ */
+static inline CC_HINT(nonnull) void fr_dlist_entry_link_after(fr_dlist_t *entry, fr_dlist_t *to_link)
+{
+	to_link->prev = entry;
+	to_link->next = entry->next;
+	entry->next->prev = to_link;
+	entry->next = to_link;
+}
+
+/** Link in an entry before the current entry
+ *
+ * @param[in] entry	to link in entry before.
+ * @param[in] to_link 	entry to link in before.
+ */
+static inline CC_HINT(nonnull) void fr_dlist_entry_link_before(fr_dlist_t *entry, fr_dlist_t *to_link)
+{
+	to_link->next = entry;
+	to_link->prev = entry->prev;
+	entry->prev->next = to_link;
+	entry->prev = to_link;
+}
+
 /** Initialise the head structure of a doubly linked list
  *
  * @note This variant does not perform talloc validation.
@@ -142,6 +168,9 @@ static inline CC_HINT(nonnull) bool fr_dlist_entry_in_list(fr_dlist_t const *ent
 #define fr_dlist_talloc_init(_head, _type, _field) \
 	_Generic((((_type *)0)->_field), fr_dlist_t: _fr_dlist_init(_head, offsetof(_type, _field), #_type))
 
+/** Initialise common fields in a dlist
+ *
+ */
 static inline void _fr_dlist_init(fr_dlist_head_t *list_head, size_t offset, char const *type)
 {
 	fr_dlist_entry_init(&list_head->entry);
@@ -255,10 +284,7 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_after(fr_dlist_head_t *li
 	if (!fr_cond_assert(pos_entry->next != NULL)) return;
 	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
 
-	entry->prev = pos_entry;
-	entry->next = pos_entry->next;
-	pos_entry->next->prev = entry;
-	pos_entry->next = entry;
+	fr_dlist_entry_link_after(pos_entry, entry);
 
 	list_head->num_elements++;
 }
@@ -292,10 +318,7 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_before(fr_dlist_head_t *l
 	if (!fr_cond_assert(pos_entry->next != NULL)) return;
 	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
 
-	entry->next = pos_entry;
-	entry->prev = pos_entry->prev;
-	pos_entry->prev->next = entry;
-	pos_entry->prev = entry;
+	fr_dlist_entry_link_before(pos_entry, entry);
 
 	list_head->num_elements++;
 }
