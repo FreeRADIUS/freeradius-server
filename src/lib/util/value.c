@@ -1790,6 +1790,72 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+/* Get a key from a value box
+ *
+ * @param[in,out] out - set to a small buffer on input.  If the callback has more data
+ *		  than is available here, the callback can update "out" to point elsewhere
+ * @param[in,out] outlen The number of bits available in the initial buffer.  On output,
+ *		  the number of bits available in the key
+ * @param[in] value the value box which contains the key
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *value)
+{
+	ssize_t slen;
+	fr_dbuff_t dbuff;
+
+	switch (value->type) {
+	case FR_TYPE_BOOL:
+		if (*outlen < 8) return -1;
+
+		*out[0] = (value->vb_bool) << 7;
+		*outlen = 1;
+		break;
+
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+		if (*outlen < (value->vb_length * 8)) return -1;
+
+		/*
+		 *	Integers are put into network byte order.
+		 */
+		fr_dbuff_init(&dbuff, *out, *outlen >> 3);
+
+		slen = fr_value_box_to_network(&dbuff, value);
+		if (slen < 0) return slen;
+		*outlen = slen * 8; /* bits not bytes */
+		break;
+
+	case FR_TYPE_IP:
+		/*
+		 *	IPs are already in network byte order.
+		 */
+		*out = UNCONST(uint8_t *, &value->vb_ip.addr);
+		*outlen = value->vb_ip.prefix;
+		break;
+
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		*out = value->datum.ptr;
+		*outlen = value->vb_length * 8;
+		break;
+
+	case FR_TYPE_ETHERNET:
+		*out = UNCONST(uint8_t *, &value->vb_ether[0]);
+		*outlen = sizeof(value->vb_ether) * 8;
+		break;
+
+	default:
+		fr_strerror_printf("Invalid data type '%s' for getting key",
+				   fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"));
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /** Convert octets to a fixed size value box value
  *
  * All fixed size types are allowed.

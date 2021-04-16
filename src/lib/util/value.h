@@ -636,6 +636,8 @@ size_t		fr_value_box_network_length(fr_value_box_t *value);
 ssize_t		fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value);
 #define FR_VALUE_BOX_TO_NETWORK_RETURN(_dbuff, _value) FR_DBUFF_RETURN(fr_value_box_to_network, _dbuff, _value)
 
+int		fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *value) CC_HINT(nonnull);
+
 /** Special value to indicate fr_value_box_from_network experienced a general error
  */
 #define FR_VALUE_BOX_NET_ERROR	SSIZE_MIN
