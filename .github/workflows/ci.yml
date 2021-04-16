@@ -235,14 +235,18 @@ jobs:
         sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
         sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
         sudo chmod +x /usr/bin/ucf
+        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+        sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
           apparmor-utils \
           dovecot-imapd \
           exim4 \
+          openresty \
           redis-server redis-tools \
           slapd ldap-utils
         sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
-        sudo systemctl stop dovecot exim4 slapd
+        sudo systemctl stop dovecot exim4 slapd openresty
         sudo aa-complain /usr/sbin/slapd
 
         export PG_VER=13
@@ -258,6 +262,7 @@ jobs:
             imap-setup.sh \
             exim-setup.sh \
             mysql-setup.sh \
+            openresty-setup.sh \
             ldap-setup.sh \
             redis-setup.sh; do
 
@@ -278,6 +283,9 @@ jobs:
         SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
         LDAP_TEST_SERVER: 127.0.0.1
         LDAP_TEST_SERVER_PORT: 3890
+        REST_TEST_SERVER: 127.0.0.1
+        REST_TEST_SERVER_PORT: 8080
+        REST_TEST_SERVER_SSL_PORT: 8443
 #       REDIS_TEST_SERVER: 127.0.0.1
 #       REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
 
