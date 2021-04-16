@@ -315,7 +315,7 @@ static inline CC_HINT(nonnull) fr_time_t fr_time_from_timespec(struct timespec c
  */
 static inline int8_t fr_time_cmp(fr_time_t a, fr_time_t b)
 {
-	return (a > b) - (a < b);
+	return CMP(a, b);
 }
 
 /** Return a relative time since the server our_epoch
