@@ -816,7 +816,8 @@ static inline size_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
  *
  * @{
  */
-uint32_t	fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash);
+uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
+
 /** @} */
 
 void value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced);

@@ -5240,23 +5240,24 @@ char *fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list,
 /** Hash the contents of a value box
  *
  */
-uint32_t fr_value_box_hash_update(fr_value_box_t const *vb, uint32_t hash)
+uint32_t fr_value_box_hash(fr_value_box_t const *vb)
 {
 	switch (vb->type) {
 	case FR_TYPE_FIXED_SIZE:
-		return fr_hash_update(((uint8_t const *)vb) + fr_value_box_offsets[vb->type],
-				      fr_value_box_field_sizes[vb->type], hash);
+		return fr_hash(((uint8_t const *)vb) + fr_value_box_offsets[vb->type],
+				      fr_value_box_field_sizes[vb->type]);
 
 	case FR_TYPE_STRING:
-		return fr_hash_update(vb->vb_strvalue, vb->vb_length, hash);
+		return fr_hash(vb->vb_strvalue, vb->vb_length);
 
 	case FR_TYPE_OCTETS:
-		return fr_hash_update(vb->vb_octets, vb->vb_length, hash);
+		return fr_hash(vb->vb_octets, vb->vb_length);
 
 	default:
 		break;
 	}
-	return hash;
+
+	return 0;
 }
 
 /** Do a full copy of a list of value boxes

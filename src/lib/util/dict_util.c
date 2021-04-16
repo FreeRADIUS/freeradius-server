@@ -264,7 +264,7 @@ static uint32_t dict_enum_value_hash(void const *data)
 {
 	fr_dict_enum_t const *enumv = data;
 
-	return fr_value_box_hash_update(enumv->value, 0);
+	return fr_value_box_hash(enumv->value);
 }
 
 /** Compare two dictionary enum values
