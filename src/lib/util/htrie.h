@@ -30,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/types.h>
 
 typedef struct fr_htrie_s fr_htrie_t;
 
@@ -66,6 +67,7 @@ struct fr_htrie_s {
 };
 
 typedef enum {
+	FR_HTRIE_INVALID = 0,
 	FR_HTRIE_HASH = 0,	//!< Data is stored in a hash.
 	FR_HTRIE_RB,		//!< Data is stored in a rb tree.
 	FR_HTRIE_TRIE,		//!< Data is stored in a prefix trie.
@@ -124,6 +126,25 @@ static inline CC_HINT(nonnull) bool fr_htrie_delete(fr_htrie_t *ht, void const *
 static inline CC_HINT(nonnull) int fr_htrie_num_elements(fr_htrie_t *ht)
 {
 	return ht->funcs.num_elements(ht->store);
+}
+
+static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
+{
+	switch (type) {
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_ETHERNET:
+		return FR_HTRIE_HASH;
+
+	case FR_TYPE_IP:
+		return FR_HTRIE_TRIE;
+
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		return FR_HTRIE_RB;
+
+	default:
+		return FR_HTRIE_INVALID;
+	}
 }
 
 #ifdef __cplusplus
