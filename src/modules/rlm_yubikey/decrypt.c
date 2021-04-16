@@ -10,11 +10,6 @@
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YUBIKEY
-extern fr_dict_attr_t const *attr_yubikey_key;
-extern fr_dict_attr_t const *attr_yubikey_private_id;
-extern fr_dict_attr_t const *attr_yubikey_timestamp;
-extern fr_dict_attr_t const *attr_yubikey_random;
-extern fr_dict_attr_t const *attr_yubikey_counter;
 
 /** Decrypt a Yubikey OTP AES block
  *

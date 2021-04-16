@@ -57,27 +57,27 @@ fr_dict_autoload_t rlm_yubikey_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_auth_type;
-static fr_dict_attr_t const *attr_user_password;
-static fr_dict_attr_t const *attr_yubikey_key;
-static fr_dict_attr_t const *attr_yubikey_public_id;
-static fr_dict_attr_t const *attr_yubikey_private_id;
-static fr_dict_attr_t const *attr_yubikey_counter;
-static fr_dict_attr_t const *attr_yubikey_timestamp;
-static fr_dict_attr_t const *attr_yubikey_random;
-static fr_dict_attr_t const *attr_yubikey_otp;
+fr_dict_attr_t const *attr_auth_type;
+fr_dict_attr_t const *attr_user_password;
+fr_dict_attr_t const *attr_yubikey_key;
+fr_dict_attr_t const *attr_yubikey_public_id;
+fr_dict_attr_t const *attr_yubikey_private_id;
+fr_dict_attr_t const *attr_yubikey_counter;
+fr_dict_attr_t const *attr_yubikey_timestamp;
+fr_dict_attr_t const *attr_yubikey_random;
+fr_dict_attr_t const *attr_yubikey_otp;
 
 extern fr_dict_attr_autoload_t rlm_yubikey_dict_attr[];
 fr_dict_attr_autoload_t rlm_yubikey_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_yubikey_key, .name = "Yubikey-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_yubikey_public_id, .name = "Yubikey-Public-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_yubikey_private_id, .name = "Yubikey-Private-ID", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_yubikey_counter, .name = "Yubikey-Counter", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_yubikey_timestamp, .name = "Yubikey-Timestamp", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_yubikey_random, .name = "Yubikey-Random", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_yubikey_otp, .name = "Yubikey-OTP", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_yubikey_key, .name = "Vendor-Specific.Yubico.Yubikey-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_yubikey_public_id, .name = "Vendor-Specific.Yubico.Yubikey-Public-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_yubikey_private_id, .name = "Vendor-Specific.Yubico.Yubikey-Private-ID", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_yubikey_counter, .name = "Vendor-Specific.Yubico.Yubikey-Counter", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_timestamp, .name = "Vendor-Specific.Yubico.Yubikey-Timestamp", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_random, .name = "Vendor-Specific.Yubico.Yubikey-Random", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_otp, .name = "Vendor-Specific.Yubico.Yubikey-OTP", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -99,24 +99,24 @@ static char const hextab[] = "0123456789abcdef";
  *	- The number of bytes written to the output buffer.
  *	- -1 on failure.
  */
-static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
+static ssize_t modhex2hex(char const *modhex, char *hex, size_t len)
 {
 	size_t i;
 	char *c1, *c2;
 
-	for (i = 0; i < len; i++) {
-		if (modhex[i << 1] == '\0') {
+	for (i = 0; i < len; i += 2) {
+		if (modhex[i] == '\0') {
 			break;
 		}
 
 		/*
 		 *	We only deal with whole bytes
 		 */
-		if (modhex[(i << 1) + 1] == '\0')
+		if (modhex[i + 1] == '\0')
 			return -1;
 
-		if (!(c1 = memchr(modhextab, tolower((int) modhex[i << 1]), 16)) ||
-		    !(c2 = memchr(modhextab, tolower((int) modhex[(i << 1) + 1]), 16)))
+		if (!(c1 = memchr(modhextab, tolower((int) modhex[i]), 16)) ||
+		    !(c2 = memchr(modhextab, tolower((int) modhex[i + 1]), 16)))
 			return -1;
 
 		hex[i] = hextab[c1 - modhextab];
@@ -125,6 +125,10 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 
 	return i;
 }
+
+static xlat_arg_parser_t const modhex_to_hex_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
 
 /** Xlat to convert Yubikey modhex to standard hex
  *
@@ -135,30 +139,54 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
  *
  * @ingroup xlat_functions
  */
-static ssize_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			  	  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			  	  request_t *request, char const *fmt)
+static xlat_action_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t * out, request_t *request,
+					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					fr_value_box_list_t *in)
 {
-	ssize_t len;
-
-	if (outlen < strlen(fmt)) return 0;
+	ssize_t 	len;
+	fr_value_box_t	*arg = fr_dlist_pop_head(in);
+	char		*p = UNCONST(char *, arg->vb_strvalue);
 
 	/*
 	 *	mod2hex allows conversions in place
 	 */
-	len = modhex2hex(fmt, (uint8_t *) *out, strlen(fmt));
+	len = modhex2hex(p, p, arg->vb_length);
 	if (len <= 0) {
 		REDEBUG("Modhex string invalid");
+		talloc_free(arg);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, arg);
+	return XLAT_ACTION_DONE;
+}
+
+static int mod_load(void)
+{
+	if (fr_dict_autoload(rlm_yubikey_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
 		return -1;
 	}
 
-	return len;
+	if (fr_dict_attr_autoload(rlm_yubikey_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(rlm_yubikey_dict);
+		return -1;
+	}
+
+	return 0;
+
 }
 
+static void mod_unload(void)
+{
+	fr_dict_autofree(rlm_yubikey_dict);
+}
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_yubikey_t *inst = instance;
+	rlm_yubikey_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -170,9 +198,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 #endif
 
-	if (!cf_section_name2(conf)) return 0;
+	if (cf_section_name2(conf)) return 0;
 
-	xlat_register_legacy(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(inst, "modhextohex", modhex_to_hex_xlat, false);
+	xlat_func_mono(xlat, &modhex_to_hex_xlat_arg);
 
 	return 0;
 }
@@ -433,6 +462,8 @@ module_t rlm_yubikey = {
 	.name		= "yubikey",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_yubikey_t),
+	.onload		= mod_load,
+	.unload		= mod_unload,
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
