@@ -45,65 +45,62 @@ typedef bool (*fr_htrie_delete_t)(fr_htrie_t *ht, void const *data);
 
 typedef uint32_t (*fr_htrie_num_elements_t)(fr_htrie_t *ht);
 
+/** Which functions are used for the different operations
+ *
+ */
+typedef struct {
+	fr_htrie_find_t		find;		//!< Absolute or prefix match.
+	fr_htrie_insert_t	insert;		//!< Insert a new item into the store.
+	fr_htrie_replace_t	replace;	//!< Replace an existing item in store.
+	fr_htrie_remove_t	remove;		//!< Remove an item from the store.
+	fr_htrie_delete_t	delete;		//!< Remove (and possibly free) and item from the store.
+	fr_htrie_num_elements_t	num_elements;	//!< Number of elements currently in the store.
+} fr_htrie_funcs_t;
 
+/** A hash/rb/prefix trie abstraction
+ *
+ */
 struct fr_htrie_s {
-	void *ctx;
-
-	fr_htrie_find_t		find;
-	fr_htrie_insert_t	insert;
-	fr_htrie_replace_t	replace;
-	fr_htrie_remove_t	remove;
-	fr_htrie_delete_t	delete;
-	fr_htrie_num_elements_t	num_elements;
-
+	void			*store;		//!< What we're using to store node data
+	fr_htrie_funcs_t	funcs;		//!< Function pointers for the various operations.
 };
 
 typedef enum {
-	FR_HTRIE_HASH,
-	FR_HTRIE_RB,
-	FR_HTRIE_TRIE,
+	FR_HTRIE_HASH = 0,	//!< Data is stored in a hash.
+	FR_HTRIE_RB,		//!< Data is stored in a rb tree.
+	FR_HTRIE_TRIE,		//!< Data is stored in a prefix trie.
 } fr_htrie_type_t;
 
 fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
-			    fr_htrie_type_t type,
-			    fr_hash_t hash_node,
-			    fr_cmp_t cmp_node,
-			    fr_trie_key_t get_key,
-			    fr_free_t free_node);
+			   fr_htrie_type_t type,
+			   fr_hash_t hash_data,
+			   fr_cmp_t cmp_data,
+			   fr_trie_key_t get_key,
+			   fr_free_t free_data);
 
-static void *fr_htrie_find(fr_htrie_t *ht, void const *data) CC_HINT(nonnull);
-
-static inline void *fr_htrie_find(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) void *fr_htrie_find(fr_htrie_t *ht, void const *data)
 {
-	return ht->find(ht->ctx, data);
+	return ht->funcs.find(ht->store, data);
 }
 
-static int fr_htrie_insert(fr_htrie_t *ht, void const *data) CC_HINT(nonnull);
-
-static inline int fr_htrie_insert(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) int fr_htrie_insert(fr_htrie_t *ht, void const *data)
 {
-	return ht->insert(ht->ctx, data);
+	return ht->funcs.insert(ht->store, data);
 }
 
-static int fr_htrie_delete(fr_htrie_t *ht, void const *data) CC_HINT(nonnull);
-
-static inline int fr_htrie_delete(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) int fr_htrie_delete(fr_htrie_t *ht, void const *data)
 {
-	return ht->delete(ht->ctx, data);
+	return ht->funcs.delete(ht->store, data);
 }
 
-static int fr_htrie_replace(fr_htrie_t *ht, void const *data) CC_HINT(nonnull);
-
-static inline int fr_htrie_replace(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) int fr_htrie_replace(fr_htrie_t *ht, void const *data)
 {
-	return ht->replace(ht->ctx, data);
+	return ht->funcs.replace(ht->store, data);
 }
 
-static int fr_htrie_num_elements(fr_htrie_t *ht) CC_HINT(nonnull);
-
-static inline int fr_htrie_num_elements(fr_htrie_t *ht)
+static inline CC_HINT(nonnull) int fr_htrie_num_elements(fr_htrie_t *ht)
 {
-	return ht->num_elements(ht->ctx);
+	return ht->funcs.num_elements(ht->store);
 }
 
 #ifdef __cplusplus
