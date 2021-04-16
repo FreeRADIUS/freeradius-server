@@ -107,7 +107,7 @@ static inline CC_HINT(nonnull) int fr_htrie_replace(fr_htrie_t *ht, void const *
 /** Remove data from a htrie without freeing it
  *
  */
-static inline CC_HINT(nonnull) int fr_htrie_remove(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull) void *fr_htrie_remove(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.remove(ht->store, data);
 }
