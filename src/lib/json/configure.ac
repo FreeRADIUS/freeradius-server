@@ -121,7 +121,7 @@ if test x$with_[]modname_useropt != xno; then
 		)
 	else
 		AC_MSG_WARN([json-c libraries not found. Use --with-jsonc-lib-dir=<path>.])
-		fail="$fail json-c"
+		fail="$fail json-c >= 0.13"
 	fi
 
 	targetname=modname

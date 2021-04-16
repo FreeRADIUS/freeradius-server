@@ -4177,7 +4177,7 @@ fi
 	else
 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: json-c libraries not found. Use --with-jsonc-lib-dir=<path>." >&5
 printf "%s\n" "$as_me: WARNING: json-c libraries not found. Use --with-jsonc-lib-dir=<path>." >&2;}
-		fail="$fail json-c"
+		fail="$fail json-c >= 0.13"
 	fi
 
 	targetname=libfreeradius-json
