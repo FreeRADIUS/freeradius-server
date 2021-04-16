@@ -33,7 +33,7 @@ static fr_rb_node_t sentinel = { NIL, NIL, NULL, NULL, BLACK, false };
 #  define RB_MAGIC (0x5ad09c42)
 #endif
 
-static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data) CC_HINT(nonnull);
+static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data) CC_HINT(nonnull(2,3));
 
 static inline CC_HINT(always_inline) void node_data_free(fr_rb_tree_t const *tree, fr_rb_node_t *node)
 {
@@ -346,7 +346,7 @@ static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data)
 {
 	fr_rb_node_t *current, *parent, *x;
 
-	if (unlikely(tree->being_freed)) return NULL;
+	if (unlikely(tree->being_freed)) return -1;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (tree->type) (void)_talloc_get_type_abort(data, tree->type, __location__);
@@ -364,7 +364,7 @@ static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data)
 		result = tree->data_cmp(data, current->data);
 		if (result == 0) {
 			if (existing) *existing = current;
-			return 1
+			return 1;
 		}
 
 		parent = current;
@@ -598,7 +598,7 @@ int fr_rb_find_or_insert(void **found, fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t *existing;
 
-	switch (insert_node(existing, tree, UNCONST(void *, data))) {
+	switch (insert_node(&existing, tree, UNCONST(void *, data))) {
 	case 1:
 		if (found) *found = existing->data;
 		return 1;
