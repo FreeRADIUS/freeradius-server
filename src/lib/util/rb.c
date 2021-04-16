@@ -95,7 +95,7 @@ static fr_rb_node_t *_node_inline_alloc(fr_rb_tree_t const *tree, void *data)
 
 /** Clear the fr_rb_node_t that was allocated as part of the data structure
  */
-static void _node_inline_free(UNUSED fr_rb_tree_t const *tree, fr_rb_node_t *node, bool free_data)
+static void _node_inline_free(fr_rb_tree_t const *tree, fr_rb_node_t *node, bool free_data)
 {
 	if (free_data && tree->data_free) {
 		node_data_free(tree, node);
