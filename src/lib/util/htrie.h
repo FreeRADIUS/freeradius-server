@@ -43,7 +43,7 @@ typedef void *(*fr_htrie_remove_t)(fr_htrie_t *ht, void const *data);
 
 typedef bool (*fr_htrie_delete_t)(fr_htrie_t *ht, void const *data);
 
-typedef uint64_t (*fr_htrie_num_elements_t)(fr_htrie_t *ht);
+typedef uint32_t (*fr_htrie_num_elements_t)(fr_htrie_t *ht);
 
 
 struct fr_htrie_s {
