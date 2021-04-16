@@ -1,0 +1,104 @@
+#
+# PRE rest_module eval
+#
+
+update request {
+	&Tmp-String-0 := "$ENV{REST_TEST_SERVER}"
+	&Tmp-Integer-0 := "$ENV{REST_TEST_SERVER_PORT}"
+	&Tmp-Integer-1 := "$ENV{REST_TEST_SERVER_SSL_PORT}"
+	&Tmp-String-1 := "notfound"
+}
+
+# Retrieve a plain text file
+update control {
+	&Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/test.txt}"
+}
+
+if (&REST-HTTP-Status-Code != 200) {
+	test_fail
+}
+
+if (&control.Tmp-String-1 != "Sample text response\n") {
+	test_fail
+}
+
+# Check a "not found" gives a 404 status code
+update control {
+	&Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1}}"
+}
+
+if (&REST-HTTP-Status-Code != 404) {
+	test_fail
+}
+
+# GET with URL parameters
+update request {
+	&Tmp-String-2 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id}}"
+}
+
+if (&REST-HTTP-Status-Code != 200) {
+	test_fail
+}
+
+map json &Tmp-String-2 {
+	&control.Tmp-String-1 := '$.control\.Tmp-String-1'
+	&control.User-Name := '$.control\.User-Name.value'
+}
+
+if (&control.Tmp-String-1 != "[ \"GET\", \"\\/user\\/<username>\\/mac\\/<client>\" ]") {
+	test_fail
+}
+
+if (&control.User-Name != "Bob") {
+	test_fail
+}
+
+update control {
+	&Tmp-String-2 = "%{json_encode:&request.NAS-IP-Address}"
+}
+
+# POST to https with JSON body data
+update request {
+	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control.Tmp-String-2}}"
+}
+
+if (&REST-HTTP-Status-Code != 200) {
+	test_fail
+}
+
+map json &Tmp-String-2 {
+	&control.Tmp-String-1 := '$.control\.Tmp-String-1'
+	&control.User-Name := '$.control\.User-Name.value'
+	&control.NAS-IP-Address := '$.control\.NAS-IP-Address.value'
+}
+
+if (&control.Tmp-String-1 != "[ \"POST\", \"\\/user\\/<username>\\/mac\\/<client>\" ]") {
+	test_fail
+}
+
+if (&control.User-Name != "Bob") {
+	test_fail
+}
+
+if (&control.NAS-IP-Address != "192.168.1.1") {
+	test_fail
+}
+
+update control {
+	&Tmp-String-2 := "NAS=%{NAS-IP-Address}&user=%{User-Name}"
+}
+
+# POST to https with POST body data
+update request {
+	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/post/test?section=dummy %{control.Tmp-String-2}}"
+}
+
+if (&REST-HTTP-Status-Code != 200) {
+	test_fail
+}
+
+if (&Tmp-String-2 != "Section: dummy, User: Bob\n") {
+	test_fail
+}
+
+test_pass
