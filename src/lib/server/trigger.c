@@ -149,9 +149,9 @@ int trigger_exec_init(CONF_SECTION const *cs)
 		return 0;
 	}
 
-	MEM(trigger_last_fired_tree = fr_rb_talloc_alloc(talloc_null_ctx(),
-							  trigger_last_fired_t, node,
-							  _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
+	MEM(trigger_last_fired_tree = fr_rb_inline_talloc_alloc(talloc_null_ctx(),
+								trigger_last_fired_t, node,
+								_trigger_last_fired_cmp, _trigger_last_fired_free, 0));
 
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
 	pthread_mutex_init(trigger_mutex, 0);

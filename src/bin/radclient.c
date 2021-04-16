@@ -1152,7 +1152,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	filename_tree = fr_rb_talloc_alloc(NULL, rc_file_pair_t, node, filename_cmp, NULL, 0);
+	filename_tree = fr_rb_inline_talloc_alloc(NULL, rc_file_pair_t, node, filename_cmp, NULL, 0);
 	if (!filename_tree) {
 	oom:
 		ERROR("Out of memory");

@@ -1283,7 +1283,7 @@ nomem:
 		goto fail;
 	}
 
-	worker->dedup = fr_rb_talloc_alloc(worker, request_t, dedup_node, worker_dedup_cmp, NULL, rbflags);
+	worker->dedup = fr_rb_inline_talloc_alloc(worker, request_t, dedup_node, worker_dedup_cmp, NULL, rbflags);
 	if (!worker->dedup) {
 		fr_strerror_const("Failed creating de_dup tree");
 		goto fail;

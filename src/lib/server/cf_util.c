@@ -370,10 +370,10 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	/*
 	 *	New child, add child trees.
 	 */
-	if (!parent->ident1) parent->ident1 = fr_rb_alloc(parent, CONF_ITEM, ident1_node,
-							   _cf_ident1_cmp, NULL, RB_FLAG_NONE);
-	if (!parent->ident2) parent->ident2 = fr_rb_alloc(parent, CONF_ITEM, ident2_node,
-							   _cf_ident2_cmp, NULL, RB_FLAG_NONE);
+	if (!parent->ident1) parent->ident1 = fr_rb_inline_alloc(parent, CONF_ITEM, ident1_node,
+								 _cf_ident1_cmp, NULL, RB_FLAG_NONE);
+	if (!parent->ident2) parent->ident2 = fr_rb_inline_alloc(parent, CONF_ITEM, ident2_node,
+								 _cf_ident2_cmp, NULL, RB_FLAG_NONE);
 
 	fr_rb_insert(parent->ident1, child);
 	fr_rb_insert(parent->ident2, child);		/* NULL ident2 is still a value */

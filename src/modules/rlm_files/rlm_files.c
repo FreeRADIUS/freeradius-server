@@ -204,7 +204,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **pt
 		}
 	}
 
-	tree = fr_rb_alloc(ctx, PAIR_LIST_LIST, node, pairlist_cmp, NULL, RB_FLAG_NONE);
+	tree = fr_rb_inline_alloc(ctx, PAIR_LIST_LIST, node, pairlist_cmp, NULL, RB_FLAG_NONE);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;

@@ -251,7 +251,7 @@ int fr_tls_engine_init(ENGINE **e_out,
 	fr_tls_engine_ctrl_t	*ctrl = NULL, *n;
 
 	if (!tls_engines) {
-		tls_engines = fr_rb_alloc(NULL, tls_engine_t, node, tls_engine_cmp, fr_rb_node_talloc_free, 0);
+		tls_engines = fr_rb_inline_alloc(NULL, tls_engine_t, node, tls_engine_cmp, talloc_free_data, 0);
 		if (unlikely(!tls_engines)) {
 		oom:
 			fr_strerror_const("Out of memory");

@@ -1715,7 +1715,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
-	sock->session_tree = fr_rb_talloc_alloc(sock, bfd_state_t, node, bfd_session_cmp, bfd_session_free, 0);
+	sock->session_tree = fr_rb_inline_talloc_alloc(sock, bfd_state_t, node, bfd_session_cmp, bfd_session_free, 0);
 	if (!sock->session_tree) {
 		ERROR("Failed creating session tree!");
 		return -1;

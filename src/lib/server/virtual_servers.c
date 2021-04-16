@@ -1224,10 +1224,10 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 		 *	so it shouldn't be parented from
 		 *	virtual_server_root.
 		 */
-		MEM(vns_tree = fr_rb_talloc_alloc(NULL,
-						   fr_virtual_namespace_t, node,
-						   _virtual_namespace_cmp,
-						   _virtual_namespace_free, 0));
+		MEM(vns_tree = fr_rb_inline_talloc_alloc(NULL,
+							 fr_virtual_namespace_t, node,
+							 _virtual_namespace_cmp,
+							 _virtual_namespace_free, 0));
 
 		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
 			ERROR("Failed adding namespace tree data to config");
@@ -1358,10 +1358,9 @@ int virtual_servers_init(CONF_SECTION *config)
 		return -1;
 	}
 
-	MEM(listen_addr_root = fr_rb_alloc(NULL, fr_listen_t, virtual_server_node,
-					    listen_addr_cmp, NULL, rbflags));
-	MEM(server_section_name_tree = fr_rb_alloc(NULL, virtual_server_compile_t, node,
-						    server_section_name_cmp, NULL, rbflags));
+	MEM(listen_addr_root = fr_rb_inline_alloc(NULL, fr_listen_t, virtual_server_node,
+						  listen_addr_cmp, NULL, rbflags));
+	MEM(server_section_name_tree = fr_rb_alloc(NULL, server_section_name_cmp, NULL, rbflags));
 
 	return 0;
 }

@@ -1123,8 +1123,12 @@ void modules_free(void)
 		     mi;
 		     mi = fr_rb_iter_next_inorder(&iter)) {
 			mi->in_name_tree = false; /* about to be deleted */
-			talloc_free(mi);
+			mi->in_data_tree = false;
+
 			fr_rb_iter_delete_inorder(&iter);
+			fr_rb_remove(module_instance_data_tree, mi);
+
+			talloc_free(mi);
 		}
 		TALLOC_FREE(module_instance_name_tree);
 	}
@@ -1135,10 +1139,10 @@ void modules_free(void)
 
 int modules_init(void)
 {
-	MEM(module_instance_name_tree = fr_rb_alloc(NULL, module_instance_t, name_node,
-						     module_instance_name_cmp, NULL, RB_FLAG_NONE));
-	MEM(module_instance_data_tree = fr_rb_alloc(NULL, module_instance_t, data_node,
-						     module_instance_data_cmp, NULL, RB_FLAG_NONE));
+	MEM(module_instance_name_tree = fr_rb_inline_alloc(NULL, module_instance_t, name_node,
+							   module_instance_name_cmp, NULL, RB_FLAG_NONE));
+	MEM(module_instance_data_tree = fr_rb_inline_alloc(NULL, module_instance_t, data_node,
+							   module_instance_data_cmp, NULL, RB_FLAG_NONE));
 	instance_ctx = talloc_init("module instance context");
 
 	return 0;

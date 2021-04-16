@@ -75,15 +75,14 @@ static int mod_detach(void *instance)
 
 	if (driver->cache) {
 		fr_rb_iter_inorder_t	iter;
-		void				*data;
+		void			*data;
 
 		for (data = fr_rb_iter_init_inorder(&iter, driver->cache);
 		     data;
 		     data = fr_rb_iter_next_inorder(&iter)) {
-			talloc_free(data);
 			fr_rb_iter_delete_inorder(&iter);
+			talloc_free(data);
 		}
-		talloc_free(driver->cache);
 	}
 
 	pthread_mutex_destroy(&driver->mutex);
@@ -108,12 +107,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The cache.
 	 */
-	driver->cache = fr_rb_talloc_alloc(NULL, rlm_cache_rb_entry_t, node, cache_entry_cmp, NULL, 0);
+	driver->cache = fr_rb_inline_talloc_alloc(driver, rlm_cache_rb_entry_t, node, cache_entry_cmp, NULL, 0);
 	if (!driver->cache) {
 		ERROR("Failed to create cache");
 		return -1;
 	}
-	talloc_link_ctx(driver, driver->cache);
 
 	/*
 	 *	The heap of entries to expire.

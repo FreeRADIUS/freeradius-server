@@ -35,6 +35,13 @@ RCSID("$Id$")
 
 static _Thread_local TALLOC_CTX *thread_local_ctx;
 
+/** A wrapper that can be passed to tree or hash alloc functions that take a #fr_free_t
+ */
+void talloc_free_data(void *data)
+{
+	talloc_free(data);
+}
+
 /** Retrieve the current talloc NULL ctx
  *
  * Talloc doesn't provide a function to retrieve the top level memory tracking context.

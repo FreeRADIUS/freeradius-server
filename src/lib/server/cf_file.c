@@ -2305,7 +2305,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
 
-	MEM(tree = fr_rb_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL, 0));
+	MEM(tree = fr_rb_inline_talloc_alloc(cs, cf_file_t, node, _inode_cmp, NULL, 0));
 
 	cf_data_add(cs, tree, "filename", false);
 

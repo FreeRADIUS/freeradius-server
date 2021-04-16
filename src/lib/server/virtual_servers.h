@@ -112,7 +112,6 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_rb_node_t		node;		//!< Entry into the tree of sections.
 	char const		*name;		//!< Name of the processing section, such as "recv" or "send"
 	char const		*name2;		//!< Second name, such as "Access-Request"
 	rlm_components_t	component;	//!< Sets the default list of actions for this section

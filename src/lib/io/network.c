@@ -177,7 +177,7 @@ static int8_t waiting_cmp(void const *one, void const *two)
 static int8_t socket_listen_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
-	
+
 	return CMP(a->listen, b->listen);
 }
 
@@ -1663,13 +1663,14 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = fr_rb_talloc_alloc(nr, fr_network_socket_t, listen_node, socket_listen_cmp, NULL, rbflags);
+	nr->sockets = fr_rb_inline_talloc_alloc(nr, fr_network_socket_t, listen_node, socket_listen_cmp, NULL, rbflags);
 	if (!nr->sockets) {
 		fr_strerror_const_push("Failed creating listen tree for sockets");
 		goto fail2;
 	}
 
-	nr->sockets_by_num = fr_rb_talloc_alloc(nr, fr_network_socket_t, num_node, socket_num_cmp, NULL, rbflags);
+	nr->sockets_by_num = fr_rb_inline_talloc_alloc(nr, fr_network_socket_t,
+						       num_node, socket_num_cmp, NULL, rbflags);
 	if (!nr->sockets_by_num) {
 		fr_strerror_const_push("Failed creating number tree for sockets");
 		goto fail2;

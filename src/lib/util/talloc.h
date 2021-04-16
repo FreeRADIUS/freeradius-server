@@ -119,6 +119,8 @@ static inline TALLOC_CTX *talloc_init_const(char const *name)
 	return ctx;
 }
 
+void		talloc_free_data(void *data);
+
 void		*talloc_null_ctx(void);
 
 fr_talloc_destructor_t *talloc_destructor_add(TALLOC_CTX *fire_ctx, TALLOC_CTX *disarm_ctx,

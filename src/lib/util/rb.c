@@ -31,6 +31,21 @@ RCSID("$Id$")
 #define NIL &sentinel	   /* all leafs are sentinels */
 static fr_rb_node_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
 
+/** Callback used to alloc rbnodes
+ *
+ * @param[in] tree	to allocate the node for.
+ * @param[in] data	associated with node.
+ */
+typedef fr_rb_node_t *(* rb_node_alloc_t)(fr_rb_tree_t const *tree, void *data);
+
+/** Callback used to free rbnodes
+ *
+ * @param[in] tree	that owns the node.
+ * @param[in] node	to free.
+ * @param[in] free_data free user data.
+ */
+typedef void (* rb_node_free_t)(fr_rb_tree_t const *tree, fr_rb_node_t *node, bool free_data);
+
 struct fr_rb_s {
 #ifndef NDEBUG
 	uint32_t		magic;
@@ -43,7 +58,10 @@ struct fr_rb_s {
 
 	size_t			num_elements;	//!< How many elements are inside the tree.
 	fr_cmp_t		compare;	//!< The comparator.
-	fr_free_t		free;		//!< Free function called when a node is freed.
+
+	fr_free_t		data_free;	//!< Callback to free node data.
+	rb_node_alloc_t		node_alloc;	//!< Callback to allocate a new node.
+	rb_node_free_t		node_free;	//!< Callback to free a node.
 
 	bool			lock;		//!< Ensure exclusive access.
 	pthread_mutex_t		mutex;		//!< Mutex to ensure exclusive access.
@@ -60,12 +78,45 @@ static fr_rb_node_t	*insert_node(fr_rb_tree_t *tree, void *data) CC_HINT(nonnull
 #define LOCK(_tree) if ((_tree)->lock) pthread_mutex_lock(&(_tree)->mutex)
 #define UNLOCK(_tree) if ((_tree)->lock) pthread_mutex_unlock(&(_tree)->mutex)
 
-static inline CC_HINT(always_inline) void rb_free_data(fr_rb_tree_t *tree, fr_rb_node_t *node)
+static inline CC_HINT(always_inline) void node_data_free(fr_rb_tree_t const *tree, fr_rb_node_t *node)
 {
-	if (!tree->free || unlikely(node->being_freed)) return;
+	if (!tree->data_free || unlikely(node->being_freed)) return;
+
 	node->being_freed = true;
-	tree->free(node->data);
-	node->being_freed = false;
+	tree->data_free(node->data);
+}
+
+/** Return the fr_rb_node_t that was allocated as part of the data structure
+ */
+static fr_rb_node_t *_node_inline_alloc(fr_rb_tree_t const *tree, void *data)
+{
+	return (fr_rb_node_t *)((uintptr_t)data + tree->offset);
+}
+
+/** Clear the fr_rb_node_t that was allocated as part of the data structure
+ */
+static void _node_inline_free(UNUSED fr_rb_tree_t const *tree, fr_rb_node_t *node, bool free_data)
+{
+	if (free_data) {
+		node_data_free(tree, node);
+	} else {
+		memset(node, 0, sizeof(fr_rb_node_t));	/* makes "still in tree?" checks easier */
+	}
+}
+
+/** Allocate a new fr_rb_node_t on the heap
+ */
+static fr_rb_node_t *_node_heap_alloc(fr_rb_tree_t const *tree, UNUSED void *data)
+{
+	return talloc_zero(tree, fr_rb_node_t);
+}
+
+/** Clear the fr_rb_node_t that was allocated as part of the data structure
+ */
+static void _node_heap_free(fr_rb_tree_t const *tree, fr_rb_node_t *node, bool free_data)
+{
+	if (free_data) node_data_free(tree, node);
+	talloc_free(node);
 }
 
 /** Walks the tree to delete all nodes Does NOT re-balance it!
@@ -73,22 +124,10 @@ static inline CC_HINT(always_inline) void rb_free_data(fr_rb_tree_t *tree, fr_rb
  */
 static void free_walker(fr_rb_tree_t *tree, fr_rb_node_t *x)
 {
-	(void) talloc_get_type_abort(x, fr_rb_node_t);
-
 	if (x->left != NIL) free_walker(tree, x->left);
 	if (x->right != NIL) free_walker(tree, x->right);
 
-	rb_free_data(tree, x);
-	talloc_free(x);
-}
-
-/** Wrapper function for fr_rb_alloc to allow talloc node data to be freed
- *
- * @param[in] data	Talloced data to free.
- */
-void fr_rb_node_talloc_free(void *data)
-{
-	talloc_free(data);
+	tree->node_free(tree, x, true);
 }
 
 /** Free the rbtree cleaning up any nodes
@@ -116,7 +155,7 @@ static int _tree_free(fr_rb_tree_t *tree)
 	/*
 	 *	walk the tree, deleting the nodes...
 	 */
-	if ((tree->root != NIL) && tree->free) free_walker(tree, tree->root);
+	if ((tree->root != NIL) && tree->data_free) free_walker(tree, tree->root);
 
 #ifndef NDEBUG
 	tree->magic = 0;
@@ -148,11 +187,11 @@ static int _tree_free(fr_rb_tree_t *tree)
  *				for the #fr_rb_node_t is allocated as part of the data
  *				being inserted into the tree.
  * @param[in] offset		offsetof the #fr_rb_node_t field in the data being inserted.
+ *      			If < 0, nodes will be allocated on the heap.
  * @param[in] type		Talloc type of structures being inserted, may be NULL.
- * @param[in] node_cmp		Comparator function for ordering data in the tree.
- * @param[in] node_free		Free function to call whenever data is deleted or replaced.
+ * @param[in] data_cmp		Comparator function for ordering data in the tree.
+ * @param[in] data_free		Free function to call whenever data is deleted or replaced.
  * @param[in] flags		A bitfield of flags.
- *				- RB_FLAG_REPLACE - replace nodes if a duplicate is found.
  *				- RB_FLAG_LOCK - use a mutex to prevent concurrent access
  *				to the tree.
  * @return
@@ -160,8 +199,8 @@ static int _tree_free(fr_rb_tree_t *tree)
  *	- NULL on failure.
  */
 fr_rb_tree_t *_fr_rb_alloc(TALLOC_CTX *ctx,
-			   size_t offset, char const *type,
-			   fr_cmp_t node_cmp, fr_free_t node_free,
+			   ssize_t offset, char const *type,
+			   fr_cmp_t data_cmp, fr_free_t data_free,
 			   int flags)
 {
 	fr_rb_tree_t *tree;
@@ -174,12 +213,26 @@ fr_rb_tree_t *_fr_rb_alloc(TALLOC_CTX *ctx,
 		.magic = RB_MAGIC,
 #endif
 		.root = NIL,
-		.offset = offset,
+		.offset = (size_t)offset,
 		.type = type,
-		.compare = node_cmp,
+		.compare = data_cmp,
 		.lock = ((flags & RB_FLAG_LOCK) != 0),
-		.free = node_free
+		.data_free = data_free,
 	};
+
+	/*
+	 *	Use inline nodes
+	 */
+	if (offset >= 0) {
+		tree->node_alloc = _node_inline_alloc;
+		tree->node_free = _node_inline_free;
+	/*
+	 *	Allocate node data on the heap
+	 */
+	} else {
+		tree->node_alloc = _node_heap_alloc;
+		tree->node_free = _node_heap_free;
+	}
 	if (tree->lock) pthread_mutex_init(&tree->mutex, NULL);
 
 	talloc_set_destructor(tree, _tree_free);
@@ -247,7 +300,7 @@ static void rotate_right(fr_rb_tree_t *tree, fr_rb_node_t *x)
 /** Maintain red-black tree balance after inserting node x
  *
  */
-static void insert_fixup(fr_rb_tree_t *tree, fr_rb_node_t *x)
+static inline CC_HINT(always_inline) void insert_fixup(fr_rb_tree_t *tree, fr_rb_node_t *x)
 {
 	/* check RED-BLACK properties */
 	while ((x != tree->root) && (x->parent->colour == RED)) {
@@ -334,11 +387,9 @@ static fr_rb_node_t *insert_node(fr_rb_tree_t *tree, void *data)
 	}
 
 	/* setup new node */
-	x = talloc_zero(tree, fr_rb_node_t);
-	if (!x) {
-		fr_strerror_const("No memory for new rbtree node");
-		return NULL;
-	}
+	x = tree->node_alloc(tree, data);
+	if (unlikely(!x)) return NULL;
+
 	*x = (fr_rb_node_t){
 		.data = data,
 		.parent = parent,
@@ -494,13 +545,11 @@ static void delete_internal(fr_rb_tree_t *tree, fr_rb_node_t *z, bool free_data)
 		if (y->left->parent == z) y->left->parent = y;
 		if (y->right->parent == z) y->right->parent = y;
 
-		if (free_data) rb_free_data(tree, z);
-		talloc_free(z);
+		tree->node_free(tree, z, free_data);
 	} else {
 		if (y->colour == BLACK) delete_fixup(tree, x, parent);
 
-		if (free_data) rb_free_data(tree, y);
-		talloc_free(y);
+		tree->node_free(tree, y, free_data);
 	}
 
 	tree->num_elements--;
@@ -510,7 +559,7 @@ static void delete_internal(fr_rb_tree_t *tree, fr_rb_node_t *z, bool free_data)
 /* Find user data, returning the node
  *
  */
-static fr_rb_node_t *find_node(fr_rb_tree_t *tree, void const *data)
+static inline CC_HINT(always_inline) fr_rb_node_t *find_node(fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t *current;
 
@@ -521,12 +570,9 @@ static fr_rb_node_t *find_node(fr_rb_tree_t *tree, void const *data)
 	while (current != NIL) {
 		int result = tree->compare(data, current->data);
 
-		if (result == 0) {
-			return current;
-		} else {
-			current = (result < 0) ?
-				current->left : current->right;
-		}
+		if (result == 0) return current;
+
+		current = (result < 0) ? current->left : current->right;
 	}
 
 	return NULL;
@@ -600,7 +646,7 @@ int fr_rb_replace(fr_rb_tree_t *tree, void const *data)
 	node->data = UNCONST(void *, data);
 	UNLOCK(tree);
 
-	if (tree->free) tree->free(old_data);
+	if (tree->data_free) tree->data_free(old_data);
 
 	return 0;
 }

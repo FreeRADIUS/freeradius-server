@@ -55,7 +55,7 @@ static void test_fr_rb_iter_inorder(void)
 	fr_rb_iter_inorder_t	iter;
 
 	TEST_CASE("in-order iterator");
-	t = fr_rb_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
 	TEST_CHECK(t != NULL);
 
  	n = (fr_rand() % MAXSIZE) + 1;
@@ -107,7 +107,7 @@ static void test_fr_rb_iter_preorder(void)
 	/*
 	 *	Build a tree from pre_post_input.
 	 */
-	t = fr_rb_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
 	TEST_CHECK(t != NULL);
 
 	for (i = 0; i < sizeof(pre_post_input) / sizeof(uint32_t); i++) {
@@ -141,7 +141,7 @@ static void test_fr_rb_iter_postorder(void)
 	/*
 	 *	Build a tree from pre_post_input.
 	 */
-	t = fr_rb_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
 	TEST_CHECK(t != NULL);
 
 	for (i = 0; i < sizeof(pre_post_input) / sizeof(uint32_t); i++) {
@@ -189,7 +189,7 @@ static void test_fr_rb_iter_delete(void)
 	fr_rb_tree_test_node_t		*p;
 	fr_rb_iter_inorder_t	iter;
 
-	t = fr_rb_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
 	TEST_CHECK(t != NULL);
 
  	/*
@@ -234,7 +234,7 @@ static void test_fr_rb_iter_done(void)
 	fr_rb_tree_test_node_t		*p;
 	fr_rb_iter_inorder_t	iter_in;
 
-	t = fr_rb_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
 	TEST_CHECK(t != NULL);
 
  	/*

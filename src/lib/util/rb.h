@@ -55,8 +55,6 @@ struct fr_rb_node_s {
 #define RB_FLAG_NONE    (0)
 #define RB_FLAG_LOCK    (1)
 
-void		fr_rb_node_talloc_free(void *data) CC_HINT(nonnull);
-
 /** Creates a red black that verifies elements are of a specific talloc type
  *
  * @param[in] _ctx		to tie tree lifetime to.
@@ -72,9 +70,43 @@ void		fr_rb_node_talloc_free(void *data) CC_HINT(nonnull);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_talloc_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
+#define		fr_rb_talloc_alloc(_ctx, _type, _node_cmp, _node_free, _flags) \
+		_fr_rb_alloc(_ctx, -1, #_type, _node_cmp, _node_free, _flags)
+
+/** Creates a red black tree
+ *
+ * @param[in] _ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _node_cmp		Comparator used to compare nodes.
+ * @param[in] _node_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @param[in] _flags		To modify tree behaviour.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
+ */
+#define		fr_rb_alloc(_ctx, _node_cmp, _node_free, _flags) \
+		_fr_rb_alloc(_ctx, -1, NULL, _node_cmp, _node_free, _flags)
+
+/** Creates a red black that verifies elements are of a specific talloc type
+ *
+ * @param[in] _ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
+ * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
+ * @param[in] _node_cmp		Comparator used to compare nodes.
+ * @param[in] _node_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @param[in] _flags		To modify tree behaviour.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
+ */
+#define		fr_rb_inline_talloc_alloc(_ctx, _type, _field, _node_cmp, _node_free, _flags) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), #_type, _cmp, _node_free, _flags) \
+			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), #_type, _node_cmp, _node_free, _flags) \
 		)
 
 /** Creates a red black tree
@@ -92,13 +124,13 @@ void		fr_rb_node_talloc_free(void *data) CC_HINT(nonnull);
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_alloc(_ctx, _type, _field, _cmp, _node_free, _flags) \
+#define		fr_rb_inline_alloc(_ctx, _type, _field, _node_cmp, _node_free, _flags) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), NULL, _cmp, _node_free, _flags) \
+			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), NULL, _node_cmp, _node_free, _flags) \
 		)
 
-fr_rb_tree_t	*_fr_rb_alloc(TALLOC_CTX *ctx, size_t offset, char const *type,
-			       fr_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
+fr_rb_tree_t	*_fr_rb_alloc(TALLOC_CTX *ctx, ssize_t offset, char const *type,
+			      fr_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
 
 /** @hidecallergraph */
 void		*fr_rb_find(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
