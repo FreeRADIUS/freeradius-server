@@ -14,6 +14,14 @@ umask 027
 cd "$(dirname "$0")" || exit 1
 
 
+#  check commands of openssl exist
+for cmd in dhparam pkcs12; do
+	if ! openssl ${cmd} -help >/dev/null 2>&1; then
+		echo "Error: command ${cmd} is not supported by openssl."
+		exit 1
+	fi
+done
+
 #
 #  If we have a working "make", then use it.  Otherwise, run the commands
 #  manually.
