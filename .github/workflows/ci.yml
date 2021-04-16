@@ -18,6 +18,7 @@ env:
   DO_BUILD: yes
   HOSTAPD_BUILD_DIR: eapol_test.ci
   HOSTAPD_GIT_TAG: hostap_2_8
+  DEBIAN_FRONTEND: noninteractive
   CI: 1
   GH_ACTIONS: 1
 
@@ -228,24 +229,19 @@ jobs:
     - name: Install and setup fixtures then run full CI tests
       if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
-
         # Temporarily replace ucf (for config merge) with cp since it's
         # terribly slow!
-        sudo sh -c 'echo "#!/bin/sh"          >  /usr/local/bin/ucf'
-        sudo sh -c 'echo "shift && cp -v \$@" >> /usr/local/bin/ucf'
-        sudo chmod +x /usr/local/bin/ucf
+        sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
+        sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
+        sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
+        sudo chmod +x /usr/bin/ucf
         sudo apt-get install -y --no-install-recommends \
           apparmor-utils \
           dovecot-imapd \
           exim4 \
           redis-server redis-tools \
           slapd ldap-utils
-        sudo rm -f /usr/local/bin/ucf
-
-        # Wait for Dovecot DH parameter creation before stopping the service
-        while [ ! -f /var/lib/dovecot/ssl-parameters.dat ] ; do
-            sleep 1
-        done
+        sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
         sudo systemctl stop dovecot exim4 slapd
         sudo aa-complain /usr/sbin/slapd
 

@@ -57,13 +57,19 @@ touch "${LOGINFOPATH}"
 GROUP=$(id -gn)
 
 #
+# The Debian version of Dovecot cannot read password-protected private keys so
+# create an unprotected copy
+#
+openssl rsa -in "${BASEDIR}/raddb/certs/rsa/server.key" -passin 'pass:whatever' -out "${BASEDIR}/raddb/certs/rsa/server.key.dovecot"
+
+#
 # Add users to the password file
 #
 
 # Generate passwords for the users
-USER1P=$(doveadm pw -p test1 -s CRYPT)
-USER2P=$(doveadm pw -p test2 -s CRYPT)
-USER3P=$(doveadm pw -p test3 -s CRYPT)
+USER1P=$(doveadm -o stats_writer_socket_path= pw -p test1 -s CRYPT)
+USER2P=$(doveadm -o stats_writer_socket_path= pw -p test2 -s CRYPT)
+USER3P=$(doveadm -o stats_writer_socket_path= pw -p test3 -s CRYPT)
 
 # Add user password combinations
 echo "\
@@ -124,10 +130,9 @@ service imap-login {
 } 
 # TLS specific configurations
 ssl = required
-ssl_protocols = !SSLv3
 ssl_cert = <${CERTDIR}/server.pem
-ssl_key = <${CERTDIR}/server.key
-ssl_key_password = whatever
+ssl_key = <${CERTDIR}/server.key.dovecot
+#ssl_key_password = whatever
 ssl_ca = <${CERTDIR}/ca.pem
 
 verbose_ssl = yes
@@ -166,6 +171,7 @@ mail_location = maildir:${MAILDIR} \
 # Set user for permissions
 echo "
 default_internal_user = ${USER}
+default_internal_group = ${GROUP}
 default_login_user = ${USER} \
 " >> "${CONFPATH}"
 
