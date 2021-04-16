@@ -130,40 +130,53 @@ static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const jpath_validate_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
+
 /** Determine if a jpath expression is valid
  *
  * @ingroup xlat_functions
  *
  * @param ctx to allocate expansion buffer in.
- * @param mod_inst data.
- * @param xlat_inst data.
  * @param out Where to write the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
- * @param outlen How big out is.
  * @param request The current request.
- * @param fmt jpath expression to parse.
- * @return number of bytes written to out.
+ * @param xlat_inst unused.
+ * @param xlat_thread_inst unused.
+ * @param in jpath expression to parse.
+ * @return
+ * 	- XLAT_ACTION_DONE for valid paths
+ * 	- XLAT_ACTION_FAIL for invalid paths
  */
-static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			    	   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				   request_t *request, char const *fmt)
+static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			    		 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 fr_value_box_list_t *in)
 {
+	fr_value_box_t	*path = fr_dlist_head(in);
 	fr_jpath_node_t *head;
-	ssize_t slen, ret;
-	char *jpath_str;
+	ssize_t 	slen;
+	char 		*jpath_str;
+	fr_value_box_t	*vb;
 
-	slen = fr_jpath_parse(request, &head, fmt, strlen(fmt));
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	slen = fr_jpath_parse(request, &head, path->vb_strvalue, path->vb_length);
 	if (slen <= 0) {
+		fr_value_box_asprintf(ctx, vb, NULL, false, "%zu:%s", -(slen), fr_strerror());
+		fr_dcursor_append(out, vb);
 		fr_assert(head == NULL);
-		return snprintf(*out, outlen, "%zd:%s", -(slen), fr_strerror());
+		return XLAT_ACTION_DONE;
 	}
 	fr_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
 	jpath_str = fr_jpath_asprint(request, head);
-	ret = snprintf(*out, outlen, "%zu:%s", (size_t) slen, jpath_str);
+
+	fr_value_box_asprintf(ctx, vb, NULL, false, "%zu:%s", (size_t) slen, jpath_str);
+	fr_dcursor_append(out, vb);
 	talloc_free(head);
 	talloc_free(jpath_str);
 
-	return ret;
+	return XLAT_ACTION_DONE;
 }
 
 static xlat_arg_parser_t const json_encode_xlat_arg = {
@@ -546,7 +559,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	xlat = xlat_register(instance, "jsonquote", json_quote_xlat, false);
 	xlat_func_mono(xlat, &json_quote_xlat_arg);
-	xlat_register_legacy(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(instance, "jpathvalidate", jpath_validate_xlat, false);
+	xlat_func_mono(xlat, &jpath_validate_xlat_arg);
 
 	name = talloc_asprintf(inst, "%s_encode", inst->name);
 	xlat = xlat_register(instance, name, json_encode_xlat, false);
