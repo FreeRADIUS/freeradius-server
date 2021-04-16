@@ -2177,7 +2177,6 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
 			fr_strerror_printf("Redis node %s:%i (currently v%s) needs update to >= v%s",
 					   node->name, node->addr.inet.dst_port, buffer, min_version);
 			all_above = false;
-			fr_rb_iter_done(&iter);
 			break;
 		}
 	}
@@ -2314,7 +2313,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	cluster->node = talloc_zero_array(cluster, fr_redis_cluster_node_t, conf->max_nodes + 1);
 	if (!cluster->node) goto oom;
 
-	cluster->used_nodes = fr_rb_inline_alloc(cluster, fr_redis_cluster_node_t, rbnode, _cluster_node_cmp, NULL, 0);
+	cluster->used_nodes = fr_rb_inline_alloc(cluster, fr_redis_cluster_node_t, rbnode, _cluster_node_cmp, NULL);
 	if (!cluster->used_nodes) goto oom;
 
 	cluster->free_nodes = fr_fifo_create(cluster, conf->max_nodes, NULL);

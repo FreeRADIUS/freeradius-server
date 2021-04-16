@@ -2963,7 +2963,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	/*
 	 *	Who/what depends on this dictionary
 	 */
-	dict->dependents = fr_rb_inline_alloc(dict, fr_dict_dependent_t, node, _dict_dependent_cmp, NULL, 0);
+	dict->dependents = fr_rb_inline_alloc(dict, fr_dict_dependent_t, node, _dict_dependent_cmp, NULL);
 
 	/*
 	 *	Set default type size and length.

@@ -32,9 +32,6 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-/* rb.c */
-typedef struct fr_rb_s fr_rb_tree_t;
-
 /* Red-Black tree description */
 typedef enum {
 	BLACK,
@@ -46,91 +43,246 @@ struct fr_rb_node_s {
 	fr_rb_node_t		*left;		//!< Left child
 	fr_rb_node_t		*right;		//!< Right child
 	fr_rb_node_t		*parent;	//!< Parent
+	void			*data;		//!< data stored in node
+
 	fr_rb_colour_t		colour;		//!< Node colour (BLACK, RED)
 	bool			being_freed;	//!< Disable frees if we're currently calling
 						///< a free function.
-	void			*data;		//!< data stored in node
 };
 
-#define RB_FLAG_NONE    (0)
-#define RB_FLAG_LOCK    (1)
+typedef struct fr_rb_tree_s fr_rb_tree_t;
 
-/** Creates a red black that verifies elements are of a specific talloc type
+/** Callback used to alloc rbnodes
  *
- * @param[in] _ctx		to tie tree lifetime to.
+ * @param[in] tree	to allocate the node for.
+ * @param[in] data	associated with node.
+ */
+typedef fr_rb_node_t *(* rb_node_alloc_t)(fr_rb_tree_t const *tree, void *data);
+
+/** Callback used to free rbnodes
+ *
+ * @param[in] tree	that owns the node.
+ * @param[in] node	to free.
+ * @param[in] free_data free user data.
+ */
+typedef void (* rb_node_free_t)(fr_rb_tree_t const *tree, fr_rb_node_t *node, bool free_data);
+
+/** The main red black tree structure
+ *
+ */
+struct fr_rb_tree_s {
+#ifndef NDEBUG
+	uint32_t		magic;
+#endif
+
+	fr_rb_node_t		*root;		//!< Root of the rbtree.
+
+	TALLOC_CTX		*node_ctx;	//!< Talloc ctx to allocate nodes in.
+
+	char const		*type;		//!< Talloc type to check elements against.
+
+	fr_cmp_t		data_cmp;	//!< Callback to compare node data.
+	fr_free_t		data_free;	//!< Callback to free node data.
+
+	rb_node_alloc_t		node_alloc;	//!< Callback to allocate a new node.
+	rb_node_free_t		node_free;	//!< Callback to free a node.
+
+	/*
+	 *	Try and pack these more efficiently
+	 *	by grouping them together.
+	 */
+	uint16_t		offset;		//!< Where's the fr_rb_node_t is located in
+						///< the structure being inserted.
+	bool			being_freed;	//!< Prevent double frees in talloc_destructor.
+	uint32_t		num_elements;	//!< How many elements are inside the tree.
+};
+
+/** Initialises a red black that verifies elements are of a specific talloc type
+ *
+ * This variant allocates an #fr_rb_node_t on the heap.  This allows the data
+ * structure to be inserted into multiple trees.
+ *
+ * @param[out] _tree		to initialise.
+ * @param[in] _node_ctx		to tie tree lifetime to.
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
  * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
  * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
- * @param[in] _cmp		Comparator used to compare nodes.
- * @param[in] _node_free	Optional function used to free data if tree nodes are
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
- * @param[in] _flags		To modify tree behaviour.
  * @return
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_talloc_alloc(_ctx, _type, _node_cmp, _node_free, _flags) \
-		_fr_rb_alloc(_ctx, -1, #_type, _node_cmp, _node_free, _flags)
+#define		fr_rb_talloc_init(_tree, _node_ctx, _type, _data_cmp, _data_free) \
+		_fr_rb_init(_tree, _node_ctx, -1, #_type, _data_cmp, _data_free)
 
-/** Creates a red black tree
+/** Initialises a red black tree
  *
- * @param[in] _ctx		to tie tree lifetime to.
+ * This variant initates an #fr_rb_node_t on the heap.  This allows the data structure
+ * to be inserted into multiple trees.
+ *
+ * @param[out] _tree		to initialise.
+ * @param[in] _node_ctx		to tie tree lifetime to.
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
- * @param[in] _node_cmp		Comparator used to compare nodes.
- * @param[in] _node_free	Optional function used to free data if tree nodes are
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
- * @param[in] _flags		To modify tree behaviour.
  * @return
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_alloc(_ctx, _node_cmp, _node_free, _flags) \
-		_fr_rb_alloc(_ctx, -1, NULL, _node_cmp, _node_free, _flags)
+#define		fr_rb_init(_tree, _node_ctx, _data_cmp, _data_free) \
+		_fr_rb_init(_tree, _node_ctx, -1, NULL, _data_cmp, _data_free)
 
-/** Creates a red black that verifies elements are of a specific talloc type
+/** Initialises a red black that verifies elements are of a specific talloc type
  *
- * @param[in] _ctx		to tie tree lifetime to.
+ * This variant stores #fr_rb_node_t data inline with the data structure to avoid
+ * initating #fr_rb_node_t on the heap.
+ *
+ * It is suitable for use where the data structure will only be inserted into a
+ * fixed set of trees.
+ *
+ * @param[out] _tree		to initialise.
+ * @param[in] _node_ctx		to tie tree lifetime to.
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
  * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
  * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
- * @param[in] _node_cmp		Comparator used to compare nodes.
- * @param[in] _node_free	Optional function used to free data if tree nodes are
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
- * @param[in] _flags		To modify tree behaviour.
  * @return
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_inline_talloc_alloc(_ctx, _type, _field, _node_cmp, _node_free, _flags) \
+#define		fr_rb_inline_talloc_init(_tree, _node_ctx, _type, _field, _data_cmp, _data_free) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), #_type, _node_cmp, _node_free, _flags) \
+			fr_rb_node_t: _fr_rb_init(_tree, _node_ctx, offsetof(_type, _field), #_type, _data_cmp, _data_free) \
 		)
 
-/** Creates a red black tree
+/** Initialises a red black tree
+ *
+ * This variant stores #fr_rb_node_t data inline with the data structure to avoid
+ * initating #fr_rb_node_t on the heap.
+ *
+ * It is suitable for use where the data structure will only be inserted into a
+ * fixed set of trees.
+ *
+ * @param[out] _tree		to initialise.
+ * @param[in] _node_ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
+ * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
+ */
+#define		fr_rb_inline_init(_tree, _node_ctx, _type, _field, _data_cmp, _data_free) \
+		_Generic((((_type *)0)->_field), \
+			fr_rb_node_t: _fr_rb_init(_tree, _node_ctx, offsetof(_type, _field), NULL, _data_cmp, _data_free) \
+		)
+
+int _fr_rb_init(fr_rb_tree_t *tree, TALLOC_CTX *node_ctx,
+		ssize_t offset, char const *type,
+		fr_cmp_t data_cmp, fr_free_t data_free);
+
+/** Allocs a red black that verifies elements are of a specific talloc type
+ *
+ * This variant allocates an #fr_rb_node_t on the heap.  This allows the data structure
+ * to be inserted into multiple trees.
  *
  * @param[in] _ctx		to tie tree lifetime to.
  *				If ctx is freed, tree will free any nodes, calling the
  *				free function if set.
  * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
  * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
- * @param[in] _cmp		Comparator used to compare nodes.
- * @param[in] _node_free	Optional function used to free data if tree nodes are
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
- * @param[in] _flags		To modify tree behaviour.
  * @return
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_inline_alloc(_ctx, _type, _field, _node_cmp, _node_free, _flags) \
+#define		fr_rb_talloc_alloc(_ctx, _type, _data_cmp, _data_free) \
+		_fr_rb_alloc(_ctx, -1, #_type, _data_cmp, _data_free)
+
+/** Allocs a red black tree
+ *
+ * This variant allocates an #fr_rb_node_t on the heap.  This allows the data structure
+ * to be inserted into multiple trees.
+ *
+ * @param[in] _ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
+ */
+#define		fr_rb_alloc(_ctx, _data_cmp, _data_free) \
+		_fr_rb_alloc(_ctx, -1, NULL, _data_cmp, _data_free)
+
+/** Allocs a red black that verifies elements are of a specific talloc type
+ *
+ * This variant stores #fr_rb_node_t data inline with the data structure to avoid
+ * allocating #fr_rb_node_t on the heap.
+ *
+ * It is suitable for use where the data structure will only be inserted into a fixed
+ * set of trees.
+ *
+ * @param[in] _ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
+ * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
+ */
+#define		fr_rb_inline_talloc_alloc(_ctx, _type, _field, _data_cmp, _data_free) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), NULL, _node_cmp, _node_free, _flags) \
+			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), #_type, _data_cmp, _data_free) \
+		)
+
+/** Allocs a red black tree
+ *
+ * This variant stores #fr_rb_node_t data inline with the data structure to avoid
+ * allocating #fr_rb_node_t on the heap.
+ *
+ * It is suitable for use where the data structure will only be inserted into a fixed
+ * set of trees.
+ *
+ * @param[in] _ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
+ * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
+ * @param[in] _data_cmp		Callback to compare node data.
+ * @param[in] _data_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
+ */
+#define		fr_rb_inline_alloc(_ctx, _type, _field, _data_cmp, _data_free) \
+		_Generic((((_type *)0)->_field), \
+			fr_rb_node_t: _fr_rb_alloc(_ctx, offsetof(_type, _field), NULL, _data_cmp, _data_free) \
 		)
 
 fr_rb_tree_t	*_fr_rb_alloc(TALLOC_CTX *ctx, ssize_t offset, char const *type,
-			      fr_cmp_t compare, fr_free_t node_free, int flags) CC_HINT(warn_unused_result);
+			      fr_cmp_t data_cmp, fr_free_t data_free) CC_HINT(warn_unused_result);
 
 /** @hidecallergraph */
 void		*fr_rb_find(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
@@ -143,9 +295,7 @@ void		*fr_rb_remove(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
 bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
-uint64_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
-
-void		fr_rb_unlock(fr_rb_tree_t *tree) CC_HINT(nonnull);
+uint32_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
 
 /** Given a Node, return the data
  */
@@ -191,20 +341,6 @@ typedef struct {
 void		*fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
 
 void		*fr_rb_iter_next_postorder(fr_rb_iter_postorder_t *iter) CC_HINT(nonnull);
-
-/** Explicitly unlock the tree
- *
- * @note Must be called if iterating over the tree ends early.
- *
- * @param[in] iter	previously initialised with #fr_rb_iter_init
- */
-#define fr_rb_iter_done(_iter) \
-	(_Generic((_iter), \
-		fr_rb_iter_inorder_t *		: fr_rb_unlock(((fr_rb_iter_inorder_t *)(_iter))->tree),  \
-		fr_rb_iter_preorder_t *		: fr_rb_unlock(((fr_rb_iter_preorder_t *)(_iter))->tree),  \
-		fr_rb_iter_postorder_t *	: fr_rb_unlock(((fr_rb_iter_postorder_t *)(_iter))->tree)  \
-	))
-
 
 int		fr_rb_flatten_inorder(TALLOC_CTX *ctx, void **out[], fr_rb_tree_t *tree);
 

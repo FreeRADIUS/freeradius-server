@@ -57,7 +57,7 @@ bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
 fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma);
 
-uint64_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
+uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
 uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);
 
 void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received);

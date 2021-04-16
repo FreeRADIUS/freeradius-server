@@ -154,7 +154,7 @@ again:
 
 	fprintf(stderr, "filter = %x mask = %x n = %i\n", thresh.num, mask, n);
 
-	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, comp, freenode, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, comp, freenode);
 	for (i = 0; i < n; i++) {
 		fr_rb_tree_test_node_t *p;
 

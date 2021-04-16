@@ -55,7 +55,7 @@ static void test_fr_rb_iter_inorder(void)
 	fr_rb_iter_inorder_t	iter;
 
 	TEST_CASE("in-order iterator");
-	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL);
 	TEST_CHECK(t != NULL);
 
  	n = (fr_rand() % MAXSIZE) + 1;
@@ -78,11 +78,7 @@ static void test_fr_rb_iter_inorder(void)
 	     p = fr_rb_iter_next_inorder(&iter), i++) {
 		TEST_MSG("Checking sorted[%zu] s = %u vs n = %u", i, sorted[i].num, p->num);
 		TEST_CHECK(sorted[i].num == p->num);
-		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
 	}
-
-	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
-	pthread_mutex_unlock(&t->mutex);
 
 	talloc_free(t);
 }
@@ -107,7 +103,7 @@ static void test_fr_rb_iter_preorder(void)
 	/*
 	 *	Build a tree from pre_post_input.
 	 */
-	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL);
 	TEST_CHECK(t != NULL);
 
 	for (i = 0; i < sizeof(pre_post_input) / sizeof(uint32_t); i++) {
@@ -121,11 +117,7 @@ static void test_fr_rb_iter_preorder(void)
 	     p = fr_rb_iter_next_preorder(&iter), i++) {
 		TEST_MSG("Checking pre_output[%zu] = %u vs n = %u", i, pre_output[i], p->num);
 		TEST_CHECK(pre_output[i] == p->num);
-		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
 	}
-
-	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
-	pthread_mutex_unlock(&t->mutex);
 
 	talloc_free(t);
 }
@@ -141,7 +133,7 @@ static void test_fr_rb_iter_postorder(void)
 	/*
 	 *	Build a tree from pre_post_input.
 	 */
-	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL);
 	TEST_CHECK(t != NULL);
 
 	for (i = 0; i < sizeof(pre_post_input) / sizeof(uint32_t); i++) {
@@ -155,11 +147,7 @@ static void test_fr_rb_iter_postorder(void)
 	     p = fr_rb_iter_next_postorder(&iter), i++) {
 		TEST_MSG("Checking post_output[%zu] s = %u vs n = %u", i, post_output[i], p->num);
 		TEST_CHECK(post_output[i] == p->num);
-		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
 	}
-
-	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
-	pthread_mutex_unlock(&t->mutex);
 
 	talloc_free(t);
 }
@@ -189,7 +177,7 @@ static void test_fr_rb_iter_delete(void)
 	fr_rb_tree_test_node_t		*p;
 	fr_rb_iter_inorder_t	iter;
 
-	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL);
 	TEST_CHECK(t != NULL);
 
  	/*
@@ -219,59 +207,16 @@ static void test_fr_rb_iter_delete(void)
 	     p = fr_rb_iter_next_inorder(&iter), i++) {
 		TEST_MSG("Checking non_primes[%zu] = %u vs p->num = %u", i, non_primes[i], p->num);
 		TEST_CHECK(non_primes[i] == p->num);
-		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
 	}
-	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
-	pthread_mutex_unlock(&t->mutex);
 
 	talloc_free(t);
 }
-
-static void test_fr_rb_iter_done(void)
-{
-	fr_rb_tree_t 			*t;
-	size_t				i;
-	fr_rb_tree_test_node_t		*p;
-	fr_rb_iter_inorder_t	iter_in;
-
-	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, fr_rb_tree_test_cmp, NULL, RB_FLAG_LOCK);
-	TEST_CHECK(t != NULL);
-
- 	/*
- 	 *	Initialise the test nodes
- 	 *	with integers from 0 to 19.
- 	 */
-	for (i = 0; i < 20; i++) {
-		p = talloc(t, fr_rb_tree_test_node_t);
-		p->num = i;
-		fr_rb_insert(t, p);
-	}
-
-	/*
-	 *	Iterate inorder and get out early.
-	 */
-	for (p = fr_rb_iter_init_inorder(&iter_in, t), i = 0;
-	     p;
-	     p = fr_rb_iter_next_inorder(&iter_in), i++) {
-		if (i > 10) {
-			fr_rb_iter_done(&iter_in);
-			break;
-		}
-		TEST_CHECK(pthread_mutex_trylock(&t->mutex) != 0);	/* Lock still held */
-	}
-	TEST_CHECK(pthread_mutex_trylock(&t->mutex) == 0);		/* Lock released */
-	pthread_mutex_unlock(&t->mutex);
-
-	talloc_free(t);
-}
-
 
 TEST_LIST = {
 	{ "fr_rb_iter_inorder",            test_fr_rb_iter_inorder },
 	{ "fr_rb_iter_preorder",           test_fr_rb_iter_preorder },
 	{ "fr_rb_iter_postorder",          test_fr_rb_iter_postorder },
 	{ "fr_rb_iter_delete",             test_fr_rb_iter_delete },
-	{ "fr_rb_iter_done",               test_fr_rb_iter_done },
 
 	{ NULL }
 };

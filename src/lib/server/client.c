@@ -288,7 +288,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!clients->tree[client->ipaddr.prefix]) {
 		clients->tree[client->ipaddr.prefix] = fr_rb_inline_talloc_alloc(clients, RADCLIENT, node, client_cmp,
-										 NULL, RB_FLAG_NONE);
+										 NULL);
 		if (!clients->tree[client->ipaddr.prefix]) {
 			return false;
 		}

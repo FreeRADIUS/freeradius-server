@@ -101,7 +101,6 @@ static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uc
 		module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
 
 		if (count >= max_expansions) {
-			fr_rb_iter_done(&iter);
 			break;
 		}
 		if (fr_command_strncmp(text, mi->name)) {
@@ -1140,9 +1139,9 @@ void modules_free(void)
 int modules_init(void)
 {
 	MEM(module_instance_name_tree = fr_rb_inline_alloc(NULL, module_instance_t, name_node,
-							   module_instance_name_cmp, NULL, RB_FLAG_NONE));
+							   module_instance_name_cmp, NULL));
 	MEM(module_instance_data_tree = fr_rb_inline_alloc(NULL, module_instance_t, data_node,
-							   module_instance_data_cmp, NULL, RB_FLAG_NONE));
+							   module_instance_data_cmp, NULL));
 	instance_ctx = talloc_init("module instance context");
 
 	return 0;
@@ -1239,7 +1238,6 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 		if (mi->module->thread_instantiate) {
 			if (mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data, el, ti->data) < 0) {
 				PERROR("Thread instantiation failed for module \"%s\"", mi->name);
-				fr_rb_iter_done(&iter);
 				TALLOC_FREE(module_thread_inst_array);
 				return -1;
 			}
@@ -1344,7 +1342,6 @@ int modules_instantiate(void)
 	     instance;
 	     instance = fr_rb_iter_next_inorder(&iter)) {
 		if (_module_instantiate(instance) < 0) {
-			fr_rb_iter_done(&iter);
 			return -1;
 		}
 	}

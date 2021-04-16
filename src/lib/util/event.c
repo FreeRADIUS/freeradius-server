@@ -2281,7 +2281,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		return NULL;
 	}
 
-	el->fds = fr_rb_inline_talloc_alloc(el, fr_event_fd_t, node, fr_event_fd_cmp, NULL, 0);
+	el->fds = fr_rb_inline_talloc_alloc(el, fr_event_fd_t, node, fr_event_fd_cmp, NULL);
 	if (!el->fds) {
 		fr_strerror_const("Failed allocating FD tree");
 		goto error;
@@ -2402,7 +2402,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-		locations[i] = fr_rb_inline_alloc(tmp_ctx, fr_event_counter_t, node, event_timer_location_cmp, NULL, 0);
+		locations[i] = fr_rb_inline_alloc(tmp_ctx, fr_event_counter_t, node, event_timer_location_cmp, NULL);
 		if (!locations[i]) goto oom;
 	}
 

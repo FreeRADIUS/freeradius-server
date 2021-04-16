@@ -532,7 +532,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 */
 	if (inst->app_io->track_duplicates) {
 		MEM(connection->client->table = fr_rb_inline_talloc_alloc(client, fr_io_track_t, node,
-									  track_connected_cmp, NULL, RB_FLAG_NONE));
+									  track_connected_cmp, NULL));
 	}
 
 	/*
@@ -1469,8 +1469,7 @@ do_read:
 		 */
 		if (inst->app_io->track_duplicates) {
 			fr_assert(inst->app_io->compare != NULL);
-			MEM(client->table = fr_rb_inline_talloc_alloc(client, fr_io_track_t, node, track_cmp,
-								      NULL, RB_FLAG_NONE));
+			MEM(client->table = fr_rb_inline_talloc_alloc(client, fr_io_track_t, node, track_cmp, NULL));
 		}
 
 		/*

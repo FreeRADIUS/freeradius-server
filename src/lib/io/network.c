@@ -1584,12 +1584,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 {
 	fr_network_t *nr;
 
-#ifndef NDEBUG
-	int rbflags = RB_FLAG_LOCK;	/* Produces deadlocks when iterators conflict with other operations */
-#else
-	int rbflags = RB_FLAG_NONE;
-#endif
-
 	nr = talloc_zero(ctx, fr_network_t);
 	if (!nr) {
 		fr_strerror_const("Failed allocating memory");
@@ -1663,14 +1657,13 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = fr_rb_inline_talloc_alloc(nr, fr_network_socket_t, listen_node, socket_listen_cmp, NULL, rbflags);
+	nr->sockets = fr_rb_inline_talloc_alloc(nr, fr_network_socket_t, listen_node, socket_listen_cmp, NULL);
 	if (!nr->sockets) {
 		fr_strerror_const_push("Failed creating listen tree for sockets");
 		goto fail2;
 	}
 
-	nr->sockets_by_num = fr_rb_inline_talloc_alloc(nr, fr_network_socket_t,
-						       num_node, socket_num_cmp, NULL, rbflags);
+	nr->sockets_by_num = fr_rb_inline_talloc_alloc(nr, fr_network_socket_t, num_node, socket_num_cmp, NULL);
 	if (!nr->sockets_by_num) {
 		fr_strerror_const_push("Failed creating number tree for sockets");
 		goto fail2;
@@ -1745,7 +1738,7 @@ static int cmd_stats_self(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cm
 	fprintf(fp, "count.out\t%" PRIu64 "\n", nr->stats.out);
 	fprintf(fp, "count.dup\t%" PRIu64 "\n", nr->stats.dup);
 	fprintf(fp, "count.dropped\t%" PRIu64 "\n", nr->stats.dropped);
-	fprintf(fp, "count.sockets\t%"PRIu64"\n", fr_rb_num_elements(nr->sockets));
+	fprintf(fp, "count.sockets\t%u\n", fr_rb_num_elements(nr->sockets));
 
 	return 0;
 }

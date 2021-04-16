@@ -241,7 +241,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 	 *	are freed before it's destroyed.  Hence
 	 *	it being parented from the NULL ctx.
 	 */
-	state->tree = fr_rb_inline_talloc_alloc(NULL, fr_state_entry_t, node, state_entry_cmp, NULL, 0);
+	state->tree = fr_rb_inline_talloc_alloc(NULL, fr_state_entry_t, node, state_entry_cmp, NULL);
 	if (!state->tree) {
 		talloc_free(state);
 		return NULL;

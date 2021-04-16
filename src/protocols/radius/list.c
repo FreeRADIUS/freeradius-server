@@ -281,7 +281,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 
 	pl = talloc_zero(NULL, fr_packet_list_t);
 	if (!pl) return NULL;
-	pl->tree = fr_rb_inline_alloc(pl, fr_radius_packet_t, node, fr_packet_cmp, NULL, 0);	/* elements not talloc safe */
+	pl->tree = fr_rb_inline_alloc(pl, fr_radius_packet_t, node, fr_packet_cmp, NULL);	/* elements not talloc safe */
 	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;
@@ -703,9 +703,9 @@ fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint3
 	return NULL;
 }
 
-uint64_t fr_packet_list_num_incoming(fr_packet_list_t *pl)
+uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl)
 {
-	uint64_t num_elements;
+	uint32_t num_elements;
 
 	if (!pl) return 0;
 

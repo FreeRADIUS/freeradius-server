@@ -59,7 +59,7 @@ fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
 	case FR_HTRIE_RB:
 		if (!cmp_node) return NULL;
 
-		trie->ctx = fr_rb_alloc(trie, cmp_node, free_node, 0);
+		trie->ctx = fr_rb_alloc(trie, cmp_node, free_node);
 		if (!trie->ctx) {
 			talloc_free(trie);
 			return NULL;

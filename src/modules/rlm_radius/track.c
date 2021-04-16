@@ -161,7 +161,7 @@ retry:
 	 */
 	if (!tt->subtree[tt->next_id]) {
 		MEM(tt->subtree[tt->next_id] = fr_rb_inline_talloc_alloc(tt, radius_track_entry_t, node,
-									 te_cmp, NULL, RB_FLAG_NONE));
+									 te_cmp, NULL));
 	}
 
 	/*

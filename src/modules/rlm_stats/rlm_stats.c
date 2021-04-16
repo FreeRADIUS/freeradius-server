@@ -77,6 +77,8 @@ typedef struct {
 	fr_rb_tree_t		*dst;				//!< stats by destination
 
 	uint64_t		stats[FR_RADIUS_CODE_MAX];
+
+	pthread_mutex_t		mutex;
 } rlm_stats_thread_t;
 
 static const CONF_PARSER module_config[] = {
@@ -133,6 +135,8 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 	     other = fr_dlist_next(&t->inst->list, other)) {
 		int i;
 
+		pthread_mutex_lock(&other->mutex);
+
 		if (other == t) continue;
 
 		tree = (fr_rb_tree_t **) (((uint8_t *) other) + tree_offset);
@@ -145,6 +149,8 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
 			final_stats[i] += local_stats[i];
 		}
+
+		pthread_mutex_unlock(&other->mutex);
 	}
 }
 
@@ -183,6 +189,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		dst_code = request->reply->code;
 		if (dst_code >= FR_RADIUS_CODE_MAX) dst_code = 0;
 
+		pthread_mutex_lock(&t->mutex);
 		t->stats[src_code]++;
 		t->stats[dst_code]++;
 
@@ -221,6 +228,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		stats->last_packet = request->async->recv_time;
 		stats->stats[src_code]++;
 		stats->stats[dst_code]++;
+		pthread_mutex_unlock(&t->mutex);
 
 		/*
 		 *	@todo - periodically clean up old entries.
@@ -352,8 +360,15 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->inst = inst;
 
-	t->src = fr_rb_inline_talloc_alloc(t, rlm_stats_data_t, src_node, data_cmp, NULL, RB_FLAG_LOCK);
-	t->dst = fr_rb_inline_talloc_alloc(t, rlm_stats_data_t, dst_node, data_cmp, NULL, RB_FLAG_LOCK);
+	t->src = fr_rb_inline_talloc_alloc(t, rlm_stats_data_t, src_node, data_cmp, NULL);
+	if (unlikely(!t->src)) return -1;
+
+	t->dst = fr_rb_inline_talloc_alloc(t, rlm_stats_data_t, dst_node, data_cmp, NULL);
+	if (unlikely(!t->dst)) {
+		TALLOC_FREE(t->src);
+		return -1;
+	}
+	pthread_mutex_init(&t->mutex, 0);
 
 	pthread_mutex_lock(&inst->mutex);
 	fr_dlist_insert_head(&inst->list, t);
@@ -368,9 +383,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
  */
 static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
-	rlm_stats_thread_t *t = talloc_get_type_abort(thread, rlm_stats_thread_t);
-	rlm_stats_t *inst = t->inst;
-	int i;
+	rlm_stats_thread_t	*t = talloc_get_type_abort(thread, rlm_stats_thread_t);
+	rlm_stats_t		*inst = t->inst;
+	int			i;
 
 	pthread_mutex_lock(&inst->mutex);
 	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
@@ -378,6 +393,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	}
 	fr_dlist_remove(&inst->list, t);
 	pthread_mutex_unlock(&inst->mutex);
+	pthread_mutex_destroy(&t->mutex);
 
 	return 0;
 }

@@ -431,7 +431,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
 	fr_ipaddr_t ipaddr, *src;
 
-	MEM(t->tree = fr_rb_inline_alloc(t, rlm_icmp_echo_t, node, echo_cmp, NULL, RB_FLAG_NONE));
+	MEM(t->tree = fr_rb_inline_alloc(t, rlm_icmp_echo_t, node, echo_cmp, NULL));
 	t->inst = inst;
 	t->el = el;
 

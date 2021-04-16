@@ -107,7 +107,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The cache.
 	 */
-	driver->cache = fr_rb_inline_talloc_alloc(driver, rlm_cache_rb_entry_t, node, cache_entry_cmp, NULL, 0);
+	driver->cache = fr_rb_inline_talloc_alloc(driver, rlm_cache_rb_entry_t, node, cache_entry_cmp, NULL);
 	if (!driver->cache) {
 		ERROR("Failed to create cache");
 		return -1;

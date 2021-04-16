@@ -350,8 +350,7 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx)
 
 	if (!xlat_thread_inst_tree) {
 		MEM(xlat_thread_inst_tree = fr_rb_inline_talloc_alloc(ctx, xlat_thread_inst_t, inst_node,
-								      _xlat_thread_inst_cmp,
-								      _xlat_thread_inst_free, 0));
+								      _xlat_thread_inst_cmp, _xlat_thread_inst_free));
 	}
 
 	/*
@@ -362,7 +361,6 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx)
 	     data = fr_rb_iter_next_preorder(&iter)) {
 		if (_xlat_thread_instantiate(data, xlat_thread_inst_tree) < 0) {
 			TALLOC_FREE(xlat_thread_inst_tree);
-			fr_rb_iter_done(&iter);
 			return -1;
 		}
 	}
@@ -387,8 +385,7 @@ static int xlat_instantiate_init(void)
 {
 	if (xlat_inst_tree) return 0;
 
-	xlat_inst_tree = fr_rb_inline_talloc_alloc(NULL, xlat_inst_t, inst_node,
-						   _xlat_inst_cmp, _xlat_inst_free, RB_FLAG_NONE);
+	xlat_inst_tree = fr_rb_inline_talloc_alloc(NULL, xlat_inst_t, inst_node, _xlat_inst_cmp, _xlat_inst_free);
 	if (!xlat_inst_tree) return -1;
 
 	return 0;
@@ -412,7 +409,6 @@ int xlat_instantiate(void)
 
 		if (inst->node->call.func->instantiate &&
 		    (inst->node->call.func->instantiate(inst->data, inst->node, inst->node->call.func->uctx) < 0)) {
-			fr_rb_iter_done(&iter);
 			return -1;
 		}
 	}

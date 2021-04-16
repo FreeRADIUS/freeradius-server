@@ -371,9 +371,9 @@ void _cf_item_add(CONF_ITEM *parent, CONF_ITEM *child)
 	 *	New child, add child trees.
 	 */
 	if (!parent->ident1) parent->ident1 = fr_rb_inline_alloc(parent, CONF_ITEM, ident1_node,
-								 _cf_ident1_cmp, NULL, RB_FLAG_NONE);
+								 _cf_ident1_cmp, NULL);
 	if (!parent->ident2) parent->ident2 = fr_rb_inline_alloc(parent, CONF_ITEM, ident2_node,
-								 _cf_ident2_cmp, NULL, RB_FLAG_NONE);
+								 _cf_ident2_cmp, NULL);
 
 	fr_rb_insert(parent->ident1, child);
 	fr_rb_insert(parent->ident2, child);		/* NULL ident2 is still a value */
@@ -1701,7 +1701,6 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 
 		ret = cb(UNCONST(void *, cd->data), ctx);
 		if (ret) {
-			fr_rb_iter_done(&iter);
 			break;
 		}
 	}
@@ -2065,8 +2064,8 @@ void _cf_debug(CONF_ITEM const *ci)
 	DEBUG("  next          : %p", fr_dlist_next(&ci->parent->children, ci));
 	DEBUG("  parent        : %p", ci->parent);
 	DEBUG("  children      : %s", !fr_dlist_empty(&ci->children) ? "yes" : "no");
-	DEBUG("  ident1 tree   : %p (%" PRIu64 "entries)", ci->ident1, ci->ident1 ? fr_rb_num_elements(ci->ident1) : 0);
-	DEBUG("  ident2 tree   : %p (%" PRIu64 "entries)", ci->ident2, ci->ident2 ? fr_rb_num_elements(ci->ident2) : 0);
+	DEBUG("  ident1 tree   : %p (%u entries)", ci->ident1, ci->ident1 ? fr_rb_num_elements(ci->ident1) : 0);
+	DEBUG("  ident2 tree   : %p (%u entries)", ci->ident2, ci->ident2 ? fr_rb_num_elements(ci->ident2) : 0);
 
 	if (fr_dlist_empty(&ci->children)) return;
 
