@@ -643,7 +643,19 @@ int fr_rb_replace(fr_rb_tree_t *tree, void const *data)
 		return ret;
 	}
 	old_data = node->data;
-	node->data = UNCONST(void *, data);
+
+	/*
+	 *	If the fr_node_t is inline with the
+	 *	data structure, we need to delete
+	 *	the old node out of the tree, and
+	 *	perform a normal insert operation.
+	 */
+	if (tree->node_alloc == _node_inline_alloc) {
+		delete_internal(tree, node, false);
+		insert_node(tree, UNCONST(void *, data));
+	} else {
+		node->data = UNCONST(void *, data);
+	}
 	UNLOCK(tree);
 
 	if (tree->data_free) tree->data_free(old_data);
