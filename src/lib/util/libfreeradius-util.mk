@@ -33,6 +33,7 @@ SOURCES		:= \
 		   hex.c \
 		   hmac_md5.c \
 		   hmac_sha1.c \
+		   htrie.c \
 		   hw.c \
 		   inet.c \
 		   isaac.c \
