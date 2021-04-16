@@ -72,7 +72,7 @@ void		*fr_hash_table_remove(fr_hash_table_t *ht, void const *data) CC_HINT(nonnu
 
 bool		fr_hash_table_delete(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-uint64_t	fr_hash_table_num_elements(fr_hash_table_t *ht) CC_HINT(nonnull);
+uint32_t	fr_hash_table_num_elements(fr_hash_table_t *ht) CC_HINT(nonnull);
 
 void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter) CC_HINT(nonnull);
 

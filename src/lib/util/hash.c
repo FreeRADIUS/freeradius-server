@@ -583,7 +583,7 @@ bool fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
 /*
  *	Count number of elements
  */
-uint64_t fr_hash_table_num_elements(fr_hash_table_t *ht)
+uint32_t fr_hash_table_num_elements(fr_hash_table_t *ht)
 {
 	return ht->num_elements;
 }

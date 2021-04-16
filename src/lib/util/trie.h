@@ -80,7 +80,7 @@ void		*fr_trie_remove(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
 bool		fr_trie_delete(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
-uint64_t	fr_trie_num_elements(fr_trie_t *ft) CC_HINT(nonnull); /* always returns 0 */
+uint32_t	fr_trie_num_elements(fr_trie_t *ft) CC_HINT(nonnull); /* always returns 0 */
 
 #ifdef __cplusplus
 }
