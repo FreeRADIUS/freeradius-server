@@ -671,26 +671,29 @@ int fr_rb_replace(fr_rb_tree_t *tree, void const *data)
  *      - The user data we removed.
  *	- NULL if we couldn't find any matching data.
  */
-bool fr_rb_remove(fr_rb_tree_t *tree, void const *data)
+void *fr_rb_remove(fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t *node;
+	void *found = NULL;
 
 	LOCK(tree);
-	if (unlikely(tree->being_freed)) return false;
+	if (unlikely(tree->being_freed)) return NULL;
 	node = find_node(tree, data);
 	if (!node) {
 		UNLOCK(tree);
-		return false;
+		return NULL;
 	}
+
+	found = node->data;
 
 	if (unlikely(node->being_freed)) {
 		UNLOCK(tree);
-		return true;
+		return found;
 	}
 	delete_internal(tree, node, false);
 	UNLOCK(tree);
 
-	return true;
+	return found;
 }
 
 /** Remove node and free data (if a free function was specified)

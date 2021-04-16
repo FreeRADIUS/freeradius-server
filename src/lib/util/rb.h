@@ -139,7 +139,7 @@ bool		fr_rb_insert(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
 int		fr_rb_replace(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
-bool		fr_rb_remove(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+void		*fr_rb_remove(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
 bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
