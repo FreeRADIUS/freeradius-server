@@ -41,17 +41,17 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc-lean      }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc           }
-          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc-O2-g3     }
-          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-gcc-ndebug    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-lean    }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang         }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-O2-g3   }
-          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-ndebug  }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, OS: ubuntu-18.04, NAME: linux-clang-altlibs }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-lean      }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc           }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-O2-g3     }
+          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-ndebug    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-altlibs }
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-10.15,  NAME: macos-clang         }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  OS: ubuntu-18.04, NAME: linux-fuzzer        }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  OS: ubuntu-20.04, NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
 
