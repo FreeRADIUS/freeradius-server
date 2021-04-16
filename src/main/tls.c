@@ -1230,6 +1230,17 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case TLS1_AD_PROTOCOL_VERSION:
 					str_details2 = " protocol_version";
+
+#ifdef TLS1_3_VERSION
+					/*
+					 *	Complain about OpenSSL bugs.
+					 */
+					if ((tls_session->info.version > tls_session->conf->max_version) &&
+					    (rad_debug_lvl > 0)) {
+						WARN("TLS 1.3 has been negotiated even though it was disabled.  This is an OpenSSL Bug.");
+						WARN("Please set: cipher_list = \"DEFAULT@SECLEVEL=1\" in the tls {...} section.");
+					}
+#endif
 					break;
 
 				case TLS1_AD_INSUFFICIENT_SECURITY:
