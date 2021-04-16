@@ -725,19 +725,28 @@ static fr_trie_comp_t *fr_trie_comp_alloc(TALLOC_CTX *ctx, int bits)
 }
 #endif	/* WITH_NODE_COMPRESSION */
 
+typedef struct {
+	uint8_t		buffer[16]; /* for get_key callbacks */
+	fr_trie_key_t	get_key;
+	fr_free_t	free_data;
+} fr_trie_ctx_t;
+
 /** Allocate a trie
  *
  * @param ctx The talloc ctx
+ * @param get_key The "get key from object" function.
  * @return
  *	- NULL on error
  *	- fr_trie_node_t on success
  */
-fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
+fr_trie_t *_fr_trie_alloc(TALLOC_CTX *ctx, fr_trie_key_t get_key, fr_free_t free_data)
 {
 	fr_trie_user_t *user;
+	fr_trie_ctx_t *uctx;
 
 	/*
-	 *	The trie itself is just a user node with user data that is the talloc ctx
+	 *	The trie itself is just a user node with user data
+	 *	that is the get_key function.
 	 */
 	user = (fr_trie_user_t *) fr_trie_user_alloc(ctx, "");
 	if (!user) return NULL;
@@ -745,7 +754,15 @@ fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx)
 	/*
 	 *	Only the top-level node here can have 'user->data == NULL'
 	 */
-	user->data = ctx;
+	user->data = uctx = talloc_zero(user, fr_trie_ctx_t);
+	if (!user->data) {
+		talloc_free(user);
+		return NULL;
+	}
+
+	uctx->get_key = get_key;
+	uctx->free_data = free_data;
+
 	return (fr_trie_t *) user;
 }
 
@@ -2605,6 +2622,166 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 	 *	Call the internal walk function to do the work.
 	 */
 	return trie_key_walk(ft->trie, &my_cb, 0, false);
+}
+
+
+/**********************************************************************/
+
+/*
+ *	Object API.
+ */
+
+/** Find an element in the trie, returning the data.
+ *
+ * @param[in] ft to search in.
+ * @param[in] data to find.
+ * @return
+ *	- User data matching the data passed in.
+ *	- NULL if nothing matched passed data.
+ */
+void *fr_trie_find(fr_trie_t *ft, void const *data)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) ft;
+	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
+	uint8_t *key;
+	size_t keylen;
+
+	key = &uctx->buffer[0];
+	keylen = sizeof(uctx->buffer) * 8;
+
+	if (!uctx->get_key) return false;
+
+	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+
+	return fr_trie_lookup_by_key(ft, key, keylen);
+}
+
+/** Insert data into a trie
+ *
+ * @param[in] ft	to insert data into.
+ * @param[in] data 	to insert.
+ * @return
+ *	- true if data was inserted.
+ *	- false if data already existed and was not inserted.
+ */
+bool fr_trie_insert(fr_trie_t *ft, void const *data)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) ft;
+	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
+	uint8_t *key;
+	size_t keylen;
+
+	key = &uctx->buffer[0];
+	keylen = sizeof(uctx->buffer) * 8;
+
+	if (!uctx->get_key) return false;
+
+	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+
+	if (fr_trie_insert_by_key(ft, key, keylen, data) < 0) return false;
+
+	return true;
+}
+
+/** Replace old data with new data, OR insert if there is no old
+ *
+ * @param[in] ft	to insert data into.
+ * @param[in] data 	to replace.
+ * @return
+ *      - 1 if data was inserted.
+ *	- 0 if data was replaced.
+ *      - -1 if we failed to replace data
+ */
+int fr_trie_replace(fr_trie_t *ft, void const *data)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) ft;
+	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
+	uint8_t *key;
+	size_t keylen;
+	void *found;
+
+	key = &uctx->buffer[0];
+	keylen = sizeof(uctx->buffer) * 8;
+
+	if (!uctx->get_key) return -1;
+
+	if (uctx->get_key(&key, &keylen, data) < 0) return -1;
+
+	found = trie_key_match(ft, key, 0, keylen, true); /* do exact match */
+	if (found) {
+		if (fr_trie_remove_by_key(ft, key, keylen) != found) return -1;
+	}
+
+	/*
+	 *	Insert the new key.
+	 */
+	return fr_trie_insert_by_key(ft, key, keylen, data);
+}
+
+/** Remove an entry, without freeing the data
+ *
+ * @param[in] ft	to remove data from.
+ * @param[in] data 	to remove.
+ * @return
+ *      - The user data we removed.
+ *	- NULL if we couldn't find any matching data.
+ */
+void *fr_trie_remove(fr_trie_t *ft, void const *data)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) ft;
+	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
+	uint8_t *key;
+	size_t keylen;
+
+	key = &uctx->buffer[0];
+	keylen = sizeof(uctx->buffer) * 8;
+
+	if (!uctx->get_key) return NULL;
+
+	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
+
+	return fr_trie_remove_by_key(ft, key, keylen);
+}
+
+/** Remove node and free data (if a free function was specified)
+ *
+ * @param[in] ft	to remove data from.
+ * @param[in] data 	to remove/free.
+ * @return
+ *	- true if we removed data.
+ *      - false if we couldn't find any matching data.
+ */
+bool fr_trie_delete(fr_trie_t *ft, void const *data)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) ft;
+	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
+	uint8_t *key;
+	size_t keylen;
+	void *found;
+
+	key = &uctx->buffer[0];
+	keylen = sizeof(uctx->buffer) * 8;
+
+	if (!uctx->get_key) return false;
+
+	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+
+	found = fr_trie_remove_by_key(ft, key, keylen);
+	if (!found) return false;
+
+	if (!uctx->free_data) return true;
+
+	uctx->free_data(found);
+	return true;
+}
+
+/** Return how many nodes there are in a trie
+ *
+ * @param[in] ft	to return node count for.
+ */
+uint64_t fr_trie_num_elements(UNUSED fr_trie_t *ft)
+{
+	return 0;
 }
 
 #ifdef TESTING
