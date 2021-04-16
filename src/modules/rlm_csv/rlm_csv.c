@@ -565,7 +565,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX) ||
 	    (inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
-		MEM(inst->trie = fr_trie_alloc(inst));
+		MEM(inst->trie = fr_trie_alloc(inst, NULL, NULL));
 	} else {
 		MEM(inst->tree = fr_rb_inline_talloc_alloc(inst, rlm_csv_entry_t, node, csv_entry_cmp, NULL, 0));
 	}

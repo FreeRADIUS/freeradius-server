@@ -24,12 +24,12 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/htrie.h>
 
-fr_htrie_t *fr_htrie_create(TALLOC_CTX *ctx,
-			    fr_htrie_type_t type,
-			    fr_hash_t hash_node,
-			    fr_cmp_t cmp_node,
-			    fr_trie_key_t get_key,
-			    fr_free_t free_node)
+fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
+			   fr_htrie_type_t type,
+			   fr_hash_t hash_node,
+			   fr_cmp_t cmp_node,
+			   fr_trie_key_t get_key,
+			   fr_free_t free_node)
 {
 	fr_htrie_t *trie;
 
@@ -78,7 +78,7 @@ fr_htrie_t *fr_htrie_create(TALLOC_CTX *ctx,
 	case FR_HTRIE_TRIE:
 		if (!get_key) return NULL;
 
-		trie->ctx = fr_trie_generic_alloc(trie, get_key, free_node);
+		trie->ctx = fr_trie_alloc(trie, get_key, free_node);
 		if (!trie->ctx) {
 			talloc_free(trie);
 			return NULL;

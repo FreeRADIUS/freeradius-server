@@ -103,7 +103,7 @@ fr_trie_t *sql_state_trie_alloc(TALLOC_CTX *ctx)
 {
 	fr_trie_t *states;
 
-	MEM(states = fr_trie_alloc(ctx));
+	MEM(states = fr_trie_alloc(ctx, NULL, NULL));
 
 	if (sql_state_entries_from_table(states, sql_2011_classes) < 0) {
 		talloc_free(states);

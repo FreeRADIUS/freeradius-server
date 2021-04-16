@@ -439,7 +439,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			return -1;
 		}
 	} else {
-		MEM(inst->trie = fr_trie_alloc(inst));
+		MEM(inst->trie = fr_trie_alloc(inst, NULL, NULL));
 
 		for (i = 0; i < num; i++) {
 			fr_ipaddr_t *network;

@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/htrie.h
  *
- * @copyright 2005,2006 The FreeRADIUS server project
+ * @copyright 2021 The FreeRADIUS server project
  */
 RCSIDH(htrie_h, "$Id$")
 
@@ -30,7 +30,7 @@ extern "C" {
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/trie.h>
-	
+
 typedef struct fr_htrie_s fr_htrie_t;
 
 typedef void *(*fr_htrie_find_t)(fr_htrie_t *ht, void const *data);
@@ -55,7 +55,7 @@ struct fr_htrie_s {
 	fr_htrie_remove_t	remove;
 	fr_htrie_delete_t	delete;
 	fr_htrie_num_elements_t	num_elements;
-	
+
 };
 
 typedef enum {
@@ -64,7 +64,7 @@ typedef enum {
 	FR_HTRIE_TRIE,
 } fr_htrie_type_t;
 
-fr_htrie_t *fr_htrie_create(TALLOC_CTX *ctx,
+fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
 			    fr_htrie_type_t type,
 			    fr_hash_t hash_node,
 			    fr_cmp_t cmp_node,

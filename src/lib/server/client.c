@@ -115,25 +115,25 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 	clients->name = talloc_strdup(clients, cs ? cf_section_name1(cs) : "root");
 
 #ifdef WITH_TRIE
-	clients->v4_udp = fr_trie_alloc(clients);
+	clients->v4_udp = fr_trie_alloc(clients, NULL, NULL);
 	if (!clients->v4_udp) {
 		talloc_free(clients);
 		return NULL;
 	}
 
-	clients->v6_udp = fr_trie_alloc(clients);
+	clients->v6_udp = fr_trie_alloc(clients, NULL, NULL);
 	if (!clients->v6_udp) {
 		talloc_free(clients);
 		return NULL;
 	}
 
-	clients->v4_tcp = fr_trie_alloc(clients);
+	clients->v4_tcp = fr_trie_alloc(clients, NULL, NULL);
 	if (!clients->v4_tcp) {
 		talloc_free(clients);
 		return NULL;
 	}
 
-	clients->v6_tcp = fr_trie_alloc(clients);
+	clients->v6_tcp = fr_trie_alloc(clients, NULL, NULL);
 	if (!clients->v6_tcp) {
 		talloc_free(clients);
 		return NULL;

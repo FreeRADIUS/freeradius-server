@@ -55,15 +55,14 @@ typedef int (*fr_trie_walk_t)(uint8_t const *key, size_t keylen, void *data, voi
  */
 typedef int (*fr_trie_key_t)(uint8_t **out, size_t *outlen, void const *data);
 
-#define fr_trie_alloc(_ctx) _fr_trie_alloc(_ctx, NULL, NULL)
+fr_trie_t	*fr_trie_alloc(TALLOC_CTX *ctx, fr_trie_key_t get_key, fr_free_t free_node);
 
-#define fr_trie_generic_alloc(_ctx, _get_key, _free_data) _fr_trie_alloc(_ctx, _get_key, _free_data)
-
-fr_trie_t	*_fr_trie_alloc(TALLOC_CTX *ctx, fr_trie_key_t get_key, fr_free_t free_node);
 int		fr_trie_insert_by_key(fr_trie_t *ft, void const *key, size_t keylen, void const *data) CC_HINT(nonnull);
 
 void		*fr_trie_lookup_by_key(fr_trie_t const *ft, void const *key, size_t keylen) CC_HINT(nonnull);
+
 void		*fr_trie_match_by_key(fr_trie_t const *ft, void const *key, size_t keylen) CC_HINT(nonnull);
+
 void		*fr_trie_remove_by_key(fr_trie_t *ft, void const *key, size_t keylen) CC_HINT(nonnull);
 
 int		fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback) CC_HINT(nonnull(1,3));

@@ -2723,7 +2723,7 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 	fr_trie_t *trie;
 	size_t i, num;
 
-	MEM(trie = fr_trie_alloc(ctx));
+	MEM(trie = fr_trie_alloc(ctx, NULL, NULL));
 
 	num = talloc_array_length(allow);
 	fr_assert(num > 0);
@@ -2958,7 +2958,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	/*
 	 *	Create the trie of clients for this socket.
 	 */
-	MEM(thread->trie = fr_trie_alloc(thread));
+	MEM(thread->trie = fr_trie_alloc(thread, NULL, NULL));
 	MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
 						   fr_io_client_t, alive_id));
 

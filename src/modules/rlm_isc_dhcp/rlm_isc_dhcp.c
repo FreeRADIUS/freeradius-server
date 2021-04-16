@@ -1576,7 +1576,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 
 		}
 	} else {
-		parent->subnets = fr_trie_alloc(parent);
+		parent->subnets = fr_trie_alloc(parent, NULL, NULL);
 		if (!parent->subnets) return -1;
 	}
 

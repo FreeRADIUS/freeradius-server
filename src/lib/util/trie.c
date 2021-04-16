@@ -739,7 +739,7 @@ typedef struct {
  *	- NULL on error
  *	- fr_trie_node_t on success
  */
-fr_trie_t *_fr_trie_alloc(TALLOC_CTX *ctx, fr_trie_key_t get_key, fr_free_t free_data)
+fr_trie_t *fr_trie_alloc(TALLOC_CTX *ctx, fr_trie_key_t get_key, fr_free_t free_data)
 {
 	fr_trie_user_t *user;
 	fr_trie_ctx_t *uctx;
@@ -3422,7 +3422,7 @@ int main(int argc, char **argv)
 
 	data_ctx = talloc_init_const("data_ctx");
 
-	ft = fr_trie_alloc(NULL);
+	ft = fr_trie_alloc(NULL, NULL, NULL);
 	if (!ft) {
 		fprintf(stderr, "Failed creating trie\n");
 		fr_exit_now(1);
