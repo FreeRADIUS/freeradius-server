@@ -507,6 +507,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 
 	ssn->ctx = conf->ctx;
 	ssn->mtu = conf->fragment_size;
+	ssn->conf = conf;
 
 	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
@@ -662,6 +663,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 
 	state->ctx = conf->ctx;
 	state->ssl = new_tls;
+	state->conf = conf;
 
 	/*
 	 *	Initialize callbacks
