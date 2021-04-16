@@ -2685,20 +2685,24 @@ bool fr_trie_insert(fr_trie_t *ft, void const *data)
 
 /** Replace old data with new data, OR insert if there is no old
  *
+ * @param[out] old	data that was replaced.  If this argument
+ *			is not NULL, then the old data will not
+ *			be freed, even if a free function is
+ *			configured.
  * @param[in] ft	to insert data into.
  * @param[in] data 	to replace.
  * @return
- *      - 1 if data was inserted.
- *	- 0 if data was replaced.
+ *	- 1 if data was replaced.
+ *      - 0 if data was inserted.
  *      - -1 if we failed to replace data
  */
-int fr_trie_replace(fr_trie_t *ft, void const *data)
+int fr_trie_replace(void **old, fr_trie_t *ft, void const *data)
 {
-	fr_trie_user_t *user = (fr_trie_user_t *) ft;
-	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
-	uint8_t *key;
-	size_t keylen;
-	void *found;
+	fr_trie_user_t	*user = (fr_trie_user_t *) ft;
+	fr_trie_ctx_t	*uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
+	uint8_t		*key;
+	size_t		keylen;
+	void		*found;
 
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
@@ -2709,13 +2713,18 @@ int fr_trie_replace(fr_trie_t *ft, void const *data)
 
 	found = trie_key_match(ft, key, 0, keylen, true); /* do exact match */
 	if (found) {
+		if (old) *old = found;
 		if (fr_trie_remove_by_key(ft, key, keylen) != found) return -1;
+	} else {
+		if (old) *old = NULL;
 	}
 
 	/*
 	 *	Insert the new key.
 	 */
-	return fr_trie_insert_by_key(ft, key, keylen, data);
+	if (fr_trie_insert_by_key(ft, key, keylen, data) < 0) return -1;
+
+	return found ? 1 : 0;
 }
 
 /** Remove an entry, without freeing the data

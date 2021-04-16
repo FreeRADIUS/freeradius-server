@@ -38,7 +38,7 @@ typedef void *(*fr_htrie_find_t)(fr_htrie_t *ht, void const *data);
 
 typedef bool (*fr_htrie_insert_t)(fr_htrie_t *ht, void const *data);
 
-typedef int (*fr_htrie_replace_t)(fr_htrie_t *ht, void const *data);
+typedef int (*fr_htrie_replace_t)(void **old, fr_htrie_t *ht, void const *data);
 
 typedef void *(*fr_htrie_remove_t)(fr_htrie_t *ht, void const *data);
 
@@ -99,9 +99,9 @@ static inline CC_HINT(nonnull) bool fr_htrie_insert(fr_htrie_t *ht, void const *
 /** Replace data in a htrie, freeing previous data if free_data cb was passed to fr_htrie_alloc
  *
  */
-static inline CC_HINT(nonnull) int fr_htrie_replace(fr_htrie_t *ht, void const *data)
+static inline CC_HINT(nonnull(2,3)) int fr_htrie_replace(void **old, fr_htrie_t *ht, void const *data)
 {
-	return ht->funcs.replace(ht->store, data);
+	return ht->funcs.replace(old, ht->store, data);
 }
 
 /** Remove data from a htrie without freeing it

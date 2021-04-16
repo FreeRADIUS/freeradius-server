@@ -1236,7 +1236,7 @@ int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
 		}
 	}
 
-	if (fr_rb_replace(vns_tree, vns) < 0) {
+	if (fr_rb_replace(NULL, vns_tree, vns) < 0) {
 		ERROR("Failed inserting namespace into tree");
 		return -1;
 	}

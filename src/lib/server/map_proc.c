@@ -134,7 +134,7 @@ int map_proc_register(void *mod_inst, char const *name,
 		strlcpy(proc->name, name, sizeof(proc->name));
 		proc->length = strlen(proc->name);
 
-		if (fr_rb_replace(map_proc_root, proc) < 0) {
+		if (fr_rb_replace(NULL, map_proc_root, proc) < 0) {
 			talloc_free(proc);
 			return -1;
 		}

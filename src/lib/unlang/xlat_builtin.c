@@ -221,7 +221,7 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
-	if (is_new && (fr_rb_replace(xlat_root, c) < 0)) {
+	if (is_new && (fr_rb_replace(NULL, xlat_root, c) < 0)) {
 		ERROR("Failed inserting xlat registration for %s",
 		      c->name);
 		talloc_free(c);
@@ -292,7 +292,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 	talloc_set_destructor(c, _xlat_func_talloc_free);
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
-	if (fr_rb_replace(xlat_root, c) < 0) {
+	if (fr_rb_replace(NULL, xlat_root, c) < 0) {
 		ERROR("%s: Failed inserting xlat registration for %s", __FUNCTION__, c->name);
 		talloc_free(c);
 		return NULL;

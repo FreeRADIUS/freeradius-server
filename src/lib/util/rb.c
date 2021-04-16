@@ -33,7 +33,7 @@ static fr_rb_node_t sentinel = { NIL, NIL, NULL, NULL, BLACK, false };
 #  define RB_MAGIC (0x5ad09c42)
 #endif
 
-static fr_rb_node_t	*insert_node(fr_rb_tree_t *tree, void *data) CC_HINT(nonnull);
+static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data) CC_HINT(nonnull);
 
 static inline CC_HINT(always_inline) void node_data_free(fr_rb_tree_t const *tree, fr_rb_node_t *node)
 {
@@ -333,8 +333,16 @@ static inline CC_HINT(always_inline) void insert_fixup(fr_rb_tree_t *tree, fr_rb
 
 /** Insert an element into the tree
  *
+ * @param[out] existing		if a node exists, and existing is not NULL
+ *				this will be populated with the node.
+ * @param[in] tree		to search in.
+ * @param[in] data		to search for.
+ * @return
+ *	- 1 on existing (with existing populated).
+ *      - 0 on success.
+ *	- -1 on failure.
  */
-static fr_rb_node_t *insert_node(fr_rb_tree_t *tree, void *data)
+static int insert_node(fr_rb_node_t **existing, fr_rb_tree_t *tree, void *data)
 {
 	fr_rb_node_t *current, *parent, *x;
 
@@ -354,7 +362,10 @@ static fr_rb_node_t *insert_node(fr_rb_tree_t *tree, void *data)
 		 *	See if two entries are identical.
 		 */
 		result = tree->data_cmp(data, current->data);
-		if (result == 0) return NULL;
+		if (result == 0) {
+			if (existing) *existing = current;
+			return 1
+		}
 
 		parent = current;
 		current = (result < 0) ? current->left : current->right;
@@ -362,7 +373,7 @@ static fr_rb_node_t *insert_node(fr_rb_tree_t *tree, void *data)
 
 	/* setup new node */
 	x = tree->node_alloc(tree, data);
-	if (unlikely(!x)) return NULL;
+	if (unlikely(!x)) return -1;
 
 	*x = (fr_rb_node_t){
 		.data = data,
@@ -387,7 +398,7 @@ static fr_rb_node_t *insert_node(fr_rb_tree_t *tree, void *data)
 
 	tree->num_elements++;
 
-	return x;
+	return 0;
 }
 
 /** Maintain RED-BLACK tree balance after deleting node x
@@ -573,6 +584,35 @@ void *fr_rb_find(fr_rb_tree_t *tree, void const *data)
 	return x->data;
 }
 
+/** Attempt to find current data in the tree, if it does not exist insert it
+ *
+ * @param[out] found	Pre-existing data we found.
+ * @param[in] tree	to search/insert into.
+ * @param[in] data	to find.
+ * @return
+ *	- 1 if existing data was found, found will be populated.
+ *	- 0 if no existing data was found.
+ *	- -1 on insert error.
+ */
+int fr_rb_find_or_insert(void **found, fr_rb_tree_t *tree, void const *data)
+{
+	fr_rb_node_t *existing;
+
+	switch (insert_node(existing, tree, UNCONST(void *, data))) {
+	case 1:
+		if (found) *found = existing->data;
+		return 1;
+
+	case 0:
+		if (found) *found = NULL;
+		return 0;
+
+	default:
+		if (found) *found = NULL;
+		return -1;
+	}
+}
+
 /** Insert data into a tree
  *
  * @param[in] tree	to insert data into.
@@ -583,44 +623,61 @@ void *fr_rb_find(fr_rb_tree_t *tree, void const *data)
  */
 bool fr_rb_insert(fr_rb_tree_t *tree, void const *data)
 {
-	if (insert_node(tree, UNCONST(void *, data))) return true;
+	if (insert_node(NULL, tree, UNCONST(void *, data)) == 0) return true;
 
 	return false;
 }
 
 /** Replace old data with new data, OR insert if there is no old
  *
+ * @param[out] old	data that was replaced.  If this argument
+ *			is not NULL, then the old data will not
+ *			be freed, even if a free function is
+ *			configured.
  * @param[in] tree	to insert data into.
  * @param[in] data 	to replace.
  * @return
- *      - 1 if data was inserted.
- *	- 0 if data was replaced.
+ *      - 1 if data was replaced.
+ *	- 0 if data was inserted.
  *      - -1 if we failed to replace data
  */
-int fr_rb_replace(fr_rb_tree_t *tree, void const *data)
+int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t	*node;
-	void		*old_data;
 
-	node = find_node(tree, UNCONST(void *, data));
-	if (!node) return insert_node(tree, UNCONST(void *, data)) ? 1 : -1;
-	old_data = node->data;
+	switch (insert_node(&node, tree, UNCONST(void *, data))) {
+	case 1: /* Something exists */
+	{
+		void	*old_data = node->data;
 
-	/*
-	 *	If the fr_node_t is inline with the
-	 *	data structure, we need to delete
-	 *	the old node out of the tree, and
-	 *	perform a normal insert operation.
-	 */
-	if (tree->node_alloc == _node_inline_alloc) {
-		delete_internal(tree, node, false);
-		insert_node(tree, UNCONST(void *, data));
-	} else {
-		node->data = UNCONST(void *, data);
+		/*
+		 *	If the fr_node_t is inline with the
+		 *	data structure, we need to delete
+		 *	the old node out of the tree, and
+		 *	perform a normal insert operation.
+		 */
+		if (tree->node_alloc == _node_inline_alloc) {
+			delete_internal(tree, node, false);
+			insert_node(NULL, tree, UNCONST(void *, data));
+		} else {
+			node->data = UNCONST(void *, data);
+		}
+
+		if (old) {
+			*old = old_data;
+		} else if (tree->data_free) {
+			tree->data_free(old_data);
+		}
+		return 1;
 	}
-	if (tree->data_free) tree->data_free(old_data);
+	case 0: /* New node was inserted - There was no pre-existing node */
+		if (old) *old = NULL;
+		return 0;
 
-	return 0;
+	default:
+		if (old) *old = NULL;
+		return -1;
+	}
 }
 
 /** Remove an entry from the tree, without freeing the data

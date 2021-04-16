@@ -66,7 +66,7 @@ void		*fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *
 
 bool		fr_hash_table_insert(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
-int		fr_hash_table_replace(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
+int		fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data) CC_HINT(nonnull(2,3));
 
 void		*fr_hash_table_remove(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 

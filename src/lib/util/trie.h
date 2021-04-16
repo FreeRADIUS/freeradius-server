@@ -74,7 +74,7 @@ void		*fr_trie_find(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
 bool		fr_trie_insert(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
-int		fr_trie_replace(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
+int		fr_trie_replace(void **old, fr_trie_t *ft, void const *data) CC_HINT(nonnull(2, 3));
 
 void		*fr_trie_remove(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 

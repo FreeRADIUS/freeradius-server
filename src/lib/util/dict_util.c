@@ -827,7 +827,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (fr_hash_table_replace(dict->vendors_by_num, vendor) < 0) {
+	if (fr_hash_table_replace(NULL, dict->vendors_by_num, vendor) < 0) {
 		fr_strerror_printf("%s: Failed inserting vendor %s", __FUNCTION__, name);
 		return -1;
 	}
@@ -1049,7 +1049,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 		 *	dictionary but entry in the name hash table is
 		 *	updated to point to the new definition.
 		 */
-		if (fr_hash_table_replace(namespace, da) < 0) {
+		if (fr_hash_table_replace(NULL, namespace, da) < 0) {
 			fr_strerror_const("Internal error storing attribute");
 			goto error;
 		}
@@ -1316,7 +1316,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	take care of that here.
 	 */
 	if (takes_precedence) {
-		if (fr_hash_table_replace(ext->name_by_value, enumv) < 0) {
+		if (fr_hash_table_replace(NULL, ext->name_by_value, enumv) < 0) {
 			fr_strerror_printf("%s: Failed inserting value %s", __FUNCTION__, name);
 			return -1;
 		}

@@ -503,22 +503,33 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 
 /** Replace old data with new data, OR insert if there is no old
  *
+ * @param[out] old	data that was replaced.  If this argument
+ *			is not NULL, then the old data will not
+ *			be freed, even if a free function is
+ *			configured.
  * @param[in] ht	to insert data into.
  * @param[in] data 	to replace.  Will be passed to the
  *      		hashing function.
  * @return
- *      - 1 if data was inserted.
- *	- 0 if data was replaced.
+ *      - 1 if data was replaced.
+ *	- 0 if data was inserted.
  *      - -1 if we failed to replace data
  */
-int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
+int fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
 
 	node = hash_table_find(ht, ht->hash(data), data);
-	if (!node) return fr_hash_table_insert(ht, data) ? 1 : -1;
+	if (!node) {
+		if (old) *old = NULL;
+		return fr_hash_table_insert(ht, data) ? 1 : -1;
+	}
 
-	if (ht->free) ht->free(node->data);
+	if (old) {
+		*old = node->data;
+	} else if (ht->free) {
+		ht->free(node->data);
+	}
 
 	node->data = UNCONST(void *, data);
 
