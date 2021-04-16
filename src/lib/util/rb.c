@@ -97,7 +97,7 @@ static fr_rb_node_t *_node_inline_alloc(fr_rb_tree_t const *tree, void *data)
  */
 static void _node_inline_free(UNUSED fr_rb_tree_t const *tree, fr_rb_node_t *node, bool free_data)
 {
-	if (free_data) {
+	if (free_data && tree->data_free) {
 		node_data_free(tree, node);
 	} else {
 		memset(node, 0, sizeof(fr_rb_node_t));	/* makes "still in tree?" checks easier */
