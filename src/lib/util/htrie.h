@@ -68,7 +68,7 @@ struct fr_htrie_s {
 
 typedef enum {
 	FR_HTRIE_INVALID = 0,
-	FR_HTRIE_HASH = 0,	//!< Data is stored in a hash.
+	FR_HTRIE_HASH,		//!< Data is stored in a hash.
 	FR_HTRIE_RB,		//!< Data is stored in a rb tree.
 	FR_HTRIE_TRIE,		//!< Data is stored in a prefix trie.
 } fr_htrie_type_t;
