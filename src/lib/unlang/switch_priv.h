@@ -27,10 +27,13 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/util/htrie.h>
 
 typedef struct {
 	unlang_group_t	group;
+	unlang_t	*default_case;
 	tmpl_t		*vpt;
+	fr_htrie_t	*ht;
 } unlang_switch_t;
 
 /** Cast a group structure to the switch keyword extension

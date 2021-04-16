@@ -1874,22 +1874,46 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	return compile_section(parent, unlang_ctx, cs, &group);
 }
 
+static int8_t case_cmp(void const *one, void const *two)
+{
+	unlang_case_t const *a = (unlang_case_t const *) one; /* may not be talloc'd! See switch.c */
+	unlang_case_t const *b = (unlang_case_t const *) two; /* may not be talloc'd! */
+
+	return fr_value_box_cmp(tmpl_value(a->vpt), tmpl_value(b->vpt));
+}
+
+static uint32_t case_hash(void const *data)
+{
+	unlang_case_t const *a = (unlang_case_t const *) data; /* may not be talloc'd! */
+
+	return fr_value_box_hash(tmpl_value(a->vpt));
+}
+
+static int case_to_key(uint8_t **out, size_t *outlen, void const *data)
+{
+	unlang_case_t const *a = (unlang_case_t const *) data; /* may not be talloc'd! */
+
+	return fr_value_box_to_key(out, outlen, tmpl_value(a->vpt));
+}
+
 static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs);
 
 static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	CONF_ITEM		*ci;
-	fr_token_t		type;
+	fr_token_t		token;
 	char const		*name1, *name2;
-	bool			had_seen_default = false;
 
 	unlang_group_t		*g;
-	unlang_switch_t	*gext;
+	unlang_switch_t		*gext;
 
 	unlang_t		*c;
 	ssize_t			slen;
 
 	tmpl_rules_t		t_rules;
+
+	fr_type_t		type;
+	fr_htrie_type_t		htype;
 
 	static unlang_ext_t const switch_ext = {
 		.type = UNLANG_TYPE_SWITCH,
@@ -1926,10 +1950,10 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	The 'case' statements need g->vpt filled out to ensure
 	 *	that the data types match.
 	 */
-	type = cf_section_name2_quote(cs);
+	token = cf_section_name2_quote(cs);
 	slen = tmpl_afrom_substr(gext, &gext->vpt,
 				 &FR_SBUFF_IN(name2, strlen(name2)),
-				 type,
+				 token,
 				 NULL,
 				 &t_rules);
 	if (!gext->vpt) {
@@ -1982,6 +2006,33 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	if (!tmpl_is_attr(gext->vpt)) (void) tmpl_cast_set(gext->vpt, FR_TYPE_STRING);
 
+	type = FR_TYPE_STRING;
+	if (gext->vpt->cast) {
+		type = gext->vpt->cast;
+
+	} else if (tmpl_is_attr(gext->vpt)) {
+		type = tmpl_da(gext->vpt)->type;
+	}
+
+	htype = fr_htrie_hint(type);
+	if (htype == FR_HTRIE_INVALID) {
+		cf_log_err(cs, "Invalid data type '%s' used for 'switch' statement",
+			    fr_table_str_by_value(fr_value_box_type_table, type, "???"));
+		talloc_free(g);
+		return NULL;
+	}
+
+	gext->ht = fr_htrie_alloc(gext, htype,
+				  (fr_hash_t) case_hash,
+				  (fr_cmp_t) case_cmp,
+				  (fr_trie_key_t) case_to_key,
+				  NULL);
+	if (!gext->ht) {
+		cf_log_err(cs, "Failed initializing internal data structures");
+		talloc_free(g);
+		return NULL;
+	}
+
 	/*
 	 *	Walk through the children of the switch section,
 	 *	ensuring that they're all 'case' statements, and then compiling them.
@@ -1991,6 +2042,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	     ci = cf_item_next(cs, ci)) {
 		CONF_SECTION *subcs;
 		unlang_t *single;
+		unlang_case_t	*case_gext;
 
 		if (!cf_item_is_section(ci)) {
 			if (!cf_item_is_pair(ci)) continue;
@@ -2024,13 +2076,11 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
 		handle_default:
-			if (had_seen_default) {
+			if (gext->default_case) {
 				cf_log_err(ci, "Cannot have two 'default' case statements");
 				talloc_free(g);
 				return NULL;
 			}
-
-			had_seen_default = true;
 		}
 
 		/*
@@ -2038,6 +2088,30 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		 */
 		single = compile_case(c, unlang_ctx, subcs);
 		if (!single) {
+			talloc_free(g);
+			return NULL;
+		}
+
+		fr_assert(single->type == UNLANG_TYPE_CASE);
+
+		/*
+		 *	Remember the "default" section, and insert the
+		 *	non-default "case" into the htrie.
+		 */
+		case_gext = unlang_group_to_case(unlang_generic_to_group(single));
+		if (!case_gext->vpt) {
+			gext->default_case = single;
+
+		} else if (!fr_htrie_insert(gext->ht, single)) {
+			single = fr_htrie_find(gext->ht, single);
+
+			/*
+			 *	@todo - look up the key and get the previous one?
+			 */
+			cf_log_err(ci, "Failed inserting 'case' statement.  Is there a duplicate?");
+
+			if (single) cf_log_err(unlang_generic_to_group(single)->cs, "Duplicate may be here.");
+
 			talloc_free(g);
 			return NULL;
 		}

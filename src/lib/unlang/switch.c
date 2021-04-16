@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_t		*this, *found, *null_case;
+	unlang_t		*found;
 
 	unlang_group_t		*switch_g;
 	unlang_switch_t		*switch_gext;
@@ -40,10 +40,28 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 
 	fr_pair_t		*vp;
 
+	/*
+	 *	Mock up an unlang_cast_t.  Note that these on-stack
+	 *	buffers are the reason why case_cmp(), case_hash(),
+	 *	and case_to_key() use direct casts, and not the
+	 *	"generic to x" functions.
+	 */
+	tmpl_t			case_vpt = (tmpl_t) {
+		.type = TMPL_TYPE_DATA,
+	};
+	unlang_case_t		my_case = (unlang_case_t) {
+		.group = (unlang_group_t) {
+			.self = (unlang_t) {
+				.type = UNLANG_TYPE_CASE,
+			},
+		},
+		.vpt = &case_vpt,
+	};
+
 	switch_g = unlang_generic_to_group(frame->instruction);
 	switch_gext = unlang_group_to_switch(switch_g);
 
-	null_case = found = NULL;
+	found = NULL;
 
 	/*
 	 *	The attribute doesn't exist.  We can skip
@@ -51,21 +69,7 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	if (tmpl_is_attr(switch_gext->vpt)) {
 		if (tmpl_find_vp(&vp, request, switch_gext->vpt) < 0) {
-		find_null_case:
-			for (this = switch_g->children; this; this = this->next) {
-				unlang_group_t		*case_g;
-				unlang_case_t	*case_gext;
-
-				fr_assert(this->type == UNLANG_TYPE_CASE);
-
-				case_g = unlang_generic_to_group(this);
-				case_gext = unlang_group_to_case(case_g);
-				if (case_gext->vpt) continue;
-
-				found = this;
-				break;
-			}
-
+			found = switch_gext->default_case;
 			goto do_null_case;
 		} else {
 			box = &vp->data;
@@ -91,36 +95,17 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	}
 
 	/*
-	 *	Find either the exact matching name, or the
-	 *	"case {...}" statement.
+	 *	case_gext->vpt.data.literal is an in-line box, so we
+	 *	have to make a shallow copy of its contents.
 	 */
-	for (this = switch_g->children; this; this = this->next) {
-		unlang_group_t	*case_g;
-		unlang_case_t	*case_gext;
+	fr_value_box_copy_shallow(request, &case_vpt.data.literal, box);
+	found = fr_htrie_find(switch_gext->ht, &my_case);
+	fr_value_box_clear(&case_vpt.data.literal);
 
-		fr_assert(this->type == UNLANG_TYPE_CASE);
-
-		case_g = unlang_generic_to_group(this);
-		case_gext = unlang_group_to_case(case_g);
-
-		/*
-		 *	Remember the default case
-		 */
-		if (!case_gext->vpt) {
-			if (!null_case) null_case = this;
-			continue;
-		}
-
-		/*
-		 *	We have two values, just compare them.
-		 */
-		if (fr_value_box_cmp(box, &case_gext->vpt->data.literal) == 0) {
-			found = this;
-			break;
-		}
+	if (!found) {
+	find_null_case:
+		found = switch_gext->default_case;
 	}
-
-	if (!found) found = null_case;
 
 do_null_case:
 	if (box == tmpl_value(&vpt)) fr_value_box_clear_value(&vpt.data.literal);
