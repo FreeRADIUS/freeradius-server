@@ -531,7 +531,7 @@ static inline CC_HINT(nonnull(1)) void *fr_dlist_remove(fr_dlist_head_t *list_he
 
 	if (prev == head) return NULL;	/* Works with fr_dlist_next so that the next item is the list HEAD */
 
-	return fr_dlist_entry_to_item(list_head->offset, entry);
+	return fr_dlist_entry_to_item(list_head->offset, prev);
 }
 
 /** Remove the head item in a list
