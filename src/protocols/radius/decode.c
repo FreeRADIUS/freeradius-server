@@ -1024,10 +1024,14 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const
 
 /** Create any kind of VP from the attribute contents
  *
- * "length" is AT LEAST the length of this attribute, as we
- * expect the caller to have verified the data with
- * fr_radius_packet_ok().  "length" may be up to the length of the
- * packet.
+ *  "length" is AT LEAST the length of this attribute, as we
+ *  expect the caller to have verified the data with
+ *  fr_radius_packet_ok().  "length" may be up to the length of the
+ *  packet.
+ *
+ *  This function will ONLY return -1 on programmer error or OOM.  If
+ *  there's anything wrong with the attribute, it will ALWAYS create a
+ *  "raw" attribute.
  *
  * @return
  *	- Length on success.
@@ -1089,7 +1093,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 			/*
 			 *	Only "short" attributes can be encrypted.
 			 */
-			if (data_len >= sizeof(buffer)) return -1;
+			if (data_len >= sizeof(buffer)) goto raw;
 
 			if (parent->type == FR_TYPE_STRING) {
 				memcpy(buffer, p + 1, data_len - 1);
@@ -1118,8 +1122,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 			packet_ctx->tags = talloc_zero_array(NULL, fr_radius_tag_ctx_t *, 32);
 			if (!packet_ctx->tags) {
 				talloc_free(vp);
-				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-				return -1;
+				goto raw;
 			}
 		}
 
@@ -1132,21 +1135,19 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 			packet_ctx->tags[tag] = talloc_zero(packet_ctx->tags, fr_radius_tag_ctx_t);
 			if (!packet_ctx->tags[tag]) {
 				talloc_free(vp);
-				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-				return -1;
+				goto raw;
 			}
 
 			group_da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), FR_TAG_BASE + tag);
 			if (!group_da) {
 				talloc_free(vp);
-				fr_strerror_printf("Failed finding attribute 'Tag-%u'", tag);
-				return -1;
+				goto raw;
 			}
 
 			group = fr_pair_afrom_da(ctx, group_da);
 			if (!group) {
 				talloc_free(vp);
-				return -1;
+				goto raw;
 			}
 
 			fr_dcursor_append(cursor, group);
@@ -1165,7 +1166,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 		 *	old-style format.  Extended attributes CANNOT
 		 *	be encrypted.
 		 */
-		if (attr_len > 253) return -1;
+		if (attr_len > 253) goto raw;
 
 		if (p == data) memcpy(buffer, p, attr_len);
 		p = buffer;
@@ -1459,6 +1460,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 		if (vp) talloc_free(vp);
 
 		vp = fr_raw_from_network(ctx, parent, data, attr_len);
+		if (!vp) return -1;
+
 		tag = 0;
 		goto done;
 	}
