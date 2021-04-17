@@ -49,13 +49,6 @@ static void fr_pair_list_perf_init(void);
 #include "pair.c"
 #include <freeradius-devel/server/base.h>
 
-#define EXIT_WITH_FAILURE \
-do { \
-	ret = EXIT_FAILURE; \
-	goto cleanup; \
-} while (0)
-
-
 typedef struct {
         int attr;
         fr_dict_attr_t const **parent;
