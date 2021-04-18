@@ -395,18 +395,17 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
+	 *	TLVs are just another 
+	 */
+	if (da->type == FR_TYPE_TLV) return encode_tlv_children(dbuff, da_stack, depth, cursor, encode_ctx);
+
+	/*
 	 *	Catch errors early on.
 	 */
 	if (flag_encrypted(&vp->da->flags) && !packet_ctx) {
 		fr_strerror_const("Asked to encrypt attribute, but no packet context provided");
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
-
-	/*
-	 *	It's a little weird to consider a TLV as a value,
-	 *	but it seems to work OK.
-	 */
-	if (da->type == FR_TYPE_TLV) return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
 
 	/*
 	 *	This has special requirements.
@@ -858,11 +857,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended");
 	}
 
-	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_children(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-	} else {
-		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-	}
+	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	/*
@@ -1081,16 +1076,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 		break;
 	}
 
-	/*
-	 *	Because we've now encoded the attribute header,
-	 *	if this is a TLV, we must process it via the
-	 *	internal tlv function, else we get a double TLV header.
-	 */
-	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_children(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-	} else {
-		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-	}
+	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	if (dv->flags.length) {
@@ -1158,11 +1144,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 *	because of the "continuation" byte.
 	 */
 
-	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_children(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-	} else {
-		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-	}
+	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	/*
