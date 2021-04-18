@@ -1027,7 +1027,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	ssize_t			slen;
 	size_t			hdr_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255);
-	fr_dbuff_marker_t	vsa_hdr, hdr, src, dest;
+	fr_dbuff_marker_t	hdr, length_field;
 	fr_dict_attr_t const	*da, *dv;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -1039,7 +1039,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	fr_dbuff_marker(&vsa_hdr, &work_dbuff);
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	/*
 	 *	Build the Vendor-Specific header
@@ -1054,9 +1054,6 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	da = da_stack->da[depth];
 	fr_assert(da != NULL);
 
-	fr_dbuff_marker(&hdr, &work_dbuff);
-	fr_dbuff_marker(&src, &work_dbuff);
-	fr_dbuff_marker(&dest, &work_dbuff);
 	hdr_len = dv->flags.type_size + dv->flags.length;
 
 	/*
@@ -1081,6 +1078,9 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 		break;
 	}
 
+	/*
+	 *	The length fields will get over-written later.
+	 */
 	switch (dv->flags.length) {
 	default:
 		fr_strerror_printf("%s: Internal sanity check failed, length %u", __FUNCTION__, (unsigned) dv->flags.length);
@@ -1090,11 +1090,16 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 		break;
 
 	case 2:
-		fr_dbuff_in_bytes(&work_dbuff, 0, (uint8_t)(dv->flags.type_size + 2));
-		break;
+		fr_dbuff_in_bytes(&work_dbuff, 0);
+		FALL_THROUGH;
 
 	case 1:
-		fr_dbuff_in_bytes(&work_dbuff, (uint8_t)(dv->flags.type_size + 1));
+		/*
+		 *	Lenght fields are set to zero, because they
+		 *	will get over-ridden later.
+		 */
+		fr_dbuff_marker(&length_field, &work_dbuff);
+		fr_dbuff_in_bytes(&work_dbuff, 0);
 		break;
 	}
 
@@ -1111,19 +1116,14 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	if (slen <= 0) return slen;
 
 	if (dv->flags.length) {
-		uint8_t	len = 0;
-
-		fr_dbuff_set(&src, fr_dbuff_current(&hdr) + (hdr_len - 1));
-		fr_dbuff_set(&dest, &src);
-		fr_dbuff_out(&len, &src);
-		fr_dbuff_in(&dest, (uint8_t)(len + slen));
+		fr_dbuff_in(&length_field, (uint8_t)(hdr_len + slen));
 	}
 
-	fr_dbuff_set(&src, &vsa_hdr);
-	fr_dbuff_advance(&src, 1);
-	fr_dbuff_in_bytes(&src, (uint8_t) fr_dbuff_used(&work_dbuff));
+	fr_dbuff_set(&length_field, &hdr);
+	fr_dbuff_advance(&length_field, 1);
+	fr_dbuff_in_bytes(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
 
-	FR_PROTO_HEX_DUMP(fr_dbuff_current(&vsa_hdr), 6 + hdr_len, "header vsa");
+	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 6 + hdr_len, "header vsa");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
