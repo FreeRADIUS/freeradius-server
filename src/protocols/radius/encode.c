@@ -1018,9 +1018,7 @@ static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
 }
 
 
-/** Encode a VSA which is a TLV
- *
- * If it's in the RFC format, call encode_rfc_format.  Otherwise, encode it here.
+/** Encode one full Vendor-Specific + Vendor-ID + Vendor-Attr + Vendor-Length + ...
  */
 static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
@@ -1028,14 +1026,11 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	size_t			hdr_len;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_marker_t	hdr, src, dest;
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255);
+	fr_dbuff_marker_t	vsa_hdr, hdr, src, dest;
 	fr_dict_attr_t const	*da, *dv;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
-	fr_dbuff_marker(&hdr, &work_dbuff);
-	fr_dbuff_marker(&src, &work_dbuff);
-	fr_dbuff_marker(&dest, &work_dbuff);
 
 	dv = da_stack->da[depth++];
 
@@ -1044,13 +1039,24 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
+	fr_dbuff_marker(&vsa_hdr, &work_dbuff);
+
+	/*
+	 *	Build the Vendor-Specific header
+	 */
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 0x06);
+
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)dv->attr);	/* Copy in the 32bit vendor ID */
+
+	/*
+	 *	Now we encode one vendor attribute.
+	 */
 	da = da_stack->da[depth];
 	fr_assert(da != NULL);
 
-	if ((da->type != FR_TYPE_TLV) && (dv->flags.type_size == 1) && (dv->flags.length == 1)) {
-		return encode_rfc_format(dbuff, da_stack, depth, cursor, encode_ctx);
-	}
-
+	fr_dbuff_marker(&hdr, &work_dbuff);
+	fr_dbuff_marker(&src, &work_dbuff);
+	fr_dbuff_marker(&dest, &work_dbuff);
 	hdr_len = dv->flags.type_size + dv->flags.length;
 
 	/*
@@ -1098,9 +1104,9 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	 *	internal tlv function, else we get a double TLV header.
 	 */
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_children(&FR_DBUFF_MAX(&work_dbuff, 255), da_stack, depth, cursor, encode_ctx);
+		slen = encode_tlv_children(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	} else {
-		slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 255), da_stack, depth, cursor, encode_ctx);
+		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 	if (slen <= 0) return slen;
 
@@ -1113,7 +1119,11 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 		fr_dbuff_in(&dest, (uint8_t)(len + slen));
 	}
 
-	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hdr_len, "header vsa");
+	fr_dbuff_set(&src, &vsa_hdr);
+	fr_dbuff_advance(&src, 1);
+	fr_dbuff_in_bytes(&src, (uint8_t) fr_dbuff_used(&work_dbuff));
+
+	FR_PROTO_HEX_DUMP(fr_dbuff_current(&vsa_hdr), 6 + hdr_len, "header vsa");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -1206,12 +1216,11 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 				 fr_da_stack_t *da_stack, unsigned int depth,
 				 fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_marker_t	hdr;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 253);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			slen;
-
-	fr_dbuff_marker(&hdr, &work_dbuff);
+	fr_pair_t		*vp;
+	fr_dcursor_t		child_cursor;
+	fr_dbuff_t		work_dbuff;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1220,11 +1229,6 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
-
-	/*
-	 *	Build the Vendor-Specific header
-	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 0x06);
 
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
@@ -1238,45 +1242,40 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)da->attr);	/* Copy in the 32bit vendor ID */
-
+	/*
+	 *	Flat hierarchy, encode one attribute at a time.
+	 *
+	 *	Note that there's no attempt to encode multiple VSAs
+	 *	into one attribute.  We can add that back as a flag,
+	 *	once all of the nested attribute conversion has been
+	 *	done.
+	 */
 	if (da_stack->da[depth + 1]) {
-		slen = encode_vendor_attr(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-		if (slen <= 0) return slen;
-	} else {
-		fr_pair_t *vp;
-		fr_dcursor_t child_cursor;
-
-		vp = fr_dcursor_current(cursor);
-		fr_assert(vp->da == da);
-
-		fr_dcursor_init(&child_cursor, &vp->vp_group);
-		while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
-			fr_proto_da_stack_build(da_stack, vp->da);
-
-			/*
-			 *	@todo - if we run out of room, re-do
-			 *	the header, redo the work buffer, and
-			 *	continue.
-			 */
-			slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
-			if (slen <= 0) {
-				if (slen == PAIR_ENCODE_SKIPPED) continue;
-				return slen;
-			}
-		}
-
-		vp = fr_dcursor_next(cursor);
-		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		return encode_vendor_attr(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
-	fr_dbuff_advance(&hdr, 1);
-	fr_dbuff_in_bytes(&hdr, (uint8_t) fr_dbuff_used(&work_dbuff));
+	/*
+	 *	Loop over the children of this Vendor-Specific attribute.
+	 */
+	vp = fr_dcursor_current(cursor);
+	fr_assert(vp->da == da);
+	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
-	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), 6, "header vsa");
+	fr_dcursor_init(&child_cursor, &vp->vp_group);
+	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
+		fr_proto_da_stack_build(da_stack, vp->da);
+
+		slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+		if (slen <= 0) {
+			if (slen == PAIR_ENCODE_SKIPPED) continue;
+			return slen;
+		}
+	}
+
+	vp = fr_dcursor_next(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
-
 }
 
 /** Encode a Vendor-Specific attribute
