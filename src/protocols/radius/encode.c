@@ -1137,13 +1137,10 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_marker_t	hdr, src, dest;
-	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	uint8_t			val = 0;
+	fr_dbuff_marker_t	hdr, length_field;
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
-	fr_dbuff_marker(&src, &work_dbuff);
-	fr_dbuff_marker(&dest, &work_dbuff);
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -1171,7 +1168,10 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	/*
 	 *	Encode the first attribute
 	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, 0x03, 0x00);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
+
+	fr_dbuff_marker(&length_field, &work_dbuff);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x03, 0x00); /* length + continuation, both may be overwritten later */
 
 	/*
 	 *	We don't bound the size of work_dbuff; it can use more than 255 bytes
@@ -1185,27 +1185,21 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	}
 	if (slen <= 0) return slen;
 
-	fr_dbuff_set(&src, fr_dbuff_current(&hdr) + 1);
-	fr_dbuff_set(&dest, &src);
-	fr_dbuff_out(&val, &src);
-
 	/*
-	 *	There may be more than 252 octets of data encoded in
+	 *	There may be more than 253 octets of data encoded in
 	 *	the attribute.  If so, move the data up in the packet,
 	 *	and copy the existing header over.  Set the "C" flag
 	 *	ONLY after copying the rest of the data.
 	 */
-	if (slen > (255 - val)) {
-		slen = attr_shift(&work_dbuff, &hdr, val, slen, 8, 7);
+	if (slen > 253) {
+		slen = attr_shift(&work_dbuff, &hdr, 2, slen, 8, 7);
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
 
-	fr_dbuff_in(&dest, (uint8_t)(val + slen));
-	fr_dbuff_set(&src, fr_dbuff_current(&hdr) + 7);
-	fr_dbuff_set(&dest, &src);
-	fr_dbuff_out(&val, &src);
-	fr_dbuff_in(&dest, (uint8_t)(val + slen));
+	fr_dbuff_set(&length_field, &hdr);
+	fr_dbuff_advance(&length_field, 1);
+	fr_dbuff_in_bytes(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 9, "header wimax");
 
