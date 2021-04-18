@@ -108,7 +108,7 @@ static inline CC_HINT(nonnull) bool fr_dlist_entry_in_list(fr_dlist_t const *ent
 	return true;
 }
 
-/** Link in an entry after the current entry
+/** Link in a single entry after the current entry
  *
  * @param[in] entry	to link in entry after.
  * @param[in] to_link 	entry to link in after.
@@ -121,7 +121,7 @@ static inline CC_HINT(nonnull) void fr_dlist_entry_link_after(fr_dlist_t *entry,
 	entry->next = to_link;
 }
 
-/** Link in an entry before the current entry
+/** Link in a single entry before the current entry
  *
  * @param[in] entry	to link in entry before.
  * @param[in] to_link 	entry to link in before.
@@ -132,6 +132,25 @@ static inline CC_HINT(nonnull) void fr_dlist_entry_link_before(fr_dlist_t *entry
 	to_link->prev = entry->prev;
 	entry->prev->next = to_link;
 	entry->prev = to_link;
+}
+
+/** Link in a sublist before the current entry
+ *
+ * @note This is not suitable for moving elements from a fr_dlist_head_t as
+ *	 we need to snip out the head element. This is only suitable if the
+ *	 two entries are not part of lists with head elements.
+ *
+ * @param[in] dst	to link src in before.
+ * @param[in] src	to link in before dst.
+ */
+static inline CC_HINT(nonnull) void fr_dlist_entry_move(fr_dlist_t *dst, fr_dlist_t *src)
+{
+	fr_dlist_t *src_end = src->prev;
+
+	dst->prev->next = src;
+	src->prev->next = dst;
+	src->prev = dst->prev;
+	dst->prev = src_end;
 }
 
 /** Replace one entry with another
@@ -651,6 +670,11 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 
 	if (fr_dlist_empty(list_src)) return;
 
+	/*
+	 *	This is different to fr_dlist_entry_move
+	 *	because we need need to snip out the
+	 *	list head entry from the src.
+	 */
 	src->prev->next = dst;
 	src->next->prev = dst->prev;
 
