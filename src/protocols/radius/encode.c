@@ -1143,7 +1143,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&length_field, &work_dbuff);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x09);
 
-	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) fr_dict_vendor_num_by_da(vp->da));
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) VENDORPEC_WIMAX);
 
 	/*
 	 *	Encode the first attribute
