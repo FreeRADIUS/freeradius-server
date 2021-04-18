@@ -1121,7 +1121,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 
 	fr_dbuff_set(&length_field, &hdr);
 	fr_dbuff_advance(&length_field, 1);
-	fr_dbuff_in_bytes(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
+	fr_dbuff_in(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 6 + hdr_len, "header vsa");
 
