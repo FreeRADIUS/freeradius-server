@@ -299,13 +299,21 @@ bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
 uint32_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
 
-/** Given a Node, return the data
+/** Check to see if an item is in a tree by examining its inline #fr_rb_node_t
+ *
+ * This works because we use NIL sentinels to represent the absence of a child
+ * or parent.  When the node is initialised all these fields should be NULL
+ * and when it's removed from the tree, the "free" function for inline nodes
+ * also sets all of these back to NULL.
+ *
+ * @param[in] node	to check.
+ * @return
+ *	- True if node is in the tree.
+ *	- False if node is not in the tree.
  */
-static inline void *fr_rb_node_to_data(UNUSED fr_rb_tree_t *tree, fr_rb_node_t *node)
+static inline bool fr_rb_node_inline_in_tree(fr_rb_node_t *node)
 {
-	if (!node) return NULL;
-
-	return node->data;
+	return ((!node->left && !node->right && !node->parent) || (node->being_freed));
 }
 
 /** Iterator structure for in-order traversal of an rbtree
