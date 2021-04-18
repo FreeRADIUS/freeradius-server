@@ -1026,9 +1026,9 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	size_t			hdr_len;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255);
-	fr_dbuff_marker_t	hdr, length_field;
+	fr_dbuff_marker_t	hdr, length_field, vsa_length_field;
 	fr_dict_attr_t const	*da, *dv;
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1044,7 +1044,10 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	/*
 	 *	Build the Vendor-Specific header
 	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 0x06);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC);
+
+	fr_dbuff_marker(&length_field, &work_dbuff);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0);
 
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)dv->attr);	/* Copy in the 32bit vendor ID */
 
@@ -1098,7 +1101,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 		 *	Lenght fields are set to zero, because they
 		 *	will get over-ridden later.
 		 */
-		fr_dbuff_marker(&length_field, &work_dbuff);
+		fr_dbuff_marker(&vsa_length_field, &work_dbuff);
 		fr_dbuff_in_bytes(&work_dbuff, 0);
 		break;
 	}
@@ -1116,11 +1119,9 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	if (slen <= 0) return slen;
 
 	if (dv->flags.length) {
-		fr_dbuff_in(&length_field, (uint8_t)(hdr_len + slen));
+		fr_dbuff_in(&vsa_length_field, (uint8_t)(hdr_len + slen));
 	}
 
-	fr_dbuff_set(&length_field, &hdr);
-	fr_dbuff_advance(&length_field, 1);
 	fr_dbuff_in(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 6 + hdr_len, "header vsa");
@@ -1137,7 +1138,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_marker_t	hdr, length_field;
+	fr_dbuff_marker_t	hdr, length_field, vsa_length_field;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
@@ -1162,7 +1163,10 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	/*
 	 *	Build the Vendor-Specific header
 	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC, 0x09);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_VENDOR_SPECIFIC);
+	fr_dbuff_marker(&length_field, &work_dbuff);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x09);
+
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) fr_dict_vendor_num_by_da(vp->da));
 
 	/*
@@ -1170,7 +1174,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 */
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
-	fr_dbuff_marker(&length_field, &work_dbuff);
+	fr_dbuff_marker(&vsa_length_field, &work_dbuff);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x03, 0x00); /* length + continuation, both may be overwritten later */
 
 	/*
@@ -1197,8 +1201,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 		return slen;
 	}
 
-	fr_dbuff_set(&length_field, &hdr);
-	fr_dbuff_advance(&length_field, 1);
+	fr_dbuff_in_bytes(&vsa_length_field, (uint8_t) (fr_dbuff_used(&work_dbuff) - 6));
 	fr_dbuff_in_bytes(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 9, "header wimax");
