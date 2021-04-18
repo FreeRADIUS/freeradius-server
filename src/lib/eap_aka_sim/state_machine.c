@@ -945,7 +945,7 @@ static void common_reply(request_t *request, eap_aka_sim_session_t *eap_aka_sim_
 			if (fr_dict_attr_common_parent(attr_eap_aka_sim_encr_data, vp->da, true)) {
 				RWDEBUG("Silently discarding &reply.%pP: Encrypted attributes not "
 					"allowed in this round", vp);
-				vp = fr_pair_list_free_item(&request->reply_pairs, vp);
+				vp = fr_pair_delete(&request->reply_pairs, vp);
 				continue;
 			}
 		}

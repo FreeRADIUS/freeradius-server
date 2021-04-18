@@ -410,17 +410,6 @@ void fr_pair_list_free(fr_pair_list_t *list)
 	fr_dlist_talloc_free(&list->head);
 }
 
-/** Free a given item in a pair list
- *
- * @param[in] list	to remove and free item from.
- * @param[in] vp	to free.
- * @return The vp before the freed item.
- */
-fr_pair_t *fr_pair_list_free_item(fr_pair_list_t *list, fr_pair_t *vp)
-{
-	return fr_dlist_talloc_free_item(&list->head, vp);
-}
-
 /** Is a valuepair list empty
  *
  * @param[in] list to check
