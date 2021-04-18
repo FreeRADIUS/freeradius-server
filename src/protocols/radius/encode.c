@@ -1452,7 +1452,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const		*vp;
-	ssize_t			len;
+	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	fr_da_stack_t		da_stack;
@@ -1488,9 +1488,9 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		fr_assert(packet_ctx->tag < 0x20);
 
 		// recurse to encode the children of this attribute
-		len = encode_tags(&work_dbuff, &vp->vp_group, encode_ctx);
+		slen = encode_tags(&work_dbuff, &vp->vp_group, encode_ctx);
 		packet_ctx->tag = 0;
-		if (len < 0) return len;
+		if (slen < 0) return slen;
 
 		fr_dcursor_next(cursor); /* skip the tag attribute */
 		return fr_dbuff_set(dbuff, &work_dbuff);
@@ -1543,8 +1543,8 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 			da_stack.da[1] = NULL;
 			da_stack.depth = 1;
 			FR_PROTO_STACK_PRINT(&da_stack, 0);
-			len = encode_rfc(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
-			if (len < 0) return len;
+			slen = encode_rfc(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+			if (slen < 0) return slen;
 			return fr_dbuff_set(dbuff, &work_dbuff);
 
 		default:
@@ -1568,29 +1568,29 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 			 *	using a different scheme than the "long
 			 *	extended" one.
 			 */
-			len = encode_concat(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
-			if (len < 0) return len;
+			slen = encode_concat(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+			if (slen < 0) return slen;
 			break;
 		}
 		FALL_THROUGH;
 
 	default:
-		len = encode_rfc(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
-		if (len < 0) return len;
+		slen = encode_rfc(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+		if (slen < 0) return slen;
 		break;
 
 	case FR_TYPE_VSA:
-		len = encode_vsa(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
-		if (len < 0) return len;
+		slen = encode_vsa(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+		if (slen < 0) return slen;
 		break;
 
 	case FR_TYPE_TLV:
 		if (!flag_extended(&da->flags)) {
-			len = encode_tlv(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+			slen = encode_tlv(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		} else {
-			len = encode_extended(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+			slen = encode_extended(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		}
-		if (len < 0) return len;
+		if (slen < 0) return slen;
 		break;
 
 	case FR_TYPE_NULL:
