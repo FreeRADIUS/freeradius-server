@@ -691,7 +691,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  * where the data is, so we associate them with dbuff.
  */
 static ssize_t attr_shift(fr_dbuff_t *dbuff,
-			  fr_dbuff_marker_t *ptr, int hdr_len, ssize_t len,
+			  fr_dbuff_marker_t *ptr, int hdr_len, size_t len,
 			  int flag_offset, int vsa_offset)
 {
 	int			check_len;
@@ -746,7 +746,7 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 	 */
 	for (;;) {
 		/* Extend current attribute as much as possible. */
-		int sublen = UINT8_MAX - current_hdr_len;
+		size_t sublen = UINT8_MAX - current_hdr_len;
 		if (len < sublen) sublen = len;
 
 		fr_dbuff_set(&dest, fr_dbuff_current(&hdr) + 1);
