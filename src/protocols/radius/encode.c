@@ -39,13 +39,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
-				 fr_da_stack_t *da_stack, unsigned int depth,
-				 fr_dcursor_t *cursor, void *encode_ctx);
-
 static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encode_ctx);
+			  fr_da_stack_t *da_stack, unsigned int depth,
+			  fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Encode a CHAP password
  *
@@ -280,11 +276,8 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 			vp = fr_dcursor_next(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
-		} else if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-
 		} else {
-			slen = encode_rfc_format(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 		if (slen <= 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
@@ -304,38 +297,6 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
 		vp = fr_dcursor_current(cursor);
 	}
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
-}
-
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, void *encode_ctx)
-{
-	ssize_t			slen;
-	fr_dbuff_marker_t	len_m;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, UINT8_MAX);
-
-	VP_VERIFY(fr_dcursor_current(cursor));
-	FR_PROTO_STACK_PRINT(da_stack, depth);
-
-	if (da_stack->da[depth]->type != FR_TYPE_TLV) {
-		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
-	/*
-	 *	Encode the first level of TLVs
-	 */
-	FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
-	fr_dbuff_marker(&len_m, &work_dbuff);		/* Mark the start of the length field */
-	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);	/* One byte for the length */
-
-	slen = encode_tlv_children(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-	if (slen <= 0) return slen;
-
-	fr_dbuff_in(&len_m, (uint8_t)(slen + 2));
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -944,7 +905,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 				 fr_da_stack_t *da_stack, unsigned int depth,
 				 fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -955,23 +916,6 @@ static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 	fr_dbuff_marker(&hdr, &work_dbuff);
-
-	switch (da_stack->da[depth]->type) {
-	default:
-		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
-		return PAIR_ENCODE_FATAL_ERROR;
-
-	case FR_TYPE_STRUCT:
-	case FR_TYPE_LEAF:
-		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
-		    (da_stack->da[depth]->attr > UINT8_MAX)) {
-			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
-					   da_stack->da[depth]->attr);
-			return PAIR_ENCODE_SKIPPED;
-		}
-		break;
-	}
 
 	hlen = 2;
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, hlen);
@@ -1296,7 +1240,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 
 /** Encode an RFC standard attribute 1..255
  *
- *  This function is not the same as encode_rfc_format(), because this
+ *  This function is not the same as encode_tlv(), because this
  *  one treats some "top level" attributes as special.  e.g.
  *  Message-Authenticator.
  */
@@ -1367,7 +1311,10 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
-	return encode_rfc_format(dbuff, da_stack, depth, cursor, encode_ctx);
+	/*
+	 *	Once we've checked for various top-level magic, RFC attributes are just TLVs.
+	 */
+	return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
 }
 
 /** Encode a data structure into a RADIUS attribute
