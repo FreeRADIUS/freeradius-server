@@ -1197,20 +1197,8 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	if (da->type != FR_TYPE_VSA) {
-		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
-	/*
-	 *	Now process the vendor ID part (which is one attribute deeper)
-	 */
-	da = da_stack->da[++depth];
-	FR_PROTO_STACK_PRINT(da_stack, depth);
-
 	if (da->type != FR_TYPE_VENDOR) {
-		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
+		fr_strerror_printf("%s: Expected type \"vendor\" got \"%s\"", __FUNCTION__,
 				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -1285,7 +1273,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 	 *	which MUST be of type FR_TYPE_VENDOR.
 	 */
 	if (da_stack->da[depth + 1]) {
-		return encode_vendor(dbuff, da_stack, depth, cursor, encode_ctx);
+		return encode_vendor(dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	}
 
 	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
@@ -1306,7 +1294,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 
 		fr_assert(da_stack->da[depth + 1]->type == FR_TYPE_VENDOR);
 
-		slen = encode_vendor(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+		slen = encode_vendor(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
 		if (slen <= 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
