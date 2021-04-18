@@ -544,7 +544,7 @@ static void delete_internal(fr_rb_tree_t *tree, fr_rb_node_t *z, bool free_data)
 /* Find user data, returning the node
  *
  */
-static inline CC_HINT(always_inline) fr_rb_node_t *find_node(fr_rb_tree_t *tree, void const *data)
+static inline CC_HINT(always_inline) fr_rb_node_t *find_node(fr_rb_tree_t const *tree, void const *data)
 {
 	fr_rb_node_t *current;
 
@@ -573,7 +573,7 @@ static inline CC_HINT(always_inline) fr_rb_node_t *find_node(fr_rb_tree_t *tree,
  *
  * @hidecallergraph
  */
-void *fr_rb_find(fr_rb_tree_t *tree, void const *data)
+void *fr_rb_find(fr_rb_tree_t const *tree, void const *data)
 {
 	fr_rb_node_t *x;
 

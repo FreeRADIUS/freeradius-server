@@ -146,9 +146,6 @@ struct fr_rb_tree_s {
  * fixed set of trees.
  *
  * @param[out] _tree		to initialise.
- * @param[in] _node_ctx		to tie tree lifetime to.
- *				If ctx is freed, tree will free any nodes, calling the
- *				free function if set.
  * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
  * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
  * @param[in] _data_cmp		Callback to compare node data.
@@ -158,9 +155,9 @@ struct fr_rb_tree_s {
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_inline_talloc_init(_tree, _node_ctx, _type, _field, _data_cmp, _data_free) \
+#define		fr_rb_inline_talloc_init(_tree, _type, _field, _data_cmp, _data_free) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _fr_rb_init(_tree, _node_ctx, offsetof(_type, _field), #_type, _data_cmp, _data_free) \
+			fr_rb_node_t: _fr_rb_init(_tree, NULL, offsetof(_type, _field), #_type, _data_cmp, _data_free) \
 		)
 
 /** Initialises a red black tree
@@ -172,9 +169,6 @@ struct fr_rb_tree_s {
  * fixed set of trees.
  *
  * @param[out] _tree		to initialise.
- * @param[in] _node_ctx		to tie tree lifetime to.
- *				If ctx is freed, tree will free any nodes, calling the
- *				free function if set.
  * @param[in] _type		of item being stored in the tree, e.g. fr_value_box_t.
  * @param[in] _field		Containing the #fr_rb_node_t within item being stored.
  * @param[in] _data_cmp		Callback to compare node data.
@@ -184,9 +178,9 @@ struct fr_rb_tree_s {
  *	- A new rbtree on success.
  *	- NULL on failure.
  */
-#define		fr_rb_inline_init(_tree, _node_ctx, _type, _field, _data_cmp, _data_free) \
+#define		fr_rb_inline_init(_tree, _type, _field, _data_cmp, _data_free) \
 		_Generic((((_type *)0)->_field), \
-			fr_rb_node_t: _fr_rb_init(_tree, _node_ctx, offsetof(_type, _field), NULL, _data_cmp, _data_free) \
+			fr_rb_node_t: _fr_rb_init(_tree, NULL, offsetof(_type, _field), NULL, _data_cmp, _data_free) \
 		)
 
 int _fr_rb_init(fr_rb_tree_t *tree, TALLOC_CTX *node_ctx,
@@ -285,7 +279,7 @@ fr_rb_tree_t	*_fr_rb_alloc(TALLOC_CTX *ctx, ssize_t offset, char const *type,
 			      fr_cmp_t data_cmp, fr_free_t data_free) CC_HINT(warn_unused_result);
 
 /** @hidecallergraph */
-void		*fr_rb_find(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+void		*fr_rb_find(fr_rb_tree_t const *tree, void const *data) CC_HINT(nonnull);
 
 int		fr_rb_find_or_insert(void **found, fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull(2,3));
 
