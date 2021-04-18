@@ -89,7 +89,7 @@ ifneq "$(findstring test,$(MAKECMDGOALS))$(findstring clean,$(MAKECMDGOALS))" ""
 #
 ifneq "$(findstring leak,$(CFLAGS))" ""
 export ASAN_SYMBOLIZER_PATH=$(shell which llvm-symbolizer)
-export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
+export ASAN_OPTIONS=malloc_context_size=50 detect_leaks=1 symbolize=1
 ifneq "$(findstring apple,$(AC_HOSTINFO))" ""
 export LSAN_OPTIONS=print_suppressions=0 fast_unwind_on_malloc=0 suppressions=${top_srcdir}/scripts/build/lsan_leaks_osx
 else
