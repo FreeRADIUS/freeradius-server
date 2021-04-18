@@ -246,7 +246,7 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 	ssize_t		slen;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 253);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, RADIUS_MAX_STRING_LENGTH);
 
 	for (;;) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -332,7 +332,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&len_m, &work_dbuff);		/* Mark the start of the length field */
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);	/* One byte for the length */
 
-	slen = encode_tlv_children(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encode_ctx);
+	slen = encode_tlv_children(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	fr_dbuff_in(&len_m, (uint8_t)(slen + 2));
@@ -719,9 +719,9 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 	 *	what we were capable of encoding.
 	 */
 
-	while (check_len > (255 - hdr_len)) {
+	while (check_len > (UINT8_MAX - hdr_len)) {
 		total += hdr_len;
-		check_len -= (255 - hdr_len);
+		check_len -= (UINT8_MAX - hdr_len);
 	}
 
 	/*
@@ -746,7 +746,7 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 	 */
 	for (;;) {
 		/* Extend current attribute as much as possible. */
-		int sublen = 255 - current_hdr_len;
+		int sublen = UINT8_MAX - current_hdr_len;
 		if (len < sublen) sublen = len;
 
 		fr_dbuff_set(&dest, fr_dbuff_current(&hdr) + 1);
@@ -772,13 +772,13 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 		fr_dbuff_in(&dest, (uint8_t)(flags | 0x80));
 
 		/* Make room for another header. */
-		fr_dbuff_set(&src, fr_dbuff_current(&hdr) + 255);
+		fr_dbuff_set(&src, fr_dbuff_current(&hdr) + UINT8_MAX);
 		fr_dbuff_set(&dest, fr_dbuff_current(&src) + hdr_len);
 		fr_dbuff_move(&dest, &src, len);
 
 		/* Copy current header into new header and advance to it... */
 		fr_dbuff_set(&src, &hdr);
-		fr_dbuff_advance(&hdr, 255);
+		fr_dbuff_advance(&hdr, UINT8_MAX);
 		fr_dbuff_set(&dest, &hdr);
 		fr_dbuff_move(&dest, &src, hdr_len);
 
@@ -872,7 +872,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	if (extra) {
 		attr_dbuff = FR_DBUFF_COPY(&work_dbuff);
 	} else {
-		attr_dbuff = FR_DBUFF_MAX(&work_dbuff, 255);
+		attr_dbuff = FR_DBUFF_MAX(&work_dbuff, UINT8_MAX);
 	}
 
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
@@ -888,7 +888,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	 *	and copy the existing header over.  Set the "M" flag ONLY
 	 *	after copying the rest of the data.
 	 */
-	if (slen > (255 - hlen)) {
+	if (slen > (UINT8_MAX - hlen)) {
 		slen = attr_shift(&work_dbuff, &hdr, 4, slen, 3, 0);
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
@@ -943,7 +943,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 		left = slen;
 
 		/* no more than 253 octets */
-		if (left > 253) left = 253;
+		if (left > RADIUS_MAX_STRING_LENGTH) left = RADIUS_MAX_STRING_LENGTH;
 
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, left);
 
@@ -995,7 +995,7 @@ static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_LEAF:
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
-		    (da_stack->da[depth]->attr > 255)) {
+		    (da_stack->da[depth]->attr > UINT8_MAX)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   da_stack->da[depth]->attr);
 			return PAIR_ENCODE_SKIPPED;
@@ -1006,7 +1006,7 @@ static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
 	hlen = 2;
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, hlen);
 
-	slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, cursor, encode_ctx);
+	slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	fr_dbuff_advance(&hdr, 1);
@@ -1028,7 +1028,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	size_t			hdr_len;
 	fr_dbuff_marker_t	hdr, length_field, vsa_length_field;
 	fr_dict_attr_t const	*da, *dv;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, UINT8_MAX);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1178,7 +1178,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x03, 0x00); /* length + continuation, both may be overwritten later */
 
 	/*
-	 *	We don't bound the size of work_dbuff; it can use more than 255 bytes
+	 *	We don't bound the size of work_dbuff; it can use more than UINT8_MAX bytes
 	 *	because of the "continuation" byte.
 	 */
 
@@ -1195,7 +1195,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 *	and copy the existing header over.  Set the "C" flag
 	 *	ONLY after copying the rest of the data.
 	 */
-	if (slen > 253) {
+	if (slen > RADIUS_MAX_STRING_LENGTH) {
 		slen = attr_shift(&work_dbuff, &hdr, 2, slen, 8, 7);
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
@@ -1338,9 +1338,9 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 		 *	normal RADIUS header, 4-byte vendor, etc.
 		 */
 		if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
-			slen = encode_wimax(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
+			slen = encode_wimax(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, &child_cursor, encode_ctx);
 		} else {
-			slen = encode_vendor(&FR_DBUFF_MAX(&work_dbuff, 253), da_stack, depth, &child_cursor, encode_ctx);
+			slen = encode_vendor(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, &child_cursor, encode_ctx);
 		}
 		if (slen <= 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
@@ -1395,7 +1395,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 		 *	in the original standards space.
 		 */
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
-		    (da_stack->da[depth]->attr > 255)) {
+		    (da_stack->da[depth]->attr > UINT8_MAX)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
 			return PAIR_ENCODE_SKIPPED;
 		}
