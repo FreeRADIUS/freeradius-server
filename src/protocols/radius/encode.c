@@ -314,7 +314,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	fr_dbuff_marker_t	len_m;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, UINT8_MAX);
 
 	VP_VERIFY(fr_dcursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -332,7 +332,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&len_m, &work_dbuff);		/* Mark the start of the length field */
 	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);	/* One byte for the length */
 
-	slen = encode_tlv_children(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, cursor, encode_ctx);
+	slen = encode_tlv_children(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	fr_dbuff_in(&len_m, (uint8_t)(slen + 2));
@@ -981,7 +981,7 @@ static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
 	ssize_t 		slen;
 	uint8_t			hlen;
 	fr_dbuff_marker_t	hdr;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, UINT8_MAX);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 	fr_dbuff_marker(&hdr, &work_dbuff);
@@ -1006,7 +1006,7 @@ static ssize_t encode_rfc_format(fr_dbuff_t *dbuff,
 	hlen = 2;
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr, hlen);
 
-	slen = encode_value(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, cursor, encode_ctx);
+	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
 	fr_dbuff_advance(&hdr, 1);
@@ -1338,9 +1338,9 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 		 *	normal RADIUS header, 4-byte vendor, etc.
 		 */
 		if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
-			slen = encode_wimax(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, &child_cursor, encode_ctx);
+			slen = encode_wimax(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		} else {
-			slen = encode_vendor(&FR_DBUFF_MAX(&work_dbuff, RADIUS_MAX_STRING_LENGTH), da_stack, depth, &child_cursor, encode_ctx);
+			slen = encode_vendor(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		}
 		if (slen <= 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
@@ -1543,7 +1543,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 			da_stack.da[1] = NULL;
 			da_stack.depth = 1;
 			FR_PROTO_STACK_PRINT(&da_stack, 0);
-			len = encode_rfc(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
+			len = encode_rfc(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 			if (len < 0) return len;
 			return fr_dbuff_set(dbuff, &work_dbuff);
 
@@ -1575,20 +1575,20 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		FALL_THROUGH;
 
 	default:
-		len = encode_rfc(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
+		len = encode_rfc(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		if (len < 0) return len;
 		break;
 
 	case FR_TYPE_VSA:
-		len = encode_vsa(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
+		len = encode_vsa(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		if (len < 0) return len;
 		break;
 
 	case FR_TYPE_TLV:
 		if (!flag_extended(&da->flags)) {
-			len = encode_tlv(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
+			len = encode_tlv(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		} else {
-			len = encode_extended(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
+			len = encode_extended(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		}
 		if (len < 0) return len;
 		break;
