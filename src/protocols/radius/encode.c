@@ -1114,6 +1114,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr, length_field, vsa_length_field;
+	fr_dict_attr_t const	*dv;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
@@ -1121,14 +1122,14 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	if (da_stack->da[depth++]->attr != FR_VENDOR_SPECIFIC) {
-		fr_strerror_printf("%s: level[1] of da_stack is incorrect, must be Vendor-Specific (26)",
-				   __FUNCTION__);
+	dv = da_stack->da[depth++];
+
+	if (dv->type != FR_TYPE_VENDOR) {
+		fr_strerror_const("Expected Vendor");
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
-	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	if (da_stack->da[depth++]->attr != VENDORPEC_WIMAX) {
+	if (dv->attr != VENDORPEC_WIMAX) {
 		fr_strerror_printf("%s: level[2] of da_stack is incorrect, must be Wimax vendor %i", __FUNCTION__,
 				   VENDORPEC_WIMAX);
 		return PAIR_ENCODE_FATAL_ERROR;
@@ -1223,11 +1224,15 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	 *	done.
 	 */
 	if (da_stack->da[depth + 1]) {
+		if (da->attr == VENDORPEC_WIMAX) {
+			return encode_wimax(dbuff, da_stack, depth, cursor, encode_ctx);
+		}
+
 		return encode_vendor_attr(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
 	/*
-	 *	Loop over the children of this Vendor-Specific attribute.
+	 *	Loop over the children of this attribute of type Vendor.
 	 */
 	vp = fr_dcursor_current(cursor);
 	fr_assert(vp->da == da);
@@ -1237,7 +1242,11 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
-		slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+		if (da->attr == VENDORPEC_WIMAX) {
+			slen = encode_wimax(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		} else {
+			slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+		}
 		if (slen <= 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
@@ -1276,16 +1285,6 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 	 *	which MUST be of type FR_TYPE_VENDOR.
 	 */
 	if (da_stack->da[depth + 1]) {
-		/*
-		 *	WiMAX is special.
-		 */
-		if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
-			return encode_wimax(dbuff, da_stack, depth, cursor, encode_ctx);
-		}
-
-		/*
-		 *	Encode one vendor, in the standard format.
-		 */
 		return encode_vendor(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
@@ -1307,16 +1306,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 
 		fr_assert(da_stack->da[depth + 1]->type == FR_TYPE_VENDOR);
 
-		/*
-		 *	Note that each of these functions will encode
-		 *	*all* of the Vendor-Specific, including the
-		 *	normal RADIUS header, 4-byte vendor, etc.
-		 */
-		if (da_stack->da[depth + 1]->attr == VENDORPEC_WIMAX) {
-			slen = encode_wimax(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
-		} else {
-			slen = encode_vendor(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
-		}
+		slen = encode_vendor(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		if (slen <= 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
 			return slen;
