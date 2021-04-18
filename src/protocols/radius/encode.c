@@ -803,18 +803,10 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	uint8_t			hlen;
-#ifndef NDEBUG
-	fr_type_t		vsa_type;
-	int			jump = 3;
-#endif
-	int			extra;
-	fr_dbuff_marker_t	hdr, dest;
+	bool			extra;
+	fr_dbuff_marker_t	hdr, length_field;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_t		attr_dbuff;
-
-	fr_dbuff_marker(&hdr, &work_dbuff);
-	fr_dbuff_marker(&dest, &work_dbuff);
+	fr_dbuff_t		work_dbuff;
 
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -822,24 +814,27 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	extra = flag_long_extended(&da_stack->da[0]->flags);
 
 	/*
-	 *	@fixme: check depth of stack
+	 *	The data used here can be more than 255 bytes, but only for the
+	 *	"long" extended type.
 	 */
-#ifndef NDEBUG
-	vsa_type = da_stack->da[1]->type;
-	if (fr_debug_lvl > 3) {
-		jump += extra;
+	if (extra) {
+		work_dbuff = FR_DBUFF_COPY(dbuff);
+	} else {
+		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
 	}
-#endif
+	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	/*
 	 *	Encode the header for "short" or "long" attributes
 	 */
+	hlen = 3 + extra;
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr);
+	fr_dbuff_marker(&length_field, &work_dbuff);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, hlen); /* this gets overwritten later*/
 
 	/*
 	 *	Encode which extended attribute it is.
 	 */
-	hlen = 3 + extra;
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth++]->attr, hlen);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
 	if (extra) FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00);	/* flags start off at zero */
@@ -856,8 +851,6 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
 		hlen += 5;
-		fr_dbuff_set(&dest, fr_dbuff_current(&hdr) + 1);
-		fr_dbuff_in(&dest, hlen);
 
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended vendor specific");
@@ -865,20 +858,10 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended");
 	}
 
-	/*
-	 *	The data used here can be more than 255 bytes, but only for the
-	 *	"long" extended type.
-	 */
-	if (extra) {
-		attr_dbuff = FR_DBUFF_COPY(&work_dbuff);
-	} else {
-		attr_dbuff = FR_DBUFF_MAX(&work_dbuff, UINT8_MAX);
-	}
-
 	if (da_stack->da[depth]->type == FR_TYPE_TLV) {
-		slen = encode_tlv_children(&attr_dbuff, da_stack, depth, cursor, encode_ctx);
+		slen = encode_tlv_children(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	} else {
-		slen = encode_value(&attr_dbuff, da_stack, depth, cursor, encode_ctx);
+		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 	if (slen <= 0) return slen;
 
@@ -894,16 +877,8 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 		return slen;
 	}
 
-	fr_dbuff_set(&dest, fr_dbuff_current(&hdr) + 1);
-	fr_dbuff_in(&dest, (uint8_t)(hlen + slen));
-
-#ifndef NDEBUG
-	if (fr_debug_lvl > 3) {
-		if (vsa_type == FR_TYPE_VENDOR) jump += 5;
-
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), jump, "header extended");
-	}
-#endif
+	fr_dbuff_in_bytes(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
+	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
