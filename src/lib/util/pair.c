@@ -546,43 +546,6 @@ fr_pair_t *fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_dict_attr_t c
 	return NULL;
 }
 
-/** Find the pair with the matching attribute by vendor id and attribute number.
- *
- * @todo should take DAs and do a pointer comparison.
- *
- * @param[in] list	to search in.
- * @param[in] vendor	id to match in the list (0 for non vendor-specific).
- * @param[in] attr	number to match in the list.
- * @return
- *	- first matching fr_pair_t
- *	- NULL if no fr_pair_ts match
- */
-fr_pair_t *fr_pair_find_by_num(fr_pair_list_t *list, unsigned int vendor, unsigned int attr)
-{
-	fr_pair_t	*vp;
-
-	if (fr_dlist_empty(&list->head)) return NULL;
-
-	LIST_VERIFY(list);
-
-	for (vp = fr_pair_list_head(list); vp != NULL; vp = fr_pair_list_next(list, vp)) {
-		if (!fr_dict_attr_is_top_level(vp->da)) continue;
-
-	     	if (vendor > 0) {
-	     		fr_dict_vendor_t const *dv;
-
-	     		dv = fr_dict_vendor_by_da(vp->da);
-	     		if (!dv) continue;
-
-	     		if (dv->pen != vendor) continue;
-	     	}
-
-		if (attr == vp->da->attr) return vp;
-	}
-
-	return NULL;
-}
-
 /** Find the pair with the matching child attribute
  *
  * @param[in] list	in which to search.

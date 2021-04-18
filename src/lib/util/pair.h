@@ -233,8 +233,6 @@ fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
 
 fr_pair_t	*fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_dict_attr_t const *ancestor);
 
-fr_pair_t	*fr_pair_find_by_num(fr_pair_list_t *list, unsigned int vendor, unsigned int attr);
-
 fr_pair_t	*fr_pair_find_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr);
 
 int		fr_pair_append(fr_pair_list_t *list, fr_pair_t *vp);

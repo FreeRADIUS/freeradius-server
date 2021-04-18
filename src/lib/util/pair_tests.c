@@ -361,20 +361,6 @@ static void test_fr_pair_find_by_da(void)
 	TEST_CHECK(vp && vp->da == attr_test_tlv_string);
 }
 
-static void test_fr_pair_find_by_num(void)
-{
-	fr_pair_t *vp;
-
-	TEST_CASE("Search for FR_TEST_STRING using fr_pair_find_by_num()");
-	TEST_CHECK((vp = fr_pair_find_by_num(&sample_pairs, 0, FR_TEST_STRING)) != NULL);
-
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
-
-	TEST_CASE("Expected (vp->da == attr_test_string)");
-	TEST_CHECK(vp && vp->da == attr_test_string);
-}
-
 static void test_fr_pair_find_by_child_num(void)
 {
 	fr_pair_t *vp;
@@ -421,7 +407,7 @@ static void test_fr_pair_delete_by_child_num(void)
 	fr_pair_delete_by_child_num(&sample_pairs, fr_dict_root(dict_test), FR_TEST_STRING);
 
 	TEST_CASE("The attr_test_string shouldn't exist in 'sample_pairs'");
-	TEST_CHECK(fr_pair_find_by_num(&sample_pairs, 0, FR_TEST_STRING) == NULL);
+	TEST_CHECK(fr_pair_find_by_child_num(&sample_pairs, fr_dict_root(dict_test), FR_TEST_STRING) == NULL);
 
 	TEST_CASE("Add attr_test_string back into 'sample_pairs'");
 	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
@@ -485,11 +471,11 @@ static void test_fr_pair_delete(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Delete attr_test_string using fr_pair_delete()");
-	TEST_CHECK((vp = fr_pair_find_by_num(&sample_pairs, 0, FR_TEST_STRING)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_child_num(&sample_pairs, fr_dict_root(dict_test), FR_TEST_STRING)) != NULL);
 	fr_pair_delete(&sample_pairs, vp);
 
 	TEST_CASE("The attr_test_string shouldn't exist in 'sample_pairs'");
-	TEST_CHECK((vp = fr_pair_find_by_num(&sample_pairs, 0, FR_TEST_STRING)) == NULL);
+	TEST_CHECK((vp = fr_pair_find_by_child_num(&sample_pairs, fr_dict_root(dict_test), FR_TEST_STRING)) == NULL);
 
 	TEST_CASE("Add attr_test_string back into 'sample_pairs'");
 	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &sample_pairs, attr_test_string) == 0);
@@ -1256,10 +1242,9 @@ TEST_LIST = {
 	{ "fr_dcursor_iter_by_ancestor_init",     test_fr_dcursor_iter_by_ancestor_init },
 	{ "fr_pair_to_unknown",                   test_fr_pair_to_unknown },
 	{ "fr_pair_find_by_da",                   test_fr_pair_find_by_da },
-	{ "fr_pair_find_by_num",                  test_fr_pair_find_by_num },
 	{ "fr_pair_find_by_child_num",            test_fr_pair_find_by_child_num },
 	{ "fr_pair_append",                       test_fr_pair_append },
-	{ "fr_pair_prepend_by_da",                 test_fr_pair_prepend_by_da },
+	{ "fr_pair_prepend_by_da",                test_fr_pair_prepend_by_da },
 	{ "fr_pair_delete_by_child_num",          test_fr_pair_delete_by_child_num },
 	{ "fr_pair_update_by_da",                 test_fr_pair_update_by_da },
 	{ "fr_pair_delete",                       test_fr_pair_delete },

@@ -47,111 +47,116 @@ RCSID("$Id$")
  */
 unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 {
-	fr_pair_t *vp, *username, *parent_username = NULL;
 	rlm_rcode_t final;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(unlang_call_current(request)));
 	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
-	username = fr_pair_find_by_num(&request->request_pairs, 0, FR_STRIPPED_USER_NAME);
-	if (!username) username = fr_pair_find_by_num(&request->request_pairs, 0, FR_USER_NAME);
+#if 0
+	{
+		fr_pair_t *username, *parent_username = NULL;
+		fr_pair_t *vp;
 
-	if (request->parent) {
-		parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_STRIPPED_USER_NAME);
-		if (!parent_username) parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
-	}
+		username = fr_pair_find_by_num(&request->request_pairs, 0, FR_STRIPPED_USER_NAME);
+		if (!username) username = fr_pair_find_by_num(&request->request_pairs, 0, FR_USER_NAME);
 
-	/*
-	 *	Complain about possible issues related to tunnels.
-	 */
-	if (username && parent_username) {
-		/*
-		 *	Look at the full User-Name with realm.
-		 */
-		if (parent_username->da->attr == FR_STRIPPED_USER_NAME) {
-			vp = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
-			if (!vp) goto runit;
-		} else {
-			vp = parent_username;
+		if (request->parent) {
+			parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_STRIPPED_USER_NAME);
+			if (!parent_username) parent_username = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
 		}
 
 		/*
-		 *	If the names aren't identical, we do some detailed checks.
+		 *	Complain about possible issues related to tunnels.
 		 */
-		if (strcmp(vp->vp_strvalue, username->vp_strvalue) != 0) {
-			char const *outer, *inner;
-
-			outer = strchr(vp->vp_strvalue, '@');
-
+		if (username && parent_username) {
 			/*
-			 *	If there's no realm, or there's a user identifier before
-			 *	the realm name, check the user identifier.
-			 *
-			 *	It SHOULD be "anonymous", or "anonymous@realm"
+			 *	Look at the full User-Name with realm.
 			 */
-			if (outer) {
-				if ((outer != vp->vp_strvalue) &&
-				    ((vp->vp_length < 10) || (memcmp(vp->vp_strvalue, "anonymous@", 10) != 0))) {
-					RWDEBUG("Outer User-Name is not anonymized.  User privacy is compromised.");
-				} /* else it is anonymized */
-
-				/*
-				 *	Check when there's no realm, and without the trailing '@'
-				 */
-			} else if ((vp->vp_length < 9) || (memcmp(vp->vp_strvalue, "anonymous", 9) != 0)) {
-					RWDEBUG("Outer User-Name is not anonymized.  User privacy is compromised.");
-
-			} /* else the user identifier is anonymized */
-
-			/*
-			 *	Look for an inner realm, which may or may not exist.
-			 */
-			inner = strchr(username->vp_strvalue, '@');
-			if (outer && inner) {
-				outer++;
-				inner++;
-
-				/*
-				 *	The realms are different, do
-				 *	more detailed checks.
-				 */
-				if (strcmp(outer, inner) != 0) {
-					size_t outer_len, inner_len;
-
-					outer_len = vp->vp_length;
-					outer_len -= (outer - vp->vp_strvalue);
-
-					inner_len = username->vp_length;
-					inner_len -= (inner - username->vp_strvalue);
-
-					/*
-					 *	Inner: secure.example.org
-					 *	Outer: example.org
-					 */
-					if (inner_len > outer_len) {
-						char const *suffix;
-
-						suffix = inner + (inner_len - outer_len) - 1;
-
-						if ((*suffix != '.') ||
-						    (strcmp(suffix + 1, outer) != 0)) {
-							RWDEBUG("Possible spoofing: Inner realm '%s' is not a "
-								"subdomain of the outer realm '%s'", inner, outer);
-						}
-
-					} else {
-						RWDEBUG("Possible spoofing: Inner realm and "
-							"outer realms are different");
-					}
-				}
+			if (parent_username->da->attr == FR_STRIPPED_USER_NAME) {
+				vp = fr_pair_find_by_num(&request->parent->request_pairs, 0, FR_USER_NAME);
+				if (!vp) goto runit;
+			} else {
+				vp = parent_username;
 			}
 
-		} else {
-			RWDEBUG("Outer and inner identities are the same.  User privacy is compromised.");
+			/*
+			 *	If the names aren't identical, we do some detailed checks.
+			 */
+			if (strcmp(vp->vp_strvalue, username->vp_strvalue) != 0) {
+				char const *outer, *inner;
+
+				outer = strchr(vp->vp_strvalue, '@');
+
+				/*
+				 *	If there's no realm, or there's a user identifier before
+				 *	the realm name, check the user identifier.
+				 *
+				 *	It SHOULD be "anonymous", or "anonymous@realm"
+				 */
+				if (outer) {
+					if ((outer != vp->vp_strvalue) &&
+					    ((vp->vp_length < 10) || (memcmp(vp->vp_strvalue, "anonymous@", 10) != 0))) {
+						RWDEBUG("Outer User-Name is not anonymized.  User privacy is compromised.");
+					} /* else it is anonymized */
+
+					/*
+					 *	Check when there's no realm, and without the trailing '@'
+					 */
+				} else if ((vp->vp_length < 9) || (memcmp(vp->vp_strvalue, "anonymous", 9) != 0)) {
+						RWDEBUG("Outer User-Name is not anonymized.  User privacy is compromised.");
+
+				} /* else the user identifier is anonymized */
+
+				/*
+				 *	Look for an inner realm, which may or may not exist.
+				 */
+				inner = strchr(username->vp_strvalue, '@');
+				if (outer && inner) {
+					outer++;
+					inner++;
+
+					/*
+					 *	The realms are different, do
+					 *	more detailed checks.
+					 */
+					if (strcmp(outer, inner) != 0) {
+						size_t outer_len, inner_len;
+
+						outer_len = vp->vp_length;
+						outer_len -= (outer - vp->vp_strvalue);
+
+						inner_len = username->vp_length;
+						inner_len -= (inner - username->vp_strvalue);
+
+						/*
+						 *	Inner: secure.example.org
+						 *	Outer: example.org
+						 */
+						if (inner_len > outer_len) {
+							char const *suffix;
+
+							suffix = inner + (inner_len - outer_len) - 1;
+
+							if ((*suffix != '.') ||
+							    (strcmp(suffix + 1, outer) != 0)) {
+								RWDEBUG("Possible spoofing: Inner realm '%s' is not a "
+									"subdomain of the outer realm '%s'", inner, outer);
+							}
+
+						} else {
+							RWDEBUG("Possible spoofing: Inner realm and "
+								"outer realms are different");
+						}
+					}
+				}
+
+			} else {
+				RWDEBUG("Outer and inner identities are the same.  User privacy is compromised.");
+			}
 		}
 	}
+#endif
 
-runit:
 	if (!request->async) {
 #ifdef __clang_analyzer__
 		if (!request->parent) RETURN_MODULE_FAIL;
