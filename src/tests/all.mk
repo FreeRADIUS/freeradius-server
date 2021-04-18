@@ -83,6 +83,20 @@ ci-test: raddb/test.conf test
 #  Or, if we're trying to clean things up.
 #
 ifneq "$(findstring test,$(MAKECMDGOALS))$(findstring clean,$(MAKECMDGOALS))" ""
+
+#
+#  Add LSAN / ASAN options.  And shut them up on OSX, which has leaks in libc.
+#
+ifneq "$(findstring leak,$(CFLAGS))" ""
+export ASAN_SYMBOLIZER_PATH=$(shell which llvm-symbolizer)
+export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
+ifneq "$(findstring apple,$(AC_HOSTINFO))" ""
+export LSAN_OPTIONS=print_suppressions=0 fast_unwind_on_malloc=0 suppressions=${top_srcdir}/scripts/build/lsan_leaks_osx
+else
+export LSAN_OPTIONS=print_suppressions=0 fast_unwind_on_malloc=0
+endif
+endif
+
 SUBMAKEFILES := rbmonkey.mk $(subst src/tests/,,$(wildcard src/tests/*/all.mk))
 endif
 

@@ -53,10 +53,6 @@ $(foreach x,$(PROTOCOLS),$(eval $(call UNIT_TEST_PROTOCOLS,$x)))
 #  This is useful, too
 test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-server.la
 
-#export ASAN_SYMBOLIZER_PATH=$(shell which llvm-symbolizer)
-#export ASAN_OPTIONS=malloc_context_size=50 detect_leaks=1 symbolize=1
-#export LSAN_OPTIONS=print_suppressions=0 fast_unwind_on_malloc=0
-
 #
 #  And the actual script to run each test.
 #
