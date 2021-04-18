@@ -1584,17 +1584,6 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		break;
 
 	case FR_TYPE_VSA:
-		if (fr_dict_vendor_num_by_da(da) == VENDORPEC_WIMAX) {
-			/*
-			 *	WiMAX has a non-standard format for
-			 *	its VSAs.  And, it can do "long"
-			 *	attributes by fragmenting them inside
-			 *	of the WiMAX VSA space.
-			 */
-			len = encode_wimax(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
-			if (len < 0) return len;
-			break;
-		}
 		len = encode_vsa(&FR_DBUFF_MAX(&work_dbuff, UINT8_MAX), &da_stack, 0, cursor, encode_ctx);
 		if (len < 0) return len;
 		break;
