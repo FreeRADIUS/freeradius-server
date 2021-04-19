@@ -1294,6 +1294,7 @@ static inline ssize_t _fr_dbuff_memset(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8
 /** Set _inlen bytes of a dbuff or marker to _c
  *
  * @param[in] _dbuff_or_marker	to copy data to.
+ *				Will be advanced by _inlen bytes.
  * @param[in] _c		Value to set.
  * @param[in] _inlen		How much data we need to copy.
  * @return
@@ -1360,25 +1361,25 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
 
 /** Copy data from a fixed sized C type into a dbuff or marker
  *
- * @param[out] _out	dbuff or marker to write to.  Integer types will be automatically
- *			converted to big endian byte order.
- * @param[in] _in	Value to copy.
+ * @param[out] _dbuff_or_marker		to write to.  Integer types will be automatically
+					converted to big endian byte order.
+ * @param[in] _in			Value to copy.
  * @return
  *	- <0 the number of bytes we would have needed to complete the conversion.
- *	- >0 the number of bytes _in was advanced by.
+ *	- >0 the number of bytes _dbuff_or_marker was advanced by.
  */
-#define fr_dbuff_in(_out, _in) \
+#define fr_dbuff_in(_dbuff_or_marker, _in) \
 	_Generic((_in), \
-		int8_t		: fr_dbuff_in_bytes(_out, (int8_t)_in), \
-		int16_t		: _fr_dbuff_in_int16(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int16_t)_in), \
-		int32_t		: _fr_dbuff_in_int32(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int32_t)_in), \
-		int64_t		: _fr_dbuff_in_int64(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (int64_t)_in), \
-		uint8_t		: fr_dbuff_in_bytes(_out, (uint8_t)_in), \
-		uint16_t	: _fr_dbuff_in_uint16(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint16_t)_in), \
-		uint32_t	: _fr_dbuff_in_uint32(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint32_t)_in), \
-		uint64_t	: _fr_dbuff_in_uint64(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (uint64_t)_in), \
-		float		: _fr_dbuff_in_float(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (float)_in), \
-		double		: _fr_dbuff_in_double(_fr_dbuff_current_ptr(_out), fr_dbuff_ptr(_out), (double)_in) \
+		int8_t		: fr_dbuff_in_bytes(_dbuff_or_marker, (int8_t)_in), \
+		int16_t		: _fr_dbuff_in_int16(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (int16_t)_in), \
+		int32_t		: _fr_dbuff_in_int32(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (int32_t)_in), \
+		int64_t		: _fr_dbuff_in_int64(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (int64_t)_in), \
+		uint8_t		: fr_dbuff_in_bytes(_dbuff_or_marker, (uint8_t)_in), \
+		uint16_t	: _fr_dbuff_in_uint16(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (uint16_t)_in), \
+		uint32_t	: _fr_dbuff_in_uint32(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (uint32_t)_in), \
+		uint64_t	: _fr_dbuff_in_uint64(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (uint64_t)_in), \
+		float		: _fr_dbuff_in_float(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (float)_in), \
+		double		: _fr_dbuff_in_double(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), (double)_in) \
 	)
 
 /** Copy data from a fixed sized C type into a dbuff returning if there is insufficient space
@@ -1573,28 +1574,28 @@ FR_DBUFF_OUT_DEF(int64)
 
 /** Copy data from a dbuff or marker to a fixed sized C type
  *
- * @param[out] _out	Where to write the data.  If out is an integer type
- *			a byteswap will be performed if native endianess
- *      		is not big endian.
- * @param[in] _in	A dbuff or marker to copy data from.  The dbuff or
- *			marker will be advanced by the number of bytes
- *			consumed.
+ * @param[out] _out			Where to write the data.  If out is an integer type
+ *					a byteswap will be performed if native endianess
+ *      				is not big endian.
+ * @param[in] _dbuff_or_marker		to copy data from. Will be advanced by the number
+ *					of bytes consumed, i.e. if out is a uin16_t *,
+ *					_dbuff_or_marker will be advanced by two bytes.
  * @return
  *	- <0 the number of bytes we would have needed to complete the conversion.
  *	- >0 the number of bytes _in was advanced by.
  */
-#define fr_dbuff_out(_out, _in) \
+#define fr_dbuff_out(_out, _dbuff_or_marker) \
 	_Generic((_out), \
-		uint8_t *	: _fr_dbuff_out_memcpy((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), 1), \
-		uint16_t *	: _fr_dbuff_out_uint16((uint16_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)), \
-		uint32_t *	: _fr_dbuff_out_uint32((uint32_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)), \
-		uint64_t *	: _fr_dbuff_out_uint64((uint64_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)), \
-		int8_t *	: _fr_dbuff_out_memcpy((uint8_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in), 1), \
-		int16_t *	: _fr_dbuff_out_int16((int16_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)), \
-		int32_t *	: _fr_dbuff_out_int32((int32_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)), \
-		int64_t *	: _fr_dbuff_out_int64((int64_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)), \
-		float *		: _fr_dbuff_out_uint32((uint32_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)), \
-		double *	: _fr_dbuff_out_uint64((uint64_t *)(_out), _fr_dbuff_current_ptr(_in), fr_dbuff_ptr(_in)) \
+		uint8_t *	: _fr_dbuff_out_memcpy((uint8_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), 1), \
+		uint16_t *	: _fr_dbuff_out_uint16((uint16_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)), \
+		uint32_t *	: _fr_dbuff_out_uint32((uint32_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)), \
+		uint64_t *	: _fr_dbuff_out_uint64((uint64_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)), \
+		int8_t *	: _fr_dbuff_out_memcpy((uint8_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), 1), \
+		int16_t *	: _fr_dbuff_out_int16((int16_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)), \
+		int32_t *	: _fr_dbuff_out_int32((int32_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)), \
+		int64_t *	: _fr_dbuff_out_int64((int64_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)), \
+		float *		: _fr_dbuff_out_uint32((uint32_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)), \
+		double *	: _fr_dbuff_out_uint64((uint64_t *)(_out), _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker)) \
 	)
 
 /** Copy data from a dbuff or marker to a fixed sized C type returning if there is insufficient data
