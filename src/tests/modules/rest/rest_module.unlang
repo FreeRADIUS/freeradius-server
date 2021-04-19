@@ -1,0 +1,74 @@
+# Test "authorize" rest call.  Uses http to a GET end point
+rest
+
+debug_control
+
+if (&REST-HTTP-Status-Code != 200) {
+	test_fail
+}
+
+if (&control.Tmp-String-0 != "authorize") {
+	test_fail
+}
+
+if (&control.Tmp-String-1 != "GET") {
+	test_fail
+}
+
+if (&control.Tmp-String-1[*] != "/user/<username>/mac/<client>") {
+	test_fail
+}
+
+if (&control.User-Name != "Bob") {
+	test_fail
+}
+
+# Reset control attributes
+update control {
+	&Tmp-String-0 !* ANY
+	&Tmp-String-1 !* ANY
+	&User-Name !* ANY
+}
+
+# Test "accounting" rest call.  Uses https to a POST end point
+rest.accounting
+
+if (&REST-HTTP-Status-Code != 200) {
+	test_fail
+}
+
+if (&control.Tmp-String-0 != "accounting") {
+	test_fail
+}
+
+if (&control.Tmp-String-1 != "POST") {
+	test_fail
+}
+
+if (&control.Tmp-String-1[*] != "/user/<username>/mac/<client>") {
+	test_fail
+}
+
+if (&control.User-Name != "Bob") {
+	test_fail
+}
+
+# NAS IP Address is passed in body data
+if (&control.NAS-IP-Address != "192.168.1.1") {
+	test_fail
+}
+
+debug_control
+
+# Test "authenticate" rest call.  Uses http basic authentication
+rest.authenticate
+
+if (&REST-HTTP-Status-Code != 200) {
+	test_fail
+}
+
+if (&REST-HTTP-Body != "Section: authenticate, User: Bob, Authenticated: true\n") {
+	test_fail
+}
+
+test_pass
