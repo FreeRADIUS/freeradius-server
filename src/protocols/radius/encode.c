@@ -632,11 +632,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 /** Breaks down large data into pieces, each with a header
  *
- * @param dbuff	dbuff that has at its end a header followed by too much data
- * 			for the header's one-byte length field
- * @param hdr_in       	marker that points at said header
- * @param hdr_len	length of the headers that will be added
- * @param data_len	number of bytes of raw data, after the header
+ * @param dbuff		Input buffer which already has data from encode_value()
+ * @param hdr_in       	marker that points at the attribute header
+ * @param hdr_len	length of the header which will be added
+ * @param data_len	number of bytes of raw data in "dbuff", after the header
  * @param flag_offset	offset within header of a flag byte whose MSB is set for all
  *			but the last piece
  * @param vsa_offset	if non-zero, the offset of a length field in a (sub?)-header
@@ -645,7 +644,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  *
  * NOTE: the header present on entry may be longer than hdr_len (vide the VSA case in
  * encode_extended()), in which case the size of first piece is more tightly
- * constrained then those following.
+ * constrained then those following.  And... note that this case is not at all handled
+ * right now.  Perhaps we can use these things called "tests".
  *
  * attr_shift() is not like other encoding functions. The caller retrieved the data;
  * here we're chopping it into pieces that will fit into structures whose headers
