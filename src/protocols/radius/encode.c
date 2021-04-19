@@ -662,13 +662,12 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 #endif
 	size_t			extend, extra_headers, fragment;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	uint8_t			*hdr, *data;
+	uint8_t			*hdr;
 
 	/*
 	 *	Markers associated with dbuff so we can manipulate data
 	 *	accumulated there.
 	 */
-	data = fr_dbuff_current(&work_dbuff);
 	hdr = fr_dbuff_current(hdr_in);
 
 	/*
