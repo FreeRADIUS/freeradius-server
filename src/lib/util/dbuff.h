@@ -1424,6 +1424,12 @@ size_t _fr_dbuff_move_dbuff_marker_to_dbuff_marker(fr_dbuff_marker_t *out, fr_db
 
 /** Copy in as many bytes as possible from one dbuff or marker to another
  *
+ * Advances both _in and _out by _len.
+ *
+ * If you only want _out to be advanced use fr_dbuff_in_memcpy(_out, _in, _len).
+ *
+ * If you only want _in to be advanced use fr_dbuff_out_memcpy(_out, _in, _len).
+ *
  * @param[in] _out	to copy into.
  * @param[in] _in	to copy from.
  * @param[in] _len	The maximum length to copy.
