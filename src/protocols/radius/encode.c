@@ -1104,7 +1104,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 *	the RADIUS attribute header, or Vendor-ID.
 	 */
 	if (fr_dbuff_used(&work_dbuff) > UINT8_MAX) {
-		slen = attr_shift(&work_dbuff, &hdr, 2, slen, 8, 7);
+		slen = attr_shift(&work_dbuff, &hdr, 9, slen, 8, 7);
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
