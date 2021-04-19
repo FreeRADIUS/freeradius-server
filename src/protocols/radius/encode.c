@@ -642,11 +642,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  *			of size 3 that also needs to be adjusted to include the number
  *			of bytes of data in the piece
  *
- * NOTE: the header present on entry may be longer than hdr_len (vide the VSA case in
- * encode_extended()), in which case the size of first piece is more tightly
- * constrained then those following.  And... note that this case is not at all handled
- * right now.  Perhaps we can use these things called "tests".
- *
  * attr_shift() is not like other encoding functions. The caller retrieved the data;
  * here we're chopping it into pieces that will fit into structures whose headers
  * have one-byte length fields (that have to include the header length). Markers
@@ -764,6 +759,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	uint8_t			hlen;
+	size_t			vendor_hdr;
 	bool			extra;
 	fr_dbuff_marker_t	hdr, length_field;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
@@ -812,10 +808,12 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da_stack->da[depth]->attr);
 
 		hlen += 5;
+		vendor_hdr = 5;
 
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended vendor specific");
 	} else {
+		vendor_hdr = 0;
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), hlen, "header extended");
 	}
 
@@ -827,9 +825,13 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	 *	the attribute.  If so, move the data up in the packet,
 	 *	and copy the existing header over.  Set the "M" flag ONLY
 	 *	after copying the rest of the data.
+	 *
+	 *	Note that we add "vendor_hdr" to the length of the
+	 *	encoded data.  That 5 octet field is logically part of
+	 *	the data, and not part of the header.
 	 */
 	if (slen > (UINT8_MAX - hlen)) {
-		slen = attr_shift(&work_dbuff, &hdr, 4, slen, 3, 0);
+		slen = attr_shift(&work_dbuff, &hdr, 4, vendor_hdr + slen, 3, 0);
 		if (slen <= 0) return slen;
 
 		fr_dbuff_set(dbuff, &work_dbuff);
