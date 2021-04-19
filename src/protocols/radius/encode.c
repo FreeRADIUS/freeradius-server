@@ -39,9 +39,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx);
 
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
-			  fr_da_stack_t *da_stack, unsigned int depth,
-			  fr_dcursor_t *cursor, void *encode_ctx);
+static ssize_t encode_attribute(fr_dbuff_t *dbuff,
+				fr_da_stack_t *da_stack, unsigned int depth,
+				fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Encode a CHAP password
  *
@@ -233,7 +233,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 }
 
 /*
- *	Encode the contents of a TLV.
+ *	Encode the contents of an attribute of type TLV.
  */
 static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 				   fr_da_stack_t *da_stack, unsigned int depth,
@@ -267,6 +267,9 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 			vp = fr_dcursor_current(&child_cursor);
 			fr_proto_da_stack_build(da_stack, vp->da);
 
+			/*
+			 *	Call ourselves recursively to encode children.
+			 */
 			slen = encode_tlv_children(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			if (slen <= 0) {
 				if (slen == PAIR_ENCODE_SKIPPED) continue;
@@ -277,7 +280,7 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 		} else {
-			slen = encode_tlv(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			slen = encode_attribute(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 		if (slen <= 0) {
 			if (slen == PAIR_ENCODE_SKIPPED) continue;
@@ -356,7 +359,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
-	 *	TLVs are just another 
+	 *	TLVs are just another type of value.
 	 */
 	if (da->type == FR_TYPE_TLV) return encode_tlv_children(dbuff, da_stack, depth, cursor, encode_ctx);
 
@@ -899,13 +902,13 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-/** Encode an RFC format TLV.
+/** Encode an RFC format attribute.
  *
  * This could be a standard attribute, or a TLV data type.
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static ssize_t encode_tlv(fr_dbuff_t *dbuff,
+static ssize_t encode_attribute(fr_dbuff_t *dbuff,
 				 fr_da_stack_t *da_stack, unsigned int depth,
 				 fr_dcursor_t *cursor, void *encode_ctx)
 {
@@ -1240,7 +1243,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 
 /** Encode an RFC standard attribute 1..255
  *
- *  This function is not the same as encode_tlv(), because this
+ *  This function is not the same as encode_attribute(), because this
  *  one treats some "top level" attributes as special.  e.g.
  *  Message-Authenticator.
  */
@@ -1314,7 +1317,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	/*
 	 *	Once we've checked for various top-level magic, RFC attributes are just TLVs.
 	 */
-	return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
+	return encode_attribute(dbuff, da_stack, depth, cursor, encode_ctx);
 }
 
 /** Encode a data structure into a RADIUS attribute
@@ -1440,6 +1443,11 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	fr_proto_da_stack_build(&da_stack, vp->da);
 	FR_PROTO_STACK_PRINT(&da_stack, 0);
 
+	/*
+	 *	Top-level attributes get treated specially.  Things
+	 *	like VSAs inside of extended attributes are handled
+	 *	inside of type-specific encoders.
+	 */
 	da = da_stack.da[0];
 	switch (da->type) {
 	case FR_TYPE_OCTETS:
@@ -1468,7 +1476,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 
 	case FR_TYPE_TLV:
 		if (!flag_extended(&da->flags)) {
-			slen = encode_tlv(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
+			slen = encode_attribute(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		} else {
 			slen = encode_extended(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 		}
