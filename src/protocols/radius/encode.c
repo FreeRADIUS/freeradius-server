@@ -832,6 +832,8 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	 */
 	if (slen > (UINT8_MAX - hlen)) {
 		slen = attr_shift(&work_dbuff, &hdr, 4, slen, 3, 0);
+		if (slen <= 0) return slen;
+
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
@@ -1105,6 +1107,8 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 */
 	if (fr_dbuff_used(&work_dbuff) > UINT8_MAX) {
 		slen = attr_shift(&work_dbuff, &hdr, 9, slen, 8, 7);
+		if (slen <= 0) return slen;
+
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
 	}
