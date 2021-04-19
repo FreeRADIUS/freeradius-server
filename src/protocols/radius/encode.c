@@ -1090,7 +1090,6 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 *	We don't bound the size of work_dbuff; it can use more than UINT8_MAX bytes
 	 *	because of the "continuation" byte.
 	 */
-
 	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
@@ -1099,8 +1098,12 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 *	the attribute.  If so, move the data up in the packet,
 	 *	and copy the existing header over.  Set the "C" flag
 	 *	ONLY after copying the rest of the data.
+	 *
+	 *	Note that we do NOT check 'slen' here, as it's only
+	 *	the size of the sub-sub attribute, and doesn't include
+	 *	the RADIUS attribute header, or Vendor-ID.
 	 */
-	if (slen > RADIUS_MAX_STRING_LENGTH) {
+	if (fr_dbuff_used(&work_dbuff) > UINT8_MAX) {
 		slen = attr_shift(&work_dbuff, &hdr, 2, slen, 8, 7);
 		fr_dbuff_set(dbuff, &work_dbuff);
 		return slen;
