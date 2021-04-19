@@ -186,64 +186,75 @@ do { \
  * @{
  */
 
+/** @cond */
+
+/** Copy another fr_dbuff_t, modifying it.
+ *
+ * @private
+ */
+#define _FR_DBUFF_COPY(_dbuff_or_marker, _start, _adv_parent) \
+((fr_dbuff_t){ \
+	.buff		= fr_dbuff_buff(_dbuff_or_marker), \
+	.start		= (_start), \
+	.end		= fr_dbuff_end(_dbuff_or_marker), \
+	.p		= fr_dbuff_current(_dbuff_or_marker), \
+	.is_const 	= fr_dbuff_ptr(_dbuff_or_marker)->is_const, \
+	.adv_parent 	= (_adv_parent), \
+	.shifted	= fr_dbuff_ptr(_dbuff_or_marker)->shifted, \
+	.extend		= fr_dbuff_ptr(_dbuff_or_marker)->extend, \
+	.uctx		= fr_dbuff_ptr(_dbuff_or_marker)->uctx, \
+	.parent 	= fr_dbuff_ptr(_dbuff_or_marker) \
+})
+/* @endcond */
+
 /** Prevent an dbuff being advanced by operations on its child
  *
  * @private
  *
- * @param[in] _dbuff	to make an ephemeral copy of.
+ * @param[in] _dbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_DBUFF_NO_ADVANCE(_dbuff) (fr_dbuff_t) \
-{ \
-	.buff		= (_dbuff)->buff, \
-	.start		= (_dbuff)->p, \
-	.end		= (_dbuff)->end, \
-	.p		= (_dbuff)->p, \
-	.is_const 	= (_dbuff)->is_const, \
-	.adv_parent 	= false, \
-	.shifted	= (_dbuff)->shifted, \
-	.extend		= (_dbuff)->extend, \
-	.uctx		= (_dbuff)->uctx, \
-	.parent 	= (_dbuff) \
-}
+#define FR_DBUFF_NO_ADVANCE(_dbuff_or_marker) _FR_DBUFF_COPY(_dbuff_or_marker, fr_dbuff_current(_dbuff_or_marker), false)
+
+/** Prevent an dbuff being advanced by operations on its child
+ *
+ * Does not change the start pointer of the new dbuff.
+ *
+ * @param[in] _dbuff_or_marker	to make an ephemeral copy of.
+ */
+#define FR_DBUFF_NO_ADVANCE_ABS(_dbuff_or_marker) _FR_DBUFF_COPY(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), false)
 
 /** Let the dbuff be advanced by operations on its child
  *
- *
- * @param[in] _dbuff	to make an ephemeral copy of.
+ * @param[in] _dbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_DBUFF_COPY(_dbuff) (fr_dbuff_t) \
-{ \
-	.buff		= (_dbuff)->buff, \
-	.start		= (_dbuff)->p, \
-	.end		= (_dbuff)->end, \
-	.p		= (_dbuff)->p, \
-	.is_const 	= (_dbuff)->is_const, \
-	.adv_parent 	= true, \
-	.shifted	= (_dbuff)->shifted, \
-	.extend		= (_dbuff)->extend, \
-	.uctx		= (_dbuff)->uctx, \
-	.parent 	= (_dbuff) \
-}
+#define FR_DBUFF_COPY(_dbuff_or_marker) _FR_DBUFF_COPY(_dbuff_or_marker, fr_dbuff_current(_dbuff_or_marker), true)
+
+/** Let the dbuff be advanced by operations on its child
+ *
+ * Does not change the start pointer of the new dbuff.
+ *
+ * @param[in] _dbuff_or_marker	to make an ephemeral copy of.
+ */
+#define FR_DBUFF_COPY_ABS(_dbuff_or_marker) _FR_DBUFF_COPY_ABS(_dbuff_or_marker, fr_dbuff_start(_dbuff_or_marker), true)
 
 /** @cond */
-
 /** Limit available bytes in the dbufft to _max when passing it to another function
  *
  * @private
  */
-#define _FR_DBUFF_MAX(_dbuff, _max, _adv_parent) \
-(fr_dbuff_t){ \
-	.buff		= (_dbuff)->buff, \
-	.start		= (_dbuff)->p, \
-	.end		= (((((_dbuff)->end) - (_max) < (_dbuff)->p)) ? (_dbuff)->end : ((_dbuff)->p + (_max))), \
-	.p		= (_dbuff)->p, \
-	.is_const	= (_dbuff)->is_const, \
+#define _FR_DBUFF_MAX(_dbuff_or_marker, _max, _adv_parent) \
+((fr_dbuff_t){ \
+	.buff		= fr_dbuff_buff(_dbuff_or_marker), \
+	.start		= fr_dbuff_current(_dbuff_or_marker), \
+	.end		= (((fr_dbuff_end(_dbuff_or_marker) - (_max) < fr_dbuff_current(_dbuff_or_marker))) ? fr_dbuff_end(_dbuff_or_marker) : (fr_dbuff_current(_dbuff_or_marker) + (_max))), \
+	.p		= fr_dbuff_current(_dbuff_or_marker), \
+	.is_const	= fr_dbuff_ptr(_dbuff_or_marker)->is_const, \
 	.adv_parent	= _adv_parent, \
-	.shifted	= (_dbuff)->shifted, \
+	.shifted	= fr_dbuff_ptr(_dbuff_or_marker)->shifted, \
 	.extend		= NULL, \
 	.uctx		= NULL, \
-	.parent		= (_dbuff) \
-}
+	.parent		= fr_dbuff_ptr(_dbuff_or_marker) \
+})
 /* @endcond */
 
 /** Limit the maximum number of bytes available in the dbuff when passing it to another function
@@ -258,10 +269,10 @@ do { \
  * @note Do not modify the "child" dbuff directly.  Use the functions
  *	 supplied as part of this API.
  *
- * @param[in] _dbuff	to reserve bytes in.
- * @param[in] _max	The maximum number of bytes the caller is allowed to write to.
+ * @param[in] _dbuff_or_marker	to reserve bytes in.
+ * @param[in] _max		The maximum number of bytes the caller is allowed to write to.
  */
-#define FR_DBUFF_MAX(_dbuff,  _max) _FR_DBUFF_MAX(_dbuff, _max, true)
+#define FR_DBUFF_MAX(_dbuff_or_marker,  _max) _FR_DBUFF_MAX(_dbuff_or_marker, _max, true)
 
 /** Limit the maximum number of bytes available in the dbuff when passing it to another function
  *
@@ -279,10 +290,10 @@ do { \
  * @note Do not modify the "child" dbuff directly.  Use the functions
  *	 supplied as part of this API.
  *
- * @param[in] _dbuff	to reserve bytes in.
- * @param[in] _max	The maximum number of bytes the caller is allowed to write to.
+ * @param[in] _dbuff_or_marker	to reserve bytes in.
+ * @param[in] _max		The maximum number of bytes the caller is allowed to write to.
  */
-#define FR_DBUFF_MAX_NO_ADVANCE(_dbuff,  _max) _FR_DBUFF_MAX(_dbuff, _max, false)
+#define FR_DBUFF_MAX_NO_ADVANCE(_dbuff_or_marker,  _max) _FR_DBUFF_MAX(_dbuff_or_marker, _max, false)
 
 /** Does the actual work of initialising a dbuff
  * @private
