@@ -490,14 +490,14 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 	return data_len;
 }
 
-/** Convert a top-level VSA to a VP.
+/** Convert one VSA to a VP.
  *
  * "length" can be LONGER than just this sub-vsa.
  */
-static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-				   fr_dict_attr_t const *parent,
-				   uint8_t const *data, size_t data_len,
-				   fr_radius_ctx_t *packet_ctx, fr_dict_vendor_t const *dv)
+static ssize_t decode_vsa_single(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+				 fr_dict_attr_t const *parent,
+				 uint8_t const *data, size_t data_len,
+				 fr_radius_ctx_t *packet_ctx, fr_dict_vendor_t const *dv)
 {
 	unsigned int		attribute;
 	ssize_t			attrlen, my_len;
@@ -611,11 +611,10 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t 
 	/*
 	 *	data = Ext-Attr Flag ...
 	 */
-
 	if (attr_len < 3) return -1;
 
 	/*
-	 *	No continuation, just decode the attributre in place.
+	 *	No continuation, just decode the attribute in place.
 	 */
 	if ((data[1] & 0x80) == 0) {
 		ret = fr_radius_decode_pair_value(ctx, cursor, dict,
@@ -687,50 +686,55 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t 
  *
  * @note Called ONLY for Vendor-Specific
  */
-static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
-			    fr_dict_attr_t const *parent,
+static ssize_t decode_wimax(fr_pair_t *parent, fr_dict_t const *dict,
 			    uint8_t const *data, size_t attr_len, size_t packet_len,
 			    fr_radius_ctx_t *packet_ctx)
 {
 	ssize_t			ret;
 	size_t			wimax_len;
-	bool			more;
 	uint8_t			*head, *tail;
 	uint8_t	const		*attr, *end;
 	fr_dict_attr_t const	*da;
+	fr_pair_list_t		list;
+	fr_dcursor_t		cursor;
 
 #ifdef __clang_analyzer__
 	if (!packet_ctx->tmp_ctx) return -1;
 #endif
 
-	/*
-	 *	data = VID VID VID VID WiMAX-Attr WiMAX-Len Continuation ...
-	 */
-	if (attr_len < 8) return -1;
+	fr_assert(parent->da->type == FR_TYPE_VENDOR);
+	fr_assert(parent->da->attr == VENDORPEC_WIMAX);
 
 	/*
-	 *	WiMAX-Attr WiMAX-Len Continuation
+	 *	We're passed data = WiMAX-Attr WiMAX-Len Continuation ...
 	 */
-	if (data[5] < 3) return -1;
+	fr_assert(attr_len > 3);
+
+	da = fr_dict_attr_child_by_num(parent->da, data[0]);
 
 	/*
-	 *	The WiMAX-Len + 4 VID must exactly fill the attribute.
+	 *	Unknown attribute, or the WiMAX length doesn't match
+	 *	the enclosing attribute length, it's an unknown
+	 *	attribute.
 	 */
-	if (((size_t) (data[5] + 4)) != attr_len) return -1;
-
-	da = fr_dict_attr_child_by_num(parent, data[4]);
-	if (!da) da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, data[4]);
-	if (!da) return -1;
+	if (!da || (data[1] != attr_len)) {
+		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent->da, data[0]);
+		if (!da) return -1;
+	}
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
+	fr_pair_list_init(&list);
+	fr_dcursor_init(&cursor, &list);
+
 	/*
-	 *	No continuation, just decode the attributre in place.
+	 *	No continuation, just decode the attribute in place.
 	 */
-	if ((data[6] & 0x80) == 0) {
-		ret = fr_radius_decode_pair_value(ctx, cursor, dict,
-						  da, data + 7, data[5] - 3, data[5] - 3, packet_ctx);
+	if ((data[2] & 0x80) == 0) {
+		ret = fr_radius_decode_pair_value(parent, &cursor, dict,
+						  da, data + 3, data[1] - 3, data[1] - 3, packet_ctx);
 		if (ret < 0) return ret;
 
+		fr_pair_list_append(&parent->vp_group, &list);
 		return attr_len;
 	}
 
@@ -739,116 +743,116 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 	 *	now, they MUST be contiguous in the packet, and they
 	 *	MUST be all of the same VSA, WiMAX, and WiMAX-attr.
 	 *
-	 *	The first fragment doesn't have a RADIUS attribute
-	 *	header.
+	 *	The first fragment has already been checked, so we
+	 *	start off with that.
 	 */
-	wimax_len = 0;
-	attr = data + 4;
+	wimax_len = attr_len - 3;
+	attr = data + attr_len;
 	end = data + packet_len;
 
+	/*
+	 *	Loop over the entire packet.  The base RFC format is
+	 *	valid, as the packet was already checked for sanity.
+	 */
 	while (attr < end) {
-		/*
-		 *	Not enough room for Attribute + length +
-		 *	continuation, it's bad.
-		 */
-		if ((end - attr) < 3) return -1;
+		uint32_t vendor;
+		uint8_t const *wimax;
 
 		/*
-		 *	Must have non-zero data in the attribute.
+		 *	This check shouldn't be necessary, but what
+		 *	the heck.
 		 */
-		if (attr[1] <= 3) return -1;
+		if ((attr + 2) > end) break;
 
 		/*
-		 *	If the WiMAX attribute overflows the packet,
-		 *	it's bad.
+		 *	This check shouldn't be necessary, either.
 		 */
-		if ((attr + attr[1]) > end) return -1;
+		if ((attr + attr[1]) > end) break;
 
 		/*
-		 *	Check the continuation flag.
+		 *	The attribute isn't a VSA, stop.
 		 */
-		more = ((attr[2] & 0x80) != 0);
+		if (attr[0] != FR_VENDOR_SPECIFIC) break;
 
 		/*
-		 *	Or, there's no more data, in which case we
-		 *	shorten "end" to finish at this attribute.
+		 *	Not enough room for RFC header + Vendor-ID +
+		 *	WiMAX header + Continuation, stop.
 		 */
-		if (!more) end = attr + attr[1];
+		if (attr[1] < 2 + 4 + 2 + 1) break;
 
 		/*
-		 *	There's more data, but we're at the end of the
-		 *	packet.  The attribute is malformed!
+		 *	Not a WiMAX VSA, stop.
 		 */
-		if (more && ((attr + attr[1]) == end)) return -1;
+		vendor = fr_net_to_uint32(attr + 2);
+		if (vendor != VENDORPEC_WIMAX) break;
+
 
 		/*
-		 *	Add in the length of the data we need to
-		 *	concatenate together.
+		 *	Point to WiMAX-Attr
 		 */
-		wimax_len += attr[1] - 3;
+		wimax = attr + 2 + 4;
 
 		/*
-		 *	Go to the next attribute, and stop if there's
-		 *	no more.
+		 *	Not the same WiMAX attribute.
+		 */
+		if (data[0] != wimax[0]) break;
+
+		/*
+		 *	WiMAX attribute does not fill the
+		 *	Vendor-Specific attribute, either
+		 *	overflow or underflow.
+		 */
+		if (attr[1] != (wimax[1] + 6)) break;
+
+		/*
+		 *	Seems OK, add the length in.
+		 */
+		wimax_len += wimax[1] - 3;
+
+		/*
+		 *	We've successfully included this attribute, so
+		 *	point to the next one.
 		 */
 		attr += attr[1];
-		if (!more) break;
 
 		/*
-		 *	data = VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
-		 *
-		 *	attr = Vendor-Specific VSA-Length VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
-		 *
+		 *	No more continuation, stop.
 		 */
-
-		/*
-		 *	No room for Vendor-Specific + length +
-		 *	Vendor(4) + attr + length + continuation + data
-		 */
-		if ((end - attr) < 9) return -1;
-
-		if (attr[0] != FR_VENDOR_SPECIFIC) return -1;
-		if (attr[1] < 9) return -1;
-		if ((attr + attr[1]) > end) return -1;
-		if (memcmp(data, attr + 2, 4) != 0) return -1; /* not WiMAX Vendor ID */
-
-		if (attr[1] != (attr[7] + 6)) return -1; /* WiMAX attr doesn't exactly fill the VSA */
-
-		if (data[4] != attr[6]) return -1; /* different WiMAX attribute */
-
-		/*
-		 *	Skip over the Vendor-Specific header, and
-		 *	continue with the WiMAX attributes.
-		 */
-		attr += 6;
+		if ((wimax[2] & 0x80) == 0) break;
 	}
 
 	/*
-	 *	No data in the WiMAX attribute, make a "raw" one.
+	 *	Remember where the continued WiMAX attributes ended.
 	 */
-	if (!wimax_len) return -1;
+	end = attr;
 
-	head = tail = talloc_array(ctx, uint8_t, wimax_len);
+	head = tail = talloc_array(packet_ctx->tmp_ctx, uint8_t, wimax_len);
 	if (!head) return -1;
 
 	/*
 	 *	Copy the data over, this time trusting the attribute
-	 *	contents.
+	 *	contents.  When this function is called, 'data' is
+	 *	pointing to WiMAX-Attr.  So we back up in order to be
+	 *	able to point to the Vendor-Specific byte, which
+	 *	treats all of the attributes the same.
 	 */
-	attr = data;
+	attr = data - 6;
 	while (attr < end) {
-		memcpy_bounded(tail, attr + 4 + 3, attr[4 + 1] - 3, end);
-		tail += attr[4 + 1] - 3;
-		attr += 4 + attr[4 + 1]; /* skip VID+WiMax header */
-		attr += 2;		 /* skip Vendor-Specific header */
+		uint8_t const *wimax = attr + 2 + 4;
+
+		memcpy_bounded(tail, wimax + 3, wimax[1] - 3, end);
+		tail += wimax[1] - 3;
+		attr += attr[1];
 	}
 
 	FR_PROTO_HEX_DUMP(head, wimax_len, "Wimax fragments");
 
-	ret = fr_radius_decode_pair_value(ctx, cursor, dict,
+	ret = fr_radius_decode_pair_value(parent, &cursor, dict,
 					  da, head, wimax_len, wimax_len, packet_ctx);
 	talloc_free(head);
 	if (ret < 0) return ret;
+
+	fr_pair_list_append(&parent->vp_group, &list);
 
 	return end - data;
 }
@@ -863,12 +867,12 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_dcursor_t *curso
 					    fr_radius_ctx_t *packet_ctx)
 {
 	size_t			total;
-	ssize_t			ret;
 	uint32_t		vendor;
 	fr_dict_vendor_t const	*dv;
 	fr_pair_list_t		head;
 	fr_dict_vendor_t	my_dv;
 	fr_dict_attr_t const	*vendor_da;
+	fr_pair_t		*vp;
 	fr_dcursor_t		tlv_cursor;
 
 	fr_pair_list_init(&head);
@@ -883,8 +887,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_dcursor_t *curso
 	if (!fr_cond_assert(parent->type == FR_TYPE_VSA)) return -1;
 
 	if (attr_len > packet_len) return -1;
-	if (attr_len < 5) return -1; /* vid, value */
-	if (data[0] != 0) return -1; /* we require 24-bit VIDs */
+	if (attr_len < 4) return -1; /* must have at least a 32-bit vendor ID */
 
 	FR_PROTO_TRACE("Decoding VSA");
 
@@ -893,30 +896,23 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_dcursor_t *curso
 
 	/*
 	 *	Verify that the parent (which should be a VSA)
-	 *	contains a fake attribute representing the vendor.
-	 *
-	 *	If it doesn't then this vendor is unknown, but
-	 *	(unlike DHCP) we know vendor attributes have a
-	 *	standard format, so we can decode the data anyway.
+	 *	contains a child which represents the vendor.
 	 */
 	vendor_da = fr_dict_attr_child_by_num(parent, vendor);
 	if (!vendor_da) {
 		fr_dict_attr_t *n;
-		/*
-		 *	RFC format is 1 octet type, 1 octet length
-		 */
-		if (fr_radius_decode_tlv_ok(data + 4, attr_len - 4, 1, 1) < 0) {
-			FR_PROTO_TRACE("Unknown TLVs not OK: %s", fr_strerror());
-			return -1;
-		}
 
 		n = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor);
 		if (!n) return -1;
 		vendor_da = n;
+	}
 
-		/*
-		 *	Create an unknown DV too...
-		 */
+	/*
+	 *	Create an unknown DV if necessary.  If the DV isn't
+	 *	known, we default to RFC format.
+	 */
+	dv = fr_dict_vendor_by_num(dict, vendor);
+	if (!dv) {
 		memset(&my_dv, 0, sizeof(my_dv));
 
 		my_dv.pen = vendor;
@@ -924,28 +920,10 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_dcursor_t *curso
 		my_dv.length = 1;
 
 		dv = &my_dv;
-
-		goto create_attrs;
 	}
 
 	/*
-	 *	We found an attribute representing the vendor
-	 *	so it *MUST* exist in the vendor tree.
-	 */
-	dv = fr_dict_vendor_by_num(dict, vendor);
-	if (!fr_cond_assert(dv)) return -1;
-	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
-
-	/*
-	 *	WiMAX craziness
-	 */
-	if ((vendor == VENDORPEC_WIMAX) && dv->flags) {
-		ret = decode_wimax(ctx, cursor, dict, vendor_da, data, attr_len, packet_len, packet_ctx);
-		return ret;
-	}
-
-	/*
-	 *	VSAs should normally be in TLV format.
+	 *	VSAs should be in a TLV format.
 	 */
 	if (fr_radius_decode_tlv_ok(data + 4, attr_len - 4, dv->type, dv->length) < 0) {
 		FR_PROTO_TRACE("TLVs not OK: %s", fr_strerror());
@@ -953,45 +931,96 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_dcursor_t *curso
 	}
 
 	/*
-	 *	There may be more than one VSA in the
-	 *	Vendor-Specific.  If so, loop over them all.
+	 *	Ensure that Vendor-Specific exists.  If it doesn't
+	 *	exist, create it and add it to the parent list.
+	 *
+	 *	Since fr_radius_decode_tlv_ok() has returned OK, we
+	 *	know that any malformed attributes will be created as
+	 *	"raw" attributes.  The decode functions we call will
+	 *	return -1 only on OOM, or other unrecoverable error.
 	 */
-create_attrs:
+	vp = packet_ctx->vendor_specific;
+	if (!vp) {
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		packet_ctx->vendor_specific = vp;
+		fr_dcursor_append(cursor, vp);
+	}
+
+	/*
+	 *	Ensure that a child VP of this vendor exists.
+	 */
+	vp = fr_pair_find_by_da(&packet_ctx->vendor_specific->vp_group, vendor_da);
+	if (!vp) {
+		vp = fr_pair_afrom_da(packet_ctx->vendor_specific, vendor_da);
+		if (!vp) return -1;
+
+		fr_pair_append(&packet_ctx->vendor_specific->vp_group, vp);
+	}
+
 	data += 4;
 	attr_len -= 4;
 	packet_len -= 4;
 	total = 4;
 
-	fr_dcursor_init(&tlv_cursor, &head);
-	while (attr_len > 0) {
-		ssize_t vsa_len;
+	/*
+	 *	WiMAX craziness.
+	 */
+	if (vendor == VENDORPEC_WIMAX) {
+		ssize_t slen;
 
 		/*
-		 *	Vendor attributes can have subattributes (if you hadn't guessed)
+		 *	If there's only Vendor-Attr + Vendor-Length,
+		 *	then there's either continuation byte, or only
+		 *	a continuation byte.  We return zero
+		 *	attributes.
+		 *
+		 *	Note that we don't bother checking for the
+		 *	continuation flag.  If it's set, then there's
+		 *	no reason to concatenate an empty attribute
+		 *	with the next one.
 		 */
-		vsa_len = decode_vsa_internal(ctx, &tlv_cursor, dict,
-					      vendor_da, data, attr_len, packet_ctx, dv);
-		if (vsa_len < 0) {
+		if (attr_len <= 3) return total + attr_len;
+
+		/*
+		 *	There's a continuation byte, and some data.
+		 *	Let's decode it.
+		 */
+		slen = decode_wimax(vp, dict, data, attr_len, packet_len, packet_ctx);
+		if (slen < 0) return slen;
+		return total + slen;
+	}
+
+	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
+
+	/*
+	 *	There may be many TLVs in the attribute.  Loop over
+	 *	them all.
+	 */
+	fr_dcursor_init(&tlv_cursor, &head);
+	while (attr_len > 0) {
+		ssize_t slen;
+
+		/*
+		 *	Decode this one VSA, which itself might have
+		 *	child attributes.
+		 */
+		slen = decode_vsa_single(vp, &tlv_cursor, dict,
+					 vendor_da, data, attr_len, packet_ctx, dv);
+		if (slen < 0) {
 			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			fr_pair_list_free(&head);
 			return -1;
 		}
 
-		data += vsa_len;
-		attr_len -= vsa_len;
-		packet_len -= vsa_len;
-		total += vsa_len;
+		data += slen;
+		attr_len -= slen;
+		packet_len -= slen;
+		total += slen;
 	}
-	fr_dcursor_head(&tlv_cursor);
-	fr_dcursor_tail(cursor);
-	fr_dcursor_merge(cursor, &tlv_cursor);
 
-	/*
-	 *	When the unknown attributes were created by
-	 *	decode_vsa_internal, the hierachy between that unknown
-	 *	attribute and first known attribute was cloned
-	 *	meaning we can now free the unknown vendor.
-	 */
+	fr_pair_list_append(&vp->vp_group, &head);
 
 	return total;
 }

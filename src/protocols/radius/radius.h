@@ -172,6 +172,7 @@ typedef struct {
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
 	int			salt_offset;		//!< for tunnel passwords
+	fr_pair_t		*vendor_specific;	//!< for decoding VSAs into nested sets
 	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
 	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
 
