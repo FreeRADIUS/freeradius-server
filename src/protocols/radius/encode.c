@@ -634,9 +634,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  *
  * @param dbuff	dbuff that has at its end a header followed by too much data
  * 			for the header's one-byte length field
- * @param ptr		marker that points at said header
+ * @param hdr_in       	marker that points at said header
  * @param hdr_len	length of the headers that will be added
- * @param len		number of bytes of data, starting at ptr + ptr[1]
+ * @param data_len	number of bytes of raw data, after the header
  * @param flag_offset	offset within header of a flag byte whose MSB is set for all
  *			but the last piece
  * @param vsa_offset	if non-zero, the offset of a length field in a (sub?)-header
@@ -654,105 +654,104 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
  * where the data is, so we associate them with dbuff.
  */
 static ssize_t attr_shift(fr_dbuff_t *dbuff,
-			  fr_dbuff_marker_t *ptr, int hdr_len, size_t len,
+			  fr_dbuff_marker_t *hdr_in, int hdr_len, size_t data_len,
 			  int flag_offset, int vsa_offset)
 {
-	int			check_len;
-	size_t			total = hdr_len;
-	uint8_t			current_hdr_len = 0, flags = 0;
+#ifndef NDEBUG
+	int			num = 0;
+#endif
+	size_t			extend, extra_headers, fragment;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_marker_t	hdr, src, dest;
+	uint8_t			*hdr, *data;
 
 	/*
 	 *	Markers associated with dbuff so we can manipulate data
 	 *	accumulated there.
 	 */
-	fr_dbuff_marker(&hdr, dbuff);
-	fr_dbuff_marker(&src, dbuff);
-	fr_dbuff_marker(&dest, dbuff);
-	fr_dbuff_set(&hdr, ptr);
-
-	fr_dbuff_set(&src, fr_dbuff_current(&hdr) + 1);
-	fr_dbuff_out(&current_hdr_len, &src);
-	check_len = len - current_hdr_len;
+	data = fr_dbuff_current(&work_dbuff);
+	hdr = fr_dbuff_current(hdr_in);
 
 	/*
 	 *	Pass 1: Check if the addition of the headers
 	 *	overflows the available freespace.  If so, return
 	 *	what we were capable of encoding.
 	 */
-
-	while (check_len > (UINT8_MAX - hdr_len)) {
-		total += hdr_len;
-		check_len -= (UINT8_MAX - hdr_len);
+	extra_headers = 0;
+	fragment = data_len;
+	while (fragment > (size_t) (UINT8_MAX - hdr_len)) {
+		extra_headers += hdr_len;
+		fragment -= (UINT8_MAX - hdr_len);
 	}
 
 	/*
-	 *	Note that this results in a number of attributes maybe
-	 *	being marked as "encoded", but which aren't in the
-	 *	packet.  Oh well.  The solution is to fix the
-	 *	"encode_value" function to take into account the header
-	 *	lengths.
+	 *	See if we can extend the work buffer by "extra_headers"
+	 *	number of extra header bytes.
+	 *
+	 *	Return the negative number of octets we need
+	 *	in order to encode this attribute.
 	 */
-	if (fr_dbuff_extend_lowat(NULL, &work_dbuff, total) < total) {
-		fr_dbuff_marker_release(&hdr);
-		return (fr_dbuff_current(ptr) + current_hdr_len) - fr_dbuff_start(&work_dbuff);
-	}
-	fr_dbuff_advance(&work_dbuff, total);
+	extend = fr_dbuff_extend_lowat(NULL, &work_dbuff, extra_headers);
+	if (extend < extra_headers) return -(hdr_len + data_len + extra_headers);
 
+	/*
+	 *	Advance to ensure that there's room for the extra
+	 *	headers.
+	 */
+	fr_dbuff_memset(&work_dbuff, 0, extra_headers);
 
+	FR_PROTO_TRACE("data_len %zd (%x) extra_headers %zd (%x)", data_len, (int) data_len,
+		       extra_headers, (int) extra_headers);
+	FR_PROTO_HEX_DUMP(hdr, hdr_len + data_len + extra_headers, "attr_shift in");
 
 	/*
 	 *	Pass 2: Now that we know there's enough freespace,
 	 *	re-arrange the data to form a set of valid
 	 *	RADIUS attributes.
 	 */
-	for (;;) {
-		/* Extend current attribute as much as possible. */
-		size_t sublen = UINT8_MAX - current_hdr_len;
-		if (len < sublen) sublen = len;
+	while (data_len > 0) {
+		fragment = data_len;
+		if (fragment > (size_t) (UINT8_MAX - hdr_len)) fragment = (UINT8_MAX - hdr_len);
 
-		fr_dbuff_set(&dest, fr_dbuff_current(&hdr) + 1);
-		fr_dbuff_in(&dest, (uint8_t)(current_hdr_len + sublen));
+		data_len -= fragment;
 
-		/* Adjust the other length field if it exists. */
-		if (vsa_offset) {
-			uint8_t	vsa_len = 0;
-			fr_dbuff_set(&src, fr_dbuff_current(&hdr) + vsa_offset);
-			fr_dbuff_out(&vsa_len, &src);
-			fr_dbuff_set(&dest, fr_dbuff_current(&hdr) + vsa_offset);
-			fr_dbuff_in(&dest, (uint8_t)(vsa_len + sublen));
+		/*
+		 *	Update the outer "length" header
+		 */
+		hdr[1] = hdr_len + fragment;
+
+		/*
+		 *	There's still trailing data after this
+		 *	fragment.  Move the trailing data to *past*
+		 *	the next header.  And after there's room, copy
+		 *	the header over.
+		 *
+		 *	This process leaves the next header in place,
+		 *	ready for the next iteration of the loop.
+		 *
+		 *	Yes, moving things multiple times is less than
+		 *	efficient.  Oh well.  it's ~1K memmoved()
+		 *	maybe 4 times.  We are nowhere near the CPU /
+		 *	electrical requirements of Bitcoin.
+		 */
+		if (data_len) {
+			uint8_t *next = hdr + hdr[1];
+
+			memmove(next + hdr_len, next, data_len);
+			memcpy(next, hdr, hdr_len);
 		}
 
-		/* If all data are accounted for, we're done. */
-		len -= sublen;
-		if (len == 0) break;
+		if (vsa_offset) hdr[vsa_offset] = 3 + fragment;
 
-		/* This attribute isn't the last, so flag it. */
-		fr_dbuff_set(&src, fr_dbuff_current(&hdr) + flag_offset);
-		fr_dbuff_out(&flags, &src);
-		fr_dbuff_set(&dest, fr_dbuff_current(&hdr) + flag_offset);
-		fr_dbuff_in(&dest, (uint8_t)(flags | 0x80));
+		/*
+		 *	Just over-ride the flag field.  Nothing else
+		 *	uses it.
+		 */
+		hdr[flag_offset] = ((data_len > 0) << 7);
 
-		/* Make room for another header. */
-		fr_dbuff_set(&src, fr_dbuff_current(&hdr) + UINT8_MAX);
-		fr_dbuff_set(&dest, fr_dbuff_current(&src) + hdr_len);
-		fr_dbuff_move(&dest, &src, len);
+		FR_PROTO_HEX_DUMP(hdr, hdr[1], "attr_shift fragment %d", num++);
 
-		/* Copy current header into new header and advance to it... */
-		fr_dbuff_set(&src, &hdr);
-		fr_dbuff_advance(&hdr, UINT8_MAX);
-		fr_dbuff_set(&dest, &hdr);
-		fr_dbuff_move(&dest, &src, hdr_len);
-
-		/* ...and set its length to that of the header. */
-		fr_dbuff_set(&src, fr_dbuff_current(&hdr) + 1);
-		fr_dbuff_in(&src, hdr_len);
-		current_hdr_len = hdr_len;
+		hdr += hdr[1];
 	}
-
-	/* Clear our markers from dbuff's list */
-	fr_dbuff_marker_release(&hdr);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
