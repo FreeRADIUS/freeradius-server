@@ -1160,7 +1160,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 		fr_proto_da_stack_build(da_stack, vp->da);
 
 		if (da->attr == VENDORPEC_WIMAX) {
-			slen = encode_wimax(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+			slen = encode_wimax(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		} else {
 			slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		}
