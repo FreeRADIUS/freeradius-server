@@ -632,86 +632,85 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 /** Breaks down large data into pieces, each with a header
  *
- * @param dbuff		Input buffer which already has data from encode_value()
- * @param hdr_in       	marker that points at the attribute header
- * @param hdr_len	length of the header which will be added
- * @param data_len	number of bytes of raw data in "dbuff", after the header
- * @param flag_offset	offset within header of a flag byte whose MSB is set for all
- *			but the last piece
- * @param vsa_offset	if non-zero, the offset of a length field in a (sub?)-header
- *			of size 3 that also needs to be adjusted to include the number
- *			of bytes of data in the piece
- *
- * attr_shift() is not like other encoding functions. The caller retrieved the data;
- * here we're chopping it into pieces that will fit into structures whose headers
- * have one-byte length fields (that have to include the header length). Markers
- * associated with a child can't access data before the child's start--but that's
- * where the data is, so we associate them with dbuff.
+ * @param[out] data		we're fragmenting.
+ * @param[in] data_len		the amount of data in the dbuff that makes up the value we're
+ *      			splitting.
+ * @param[in,out] hdr      	marker that points at said header
+ * @param[in] hdr_len		length of the headers that will be added
+ * @param[in] flag_offset	offset within header of a flag byte whose MSB is set for all
+ *				but the last piece.
+ * @param[in] vsa_offset	if non-zero, the offset of a length field in a (sub?)-header
+ *				of size 3 that also needs to be adjusted to include the number
+ *				of bytes of data in the piece
+ * @return
+ *      - <0 the number of bytes we would have needed to create
+ *	  space for another attribute header in the buffer.
+ *	- 0 data was not modified.
+ *      - >0 the number additional bytes we used inserting extra
+ *        headers.
  */
-static ssize_t attr_shift(fr_dbuff_t *dbuff,
-			  fr_dbuff_marker_t *hdr_in, int hdr_len, size_t data_len,
-			  int flag_offset, int vsa_offset)
+static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_t *hdr, size_t hdr_len,
+			     int flag_offset, int vsa_offset)
 {
-#ifndef NDEBUG
-	int			num = 0;
-#endif
-	size_t			extend, extra_headers, fragment;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	uint8_t			*hdr;
+	unsigned int		num_fragments, i = 0;
+	size_t			max_frag_data = UINT8_MAX - hdr_len;
+	fr_dbuff_t		frag_data = FR_DBUFF_NO_ADVANCE_ABS(hdr);
+	fr_dbuff_marker_t	frag_hdr, frag_hdr_p;
 
-	/*
-	 *	Markers associated with dbuff so we can manipulate data
-	 *	accumulated there.
-	 */
-	hdr = fr_dbuff_current(hdr_in);
+	if (unlikely(!data_len)) return 0;	/* Shouldn't have been called */
 
-	/*
-	 *	Pass 1: Check if the addition of the headers
-	 *	overflows the available freespace.  If so, return
-	 *	what we were capable of encoding.
-	 */
-	extra_headers = 0;
-	fragment = data_len;
-	while (fragment > (size_t) (UINT8_MAX - hdr_len)) {
-		extra_headers += hdr_len;
-		fragment -= (UINT8_MAX - hdr_len);
-	}
+	num_fragments = ROUND_UP_DIV(data_len, max_frag_data);
+	if (num_fragments == 1) return 0;	/* Nothing to do */
 
-	/*
-	 *	See if we can extend the work buffer by "extra_headers"
-	 *	number of extra header bytes.
-	 *
-	 *	Return the negative number of octets we need
-	 *	in order to encode this attribute.
-	 */
-	extend = fr_dbuff_extend_lowat(NULL, &work_dbuff, extra_headers);
-	if (extend < extra_headers) return -(hdr_len + data_len + extra_headers);
+	fr_dbuff_marker(&frag_hdr, &frag_data);
+	fr_dbuff_marker(&frag_hdr_p, &frag_data);
 
-	/*
-	 *	Advance to ensure that there's room for the extra
-	 *	headers.
-	 */
-	fr_dbuff_memset(&work_dbuff, 0, extra_headers);
+	fr_dbuff_advance(&frag_data, hdr_len);
 
-	FR_PROTO_TRACE("data_len %zd (%x) extra_headers %zd (%x)", data_len, (int) data_len,
-		       extra_headers, (int) extra_headers);
-	FR_PROTO_HEX_DUMP(hdr, hdr_len + data_len + extra_headers, "attr_shift in");
-
-	/*
-	 *	Pass 2: Now that we know there's enough freespace,
-	 *	re-arrange the data to form a set of valid
-	 *	RADIUS attributes.
-	 */
-	while (data_len > 0) {
-		fragment = data_len;
-		if (fragment > (size_t) (UINT8_MAX - hdr_len)) fragment = (UINT8_MAX - hdr_len);
-
-		data_len -= fragment;
+	FR_PROTO_HEX_DUMP(fr_dbuff_current(hdr), hdr_len + data_len, "attr_fragment in");
+	for (;;) {
+		bool	last = (i + 1) == num_fragments;
+		uint8_t frag_len;
 
 		/*
-		 *	Update the outer "length" header
+		 *	How long is this fragment?
 		 */
-		hdr[1] = hdr_len + fragment;
+		if (last) {
+			frag_len = (data_len - (max_frag_data * (num_fragments - 1)));
+		} else {
+			frag_len = max_frag_data;
+		}
+
+		/*
+		 *	Update the "outer" header to reflect the actual
+		 *	length of the fragment
+		 */
+		fr_dbuff_set(&frag_hdr_p, &frag_hdr);
+		fr_dbuff_advance(&frag_hdr_p, 1);
+		fr_dbuff_in(&frag_hdr_p, (uint8_t)(hdr_len + frag_len));
+
+		/*
+		 *	Update the "inner" header.  The length here is
+		 *	the inner VSA header length (3) + the fragment
+		 *	length.
+		 */
+		if (vsa_offset) {
+			fr_dbuff_set(&frag_hdr_p, fr_dbuff_current(&frag_hdr) + vsa_offset);
+			fr_dbuff_in(&frag_hdr_p, (uint8_t)(3 + frag_len));
+		}
+
+		/*
+		 *	Just over-ride the flag field.  Nothing else
+		 *	uses it.
+		 */
+		fr_dbuff_set(&frag_hdr_p, fr_dbuff_current(&frag_hdr) + flag_offset);
+		fr_dbuff_in(&frag_hdr_p, (uint8_t)(!last << 7));
+
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(hdr), frag_len + hdr_len,
+				  "attr_fragment fragment %u/%u", i + 1, num_fragments);
+
+		fr_dbuff_advance(&frag_data, frag_len);	/* Go to the start of the next fragment */
+		if (last) break;
 
 		/*
 		 *	There's still trailing data after this
@@ -727,27 +726,19 @@ static ssize_t attr_shift(fr_dbuff_t *dbuff,
 		 *	maybe 4 times.  We are nowhere near the CPU /
 		 *	electrical requirements of Bitcoin.
 		 */
-		if (data_len) {
-			uint8_t *next = hdr + hdr[1];
+		i++;
 
-			memmove(next + hdr_len, next, data_len);
-			memcpy(next, hdr, hdr_len);
-		}
-
-		if (vsa_offset) hdr[vsa_offset] = 3 + fragment;
+		fr_dbuff_set(&frag_hdr, &frag_data);		/* Remember where the header should be */
+		fr_dbuff_advance(&frag_data, hdr_len);		/* Advance past the header */
 
 		/*
-		 *	Just over-ride the flag field.  Nothing else
-		 *	uses it.
+		 *	Shift remaining data by hdr_len.
 		 */
-		hdr[flag_offset] = ((data_len > 0) << 7);
-
-		FR_PROTO_HEX_DUMP(hdr, hdr[1], "attr_shift fragment %d", num++);
-
-		hdr += hdr[1];
+		FR_DBUFF_IN_MEMCPY_RETURN(&FR_DBUFF_NO_ADVANCE(&frag_data), &frag_hdr, data_len - (i * max_frag_data));
+		fr_dbuff_in_memcpy(&FR_DBUFF_NO_ADVANCE(&frag_hdr), hdr, hdr_len);	/* Copy the old header over */
 	}
 
-	return fr_dbuff_set(dbuff, &work_dbuff);
+	return fr_dbuff_set(data, &frag_data);
 }
 
 /** Encode an "extended" attribute
@@ -831,7 +822,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	 *	the data, and not part of the header.
 	 */
 	if (slen > (UINT8_MAX - hlen)) {
-		slen = attr_shift(&work_dbuff, &hdr, 4, vendor_hdr + slen, 3, 0);
+		slen = attr_fragment(&work_dbuff, (size_t)vendor_hdr + slen, &hdr, 4, 3, 0);
 		if (slen <= 0) return slen;
 
 		fr_dbuff_set(dbuff, &work_dbuff);
@@ -1106,7 +1097,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	 *	the RADIUS attribute header, or Vendor-ID.
 	 */
 	if (fr_dbuff_used(&work_dbuff) > UINT8_MAX) {
-		slen = attr_shift(&work_dbuff, &hdr, 9, slen, 8, 7);
+		slen = attr_fragment(&work_dbuff, (size_t)slen, &hdr, 9, 8, 7);
 		if (slen <= 0) return slen;
 
 		fr_dbuff_set(dbuff, &work_dbuff);
