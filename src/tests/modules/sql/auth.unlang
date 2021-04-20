@@ -2,16 +2,13 @@
 #  Clear out old data
 #
 "%{sql:${delete_from_radcheck} 'user_auth'}"
+"%{sql:${delete_from_radreply} 'user_auth'}"
 
 if ("%{sql:${insert_into_radcheck} ('user_auth', 'NAS-IP-Address', '==', '1.2.3.4')}" != "1") {
 	test_fail
 }
 
 if ("%{sql:${insert_into_radcheck} ('user_auth', 'Password.Cleartext', ':=', 'password')}" != "1") {
-	test_fail
-}
-
-if ("%{sql:${delete_from_radreply} 'user_auth'}" != "1") {
 	test_fail
 }
 

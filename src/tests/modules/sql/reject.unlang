@@ -2,6 +2,7 @@
 #  Clear out old data
 #
 "%{sql:${delete_from_radcheck} 'user_reject'}"
+"%{sql:${delete_from_radreply} 'user_reject'}"
 
 #
 #  Add in the check items.
@@ -11,10 +12,6 @@ if ("%{sql:${insert_into_radcheck} ('user_reject', 'NAS-IP-Address', '==', '1.2.
 }
 
 if ("%{sql:${insert_into_radcheck} ('user_reject', 'Password.Cleartext', ':=', 'wrong-password')}" != "1") {
-	test_fail
-}
-
-if ("%{sql:${delete_from_radreply} 'user_reject'}" != "1") {
 	test_fail
 }
 
