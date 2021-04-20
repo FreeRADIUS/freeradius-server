@@ -122,6 +122,10 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Fix parenting issues in rlm_yubikey.  Fixes #4012.
 	* Update Mongo examples to be correct.
 
+	Notices
+	* CentOS 6, Debian 8 (Jessie) and Ubuntu 14 (Trusty) are EOL and no
+	  longer supported. Docker files have been removed.
+
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* New stored procedure for allocating IPs with PostgreSQL.

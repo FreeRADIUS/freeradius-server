@@ -1,11 +1,9 @@
 def platforms = [
-	"ubuntu14",
 	"ubuntu16",
 	"ubuntu18",
 	"ubuntu20",
 	"centos7",
 	"centos8",
-	"debian8",
 	"debian9",
 	"debian10"]
 
