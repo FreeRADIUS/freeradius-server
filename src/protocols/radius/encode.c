@@ -847,8 +847,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 			     fr_dcursor_t *cursor, UNUSED void *encode_ctx)
 {
 	uint8_t const		*p;
-	size_t			left;
-	ssize_t			slen;
+	size_t			data_len;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 	fr_dbuff_marker_t	hdr;
@@ -856,31 +855,24 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	p = vp->vp_octets;
-	slen = fr_radius_attr_len(vp);
+	data_len = fr_radius_attr_len(vp);
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
-	while (slen > 0) {
-		uint8_t			hlen;
+	while (data_len > 0) {
+		size_t frag_len = (data_len > RADIUS_MAX_STRING_LENGTH) ? RADIUS_MAX_STRING_LENGTH : data_len;
 
 		fr_dbuff_set(&hdr, &work_dbuff);
-		hlen = 2;
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da_stack->da[depth]->attr, hlen);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da_stack->da[depth]->attr, 0x00);
 
-		left = slen;
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, frag_len);
 
-		/* no more than 253 octets */
-		if (left > RADIUS_MAX_STRING_LENGTH) left = RADIUS_MAX_STRING_LENGTH;
-
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, left);
-
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr) + 2, left, "concat value octets");
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 2, "concat header rfc");
-
-		hlen += left;
 		fr_dbuff_advance(&hdr, 1);
-		fr_dbuff_in(&hdr, hlen);
-		p += left;
-		slen -= left;
+		fr_dbuff_in(&hdr, (uint8_t) (2 + frag_len));
+
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr) - 1, 2 + frag_len, "encode_concat fragment");
+
+		p += frag_len;
+		data_len -= frag_len;
 	}
 
 	vp = fr_dcursor_next(cursor);
