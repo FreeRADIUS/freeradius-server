@@ -9,10 +9,23 @@ else {
 	test_fail
 }
 
-if ("%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'}" != "1") {
+update {
+	&Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
 	test_fail
 }
-
-if ("%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'}" != "30") {
+else {
 	test_pass
 }
+
+update {
+	&Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 30)) {
+	test_fail
+}
+else {
+	test_pass
+}
+

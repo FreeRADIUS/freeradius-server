@@ -5,7 +5,15 @@
 #
 #  Clear out old data
 #
-"%{sql:delete_from_radacct '00000003'}"
+update {
+	&Tmp-String-0 := "%{sql:DELETE FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+else {
+	test_pass
+}
 
 #
 #  Insert the Accounting-Request start
@@ -21,15 +29,27 @@ else {
 #
 #  Check the database has at least one row
 #
-if ("%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000003'}" != "1") {
+update {
+	&Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
 	test_fail
+}
+else {
+	test_pass
 }
 
 #
 #  Check acctsessiontime matches the value in the request
 #
-if ("%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000003'}" != "0") {
+update {
+	&Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 0)) {
 	test_fail
+}
+else {
+	test_pass
 }
 
 #
@@ -45,7 +65,12 @@ if (ok) {
 else {
 	test_fail
 }
-
-if ("%{sql:SELECT connectinfo_start FROM radacct WHERE AcctSessionId = '00000003'}" != 'updated') {
+update {
+	&Tmp-String-0 := "%{sql:SELECT connectinfo_start FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-String-0 != 'updated')) {
 	test_fail
+}
+else {
+	test_pass
 }

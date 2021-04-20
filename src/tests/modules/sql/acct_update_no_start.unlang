@@ -1,19 +1,41 @@
 #
 #  Clear out old data
 #
-"%{sql:${delete_from_radacct} '00000004'}"
+update {
+	&Tmp-String-0 := "%{sql:DELETE FROM radacct WHERE AcctSessionId = '00000004'}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+else {
+	test_pass
+}
 
 sql.accounting
-if (!ok) {
+if (ok) {
+	test_pass
+}
+else {
 	test_fail
 }
 
-if ("%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000004'}" != "1") {
+update {
+	&Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000004'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
 	test_fail
 }
-
-if ("%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000004'}" != "30") {
-	test_fail
+else {
+	test_pass
 }
 
-test_pass
+update {
+	&Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000004'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 30)) {
+	test_fail
+}
+else {
+	test_pass
+}
+
