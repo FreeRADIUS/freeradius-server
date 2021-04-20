@@ -894,7 +894,7 @@ static inline ssize_t _fr_dbuff_set(uint8_t **pos_p, fr_dbuff_t *dbuff, uint8_t 
 
 	c = *pos_p;
 	if (dbuff->adv_parent && dbuff->parent) _fr_dbuff_set_recurse(dbuff->parent, p);
-	memcpy(pos_p, &p, sizeof(*pos_p));
+	*pos_p = UNCONST(uint8_t *, p);
 
 	return p - c;
 }
