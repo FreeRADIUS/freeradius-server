@@ -825,8 +825,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 		slen = attr_fragment(&work_dbuff, (size_t)vendor_hdr + slen, &hdr, 4, 3, 0);
 		if (slen <= 0) return slen;
 
-		fr_dbuff_set(dbuff, &work_dbuff);
-		return slen;
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
 	fr_dbuff_in_bytes(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
@@ -1100,8 +1099,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 		slen = attr_fragment(&work_dbuff, (size_t)slen, &hdr, 9, 8, 7);
 		if (slen <= 0) return slen;
 
-		fr_dbuff_set(dbuff, &work_dbuff);
-		return slen;
+		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
 
 	fr_dbuff_in_bytes(&vsa_length_field, (uint8_t) (fr_dbuff_used(&work_dbuff) - 6));
