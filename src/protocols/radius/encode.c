@@ -709,7 +709,7 @@ static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(hdr), frag_len + hdr_len,
 				  "attr_fragment fragment %u/%u", i + 1, num_fragments);
 
-		fr_dbuff_advance(&frag_data, (size_t) frag_len);	/* Go to the start of the next fragment */
+		fr_dbuff_advance(&frag_data, (int) frag_len);	/* Go to the start of the next fragment */
 		if (last) break;
 
 		/*
