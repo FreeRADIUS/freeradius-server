@@ -952,7 +952,7 @@ _fr_dbuff_set(\
 			unsigned int : (size_t)(_len), \
 			unsigned long : (size_t)(_len), \
 			unsigned long long : (size_t)(_len), \
-			int : (fr_cond_assert(((int)(_len)) >= 0) ? (size_t)(_len) : 0) \
+			int : (size_t)(_len) \
 		     ))))
 
 /** Advance the 'current' position in dbuff or marker by _len bytes returning if _len is out of range
