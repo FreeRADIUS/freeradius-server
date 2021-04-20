@@ -1,15 +1,8 @@
 #
-#  Clear out old data
+#  Clear out old data.  We don't care if the deletion deletes any rows.
 #
-update {
-	&Tmp-String-0 := "%{sql:DELETE FROM radacct WHERE AcctSessionId = '00000000'}"
-}
-if (!&Tmp-String-0) {
-	test_fail
-}
-else {
-	test_pass
-}
+
+"%{sql:${delete_from_radacct} '00000000'}"
 
 sql.accounting
 if (ok) {
@@ -19,22 +12,10 @@ else {
 	test_fail
 }
 
-update {
-	&Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000000'}"
-}
-if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
+if ("%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000000'}" != "1") {
 	test_fail
-}
-else {
-	test_pass
 }
 
-update {
-	&Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000000'}"
-}
-if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 0)) {
+if ("%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000000'}" != "0") {
 	test_fail
-}
-else {
-	test_pass
 }
