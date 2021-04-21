@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <sys/time.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #define OFFSET	(1024)

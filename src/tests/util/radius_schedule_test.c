@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <pthread.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #define MPRINT1 if (debug_lvl) printf

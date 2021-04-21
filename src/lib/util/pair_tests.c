@@ -50,7 +50,7 @@ static void test_init(void);
 #include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
-#	include <gperftools/profiler.h>
+#  include <gperftools/profiler.h>
 #endif
 
 static TALLOC_CTX       *autofree;

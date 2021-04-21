@@ -36,7 +36,7 @@
 static void test_init(void) __attribute__((constructor));
 #else
 static void test_init(void);
-#	define TEST_INIT  test_init()
+#  define TEST_INIT  test_init()
 #endif
 
 #include <freeradius-devel/util/acutest.h>
@@ -50,7 +50,7 @@ static void test_init(void);
 #include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
-#	include <gperftools/profiler.h>
+#  include <gperftools/profiler.h>
 #endif
 
 static TALLOC_CTX       *autofree;
