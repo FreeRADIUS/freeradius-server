@@ -75,6 +75,8 @@ jobs:
         libkqueue-dev \
         libkrb5-dev \
         libldap2-dev \
+        libnl-3-dev \
+        libnl-genl-3-dev \
         libmemcached-dev \
         libmysqlclient-dev \
         libpam0g-dev \
