@@ -47,26 +47,39 @@ static void fr_pair_list_perf_init(void);
 #endif
 
 #include "pair.c"
+#include <freeradius-devel/util/dict_test.h>
 #include <freeradius-devel/server/base.h>
-
-typedef struct {
-        int attr;
-        fr_dict_attr_t const **parent;
-        fr_dict_attr_t const **da;
-        char const *name;
-        fr_type_t type;
-        void *values;
-} fr_dict_adhoc_attr_t;
 
 /*
  *      Global variables
  */
 
-static fr_dict_t        *dict;
-static char const       *dict_dir  = "share/dictionary";
+static fr_dict_t        *test_dict;
 static TALLOC_CTX       *autofree;
 static int              input_count = 0;
-static char const       *test_attrs = "Tmp-String-0 = \"goodbye\",Tmp-String-1 = \"wibble\",Tmp-Integer-0 = 542,Tmp-Integer-1 = 456,Tmp-IP-Address-0 = 192.168.1.1,Tmp-IP-Address-1 = 10.0.0.1,Tmp-Ethernet-0 = 11:22:33:44:55:66,Tmp-Ethernet-1 = ff:ee:dd:cc:bb:aa,Tmp-Date-0 = 959985459,Tmp-Date-1 = \"Jan  1 2020 00:00:00 UTC\",Tmp-Integer64-0 = 156453412,Tmp-Integer64-1 = 46456155,Tmp-Signed-0 = -4573,Tmp-Signed-1 = 45645,Tmp-Float-0 = 45.48,Tmp-Float-0 = 58.64,IP-Pool.Name = \"main\",IP-Pool.Action = Allocate";
+static char const       *test_attrs = \
+	"Test-String += \"goodbye\","			/* 1 */
+	"Test-String += \"wibble\","			/* 2 */
+	"Test-String += \"bob\","			/* 3 */
+	"Test-String += \"rowlf\","			/* 4 */
+	"Test-Octets += 0x0102030405060708,"		/* 5 */
+	"Test-Octets += 0x0203040506070809,"		/* 6 */
+	"Test-IPv4-Addr = 192.168.1.1,"			/* 7 */
+	"Test-IPv4-Prefix = 192.168/16,"		/* 8 */
+	"Test-IPv6-Addr = fd12:3456:789a:1::1,"		/* 8 */
+	"Test-IPv6-Prefix = fd12:3456:789a:1::/64,"	/* 9 */
+	"Test-Ethernet = 11:22:33:44:55:66,"		/* 10 */
+	"Test-Uint8 = 255,"				/* 11 */
+	"Test-Uint16 = 65535,"				/* 12 */
+	"Test-Uint32 = 4294967295,"			/* 13 */
+	"Test-Uint64 = 18446744073709551615,"		/* 14 */
+	"Test-Int16 = -4573,"				/* 15 */
+	"Test-Int32 = 45645,"				/* 16 */
+	"Test-Int64 = 85645,"				/* 17 */
+	"Test-Date += \"Jan  1 2020 00:00:00 UTC\","	/* 18 */
+	"Test-TLV.String = \"nested\","			/* 19 */
+	"Test-Struct.uint32 = 1234";			/* 20 */
+
 static fr_pair_t        **source_vps;
 
 void fr_pair_list_perf_init(void)
@@ -74,15 +87,26 @@ void fr_pair_list_perf_init(void)
         fr_pair_list_t  input_vps;
         fr_pair_t       *vp, *next;
         int             i;
+        fr_token_t	ret;
 
-        fr_pair_list_init(&input_vps);
-        autofree = talloc_autofree_context();
+	autofree = talloc_autofree_context();
+	if (!autofree) {
+	error:
+		fr_perror("pair_list_perf_tests");
+		fr_exit_now(EXIT_FAILURE);
+	}
 
-	TEST_ASSERT(fr_dict_global_ctx_init(autofree, dict_dir) != NULL);
+	/*
+	 *	Mismatch between the binary and the libraries it depends on
+	 */
+	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) goto error;
 
-	TEST_ASSERT(fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) == 0);
+	if (fr_dict_test_init(autofree, &test_dict, NULL) < 0) goto error;
 
-        TEST_ASSERT(fr_pair_list_afrom_str(autofree, dict, test_attrs, strlen(test_attrs), &input_vps) != T_INVALID);
+	fr_pair_list_init(&input_vps);
+	ret = fr_pair_list_afrom_str(autofree, test_dict, test_attrs, strlen(test_attrs), &input_vps);
+	if (ret == T_INVALID) fr_perror("pair_list_perf_tests");
+        TEST_ASSERT(ret != T_INVALID);
 
         fr_time_start();
 

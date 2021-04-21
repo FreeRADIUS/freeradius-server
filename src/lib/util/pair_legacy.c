@@ -281,16 +281,18 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, char const *end,
 					 fr_pair_list_t *list, fr_token_t *token, int depth, fr_pair_t **relative_vp)
 {
-	fr_pair_list_t	tmp_list;
-	fr_pair_t	*vp = NULL;
-	fr_pair_t	*my_relative_vp;
-	char const	*p, *q, *next;
-	fr_token_t	quote, last_token = T_INVALID;
-	fr_pair_t_RAW	raw;
-	fr_dict_attr_t	const *internal = fr_dict_root(fr_dict_internal());
-	fr_pair_list_t	*my_list;
-	TALLOC_CTX	*my_ctx;
+	fr_pair_list_t		tmp_list;
+	fr_pair_t		*vp = NULL;
+	fr_pair_t		*my_relative_vp;
+	char const		*p, *q, *next;
+	fr_token_t		quote, last_token = T_INVALID;
+	fr_pair_t_RAW		raw;
+	fr_dict_attr_t const	*internal = NULL;
+	fr_pair_list_t		*my_list;
+	TALLOC_CTX		*my_ctx;
 
+	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
+	if (!internal && !parent) return 0;
 	if (internal == parent) internal = NULL;
 
 	/*

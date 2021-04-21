@@ -278,10 +278,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_INT32:
+	case FR_TYPE_FLOAT32:
 		flags->length = 4;
 		break;
 
 	case FR_TYPE_UINT64:
+	case FR_TYPE_FLOAT64:
 		flags->length = 8;
 		break;
 
@@ -417,7 +419,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case FR_TYPE_NULL:
-	case FR_TYPE_FLOAT64:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
 		return false;
@@ -481,8 +482,9 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
 			if (!sibling) {
-				fr_strerror_printf("Child %s of 'struct' type attribute %s MUST be numbered consecutively %u.",
-					name, parent->name, *attr);
+				fr_strerror_printf("Child \"%s\" of 'struct' ttribute \"%s\" MUST be "
+						   "numbered consecutively %u.",
+						   name, parent->name, *attr);
 				return false;
 			}
 
