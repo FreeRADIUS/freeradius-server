@@ -305,9 +305,9 @@ uint32_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
  *	- true if node is in the tree.
  *	- talse if node is not in the tree.
  */
-static inline bool fr_rb_node_inline_in_tree(fr_rb_node_t *node)
+static inline bool fr_rb_node_inline_in_tree(fr_rb_node_t const *node)
 {
-	return ((!node->left && !node->right && !node->parent) || (node->being_freed));
+	return (node->left && node->right && node->parent && !node->being_freed);
 }
 
 /** Check to see if nodes are equivalent and if they are, replace one with the other
