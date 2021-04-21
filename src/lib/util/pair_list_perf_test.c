@@ -54,10 +54,10 @@ static void fr_pair_list_perf_init(void);
  *      Global variables
  */
 
-static fr_dict_t        *test_dict;
-static TALLOC_CTX       *autofree;
-static int              input_count = 0;
-static char const       *test_attrs = \
+static fr_dict_t	*test_dict;
+static TALLOC_CTX	*autofree;
+static int		input_count = 0;
+static char const	*test_attrs = \
 	"Test-String += \"goodbye\","			/* 1 */
 	"Test-String += \"wibble\","			/* 2 */
 	"Test-String += \"bob\","			/* 3 */
@@ -80,14 +80,14 @@ static char const       *test_attrs = \
 	"Test-TLV.String = \"nested\","			/* 19 */
 	"Test-Struct.uint32 = 1234";			/* 20 */
 
-static fr_pair_t        **source_vps;
+static fr_pair_t	**source_vps;
 
 void fr_pair_list_perf_init(void)
 {
-        fr_pair_list_t  input_vps;
-        fr_pair_t       *vp, *next;
-        int             i;
-        fr_token_t	ret;
+	fr_pair_list_t  input_vps;
+	fr_pair_t	*vp, *next;
+	int		i;
+	fr_token_t	ret;
 
 	autofree = talloc_autofree_context();
 	if (!autofree) {
@@ -106,58 +106,58 @@ void fr_pair_list_perf_init(void)
 	fr_pair_list_init(&input_vps);
 	ret = fr_pair_list_afrom_str(autofree, test_dict, test_attrs, strlen(test_attrs), &input_vps);
 	if (ret == T_INVALID) fr_perror("pair_list_perf_tests");
-        TEST_ASSERT(ret != T_INVALID);
+	TEST_ASSERT(ret != T_INVALID);
 
-        fr_time_start();
+	fr_time_start();
 
-        input_count = fr_pair_list_len(&input_vps);
-        fr_pair_list_debug(&input_vps);
+	input_count = fr_pair_list_len(&input_vps);
+	fr_pair_list_debug(&input_vps);
 
-        /*
-         *  Move vps to array so we can pick them randomly to populate the test list.
-         */
-        source_vps = talloc_zero_array(autofree, fr_pair_t *, input_count);
-        for (vp = fr_pair_list_head(&input_vps), i = 0; vp; vp = next, i++) {
-                next = fr_pair_list_next(&input_vps, vp);
-                fr_pair_remove(&input_vps, vp);
-                source_vps[i] = vp;
-        }
+	/*
+	 *  Move vps to array so we can pick them randomly to populate the test list.
+	 */
+	source_vps = talloc_zero_array(autofree, fr_pair_t *, input_count);
+	for (vp = fr_pair_list_head(&input_vps), i = 0; vp; vp = next, i++) {
+		next = fr_pair_list_next(&input_vps, vp);
+		fr_pair_remove(&input_vps, vp);
+		source_vps[i] = vp;
+	}
 }
 
 
 static void do_test_fr_pair_append(uint len, uint reps)
 {
-        fr_pair_list_t  test_vps;
-        uint             i, j;
-        fr_pair_t       *new_vp;
-        fr_time_t       start, end, used = 0;
+	fr_pair_list_t  test_vps;
+	uint	     i, j;
+	fr_pair_t	*new_vp;
+	fr_time_t	start, end, used = 0;
 
-        fr_pair_list_init(&test_vps);
+	fr_pair_list_init(&test_vps);
 
-        /*
-         *  Insert pairs into the test list, choosing randomly from the source list
-         */
-        for (i = 0; i < reps; i++) {
-                for (j = 0; j < len; j++) {
-                        int index = rand() % input_count;
-                        new_vp = fr_pair_copy(autofree, source_vps[index]);
-                        start = fr_time();
-                        fr_pair_append(&test_vps, new_vp);
-                        end = fr_time();
-                        used += (end - start);
-                }
-                TEST_CHECK(fr_pair_list_len(&test_vps) == len);
-                fr_pair_list_free(&test_vps);
-        }
-        TEST_MSG_ALWAYS("repetitions=%d", reps);
-        TEST_MSG_ALWAYS("list_length=%d", len);
-        TEST_MSG_ALWAYS("used=%"PRId64, used);
-        TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	/*
+	 *  Insert pairs into the test list, choosing randomly from the source list
+	 */
+	for (i = 0; i < reps; i++) {
+		for (j = 0; j < len; j++) {
+			int index = rand() % input_count;
+			new_vp = fr_pair_copy(autofree, source_vps[index]);
+			start = fr_time();
+			fr_pair_append(&test_vps, new_vp);
+			end = fr_time();
+			used += (end - start);
+		}
+		TEST_CHECK(fr_pair_list_len(&test_vps) == len);
+		fr_pair_list_free(&test_vps);
+	}
+	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("list_length=%d", len);
+	TEST_MSG_ALWAYS("used=%"PRId64, used);
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
 #define test_func(_func, _count) static void test_ ## _func ## _ ## _count(void)\
 {\
-        do_test_ ## _func(_count, 10000);\
+	do_test_ ## _func(_count, 10000);\
 }
 
 #define test_funcs(_func) test_func(_func, 20)\
@@ -170,133 +170,134 @@ test_funcs(fr_pair_append)
 
 static void do_test_fr_pair_find_by_da(uint len, uint reps)
 {
-        fr_pair_list_t          test_vps;
-        uint                    i, j;
-        fr_pair_t               *new_vp;
-        fr_time_t               start, end, used = 0;
-        const fr_dict_attr_t    *da;
+	fr_pair_list_t	  test_vps;
+	uint		    i, j;
+	fr_pair_t		*new_vp;
+	fr_time_t		start, end, used = 0;
+	const fr_dict_attr_t    *da;
 
-        fr_pair_list_init(&test_vps);
+	fr_pair_list_init(&test_vps);
 
-        /*
-         *  Initialise the test list
-         */
-        for (i = 0; i < len; i++) {
-                int index = rand() % input_count;
-                new_vp = fr_pair_copy(autofree, source_vps[index]);
-                fr_pair_append(&test_vps, new_vp);
-        }
+	/*
+	 *  Initialise the test list
+	 */
+	for (i = 0; i < len; i++) {
+		int index = rand() % input_count;
+		new_vp = fr_pair_copy(autofree, source_vps[index]);
+		fr_pair_append(&test_vps, new_vp);
+	}
 
-        /*
-         * Find first instance of specific DA
-         */
-        for (i = 0; i < reps; i++) {
-                for (j = 0; j < len; j++) {
-                        int index = rand() % input_count;
-                        da = source_vps[index]->da;
-                        start = fr_time();
-                        (void) fr_pair_find_by_da(&test_vps, da);
-                        end = fr_time();
-                        used += (end - start);
-                }
-
-        }
-        fr_pair_list_free(&test_vps);
-        TEST_MSG_ALWAYS("repetitions=%d", reps);
-        TEST_MSG_ALWAYS("list_length=%d", len);
-        TEST_MSG_ALWAYS("used=%"PRId64, used);
-        TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	/*
+	 * Find first instance of specific DA
+	 */
+	for (i = 0; i < reps; i++) {
+		for (j = 0; j < len; j++) {
+			int index = rand() % input_count;
+			da = source_vps[index]->da;
+			start = fr_time();
+			(void) fr_pair_find_by_da(&test_vps, da);
+			end = fr_time();
+			used += (end - start);
+		}
+	}
+	fr_pair_list_free(&test_vps);
+	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("list_length=%d", len);
+	TEST_MSG_ALWAYS("used=%"PRId64, used);
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
 test_funcs(fr_pair_find_by_da)
 
 static void do_test_find_nth(uint len, uint reps)
 {
-        fr_pair_list_t          test_vps;
-        uint                     i, j, k, nth_item;
-        fr_pair_t               *new_vp;
-        fr_time_t               start, end, used = 0;
-        const fr_dict_attr_t    *da;
+	fr_pair_list_t	  test_vps;
+	uint			i, j, k, nth_item;
+	fr_pair_t		*new_vp;
+	fr_time_t		start, end, used = 0;
+	const fr_dict_attr_t    *da;
 
-        fr_pair_list_init(&test_vps);
+	fr_pair_list_init(&test_vps);
 
-        /*
-         *  Initialise the test list
-         */
-        for (i = 0; i < len; i++) {
-                int index = rand() % input_count;
-                new_vp = fr_pair_copy(autofree, source_vps[index]);
-                fr_pair_append(&test_vps, new_vp);
-        }
+	/*
+	 *  Initialise the test list
+	 */
+	for (i = 0; i < len; i++) {
+		int index = rand() % input_count;
+		new_vp = fr_pair_copy(autofree, source_vps[index]);
+		fr_pair_append(&test_vps, new_vp);
+	}
 
-        /*
-         * Find nth instance of specific DA
-         */
-        nth_item = (uint)(len / input_count);
-        for (i = 0; i < reps; i++) {
-                for (j = 0; j < len; j++) {
-                        int index = rand() % input_count;
-                        da = source_vps[index]->da;
-                        start = fr_time();
-                        k = 0;
-                        for (new_vp = fr_pair_list_head(&test_vps); new_vp; new_vp = fr_pair_list_next(&test_vps, new_vp)) {
-                                if (new_vp->da == da) {
-                                        k++;
-                                        if (k == nth_item) break;
-                                }
-                        }
-                        end = fr_time();
-                        used += (end - start);
-                }
-        }
-        fr_pair_list_free(&test_vps);
-        TEST_MSG_ALWAYS("repetitions=%d", reps);
-        TEST_MSG_ALWAYS("list_length=%d", len);
-        TEST_MSG_ALWAYS("used=%"PRId64, used);
-        TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	/*
+	 * Find nth instance of specific DA
+	 */
+	nth_item = (uint)(len / input_count);
+	for (i = 0; i < reps; i++) {
+		for (j = 0; j < len; j++) {
+			int index = rand() % input_count;
+
+			da = source_vps[index]->da;
+			start = fr_time();
+			k = 0;
+
+			for (new_vp = fr_pair_list_head(&test_vps); new_vp; new_vp = fr_pair_list_next(&test_vps, new_vp)) {
+				if (new_vp->da == da) {
+					k++;
+					if (k == nth_item) break;
+				}
+			}
+			end = fr_time();
+			used += (end - start);
+		}
+	}
+	fr_pair_list_free(&test_vps);
+	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("list_length=%d", len);
+	TEST_MSG_ALWAYS("used=%"PRId64, used);
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
 test_funcs(find_nth)
 
 static void do_test_fr_pair_list_free(uint len, uint reps)
 {
-        fr_pair_list_t  test_vps;
-        uint             i, j;
-        fr_pair_t       *new_vp;
-        fr_time_t       start, end, used = 0;
+	fr_pair_list_t  test_vps;
+	uint		i, j;
+	fr_pair_t	*new_vp;
+	fr_time_t	start, end, used = 0;
 
-        fr_pair_list_init(&test_vps);
+	fr_pair_list_init(&test_vps);
 
-        for (i = 0; i < reps; i++) {
-                for (j = 0; j < len; j++) {
-                        int index = rand() % input_count;
-                        new_vp = fr_pair_copy(autofree, source_vps[index]);
-                        fr_pair_append(&test_vps, new_vp);
-                }
-                start = fr_time();
-                fr_pair_list_free(&test_vps);
-                end = fr_time();
-                used += (end - start);
-        }
-        TEST_MSG_ALWAYS("repetitions=%d", reps);
-        TEST_MSG_ALWAYS("list_length=%d", len);
-        TEST_MSG_ALWAYS("used=%"PRId64, used);
-        TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	for (i = 0; i < reps; i++) {
+		for (j = 0; j < len; j++) {
+			int index = rand() % input_count;
+			new_vp = fr_pair_copy(autofree, source_vps[index]);
+			fr_pair_append(&test_vps, new_vp);
+		}
+		start = fr_time();
+		fr_pair_list_free(&test_vps);
+		end = fr_time();
+		used += (end - start);
+	}
+	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("list_length=%d", len);
+	TEST_MSG_ALWAYS("used=%"PRId64, used);
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
 test_funcs(fr_pair_list_free)
 
 #define tests(_func) { #_func "_20", test_ ## _func ## _20},\
-        { #_func "_40", test_ ## _func ## _40},\
-        { #_func "_60", test_ ## _func ## _60},\
-        { #_func "_80", test_ ## _func ## _80},\
-        { #_func "_100", test_ ## _func ## _100},\
+	{ #_func "_40", test_ ## _func ## _40},\
+	{ #_func "_60", test_ ## _func ## _60},\
+	{ #_func "_80", test_ ## _func ## _80},\
+	{ #_func "_100", test_ ## _func ## _100},\
 
 TEST_LIST = {
-        tests(fr_pair_append)
-        tests(fr_pair_find_by_da)
-        tests(find_nth)
-        tests(fr_pair_list_free)
+	tests(fr_pair_append)
+	tests(fr_pair_find_by_da)
+	tests(find_nth)
+	tests(fr_pair_list_free)
 
-        { NULL }
+	{ NULL }
 };
