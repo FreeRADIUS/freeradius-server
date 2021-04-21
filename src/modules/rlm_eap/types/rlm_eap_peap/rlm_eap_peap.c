@@ -327,6 +327,10 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	data.
 	 */
 	case FR_TLS_OK:
+                /*
+                 *	TLSv1.3 makes application data immediately avaliable
+                 */
+		if (tls_session->is_init_finished && (peap->status == PEAP_STATUS_INVALID)) peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;
 		break;
 
 		/*
