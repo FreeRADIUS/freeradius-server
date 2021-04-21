@@ -30,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/dict_test.h>
 
+DIAG_OFF(unused-variable)
 static char const       *test_string = "We love testing!";
 static size_t           test_string_len = 16;
 static uint8_t          test_octets[] = {
@@ -37,6 +38,7 @@ static uint8_t          test_octets[] = {
 				0x20, 0x74, 0x65, 0x69, 0x74, 0x20, 0x41,
 				0x63, 0x61, 0x64, 0x65, 0x6d, 0x79, 0x0a
 			};
+DIAG_ON(unused-variable)
 
 static inline int fr_pair_test_list_alloc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					  fr_dict_test_attr_t const *test_defs)
