@@ -10,6 +10,16 @@ include ../../Make.inc
 
 BUILD_PATH := $(top_builddir)/build
 
+TLSV13 = $(shell test $$(($$(echo OPENSSL_VERSION_NUMBER | cpp -E -P -x assembler-with-cpp -include openssl/opensslv.h | sed -e 's/L$$//'))) -gt $$((0x10100000)) && echo y)
+
+ifneq "$(TLSV13)" ""
+# earliest support for TLSv1.3
+EAPOL_TEST_HOSTAPD_REF ?= fcdf5d93ea813f4e1ed7706687b8998dc16c7374
+else
+# earliest support for TLSv1.2 EAP-FAST
+EAPOL_TEST_HOSTAPD_REF ?= b2e2a8588dc916269580576a99add668ea603a53
+endif
+
 #
 #  The "build eapol_test" makefile contains only a definition of
 #  EAPOL_TEST, which is where the binary is located.
@@ -23,7 +33,7 @@ $(BUILD_PATH)/tests/eapol_test:
 
 # define where the EAPOL_TEST is located.  If necessary, build it.
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
-	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
+	@echo "EAPOL_TEST=" $(shell env HOSTAPD_GIT_REF=$(EAPOL_TEST_HOSTAPD_REF) $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
 
 # include the above definition.  If the "mk" file doesn't exist, then the preceding
 # rule will cause it to be build.
@@ -37,7 +47,7 @@ else
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 ifeq "$(EAPOL_TEST)" ""
-EAPOL_TEST := $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh)
+EAPOL_TEST := $(shell env HOSTAPD_GIT_REF=$(EAPOL_TEST_HOSTAPD_REF) $(top_builddir)/scripts/ci/eapol_test-build.sh)
 endif
 
 endif # check for eapol_test
@@ -115,7 +125,7 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 #  Same as above, but enable caching, and set the persist_dir
 #
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
-	@sed 's/eap {/eap eap-test {/;s/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/;s/enable = no/enable = yes/;s/^\(.*\)persist_dir =/  persist_dir =/' < $< > $@
+	@sed 's/^eap {/eap eap-test {/;s/tls_min_version = "1\.."/tls_min_version = "1.0"/;s/tls_max_version = "1\.."/tls_max_version = "1.$(if $(TLSV13),3,2)"/;s/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/;s/enable = no/enable = yes/;/^[\t#]*persist_dir =/ s/#//;/ocsp {/,/}/ s/^/#/;/\(fast\|pwd\) {/,/}/ s/#\([^ ]\)/\1/$(if $(TLSV13),;/^\t*tls_min_version =/ i\\t\ttls13_enable = yes)' < $< > $@
 
 radiusd.pid: test.conf
 	@rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
@@ -154,10 +164,20 @@ radiusd.kill:
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 ifneq "$(EAPOL_TEST)" ""
-EAP_FILES	= eap-md5.conf
-EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_FILES	= $(wildcard eap-*.conf peap-*.conf)
+EAP_TLS_FILES	= $(shell grep -l phase1= $(EAP_FILES))
+
+# Don't run the full TLS version tests for CI post-install
+ifeq "$(prefix)" ""
 EAP_TLS_VERSIONS = 1.2
-EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
+else
+EAP_TLS_VERSIONS = 1.0 1.1 1.2
+ifneq "$(TLSV13)" ""
+EAP_TLS_VERSIONS += 1.3
+endif
+endif
+
+EAP_TLS_DISABLE_STRING = tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
 
 .PHONY: $(BUILD_PATH)/tests/eap
 $(BUILD_PATH)/tests/eap:
@@ -172,56 +192,50 @@ clean.tests.eap:
 #
 $(BUILD_PATH)/tests/eap/%.ok: NO_MPPE = $(filter eap-md5,$(basename $(notdir $@)))
 
-$(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(BUILD_PATH)/tests/eap radiusd.pid radiusd.kill
-	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
-	@if ! $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
-		echo "    " FAILED; \
-		exit 1; \
+$(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap
+	@printf 'EAPOL_TEST %s : ' '$*'
+	@if $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
+		echo Success; \
+		touch $@; \
+	else \
+		echo FAILED; \
 	fi
-	@touch $@
 
-#
-#  Don't run the full TLS version tests for CI post-install.
-#
-ifneq "$(prefix)" ""
 #
 #  ${1} is the config file
 #  ${2} is the TLS version to use.
 #
 define EAP_TLS_CONFIG
-$(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
-	@sed 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' < $$< > $$@
-#   Just keep the TLS versions that we want to disable. e.g: tls_disable_tlsv1_XX=1
-	@sed '/phase1=/s/tls_disable_tlsv1_[0-9]=0//g' < $$@ > $$@.tmp
-	@mv -f $$@.tmp $$@
+$(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf $(BUILD_PATH)/tests/eap
+	@sed 's/phase1="/&$(EAP_TLS_DISABLE_STRING) /; s/\(tls_disable_tlsv1_[0-$(subst 1.,,${2})]\)=1/\1=0/g' < $$< > $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
-	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
+	@printf 'EAPOL_TEST %s : ' '$$(notdir $$(@:%.ok=%))'
 	@if ! $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
 		echo FAILED; \
-		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
+		echo ' ' $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET); \
+	elif ! grep -q '^SSL: Using TLS version TLSv$(if $(filter 1.0,${2}),1,${2})$$$$' $$(patsubst %.ok,%,$$@).log; then \
+		echo FAILED - not using TLS version ${2}; \
+		echo ' ' $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET); \
+	elif ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
+		echo FAILED - did not use resumption; \
+		echo ' ' $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET); \
+	else \
+		echo Success; \
+		touch $$@; \
 	fi
-	@if ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
-		echo "    " FAILED - not using TLS version ${2}; \
-		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
-		exit 1; \
-	fi
-	@if ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
-		echo "    " FAILED - did not use resumption; \
-		echo "        " $(EAPOL_TEST) -r -c $$< -p $(PORT) -s $(SECRET); \
-		exit 1; \
-	fi
-	@touch $$@
 
+ifneq "${1}-${2}" "eap-fast-1.3"
 EAP_TLS_VERSION_FILES += $(BUILD_PATH)/tests/eap/${1}-${2}.ok
+endif
 endef
 
 $(foreach FILE,$(patsubst %.conf,%,$(EAP_TLS_FILES)),$(foreach TLS,$(EAP_TLS_VERSIONS),$(eval $(call EAP_TLS_CONFIG,${FILE},${TLS}))))
-endif # there's no "prefix", so we don't run the full EAP tests
 
-EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES) $(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
+EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(filter-out $(EAP_TLS_FILES),$(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
 
 tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
+	@$(MAKE) radiusd.kill
 
 endif # we have eapol_test built
 
@@ -234,6 +248,8 @@ tests: test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 ifneq "$(EAPOL_TEST)" ""
+	@ln -f -s ../../raddb	# relative path for certs
 	@$(MAKE) tests.eap
+	@rm raddb
 endif
 	@$(MAKE) radiusd.kill

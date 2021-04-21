@@ -31,23 +31,25 @@
 #  FORCE_BUILD=1 in the environment.
 #
 
-TMP_BUILD_DIR="${BUILD_DIR}"
+set -eu
+
+TMP_BUILD_DIR="${BUILD_DIR:-}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
-: ${HOSTAPD_GIT_TAG:="hostap_2_8"}
+: ${HOSTAPD_GIT_REF:="hostap_2_9"}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
 : ${BUILD_CONF_DIR:="$(dirname $0)/eapol_test"}
 : ${EAPOL_TEST_PATH:="${BUILD_CONF_DIR}/eapol_test"}
 
-if [ -z "${FORCE_BUILD}" ]; then
+if [ -z "${FORCE_BUILD:-}" ]; then
     if [ -e "${EAPOL_TEST_PATH}" ]; then
         echo "${EAPOL_TEST_PATH}"
         exit 0
     fi
 
-    WHICH_EAPOL_TEST="$(which eapol_test)"
-    if [ ! -z "${WHICH_EAPOL_TEST}" ]; then
+    WHICH_EAPOL_TEST="$(which eapol_test)" || true
+    if [ "${WHICH_EAPOL_TEST}" ]; then
         echo "${WHICH_EAPOL_TEST}"
         exit 0
     fi
@@ -77,12 +79,13 @@ if [ ! -e "${BUILD_CONF_FILE}" ]; then
     exit 1
 fi
 
-# Shallow clone so we don't use all Jouni's bandwidth
-if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone --branch "${HOSTAPD_GIT_TAG}" --depth 1 http://w1.fi/hostap.git 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
+if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone http://w1.fi/hostap.git 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
     echo "Failed cloning hostapd" 1>&2
     if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
     exit 1
 fi
+
+git -C "${TMP_BUILD_DIR}/hostapd" checkout "${HOSTAPD_GIT_REF}"
 
 cp "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
@@ -95,4 +98,4 @@ fi
 cp "${WPA_SUPPLICANT_DIR}/eapol_test" "${EAPOL_TEST_PATH}"
 
 echo "${EAPOL_TEST_PATH}"
-if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
+[ "${BUILD_DIR:-}" ] || rm -rf "$TMP_BUILD_DIR"
