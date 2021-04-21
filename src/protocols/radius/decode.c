@@ -442,7 +442,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 	 *	We don't have a "pair find in cursor"
 	 */
 	if (flag_concat(&parent->flags)) {
-		vp = fr_pair_find_by_da(fr_pair_list_from_dcursor(cursor), parent);
+		vp = fr_pair_find_by_da(fr_pair_list_from_dcursor(cursor), parent, 0);
 		concat = (vp != NULL);
 	} else {
 		vp = NULL;

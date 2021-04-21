@@ -195,7 +195,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 	fr_pair_t			*transaction_id, *client_id, *server_id;
 	process_dhcpv6_client_fields_t	*rctx;
 
-	transaction_id = fr_pair_find_by_da(&request->request_pairs, attr_transaction_id);
+	transaction_id = fr_pair_find_by_da(&request->request_pairs, attr_transaction_id, 0);
 	if (!transaction_id) {
 		REDEBUG("Missing Transaction-ID");
 		return NULL;
@@ -213,7 +213,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		return NULL;
 	}
 
-	server_id = fr_pair_find_by_da(&request->request_pairs, attr_server_id);
+	server_id = fr_pair_find_by_da(&request->request_pairs, attr_server_id, 0);
 	if (!server_id && expect_server_id) {
 		REDEBUG("Missing Server-ID");
 		return NULL;
@@ -300,7 +300,7 @@ int restore_field(request_t *request, fr_pair_t **to_restore)
 
 	VP_VERIFY(*to_restore);
 
-	vp = fr_pair_find_by_da(&request->reply_pairs, (*to_restore)->da);
+	vp = fr_pair_find_by_da(&request->reply_pairs, (*to_restore)->da, 0);
 	if (vp) {
 		if (fr_pair_cmp(vp, *to_restore) != 0) {
 			RWDEBUG("&reply.%pP does not match &request.%pP", vp, *to_restore);
@@ -379,7 +379,7 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 	fr_pair_t		 	*hop_count, *link_address, *peer_address;
 	process_dhcpv6_relay_fields_t	*rctx;
 
-	hop_count = fr_pair_find_by_da(&request->request_pairs, attr_hop_count);
+	hop_count = fr_pair_find_by_da(&request->request_pairs, attr_hop_count, 0);
 	if (!hop_count) {
 		REDEBUG("Missing Hop-Count");
 		return NULL;

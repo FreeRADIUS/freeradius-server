@@ -345,7 +345,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 		fr_pair_t *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
-			vp = fr_pair_find_by_da(list, conf->list_da[i]);
+			vp = fr_pair_find_by_da(list, conf->list_da[i], 0);
 			if (vp && (vp->vp_length > 0)) {
 				if (conf->list_da[i]->type == FR_TYPE_STRING) {
 					ssize_t slen;

@@ -112,7 +112,7 @@ static int groupcmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_li
 	/*
 	 *	No user name, can't compare.
 	 */
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	if (!username) return -1;
 
 	if (rad_getpwnam(request, &pwd, username->vp_strvalue) < 0) {
@@ -202,7 +202,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	if (!username) RETURN_MODULE_NOOP;
 
 	name = username->vp_strvalue;
@@ -372,7 +372,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type)) == NULL) {
+	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type, 0)) == NULL) {
 		RDEBUG2("no Accounting-Status-Type attribute in request");
 		RETURN_MODULE_NOOP;
 	}
@@ -389,7 +389,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
-	if (fr_pair_find_by_da(&request->request_pairs, attr_user_name) == NULL)
+	if (fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0) == NULL)
 		RETURN_MODULE_NOOP;
 
 	t = fr_time_to_sec(request->packet->timestamp);

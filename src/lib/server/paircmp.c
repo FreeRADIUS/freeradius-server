@@ -548,7 +548,7 @@ int paircmp(request_t *request,
 				WARN("Are you sure you don't mean Password.Cleartext?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (fr_pair_find_by_da(request_list, attr_user_password) == NULL) continue;
+			if (fr_pair_find_by_da(request_list, attr_user_password, 0) == NULL) continue;
 		}
 
 		/*

@@ -287,7 +287,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 	if (!password) {
 		/*
 		 *	Don't print out debugging messages if we know
@@ -394,13 +394,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	size_t			len;
 	int			ret;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_yubikey_otp);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_yubikey_otp, 0);
 	if (!vp) {
 		RDEBUG2("No Yubikey-OTP attribute found, falling back to User-Password");
 		/*
 		 *	Can't do yubikey auth if there's no password.
 		 */
-		vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 		if (!vp) {
 			REDEBUG("No User-Password in the request. Can't do Yubikey authentication");
 			RETURN_MODULE_INVALID;

@@ -316,10 +316,8 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 			if (!found) found = reply;
 
 			if (reply->code == FR_DHCP_OFFER) {
-				fr_pair_t *vp1 = fr_pair_find_by_da(&reply_vps,
-								    attr_dhcp_dhcp_server_identifier);
-				fr_pair_t *vp2 = fr_pair_find_by_da(&reply_vps,
-								    attr_dhcp_your_ip_address);
+				fr_pair_t *vp1 = fr_pair_find_by_da(&reply_vps, attr_dhcp_dhcp_server_identifier, 0);
+				fr_pair_t *vp2 = fr_pair_find_by_da(&reply_vps, attr_dhcp_your_ip_address, 0);
 
 				if (vp1 && vp2) {
 					nb_offer++;

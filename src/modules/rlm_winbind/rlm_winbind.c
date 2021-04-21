@@ -103,7 +103,7 @@ static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_
 	ssize_t			slen;
 	size_t			backslash = 0;
 
-	vp_username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	vp_username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	if (!vp_username) return -1;
 
 	RINDENT();
@@ -471,7 +471,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	fr_pair_t		*vp;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 	if (!vp) {
 		REDEBUG2("No User-Password found in the request; not doing winbind authentication.");
 		RETURN_MODULE_NOOP;
@@ -500,8 +500,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_winbind_t);
 	fr_pair_t		*username, *password;
 
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 
 	/*
 	 *	We can only authenticate user requests which HAVE

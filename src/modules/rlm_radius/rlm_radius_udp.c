@@ -402,7 +402,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	Ensure that there's a NAS-Identifier, if one wasn't
 	 *	already added.
 	 */
-	if (!fr_pair_find_by_da(&request->request_pairs, attr_nas_identifier)) {
+	if (!fr_pair_find_by_da(&request->request_pairs, attr_nas_identifier, 0)) {
 		fr_pair_t *vp;
 
 		MEM(pair_append_request(&vp, attr_nas_identifier) >= 0);
@@ -414,7 +414,7 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	 *	at which the first packet is sent.  Or for
 	 *	Status-Server, the time of the current packet.
 	 */
-	if (!fr_pair_find_by_da(&request->request_pairs, attr_event_timestamp)) {
+	if (!fr_pair_find_by_da(&request->request_pairs, attr_event_timestamp, 0)) {
 		MEM(pair_append_request(NULL, attr_event_timestamp) >= 0);
 	}
 
@@ -1330,7 +1330,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		fr_pair_t *vp;
 
 		proxy_state = 0;
-		vp = fr_pair_find_by_da(&request->request_pairs, attr_event_timestamp);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_event_timestamp, 0);
 		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
 		if (u->code == FR_RADIUS_CODE_STATUS_SERVER) u->can_retransmit = false;
@@ -1463,7 +1463,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 *	received the request.
 	 */
 	if ((u->code == FR_RADIUS_CODE_ACCOUNTING_REQUEST) &&
-	    (fr_pair_find_by_da(&request->request_pairs, attr_acct_delay_time) != NULL)) {
+	    (fr_pair_find_by_da(&request->request_pairs, attr_acct_delay_time, 0) != NULL)) {
 		uint8_t *attr, *end;
 		uint32_t delay;
 		fr_time_t now;
@@ -2431,7 +2431,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		if ((u->code == FR_RADIUS_CODE_ACCESS_REQUEST) && (code == FR_RADIUS_CODE_ACCESS_CHALLENGE)) {
 			fr_pair_t	*vp;
 
-			vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type);
+			vp = fr_pair_find_by_da(&request->reply_pairs, attr_packet_type, 0);
 			if (!vp) {
 				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_packet_type));
 				vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_CHALLENGE;
@@ -2451,7 +2451,7 @@ static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, U
 		 *	reply.Message-Authenticator attribute, so that
 		 *	it ends up in our reply.
 		 */
-		if (fr_pair_find_by_da(&reply, attr_message_authenticator)) {
+		if (fr_pair_find_by_da(&reply, attr_message_authenticator, 0)) {
 			fr_pair_t *vp;
 
 			fr_pair_delete_by_da(&reply, attr_message_authenticator);
@@ -2733,7 +2733,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 	 *
 	 *	@todo - don't edit the input packet!
 	 */
-	if (fr_pair_find_by_da(&request->request_pairs, attr_message_authenticator)) {
+	if (fr_pair_find_by_da(&request->request_pairs, attr_message_authenticator, 0)) {
 		u->require_ma = true;
 		pair_delete_request(attr_message_authenticator);
 	}

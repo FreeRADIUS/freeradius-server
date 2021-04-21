@@ -1527,11 +1527,11 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 	fr_pair_t *vp;
 	ssize_t slen;
 
-	vp = fr_pair_find_by_da(vps, attr_packet_type);
+	vp = fr_pair_find_by_da(vps, attr_packet_type, 0);
 	if (vp) packet_type = vp->vp_uint32;
 
 	if ((packet_type == FR_RADIUS_CODE_ACCESS_REQUEST) || (packet_type == FR_RADIUS_CODE_STATUS_SERVER)) {
-		vp = fr_pair_find_by_da(vps, attr_packet_authentication_vector);
+		vp = fr_pair_find_by_da(vps, attr_packet_authentication_vector, 0);
 		if (vp && (vp->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
 			memcpy(data + 4, vp->vp_octets, RADIUS_AUTH_VECTOR_LENGTH);
 		} else {

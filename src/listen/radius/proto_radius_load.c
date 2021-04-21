@@ -410,7 +410,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	MEM(inst->packet = talloc_zero_array(inst, uint8_t, inst->max_packet_size));
 
-	vp = fr_pair_find_by_da(&vps, attr_packet_type);
+	vp = fr_pair_find_by_da(&vps, attr_packet_type, 0);
 	if (vp) code = vp->vp_uint32;
 
 	/*

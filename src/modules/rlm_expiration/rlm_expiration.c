@@ -59,7 +59,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 {
 	fr_pair_t *vp, *check_item = NULL;
 
-	check_item = fr_pair_find_by_da(&request->control_pairs, attr_expiration);
+	check_item = fr_pair_find_by_da(&request->control_pairs, attr_expiration, 0);
 	if (check_item != NULL) {
 		uint32_t left;
 

@@ -239,7 +239,7 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 	unsigned int t;
 #endif
 
-	response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response);
+	response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response, 0);
 
 	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
 	if (!username_string) RETURN_MODULE_FAIL;

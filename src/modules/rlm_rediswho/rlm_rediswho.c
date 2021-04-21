@@ -205,7 +205,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type, 0);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		RETURN_MODULE_NOOP;

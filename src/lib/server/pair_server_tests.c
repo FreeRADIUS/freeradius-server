@@ -210,7 +210,7 @@ static void test_pair_update_request(void)
 	vp->vp_uint32 = 112233;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 112233)");
-	TEST_CHECK((vp = fr_pair_find_by_da(&request->request_pairs, fr_dict_attr_test_uint32)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&request->request_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
@@ -239,7 +239,7 @@ static void test_pair_update_reply(void)
 	vp->vp_uint32 = 3333;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 3333)");
-	TEST_CHECK((vp = fr_pair_find_by_da(&request->reply_pairs, fr_dict_attr_test_uint32)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&request->reply_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
@@ -264,7 +264,7 @@ static void test_pair_update_control(void)
 	vp->vp_uint32 = 44444;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 44444)");
-	TEST_CHECK((vp = fr_pair_find_by_da(&request->control_pairs, fr_dict_attr_test_uint32)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&request->control_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
@@ -289,7 +289,7 @@ static void test_pair_update_session_state(void)
 	vp->vp_uint32 = 7890;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 7890)");
-	TEST_CHECK((vp = fr_pair_find_by_da(&request->session_state_pairs, fr_dict_attr_test_uint32)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da(&request->session_state_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
@@ -310,7 +310,7 @@ static void test_pair_delete_request(void)
 	TEST_CHECK(pair_delete_request(fr_dict_attr_test_uint32) > 0);
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->request_pairs'");
-	TEST_CHECK(fr_pair_find_by_da(&request->request_pairs, fr_dict_attr_test_uint32) == NULL);
+	TEST_CHECK(fr_pair_find_by_da(&request->request_pairs, fr_dict_attr_test_uint32, 0) == NULL);
 
 	TEST_CHECK_RET(talloc_free(request), 0);
 }
@@ -326,7 +326,7 @@ static void test_pair_delete_reply(void)
 	TEST_CHECK(pair_delete_reply(fr_dict_attr_test_uint32) > 0);
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->reply_pairs'");
-	TEST_CHECK(fr_pair_find_by_da(&request->reply_pairs, fr_dict_attr_test_uint32) == NULL);
+	TEST_CHECK(fr_pair_find_by_da(&request->reply_pairs, fr_dict_attr_test_uint32, 0) == NULL);
 
 	TEST_CHECK_RET(talloc_free(request), 0);
 }
@@ -342,7 +342,7 @@ static void test_pair_delete_control(void)
 	TEST_CHECK(pair_delete_control(fr_dict_attr_test_uint32) > 0);
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->control_pairs'");
-	TEST_CHECK(fr_pair_find_by_da(&request->control_pairs, fr_dict_attr_test_uint32) == NULL);
+	TEST_CHECK(fr_pair_find_by_da(&request->control_pairs, fr_dict_attr_test_uint32, 0) == NULL);
 
 	TEST_CHECK_RET(talloc_free(request), 0);
 }
@@ -358,7 +358,7 @@ static void test_pair_delete_session_state(void)
 	TEST_CHECK(pair_delete_session_state(fr_dict_attr_test_uint32) > 0);
 
 	TEST_CASE("The 'Test-Integer' shouldn't exist in 'request->state'");
-	TEST_CHECK(fr_pair_find_by_da(&request->session_state_pairs, fr_dict_attr_test_uint32) == NULL);
+	TEST_CHECK(fr_pair_find_by_da(&request->session_state_pairs, fr_dict_attr_test_uint32, 0) == NULL);
 
 	TEST_CHECK_RET(talloc_free(request), 0);
 }

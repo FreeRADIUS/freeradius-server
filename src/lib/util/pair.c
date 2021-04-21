@@ -503,13 +503,14 @@ void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *
  *
  * @param[in] list	to search in.
  * @param[in] da	to look for in the list.
+ * @param[in] n		Instance of the attribute to return.
  * @return
  *	- first matching fr_pair_t.
  *	- NULL if no fr_pair_ts match.
  *
  * @hidecallergraph
  */
-fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da)
+fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da, unsigned int n)
 {
 	fr_pair_t	*vp = NULL;
 
@@ -519,7 +520,12 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
 
 	if (!da) return NULL;
 
-	while ((vp = fr_pair_list_next(list, vp))) if (da == vp->da) return vp;
+	while ((vp = fr_pair_list_next(list, vp))) {
+		if (da == vp->da) {
+			if (n == 0) return vp;
+			n--;
+		}
+	}
 	return NULL;
 }
 
@@ -845,7 +851,7 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 {
 	fr_pair_t	*vp;
 
-	vp = fr_pair_find_by_da(list, da);
+	vp = fr_pair_find_by_da(list, da, 0);
 	if (vp) {
 		VP_VERIFY(vp);
 		if (out) *out = vp;

@@ -960,7 +960,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	fr_pair_t		*pair;
 	int 			acct_status_type = 0;
 
-	pair = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
+	pair = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type, 0);
 	if (pair != NULL) {
 		acct_status_type = pair->vp_uint32;
 	} else {

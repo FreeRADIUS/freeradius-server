@@ -92,7 +92,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Find the first attribute which is parented by Digest-Attributes.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_attributes);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_attributes, 0);
 	if (!vp) RETURN_MODULE_NOOP;
 
 	if (!inst->auth_type) {
@@ -127,21 +127,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	We require access to the plain-text password, or to the
 	 *	Digest-HA1 parameter.
 	 */
-	passwd = fr_pair_find_by_da(&request->control_pairs, attr_digest_ha1);
+	passwd = fr_pair_find_by_da(&request->control_pairs, attr_digest_ha1, 0);
 	if (passwd) {
 		if (passwd->vp_length != 32) {
 			REDEBUG("Digest-HA1 has invalid length, authentication failed");
 			RETURN_MODULE_INVALID;
 		}
 	} else {
-		passwd = fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password);
+		passwd = fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password, 0);
 	}
 	if (!passwd) {
 		REDEBUG("Password.Cleartext or Digest-HA1 is required for authentication");
 		RETURN_MODULE_INVALID;
 	}
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_attributes);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_attributes, 0);
 	if (!vp) {
 		REDEBUG("Digest-Attributes is required for authentication");
 		RETURN_MODULE_INVALID;
@@ -151,7 +151,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *	We require access to the Digest-Nonce-Value
 	 */
-	nonce = fr_pair_find_by_da(list, attr_digest_nonce);
+	nonce = fr_pair_find_by_da(list, attr_digest_nonce, 0);
 	if (!nonce) {
 		REDEBUG("No Digest-Nonce: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
@@ -160,7 +160,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *	A1 = Digest-User-Name ":" Realm ":" Password
 	 */
-	vp = fr_pair_find_by_da(list, attr_digest_user_name);
+	vp = fr_pair_find_by_da(list, attr_digest_user_name, 0);
 	if (!vp) {
 		REDEBUG("No Digest-User-Name: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
@@ -171,7 +171,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	a1[a1_len] = ':';
 	a1_len++;
 
-	vp = fr_pair_find_by_da(list, attr_digest_realm);
+	vp = fr_pair_find_by_da(list, attr_digest_realm, 0);
 	if (!vp) {
 		REDEBUG("No Digest-Realm: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
@@ -197,7 +197,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	See which variant we calculate.
 	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
-	algo = fr_pair_find_by_da(list, attr_digest_algorithm);
+	algo = fr_pair_find_by_da(list, attr_digest_algorithm, 0);
 	if ((!algo) ||
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*
@@ -242,7 +242,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		a1[a1_len] = ':';
 		a1_len++;
 
-		vp = fr_pair_find_by_da(list, attr_digest_cnonce);
+		vp = fr_pair_find_by_da(list, attr_digest_cnonce, 0);
 		if (!vp) {
 			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
@@ -270,7 +270,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *	A2 = Digest-Method ":" Digest-URI
 	 */
-	vp = fr_pair_find_by_da(list, attr_digest_method);
+	vp = fr_pair_find_by_da(list, attr_digest_method, 0);
 	if (!vp) {
 		REDEBUG("No Digest-Method: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
@@ -281,7 +281,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	a2[a2_len] = ':';
 	a2_len++;
 
-	vp = fr_pair_find_by_da(list, attr_digest_uri);
+	vp = fr_pair_find_by_da(list, attr_digest_uri, 0);
 	if (!vp) {
 		REDEBUG("No Digest-URI: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
@@ -292,7 +292,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *  QOP is "auth-int", tack on ": Digest-Body-Digest"
 	 */
-	qop = fr_pair_find_by_da(list, attr_digest_qop);
+	qop = fr_pair_find_by_da(list, attr_digest_qop, 0);
 	if (qop) {
 		if (strcasecmp(qop->vp_strvalue, "auth-int") == 0) {
 			fr_pair_t *body;
@@ -306,7 +306,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 			/*
 			 *  Must be a hex representation of an MD5 digest.
 			 */
-			body = fr_pair_find_by_da(list, attr_digest_body_digest);
+			body = fr_pair_find_by_da(list, attr_digest_body_digest, 0);
 			if (!body) {
 				REDEBUG("No Digest-Body-Digest: Cannot perform Digest authentication");
 				RETURN_MODULE_INVALID;
@@ -369,7 +369,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		kd[kd_len] = ':';
 		kd_len++;
 
-		vp = fr_pair_find_by_da(list, attr_digest_nonce_count);
+		vp = fr_pair_find_by_da(list, attr_digest_nonce_count, 0);
 		if (!vp) {
 			REDEBUG("No Digest-Nonce-Count: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
@@ -380,7 +380,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		kd[kd_len] = ':';
 		kd_len++;
 
-		vp = fr_pair_find_by_da(list, attr_digest_cnonce);
+		vp = fr_pair_find_by_da(list, attr_digest_cnonce, 0);
 		if (!vp) {
 			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
@@ -423,7 +423,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Get the binary value of Digest-Response.  This isn't
 	 *	inside of the Digest-Attributes group.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_response);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_digest_response, 0);
 	if (!vp) {
 		REDEBUG("No Digest-Response attribute in the request.  Cannot perform digest authentication");
 		RETURN_MODULE_INVALID;

@@ -740,8 +740,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	fr_ldap_sasl_t		sasl;
 	fr_pair_t *username, *password;
 
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -1034,7 +1034,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	We already have a Password.Cleartext.  Skip edir.
 	 */
-	if (fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password)) goto skip_edir;
+	if (fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password, 0)) goto skip_edir;
 
 	/*
 	 *      Retrieve Universal Password if we use eDirectory

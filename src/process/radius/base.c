@@ -247,9 +247,9 @@ static char *auth_name(char *buf, size_t buflen, request_t *request)
 	char const	*tls = "";
 	RADCLIENT	*client = client_from_request(request);
 
-	cli = fr_pair_find_by_da(&request->request_pairs, attr_calling_station_id);
+	cli = fr_pair_find_by_da(&request->request_pairs, attr_calling_station_id, 0);
 
-	pair = fr_pair_find_by_da(&request->request_pairs, attr_nas_port);
+	pair = fr_pair_find_by_da(&request->request_pairs, attr_nas_port, 0);
 	if (pair != NULL) port = pair->vp_uint32;
 
 	if (request->packet->socket.inet.dst_port == 0) tls = " via proxy to virtual server";
@@ -293,21 +293,21 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
 	 * Get the correct username based on the configured value
 	 */
 	if (!inst->log_stripped_names) {
-		username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+		username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	} else {
-		username = fr_pair_find_by_da(&request->request_pairs, attr_stripped_user_name);
-		if (!username) username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+		username = fr_pair_find_by_da(&request->request_pairs, attr_stripped_user_name, 0);
+		if (!username) username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	}
 
 	/*
 	 *	Clean up the password
 	 */
 	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
-		password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+		password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 		if (!password) {
 			fr_pair_t *auth_type;
 
-			auth_type = fr_pair_find_by_da(&request->control_pairs, attr_auth_type);
+			auth_type = fr_pair_find_by_da(&request->control_pairs, attr_auth_type, 0);
 			if (auth_type) {
 				snprintf(password_buff, sizeof(password_buff), "<via Auth-Type = %s>",
 					 fr_dict_enum_name_by_value(auth_type->da, &auth_type->data));
@@ -315,7 +315,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
 			} else {
 				password_str = "<no User-Password attribute>";
 			}
-		} else if (fr_pair_find_by_da(&request->request_pairs, attr_chap_password)) {
+		} else if (fr_pair_find_by_da(&request->request_pairs, attr_chap_password, 0)) {
 			password_str = "<CHAP-Password>";
 		}
 	}
@@ -414,7 +414,7 @@ RESUME(access_request)
 	/*
 	 *	Run authenticate foo { ... }
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_auth_type);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_auth_type, 0);
 	if (!vp) goto send_reply;
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
@@ -503,7 +503,7 @@ RESUME(auth_type)
 		/*
 		 *	Maybe the shared secret is wrong?
 		 */
-		vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+		vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 		if (vp) {
 			if (RDEBUG_ENABLED2) {
 				uint8_t const *p;
@@ -532,7 +532,7 @@ RESUME(auth_type)
 	 *	section.
 	 */
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		if ((vp = fr_pair_find_by_da(&request->reply_pairs, attr_state)) != NULL) {
+		if ((vp = fr_pair_find_by_da(&request->reply_pairs, attr_state, 0)) != NULL) {
 			uint8_t buffer[16];
 
 			fr_rand_buffer(buffer, sizeof(buffer));
@@ -559,7 +559,7 @@ RESUME_NO_RCTX(access_accept)
 
 	PROCESS_TRACE;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_success_message);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_success_message, 0);
 	if (vp) {
 		auth_message(&inst->auth, request, true, "Login OK (%pV)", &vp->data);
 	} else {
@@ -573,9 +573,9 @@ RESUME_NO_RCTX(access_accept)
 	 *	(mostly) unique to that user.
 	 */
 	if (!request->parent &&
-	    ((vp = fr_pair_find_by_da(&request->request_pairs, attr_user_name)) != NULL) &&
+	    ((vp = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0)) != NULL) &&
 	    (vp->vp_strvalue[0] == '@') &&
-	    !fr_pair_find_by_da(&request->request_pairs, attr_stripped_user_name)) {
+	    !fr_pair_find_by_da(&request->request_pairs, attr_stripped_user_name, 0)) {
 		RWDEBUG("User-Name is anonymized, and no Stripped-User-Name exists.");
 		RWDEBUG("It may be difficult or impossible to identify the user.");
 		RWDEBUG("Please update Stripped-User-Name with information which identifies the user.");
@@ -592,7 +592,7 @@ RESUME_NO_RCTX(access_reject)
 
 	PROCESS_TRACE;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_failure_message);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_module_failure_message, 0);
 	if (vp) {
 		auth_message(&inst->auth, request, false, "Login incorrect (%pV)", &vp->data);
 	} else {
@@ -699,7 +699,7 @@ RESUME(accounting_request)
 	/*
 	 *	Run accounting foo { ... }
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type, 0);
 	if (!vp) goto send_reply;
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
@@ -745,7 +745,7 @@ RESUME(protocol_error)
 	/*
 	 *	https://tools.ietf.org/html/rfc7930#section-4
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_original_packet_code);
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_original_packet_code, 0);
 	if (!vp) {
 		vp = fr_pair_afrom_da(request->reply_ctx, attr_original_packet_code);
 		if (vp) {
@@ -757,7 +757,7 @@ RESUME(protocol_error)
 	/*
 	 *	If there's no Error-Cause, then include a generic 404.
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_error_cause);
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_error_cause, 0);
 	if (!vp) {
 		vp = fr_pair_afrom_da(request->reply_ctx, attr_error_cause);
 		if (vp) {

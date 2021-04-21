@@ -254,7 +254,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	/*
 	 *	Figure out what tag we should add to the permanent id
 	 */
-	eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type);
+	eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type, 0);
 	if (eap_type) {
 		if (eap_type->vp_uint32 == enum_eap_type_sim->vb_uint32) {
 			out_tag = ID_TAG_SIM_PERMANENT;
@@ -435,7 +435,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	} else if ((id_len >= AKA_SIM_IMSI_MIN_LEN) && (id_len <= AKA_SIM_IMSI_MAX_LEN)) {
 		fr_pair_t *eap_type;
 
-		eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type);
+		eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type, 0);
 		if (!eap_type) {
 			REDEBUG("ID does not contain method hint, and no &request.EAP-Type found.  "
 				"Don't know what tag to prepend to encrypted identity");

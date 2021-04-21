@@ -642,8 +642,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	if (!section->name) RETURN_MODULE_NOOP;
 
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 
 	/*
 	 *	We can only authenticate user requests which HAVE

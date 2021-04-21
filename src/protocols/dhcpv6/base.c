@@ -786,7 +786,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 	root = fr_dict_root(dict_dhcpv6);
 
 	if (!msg_type) {
-		vp = fr_pair_find_by_da(vps, attr_packet_type);
+		vp = fr_pair_find_by_da(vps, attr_packet_type, 0);
 		if (vp) msg_type = vp->vp_uint32;
 	}
 
@@ -800,21 +800,21 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 	switch (msg_type) {
 	case FR_DHCPV6_RELAY_REPLY:
 	case FR_DHCPV6_RELAY_FORWARD:
-		vp = fr_pair_find_by_da(vps, attr_hop_count);
+		vp = fr_pair_find_by_da(vps, attr_hop_count, 0);
 		if (likely(vp != NULL)) {
 			FR_VALUE_BOX_TO_NETWORK_RETURN(&frame_dbuff, &vp->data);
 		} else {
 			FR_DBUFF_MEMSET_RETURN(&frame_dbuff, 0, DHCPV6_HOP_COUNT_LEN);
 		}
 
-		vp = fr_pair_find_by_da(vps, attr_relay_link_address);
+		vp = fr_pair_find_by_da(vps, attr_relay_link_address, 0);
 		if (likely(vp != NULL)) {
 			FR_VALUE_BOX_TO_NETWORK_RETURN(&frame_dbuff, &vp->data);
 		} else {
 			FR_DBUFF_MEMSET_RETURN(&frame_dbuff, 0, DHCPV6_LINK_ADDRESS_LEN);
 		}
 
-		vp = fr_pair_find_by_da(vps, attr_relay_peer_address);
+		vp = fr_pair_find_by_da(vps, attr_relay_peer_address, 0);
 		if (likely(vp != NULL)) {
 			FR_VALUE_BOX_TO_NETWORK_RETURN(&frame_dbuff, &vp->data);
 		} else {
@@ -826,7 +826,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 		/*
 		 *	We can set an XID, or we can pick a random one.
 		 */
-		vp = fr_pair_find_by_da(vps, attr_transaction_id);
+		vp = fr_pair_find_by_da(vps, attr_transaction_id, 0);
 		if (vp && (vp->vp_length >= DHCPV6_TRANSACTION_ID_LEN)) {
 			FR_DBUFF_IN_MEMCPY_RETURN(&frame_dbuff, vp->vp_octets, DHCPV6_TRANSACTION_ID_LEN);
 		} else {

@@ -127,8 +127,8 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 		RETURN_MODULE_FAIL;
 	}
 
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");

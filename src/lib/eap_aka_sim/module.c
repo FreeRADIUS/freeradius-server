@@ -72,7 +72,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	 *	from the virtual server to determine what kind
 	 *	of EAP response to send.
 	 */
-	subtype_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_subtype);
+	subtype_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_subtype, 0);
 	if (!subtype_vp) {
 		eap_session->this_round->request->code = (rcode == RLM_MODULE_OK) ?
 								FR_EAP_CODE_SUCCESS : FR_EAP_CODE_FAILURE;
@@ -138,9 +138,9 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		 *	Figure out if the state machine is
 		 *	requesting an ID.
 		 */
-		if ((vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_any_id_req)) ||
-		    (vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_fullauth_id_req)) ||
-		    (vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_permanent_id_req))) {
+		if ((vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_any_id_req, 0)) ||
+		    (vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_fullauth_id_req, 0)) ||
+		    (vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_permanent_id_req, 0))) {
 			RDEBUG2("Sending EAP-Request/%pV (%s)", &subtype_vp->data, vp->da->name);
 		} else {
 			RDEBUG2("Sending EAP-Request/%pV", &subtype_vp->data);
@@ -158,7 +158,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	 *	it should have used that.
 	 */
 	case FR_SUBTYPE_VALUE_AKA_CHALLENGE:
-		vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_bidding);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_bidding, 0);
 
 		/*
 		 *	Explicit NO
@@ -195,7 +195,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		/*
 		 *	Extra data to append to the packet when signing.
 		 */
-		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_hmac_extra_request);
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_hmac_extra_request, 0);
 		if (vp) {
 			request_hmac_extra = vp->vp_octets;
 			request_hmac_extra_len = vp->vp_length;
@@ -205,7 +205,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		 *	Extra data to append to the response packet when
 		 *	validating the signature.
 		 */
-		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_hmac_extra_response);
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_hmac_extra_response, 0);
 		if (vp) {
 			fr_assert(!mod_session->response_hmac_extra);
 			MEM(mod_session->response_hmac_extra = talloc_memdup(mod_session,
@@ -215,7 +215,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		/*
 		 *	Key we use for encrypting and decrypting attributes.
 		 */
-		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_k_encr);
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_k_encr, 0);
 		if (vp) {
 			fr_assert(!mod_session->ctx.k_encr);
 			MEM(mod_session->ctx.k_encr = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
@@ -224,7 +224,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		/*
 		 *	Key we use for signing and validating mac values.
 		 */
-		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_k_aut);
+		vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_k_aut, 0);
 		if (vp) {
 			fr_assert(!mod_session->ctx.k_aut);
 			MEM(mod_session->ctx.k_aut = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
@@ -345,7 +345,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 			log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
 		}
 
-		subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype);
+		subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
 		if (!subtype_vp) {
 			REDEBUG2("Missing Sub-Type");	/* Let the state machine enter the right state */
 			break;

@@ -670,7 +670,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, eap_sess
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_da(&fake->control, attr_proxy_to_realm);
+		vp = fr_pair_find_by_da(&fake->control, attr_proxy_to_realm, 0);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;

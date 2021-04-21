@@ -312,8 +312,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	long		odResult = eDSAuthFailed;
 	fr_pair_t *username, *password;
 
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -400,7 +400,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	if (!username) {
 		RDEBUG2("OpenDirectory requires a User-Name attribute");
 		RETURN_MODULE_NOOP;

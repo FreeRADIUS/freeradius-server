@@ -195,7 +195,7 @@ static void do_test_fr_pair_find_by_da(uint len, uint reps)
 			int index = rand() % input_count;
 			da = source_vps[index]->da;
 			start = fr_time();
-			(void) fr_pair_find_by_da(&test_vps, da);
+			(void) fr_pair_find_by_da(&test_vps, da, 0);
 			end = fr_time();
 			used += (end - start);
 		}
@@ -212,7 +212,7 @@ test_funcs(fr_pair_find_by_da)
 static void do_test_find_nth(uint len, uint reps)
 {
 	fr_pair_list_t	  test_vps;
-	uint			i, j, k, nth_item;
+	uint			i, j, nth_item;
 	fr_pair_t		*new_vp;
 	fr_time_t		start, end, used = 0;
 	const fr_dict_attr_t    *da;
@@ -238,14 +238,8 @@ static void do_test_find_nth(uint len, uint reps)
 
 			da = source_vps[index]->da;
 			start = fr_time();
-			k = 0;
 
-			for (new_vp = fr_pair_list_head(&test_vps); new_vp; new_vp = fr_pair_list_next(&test_vps, new_vp)) {
-				if (new_vp->da == da) {
-					k++;
-					if (k == nth_item) break;
-				}
-			}
+			(void) fr_pair_find_by_da(&test_vps, da, nth_item);
 			end = fr_time();
 			used += (end - start);
 		}

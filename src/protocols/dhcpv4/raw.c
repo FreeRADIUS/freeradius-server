@@ -119,7 +119,7 @@ int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer,
 
 	/* set ethernet source address to our MAC address (Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
-	if ((vp = fr_pair_find_by_da(list, attr_dhcp_client_hardware_address))) {
+	if ((vp = fr_pair_find_by_da(list, attr_dhcp_client_hardware_address, 0))) {
 		if (vp->vp_type == FR_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
 	}
 
@@ -229,7 +229,7 @@ fr_radius_packet_t *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *lin
 	 *	Check if it matches the source HW address used (Client-Hardware-Address = 267)
 	 */
 	if ((memcmp(&eth_bcast, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0) &&
-	    (vp = fr_pair_find_by_da(list, attr_dhcp_client_hardware_address)) &&
+	    (vp = fr_pair_find_by_da(list, attr_dhcp_client_hardware_address, 0)) &&
 	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->dst_addr, ETH_ADDR_LEN) != 0))) {
 
 		/* No match. */

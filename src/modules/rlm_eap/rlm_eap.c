@@ -260,7 +260,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 	 *	Pick one type out of the one they asked for,
 	 *	as they may have asked for many.
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_type);
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_eap_type, 0);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -536,7 +536,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_da(&eap_session->request->control_pairs, attr_eap_type);
+		vp = fr_pair_find_by_da(&eap_session->request->control_pairs, attr_eap_type, 0);
 		if (vp) {
 			RDEBUG2("Using method from &control.EAP-Type");
 			next = vp->vp_uint32;
@@ -688,7 +688,7 @@ static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t cons
 	eap_packet_raw_t	*eap_packet;
 	unlang_action_t		ua;
 
-	if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_message)) {
+	if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_message, 0)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		RETURN_MODULE_INVALID;
 	}
@@ -873,7 +873,7 @@ static unlang_action_t mod_post_proxy(rlm_rcode_t *p_result, module_ctx_t const 
 			eap_session_destroy(&eap_session);
 		}
 
-		username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+		username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 
 		/*
 		 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
@@ -911,12 +911,12 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	if ((request->reply->code == FR_RADIUS_CODE_ACCESS_ACCEPT) && username) {
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = fr_pair_find_by_da(&request->reply_pairs, attr_user_name);
+		vp = fr_pair_find_by_da(&request->reply_pairs, attr_user_name, 0);
 		if (!vp) {
 			vp = fr_pair_copy(request->reply_ctx, username);
 			fr_pair_append(&request->reply_pairs, vp);
@@ -929,12 +929,12 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 */
 	if (request->reply->code != FR_RADIUS_CODE_ACCESS_REJECT) RETURN_MODULE_NOOP;
 
-	if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_message)) {
+	if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_message, 0)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		RETURN_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da(&request->reply_pairs, attr_eap_message)) {
+	if (fr_pair_find_by_da(&request->reply_pairs, attr_eap_message, 0)) {
 		RDEBUG3("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		RETURN_MODULE_NOOP;
 	}

@@ -207,7 +207,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type)) == NULL) {
+	if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type, 0)) == NULL) {
 		RDEBUG2("No Accounting-Status-Type record");
 		RETURN_MODULE_NOOP;
 	}
@@ -230,10 +230,10 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		int check1 = 0;
 		int check2 = 0;
 
-		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_time))
+		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_time, 0))
 		     == NULL || vp->vp_uint32 == 0)
 			check1 = 1;
-		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_id))
+		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_id, 0))
 		     != NULL && vp->vp_length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
