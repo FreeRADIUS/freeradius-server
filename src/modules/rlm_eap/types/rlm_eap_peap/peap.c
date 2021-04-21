@@ -905,15 +905,15 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 		return RLM_MODULE_REJECT;
 
-		case PEAP_STATUS_PHASE2_INIT:
-			RDEBUG("In state machine in phase2 init?");
+	case PEAP_STATUS_PHASE2_INIT:
+		RDEBUG("In state machine in phase2 init?");
 
-		case PEAP_STATUS_PHASE2:
-			break;
+	case PEAP_STATUS_PHASE2:
+		break;
 
-		default:
-			REDEBUG("Unhandled state in peap");
-			return RLM_MODULE_REJECT;
+	default:
+		REDEBUG("Unhandled state in peap");
+		return RLM_MODULE_REJECT;
 	}
 
 	fake = request_alloc_fake(request);
