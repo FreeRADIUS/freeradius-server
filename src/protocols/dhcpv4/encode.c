@@ -103,7 +103,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 {
 	size_t header_bytes;
-	uint8_t			type, option_len = 0;
+	uint8_t			type = 0, option_len = 0;
 	fr_dbuff_marker_t	src, dest, hdr_io;
 
 	/*
