@@ -187,6 +187,9 @@ $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(
 		echo " - " FAILED - command failed; \
 		echo ">>> cmd -" $(CMD); \
 		echo ">>> log -" $(LOG); \
+		echo "===================="; \
+		tail -10 $$(LOG); \
+		echo "===================="; \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
@@ -214,6 +217,9 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 		echo " - " FAILED  - command failed; \
 		echo ">>> cmd -" $$(CMD); \
 		echo ">>> log -" $$(LOG); \
+		echo "===================="; \
+		tail -10 $$(LOG); \
+		echo "===================="; \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	elif ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
