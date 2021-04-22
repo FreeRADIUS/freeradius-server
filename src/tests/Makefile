@@ -206,7 +206,7 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@printf 'EAPOL_TEST %s' $$(notdir $$(patsubst %.ok,%,$$@))
 	@if ! $$(CMD) -r 1 > $$(LOG) 2>&1; then \
 		echo " - " FAILED  - command failed; \
-		echo ">>> cmd -" $$(CMD); \
+		echo ">>> cmd -" $$(CMD) -r 1; \
 		echo ">>> log -" $$(LOG); \
 		echo "===================="; \
 		tail -10 $$(LOG); \
