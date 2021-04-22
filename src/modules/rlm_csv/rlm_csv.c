@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/util/htrie.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/server/map_proc.h>
@@ -59,7 +60,7 @@ typedef struct {
 	int		*field_offsets; /* field X from the file maps to array entry Y here */
 	fr_type_t	*field_types;
 	fr_rb_tree_t	*tree;
-	fr_trie_t	*trie;
+	fr_htrie_t	*trie;
 
 	tmpl_t		*key;
 	fr_type_t	key_data_type;
@@ -88,16 +89,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL, rlm_csv_t, key) },
 	CONF_PARSER_TERMINATOR
 };
-
-static int8_t csv_entry_cmp(void const *one, void const *two)
-{
-	rlm_csv_entry_t const *a = one;
-	rlm_csv_entry_t const *b = two;
-	int ret;
-
-	ret = fr_value_box_cmp(a->key, b->key); /* NOT int8_t safe */
-	return CMP(ret, 0);
-}
 
 /*
  *	Allow for quotation marks.
@@ -170,23 +161,30 @@ static bool buf2entry(rlm_csv_t *inst, char *buf, char **out)
 	return false;
 }
 
-static rlm_csv_entry_t *find_entry(rlm_csv_t const *inst, fr_value_box_t const *key)
+
+static int8_t csv_cmp(void const *one, void const *two)
 {
-	rlm_csv_entry_t my_e;
+	rlm_csv_entry_t const *a = (rlm_csv_entry_t const *) one; /* may not be talloc'd! */
+	rlm_csv_entry_t const *b = (rlm_csv_entry_t const *) two; /* may not be talloc'd! */
 
-	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX)) {
-		return fr_trie_lookup_by_key(inst->trie, &key->vb_ip.addr.v4.s_addr, key->vb_ip.prefix);
-
-	}
-
-	if ((inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
-		return fr_trie_lookup_by_key(inst->trie, &key->vb_ip.addr.v6.s6_addr, key->vb_ip.prefix);
-	}
-
-	memcpy(&my_e.key, &key, sizeof(key)); /* const issues */
-
-	return fr_rb_find(inst->tree, &my_e);
+	return fr_value_box_cmp(a->key, b->key);
 }
+
+static uint32_t csv_hash(void const *data)
+{
+	rlm_csv_entry_t const *a = (rlm_csv_entry_t const *) data; /* may not be talloc'd! */
+
+	return fr_value_box_hash(a->key);
+}
+
+static int csv_to_key(uint8_t **out, size_t *outlen, void const *data)
+{
+	rlm_csv_entry_t const *a = (rlm_csv_entry_t const *) data; /* may not be talloc'd! */
+
+	return fr_value_box_to_key(out, outlen, a->key);
+
+}
+
 
 static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e, int lineno)
 {
@@ -194,7 +192,7 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 
 	fr_assert(e != NULL);
 
-	old = find_entry(inst, e->key);
+	old = fr_htrie_find(inst->trie, e);
 	if (old) {
 		if (!inst->allow_multiple_keys && !inst->multiple_index_fields) {
 			cf_log_err(conf, "%s[%d]: Multiple entries are disallowed", inst->filename, lineno);
@@ -210,26 +208,12 @@ static bool insert_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t *e
 		return true;
 	}
 
-	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX)) {
-		if (fr_trie_insert_by_key(inst->trie, &e->key->vb_ip.addr.v4.s_addr, e->key->vb_ip.prefix, e) < 0) {
-			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
-				   inst->filename, lineno, fr_strerror());
-		fail:
-			talloc_free(e);
-			return false;
-		}
-
-	} else if ((inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
-		if (fr_trie_insert_by_key(inst->trie, &e->key->vb_ip.addr.v6.s6_addr, e->key->vb_ip.prefix, e) < 0) {
-			cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
-				   inst->filename, lineno, fr_strerror());
-			goto fail;
-		}
-
-	} else if (!fr_rb_insert(inst->tree, e)) {
-		cf_log_err(conf, "Failed inserting entry for file %s line %d: duplicate entry",
-			      inst->filename, lineno);
-		goto fail;
+	if (!fr_htrie_insert(inst->trie, e)) {
+		cf_log_err(conf, "Failed inserting entry for file %s line %d: %s",
+			   inst->filename, lineno, fr_strerror());
+fail:
+		talloc_free(e);
+		return false;
 	}
 
 	return true;
@@ -531,6 +515,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	char const *p;
 	char *q;
 	char *fields;
+	fr_htrie_type_t	htype;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -563,11 +548,21 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	IP addresses go into tries.  Everything else into binary tries.
 	 */
-	if ((inst->key_data_type == FR_TYPE_IPV4_ADDR) || (inst->key_data_type == FR_TYPE_IPV4_PREFIX) ||
-	    (inst->key_data_type == FR_TYPE_IPV6_ADDR) || (inst->key_data_type == FR_TYPE_IPV6_PREFIX)) {
-		MEM(inst->trie = fr_trie_alloc(inst, NULL, NULL));
-	} else {
-		MEM(inst->tree = fr_rb_inline_talloc_alloc(inst, rlm_csv_entry_t, node, csv_entry_cmp, NULL));
+	htype = fr_htrie_hint(inst->key_data_type);
+	if (htype == FR_HTRIE_INVALID) {
+		cf_log_err(conf, "Invalid data type '%s' used for CSV file.",
+			   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "???"));
+		return -1;
+	}
+
+	inst->trie = fr_htrie_alloc(inst, htype,
+				    (fr_hash_t) csv_hash,
+				    (fr_cmp_t) csv_cmp,
+				    (fr_trie_key_t) csv_to_key,
+				    NULL);
+	if (!inst->trie) {
+		cf_log_err(conf, "Failed creating internal trie: %s", fr_strerror());
+		return -1;
 	}
 
 	if ((*inst->index_field_name == ',') || (*inst->index_field_name == *inst->delimiter)) {
@@ -904,7 +899,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 	rlm_csv_entry_t		*e;
 	map_t const		*map = NULL;
 
-	e = find_entry(inst, key);
+	e = fr_htrie_find(inst->trie, &(rlm_csv_entry_t) { .key = UNCONST(fr_value_box_t *, key) } );
 	if (!e) {
 		rcode = RLM_MODULE_NOOP;
 		goto finish;
