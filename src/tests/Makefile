@@ -108,7 +108,7 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 #  Same as above, but enable caching, and set the persist_dir
 #
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
-	@sed 's/eap {/eap eap-test {/;s/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/;s/enable = no/enable = yes/;s/^\(.*\)persist_dir =/  persist_dir =/;$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' < $< > $@
+	@sed 's/eap {/eap eap-test {/;s/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/;s/enable = no/enable = yes/;s/^\(.*\)persist_dir =/  persist_dir =/;s/tls_min_version = "1.2"/tls_min_version = "1.0"/;$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' < $< > $@
 
 radiusd.pid: test.conf
 	@rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
