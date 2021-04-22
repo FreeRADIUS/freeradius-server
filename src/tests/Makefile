@@ -159,6 +159,9 @@ TLS1_3=$(shell strings `which eapol_test` | grep '1_3' | head -n 1)
 EAP_FILES	= eap-md5.conf
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.2
+ifneq "$(TLS1_3)" ""
+EAP_TLS_VERSIONS += 1.3
+endif
 EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 $(TLS1_3)
 
 .PHONY: $(BUILD_PATH)/tests/eap
@@ -178,6 +181,7 @@ $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	@if ! $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
 		echo "    " FAILED; \
+		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
 	@touch $@
@@ -202,15 +206,18 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@if ! $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
 		echo FAILED; \
 		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
+		$(MAKE) radiusd.kill; \
 	fi
 	@if ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
 		echo "    " FAILED - not using TLS version ${2}; \
 		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
+		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
 	@if ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
 		echo "    " FAILED - did not use resumption; \
 		echo "        " $(EAPOL_TEST) -r -c $$< -p $(PORT) -s $(SECRET); \
+		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
 	@touch $$@
