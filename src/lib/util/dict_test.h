@@ -148,6 +148,9 @@ extern fr_dict_attr_t const *fr_dict_attr_test_enum;
 
 extern fr_dict_test_attr_t const fr_dict_test_attrs[];
 
+int fr_dict_test_attrs_init(fr_dict_t *dict, fr_dict_test_attr_t const *test_defs,
+			    unsigned int base, int inst);
+
 int fr_dict_test_init(TALLOC_CTX *ctx, fr_dict_t **dict_p, fr_dict_test_attr_t const *test_defs);
 
 #ifdef __cplusplus

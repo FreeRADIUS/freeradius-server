@@ -94,7 +94,7 @@ static void test_fr_pair_make(void)
 	fr_pair_list_init(&list);
 
 	TEST_CASE("Creating 'vp' using fr_pair_make()");
-	TEST_CHECK((vp = fr_pair_make(ctx, test_dict, &list, "Test-String", test_string, T_DOUBLE_QUOTED_STRING)) != NULL);
+	TEST_CHECK((vp = fr_pair_make(ctx, test_dict, &list, "Test-String-0", test_string, T_DOUBLE_QUOTED_STRING)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
@@ -109,20 +109,20 @@ static void test_fr_pair_mark_xlat(void)
 {
 	fr_pair_t  *vp;
 
-	TEST_CASE("Find 'Test-String'");
+	TEST_CASE("Find 'Test-String-0'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
 
 	TEST_CASE("Marking 'vp' using fr_pair_mark_xlat()");
-	TEST_CHECK(fr_pair_mark_xlat(vp, "Hello %{Test-Uint32}") == 0);
+	TEST_CHECK(fr_pair_mark_xlat(vp, "Hello %{Test-Uint32-0}") == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
 
-	TEST_CASE("Check (vp->xlat == 'Hello %{Test-Uint32}')");
-	TEST_CHECK(vp && strcmp(vp->xlat, "Hello %{Test-Uint32}") == 0);
+	TEST_CASE("Check (vp->xlat == 'Hello %{Test-Uint32-0}')");
+	TEST_CHECK(vp && strcmp(vp->xlat, "Hello %{Test-Uint32-0}") == 0);
 	TEST_CHECK(vp && vp->type == VT_XLAT);
 
 	talloc_free(vp);
@@ -132,29 +132,29 @@ static void test_fr_pair_list_afrom_str(void)
 {
 	fr_pair_t      *vp;
 	fr_pair_list_t list;
-	char const     *buffer = "Test-Uint32 = 123, Test-String = \"Testing123\"";
+	char const     *buffer = "Test-Uint32-0 = 123, Test-String-0 = \"Testing123\"";
 
 	fr_pair_list_init(&list);
 
 	TEST_CASE("Create 'vp' using fr_pair_list_afrom_str()");
 	TEST_CHECK(fr_pair_list_afrom_str(autofree, test_dict, buffer, strlen(buffer), &list) == T_EOL);
 
-	TEST_CASE("Looking for Test-Uint32");
+	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&list, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
 
-	TEST_CASE("Checking if (Test-Uint32 == 123)");
+	TEST_CASE("Checking if (Test-Uint32-0 == 123)");
 	TEST_CHECK(vp && vp->vp_uint32 == 123);
 
-	TEST_CASE("Looking for Test-String");
+	TEST_CASE("Looking for Test-String-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&list, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
 
-	TEST_CASE("Checking if (Test-String == 'Testing123')");
+	TEST_CASE("Checking if (Test-String-0 == 'Testing123')");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, "Testing123") == 0);
 
 	fr_pair_list_free(&list);
@@ -179,7 +179,7 @@ static void test_fr_pair_list_afrom_file(void)
 {
 	fr_pair_t      *vp;
 	fr_pair_list_t list;
-	char const     *buffer = "Test-Uint32 = 123\nTest-String = \"Testing123\"\n";
+	char const     *buffer = "Test-Uint32-0 = 123\nTest-String-0 = \"Testing123\"\n";
 	FILE           *fp = open_buffer_as_file(buffer, strlen(buffer));
 	bool           pfiledone;
 
@@ -188,22 +188,22 @@ static void test_fr_pair_list_afrom_file(void)
 	TEST_CASE("Create 'vp' using fr_pair_list_afrom_file()");
 	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &list, fp, &pfiledone) == 0);
 
-	TEST_CASE("Looking for Test-Uint32");
+	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&list, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
 
-	TEST_CASE("Checking if (Test-Uint32 == 123)");
+	TEST_CASE("Checking if (Test-Uint32-0 == 123)");
 	TEST_CHECK(vp && vp->vp_uint32 == 123);
 
-	TEST_CASE("Looking for Test-String");
+	TEST_CASE("Looking for Test-String-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&list, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
 
-	TEST_CASE("Checking if (Test-String == 'Testing123')");
+	TEST_CASE("Checking if (Test-String-0 == 'Testing123')");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, "Testing123") == 0);
 
 	fr_pair_list_free(&list);
@@ -216,7 +216,7 @@ static void test_fr_pair_list_move(void)
 	fr_pair_t      *vp;
 	fr_pair_list_t old_list, new_list;
 	bool           pfiledone;
-	char const     *fake_file = "Test-Uint32 = 123\nTest-String = \"Testing123\"\n";
+	char const     *fake_file = "Test-Uint32-0 = 123\nTest-String-0 = \"Testing123\"\n";
 	FILE           *fp = open_buffer_as_file(fake_file, strlen(fake_file));
 
 	fr_pair_list_init(&old_list);
@@ -229,7 +229,7 @@ static void test_fr_pair_list_move(void)
 	TEST_CASE("Move pair from 'old_list' to 'old_list' using fr_pair_list_move()");
 	fr_pair_list_move(&new_list, &old_list);
 
-	TEST_CASE("Looking for Test-Uint32");
+	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&new_list, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
@@ -237,10 +237,10 @@ static void test_fr_pair_list_move(void)
 
 	TEST_CHECK(vp != NULL);
 
-	TEST_CASE("Checking if (Test-Uint32 == 123)");
+	TEST_CASE("Checking if (Test-Uint32-0 == 123)");
 	TEST_CHECK(vp && vp->vp_uint32 == 123);
 
-	TEST_CASE("Looking for Test-String");
+	TEST_CASE("Looking for Test-String-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&new_list, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating VP_VERIFY()");
@@ -248,7 +248,7 @@ static void test_fr_pair_list_move(void)
 
 	TEST_CHECK(vp != NULL);
 
-	TEST_CASE("Checking if (Test-String == 'Testing123')");
+	TEST_CASE("Checking if (Test-String-0 == 'Testing123')");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, "Testing123") == 0);
 
 	fr_pair_list_free(&old_list);

@@ -148,11 +148,17 @@ fr_dict_test_attr_t const fr_dict_test_attrs[] = {
  *
  * @param[in] dict		Test dictionary to add.
  * @param[in] test_defs		Test attribute definitions to add.
+ * @param[in] base		to add to all attribute numbers.
+ * @param[in] inst		number to add to test attribute.
+ *      			i.e. if the attribute name is "Foo"
+ *				the instance number will be appended
+ *      			to create "Foo-<inst>"
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dict_test_attrs_init(fr_dict_t *dict, fr_dict_test_attr_t const *test_defs)
+int fr_dict_test_attrs_init(fr_dict_t *dict, fr_dict_test_attr_t const *test_defs,
+			    unsigned int base, int inst)
 {
 	fr_dict_test_attr_t const	*p;
 	fr_dict_attr_flags_t		dict_flags = {};
@@ -161,12 +167,40 @@ static int dict_test_attrs_init(fr_dict_t *dict, fr_dict_test_attr_t const *test
 		fr_dict_attr_t const *parent = p->parent ? *p->parent : fr_dict_root(dict);
 		fr_dict_attr_t const *attr;
 
-		if (fr_dict_attr_add(dict, parent, p->name, p->attr, p->type, &dict_flags) < 0) return -1;
+		/*
+		 *	We only mangle top level attributes
+		 */
+		if (!p->parent) {
+			char const *name;
+			char *buff = NULL;
 
-		attr = fr_dict_attr_by_name(NULL, parent, p->name);
-		if (!attr) {
-			fr_strerror_printf("Failed adding test attribute \"%s\"", p->name);
-			return -1;
+			if (inst >= 0) {
+				name = buff = talloc_asprintf(NULL, "%s-%u", p->name, (unsigned int)inst);
+			} else {
+				name = p->name;
+			}
+
+			if (fr_dict_attr_add(dict, parent, name, p->attr + base, p->type, &dict_flags) < 0) {
+				talloc_free(buff);
+				return -1;
+			}
+
+			attr = fr_dict_attr_by_name(NULL, parent, name);
+			if (!attr) {
+				fr_strerror_printf("Failed adding test attribute \"%s\"", name);
+				talloc_free(buff);
+				return -1;
+			}
+
+			talloc_free(buff);
+		} else {
+			if (fr_dict_attr_add(dict, parent, p->name, p->attr, p->type, &dict_flags) < 0) return -1;
+
+			attr = fr_dict_attr_by_name(NULL, parent, p->name);
+			if (!attr) {
+				fr_strerror_printf("Failed adding test attribute \"%s\"", p->name);
+				return -1;
+			}
 		}
 
 		/* Add the enumeration values */
@@ -215,7 +249,7 @@ int fr_dict_test_init(TALLOC_CTX *ctx, fr_dict_t **dict_p, fr_dict_test_attr_t c
 		return -1;
 	}
 
-	if (dict_test_attrs_init(dict, test_defs) < 0) goto error;
+	if (fr_dict_test_attrs_init(dict, test_defs, 0, 0) < 0) goto error;
 
 	fr_dict_test = dict;
 
