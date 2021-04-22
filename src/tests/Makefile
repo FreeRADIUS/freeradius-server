@@ -178,12 +178,13 @@ clean.tests.eap:
 $(BUILD_PATH)/tests/eap/%.ok: NO_MPPE = $(filter eap-md5,$(basename $(notdir $@)))
 
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(BUILD_PATH)/tests/eap radiusd.pid radiusd.kill
-	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
+	@printf 'EAPOL_TEST %s ' $(notdir $(patsubst %.conf,%,$<))
 	@if ! $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
-		echo "    " FAILED; \
+		echo "    " FAILED - command failed; \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
+	@echo
 	@touch $@
 
 #
@@ -202,9 +203,9 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
 	@mv -f $$@.tmp $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
-	@echo EAPOL_TEST $$(notdir $$(patsubst %.ok,%,$$@))
+	@printf 'EAPOL_TEST %s' $$(notdir $$(patsubst %.ok,%,$$@))
 	@if ! $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
-		echo FAILED; \
+		echo "    " FAILED  - command failed; \
 		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
@@ -219,6 +220,7 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
+	@echo
 	@touch $$@
 
 # EAP-FAST doesn't do TLS 1.3
