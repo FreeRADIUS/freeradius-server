@@ -173,14 +173,20 @@ clean.tests.eap:
 	@rm -rf $(BUILD_PATH)/tests/eap config/tlscache config/eap-test config/eap-test-inner-tunnel
 
 #
+#  Set target-specific variables, so that the later shell scripts are rather more understandable.
+#
 #  MD5 doesn't use MPPE keys
 #
 $(BUILD_PATH)/tests/eap/%.ok: NO_MPPE = $(filter eap-md5,$(basename $(notdir $@)))
+$(BUILD_PATH)/tests/eap/%.ok: CMD =  $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n)
+$(BUILD_PATH)/tests/eap/%.ok: LOG =  $(patsubst %.ok,%,$@).log
 
 $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(BUILD_PATH)/tests/eap radiusd.pid radiusd.kill
 	@printf 'EAPOL_TEST %s ' $(notdir $(patsubst %.conf,%,$<))
-	@if ! $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) $(if $(NO_MPPE),-n) > $(patsubst %.ok,%,$@).log 2>&1; then \
-		echo "    " FAILED - command failed; \
+	@if ! $(CMD) > $(LOG) 2>&1; then \
+		echo " - " FAILED - command failed; \
+		echo ">>> cmd -" $(CMD); \
+		echo ">>> log -" $(LOG); \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
@@ -204,19 +210,22 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@printf 'EAPOL_TEST %s' $$(notdir $$(patsubst %.ok,%,$$@))
-	@if ! $(EAPOL_TEST) -r 1 -c $$< -p $(PORT) -s $(SECRET) > $$(patsubst %.ok,%,$$@).log 2>&1; then \
-		echo "    " FAILED  - command failed; \
-		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
+	@if ! $$(CMD) -r 1 > $$(LOG) 2>&1; then \
+		echo " - " FAILED  - command failed; \
+		echo ">>> cmd -" $$(CMD); \
+		echo ">>> log -" $$(LOG); \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	elif ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
-		echo "    " FAILED - not using TLS version ${2}; \
-		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
+		echo " - " FAILED - not using TLS version ${2}; \
+		echo ">>> cmd -" $$(CMD) -r 1; \
+		echo ">>> log -" $$(LOG); \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	elif ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
-		echo "    " FAILED - did not use resumption; \
-		echo "        " $(EAPOL_TEST) -r -c $$< -p $(PORT) -s $(SECRET); \
+		echo " - " FAILED - did not use resumption; \
+		echo ">>> cmd -" $$(CMD) -r 1; \
+		echo ">>> log -" $$(LOG); \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
 	fi
