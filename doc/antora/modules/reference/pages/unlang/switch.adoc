@@ -42,7 +42,7 @@ else {
 }
 ----
 
-The only difference between the two forms is that for a `switch`
+The main difference between the two forms is that for a `switch`
 statement, the _expansion_ is evaluated only once.  For the equivalent
 xref:unlang/if.adoc[if] statement, the _expansion_ is evaluated again for every
 xref:unlang/if.adoc[if].
@@ -54,17 +54,46 @@ xref:unlang/case.adoc[case] is found, the `default` section is evaluated. The
 `default`, then the `switch` statement behaves as if the `default`
 section was empty.
 
+== Efficiency and Data Types
+
+The `switch` keyword will automatically choose an efficient
+representation for the set of xref:unlang/case.adoc[case] statements,
+based on the data type of the _match_ text.  For `string` and `octets`
+data, the xref:unlang/case.adoc[case] statements are place in a binary
+tree.  This tree permits `O(log(N))` lookups, so that it is possible
+to use `switch` statements which contain tens of thousands of
+xref:unlang/case.adoc[case] statements with minimal performance
+penalty.
+
+For IP address data types (`ipv4addr`, `ipv6addr`, `ipv4prefix`, and
+`ipv6prefix`), the xref:unlang/case.adoc[case] statements are placed
+in a Patricia Trie.  The Patricia Trie allows for an IP address to
+match exactly, or to match a particular network.  Multiple networks
+can be given, including nested networks, so long as there are no
+duplicates.  The Patricia Trie also allows for efficient lookups,
+which in practice are also `O(lg(N))` in the number of entries.
+
+Other data types are placed into a hash table.
+
+== Limitations
+
+The _match_ text for the xref:unlang/case.adoc[case] statement _must_
+be of type xref:type/index.adoc[data].  That is, the "thing to match"
+cannot be an attribute, an SQL query, or any other dynamic expansion.
+
+Duplicate xref:unlang/case.adoc[case] statements are forbidden.
+
+No statement other than xref:unlang/case.adoc[case] can appear in a
+`switch` statement, and the xref:unlang/case.adoc[case] statement
+cannot appear outside of a `switch` statement.
+
 For compatibility with version 3, and empty `case` statement can also
-be used instead of `default`.
+be used instead of `default`.  This compatibility will be removed in a
+future release.
 
-The _match_ text for the xref:unlang/case.adoc[case] statement can be an
-xref:unlang/attr.adoc[&Attribute-Name] or xref:type/index.adoc[data].
+== Examples
 
-No statement other than xref:unlang/case.adoc[case] can appear in a `switch`
-statement, and the xref:unlang/case.adoc[case] statement cannot appear outside of a
-`switch` statement.
-
-.Example
+.Switch over a User-Name
 [source,unlang]
 ----
 switch &User-Name {
@@ -72,7 +101,25 @@ switch &User-Name {
         reject
     }
 
-    case {
+    default {
+        ok
+    }
+}
+----
+
+.Switch over IP prefixes
+[source,unlang]
+----
+switch &Framed-IP-Address {
+    case 192.168/16 {
+        accept
+    }
+
+    case 192.168.2.0/24 {
+        reject
+    }
+
+    default {
         ok
     }
 }
