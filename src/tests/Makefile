@@ -154,10 +154,12 @@ radiusd.kill:
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 ifneq "$(EAPOL_TEST)" ""
+TLS1_3=$(shell strings `which eapol_test` | grep '1_3' | head -n 1)
+
 EAP_FILES	= eap-md5.conf
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.2
-EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 tls_disable_tlsv1_3=1
+EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 $(TLS1_3)
 
 .PHONY: $(BUILD_PATH)/tests/eap
 $(BUILD_PATH)/tests/eap:
