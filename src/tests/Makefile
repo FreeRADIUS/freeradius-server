@@ -222,6 +222,7 @@ endif # there's no "prefix", so we don't run the full EAP tests
 EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES) $(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
 
 tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
+	@$(MAKE) radiusd.kill
 
 endif # we have eapol_test built
 
@@ -236,4 +237,3 @@ tests: test.conf | radiusd.kill radiusd.pid
 ifneq "$(EAPOL_TEST)" ""
 	@$(MAKE) tests.eap
 endif
-	@$(MAKE) radiusd.kill
