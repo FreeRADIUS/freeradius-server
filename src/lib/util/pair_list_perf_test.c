@@ -248,8 +248,8 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int reps, fr_pair_
 	 */
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int index = rand() % input_count;
-			new_vp = fr_pair_copy(autofree, source_vps[index]);
+			int idx = rand() % input_count;
+			new_vp = fr_pair_copy(autofree, source_vps[idx]);
 			start = fr_time();
 			fr_pair_append(&test_vps, new_vp);
 			end = fr_time();
@@ -279,8 +279,8 @@ static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int reps, fr_p
 	 *  Initialise the test list
 	 */
 	for (i = 0; i < len; i++) {
-		int index = rand() % input_count;
-		new_vp = fr_pair_copy(autofree, source_vps[index]);
+		int idx = rand() % input_count;
+		new_vp = fr_pair_copy(autofree, source_vps[idx]);
 		fr_pair_append(&test_vps, new_vp);
 	}
 
@@ -289,8 +289,8 @@ static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int reps, fr_p
 	 */
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int index = rand() % input_count;
-			da = source_vps[index]->da;
+			int idx = rand() % input_count;
+			da = source_vps[idx]->da;
 			start = fr_time();
 			(void) fr_pair_find_by_da(&test_vps, da, 0);
 			end = fr_time();
@@ -319,8 +319,8 @@ static void do_test_find_nth(unsigned int len, unsigned int reps, fr_pair_t *sou
 	 *  Initialise the test list
 	 */
 	for (i = 0; i < len; i++) {
-		int index = rand() % input_count;
-		new_vp = fr_pair_copy(autofree, source_vps[index]);
+		int idx = rand() % input_count;
+		new_vp = fr_pair_copy(autofree, source_vps[idx]);
 		fr_pair_append(&test_vps, new_vp);
 	}
 
@@ -330,9 +330,9 @@ static void do_test_find_nth(unsigned int len, unsigned int reps, fr_pair_t *sou
 	nth_item = (unsigned int)(len / input_count);
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int index = rand() % input_count;
+			int idx = rand() % input_count;
 
-			da = source_vps[index]->da;
+			da = source_vps[idx]->da;
 			start = fr_time();
 			(void) fr_pair_find_by_da(&test_vps, da, nth_item);
 			end = fr_time();
@@ -358,8 +358,8 @@ static void do_test_fr_pair_list_free(unsigned int len, unsigned int reps, fr_pa
 
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int index = rand() % input_count;
-			new_vp = fr_pair_copy(autofree, source_vps[index]);
+			int idx = rand() % input_count;
+			new_vp = fr_pair_copy(autofree, source_vps[idx]);
 			fr_pair_append(&test_vps, new_vp);
 		}
 		start = fr_time();
