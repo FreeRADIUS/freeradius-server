@@ -11,36 +11,29 @@ include ../../Make.inc
 BUILD_PATH := $(top_builddir)/build
 
 #
-#  The "build eapol_test" makefile contains only a definition of
-#  EAPOL_TEST, which is where the binary is located.
+#  Build eapol_test if requested to.
 #
-#  But, we only try to build eapol_test if we're asked to ("eapol_test"
-#  target), in which case we skip the rest of these tests.
+.PHONY: eapol_test
+eapol_test: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
+	@echo EAPOL_TEST=$(EAPOL_TEST)
+
 #
-ifneq "$(findstring eapol_test,$(MAKECMDGOALS))" ""
+#  If we're doing anything resembling EAP, then make sure that
+#  EAPOL_TEST is defined.
+#
+ifneq "(findstring eap,$(MAKECMDGOALS))" ""
 $(BUILD_PATH)/tests/eapol_test:
 	@mkdir -p $@
 
-# define where the EAPOL_TEST is located.  If necessary, build it.
+#
+#  Build eapol_test, and cache its output
+#
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
-
-# include the above definition.  If the "mk" file doesn't exist, then the preceding
-# rule will cause it to be build.
--include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
-
-#  A helpful target which causes eapol_test to be built, BUT does not run any
-#  test targets.
-eapol_test: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
-	@echo EAPOL_TEST=$(EAPOL_TEST)
-else
+	@echo "TLS1_3=" $(shell strings $(EAPOL_TEST) | grep '1_3' | head -n 1) >> $@
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
-ifeq "$(EAPOL_TEST)" ""
-EAPOL_TEST := $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh)
 endif
-
-endif # check for eapol_test
 
 TEST_PATH := $(top_builddir)/src/tests
 DICT_PATH := $(TEST_PATH)
@@ -154,8 +147,6 @@ radiusd.kill:
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 ifneq "$(EAPOL_TEST)" ""
-TLS1_3=$(shell strings `which eapol_test` | grep '1_3' | head -n 1)
-
 EAP_FILES	= eap-md5.conf
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.2
