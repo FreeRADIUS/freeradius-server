@@ -207,14 +207,13 @@ $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 		echo FAILED; \
 		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
 		$(MAKE) radiusd.kill; \
-	fi
-	@if ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
+		exit 1; \
+	elif ! grep -q '^SSL: Using TLS version TLSv${2}$$$$' $$(patsubst %.ok,%,$$@).log; then \
 		echo "    " FAILED - not using TLS version ${2}; \
 		echo "        " $(EAPOL_TEST) -c $$< -p $(PORT) -s $(SECRET); \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
-	fi
-	@if ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
+	elif ! grep -q '^OpenSSL: Handshake finished - resumed=1$$$$' $$(patsubst %.ok,%,$$@).log; then \
 		echo "    " FAILED - did not use resumption; \
 		echo "        " $(EAPOL_TEST) -r -c $$< -p $(PORT) -s $(SECRET); \
 		$(MAKE) radiusd.kill; \
