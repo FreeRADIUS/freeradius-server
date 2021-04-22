@@ -376,7 +376,7 @@ static void test_dbuff_fd_shell(fr_dbuff_fd_test_body body, uint8_t const data[]
 
 static void fd_body(fr_dbuff_t *dbuff, uint8_t const data[])
 {
-	uint8_t			output[8];
+	uint8_t			output[8] = { 0x00 };
 
 	TEST_CASE("Initial extend");
 	TEST_CHECK(fr_dbuff_out_memcpy(output, dbuff, 1) == 1);
