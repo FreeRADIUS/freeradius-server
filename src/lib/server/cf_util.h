@@ -241,9 +241,40 @@ void		_cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, in
 #define		cf_log_debug_prefix(_cf, _fmt, ...) _cf_log_with_filename(L_DBG, CF_TO_ITEM(_cf),  __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
 void		_cf_log_with_filename(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));
 
+/** Log an error message against a specified child
+ *
+ * @param[in] _parent	CONF_SECTION.
+ * @param[in] _child	string identifier.
+ * @param[in] _fmt	of message.
+ * @param[in] ...	arguments.
+ */
 #define		cf_log_err_by_child(_parent, _child, _fmt, ...) _cf_log_by_child(L_ERR, _parent, _child, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
+
+/** Log a warning message against a specified child
+ *
+ * @param[in] _parent	CONF_SECTION.
+ * @param[in] _child	string identifier.
+ * @param[in] _fmt	of message.
+ * @param[in] ...	arguments.
+ */
 #define		cf_log_warn_by_child(_parent, _child, _fmt, ...) _cf_log_by_child(L_WARN, _parent, _child, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
+
+/** Log an info message against a specified child
+ *
+ * @param[in] _parent	CONF_SECTION.
+ * @param[in] _child	string identifier.
+ * @param[in] _fmt	of message.
+ * @param[in] ...	arguments.
+ */
 #define		cf_log_info_by_child(_parent, _child, _fmt, ...) _cf_log_by_child(L_INFO, _parent, _child, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
+
+/** Log a debug message against a specified child
+ *
+ * @param[in] _parent	CONF_SECTION.
+ * @param[in] _child	string identifier.
+ * @param[in] _fmt	of message.
+ * @param[in] ...	arguments.
+ */
 #define		cf_log_debug_by_child(_parent, _child, _fmt, ...) _cf_log_by_child(L_DBG, _parent, _child, __FILE__, __LINE__, _fmt, ## __VA_ARGS__)
 void		_cf_log_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const *child,
 				   char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 6, 7));
