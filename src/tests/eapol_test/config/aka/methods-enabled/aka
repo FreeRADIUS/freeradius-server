@@ -1,6 +1,4 @@
 type = aka
-default_eap_type = aka
-
 aka {
 	virtual_server = "eap-aka"
 }

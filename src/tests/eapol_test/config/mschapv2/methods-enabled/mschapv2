@@ -1,6 +1,4 @@
 type = mschapv2
-default_eap_type = mschapv2
-
 #
 #  This takes no configuration.
 #

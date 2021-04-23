@@ -1,6 +1,4 @@
 type = aka_prime
-default_eap_type = aka-prime
-
 aka_prime {
 	virtual_server = "eap-aka-prime"
 }

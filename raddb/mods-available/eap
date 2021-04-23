@@ -24,18 +24,21 @@
 #
 eap {
 	#
-	#  default_eap_type::: Invoke the default supported EAP type when `EAP-Identity`
+	#  default_eap_type:: The default EAP submodule to invoke when an `EAP-Identity`
 	#  response is received.
 	#
-	#  The incoming EAP messages *DO NOT* specify which EAP type they will be using,
-	#  so it MUST be set here.
+	#  If a `default_eap_type` value is not provided, enabled EAP submodules will be
+	#  queried to determine if they recognise the provided EAP-Identity.
+	#  If no submodules recognise the identity, the first `type` value listed below
+	#  will be used.
 	#
-	#  For now, only one default EAP type may be used at a time.
+	#  If the `control.EAP-Type` attribute is set, then that EAP type takes precedence
+	#  over any configured or inferred EAP-Type.
 	#
-	#  If the `EAP-Type` attribute is set by another module, then that EAP
-	#  type takes precedence over the default type configured here.
+	#  It is generally recommended to NOT set `default_eap_type`, and instead order
+	#  the `type` configuration items appropriately.
 	#
-	default_eap_type = md5
+#	default_eap_type = md5
 
 	#
 	#  ignore_unknown_eap_types::

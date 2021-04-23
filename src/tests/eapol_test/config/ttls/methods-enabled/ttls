@@ -1,6 +1,4 @@
 type = ttls
-default_eap_type = ttls
-
 ## EAP-TTLS
 #
 #  The TTLS module implements the EAP-TTLS protocol,

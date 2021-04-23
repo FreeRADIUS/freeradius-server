@@ -1,6 +1,4 @@
 type = sim
-default_eap_type = sim
-
 sim {
 	virtual_server = "eap-sim"
 }
