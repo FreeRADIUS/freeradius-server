@@ -299,7 +299,7 @@ void pair_list_perf_init(void)
 	fr_time_start();
 }
 
-static void do_test_fr_pair_append(unsigned int len, unsigned int reps, fr_pair_t *source_vps[])
+static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
 {
 	fr_pair_list_t  test_vps;
 	unsigned int	i, j;
@@ -331,12 +331,13 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int reps, fr_pair_
 		fr_pair_list_free(&test_vps);
 	}
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
 	TEST_MSG_ALWAYS("used=%"PRId64, used);
 	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
-static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int reps, fr_pair_t *source_vps[])
+static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
 {
 	fr_pair_list_t		test_vps;
 	unsigned int		i, j;
@@ -372,12 +373,13 @@ static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int reps, fr_p
 	}
 	fr_pair_list_free(&test_vps);
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
 	TEST_MSG_ALWAYS("used=%"PRId64, used);
 	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
-static void do_test_find_nth(unsigned int len, unsigned int reps, fr_pair_t *source_vps[])
+static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
 {
 	fr_pair_list_t	  	test_vps;
 	unsigned int		i, j, nth_item;
@@ -399,9 +401,10 @@ static void do_test_find_nth(unsigned int len, unsigned int reps, fr_pair_t *sou
 	}
 
 	/*
-	 * Find nth instance of specific DA
+	 *  Find nth instance of specific DA.  nth is based on the percentage
+	 *  of attributes which are repeats.
 	 */
-	nth_item = (unsigned int)(len / input_count);
+	nth_item = perc == 0 ? 1 : (unsigned int)(len * perc / 100);
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
 			int idx = rand() % input_count;
@@ -415,12 +418,13 @@ static void do_test_find_nth(unsigned int len, unsigned int reps, fr_pair_t *sou
 	}
 	fr_pair_list_free(&test_vps);
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
 	TEST_MSG_ALWAYS("used=%"PRId64, used);
 	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
-static void do_test_fr_pair_list_free(unsigned int len, unsigned int reps, fr_pair_t *source_vps[])
+static void do_test_fr_pair_list_free(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
 {
 	fr_pair_list_t  test_vps;
 	unsigned int	i, j;
@@ -444,28 +448,31 @@ static void do_test_fr_pair_list_free(unsigned int len, unsigned int reps, fr_pa
 	}
 	fr_pair_list_free(&test_vps);
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
+	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
 	TEST_MSG_ALWAYS("used=%"PRId64, used);
 	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
 }
 
-#define test_func(_func, _count, _source_vps) \
-static void test_ ## _func ## _ ## _count(void)\
+#define test_func(_func, _count, _perc, _source_vps) \
+static void test_ ## _func ## _ ## _count ## _ ## _perc(void)\
 {\
-	do_test_ ## _func(_count, 10000, _source_vps);\
+	do_test_ ## _func(_count, _perc, 10000, _source_vps);\
 }
 
-#define test_funcs(_func) \
-	test_func(_func, 20, source_vps_0) \
-	test_func(_func, 40, source_vps_0) \
-	test_func(_func, 60, source_vps_0) \
-	test_func(_func, 80, source_vps_0) \
-	test_func(_func, 100, source_vps_0)
+#define test_funcs(_func, _perc) \
+	test_func(_func, 20, _perc, source_vps_ ## _perc) \
+	test_func(_func, 40, _perc, source_vps_ ## _perc) \
+	test_func(_func, 60, _perc, source_vps_ ## _perc) \
+	test_func(_func, 80, _perc, source_vps_ ## _perc) \
+	test_func(_func, 100, _perc, source_vps_ ## _perc)
 
-test_funcs(fr_pair_append)
-test_funcs(fr_pair_find_by_da)
-test_funcs(find_nth)
-test_funcs(fr_pair_list_free)
+#define all_test_funcs(_func) \
+	test_funcs(_func, 0) \
+	test_funcs(_func, 25) \
+	test_funcs(_func, 50) \
+	test_funcs(_func, 75) \
+	test_funcs(_func, 100)
 
 #define repetition_tests(_func) \
 	{ #_func "_20", test_ ## _func ## _20},\
@@ -473,6 +480,11 @@ test_funcs(fr_pair_list_free)
 	{ #_func "_60", test_ ## _func ## _60},\
 	{ #_func "_80", test_ ## _func ## _80},\
 	{ #_func "_100", test_ ## _func ## _100},\
+all_test_funcs(fr_pair_append)
+all_test_funcs(fr_pair_find_by_da)
+all_test_funcs(find_nth)
+all_test_funcs(fr_pair_list_free)
+
 
 TEST_LIST = {
 	repetition_tests(fr_pair_append)
