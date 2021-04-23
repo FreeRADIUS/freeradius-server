@@ -63,6 +63,14 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 
 	return 0;
 }
+
+static eap_type_t mod_type_identity(UNUSED void *instance, char const *id, size_t len)
+{
+	if (fr_aka_sim_id_to_eap_type(id, len) == FR_EAP_METHOD_AKA) return FR_EAP_METHOD_AKA;
+
+	return FR_EAP_METHOD_INVALID;
+}
+
 static int mod_load(void)
 {
 	if (fr_aka_sim_init() < 0) return -1;
@@ -98,6 +106,7 @@ rlm_eap_submodule_t rlm_eap_sim = {
 
 	.instantiate	= mod_instantiate,
 
+	.type_identity	= mod_type_identity,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.namespace	= &dict_eap_aka_sim
 };
