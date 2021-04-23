@@ -474,23 +474,30 @@ static void test_ ## _func ## _ ## _count ## _ ## _perc(void)\
 	test_funcs(_func, 75) \
 	test_funcs(_func, 100)
 
-#define repetition_tests(_func) \
-	{ #_func "_20", test_ ## _func ## _20},\
-	{ #_func "_40", test_ ## _func ## _40},\
-	{ #_func "_60", test_ ## _func ## _60},\
-	{ #_func "_80", test_ ## _func ## _80},\
-	{ #_func "_100", test_ ## _func ## _100},\
 all_test_funcs(fr_pair_append)
 all_test_funcs(fr_pair_find_by_da)
 all_test_funcs(find_nth)
 all_test_funcs(fr_pair_list_free)
 
+#define repetition_tests(_func, _perc) \
+	{ #_func "_20_" #_perc, test_ ## _func ## _20_ ## _perc},\
+	{ #_func "_40_" #_perc, test_ ## _func ## _40_ ## _perc},\
+	{ #_func "_60_" #_perc, test_ ## _func ## _60_ ## _perc},\
+	{ #_func "_80_" #_perc, test_ ## _func ## _80_ ## _perc},\
+	{ #_func "_100_" #_perc, test_ ## _func ## _100_ ## _perc},\
+
+#define all_repetition_tests(_func) \
+	repetition_tests(_func, 0) \
+	repetition_tests(_func, 25) \
+	repetition_tests(_func, 50) \
+	repetition_tests(_func, 75) \
+	repetition_tests(_func, 100)
 
 TEST_LIST = {
-	repetition_tests(fr_pair_append)
-	repetition_tests(fr_pair_find_by_da)
-	repetition_tests(find_nth)
-	repetition_tests(fr_pair_list_free)
+	all_repetition_tests(fr_pair_append)
+	all_repetition_tests(fr_pair_find_by_da)
+	all_repetition_tests(find_nth)
+	all_repetition_tests(fr_pair_list_free)
 
 	{ NULL }
 };
