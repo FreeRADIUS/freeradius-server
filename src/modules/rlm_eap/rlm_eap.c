@@ -55,8 +55,7 @@ static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
 			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("default_eap_type", FR_TYPE_VOID, rlm_eap_t, default_method),
-			 .dflt = "md5", .func = eap_type_parse },
+	{ FR_CONF_OFFSET_IS_SET("default_eap_type", FR_TYPE_VOID, rlm_eap_t, default_method), .func = eap_type_parse },
 
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, submodule_cs),
 			 .func = submodule_parse },
@@ -488,7 +487,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 {
 	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
 	eap_type_data_t			*type = &eap_session->this_round->response->type;
-	request_t				*request = eap_session->request;
+	request_t			*request = eap_session->request;
 
 	rlm_eap_method_t const		*method;
 
@@ -540,6 +539,28 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 		if (vp) {
 			RDEBUG2("Using method from &control.EAP-Type");
 			next = vp->vp_uint32;
+		/*
+		 *	We have an array of the submodules which
+		 *	have a type_identity callback.  Call
+		 *	each of these in turn to see if any of
+		 *	them recognise the identity.
+		 */
+		} else if (inst->type_identity_submodule) {
+			size_t i;
+
+			for (i = 0; i < inst->type_identity_submodule_len; i++) {
+				rlm_eap_submodule_t const *submodule =
+					(rlm_eap_submodule_t const *)inst->type_identity_submodule[i]->module;
+				eap_type_t ret;
+
+				ret = submodule->type_identity(inst->type_identity_submodule[i]->dl_inst->data,
+							       eap_session->identity,
+							       talloc_array_length(eap_session->identity) - 1);
+				if (ret != FR_EAP_METHOD_INVALID) {
+					next = ret;
+					break;
+				}
+			}
 		}
 
 		/*
@@ -1010,8 +1031,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	and we haven't completed our own bootstrap phase yet.
 	 */
 	loaded = talloc_array_length(inst->submodule_cs);
+
+	/*
+	 *	Pre-allocate the method identity to be the number
+	 *	of modules we're going to load.
+	 *
+	 *	We'll shrink it later.
+	 */
+	if (!inst->default_method_is_set) {
+		MEM(inst->type_identity_submodule = talloc_array(inst, module_instance_t const *, loaded));
+	}
+
 	for (i = 0; i < loaded; i++) {
-		eap_type_t			method;
 		CONF_SECTION			*submodule_cs = inst->submodule_cs[i];
 		rlm_eap_submodule_t const	*submodule;
 		module_instance_t		*submodule_inst;
@@ -1026,9 +1057,19 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 *	Add the methods the submodule provides
 		 */
 		for (j = 0; j < MAX_PROVIDED_METHODS; j++) {
+			eap_type_t	method;
+
 			if (!submodule->provides[j]) break;
 
 			method = submodule->provides[j];
+
+			/*
+			 *	If the user didn't specify a default method
+			 *	take the first method provided by the first
+			 *	submodule as the default.
+			 */
+			if (!inst->default_method_is_set && (i == 0)) inst->default_method = method;
+
 			/*
 			 *	Check for duplicates
 			 */
@@ -1046,12 +1087,45 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			inst->methods[method].submodule = submodule;
 		}
 
+		/*
+		 *	This module provides a method identity
+		 *	callback.  We need to call each of these
+		 *	in turn if default_eap_type isn't set,
+		 *	to figure out the default eap type.
+		 */
+		if (!inst->default_method_is_set && submodule->type_identity) {
+			inst->type_identity_submodule[inst->type_identity_submodule_len++] = submodule_inst;
+		}
 		count++;
+	}
+
+	/*
+	 *	Check if the default method specified is actually
+	 *	allowed by the config.
+	 */
+	if (inst->default_method_is_set && !inst->methods[inst->default_method].submodule) {
+		cf_log_err_by_child(cs, "default_eap_type", "EAP-Type \"%s\" is not enabled",
+				    eap_type2name(inst->default_method));
+		return -1;
 	}
 
 	if (count == 0) {
 		cf_log_err(cs, "No EAP method configured, module cannot do anything");
 		return -1;
+	}
+
+	/*
+	 *	Shrink the method identity array so it's the
+	 *	correct length.
+	 */
+	if (!inst->default_method_is_set) {
+		if (inst->type_identity_submodule_len > 0) {
+			MEM(inst->type_identity_submodule = talloc_realloc(inst, inst->type_identity_submodule,
+									   module_instance_t const *,
+									   inst->type_identity_submodule_len));
+		} else {
+			TALLOC_FREE(inst->type_identity_submodule);
+		}
 	}
 
 	return 0;

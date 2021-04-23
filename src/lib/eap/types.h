@@ -41,7 +41,7 @@ typedef enum eap_code {
 	FR_EAP_CODE_MAX
 } eap_code_t;
 
-typedef enum eap_method {
+typedef enum eap_type {
 	FR_EAP_METHOD_INVALID = 0,		/* 0 */
 	FR_EAP_METHOD_IDENTITY,			/* 1 */
 	FR_EAP_METHOD_NOTIFICATION,		/* 2 */

@@ -41,7 +41,16 @@ typedef struct {
 	rlm_eap_method_t 		methods[FR_EAP_METHOD_MAX];	//!< Array of loaded (or not), submodules.
 
 	char const			*default_method_name;		//!< Default method to attempt to start.
+
 	eap_type_t			default_method;			//!< Resolved default_method_name.
+	bool				default_method_is_set;		//!< Whether the user specified a default
+									///< eap method.
+
+	module_instance_t const		**type_identity_submodule;	//!< List of submodules which have a
+									///< method identity callback, i.e. those
+									///< which may set themselves to be the default
+									///< EAP-Type based on the identity provided.
+	size_t				type_identity_submodule_len;	//!< How many submodules are in the list.
 
 	bool				ignore_unknown_types;		//!< Ignore unknown types (for later proxying).
 
