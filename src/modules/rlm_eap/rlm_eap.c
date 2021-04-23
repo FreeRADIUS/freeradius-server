@@ -1003,7 +1003,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	if (count == 0) {
-		cf_log_err(cs, "No EAP method configured, module cannot do anything");
+		cf_log_err(cs, "No EAP method(s) configured, module cannot do anything");
 		return -1;
 	}
 
