@@ -310,6 +310,12 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int reps, fr_pair_
 	fr_pair_list_init(&test_vps);
 
 	/*
+	 *  Only use up to the number of pairs needed from the source to maintain ratio
+	 *  of attribute repeats.
+	 */
+	if (input_count > len) input_count = len;
+
+	/*
 	 *  Insert pairs into the test list, choosing randomly from the source list
 	 */
 	for (i = 0; i < reps; i++) {
@@ -340,6 +346,7 @@ static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int reps, fr_p
 	size_t			input_count = talloc_array_length(source_vps);
 
 	fr_pair_list_init(&test_vps);
+	if (input_count > len) input_count = len;
 
 	/*
 	 *  Initialise the test list
@@ -380,6 +387,7 @@ static void do_test_find_nth(unsigned int len, unsigned int reps, fr_pair_t *sou
 	size_t			input_count = talloc_array_length(source_vps);
 
 	fr_pair_list_init(&test_vps);
+	if (input_count > len) input_count = len;
 
 	/*
 	 *  Initialise the test list
@@ -421,6 +429,7 @@ static void do_test_fr_pair_list_free(unsigned int len, unsigned int reps, fr_pa
 	size_t		input_count = talloc_array_length(source_vps);
 
 	fr_pair_list_init(&test_vps);
+	if (input_count > len) input_count = len;
 
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
