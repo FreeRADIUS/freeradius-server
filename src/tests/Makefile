@@ -105,10 +105,22 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 	@sed 's/eap/eap-test/;s/server inner-tunnel/server eap-test-inner-tunnel/' < $< > $@
 
 #
-#  Same as above, but enable caching, and set the persist_dir
+#  * Same renames as above
+#  * enable caching
+#  * uncomment caching directory
+#  * set the minimum TLS version to 1.0 for testing
+#  * set the maximum TLS version to 1.2 or 1.3, depending if 1.3 is available
+#  * tell OpenSSL to enable insecure ciphers TLS 1.0 and TLS 1.1
 #
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
-	@sed 's/eap {/eap eap-test {/;s/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/;s/enable = no/enable = yes/;s/^\(.*\)persist_dir =/  persist_dir =/;s/tls_min_version = "1.2"/tls_min_version = "1.0"/;$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' < $< > $@
+	@sed -e 's/eap {/eap eap-test {/' \
+	     -e 's/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/' \
+	     -e 's/enable = no/enable = yes/' \
+	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
+	     -e 's/tls_min_version = "1.2"/tls_min_version = "1.0"/' \
+	     -e '$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' \
+	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT@SECLEVEL=1"/' \
+		 < $< > $@
 
 radiusd.pid: test.conf
 	@rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
@@ -149,7 +161,7 @@ radiusd.kill:
 ifneq "$(EAPOL_TEST)" ""
 EAP_FILES	= eap-md5.conf
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
-EAP_TLS_VERSIONS = 1.2
+EAP_TLS_VERSIONS = 1.1 1.2
 ifneq "$(TLS1_3)" ""
 EAP_TLS_VERSIONS += 1.3
 endif
@@ -195,12 +207,15 @@ ifneq "$(prefix)" ""
 #  ${1} is the config file
 #  ${2} is the TLS version to use.
 #
+#  Update the phase1 configuration to enable/disable various TLS versions
+#  insert an OpenSSL cipher configuration line by cloning "password" and editing it.
+#
 define EAP_TLS_CONFIG
 $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
-	@sed 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' < $$< > $$@
-#   Just keep the TLS versions that we want to disable. e.g: tls_disable_tlsv1_XX=1
-	@sed '/phase1=/s/tls_disable_tlsv1_[0-9]=0//g' < $$@ > $$@.tmp
-	@mv -f $$@.tmp $$@
+	@sed -e 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' \
+	     -e  '/phase1=/s/tls_disable_tlsv1_[0-9]=0//g' \
+	     -e  '/password/s/^//p; /password/s/^.*/        openssl_ciphers="DEFAULT@SECLEVEL=1"/' \
+		< $$< > $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
 	@printf 'EAPOL_TEST %s' $$(notdir $$(patsubst %.ok,%,$$@))
