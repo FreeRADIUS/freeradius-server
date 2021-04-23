@@ -360,10 +360,9 @@ eap {
 		#  "check_cert_issuer" is not set, or if
 		#  the check succeeds.
 		#
-		#  In 2.1.10 and later, this check can be done
-		#  more generally by checking the value of the
-		#  TLS-Client-Cert-Common-Name attribute.  This check
-		#  can be done via any mechanism you choose.
+		#  This check can be done more generally by writing
+		#  "unlang" statements to examine the value of the
+		#  TLS-Client-Cert-Common-Name attribute.
 		#
 	#	check_cert_cn = %{User-Name}
 
@@ -423,6 +422,11 @@ eap {
 		#	tls_min_version = "1.2"
 		#
 		#  Older TLS versions are insecure and deprecated.
+		#
+		#  In order to enable TLS 1.0 and TLS 1.1, you may
+		#  also need to update cipher_list below to:
+		#
+		#	cipher_list = "DEFAULT@SECLEVEL=1"
 		#
 		#  The values must be in quotes.
 		#
