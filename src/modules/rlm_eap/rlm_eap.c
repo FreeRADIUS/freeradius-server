@@ -83,7 +83,6 @@ static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_eap_type;
 static fr_dict_attr_t const *attr_eap_identity;
 
-static fr_dict_attr_t const *attr_cisco_avpair;
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_state;
@@ -95,7 +94,6 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_identity, .name = "EAP-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_cisco_avpair, .name = "Vendor-Specific.Cisco.AvPair", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -814,111 +812,6 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 	RETURN_MODULE_UPDATED;
 }
-
-#if 0
-/*
- *	If we're proxying EAP, then there may be magic we need
- *	to do.
- */
-static unlang_action_t mod_post_proxy(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(instance->mctx, rlm_eap_t);
-	size_t			i;
-	size_t			len;
-	ssize_t			ret;
-	char			*p;
-	fr_pair_t		*vp;
-	eap_session_t		*eap_session;
-
-	/*
-	 *	If there was a eap_session associated with this request,
-	 *	then it's a tunneled request which was proxied...
-	 */
-	if (request_data_get(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED)) {
-		rlm_rcode_t		rcode;
-		eap_tunnel_data_t	*data;
-		fr_pair_t		*username;
-
-		eap_session = eap_session_thaw(request);
-		fr_assert(eap_session);
-
-		/*
-		 *	Grab the tunnel callbacks from the request.
-		 */
-		data = (eap_tunnel_data_t *) request_data_get(request,
-							      request->proxy,
-							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
-		if (!data) {
-			RERROR("Failed to retrieve callback for tunneled session!");
-			eap_session_destroy(&eap_session);
-			RETURN_MODULE_FAIL;
-		}
-
-		/*
-		 *	Do the callback...
-		 */
-		RDEBUG2("Doing post-proxy callback");
-		rcode = data->callback(eap_session, data->tls_session);
-		talloc_free(data);
-		switch (rcode) {
-		default:
-			RDEBUG2("Failed in post-proxy callback");
-			eap_fail(eap_session);
-			eap_session_destroy(&eap_session);
-			return rcode;
-
-		case RLM_MODULE_OK:
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_HANDLED:
-			break;
-		}
-
-		/*
-		 *	We are done, wrap the EAP-request in RADIUS to send
-		 *	with all other required radius attributes
-		 */
-		eap_compose(eap_session);
-
-		/*
-		 *	Add to the list only if it is EAP-Request, OR if
-		 *	it's LEAP, and a response.
-		 */
-		if ((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
-		    (eap_session->this_round->request->type.num >= FR_EAP_METHOD_MD5)) {
-			talloc_free(eap_session->prev_round);
-			eap_session->prev_round = eap_session->this_round;
-			eap_session->this_round = NULL;
-		} else {	/* couldn't have been LEAP, there's no tunnel */
-			RDEBUG2("Freeing eap_session");
-			eap_session_destroy(&eap_session);
-		}
-
-		username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
-
-		/*
-		 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
-		 *	says that we MUST include a User-Name attribute in the
-		 *	Access-Accept.
-		 */
-		if ((request->reply->code == FR_RADIUS_CODE_ACCESS_ACCEPT) && username) {
-			MEM(pair_update_reply(&vp, attr_user_name) >= 0);
-			fr_pair_value_copy(vp, username);
-		}
-
-		eap_session_freeze(&eap_session);
-
-		RETURN_MODULE_OK;
-	} else {
-		RDEBUG2("No pre-existing eap_session found");
-	}
-
-	/*
-	 *	This is allowed.
-	 */
-	RETURN_MODULE_NOOP;
-}
-#endif
 
 static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
