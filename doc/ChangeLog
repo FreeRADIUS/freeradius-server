@@ -2,6 +2,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements
 	* Many new "unlang" documentation files.  See "make docsite"
 	  and then see build/docsite/freeradius-server/*/index.html
+	* Limited support for dynamic home servers.  See proxy.conf
+	  and doc/configuration/dynamic_home_servers.md
 	* The default minimum TLS version is now TLS 1.2, as per RFC 8996.
 	  Older versions can be allowed by setting tls_min_version
 	* Significantly improve the readability and contents of TLS debug messages.
@@ -22,8 +24,6 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  resource-check example virtual server for manipulating control flow
 	  in unlang policies based on status of some external resource.
 	  Patches from Terry Burton.
-	* Limited support for dynamic home servers.  See proxy.conf
-	  and doc/configuration/dynamic_home_servers.md
 	* Update radmin to show more information about the home servers
 	  using "show home_server list all".
 	* The default configuration now replies with EAP-Key-Name, if it
