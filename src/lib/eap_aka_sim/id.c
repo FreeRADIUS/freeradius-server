@@ -112,7 +112,7 @@ ssize_t fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 		fr_strerror_const("Invalid MCN component");
 		return (domain - q);
 	}
-	*mnc = (uint16_t)num;
+	if (mnc) *mnc = (uint16_t)num;
 	p = q + 1;
 
 	if (((p + 3) < end) || (CRYPTO_memcmp(p, "mcc", 3) != 0)) {
@@ -124,7 +124,7 @@ ssize_t fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
 		fr_strerror_const("Invalid MCC component");
 		return (domain - q);
 	}
-	*mcc = (uint16_t)num;
+	if (mcc) *mcc = (uint16_t)num;
 
 	p = q + 1;
 	if (((p + 15) < end) || (CRYPTO_memcmp(p, "3gppnetwork.org", 15) != 0)) {
@@ -168,8 +168,8 @@ int fr_aka_sim_id_type(fr_aka_sim_id_type_t *type, fr_aka_sim_method_hint_t *hin
 	size_t i;
 
 	if (id_len < 1) {
-		*hint = AKA_SIM_METHOD_HINT_UNKNOWN;
-		*type = AKA_SIM_ID_TYPE_UNKNOWN;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_UNKNOWN;
+		if (type) *type = AKA_SIM_ID_TYPE_UNKNOWN;
 		fr_strerror_const("ID length too short");
 		return -1;
 	}
@@ -205,18 +205,18 @@ int fr_aka_sim_id_type(fr_aka_sim_id_type_t *type, fr_aka_sim_method_hint_t *hin
 
 		switch (id[0]) {
 		case ID_TAG_SIM_PERMANENT:
-			*hint = AKA_SIM_METHOD_HINT_SIM;
-			*type = AKA_SIM_ID_TYPE_PERMANENT;	/* All digits */
+			if (hint) *hint = AKA_SIM_METHOD_HINT_SIM;
+			if (type) *type = AKA_SIM_ID_TYPE_PERMANENT;	/* All digits */
 			return 0;
 
 		case ID_TAG_AKA_PERMANENT:
-			*hint = AKA_SIM_METHOD_HINT_AKA;
-			*type = AKA_SIM_ID_TYPE_PERMANENT;	/* All digits */
+			if (hint) *hint = AKA_SIM_METHOD_HINT_AKA;
+			if (type) *type = AKA_SIM_ID_TYPE_PERMANENT;	/* All digits */
 			return 0;
 
 		case ID_TAG_AKA_PRIME_PERMANENT:
-			*hint = AKA_SIM_METHOD_HINT_AKA_PRIME;
-			*type = AKA_SIM_ID_TYPE_PERMANENT;	/* All Digits */
+			if (hint) *hint = AKA_SIM_METHOD_HINT_AKA_PRIME;
+			if (type) *type = AKA_SIM_ID_TYPE_PERMANENT;	/* All Digits */
 			return 0;
 
 		default:
@@ -234,56 +234,103 @@ bad_format:
 	 */
 	switch (id[0]) {
 	case ID_TAG_SIM_PSEUDONYM:
-		*hint = AKA_SIM_METHOD_HINT_SIM;
-		*type = AKA_SIM_ID_TYPE_PSEUDONYM;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_SIM;
+		if (type) *type = AKA_SIM_ID_TYPE_PSEUDONYM;
 		return 0;
 
 	case ID_TAG_AKA_PSEUDONYM:
-		*hint = AKA_SIM_METHOD_HINT_AKA;
-		*type = AKA_SIM_ID_TYPE_PSEUDONYM;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_AKA;
+		if (type) *type = AKA_SIM_ID_TYPE_PSEUDONYM;
 		return 0;
 
 	case ID_TAG_AKA_PRIME_PSEUDONYM:
-		*hint = AKA_SIM_METHOD_HINT_AKA_PRIME;
-		*type = AKA_SIM_ID_TYPE_PSEUDONYM;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_AKA_PRIME;
+		if (type) *type = AKA_SIM_ID_TYPE_PSEUDONYM;
 		return 0;
 
 	/*
 	 *	Fast reauth identity
 	 */
 	case ID_TAG_SIM_FASTAUTH:
-		*hint = AKA_SIM_METHOD_HINT_SIM;
-		*type = AKA_SIM_ID_TYPE_FASTAUTH;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_SIM;
+		if (type) *type = AKA_SIM_ID_TYPE_FASTAUTH;
 		return 0;
 
 	case ID_TAG_AKA_FASTAUTH:
-		*hint = AKA_SIM_METHOD_HINT_AKA;
-		*type = AKA_SIM_ID_TYPE_FASTAUTH;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_AKA;
+		if (type) *type = AKA_SIM_ID_TYPE_FASTAUTH;
 		return 0;
 
 	case ID_TAG_AKA_PRIME_FASTAUTH:
-		*hint = AKA_SIM_METHOD_HINT_AKA_PRIME;
-		*type = AKA_SIM_ID_TYPE_FASTAUTH;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_AKA_PRIME;
+		if (type) *type = AKA_SIM_ID_TYPE_FASTAUTH;
 		return 0;
 
 	case ID_TAG_SIM_PERMANENT:
-		*hint = AKA_SIM_METHOD_HINT_UNKNOWN;
-		*type = AKA_SIM_ID_TYPE_UNKNOWN;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_UNKNOWN;
+		if (type) *type = AKA_SIM_ID_TYPE_UNKNOWN;
 		fr_strerror_const_push("Got SIM-Permanent-ID tag, but identity is not a permanent ID");
 		return -1;
 
 	case ID_TAG_AKA_PERMANENT:
-		*hint = AKA_SIM_METHOD_HINT_UNKNOWN;
-		*type = AKA_SIM_ID_TYPE_UNKNOWN;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_UNKNOWN;
+		if (type) *type = AKA_SIM_ID_TYPE_UNKNOWN;
 		fr_strerror_const_push("Got AKA-Permanent-ID tag, but identity is not a permanent ID");
 		return -1;
 
 	default:
-		*hint = AKA_SIM_METHOD_HINT_UNKNOWN;
-		*type = AKA_SIM_ID_TYPE_UNKNOWN;
+		if (hint) *hint = AKA_SIM_METHOD_HINT_UNKNOWN;
+		if (type) *type = AKA_SIM_ID_TYPE_UNKNOWN;
 		fr_strerror_printf_push("Unrecognised tag '%pV'", fr_box_strvalue_len(id, 1));
 		return -1;
 	}
+}
+
+/** Determine if a given identity is a 3gpp identity, and return the EAP method hinted
+ *
+ * @parma[in] id	to check.
+ * @param[in] len	Length of the id.
+ * @return
+ *	- FR_EAP_METHOD_INVALID		if this is not a 3gpp identity.
+ *	- FR_EAP_METHOD_AKA_PRIME	if this is an AKA-Prime identity.
+ *	- FR_EAP_METHOD_AKA		if this is an AKA identity.
+ *      - FR_EAP_METHOD_SIM		if this is a SIM identity.
+ */
+eap_type_t fr_aka_sim_id_to_eap_type(char const *id, size_t len)
+{
+	char const			*domain;
+	char const			*end = id + len;
+	fr_aka_sim_method_hint_t	method;
+
+	domain = fr_aka_sim_domain(id, len);
+	if (!domain) {
+	bad_domain:
+		fr_strerror_const("ID missing 3gpp domain (wlan.mnc<MNC>.mcc<MCC>.3gppnetwork.org)");
+		return FR_EAP_METHOD_INVALID;
+	}
+
+	/*
+	 *	Check the domain has our recognised format
+	 */
+	if (fr_aka_sim_3gpp_root_nai_domain_mcc_mnc(NULL, NULL, domain, end - domain) < 0) goto bad_domain;
+
+	if (fr_aka_sim_id_type(NULL, &method, id, domain - id) < 0) return FR_EAP_METHOD_INVALID;
+
+	switch (method) {
+	case AKA_SIM_METHOD_HINT_AKA_PRIME:
+		return FR_EAP_METHOD_AKA_PRIME;
+
+	case AKA_SIM_METHOD_HINT_AKA:
+		return FR_EAP_METHOD_AKA;
+
+	case AKA_SIM_METHOD_HINT_SIM:
+		return FR_EAP_METHOD_SIM;
+
+	default:
+		break;
+	}
+
+	return FR_EAP_METHOD_INVALID;
 }
 
 static char hint_byte_matrix[AKA_SIM_METHOD_HINT_MAX][AKA_SIM_ID_TYPE_MAX] = {

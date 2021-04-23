@@ -105,6 +105,8 @@ int		fr_aka_sim_id_type(fr_aka_sim_id_type_t *type, fr_aka_sim_method_hint_t *hi
 
 char		fr_aka_sim_hint_byte(fr_aka_sim_id_type_t type, fr_aka_sim_method_hint_t method);
 
+eap_type_t	fr_aka_sim_id_to_eap_type(char const *id, size_t len);
+
 int		fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1],
 						     char const *imsi, size_t imsi_len,
 						     uint8_t tag,  uint8_t key_ind, uint8_t const key[16]);
