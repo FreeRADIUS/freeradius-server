@@ -158,7 +158,7 @@ DIAG_OFF(missing-prototypes)
 char const CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
-		"leak:CRYPTO_THREAD_lock_new\n",	/* OpenSSL init leak - reported by heaptrack */
+		"leak:CRYPTO_THREAD_lock_new\n"		/* OpenSSL init leak - reported by heaptrack */
 #if defined(__APPLE__)
 		"leak:getaddrinfo\n"
 		"leak:*gmtsub*\n"
