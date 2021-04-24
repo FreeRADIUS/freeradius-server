@@ -174,8 +174,6 @@ char const CC_HINT(used) *__lsan_default_suppressions(void)
 		"leak:*getpwnam_r*\n"			/* libc startup leak - reported by heaptrack */
 		"leak:initgroups\n"			/* libc startup leak - reported by heaptrack */
 		"leak:_dl_init"				/* dl startup leak - reported by heaptrack */
-#elif defined(__FreeBSD__)
-		NULL
 #endif
 		;
 }
