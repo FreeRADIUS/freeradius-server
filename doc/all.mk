@@ -207,6 +207,10 @@ build/docsite/sitemap.xml: $(ADOC_FILES)
 	${Q}$(ANTORA) $(ANTORA_FLAGS) site.yml
 
 #
+#  Only re-build the adoc files if specifically told to.
+#
+ifneq "$(findstring asciidoc,$(MAKECMDGOALS))" ""
+#
 #  Markdown files get converted to asciidoc via pandoc.
 #
 #  Many documentation files are in markdown because it's a simpler
@@ -241,6 +245,7 @@ README_MODULES := $(filter-out $(IGNORE_MODULES), $(wildcard src/modules/rlm_*/R
 doc/raddb/mods-available/all_modules.adoc: $(README_MODULES)
 	@echo ADOC mods-available/all_modules.adoc
 	${Q}./scripts/asciidoc/mod_readme2adoc $(README_MODULES) > $@
+endif
 
 #
 #	Converting *.adoc to *.html
