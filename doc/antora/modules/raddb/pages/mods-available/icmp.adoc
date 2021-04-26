@@ -21,7 +21,7 @@ expansion, such as:
 
 == Capabilities and Permissions
 
-On Linus, you may need to do:
+On Linux, you may need to do:
 
 
 In order for the `icmp` module to bind to a "raw" socket.

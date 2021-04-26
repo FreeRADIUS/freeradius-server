@@ -5,6 +5,8 @@
 In v4, all "server" sections MUST start with a "namespace"
 parameter.  This tells the server which protocol is being used.
 
+RADIUS, or DHCPv4, or any other protocol supported by the server.
+
 
 
 This virtual server will read detail files from the
@@ -12,23 +14,13 @@ following directory.
 
 
 
-This has to be listed first, sorry.
-
-The value given here must match the `namespace` of
-the virtual server which originally created the
-detail files.
-
-
-
 Types of packets we are reading.
 
 
 
-What transports are being used to read detail
-files.  For now, only "file" is supported.
-
-Future releases will allow reading "detail"
-style information from sockets or streams.
+There is no need to specify a transport.
+The default is `file`, which is the only
+one supported.
 
 
 
@@ -199,8 +191,7 @@ A special value of "0" means "retransmit forever".
 
 
 
-All packets read by the detail listener are processed through the
-'recv' section.  Note that there is no second name to the section.
+The detail file reader runs the normal RADIUS / DHCP / etc. processing sections.
 
 
 
@@ -216,9 +207,6 @@ the "send fail" section.
 
 
 
-All successful packets sent by the detail listener are processed through the
-'send ok' section.  Note that the name is the same for all packet types.
-
 If the listener is configured with 'track = yes', then the entry in
 the detail file is marked up as being "done".  Subsequent re-reads
 of the same detail file (e.g. on server restart) will skip the
@@ -226,19 +214,13 @@ of the same detail file (e.g. on server restart) will skip the
 
 
 
-All failed packets sent by the detail listener are processed through the
-'send fail' section.  Note that the name is the same for all packet types.
+All failed packets sent by the detail listener should be processed
+through the 'send Do-Not-Respond' section.
 
 If the listener is configured with 'track = yes', then the packet
 will be retransmitted by the detail file reader, until the packet
 returns "success".  See the "limit" subsection above for retransmission
 configuration.
-
-
-
-Note that unlike other listeners, there is no "send Do-Not-Respond"
-section.  You should just return "fail" instead.
-
 
 
 == Default Configuration
@@ -247,12 +229,10 @@ section.  You should just return "fail" instead.
 #	This virtual server gives an example of reading the detail
 #	file for the v4 configuration.
 server detail {
-	namespace = detail
+	namespace = radius
 	directory = ${radacctdir}/detail
 	listen {
-		dictionary = radius
 		type = Accounting-Request
-		transport = file
 #		priority = 1
 		file {
 			filename = "${...directory}/detail-*"
@@ -272,16 +252,16 @@ server detail {
 			}
 		}
 	}
-recv {
+recv Accounting-Request {
 	update request {
 		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %{%(integer:%{Event-Timestamp}):-%(integer:%{Packet-Original-Timestamp})}}"
 	}
 	ok
 }
-send ok {
+send Accounting-Response {
 	ok
 }
-send fail {
+send Do-Not-Respond {
 	ok
 }
 } # virtual server "detail"

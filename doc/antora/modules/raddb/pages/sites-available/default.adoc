@@ -68,6 +68,115 @@ only accept packets for that protocol.
 
 
 
+### RADIUS Configuration
+
+All of the configuration for processing RADIUS packets goes here.
+
+
+#### Access-Request subsection
+
+This section contains configuration which is
+specific to processing `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets.
+
+Similar sections can be added, but are not
+necessary for Accounting-Request (and other)
+packets.  At this time, there is no configuration
+needed for other packet types.
+
+
+log:: Logging configuration for `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets
+
+In v3, the `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` logging was
+configured in the main `radiusd.conf` file,
+in the main `log` subsection.  That
+limitation meant that the configuration was
+global to FreeRADIUS.  i.e. you could not
+have different `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` logging for
+different virtual server.
+
+The extra configuration in v4 allows for
+increased flexibility.
+
+
+stripped_names:: Log the full
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` attribute, as it was
+found in the request.
+
+allowed values: {no, yes}
+
+
+
+auth:: Log authentication requests
+to the log file.
+
+allowed values: {no, yes}
+
+
+
+auth_goodpass:: Log "good"
+passwords with the authentication
+requests.
+
+allowed values: {no, yes}
+
+
+
+auth_badpass:: Log "bad"
+passwords with the authentication
+requests.
+
+allowed values: {no, yes}
+
+
+
+msg_goodpass::
+msg_badpass::
+
+Log additional text at the end of the "Login OK" messages.
+for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
+configurations above have to be set to "yes".
+
+The strings below are dynamically expanded, which means that
+you can put anything you want in them.  However, note that
+this expansion can be slow, and can negatively impact server
+performance.
+
+
+
+msg_denied::
+
+The message when the user exceeds the Simultaneous-Use limit.
+
+
+
+session:: Controls how ongoing
+(multi-round) sessions are handled
+
+This section is primarily useful for EAP.
+It controls the number of EAP
+authentication attempts that can occur
+concurrently.
+
+
+max:: The maximum number of ongoing sessions
+
+
+
+timeout:: How long to wait before expiring a
+session.
+
+The timer starts when a response
+with a state value is sent.  The
+timer stops when a request
+containing the previously sent
+state value is received.
+
+
+
+There is currently no configuration for other packet types.
+
+
+
 ### The listen section
 
 The `listen` sections in v4 are very different from the
@@ -378,106 +487,6 @@ does not matter.
 
 
 
-#### Access-Request subsection
-
-This section contains configuration which is
-specific to processing `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets.
-
-Similar sections can be added, but are not
-necessary for Accounting-Request (and other)
-packets.  At this time, there is no configuration
-needed for other packet types.
-
-
-log:: Logging configuration for `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets
-
-In v3, the `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` logging was
-configured in the main `radiusd.conf` file,
-in the main `log` subsection.  That
-limitation meant that the configuration was
-global to FreeRADIUS.  i.e. you could not
-have different `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` logging for
-different virtual server.
-
-The extra configuration in v4 allows for
-increased flexibility.
-
-
-stripped_names:: Log the full
-`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` attribute, as it was
-found in the request.
-
-allowed values: {no, yes}
-
-
-
-auth:: Log authentication requests
-to the log file.
-
-allowed values: {no, yes}
-
-
-
-auth_goodpass:: Log "good"
-passwords with the authentication
-requests.
-
-allowed values: {no, yes}
-
-
-
-auth_badpass:: Log "bad"
-passwords with the authentication
-requests.
-
-allowed values: {no, yes}
-
-
-
-msg_goodpass::
-msg_badpass::
-
-Log additional text at the end of the "Login OK" messages.
-for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-configurations above have to be set to "yes".
-
-The strings below are dynamically expanded, which means that
-you can put anything you want in them.  However, note that
-this expansion can be slow, and can negatively impact server
-performance.
-
-
-
-msg_denied::
-
-The message when the user exceeds the Simultaneous-Use limit.
-
-
-
-session:: Controls how ongoing
-(multi-round) sessions are handled
-
-This section is primarily useful for EAP.
-It controls the number of EAP
-authentication attempts that can occur
-concurrently.
-
-
-max:: The maximum number of ongoing sessions
-
-
-
-timeout:: How long to wait before expiring a
-session.
-
-The timer starts when a response
-with a state value is sent.  The
-timer stops when a request
-containing the previously sent
-state value is received.
-
-
-
 
 
 As with v3, "ipaddr", "ipv4addr", and "ipv6addr"
@@ -514,94 +523,6 @@ by the "new client" subsection.
 
 There is no limit to the number of
 networks which can be listed here.
-
-
-
-#### Access-Request subsection
-
-This section contains configuration which is
-specific to processing `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets.
-
-Similar sections can be added, but are not
-necessary for Accounting-Request (and other)
-packets.  At this time, there is no configuration
-needed for other packet types.
-
-
-log:: Logging configuration for `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets
-
-In v3, the `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` logging was
-configured in the main `radiusd.conf` file,
-in the main `log` subsection.  That
-limitation meant that the configuration was
-global to FreeRADIUS.  i.e. you could not
-have different `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` logging for
-different virtual server.
-
-The extra configuration in v4 allows for
-increased flexibility.
-
-stripped_names:: Log the full
-`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` attribute, as it was
-found in the request.
-
-allowed values: {no, yes}
-
-
-auth:: Log authentication requests
-to the log file.
-
-allowed values: {no, yes}
-
-
-auth_goodpass:: Log "good"
-passwords with the authentication
-requests.
-
-allowed values: {no, yes}
-
-
-auth_badpass:: Log "bad"
-passwords with the authentication
-requests.
-
-allowed values: {no, yes}
-
-
-Log additional text at the end of the "Login OK" messages.
-for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-configurations above have to be set to "yes".
-
-The strings below are dynamically expanded, which means that
-you can put anything you want in them.  However, note that
-this expansion can be slow, and can negatively impact server
-performance.
-
-
-The message when the user exceeds the Simultaneous-Use limit.
-
-
-
-session:: Controls how ongoing
-(multi-round) sessions are handled
-
-This section is primarily useful for EAP.
-It controls the number of EAP
-authentication attempts that can occur
-concurrently.
-
-
-max:: The maximum number of ongoing sessions
-
-
-timeout:: How long to wait before expiring a
-session.
-
-The timer starts when a response
-with a state value is sent.  The
-timer stops when a request
-containing the previously sent
-state value is received.
 
 
 
@@ -1313,6 +1234,23 @@ Filter attributes from the accounting response.
 ```
 server default {
 	namespace = radius
+	radius {
+		Access-Request {
+			log {
+				stripped_names = no
+				auth = no
+				auth_goodpass = no
+				auth_badpass = no
+#				msg_goodpass = ""
+#				msg_badpass = ""
+				msg_denied = "You are already logged in - access denied"
+			}
+			session {
+#				max = 4096
+#				timeout = 15
+			}
+		}
+	}
 	listen {
 		type = Access-Request
 		type = Status-Server
@@ -1344,21 +1282,6 @@ server default {
 #				deny = 127.0.0/24
 			}
 		}
-		Access-Request {
-			log {
-				stripped_names = no
-				auth = no
-				auth_goodpass = no
-				auth_badpass = no
-#				msg_goodpass = ""
-#				msg_badpass = ""
-				msg_denied = "You are already logged in - access denied"
-			}
-			session {
-#				max = 4096
-#				timeout = 15
-			}
-		}
 	}
 	listen {
 		type = Access-Request
@@ -1372,21 +1295,6 @@ server default {
 				allow = 127/8
 				allow = 192.0.2/24
 #				deny = 127.0.0/24
-			}
-		}
-		Access-Request {
-			log {
-				stripped_names = no
-				auth = no
-				auth_badpass = no
-				auth_goodpass = no
-#				msg_goodpass = ""
-#				msg_badpass = ""
-				msg_denied = "You are already logged in - access denied"
-			}
-			session {
-#				max = 4096
-#				timeout = 15
 			}
 		}
 	}

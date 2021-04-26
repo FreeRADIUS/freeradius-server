@@ -20,16 +20,19 @@ then cannot use ANY other authentication method.
 ## Configuration Settings
 
 
-default_eap_type::: Invoke the default supported EAP type when `EAP-Identity`
+default_eap_type:: The default EAP submodule to invoke when an `EAP-Identity`
 response is received.
 
-The incoming EAP messages *DO NOT* specify which EAP type they will be using,
-so it MUST be set here.
+If a `default_eap_type` value is not provided, enabled EAP submodules will be
+queried to determine if they recognise the provided EAP-Identity.
+If no submodules recognise the identity, the first `type` value listed below
+will be used.
 
-For now, only one default EAP type may be used at a time.
+If the `control.EAP-Type` attribute is set, then that EAP type takes precedence
+over any configured or inferred EAP-Type.
 
-If the `EAP-Type` attribute is set by another module, then that EAP
-type takes precedence over the default type configured here.
+It is generally recommended to NOT set `default_eap_type`, and instead order
+the `type` configuration items appropriately.
 
 
 
@@ -45,15 +48,6 @@ type.
 
 NOTE: If another module is NOT configured to handle the request, then the
 request will still end up being rejected.
-
-
-
-cisco_accounting_username_bug::
-
-Cisco AP1230B firmware 12.2(13)JA1 has a bug.  When given a `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
-attribute in an `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]`, it copies one more byte than it should.
-
-We can work around it by using this configuration option to add an extra zero byte.
 
 
 
@@ -475,7 +469,11 @@ issues.
 
 ecdh_curve:: Elliptical cryptography configuration.
 
-Only for OpenSSL >= 0.9.8.f
+Should be a colon-separated list of curve names.
+
+For supported curve names, please run the command:
+
+openssl ecparam -list_curves
 
 
 
@@ -1541,7 +1539,7 @@ TODO
 TODO
 ```
 
-### %{sim_id_method:...}
+### %(aka_sim_id_method:...)
 
 TODO
 
@@ -1560,7 +1558,7 @@ TODO
 TODO
 ```
 
-### %{sim_id_type:...}
+### %(aka_sim_id_type:...)
 
 TODO
 
@@ -1583,7 +1581,7 @@ TODO
 
 ```
 eap {
-	default_eap_type = md5
+#	default_eap_type = md5
 	ignore_unknown_eap_types = no
 	type = md5
 #	type = pwd
