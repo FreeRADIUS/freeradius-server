@@ -31,51 +31,32 @@ $(BUILD_DIR)/make/man.mk: $(ADOC2MAN_FILES) | $(BUILD_DIR)/make
 ALL_INSTALL += $(AUTO_MAN_FILES)
 
 #
-#  We're installing the documentation, but there's no "docdir".
+#  Skip documentation if any of the necessary prerequisites are missing.
 #
+ifeq "$(ASCIIDOCTOR)" ""
+WITH_DOC=
+endif
+
+ifeq "$(PANDOC)" ""
+WITH_DOC=
+endif
+
 ifneq "$(findstring install,$(WITH_DOC))" ""
 ifeq "$(docdir)" "no"
-$(error 'docdir' is required to do 'make install')
-endif
-
-#
-#  Skip "make install*" if asciidoctor and pandoc are missing.
-#
-ifeq "$(ASCIIDOCTOR)" ""
 WITH_DOC=
 endif
-ifeq "$(PANDOC)" ""
-WITH_DOC=
 endif
 
-endif
-
-ifneq "$(WITH_DOC)" ""
-
-#
-#  We're building a documentation target, but there's no "asciidoc".
-#
-ifeq "$(ASCIIDOCTOR)" ""
-$(error asciidoc is required to build the documentation)
-endif
-
-#
-#  We're building a documentation target, but there's no "pandoc".
-#
-ifeq "$(PANDOC)" ""
-$(error pandoc is required to build the documentation)
-endif
-
-#
-#  We're building a documentation target, but there's no "antora".
-#  Which we ONLY need for "docsite"
-#
+ifneq "$(findstring docsite,$(WITH_DOC))" ""
 ifeq "$(ANTORA)" ""
-ifneq "$(findstring docsite,$(MAKECMDGOALS))" ""
-$(error antora is required to build the documentation)
+WITH_DOC=
 endif
 endif
 
+#
+#  If we still decide to build the documentation, then add in all of the documentation rules.
+#
+ifneq "$(WITH_DOC)" ""
 #
 #	TODO: The 'pdf' target is broken. we should enable here soon.
 #
@@ -317,4 +298,5 @@ pdf: $(PDF_FILES)
 
 doc: build/docsite/sitemap.xml $(HTML_FILES)
 
+# end of WITH_DOC
 endif
