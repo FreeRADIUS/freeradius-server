@@ -106,6 +106,11 @@ static int8_t pairlist_cmp(void const *a, void const *b)
 	return CMP(ret, 0);
 }
 
+static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
+{
+	return fr_value_box_to_key(out, outlen, ((PAIR_LIST_LIST const *)a)->box);
+}
+
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
 {
 	int rcode;
@@ -217,7 +222,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		}
 	}
 
-	tree = fr_htrie_alloc(ctx,  fr_htrie_hint(data_type), pairlist_hash, pairlist_cmp, NULL, NULL);
+	tree = fr_htrie_alloc(ctx,  fr_htrie_hint(data_type), pairlist_hash, pairlist_cmp, pairlist_to_key, NULL);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;
