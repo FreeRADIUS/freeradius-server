@@ -388,6 +388,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		user_pl = user_list ? fr_dlist_head(&user_list->head) : NULL;
 	} else {
 		user_pl = NULL;
+		user_list = NULL;
 	}
 	default_pl = default_list ? fr_dlist_head(&default_list->head) : NULL;
 
