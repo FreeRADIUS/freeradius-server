@@ -47,7 +47,6 @@ typedef struct pair_list {
 
 typedef struct pair_list_list {
 	fr_dlist_head_t 	head;		//!< Head of the list of PAIR_LISTs.
-	fr_rb_node_t		node;		//!< Entry into the tree of pair lists.
 	char const		*name;		//!< Key used for matching entry.
 } PAIR_LIST_LIST;
 

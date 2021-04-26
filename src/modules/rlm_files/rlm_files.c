@@ -28,32 +28,33 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/users_file.h>
+#include <freeradius-devel/util/htrie.h>
 
 #include <ctype.h>
 #include <fcntl.h>
 
 typedef struct {
 	tmpl_t *key;
+	fr_type_t	key_data_type;
 
 	char const *filename;
-	fr_rb_tree_t *common;
+	fr_htrie_t *common;
 
 	/* autz */
 	char const *usersfile;
-	fr_rb_tree_t *users;
-
+	fr_htrie_t *users;
 
 	/* authenticate */
 	char const *auth_usersfile;
-	fr_rb_tree_t *auth_users;
+	fr_htrie_t *auth_users;
 
 	/* preacct */
 	char const *acct_usersfile;
-	fr_rb_tree_t *acct_users;
+	fr_htrie_t *acct_users;
 
 	/* post-authenticate */
 	char const *postauth_usersfile;
-	fr_rb_tree_t *postauth_users;
+	fr_htrie_t *postauth_users;
 } rlm_files_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -87,6 +88,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 
+static uint32_t pairlist_hash(void const *a)
+{
+	return fr_hash_string(((PAIR_LIST_LIST const *)a)->name);
+}
+
 static int8_t pairlist_cmp(void const *a, void const *b)
 {
 	int ret;
@@ -95,14 +101,14 @@ static int8_t pairlist_cmp(void const *a, void const *b)
 	return CMP(ret, 0);
 }
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **ptree)
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, fr_type_t data_type)
 {
 	int rcode;
 	PAIR_LIST_LIST users;
-	PAIR_LIST_LIST search_list;	// Temporary list header used for matching in rbtree
+	PAIR_LIST_LIST search_list;	// Temporary list header used for matching in htrie
 	PAIR_LIST *entry, *next;
 	PAIR_LIST_LIST *user_list, *default_list;
-	fr_rb_tree_t *tree;
+	fr_htrie_t *tree;
 
 	if (!filename) {
 		*ptree = NULL;
@@ -204,7 +210,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **pt
 		}
 	}
 
-	tree = fr_rb_inline_alloc(ctx, PAIR_LIST_LIST, node, pairlist_cmp, NULL);
+	tree = fr_htrie_alloc(ctx,  fr_htrie_hint(data_type), pairlist_hash, pairlist_cmp, NULL, NULL);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;
@@ -247,7 +253,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **pt
 				/*
 				 *	Insert the DEFAULT list into the tree.
 				 */
-				if (!fr_rb_insert(tree, default_list)) {
+				if (!fr_htrie_insert(tree, default_list)) {
 				error:
 					pairlist_free(&users);
 					talloc_free(next);
@@ -268,7 +274,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **pt
 		 *	for a matching list header already in the tree.
 		 */
 		search_list.name = entry->name;
-		user_list = fr_rb_find(tree, &search_list);
+		user_list = fr_htrie_find(tree, &search_list);
 		if (!user_list) {
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);
@@ -276,7 +282,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **pt
 			/*
 			 *	Insert the new list header.
 			 */
-			if (!fr_rb_insert(tree, user_list)) goto error;
+			if (!fr_htrie_insert(tree, user_list)) goto error;
 		}
 		/*
 		 *	Append the entry to the user list
@@ -294,12 +300,19 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_rb_tree_t **pt
 /*
  *	(Re-)read the "users" file into memory.
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_files_t *inst = instance;
 
+	inst->key_data_type = tmpl_expanded_type(inst->key);
+	if (fr_htrie_hint(inst->key_data_type) == FR_HTRIE_INVALID) {
+		cf_log_err(conf, "Invalid data type '%s' for 'files' module.",
+			   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "???"));
+		return -1;
+	}
+
 #undef READFILE
-#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
+#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->key_data_type) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
 
 	READFILE(filename, common);
 	READFILE(usersfile, users);
@@ -314,7 +327,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
-				   request_t *request, char const *filename, fr_rb_tree_t *tree)
+				   request_t *request, char const *filename, fr_htrie_t *tree)
 {
 	char const		*name;
 	PAIR_LIST_LIST const	*user_list, *default_list;
@@ -331,10 +344,10 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 	if (!tree) RETURN_MODULE_NOOP;
 
 	my_list.name = name;
-	user_list = fr_rb_find(tree, &my_list);
+	user_list = fr_htrie_find(tree, &my_list);
 	user_pl = (user_list) ? fr_dlist_head(&user_list->head) : NULL;
 	my_list.name = "DEFAULT";
-	default_list = fr_rb_find(tree, &my_list);
+	default_list = fr_htrie_find(tree, &my_list);
 	default_pl = (default_list) ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
