@@ -70,6 +70,8 @@ int		fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback) CC_HINT(non
 /*
  *	Data oriented API.
  */
+void		*fr_trie_match(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
+
 void		*fr_trie_find(fr_trie_t *ft, void const *data) CC_HINT(nonnull);
 
 bool		fr_trie_insert(fr_trie_t *ft, void const *data) CC_HINT(nonnull);

@@ -2656,6 +2656,31 @@ void *fr_trie_find(fr_trie_t *ft, void const *data)
 	return fr_trie_lookup_by_key(ft, key, keylen);
 }
 
+/** Match an element exactly in the trie, returning the data.
+ *
+ * @param[in] ft to search in.
+ * @param[in] data to find.
+ * @return
+ *	- User data matching the data passed in.
+ *	- NULL if nothing matched passed data.
+ */
+void *fr_trie_match(fr_trie_t *ft, void const *data)
+{
+	fr_trie_user_t *user = (fr_trie_user_t *) ft;
+	fr_trie_ctx_t *uctx = talloc_get_type_abort(user->data, fr_trie_ctx_t);
+	uint8_t *key;
+	size_t keylen;
+
+	key = &uctx->buffer[0];
+	keylen = sizeof(uctx->buffer) * 8;
+
+	if (!uctx->get_key) return false;
+
+	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+
+	return fr_trie_match_by_key(ft, key, keylen);
+}
+
 /** Insert data into a trie
  *
  * @param[in] ft	to insert data into.
