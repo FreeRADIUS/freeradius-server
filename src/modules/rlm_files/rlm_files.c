@@ -294,8 +294,10 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			goto error;
 		}
 
-		user_list = fr_htrie_find(tree, &search_list);
-
+		/*
+		 *	Find an exact match, especially for patricia tries.
+		 */
+		user_list = fr_htrie_match(tree, &search_list);
 		if (!user_list) {
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);

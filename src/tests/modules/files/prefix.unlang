@@ -4,11 +4,18 @@ update request {
 
 subnet
 
-if (&reply.Reply-Message != '10.1/16 subnet') {
+if (&reply.Reply-Message[0] != '10.1/16 subnet') {
 	test_fail
 } else {
 	test_pass
 }
+
+if (&reply.Reply-Message[1] != "2nd 10.1/16 subnet") {
+	test_fail
+} else {
+	test_pass
+}
+
 
 update request {
 	&FreeRADIUS-Client-IP-Prefix := 10.2.3.4/32
@@ -36,12 +43,6 @@ update reply {
 }
 
 subnet
-
-if (&reply.Reply-Message != "2nd 10.1/16 subnet") {
-	test_fail
-} else {
-	test_pass
-}
 
 update request {
 	&FreeRADIUS-Client-IP-Prefix := 192.168.1.1/32

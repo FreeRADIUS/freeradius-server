@@ -9,4 +9,4 @@
 	Reply-Message := "10/8 subnet"
 
 10.1.0.0/16	Password.Cleartext == "hello"
-	Reply-Message := "2nd 10.1/16 subnet"
+	Reply-Message += "2nd 10.1/16 subnet"
