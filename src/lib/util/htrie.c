@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 static fr_htrie_funcs_t const default_funcs[] = {
 	[FR_HTRIE_HASH] = {
+		.match = (fr_htrie_find_t) fr_hash_table_find,
 		FUNC(hash_table, find),
 		FUNC(hash_table, insert),
 		FUNC(hash_table, replace),
@@ -36,6 +37,7 @@ static fr_htrie_funcs_t const default_funcs[] = {
 		FUNC(hash_table, num_elements)
 	},
 	[FR_HTRIE_RB] = {
+		.match = (fr_htrie_find_t) fr_rb_find,
 		FUNC(rb, find),
 		FUNC(rb, insert),
 		FUNC(rb, replace),
@@ -44,6 +46,7 @@ static fr_htrie_funcs_t const default_funcs[] = {
 		FUNC(rb, num_elements)
 	},
 	[FR_HTRIE_TRIE] = {
+		.match = (fr_htrie_find_t) fr_trie_match,
 		FUNC(trie, find),
 		FUNC(trie, insert),
 		FUNC(trie, replace),
