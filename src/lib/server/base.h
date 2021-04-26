@@ -65,7 +65,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/tcp.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/trigger.h>
-#include <freeradius-devel/server/users_file.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/unlang/xlat.h>
