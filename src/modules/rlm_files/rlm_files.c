@@ -39,22 +39,27 @@ typedef struct {
 
 	char const *filename;
 	fr_htrie_t *common;
+	PAIR_LIST_LIST *common_def;
 
 	/* autz */
 	char const *usersfile;
 	fr_htrie_t *users;
+	PAIR_LIST_LIST *users_def;
 
 	/* authenticate */
 	char const *auth_usersfile;
 	fr_htrie_t *auth_users;
+	PAIR_LIST_LIST *auth_users_def;
 
 	/* preacct */
 	char const *acct_usersfile;
 	fr_htrie_t *acct_users;
+	PAIR_LIST_LIST *acct_users_def;
 
 	/* post-authenticate */
 	char const *postauth_usersfile;
 	fr_htrie_t *postauth_users;
+	PAIR_LIST_LIST *postauth_users_def;
 } rlm_files_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -101,7 +106,7 @@ static int8_t pairlist_cmp(void const *a, void const *b)
 	return CMP(ret, 0);
 }
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, fr_type_t data_type)
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
 {
 	int rcode;
 	PAIR_LIST_LIST users;
@@ -251,15 +256,11 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				default_list->name = talloc_strdup(ctx, entry->name);
 
 				/*
-				 *	Insert the DEFAULT list into the tree.
+				 *	Don't insert the DEFAULT list
+				 *	into the tree, instead make it
+				 *	it's own list.
 				 */
-				if (!fr_htrie_insert(tree, default_list)) {
-				error:
-					pairlist_free(&users);
-					talloc_free(next);
-					talloc_free(tree);
-					return -1;
-				}
+				*pdefault = default_list;
 			}
 
 			/*
@@ -282,8 +283,14 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			/*
 			 *	Insert the new list header.
 			 */
-			if (!fr_htrie_insert(tree, user_list)) goto error;
+			if (!fr_htrie_insert(tree, user_list)) {
+				pairlist_free(&users);
+				talloc_free(next);
+				talloc_free(tree);
+				return -1;
+			}
 		}
+
 		/*
 		 *	Append the entry to the user list
 		 */
@@ -312,13 +319,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 #undef READFILE
-#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->key_data_type) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
+#define READFILE(_x, _y, _d) do { if (getusersfile(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
 
-	READFILE(filename, common);
-	READFILE(usersfile, users);
-	READFILE(acct_usersfile, acct_users);
-	READFILE(auth_usersfile, auth_users);
-	READFILE(postauth_usersfile, postauth_users);
+	READFILE(filename, common, common_def);
+	READFILE(usersfile, users, users_def);
+	READFILE(acct_usersfile, acct_users, acct_users_def);
+	READFILE(auth_usersfile, auth_users, auth_users_def);
+	READFILE(postauth_usersfile, postauth_users, postauth_users_def);
 
 	return 0;
 }
@@ -327,10 +334,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *	Common code called by everything below.
  */
 static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
-				   request_t *request, char const *filename, fr_htrie_t *tree)
+				   request_t *request, char const *filename, fr_htrie_t *tree, PAIR_LIST_LIST *default_list)
 {
 	char const		*name;
-	PAIR_LIST_LIST const	*user_list, *default_list;
+	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false;
 	PAIR_LIST_LIST		my_list;
@@ -346,8 +353,6 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 	my_list.name = name;
 	user_list = fr_htrie_find(tree, &my_list);
 	user_pl = (user_list) ? fr_dlist_head(&user_list->head) : NULL;
-	my_list.name = "DEFAULT";
-	default_list = fr_htrie_find(tree, &my_list);
 	default_pl = (default_list) ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
@@ -473,7 +478,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->filename,
-			   inst->users ? inst->users : inst->common);
+			   inst->users ? inst->users : inst->common,
+			   inst->users ? inst->users_def : inst->common_def);
 }
 
 
@@ -487,7 +493,8 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->acct_usersfile,
-			   inst->acct_users ? inst->acct_users : inst->common);
+			   inst->acct_users ? inst->acct_users : inst->common,
+			   inst->acct_users ? inst->acct_users_def : inst->common_def);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -495,7 +502,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->auth_usersfile,
-			   inst->auth_users ? inst->auth_users : inst->common);
+			   inst->auth_users ? inst->auth_users : inst->common,
+			   inst->auth_users ? inst->auth_users_def : inst->common_def);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -503,7 +511,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->postauth_usersfile,
-			   inst->postauth_users ? inst->postauth_users : inst->common);
+			   inst->postauth_users ? inst->postauth_users : inst->common,
+			   inst->postauth_users ? inst->postauth_users_def : inst->common_def);
 }
 
 
