@@ -530,7 +530,7 @@ eap {
 		#
 		#  Should be a colon-separated list of curve names.
 		#
-		#  For supported curve names, please run the command:a
+		#  For supported curve names, please run the command:
 		#
 		#	openssl ecparam -list_curves
 		#
