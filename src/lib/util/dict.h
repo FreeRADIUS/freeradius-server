@@ -208,9 +208,9 @@ typedef struct {
  */
 typedef struct {
 	uint32_t		pen;				//!< Private enterprise number.
+	bool			continuation;			//!< we only have one flag for now, for WiMAX
 	size_t			type; 				//!< Length of type data
 	size_t			length;				//!< Length of length data
-	size_t			flags;				//!< Vendor flags.
 	char const		*name;				//!< Vendor name.
 } fr_dict_vendor_t;
 

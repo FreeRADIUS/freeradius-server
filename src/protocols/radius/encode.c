@@ -1127,7 +1127,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	 *	done.
 	 */
 	if (da_stack->da[depth + 1]) {
-		if (dv && dv->flags) {
+		if (dv && dv->continuation) {
 			return encode_wimax(dbuff, da_stack, depth, cursor, encode_ctx);
 		}
 
@@ -1145,7 +1145,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
-		if (dv && dv->flags) {
+		if (dv && dv->continuation) {
 			slen = encode_wimax(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		} else {
 			slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);

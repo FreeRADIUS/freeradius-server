@@ -1541,7 +1541,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	mutable = UNCONST(fr_dict_vendor_t *, dv);
 	mutable->type = type;
 	mutable->length = length;
-	mutable->flags = continuation;
+	mutable->continuation = continuation;
 
 	return 0;
 }

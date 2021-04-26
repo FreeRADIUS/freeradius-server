@@ -939,7 +939,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_dcursor_t *curso
 	/*
 	 *	WiMAX craziness
 	 */
-	if (dv->flags) {
+	if (dv->continuation) {
 		ret = decode_wimax(ctx, cursor, dict, vendor_da, data, attr_len, packet_len, packet_ctx);
 		return ret;
 	}
