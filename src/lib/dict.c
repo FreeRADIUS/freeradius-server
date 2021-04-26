@@ -2041,7 +2041,7 @@ static int process_value_alias(char const* fn, int const line, char **argv,
 }
 
 
-static int parse_format(char const *fn, int line, char const *format, int *pvalue, int *ptype, int *plength, bool *pcontinuation)
+static int parse_format(char const *fn, int line, char const *format, int *ptype, int *plength, bool *pcontinuation)
 {
 	char const *p;
 	int type, length;
@@ -2094,9 +2094,8 @@ static int parse_format(char const *fn, int line, char const *format, int *pvalu
 		}
 		continuation = true;
 
-		if ((*pvalue != VENDORPEC_WIMAX) ||
-		    (type != 1) || (length != 1)) {
-			fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
+		if ((type != 1) || (length != 1)) {
+			fr_strerror_printf("dict_init: %s[%d]: Only 'format=1,1' VSAs can have continuations",
 					   fn, line);
 			return -1;
 		}
@@ -2151,7 +2150,7 @@ static int process_vendor(char const* fn, int const line, char **argv,
 	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
 	 */
 	if (argc == 3) {
-		if (parse_format(fn, line, argv[2], &value, &type, &length, &continuation) < 0) {
+		if (parse_format(fn, line, argv[2], &type, &length, &continuation) < 0) {
 			return -1;
 		}
 
