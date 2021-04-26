@@ -296,6 +296,7 @@ $INCLUDE dictionary.symbol
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.telkom
+$INCLUDE dictionary.telrad
 $INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping
