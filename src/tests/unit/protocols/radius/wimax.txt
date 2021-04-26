@@ -261,5 +261,15 @@ match 1a ff 00 00 60 b5 01 f9 80 01 fd 78 78 78 78 78 78 78 78 78 78 78 78 78 78
 decode-pair -
 match Vendor-Specific.WiMAX.Capability = { Release = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
 
+
+#
+#  If you're a vendor, don't do this.
+#
+encode-pair Vendor-Specific.Telrad.TSDF-Table.TSDF-Parameters.Reference-QOS-Profile-Name = "garbage"
+match 1a 14 00 00 14 cb 01 0e 00 03 0b 04 09 67 61 72 62 61 67 65
+
+decode-pair -
+match Vendor-Specific.Telrad.TSDF-Table = { TSDF-Parameters = { Reference-QOS-Profile-Name = "garbage" } }
+
 count
-match 122
+match 126

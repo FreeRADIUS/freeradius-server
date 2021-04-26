@@ -1296,8 +1296,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	return 0;
 }
 
-static int dict_read_parse_format(char const *format, unsigned int *pvalue, int *ptype, int *plength,
-				  bool *pcontinuation)
+static int dict_read_parse_format(char const *format, int *ptype, int *plength, bool *pcontinuation)
 {
 	char const *p;
 	int type, length;
@@ -1348,9 +1347,8 @@ static int dict_read_parse_format(char const *format, unsigned int *pvalue, int 
 		}
 		continuation = true;
 
-		if ((*pvalue != VENDORPEC_WIMAX) ||
-		    (type != 1) || (length != 1)) {
-			fr_strerror_const("Only WiMAX VSAs can have continuations");
+		if ((type != 1) || (length != 1)) {
+			fr_strerror_const("Only VSAs with 'format=1,1' can have continuations");
 			return -1;
 		}
 	}
@@ -1525,7 +1523,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
 	 */
 	if (argc == 3) {
-		if (dict_read_parse_format(argv[2], &value, &type, &length, &continuation) < 0) return -1;
+		if (dict_read_parse_format(argv[2], &type, &length, &continuation) < 0) return -1;
 
 	} else {
 		type = length = 1;

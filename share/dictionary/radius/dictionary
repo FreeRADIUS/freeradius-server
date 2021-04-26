@@ -294,6 +294,7 @@ $INCLUDE dictionary.starent
 $INCLUDE dictionary.surfnet
 $INCLUDE dictionary.symbol
 $INCLUDE dictionary.telebit
+$INCLUDE dictionary.telrad
 $INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping

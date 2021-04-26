@@ -1046,11 +1046,6 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	if (dv->attr != VENDORPEC_WIMAX) {
-		fr_strerror_printf("%s: level[2] of da_stack is incorrect, must be Wimax vendor %i", __FUNCTION__,
-				   VENDORPEC_WIMAX);
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
@@ -1060,7 +1055,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&length_field, &work_dbuff);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x09);
 
-	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) VENDORPEC_WIMAX);
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) dv->attr);
 
 	/*
 	 *	Encode the first attribute
@@ -1109,6 +1104,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			slen;
 	fr_pair_t		*vp;
+	fr_dict_vendor_t const	*dv;
 	fr_dcursor_t		child_cursor;
 	fr_dbuff_t		work_dbuff;
 
@@ -1120,6 +1116,8 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
+	dv = fr_dict_vendor_by_da(da_stack->da[depth]);
+
 	/*
 	 *	Flat hierarchy, encode one attribute at a time.
 	 *
@@ -1129,7 +1127,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	 *	done.
 	 */
 	if (da_stack->da[depth + 1]) {
-		if (da->attr == VENDORPEC_WIMAX) {
+		if (dv && dv->flags) {
 			return encode_wimax(dbuff, da_stack, depth, cursor, encode_ctx);
 		}
 
@@ -1147,7 +1145,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
-		if (da->attr == VENDORPEC_WIMAX) {
+		if (dv && dv->flags) {
 			slen = encode_wimax(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		} else {
 			slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
