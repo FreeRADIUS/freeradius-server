@@ -95,14 +95,14 @@ static const CONF_PARSER module_config[] = {
 
 static uint32_t pairlist_hash(void const *a)
 {
-	return fr_hash_string(((PAIR_LIST_LIST const *)a)->name);
+	return fr_value_box_hash(((PAIR_LIST_LIST const *)a)->box);
 }
 
 static int8_t pairlist_cmp(void const *a, void const *b)
 {
 	int ret;
 
-	ret = strcmp(((PAIR_LIST_LIST const *)a)->name, ((PAIR_LIST_LIST const *)b)->name);
+	ret = fr_value_box_cmp(((PAIR_LIST_LIST const *)a)->box, ((PAIR_LIST_LIST const *)b)->box);
 	return CMP(ret, 0);
 }
 
@@ -114,6 +114,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	PAIR_LIST *entry, *next;
 	PAIR_LIST_LIST *user_list, *default_list;
 	fr_htrie_t *tree;
+	fr_value_box_t *box;
 
 	if (!filename) {
 		*ptree = NULL;
@@ -133,6 +134,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	while ((entry = fr_dlist_next(&users.head, entry))) {
 		map_t *map = NULL;
 		fr_dict_attr_t const *da;
+
 		/*
 		 *	Look for improper use of '=' in the
 		 *	check items.  They should be using
@@ -222,6 +224,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	}
 
 	default_list = NULL;
+	box = fr_value_box_alloc(ctx, data_type, NULL, false);
 
 	/*
 	 *	We've read the entries in linearly, but putting them
@@ -253,7 +256,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			if (!default_list) {
 				default_list = talloc_zero(ctx, PAIR_LIST_LIST);
 				pairlist_list_init(default_list);
-				default_list->name = talloc_strdup(ctx, entry->name);
+				default_list->name = entry->name;
 
 				/*
 				 *	Don't insert the DEFAULT list
@@ -275,21 +278,42 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		 *	for a matching list header already in the tree.
 		 */
 		search_list.name = entry->name;
+		search_list.box = box;
+
+		/*
+		 *	Has to be of the correct data type.
+		 */
+		if (fr_value_box_from_str(box, box, data_type, NULL, entry->name, -1, 0, false) < 0) {
+			ERROR("%s[%d] Failed parsing key %s - %s",
+			      entry->filename, entry->lineno, entry->name, fr_strerror());
+			goto error;
+		}
+
 		user_list = fr_htrie_find(tree, &search_list);
+
 		if (!user_list) {
 			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
 			pairlist_list_init(user_list);
-			user_list->name = talloc_strdup(ctx, entry->name);
+			user_list->name = entry->name;
+			user_list->box = fr_value_box_alloc(user_list, data_type, NULL, false);
+
+			(void) fr_value_box_copy(user_list, user_list->box, box);
+
 			/*
 			 *	Insert the new list header.
 			 */
 			if (!fr_htrie_insert(tree, user_list)) {
-				pairlist_free(&users);
-				talloc_free(next);
+				ERROR("%s[%d] Failed inserting key %s - %s",
+				      entry->filename, entry->lineno, entry->name, fr_strerror());
+				goto error;
+
+			error:
+				fr_value_box_clear_value(box);
 				talloc_free(tree);
 				return -1;
 			}
 		}
+		fr_value_box_clear_value(box);
 
 		/*
 		 *	Append the entry to the user list
@@ -336,24 +360,31 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
 				   request_t *request, char const *filename, fr_htrie_t *tree, PAIR_LIST_LIST *default_list)
 {
-	char const		*name;
 	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false;
 	PAIR_LIST_LIST		my_list;
-	char			buffer[256];
 
-	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
-		REDEBUG("Failed expanding key %s", inst->key->name);
-		RETURN_MODULE_FAIL;
+	if (!tree && !default_list) RETURN_MODULE_NOOP;
+
+	if (tree) {
+		fr_value_box_t *box;
+
+		if (tmpl_aexpand(request, &box, request, inst->key, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding key %s", inst->key->name);
+			RETURN_MODULE_FAIL;
+		}
+
+		my_list.name = NULL;
+		my_list.box = box;
+		user_list = fr_htrie_find(tree, &my_list);
+		talloc_free(box);
+
+		user_pl = user_list ? fr_dlist_head(&user_list->head) : NULL;
+	} else {
+		user_pl = NULL;
 	}
-
-	if (!tree) RETURN_MODULE_NOOP;
-
-	my_list.name = name;
-	user_list = fr_htrie_find(tree, &my_list);
-	user_pl = (user_list) ? fr_dlist_head(&user_list->head) : NULL;
-	default_pl = (default_list) ? fr_dlist_head(&default_list->head) : NULL;
+	default_pl = default_list ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
 	 *	Find the entry for the user.

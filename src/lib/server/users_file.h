@@ -47,7 +47,8 @@ typedef struct pair_list {
 
 typedef struct pair_list_list {
 	fr_dlist_head_t 	head;		//!< Head of the list of PAIR_LISTs.
-	char const		*name;		//!< Key used for matching entry.
+	char const		*name;		//!< name of the key used for matching entry.
+	fr_value_box_t		*box;		//!< parsed version of "name".
 } PAIR_LIST_LIST;
 
 /* users_file.c */
