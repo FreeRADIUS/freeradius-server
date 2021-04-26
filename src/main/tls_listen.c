@@ -248,6 +248,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	If we need to do more initialization, do that here.
 	 */
+check_for_setup:
 	if (!sock->ssn->is_init_finished) {
 		if (!tls_handshake_recv(request, sock->ssn)) {
 			RDEBUG("FAILED in TLS handshake receive");
@@ -273,9 +274,12 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	order to see if we like the certificate
 	 *	presented by the client.
 	 */
-check_for_setup:
 	if (sock->state == LISTEN_TLS_INIT) {
-		rad_assert(SSL_is_init_finished(sock->ssn->ssl));
+		if (!SSL_is_init_finished(sock->ssn->ssl)) {
+			RDEBUG("FAILED in TLS handshake receive");
+			goto do_close;
+		}
+
 		sock->ssn->is_init_finished = true;
 		if (!listener->check_client_connections) {
 			sock->state = LISTEN_TLS_RUNNING;
