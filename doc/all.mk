@@ -6,7 +6,7 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,install doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 
 #
 #  Convert adoc to man, and then let "install.man" deal with things.
