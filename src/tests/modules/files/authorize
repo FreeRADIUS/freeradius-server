@@ -112,3 +112,6 @@ addcontrol  Password.Cleartext := "testing123", Reply-Message := "success1"
             Fall-Through = yes
 
 addcontrol  Reply-Message += "success2"
+
+regex	NAS-Identifier =~ /der/, Password.Cleartext := "testing123"
+	Reply-Message := "wonderful"
