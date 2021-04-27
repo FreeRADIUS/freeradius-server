@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 
-#define DEFAULT_PROJ_ID	0xf4ee4a31
+#define DEFAULT_PROJ_ID	((int)'f')	/* Only 8 bits are used */
 
 /** Return the PID of the process that last operated on the semaphore
  *
