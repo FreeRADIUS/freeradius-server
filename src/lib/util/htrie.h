@@ -46,6 +46,13 @@ typedef bool (*fr_htrie_delete_t)(fr_htrie_t *ht, void const *data);
 
 typedef uint32_t (*fr_htrie_num_elements_t)(fr_htrie_t *ht);
 
+typedef enum {
+	FR_HTRIE_INVALID = 0,
+	FR_HTRIE_HASH,		//!< Data is stored in a hash.
+	FR_HTRIE_RB,		//!< Data is stored in a rb tree.
+	FR_HTRIE_TRIE,		//!< Data is stored in a prefix trie.
+} fr_htrie_type_t;
+
 /** Which functions are used for the different operations
  *
  */
@@ -63,16 +70,10 @@ typedef struct {
  *
  */
 struct fr_htrie_s {
+	fr_htrie_type_t		type;		//!< type of the htrie
 	void			*store;		//!< What we're using to store node data
 	fr_htrie_funcs_t	funcs;		//!< Function pointers for the various operations.
 };
-
-typedef enum {
-	FR_HTRIE_INVALID = 0,
-	FR_HTRIE_HASH,		//!< Data is stored in a hash.
-	FR_HTRIE_RB,		//!< Data is stored in a rb tree.
-	FR_HTRIE_TRIE,		//!< Data is stored in a prefix trie.
-} fr_htrie_type_t;
 
 fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
 			   fr_htrie_type_t type,

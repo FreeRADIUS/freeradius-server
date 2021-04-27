@@ -93,6 +93,7 @@ fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
 		fr_strerror_const("Failed allocating fr_htrie_t");
 		return NULL;
 	}
+	ht->type = type;
 
 	switch (type) {
 	case FR_HTRIE_HASH:
