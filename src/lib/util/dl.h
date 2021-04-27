@@ -109,19 +109,19 @@ void			dl_symbol_free_cb_unregister(dl_loader_t *dl_loader,
 						     char const *symbol, dl_unload_t func);
 
 dl_t			*dl_by_name(dl_loader_t *dl_loader, char const *name,
-				    void *uctx, bool uctx_free);
+				    void *uctx, bool uctx_free) CC_HINT(nonnull(1,2));
 
 int			dl_free(dl_t const *dl);
 
-char const		*dl_search_path(dl_loader_t *dl_loader);
+char const		*dl_search_path(dl_loader_t *dl_loader) CC_HINT(nonnull);
 
 int			dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
 
-int			dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir);
+int			dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
 
-int			dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir);
+int			dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
 
-void			*dl_loader_uctx(dl_loader_t *dl_loader);
+void			*dl_loader_uctx(dl_loader_t *dl_loader) CC_HINT(nonnull);
 
 dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool defer_symbol_init);
 #ifdef __cplusplus
