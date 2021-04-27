@@ -27,6 +27,7 @@
 RCSIDH(cond_eval_h, "$Id$")
 
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/map.h>
 #include <freeradius-devel/util/value.h>
 
 #ifdef __cplusplus
@@ -63,6 +64,8 @@ typedef struct {
 } fr_cond_async_t;
 
 int cond_eval_async(request_t *request, fr_cond_async_t *a);
+
+int fr_cond_eval_map(request_t *request, map_t const *map);
 
 #ifdef __cplusplus
 }

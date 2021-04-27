@@ -403,6 +403,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		PAIR_LIST const *pl;
 		fr_pair_list_t list;
 		bool fall_through = false;
+		bool match = true;
 
 		/*
 		 *	Figure out which entry to match on.
@@ -429,23 +430,51 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 
 		/*
 		 *	Realize the map to a list of VPs
-		 *
-		 *	@todo convert the pl->check to fr_cond_t, and just use that!
 		 */
 		while ((map = fr_dlist_next(&pl->check, map))) {
+			int rcode;
 			fr_pair_list_t tmp_list;
-			fr_pair_list_init(&tmp_list);
-			if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
-				fr_pair_list_free(&list);
-				RPWARN("Failed parsing map for check item, skipping entry");
+
+			/*
+			 *	Control items get realized to VPs, and
+			 *	copied to a temporary list, which is
+			 *	then copied to control if the entire
+			 *	line matches.
+			 */
+			switch (map->op) {
+			case T_OP_EQ:
+			case T_OP_SET:
+			case T_OP_ADD:
+				fr_pair_list_init(&tmp_list);
+				if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
+					fr_pair_list_free(&list);
+					RPWARN("Failed parsing check item, skipping entry");
+					match = false;
+					break;
+				}
+				LIST_VERIFY(&tmp_list);
+
+				fr_pair_list_append(&list, &tmp_list);
+				break;
+
+				/*
+				 *	Evaluate the map, including regexes.
+				 */
+			default:
+				rcode = fr_cond_eval_map(request, map);
+				if (rcode < 0) {
+					RPWARN("Failed evaluating check item, skipping entry");
+					break;
+				}
+
+				if (rcode == 0) match = false;
 				break;
 			}
-			LIST_VERIFY(&tmp_list);
 
-			fr_pair_list_append(&list, &tmp_list);
+			if (!match) break;
 		}
 
-		if (paircmp(request, &request->request_pairs, &list) != 0) {
+		if (!match) {
 			fr_pair_list_free(&list);
 			continue;
 		}

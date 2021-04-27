@@ -1108,3 +1108,34 @@ return_to_parent:
 	a->state = COND_EVAL_STATE_INIT;
 	goto redo;
 }
+
+/** Evaluate a map as if it is a condition.
+ *
+ */
+int fr_cond_eval_map(request_t *request, map_t const *map)
+{
+	fr_cond_t cond;
+
+	memset(&cond, 0, sizeof(cond));
+
+	/*
+	 *	Convert !* and =* to existence checks.
+	 */
+	switch (map->op) {
+	case T_OP_CMP_FALSE:
+		cond.negate = true;
+		FALL_THROUGH;
+
+	case T_OP_CMP_TRUE:
+		cond.type = COND_TYPE_TMPL;
+		cond.data.vpt = UNCONST(tmpl_t *, map->lhs);
+		break;
+
+	default:
+		cond.type = COND_TYPE_MAP;
+		cond.data.map = UNCONST(map_t *, map);
+		break;
+	}
+
+	return cond_eval(request, RLM_MODULE_NOOP, &cond);
+}
