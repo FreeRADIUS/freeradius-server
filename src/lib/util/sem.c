@@ -181,10 +181,11 @@ int fr_sem_cgid(uid_t *gid, int sem_id)
 int fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock)
 {
 	struct sembuf sops[2];
-	short flags = 0;
+	short flags_nonblock;
+	short flags_undo;
 
-	if (undo_on_exit) flags |= SEM_UNDO;
-	if (nonblock) flags |= IPC_NOWAIT;
+	flags_nonblock = nonblock * IPC_NOWAIT;
+	flags_undo = undo_on_exit * SEM_UNDO;
 
 	/*
 	 *	The semop operation below only completes
@@ -193,11 +194,11 @@ int fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock)
 	 */
 	sops[0].sem_num = 0;
 	sops[0].sem_op = 0;
-	sops[0].sem_flg = nonblock ? IPC_NOWAIT : 0;
+	sops[0].sem_flg = flags_nonblock;
 
 	sops[1].sem_num = 0;
 	sops[1].sem_op = 1;
-	sops[1].sem_flg = flags;
+	sops[1].sem_flg = flags_nonblock | flags_undo;
 
 	if (semop(sem_id, sops, 2) < 0) {
 		pid_t	sem_pid;
@@ -334,7 +335,8 @@ static bool sem_check_gid(char const *file, int proj_id,
  *				that it is not world writable.
  * @return
  *	- >= 0 the semaphore id.
- *      - -1 the file specified does not exist or is not accessible.
+ *      - -1 the file specified does not exist, or there is
+ *	  a permissions error.
  *	- -2 failed getting semaphore.
  *	- -3 failed creating semaphore.
  */
@@ -403,7 +405,7 @@ int fr_sem_get(char const *file, int proj_id, bool check_perm)
 		    !sem_check_uid(file, proj_id, "CUID", our_euid, info.sem_perm.cuid) ||
 		    !sem_check_gid(file, proj_id, "GID", our_egid, info.sem_perm.gid) ||
 		    !sem_check_gid(file, proj_id, "CGID", our_egid, info.sem_perm.gid)) {
-			return -2;
+			return -1;
 		}
 	}
 

@@ -547,16 +547,17 @@ int main(int argc, char *argv[])
 	 */
 	if (!config->allow_multiple_procs) {
 		switch (main_config_exclusive_proc(config)) {
-		case 0:
+		case 0:		/* No other processes running */
+			break;
+
+		case -1:	/* Permissions error - fail open */
+			PWARN("%s - Process concurrency checks disabled", program);
 			break;
 
 		case 1:
+		default:	/* All other errors */
 			fr_perror("%s", program);
 			EXIT_WITH_FAILURE;
-
-		case -1:
-			PWARN("%s - Process concurrency checks disabled", program);
-			break;
 		}
 	}
 
