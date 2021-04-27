@@ -449,12 +449,6 @@ check_item:
 				goto fail_entry;
 			}
 
-			if (!tmpl_is_attr(new_map->lhs)) {
-				ERROR("%s[%d]: LHS of regular expression check must be an attribute",
-				      file, lineno);
-				goto fail_entry;
-			}
-
 			/*
 			 *	The default rules say that the check
 			 *	items look at the control list, but
@@ -471,16 +465,6 @@ check_item:
 			}
 
 			goto do_insert;
-		}
-
-		/*
-		 *	@todo - update map_afrom_substr() to check for
-		 *	regexes, too.  Maybe even normalize /foo/ =~ bar
-		 */
-		if (tmpl_contains_regex(new_map->lhs)) {
-			ERROR("%s[%d]: Unexpected regular expression on LHS of check item",
-			      file, lineno, new_map->rhs->name);
-			goto fail_entry;
 		}
 
 		if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
