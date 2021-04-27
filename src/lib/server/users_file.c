@@ -441,6 +441,48 @@ check_item:
 			goto fail_entry;
 		}
 
+		if (tmpl_contains_regex(new_map->rhs)) {
+			if (!((new_map->op == T_OP_REG_EQ) ||
+			      (new_map->op == T_OP_REG_NE))) {
+				ERROR("%s[%d]: Unexpected regular expression on RHS of check item",
+				      file, lineno, new_map->rhs->name);
+				goto fail_entry;
+			}
+
+			if (!tmpl_is_attr(new_map->lhs)) {
+				ERROR("%s[%d]: LHS of regular expression check must be an attribute",
+				      file, lineno);
+				goto fail_entry;
+			}
+
+			/*
+			 *	The default rules say that the check
+			 *	items look at the control list, but
+			 *	for regexes we want to look at the
+			 *	request list.
+			 */
+			tmpl_attr_set_list(new_map->lhs, PAIR_LIST_REQUEST);
+
+			if (tmpl_is_regex_uncompiled(new_map->rhs) &&
+			    (tmpl_regex_compile(new_map->rhs, false) < 0)) {
+				ERROR("%s[%d]: Failed compiling regular expression /%s/ - %s",
+				      file, lineno, new_map->rhs->name, fr_strerror());
+				return -1;
+			}
+
+			goto do_insert;
+		}
+
+		/*
+		 *	@todo - update map_afrom_substr() to check for
+		 *	regexes, too.  Maybe even normalize /foo/ =~ bar
+		 */
+		if (tmpl_contains_regex(new_map->lhs)) {
+			ERROR("%s[%d]: Unexpected regular expression on LHS of check item",
+			      file, lineno, new_map->rhs->name);
+			goto fail_entry;
+		}
+
 		if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
 		    !tmpl_contains_xlat(new_map->rhs)) {
 			ERROR("%s[%d]: Invalid RHS '%s' for check item",
@@ -448,6 +490,7 @@ check_item:
 			goto fail_entry;
 		}
 
+	do_insert:
 		fr_dlist_insert_tail(&t->check, new_map);
 
 		/*
