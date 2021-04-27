@@ -6,6 +6,7 @@
 TARGET		:= libfreeradius-util.a
 
 SOURCES		:= \
+		   atexit.c \
 		   base64.c \
 		   cap.c \
 		   cursor.c \
@@ -58,6 +59,7 @@ SOURCES		:= \
 		   regex.c \
 		   retry.c \
 		   sbuff.c \
+		   sem.c \
 		   sha1.c \
 		   snprintf.c \
 		   socket.c \
@@ -68,7 +70,6 @@ SOURCES		:= \
 		   syserror.c \
 		   table.c \
 		   talloc.c \
-		   atexit.c \
 		   time.c \
 		   timeval.c \
 		   token.c \

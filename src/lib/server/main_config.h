@@ -93,6 +93,7 @@ struct main_config_s {
 	char const	*dict_dir;			//!< Where to load dictionaries from.
 
 	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #request_t.
+
 	uint32_t	max_requests;			//!< maximum number of requests outstanding
 
 	bool		write_pid;			//!< write the PID file
@@ -132,6 +133,8 @@ struct main_config_s {
 	bool		talloc_memory_report;		//!< Print a memory report on what's left unfreed.
 							//!< Can only be used when the server is running in single
 							//!< threaded mode.
+	bool		allow_multiple_procs;		//!< Allow multiple instances of radiusd to run with the
+							///< same config file.
 
 	uint32_t	max_networks;			//!< for the scheduler
 	uint32_t	max_workers;			//!< for the scheduler
@@ -142,6 +145,7 @@ struct main_config_s {
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
 void			main_config_raddb_dir_set(main_config_t *config, char const *path);
 void			main_config_dict_dir_set(main_config_t *config, char const *path);
+int			main_config_exclusive_proc(main_config_t *config);
 
 main_config_t		*main_config_alloc(TALLOC_CTX *ctx);
 int			main_config_init(main_config_t *config);

@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((c = getopt(argc, argv, "Cd:D:e:fhi:l:Mn:p:PrstTvxX")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "Cd:D:e:fhi:l:Mmn:p:PrstTvxX")) != -1) switch (c) {
 		case 'C':
 			check_config = true;
 			config->spawn_workers = false;
@@ -368,12 +368,16 @@ int main(int argc, char *argv[])
 			}
 			break;
 
-		case 'n':
-			main_config_name_set_default(config, optarg, true);
+		case 'm':
+			config->allow_multiple_procs = true;
 			break;
 
 		case 'M':
 			config->talloc_memory_report = true;
+			break;
+
+		case 'n':
+			main_config_name_set_default(config, optarg, true);
 			break;
 
 		case 'P':	/* Force the PID to be written, even in -f mode */
@@ -433,6 +437,10 @@ int main(int argc, char *argv[])
 		if (raddb_dir) main_config_raddb_dir_set(config, raddb_dir);
 	}
 
+	/*
+	 *	We've now got enough information to check to see
+	 *	if another process is running with the same config.
+	 */
 	config->debug_level = fr_debug_lvl;
 
 	/*
@@ -533,6 +541,24 @@ int main(int argc, char *argv[])
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
+
+	/*
+	 *  Check we're the only process using this config.
+	 */
+	if (!config->allow_multiple_procs) {
+		switch (main_config_exclusive_proc(config)) {
+		case 0:
+			break;
+
+		case 1:
+			fr_perror("%s", program);
+			EXIT_WITH_FAILURE;
+
+		case -1:
+			PWARN("%s - Process concurrency checks disabled", program);
+			break;
+		}
+	}
 
 	if (modules_init() < 0) {
 		fr_perror("%s", program);
@@ -1068,6 +1094,7 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 	fprintf(output, "  -L <size>     When running in memory debug mode, set a hard limit on talloced memory\n");
 #endif
 	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+	fprintf(output, "  -m            Allow multiple processes reading the same radiusd.conf to exist simultaneously.\n");
 #ifndef NDEBUG
 	fprintf(output, "  -M            Enable talloc memory debugging, and issue a memory report when the server terminates\n");
 #endif
