@@ -90,7 +90,6 @@ static inline void line_error_marker_adj(char const *src_file, int src_line,
 void pairlist_free(PAIR_LIST_LIST *pl)
 {
 	talloc_free(pl);
-	pairlist_list_init(pl);
 }
 
 static fr_table_num_sorted_t const check_cmp_op_table[] = {
@@ -318,7 +317,6 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		if (leading_spaces) {
 	    		ERROR_MARKER(&sbuff, "Entry does not begin with a user name");
 		fail:
-			pairlist_free(list);
 			fclose(fp);
 			return -1;
 		}
