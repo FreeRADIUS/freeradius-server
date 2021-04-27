@@ -103,8 +103,6 @@ ssize_t	cond_print(fr_sbuff_t *out, fr_cond_t const *c);
 
 bool fr_cond_walk(fr_cond_t *head, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx);
 
-int fr_cond_from_map(TALLOC_CTX *ctx, fr_cond_t **head, map_t *map);
-
 void fr_cond_async_update(fr_cond_t *cond);
 
 #ifdef __cplusplus

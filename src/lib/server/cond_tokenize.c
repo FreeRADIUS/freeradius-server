@@ -1686,35 +1686,3 @@ void fr_cond_async_update(fr_cond_t *c)
 		c = c->next;
 	}
 }
-
-/** Convert a single map to a condition.
- *
- * @param ctx	the talloc context where the condition is allocated
- * @param[out]	head the newly allocated condition.  Should only be one!
- * @param[in]	map the map to convert. MAY be freed.
- * @return
- *	- <0 on error "map" is untouched.
- *	- 0 on success - "map" MAY be freed
- */
-int fr_cond_from_map(TALLOC_CTX *ctx, fr_cond_t **head, map_t *map)
-{
-	fr_cond_t *cond = talloc_zero(ctx, fr_cond_t);
-
-	if (!cond) return -1;
-
-	cond->type = COND_TYPE_MAP;
-	cond->data.map = map;
-
-	if (cond_normalise(ctx, T_BARE_WORD, &cond) < 0) return -1;
-
-	/*
-	 *	If the condition is still a MAP, then make the map
-	 *	owned by the condition.
-	 */
-	if (cond->type == COND_TYPE_MAP) {
-		(void) talloc_steal(cond, map);
-	}
-
-	*head = cond;
-	return 0;
-}
