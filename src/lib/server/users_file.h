@@ -55,7 +55,8 @@ typedef struct pair_list_list {
 int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, int complain);
 void		pairlist_free(PAIR_LIST_LIST *);
 
-static inline void pairlist_list_init(PAIR_LIST_LIST *list) {
+static inline void pairlist_list_init(PAIR_LIST_LIST *list)
+{
 	fr_dlist_talloc_init(&list->head, PAIR_LIST, entry);
 }
 
