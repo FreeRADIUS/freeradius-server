@@ -210,7 +210,7 @@ server tacacs {
 		detail
 	}
 
-	# First packet for a session
+	#  First packet for a session
 	accounting Start {
 	}
 
@@ -218,7 +218,7 @@ server tacacs {
 	accounting Watchdog-Update {
 	}
 
-	# Updates a session
+	#  Updates a session
 	accounting Watchdog {
 	}
 

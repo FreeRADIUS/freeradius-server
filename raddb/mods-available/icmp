@@ -24,7 +24,7 @@
 #	`%(icmp:%{NAS-IP-Address})`
 #
 #
-# == Capabilities and Permissions
+#  == Capabilities and Permissions
 #
 #  On Linux, you may need to do:
 #
