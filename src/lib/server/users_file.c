@@ -445,7 +445,7 @@ check_item:
 			if (!((new_map->op == T_OP_REG_EQ) ||
 			      (new_map->op == T_OP_REG_NE))) {
 				ERROR("%s[%d]: Unexpected regular expression on RHS of check item",
-				      file, lineno, new_map->rhs->name);
+				      file, line);
 				goto fail_entry;
 			}
 
