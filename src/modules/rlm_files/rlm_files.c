@@ -73,10 +73,12 @@ fr_dict_autoload_t rlm_files_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_fall_through;
+static fr_dict_attr_t const *attr_continue_with_shorter_prefix;
 
 extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
 fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_continue_with_shorter_prefix, .name = "Continue-With-Shorter-Prefix", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ NULL }
 };
@@ -371,6 +373,8 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false;
 	PAIR_LIST_LIST		my_list;
+	uint8_t			key_buffer[16], *key;
+	size_t			keylen = 0;
 
 	if (!tree && !default_list) RETURN_MODULE_NOOP;
 
@@ -385,6 +389,17 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		my_list.name = NULL;
 		my_list.box = box;
 		user_list = fr_htrie_find(tree, &my_list);
+
+		/*
+		 *	Grab our own copy of the key if necessary.
+		 */
+		if (user_list && (tree->type == FR_HTRIE_TRIE)) {
+			key = key_buffer;
+			keylen = sizeof(key_buffer) * 8;
+
+			(void) fr_value_box_to_key(&key, &keylen, box);
+		}
+
 		talloc_free(box);
 
 		user_pl = user_list ? fr_dlist_head(&user_list->head) : NULL;
@@ -392,6 +407,8 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		user_pl = NULL;
 		user_list = NULL;
 	}
+
+redo:
 	default_pl = default_list ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
@@ -402,7 +419,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		map_t *map = NULL;
 		PAIR_LIST const *pl;
 		fr_pair_list_t list;
-		bool fall_through = false;
+		bool fall_through, continue_with_shorter_prefix;
 		bool match = true;
 
 		/*
@@ -482,6 +499,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, filename);
 		found = true;
 		fall_through = false;
+		continue_with_shorter_prefix = false;
 
 		/*
 		 *	Move the control items over, too.
@@ -514,6 +532,17 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 					continue;
 				}
 
+				/*
+				 *	And for prefix tries.
+				 */
+				if (keylen > 0) {
+					vp = fr_pair_list_head(&tmp_list);
+					if (vp->da == attr_continue_with_shorter_prefix) {
+						continue_with_shorter_prefix = vp->vp_bool;
+						fr_pair_list_free(&tmp_list);
+						continue;
+					}
+				}
 				radius_pairmove(request, &request->reply_pairs, &tmp_list, true);
 			}
 		}
@@ -521,7 +550,23 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		/*
 		 *	Fallthrough?
 		 */
-		if (!fall_through) break;
+		if (!fall_through) {
+			/*
+			 *	Walk back up the trie looking for shorter prefixes.
+			 */
+			if ((keylen > 0) && continue_with_shorter_prefix) {
+				do {
+					keylen--;
+					user_list = fr_trie_lookup_by_key(tree->store, key, keylen);
+					if (!user_list) continue;
+					
+					user_pl = fr_dlist_head(&user_list->head);
+					goto redo;
+				} while (keylen > 0);
+			}
+
+			break;
+		}
 	}
 
 	/*

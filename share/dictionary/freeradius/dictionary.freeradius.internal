@@ -21,6 +21,7 @@ FLAGS	internal
 # 	These attributes CAN go in the reply item list.
 ATTRIBUTE	Fall-Through				500	bool
 ATTRIBUTE	Relax-Filter				501	bool
+ATTRIBUTE	Continue-With-Shorter-Prefix		502	bool
 #
 # Exec-Program and Exec-Program-Wait are no longer supported in v4.
 #
