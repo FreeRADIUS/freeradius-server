@@ -33,10 +33,11 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "rlm_unix (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
+#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/sysutmp.h>
-#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/util/perm.h>
 
 #include <grp.h>
 #include <pwd.h>
@@ -115,12 +116,12 @@ static int groupcmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_li
 	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	if (!username) return -1;
 
-	if (rad_getpwnam(request, &pwd, username->vp_strvalue) < 0) {
+	if (fr_perm_getpwnam(request, &pwd, username->vp_strvalue) < 0) {
 		RPEDEBUG("Failed resolving user name");
 		return -1;
 	}
 
-	if (rad_getgrnam(request, &grp, check->vp_strvalue) < 0) {
+	if (fr_perm_getgrnam(request, &grp, check->vp_strvalue) < 0) {
 		RPEDEBUG("Failed resolving group name");
 		talloc_free(pwd);
 		return -1;

@@ -46,16 +46,6 @@ int		rad_expand_xlat(request_t *request, char const *cmd,
 				int max_argc, char const *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
 
-void		rad_mode_to_str(char out[static 10], mode_t mode);
-void		rad_mode_to_oct(char out[static 5], mode_t mode);
-int		rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);
-int		rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name);
-int		rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
-int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
-int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
-char		*rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid);
-char		*rad_asprint_gid(TALLOC_CTX *ctx, gid_t gid);
-void		rad_file_error(int num);
 int		rad_seuid(uid_t uid);
 int		rad_segid(gid_t gid);
 

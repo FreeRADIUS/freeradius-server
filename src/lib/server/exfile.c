@@ -23,12 +23,14 @@
  * @author Alan DeKok (aland@freeradius.org)
  * @copyright 2014 The FreeRADIUS server project
  */
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/exfile.h>
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -476,19 +478,19 @@ try_lock:
 		char str_need[10], oct_need[5];
 		char str_have[10], oct_have[5];
 
-		rad_mode_to_oct(oct_need, permissions);
-		rad_mode_to_str(str_need, permissions);
+		fr_perm_mode_to_oct(oct_need, permissions);
+		fr_perm_mode_to_str(str_need, permissions);
 
-		rad_mode_to_oct(oct_have, st.st_mode & ~S_IFMT);
-		rad_mode_to_str(str_have, st.st_mode & ~S_IFMT);
+		fr_perm_mode_to_oct(oct_have, st.st_mode & ~S_IFMT);
+		fr_perm_mode_to_str(str_have, st.st_mode & ~S_IFMT);
 
 		WARN("File %s permissions are %s (%s) not %s (%s))", filename,
 		     oct_have, str_have, oct_need, str_need);
 
 		if (((st.st_mode | permissions) != st.st_mode) &&
 		    (fchmod(ef->entries[i].fd, (st.st_mode & ~S_IFMT) | permissions) < 0)) {
-			rad_mode_to_oct(oct_need, (st.st_mode & ~S_IFMT) | permissions);
-			rad_mode_to_str(str_need, (st.st_mode & ~S_IFMT) | permissions);
+			fr_perm_mode_to_oct(oct_need, (st.st_mode & ~S_IFMT) | permissions);
+			fr_perm_mode_to_str(str_need, (st.st_mode & ~S_IFMT) | permissions);
 
 			WARN("Failed resetting file %s permissions to %s (%s): %s",
 			     filename, oct_need, str_need, fr_syserror(errno));

@@ -38,6 +38,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <sys/types.h>
@@ -623,7 +624,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 	if (!check_perms) {
 		if (stat(filename, &file->buf) < 0) {
 		perm_error:
-			rad_file_error(errno);	/* Write error and euid/egid to error buff */
+			fr_perm_file_error(errno);	/* Write error and euid/egid to error buff */
 			PERROR("Unable to open file \"%s\"", filename);
 		error:
 			if (fd >= 0) close(fd);

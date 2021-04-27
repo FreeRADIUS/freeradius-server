@@ -24,9 +24,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/util/perm.h>
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
@@ -334,7 +335,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 			inst->file.group = strtol(inst->file.group_str, &endptr, 10);
 			if (*endptr != '\0') {
-				if (rad_getgid(inst, &(inst->file.group), inst->file.group_str) < 0) {
+				if (fr_perm_gid_from_str(inst, &(inst->file.group), inst->file.group_str) < 0) {
 					cf_log_err(conf, "Unable to find system group \"%s\"",
 						      inst->file.group_str);
 					return -1;

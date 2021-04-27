@@ -52,6 +52,7 @@ SOURCES		:= \
 		   pair_tokenize.c \
 		   paths.c \
 		   pcap.c \
+		   perm.c \
 		   print.c \
 		   proto.c \
 		   rand.c \

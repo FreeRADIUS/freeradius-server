@@ -30,6 +30,7 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/fopencookie.h>
+#include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/trie.h>
 #include <netdb.h>
@@ -648,8 +649,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		struct passwd *user;
 		struct group *group;
 
-		if (rad_getpwuid(NULL, &user, euid) < 0) goto error;
-		if (rad_getgrgid(NULL, &group, egid) < 0) {
+		if (fr_perm_getpwuid(NULL, &user, euid) < 0) goto error;
+		if (fr_perm_getgrgid(NULL, &group, egid) < 0) {
 			talloc_free(user);
 			goto error;
 		}
@@ -719,8 +720,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		if ((uid != (uid_t)-1) && (st.st_uid != uid)) {
 			struct passwd *need_user, *have_user;
 
-			if (rad_getpwuid(NULL, &need_user, uid) < 0) goto error;
-			if (rad_getpwuid(NULL, &have_user, st.st_uid) < 0) {
+			if (fr_perm_getpwuid(NULL, &need_user, uid) < 0) goto error;
+			if (fr_perm_getpwuid(NULL, &have_user, st.st_uid) < 0) {
 				talloc_free(need_user);
 				goto error;
 			}
@@ -734,8 +735,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		if ((gid != (gid_t)-1) && (st.st_gid != gid)) {
 			struct group *need_group, *have_group;
 
-			if (rad_getgrgid(NULL, &need_group, gid) < 0) goto error;
-			if (rad_getgrgid(NULL, &have_group, st.st_gid) < 0) {
+			if (fr_perm_getgrgid(NULL, &need_group, gid) < 0) goto error;
+			if (fr_perm_getgrgid(NULL, &have_group, st.st_gid) < 0) {
 				talloc_free(need_group);
 				goto error;
 			}
@@ -750,10 +751,10 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 			char str_need[10], oct_need[5];
 			char str_have[10], oct_have[5];
 
-			rad_mode_to_str(str_need, perm);
-			rad_mode_to_oct(oct_need, perm);
-			rad_mode_to_str(str_have, st.st_mode);
-			rad_mode_to_oct(oct_have, st.st_mode);
+			fr_perm_mode_to_str(str_need, perm);
+			fr_perm_mode_to_oct(oct_need, perm);
+			fr_perm_mode_to_str(str_have, st.st_mode);
+			fr_perm_mode_to_oct(oct_have, st.st_mode);
 			fr_strerror_printf("Control socket directory must have permissions %s (%s), current "
 					   "permissions are %s (%s)", str_need, oct_need, str_have, oct_have);
 			goto error;
@@ -852,8 +853,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	if (fchmod(sock_fd, perm) < 0) {
 		char str_need[10], oct_need[5];
 
-		rad_mode_to_str(str_need, perm);
-		rad_mode_to_oct(oct_need, perm);
+		fr_perm_mode_to_str(str_need, perm);
+		fr_perm_mode_to_oct(oct_need, perm);
 		fr_strerror_printf("Failed changing socket permissions to %s (%s)", str_need, oct_need);
 
 		goto sock_error;
@@ -863,8 +864,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		struct passwd *user;
 		struct group *group;
 
-		if (rad_getpwuid(NULL, &user, uid) < 0) goto sock_error;
-		if (rad_getgrgid(NULL, &group, gid) < 0) {
+		if (fr_perm_getpwuid(NULL, &user, uid) < 0) goto sock_error;
+		if (fr_perm_getgrgid(NULL, &group, gid) < 0) {
 			talloc_free(user);
 			goto sock_error;
 		}
@@ -1133,7 +1134,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (inst->uid_name) {
 		struct passwd *pwd;
 
-		if (rad_getpwnam(cs, &pwd, inst->uid_name) < 0) {
+		if (fr_perm_getpwnam(cs, &pwd, inst->uid_name) < 0) {
 			PERROR("Failed getting uid for %s", inst->uid_name);
 			return -1;
 		}
@@ -1144,7 +1145,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	if (inst->gid_name) {
-		if (rad_getgid(cs, &inst->gid, inst->gid_name) < 0) {
+		if (fr_perm_gid_from_str(cs, &inst->gid, inst->gid_name) < 0) {
 			PERROR("Failed getting gid for %s", inst->gid_name);
 			return -1;
 		}

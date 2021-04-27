@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
+#include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
 
 #include <sys/stat.h>
@@ -372,7 +373,7 @@ static int uid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	uid_name = cf_pair_value(cf_item_to_pair(ci));
 
-	if (rad_getpwnam(ctx, &user, uid_name) < 0) {
+	if (fr_perm_getpwnam(ctx, &user, uid_name) < 0) {
 		cf_log_perr(ci, "Cannot get passwd entry for user \"%s\"", uid_name);
 		return 0;
 	}
@@ -392,7 +393,7 @@ static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	gid_name = cf_pair_value(cf_item_to_pair(ci));
 
-	if (rad_getgrnam(ctx, &group, gid_name) < 0) {
+	if (fr_perm_getgrnam(ctx, &group, gid_name) < 0) {
 		cf_log_perr(ci, "Cannot resolve group name \"%s\"", gid_name);
 		return 0;
 	}
@@ -629,7 +630,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		{
 			struct passwd *user;
 
-			if (rad_getpwuid(config, &user, config->uid) < 0) {
+			if (fr_perm_getpwuid(config, &user, config->uid) < 0) {
 				fprintf(stderr, "%s: Failed resolving UID %i: %s\n",
 					config->name, (int)config->uid, fr_syserror(errno));
 				return -1;
@@ -690,7 +691,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		if (setgid(config->server_gid) < 0) {
 			struct group *group;
 
-			if (rad_getgrgid(config, &group, config->gid) < 0) {
+			if (fr_perm_getgrgid(config, &group, config->gid) < 0) {
 					fprintf(stderr, "%s: Failed resolving GID %i: %s\n",
 						config->name, (int)config->gid, fr_syserror(errno));
 					return -1;

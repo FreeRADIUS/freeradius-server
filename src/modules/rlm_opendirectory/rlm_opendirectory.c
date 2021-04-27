@@ -32,6 +32,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/perm.h>
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -409,7 +410,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/* resolve SACL */
 	uuid_clear(guid_sacl);
 
-	if (rad_getgid(request, &gid, kRadiusSACLName) < 0) {
+	if (fr_perm_gid_from_str(request, &gid, kRadiusSACLName) < 0) {
 		RDEBUG2("The SACL group \"%s\" does not exist on this system", kRadiusSACLName);
 	} else {
 		err = mbr_gid_to_uuid(gid, guid_sacl);
@@ -463,7 +464,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/* resolve user */
 	uuid_clear(uuid);
 
-	rad_getpwnam(request, &userdata, username->vp_strvalue);
+	fr_perm_getpwnam(request, &userdata, username->vp_strvalue);
 	if (userdata != NULL) {
 		err = mbr_uid_to_uuid(userdata->pw_uid, uuid);
 		if (err != 0)

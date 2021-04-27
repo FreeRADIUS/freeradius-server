@@ -22,7 +22,6 @@
 
 RCSID("$Id$")
 
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/server/util.h>
@@ -30,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hex.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/perm.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -679,371 +679,6 @@ int rad_expand_xlat(request_t *request, char const *cmd,
 	return argc;
 }
 
-/** Convert mode_t into humanly readable permissions flags
- *
- * @author Jonathan Leffler.
- *
- * @param mode to convert.
- * @param out Where to write the string to, must be exactly 10 bytes long.
- */
-void rad_mode_to_str(char out[static 10], mode_t mode)
-{
-	static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
-
-	strcpy(&out[0], rwx[(mode >> 6) & 0x07]);
-	strcpy(&out[3], rwx[(mode >> 3) & 0x07]);
-	strcpy(&out[6], rwx[(mode & 7)]);
-	if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
-	if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
-	if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
-	out[9] = '\0';
-}
-
-void rad_mode_to_oct(char out[static 5], mode_t mode)
-{
-	out[0] = '0' + ((mode >> 9) & 0x07);
-	out[1] = '0' + ((mode >> 6) & 0x07);
-	out[2] = '0' + ((mode >> 3) & 0x07);
-	out[3] = '0' + (mode & 0x07);
-	out[4] = '\0';
-}
-
-/** Resolve a uid to a passwd entry
- *
- * Resolves a uid to a passwd entry. The memory to hold the
- * passwd entry is talloced under ctx, and must be freed when no
- * longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param uid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETPW_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getpwuid_r(uid, (struct passwd *)buff, (char *)(buff + sizeof(struct passwd)),
-				 talloc_array_length(buff) - sizeof(struct passwd), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (errno != 0) ? fr_syserror(ret) : "Non-existent user");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct passwd);
-	*out = (struct passwd *)buff;
-
-	return 0;
-}
-
-/** Resolve a username to a passwd entry
- *
- * Resolves a username to a passwd entry. The memory to hold the
- * passwd entry is talloced under ctx, and must be freed when no
- * longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param name to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETPW_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		sc_len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getpwnam_r(name, (struct passwd *)buff, (char *)(buff + sizeof(struct passwd)),
-				 talloc_array_length(buff) - sizeof(struct passwd), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (errno != 0) ? fr_syserror(ret) : "Non-existent user");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct passwd);
-	*out = (struct passwd *)buff;
-
-	return 0;
-}
-
-/** Resolve a gid to a group database entry
- *
- * Resolves a gid to a group database entry. The memory to hold the
- * group entry is talloced under ctx, and must be freed when no
- * longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param gid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETGR_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		sc_len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getgrgid_r(gid, (struct group *)buff, (char *)(buff + sizeof(struct group)),
-				 talloc_array_length(buff) - sizeof(struct group), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (ret != 0) ? fr_syserror(ret) : "Non-existent group");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct group);
-	*out = (struct group *)buff;
-
-	return 0;
-}
-
-/** Resolve a group name to a group database entry
- *
- * Resolves a group name to a group database entry.
- * The memory to hold the group entry is talloced under ctx,
- * and must be freed when no longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param name to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETGR_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getgrnam_r(name, (struct group *)buff, (char *)(buff + sizeof(struct group)),
-				 talloc_array_length(buff) - sizeof(struct group), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (ret != 0) ? fr_syserror(ret) : "Non-existent group");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct group);
-	*out = (struct group *)buff;
-
-	return 0;
-}
-
-/** Resolve a group name to a GID
- *
- * @param ctx TALLOC_CTX for temporary allocations.
- * @param name of group.
- * @param out where to write gid.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
-{
-	int ret;
-	struct group *result;
-
-	ret = rad_getgrnam(ctx, &result, name);
-	if (ret < 0) return -1;
-
-	*out = result->gr_gid;
-	talloc_free(result);
-	return 0;
-}
-
-/** Print uid to a string
- *
- * @param ctx TALLOC_CTX for temporary allocations.
- * @param uid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-char *rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid)
-{
-	struct passwd *result;
-	char *out;
-
-	if (rad_getpwuid(ctx, &result, uid) < 0) return NULL;
-	out = talloc_typed_strdup(ctx, result->pw_name);
-	talloc_free(result);
-
-	return out;
-}
-
-/** Print gid to a string
- *
- * @param ctx TALLOC_CTX for temporary allocations.
- * @param gid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-char *rad_asprint_gid(TALLOC_CTX *ctx, uid_t gid){
-	struct group *result;
-	char *out;
-
-	if (rad_getgrgid(ctx, &result, gid) < 0) return NULL;
-	out = talloc_typed_strdup(ctx, result->gr_name);
-	talloc_free(result);
-
-	return out;
-}
-
-/** Write a file access error to the fr_strerror buffer, including euid/egid
- *
- * @note retrieve error with fr_strerror()
- *
- * @param num Usually errno, unless the error is returned by the function.
- */
-void rad_file_error(int num)
-{
-	char const	*error;
-	struct passwd	*user = NULL;
-	struct group	*group = NULL;
-
-	error = fr_syserror(num);
-
-	if (rad_getpwuid(NULL, &user, geteuid()) < 0) goto finish;
-	if (rad_getgrgid(NULL, &group, getegid()) < 0) goto finish;
-
-	fr_strerror_printf("Effective user/group - %s:%s: %s", user->pw_name, group->gr_name, error);
-finish:
-	talloc_free(user);
-	talloc_free(group);
-}
-
 #ifdef HAVE_SETUID
 static bool doing_setuid = false;
 static uid_t suid_down_uid = (uid_t)-1;
@@ -1089,7 +724,7 @@ void rad_suid_down(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
 		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
 		fr_exit_now(EXIT_FAILURE);
@@ -1111,7 +746,7 @@ void rad_suid_down_permanent(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
 		ERROR("Failed in permanent switch to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
 		fr_exit_now(EXIT_FAILURE);
@@ -1151,7 +786,7 @@ void rad_suid_down(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
 		ERROR("Failed switching to euid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
 		fr_exit_now(EXIT_FAILURE);
@@ -1181,7 +816,7 @@ void rad_suid_down_permanent(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
 		ERROR("Failed switching permanently to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
 		fr_exit_now(EXIT_FAILURE);
@@ -1233,10 +868,10 @@ bool rad_suid_is_down_permanent(void)
 int rad_seuid(uid_t uid)
 {
 	if (seteuid(uid) < 0) {
-		int sete_errno = errno;	/* errno sets overwritten by rad_getpwuid */
+		int sete_errno = errno;	/* errno sets overwritten by fr_perm_getpwuid */
 		struct passwd *passwd;
 
-		if (rad_getpwuid(NULL, &passwd, uid) < 0) return -1;
+		if (fr_perm_getpwuid(NULL, &passwd, uid) < 0) return -1;
 		fr_strerror_printf("%s", fr_syserror(sete_errno));
 		talloc_free(passwd);
 
@@ -1255,10 +890,10 @@ int rad_seuid(uid_t uid)
 int rad_segid(gid_t gid)
 {
 	if (setegid(gid) < 0) {
-		int sete_errno = errno;	/* errno sets overwritten by rad_getgrgid */
+		int sete_errno = errno;	/* errno sets overwritten by fr_perm_getgrgid */
 		struct group *group;
 
-		if (rad_getgrgid(NULL, &group, gid) < 0) return -1;
+		if (fr_perm_getgrgid(NULL, &group, gid) < 0) return -1;
 		fr_strerror_printf("%s", fr_syserror(sete_errno));
 		talloc_free(group);
 

@@ -27,9 +27,10 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/util/perm.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -397,7 +398,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	if (inst->group != NULL) {
 		gid = strtol(inst->group, &endptr, 10);
 		if (*endptr != '\0') {
-			if (rad_getgid(request, &gid, inst->group) < 0) {
+			if (fr_perm_gid_from_str(request, &gid, inst->group) < 0) {
 				RDEBUG2("Unable to find system group '%s'", inst->group);
 				goto skip_group;
 			}
