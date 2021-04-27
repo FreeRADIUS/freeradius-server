@@ -342,8 +342,9 @@ static bool sem_check_gid(char const *file, int proj_id,
  */
 int fr_sem_get(char const *file, int proj_id, bool check_perm)
 {
-	key_t sem_key;
-	int sem_id;
+	key_t	sem_key;
+	int	sem_id;
+	bool	seen_eexist = false;
 
 	if (proj_id == 0) proj_id = DEFAULT_PROJ_ID;
 
@@ -357,6 +358,7 @@ int fr_sem_get(char const *file, int proj_id, bool check_perm)
 	/*
 	 *	Try and grab the existing semaphore
 	 */
+again:
 	sem_id = semget(sem_key, 0, 0);
 	if (sem_id < 0) {
 		if (errno != ENOENT) {	/* Semaphore existed but we ran into an error */
@@ -372,6 +374,13 @@ int fr_sem_get(char const *file, int proj_id, bool check_perm)
 		sem_id = semget(sem_key, 1,
 				IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 		if (sem_id < 0) {
+			if (errno == EEXIST) {	/* Can get this with racing processes */
+				if (!seen_eexist) {
+					seen_eexist = true;
+					goto again;
+				}
+			}
+
 			fr_strerror_printf("Failed creating semaphore on \"%s\" ID 0x%x: %s",
 					   file, proj_id, fr_syserror(errno));
 			return -3;
