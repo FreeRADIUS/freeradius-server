@@ -438,6 +438,26 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 		}
 	}
 
+	if (tmpl_contains_regex(map->lhs)) {
+		fr_sbuff_set(&our_in, &m_lhs);
+		fr_strerror_const("Unexpected regular expression");
+		goto error;
+	}
+
+	if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
+		if (!tmpl_contains_regex(map->rhs)) {
+			fr_sbuff_set(&our_in, &m_rhs);
+			fr_strerror_const("Expected regular expression after regex operator");
+			goto error;
+		}
+	} else {
+		if (tmpl_contains_regex(map->rhs)) {
+			fr_sbuff_set(&our_in, &m_rhs);
+			fr_strerror_const("Unexpected regular expression");
+			goto error;
+		}
+	}
+
 	MAP_VERIFY(map);
 	*out = map;
 

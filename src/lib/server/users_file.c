@@ -442,13 +442,6 @@ check_item:
 		}
 
 		if (tmpl_contains_regex(new_map->rhs)) {
-			if (!((new_map->op == T_OP_REG_EQ) ||
-			      (new_map->op == T_OP_REG_NE))) {
-				ERROR("%s[%d]: Unexpected regular expression on RHS of check item",
-				      file, line);
-				goto fail_entry;
-			}
-
 			/*
 			 *	The default rules say that the check
 			 *	items look at the control list, but
