@@ -279,7 +279,6 @@ int main(int argc, char *argv[])
 		value = semctl(sem_id, 0, GETVAL);
 
 		INFO("Locking information for \"%s\"", file);
-		INFO("\tKey           : 0x%x", info.sem_perm._key);
 		INFO("\tsemid         : %u", sem_id);
 		INFO("\tPermissions   : %s", fr_perm_mode_to_str(buff, info.sem_perm.mode & perm));
 		INFO("\tValue         : %u (%s)", value, value > 0 ? "locked" : "unlocked");
