@@ -33,7 +33,7 @@ RCSID("$Id$")
  * @param mode to convert.
  * @param out Where to write the string to, must be exactly 10 bytes long.
  */
-void fr_perm_mode_to_str(char out[static 10], mode_t mode)
+char const *fr_perm_mode_to_str(char out[static 10], mode_t mode)
 {
 	static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
 
@@ -44,15 +44,19 @@ void fr_perm_mode_to_str(char out[static 10], mode_t mode)
 	if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
 	if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
 	out[9] = '\0';
+
+	return out;
 }
 
-void fr_perm_mode_to_oct(char out[static 5], mode_t mode)
+char const *fr_perm_mode_to_oct(char out[static 5], mode_t mode)
 {
 	out[0] = '0' + ((mode >> 9) & 0x07);
 	out[1] = '0' + ((mode >> 6) & 0x07);
 	out[2] = '0' + ((mode >> 3) & 0x07);
 	out[3] = '0' + (mode & 0x07);
 	out[4] = '\0';
+
+	return out;
 }
 
 /** Resolve a uid to a passwd entry
