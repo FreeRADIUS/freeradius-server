@@ -167,6 +167,12 @@ int fr_aka_sim_id_type(fr_aka_sim_id_type_t *type, fr_aka_sim_method_hint_t *hin
 {
 	size_t i;
 
+	/*
+	 *	May not fail in the first part of this function
+	 *	so we need to clear any pending messages.
+	 */
+	fr_strerror_clear();
+
 	if (id_len < 1) {
 		if (hint) *hint = AKA_SIM_METHOD_HINT_UNKNOWN;
 		if (type) *type = AKA_SIM_ID_TYPE_UNKNOWN;
