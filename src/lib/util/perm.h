@@ -35,14 +35,25 @@ extern "C" {
 #endif
 
 void		fr_perm_mode_to_str(char out[static 10], mode_t mode);
+
 void		fr_perm_mode_to_oct(char out[static 5], mode_t mode);
-int		fr_perm_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);
-int		fr_perm_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name);
-int		fr_perm_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
-int		fr_perm_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
-int		fr_perm_gid_from_str(TALLOC_CTX *ctx, gid_t *out, char const *name);
+
+int		fr_perm_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid) CC_HINT(nonnull(2));
+
+int		fr_perm_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name) CC_HINT(nonnull(2,3));
+
+int		fr_perm_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid) CC_HINT(nonnull(2));
+
+int		fr_perm_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name) CC_HINT(nonnull(2,3));
+
+int		fr_perm_uid_from_str(TALLOC_CTX *ctx, uid_t *out, char const *name) CC_HINT(nonnull(2,3));
+
+int		fr_perm_gid_from_str(TALLOC_CTX *ctx, gid_t *out, char const *name) CC_HINT(nonnull(2,3));
+
 char		*fr_perm_uid_to_str(TALLOC_CTX *ctx, uid_t uid);
+
 char		*fr_perm_gid_to_str(TALLOC_CTX *ctx, gid_t gid);
+
 void		fr_perm_file_error(int num);
 
 #ifdef __cplusplus

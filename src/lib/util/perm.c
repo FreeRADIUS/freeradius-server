@@ -307,11 +307,33 @@ int fr_perm_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 	return 0;
 }
 
+/** Resolve a user name to a GID
+ *
+ * @param[in] ctx	TALLOC_CTX for temporary allocations.
+ * @param[in] out	where to write gid.
+ * @param[in] name	of user.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_perm_uid_from_str(TALLOC_CTX *ctx, uid_t *out, char const *name)
+{
+	int ret;
+	struct passwd *result;
+
+	ret = fr_perm_getpwnam(ctx, &result, name);
+	if (ret < 0) return -1;
+
+	*out = result->pw_uid;
+	talloc_free(result);
+	return 0;
+}
+
 /** Resolve a group name to a GID
  *
- * @param ctx TALLOC_CTX for temporary allocations.
- * @param name of group.
- * @param out where to write gid.
+ * @param[in] ctx	TALLOC_CTX for temporary allocations.
+ * @param[in] out	where to write gid.
+ * @param[in] name	of group.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
