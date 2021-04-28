@@ -1,0 +1,17 @@
+0.0.0.0/0
+	Reply-Message += "default"
+
+10.1.0.0/16
+	Reply-Message := "10.1/16 subnet",
+	Fall-Through = yes
+
+10.0.0.0/8
+	Reply-Message += "10/8 subnet"
+
+#
+#  Once we're done, go back up to the 10/ network.
+#  Since that one doesn't have "continue", stop there.
+#
+10.1.0.0/16	Password.Cleartext := "hello"
+	Reply-Message += "2nd 10.1/16 subnet",
+	Continue-With-Shorter-Prefix = Yes

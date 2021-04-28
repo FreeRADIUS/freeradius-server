@@ -398,6 +398,24 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 			keylen = sizeof(key_buffer) * 8;
 
 			(void) fr_value_box_to_key(&key, &keylen, box);
+
+			RDEBUG3("Keylen %ld", keylen);
+			RHEXDUMP3(key, (keylen + 7) >> 3, "KEY ");
+
+			/*
+			 *	We're going to free the value_box
+			 *	shortly, so copy the key to our
+			 *	internal key buffer.
+			 */
+			if (key != key_buffer) {
+				if (((keylen + 7) >> 3) > sizeof(key_buffer)) {
+					REDEBUG("Key is too long - truncating");
+					keylen = sizeof(key_buffer) << 3;
+				}
+
+				memcpy(key_buffer, key, (keylen + 7) >> 3);
+				key = key_buffer;
+			}
 		}
 
 		talloc_free(box);
@@ -553,14 +571,23 @@ redo:
 		if (!fall_through) {
 			/*
 			 *	Walk back up the trie looking for shorter prefixes.
+			 *
+			 *	Note that we've already found an
+			 *	entry, so we MUST start with that
+			 *	prefix, otherwise we would end up in
+			 *	an loop of finding the same prefix
+			 *	over and over.
 			 */
 			if ((keylen > 0) && continue_with_shorter_prefix) {
+				if (keylen > user_list->box->vb_ip.prefix) keylen = user_list->box->vb_ip.prefix;
+
 				do {
 					keylen--;
 					user_list = fr_trie_lookup_by_key(tree->store, key, keylen);
 					if (!user_list) continue;
 					
 					user_pl = fr_dlist_head(&user_list->head);
+					RDEBUG("Found matching shorter subnet %s at key length %ld", user_pl->name, keylen);
 					goto redo;
 				} while (keylen > 0);
 			}
