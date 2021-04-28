@@ -26,11 +26,12 @@ $(BUILD_PATH)/tests/eapol_test:
 	@mkdir -p $@
 
 #
-#  Build eapol_test, and cache its output
+#  Build eapol_test, and cache its output.  Note that EAPOL_TEST may not be
+#  defined, so we have to run the shell script for the second line, too.
 #
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
-	@echo "TLS1_3=" $(shell strings $(EAPOL_TEST) | grep '1_3' | head -n 1) >> $@
+	@echo "TLS1_3=" $(shell strings $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) | grep '1_3' | head -n 1) >> $@
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 endif
