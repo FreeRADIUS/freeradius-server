@@ -111,6 +111,7 @@ config/eap-test-inner-tunnel: $(RADDB_PATH)sites-available/inner-tunnel
 #  * uncomment caching directory
 #  * set the minimum TLS version to 1.0 for testing
 #  * set the maximum TLS version to 1.2 or 1.3, depending if 1.3 is available
+#  * always enable TLS 1.3 for the tests, via the super-secret magic flag.
 #  * tell OpenSSL to enable insecure ciphers TLS 1.0 and TLS 1.1
 #
 config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
@@ -120,6 +121,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
 	     -e 's/tls_min_version = "1.2"/tls_min_version = "1.0"/' \
 	     -e '$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' \
+	     -e  '/tls_max_version/s/^//p; /tls_max_version/s/^.*/        tls13_enable=true/' \
 	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT@SECLEVEL=1"/' \
 		 < $< > $@
 
