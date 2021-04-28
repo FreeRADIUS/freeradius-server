@@ -63,9 +63,6 @@ extern fr_log_t		debug_log;
 fr_cond_t		*debug_condition = NULL;		//!< Condition used to mark packets up for checking.
 fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
 
-static int		multiple_proc_sem_id = -1;		//!< Semaphore we use to prevent multiple processes
-								///< from running.
-
 /**********************************************************************
  *
  *	We need to figure out where the logs go, before doing anything
@@ -823,15 +820,16 @@ void main_config_raddb_dir_set(main_config_t *config, char const *name)
 	if (name) config->raddb_dir = talloc_typed_strdup(config, name);
 }
 
-/** Clean up the semaphore on exit
+/** Clean up the semaphore when the main config is freed
  *
  * This helps with permissions issues if the user is switching between
  * running the process under something like systemd and running it under
  * debug mode.
  */
-static void _exclusive_proc_at_exit(void)
+static int _exclusive_proc_close_sem(unsigned int *sem_id_p)
 {
-	fr_sem_close(multiple_proc_sem_id, NULL);
+	fr_sem_close(*sem_id_p, NULL);
+	return 0;
 }
 
 /** Check to see if we're the only process using this configuration file
@@ -847,11 +845,9 @@ int main_config_exclusive_proc(main_config_t *config)
 	char *path;
 	int sem_id;
 	int ret;
+	static bool sem_initd;
 
-	if (multiple_proc_sem_id >= 0) {
-		fr_strerror_const("exclusive proc check already performed");
-		return -1;
-	}
+	if (unlikely(sem_initd)) return 0;
 
 	MEM(path = talloc_asprintf(NULL, "%s/%s.conf", config->raddb_dir, config->name));
 	sem_id = fr_sem_get(path, 0, true);
@@ -863,8 +859,15 @@ int main_config_exclusive_proc(main_config_t *config)
 	ret = fr_sem_wait(sem_id, path, true, true);
 	switch (ret) {
 	case 0:	/* we have the semaphore */
-		multiple_proc_sem_id = sem_id;
-		atexit(_exclusive_proc_at_exit);
+	{
+		unsigned int *sem_id_p;
+
+		MEM(sem_id_p = talloc(config, unsigned int));
+		*sem_id_p = sem_id;
+		talloc_set_destructor(sem_id_p, _exclusive_proc_close_sem);
+
+		sem_initd = true;
+	}
 		break;
 
 	case 1:	/* another process has the semaphore */
