@@ -81,7 +81,7 @@ static xlat_action_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, fr_dcursor_t *
 	}
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-	fr_value_box_bstrndup(ctx, vb, NULL, method, strlen(method), false);
+	fr_value_box_bstrndup(vb, vb, NULL, method, strlen(method), false);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
