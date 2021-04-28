@@ -826,9 +826,21 @@ void main_config_raddb_dir_set(main_config_t *config, char const *name)
  * running the process under something like systemd and running it under
  * debug mode.
  */
-void main_config_exclusive_proc_done(main_config_t *config)
+void main_config_exclusive_proc_done(main_config_t const *config)
 {
-	fr_sem_close(config->multi_proc_sem_id, NULL);
+	if (config->multi_proc_sem_id >= 0) fr_sem_close(config->multi_proc_sem_id, NULL);
+}
+
+/** Increment the semaphore in the child process so that it's not released when the parent exits
+ *
+ * @param[in] config	specifying the path to the main config file.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int main_config_exclusive_proc_child(main_config_t const *config)
+{
+	return fr_sem_take(config->multi_proc_sem_id, config->multi_proc_sem_path, true);
 }
 
 /** Check to see if we're the only process using this configuration file
@@ -848,7 +860,7 @@ int main_config_exclusive_proc(main_config_t *config)
 
 	if (unlikely(sem_initd)) return 0;
 
-	MEM(path = talloc_asprintf(NULL, "%s/%s.conf", config->raddb_dir, config->name));
+	MEM(path = talloc_asprintf(config, "%s/%s.conf", config->raddb_dir, config->name));
 	sem_id = fr_sem_get(path, 0,
 			    main_config->uid_is_set ? main_config->uid : geteuid(),
 			    main_config->gid_is_set ? main_config->gid : getegid(),
@@ -858,10 +870,13 @@ int main_config_exclusive_proc(main_config_t *config)
 		return -1;
 	}
 
+	config->multi_proc_sem_id = -1;
+
 	ret = fr_sem_wait(sem_id, path, true, true);
 	switch (ret) {
 	case 0:	/* we have the semaphore */
 		config->multi_proc_sem_id = sem_id;
+		config->multi_proc_sem_path = path;
 		sem_initd = true;
 		break;
 
@@ -871,10 +886,15 @@ int main_config_exclusive_proc(main_config_t *config)
 
 		fr_sem_pid(&pid, sem_id);
 		fr_strerror_printf("Refusing to start - PID %u already running with \"%s\"", pid, path);
+		talloc_free(path);
 	}
 		break;
+
+	default:
+		talloc_free(path);
+		break;
 	}
-	talloc_free(path);
+
 
 	return ret;
 }

@@ -38,6 +38,8 @@ int	fr_sem_cuid(uid_t *uid, int sem_id);
 
 int	fr_sem_cgid(gid_t *gid, int sem_id);
 
+int	fr_sem_take(int sem_id, char const *file, bool undo_on_exit);
+
 int	fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock);
 
 int	fr_sem_close(int sem_id, char const *file);

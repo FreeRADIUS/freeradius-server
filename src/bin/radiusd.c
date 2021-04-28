@@ -712,6 +712,14 @@ int main(int argc, char *argv[])
 #endif
 
 			goto cleanup;
+		/*
+		 *  The child needs to increment the semaphore as the parent
+		 *  is going to exit, and it will decrement the semaphore.
+		 */
+		} else if (pid == 0) {
+			if (main_config_exclusive_proc_child(main_config) < 0) {
+				PWARN("%s - Failed incrementing exclusive proc semaphore in child", program);
+			}
 		}
 
 		/* so the pipe is correctly widowed if the parent exits?! */

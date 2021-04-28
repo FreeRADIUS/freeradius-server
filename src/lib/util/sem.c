@@ -163,6 +163,32 @@ int fr_sem_cgid(uid_t *gid, int sem_id)
 	return 0;
 }
 
+/** Increment the semaphore by 1
+ *
+ * @param[in] sem_id		to take.
+ * @param[in] file		to use in error messages.
+ * @param[in] undo_on_exit	decrement the semaphore on exit.
+ * @return
+ *	- -1 on failure.
+ *	- 0 on success.
+ */
+int fr_sem_take(int sem_id, char const *file, bool undo_on_exit)
+{
+	struct sembuf sop = {
+		.sem_num = 0,
+		.sem_op = 1,
+		.sem_flg = undo_on_exit * SEM_UNDO
+	};
+
+	if (semop(sem_id, &sop, 1) < 0) {
+		fr_strerror_printf("Failed waiting on semaphore bound to \"%s\" - %s", file,
+				   fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Wait for a semaphore to reach 0, then increment it by 1
  *
  * @param[in] sem_id		to operate on.
