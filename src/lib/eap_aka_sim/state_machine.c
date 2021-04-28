@@ -277,7 +277,7 @@ static void identity_hint_pairs_add(fr_aka_sim_id_type_t *type_p, fr_aka_sim_met
 	 *	Process the identity that we received.
 	 */
 	if (fr_aka_sim_id_type(&type, &method,
-			   identity, talloc_array_length(identity) - 1) < 0) {
+			       identity, talloc_array_length(identity) - 1) < 0) {
 		RPWDEBUG2("Failed parsing identity, continuing anyway");
 	}
 
