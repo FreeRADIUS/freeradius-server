@@ -850,7 +850,10 @@ int main_config_exclusive_proc(main_config_t *config)
 	if (unlikely(sem_initd)) return 0;
 
 	MEM(path = talloc_asprintf(NULL, "%s/%s.conf", config->raddb_dir, config->name));
-	sem_id = fr_sem_get(path, 0, true);
+	sem_id = fr_sem_get(path, 0,
+			    main_config->uid_is_set ? main_config->uid : geteuid(),
+			    main_config->gid_is_set ? main_config->gid : getegid(),
+			    true);
 	if (sem_id < 0) {
 		talloc_free(path);
 		return -1;

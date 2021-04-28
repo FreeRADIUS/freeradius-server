@@ -163,7 +163,6 @@ int fr_sem_cgid(uid_t *gid, int sem_id)
 	return 0;
 }
 
-
 /** Wait for a semaphore to reach 0, then increment it by 1
  *
  * @param[in] sem_id		to operate on.
@@ -330,9 +329,14 @@ static bool sem_check_gid(char const *file, int proj_id,
  *
  * @param[in] file		to get or create sempahore from.
  * @param[in] proj_id		if 0 will default to '0xf4ee4a31'.
+ * @param[in] uid		that should own the semaphore.
+ * @param[in] gid		that should own the semaphore.
  * @param[in] check_perm	Verify the semaphore is owned by
- *				us, that it was created by us, and
- *				that it is not world writable.
+ *				the specified uid/gid, and that it
+ *				was created by the specified uid/gid
+ *				or root.
+ *				Also verify that it is not world
+ *				writable.
  * @return
  *	- >= 0 the semaphore id.
  *      - -1 the file specified does not exist, or there is
@@ -340,7 +344,7 @@ static bool sem_check_gid(char const *file, int proj_id,
  *	- -2 failed getting semaphore.
  *	- -3 failed creating semaphore.
  */
-int fr_sem_get(char const *file, int proj_id, bool check_perm)
+int fr_sem_get(char const *file, int proj_id, uid_t uid, gid_t gid, bool check_perm)
 {
 	key_t	sem_key;
 	int	sem_id;
@@ -361,6 +365,8 @@ int fr_sem_get(char const *file, int proj_id, bool check_perm)
 again:
 	sem_id = semget(sem_key, 0, 0);
 	if (sem_id < 0) {
+		unsigned short mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
+
 		if (errno != ENOENT) {	/* Semaphore existed but we ran into an error */
 			fr_strerror_printf("Failed getting semaphore on \"%s\" ID 0x%x: %s",
 					   file, proj_id, fr_syserror(errno));
@@ -371,8 +377,7 @@ again:
 		 *	Create one semaphore, only if it doesn't
 		 *	already exist, with u+rw,g+rw,o+r
 		 */
-		sem_id = semget(sem_key, 1,
-				IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+		sem_id = semget(sem_key, 1, IPC_CREAT | IPC_EXCL | mode);
 		if (sem_id < 0) {
 			if (errno == EEXIST) {	/* Can get this with racing processes */
 				if (!seen_eexist) {
@@ -385,6 +390,27 @@ again:
 					   file, proj_id, fr_syserror(errno));
 			return -3;
 		}
+
+		/*
+		 *	Set a specific uid/gid on the semaphore
+		 */
+		{
+			struct semid_ds info = {
+				.sem_perm = {
+					.uid = uid,
+					.gid = gid,
+					.mode = mode
+				}
+			};
+
+			if (semctl(sem_id, 0, IPC_SET, &info) < 0) {
+				fr_strerror_printf("Failed setting permissions for semaphore on \"%s\" ID 0x%x: %s",
+						   file, proj_id, fr_syserror(errno));
+				fr_sem_close(sem_id, file);
+				return -3;
+			}
+		}
+
 	/*
 	 *	Ensure that we, or a process with the same UID/GID
 	 *      as ourselves, own the semaphore.
@@ -392,8 +418,6 @@ again:
 	} else if (check_perm) {
 		int		ret;
 		struct semid_ds	info;
-		uid_t		our_euid;
-		gid_t		our_egid;
 
 		ret = semctl(sem_id, 0, IPC_STAT, &info);
 		if (ret < 0) {
@@ -408,12 +432,15 @@ again:
 			return -2;
 		}
 
-		our_euid = geteuid();
-		our_egid = getegid();
-		if (!sem_check_uid(file, proj_id, "UID", our_euid, info.sem_perm.uid) ||
-		    !sem_check_uid(file, proj_id, "CUID", our_euid, info.sem_perm.cuid) ||
-		    !sem_check_gid(file, proj_id, "GID", our_egid, info.sem_perm.gid) ||
-		    !sem_check_gid(file, proj_id, "CGID", our_egid, info.sem_perm.gid)) {
+		/*
+		 *	IPC_SET allows the cuid/cgid of the semaphore
+		 *	to modify its permissions, so we need to check
+		 *	that they're either root or the user we want.
+		 */
+		if (!sem_check_uid(file, proj_id, "UID", uid, info.sem_perm.uid) ||
+		    ((info.sem_perm.cuid != 0) && !sem_check_uid(file, proj_id, "CUID", uid, info.sem_perm.cuid)) ||
+		    !sem_check_gid(file, proj_id, "GID", gid, info.sem_perm.gid) ||
+		    ((info.sem_perm.cgid != 0) && !sem_check_gid(file, proj_id, "CGID", gid, info.sem_perm.cgid))) {
 			return -1;
 		}
 	}

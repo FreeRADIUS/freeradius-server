@@ -42,7 +42,7 @@ int	fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock);
 
 int	fr_sem_close(int sem_id, char const *file);
 
-int	fr_sem_get(char const *file, int proj_id, bool check_perm);
+int	fr_sem_get(char const *file, int proj_id, uid_t uid, gid_t gid, bool check_perm);
 
 #ifdef __cplusplus
 }
