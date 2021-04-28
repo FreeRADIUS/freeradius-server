@@ -826,10 +826,9 @@ void main_config_raddb_dir_set(main_config_t *config, char const *name)
  * running the process under something like systemd and running it under
  * debug mode.
  */
-static int _exclusive_proc_close_sem(unsigned int *sem_id_p)
+void main_config_exclusive_proc_done(main_config_t *config)
 {
-	fr_sem_close(*sem_id_p, NULL);
-	return 0;
+	fr_sem_close(config->multi_proc_sem_id, NULL);
 }
 
 /** Check to see if we're the only process using this configuration file
@@ -862,15 +861,8 @@ int main_config_exclusive_proc(main_config_t *config)
 	ret = fr_sem_wait(sem_id, path, true, true);
 	switch (ret) {
 	case 0:	/* we have the semaphore */
-	{
-		unsigned int *sem_id_p;
-
-		MEM(sem_id_p = talloc(config, unsigned int));
-		*sem_id_p = sem_id;
-		talloc_set_destructor(sem_id_p, _exclusive_proc_close_sem);
-
+		config->multi_proc_sem_id = sem_id;
 		sem_initd = true;
-	}
 		break;
 
 	case 1:	/* another process has the semaphore */

@@ -135,6 +135,7 @@ struct main_config_s {
 							//!< threaded mode.
 	bool		allow_multiple_procs;		//!< Allow multiple instances of radiusd to run with the
 							///< same config file.
+	unsigned int	multi_proc_sem_id;		//!< Semaphore we use to prevent multiple processes running.
 
 	uint32_t	max_networks;			//!< for the scheduler
 	uint32_t	max_workers;			//!< for the scheduler
@@ -145,6 +146,8 @@ struct main_config_s {
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
 void			main_config_raddb_dir_set(main_config_t *config, char const *path);
 void			main_config_dict_dir_set(main_config_t *config, char const *path);
+
+void			main_config_exclusive_proc_done(main_config_t  const *config);
 int			main_config_exclusive_proc(main_config_t *config);
 
 main_config_t		*main_config_alloc(TALLOC_CTX *ctx);

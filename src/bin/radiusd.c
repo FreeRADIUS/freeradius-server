@@ -997,6 +997,16 @@ int main(int argc, char *argv[])
 		INFO("All threads have exited, sending SIGTERM to remaining children");
 		kill(-radius_pid, SIGTERM);
 	}
+
+	/*
+	 *	Remove the semaphore, allowing other processes
+	 *	to start.  We do this before the cleanup label
+	 *	as the parent process MUST NOT call this
+	 *	function as it exits, otherwise the semaphore
+	 *	is removed and there's no exclusivity.
+	 */
+	main_config_exclusive_proc_done(main_config);
+
 cleanup:
 	/*
 	 *	This may not have been done earlier if we're
