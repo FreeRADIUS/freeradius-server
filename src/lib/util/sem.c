@@ -163,6 +163,46 @@ int fr_sem_cgid(uid_t *gid, int sem_id)
 	return 0;
 }
 
+/** Decrement the semaphore by 1
+ *
+ * @param[in] sem_id		to take.
+ * @param[in] file		to use in error messages.
+ * @param[in] undo_on_exit	decrement the semaphore on exit.
+ * @return
+ *	- 1 already at 0.
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_sem_post(int sem_id, char const *file, bool undo_on_exit)
+{
+	unsigned int num;
+
+	errno = 0;
+	num = semctl(sem_id, 0, GETVAL);
+	if (errno != 0) {
+		fr_strerror_printf("Failed getting value from semaphore bound to \"%s\" - %s", file,
+				   fr_syserror(errno));
+		return 01;
+	}
+	if (num == 0) return 1;
+
+	{
+		struct sembuf sop = {
+			.sem_num = 0,
+			.sem_op = -1,
+			.sem_flg = undo_on_exit * SEM_UNDO
+		};
+
+		if (semop(sem_id, &sop, 1) < 0) {
+			fr_strerror_printf("Failed posting semaphore bound to \"%s\" - %s", file,
+					   fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /** Increment the semaphore by 1
  *
  * @param[in] sem_id		to take.
@@ -363,14 +403,16 @@ static bool sem_check_gid(char const *file, int proj_id,
  *				or root.
  *				Also verify that it is not world
  *				writable.
+ * @param[in] must_exist	semaphore must already exist.
  * @return
  *	- >= 0 the semaphore id.
  *      - -1 the file specified does not exist, or there is
  *	  a permissions error.
  *	- -2 failed getting semaphore.
  *	- -3 failed creating semaphore.
+ *	- -4 must_exist was true, and the semaphore does not exist.
  */
-int fr_sem_get(char const *file, int proj_id, uid_t uid, gid_t gid, bool check_perm)
+int fr_sem_get(char const *file, int proj_id, uid_t uid, gid_t gid, bool check_perm, bool must_exist)
 {
 	key_t	sem_key;
 	int	sem_id;
@@ -398,6 +440,8 @@ again:
 					   file, proj_id, fr_syserror(errno));
 			return -2;
 		}
+
+		if (must_exist) return -4;
 
 		/*
 		 *	Create one semaphore, only if it doesn't
