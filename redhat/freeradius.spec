@@ -860,6 +860,7 @@ fi
 /usr/bin/radcrypt
 /usr/bin/radict
 /usr/bin/radlast
+/usr/bin/radlock
 /usr/bin/radsniff
 /usr/bin/radsnmp
 /usr/bin/radsqlrelay

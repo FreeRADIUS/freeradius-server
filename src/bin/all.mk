@@ -2,10 +2,11 @@ SUBMAKEFILES := \
     radclient.mk \
     radict.mk \
     radiusd.mk \
-    radsniff.mk \
-    radwho.mk \
-    radsnmp.mk \
     radlast.mk \
+    radlock.mk \
+    radsniff.mk \
+    radsnmp.mk \
+    radwho.mk \
     radtest.mk \
     radzap.mk \
     dhcpclient.mk \
