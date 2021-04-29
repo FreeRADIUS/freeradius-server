@@ -20,6 +20,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  See sites-available/default, "New-TLS-Connection".
 	* Update TLS "ecdh_curve" code to allow for multiple curves.
 	* Allow delta CRLs.  Fixes #3393.
+	* add rlm_sql_map, which can handle multiple columns from an SQL
+	  query.  See raddb/mods-available/sql_map.
 	* New xlat for setting status of rlm_always instances and new
 	  resource-check example virtual server for manipulating control flow
 	  in unlang policies based on status of some external resource.
