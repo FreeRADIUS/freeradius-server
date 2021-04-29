@@ -66,7 +66,7 @@ static fr_table_num_sorted_t const radlock_action_table[] = {
 };
 static size_t radlock_action_table_len = NUM_ELEMENTS(radlock_action_table);
 
-static void usage(int ret)
+static NEVER_RETURNS void usage(int ret)
 {
 	fprintf(stderr, "usage: radlock <file> [lock|trylock|unlock|remove|info|perm]\n");
 	fprintf(stderr, "  -u <uid>         Desired user.\n");
