@@ -1481,7 +1481,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(vpt)));
 
-		fr_pair_add(head, vp);
+		fr_pair_append(head, vp);
 
 		*out = vp;
 	}
