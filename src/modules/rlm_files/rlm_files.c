@@ -121,6 +121,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	PAIR_LIST *entry, *next;
 	PAIR_LIST_LIST *user_list, *default_list;
 	fr_htrie_t *tree;
+	fr_htrie_type_t htype;
 	fr_value_box_t *box;
 
 	if (!filename) {
@@ -133,6 +134,8 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	if (rcode < 0) {
 		return -1;
 	}
+
+	htype = fr_htrie_hint(data_type);
 
 	/*
 	 *	Walk through the 'users' file list
@@ -198,6 +201,12 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			}
 			da = tmpl_da(map->lhs);
 
+			if ((htype != FR_HTRIE_TRIE) && (da == attr_next_shortest_prefix)) {
+				ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",
+				      entry->filename, entry->lineno, da->name);
+				return -1;
+			}
+
 			/*
 			 *	If it's NOT a vendor attribute,
 			 *	and it's NOT a wire protocol
@@ -224,7 +233,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		}
 	}
 
-	tree = fr_htrie_alloc(ctx,  fr_htrie_hint(data_type), pairlist_hash, pairlist_cmp, pairlist_to_key, NULL);
+	tree = fr_htrie_alloc(ctx,  htype, pairlist_hash, pairlist_cmp, pairlist_to_key, NULL);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;
