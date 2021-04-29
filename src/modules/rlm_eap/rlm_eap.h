@@ -32,6 +32,15 @@ RCSIDH(rlm_eap_h, "$Id$")
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/eap/types.h>
 
+/** Different settings for realm issues
+ */
+typedef enum {
+	REQUIRE_REALM_YES = 0,			//!< Require the EAP-Identity string contain an NAI realm
+						///< or that Stripped-User-Domain is present in the request.
+	REQUIRE_REALM_NO,			//!< Don't require that the identity is qualified.
+	REQUIRE_REALM_NAI			//!< Require the EAP-Identity contains an NAI domain.
+} rlm_eap_require_realm_t;
+
 /** Instance data for rlm_eap
  *
  */
@@ -54,6 +63,8 @@ typedef struct {
 
 	bool				ignore_unknown_types;		//!< Ignore unknown types (for later proxying).
 
+	rlm_eap_require_realm_t		require_realm;			//!< Whether we require the outer identity
+									///< to contain a realm.
 	char const			*name;				//!< Name of this instance.
 	fr_dict_enum_t			*auth_type;
 

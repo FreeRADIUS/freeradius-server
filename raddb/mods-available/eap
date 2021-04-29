@@ -24,6 +24,28 @@
 #
 eap {
 	#
+	#  require_identity_realm:: Require the the EAP Identity provided contains
+	#  a realm.
+	#
+	#  If `require_identity_realm` is `nai`, the EAP identity provided must
+	#  end with `@<label0>.<label1>[.<labelN>]`, i.e. an '@' followed by at least
+	#  two DNS labels.
+	#
+	#  If `require_identity_realm` is `yes`, the EAP identity provided must
+	#  either match the NAI format described above, or a `Stripped-User-Domain`
+	#  attribute must be present in the request list.
+	#  This validation mode is intended to be user where Windows machine
+	#  authentication is intermixed with user authentication.
+	#
+	#  If `require_identity_realm` is `no`, no identity format checks are performed.
+	#  It is NOT recommended to use this value.  Future security standards will
+	#  key off the NAI realm to validate the certificate we (the EAP server) present.
+	#  If you do not require an NAI realm be present, your users will not be able to
+	#  take advantage of this added security when it added by OS and device vendors.
+	#
+#	require_identity_realm = nai
+
+	#
 	#  default_eap_type:: The default EAP submodule to invoke when an `EAP-Identity`
 	#  response is received.
 	#

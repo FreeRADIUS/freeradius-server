@@ -54,7 +54,19 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
+fr_table_num_sorted_t const require_identity_realm_table[] = {
+	{ L("nai"),	REQUIRE_REALM_NAI	},
+	{ L("no"),	REQUIRE_REALM_NO	},
+	{ L("yes"),	REQUIRE_REALM_YES 	}
+};
+size_t require_identity_realm_table_len = NUM_ELEMENTS(require_identity_realm_table);
+
 static const CONF_PARSER module_config[] = {
+	{ FR_CONF_OFFSET("require_identity_realm", FR_TYPE_VOID, rlm_eap_t, require_realm),
+			 .func = cf_table_parse_uint32,
+			 .uctx = &(cf_table_parse_ctx_t){ .table = require_identity_realm_table, .len = &require_identity_realm_table_len },
+			 .dflt = "nai" },
+
 	{ FR_CONF_OFFSET_IS_SET("default_eap_type", FR_TYPE_VOID, rlm_eap_t, default_method), .func = eap_type_parse },
 
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, submodule_cs),
@@ -69,6 +81,11 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
@@ -82,17 +99,20 @@ fr_dict_autoload_t rlm_eap_dict[] = {
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_eap_type;
 static fr_dict_attr_t const *attr_eap_identity;
+static fr_dict_attr_t const *attr_stripped_user_domain;
 
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_user_name;
 
+
 extern fr_dict_attr_autoload_t rlm_eap_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_identity, .name = "EAP-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_stripped_user_domain, .name = "Stripped-User-Domain", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -465,6 +485,51 @@ static unlang_action_t mod_authenticate_result_async(rlm_rcode_t *p_result, modu
 	return mod_authenticate_result(p_result, mctx, request, eap_session, eap_session->submodule_rcode);
 }
 
+/** Basic tests to determine if an identity is a valid NAI
+ *
+ * In this version we mostly just care about realm.
+ *
+ * @param[in] identity	to check.
+ * @return
+ *	- The length of the string on success.
+ *	- <= 0 a negative offset specifying where the format error occurred.
+ */
+static ssize_t eap_identity_is_nai_with_realm(char const *identity)
+{
+	char const *p = identity;
+	char const *end = identity + (talloc_array_length(identity) - 1);
+	char const *realm;
+
+	/*
+	 *	Get the last '@'
+	 */
+	p = realm = memrchr(identity, '@', end - p);
+	if (!p) {
+		fr_strerror_printf("Identity is not valid.  Missing realm separator '@'");
+		return identity - end;
+	}
+
+	p = memchr(p, '.', end - p);
+	if (!p) {
+		fr_strerror_printf("Identity is not valid.  Realm is missing label separator '.'");
+		return identity - end;
+	}
+
+	if ((realm - 1) == p) {
+		fr_strerror_printf("Identity is not valid.  "
+				   "Realm is missing label between realm separator '@' and label separator '.'");
+		return identity - realm;
+	}
+	if ((p + 1) == end) {
+		fr_strerror_printf("Identity is not valid.  "
+				   "Realm is missing label between label separator '.' and the end of the "
+				   "identity string");
+		return identity - end;
+	}
+
+	return end - identity;
+}
+
 /** Select the correct callback based on a response
  *
  * Based on the EAP response from the supplicant, and setup a call on the
@@ -530,6 +595,55 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 */
 	switch (type->num) {
 	case FR_EAP_METHOD_IDENTITY:
+		{
+			ssize_t slen;
+
+			/*
+			 *	Check if we allow this identity format
+			 */
+			switch (inst->require_realm) {
+			case REQUIRE_REALM_NAI:
+				slen = eap_identity_is_nai_with_realm(eap_session->identity);
+				if (slen <= 0) {
+					char *tmp_id;
+				bad_id:
+					/*
+					 *	Produce an escaped version and run that
+					 *	through the format check function to get
+					 *	the correct offset *sigh*...
+					 */
+					MEM(tmp_id = fr_asprint(NULL,
+								eap_session->identity,
+								talloc_array_length(eap_session->identity) - 1,
+								'"'));
+					slen = eap_identity_is_nai_with_realm(tmp_id);
+
+					REMARKER(tmp_id, slen, "%s", fr_strerror());
+
+					talloc_free(tmp_id);
+					goto is_invalid;
+				}
+				break;
+
+			case REQUIRE_REALM_YES:
+				slen = eap_identity_is_nai_with_realm(eap_session->identity);
+				if (slen <= 0) {
+					fr_pair_t *stripped_user_domain;
+
+					/*
+					 *	If it's not an NAI with a realm, check
+					 *	to see if the user has set Stripped-User-domain.
+					 */
+					stripped_user_domain = fr_pair_find_by_da(&eap_session->request->request_pairs,
+										  attr_stripped_user_domain, 0);
+					if (!stripped_user_domain) goto bad_id;
+				}
+				break;
+
+			case REQUIRE_REALM_NO:
+				break;
+			}
+		}
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
