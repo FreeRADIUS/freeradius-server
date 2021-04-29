@@ -86,6 +86,10 @@ typedef struct {
 	fr_map_list_t		maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
+typedef struct {
+	rlm_cache_t		*inst;			//!< Instance of rlm_cache
+} cache_xlat_thread_inst_t;
+
 /** Allocate a new cache entry
  *
  */

@@ -25,77 +25,47 @@ cache_update
 if (!ok) {
 	test_fail
 }
-else {
-	test_pass
-}
 
 # Merge
 cache_update
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
 # session-state should now contain all the reply attributes
-if ("%{session-state[#]}" == 2) {
-	test_pass
-}
-else {
+if ("%{session-state[#]}" != 2) {
 	test_fail
 }
 
-if (&session-state.Reply-Message[0] == 'hello') {
-	test_pass
-}
-else {
+if (&session-state.Reply-Message[0] != 'hello') {
 	test_fail
 }
 
-if (&session-state.Reply-Message[1] == 'goodbye') {
-	test_pass
-}
-else {
+if (&session-state.Reply-Message[1] != 'goodbye') {
 	test_fail
 }
 
 # Tmp-String-1 should hold the result of the exec
-if (&Tmp-String-1 == 'echo test') {
-	test_pass
-}
-else {
+if (&Tmp-String-1 != 'echo test') {
 	test_fail
 }
 
 # Literal values should be foo, rad, baz
-if ("%{Tmp-String-2[#]}" == 3) {
-	test_pass
-}
-else {
+if ("%{Tmp-String-2[#]}" != 3) {
 	test_fail
 }
 
-if (&Tmp-String-2[0] == 'foo') {
-	test_pass
-}
-else {
+if (&Tmp-String-2[0] != 'foo') {
 	test_fail
 }
 
 debug_request
 
-if (&Tmp-String-2[1] == 'rab') {
-	test_pass
-}
-else {
+if (&Tmp-String-2[1] != 'rab') {
 	test_fail
 }
 
-if (&Tmp-String-2[2] == 'baz') {
-	test_pass
-}
-else {
+if (&Tmp-String-2[2] != 'baz') {
 	test_fail
 }
 
@@ -103,3 +73,5 @@ else {
 update {
     &reply !* ANY
 }
+
+test_pass
