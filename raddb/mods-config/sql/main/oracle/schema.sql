@@ -40,7 +40,8 @@ CREATE TABLE radacct (
 	framedinterfaceid	VARCHAR(44),
 	delegatedipv6prefix	VARCHAR(45),
 	acctstartdelay		NUMERIC(12),
-	acctstopdelay		NUMERIC(12)
+	acctstopdelay		NUMERIC(12),
+	class 			VARCHAR(64)
 );
 
 CREATE UNIQUE INDEX radacct_idx0

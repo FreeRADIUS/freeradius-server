@@ -43,6 +43,7 @@ CREATE TABLE radacct (
   framedipv6prefix text,
   framedinterfaceid text,
   delegatedipv6prefix text,
+  class text,
   PRIMARY KEY (acctuniqueid)
 );
 
