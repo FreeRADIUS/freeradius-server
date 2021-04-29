@@ -54,12 +54,12 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
-fr_table_num_sorted_t const require_identity_realm_table[] = {
+static fr_table_num_sorted_t const require_identity_realm_table[] = {
 	{ L("nai"),	REQUIRE_REALM_NAI	},
 	{ L("no"),	REQUIRE_REALM_NO	},
 	{ L("yes"),	REQUIRE_REALM_YES 	}
 };
-size_t require_identity_realm_table_len = NUM_ELEMENTS(require_identity_realm_table);
+static size_t require_identity_realm_table_len = NUM_ELEMENTS(require_identity_realm_table);
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("require_identity_realm", FR_TYPE_VOID, rlm_eap_t, require_realm),
