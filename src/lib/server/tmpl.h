@@ -753,7 +753,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
    fr_pair_list_t *head;
    fr_value_box_t value;
 
-   tmpl_pair_list_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   tmpl_pair_list_and_ctx(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
    if (!list) return -1; // error
 
    value.strvalue = talloc_typed_strdup(NULL, "my new username");
@@ -766,7 +766,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  * @param _ref to resolve.
  * @param _list to resolve.
  */
-#define tmpl_pair_list_AND_CTX(_ctx, _head, _request, _ref, _list) \
+#define tmpl_pair_list_and_ctx(_ctx, _head, _request, _ref, _list) \
 do {\
 	request_t *_rctx = _request; \
 	if ((tmpl_request_ptr(&_rctx, _ref) < 0) || \
