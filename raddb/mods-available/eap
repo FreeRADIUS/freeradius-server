@@ -40,8 +40,9 @@ eap {
 	#  If `require_identity_realm` is `no`, no identity format checks are performed.
 	#  It is NOT recommended to use this value.  Future security standards will
 	#  key off the NAI realm to validate the certificate we (the EAP server) present.
-	#  If you do not require an NAI realm be present, your users will not be able to
-	#  take advantage of this added security when it added by OS and device vendors.
+	#  If you do not require an NAI realm be present in the EAP identity string, 
+	#  your users will not be able to take advantage of this added security when 
+	#  it is added by OS and device vendors.
 	#
 #	require_identity_realm = nai
 
