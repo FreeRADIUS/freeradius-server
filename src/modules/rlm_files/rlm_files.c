@@ -73,12 +73,12 @@ fr_dict_autoload_t rlm_files_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_fall_through;
-static fr_dict_attr_t const *attr_continue_with_shorter_prefix;
+static fr_dict_attr_t const *attr_next_shortest_prefix;
 
 extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
 fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_continue_with_shorter_prefix, .name = "Continue-With-Shorter-Prefix", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_next_shortest_prefix, .name = "Next-Shortest-Prefix", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ NULL }
 };
@@ -437,7 +437,7 @@ redo:
 		map_t *map = NULL;
 		PAIR_LIST const *pl;
 		fr_pair_list_t list;
-		bool fall_through, continue_with_shorter_prefix;
+		bool fall_through, next_shortest_prefix;
 		bool match = true;
 
 		/*
@@ -517,7 +517,7 @@ redo:
 		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, filename);
 		found = true;
 		fall_through = false;
-		continue_with_shorter_prefix = false;
+		next_shortest_prefix = false;
 
 		/*
 		 *	Move the control items over, too.
@@ -555,8 +555,8 @@ redo:
 				 */
 				if (keylen > 0) {
 					vp = fr_pair_list_head(&tmp_list);
-					if (vp->da == attr_continue_with_shorter_prefix) {
-						continue_with_shorter_prefix = vp->vp_bool;
+					if (vp->da == attr_next_shortest_prefix) {
+						next_shortest_prefix = vp->vp_bool;
 						fr_pair_list_free(&tmp_list);
 						continue;
 					}
@@ -578,7 +578,7 @@ redo:
 			 *	an loop of finding the same prefix
 			 *	over and over.
 			 */
-			if ((keylen > 0) && continue_with_shorter_prefix) {
+			if ((keylen > 0) && next_shortest_prefix) {
 				if (keylen > user_list->box->vb_ip.prefix) keylen = user_list->box->vb_ip.prefix;
 
 				do {

@@ -14,4 +14,4 @@
 #
 10.1.0.0/16	Password.Cleartext := "hello"
 	Reply-Message += "2nd 10.1/16 subnet",
-	Continue-With-Shorter-Prefix = Yes
+	Next-Shortest-Prefix = Yes
