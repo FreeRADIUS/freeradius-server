@@ -196,10 +196,10 @@ int main(int argc, char *argv[])
 			EXIT_WITH_SUCCESS;
 
 		default:
-			fr_perror("radlock");
-			EXIT_WITH_FAILURE;
+			break;
 		}
-		break;
+		fr_perror("radlock");
+		EXIT_WITH_FAILURE;
 
 	case RADLOCK_UNLOCK:
 		sem_id = fr_sem_get(file, 0, uid, gid, false, true);
@@ -218,10 +218,10 @@ int main(int argc, char *argv[])
 			goto again;
 
 		default:
-			fr_perror("radlock");
-			EXIT_WITH_FAILURE;
+			break;
 		}
-		break;
+		fr_perror("radlock");
+		EXIT_WITH_FAILURE;
 
 	case RADLOCK_REMOVE:
 		sem_id = fr_sem_get(file, 0, uid, gid, false, true);
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 			fr_perror("radlock");
 			EXIT_WITH_FAILURE;
 		}
-		break;
+		EXIT_WITH_SUCCESS;
 
 	case RADLOCK_INFO:
 	{
@@ -293,9 +293,8 @@ int main(int argc, char *argv[])
 		INFO("\tGroup         : %s (%u)", cgid_str, info.sem_perm.cgid);
 		INFO("\tTime          : %s",
 		     fr_asprintf(autofree, "%pV", fr_box_date(fr_time_from_sec(info.sem_ctime))));
-		EXIT_WITH_SUCCESS;
 	}
-		break;
+		EXIT_WITH_SUCCESS;
 
 	case RADLOCK_PERM:
 	{
@@ -323,11 +322,10 @@ int main(int argc, char *argv[])
 			EXIT_WITH_FAILURE;
 		}
 	}
-		break;
+		EXIT_WITH_SUCCESS;
 
 	case RADLOCK_INVALID:
 		usage(64);
-		break;
 	}
 
 	return 0;
