@@ -99,8 +99,12 @@ Api.endpoint('POST', '/user/<username>/mac/<client>',
             value = keyData.username
         }
         returnData["control.NAS-IP-Address"] = {
-            op = ":=",
+            op = "+=",
             value = body.NAS or body['NAS-IP-Address'].value
+        }
+        returnData["control.Tmp-String-2"] = {
+            op = "^=",
+            value = keyData.username
         }
         return ngx.say(cjson.encode(returnData))
     end
@@ -117,6 +121,10 @@ Api.endpoint('GET', '/user/<username>/mac/<client>',
         }
         returnData["control.User-Name"] = {
             op = ":=",
+            value = keyData.username
+        }
+        returnData["control.Tmp-String-2"] = {
+            op = "^=",
             value = keyData.username
         }
         return ngx.say(cjson.encode(returnData))
