@@ -34,10 +34,12 @@ Selectors currently implemented are:
   * Automatic casting will occur between JSON and attribute types where possible.
   * Assignment of JSON objects/arrays to strings is supported, in which case the
   JSON serialized form of the object/array is used.
-  * If a jpath matches multiple nodes, unless the map includes the `+=` operator
-  * only the first node's value will be used.
-  * If the map uses `+=` then multiple instances of the attribute will be created,
-  each holding a different node value.
+  * If a jpath matches multiple nodes, unless the map includes the `+=` or `^=`
+  operator only the first node's value will be used.
+  * If the map uses `+=` or `^=` then multiple instances of the attribute will be
+  created, each holding a different node value.
+  * If the map uses `^=` then any new instances will be inserted at the head of
+  of the list.
 ====
 
 
