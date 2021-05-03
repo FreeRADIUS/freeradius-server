@@ -167,6 +167,38 @@ update {
 	&control.Tmp-Integer-0 !* ANY
 }
 
+# Retrieve our test row(s) - With ^= we should get the values from the second row then the first
+map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
+	&control.Tmp-String-0	^= 'username'
+	&control.Tmp-String-1	^= 'groupname'
+	&control.Tmp-Integer-0	^= 'priority'
+}
+
+if (!updated) {
+	test_fail
+}
+
+debug_control
+
+if ((&control.Tmp-String-0[0] != 'oof') || (&control.Tmp-String-0[1] != 'bob')) {
+	test_fail
+}
+
+if ((&control.Tmp-String-1[0] != 'rab') || (&control.Tmp-String-1[1] != 'bar')) {
+	test_fail
+}
+
+if ((&control.Tmp-Integer-0[0] != 0) || (&control.Tmp-Integer-0[1] != 0)) {
+	test_fail
+}
+
+# Clear the control list
+update {
+	&control.Tmp-String-0 !* ANY
+	&control.Tmp-String-1 !* ANY
+	&control.Tmp-Integer-0 !* ANY
+}
+
 # Retrieve our test row(s) - With += we should get the values from both rows
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control.Tmp-String-0	+= 'username'
@@ -364,3 +396,4 @@ else {
 	test_fail
 }
 
+test_pass

@@ -1,0 +1,25 @@
+#
+#  PRE: update map
+#
+
+update control {
+	&Tmp-String-0 := "fail"
+}
+
+map csv &User-Name {
+	&control.Tmp-String-0 ^= 'field3'
+}
+
+if ("%{control.Tmp-String-0[0]}" != 'success') {
+	test_fail
+}
+
+if ("%{control.Tmp-String-0[1]}" != "fail") {
+	test_fail
+}
+
+if ("%{control.Tmp-String-0[#]}" != 2) {
+	test_fail
+}
+
+success
