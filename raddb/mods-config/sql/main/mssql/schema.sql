@@ -276,7 +276,8 @@ CREATE TABLE [radpostauth] (
 	[userName] [varchar] (64) NOT NULL ,
 	[pass] [varchar] (64) NOT NULL ,
 	[reply] [varchar] (32) NOT NULL ,
-	[authdate] [datetime] NOT NULL
+	[authdate] [datetime] NOT NULL,
+	[class] [varchar] (64) NULL
 )
 GO
 
@@ -285,6 +286,7 @@ ALTER TABLE [radpostauth] WITH NOCHECK ADD
 	CONSTRAINT [DF_radpostauth_pass] DEFAULT ('') FOR [pass],
 	CONSTRAINT [DF_radpostauth_reply] DEFAULT ('') FOR [reply],
 	CONSTRAINT [DF_radpostauth_authdate] DEFAULT (getdate()) FOR [authdate],
+	CONSTRAINT [DF_radpostauth_class] DEFAULT ('') FOR [class],
 	CONSTRAINT [PK_radpostauth] PRIMARY KEY NONCLUSTERED
 	(
 		[id]

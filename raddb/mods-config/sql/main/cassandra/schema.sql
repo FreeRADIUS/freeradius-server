@@ -71,6 +71,7 @@ CREATE TABLE radpostauth (
   pass text,
   reply text,
   authdate timestamp,
+  class text,
   PRIMARY KEY (username, authdate)
 ) WITH CLUSTERING ORDER BY (authdate ASC);
 

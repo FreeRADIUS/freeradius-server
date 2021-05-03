@@ -141,5 +141,6 @@ CREATE TABLE radpostauth (
   pass varchar(64) NOT NULL default '',
   reply varchar(32) NOT NULL default '',
   authdate timestamp NOT NULL,
+  class varchar(64) NOT NULL default '',
   PRIMARY KEY  (id)
 ) ENGINE=ndbcluster;
