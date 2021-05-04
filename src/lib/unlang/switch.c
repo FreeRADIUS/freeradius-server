@@ -104,8 +104,6 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	fr_value_box_copy_shallow(NULL, &case_vpt.data.literal, box);
 	found = fr_htrie_find(switch_gext->ht, &my_case);
-	fr_value_box_clear(&case_vpt.data.literal);
-
 	if (!found) {
 	find_null_case:
 		found = switch_gext->default_case;
