@@ -960,6 +960,8 @@ static void process_file(const char *root_dir, char const *filename)
  *	ALIAS name OID
  *
  *  To create dictionaries which allow files to be used with v4.
+ *
+ *  ./build/make/jlibtool --mode=execute ./build/bin/radattr  -D ./share/ -A  | sort -k2
  */
 static int dump_aliases(void *ctx, void *data)
 {
