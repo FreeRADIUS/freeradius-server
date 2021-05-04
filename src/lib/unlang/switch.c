@@ -98,9 +98,8 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	 *	case_gext->vpt.data.literal is an in-line box, so we
 	 *	have to make a shallow copy of its contents.
 	 *
-	 *	Note: We do not pass a ctx here as we do NOT want to
-	 *	add a reference to the literal data, and potentially
-	 *	corrupt the talloc hierarchy.
+	 *	Note: We do not pass a ctx here as we don't want to
+	 *	create a reference.
 	 */
 	fr_value_box_copy_shallow(NULL, &case_vpt.data.literal, box);
 	found = fr_htrie_find(switch_gext->ht, &my_case);
