@@ -47,16 +47,16 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	 *	"generic to x" functions.
 	 */
 	tmpl_t			case_vpt = (tmpl_t) {
-		.type = TMPL_TYPE_DATA,
-	};
+					.type = TMPL_TYPE_DATA,
+				};
 	unlang_case_t		my_case = (unlang_case_t) {
-		.group = (unlang_group_t) {
-			.self = (unlang_t) {
-				.type = UNLANG_TYPE_CASE,
-			},
-		},
-		.vpt = &case_vpt,
-	};
+					.group = (unlang_group_t) {
+						.self = (unlang_t) {
+							.type = UNLANG_TYPE_CASE,
+						},
+					},
+					.vpt = &case_vpt,
+				};
 
 	switch_g = unlang_generic_to_group(frame->instruction);
 	switch_gext = unlang_group_to_switch(switch_g);
@@ -75,14 +75,14 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 			box = &vp->data;
 		}
 
-		/*
-		 *	Expand the template if necessary, so that it
-		 *	is evaluated once instead of for each 'case'
-		 *	statement.
-		 */
+	/*
+	 *	Expand the template if necessary, so that it
+	 *	is evaluated once instead of for each 'case'
+	 *	statement.
+	 */
 	} else if (tmpl_is_xlat(switch_gext->vpt) ||
-	     tmpl_is_xlat_unresolved(switch_gext->vpt) ||
-	     tmpl_is_exec(switch_gext->vpt)) {
+		   tmpl_is_xlat_unresolved(switch_gext->vpt) ||
+		   tmpl_is_exec(switch_gext->vpt)) {
 		char *p;
 		ssize_t len;
 
