@@ -497,8 +497,9 @@ eap {
 			#  Enable it.  The default is "no". Deleting the entire "cache"
 			#  subsection also disables caching.
 			#
-			#  As of version 3.0.14, the session cache requires the use
-			#  of the "name" and "persist_dir" configuration items, below.
+			#  The session cache requires the use of the
+			#  "name" and "persist_dir" configuration
+			#  items, below.
 			#
 			#  The internal OpenSSL session cache has been permanently
 			#  disabled.
@@ -564,9 +565,9 @@ eap {
 			}
 		}
 
-		#  As of version 2.1.10, client certificates can be
-		#  validated via an external command.  This allows
-		#  dynamic CRLs or OCSP to be used.
+		#  Client certificates can be validated via an
+		#  external command.  This allows dynamic CRLs or OCSP
+		#  to be used.
 		#
 		#  This configuration is commented out in the
 		#  default configuration.  Uncomment it, and configure
@@ -684,8 +685,8 @@ eap {
 
 	#  EAP-TLS
 	#
-	#  As of Version 3.0, the TLS configuration for TLS-based
-	#  EAP types is above in the "tls-config" section.
+	#  The TLS configuration for TLS-based EAP types is held in
+	#  the "tls-config" section, above.
 	#
 	tls {
 		#  Point to the common TLS configuration
@@ -746,14 +747,18 @@ eap {
 		#
 		copy_request_to_tunnel = no
 
-		#  As of version 3.0.5, this configuration item
-		#  is deprecated.  Instead, you should use
+		#  This configuration item is deprecated.  Instead,
+		#  you should use:
 		#
 		#    update outer.session-state {
 		#      ...
 		#    }
 		#
 		#  This will cache attributes for the final Access-Accept.
+		#
+		#  See "update outer.session-state" in the "post-auth"
+		#  sections of sites-available/default, and of
+		#  sites-available/inner-tunnel
 		#
 		#  The reply attributes sent to the NAS are usually
 		#  based on the name of the user 'outside' of the
@@ -861,14 +866,18 @@ eap {
 		#
 		copy_request_to_tunnel = no
 
-		#  As of version 3.0.5, this configuration item
-		#  is deprecated.  Instead, you should use
+		#  This configuration item is deprecated.  Instead,
+		#  you should use:
 		#
 		#    update outer.session-state {
 		#      ...
 		#    }
 		#
 		#  This will cache attributes for the final Access-Accept.
+		#
+		#  See "update outer.session-state" in the "post-auth"
+		#  sections of sites-available/default, and of
+		#  sites-available/inner-tunnel
 		#
 		use_tunneled_reply = no
 
@@ -928,21 +937,18 @@ eap {
 	#  currently support.
 	#
 	mschapv2 {
-		#  Prior to version 2.1.11, the module never
-		#  sent the MS-CHAP-Error message to the
-		#  client.  This worked, but it had issues
-		#  when the cached password was wrong.  The
-		#  server *should* send "E=691 R=0" to the
-		#  client, which tells it to prompt the user
-		#  for a new password.
+		#  In earlier versions of the server, this module
+		#  never sent the MS-CHAP-Error message to the client.
+		#  This worked, but it had issues when the cached
+		#  password was wrong.  The server *should* send
+		#  "E=691 R=0" to the client, which tells it to prompt
+		#  the user for a new password.
 		#
-		#  The default is to behave as in 2.1.10 and
-		#  earlier, which is known to work.  If you
-		#  set "send_error = yes", then the error
-		#  message will be sent back to the client.
-		#  This *may* help some clients work better,
-		#  but *may* also cause other clients to stop
-		#  working.
+		#  The default is to use that functionality.  which is
+		#  known to work.  If you set "send_error = yes", then
+		#  the error message will be sent back to the client.
+		#  This *may* help some clients work better, but *may*
+		#  also cause other clients to stop working.
 		#
 	#	send_error = no
 
