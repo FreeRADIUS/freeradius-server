@@ -1,0 +1,10 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Values defined by WBA IMSI Privacy Protection for Wi-Fi - Technical Specification v1.0.
+#
+#	https://wballiance.com/wp-content/uploads/2021/02/IMSI-Privacy-Protection-for-Wi-Fi-Technical-Specification-v1.0-PMO.pdf
+#
+VALUE	Notification			Certificate-Replacement-Required	16385

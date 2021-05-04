@@ -15,5 +15,6 @@ $INCLUDE dictionary.rfc5448
 $INCLUDE dictionary.rfc7458
 $INCLUDE dictionary.3gpp-ts24.139
 $INCLUDE dictionary.3gpp-ts24.302
+$INCLUDE dictionary.wba-imsi-private-protection-for-wifi
 
 END-PROTOCOL	EAP-AKA-SIM
