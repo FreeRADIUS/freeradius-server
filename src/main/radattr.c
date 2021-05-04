@@ -955,6 +955,26 @@ static void process_file(const char *root_dir, char const *filename)
 	if (fp != stdin) fclose(fp);
 }
 
+/** Dump all of the dictionary entries as
+ *
+ *	ALIAS name OID
+ *
+ *  To create dictionaries which allow files to be used with v4.
+ */
+static int dump_aliases(void *ctx, void *data)
+{
+	DICT_ATTR *da = data;
+	FILE *fp = ctx;
+	char buffer[1024];
+
+	if (!da->vendor) return 0;
+
+	(void) dict_print_oid(buffer, sizeof(buffer), da);
+	fprintf(fp, "ALIAS\t%s\t%s\n", da->name, buffer);
+
+	return 0;
+}
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: radattr [OPTS] filename\n");
@@ -970,6 +990,7 @@ int main(int argc, char *argv[])
 {
 	int c;
 	bool report = false;
+	bool dump_alias = false;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 	int *inst = &c;
@@ -983,7 +1004,10 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "Ad:D:xMh")) != EOF) switch (c) {
+		case 'A':
+			dump_alias = true;
+			break;
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -1025,6 +1049,11 @@ int main(int argc, char *argv[])
 	if (xlat_register("test", xlat_test, NULL, inst) < 0) {
 		fprintf(stderr, "Failed registering xlat");
 		return 1;
+	}
+
+	if (dump_alias) {
+		(void) dict_walk(dump_aliases, stdout);
+		return 0;
 	}
 
 	if (argc < 2) {
