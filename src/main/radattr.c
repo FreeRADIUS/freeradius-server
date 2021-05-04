@@ -969,10 +969,10 @@ static int dump_aliases(void *ctx, void *data)
 	FILE *fp = ctx;
 	char buffer[1024];
 
-	if (!da->vendor) return 0;
+	if (!da->vendor || (da->vendor > FR_MAX_VENDOR)) return 0;
 
 	(void) dict_print_oid(buffer, sizeof(buffer), da);
-	fprintf(fp, "ALIAS\t%s\t%s\n", da->name, buffer);
+	fprintf(fp, "ALIAS\t%s\t%s # %u\n", da->name, buffer, da->vendor);
 
 	return 0;
 }
