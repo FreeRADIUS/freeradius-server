@@ -1295,11 +1295,6 @@ RESUME(send_common_failure_notification)
 	SECTION_RCODE_IGNORED;
 
 	/*
-	 *	Free anything we were going to send out...
-	 */
-	fr_pair_list_free(&request->reply_pairs);
-
-	/*
 	 *	Allow the user to specify specific failure notification
 	 *	types.  We assume the user knows what they're doing and
 	 *	only toggle success and phase bits.
@@ -1317,6 +1312,13 @@ RESUME(send_common_failure_notification)
 	 *	  User has not subscribed to the requested service.
 	 */
 	notification_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_notification, 0);
+
+	/*
+	 *	Keep Notification, but remove everything else...
+	 */
+	if (notification_vp) fr_pair_remove(&request->reply_pairs, notification_vp);
+	fr_pair_list_free(&request->reply_pairs);
+	if (notification_vp) fr_pair_append(&request->reply_pairs, notification_vp);
 
 	/*
 	 *	Change the failure notification depending where
