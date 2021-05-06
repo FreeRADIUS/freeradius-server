@@ -668,10 +668,6 @@ post_ca:
 			goto error;
 		}
 
-		/*
-		 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
-		 *	Though they can be *globally* disabled if necessary.
-		 */
 #  ifdef SSL_OP_NO_TLSv1
 		if (conf->tls_min_version > (float) 1.0) ctx_options |= SSL_OP_NO_TLSv1;
 		ctx_tls_versions |= SSL_OP_NO_TLSv1;
@@ -702,22 +698,22 @@ post_ca:
 	ctx_options |= SSL_OP_NO_TICKET;
 #endif
 
+	/*
+	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
+	 *	small subgroup attacks and forward secrecy. Always
+	 *	using SSL_OP_SINGLE_DH_USE has an impact on the
+	 *	computer time needed during negotiation, but it is not
+	 *	very large.
+	 */
 	if (!conf->disable_single_dh_use) {
-		/*
-		 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
-		 *	small subgroup attacks and forward secrecy. Always
-		 *	using SSL_OP_SINGLE_DH_USE has an impact on the
-		 *	computer time needed during negotiation, but it is not
-		 *	very large.
-		 */
 		ctx_options |= SSL_OP_SINGLE_DH_USE;
 	}
 
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+	/*
+	 *	Note: This flag isn't honoured by all OpenSSL forks.
+	 */
 	if (conf->allow_renegotiation) {
-		/*
-		 *	Note: This flag isn't honoured by all OpenSSL forks.
-		 */
 		ctx_options |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
 	}
 #endif
@@ -730,12 +726,12 @@ post_ca:
 	 */
 	ctx_options |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
 
-	if (conf->cipher_server_preference) {
 	/*
 	 *	SSL_OP_CIPHER_SERVER_PREFERENCE to follow best practice
 	 *	of nowday's TLS: do not allow poorly-selected ciphers from
 	 *	client to take preference
 	 */
+	if (conf->cipher_server_preference) {
 		ctx_options |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 	}
 
