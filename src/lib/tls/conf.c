@@ -141,6 +141,7 @@ CONF_PARSER fr_tls_server_config[] = {
 #endif
 	{ FR_CONF_OFFSET("dh_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, fr_tls_conf_t, fragment_size), .dflt = "1024" },
+	{ FR_CONF_OFFSET("padding", FR_TYPE_UINT32, fr_tls_conf_t, padding_block_size), },
 
 	{ FR_CONF_OFFSET("disable_single_dh_use", FR_TYPE_BOOL, fr_tls_conf_t, disable_single_dh_use) },
 	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
@@ -427,6 +428,8 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
+
+	FR_INTEGER_BOUND_CHECK("padding", conf->padding_block_size, <=, SSL3_RT_MAX_PLAIN_LENGTH);
 
 #ifdef __APPLE__
 	if (conf_cert_admin_password(conf) < 0) goto error;

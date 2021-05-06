@@ -751,6 +751,18 @@ post_ca:
 	 *	SSL_CTX_set_msg_callback(ctx, fr_tls_session_msg_cb);
 	 */
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	/*
+	 *	Set the block size for record padding.  This is only
+	 *	used in TLS 1.3.
+	 */
+	if (conf->padding_block_size) {
+		SSL_CTX_set_block_padding(ctx, conf->padding_block_size);
+	}
+#endif
+
+
+
 	/*
 	 *	Set eliptical curve crypto configuration.
 	 */
