@@ -365,6 +365,8 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	 *	See how many consecutive attributes there are.
 	 */
 	while (ptr < end) {
+		if ((ptr + 2) == end) break;
+		if ((ptr + 2) > end) return -1;
 		if (ptr[1] <= 2) return -1;
 		if ((ptr + ptr[1]) > end) return -1;
 
@@ -407,6 +409,120 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	}
 	fr_dcursor_append(cursor, vp);
 	return ptr - data;
+}
+
+
+/** Decode NAS-Filter-Rule
+ *
+ *  Similar to decode_concat, but contains multiple values instead of
+ *  one.
+ */
+static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+				      fr_dict_attr_t const *parent, uint8_t const *data,
+				      size_t const data_len, fr_radius_ctx_t *packet_ctx)
+{
+	uint8_t const	*ptr = data;
+	uint8_t const	*end = data + data_len;
+	uint8_t	const	*decode, *decode_end;
+	uint8_t		*buffer = NULL;
+	size_t		total = 0;
+
+	/*
+	 *	Figure out how long the total length of the data is.
+	 *	This is so that we can do the decoding from a
+	 *	temporary buffer.  Which means that we coalesce data
+	 *	across multiple attributes, separately from chopping
+	 *	the data at zero bytes.
+	 */
+	while (ptr < end) {
+		if ((ptr + 2) == end) break;
+		if ((ptr + 2) > end) return -1;
+		if ((ptr[0] != FR_NAS_FILTER_RULE)) break;
+		if (ptr[1] <= 2) return -1;
+		if ((ptr + ptr[1]) > end) return -1;
+
+		total += ptr[1] - 2;
+		ptr += ptr[1];
+	}
+	end = ptr;
+
+	FR_PROTO_TRACE("Coalesced NAS-Filter-Rule has %lu octets", total);
+
+	/*
+	 *	More than one attribute, create a temporary buffer,
+	 *	and copy all of the data over to it.
+	 */
+	if (total > RADIUS_MAX_STRING_LENGTH) {
+		uint8_t *p;
+
+		buffer = talloc_array(packet_ctx->tmp_ctx, uint8_t, total);
+		if (!buffer) return PAIR_DECODE_OOM;
+
+		p = buffer;
+		ptr = data;
+
+		/*
+		 *	Don't bother doing sanity checks, as they were
+		 *	already done above.
+		 */
+		while (ptr < end) {
+			fr_assert(p < (buffer + total));
+			memcpy(p, ptr + 2, ptr[1] - 2);
+			p += ptr[1] - 2;
+			ptr += ptr[1];
+		}
+
+		decode = buffer;
+		decode_end = buffer + total;
+	} else {
+		decode = data + 2;
+		decode_end = data + data[1];
+	}
+
+	FR_PROTO_HEX_DUMP(decode, decode_end - decode, "NAS-Filter-Rule coalesced");
+
+	/*
+	 *	And now walk through "decode", decoding to VPs.
+	 */
+	while (decode < decode_end) {
+		size_t len;
+		uint8_t const *p;
+
+		p = decode;
+
+		while (p < decode_end) {
+			if (*p == 0x00) break;
+			p++;
+		}
+
+		len = (p - decode);
+		if (len) {
+			fr_pair_t *vp;
+
+			FR_PROTO_TRACE("This NAS-Filter-Rule has %lu octets", len);
+			FR_PROTO_HEX_DUMP(decode, len, "This NAS-Filter-Rule");
+			vp = fr_pair_afrom_da(ctx, parent);
+			if (!vp) {
+				talloc_free(buffer);
+				return -1;
+			}
+
+			if (fr_pair_value_bstrndup(vp, (char const *) decode, len, true) != 0) {
+				talloc_free(buffer);
+				talloc_free(vp);
+				return -1;
+			}
+			fr_dcursor_append(cursor, vp);
+		}
+
+		/*
+		 *	Skip the zero byte
+		 */
+		decode = p + 1;
+	}
+
+	talloc_free(buffer);
+	return end - data;	/* end of the NAS-Filter-Rule */
 }
 
 
@@ -1594,7 +1710,6 @@ done:
 	return attr_len;
 }
 
-
 /** Create a "normal" fr_pair_t from the given data
  *
  */
@@ -1655,6 +1770,11 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t c
 	if ((da->type == FR_TYPE_OCTETS && flag_concat(&da->flags))) {
 		FR_PROTO_TRACE("Concat attribute");
 		return decode_concat(ctx, cursor, da, data, data_len);
+	}
+
+	if (data[0] == FR_NAS_FILTER_RULE) {
+		FR_PROTO_TRACE("NAS-Filter-Rule attribute");
+		return decode_nas_filter_rule(ctx, cursor, da, data, data_len, packet_ctx);
 	}
 
 	/*
