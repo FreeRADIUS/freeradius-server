@@ -40,3 +40,4 @@ extern fr_dict_attr_t const *attr_eap_message;
 extern fr_dict_attr_t const *attr_message_authenticator;
 extern fr_dict_attr_t const *attr_state;
 extern fr_dict_attr_t const *attr_vendor_specific;
+extern fr_dict_attr_t const *attr_nas_filter_rule;

@@ -60,6 +60,7 @@ fr_dict_attr_t const *attr_eap_message;
 fr_dict_attr_t const *attr_message_authenticator;
 fr_dict_attr_t const *attr_state;
 fr_dict_attr_t const *attr_vendor_specific;
+fr_dict_attr_t const *attr_nas_filter_rule;
 
 extern fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
@@ -72,6 +73,7 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
+	{ .out = &attr_nas_filter_rule, .name = "NAS-Filter-Rule", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 

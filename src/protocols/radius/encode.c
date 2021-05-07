@@ -1227,6 +1227,111 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+/** Encode NAS-Filter-Rule
+ *
+ *  Concatenating the string attributes together, separated by a 0x00 byte,
+ */
+static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
+				      fr_da_stack_t *da_stack, UNUSED unsigned int depth,
+				      fr_dcursor_t *cursor, UNUSED void *encode_ctx)
+{
+	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_marker_t	hdr, frag_hdr;
+	fr_pair_t		*vp = fr_dcursor_current(cursor);
+	size_t			attr_len = 2;
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	fr_dbuff_marker(&hdr, &work_dbuff);
+	fr_dbuff_marker(&frag_hdr, &work_dbuff);
+	fr_dbuff_advance(&hdr, 1);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 0x00);
+
+	fr_assert(vp->da == attr_nas_filter_rule);
+
+	while (vp) {
+		size_t data_len = vp->vp_length;
+		size_t frag_len;
+		char const *p = vp->vp_strvalue;
+
+		/*
+		 *	Keep encoding this attribute until it's done.
+		 */
+		while (data_len > 0) {
+			frag_len = data_len;
+
+			/*
+			 *	This fragment doesn't overflow the
+			 *	attribute.  Copy it over, update the
+			 *	length, but leave the marker at the
+			 *	current header.
+			 */
+			if ((attr_len + frag_len) <= UINT8_MAX) {
+				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, frag_len);
+				attr_len += frag_len;
+
+				fr_dbuff_set(&frag_hdr, &hdr);
+				fr_dbuff_in(&frag_hdr, (uint8_t) attr_len); /* there's no fr_dbuff_in_no_advance() */
+				break;
+			}
+
+			/*
+			 *	This fragment overflows the attribute.
+			 *	Copy the fragment in, and create a new
+			 *	attribute header.
+			 */
+			frag_len = UINT8_MAX - attr_len;
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, p, frag_len);
+			fr_dbuff_in(&hdr, (uint8_t) UINT8_MAX);
+
+			fr_dbuff_marker(&hdr, &work_dbuff);
+			fr_dbuff_advance(&hdr, 1);
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 0x02);
+			attr_len = 2;
+
+			p += frag_len;
+			data_len -= frag_len;
+		}
+
+		/*
+		 *	If we have nothing more to do here, then stop.
+		 */
+		vp = fr_dcursor_next(cursor);
+		if (!vp || (vp->da != attr_nas_filter_rule)) {
+			break;
+		}
+
+		/*
+		 *	We have to add a zero byte.  If it doesn't
+		 *	overflow the current attribute, then just add
+		 *	it in.
+		 */
+		if (attr_len < UINT8_MAX) {
+			attr_len++;
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00);
+
+			fr_dbuff_set(&frag_hdr, &hdr);
+			fr_dbuff_in(&frag_hdr, (uint8_t) attr_len); /* there's no fr_dbuff_in_no_advance() */
+			continue;
+		}
+
+		/*
+		 *	The zero byte causes the current attribute to
+		 *	overflow.  Create a new header with the zero
+		 *	byte already populated, and keep going.
+		 */
+		fr_dbuff_marker(&hdr, &work_dbuff);
+		fr_dbuff_advance(&hdr, 1);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 0x00, 0x00);
+		attr_len = 3;
+	}
+
+	vp = fr_dcursor_current(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
 /** Encode an RFC standard attribute 1..255
  *
  *  This function is not the same as encode_attribute(), because this
@@ -1298,6 +1403,14 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 		vp = fr_dcursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return fr_dbuff_set(dbuff, &work_dbuff);
+	}
+
+	/*
+	 *	NAS-Filter-Rule has a stupid format in order to save
+	 *	one byte per attribute.
+	 */
+	if (vp->da == attr_nas_filter_rule) {
+		return encode_nas_filter_rule(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
 	/*
