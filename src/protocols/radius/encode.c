@@ -1232,7 +1232,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
  *  Concatenating the string attributes together, separated by a 0x00 byte,
  */
 static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
-				      fr_da_stack_t *da_stack, UNUSED unsigned int depth,
+				      fr_da_stack_t *da_stack, NDEBUG_UNUSED unsigned int depth,
 				      fr_dcursor_t *cursor, UNUSED void *encode_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
