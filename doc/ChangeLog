@@ -7,7 +7,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Add support for prepend operator ^=.  See "man unlang" for
 	  for details.
 	* The default minimum TLS version is now TLS 1.2, as per RFC 8996.
-	  Older versions can be allowed by setting tls_min_version
+	  Older versions can be allowed by setting tls_min_version, and
+	  updating "cipher_list".
 	* Significantly improve the readability and contents of TLS
 	  debug messages.
 	* Allow CoA and Disconnect messages over TLS sockets.
@@ -15,7 +16,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
 	  works, and no longer requires manual changes to the configuration.
 	* Add TLS 1.2 support for EAP-Fast.  Patches from Alex Clouter.
-	* Add a_path_reload_interval option for tls.  See mods-available/eap.
+	* Add ca_path_reload_interval option for tls.  See mods-available/eap.
 	  Fixes #1831.  Patch from Boris Lytochkin.
 	* Abfab-tls updates from Alejandro Perez.
 	* Add "tls_min_version" to ldap module configuration.
