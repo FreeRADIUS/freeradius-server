@@ -23,3 +23,11 @@ freeradius-devel:
 #
 totp: rlm_totp.c | src freeradius-devel
 	@$(CC) -DTESTING $(CFLAGS) $(OPENSSL_CPPFLAGS) -o $@ $(LDFLAGS) $(LIBS) ../../../build/lib/.libs/libfreeradius-radius.a rlm_totp.c
+
+#
+#  Test vectors from RFC 6238, Appendix B
+#
+test: totp
+	@while IFS= read -r line; do \
+		./totp totp $$line || exit 1; \
+	done < sha1.txt

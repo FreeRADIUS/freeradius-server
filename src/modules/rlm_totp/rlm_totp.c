@@ -201,10 +201,6 @@ static int totp_cmp(time_t now, uint8_t const *key, size_t keylen, char const *t
 	 */
 	snprintf(buffer, sizeof(buffer), PRINT, challenge % DIV);
 
-#ifdef TESTING
-	printf("Calculated: %s\n", buffer);
-#endif
-
 	return rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, LEN);
 }
 
@@ -285,7 +281,7 @@ int main(int argc, char **argv)
 	uint8_t *p;
 	uint8_t key[80];
 
-	if (argc == 0) return 0;
+	if (argc < 2) return 0;
 
 	if (strcmp(argv[1], "decode") == 0) {
 		if (argc < 3) return 0;
@@ -311,13 +307,14 @@ int main(int argc, char **argv)
 
 		(void) sscanf(argv[2], "%llu", &now);
 
-		if (totp_cmp((time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) != 0) {
-			printf("Fail\n");
-		} else {
-			printf("OK\n");
+		if (totp_cmp((time_t) now, (uint8_t const *) argv[3], strlen(argv[3]), argv[4]) == 0) {
+			return 0;
 		}
+		printf("Fail\n");
+		return 1;
 	}
 
-	return 0;
+	fprintf(stderr, "Unknown command argv[1]\n", argv[1]);
+	return 1;
 }
 #endif
