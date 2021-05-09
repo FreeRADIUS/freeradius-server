@@ -287,6 +287,10 @@ ATTRIBUTE	SSHA3-512-Password			1185	octets
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
 ATTRIBUTE	Home-Server-Name			1193	string
 
+ATTRIBUTE	TOTP-Secret				1194	string # base32 encoded
+ATTRIBUTE	TOTP-Key				1195	octets # raw key
+ATTRIBUTE	TOTP-Password				1196	string
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

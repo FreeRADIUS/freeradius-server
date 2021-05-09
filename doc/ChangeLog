@@ -6,6 +6,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  and doc/configuration/dynamic_home_servers.md
 	* Add support for prepend operator ^=.  See "man unlang" for
 	  for details.
+	* Added rlm_totp, for use with the Google Authenticator app.
+	  See mods-available/totp.
 	* The default minimum TLS version is now TLS 1.2, as per RFC 8996.
 	  Older versions can be allowed by setting tls_min_version, and
 	  updating "cipher_list".
