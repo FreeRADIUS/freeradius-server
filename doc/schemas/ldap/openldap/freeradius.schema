@@ -295,14 +295,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.50
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.51
-	NAME 'radiusReplicateToRealm'
-	DESC 'control.Replicate-To-Realm'
-	EQUALITY caseIgnoreMatch
-	SUBSTR caseIgnoreSubstringsMatch
-	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
-	SINGLE-VALUE
- )
+# 51 was Replicate-To-Realm, now deleted
 
 attributetype ( 1.3.6.1.4.1.11344.4.1.2.1.52
 	NAME 'radiusRealm'
