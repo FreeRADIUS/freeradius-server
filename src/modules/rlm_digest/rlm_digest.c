@@ -125,19 +125,19 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	/*
 	 *	We require access to the plain-text password, or to the
-	 *	Digest-HA1 parameter.
+	 *	Digest-Attributes.HA1 parameter.
 	 */
 	passwd = fr_pair_find_by_da(&request->control_pairs, attr_digest_ha1, 0);
 	if (passwd) {
 		if (passwd->vp_length != 32) {
-			REDEBUG("Digest-HA1 has invalid length, authentication failed");
+			REDEBUG("Digest-Attributes.HA1 has invalid length, authentication failed");
 			RETURN_MODULE_INVALID;
 		}
 	} else {
 		passwd = fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password, 0);
 	}
 	if (!passwd) {
-		REDEBUG("Password.Cleartext or Digest-HA1 is required for authentication");
+		REDEBUG("Password.Cleartext or Digest-Attributes.HA1 is required for authentication");
 		RETURN_MODULE_INVALID;
 	}
 
@@ -149,20 +149,20 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	list = &vp->vp_group;
 
 	/*
-	 *	We require access to the Digest-Nonce-Value
+	 *	We require access to the Digest-Attributes.Nonce
 	 */
 	nonce = fr_pair_find_by_da(list, attr_digest_nonce, 0);
 	if (!nonce) {
-		REDEBUG("No Digest-Nonce: Cannot perform Digest authentication");
+		REDEBUG("No Digest-Attributes.Nonce: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
 	}
 
 	/*
-	 *	A1 = Digest-User-Name ":" Realm ":" Password
+	 *	A1 = Digest-Attributes.User-Name ":" Realm ":" Password
 	 */
 	vp = fr_pair_find_by_da(list, attr_digest_user_name, 0);
 	if (!vp) {
-		REDEBUG("No Digest-User-Name: Cannot perform Digest authentication");
+		REDEBUG("No Digest-Attributes.User-Name: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a1[0], vp->vp_octets, vp->vp_length);
@@ -173,7 +173,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	vp = fr_pair_find_by_da(list, attr_digest_realm, 0);
 	if (!vp) {
-		REDEBUG("No Digest-Realm: Cannot perform Digest authentication");
+		REDEBUG("No Digest-Attributes.Attributes.Realm: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a1[a1_len], vp->vp_octets, vp->vp_length);
@@ -189,7 +189,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RDEBUG2("A1 = %s", a1);
 	} else {
 		a1[a1_len] = '\0';
-		RDEBUG2("A1 = %s (using Digest-HA1)", a1);
+		RDEBUG2("A1 = %s (using Digest-Attributes.HA1)", a1);
 		a1_len = 16;
 	}
 
@@ -201,27 +201,27 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	if ((!algo) ||
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*
-		 *	Set A1 to Digest-HA1 if no User-Password found
+		 *	Set A1 to Digest-Attributes.HA1 if no User-Password found
 		 */
 		if (passwd->da == attr_digest_ha1) {
 			if (fr_hex2bin(NULL, &FR_DBUFF_TMP(&a1[0], sizeof(a1)),
 				       &FR_SBUFF_IN(passwd->vp_strvalue, passwd->vp_length), false) != 16) {
-				RDEBUG2("Invalid text in Digest-HA1");
+				RDEBUG2("Invalid text in Digest-Attributes.HA1");
 				RETURN_MODULE_INVALID;
 			}
 		}
 
 	} else if (strcasecmp(algo->vp_strvalue, "MD5-sess") == 0) {
 		/*
-		 *	K1 = H(A1) : Digest-Nonce ... : H(A2)
+		 *	K1 = H(A1) : Digest-Attributes.Nonce ... : H(A2)
 		 *
-		 *	If we find Digest-HA1, we assume it contains
+		 *	If we find Digest-Attributes.HA1, we assume it contains
 		 *	H(A1).
 		 */
 		if (passwd->da == attr_cleartext_password) {
 			fr_md5_calc(hash, &a1[0], a1_len);
 			fr_bin2hex(&FR_SBUFF_OUT((char *) &a1[0], 32 + 1), &FR_DBUFF_TMP(hash, 16), SIZE_MAX);
-		} else {	/* MUST be Digest-HA1 */
+		} else {	/* MUST be Digest-Attributes.HA1 */
 			memcpy(&a1[0], passwd->vp_strvalue, 32);
 		}
 		a1_len = 32;
@@ -230,10 +230,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		a1_len++;
 
 		/*
-		 *	Tack on the Digest-Nonce. Length must be even
+		 *	Tack on the Digest-Attributes.Nonce. Length must be even
 		 */
 		if ((nonce->vp_length & 1) != 0) {
-			REDEBUG("Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
+			REDEBUG("Received Digest-Attributes.Nonce hex string with invalid length: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
 		}
 		memcpy(&a1[a1_len], nonce->vp_octets, nonce->vp_length);
@@ -244,15 +244,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 		vp = fr_pair_find_by_da(list, attr_digest_cnonce, 0);
 		if (!vp) {
-			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
+			REDEBUG("No Digest-Attributes.CNonce: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
 		}
 
 		/*
-		 *      Digest-CNonce length must be even
+		 *      Digest-Attributes.CNonce length must be even
 		 */
 		if ((vp->vp_length & 1) != 0) {
-			REDEBUG("Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
+			REDEBUG("Received Digest-Attributes.CNonce hex string with invalid length: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
 		}
 		memcpy(&a1[a1_len], vp->vp_octets, vp->vp_length);
@@ -263,16 +263,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		 *	We check for "MD5-sess" and "MD5".
 		 *	Anything else is an error.
 		 */
-		REDEBUG("%pP - Unknown Digest-Algorithm: Cannot perform Digest authentication", vp);
+		REDEBUG("%pP - Unknown Digest-Attributes.Algorithm: Cannot perform Digest authentication", vp);
 		RETURN_MODULE_INVALID;
 	}
 
 	/*
-	 *	A2 = Digest-Method ":" Digest-URI
+	 *	A2 = Digest-Attributes.Method ":" Digest-Attributes.URI
 	 */
 	vp = fr_pair_find_by_da(list, attr_digest_method, 0);
 	if (!vp) {
-		REDEBUG("No Digest-Method: Cannot perform Digest authentication");
+		REDEBUG("No Digest-Attributes.Method: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a2[0], vp->vp_octets, vp->vp_length);
@@ -283,14 +283,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	vp = fr_pair_find_by_da(list, attr_digest_uri, 0);
 	if (!vp) {
-		REDEBUG("No Digest-URI: Cannot perform Digest authentication");
+		REDEBUG("No Digest-Attributes.URI: Cannot perform Digest authentication");
 		RETURN_MODULE_INVALID;
 	}
 	memcpy(&a2[a2_len], vp->vp_octets, vp->vp_length);
 	a2_len += vp->vp_length;
 
 	/*
-	 *  QOP is "auth-int", tack on ": Digest-Body-Digest"
+	 *  QOP is "auth-int", tack on ": Digest-Attributes.Body-Digest"
 	 */
 	qop = fr_pair_find_by_da(list, attr_digest_qop, 0);
 	if (qop) {
@@ -298,7 +298,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 			fr_pair_t *body;
 
 			/*
-			 *	Add in Digest-Body-Digest
+			 *	Add in Digest-Attributes.Body-Digest
 			 */
 			a2[a2_len] = ':';
 			a2_len++;
@@ -308,12 +308,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 			 */
 			body = fr_pair_find_by_da(list, attr_digest_body_digest, 0);
 			if (!body) {
-				REDEBUG("No Digest-Body-Digest: Cannot perform Digest authentication");
+				REDEBUG("No Digest-Attributes.Body-Digest: Cannot perform Digest authentication");
 				RETURN_MODULE_INVALID;
 			}
 
 			if ((a2_len + body->vp_length) > sizeof(a2)) {
-				REDEBUG("Digest-Body-Digest is too long");
+				REDEBUG("Digest-Attributes.Body-Digest is too long");
 				RETURN_MODULE_INVALID;
 			}
 
@@ -330,8 +330,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	RDEBUG2("A2 = %s", a2);
 
 	/*
-	 *     KD = H(A1) : Digest-Nonce ... : H(A2).
-	 *     Compute MD5 if Digest-Algorithm == "MD5-Sess",
+	 *     KD = H(A1) : Digest-Attributes.Nonce ... : H(A2).
+	 *     Compute MD5 if Digest-Attributes.Algorithm == "MD5-Sess",
 	 *     or if we found a User-Password.
 	 */
 	if (((algo != NULL) && (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
@@ -361,17 +361,17 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		 *	Do nothing here.
 		 */
 
-	} else {		/* Digest-QOP MUST be "auth" or "auth-int" */
+	} else {		/* Digest-Attributes.QOP MUST be "auth" or "auth-int" */
 		/*
-		 *	Tack on ":" Digest-Nonce-Count ":" Digest-CNonce
-		 *	       ":" Digest-QOP
+		 *	Tack on ":" Digest-Attributes.Nonce-Count ":" Digest-Attributes.CNonce
+		 *	       ":" Digest-Attributes.QOP
 		 */
 		kd[kd_len] = ':';
 		kd_len++;
 
 		vp = fr_pair_find_by_da(list, attr_digest_nonce_count, 0);
 		if (!vp) {
-			REDEBUG("No Digest-Nonce-Count: Cannot perform Digest authentication");
+			REDEBUG("No Digest-Attributes.Nonce-Count: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
 		}
 		memcpy(&kd[kd_len], vp->vp_octets, vp->vp_length);
@@ -382,7 +382,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 		vp = fr_pair_find_by_da(list, attr_digest_cnonce, 0);
 		if (!vp) {
-			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
+			REDEBUG("No Digest-Attributes.CNonce: Cannot perform Digest authentication");
 			RETURN_MODULE_INVALID;
 		}
 		memcpy(&kd[kd_len], vp->vp_octets, vp->vp_length);
