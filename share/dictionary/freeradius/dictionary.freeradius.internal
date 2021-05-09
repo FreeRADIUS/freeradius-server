@@ -181,21 +181,13 @@ ATTRIBUTE	SQL-User-Name				1023	string
 ATTRIBUTE	SMB-Account-CTRL			1024	integer
 ATTRIBUTE	SMB-Account-CTRL-TEXT			1025	string
 ATTRIBUTE	User-Profile				1026	string
-ATTRIBUTE	Digest-Realm				1027	string
-ATTRIBUTE	Digest-Nonce				1028	string
-ATTRIBUTE	Digest-Method				1029	string
-ATTRIBUTE	Digest-URI				1030	string
-ATTRIBUTE	Digest-QOP				1031	string
-ATTRIBUTE	Digest-Algorithm			1032	string
-ATTRIBUTE	Digest-Body-Digest			1033	string
-ATTRIBUTE	Digest-CNonce				1034	string
-ATTRIBUTE	Digest-Nonce-Count			1035	string
-ATTRIBUTE	Digest-User-Name			1036	string
+# 1027-1036 were Digest attributes.
 
 ATTRIBUTE	Module-Success-Message			1037	string
 ATTRIBUTE	Module-Failure-Message			1038	string
 ATTRIBUTE	Rewrite-Rule				1039	string
-ATTRIBUTE	Digest-HA1				1040	string
+# 1040 was Digest-HA1
+
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1041	bool
 ATTRIBUTE	NTLM-User-Name				1042	string
 ATTRIBUTE	MS-CHAP-User-Name			1043	string
