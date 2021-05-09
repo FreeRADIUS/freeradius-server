@@ -31,6 +31,7 @@ rlm_sql
 rlm_sqlcounter
 rlm_sqlippool
 rlm_test
+rlm_totp
 rlm_unix
 rlm_sometimes
 rlm_wimax
