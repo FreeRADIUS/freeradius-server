@@ -961,18 +961,55 @@ static void process_file(const char *root_dir, char const *filename)
  *
  *  To create dictionaries which allow files to be used with v4.
  *
- *  ./build/make/jlibtool --mode=execute ./build/bin/radattr  -D ./share/ -A  | sort -k2
+ * rm -rf alias;mkdir alias;./build/make/jlibtool --mode=execute ./build/bin/radattr  -D ./share/ -A  | sort -n -k6 -k7 -k8 -k9 -k10 -k11 | gawk '{printf "%s\t%-40s\t%s\n", $1, $2, $3 >> "alias/alias." tolower($5) }'
+ *
+ *  And then post-process each file to remove the comments.
+ *
+ *  Note that we have to use GNU Awk, as OSX awk doesn't like redirection to a file which includes a variable.
  */
 static int dump_aliases(void *ctx, void *data)
 {
 	DICT_ATTR *da = data;
 	FILE *fp = ctx;
+	int nest, attr, dv_type;
+	DICT_VENDOR *dv;
 	char buffer[1024];
 
 	if (!da->vendor || (da->vendor > FR_MAX_VENDOR)) return 0;
 
+	dv = dict_vendorbyvalue(da->vendor);
+	dv_type = dv->type;
+
 	(void) dict_print_oid(buffer, sizeof(buffer), da);
-	fprintf(fp, "ALIAS\t%s\t%s # %u\n", da->name, buffer, da->vendor);
+	fprintf(fp, "ALIAS\t%s\t%s # %s %u", da->name, buffer, dv->name, da->vendor);
+
+	attr = da->attr;
+	switch (dv_type) {
+	default:
+	case 1:
+		fprintf(fp, " %u", attr & 0xff);
+
+		/*
+		 *	Only these ones are bit-packed.
+		 */
+		for (nest = 1; nest <= fr_attr_max_tlv; nest++) {
+			if (((attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]) == 0) break;
+
+			fprintf(fp, " %u",
+				(attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
+		}
+		break;
+
+	case 2:
+		fprintf(fp, " %u", attr & 0xffff);
+		break;
+
+	case 4:
+		fprintf(fp, " %u", attr);
+		break;
+	}
+
+	printf("\n");
 
 	return 0;
 }
