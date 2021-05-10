@@ -603,13 +603,30 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	if (unlikely(!self)) return -1;
 
 	self->dict = ctx->dict;
-	dict_attr_ref_set(self, da);
+
+	/*
+	 *	Allocate room for the reference.
+	 */
+	if (dict_attr_ext_alloc(&self, FR_DICT_ATTR_EXT_REF) < 0) {
+		fr_strerror_const("Internal allocating reference");
+		goto error;
+	}
+
+	/*
+	 *	Then set the reference.
+	 */
+	if (dict_attr_ref_set(self, da) < 0) {
+		fr_strerror_const("Internal error storing reference");
+		goto error;
+	}
+
+	fr_assert(fr_dict_attr_ref(self) == da);
 
 	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
 		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
 	error:
-		talloc_const_free(da);
+		talloc_free(self);
 		return -1;
 	}
 
