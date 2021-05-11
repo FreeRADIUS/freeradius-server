@@ -1588,47 +1588,42 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 	return slen + diff;
 }
 
-/*
- *	Walk in order.
+/** Initialise a cond iterator
+ *
+ * Will return the first leaf condition node.
+ *
+ * @param[out] iter	to initialise.
+ * @param[in] head	the root of the condition structure.
+ * @return The first leaf condition node.
  */
-bool fr_cond_walk(fr_cond_t *c, bool (*callback)(fr_cond_t *cond, void *uctx), void *uctx)
+fr_cond_t *fr_cond_iter_init(fr_cond_iter_t *iter, fr_cond_t *head)
 {
-	while (c) {
-		/*
-		 *	Process this one, exit on error.
-		 */
-		if (!callback(c, uctx)) return false;
+	fr_cond_t *c;
 
-		switch (c->type) {
-		case COND_TYPE_INVALID:
-			return false;
+	for (c = head; c->type == COND_TYPE_CHILD; c = c->data.child);	/* Deepest condition */
 
-		case COND_TYPE_RCODE:
-		case COND_TYPE_TMPL:
-		case COND_TYPE_MAP:
-		case COND_TYPE_AND:
-		case COND_TYPE_OR:
-		case COND_TYPE_TRUE:
-		case COND_TYPE_FALSE:
-			break;
+	return iter->cond = c;
+}
 
-		case COND_TYPE_CHILD:
-			/*
-			 *	Walk over the child.
-			 */
-			if (!fr_cond_walk(c->data.child, callback, uctx)) {
-				return false;
-			}
-			break;
-		}
+/** Get the next leaf condition node
+ *
+ * @param[in] iter	to iterate over.
+ * @return The next leaf condition node.
+ */
+fr_cond_t *fr_cond_iter_next(fr_cond_iter_t *iter)
+{
+	fr_cond_t *c;
 
-		/*
-		 *	process the next sibling
-		 */
-		c = c->next;
+	/*
+	 *	Walk up the tree, maybe...
+	 */
+	for (c = iter->cond; c; c = c->parent) {
+		if (!c->next) continue; /* Done with this level */
+		for (c = c->next; c->type == COND_TYPE_CHILD; c = c->data.child);	/* down we go... */
+		break;
 	}
 
-	return true;
+	return iter->cond = c;
 }
 
 /** Update the condition with "is async required".

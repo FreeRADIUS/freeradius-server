@@ -174,11 +174,17 @@ static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const 
 
 #define RULES_VERIFY(_rules) if (unlang_rules_verify(_rules) < 0) return NULL;
 
-static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, CONF_ITEM const *ci, tmpl_t **vpt_p)
+static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict)
 {
 	tmpl_t *vpt = *vpt_p;
 
 	TMPL_VERIFY(vpt);
+
+	/*
+	 *	We may now know the correct dictionary
+	 *	where we didn't before...
+	 */
+	if (!vpt->rules.dict_def) tmpl_set_dict_def(vpt, dict);
 
 	/*
 	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
@@ -205,9 +211,9 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, CONF_ITEM const *ci, tmpl_t **vpt_
 	return true;
 }
 
-static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
+static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *dict)
 {
-	tmpl_t		*vpt;
+	tmpl_t	*vpt;
 	map_t	*map;
 
 	map = c->data.map;	/* shorter */
@@ -237,11 +243,11 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 		 *	Resolve the attribute references first
 		 */
 		if (tmpl_is_attr_unresolved(map->lhs)) {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) return false;
+			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) return false;
 		}
 
 		if (tmpl_is_attr_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
 		}
 
 		c->pass2_fixup = PASS2_FIXUP_NONE;
@@ -273,11 +279,11 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 		 *	@todo - allow anything anywhere.
 		 */
 		if (!tmpl_is_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) {
+			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
 				return false;
 			}
 		} else {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) {
+			if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
 				return false;
 			}
 
@@ -346,20 +352,20 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 		 *	forbids this.
 		 */
 		if (tmpl_is_attr(map->lhs)) {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
 		} else {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) return false;
 		}
 	}
 
 	if (tmpl_is_exec_unresolved(map->lhs)) {
-		if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) {
+		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, dict)) {
 			return false;
 		}
 	}
 
 	if (tmpl_is_exec_unresolved(map->rhs)) {
-		if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) {
+		if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) {
 			return false;
 		}
 	}
@@ -400,7 +406,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 
 #ifdef HAVE_REGEX
 	if (tmpl_is_regex_xlat_unresolved(map->rhs)) {
-		if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) {
+		if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, dict)) {
 			return false;
 		}
 	}
@@ -470,50 +476,6 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci)
 	return true;
 }
 
-static bool pass2_cond_callback(fr_cond_t *c, void *uctx)
-{
-	CONF_SECTION *cs = talloc_get_type_abort(uctx, CONF_SECTION);
-	CONF_ITEM *ci = cf_section_to_item(cs);
-
-	switch (c->type) {
-	/*
-	 *	These don't get optimized.
-	 */
-	case COND_TYPE_TRUE:
-	case COND_TYPE_FALSE:
-	case COND_TYPE_RCODE:
-	case COND_TYPE_AND:
-	case COND_TYPE_OR:
-		return true;
-
-	/*
-	 *	Call children.
-	 */
-	case COND_TYPE_CHILD:
-		return pass2_cond_callback(c->data.child, uctx);
-
-	/*
-	 *	Fix up the template.
-	 */
-	case COND_TYPE_TMPL:
-		fr_assert(!tmpl_is_regex_xlat_unresolved(c->data.vpt));
-		return pass2_fixup_tmpl(c, ci, &c->data.vpt);
-
-	/*
-	 *	Fixup the map
-	 */
-	case COND_TYPE_MAP:
-		return pass2_fixup_cond_map(c, uctx);
-
-	/*
-	 *	Nothing else has pass2 fixups
-	 */
-	default:
-		fr_assert(0);
-		return false;
-	}
-}
-
 static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
 	RULES_VERIFY(rules);
@@ -525,13 +487,13 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 		 *	FIXME: compile to attribute && handle
 		 *	the conversion in map_to_vp().
 		 */
-		if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) {
+		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->dict_def)) {
 			return false;
 		}
 	}
 
 	if (tmpl_is_exec(map->lhs)) {
-		if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) {
+		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->dict_def)) {
 			return false;
 		}
 	}
@@ -540,7 +502,7 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 	 *	Deal with undefined attributes now.
 	 */
 	if (tmpl_is_attr_unresolved(map->lhs)) {
-		if (!pass2_fixup_tmpl(map, map->ci, &map->lhs)) return false;
+		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->dict_def)) return false;
 	}
 
 	/*
@@ -563,7 +525,7 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 			 *	FIXME: compile to attribute && handle
 			 *	the conversion in map_to_vp().
 			 */
-			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) {
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->dict_def)) {
 				return false;
 			}
 		}
@@ -571,11 +533,11 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 		fr_assert(!tmpl_is_regex_xlat_unresolved(map->rhs));
 
 		if (tmpl_is_attr_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) return false;
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->dict_def)) return false;
 		}
 
 		if (tmpl_is_exec(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, map->ci, &map->rhs)) {
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->dict_def)) {
 				return false;
 			}
 		}
@@ -646,7 +608,8 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	 */
 	if (!gext->vpt) return true;
 
-	return pass2_fixup_tmpl(fr_map_list_head(&gext->map)->ci, cf_section_to_item(g->cs), &gext->vpt);
+	return pass2_fixup_tmpl(fr_map_list_head(&gext->map)->ci, &gext->vpt,
+				cf_section_to_item(g->cs), rules->dict_def);
 }
 
 static void unlang_dump(unlang_t *instruction, int depth)
@@ -1981,7 +1944,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	This is so that compile_case() can do attribute type
 	 *	checks / casts against us.
 	 */
-	if (!pass2_fixup_tmpl(g, cf_section_to_item(cs), &gext->vpt)) {
+	if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->dict_def)) {
 		talloc_free(g);
 		return NULL;
 	}
@@ -2493,7 +2456,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	unlang_t		*c;
 
 	unlang_group_t		*g;
-	unlang_cond_t	*gext;
+	unlang_cond_t		*gext;
 
 	fr_cond_t		*cond;
 
@@ -2510,13 +2473,35 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 				    unlang_ops[ext->type].name);
 		c = compile_empty(parent, unlang_ctx, cs, ext);
 	} else {
-		/*
-		 *	The condition may refer to attributes, xlats, or
-		 *	Auth-Types which didn't exist when it was first
-		 *	parsed.  Now that they are all defined, we need to fix
-		 *	them up.
-		 */
-		if (!fr_cond_walk(cond, pass2_cond_callback, cs)) return NULL;
+		fr_cond_iter_t	iter;
+		fr_cond_t	*leaf;
+
+		for (leaf = fr_cond_iter_init(&iter, cond);
+		     leaf;
+		     leaf = fr_cond_iter_next(&iter)) {
+			switch (leaf->type) {
+			/*
+			 *	Fix up the template.
+			 */
+			case COND_TYPE_TMPL:
+				fr_assert(!tmpl_is_regex_xlat_unresolved(leaf->data.vpt));
+				if (!pass2_fixup_tmpl(leaf, &leaf->data.vpt, cf_section_to_item(cs),
+						      unlang_ctx->rules->dict_def)) return false;
+				break;
+
+			/*
+			 *	Fixup the map
+			 */
+			case COND_TYPE_MAP:
+				if (!pass2_fixup_cond_map(leaf, cf_section_to_item(cs),
+							  unlang_ctx->rules->dict_def)) return false;
+				break;
+
+			default:
+				continue;
+			}
+		}
+
 		fr_cond_async_update(cond);
 		c = compile_section(parent, unlang_ctx, cs, ext);
 	}
@@ -2744,7 +2729,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		/*
 		 *	Fixup the templates
 		 */
-		if (!pass2_fixup_tmpl(g, cf_section_to_item(cs), &gext->vpt)) {
+		if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->dict_def)) {
 			talloc_free(g);
 			return NULL;
 		}
@@ -2857,7 +2842,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	unlang_t			*c;
 
 	unlang_group_t			*g;
-	unlang_subrequest_t	*gext;
+	unlang_subrequest_t		*gext;
 
 	unlang_compile_t		unlang_ctx2;
 

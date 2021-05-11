@@ -1902,7 +1902,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 
 	if (!dict) {
 		fr_strerror_printf("Unknown protocol '%s'", root.name);
-		*out = NULL;
+		memcpy(out, &dict_def, sizeof(*out));
 		return 0;
 	}
 
@@ -2160,12 +2160,25 @@ typedef ssize_t (*dict_attr_resolve_func_t)(fr_dict_attr_err_t *err,
 
 /** Internal function for searching for attributes in multiple dictionaries
  *
+ * @param[out] err		Any errors that occurred searching.
+ * @param[out] out		The attribute we found.
+ * @param[in] dict_def		The default dictionary to search in.
+ * @param[in] in		string to resolve to an attribute.
+ * @param[in] tt		terminals that indicate the end of the string.
+ * @param[in] internal		Resolve the attribute in the internal dictionary.
+ * @param[in] foreign		Resolve attribute in a foreign dictionary,
+ *				i.e. one other than dict_def.
+ * @param[in] func		to use for resolution.
+ * @return
+ *	- <=0 on error (the offset of the error).
+ *	- >0 on success.
  */
 static inline CC_HINT(always_inline)
 ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		         fr_dict_t const *dict_def,
 		         fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-		         bool fallback, dict_attr_resolve_func_t func)
+		         bool internal, bool foreign,
+		         dict_attr_resolve_func_t func)
 {
 	fr_dict_attr_err_t	our_err;
 	fr_hash_iter_t  	iter;
@@ -2173,6 +2186,14 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 
 	ssize_t			slen;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+
+	/*
+	 *	Always going to fail...
+	 */
+	if (unlikely(!internal && !foreign && !dict_def)) {
+		if (err) *err = FR_DICT_ATTR_EINVAL;
+		return 0;
+	}
 
 	/*
 	 *	dict_def search in the specified dictionary
@@ -2184,7 +2205,7 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 			return fr_sbuff_set(in, &our_in);
 
 		case FR_DICT_ATTR_NOTFOUND:
-			if (!fallback) goto error;
+			if (!internal && !foreign) goto error;
 			break;
 
 		default:
@@ -2195,17 +2216,19 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	/*
 	 *	Next in the internal dictionary
 	 */
-	slen = func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
-	switch (our_err) {
-	case FR_DICT_ATTR_OK:
-		return fr_sbuff_set(in, &our_in);
+	if (internal) {
+		slen = func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
+		switch (our_err) {
+		case FR_DICT_ATTR_OK:
+			return fr_sbuff_set(in, &our_in);
 
-	case FR_DICT_ATTR_NOTFOUND:
-		if (!fallback) goto error;
-		break;
+		case FR_DICT_ATTR_NOTFOUND:
+			if (!foreign) goto error;
+			break;
 
-	default:
-		goto error;
+		default:
+			goto error;
+		}
 	}
 
 	/*
@@ -2231,6 +2254,44 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	}
 
 error:
+	if (our_err == FR_DICT_ATTR_NOTFOUND) {
+		fr_sbuff_marker_t	start;
+		char			*list = NULL;
+
+		our_in = FR_SBUFF_NO_ADVANCE(in);
+		fr_sbuff_marker(&start, &our_in);
+
+		list = talloc_strdup(NULL, "");
+
+		if (dict_def) {
+			list = talloc_strdup_append_buffer(list, fr_dict_root(dict_def)->name);
+			list = talloc_strdup_append_buffer(list, ", ");
+		}
+		if (internal) {
+			list = talloc_strdup_append_buffer(list, fr_dict_root(dict_gctx->internal)->name);
+			list = talloc_strdup_append_buffer(list, ", ");
+		}
+
+		if (foreign) {
+			for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
+			     dict;
+			     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &iter)) {
+				if (dict == dict_def) continue;
+				if (dict == dict_gctx->internal) continue;
+
+				list = talloc_strdup_append_buffer(list, fr_dict_root(dict)->name);
+				list = talloc_strdup_append_buffer(list, ", ");
+			}
+		}
+
+		fr_strerror_printf("Attribute '%pV' not found.  Searched in: %pV",
+				   fr_box_strvalue_len(fr_sbuff_current(&start),
+				   		       fr_sbuff_adv_until(&our_in, SIZE_MAX, tt, '\0')),
+				   fr_box_strvalue_len(list, talloc_array_length(list) - 3));
+
+		talloc_free(list);
+	}
+
 	if (err) *err = our_err;
 	*out = NULL;
 
@@ -2246,7 +2307,8 @@ static inline CC_HINT(always_inline)
 ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 				   fr_dict_t const *dict_def,
 				   fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-				   bool fallback, dict_attr_resolve_func_t func)
+				   bool internal, bool foreign,
+				   dict_attr_resolve_func_t func)
 {
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 	fr_dict_attr_err_t	our_err;
@@ -2277,10 +2339,10 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
 			return 0;
 		}
 
-		fallback = false;
+		internal = foreign = false;
 	}
 
-	slen = dict_attr_search(&our_err, out, initial, &our_in, tt, fallback, func);
+	slen = dict_attr_search(&our_err, out, initial, &our_in, tt, internal, foreign, func);
 	if (our_err != FR_DICT_ATTR_OK) goto error;
 
 	return fr_sbuff_set(in, &our_in);
@@ -2303,7 +2365,8 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] name		Dictionary/Attribute name.
  * @param[in] tt		Terminal strings.
- * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @param[in] internal		If true, fallback to the internal dictionary.
+ * @param[in] foreign		If true, fallback to foreign dictionaries.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
@@ -2311,9 +2374,10 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
 ssize_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 						     fr_dict_t const *dict_def,
 						     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
-						     bool fallback)
+						     bool internal, bool foreign)
 {
-	return dict_attr_search_qualified(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+	return dict_attr_search_qualified(err, out, dict_def, name, tt,
+					  internal, foreign, fr_dict_attr_by_name_substr);
 }
 
 /** Locate a #fr_dict_attr_t by its name in the top level namespace of a dictionary
@@ -2330,7 +2394,8 @@ ssize_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] name		Dictionary/Attribute name.
  * @param[in] tt		Terminal strings.
- * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @param[in] internal		If true, fallback to the internal dictionary.
+ * @param[in] foreign		If true, fallback to foreign dictionaries.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
@@ -2338,9 +2403,10 @@ ssize_t fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr
 ssize_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 					   fr_dict_t const *dict_def,
 					   fr_sbuff_t *name, fr_sbuff_term_t const *tt,
-					   bool fallback)
+					   bool internal, bool foreign)
 {
-	return dict_attr_search_qualified(err, out, dict_def, name, tt, fallback, fr_dict_attr_by_name_substr);
+	return dict_attr_search_qualified(err, out, dict_def, name, tt,
+					  internal, foreign, fr_dict_attr_by_name_substr);
 }
 
 /** Locate a qualified #fr_dict_attr_t by a dictionary qualified OID string
@@ -2357,16 +2423,19 @@ ssize_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] in		Dictionary/Attribute name.
  * @param[in] tt		Terminal strings.
- * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @param[in] internal		If true, fallback to the internal dictionary.
+ * @param[in] foreign		If true, fallback to foreign dictionaries.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 						    fr_dict_t const *dict_def,
-						    fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
+						    fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+						    bool internal, bool foreign)
 {
-	return dict_attr_search_qualified(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
+	return dict_attr_search_qualified(err, out, dict_def, in, tt,
+					  internal, foreign, fr_dict_attr_by_oid_substr);
 }
 
 /** Locate a qualified #fr_dict_attr_t by a dictionary using a non-qualified OID string
@@ -2383,16 +2452,19 @@ ssize_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] in		Dictionary/Attribute name.
  * @param[in] tt		Terminal strings.
- * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @param[in] internal		If true, fallback to the internal dictionary.
+ * @param[in] foreign		If true, fallback to foreign dictionaries.
  * @return
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
 ssize_t fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 					  fr_dict_t const *dict_def,
-					  fr_sbuff_t *in, fr_sbuff_term_t const *tt, bool fallback)
+					  fr_sbuff_t *in, fr_sbuff_term_t const *tt,
+					  bool internal, bool foreign)
 {
-	return dict_attr_search_qualified(err, out, dict_def, in, tt, fallback, fr_dict_attr_by_oid_substr);
+	return dict_attr_search_qualified(err, out, dict_def, in, tt,
+					  internal, foreign, fr_dict_attr_by_oid_substr);
 }
 
 /** Locate a qualified #fr_dict_attr_t by its name and a dictionary qualifier
@@ -2401,11 +2473,13 @@ ssize_t fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_
  *				@see fr_dict_attr_err_t.
  * @param[in] dict_def		Default dictionary for non-qualified dictionaries.
  * @param[in] name		Dictionary/Attribute name.
- * @param[in] fallback		If true, fallback to the internal dictionary.
+ * @param[in] internal		If true, fallback to the internal dictionary.
+ * @param[in] foreign		If true, fallback to foreign dictionaries.
  * @return an #fr_dict_attr_err_t value.
  */
 fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *err, fr_dict_t const *dict_def,
-							   char const *name, bool fallback)
+							   char const *name,
+							   bool internal, bool foreign)
 {
 	ssize_t			slen;
 	fr_sbuff_t		our_name;
@@ -2413,7 +2487,7 @@ fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *e
 
 	fr_sbuff_init(&our_name, name, strlen(name) + 1);
 
-	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, fallback);
+	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, internal, foreign);
 	if (slen <= 0) return NULL;
 
 	if ((size_t)slen != fr_sbuff_len(&our_name)) {

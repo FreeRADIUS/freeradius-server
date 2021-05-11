@@ -536,6 +536,16 @@ void tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len)
 	vpt->quote = quote;
 }
 
+/** Change the default dictionary in the tmpl's resolution rules
+ *
+ * @param[in] vpt	to alter.
+ * @param[in] dict	to set.
+ */
+void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
+{
+	vpt->rules.dict_def = dict;
+}
+
 /** Initialise a tmpl using a format string to create the name
  *
  * @param[in] vpt	to initialise.
@@ -1437,12 +1447,13 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		slen = fr_dict_attr_search_by_qualified_name_substr(&dict_err, &da,
 								    t_rules->dict_def,
 								    name, p_rules ? p_rules->terminals : NULL,
-								    !t_rules->disallow_internal);
+								    !t_rules->disallow_internal,
+								    t_rules->allow_foreign);
 		/*
 		 *	We can't know which dictionary the
 		 *	attribute will be resolved in, so the
-		 *	only way of recording the parent is
-		 *	by looking at the da.
+		 *	only way of recording what the parent
+		 *	is by looking at the da.
 		 */
 		if (da) our_parent = da->parent;
 	/*
@@ -3054,7 +3065,8 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 							 &FR_SBUFF_IN(ar->ar_unresolved,
 							 	      talloc_array_length(ar->ar_unresolved) - 1),
 							 NULL,
-							 !vpt->rules.disallow_internal);
+							 !vpt->rules.disallow_internal,
+							 vpt->rules.allow_foreign);
 		if (!da) return -2;	/* Can't resolve, maybe the caller can resolve later */
 
 		ar->ar_type = TMPL_ATTR_TYPE_NORMAL;

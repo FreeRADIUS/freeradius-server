@@ -1624,12 +1624,12 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool
 	return total;
 }
 
-/** Wind position until we hit a character in the until set
+/** Wind position until we hit a character in the terminal set
  *
  * @param[in] sbuff		sbuff to search in.
  * @param[in] len		Maximum amount to advance by. Unconstrained if SIZE_MAX.
  * @param[in] tt		Token terminals in the encompassing grammar.
- * @param[in] escape_chr	If not '\0', ignore characters in the until set when
+ * @param[in] escape_chr	If not '\0', ignore characters in the tt set when
  *				prefixed with this escape character.
  * @return how many bytes we advanced.
  */

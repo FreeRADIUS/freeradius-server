@@ -1,5 +1,6 @@
 #
 # PRE: update
+# PROTOCOL: dhcpv4
 #
 
 update control {

@@ -873,6 +873,8 @@ void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ss
 
 void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len);
 
+void			tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict);
+
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal);
 
 void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx);

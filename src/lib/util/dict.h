@@ -502,29 +502,30 @@ fr_dict_attr_t const	*fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
 ssize_t			fr_dict_attr_search_by_qualified_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 								     fr_dict_t const *dict_def,
 								     fr_sbuff_t *name, fr_sbuff_term_t const *tt,
-								     bool fallback)
+								     bool internal, bool foreign)
 								     CC_HINT(nonnull(2, 4));
 
 ssize_t			fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 					  		   fr_dict_t const *dict_def,
 							   fr_sbuff_t *name, fr_sbuff_term_t const *tt,
-							   bool fallback)
+							   bool internal, bool foreign)
 							   CC_HINT(nonnull(2, 4));
 
 ssize_t			fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							     	    fr_dict_t const *dict_def,
 								    fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-								    bool fallback)
+								    bool internal, bool foreign)
 								    CC_HINT(nonnull(2, 4));
 
 fr_dict_attr_t const	*fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *err,
-						       	      fr_dict_t const *dict_def, char const *attr, bool fallback)
+						       	      fr_dict_t const *dict_def, char const *attr,
+						       	      bool internal, bool foreign)
 							      CC_HINT(nonnull(3));
 
 ssize_t			fr_dict_attr_search_by_oid_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 							  fr_dict_t const *dict_def,
 							  fr_sbuff_t *in, fr_sbuff_term_t const *tt,
-							  bool fallback)
+							  bool internal, bool foreign)
 							  CC_HINT(nonnull(2, 4));
 
 ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
