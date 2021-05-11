@@ -40,7 +40,7 @@ match ERROR offset 47: No closing ']' for array index
 
 # Too many dots, point to the thing that's wrong
 condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor..Uplink-QOS-Id[0]
-match ERROR offset 46: Zero length attribute name: Unresolved attributes not allowed here
+match ERROR offset 46: Zero length attribute name: Unresolved attributes are not allowed here
 
 # Trailing dots, point to the dot that's an error
 condition &Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Uplink-QOS-Id[0].
