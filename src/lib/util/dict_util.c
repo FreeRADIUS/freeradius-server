@@ -2579,6 +2579,11 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		return 0;
 	}
 
+	if (da->type != FR_TYPE_GROUP) {
+		ref = fr_dict_attr_ref(da);
+		if (ref) da = ref;
+	}
+
 	*out = da;
 	if (err) *err = FR_DICT_ATTR_OK;
 
@@ -2624,7 +2629,17 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
  */
 fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name)
 {
-	return dict_attr_by_name(err, parent, name);
+	fr_dict_attr_t const *da, *ref;
+
+	da = dict_attr_by_name(err, parent, name);
+	if (!da) return NULL;
+
+	if (da->type == FR_TYPE_GROUP) return da;
+
+	ref = fr_dict_attr_ref(da);
+	if (ref) return ref;
+
+	return da;
 }
 
 /** Check if a child attribute exists in a parent using a pointer (da)
