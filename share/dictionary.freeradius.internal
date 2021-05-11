@@ -291,6 +291,10 @@ ATTRIBUTE	TOTP-Secret				1194	string # base32 encoded
 ATTRIBUTE	TOTP-Key				1195	octets # raw key
 ATTRIBUTE	TOTP-Password				1196	string
 
+ATTRIBUTE	Proxy-Tunneled-Request-As-EAP		1197	integer
+VALUE	Proxy-Tunneled-Request-As-EAP	No			0
+VALUE	Proxy-Tunneled-Request-As-EAP	Yes			1
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
