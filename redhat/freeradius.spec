@@ -652,6 +652,7 @@ fi
 %{_libdir}/freeradius/rlm_sqlhpwippool.so
 %endif
 
+%{_libdir}/freeradius/rlm_totp.so
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_unix.so
 %{_libdir}/freeradius/rlm_utf8.so
