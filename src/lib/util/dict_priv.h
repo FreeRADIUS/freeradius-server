@@ -149,15 +149,24 @@ int			dict_dlopen(fr_dict_t *dict, char const *name);
 
 fr_dict_attr_t 		*dict_attr_alloc_null(TALLOC_CTX *ctx);
 
+/** Optional arguments for initialising/allocating attributes
+ *
+ */
+typedef struct {
+	fr_dict_attr_flags_t const	*flags;		//!< Any flags to assign to the attribute.
+
+	fr_dict_attr_t const		*ref;		//!< This attribute is a reference to another attribute.
+} dict_attr_args_t;
+
 int			dict_attr_init(fr_dict_attr_t **da_p,
 				       fr_dict_attr_t const *parent,
 				       char const *name, int attr,
-				       fr_type_t type, fr_dict_attr_flags_t const *flags);
+				       fr_type_t type, dict_attr_args_t const *args);
 
 fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
 					 fr_dict_attr_t const *parent,
 					 char const *name, int attr,
-					 fr_type_t type, fr_dict_attr_flags_t const *flags);
+					 fr_type_t type, dict_attr_args_t const *args);
 
 fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
 

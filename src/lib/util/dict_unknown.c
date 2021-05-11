@@ -85,7 +85,8 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 		if (dict_vendor_add(dict, unknown->name, unknown->attr) < 0) return NULL;
 
-		n = dict_attr_alloc(dict->pool, parent, unknown->name, unknown->attr, unknown->type, &flags);
+		n = dict_attr_alloc(dict->pool, parent, unknown->name, unknown->attr, unknown->type,
+				    &(dict_attr_args_t){ .flags = &flags });
 		if (unlikely(!n)) return NULL;
 
 		/*
@@ -105,7 +106,8 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	if (da) {
 		fr_dict_attr_t *n;
 
-		n = dict_attr_alloc(dict->pool, parent, unknown->name, unknown->attr, unknown->type, &flags);
+		n = dict_attr_alloc(dict->pool, parent, unknown->name, unknown->attr, unknown->type,
+				    &(dict_attr_args_t){ .flags = &flags });
 		if (!n) return NULL;
 
 		/*
@@ -225,7 +227,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(&n, parent, da->name, da->attr, type, &flags);
+	dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags });
 	dict_attr_ext_copy_all(&n, da);
 	DA_VERIFY(n);
 
@@ -262,7 +264,8 @@ fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 	switch (parent->type) {
 	case FR_TYPE_VSA:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return NULL;
-		return dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR, &flags);
+		return dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR,
+				       &(dict_attr_args_t){ .flags = &flags });
 
 	case FR_TYPE_VENDOR:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return NULL;
@@ -299,7 +302,8 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 		return NULL;
 	}
 
-	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_TLV, &flags);
+	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_TLV,
+			       &(dict_attr_args_t){ .flags = &flags });
 }
 
 /** Initialise a fr_dict_attr_t from a number
@@ -325,7 +329,8 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 		return NULL;
 	}
 
-	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS, &flags);
+	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS,
+			       &(dict_attr_args_t){ .flags = &flags });
 }
 
 /** Initialise an octets type attribute from a da
@@ -377,7 +382,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(&n, parent, da->name, da->attr, FR_TYPE_OCTETS, &flags);
+	dict_attr_init(&n, parent, da->name, da->attr, FR_TYPE_OCTETS, &(dict_attr_args_t){ .flags = &flags });
 	DA_VERIFY(n);
 
 	return n;
@@ -571,7 +576,8 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 					our_parent = ni;
 					continue;
 				}
-				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_VENDOR, &flags) < 0) goto error;
+				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_VENDOR,
+						   &(dict_attr_args_t){ .flags = &flags }) < 0) goto error;
 			}
 				break;
 
@@ -604,7 +610,8 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 					goto error;
 				}
 				flags.is_raw = is_raw;
-				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_OCTETS, &flags) < 0) goto error;
+				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_OCTETS,
+						   &(dict_attr_args_t){ .flags = &flags }) < 0) goto error;
 				break;
 			}
 			break;

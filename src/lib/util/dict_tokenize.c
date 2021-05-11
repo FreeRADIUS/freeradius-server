@@ -165,7 +165,8 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 		return -1;
 	}
 
-	da = dict_attr_alloc(dict->pool, NULL, name, proto_number, FR_TYPE_TLV, &flags);
+	da = dict_attr_alloc(dict->pool, NULL, name, proto_number, FR_TYPE_TLV,
+			     &(dict_attr_args_t){ .flags = &flags });
 	if (unlikely(!da)) return -1;
 
 	dict->root = da;
@@ -599,7 +600,8 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	i.e. you can lookup the ALIAS by "name", but you
 	 *	actually get returned "ref".
 	 */
-	self = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type, &da->flags);
+	self = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type,
+			       &(dict_attr_args_t){ .flags = &da->flags });
 	if (unlikely(!self)) return -1;
 
 	self->dict = ctx->dict;
@@ -2207,7 +2209,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				}
 
 				new = dict_attr_alloc(ctx->dict->pool,
-						      vsa_da, argv[1], vendor->pen, FR_TYPE_VENDOR, &flags);
+						      vsa_da, argv[1], vendor->pen, FR_TYPE_VENDOR,
+						      &(dict_attr_args_t){ .flags = &flags });
 				if (unlikely(!new)) goto error;
 
 				if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
@@ -2390,7 +2393,7 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name.str);
 
 		n = dict_attr_alloc(dict->pool, dict->root, type_name,
-				    FR_CAST_BASE + p->value, p->value, &flags);
+				    FR_CAST_BASE + p->value, p->value, &(dict_attr_args_t){ .flags = &flags});
 		if (!n) {
 			talloc_free(type_name);
 			goto error;

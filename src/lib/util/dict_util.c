@@ -350,18 +350,21 @@ static inline CC_HINT(always_inline) int dict_attr_children_init(fr_dict_attr_t 
 	return 0;
 }
 
-/** Set a reference for a grouping attribute
+/** Set a reference for a grouping attribute or an alias attribute
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
- * @param[in] da_p		to set a group reference for.
+ * @param[in] da_p		to set reference for.
+ * @param[in] ref		The attribute referred to by this attribute.
  */
-static inline CC_HINT(always_inline) int dict_attr_ref_init(fr_dict_attr_t **da_p)
+static inline CC_HINT(always_inline) int dict_attr_ref_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *ref)
 {
 	fr_dict_attr_ext_ref_t		*ext;
 
 	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF);
 	if (unlikely(!ext)) return -1;
+
+	ext->ref = ref;
 
 	return 0;
 }
@@ -475,17 +478,21 @@ static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t
  * @param[in] name		of attribute.  Pass NULL for auto-generated name.
  * @param[in] attr		number.
  * @param[in] type		of the attribute.
- * @param[in] flags		to assign.
+ * @param[in] args		optional initialisation arguments.
  */
 int dict_attr_init(fr_dict_attr_t **da_p,
 		   fr_dict_attr_t const *parent,
 		   char const *name, int attr,
-		   fr_type_t type, fr_dict_attr_flags_t const *flags)
+		   fr_type_t type, dict_attr_args_t const *args)
 {
+	static dict_attr_args_t default_args;
+
+	if (!args) args = &default_args;
+
 	**da_p = (fr_dict_attr_t) {
 		.attr = attr,
 		.type = type,
-		.flags = *flags,
+		.flags = *args->flags,
 		.parent = parent,
 	};
 
@@ -522,7 +529,7 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 	switch (type) {
 	case FR_TYPE_STRUCTURAL:
 	structural:
-		if (dict_attr_ref_init(da_p) < 0) return -1;
+		if (dict_attr_ref_init(da_p, NULL) < 0) return -1;	/* Just allocate space */
 
 		/*
 		 *	Groups don't have children or
@@ -549,6 +556,11 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 		if (dict_attr_enumv_init(da_p) < 0) return -1;
 		break;
 	}
+
+	/*
+	 *	This attribute is just a reference to another.
+	 */
+	if (args->ref) if (dict_attr_ref_init(da_p, args->ref) < 0) return -1;
 
 	/*
 	 *	Name is a separate talloc chunk.  We allocate
@@ -616,7 +628,7 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
  *				will be created and set as the name.
  * @param[in] attr		number.
  * @param[in] type		of the attribute.
- * @param[in] flags		to assign.
+ * @param[in] args		optional initialisation arguments.
  * @return
  *	- A new fr_dict_attr_t on success.
  *	- NULL on failure.
@@ -624,14 +636,14 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
 fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 				fr_dict_attr_t const *parent,
 				char const *name, int attr,
-				fr_type_t type, fr_dict_attr_flags_t const *flags)
+				fr_type_t type, dict_attr_args_t const *args)
 {
 	fr_dict_attr_t	*n;
 
 	n = dict_attr_alloc_null(ctx);
 	if (unlikely(!n)) return NULL;
 
-	if (dict_attr_init(&n, parent, name, attr, type, flags) < 0) {
+	if (dict_attr_init(&n, parent, name, attr, type, args) < 0) {
 		talloc_free(n);
 		return NULL;
 	}
@@ -653,7 +665,8 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 {
 	fr_dict_attr_t		*n;
 
-	n = dict_attr_alloc(ctx, in->parent, new_name ? new_name : in->name, in->attr, in->type, &in->flags);
+	n = dict_attr_alloc(ctx, in->parent, new_name ? new_name : in->name,
+			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
 	if (unlikely(!n)) return NULL;
 
 	if (dict_attr_ext_copy_all(&n, in) < 0) {
@@ -1115,7 +1128,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
 
-	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &our_flags);
+	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &(dict_attr_args_t){ .flags = &our_flags});
 	if (!n) return -1;
 
 #define FLAGS_EQUAL(_x) (old->flags._x == flags->_x)
