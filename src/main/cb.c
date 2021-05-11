@@ -29,22 +29,71 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 void cbtls_info(SSL const *s, int where, int ret)
 {
-	char const *str, *state;
+	char const *role, *state;
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
-		str="connect";
+		role = "Client ";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
-		str="accept";
+		role = "Server ";
 	} else {
-		str="other";
+		role = "";
 	}
 
 	state = SSL_state_string_long(s);
 	state = state ? state : "<none>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		RDEBUG3("(TLS) %s: %s", str, state);
+		if (RDEBUG_ENABLED3) {
+			char const *abbrv = SSL_state_string(s);
+			size_t len;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			STACK_OF(SSL_CIPHER) *client_ciphers;
+			STACK_OF(SSL_CIPHER) *server_ciphers;
+#endif
+
+			/*
+			 *	Trim crappy OpenSSL state strings...
+			 */
+			len = strlen(abbrv);
+			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
+
+			RDEBUG3("(TLS) Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
+
+			/*
+			 *	After a ClientHello, list all the proposed ciphers from the client
+			 */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			if (SSL_get_state(s) == TLS_ST_SR_CLNT_HELLO) {
+				int i;
+				int num_ciphers;
+				const SSL_CIPHER *this_cipher;
+
+				server_ciphers = SSL_get_ciphers(s);
+				if (server_ciphers) {
+					RDEBUG3("Server preferred ciphers (by priority)");
+					num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
+					for (i = 0; i < num_ciphers; i++) {
+						this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
+						RDEBUG3("(TLS)    [%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+					}
+				}
+	
+				client_ciphers = SSL_get_client_ciphers(s);
+				if (client_ciphers) {
+					RDEBUG3("Client preferred ciphers (by priority)");
+					num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
+					for (i = 0; i < num_ciphers; i++) {
+						this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
+						RDEBUG3("(TLS)    [%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+					}
+				}
+			}
+#endif
+		} else {
+			RDEBUG2("(TLS) Handshake state - %s%s (%i)", role, state, SSL_get_state(s));
+		}
+		RDEBUG3("(TLS) %s: %s", role, state);
 		return;
 	}
 
@@ -58,16 +107,16 @@ void cbtls_info(SSL const *s, int where, int ret)
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			RERROR("(TLS) %s: Failed in %s", str, state);
+			RERROR("(TLS) %s: Failed in %s", role, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(s)) {
-				RDEBUG2("(TLS) %s: Need to read more data: %s", str, state);
+				RDEBUG2("(TLS) %s: Need to read more data: %s", role, state);
 				return;
 			}
-			RERROR("(TLS) %s: Error in %s", str, state);
+			RERROR("(TLS) %s: Error in %s", role, state);
 		}
 	}
 }
