@@ -2180,7 +2180,7 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		         bool internal, bool foreign,
 		         dict_attr_resolve_func_t func)
 {
-	fr_dict_attr_err_t	our_err;
+	fr_dict_attr_err_t	our_err = FR_DICT_ATTR_OK;
 	fr_hash_iter_t  	iter;
 	fr_dict_t		*dict = NULL;
 
@@ -2258,19 +2258,31 @@ error:
 		fr_sbuff_marker_t	start;
 		char			*list = NULL;
 
+#define APPEND_DICT_NAME(_in, _dict) \
+do { \
+	char *_n; \
+	_n = talloc_strdup_append_buffer(_in, fr_dict_root(_dict)->name); \
+	if (unlikely(!_n)) { \
+		talloc_free(_in); \
+		goto done; \
+	} \
+	_in = _n; \
+	_n = talloc_strdup_append_buffer(_in, ", "); \
+	if (unlikely(!_n)) { \
+		talloc_free(_in); \
+		goto done; \
+	} \
+	_in = _n; \
+} while (0)
+
 		our_in = FR_SBUFF_NO_ADVANCE(in);
 		fr_sbuff_marker(&start, &our_in);
 
 		list = talloc_strdup(NULL, "");
+		if (unlikely(!list)) goto done;
 
-		if (dict_def) {
-			list = talloc_strdup_append_buffer(list, fr_dict_root(dict_def)->name);
-			list = talloc_strdup_append_buffer(list, ", ");
-		}
-		if (internal) {
-			list = talloc_strdup_append_buffer(list, fr_dict_root(dict_gctx->internal)->name);
-			list = talloc_strdup_append_buffer(list, ", ");
-		}
+		if (dict_def) APPEND_DICT_NAME(list, dict_def);
+		if (internal) APPEND_DICT_NAME(list, dict_gctx->internal);
 
 		if (foreign) {
 			for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
@@ -2279,8 +2291,7 @@ error:
 				if (dict == dict_def) continue;
 				if (dict == dict_gctx->internal) continue;
 
-				list = talloc_strdup_append_buffer(list, fr_dict_root(dict)->name);
-				list = talloc_strdup_append_buffer(list, ", ");
+				if (internal) APPEND_DICT_NAME(list, dict);
 			}
 		}
 
@@ -2292,6 +2303,7 @@ error:
 		talloc_free(list);
 	}
 
+done:
 	if (err) *err = our_err;
 	*out = NULL;
 
