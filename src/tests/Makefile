@@ -70,7 +70,7 @@ clean:
 	@rm -f test.conf dictionary *.ok *.log $(BUILD_DIR)/tests/eap
 
 dictionary:
-	@echo "# test dictionary not install.  Delete at any time." > dictionary;  \
+	@echo "# test dictionary. Do not install.  Delete at any time." > dictionary;  \
 	echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> dictionary;          \
 	echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> dictionary; \
 	if [ "$(DICT_PATH)" = "$(TEST_PATH)" ]; then                               \
@@ -159,15 +159,18 @@ radiusd.kill:
 	@rm -f radiusd.pid
 
 #
-#  Run eapol_test if it exists.  Otherwise do nothing
+#  Run eapol_test if it exists and we built with openssl support.
+#  Otherwise do nothing.
 #
 ifneq "$(EAPOL_TEST)" ""
+ifneq "$(OPENSSL_LIBS)" ""
 EAP_FILES	= eap-md5.conf
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.1 1.2
 ifneq "$(TLS1_3)" ""
 EAP_TLS_VERSIONS += 1.3
 endif
+
 EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 $(TLS1_3)
 
 .PHONY: $(BUILD_PATH)/tests/eap
@@ -260,6 +263,13 @@ EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,
 tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
 	@$(MAKE) radiusd.kill
 
+else
+# Not built with OpenSSL support. Be friendly and say why we're
+# not running the EAP tests.
+clean.tests.eap:
+tests.eap:
+	@echo Skipping EAP tests, not built with OpenSSL support
+endif
 endif # we have eapol_test built
 
 # kill the server (if it's running)
