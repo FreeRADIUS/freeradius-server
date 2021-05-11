@@ -601,26 +601,10 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	actually get returned "ref".
 	 */
 	self = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type,
-			       &(dict_attr_args_t){ .flags = &da->flags });
+			       &(dict_attr_args_t){ .flags = &da->flags, .ref = da });
 	if (unlikely(!self)) return -1;
 
 	self->dict = ctx->dict;
-
-	/*
-	 *	Allocate room for the reference.
-	 */
-	if (dict_attr_ext_alloc(&self, FR_DICT_ATTR_EXT_REF) < 0) {
-		fr_strerror_const("Internal allocating reference");
-		goto error;
-	}
-
-	/*
-	 *	Then set the reference.
-	 */
-	if (dict_attr_ref_set(self, da) < 0) {
-		fr_strerror_const("Internal error storing reference");
-		goto error;
-	}
 
 	fr_assert(fr_dict_attr_ref(self) == da);
 
