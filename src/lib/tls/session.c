@@ -521,9 +521,10 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			char const *abbrv = SSL_state_string(ssl);
 			size_t len;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			STACK_OF(SSL_CIPHER) *server_ciphers;
 			STACK_OF(SSL_CIPHER) *client_ciphers;
-#endif
 
+#endif
 			/*
 			 *	Trim crappy OpenSSL state strings...
 			 */
@@ -539,11 +540,20 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			if (SSL_get_state(ssl) == TLS_ST_SR_CLNT_HELLO &&
 			    (client_ciphers = SSL_get_client_ciphers(ssl))) {
 				int i;
-				int num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
+				int num_ciphers;
 				const SSL_CIPHER *this_cipher;
+
+				server_ciphers = SSL_get_ciphers(ssl);
+				RDEBUG3("Our preferred ciphers (by priority)");
+				num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
+				for (i = 0; i < num_ciphers; i++) {
+					this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
+					RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+				}
 
 				RDEBUG3("Client's preferred ciphers (by priority)");
 				RINDENT();
+				num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
 				for (i = 0; i < num_ciphers; i++) {
 					this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
 					RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
