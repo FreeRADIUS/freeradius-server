@@ -2917,7 +2917,7 @@ int fr_dict_dependent_add(fr_dict_t const *dict, char const *dependent)
 {
 	fr_dict_t *m_dict = fr_dict_unconst(dict);
 
-	if (!m_dict) return -1;
+	if (unlikely(!m_dict)) return -1;
 
 	return dict_dependent_add(m_dict, dependent);
 }
