@@ -630,6 +630,11 @@ AC_ARG_WITH(openssl,
     ;;
   esac ]
 )
+if test "x$WITH_THREADS" = "xno"; then
+  if test "x$WITH_OPENSSL" = "xyes"; then
+    AC_MSG_ERROR([[Threads are required when using OpenSSL, use --with-threads=yes]])
+  fi
+fi
 
 dnl #
 dnl #  extra argument: --with-openssl-lib-dir=dir

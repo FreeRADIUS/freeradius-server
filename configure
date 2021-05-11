@@ -5932,6 +5932,11 @@ if test "${with_openssl+set}" = set; then :
 
 fi
 
+if test "x$WITH_THREADS" = "xno"; then
+  if test "x$WITH_OPENSSL" = "xyes"; then
+    as_fn_error $? "Threads are required when using OpenSSL, use --with-threads=yes" "$LINENO" 5
+  fi
+fi
 
 openssl_lib_dir=
 
