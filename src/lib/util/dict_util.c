@@ -2184,7 +2184,7 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	fr_hash_iter_t  	iter;
 	fr_dict_t		*dict = NULL;
 
-	ssize_t			slen;
+	ssize_t			slen = 0;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 
 	/*
