@@ -195,7 +195,7 @@ void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, boo
 	p->server = talloc_strdup(p, cf_section_name2(server_cs));
 	talloc_set_destructor(p, _virtual_server_dict_free);
 
-	if (reference) fr_dict_dependent_add(fr_dict_unconst(dict), p->server);
+	if (reference) fr_dict_dependent_add(dict, p->server);
 
 	cf_data_add(server_cs, p, "dictionary", true);
 }

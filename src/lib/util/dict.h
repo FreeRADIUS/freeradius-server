@@ -590,7 +590,7 @@ void			fr_dl_dict_autofree(dl_t const *module, void *symbol, void *user_ctx);
  */
 fr_dict_t 		*fr_dict_alloc(char const *proto_name, unsigned int proto_number) CC_HINT(nonnull);
 
-void			fr_dict_dependent_add(fr_dict_t *dict, char const *dependent) CC_HINT(nonnull);
+int			fr_dict_dependent_add(fr_dict_t const *dict, char const *dependent) CC_HINT(nonnull);
 
 int			fr_dict_free(fr_dict_t **dict, char const *dependent) CC_HINT(nonnull);
 

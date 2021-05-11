@@ -2888,6 +2888,25 @@ int dict_dependent_add(fr_dict_t *dict, char const *dependent)
 	return 0;
 }
 
+/** Manually increase the reference count for a dictionary
+ *
+ * This is useful if a previously loaded dictionary needs to
+ * be bound to the lifetime of an additional object.
+ *
+ * @param[in] dict	to increase the reference count for.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+int fr_dict_dependent_add(fr_dict_t const *dict, char const *dependent)
+{
+	fr_dict_t *m_dict = fr_dict_unconst(dict);
+
+	if (!m_dict) return -1;
+
+	return dict_dependent_add(m_dict, dependent);
+}
+
 /** Decrement ref count for a dependent in a dictionary
  *
  * @param[in] dict	to remove dependency from.
@@ -3071,18 +3090,6 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	dict->default_type_length = 1;
 
 	return dict;
-}
-
-/** Manually increase the reference count for a dictionary
- *
- * This is useful if a previously loaded dictionary needs to
- * be bound to the lifetime of an additional object.
- *
- * @param[in] dict	to increase the reference count for.
- */
-void fr_dict_dependent_add(fr_dict_t *dict, char const *dependent)
-{
-	dict_dependent_add(dict, dependent);
 }
 
 /** Decrement the reference count on a previously loaded dictionary
