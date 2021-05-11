@@ -1456,17 +1456,16 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 						   name,
 						   p_rules ? p_rules->terminals : NULL);
 		/*
-		 *	Allow fallback to internal attributes if
-		 *	that's allowed, AND the parent is at the
-		 *	top-level namespace, or the parent is a group.
+		 *	Allow fallback to internal attributes
+		 *	if the parent was a group, and we're
+		 *	allowing internal resolution.
 		 *
 		 *	Discard any errors here... It's more
 		 *	useful to have the original.
 		 */
 		if (!da && !vpt->rules.disallow_internal &&
-		    ((our_parent == namespace) ||
-		     ((ar = fr_dlist_tail(&vpt->data.attribute.ar)) &&
-		      (ar->type == TMPL_ATTR_TYPE_NORMAL) && (ar->ar_da->type == FR_TYPE_GROUP)))) {
+		    (ar = fr_dlist_tail(&vpt->data.attribute.ar)) &&
+		    (ar->type == TMPL_ATTR_TYPE_NORMAL) && (ar->ar_da->type == FR_TYPE_GROUP)) {
 			(void)fr_dict_attr_by_name_substr(NULL,
 							  &da, fr_dict_root(fr_dict_internal()),
 							  name,
@@ -2004,13 +2003,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	if ((list_len == 0) ||
 	    (fr_sbuff_next_if_char(&our_name, '.') && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
-		fr_dict_attr_t const *parent = t_rules->attr_parent;
-
-		if (!parent && !t_rules->allow_foreign && t_rules->dict_def) parent = fr_dict_root(t_rules->dict_def);
-
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
 						  vpt,
-						  parent, parent,
+						  t_rules->attr_parent, t_rules->attr_parent,
 						  &our_name, p_rules, t_rules, 0);
 		if (ret < 0) goto error;
 
