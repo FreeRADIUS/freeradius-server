@@ -2258,7 +2258,7 @@ error:
 		fr_sbuff_marker_t	start;
 		char			*list = NULL;
 
-#define APPEND_DICT_NAME(_in, _dict) \
+#define DICT_NAME_APPEND(_in, _dict) \
 do { \
 	char *_n; \
 	_n = talloc_strdup_append_buffer(_in, fr_dict_root(_dict)->name); \
@@ -2281,8 +2281,8 @@ do { \
 		list = talloc_strdup(NULL, "");
 		if (unlikely(!list)) goto done;
 
-		if (dict_def) APPEND_DICT_NAME(list, dict_def);
-		if (internal) APPEND_DICT_NAME(list, dict_gctx->internal);
+		if (dict_def) DICT_NAME_APPEND(list, dict_def);
+		if (internal) DICT_NAME_APPEND(list, dict_gctx->internal);
 
 		if (foreign) {
 			for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &iter);
@@ -2291,7 +2291,7 @@ do { \
 				if (dict == dict_def) continue;
 				if (dict == dict_gctx->internal) continue;
 
-				if (internal) APPEND_DICT_NAME(list, dict);
+				if (internal) DICT_NAME_APPEND(list, dict);
 			}
 		}
 
