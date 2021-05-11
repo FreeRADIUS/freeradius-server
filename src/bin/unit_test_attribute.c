@@ -1837,6 +1837,39 @@ static size_t command_exit(command_result_t *result, UNUSED command_file_ctx_t *
 	RETURN_EXIT(atoi(in));
 }
 
+static size_t command_load_dictionary(command_result_t *result, command_file_ctx_t *cc,
+				       UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	char		*name, *tmp = NULL;
+	char const     	*dir;
+	char		*q;
+	int		ret;
+
+	fr_dict_global_ctx_set(cc->config->dict_gctx);
+
+	if (in[0] == '\0') {
+		fr_strerror_const("Missing dictionary name");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	q = strchr(in, ' ');
+	if (q) {
+		name = tmp = talloc_bstrndup(NULL, in, q - in);
+		q++;
+		dir = q;
+	} else {
+		name = in;
+		dir = cc->path;
+	}
+
+	ret = fr_dict_read(UNCONST(fr_dict_t *, cc->tmpl_rules.dict_def), dir, name);
+	talloc_free(tmp);
+	if (ret < 0) RETURN_COMMAND_ERROR();
+
+	RETURN_OK(0);
+}
+
+
 /** Compare the data buffer to an expected value
  *
  */
@@ -2065,18 +2098,6 @@ static size_t command_touch(command_result_t *result, UNUSED command_file_ctx_t 
 	if (fr_touch(NULL, in, 0644, true, 0755) <= 0) RETURN_COMMAND_ERROR();
 
 	RETURN_OK(0);
-}
-
-static size_t command_test_dictionary(command_result_t *result, command_file_ctx_t *cc,
-				      UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
-{
-	int ret;
-
-	fr_dict_global_ctx_set(cc->test_gctx);
-	ret = dictionary_load_common(result, cc, in, ".");
-	fr_dict_global_ctx_set(cc->config->dict_gctx);
-
-	return ret;
 }
 
 /** Callback for a tmpl rule parser
@@ -2464,6 +2485,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
 				}},
+	{ L("load-dictionary "),&(command_entry_t){
+					.func = command_load_dictionary,
+					.usage = "load-dictionary <name> [<dir>]",
+					.description = "Load an additional dictionary from the same directory as the input file.  Optionally you can specify a full path via <dir>",
+				}},
 	{ L("match"),		&(command_entry_t){
 					.func = command_match,
 					.usage = "match <string>",
@@ -2513,11 +2539,6 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_returned,
 					.usage = "returned",
 					.description = "Print the returned value to the data buffer"
-				}},
-	{ L("test-dictionary "),&(command_entry_t){
-					.func = command_test_dictionary,
-					.usage = "test-dictionary <proto_name> [<test_dir>]",
-					.description = "Switch the active dictionary.  Root is set to the path containing the current test file (override with cd <path>).  <test_dir> is relative to the root.",
 				}},
 
 	{ L("tmpl-rules "),	&(command_entry_t){
