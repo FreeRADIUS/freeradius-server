@@ -600,9 +600,15 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	i.e. you can lookup the ALIAS by "name", but you
 	 *	actually get returned "ref".
 	 */
-	self = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type,
-			       &(dict_attr_args_t){ .flags = &da->flags, .ref = da });
-	if (unlikely(!self)) return -1;
+	{
+		fr_dict_attr_flags_t flags = da->flags;
+
+		flags.is_alias = 1;	/* These get followed automatically by public functions */
+
+		self = dict_attr_alloc(ctx->dict->pool, parent, argv[0], da->attr, da->type,
+				       &(dict_attr_args_t){ .flags = &flags, .ref = da });
+		if (unlikely(!self)) return -1;
+	}
 
 	self->dict = ctx->dict;
 

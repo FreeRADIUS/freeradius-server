@@ -79,7 +79,8 @@ typedef struct {
 								///< to assign octets values directly.
 								///< See .is_unknown to determine if it is
 								///< ephemeral.
-
+	unsigned int		is_alias : 1;			//!< This isn't a real attribute, it's a reference to
+								///< to one.
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
 	unsigned int		array : 1; 			//!< Pack multiples into 1 attr.
@@ -256,13 +257,15 @@ typedef enum {
 	FR_DICT_ATTR_NOTFOUND		= -1,			//!< Attribute couldn't be found.
 	FR_DICT_ATTR_PROTOCOL_NOTFOUND	= -2,			//!< Protocol couldn't be found.
 	FR_DICT_ATTR_PARSE_ERROR	= -3,			//!< Attribute string couldn't be parsed
-	FR_DICT_ATTR_OOM		= -4,			//!< Memory allocation error.
-	FR_DICT_ATTR_NOT_DESCENDENT	= -5,			//!< Attribute is not a descendent of the parent
+	FR_DICT_ATTR_INTERNAL_ERROR	= -4,			//!< Internal error ocurred.
+	FR_DICT_ATTR_OOM		= -5,			//!< Memory allocation error.
+	FR_DICT_ATTR_NOT_DESCENDENT	= -6,			//!< Attribute is not a descendent of the parent
 								///< attribute.
-	FR_DICT_ATTR_NOT_ANCESTOR	= -6,			//!< Attribute is not an ancestor of the child
+	FR_DICT_ATTR_NOT_ANCESTOR	= -7,			//!< Attribute is not an ancestor of the child
 								///< attribute.
-	FR_DICT_ATTR_NO_CHILDREN	= -7,			//!< Child lookup in attribute with no children.
-	FR_DICT_ATTR_EINVAL		= -8			//!< Invalid arguments.
+	FR_DICT_ATTR_NO_CHILDREN	= -8,			//!< Child lookup in attribute with no children.
+	FR_DICT_ATTR_EINVAL		= -9			//!< Invalid arguments.
+
 } fr_dict_attr_err_t;
 
 typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_t *dict, fr_dict_attr_t const *parent,
@@ -536,8 +539,6 @@ ssize_t			fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent,
 					      char const *attr)
 					      CC_HINT(nonnull(2,3));
-
-fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child) CC_HINT(nonnull);
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 

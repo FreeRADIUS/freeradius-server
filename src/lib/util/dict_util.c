@@ -280,6 +280,32 @@ static int8_t dict_enum_value_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
+/** Resolve an alias attribute to the concrete attribute it points to
+ *
+ * @param[out] err	where to write the error (if any).
+ * @param[in] da	to resolve.
+ * @return
+ *	- NULL on error.
+ *	- The concrete attribute on success.
+ */
+static inline fr_dict_attr_t const *dict_attr_alias(fr_dict_attr_err_t *err, fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t const *ref;
+
+	if (!da->flags.is_alias) return da;
+
+	ref = fr_dict_attr_ref(da);
+	if (unlikely(!ref)) {
+		fr_strerror_printf("ALIAS attribute '%s' missing reference", da->name);
+		if (err) *err = FR_DICT_ATTR_INTERNAL_ERROR;
+		return NULL;
+	} else {
+		if (err) *err = FR_DICT_ATTR_OK;
+	}
+
+	return ref;
+}
+
 /** Set a dictionary attribute's name
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
@@ -1377,6 +1403,8 @@ int fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 
 /** Add an name to an integer attribute hashing the name for the integer value
  *
+ * If the integer value conflicts with an existing name, it's incremented
+ * until we find a free value.
  */
 int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 {
@@ -1736,16 +1764,8 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		return -fr_sbuff_marker_release_behind(&start);
 	}
 
-	/*
-	 *	Follow references, unless this attribute is a grouping
-	 *	attribute.
-	 */
-	if (child->type != FR_TYPE_GROUP) {
-		fr_dict_attr_t const *ref;
-
-		ref = fr_dict_attr_ref(child);
-		if (ref) child = ref;
-	}
+	child = dict_attr_alias(err, child);
+	if (unlikely(!child)) return 0;
 
 	*out = child;
 
@@ -1945,7 +1965,7 @@ fr_dict_t *dict_by_protocol_name(char const *name)
 	if (!dict_gctx || !name) return NULL;
 
 	return fr_hash_table_find(dict_gctx->protocol_by_name,
-				      &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
+				  &(fr_dict_t){ .root = &(fr_dict_attr_t){ .name = name } });
 }
 
 /** Internal version of #fr_dict_by_protocol_num
@@ -1959,7 +1979,7 @@ fr_dict_t *dict_by_protocol_num(unsigned int num)
 	if (!dict_gctx) return NULL;
 
 	return fr_hash_table_find(dict_gctx->protocol_by_num,
-				      &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
+				  &(fr_dict_t) { .root = &(fr_dict_attr_t){ .attr = num } });
 }
 
 /** Internal version of #fr_dict_by_da
@@ -2254,6 +2274,11 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	}
 
 error:
+	/*
+	 *	Add a more helpful error message about
+	 *	which dictionaries we tried to locate t
+	 *	he attribute in.
+	 */
 	if (our_err == FR_DICT_ATTR_NOTFOUND) {
 		fr_sbuff_marker_t	start;
 		char			*list = NULL;
@@ -2579,10 +2604,8 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 		return 0;
 	}
 
-	if (da->type != FR_TYPE_GROUP) {
-		ref = fr_dict_attr_ref(da);
-		if (ref) da = ref;
-	}
+	da = dict_attr_alias(err, da);
+	if (unlikely(!da)) return 0;
 
 	*out = da;
 	if (err) *err = FR_DICT_ATTR_OK;
@@ -2629,62 +2652,15 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
  */
 fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name)
 {
-	fr_dict_attr_t const *da, *ref;
+	fr_dict_attr_t const *da;
 
 	da = dict_attr_by_name(err, parent, name);
 	if (!da) return NULL;
 
-	if (da->type == FR_TYPE_GROUP) return da;
-
-	ref = fr_dict_attr_ref(da);
-	if (ref) return ref;
+	da = dict_attr_alias(err, da);
+	if (unlikely(!da)) return NULL;
 
 	return da;
-}
-
-/** Check if a child attribute exists in a parent using a pointer (da)
- *
- * @param[in] parent		to check for child in.
- * @param[in] child		to look for.
- * @return
- *	- The child attribute on success.
- *	- NULL if the child attribute does not exist.
- */
-fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child)
-{
-	fr_dict_attr_t const *bin;
-	fr_dict_attr_t const **children;
-	fr_dict_attr_t const *ref;
-
-#ifndef NDEBUG
-	/*
-	 *	Asserts parent is not NULL in non-debug
-	 *	builds, but parent is marked as nonnull
-	 *	so we get complaints.
-	 */
-	DA_VERIFY(parent);
-#endif
-
-	ref = fr_dict_attr_ref(parent);
-	if (ref) parent = ref;
-
-	children = dict_attr_children(parent);
-	if (!children) return NULL;
-
-	/*
-	 *	Child arrays may be trimmed back to save memory.
-	 *	Check that so we don't SEGV.
-	 */
-	if ((child->attr & 0xff) > talloc_array_length(children)) return NULL;
-
-	bin = children[child->attr & 0xff];
-	for (;;) {
-		if (!bin) return NULL;
-		if (bin == child) return bin;
-		bin = bin->next;
-	}
-
-	return NULL;
 }
 
 /** Internal version of fr_dict_attr_child_by_num
@@ -2739,7 +2715,15 @@ fr_dict_attr_t *dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned in
  */
 fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
-	return dict_attr_child_by_num(parent, attr);
+	fr_dict_attr_t const *da;
+
+	da = dict_attr_child_by_num(parent, attr);
+	if (!da) return NULL;
+
+	da = dict_attr_alias(NULL, da);
+	if (unlikely(!da)) return NULL;
+
+	return da;
 }
 
 /** Lookup the structure representing an enum value in a #fr_dict_attr_t
@@ -3376,7 +3360,7 @@ void fr_dl_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *u
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dict_validation_onload_func(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
+static int _dict_validation_onload(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
 {
 	fr_dict_t *dict = talloc_get_type_abort(dl->uctx, fr_dict_t);
 	fr_dict_protocol_t const *proto = symbol;
@@ -3480,7 +3464,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 	if (!new_ctx->dict_loader) goto error;
 
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
-				       dict_validation_onload_func, NULL) < 0) goto error;
+				       _dict_validation_onload, NULL) < 0) goto error;
 
 	talloc_set_destructor(new_ctx, _dict_global_free);
 
