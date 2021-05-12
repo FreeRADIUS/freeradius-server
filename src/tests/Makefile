@@ -33,7 +33,7 @@ ifneq "$(OPENSSL_LIBS)" ""
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
 	@echo "TLS1_3=" $(shell strings $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) | grep 'tlsv1_3' | head -n 1) >> $@
-	@echo "OPENSSL_OK=" $(shell openssl version | grep ' 1\.0') >> $@
+	@echo "OPENSSL_OK=" $(shell openssl version | grep -v ' 1\.0') >> $@
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
