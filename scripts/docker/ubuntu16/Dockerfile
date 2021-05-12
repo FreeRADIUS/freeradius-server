@@ -45,9 +45,7 @@ FROM ${from}
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
 RUN apt-get update \
-    && apt-get install -y \
-               /tmp/*.deb \
-               libsasl2-modules-gssapi-mit \
+    && apt-get install -y /tmp/*.deb \
     && apt-get clean \
     && rm -r /var/lib/apt/lists/* /tmp/*.deb \
     \
