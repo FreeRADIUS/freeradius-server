@@ -33,6 +33,7 @@ ifneq "$(OPENSSL_LIBS)" ""
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
 	@echo "TLS1_3=" $(shell strings $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) | grep 'tlsv1_3' | head -n 1) >> $@
+	@echo "OPENSSL_OK=" $(shell openssl version | grep ' 1\.0')
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
@@ -54,6 +55,15 @@ ifeq "$(DICT_PATH)" "$(TEST_PATH)"
 LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
 DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
 export DYLD_LIBRARY_PATH
+endif
+
+#
+#  OpenSSL 1.0.x doesn't support cipher_list="DEFAULT@SECLEVEL=1"
+#
+ifeq "$(OPENSSL_OK)" ""
+SECLEVEL=
+else
+SECLEVEL=@SECLEVEL=1
 endif
 
 RADDB_PATH := $(top_builddir)/raddb/
@@ -131,7 +141,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	     -e 's/tls_min_version = "1.2"/tls_min_version = "1.0"/' \
 	     -e '$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' \
 	     -e  '/tls_max_version/s/^//p; /tls_max_version/s/^.*/        tls13_enable=true/' \
-	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT@SECLEVEL=1"/' \
+	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT${SECLEVEL}"/' \
 		 < $< > $@
 
 radiusd.pid: test.conf
