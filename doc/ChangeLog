@@ -79,6 +79,9 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Add configuration to suppress printing values for User-Name, etc.
 	  See radiusd.conf, "suppress_secrets"
 	* Support dictionary.telrad, which is also in WiMAX format.
+	* PEAP 'proxy_tunneled_request_as_eap' is now configurable
+	  at runtime with Proxy-Tunneled-Request-As-EAP.
+	* Debug output now lists client/server proposed TLS ciphers.
 
 	Bug fixes
 	* Fix long-term double free due to PCRE calling our "free"
