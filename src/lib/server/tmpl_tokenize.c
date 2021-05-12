@@ -2403,6 +2403,74 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	return fr_sbuff_set(in, &our_in);
 }
 
+
+/** Try and parse signed or unsigned integers
+ *
+ * @param[in] ctx	to allocate tmpl to.
+ * @param[out] out	where to write tmpl.
+ * @param[in] in	sbuff to parse.
+ * @param[in] p_rules	formatting rules.
+ * @return
+ *	- 0 sbuff does not contain a mac address.
+ *	- > 0 how many bytes were parsed.
+ */
+static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+				       fr_sbuff_parse_rules_t const *p_rules)
+{
+	tmpl_t			*vpt;
+	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	uint8_t			buff[6];
+	fr_dbuff_t		dbuff;
+	fr_value_box_t		*vb;
+	fr_sbuff_parse_error_t	err;
+
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
+
+	fr_hex2bin(&err, &dbuff, &our_in, true);
+	if (err != FR_SBUFF_PARSE_OK) return 0;
+
+	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
+
+	fr_hex2bin(&err, &dbuff, &our_in, true);
+	if (err != FR_SBUFF_PARSE_OK) return 0;
+
+	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
+
+	fr_hex2bin(&err, &dbuff, &our_in, true);
+	if (err != FR_SBUFF_PARSE_OK) return 0;
+
+	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
+
+	fr_hex2bin(&err, &dbuff, &our_in, true);
+	if (err != FR_SBUFF_PARSE_OK) return 0;
+
+	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
+
+	fr_hex2bin(&err, &dbuff, &our_in, true);
+	if (err != FR_SBUFF_PARSE_OK) return 0;
+
+	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
+
+	fr_hex2bin(&err, &dbuff, &our_in, true);
+	if (err != FR_SBUFF_PARSE_OK) return 0;
+
+	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
+		fr_strerror_const("Unexpected text after mac address");
+		return 0;
+	}
+
+	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA,
+			     T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
+	vb = tmpl_value(vpt);
+
+	fr_value_box_init(vb, FR_TYPE_ETHERNET, NULL, false);
+	memcpy(vb->vb_ether, buff, sizeof(vb->vb_ether));
+
+	*out = vpt;
+
+	return fr_sbuff_set(in, &our_in);
+}
+
 /** Try and parse signed or unsigned integers
  *
  * @param[in] ctx	to allocate tmpl to.
@@ -2590,6 +2658,16 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		if (slen > 0) goto done_bareword;
 
 		/*
+		 *	See if it's a mac address
+		 *
+		 *	Needs to be before IPv6 as the pton functions
+		 *	are too greedy, and on macOS will happily
+		 *	convert a mac address to an IPv6 address.
+		 */
+		slen = tmpl_afrom_ether_substr(ctx, out, &our_in, p_rules);
+		if (slen > 0) goto done_bareword;
+
+		/*
 		 *	See if it's an IPv4 address or prefix
 		 */
 		slen = tmpl_afrom_ipv4_substr(ctx, out, &our_in, p_rules);
@@ -2607,11 +2685,6 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 //		slen = tmpl_afrom_float_substr(ctx, out, &our_in);
 //		if (slen > 0) return fr_sbuff_set(in, &our_in);
 
-		/*
-		 *	See if it's a mac address
-		 */
-//		slen = tmpl_afrom_mac_address_substr(ctx, out, &our_in);
-//		if (slen > 0) return fr_sbuff_set(in, &our_in);
 
 		/*
 		 *	See if it's a integer
