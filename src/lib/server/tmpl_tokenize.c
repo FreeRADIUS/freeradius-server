@@ -1793,7 +1793,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 						     tmpl_t *vpt,
 						     fr_sbuff_t *name,
 						     fr_sbuff_parse_rules_t const *p_rules,
-					      	     tmpl_rules_t const *t_rules,
+						     tmpl_rules_t const **pt_rules,
 					      	     unsigned int depth)
 {
 	tmpl_request_ref_t	ref;
@@ -1801,6 +1801,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 	tmpl_request_t		*rr;
 	fr_dlist_head_t		*list = &vpt->data.attribute.rr;
 	fr_sbuff_marker_t	s_m;
+	tmpl_rules_t const	*t_rules = *pt_rules;
 
 	fr_sbuff_marker(&s_m, name);
 	fr_sbuff_out_by_longest_prefix(&ref_len, &ref, tmpl_request_ref_table, name, t_rules->request_def);
@@ -1863,10 +1864,18 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 	fr_dlist_insert_tail(list, rr);
 
 	/*
+	 *	Update the parsing rules if we go to the parent.
+	 */
+	 if (((ref == REQUEST_OUTER) || (ref == REQUEST_PARENT)) && t_rules->parent) {
+		t_rules = t_rules->parent;
+		*pt_rules = t_rules;
+	}
+
+	/*
 	 *	Advance past the separator (if there is one)
 	 */
 	if (fr_sbuff_next_if_char(name, '.')) {
-		if (tmpl_request_ref_afrom_attr_substr(ctx, err, vpt, name, p_rules, t_rules, depth + 1) < 0) {
+		if (tmpl_request_ref_afrom_attr_substr(ctx, err, vpt, name, p_rules, pt_rules, depth + 1) < 0) {
 			fr_dlist_talloc_free_tail(list); /* Remove and free rr */
 			return -1;
 		}
@@ -1982,7 +1991,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Parse one or more request references
 	 */
-	ret = tmpl_request_ref_afrom_attr_substr(vpt, err, vpt, &our_name, p_rules, t_rules, 0);
+	ret = tmpl_request_ref_afrom_attr_substr(vpt, err, vpt, &our_name, p_rules, &t_rules, 0);
 	if (ret < 0) {
 	error:
 		talloc_free(vpt);
