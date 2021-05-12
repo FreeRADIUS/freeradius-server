@@ -26,9 +26,9 @@ The `!~` operator evaluates to `true` when `data` does not match the
 
 The regular expression comparison is performed on the _string representation_
 of the left side of the comparison.  That is, if the left side is an
-xref:type/numb.adoc[integer], the regular expression will behave is if the
+xref:type/numb.adoc[integer], the regular expression will behave as if the
 value `0` was the literal string `"0"`.  Similarly, if the left side is an
-xref:attr.adoc[&Attribute-Name], then the regular expression will behave is if
+xref:attr.adoc[&Attribute-Name], then the regular expression will behave as if
 the attribute was printed to a string, and the match was performed on the
 resulting string.
 
