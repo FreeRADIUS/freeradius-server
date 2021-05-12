@@ -1841,7 +1841,17 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 *	parent.
 			 */
 
-			ret = _dict_from_file(ctx, dir, argv[1], fn, line);
+			/*
+			 *	Allow limited macro capability, so
+			 *	people don't have to remember where
+			 *	the root dictionaries are located.
+			 */
+			if (strncmp(argv[1], "${dictdir}/", 11) != 0) {
+				ret = _dict_from_file(ctx, dir, argv[1], fn, line);
+			} else {
+				ret = _dict_from_file(ctx, fr_dict_global_ctx_dir(), argv[1] + 11, fn, line);
+			}
+
 			if ((ret == -2) && (argv[0][8] == '-')) {
 				fr_strerror_clear(); /* delete all errors */
 				ret = 0;
