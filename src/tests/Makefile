@@ -25,6 +25,7 @@ ifneq "(findstring eap,$(MAKECMDGOALS))" ""
 $(BUILD_PATH)/tests/eapol_test:
 	@mkdir -p $@
 
+ifneq "$(OPENSSL_LIBS)" ""
 #
 #  Build eapol_test, and cache its output.  Note that EAPOL_TEST may not be
 #  defined, so we have to run the shell script for the second line, too.
@@ -32,6 +33,22 @@ $(BUILD_PATH)/tests/eapol_test:
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
 	@echo "TLS1_3=" $(shell strings $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) | grep 'tlsv1_3' | head -n 1) >> $@
+else
+#
+#  No OpenSSL means that we don't even try to build eapol_test
+#
+.PHONY: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
+$(BUILD_PATH)/tests/eapol_test/eapol_test.mk:
+	@touch $@
+
+.PHONY: clean.tests.eap
+clean.tests.eap:
+
+.PHONY: tests.eap
+tests.eap:
+	@echo Skipping EAP tests - not build with OpenSSL.
+
+endif
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 endif
@@ -163,7 +180,6 @@ radiusd.kill:
 #  Otherwise do nothing.
 #
 ifneq "$(EAPOL_TEST)" ""
-ifneq "$(OPENSSL_LIBS)" ""
 EAP_FILES	= eap-md5.conf
 EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.1 1.2
@@ -263,13 +279,6 @@ EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,
 tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
 	@$(MAKE) radiusd.kill
 
-else
-# Not built with OpenSSL support. Be friendly and say why we're
-# not running the EAP tests.
-clean.tests.eap:
-tests.eap:
-	@echo Skipping EAP tests, not built with OpenSSL support
-endif
 endif # we have eapol_test built
 
 # kill the server (if it's running)
