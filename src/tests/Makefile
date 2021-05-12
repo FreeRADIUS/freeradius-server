@@ -40,14 +40,6 @@ else
 .PHONY: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk:
 	@touch $@
-
-.PHONY: clean.tests.eap
-clean.tests.eap:
-
-.PHONY: tests.eap
-tests.eap:
-	@echo Skipping EAP tests - not build with OpenSSL.
-
 endif
 
 -include $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
