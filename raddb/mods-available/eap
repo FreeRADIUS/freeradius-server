@@ -886,6 +886,11 @@ eap {
 		#  Set this entry to "no" to proxy the tunneled
 		#  EAP-MSCHAP-V2 as normal MSCHAPv2.
 		#
+		#  This setting can be over-ridden on a packet by
+		#  packet basis by setting
+		#
+		#	&control:Proxy-Tunneled-Request-As-EAP = yes
+		#
 	#	proxy_tunneled_request_as_eap = yes
 
 		#  The inner tunneled request can be sent
