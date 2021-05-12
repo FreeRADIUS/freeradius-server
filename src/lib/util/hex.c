@@ -49,7 +49,7 @@ ssize_t fr_hex2bin(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 
 		if(!(c1 = memchr(hextab, tolower((int) *fr_sbuff_current(&our_in)), sizeof(hextab))) ||
 		   !(c2 = memchr(hextab, tolower((int) *(fr_sbuff_current(&our_in) + 1)), sizeof(hextab)))) {
-			if (!c2 && no_trailing) {
+			if (c1 && !c2 && no_trailing) {
 			got_trailing:
 		   		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
 		   		return 0;
