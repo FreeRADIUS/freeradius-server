@@ -1,13 +1,13 @@
 ARG from=debian:stretch
 FROM ${from} as build
 
-ARG gccver=6
+ARG DEBIAN_FRONTEND=noninteractive
 
 #
 #  Install build tools
 #
 RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt g++-${gccver}
+RUN apt-get install -y devscripts equivs git quilt gcc
 
 #
 #  Create build directory
@@ -45,7 +45,9 @@ FROM ${from}
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
 RUN apt-get update \
-    && apt-get install -y /tmp/*.deb \
+    && apt-get install -y \
+               /tmp/*.deb \
+               libsasl2-modules-gssapi-mit \
     && apt-get clean \
     && rm -r /var/lib/apt/lists/* /tmp/*.deb \
     \
