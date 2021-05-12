@@ -205,7 +205,7 @@ $(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(
 		echo ">>> cmd -" $(CMD); \
 		echo ">>> log -" $(LOG); \
 		echo "===================="; \
-		tail -10 $$(LOG); \
+		tail -10 $(LOG); \
 		echo "===================="; \
 		$(MAKE) radiusd.kill; \
 		exit 1; \
