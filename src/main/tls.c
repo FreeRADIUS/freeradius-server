@@ -581,7 +581,11 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
  * @param allow_tls13 Whether to allow or forbid TLS 1.3.
  * @return a new session on success, or NULL on error.
  */
-tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert, bool allow_tls13)
+tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert,
+#ifndef TLS1_3_VERSION
+			       UNUSED
+#endif
+			       bool allow_tls13)
 {
 	tls_session_t	*state = NULL;
 	SSL		*new_tls = NULL;
