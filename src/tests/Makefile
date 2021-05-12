@@ -30,16 +30,23 @@ ifneq "$(OPENSSL_LIBS)" ""
 #  Build eapol_test, and cache its output.  Note that EAPOL_TEST may not be
 #  defined, so we have to run the shell script for the second line, too.
 #
+#  Normal expansion will still run the script if EAPOL_TEST_BIN is
+#  set but empty, which we don't want.
+#
+ifeq "$(EAPOL_TEST_BIN)" ""
+override EAPOL_TEST_BIN := $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh)
+endif
+
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
-	@echo "EAPOL_TEST=" $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) > $@
-	@echo "TLS1_3=" $(shell strings $(shell $(top_builddir)/scripts/ci/eapol_test-build.sh) | grep 'tlsv1_3' | head -n 1) >> $@
+	@echo "EAPOL_TEST=" $(EAPOL_TEST_BIN) > $@
+	@echo "TLS1_3=" $(shell strings "$(EAPOL_TEST_BIN)" | grep 'tlsv1_3' | head -n 1) >> $@
 	@echo "OPENSSL_OK=" $(shell openssl version | grep -v ' 1\.0') >> $@
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
 #
 .PHONY: $(BUILD_PATH)/tests/eapol_test/eapol_test.mk
-$(BUILD_PATH)/tests/eapol_test/eapol_test.mk:
+$(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@touch $@
 endif
 

@@ -205,8 +205,7 @@ jobs:
     - name: Run the post-install test target
       run: |
         echo "top_builddir := $(pwd)" > Make.inc
-        mkdir -p build/tests/eapol_test
-        echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
+        make -C src/tests/ OPENSSL_LIBS=1 EAPOL_TEST_BIN="$(which eapol_test)" $(pwd)/build/tests/eapol_test/eapol_test.mk
         make -f scripts/ci/package-test.mk package-test
       working-directory: freeradius
 
