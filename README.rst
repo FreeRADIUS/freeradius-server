@@ -16,7 +16,7 @@ Using RADIUS allows authentication and authorization for a network
 to be centralized, and minimizes the number of changes that have to
 be done when adding or deleting new users to a network.
 
-FreeRADIUS can authenticate users on systems such as 802.1x (WiFi),
+FreeRADIUS can authenticate users on systems such as 802.1X (WiFi),
 dialup, PPPoE, VPN's, VoIP, and many others.  It supports back-end
 databases such as MySQL, PostgreSQL, Oracle, Microsoft Active
 Directory, Redis, OpenLDAP, and many more.  It is used daily to
@@ -119,7 +119,7 @@ freeradius-server `repository
 <https://github.com/FreeRADIUS/freeradius-server>`_. However, it
 is nearly always best to raise the issue on the mailing lists
 first to determine whether it really is a defect or missing
-feature..
+feature.
 
 Instructions for gathering data for defect reports can be found in
 ``doc/bugs`` or on the `wiki
@@ -159,7 +159,7 @@ Books on RADIUS
 See ``doc/README`` for more information about FreeRADIUS.
 
 There is an O'Reilly book available.  It serves as a good
-introduction for anyone new to RADIUS.  However, it is almost 18 years
+introduction for anyone new to RADIUS.  However, it is almost 20 years
 old, and is not much more than a basic introduction to the subject.
 
 https://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
