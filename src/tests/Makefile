@@ -247,7 +247,7 @@ ifneq "$(prefix)" ""
 define EAP_TLS_CONFIG
 $(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
 	@sed -e 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' \
-	     -e  '/password/s/^//p; /password/s/^.*/        openssl_ciphers="DEFAULT@SECLEVEL=1"/' \
+	     -e  '/password/s/^//p; /password/s/^.*/        openssl_ciphers="DEFAULT${SECLEVEL}"/' \
 		< $$< > $$@
 
 $(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
