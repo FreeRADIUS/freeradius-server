@@ -207,7 +207,8 @@ CREATE TABLE radpostauth (
 	  UserName      VARCHAR(64) NOT NULL,
 	  Pass          VARCHAR(64),
 	  Reply         VARCHAR(64),
-	  AuthDate 	TIMESTAMP(6) WITH TIME ZONE
+	  AuthDate 	TIMESTAMP(6) WITH TIME ZONE,
+	  Class         VARCHAR(64),
 );
 
 CREATE SEQUENCE radpostauth_seq START WITH 1 INCREMENT BY 1;

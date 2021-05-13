@@ -127,7 +127,8 @@ CREATE TABLE radpostauth (
 	username varchar(64) NOT NULL default '',
 	pass varchar(64) NOT NULL default '',
 	reply varchar(32) NOT NULL default '',
-	authdate timestamp NOT NULL
+	authdate timestamp NOT NULL,
+	class varchar(64) NOT NULL default ''
 );
 
 --
