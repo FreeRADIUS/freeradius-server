@@ -134,11 +134,11 @@ jobs:
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
         apt-get update
 
-    # For pkill
-    - name: Install procps
+    # For pkill and strings
+    - name: Install procps and binutils
       run: |
         apt-get update
-        apt-get install -y --no-install-recommends procps
+        apt-get install -y --no-install-recommends procps binutils
 
     - name: Install DEBs
       run: |
