@@ -96,11 +96,15 @@ jobs:
         mkdir rpms
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
 
-    - name: Build eapol_test
+    - name: Run tests and build eapol_test
       run: |
         yum install -y libnl3-devel which
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
-        make -C src/tests -j `nproc` eapol_test
+        git clean -fdx
+        git reset --hard HEAD
+        ./configure
+        make -j `nproc`
+        make test
         mv scripts/ci/eapol_test/eapol_test ../rpms
       working-directory: freeradius
 

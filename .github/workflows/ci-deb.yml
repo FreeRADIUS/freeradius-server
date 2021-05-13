@@ -65,11 +65,14 @@ jobs:
         mkdir debs
         mv *.deb debs
 
-    - name: Build eapol_test
+    - name: Run tests and build eapol_test
       run: |
         apt-get install -y libnl-3-dev libnl-genl-3-dev
+        git clean -fdx
+        git reset --hard HEAD
         ./configure
-        make -C src/tests -j `nproc` eapol_test
+        make -j `nproc`
+        make test
         mv scripts/ci/eapol_test/eapol_test ../debs
       working-directory: freeradius
 
