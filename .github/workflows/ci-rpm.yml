@@ -42,6 +42,14 @@ jobs:
       with:
         path: freeradius
 
+    - name: Prepare filesystem
+      run: |
+        pwd
+        ls -la
+        cp -r freeradius freeradius-tests
+        mkdir rpms
+        ls -la
+
     - name: Extra repos
       if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
       run: |
@@ -84,6 +92,16 @@ jobs:
       run: |
         yum-builddep -y freeradius/redhat/freeradius.spec
 
+    - name: Run tests and build eapol_test
+      run: |
+        yum install -y libnl3-devel which
+        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
+        ./configure
+        make -j `nproc`
+        make test
+        mv scripts/ci/eapol_test/eapol_test ../rpms/
+      working-directory: freeradius-tests
+
     - name: Build RPMs
       run: |
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
@@ -93,20 +111,7 @@ jobs:
 
     - name: Collect RPMs
       run: |
-        mkdir rpms
-        mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
-
-    - name: Run tests and build eapol_test
-      run: |
-        yum install -y libnl3-devel which
-        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
-        git clean -fdx
-        git reset --hard HEAD
-        ./configure
-        make -j `nproc`
-        make test
-        mv scripts/ci/eapol_test/eapol_test ../rpms
-      working-directory: freeradius
+        mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms/
 
     - name: Store RPMs
       uses: actions/upload-artifact@v2

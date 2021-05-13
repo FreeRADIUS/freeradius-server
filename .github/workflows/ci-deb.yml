@@ -48,12 +48,29 @@ jobs:
       with:
         path: freeradius
 
+    - name: Prepare filesystem
+      run: |
+        pwd
+        ls -la
+        cp -r freeradius freeradius-tests
+        mkdir debs
+        ls -la
+
     - name: Install build dependencies
       run: |
         apt-get install -y --no-install-recommends build-essential devscripts quilt equivs
         debian/rules debian/control
         mk-build-deps -irt"apt-get -y" debian/control
       working-directory: freeradius
+
+    - name: Run tests and build eapol_test
+      run: |
+        apt-get install -y libnl-3-dev libnl-genl-3-dev
+        ./configure
+        make -j `nproc`
+        make test
+        mv scripts/ci/eapol_test/eapol_test ../debs/
+      working-directory: freeradius-tests
 
     - name: Build DEBs
       run: |
@@ -62,19 +79,7 @@ jobs:
 
     - name: Collect DEBs
       run: |
-        mkdir debs
-        mv *.deb debs
-
-    - name: Run tests and build eapol_test
-      run: |
-        apt-get install -y libnl-3-dev libnl-genl-3-dev
-        git clean -fdx
-        git reset --hard HEAD
-        ./configure
-        make -j `nproc`
-        make test
-        mv scripts/ci/eapol_test/eapol_test ../debs
-      working-directory: freeradius
+        mv *.deb debs/
 
     - name: Store DEBs
       uses: actions/upload-artifact@v2
