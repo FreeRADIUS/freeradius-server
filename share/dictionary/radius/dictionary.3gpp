@@ -3,9 +3,9 @@
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
-#	3GPP stuff.
+#	3GPP attribute as specified in TS 29.061
 #
-#	http://www.3gpp.org/ftp/Specs/archive/29_series/29.061/29061-3a0.zip
+#	https://portal.3gpp.org/desktopmodules/Specifications/SpecificationDetails.aspx?specificationId=1596
 #
 #	$Id$
 #
@@ -18,8 +18,17 @@ BEGIN-VENDOR	3GPP
 #	Maybe we want a UTF-8 'type' in the server...
 #
 ATTRIBUTE	IMSI					1	string
-ATTRIBUTE	Charging-ID				2	integer
-ATTRIBUTE	PDP-Type				3	integer
+ATTRIBUTE	Charging-ID				2	uint32
+ATTRIBUTE	PDP-Type				3	uint32
+
+VALUE	PDP-Type			IPv4			0
+VALUE	PDP-Type			PPP			1
+VALUE	PDP-Type			IPv6			2
+VALUE	PDP-Type			IPv4v6			3
+VALUE	PDP-Type			Non-IP			4
+VALUE	PDP-Type			Unstructured		5
+VALUE	PDP-Type			Ethernet		6
+
 ATTRIBUTE	CG-Address				4	ipaddr
 ATTRIBUTE	GPRS-Negotiated-QoS-profile		5	string
 ATTRIBUTE	SGSN-Address				6	ipaddr
@@ -28,22 +37,50 @@ ATTRIBUTE	IMSI-MCC-MNC				8	string
 ATTRIBUTE	GGSN-MCC-MNC				9	string
 ATTRIBUTE	NSAPI					10	string
 ATTRIBUTE	Session-Stop-Indicator			11	byte
-ATTRIBUTE	Selection-Mode				12	string
+
+VALUE	Session-Stop-Indicator		Stop		255
+
+ATTRIBUTE	Selection-Mode				12	string[1]
 ATTRIBUTE	Charging-Characteristics		13	string
 ATTRIBUTE	CG-IPv6-Address				14	ipv6addr
 ATTRIBUTE	SGSN-IPv6-Address			15	ipv6addr
 ATTRIBUTE	GGSN-IPv6-Address			16	ipv6addr
 
-#
-#	This attribute is really an array of IPv6 addresses.
-#	Why the heck couldn't they just send multiple attributes?
-#
-ATTRIBUTE	IPv6-DNS-Servers			17	octets
+ATTRIBUTE	IPv6-DNS-Servers			17	ipv6addr array
 
 ATTRIBUTE	SGSN-MCC-MNC				18	string
 ATTRIBUTE	Teardown-Indicator			19	byte
+
+VALUE	Teardown-Indicator		This-IP-CAN	0
+VALUE	Teardown-Indicator		All-IP-CAN	1
+
 ATTRIBUTE	IMEISV					20	string
 ATTRIBUTE	RAT-Type				21	byte
+
+# 0-9 specified in 3GPP TS 29.274
+VALUE	RAT-Type			UTRAN			1
+VALUE	RAT-Type			GERAN			2
+VALUE	RAT-Type			WLAN			3
+VALUE	RAT-Type			GAN			4
+VALUE	RAT-Type			HSPA-Evolution		5
+VALUE	RAT-Type			EUTRAN			6
+VALUE	RAT-Type			Virtual			7
+VALUE	RAT-Type			EUTRAN-NB-IoT		8
+VALUE	RAT-Type			LTE-M			9
+
+# 10+ Specified in 3GPP TS 29.061
+VALUE	RAT-Type			NR			51
+VALUE	RAT-Type			NR-Unlicensed		52
+VALUE	RAT-Type			Trusted-WLAN		53
+VALUE	RAT-Type			Trusted-Non-3GPP	54
+VALUE	RAT-Type			Wireline-Access		55
+VALUE	RAT-Type			Wireline-Cable-Access	56
+VALUE	RAT-Type			Wireline-BPF-Access	57
+VALUE	RAT-Type			IEEE-802.16e		101
+VALUE	RAT-Type			3GPP2-eHRPD		102
+VALUE	RAT-Type			3GPP2-HRPD		103
+VALUE	RAT-Type			3GPP2-1xRTT		104
+VALUE	RAT-Type			3GPP2-UMB		105
 
 ATTRIBUTE	User-Location-Info			22	struct
 MEMBER		Type					uint8	key
@@ -77,36 +114,57 @@ MEMBER		TAC					uint16
 STRUCT	ECGI				Type			129
 MEMBER		ECI					octets[4]
 
-STRUCT	TAI-ECGI				Type		130
+STRUCT	TAI-ECGI			Type		130
 MEMBER		TAC					uint16
 MEMBER		PLMN-ID					octets[3]
 MEMBER		ECI					octets[4]
 
-ATTRIBUTE	MS-TimeZone				23	octets[2]
+ATTRIBUTE	MS-TimeZone				23	struct
+
+MEMBER		TZ					byte
+MEMBER		Daylight-Savings			octets
+
 ATTRIBUTE	CAMEL-Charging-Info			24	octets
-ATTRIBUTE	Packet-Filter				25	octets
+ATTRIBUTE	Packet-Filter				25	struct
+
+MEMBER		Identifier				byte
+MEMBER		Precedence				byte
+MEMBER		Length					byte
+MEMBER		Direction				byte
+
+VALUE	Direction			Downlink	0
+VALUE	Direction			Uplink		1
+
+MEMBER		Packet-Filter				octets
+
 ATTRIBUTE	Negotiated-DSCP				26	byte
 ATTRIBUTE	Allocate-IP-Type			27	byte
-
-VALUE	RAT-Type			UTRAN			1
-VALUE	RAT-Type			GERAN			2
-VALUE	RAT-Type			WLAN			3
-VALUE	RAT-Type			GAN			4
-VALUE	RAT-Type			HSPA-Evolution		5
-VALUE	RAT-Type			EUTRAN			6
-VALUE	RAT-Type			Virtual			7
-VALUE	RAT-Type			IEEE-802.16e		101
-VALUE	RAT-Type			3GPP2-eHRPD		102
-VALUE	RAT-Type			3GPP2-HRPD		103
-VALUE	RAT-Type			3GPP2-1xRTT		104
 
 VALUE	Allocate-IP-Type		Do-Not-Allocate		0
 VALUE	Allocate-IP-Type		Allocate-IPv4-Address	1
 VALUE	Allocate-IP-Type		Allocate-IPv6-Prefix	2
 VALUE	Allocate-IP-Type		Allocate-IPv4-and-IPv6	3
 
+ATTRIBUTE	External-Identifier			28	octets
+
 ATTRIBUTE	TWAN-Identifier				29	octets
-ATTRIBUTE	User-Location-Info-Time			30	octets
-ATTRIBUTE	Secondary-RAT-Usage			31	octets
+ATTRIBUTE	User-Location-Info-Time			30	date
+
+ATTRIBUTE	Secondary-RAT-Usage			31	struct
+
+MEMBER		Spare					bit[3]
+MEMBER		SESS					bit[1]
+MEMBER		RAT					bit[4]
+
+VALUE	RAT				NR			0
+VALUE	RAT				NR-U			1
+VALUE	RAT				EUTRA			3
+VALUE	RAT				EUTRA-U			4
+VALUE	RAT				Unlicensed-Spectrum	5
+
+MEMBER		RAN-Start-Time				date
+MEMBER		RAN-End-Time				date
+MEMBER		Usage-Data-DL				uint64
+MEMBER		Usage-Data-UL				uint64
 
 END-VENDOR	3GPP

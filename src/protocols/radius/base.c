@@ -1119,11 +1119,6 @@ static fr_table_num_ordered_t const subtype_table[] = {
 static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
-	if (flags->array) {
-		fr_strerror_const("RADIUS does not support the 'array' flag.");
-		return false;
-	}
-
 	if (parent->type == FR_TYPE_STRUCT) {
 		if (flag_extended(flags)) {
 			fr_strerror_const("Attributes of type 'extended' cannot be used inside of a 'struct'");
