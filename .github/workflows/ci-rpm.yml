@@ -92,6 +92,12 @@ jobs:
       run: |
         yum-builddep -y freeradius/redhat/freeradius.spec
 
+    # For pkill and ps
+    - name: Enable procps-ng on Fedora
+      if: ${{ startsWith(matrix.env.NAME, 'fedora-') }}
+      run: |
+        yum install -y procps-ng
+
     - name: Run tests and build eapol_test
       run: |
         yum install -y libnl3-devel which

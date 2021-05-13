@@ -58,7 +58,7 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        apt-get install -y --no-install-recommends build-essential devscripts quilt equivs
+        apt-get install -y --no-install-recommends build-essential devscripts quilt equivs procps
         debian/rules debian/control
         mk-build-deps -irt"apt-get -y" debian/control
       working-directory: freeradius
