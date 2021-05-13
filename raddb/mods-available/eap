@@ -699,6 +699,27 @@ eap {
 		#  be used to accept or reject the request.
 		#
 	#	virtual_server = check-eap-tls
+
+		#  You can control whether or not EAP-TLS requires a
+		#  client certificate by setting
+		#
+		#	configurable_client_cert = yes
+		#
+		#  Once that setting has been changed, you can then set
+		#
+		#	EAP-TLS-Require-Client-Cert = No
+		#
+		#  in the control items for a request, and the EAP-TLS
+		#  module will not require a client certificate from
+		#  the supplicant.
+		#
+		#  WARNING: This configuration should only be used
+		#  when the users are placed into a "captive portal"
+		#  or "walled garden", where they have limited network
+		#  access.  Otherwise the configuraton will allow
+		#  anyone on the network, without authenticating them!
+		#
+#		configurable_client_cert = no
 	}
 
 
