@@ -118,7 +118,7 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		decoded++;
 	}
 
-	fr_pair_list_move(&request->request_pairs, &head);
+	fr_pair_list_move(&request->request_pairs, &head, T_OP_ADD);
 
 	/* Free any unmoved pairs */
 	fr_pair_list_free(&head);

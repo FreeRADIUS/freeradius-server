@@ -125,7 +125,7 @@ Where:
 | Parameter  | Description
 | <fr attr>  | Is the attribute you wish to create,
                with any valid list and request qualifiers.
-| <op>       | Is any assignment operator (`=`, `:=`, `+=`, `-=`).
+| <op>       | Is any assignment operator (`=`, `:=`, `+=`, `^=`, `-=`).
 | <value>    | Is the value to parse into the new attribute.
                If the value is wrapped in double quotes it
                will be xlat expanded.
@@ -163,7 +163,7 @@ Where:
 | Parameter   | Description
 | <fr attr>   | Is the destination RADIUS attribute
                 with any valid list and request qualifiers.
-| <op>        | Is any assignment attribute (=, :=, +=, -=).
+| <op>        | Is any assignment attribute (=, :=, +=, ^=, -=).
 | <ldap attr> | Is the attribute associated with user or
                 profile objects in the LDAP directory.
                 If the attribute name is wrapped in double quotes

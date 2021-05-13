@@ -1335,9 +1335,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				FALL_THROUGH;
 
 		case T_OP_ADD:
-				fr_pair_list_move(list, &src_list);
+				fr_pair_list_move(list, &src_list, T_OP_ADD);
 				fr_pair_list_free(&src_list);
 			}
+			goto update;
+
+		case T_OP_PREPEND:
+			fr_pair_list_move(list, &src_list, map->op);
+			fr_pair_list_free(&src_list);
 			goto update;
 
 		default:
@@ -1555,6 +1560,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		fr_assert(fr_dlist_num_elements(&interior) == 0);
 		fr_dlist_talloc_free(&leaf);
 	}
+		break;
+
+	/*
+	 *	^= - Prepend src_list attributes to the destination
+	 */
+	case T_OP_PREPEND:
+		fr_pair_list_prepend(list, &src_list);
+		fr_pair_list_free(&src_list);
 		break;
 
 	/*

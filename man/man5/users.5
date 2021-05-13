@@ -94,10 +94,18 @@ Not allowed as a reply item.
 .TP 0.5i
 .B "Attribute += Value"
 Always matches as a check item, and adds the current attribute with
-value to the list of configuration items.
+value to the tail of the list of configuration items.
 .br
 As a reply item, it has an identical meaning, but the attribute is
-added to the reply items.
+added to the tail of the reply items list.
+
+.TP 0.5i
+.B "Attribute ^= Value"
+Always matches as a check item, and adds the current attribute with
+value to the head of the list of configuration items.
+.br
+As a reply item, it has an identical meaning, but the attribute is
+added to the head of the reply items list.
 
 .TP 0.5i
 .B "Attribute != Value"

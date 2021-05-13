@@ -226,8 +226,8 @@ static void test_fr_pair_list_move(void)
 	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &old_list, fp, &pfiledone) == 0);
 	TEST_CHECK(pfiledone == true);
 
-	TEST_CASE("Move pair from 'old_list' to 'old_list' using fr_pair_list_move()");
-	fr_pair_list_move(&new_list, &old_list);
+	TEST_CASE("Move pair from 'old_list' to 'new_list' using fr_pair_list_move()");
+	fr_pair_list_move(&new_list, &old_list, T_OP_ADD);
 
 	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&new_list, fr_dict_attr_test_uint32, 0)) != NULL);

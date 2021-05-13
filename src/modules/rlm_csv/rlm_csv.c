@@ -459,6 +459,7 @@ static int csv_map_verify(map_t *map, void *instance)
 	case T_OP_EQ:
 	case T_OP_SUB:
 	case T_OP_ADD:
+	case T_OP_PREPEND:
 	case T_OP_LT:
 	case T_OP_GT:
 	case T_OP_LE:

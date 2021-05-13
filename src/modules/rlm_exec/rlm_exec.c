@@ -370,7 +370,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 		ctx = tmpl_list_ctx(request, inst->output_list);
 
 		fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
-		if (!fr_pair_list_empty(&vps)) fr_pair_list_move(output_pairs, &vps);
+		if (!fr_pair_list_empty(&vps)) fr_pair_list_move(output_pairs, &vps, T_OP_ADD);
 
 		fr_dlist_talloc_free(&m->box);	/* has been consumed */
 	}

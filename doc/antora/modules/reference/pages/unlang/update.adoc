@@ -81,6 +81,8 @@ name is already present in that list, its value is replaced with the
 value of the current attribute.
 | +=       | Add the attribute to the tail of the list, even if attributes
 of the same name are already present in the list.
+| ^=       | Add the attribute to the head of the list, even if attributes
+of the same name are already present in the list.
 | -=       | Remove all attributes from the list that match _<value>_.
 | !*       | Delete all occurances of the attribute, no matter what the value.
 |=====

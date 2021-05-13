@@ -1782,7 +1782,7 @@ static int parse_input(cf_stack_t *stack)
 	 *	so we check for them first.
 	 */
 	if (!((*ptr == '=') || (*ptr == '!') || (*ptr == '>') || (*ptr == '<') ||
-	      (*ptr == '-') || (*ptr == '+') || (*ptr == ':'))) {
+	      (*ptr == '-') || (*ptr == '+') || (*ptr == ':') || (*ptr == '^'))) {
 		ERROR("%s[%d]: Parse error at unexpected text: %s",
 		      frame->filename, frame->lineno, ptr);
 		return -1;
@@ -1812,6 +1812,7 @@ static int parse_input(cf_stack_t *stack)
 
 	case T_OP_EQ:
 	case T_OP_SET:
+	case T_OP_PREPEND:
 		fr_skip_whitespace(ptr);
 		op_token = name2_token;
 		break;

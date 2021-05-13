@@ -1084,6 +1084,19 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		}
 			goto finish;
 
+		case T_OP_PREPEND:
+		{
+			fr_pair_list_t	vp_from;
+
+			fr_pair_list_init(&vp_from);
+			map_list_mod_to_vps(parent, &vp_from, vlm);
+			fr_assert(!fr_pair_list_empty(&vp_from));
+
+			fr_pair_list_prepend(vp_list, &vp_from);
+
+			goto finish;
+		}
+
 		default:
 			rcode = -1;
 			goto finish;
@@ -1200,6 +1213,19 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		fr_pair_list_append(vp_list, &vp_from);
 	}
 		goto finish;
+
+	case T_OP_PREPEND:
+	{
+		fr_pair_list_t	vp_from;
+
+		fr_pair_list_init(&vp_from);
+		map_list_mod_to_vps(parent, &vp_from, vlm);
+		fr_assert(!fr_pair_list_empty(&vp_from));
+
+		fr_pair_list_prepend(vp_list, &vp_from);
+
+		goto finish;
+	}
 
 	/*
 	 *	= - Set only if not already set

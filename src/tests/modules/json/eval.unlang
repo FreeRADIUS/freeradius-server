@@ -105,6 +105,28 @@ update request {
 	&Tmp-Integer-0 !* ANY
 }
 
+# 9a. All of the array
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array.*'
+}
+if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 1) || (&Tmp-Integer-0[2] != 2) || (&Tmp-Integer-0[3] != 3) || (&Tmp-Integer-0[4] != 4) || (&Tmp-Integer-0[5] != 5)) {
+	test_fail
+}
+
+update request {
+	&Tmp-Integer-0 := 9
+}
+# 9b. All of the array using prepend, places the array before the existing value
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 ^= '$.my_array.*'
+}
+if ((&Tmp-Integer-0[0] != 0) || (&Tmp-Integer-0[1] != 1) || (&Tmp-Integer-0[2] != 2) || (&Tmp-Integer-0[3] != 3) || (&Tmp-Integer-0[4] != 4) || (&Tmp-Integer-0[5] != 5) || (&Tmp-Integer-0[6] != 9)) {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
 # 10. End of the array
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 := '$.my_array[5]'	# Past the end of the array (should be skipped)

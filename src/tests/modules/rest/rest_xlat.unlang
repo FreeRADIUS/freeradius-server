@@ -54,6 +54,19 @@ if (&control.User-Name != "Bob") {
 }
 
 update control {
+	&Tmp-String-3 := 'dummy'
+}
+
+# Directly use json map and prepend the returned value
+map json "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id}}" {
+	&control.Tmp-String-3 ^= '$.control\.User-Name.value'
+}
+
+if ((&control.Tmp-String-3[0] != 'Bob') || (&control.Tmp-String-3[1] != 'dummy')) {
+	test_fail
+}
+
+update control {
 	&Tmp-String-2 = "%{json_encode:&request.NAS-IP-Address}"
 }
 

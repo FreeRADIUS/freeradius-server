@@ -44,7 +44,7 @@ fr_token_t	fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict,
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
 					fr_pair_list_t *out, FILE *fp, bool *pfiledone);
 
-void		fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from);
+void		fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op);
 
 #ifdef __cplusplus
 }

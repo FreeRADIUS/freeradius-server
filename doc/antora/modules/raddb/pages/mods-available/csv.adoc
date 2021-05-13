@@ -146,7 +146,7 @@ Where:
 | Parameter   | Description
 | <fr attr>   | Is the destination RADIUS attribute
                 with any valid list and request qualifiers.
-| <op>        | Is any assignment attribute (=, :=, +=, -=).
+| <op>        | Is any assignment attribute (=, :=, +=, ^=, -=).
 | <csv field> | Is the name of a field from the CSV file, as taken
                 from the `fields` configuration item.
 |===

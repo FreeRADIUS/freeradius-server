@@ -46,7 +46,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 {
 	int		i, j, count, to_count, tailto;
 	fr_pair_t	*from_vp, *next_from, *to_vp, *next_to = NULL;
-	fr_pair_list_t	append;
+	fr_pair_list_t	append, prepend;
 	bool		*edited = NULL;
 	bool		*deleted = NULL;
 
@@ -74,15 +74,16 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	 */
 
 	fr_pair_list_init(&append);
+	fr_pair_list_init(&prepend);
 
-	to_count = fr_dlist_num_elements(&to->head);
+	to_count = fr_pair_list_len(to);
 	tailto = to_count;
 	edited = talloc_zero_array(request, bool, to_count);
 	deleted = talloc_zero_array(request, bool, to_count);
 
-	count = to_count + fr_dlist_num_elements(&from->head);
+	count = to_count + fr_pair_list_len(from);
 
-	RDEBUG4("::: FROM %ld TO %d MAX %d", fr_dlist_num_elements(&from->head), to_count, count);
+	RDEBUG4("::: FROM %ld TO %d MAX %d", fr_pair_list_len(from), to_count, count);
 
 	/*
 	 *	Now that we have the lists initialized, start working
@@ -104,6 +105,18 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 		 */
 		if (from_vp->op == T_OP_ADD) goto do_append;
 
+		/*
+		 *	The attribute needs to be prepended to the "to"
+		 *	list - store it in the prepend list
+		 */
+
+		if (from_vp->op == T_OP_PREPEND) {
+			RDEBUG4("::: PREPENDING %s FROM %d", from_vp->da->name, i);
+			fr_pair_remove(from, from_vp);
+			fr_pair_prepend(&prepend, from_vp);
+			from_vp->op = T_OP_EQ;
+			continue;
+		}
 		found = false;
 		j = 0;
 		for (to_vp = fr_pair_list_head(to); to_vp; to_vp = next_to, j++) {
@@ -294,6 +307,12 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 		 */
 		to_vp->op = T_OP_EQ;
 	}
+
+	/*
+	 *  Now prepend any items in the "prepend" list to
+	 *  the head of the "to" list.
+	 */
+	fr_pair_list_prepend(to, &prepend);
 
 	/*
 	 *	And finally add in the attributes we're appending to

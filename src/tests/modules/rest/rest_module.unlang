@@ -1,3 +1,8 @@
+# Pre-set Tmp-String-2 to check correct operator behaviour
+update control {
+	&Tmp-String-2 := "foo"
+}
+
 # Test "authorize" rest call.  Uses http to a GET end point
 rest
 
@@ -23,11 +28,21 @@ if (&control.User-Name != "Bob") {
 	test_fail
 }
 
+# The "op" for setting Tmp-String-2 is ^=
+if ((&control.Tmp-String-2[0] != "Bob") || (&control.Tmp-String-2[1] != "foo")) {
+	test_fail
+}
+
 # Reset control attributes
 update control {
 	&Tmp-String-0 !* ANY
 	&Tmp-String-1 !* ANY
 	&User-Name !* ANY
+}
+
+# Pre-fill NAS-IP-Address to check operator behaviour
+update control {
+	&NAS-IP-Address := "10.0.0.10"
 }
 
 # Test "accounting" rest call.  Uses https to a POST end point
@@ -53,8 +68,12 @@ if (&control.User-Name != "Bob") {
 	test_fail
 }
 
+if ((&control.Tmp-String-2[0] != "Bob") || (&control.Tmp-String-2[1] != "Bob") || (&control.Tmp-String-2[2] != "foo")) {
+	test_fail
+}
+
 # NAS IP Address is passed in body data
-if (&control.NAS-IP-Address != "192.168.1.1") {
+if ((&control.NAS-IP-Address[0] != "10.0.0.10") || (&control.NAS-IP-Address[1] != "192.168.1.1")) {
 	test_fail
 }
 

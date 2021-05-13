@@ -870,7 +870,7 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 		}
 
 		/*
-		 *	Only += and :=, and !* operators are supported
+		 *	Only += and :=, and !*, and ^= operators are supported
 		 *	for lists.
 		 */
 		switch (map->op) {
@@ -900,6 +900,14 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 		case T_OP_EQ:
 			if (!tmpl_is_exec(map->rhs)) {
 				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_PREPEND:
+			if (!tmpl_is_list(map->rhs) &&
+			    !tmpl_is_exec(map->rhs)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s ^= ...'", map->lhs->name);
 				return -1;
 			}
 			break;

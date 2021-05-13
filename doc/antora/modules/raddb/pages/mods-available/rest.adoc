@@ -247,10 +247,7 @@ The response format adds three optional fields:
 | `is_json` | If `true`, any nested JSON data will be copied to the attribute
               in string form. Defaults to `true`.
 | `op`      | Controls how the attribute is inserted into the target list.
-              Defaults to `:=`. To create multiple attributes from multiple
-              values, this should be set to `+=`, otherwise only the last
-              value will be used, and it will be assigned to a single
-              attribute.
+              Defaults to `:=`.
 |===
 
 [source,json]
