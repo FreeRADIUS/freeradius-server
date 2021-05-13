@@ -491,6 +491,20 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 	dependency_version_number_add(cs, "pcre", pcre_version());
 #  endif
 #endif
+
+#ifdef LIBKQUEUE_VERSION_STRING
+	{
+		char const *libkqueue_version = LIBKQUEUE_VERSION_STRING
+#  ifdef LIBKQUEUE_VERSION_COMMIT
+		" (git #"LIBKQUEUE_VERSION_COMMIT")"
+#  endif
+#  ifdef LIBKQUEUE_VERSION_DATE
+		" ("LIBKQUEUE_VERSION_DATE") retrieved at build time"
+#  endif
+		;
+		dependency_version_number_add(cs, "libkqueue", libkqueue_version);
+	}
+#endif
 }
 
 static char const *spaces = "                                    ";	/* 40 */
