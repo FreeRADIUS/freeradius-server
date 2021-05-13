@@ -16,16 +16,15 @@ switch <expansion> {
 }
 ----
 
-A `switch` statement causes the server to evaluate _expansion_, which
-can be an xref:unlang/attr.adoc[&Attribute-Name] or
-xref:condition/operands.adoc[data].  The result is compared against _match-1_
-and _match-2_ to find a match. If no string matches, then the server
-looks for the default xref:unlang/case.adoc[case] statement, which has no
-associated match.
+A `switch` statement causes the server to evaluate _<expansion>_,
+which can be an xref:unlang/attr.adoc[&Attribute-Name] or
+xref:condition/operands.adoc[data].  The result is compared against
+_<match-1>_ and _<match-2>_, etc. in order to find a match. If no
+match is found, then the server looks for the `default`
+xref:unlang/case.adoc[case] statement.
 
-The matching is done via equality.  The `switch` statement is mostly
-syntactic sugar and is used to simplify the visual form of the
-configuration.  It is mostly equivalent to the following use of
+The matching is generally done via equality comparison.  The `switch`
+statement is mostly equivalent to the following use of
 xref:unlang/if.adoc[if] statements:
 
 .Nearly equivalent syntax
@@ -42,38 +41,51 @@ else {
 }
 ----
 
-The main difference between the two forms is that for a `switch`
-statement, the _expansion_ is evaluated only once.  For the equivalent
-xref:unlang/if.adoc[if] statement, the _expansion_ is evaluated again for every
-xref:unlang/if.adoc[if].
+There are some differences from a series of xref:unlang/if.adoc[if]
+statements.  For a `switch` statement, the _<expansion>_ is evaluated
+only once.  For the equivalent xref:unlang/if.adoc[if] statement, the
+_<expansion>_ is evaluated again for every xref:unlang/if.adoc[if].
+The other difference is that the _<match>_ values for each
+xref:unlang/case.adoc[case] statement are put into an optimized data
+structure.
 
-If a matching xref:unlang/case.adoc[case] is found, the statements within
-that xref:unlang/case.adoc[case] are evaluated. If no matching
-xref:unlang/case.adoc[case] is found, the `default` section is evaluated. The
-`default` section must not have any _match_ text.  If there is no
-`default`, then the `switch` statement behaves as if the `default`
-section was empty.
+If a matching xref:unlang/case.adoc[case] is found, the statements
+within that xref:unlang/case.adoc[case] are evaluated. If no matching
+xref:unlang/case.adoc[case] is found, the `default` section is
+evaluated.  If there is no `default`, then the `switch` statement
+behaves as if the `default` section was empty.
 
 == Efficiency and Data Types
 
 The `switch` keyword will automatically choose an efficient
 representation for the set of xref:unlang/case.adoc[case] statements,
-based on the data type of the _match_ text.  For `string` and `octets`
-data, the xref:unlang/case.adoc[case] statements are place in a binary
-tree.  This tree permits `O(log(N))` lookups, so that it is possible
-to use `switch` statements which contain tens of thousands of
-xref:unlang/case.adoc[case] statements with minimal performance
-penalty.
+depending on the data type of the _<expansion>_.
+
+For `string` and `octets` data, the xref:unlang/case.adoc[case]
+statements are place into a
+https://en.wikipedia.org/wiki/Red%E2%80%93black_tree[Red-black tree].
 
 For IP address data types (`ipv4addr`, `ipv6addr`, `ipv4prefix`, and
 `ipv6prefix`), the xref:unlang/case.adoc[case] statements are placed
-in a Patricia Trie.  The Patricia Trie allows for an IP address to
-match exactly, or to match a particular network.  Multiple networks
-can be given, including nested networks, so long as there are no
-duplicates.  The Patricia Trie also allows for efficient lookups,
-which in practice are also `O(lg(N))` in the number of entries.
+into a https://en.wikipedia.org/wiki/Radix_tree[Patricia / Radix
+tree].  The Patricia Trie allows for an IP address to match exactly,
+or to match a particular network.  Multiple networks can be given,
+including nested networks, so long as there are no duplicates.
 
-Other data types are placed into a hash table.
+Data types which are of the various "integer" types, or `ethernet`, or
+`ifid` are put into a hash table.
+
+Other data types such as `vsa` or `group` are not permitted in the
+_<expansion>_ field of a `switch` statement.
+
+These data structures mean that the _<match>_ lookups are generally
+`O(lg(N))` in the number of entries.  In contrast, a `if` / `elsif`
+chain is much slower, because it is linear in the number of entries.
+This efficiency means that it's possible to create a `switch`
+statement which has a thousands to hundreds of thousands of entries,
+with minimal performance overhead.  The only cost of having 10,000
+entries in a `switch` statement is that the server will use more
+memory.
 
 == Limitations
 

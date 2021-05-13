@@ -14,19 +14,19 @@ the named _<list>_.
 
 The `update` statement consists of the following syntax elements:
 
-<list>.: The attribute list which will be updated.  The list is
+_<list>_: The attribute list which will be updated.  The list is
 usually `request`, `reply`, or `control`.
 +
 If the _<list>_ qualifier is omitted, then each entry inside of the
 `update` section *must* be prefixed with a list name.  For example,
 `&request.User-Name ...`
 
-<server-attribute>:: The server attribute which is assigned the
+_<server-attribute>_:: The server attribute which is assigned the
 _<value>_.
 
-<op>:: The operator such as `=`, `:=`, etc.
+_<op>_:: The operator such as `=`, `:=`, etc.
 
-<value>:: The value which is assigned to the attribute.  If the field
+_<value>_:: The value which is assigned to the attribute.  If the field
 is a double-quoted string, it undergoes xref:xlat/index.adoc[string
 expansion], and the resulting value is assigned to the attribute.
 
