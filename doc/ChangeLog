@@ -17,6 +17,8 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  Fixes #3356.
 	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
 	  works, and no longer requires manual changes to the configuration.
+	* Allow "configurable_client_cert=yes" for EAP-TLS.  This should
+	  only be used for a "walled garden".  See mods-available/eap
 	* Add TLS 1.2 support for EAP-Fast.  Patches from Alex Clouter.
 	* Add ca_path_reload_interval option for tls.  See mods-available/eap.
 	  Fixes #1831.  Patch from Boris Lytochkin.
