@@ -74,7 +74,7 @@ ssize_t fr_dict_print_flags(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t ty
 	return fr_sbuff_set(out, &our_out);
 }
 
-/** Build the da_stack for the specified DA and encode the path in OID form
+/** Build the da_stack for the specified DA and encode the path by name in OID form
  *
  * @param[out] out		Where to write the OID.
  * @param[in] ancestor		If not NULL, only print OID portion between ancestor and da.
@@ -119,10 +119,56 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out, fr_dict_attr_t const *ancestor, 
 	return fr_sbuff_set(out, &our_out);
 }
 
+/** Build the da_stack for the specified DA and encode the numerical path in OID form
+ *
+ * @param[out] out		Where to write the OID.
+ * @param[in] ancestor		If not NULL, only print OID portion between ancestor and da.
+ * @param[in] da		to print OID string for.
+ * @return
+ *	- >0 The number of bytes written to the buffer.
+ *	- <= 0 The number of bytes we would have needed to write the
+ *        next OID component.
+ */
+static ssize_t dict_attr_oid_print_oid(fr_sbuff_t *out, fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
+{
+	int			i;
+	int			depth = 0;
+	fr_da_stack_t		da_stack;
+	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
+
+	/*
+	 *	If the ancestor and the DA match, there's
+	 *	no OID string to print.
+	 */
+	if ((ancestor == da) || (da->depth == 0)) return 0;
+
+	fr_proto_da_stack_build(&da_stack, da);
+
+	if (ancestor) {
+		if (da_stack.da[ancestor->depth - 1] != ancestor) {
+			fr_strerror_printf("Attribute '%s' is not a descendent of \"%s\"", da->name, ancestor->name);
+			return 0;
+		}
+		depth = ancestor->depth;
+	}
+
+	/*
+	 *	We don't print the ancestor, we print the OID
+	 *	between it and the da.
+	 */
+	FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", da_stack.da[depth]->attr);
+	for (i = depth + 1; i < (int)da->depth; i++) {
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", da_stack.da[i]->attr);
+	}
+	return fr_sbuff_set(out, &our_out);
+}
+
 typedef struct {
 	fr_dict_t const		*dict;
 	char			prefix[256];
 	char			flags[256];
+	char			oid[256];
 	unsigned int		start_depth;
 } fr_dict_attr_debug_t;
 
@@ -200,4 +246,40 @@ void fr_dict_attr_debug(fr_dict_attr_t const *da)
 void fr_dict_debug(fr_dict_t const *dict)
 {
 	fr_dict_attr_debug(fr_dict_root(dict));
+}
+
+static int dict_attr_export(fr_dict_attr_t const *da, void *uctx)
+{
+	fr_dict_attr_debug_t 		*our_uctx = uctx;
+
+	(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(our_uctx->prefix, sizeof(our_uctx->prefix)),
+				      NULL, da);
+	(void) dict_attr_oid_print_oid(&FR_SBUFF_OUT(our_uctx->oid, sizeof(our_uctx->oid)),
+				      NULL, da);
+	fr_dict_print_flags(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
+			      our_uctx->dict, da->type, &da->flags);
+
+	FR_FAULT_LOG("ATTRIBUTE\t%-40s\t%-20s\t%s\t%s",
+		     our_uctx->prefix,
+		     our_uctx->oid,
+		     fr_table_str_by_value(fr_value_box_type_table, da->type, "???"),
+		     our_uctx->flags);
+
+	return 0;
+}
+
+static void fr_dict_attr_export(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_debug_t	uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+
+	dict_attr_export(da, &uctx);
+	(void)fr_dict_walk(da, dict_attr_export, &uctx);
+}
+
+/** Export in the standard form: ATTRIBUTE name oid flags
+ *
+ */
+void fr_dict_export(fr_dict_t const *dict)
+{
+	fr_dict_attr_export(fr_dict_root(dict));
 }

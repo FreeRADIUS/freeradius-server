@@ -424,6 +424,8 @@ void			fr_dict_namespace_debug(fr_dict_attr_t const *da);
 void			fr_dict_attr_debug(fr_dict_attr_t const *da);
 
 void			fr_dict_debug(fr_dict_t const *dict);
+
+void			fr_dict_export(fr_dict_t const *dict);
 /** @} */
 
 /** @name Attribute lineage
