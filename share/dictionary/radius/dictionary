@@ -303,10 +303,6 @@ $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.ukerna
 $INCLUDE dictionary.unisphere
-
-# This is the same as dictionary.unisphere, but
-# we prefer the "ERX" names.
-$INCLUDE dictionary.erx
 $INCLUDE dictionary.unix
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.utstarcom
