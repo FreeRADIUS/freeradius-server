@@ -1,0 +1,10 @@
+ALIAS	Arista-AVPair                           	26.30065.1
+ALIAS	Arista-User-Priv-Level                  	26.30065.2
+ALIAS	Arista-User-Role                        	26.30065.3
+ALIAS	Arista-CVP-Role                         	26.30065.4
+ALIAS	Arista-Command                          	26.30065.5
+ALIAS	Arista-WebAuth                          	26.30065.6
+ALIAS	Arista-BlockMac                         	26.30065.7
+ALIAS	Arista-UnblockMac                       	26.30065.8
+ALIAS	Arista-PortFlap                         	26.30065.9
+ALIAS	Arista-Captive-Portal                   	26.30065.10

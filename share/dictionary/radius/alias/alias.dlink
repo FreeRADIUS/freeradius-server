@@ -1,0 +1,9 @@
+ALIAS	Dlink-User-Level                        	26.171.1
+ALIAS	Dlink-Ingress-Bandwidth-Assignment      	26.171.2
+ALIAS	Dlink-Egress-Bandwidth-Assignment       	26.171.3
+ALIAS	Dlink-1p-Priority                       	26.171.4
+ALIAS	Dlink-VLAN-Name                         	26.171.10
+ALIAS	Dlink-VLAN-ID                           	26.171.11
+ALIAS	Dlink-ACL-Profile                       	26.171.12
+ALIAS	Dlink-ACL-Rule                          	26.171.13
+ALIAS	Dlink-ACL-Script                        	26.171.14

@@ -1,0 +1,15 @@
+ALIAS	Extreme-CLI-Authorization               	26.1916.201
+ALIAS	Extreme-Shell-Command                   	26.1916.202
+ALIAS	Extreme-Netlogin-Vlan                   	26.1916.203
+ALIAS	Extreme-Netlogin-Url                    	26.1916.204
+ALIAS	Extreme-Netlogin-Url-Desc               	26.1916.205
+ALIAS	Extreme-Netlogin-Only                   	26.1916.206
+ALIAS	Extreme-User-Location                   	26.1916.208
+ALIAS	Extreme-Netlogin-Vlan-Tag               	26.1916.209
+ALIAS	Extreme-Netlogin-Extended-Vlan          	26.1916.211
+ALIAS	Extreme-Security-Profile                	26.1916.212
+ALIAS	Extreme-VM-Name                         	26.1916.213
+ALIAS	Extreme-VM-VPP-Name                     	26.1916.214
+ALIAS	Extreme-VM-IP-Addr                      	26.1916.215
+ALIAS	Extreme-VM-VLAN-ID                      	26.1916.216
+ALIAS	Extreme-VM-VR-Name                      	26.1916.217

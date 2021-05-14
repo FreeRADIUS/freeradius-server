@@ -1,0 +1,16 @@
+ALIAS	Azaire-Triplets                         	26.7751.1
+ALIAS	Azaire-IMSI                             	26.7751.2
+ALIAS	Azaire-MSISDN                           	26.7751.3
+ALIAS	Azaire-APN                              	26.7751.4
+ALIAS	Azaire-QoS                              	26.7751.5
+ALIAS	Azaire-Selection-Mode                   	26.7751.6
+ALIAS	Azaire-APN-Resolution-Req               	26.7751.7
+ALIAS	Azaire-Start-Time                       	26.7751.8
+ALIAS	Azaire-NAS-Type                         	26.7751.9
+ALIAS	Azaire-Status                           	26.7751.10
+ALIAS	Azaire-APN-OI                           	26.7751.11
+ALIAS	Azaire-Auth-Type                        	26.7751.12
+ALIAS	Azaire-Gn-User-Name                     	26.7751.13
+ALIAS	Azaire-Brand-Code                       	26.7751.14
+ALIAS	Azaire-Policy-Name                      	26.7751.15
+ALIAS	Azaire-Client-Local-IP                  	26.7751.16

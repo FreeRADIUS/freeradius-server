@@ -1,0 +1,7 @@
+ALIAS	Purewave-Client-Profile                 	26.21074.1
+ALIAS	Purewave-CS-Type                        	26.21074.2
+ALIAS	Purewave-Max-Downlink-Rate              	26.21074.3
+ALIAS	Purewave-Max-Uplink-Rate                	26.21074.4
+ALIAS	Purewave-IP-Address                     	26.21074.5
+ALIAS	Purewave-IP-Netmask                     	26.21074.6
+ALIAS	Purewave-Service-Enable                 	26.21074.7

@@ -1,0 +1,14 @@
+ALIAS	Waverider-Grade-Of-Service              	26.2979.1
+ALIAS	Waverider-Priority-Enabled              	26.2979.2
+ALIAS	Waverider-Authentication-Key            	26.2979.3
+ALIAS	Waverider-Current-Password              	26.2979.5
+ALIAS	Waverider-New-Password                  	26.2979.6
+ALIAS	Waverider-Radio-Frequency               	26.2979.7
+ALIAS	Waverider-SNMP-Read-Community           	26.2979.8
+ALIAS	Waverider-SNMP-Write-Community          	26.2979.9
+ALIAS	Waverider-SNMP-Trap-Server              	26.2979.10
+ALIAS	Waverider-SNMP-Contact                  	26.2979.11
+ALIAS	Waverider-SNMP-Location                 	26.2979.12
+ALIAS	Waverider-SNMP-Name                     	26.2979.13
+ALIAS	Waverider-Max-Customers                 	26.2979.14
+ALIAS	Waverider-Rf-Power                      	26.2979.15

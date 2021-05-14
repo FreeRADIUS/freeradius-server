@@ -1,0 +1,6 @@
+ALIAS	Acct-Session-Input-Octets               	26.10529.21
+ALIAS	Acct-Session-Input-Gigawords            	26.10529.22
+ALIAS	Acct-Session-Output-Octets              	26.10529.23
+ALIAS	Acct-Session-Output-Gigawords           	26.10529.24
+ALIAS	Acct-Session-Octets                     	26.10529.25
+ALIAS	Acct-Session-Gigawords                  	26.10529.26

@@ -1,0 +1,11 @@
+ALIAS	fdXtended-Bandwidth-Up                  	26.34536.1
+ALIAS	fdXtended-Bandwidth-Down                	26.34536.2
+ALIAS	fdXtended-PostAuthURL                   	26.34536.3
+ALIAS	fdXtended-One2onenat-IP                 	26.34536.4
+ALIAS	fdXtended-ContentFilter                 	26.34536.5
+ALIAS	fdXtended-NetworkPolicy                 	26.34536.6
+ALIAS	fdXtended-BytesDown                     	26.34536.7
+ALIAS	fdXtended-BytesUp                       	26.34536.8
+ALIAS	fdXtended-Expiration                    	26.34536.9
+ALIAS	fdXtended-SessionTimeout                	26.34536.10
+ALIAS	fdXtended-Wan-Interface                 	26.34536.11

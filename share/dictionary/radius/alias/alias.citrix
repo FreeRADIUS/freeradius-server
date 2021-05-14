@@ -1,0 +1,7 @@
+ALIAS	Citrix-UID                              	26.66.10
+ALIAS	Citrix-GID                              	26.66.11
+ALIAS	Citrix-Home                             	26.66.12
+ALIAS	Citrix-Shell                            	26.66.13
+ALIAS	Citrix-Group-Names                      	26.66.14
+ALIAS	Citrix-Group-Ids                        	26.66.15
+ALIAS	Citrix-User-Groups                      	26.66.16

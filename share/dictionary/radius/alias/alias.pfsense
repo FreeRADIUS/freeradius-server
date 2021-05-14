@@ -1,0 +1,3 @@
+ALIAS	pfSense-Bandwidth-Max-Up                	26.13644.1
+ALIAS	pfSense-Bandwidth-Max-Down              	26.13644.2
+ALIAS	pfSense-Max-Total-Octets                	26.13644.3

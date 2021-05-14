@@ -1,0 +1,15 @@
+ALIAS	T-Systems-Nova-Location-ID              	26.16787.1
+ALIAS	T-Systems-Nova-Location-Name            	26.16787.2
+ALIAS	T-Systems-Nova-Logoff-URL               	26.16787.3
+ALIAS	T-Systems-Nova-Redirection-URL          	26.16787.4
+ALIAS	T-Systems-Nova-Bandwidth-Min-Up         	26.16787.5
+ALIAS	T-Systems-Nova-Bandwidth-Min-Down       	26.16787.6
+ALIAS	T-Systems-Nova-Bandwidth-Max-Up         	26.16787.7
+ALIAS	T-Systems-Nova-Bandwidth-Max-Down       	26.16787.8
+ALIAS	T-Systems-Nova-Session-Terminate-Time   	26.16787.9
+ALIAS	T-Systems-Nova-Session-Terminate-EoD    	26.16787.10
+ALIAS	T-Systems-Nova-Billing-Class-Of-Service 	26.16787.11
+ALIAS	T-Systems-Nova-Service-Name             	26.16787.12
+ALIAS	T-Systems-Nova-Price-Of-Service         	26.16787.13
+ALIAS	T-Systems-Nova-Visiting-Provider-Code   	26.16787.14
+ALIAS	T-Systems-Nova-UnknownAVP               	26.16787.15

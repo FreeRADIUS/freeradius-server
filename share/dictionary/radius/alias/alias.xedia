@@ -1,0 +1,8 @@
+ALIAS	Xedia-DNS-Server                        	26.838.1
+ALIAS	Xedia-NetBios-Server                    	26.838.2
+ALIAS	Xedia-Address-Pool                      	26.838.3
+ALIAS	Xedia-PPP-Echo-Interval                 	26.838.4
+ALIAS	Xedia-SSH-Privileges                    	26.838.5
+ALIAS	Xedia-Client-Access-Network             	26.838.6
+ALIAS	Xedia-Client-Firewall-Setting           	26.838.7
+ALIAS	Xedia-Save-Password                     	26.838.8

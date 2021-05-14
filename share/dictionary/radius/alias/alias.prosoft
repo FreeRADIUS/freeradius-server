@@ -1,0 +1,16 @@
+ALIAS	Prosoft-Home-Agent-Address              	26.4735.0
+ALIAS	Prosoft-Default-Gateway                 	26.4735.1
+ALIAS	Prosoft-Primary-DNS                     	26.4735.2
+ALIAS	Prosoft-Secondary-DNS                   	26.4735.3
+ALIAS	Prosoft-Security-Parameter-Index        	26.4735.4
+ALIAS	Prosoft-Security-Key                    	26.4735.5
+ALIAS	Prosoft-MAC-Address                     	26.4735.7
+ALIAS	Prosoft-Authentication-Reason           	26.4735.8
+ALIAS	Prosoft-ATM-Interface                   	26.4735.9
+ALIAS	Prosoft-ATM-VPI                         	26.4735.10
+ALIAS	Prosoft-ATM-VCI                         	26.4735.11
+ALIAS	Prosoft-RSC-Identifier                  	26.4735.12
+ALIAS	Prosoft-NPM-Identifier                  	26.4735.13
+ALIAS	Prosoft-NPM-IP                          	26.4735.14
+ALIAS	Prosoft-Sector-ID                       	26.4735.15
+ALIAS	Prosoft-Auth-Role                       	26.4735.16

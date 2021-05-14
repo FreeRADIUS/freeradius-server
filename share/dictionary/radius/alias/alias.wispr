@@ -1,0 +1,11 @@
+ALIAS	WISPr-Location-ID                       	26.14122.1
+ALIAS	WISPr-Location-Name                     	26.14122.2
+ALIAS	WISPr-Logoff-URL                        	26.14122.3
+ALIAS	WISPr-Redirection-URL                   	26.14122.4
+ALIAS	WISPr-Bandwidth-Min-Up                  	26.14122.5
+ALIAS	WISPr-Bandwidth-Min-Down                	26.14122.6
+ALIAS	WISPr-Bandwidth-Max-Up                  	26.14122.7
+ALIAS	WISPr-Bandwidth-Max-Down                	26.14122.8
+ALIAS	WISPr-Session-Terminate-Time            	26.14122.9
+ALIAS	WISPr-Session-Terminate-End-Of-Day      	26.14122.10
+ALIAS	WISPr-Billing-Class-Of-Service          	26.14122.11

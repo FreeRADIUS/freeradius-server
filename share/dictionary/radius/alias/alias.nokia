@@ -1,0 +1,15 @@
+ALIAS	Nokia-AVPair                            	26.94.1
+ALIAS	Nokia-User-Profile                      	26.94.2
+ALIAS	Nokia-Service-Name                      	26.94.3
+ALIAS	Nokia-Service-Id                        	26.94.4
+ALIAS	Nokia-Service-Username                  	26.94.5
+ALIAS	Nokia-Service-Password                  	26.94.6
+ALIAS	Nokia-Service-Primary-Indicator         	26.94.7
+ALIAS	Nokia-Service-Charging-Type             	26.94.8
+ALIAS	Nokia-Service-Encrypted-Password        	26.94.9
+ALIAS	Nokia-Session-Access-Method             	26.94.10
+ALIAS	Nokia-Session-Charging-Type             	26.94.11
+ALIAS	Nokia-OCS-ID1                           	26.94.12
+ALIAS	Nokia-OCS-ID2                           	26.94.13
+ALIAS	Nokia-TREC-Index                        	26.94.14
+ALIAS	Nokia-Requested-APN                     	26.94.15

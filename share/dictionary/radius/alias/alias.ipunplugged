@@ -1,0 +1,10 @@
+ALIAS	IPU-MIP-Spi                             	26.5925.51
+ALIAS	IPU-MIP-Key                             	26.5925.52
+ALIAS	IPU-MIP-Alg-Type                        	26.5925.53
+ALIAS	IPU-MIP-Alg-Mode                        	26.5925.54
+ALIAS	IPU-MIP-Replay-Prot                     	26.5925.55
+ALIAS	IPU-IKE-Remote-Addr                     	26.5925.61
+ALIAS	IPU-IKE-Local-Addr                      	26.5925.62
+ALIAS	IPU-IKE-Auth                            	26.5925.63
+ALIAS	IPU-IKE-Conf-Name                       	26.5925.64
+ALIAS	IPU-IKE-Cmd                             	26.5925.65

@@ -1,0 +1,10 @@
+ALIAS	F5-LTM-User-Role                        	26.3375.1
+ALIAS	F5-LTM-User-Role-Universal              	26.3375.2
+ALIAS	F5-LTM-User-Partition                   	26.3375.3
+ALIAS	F5-LTM-User-Console                     	26.3375.4
+ALIAS	F5-LTM-User-Shell                       	26.3375.5
+ALIAS	F5-LTM-User-Context-1                   	26.3375.10
+ALIAS	F5-LTM-User-Context-2                   	26.3375.11
+ALIAS	F5-LTM-User-Info-1                      	26.3375.12
+ALIAS	F5-LTM-User-Info-2                      	26.3375.13
+ALIAS	F5-LTM-Audit-Msg                        	26.3375.14

@@ -1,0 +1,9 @@
+ALIAS	Equallogic-Admin-Full-Name              	26.12740.1
+ALIAS	Equallogic-Admin-Email                  	26.12740.2
+ALIAS	Equallogic-Admin-Phone                  	26.12740.3
+ALIAS	Equallogic-Admin-Mobile                 	26.12740.4
+ALIAS	Equallogic-Poll-Interval                	26.12740.5
+ALIAS	Equallogic-EQL-Admin-Privilege          	26.12740.6
+ALIAS	Equallogic-Admin-Pool-Access            	26.12740.7
+ALIAS	Equallogic-Admin-Repl-Site-Access       	26.12740.8
+ALIAS	Equallogic-Admin-Account-Type           	26.12740.9

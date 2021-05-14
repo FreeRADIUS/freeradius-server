@@ -1,0 +1,9 @@
+ALIAS	RedCreek-Tunneled-IP-Addr               	26.1958.5
+ALIAS	RedCreek-Tunneled-IP-Netmask            	26.1958.6
+ALIAS	RedCreek-Tunneled-Gateway               	26.1958.7
+ALIAS	RedCreek-Tunneled-DNS-Server            	26.1958.8
+ALIAS	RedCreek-Tunneled-WINS-Server1          	26.1958.9
+ALIAS	RedCreek-Tunneled-WINS-Server2          	26.1958.10
+ALIAS	RedCreek-Tunneled-HostName              	26.1958.11
+ALIAS	RedCreek-Tunneled-DomainName            	26.1958.12
+ALIAS	RedCreek-Tunneled-Search-List           	26.1958.13

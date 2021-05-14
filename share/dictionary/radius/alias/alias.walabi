@@ -1,0 +1,10 @@
+ALIAS	WB-AUTH-Time-Left                       	26.2004.1
+ALIAS	WB-Auth-Accum-BW                        	26.2004.2
+ALIAS	WB-Auth-BW-Quota                        	26.2004.3
+ALIAS	WB-Auth-BW-Count                        	26.2004.4
+ALIAS	WB-Auth-Upload-Limit                    	26.2004.5
+ALIAS	WB-Auth-Download-Limit                  	26.2004.6
+ALIAS	WB-Auth-Login-Time                      	26.2004.7
+ALIAS	WB-Auth-Logout-Time                     	26.2004.8
+ALIAS	WB-Auth-Time-Diff                       	26.2004.9
+ALIAS	WB-Auth-BW-Usage                        	26.2004.10

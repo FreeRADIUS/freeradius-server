@@ -1,0 +1,17 @@
+ALIAS	Infonet-Proxy                           	26.4453.238
+ALIAS	Infonet-Config                          	26.4453.239
+ALIAS	Infonet-MCS-Country                     	26.4453.240
+ALIAS	Infonet-MCS-Region                      	26.4453.241
+ALIAS	Infonet-MCS-Off-Peak                    	26.4453.242
+ALIAS	Infonet-MCS-Overflow                    	26.4453.243
+ALIAS	Infonet-MCS-Port                        	26.4453.244
+ALIAS	Infonet-MCS-Port-Count                  	26.4453.245
+ALIAS	Infonet-Random-IP-Pool                  	26.4453.246
+ALIAS	Infonet-Account-Number                  	26.4453.247
+ALIAS	Infonet-Type                            	26.4453.248
+ALIAS	Infonet-Realm-Type                      	26.4453.249
+ALIAS	Infonet-LoginHost-Dest                  	26.4453.250
+ALIAS	Infonet-Tunnel-Decision-IP              	26.4453.251
+ALIAS	Infonet-Pool-Request                    	26.4453.252
+ALIAS	Infonet-Surcharge-Type                  	26.4453.254
+ALIAS	Infonet-NAS-Location                    	26.4453.255

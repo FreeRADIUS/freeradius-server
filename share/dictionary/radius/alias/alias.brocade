@@ -1,0 +1,7 @@
+ALIAS	Brocade-Auth-Role                       	26.1588.1
+ALIAS	Brocade-AVPairs1                        	26.1588.2
+ALIAS	Brocade-AVPairs2                        	26.1588.3
+ALIAS	Brocade-AVPairs3                        	26.1588.4
+ALIAS	Brocade-AVPairs4                        	26.1588.5
+ALIAS	Brocade-Passwd-ExpiryDate               	26.1588.6
+ALIAS	Brocade-Passwd-WarnPeriod               	26.1588.7

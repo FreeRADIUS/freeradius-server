@@ -1,0 +1,15 @@
+ALIAS	Local-Web-Client-Ip                     	26.19220.192
+ALIAS	Local-Web-Border-Router                 	26.19220.193
+ALIAS	Local-Web-Tx-Limit                      	26.19220.200
+ALIAS	Local-Web-Rx-Limit                      	26.19220.201
+ALIAS	Local-Web-Acct-Time                     	26.19220.210
+ALIAS	Local-Web-Acct-Duration                 	26.19220.211
+ALIAS	Local-Web-Acct-Interim-Tx-Bytes         	26.19220.212
+ALIAS	Local-Web-Acct-Interim-Rx-Bytes         	26.19220.213
+ALIAS	Local-Web-Acct-Interim-Tx-Gigawords     	26.19220.214
+ALIAS	Local-Web-Acct-Interim-Rx-Gigawords     	26.19220.215
+ALIAS	Local-Web-Acct-Interim-Tx-Mgmt          	26.19220.216
+ALIAS	Local-Web-Acct-Interim-Rx-Mgmt          	26.19220.217
+ALIAS	Local-Web-Acct-Tx-Mgmt                  	26.19220.230
+ALIAS	Local-Web-Acct-Rx-Mgmt                  	26.19220.231
+ALIAS	Local-Web-Reauth-Counter                	26.19220.240

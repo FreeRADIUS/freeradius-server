@@ -1,0 +1,13 @@
+ALIAS	EfficientIP-Version                     	26.2440.1
+ALIAS	EfficientIP-Service-Class               	26.2440.2
+ALIAS	EfficientIP-Identity-Type               	26.2440.3
+ALIAS	EfficientIP-First-Name                  	26.2440.16
+ALIAS	EfficientIP-Last-Name                   	26.2440.17
+ALIAS	EfficientIP-Pseudonym                   	26.2440.18
+ALIAS	EfficientIP-IP-Host                     	26.2440.19
+ALIAS	EfficientIP-Email                       	26.2440.20
+ALIAS	EfficientIP-First-Login-Path            	26.2440.32
+ALIAS	EfficientIP-Maintainer-Group            	26.2440.33
+ALIAS	EfficientIP-Groups                      	26.2440.34
+ALIAS	EfficientIP-Admin-Group                 	26.2440.35
+ALIAS	EfficientIP-Extra-Blob                  	26.2440.64

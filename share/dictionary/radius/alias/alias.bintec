@@ -1,0 +1,17 @@
+ALIAS	BinTec-biboPPPTable                     	26.272.224
+ALIAS	BinTec-biboDialTable                    	26.272.225
+ALIAS	BinTec-ipExtIfTable                     	26.272.226
+ALIAS	BinTec-ipRouteTable                     	26.272.227
+ALIAS	BinTec-ipExtRtTable                     	26.272.228
+ALIAS	BinTec-ipNatPresetTable                 	26.272.229
+ALIAS	BinTec-ipxCircTable                     	26.272.230
+ALIAS	BinTec-ripCircTable                     	26.272.231
+ALIAS	BinTec-sapCircTable                     	26.272.232
+ALIAS	BinTec-ipxStaticRouteTable              	26.272.233
+ALIAS	BinTec-ipxStaticServTable               	26.272.234
+ALIAS	BinTec-ospfIfTable                      	26.272.235
+ALIAS	BinTec-pppExtIfTable                    	26.272.236
+ALIAS	BinTec-ipFilterTable                    	26.272.237
+ALIAS	BinTec-ipQoSTable                       	26.272.238
+ALIAS	BinTec-qosIfTable                       	26.272.239
+ALIAS	BinTec-qosPolicyTable                   	26.272.240

@@ -1,0 +1,14 @@
+ALIAS	APC-Service-Type                        	26.318.1
+ALIAS	APC-Outlets                             	26.318.2
+ALIAS	APC-Perms                               	26.318.3
+ALIAS	APC-Username                            	26.318.4
+ALIAS	APC-Contact                             	26.318.5
+ALIAS	APC-ACCPX-Doors                         	26.318.6
+ALIAS	APC-ACCPX-Status                        	26.318.7
+ALIAS	APC-ACCPX-Access1                       	26.318.8
+ALIAS	APC-ACCPX-Access2                       	26.318.9
+ALIAS	APC-ACCPX-Access3                       	26.318.10
+ALIAS	APC-ACCPX-Access4                       	26.318.11
+ALIAS	APC-ACCPX-Access5                       	26.318.12
+ALIAS	APC-ACCPX-Access6                       	26.318.13
+ALIAS	APC-ACCPX-Access7                       	26.318.14

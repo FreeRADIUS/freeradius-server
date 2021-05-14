@@ -1,0 +1,8 @@
+ALIAS	Cosine-Connection-Profile-Name          	26.3085.1
+ALIAS	Cosine-Enterprise-ID                    	26.3085.2
+ALIAS	Cosine-Address-Pool-Name                	26.3085.3
+ALIAS	Cosine-DS-Byte                          	26.3085.4
+ALIAS	Cosine-VPI-VCI                          	26.3085.5
+ALIAS	Cosine-DLCI                             	26.3085.6
+ALIAS	Cosine-LNS-IP-Address                   	26.3085.7
+ALIAS	Cosine-CLI-User-Permission-ID           	26.3085.8

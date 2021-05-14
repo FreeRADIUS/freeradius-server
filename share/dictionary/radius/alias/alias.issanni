@@ -1,0 +1,17 @@
+ALIAS	Issanni-SoftFlow-Template               	26.5948.1
+ALIAS	Issanni-NAT-Support                     	26.5948.2
+ALIAS	Issanni-Routing-Context                 	26.5948.3
+ALIAS	Issanni-Tunnel-Name                     	26.5948.4
+ALIAS	Issanni-IP-Pool-Name                    	26.5948.5
+ALIAS	Issanni-PPPoE-URL                       	26.5948.6
+ALIAS	Issanni-PPPoE-MOTM                      	26.5948.7
+ALIAS	Issanni-Service                         	26.5948.8
+ALIAS	Issanni-Pri-DNS                         	26.5948.9
+ALIAS	Issanni-Sec-DNS                         	26.5948.10
+ALIAS	Issanni-Pri-NBNS                        	26.5948.11
+ALIAS	Issanni-Sec-NBNS                        	26.5948.12
+ALIAS	Issanni-Traffic-Class                   	26.5948.13
+ALIAS	Issanni-Tunnel-Type                     	26.5948.14
+ALIAS	Issanni-NAT-Type                        	26.5948.15
+ALIAS	Issanni-QOS-Class                       	26.5948.16
+ALIAS	Issanni-Interface-Name                  	26.5948.17

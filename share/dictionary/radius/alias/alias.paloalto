@@ -1,0 +1,10 @@
+ALIAS	PaloAlto-Admin-Role                     	26.25461.1
+ALIAS	PaloAlto-Admin-Access-Domain            	26.25461.2
+ALIAS	PaloAlto-Panorama-Admin-Role            	26.25461.3
+ALIAS	PaloAlto-Panorama-Admin-Access-Domain   	26.25461.4
+ALIAS	PaloAlto-User-Group                     	26.25461.5
+ALIAS	PaloAlto-User-Domain                    	26.25461.6
+ALIAS	PaloAlto-Client-Source-IP               	26.25461.7
+ALIAS	PaloAlto-Client-OS                      	26.25461.8
+ALIAS	PaloAlto-Client-Hostname                	26.25461.9
+ALIAS	PaloAlto-GlobalProtect-Client-Version   	26.25461.10

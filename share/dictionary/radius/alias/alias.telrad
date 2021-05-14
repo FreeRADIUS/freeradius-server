@@ -1,0 +1,8 @@
+ALIAS	Telrad-TSDF-Table                       	26.5323.1
+ALIAS	Telrad-Item-Identity                    	26.5323.1.1
+ALIAS	Telrad-Reference-VPWS-PDN-Name          	26.5323.1.2
+ALIAS	Telrad-TSDF-Parameters                  	26.5323.1.3
+ALIAS	Telrad-C-VLAN-ID                        	26.5323.1.3.1
+ALIAS	Telrad-C-VLAN-ID-Retag                  	26.5323.1.3.2
+ALIAS	Telrad-S-VLAN-ID                        	26.5323.1.3.3
+ALIAS	Telrad-Reference-QOS-Profile-Name       	26.5323.1.3.4

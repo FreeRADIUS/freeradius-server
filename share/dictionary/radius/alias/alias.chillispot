@@ -1,0 +1,12 @@
+ALIAS	ChilliSpot-Max-Input-Octets             	26.14559.1
+ALIAS	ChilliSpot-Max-Output-Octets            	26.14559.2
+ALIAS	ChilliSpot-Max-Total-Octets             	26.14559.3
+ALIAS	ChilliSpot-Bandwidth-Max-Up             	26.14559.4
+ALIAS	ChilliSpot-Bandwidth-Max-Down           	26.14559.5
+ALIAS	ChilliSpot-Config                       	26.14559.6
+ALIAS	ChilliSpot-Lang                         	26.14559.7
+ALIAS	ChilliSpot-Version                      	26.14559.8
+ALIAS	ChilliSpot-OriginalURL                  	26.14559.9
+ALIAS	ChilliSpot-UAM-Allowed                  	26.14559.100
+ALIAS	ChilliSpot-MAC-Allowed                  	26.14559.101
+ALIAS	ChilliSpot-Interval                     	26.14559.102

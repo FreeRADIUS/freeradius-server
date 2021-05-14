@@ -1,0 +1,13 @@
+ALIAS	Symbol-Admin-Role                       	26.388.1
+ALIAS	Symbol-Current-ESSID                    	26.388.2
+ALIAS	Symbol-Allowed-ESSID                    	26.388.3
+ALIAS	Symbol-WLAN-Index                       	26.388.4
+ALIAS	Symbol-QoS-Profile                      	26.388.5
+ALIAS	Symbol-Allowed-Radio                    	26.388.6
+ALIAS	Symbol-Expiry-Date-Time                 	26.388.7
+ALIAS	Symbol-Start-Date-Time                  	26.388.8
+ALIAS	Symbol-Posture-Status                   	26.388.9
+ALIAS	Symbol-Downlink-Limit                   	26.388.10
+ALIAS	Symbol-Uplink-Limit                     	26.388.11
+ALIAS	Symbol-User-Group                       	26.388.12
+ALIAS	Symbol-Login-Source                     	26.388.100

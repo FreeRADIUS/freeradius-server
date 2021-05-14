@@ -1,0 +1,14 @@
+ALIAS	Compatible-Tunnel-Delay                 	26.255.0
+ALIAS	CVPN5000-Tunnel-Throughput              	26.255.1
+ALIAS	Compatible-Tunnel-Throughput            	26.255.1
+ALIAS	CVPN5000-Client-Assigned-IP             	26.255.2
+ALIAS	CVPN5000-Client-Real-IP                 	26.255.3
+ALIAS	Compatible-Tunnel-Server-Endpoint       	26.255.3
+ALIAS	CVPN5000-VPN-GroupInfo                  	26.255.4
+ALIAS	Compatible-Tunnel-Group-Info            	26.255.4
+ALIAS	CVPN5000-VPN-Password                   	26.255.5
+ALIAS	Compatible-Tunnel-Password              	26.255.5
+ALIAS	CVPN5000-Echo                           	26.255.6
+ALIAS	Compatible-Echo                         	26.255.6
+ALIAS	CVPN5000-Client-Assigned-IPX            	26.255.7
+ALIAS	Compatible-Tunnel-IPX                   	26.255.7
