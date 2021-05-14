@@ -121,7 +121,7 @@ Guidelines for how to read and interpret the debug output are on the
 The configuration in the docker image comes with self-signed
 certificates for convenience. These should not be used in a
 production environment, but replaced with new certificates. See
-the file `raddb/certs/README` for more information.
+the file `raddb/certs/README.md` for more information.
 
 
 ## Debugging

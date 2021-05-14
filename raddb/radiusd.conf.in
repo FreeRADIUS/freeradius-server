@@ -25,7 +25,7 @@
 #		The "sites-available" directory contains many
 #		worked examples of common configurations.
 #
-#	  raddb/certs/README
+#	  raddb/certs/README.md
 #		How to create certificates for EAP or RadSec.
 #
 #	Every configuration item in the server is documented

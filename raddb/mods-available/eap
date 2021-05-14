@@ -149,7 +149,7 @@ eap {
 	#  Common TLS configuration for TLS-based EAP types
 	#  ------------------------------------------------
 	#
-	#  See raddb/certs/README for additional comments
+	#  See raddb/certs/README.md for additional comments
 	#  on certificates.
 	#
 	#  If OpenSSL was not found at the time the server was
