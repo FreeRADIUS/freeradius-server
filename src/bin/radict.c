@@ -179,7 +179,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	}
 }
 
-static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
+static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
 {
 	unsigned int		i;
 	size_t			len;
@@ -213,18 +213,18 @@ static void _fr_dict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 	len = talloc_array_length(children);
 	for (i = 0; i < len; i++) {
 		for (p = children[i]; p; p = p->next) {
-			_fr_dict_export(dict, count, low, high, p, lvl + 1);
+			_raddict_export(dict, count, low, high, p, lvl + 1);
 		}
 	}
 }
 
-static void fr_dict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_t *dict)
+static void raddict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_t *dict)
 {
 	if (count) *count = 0;
 	if (low) *low = UINTPTR_MAX;
 	if (high) *high = 0;
 
-	_fr_dict_export(dict, count, low, high, fr_dict_root(dict), 0);
+	_raddict_export(dict, count, low, high, fr_dict_root(dict), 0);
 }
 
 /**
@@ -238,6 +238,8 @@ int main(int argc, char *argv[])
 	int			ret = 0;
 	bool			found = false;
 	bool			export = false;
+	bool			file_export = false;
+	char const		*protocol;
 
 	TALLOC_CTX		*autofree;
 	fr_dict_gctx_t const	*our_dict_gctx = NULL;
@@ -260,13 +262,21 @@ int main(int argc, char *argv[])
 
 	fr_debug_lvl = 1;
 
-	while ((c = getopt(argc, argv, "ED:Vxh")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "fED:p:Vxh")) != -1) switch (c) {
+		case 'f':
+			file_export = true;
+			break;
+
 		case 'E':
 			export = true;
 			break;
 
 		case 'D':
 			dict_dir = optarg;
+			break;
+
+		case 'p':
+			protocol = optarg;
 			break;
 
 		case 'V':
@@ -323,6 +333,16 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
+	if (file_export) {
+		fr_dict_t	**dict_p = dicts;
+
+		do {
+			if (protocol && (strcasecmp(fr_dict_root(*dict_p)->name, protocol) == 0)) {
+				fr_dict_export(*dict_p);
+			}
+		} while (++dict_p < dict_end);
+	}
+
 	if (export) {
 		fr_dict_t	**dict_p = dicts;
 
@@ -331,7 +351,7 @@ int main(int argc, char *argv[])
 			uintptr_t	high;
 			uintptr_t	low;
 
-			fr_dict_export(&count, &low, &high, *dict_p);
+			raddict_export(&count, &low, &high, *dict_p);
 			DEBUG2("Attribute count %" PRIu64, count);
 			DEBUG2("Memory allocd %zu (bytes)", talloc_total_size(*dict_p));
 			DEBUG2("Memory spread %zu (bytes)", (size_t) (high - low));
