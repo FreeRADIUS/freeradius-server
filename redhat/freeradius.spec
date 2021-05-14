@@ -689,6 +689,7 @@ fi
 /usr/sbin/checkrad
 /usr/sbin/raddebug
 /usr/sbin/radiusd
+/usr/sbin/radlock
 /usr/sbin/radmin
 # man-pages
 %doc %{_mandir}/man1/smbencrypt.1.gz
@@ -860,7 +861,6 @@ fi
 /usr/bin/radcrypt
 /usr/bin/radict
 /usr/bin/radlast
-/usr/bin/radlock
 /usr/bin/radsniff
 /usr/bin/radsnmp
 /usr/bin/radsqlrelay
