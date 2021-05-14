@@ -210,6 +210,10 @@ cache {
 	}
 
 	#
+	#  ## How to use
+	#
+	#  ### Configuration
+	#
 	#  This module supports a number of runtime configuration parameters
 	#  represented by attributes in the `&control.` list.
 	#
@@ -253,7 +257,107 @@ cache {
 	#  cache entries into the current request. Useful if results of execs or
 	#  expansions are stored directly in the cache.
 	#
+	#
 	#  NOTE: All runtime configuration attributes will be removed from the
 	#  `&control.` list after the cache module is called.
+	#
+	#  ### Methods
+	#
+	#  The cache module also allows handling the cache using the methods.
+	#
+	#  cache.status:: Verify if an entry already exists without load the entries.
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Return     | Description
+	#  | `ok`       | if a cache entry was found.
+	#  | `notfound` | if no cache entry was found.
+	#  |===
+	#
+	#  cache.load:: Load an existing cache entry and merge it into the request.
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Return     | Description
+	#  | `updated`  | if a cache entry was found and loaded.
+	#  | `notfound` | if no cache entry was found.
+	#  |===
+	#
+	#  cache.store:: Perform an upset against the data store. (Not affect the existing
+	#  request).
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Return     | Description
+	#  | `updated`  | if we added cache entry.
+	#  | `noop`     | if a cache entry ready exists.
+	#  |===
+	#
+	#  cache.clear:: Delete cache entry from the data store without checking if the entry
+	#  already exists.
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Return     | Description
+	#  | `ok`       | if we found and remove a entry.
+	#  | `notfound` | if no cache entry was found.
+	#  |===
+	#
+	#  cache.ttl:: Change the TTL on an existing entry.
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Return     | Description
+	#  | `updated`  | if we found entry and updated the ttl.
+	#  | `notfound` | if no cache entry was found.
+	#  |===
+	#
+	#  ### Examples
+	#
+	#  ```
+	#  # Add a cache entry
+	#  update {
+	#    &control.Cache-TTL := 3600 # 1h
+	#  }
+	#  cache.store
+	#  if (updated) {
+	#    ..keys stored
+	#  }
+	#
+	#  # Get the cache status
+	#  cache.status
+	#  if (ok) {
+	#    ..Exist a cache entry
+	#  }
+	#
+	#  # Load the cache entry
+	#  cache.load
+	#  if (updated) {
+	#    ..loaded
+	#  }
+	#
+	#  # Change the entries TTL
+	#  update {
+	#    &control.Cache-TTL := 1600 # 30m
+	#  }
+	#  cache.ttl
+	#  if (updated) {
+	#    ..ttl changed
+	#  }
+	#
+	#  # Clear the cache
+	#  cache.clear
+	#  if (ok) {
+	#    ..cache is empty
+	#  }
+	#  ```
+	#
+	#  [NOTE]
+	#  ====
+	#  * This is evaluated before `Cache-TTL`, so entries being expired
+	#  may first be merged.
+	#  * All runtime configuration attributes will be removed from the
+	#  `&control:` list after any cache method is called.
+	#  ====
 	#
 }
