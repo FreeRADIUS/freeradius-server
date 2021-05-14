@@ -52,3 +52,66 @@
 #ATTRIBUTE	My-Local-String		3000	string
 #ATTRIBUTE	My-Local-IPAddr		3001	ipaddr
 #ATTRIBUTE	My-Local-Integer	3002	integer
+
+#
+#  ## v3 Compatible names.
+#
+#  All of the attributes have been renamed from v3.  This change was
+#  necessary in order to support new funtionality in v4.  The
+#  unfortunate side effect of this change is that all of the names in
+#  SQL, LDAP, and the "files" module are incompatible with v4.
+#
+#  We recognize that is is difficult to change every entry in a
+#  database, especially when there's no clear mapping between the
+#  "old" and "new" names.  This renaming is made more complex because
+#  the "new" names need to be grouped and arranged in ways that the
+#  old ones were not.
+#
+#  The "old" names were all in flat lists, so that User-Name appeared
+#  next to Cisco-AVPAir.  This organization was simple enough to work
+#  for 20 years, but its time has come.  The new names are
+#  hierarchical, so that the organization is nested by definition.
+#
+#  For v4, the Cisco-AVPair attribute is called "AVPair", and it lives
+#  inside of the "Cisco" namespace, which in turn lives inside of the
+#  "Vendor-Specific" namespace.  So the new name for Cisco-AVPair is
+#  Vendor-Specific.Cisco.AVPair.
+#
+#  This process continues for many thousands of vendor-specific
+#  attributes.
+#
+#  Happily, it is possible to (mostly) use the old names with v4.
+#  There are limitations, but it will mostly work.  The main reason
+#  for enabling the old names is to try out v4 with a database that is
+#  also used by v3.  This lets you test that v4 works, without going
+#  through a complex "upgrade everything" process.
+#
+#  The old v3 names are in "alias" dictionaries, in the ${dictdir}
+#  directory.  To find out where this directory is on your local
+#  system, run "radiusd -h" or "radclient -h".  Then look for the "-D"
+#  command-line option, and it will tell you where the dictionary
+#  files are located.
+#
+#  The v3 names are in ${dictdir}/radius/alias/alias.VENDOR where
+#  VENDOR is the name of the vendor, which is taken from the VENDOR
+#  definition in the v3 dictionaries.
+#
+#  You will need to add a $INCLUDE line for each vendor-specific
+#  dictionary which is used by your local system.  The default v4
+#  dictionaries do not enable all of v3 compatibilty names.
+#
+#  Yes, we recognize that this process is a bit of work.  However, we
+#  wish to encourage everyone using v4 to upgrade to using the new v4
+#  features.  Our experience shows that if we automatically enable
+#  "compatibility functions", then those compatiblity functions will
+#  be used for a decade.  So we need to find a balance between
+#  upgrades and ongoing support.  Easy upgrades will mean complex
+#  ongoing support.  Complex upgrades make ongoing support easier, but
+#  also make it less likely that people will upgrade.
+#
+#
+#  All of the v3 compatibility names are in the RADIUS namespace.
+#
+BEGIN-PROTOCOL RADIUS
+#$INCLUDE ${dictdir}/radius/alias/alias.cisco
+END-PROTOCOL RADIUS
