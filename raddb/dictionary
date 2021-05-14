@@ -112,6 +112,7 @@
 #
 #  All of the v3 compatibility names are in the RADIUS namespace.
 #
-BEGIN-PROTOCOL RADIUS
+
+#BEGIN-PROTOCOL RADIUS
 #$INCLUDE ${dictdir}/radius/alias/alias.cisco
-END-PROTOCOL RADIUS
+#END-PROTOCOL RADIUS
