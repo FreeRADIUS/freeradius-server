@@ -56,6 +56,7 @@ static void usage(void)
 	fprintf(stderr, "  -E               Export dictionary definitions.\n");
 	fprintf(stderr, "  -V               Write out all attribute values.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(stderr, "  -p <protocol>    Set protocol by name\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Very simple interface to extract attribute definitions from FreeRADIUS dictionaries\n");
@@ -239,7 +240,7 @@ int main(int argc, char *argv[])
 	bool			found = false;
 	bool			export = false;
 	bool			file_export = false;
-	char const		*protocol;
+	char const		*protocol = NULL;
 
 	TALLOC_CTX		*autofree;
 	fr_dict_gctx_t const	*our_dict_gctx = NULL;
