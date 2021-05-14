@@ -139,7 +139,7 @@ privileges that would not ordinarily be given.
 
 ## `freeradius/freeradius-server:<version>`
 
-The de facto image which should be used unless you know you need
+The de-facto image which should be used unless you know you need
 another image. It is based on
 [Ubuntu Linux](https://hub.docker.com/_/ubuntu/) Docker images.
 
@@ -181,6 +181,7 @@ REPOSITORY           TAG            IMAGE ID            CREATED             SIZE
 freeradius-ubuntu16  latest         289b3c7aca94        4 minutes ago       218MB
 freeradius-alpine    latest         d7fb3041bea2        2 hours ago         88.6MB
 ```
+
 
 ## Build args
 

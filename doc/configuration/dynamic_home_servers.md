@@ -2,6 +2,7 @@
 
 As of 3.0.22, FreeRADIUS has limited support for dynamic home servers.
 
+
 ## Configuration
 
 The configuration needs to have dynamic home servers enabled, by
@@ -20,8 +21,9 @@ thread-safe for updates.  This change means that there will be more
 lock contention on the data structures holding home servers.  As a
 result, high-load proxy may see slowdowns.
 
-Once dynamic home servers are enabled, they should be placed into a
-subdirectory.  FreeRADIUS should be told which subdirectory the home servers are located in:
+Once dynamic home servers are enabled, they should be placed into
+a subdirectory.  FreeRADIUS should be told which subdirectory the
+home servers are located in:
 
 ```
 proxy server {
@@ -51,6 +53,7 @@ server definition.
 Each file in the directory should have one, and only one,
 `home_server` definition.
 
+
 ### The Control Socket
 
 The virtual server `sites-enabled/control` *MUST* be enabled for
@@ -60,11 +63,13 @@ read/write permission in order for dynamic home servers to work.
 Please see that `sites-enabled/control` file for information on
 configuring that virtual server.
 
+
 ## Starting FreeRADIUS
 
 When FreeRADIUS starts, it will read each file in the
 `${raddb}/home_servers/` directory.  The file will parsed in order to
 define a dynamic `home_server`.
+
 
 ## Adding a new Home Server
 
@@ -83,6 +88,7 @@ If all goes well, the home server will be added.  If there are issues,
 
 Once a dynamic home server is added, it can be used just like any
 other home server.
+
 
 ## Deleting a Home Server
 
@@ -104,6 +110,7 @@ home_server <name> {
 }
 ```
 
+
 ## Listing a Home Server
 
 It is possible to list all home servers and know which is dynamic or no.
@@ -111,6 +118,7 @@ It is possible to list all home servers and know which is dynamic or no.
 ```
 $ radmin -e "show home_server list all"
 ```
+
 
 ## Limitations
 
@@ -124,7 +132,7 @@ exist by themselves, with no associated realm, pool, or failover
 capability.
 
 
-## Proxying to a home server
+## Proxying to a Home Server
 
 The new attribute `Home-Server-Name` controls proxying to a particular
 home server.  The home server just has to exist, it does not need to
@@ -140,6 +148,7 @@ authorize {
 	...
 }
 ```
+
 
 ## Checking if a Dynamic Home Server exists
 
@@ -187,6 +196,7 @@ authorize {
 	...
 }
 ```
+
 
 ## Adding a new home server for a new realm
 

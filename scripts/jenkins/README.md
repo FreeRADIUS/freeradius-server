@@ -1,6 +1,6 @@
-### Jenkins scripted build pipeline for FreeRADIUS
+# Jenkins scripted build pipeline for FreeRADIUS
 
-#### Summary
+## Summary
 
 The Jenkinsfile in this directory is used to build packages for
 different Linux distributions.  They are mostly here for the
@@ -12,13 +12,16 @@ and uses [Docker](https://www.docker.com/) and the files in
 `scripts/docker/` directory to build packages for multiple
 distributions on one server.
 
-#### Usage
+
+## Usage
 
 To build these packages, you need the following software:
+
 * [Docker](https://www.docker.com/)
+
 * [Jenkins](https://jenkins.io/) with the following plugins:
- * [Pipeline](https://plugins.jenkins.io/workflow-aggregator)
- * [Docker Pipeline](https://plugins.jenkins.io/docker-workflow)
+  * [Pipeline](https://plugins.jenkins.io/workflow-aggregator)
+  * [Docker Pipeline](https://plugins.jenkins.io/docker-workflow)
 
 Once the software is installed, you should create a new Pipeline Item
 in Jenkins and [configure the job to run the
@@ -29,7 +32,6 @@ The Jenkinsfile currently builds packages for the following platforms:
 * Ubuntu 14.04 (Trusty Tahir)
 * Ubuntu 16.04 (Xenial Xerus)
 * Ubuntu 18.04 (Bionic Beaver)
-* Debian 8 (Jessie)
 * Debian 9 (Stretch)
 * Debian 10 (Buster)
 * CentOS 7
