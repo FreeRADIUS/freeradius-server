@@ -24,7 +24,7 @@ Make a tmp dir
 
 ```
 # mkdir tmp
-# cp create-users.pl tmp
+# cp util/create-users.pl tmp
 # cd tmp
 ```
 

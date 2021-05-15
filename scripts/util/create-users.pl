@@ -2,7 +2,7 @@
 
 # Purpose:  create lots of random users and passes
 # for testing your radius server
-# Read doc/README.testing for more information
+# Read doc/antora/modules/howto/pages/tuning/performance-testing.adoc for more information
 
 use strict;
 use warnings;

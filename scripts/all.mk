@@ -5,7 +5,7 @@ $(R)$(sbindir)/rc.radiusd: scripts/rc.radiusd
 	${Q}mkdir -p $(dir $@)
 	${Q}$(INSTALL) -m 755 $< $@
 
-$(R)$(sbindir)/raddebug: scripts/raddebug
+$(R)$(sbindir)/raddebug: scripts/util/raddebug
 	${Q}mkdir -p $(dir $@)
 	${Q}$(INSTALL) -m 755 $< $@
 
@@ -13,7 +13,7 @@ $(R)$(bindir)/radsqlrelay: scripts/sql/radsqlrelay
 	${Q}mkdir -p $(dir $@)
 	${Q}$(INSTALL) -m 755 $< $@
 
-$(R)$(bindir)/radcrypt: scripts/cryptpasswd
+$(R)$(bindir)/radcrypt: scripts/util/cryptpasswd
 	${Q}mkdir -p $(dir $@)
 	${Q}$(INSTALL) -m 755 $< $@
 
