@@ -54,322 +54,322 @@ VENDOR		Unisphere			4874
 
 BEGIN-VENDOR	Unisphere
 
-ATTRIBUTE	Unisphere-Virtual-Router		1	string
-ATTRIBUTE	Unisphere-Local-Address-Pool		2	string
-ATTRIBUTE	Unisphere-Local-Interface		3	string
-ATTRIBUTE	Unisphere-Primary-Dns			4	ipaddr
-ATTRIBUTE	Unisphere-Secondary-Dns			5	ipaddr
-ATTRIBUTE	Unisphere-Primary-Wins			6	ipaddr
-ATTRIBUTE	Unisphere-Secondary-Wins		7	ipaddr
-ATTRIBUTE	Unisphere-Tunnel-Virtual-Router		8	string has_tag
-ATTRIBUTE	Unisphere-Tunnel-Password		9	string has_tag
-ATTRIBUTE	Unisphere-Ingress-Policy-Name		10	string
-ATTRIBUTE	Unisphere-Egress-Policy-Name		11	string
-ATTRIBUTE	Unisphere-Ingress-Statistics		12	integer
-ATTRIBUTE	Unisphere-Egress-Statistics		13	integer
-ATTRIBUTE	Unisphere-Service-Category		14	integer
-ATTRIBUTE	Unisphere-PCR				15	integer
-ATTRIBUTE	Unisphere-SCR				16	integer
-ATTRIBUTE	Unisphere-MBS				17	integer
-ATTRIBUTE	Unisphere-Init-CLI-Access-Level		18	string
-ATTRIBUTE	Unisphere-Allow-All-VR-Access		19	integer
-ATTRIBUTE	Unisphere-Alt-CLI-Access-Level		20	string
-ATTRIBUTE	Unisphere-Alt-CLI-VRouter-Name		21	string
-ATTRIBUTE	Unisphere-SA-Validate			22	integer
-ATTRIBUTE	Unisphere-Igmp-Enable			23	integer
-ATTRIBUTE	Unisphere-Pppoe-Description		24	string
-ATTRIBUTE	Unisphere-Redirect-VRouter-Name		25	string
-ATTRIBUTE	Unisphere-Qos-Profile-Name		26	string
-ATTRIBUTE	Unisphere-Pppoe-Max-Sessions		27	integer
-ATTRIBUTE	Unisphere-Pppoe-Url			28	string
-ATTRIBUTE	Unisphere-Qos-Profile-Interface-Type	29	integer
-ATTRIBUTE	Unisphere-Nas-Port-Method		30	integer
-ATTRIBUTE	Unisphere-Service-Bundle		31	string
-ATTRIBUTE	Unisphere-Tunnel-Tos			32	integer
-ATTRIBUTE	Unisphere-Tunnel-Max-Sessions		33	integer has_tag
-ATTRIBUTE	Unisphere-Framed-Ip-Route-Tag		34	string
-ATTRIBUTE	Unisphere-Tunnel-Dialout-Number		35	string
-ATTRIBUTE	Unisphere-PPP-Username			36	string
-ATTRIBUTE	Unisphere-PPP-Password			37	string
-ATTRIBUTE	Unisphere-PPP-Protocol			38	integer
-ATTRIBUTE	Unisphere-Tunnel-Min-Bps		39	integer
-ATTRIBUTE	Unisphere-Tunnel-Max-Bps		40	integer
-ATTRIBUTE	Unisphere-Tunnel-Bearer-Type		41	integer
-ATTRIBUTE	Unisphere-Input-Gigapackets		42	integer
-ATTRIBUTE	Unisphere-Output-Gigapackets		43	integer
-ATTRIBUTE	Unisphere-Tunnel-Interface-Id		44	string
-ATTRIBUTE	Unisphere-IpV6-Virtual-Router		45	string
-ATTRIBUTE	Unisphere-IpV6-Local-Interface		46	string
-ATTRIBUTE	Unisphere-Ipv6-Primary-Dns		47	ipv6addr
-ATTRIBUTE	Unisphere-Ipv6-Secondary-Dns		48	ipv6addr
-ATTRIBUTE	Unisphere-Service-Name			49	string
-ATTRIBUTE	Unisphere-Session-Volume-Quota		50	string
-ATTRIBUTE	Unisphere-Disconnect-Cause		51	string
-ATTRIBUTE	Unisphere-Radius-Client-Address		52	ipaddr
-ATTRIBUTE	Unisphere-Service-Description		53	string
-ATTRIBUTE	Unisphere-L2tp-Recv-Window-Size		54	integer
-ATTRIBUTE	Unisphere-Dhcp-Options			55	octets
-ATTRIBUTE	Unisphere-Dhcp-Mac-Addr			56	string
-ATTRIBUTE	Unisphere-Dhcp-Gi-Address		57	ipaddr
-ATTRIBUTE	Unisphere-LI-Action			58	integer	encrypt=2
-ATTRIBUTE	Unisphere-Med-Dev-Handle		59	octets	encrypt=2
-ATTRIBUTE	Unisphere-Med-Ip-Address		60	ipaddr	encrypt=2
-ATTRIBUTE	Unisphere-Med-Port-Number		61	integer	encrypt=2
-ATTRIBUTE	Unisphere-MLPPP-Bundle-Name		62	string
-ATTRIBUTE	Unisphere-Interface-Desc		63	string
-ATTRIBUTE	Unisphere-Tunnel-Group			64	string
-ATTRIBUTE	Unisphere-Service-Activate		65	string	has_tag
-ATTRIBUTE	Unisphere-Service-Deactivate		66	string
-ATTRIBUTE	Unisphere-Service-Volume		67	integer	has_tag
-ATTRIBUTE	Unisphere-Service-Timeout		68	integer	has_tag
-ATTRIBUTE	Unisphere-Service-Stats			69	integer	has_tag
+ATTRIBUTE	Virtual-Router				1	string
+ATTRIBUTE	Local-Address-Pool			2	string
+ATTRIBUTE	Local-Interface				3	string
+ATTRIBUTE	Primary-Dns				4	ipaddr
+ATTRIBUTE	Secondary-Dns				5	ipaddr
+ATTRIBUTE	Primary-Wins				6	ipaddr
+ATTRIBUTE	Secondary-Wins				7	ipaddr
+ATTRIBUTE	Tunnel-Virtual-Router			8	string has_tag
+ATTRIBUTE	Tunnel-Password				9	string has_tag
+ATTRIBUTE	Ingress-Policy-Name			10	string
+ATTRIBUTE	Egress-Policy-Name			11	string
+ATTRIBUTE	Ingress-Statistics			12	integer
+ATTRIBUTE	Egress-Statistics			13	integer
+ATTRIBUTE	Service-Category			14	integer
+ATTRIBUTE	PCR					15	integer
+ATTRIBUTE	SCR					16	integer
+ATTRIBUTE	MBS					17	integer
+ATTRIBUTE	Init-CLI-Access-Level			18	string
+ATTRIBUTE	Allow-All-VR-Access			19	integer
+ATTRIBUTE	Alt-CLI-Access-Level			20	string
+ATTRIBUTE	Alt-CLI-VRouter-Name			21	string
+ATTRIBUTE	SA-Validate				22	integer
+ATTRIBUTE	Igmp-Enable				23	integer
+ATTRIBUTE	Pppoe-Description			24	string
+ATTRIBUTE	Redirect-VRouter-Name			25	string
+ATTRIBUTE	Qos-Profile-Name			26	string
+ATTRIBUTE	Pppoe-Max-Sessions			27	integer
+ATTRIBUTE	Pppoe-Url				28	string
+ATTRIBUTE	Qos-Profile-Interface-Type		29	integer
+ATTRIBUTE	Nas-Port-Method				30	integer
+ATTRIBUTE	Service-Bundle				31	string
+ATTRIBUTE	Tunnel-Tos				32	integer
+ATTRIBUTE	Tunnel-Max-Sessions			33	integer has_tag
+ATTRIBUTE	Framed-Ip-Route-Tag			34	string
+ATTRIBUTE	Tunnel-Dialout-Number			35	string
+ATTRIBUTE	PPP-Username				36	string
+ATTRIBUTE	PPP-Password				37	string
+ATTRIBUTE	PPP-Protocol				38	integer
+ATTRIBUTE	Tunnel-Min-Bps				39	integer
+ATTRIBUTE	Tunnel-Max-Bps				40	integer
+ATTRIBUTE	Tunnel-Bearer-Type			41	integer
+ATTRIBUTE	Input-Gigapackets			42	integer
+ATTRIBUTE	Output-Gigapackets			43	integer
+ATTRIBUTE	Tunnel-Interface-Id			44	string
+ATTRIBUTE	IpV6-Virtual-Router			45	string
+ATTRIBUTE	IpV6-Local-Interface			46	string
+ATTRIBUTE	Ipv6-Primary-Dns			47	ipv6addr
+ATTRIBUTE	Ipv6-Secondary-Dns			48	ipv6addr
+ATTRIBUTE	Service-Name				49	string
+ATTRIBUTE	Session-Volume-Quota			50	string
+ATTRIBUTE	Disconnect-Cause			51	string
+ATTRIBUTE	Radius-Client-Address			52	ipaddr
+ATTRIBUTE	Service-Description			53	string
+ATTRIBUTE	L2tp-Recv-Window-Size			54	integer
+ATTRIBUTE	Dhcp-Options				55	octets
+ATTRIBUTE	Dhcp-Mac-Addr				56	string
+ATTRIBUTE	Dhcp-Gi-Address				57	ipaddr
+ATTRIBUTE	LI-Action				58	integer	encrypt=2
+ATTRIBUTE	Med-Dev-Handle				59	octets	encrypt=2
+ATTRIBUTE	Med-Ip-Address				60	ipaddr	encrypt=2
+ATTRIBUTE	Med-Port-Number				61	integer	encrypt=2
+ATTRIBUTE	MLPPP-Bundle-Name			62	string
+ATTRIBUTE	Interface-Desc				63	string
+ATTRIBUTE	Tunnel-Group				64	string
+ATTRIBUTE	Service-Activate			65	string	has_tag
+ATTRIBUTE	Service-Deactivate			66	string
+ATTRIBUTE	Service-Volume				67	integer	has_tag
+ATTRIBUTE	Service-Timeout				68	integer	has_tag
+ATTRIBUTE	Service-Stats				69	integer	has_tag
 
-ATTRIBUTE	Unisphere-DF-Bit			70	integer
+ATTRIBUTE	DF-Bit					70	integer
 
-ATTRIBUTE	Unisphere-IGMP-Access-Name		71	string
-ATTRIBUTE	Unisphere-IGMP-Access-Src-Name		72	string
-ATTRIBUTE	Unisphere-IGMP-OIF-Map-Name		73	string
+ATTRIBUTE	IGMP-Access-Name			71	string
+ATTRIBUTE	IGMP-Access-Src-Name			72	string
+ATTRIBUTE	IGMP-OIF-Map-Name			73	string
 
-ATTRIBUTE	Unisphere-MLD-Access-Name		74	string
-ATTRIBUTE	Unisphere-MLD-Access-Src-Name		75	string
-ATTRIBUTE	Unisphere-MLD-OIF-Map-Name		76	string
-ATTRIBUTE	Unisphere-MLD-Version			77	integer
-ATTRIBUTE	Unisphere-IGMP-Version			78	integer
-ATTRIBUTE	Unisphere-IP-Mcast-Adm-Bw-Limit		79	integer
-ATTRIBUTE	Unisphere-IPv6-Mcast-Adm-Bw-Limit	80	integer
-ATTRIBUTE	Unisphere-L2c-Access-Loop-Parameters	81	string
-ATTRIBUTE	Unisphere-Qos-Parameters		82	string
-ATTRIBUTE	Unisphere-Service-Session		83	string
+ATTRIBUTE	MLD-Access-Name				74	string
+ATTRIBUTE	MLD-Access-Src-Name			75	string
+ATTRIBUTE	MLD-OIF-Map-Name			76	string
+ATTRIBUTE	MLD-Version				77	integer
+ATTRIBUTE	IGMP-Version				78	integer
+ATTRIBUTE	IP-Mcast-Adm-Bw-Limit			79	integer
+ATTRIBUTE	IPv6-Mcast-Adm-Bw-Limit			80	integer
+ATTRIBUTE	L2c-Access-Loop-Parameters		81	string
+ATTRIBUTE	Qos-Parameters				82	string
+ATTRIBUTE	Service-Session				83	string
 
-ATTRIBUTE	Unisphere-Mobile-IP-Algorithm		84	integer
-ATTRIBUTE	Unisphere-Mobile-IP-SPI			85	integer
-ATTRIBUTE	Unisphere-Mobile-IP-Key			86	string
-ATTRIBUTE	Unisphere-Mobile-IP-Replay		87	integer
-ATTRIBUTE	Unisphere-Mobile-IP-Access-Control	88	string
-ATTRIBUTE	Unisphere-Mobile-IP-Lifetime		89	integer
+ATTRIBUTE	Mobile-IP-Algorithm			84	integer
+ATTRIBUTE	Mobile-IP-SPI				85	integer
+ATTRIBUTE	Mobile-IP-Key				86	string
+ATTRIBUTE	Mobile-IP-Replay			87	integer
+ATTRIBUTE	Mobile-IP-Access-Control		88	string
+ATTRIBUTE	Mobile-IP-Lifetime			89	integer
 
-ATTRIBUTE	Unisphere-L2TP-Resynch-Method		90	integer
+ATTRIBUTE	L2TP-Resynch-Method			90	integer
 
-ATTRIBUTE	Unisphere-Tunnel-Switch-Profile		91	string
+ATTRIBUTE	Tunnel-Switch-Profile			91	string
 
-ATTRIBUTE	Unisphere-L2c-Up-Stream-Data		92	string
-ATTRIBUTE	Unisphere-L2c-Down-Stream-Data		93	string
+ATTRIBUTE	L2c-Up-Stream-Data			92	string
+ATTRIBUTE	L2c-Down-Stream-Data			93	string
 
-ATTRIBUTE	Unisphere-Tunnel-Tx-Speed-Method	94	integer
+ATTRIBUTE	Tunnel-Tx-Speed-Method			94	integer
 
-ATTRIBUTE	Unisphere-IGMP-Query-Interval		95	integer
-ATTRIBUTE	Unisphere-IGMP-Max-Resp-Time		96	integer
-ATTRIBUTE	Unisphere-IGMP-Immediate-Leave		97	integer
-ATTRIBUTE	Unisphere-MLD-Query-Interval		98	integer
-ATTRIBUTE	Unisphere-MLD-Max-Resp-Time		99	integer
-ATTRIBUTE	Unisphere-MLD-Immediate-Leave		100	integer
-ATTRIBUTE	Unisphere-IP-Block-Multicast		101	integer
+ATTRIBUTE	IGMP-Query-Interval			95	integer
+ATTRIBUTE	IGMP-Max-Resp-Time			96	integer
+ATTRIBUTE	IGMP-Immediate-Leave			97	integer
+ATTRIBUTE	MLD-Query-Interval			98	integer
+ATTRIBUTE	MLD-Max-Resp-Time			99	integer
+ATTRIBUTE	MLD-Immediate-Leave			100	integer
+ATTRIBUTE	IP-Block-Multicast			101	integer
 
-ATTRIBUTE	Unisphere-IGMP-Explicit-Tracking	102	integer
-ATTRIBUTE	Unisphere-IGMP-No-Tracking-V2-Grps	103	integer
-ATTRIBUTE	Unisphere-MLD-Explicit-Tracking		104	integer
-ATTRIBUTE	Unisphere-MLD-No-Tracking-V1-Grps	105	integer
+ATTRIBUTE	IGMP-Explicit-Tracking			102	integer
+ATTRIBUTE	IGMP-No-Tracking-V2-Grps		103	integer
+ATTRIBUTE	MLD-Explicit-Tracking			104	integer
+ATTRIBUTE	MLD-No-Tracking-V1-Grps			105	integer
 
 ATTRIBUTE	Jnpr-IPv6-Ingress-Policy-Name		106	string
 ATTRIBUTE	Jnpr-IPv6-Egress-Policy-Name		107	string
 ATTRIBUTE	Jnpr-CoS-Parameter-Type			108	string
 ATTRIBUTE	Jnpr-DHCP-Guided-Relay-Server		109	ipaddr
 
-ATTRIBUTE	Unisphere-Acc-Loop-Cir-Id		110	string
-ATTRIBUTE	Unisphere-Acc-Aggr-Cir-Id-Bin		111	octets
-ATTRIBUTE	Unisphere-Acc-Aggr-Cir-Id-Asc		112	string
-ATTRIBUTE	Unisphere-Act-Data-Rate-Up		113	integer
-ATTRIBUTE	Unisphere-Act-Data-Rate-Dn		114	integer
-ATTRIBUTE	Unisphere-Min-Data-Rate-Up		115	integer
-ATTRIBUTE	Unisphere-Min-Data-Rate-Dn		116	integer
-ATTRIBUTE	Unisphere-Att-Data-Rate-Up		117	integer
-ATTRIBUTE	Unisphere-Att-Data-Rate-Dn		118	integer
-ATTRIBUTE	Unisphere-Max-Data-Rate-Up		119	integer
-ATTRIBUTE	Unisphere-Max-Data-Rate-Dn		120	integer
-ATTRIBUTE	Unisphere-Min-LP-Data-Rate-Up		121	integer
-ATTRIBUTE	Unisphere-Min-LP-Data-Rate-Dn		122	integer
-ATTRIBUTE	Unisphere-Max-Interlv-Delay-Up		123	integer
-ATTRIBUTE	Unisphere-Act-Interlv-Delay-Up		124	integer
-ATTRIBUTE	Unisphere-Max-Interlv-Delay-Dn		125	integer
-ATTRIBUTE	Unisphere-Act-Interlv-Delay-Dn		126	integer
-ATTRIBUTE	Unisphere-DSL-Line-State		127	integer
-ATTRIBUTE	Unisphere-DSL-Type			128	integer
+ATTRIBUTE	Acc-Loop-Cir-Id				110	string
+ATTRIBUTE	Acc-Aggr-Cir-Id-Bin			111	octets
+ATTRIBUTE	Acc-Aggr-Cir-Id-Asc			112	string
+ATTRIBUTE	Act-Data-Rate-Up			113	integer
+ATTRIBUTE	Act-Data-Rate-Dn			114	integer
+ATTRIBUTE	Min-Data-Rate-Up			115	integer
+ATTRIBUTE	Min-Data-Rate-Dn			116	integer
+ATTRIBUTE	Att-Data-Rate-Up			117	integer
+ATTRIBUTE	Att-Data-Rate-Dn			118	integer
+ATTRIBUTE	Max-Data-Rate-Up			119	integer
+ATTRIBUTE	Max-Data-Rate-Dn			120	integer
+ATTRIBUTE	Min-LP-Data-Rate-Up			121	integer
+ATTRIBUTE	Min-LP-Data-Rate-Dn			122	integer
+ATTRIBUTE	Max-Interlv-Delay-Up			123	integer
+ATTRIBUTE	Act-Interlv-Delay-Up			124	integer
+ATTRIBUTE	Max-Interlv-Delay-Dn			125	integer
+ATTRIBUTE	Act-Interlv-Delay-Dn			126	integer
+ATTRIBUTE	DSL-Line-State				127	integer
+ATTRIBUTE	DSL-Type				128	integer
 
-ATTRIBUTE	Unisphere-IPv6-NdRa-Prefix		129	ipv6prefix
-ATTRIBUTE	Unisphere-Qos-Set-Name			130	string
+ATTRIBUTE	IPv6-NdRa-Prefix			129	ipv6prefix
+ATTRIBUTE	Qos-Set-Name				130	string
 
-ATTRIBUTE	Unisphere-Service-AcctInt		140	integer has_tag
+ATTRIBUTE	Service-AcctInt				140	integer has_tag
 
-ATTRIBUTE	Unisphere-DownStream-Calc-Rate		141	integer
-ATTRIBUTE	Unisphere-UpStream-Calc-Rate		142	integer
+ATTRIBUTE	DownStream-Calc-Rate			141	integer
+ATTRIBUTE	UpStream-Calc-Rate			142	integer
 ATTRIBUTE	Jnpr-Max-Clients-Per-Interface		143	integer
 
-ATTRIBUTE	Unisphere-PPP-Ingress-Only		144	integer
+ATTRIBUTE	PPP-Ingress-Only			144	integer
 
 ATTRIBUTE	Jnpr-CoS-Scheduler-Pmt-Type		146	string
-ATTRIBUTE	Unisphere-Backup-Address-Pool		147	string
+ATTRIBUTE	Backup-Address-Pool			147	string
 
-ATTRIBUTE	Unisphere-ICR-Partition-Id		150	string
-ATTRIBUTE	Unisphere-IPv6-Acct-Input-Octets	151	integer
-ATTRIBUTE	Unisphere-IPv6-Acct-Output-Octets	152	integer
-ATTRIBUTE	Unisphere-IPv6-Acct-Input-Packets	153	integer
-ATTRIBUTE	Unisphere-IPv6-Acct-Output-Packets	154	integer
-ATTRIBUTE	Unisphere-IPv6-Acct-Input-Gigawords	155	integer
-ATTRIBUTE	Unisphere-IPv6-Acct-Output-Gigawords	156	integer
+ATTRIBUTE	ICR-Partition-Id			150	string
+ATTRIBUTE	IPv6-Acct-Input-Octets			151	integer
+ATTRIBUTE	IPv6-Acct-Output-Octets			152	integer
+ATTRIBUTE	IPv6-Acct-Input-Packets			153	integer
+ATTRIBUTE	IPv6-Acct-Output-Packets		154	integer
+ATTRIBUTE	IPv6-Acct-Input-Gigawords		155	integer
+ATTRIBUTE	IPv6-Acct-Output-Gigawords		156	integer
 ATTRIBUTE	Jnpr-IPv6-NdRa-Pool-Name		157	string
 ATTRIBUTE	Jnpr-PppoE-Padn				158	string
-ATTRIBUTE	Unisphere-Dhcp-Option-82		159	octets
+ATTRIBUTE	Dhcp-Option-82				159	octets
 ATTRIBUTE	Jnpr-Vlan-Map-Id			160	integer
 ATTRIBUTE	Jnpr-IPv6-Delegated-Pool-Name		161	string
 ATTRIBUTE	Jnpr-Tx-Connect-Speed			162	integer
 ATTRIBUTE	Jnpr-Rx-Connect-Speed			163	integer
-ATTRIBUTE	Unisphere-Ipv4-release-control		164	string
+ATTRIBUTE	Ipv4-release-control			164	string
 ATTRIBUTE	Pcp-Server-Name				165	string
 
 # ATTRIBUTE 166 - 173 RESERVED
-ATTRIBUTE	Unisphere-Client-Profile-Name		174	string
+ATTRIBUTE	Client-Profile-Name			174	string
 ATTRIBUTE	Jnpr-Redirect-GW-Address		175	ipaddr
 ATTRIBUTE	Jnpr-APN-Name				176	string
-ATTRIBUTE	Unisphere-Cos-Shaping-Rate		177	string
-ATTRIBUTE	Unisphere-Action-Reason			178	string
-ATTRIBUTE	Unisphere-Service-Volume-Gigawords	179	integer has_tag
-ATTRIBUTE	Unisphere-Update-Service		180	string has_tag
+ATTRIBUTE	Cos-Shaping-Rate			177	string
+ATTRIBUTE	Action-Reason				178	string
+ATTRIBUTE	Service-Volume-Gigawords		179	integer has_tag
+ATTRIBUTE	Update-Service				180	string has_tag
 
-ATTRIBUTE	Unisphere-Acc-Loop-Remote-Id		182	string
-ATTRIBUTE	Unisphere-Acc-Loop-Encap		183	octets
-ATTRIBUTE	Unisphere-Inner-Vlan-Map-Id		184	integer
-ATTRIBUTE	Unisphere-Core-Facing-Interface		185	string
-ATTRIBUTE	Unisphere-Pcp-Port-Map			186	string
-ATTRIBUTE	Unisphere-vCPE-Lan-Extension		187	string
-ATTRIBUTE	Unisphere-vCPE-IPv4-Offload		188	string
+ATTRIBUTE	Acc-Loop-Remote-Id			182	string
+ATTRIBUTE	Acc-Loop-Encap				183	octets
+ATTRIBUTE	Inner-Vlan-Map-Id			184	integer
+ATTRIBUTE	Core-Facing-Interface			185	string
+ATTRIBUTE	Pcp-Port-Map				186	string
+ATTRIBUTE	vCPE-Lan-Extension			187	string
+ATTRIBUTE	vCPE-IPv4-Offload			188	string
 
 ATTRIBUTE	Jnpr-Input-Interface-Filter		191	string
 ATTRIBUTE	Jnpr-Output-Interface-Filter		192	string
 ATTRIBUTE	ERX-Bulk-CoA-Transaction-Id		194	integer
 ATTRIBUTE	ERX-Bulk-CoA-Identifier			195	integer
-ATTRIBUTE	Unisphere-IPv4-Input-Service-Set	196	string
-ATTRIBUTE	Unisphere-IPv4-Output-Service-Set	197	string
-ATTRIBUTE	Unisphere-IPv4-Input-Service-Filter	198	string
-ATTRIBUTE	Unisphere-IPv4-Output-Service-Filter	199	string
-ATTRIBUTE	Unisphere-IPv6-Input-Service-Set	200	string
-ATTRIBUTE	Unisphere-IPv6-Output-Service-Set	201	string
-ATTRIBUTE	Unisphere-IPv6-Input-Service-Filter	202	string
-ATTRIBUTE	Unisphere-IPv6-Output-Service-Filter	203	string
-ATTRIBUTE	Unisphere-Adv-Pcef-Profile-Name		204	string
-ATTRIBUTE	Unisphere-Adv-Pcef-Rule-Name		205	string
+ATTRIBUTE	IPv4-Input-Service-Set			196	string
+ATTRIBUTE	IPv4-Output-Service-Set			197	string
+ATTRIBUTE	IPv4-Input-Service-Filter		198	string
+ATTRIBUTE	IPv4-Output-Service-Filter		199	string
+ATTRIBUTE	IPv6-Input-Service-Set			200	string
+ATTRIBUTE	IPv6-Output-Service-Set			201	string
+ATTRIBUTE	IPv6-Input-Service-Filter		202	string
+ATTRIBUTE	IPv6-Output-Service-Filter		203	string
+ATTRIBUTE	Adv-Pcef-Profile-Name			204	string
+ATTRIBUTE	Adv-Pcef-Rule-Name			205	string
 
 #
 #  Values	Attribute		Name			Number
 #
-VALUE	Unisphere-Ingress-Statistics	disable			0
-VALUE	Unisphere-Ingress-Statistics	enable			1
+VALUE	Ingress-Statistics		disable			0
+VALUE	Ingress-Statistics		enable			1
 
-VALUE	Unisphere-Egress-Statistics	disable			0
-VALUE	Unisphere-Egress-Statistics	enable			1
+VALUE	Egress-Statistics		disable			0
+VALUE	Egress-Statistics		enable			1
 
-VALUE	Unisphere-Service-Category	UBR			1
-VALUE	Unisphere-Service-Category	UBRPCR			2
-VALUE	Unisphere-Service-Category	nrtVBR			3
-VALUE	Unisphere-Service-Category	CBR			4
-VALUE	Unisphere-Service-Category	rtVBR			5
+VALUE	Service-Category		UBR			1
+VALUE	Service-Category		UBRPCR			2
+VALUE	Service-Category		nrtVBR			3
+VALUE	Service-Category		CBR			4
+VALUE	Service-Category		rtVBR			5
 
-VALUE	Unisphere-Allow-All-VR-Access	disable			0
-VALUE	Unisphere-Allow-All-VR-Access	enable			1
+VALUE	Allow-All-VR-Access		disable			0
+VALUE	Allow-All-VR-Access		enable			1
 
-VALUE	Unisphere-SA-Validate		disable			0
-VALUE	Unisphere-SA-Validate		enable			1
+VALUE	SA-Validate			disable			0
+VALUE	SA-Validate			enable			1
 
-VALUE	Unisphere-Igmp-Enable		disable			0
-VALUE	Unisphere-Igmp-Enable		enable			1
+VALUE	Igmp-Enable			disable			0
+VALUE	Igmp-Enable			enable			1
 
-VALUE	Unisphere-Qos-Profile-Interface-Type IP			1
-VALUE	Unisphere-Qos-Profile-Interface-Type ATM		2
-VALUE	Unisphere-Qos-Profile-Interface-Type HDLC		3
-VALUE	Unisphere-Qos-Profile-Interface-Type ETHERNET		4
-VALUE	Unisphere-Qos-Profile-Interface-Type SERVER-PORT	5
-VALUE	Unisphere-Qos-Profile-Interface-Type ATM-1483		6
-VALUE	Unisphere-Qos-Profile-Interface-Type FRAME-RELAY	7
-VALUE	Unisphere-Qos-Profile-Interface-Type MPLS-MINOR		8
-VALUE	Unisphere-Qos-Profile-Interface-Type CBF		9
-VALUE	Unisphere-Qos-Profile-Interface-Type IP-TUNNEL		10
-VALUE	Unisphere-Qos-Profile-Interface-Type VLAN-SUB		11
-VALUE	Unisphere-Qos-Profile-Interface-Type PPPOE-SUB		12
+VALUE	Qos-Profile-Interface-Type	IP			1
+VALUE	Qos-Profile-Interface-Type	ATM			2
+VALUE	Qos-Profile-Interface-Type	HDLC			3
+VALUE	Qos-Profile-Interface-Type	ETHERNET		4
+VALUE	Qos-Profile-Interface-Type	SERVER-PORT		5
+VALUE	Qos-Profile-Interface-Type	ATM-1483		6
+VALUE	Qos-Profile-Interface-Type	FRAME-RELAY		7
+VALUE	Qos-Profile-Interface-Type	MPLS-MINOR		8
+VALUE	Qos-Profile-Interface-Type	CBF			9
+VALUE	Qos-Profile-Interface-Type	IP-TUNNEL		10
+VALUE	Qos-Profile-Interface-Type	VLAN-SUB		11
+VALUE	Qos-Profile-Interface-Type	PPPOE-SUB		12
 
-VALUE	Unisphere-Nas-Port-Method	None			0
-VALUE	Unisphere-Nas-Port-Method	CISCO-CLID		1
+VALUE	Nas-Port-Method			None			0
+VALUE	Nas-Port-Method			CISCO-CLID		1
 
-VALUE	Unisphere-PPP-Protocol		None			0
-VALUE	Unisphere-PPP-Protocol		PAP			1
-VALUE	Unisphere-PPP-Protocol		CHAP			2
-VALUE	Unisphere-PPP-Protocol		PAP-CHAP		3
-VALUE	Unisphere-PPP-Protocol		CHAP-PAP		4
+VALUE	PPP-Protocol			None			0
+VALUE	PPP-Protocol			PAP			1
+VALUE	PPP-Protocol			CHAP			2
+VALUE	PPP-Protocol			PAP-CHAP		3
+VALUE	PPP-Protocol			CHAP-PAP		4
 
-VALUE	Unisphere-Tunnel-Bearer-Type	None			0
-VALUE	Unisphere-Tunnel-Bearer-Type	Analog			1
-VALUE	Unisphere-Tunnel-Bearer-Type	Digital			2
+VALUE	Tunnel-Bearer-Type		None			0
+VALUE	Tunnel-Bearer-Type		Analog			1
+VALUE	Tunnel-Bearer-Type		Digital			2
 
-VALUE	Unisphere-LI-Action		off			0
-VALUE	Unisphere-LI-Action		on			1
-VALUE	Unisphere-LI-Action		noop			2
+VALUE	LI-Action			off			0
+VALUE	LI-Action			on			1
+VALUE	LI-Action			noop			2
 
-VALUE	Unisphere-DF-Bit		dont-ignore-df-bit	0
-VALUE	Unisphere-DF-Bit		ignore-df-bit		1
+VALUE	DF-Bit				dont-ignore-df-bit	0
+VALUE	DF-Bit				ignore-df-bit		1
 
-VALUE	Unisphere-MLD-Version		v1			1
-VALUE	Unisphere-MLD-Version		v2			2
+VALUE	MLD-Version			v1			1
+VALUE	MLD-Version			v2			2
 
-VALUE	Unisphere-IGMP-Version		v1			1
-VALUE	Unisphere-IGMP-Version		v2			2
-VALUE	Unisphere-IGMP-Version		v3			3
+VALUE	IGMP-Version			v1			1
+VALUE	IGMP-Version			v2			2
+VALUE	IGMP-Version			v3			3
 
-VALUE	Unisphere-Service-Stats		disabled		0
-VALUE	Unisphere-Service-Stats		time			1
-VALUE	Unisphere-Service-Stats		time-volume		2
+VALUE	Service-Stats			disabled		0
+VALUE	Service-Stats			time			1
+VALUE	Service-Stats			time-volume		2
 
-VALUE	Unisphere-L2TP-Resynch-Method	disable			0
-VALUE	Unisphere-L2TP-Resynch-Method	failover		1
-VALUE	Unisphere-L2TP-Resynch-Method	silent-failover		2
-VALUE	Unisphere-L2TP-Resynch-Method	failover-with-silent-backup 3
+VALUE	L2TP-Resynch-Method		disable			0
+VALUE	L2TP-Resynch-Method		failover		1
+VALUE	L2TP-Resynch-Method		silent-failover		2
+VALUE	L2TP-Resynch-Method		failover-with-silent-backup 3
 
-VALUE	Unisphere-Tunnel-Tx-Speed-Method static-layer2		1
-VALUE	Unisphere-Tunnel-Tx-Speed-Method dynamic-layer2		2
-VALUE	Unisphere-Tunnel-Tx-Speed-Method qos			3
-VALUE	Unisphere-Tunnel-Tx-Speed-Method actual			4
+VALUE	Tunnel-Tx-Speed-Method		static-layer2		1
+VALUE	Tunnel-Tx-Speed-Method		dynamic-layer2		2
+VALUE	Tunnel-Tx-Speed-Method		qos			3
+VALUE	Tunnel-Tx-Speed-Method		actual			4
 
-VALUE	Unisphere-IGMP-Immediate-Leave	disabled		0
-VALUE	Unisphere-IGMP-Immediate-Leave	enabled			1
+VALUE	IGMP-Immediate-Leave		disabled		0
+VALUE	IGMP-Immediate-Leave		enabled			1
 
-VALUE	Unisphere-MLD-Immediate-Leave	disabled		0
-VALUE	Unisphere-MLD-Immediate-Leave	enabled			1
+VALUE	MLD-Immediate-Leave		disabled		0
+VALUE	MLD-Immediate-Leave		enabled			1
 
-VALUE	Unisphere-IP-Block-Multicast	disabled		0
-VALUE	Unisphere-IP-Block-Multicast	enabled			1
+VALUE	IP-Block-Multicast		disabled		0
+VALUE	IP-Block-Multicast		enabled			1
 
-VALUE	Unisphere-IGMP-Explicit-Tracking disabled		0
-VALUE	Unisphere-IGMP-Explicit-Tracking enabled		1
+VALUE	IGMP-Explicit-Tracking		disabled		0
+VALUE	IGMP-Explicit-Tracking		enabled			1
 
-VALUE	Unisphere-IGMP-No-Tracking-V2-Grps disabled		0
-VALUE	Unisphere-IGMP-No-Tracking-V2-Grps enabled		1
+VALUE	IGMP-No-Tracking-V2-Grps	disabled		0
+VALUE	IGMP-No-Tracking-V2-Grps	enabled			1
 
-VALUE	Unisphere-MLD-Explicit-Tracking	disabled		0
-VALUE	Unisphere-MLD-Explicit-Tracking	enabled			1
+VALUE	MLD-Explicit-Tracking		disabled		0
+VALUE	MLD-Explicit-Tracking		enabled			1
 
-VALUE	Unisphere-MLD-No-Tracking-V1-Grps disabled		0
-VALUE	Unisphere-MLD-No-Tracking-V1-Grps enabled		1
+VALUE	MLD-No-Tracking-V1-Grps		disabled		0
+VALUE	MLD-No-Tracking-V1-Grps		enabled			1
 
-VALUE	Unisphere-DSL-Line-State	SHOWTIME		1
-VALUE	Unisphere-DSL-Line-State	IDLE			2
-VALUE	Unisphere-DSL-Line-State	SILENT			3
+VALUE	DSL-Line-State			SHOWTIME		1
+VALUE	DSL-Line-State			IDLE			2
+VALUE	DSL-Line-State			SILENT			3
 
-VALUE	Unisphere-DSL-Type		ADSL1			1
-VALUE	Unisphere-DSL-Type		ADSL2			2
-VALUE	Unisphere-DSL-Type		ADSL2PLUS		3
-VALUE	Unisphere-DSL-Type		VDSL1			4
-VALUE	Unisphere-DSL-Type		VDSL2			5
-VALUE	Unisphere-DSL-Type		SDSL			6
-VALUE	Unisphere-DSL-Type		UNKNOWN			7
+VALUE	DSL-Type			ADSL1			1
+VALUE	DSL-Type			ADSL2			2
+VALUE	DSL-Type			ADSL2PLUS		3
+VALUE	DSL-Type			VDSL1			4
+VALUE	DSL-Type			VDSL2			5
+VALUE	DSL-Type			SDSL			6
+VALUE	DSL-Type			UNKNOWN			7
 
-VALUE	Unisphere-PPP-Ingress-Only	disabled		0
-VALUE	Unisphere-PPP-Ingress-Only	enabled			1
+VALUE	PPP-Ingress-Only		disabled		0
+VALUE	PPP-Ingress-Only		enabled			1
 
 END-VENDOR	Unisphere
