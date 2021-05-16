@@ -43,6 +43,7 @@ ssize_t fr_dict_print_flags(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t ty
 
 	if (dict && !flags->extra && flags->subtype) {
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(dict->subtype_table, flags->subtype, "?"));
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ',');
 	}
 
 	if (flags->length) FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "length=%i,", flags->length);
