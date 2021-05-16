@@ -3,6 +3,7 @@
 ** xref:dependencies.adoc[Dependencies]
 ** xref:source.adoc[Build from source]
 ** xref:upgrade.adoc[Upgrading from v3 to v4]
+** xref:attribute_names.adoc[Attribute name changes from v3 to v4]
 ** Building Packages
 *** xref:build_deb.adoc[Debian and Ubuntu]
 *** xref:build_rpm.adoc[RedHat and CentOS]

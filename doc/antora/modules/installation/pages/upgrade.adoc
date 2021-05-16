@@ -27,14 +27,18 @@ the new configuration. Start the server after every change via
 `radiusd -XC` to see if the configuration is OK. Then, convert the
 `listen` sections, followed by the `server` sections.
 
-Take your time. It is better to make small incrementatal progress, than
+Take your time. It is better to make small incremental progress, than
 to make massive changes, and then to spend weeks debugging it.
+
+All of the attribute names used in v3 have been changed in v4.  Please
+see the xref:attribute_names.adoc[attribute names] document for more
+information.
 
 === Upgrading from v2
 
-If you’re upgrading from v2 you should read the v3 version of this file.
-It describes changed from v2 to v3. This file describes only the changes
-from v3 to v4.
+If you are upgrading from v2 you should read the v3 version of this
+file.  It describes changed from v2 to v3. This file describes only
+the changes from v3 to v4.
 
 == radiusd.conf
 
