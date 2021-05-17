@@ -46,7 +46,24 @@ ssize_t fr_dict_print_flags(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t ty
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ',');
 	}
 
-	if (flags->length) FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "length=%i,", flags->length);
+	if (flags->length) {
+		switch (type) {
+		case FR_TYPE_FIXED_SIZE:
+			/*
+			 *	Bit fields are in the dicts as various
+			 *	`uint*` types.  But with special flags
+			 *	saying they're bit fields.
+			 */
+			if (flags->extra && (flags->subtype == FLAG_BIT_FIELD)) {
+				FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "bit[%u],", flags->length);
+			}
+			break;
+
+		default:
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "length=%i,", flags->length);
+			break;
+		}
+	}
 	if (flags->extra) {
 		switch (flags->subtype) {
 		case FLAG_KEY_FIELD:
@@ -54,6 +71,10 @@ ssize_t fr_dict_print_flags(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t ty
 			break;
 
 		case FLAG_LENGTH_UINT16:
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "length=uint16,");
+			break;
+
+		case FLAG_BIT_FIELD:
 			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "length=uint16,");
 			break;
 
@@ -257,6 +278,8 @@ static int dict_attr_export(fr_dict_attr_t const *da, void *uctx)
 				      NULL, da);
 	(void) dict_attr_oid_print_oid(&FR_SBUFF_OUT(our_uctx->oid, sizeof(our_uctx->oid)),
 				      NULL, da);
+
+	*our_uctx->flags = 0;	/* some attributes don't have flags */
 	fr_dict_print_flags(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
 			      our_uctx->dict, da->type, &da->flags);
 
