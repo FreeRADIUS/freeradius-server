@@ -39,7 +39,7 @@
 #
 # v4 create attr to oid file for this program:
 #
-#  ./build/make/jlibtool --mode=execute ./build/bin/local/radict  -f -p radius -D share/dictionary/ 2>&1) | egrep '26\.' > attrs
+#  (./build/make/jlibtool --mode=execute ./build/bin/local/radict  -f -p radius -D share/dictionary/ 2>&1) | egrep '26\.' | egrep -v internal > attrs
 #
 #
 use strict;
