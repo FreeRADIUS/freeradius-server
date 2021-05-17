@@ -1,3 +1,8 @@
+FreeRADIUS 3.0.23 Mon 17 May 2021 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	Feature improvements
 	* Many new "unlang" documentation files.  See "make docsite"
@@ -46,7 +51,7 @@ FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	* Allow use of password preparation methods with rlm_eap_pwd.
 	  Patch from Michael Braun.
 	* Many, many, improvements for DHCP from Nick Porter and Terry Burton.
-	* More RFC complaince for various corner cases of DHCP,
+	* More RFC compliance for various corner cases of DHCP,
 	* Use DHCP-specific schemas.
 	* Add stored procedures for DHCP lease allocation
 	* Add support for DHCP-Decline.
@@ -84,6 +89,7 @@ FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	* PEAP 'proxy_tunneled_request_as_eap' is now configurable
 	  at runtime with Proxy-Tunneled-Request-As-EAP.
 	* Debug output now lists client/server proposed TLS ciphers.
+	* Add support for TLS1.3, patches from Alexander Clouter
 
 	Bug fixes
 	* Fix long-term double free due to PCRE calling our "free"
@@ -113,7 +119,7 @@ FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	* Properly add SQL clients to virtual servers.
 	* Update documentation for cert generation.  Patch from Alexander Scheel.
 	* Use better API when decoding DHCP packets, to avoid unnecessary work.
-	  This improves performance noticably.
+	  This improves performance noticeably.
 	* Parse locale-dependent dates.  Fixes #3602.
 	* Strip out "-frecord-gcc-switches" from rlm_python3 configure build. Fixes #3693
 	* Fix radiusd.conf ENV LD_PRELOAD function.

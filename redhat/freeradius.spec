@@ -30,7 +30,7 @@
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
-Version: 3.0.22
+Version: 3.0.23
 Release: 1%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
