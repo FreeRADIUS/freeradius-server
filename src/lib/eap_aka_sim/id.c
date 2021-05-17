@@ -548,7 +548,7 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
  */
 uint8_t fr_aka_sim_id_3gpp_pseudonym_tag(char const encr_id[AKA_SIM_3GPP_PSEUDONYM_LEN])
 {
-	return fr_base64_sextet[us(encr_id[0])];
+	return fr_base64_alphabet_decode[us(encr_id[0])];
 }
 
 /** Return the key index from a 3gpp pseudonym
@@ -559,7 +559,7 @@ uint8_t fr_aka_sim_id_3gpp_pseudonym_tag(char const encr_id[AKA_SIM_3GPP_PSEUDON
  */
 uint8_t fr_aka_sim_id_3gpp_pseudonym_key_index(char const encr_id[AKA_SIM_3GPP_PSEUDONYM_LEN])
 {
-	return ((fr_base64_sextet[us(encr_id[1])] & 0x3c) >> 2);
+	return ((fr_base64_alphabet_decode[us(encr_id[1])] & 0x3c) >> 2);
 }
 
 /** Decrypt the 3GPP pseudonym
@@ -599,13 +599,13 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 		}
 	}
 
-	*dec_p++ = (((fr_base64_sextet[us(p[1])] & 0x03) << 6) | fr_base64_sextet[us(p[2])]);
+	*dec_p++ = (((fr_base64_alphabet_decode[us(p[1])] & 0x03) << 6) | fr_base64_alphabet_decode[us(p[2])]);
 	p += 3;
 
 	while (p < end) {
-		*dec_p++ = ((fr_base64_sextet[us(p[0])] << 2) | (fr_base64_sextet[us(p[1])] >> 4));
-		*dec_p++ = ((fr_base64_sextet[us(p[1])] << 4) & 0xf0) | (fr_base64_sextet[us(p[2])] >> 2);
-		*dec_p++ = ((fr_base64_sextet[us(p[2])] << 6) & 0xc0) | fr_base64_sextet[us(p[3])];
+		*dec_p++ = ((fr_base64_alphabet_decode[us(p[0])] << 2) | (fr_base64_alphabet_decode[us(p[1])] >> 4));
+		*dec_p++ = ((fr_base64_alphabet_decode[us(p[1])] << 4) & 0xf0) | (fr_base64_alphabet_decode[us(p[2])] >> 2);
+		*dec_p++ = ((fr_base64_alphabet_decode[us(p[2])] << 6) & 0xc0) | fr_base64_alphabet_decode[us(p[3])];
 
 		p += 4;	/* 32bit input -> 24bit output */
 	}

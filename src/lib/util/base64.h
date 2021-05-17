@@ -42,12 +42,17 @@ extern "C" {
 #define FR_BASE64_DEC_LENGTH(_inlen) ((3 * ((_inlen) / 4)) + 2)
 
 extern char const fr_base64_str[];
-extern char const fr_base64_sextet[];
+extern uint8_t const fr_base64_alphabet_decode[UINT8_MAX];
 
-bool		fr_is_base64(char c);
+#define		fr_is_base64(_c) fr_base64_nstd(_c, fr_base64_alphabet_decode)
+bool		fr_is_base64_nstd(char c, uint8_t const alphabet[static UINT8_MAX]);
 
 size_t		fr_base64_encode(char * restrict out, size_t outlen, uint8_t const * restrict in, size_t inlen);
-ssize_t		fr_base64_decode(uint8_t * restrict out, size_t outlen, char const * restrict in, size_t inlen);
+
+#define		fr_base64_decode(_out, _outlen, _in, _inlen) fr_base64_decode_nstd(_out, _outlen, _in, _inlen, fr_base64_alphabet_decode)
+ssize_t		fr_base64_decode_nstd(uint8_t * restrict out, size_t outlen, char const * restrict in, size_t inlen, uint8_t const alphabet[static UINT8_MAX]);
+
+
 
 #ifdef __cplusplus
 }
