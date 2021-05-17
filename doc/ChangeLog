@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	Feature improvements
 	* Many new "unlang" documentation files.  See "make docsite"
 	  and then see build/docsite/freeradius-server/*/index.html
