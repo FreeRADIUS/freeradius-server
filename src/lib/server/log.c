@@ -780,7 +780,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 		VP_VERIFY(vp);
 
 		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
-		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
+		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da, false) <= 0) return;
 
 		/*
 		 *	Recursively print grouped attributes.
@@ -832,7 +832,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
 
 		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
-		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da) <= 0) return;
+		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da, false) <= 0) return;
 
 		/*
 		 *	Recursively print grouped attributes.
