@@ -270,7 +270,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	lhs_rules = (tmpl_rules_t) {
 		.dict_def = dict,
 		.request_def = REQUEST_CURRENT,
-		.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+		.prefix = TMPL_ATTR_REF_PREFIX_NO,
 		.disallow_qualifiers = true, /* for now, until more tests are made */
 
 		/*
