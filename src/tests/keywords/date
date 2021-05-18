@@ -1,0 +1,99 @@
+#
+#  PRE: update if
+#
+
+# Use pre-defined date and time
+update request {
+	&Tmp-Integer-0 := 1506101100;
+}
+
+# Convert to string representation
+update request {
+	&Tmp-String-0 := "%(date:%{Tmp-Integer-0})"
+}
+
+# Some systems report GMT some UTC...
+if (&Tmp-String-0 != "Fri 22 Sep 17:25:00 GMT 2017") && (&Tmp-String-0 != "Fri 22 Sep 17:25:00 UTC 2017") {
+	test_fail
+}
+
+# Convert string to integer
+update request {
+	&Tmp-Integer-1 := "%(date:%{Tmp-String-0})"
+}
+
+if (&Tmp-Integer-1 != &Tmp-Integer-0) {
+	test_fail
+}
+
+# Compare two methods of reading request timestamp in local timezone
+update request {
+	&Tmp-String-0 := "%(localdate:request)"
+	&Tmp-String-1 := "%S"
+}
+
+if (&Tmp-String-0 != &Tmp-String-1) {
+	test_fail
+}
+
+# Convert different string format
+update request {
+	&Tmp-String-2 := "2017-09-22 17:25:00"
+}
+
+update request {
+	&Tmp-Integer-2 := "%(sqldate:%{Tmp-String-2})"
+}
+
+if (&Tmp-Integer-2 != &Tmp-Integer-0) {
+	test_fail
+}
+
+# Use a date attribute
+update request {
+	&Tmp-Date-0 := 1659985459
+}
+
+update request {
+	&Tmp-String-2 := "%(sqldate:%{Tmp-Date-0})"
+}
+
+if (&Tmp-String-2 != '2022-08-08 19:04:19') {
+	test_fail
+}
+
+# Invalid format
+update request {
+	&Tmp-String-3 := '201-32-22 17:25:00'
+}
+
+update request {
+	&Tmp-Integer-3 := "%(sqldate:%{Tmp-String-3})"
+}
+
+if (&Tmp-Integer-3 != 0) {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Failed to parse time string \"201-32-22 17:25:00\" as format '\%Y-\%m-\%d \%H:\%M:\%S'") {
+	test_fail
+}
+
+update request {
+	&NAS-IP-Address := "192.168.1.1"
+}
+
+# Invalid type
+update request {
+	&Tmp-String-4 := "%(date:%{NAS-IP-Address})"
+}
+
+if (&Tmp-String-4 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Can't convert type ipaddr into date") {
+	test_fail
+}
+
+success
