@@ -398,7 +398,7 @@ check_item:
 		/*
 		 *	Try to parse the check item.
 		 */
-		slen = map_afrom_substr(t, &new_map, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
+		slen = map_afrom_substr(t, &new_map, NULL, &sbuff, check_cmp_op_table, check_cmp_op_table_len,
 				       &lhs_rules, &rhs_rules, &rhs_term);
 		if (!new_map) {
 	    		ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
@@ -588,7 +588,7 @@ next_reply_item:
 		 *	lead to here have already checked for those
 		 *	cases.
 		 */
-		slen = map_afrom_substr(t, &new_map, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+		slen = map_afrom_substr(t, &new_map, NULL, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
 				       &lhs_rules, &rhs_rules, &rhs_term);
 		if (!new_map) {
 			ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());

@@ -286,7 +286,8 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  *
  * @param[in] ctx		for talloc.
  * @param[in] out		Where to write the pointer to the new #map_t.
- * @param[in] in		to convert to map.
+ * @param[in] parent		the parent map
+ * @param[in] in		the data to parse for creating the map.
  * @param[in] op_table		for lhs OP rhs
  * @param[in] op_table_len	length of op_table
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
@@ -297,7 +298,7 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  *	- >0 on success.
  *	- <=0 on error.
  */
-ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
+ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t *in,
 			 fr_table_num_sorted_t const *op_table, size_t op_table_len,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 fr_sbuff_parse_rules_t const *p_rules)
@@ -310,7 +311,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 
 	*out = NULL;
-	MEM(map = map_alloc(ctx, NULL));
+	MEM(map = map_alloc(ctx, parent));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
@@ -753,7 +754,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 {
 	fr_sbuff_t sbuff = FR_SBUFF_IN(vp_str, strlen(vp_str));
 
-	if (map_afrom_substr(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+	if (map_afrom_substr(ctx, out, NULL, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
 			    lhs_rules, rhs_rules, NULL) < 0) {
 		return -1;
 	}
