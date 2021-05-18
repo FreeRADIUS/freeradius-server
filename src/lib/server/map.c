@@ -80,6 +80,7 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
  *
  * @param[in] ctx		for talloc.
  * @param[in] out		Where to write the pointer to the new #map_t.
+ * @param[in] parent		the parent map
  * @param[in] cp		to convert to map.
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] rhs_rules		rules for parsing RHS attribute references.
@@ -87,7 +88,7 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
  *	- #map_t if successful.
  *	- NULL on error.
  */
-int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
+int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
 	map_t	*map;
@@ -99,7 +100,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	MEM(map = map_alloc(ctx, NULL));
+	MEM(map = map_alloc(ctx, parent));
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -638,7 +639,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		cp = cf_item_to_pair(ci);
 		fr_assert(cp != NULL);
 
-		if (map_afrom_cp(parent, &map, cp, &our_lhs_rules, rhs_rules) < 0) {
+		if (map_afrom_cp(parent, &map, NULL, cp, &our_lhs_rules, rhs_rules) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;

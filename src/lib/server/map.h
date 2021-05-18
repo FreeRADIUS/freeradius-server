@@ -112,7 +112,7 @@ typedef int (*map_validate_t)(map_t *map, void *ctx);
 typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 				     map_t const *map, void *uctx);
 
-int		map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
+int		map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
 int		map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
