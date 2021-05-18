@@ -117,19 +117,19 @@ static xlat_arg_parser_t const xlat_date_convert_args[] = {
  *
  * When the request arrived:
 @verbatim
-%{date:request}
+%(date:request)
 @endverbatim
  *
  * Now:
 @verbatim
-%{date:now}
+%(date:now}
 @endverbatim
  *
  * Examples (Tmp-Integer-0 = 1506101100):
 @verbatim
 update request {
-  &Tmp-String-0 := "%{date:&Tmp-Integer-0}" ("Fri 22 Sep 18:25:00 BST 2017")
-  &Tmp-Integer-1 := "%{date:&Tmp-String-0}" (1506101100)
+  &Tmp-String-0 := "%(date:%{Tmp-Integer-0})" ("Fri 22 Sep 18:25:00 BST 2017")
+  &Tmp-Integer-1 := "%(date:%{Tmp-String-0})" (1506101100)
 }
 @endverbatim
  *

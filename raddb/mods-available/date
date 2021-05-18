@@ -26,8 +26,8 @@ date {
 	#
 	#  The input string can be:
 	#
-	#    - an attribute name of a date or integer attribute;
-	#    - an attribute name of a string attribute;
+	#    - an expanded date or integer attribute;
+	#    - an expanded string attribute;
 	#    - the fixed strings `request` or `now`.
 	#
 	#  ."Attribute" mode:
@@ -81,7 +81,7 @@ date {
 #  including milliseconds. This expansion returns it without the
 #  millisecond component.
 #
-#  Use e.g. `%{date_iso:request}:`
+#  Use e.g. `%(date_iso:request):`
 #
 date date_iso {
 	format = "%Y-%m-%dT%H:%M:%SZ"
