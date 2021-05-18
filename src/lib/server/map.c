@@ -56,10 +56,13 @@ static void map_dump(request_t *request, map_t const *map)
 }
 #endif
 
-static inline map_t *map_alloc(TALLOC_CTX *ctx)
+static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
 {
 	map_t *map;
+
 	map = talloc_zero(ctx, map_t);
+	map->parent = parent;
+
 	fr_map_list_init(&map->child);
 	return map;
 }
@@ -96,7 +99,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	MEM(map = map_alloc(ctx));
+	MEM(map = map_alloc(ctx, NULL));
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -306,7 +309,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 
 	*out = NULL;
-	MEM(map = map_alloc(ctx));
+	MEM(map = map_alloc(ctx, NULL));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
@@ -557,7 +560,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 				goto error;
 			}
 
-			MEM(map = map_alloc(parent));
+			MEM(map = map_alloc(parent, NULL));
 			map->op = token;
 			map->ci = ci;
 
@@ -684,7 +687,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 	ssize_t slen;
 	map_t *map;
 
-	map = map_alloc(ctx);
+	map = map_alloc(ctx, NULL);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
 				 &FR_SBUFF_IN(lhs, strlen(lhs)),
@@ -763,7 +766,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 
 	map_t *map;
 
-	map = map_alloc(ctx);
+	map = map_alloc(ctx, NULL);
 	if (!map) {
 	oom:
 		fr_strerror_const("Out of memory");
