@@ -469,6 +469,12 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 }
 
 
+static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CONF_SECTION *cs,
+				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+				map_validate_t validate, void *uctx,
+				unsigned int max);
+
+
 /** Convert an 'update' config section into an attribute map.
  *
  * Uses 'name2' of section to set default request and lists.
@@ -490,6 +496,14 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
 {
+	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max);
+}
+
+static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CONF_SECTION *cs,
+			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+			 map_validate_t validate, void *uctx,
+			 unsigned int max)
+{
 	char const	*cs_list, *p;
 
 	CONF_ITEM 	*ci;
@@ -497,15 +511,15 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 
 	unsigned int 	total = 0;
 	map_t		*map;
-	TALLOC_CTX	*parent;
+	TALLOC_CTX	*parent_ctx;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
 
 	/*
-	 *	The first map has ctx as the parent.
-	 *	The rest have the previous map as the parent.
+	 *	The first map has ctx as the parent context.
+	 *	The rest have the previous map as the parent context.
 	 */
-	parent = ctx;
+	parent_ctx = ctx;
 
 	ci = cf_section_to_item(cs);
 
@@ -535,7 +549,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		error:
 			/*
 			 *	Free in reverse as successive entries have their
-			 *	prececessors as talloc parents
+			 *	prececessors as talloc parent contexts
 			 */
 			fr_dlist_talloc_reverse_free(out);
 			return -1;
@@ -561,7 +575,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 				goto error;
 			}
 
-			MEM(map = map_alloc(parent, NULL));
+			MEM(map = map_alloc(parent_ctx, parent));
 			map->op = token;
 			map->ci = ci;
 
@@ -617,8 +631,12 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 			 *	messages.  We MAY want to print out
 			 *	additional ones, but that might get
 			 *	complex and confusing.
+			 *
+			 *	We call out internal _map_afrom_cs()
+			 *	function, in order to pass in the
+			 *	correct parent map.
 			 */
-			if (map_afrom_cs(map, &child_list, cf_item_to_section(ci),
+			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
 					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
 				fr_dlist_talloc_free(&child_list);
 				talloc_free(map);
@@ -639,7 +657,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		cp = cf_item_to_pair(ci);
 		fr_assert(cp != NULL);
 
-		if (map_afrom_cp(parent, &map, NULL, cp, &our_lhs_rules, rhs_rules) < 0) {
+		if (map_afrom_cp(parent_ctx, &map, parent, cp, &our_lhs_rules, rhs_rules) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
@@ -653,7 +671,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		if (validate && (validate(map, uctx) < 0)) goto error;
 
 	next:
-		parent = map;
+		parent_ctx = map;
 		fr_dlist_insert_tail(out, map);
 	}
 
