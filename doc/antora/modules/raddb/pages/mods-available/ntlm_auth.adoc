@@ -39,6 +39,6 @@ local system.  The other fields can be left alone.
 #	http://deployingradius.com/documents/configuration/active_directory.html
 exec ntlm_auth {
 	wait = yes
-	program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%{mschap:User-Name} --password=%{User-Password}"
+	program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%(mschap:User-Name) --password=%{User-Password}"
 }
 ```

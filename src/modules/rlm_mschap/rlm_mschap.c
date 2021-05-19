@@ -736,8 +736,8 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		 * we're expecting to use the ntlm-change-password-1 protocol
 		 * which needs the following on stdin:
 		 *
-		 * username: %{mschap:User-Name}
-		 * nt-domain: %{mschap:NT-Domain}
+		 * username: %(mschap:User-Name)
+		 * nt-domain: %(mschap:NT-Domain)
 		 * new-nt-password-blob: bin2hex(new_nt_password) - 1032 bytes encoded
 		 * old-nt-hash-blob: bin2hex(old_nt_hash) - 32 bytes encoded
 		 * new-lm-password-blob: 00000...0000 - 1032 bytes null
@@ -911,7 +911,7 @@ ntlm_auth_err:
 		 *
 		 *  ...or...
 		 *
-		 *  %{exec:/path/to %{mschap:User-Name} %{MS-CHAP-New-Password}}"
+		 *  %{exec:/path/to %(mschap:User-Name) %{MS-CHAP-New-Password}}"
 		 *
 		 */
 		fr_pair_t *new_pass, *new_hash;

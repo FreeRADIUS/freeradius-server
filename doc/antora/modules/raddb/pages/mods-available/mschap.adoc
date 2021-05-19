@@ -102,7 +102,7 @@ module will do the authentication itself, without calling `ntlm_auth`.
 
 You can also try setting the user name as:
 
-`... --username=%{mschap:User-Name} ...`
+`... --username=%(mschap:User-Name) ...`
 
 In that case, the `mschap` module will look at the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
 attribute, and do prefix/suffix checks in order to obtain the _best_
@@ -320,11 +320,11 @@ mschap {
 #	require_encryption = yes
 #	require_strong = yes
 #	with_ntdomain_hack = no
-#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
+#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%(mschap:Challenge):-00} --nt-response=%{%(mschap:NT-Response):-00}"
 #	ntlm_auth_timeout = 10
 	winbind {
-#		username = "%{mschap:User-Name}"
-#		domain = "%{mschap:NT-Domain}"
+#		username = "%(mschap:User-Name)"
+#		domain = "%(mschap:NT-Domain)"
 #		retry_with_normalised_username = no
 	}
 	pool {
@@ -340,9 +340,9 @@ mschap {
 	}
 	passchange {
 #		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
-#		ntlm_auth_username = "username: %{mschap:User-Name}"
-#		ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
-#		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Password.Cleartext}}"
+#		ntlm_auth_username = "username: %(mschap:User-Name)"
+#		ntlm_auth_domain = "nt-domain: %(mschap:NT-Domain)"
+#		local_cpw = "%{exec:/path/to/script %(mschap:User-Name) %{MS-CHAP-New-Password.Cleartext}}"
 #		local_cpw = "%{sql:UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='NT-Password'}"
 	}
 #	use_open_directory = yes
