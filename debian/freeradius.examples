@@ -5,7 +5,7 @@ scripts/exec-program-wait
 scripts/ldap/radiusd2ldif.pl
 scripts/cron/radiusd.cron.daily
 scripts/cron/radiusd.cron.monthly
-scripts/radiusd.sh
+scripts/util/radiusd.sh
 scripts/sql/radsqlrelay
 scripts/rc.radiusd
 scripts/sql/users2mysql.pl
