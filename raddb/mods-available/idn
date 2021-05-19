@@ -12,7 +12,7 @@
 #
 #  [NOTE]
 #  ====
-#  The expansion string: `%{idn: example.com}` results in an ASCII
+#  The expansion string: `%{idn:example.com}` results in an ASCII
 #  punycode version of the domain name.  That version can then be used
 #  for name comparisons.  Using an `i18n` version of the name is *NOT
 #  RECOMMENDED*, as that version is not canonical.
