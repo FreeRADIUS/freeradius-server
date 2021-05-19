@@ -451,6 +451,11 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 			return XLAT_ACTION_FAIL;
 		}
 
+		if (response->vp_length < 50) {
+			REDEBUG("Vendor-Specific.Microsoft.CHAP-Response has the wrong format");
+			return XLAT_ACTION_FAIL;
+		}
+
 		/*
 		 *	MS-CHAP-Response and MS-CHAP2-Response have
 		 *	the NT-Response at the same offset, and are
@@ -471,6 +476,10 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 		}
 		tainted = response->vp_tainted;
 
+		if (response->vp_length < 50) {
+			REDEBUG("Vendor-Specific.Microsoft.CHAP-Response has the wrong format");
+			return XLAT_ACTION_FAIL;
+		}
 		/*
 		 *	For MS-CHAPv1, the LM-Response exists only
 		 *	if the second octet says so.
