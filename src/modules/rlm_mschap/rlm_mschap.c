@@ -286,6 +286,17 @@ static int pdb_decode_acct_ctrl(char const *p)
 	return acct_ctrl;
 }
 
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_mschap_t);
+	return 0;
+}
+
+static xlat_arg_parser_t const mschap_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Get data from MSCHAP attributes
  *
@@ -294,16 +305,23 @@ static int pdb_decode_acct_ctrl(char const *p)
  *
  * @ingroup xlat_functions
  */
-static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   void const *mod_inst, UNUSED void const *xlat_inst,
-			   request_t *request, char const *fmt)
+static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				 void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_list_t *in)
 {
-	size_t			i, data_len;
+	size_t			data_len;
 	uint8_t const  		*data = NULL;
 	uint8_t			buffer[32];
 	fr_pair_t		*user_name;
 	fr_pair_t		*chap_challenge, *response;
-	rlm_mschap_t const	*inst = mod_inst;
+	rlm_mschap_t const	*inst;
+	void			*instance;
+	fr_value_box_t		*arg = fr_dlist_head(in);
+	fr_value_box_t		*vb;
+	bool			tainted = false;
+
+	memcpy(&instance, xlat_inst, sizeof(instance));
+	inst = talloc_get_type_abort(instance, rlm_mschap_t);
 
 	response = NULL;
 
@@ -311,12 +329,13 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Challenge means MS-CHAPv1 challenge, or
 	 *	hash of MS-CHAPv2 challenge, and peer challenge.
 	 */
-	if (strncasecmp(fmt, "Challenge", 9) == 0) {
+	if (strncasecmp(arg->vb_strvalue, "Challenge", 9) == 0) {
 		chap_challenge = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_challenge, 0);
 		if (!chap_challenge) {
 			REDEBUG("No MS-CHAP-Challenge in the request");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
+		tainted = chap_challenge->vp_tainted;
 
 		/*
 		 *	MS-CHAP-Challenges are 8 octets,
@@ -340,7 +359,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response, 0);
 			if (!response) {
 				REDEBUG("Vendor-Specific.Microsoft.CHAP2-Response is required to calculate MS-CHAPv1 challenge");
-				return -1;
+				return XLAT_ACTION_FAIL;
 			}
 
 			/*
@@ -354,11 +373,11 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 */
 			if (response->vp_length < 50) {
 				REDEBUG("Vendor-Specific.Microsoft.CHAP-Response has the wrong format");
-				return -1;
+				return XLAT_ACTION_FAIL;
 			}
 
 			user_name = mschap_identity_find(request);
-			if (!user_name) return -1;
+			if (!user_name) return XLAT_ACTION_FAIL;
 
 			/*
 			 *      Check for MS-CHAP-User-Name and if found, use it
@@ -370,11 +389,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 *	packet.
 			 */
 			response_name = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_user_name, 0);
-			if (response_name) {
-				name_vp = response_name;
-			} else {
-				name_vp = user_name;
-			}
+			name_vp = response_name ? response_name : user_name;
 
 			/*
 			 *	with_ntdomain_hack moved here, too.
@@ -411,20 +426,21 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			data_len = 8;
 		} else {
 			REDEBUG("Invalid MS-CHAP challenge length");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 
 	/*
 	 *	Get the MS-CHAPv1 response, or the MS-CHAPv2
 	 *	response.
 	 */
-	} else if (strncasecmp(fmt, "NT-Response", 11) == 0) {
+	} else if (strncasecmp(arg->vb_strvalue, "NT-Response", 11) == 0) {
 		response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_response, 0);
 		if (!response) response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response, 0);
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response or MS-CHAP2-Response was found in the request");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
+		tainted = response->vp_tainted;
 
 		/*
 		 *	For MS-CHAPv1, the NT-Response exists only
@@ -432,7 +448,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 */
 		if ((response->da == attr_ms_chap_response) && ((response->vp_octets[1] & 0x01) == 0)) {
 			REDEBUG("No NT-Response in MS-CHAP-Response");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 
 		/*
@@ -447,12 +463,13 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	LM-Response is deprecated, and exists only
 	 *	in MS-CHAPv1, and not often there.
 	 */
-	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
+	} else if (strncasecmp(arg->vb_strvalue, "LM-Response", 11) == 0) {
 		response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_response, 0);
 		if (!response) {
 			REDEBUG("No MS-CHAP-Response was found in the request");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
+		tainted = response->vp_tainted;
 
 		/*
 		 *	For MS-CHAPv1, the LM-Response exists only
@@ -460,7 +477,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 */
 		if ((response->vp_octets[1] & 0x01) != 0) {
 			REDEBUG("No LM-Response in MS-CHAP-Response");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 		data = response->vp_octets + 2;
 		data_len = 24;
@@ -468,11 +485,13 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	Pull the NT-Domain out of the User-Name, if it exists.
 	 */
-	} else if (strncasecmp(fmt, "NT-Domain", 9) == 0) {
+	} else if (strncasecmp(arg->vb_strvalue, "NT-Domain", 9) == 0) {
 		char *p, *q;
 
+		vb = fr_value_box_alloc_null(ctx);
+
 		user_name = mschap_identity_find(request);
-		if (!user_name) return -1;
+		if (!user_name) return XLAT_ACTION_FAIL;
 
 		/*
 		 *	First check to see if this is a host/ style User-Name
@@ -488,7 +507,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			p = strchr(user_name->vp_strvalue, '.');
 			if (!p) {
 				RDEBUG2("setting NT-Domain to same as machine name");
-				strlcpy(*out, user_name->vp_strvalue + 5, outlen);
+				fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue + 5, user_name->vp_tainted);
 			} else {
 				p++;	/* skip the period */
 				q = strchr(p, '.');
@@ -497,34 +516,38 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 * only if another period was found
 				 */
 				if (q) *q = '\0';
-				strlcpy(*out, p, outlen);
+				fr_value_box_strdup(ctx, vb, NULL, p, user_name->vp_tainted);
 				if (q) *q = '.';
 			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
 			if (!p) {
 				REDEBUG("No NT-Domain was found in the User-Name");
-				return -1;
+				talloc_free(vb);
+				return XLAT_ACTION_FAIL;
 			}
 
 			/*
 			 *	Hack.  This is simpler than the alternatives.
 			 */
 			*p = '\0';
-			strlcpy(*out, user_name->vp_strvalue, outlen);
+			fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue, user_name->vp_tainted);
 			*p = '\\';
 		}
 
-		return strlen(*out);
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
 
 	/*
 	 *	Pull the User-Name out of the User-Name...
 	 */
-	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
+	} else if (strncasecmp(arg->vb_strvalue, "User-Name", 9) == 0) {
 		char const *p, *q;
 
 		user_name = mschap_identity_find(request);
-		if (!user_name) return -1;
+		if (!user_name) return XLAT_ACTION_FAIL;
+
+		vb = fr_value_box_alloc_null(ctx);
 
 		/*
 		 *	First check to see if this is a host/ style User-Name
@@ -549,9 +572,9 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 * only if a period was found
 			 */
 			if (q) {
-				snprintf(*out, outlen, "%.*s$", (int) (q - p), p);
+				fr_value_box_asprintf(ctx, vb, NULL, true, "%.*s$", (int) (q - p), p);
 			} else {
-				snprintf(*out, outlen, "%s$", p);
+				fr_value_box_asprintf(ctx, vb, NULL, true, "%s$", p);
 			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
@@ -560,82 +583,65 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			} else {
 				p = user_name->vp_strvalue; /* use the whole User-Name */
 			}
-			strlcpy(*out, p, outlen);
+			fr_value_box_strdup(ctx, vb, NULL, p, user_name->vp_tainted);
 		}
 
-		return strlen(*out);
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
 
 	/*
 	 * Return the NT-Hash of the passed string
 	 */
-	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
-		char const *p;
+	} else if (strncasecmp(arg->vb_strvalue, "NT-Hash", 7) == 0) {
+		arg = fr_dlist_next(in, arg);
+		if ((!arg) || (arg->length == 0))
+			return XLAT_ACTION_FAIL;
 
-		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
-		if ((*p == '\0') || (outlen <= 32))
-			return 0;
-
-		fr_skip_whitespace(p);
-
-		if (mschap_nt_password_hash(buffer, p) < 0) {
+		if (mschap_nt_password_hash(buffer, arg->vb_strvalue) < 0) {
 			REDEBUG("Failed generating NT-Password");
 			*buffer = '\0';
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 
-		fr_bin2hex(&FR_SBUFF_OUT(*out, (NT_DIGEST_LENGTH * 2) + 1), &FR_DBUFF_TMP(buffer, NT_DIGEST_LENGTH), SIZE_MAX);
-		(*out)[32] = '\0';
-		RDEBUG2("NT-Hash of \"known-good\" password: %s", *out);
-		return 32;
+		vb = fr_value_box_alloc_null(ctx);
+		fr_value_box_memdup(ctx, vb, NULL, buffer, NT_DIGEST_LENGTH, false);
+		RDEBUG2("NT-Hash of \"known-good\" password: %pV", vb);
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
 
 	/*
 	 * Return the LM-Hash of the passed string
 	 */
-	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
-		char const *p;
+	} else if (strncasecmp(arg->vb_strvalue, "LM-Hash", 7) == 0) {
+		arg = fr_dlist_next(in, arg);
+		if ((!arg) || (arg->length == 0))
+			return XLAT_ACTION_FAIL;
 
-		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
-		if ((*p == '\0') || (outlen <= 32))
-			return 0;
+		smbdes_lmpwdhash(arg->vb_strvalue, buffer);
 
-		fr_skip_whitespace(p);
-
-		smbdes_lmpwdhash(p, buffer);
-		fr_bin2hex(&FR_SBUFF_OUT(*out, (LM_DIGEST_LENGTH * 2) + 1), &FR_DBUFF_TMP(buffer, LM_DIGEST_LENGTH), SIZE_MAX);
-		(*out)[32] = '\0';
-		RDEBUG2("LM-Hash of %s = %s", p, *out);
-		return 32;
+		vb = fr_value_box_alloc_null(ctx);
+		fr_value_box_memdup(ctx, vb, NULL, buffer, LM_DIGEST_LENGTH, false);
+		RDEBUG2("LM-Hash of %s = %pV", arg->vb_strvalue, vb);
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
 	} else {
-		REDEBUG("Unknown expansion string '%s'", fmt);
-		return -1;
+		REDEBUG("Unknown expansion string '%pV'", arg);
+		return XLAT_ACTION_FAIL;
 	}
-
-	if (outlen == 0) return 0; /* nowhere to go, don't do anything */
 
 	/*
 	 *	Didn't set anything: this is bad.
 	 */
 	if (!data) {
 		RWDEBUG2("Failed to do anything intelligent");
-		return 0;
+		return XLAT_ACTION_FAIL;
 	}
 
-	/*
-	 *	Check the output length.
-	 */
-	if (outlen < ((data_len * 2) + 1)) {
-		data_len = (outlen - 1) / 2;
-	}
+	vb = fr_value_box_alloc_null(ctx);
+	fr_value_box_memdup(ctx, vb, NULL, data, data_len, tainted);
 
-	/*
-	 *
-	 */
-	for (i = 0; i < data_len; i++) {
-		sprintf((*out) + (2 * i), "%02x", data[i]);
-	}
-	(*out)[data_len * 2] = '\0';
-
-	return data_len * 2;
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -2198,6 +2204,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	char const		*name;
 	rlm_mschap_t		*inst = instance;
+	xlat_t			*xlat;
 
 	/*
 	 *	Create the dynamic translation.
@@ -2206,7 +2213,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!name) name = cf_section_name1(conf);
 	inst->name = name;
 
-	xlat_register_legacy(inst, inst->name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(inst, inst->name, mschap_xlat, false);
+	xlat_func_args(xlat, mschap_xlat_args);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_mschap_t *, NULL, inst);
 
 	return 0;
 }
