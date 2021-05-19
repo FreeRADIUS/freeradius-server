@@ -42,7 +42,7 @@ the data type to unpack at that offset. e.g. `integer`, `ipaddr`, `byte`, `short
 
 ## Sample
 
-if we have `Class = 0x00000001020304`, then
+if we have `Class = 0x000001020304`, then
 
   %(unpack:%{Class} 4 uint16)
 
