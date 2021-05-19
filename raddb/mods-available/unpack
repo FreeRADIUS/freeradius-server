@@ -22,15 +22,15 @@
 #  To use it, add it to the `raddb/mods-enabled/` directory.  Then,
 #  use it on the right-hand side of a variable assignment.
 #
-#   %{unpack:<data> <offset> <data_type>}
+#   %(unpack:<data> <offset> <data_type>)
 #
 #  The arguments are three fields:
 #
 #  data::
 #
-#  Either `&Attribute-Name` the name of the attribute to unpack.
-#  MUST be a `string` or `octets` type.
-#  or 0xabcdef e.g. hex data.
+#  Either `octets` or `string` type data, litteral or expanded attributes.
+#  If `string` type data contains a representaion of hex data, e.g. 0xabcdef
+#  that is first converted to `octets`.
 #
 #  offset::
 #
@@ -47,7 +47,7 @@
 #
 #  if we have `Class = 0x00000001020304`, then
 #
-#    %{unpack:&Class 4 uint16}
+#    %(unpack:%{Class} 4 uint16)
 #
 #  will unpack octets `4` and `5` as a `uint16`, which has value `0x0304`.
 #
