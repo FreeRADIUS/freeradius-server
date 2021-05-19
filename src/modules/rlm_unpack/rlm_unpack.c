@@ -47,7 +47,12 @@ fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
 	{ NULL }
 };
 
-#define GOTO_ERROR do { REDEBUG("Unexpected text at '%s'", p); goto error;} while (0)
+static xlat_arg_parser_t const unpack_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_VOID },
+	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Unpack data
  *
@@ -59,144 +64,80 @@ fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
  *
  * @ingroup xlat_functions
  */
-static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   request_t *request, char const *fmt)
+static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_list_t *in)
 {
-	bool tainted = false;
-	char *data_name, *data_size, *data_type;
-	char *p;
-	size_t len, input_len, offset;
-	ssize_t slen;
-	fr_type_t type;
-	fr_dict_attr_t const *da;
-	fr_pair_t *vp;;
-	uint8_t const *input;
-	char buffer[256];
-	uint8_t blob[256];
+	size_t		len, input_len, offset;
+	fr_type_t	type;
+	uint8_t const	*input;
+	uint8_t		blob[256];
+	fr_value_box_t	*data_vb = fr_dlist_head(in);
+	fr_value_box_t	*offset_vb = fr_dlist_next(in, data_vb);
+	fr_value_box_t	*type_vb = fr_dlist_next(in, offset_vb);
+	fr_value_box_t	*vb;
 
-	/*
-	 *	FIXME: copy only the fields here, as we parse them.
-	 */
-	strlcpy(buffer, fmt, sizeof(buffer));
-
-	p = buffer;
-	fr_skip_whitespace(p); /* skip leading spaces */
-
-	data_name = p;
-
-	fr_skip_not_whitespace(p);
-
-	if (!*p) {
-	error:
-		REDEBUG("Format string should be '<data> <offset> <type>' e.g. '&Class 1 integer'");
-	nothing:
-		return -1;
+	if ((data_vb->type != FR_TYPE_OCTETS) && (data_vb->type != FR_TYPE_STRING)) {
+		REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
+		return XLAT_ACTION_FAIL;
 	}
 
-	fr_zero_whitespace(p);
-	if (!*p) GOTO_ERROR;
-
-	data_size = p;
-
-	fr_skip_not_whitespace(p);
-	if (!*p) GOTO_ERROR;
-
-	fr_zero_whitespace(p);
-	if (!*p) GOTO_ERROR;
-
-	data_type = p;
-
-	fr_skip_not_whitespace(p);
-	if (*p) GOTO_ERROR;	/* anything after the type is an error */
-
-	/*
-	 *	Attribute reference
-	 */
-	if (*data_name == '&') {
-		fr_pair_t *from_vp;
-
-		if (xlat_fmt_get_vp(&from_vp, request, data_name) < 0) goto nothing;
-
-		if ((from_vp->vp_type != FR_TYPE_OCTETS) &&
-		    (from_vp->vp_type != FR_TYPE_STRING)) {
-			REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
-			goto nothing;
-		}
-		input = from_vp->vp_octets;
-		input_len = from_vp->vp_length;
-		tainted = from_vp->vp_tainted;
-
-	} else if ((data_name[0] == '0') && (data_name[1] == 'x')) {
+	if ((data_vb->type == FR_TYPE_STRING) && (data_vb->vb_length > 1) &&
+	    (data_vb->vb_strvalue[0] == '0') && (data_vb->vb_strvalue[1] == 'x')) {
 		/*
 		 *	Hex data.
 		 */
-		len = strlen(data_name + 2);
+		len = strlen(data_vb->vb_strvalue + 2);
 		if (len > 0) {
 			fr_sbuff_parse_error_t err;
 
 			input = blob;
 			input_len = fr_hex2bin(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
-					       &FR_SBUFF_IN(data_name + 2, len), true);
+					       &FR_SBUFF_IN(data_vb->vb_strvalue + 2, len), true);
 			if (err) {
-				REDEBUG("Invalid hex string in '%s'", data_name);
-				goto nothing;
+				REDEBUG("Invalid hex string in '%s'", data_vb->vb_strvalue);
+				return XLAT_ACTION_FAIL;
 			}
 		} else {
-			GOTO_ERROR;
+			REDEBUG("Zero length hex string in '%s'", data_vb->vb_strvalue);
+			return XLAT_ACTION_FAIL;
 		}
+	} else if (data_vb->type == FR_TYPE_STRING) {
+		input = (uint8_t const *)data_vb->vb_strvalue;
+		input_len = data_vb->length;
 	} else {
-		GOTO_ERROR;
+		input = data_vb->vb_octets;
+		input_len = data_vb->length;
 	}
 
-	offset = (int) strtoul(data_size, &p, 10);
-	if (*p) {
-		REDEBUG("unpack requires a decimal number, not '%s'", data_size);
-		goto nothing;
-	}
+	offset = offset_vb->vb_uint32;
 
 	if (offset >= input_len) {
 		REDEBUG("unpack offset %zu is larger than input data length %zu", offset, input_len);
-		goto nothing;
+		return XLAT_ACTION_FAIL;
 	}
 
-	type = fr_table_value_by_str(fr_value_box_type_table, data_type, FR_TYPE_NULL);
+	type = fr_table_value_by_str(fr_value_box_type_table, type_vb->vb_strvalue, FR_TYPE_NULL);
 	if (fr_type_is_null(type)) {
-		REDEBUG("Invalid data type '%s'", data_type);
-		goto nothing;
+		REDEBUG("Invalid data type '%s'", type_vb->vb_strvalue);
+		return XLAT_ACTION_FAIL;
 	}
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(dict_freeradius), attr_cast_base->attr + type);
-	if (!da) {
-		REDEBUG("Cannot decode type '%s'", data_type);
-		goto nothing;
-	}
-
-	MEM(vp = fr_pair_afrom_da(request->request_ctx, da));
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
 	/*
 	 *	Call the generic routines to get data from the
 	 *	"network" buffer.
-	 *
-	 *	@todo - just parse / print the value-box directly,
-	 *	instead of putting it into a VP.
-	 *
-	 *	@todo - make this function 'async', and just return a
-	 *	copy of the value-box, instead of printing it to a string.
 	 */
-	if (fr_value_box_from_network(vp, &vp->data, da->type, NULL, input + offset, input_len - offset, tainted) < 0) {
-		RPEDEBUG("Failed decoding %s", vp->da->name);
-		goto nothing;
+	if (fr_value_box_from_network(ctx, vb, type, NULL, input + offset, input_len - offset, data_vb->tainted) < 0) {
+		RPEDEBUG("Failed decoding %s", type_vb->vb_strvalue);
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
 	}
 
-	slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(*out, outlen), vp, T_BARE_WORD);
-	talloc_free(vp);
-	if (slen < 0) {
-		REDEBUG("Insufficient buffer space to unpack data");
-		goto nothing;
-	}
+	fr_dcursor_append(out, vb);
 
-	return slen;
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -204,9 +145,12 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *conf)
 {
+	xlat_t	*xlat;
+
 	if (cf_section_name2(conf)) return 0;
 
-	xlat_register_legacy(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(NULL, "unpack", unpack_xlat, false);
+	xlat_func_args(xlat, unpack_xlat_args);
 
 	return 0;
 }
