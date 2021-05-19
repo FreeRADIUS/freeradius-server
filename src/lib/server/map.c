@@ -56,10 +56,13 @@ static void map_dump(request_t *request, map_t const *map)
 }
 #endif
 
-static inline map_t *map_alloc(TALLOC_CTX *ctx)
+static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
 {
 	map_t *map;
+
 	map = talloc_zero(ctx, map_t);
+	map->parent = parent;
+
 	fr_map_list_init(&map->child);
 	return map;
 }
@@ -77,6 +80,7 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx)
  *
  * @param[in] ctx		for talloc.
  * @param[in] out		Where to write the pointer to the new #map_t.
+ * @param[in] parent		the parent map
  * @param[in] cp		to convert to map.
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
  * @param[in] rhs_rules		rules for parsing RHS attribute references.
@@ -84,7 +88,7 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx)
  *	- #map_t if successful.
  *	- NULL on error.
  */
-int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
+int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
 	map_t	*map;
@@ -96,7 +100,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	MEM(map = map_alloc(ctx));
+	MEM(map = map_alloc(ctx, parent));
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -282,7 +286,8 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  *
  * @param[in] ctx		for talloc.
  * @param[in] out		Where to write the pointer to the new #map_t.
- * @param[in] in		to convert to map.
+ * @param[in] parent		the parent map
+ * @param[in] in		the data to parse for creating the map.
  * @param[in] op_table		for lhs OP rhs
  * @param[in] op_table_len	length of op_table
  * @param[in] lhs_rules		rules for parsing LHS attribute references.
@@ -293,7 +298,7 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  *	- >0 on success.
  *	- <=0 on error.
  */
-ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
+ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t *in,
 			 fr_table_num_sorted_t const *op_table, size_t op_table_len,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 fr_sbuff_parse_rules_t const *p_rules)
@@ -306,7 +311,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 
 	*out = NULL;
-	MEM(map = map_alloc(ctx));
+	MEM(map = map_alloc(ctx, parent));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
@@ -465,6 +470,12 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, fr_sbuff_t *in,
 }
 
 
+static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CONF_SECTION *cs,
+				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+				map_validate_t validate, void *uctx,
+				unsigned int max);
+
+
 /** Convert an 'update' config section into an attribute map.
  *
  * Uses 'name2' of section to set default request and lists.
@@ -486,6 +497,14 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
 {
+	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max);
+}
+
+static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CONF_SECTION *cs,
+			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+			 map_validate_t validate, void *uctx,
+			 unsigned int max)
+{
 	char const	*cs_list, *p;
 
 	CONF_ITEM 	*ci;
@@ -493,15 +512,15 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 
 	unsigned int 	total = 0;
 	map_t		*map;
-	TALLOC_CTX	*parent;
+	TALLOC_CTX	*parent_ctx;
 
 	tmpl_rules_t	our_lhs_rules = *lhs_rules;	/* Mutable copy of the destination */
 
 	/*
-	 *	The first map has ctx as the parent.
-	 *	The rest have the previous map as the parent.
+	 *	The first map has ctx as the parent context.
+	 *	The rest have the previous map as the parent context.
 	 */
-	parent = ctx;
+	parent_ctx = ctx;
 
 	ci = cf_section_to_item(cs);
 
@@ -531,7 +550,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		error:
 			/*
 			 *	Free in reverse as successive entries have their
-			 *	prececessors as talloc parents
+			 *	prececessors as talloc parent contexts
 			 */
 			fr_dlist_talloc_reverse_free(out);
 			return -1;
@@ -557,7 +576,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 				goto error;
 			}
 
-			MEM(map = map_alloc(parent));
+			MEM(map = map_alloc(parent_ctx, parent));
 			map->op = token;
 			map->ci = ci;
 
@@ -613,8 +632,12 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 			 *	messages.  We MAY want to print out
 			 *	additional ones, but that might get
 			 *	complex and confusing.
+			 *
+			 *	We call out internal _map_afrom_cs()
+			 *	function, in order to pass in the
+			 *	correct parent map.
 			 */
-			if (map_afrom_cs(map, &child_list, cf_item_to_section(ci),
+			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
 					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
 				fr_dlist_talloc_free(&child_list);
 				talloc_free(map);
@@ -635,7 +658,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		cp = cf_item_to_pair(ci);
 		fr_assert(cp != NULL);
 
-		if (map_afrom_cp(parent, &map, cp, &our_lhs_rules, rhs_rules) < 0) {
+		if (map_afrom_cp(parent_ctx, &map, parent, cp, &our_lhs_rules, rhs_rules) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
@@ -649,7 +672,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 		if (validate && (validate(map, uctx) < 0)) goto error;
 
 	next:
-		parent = map;
+		parent_ctx = map;
 		fr_dlist_insert_tail(out, map);
 	}
 
@@ -684,7 +707,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 	ssize_t slen;
 	map_t *map;
 
-	map = map_alloc(ctx);
+	map = map_alloc(ctx, NULL);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
 				 &FR_SBUFF_IN(lhs, strlen(lhs)),
@@ -731,7 +754,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, map_t **out, char const *vp_str,
 {
 	fr_sbuff_t sbuff = FR_SBUFF_IN(vp_str, strlen(vp_str));
 
-	if (map_afrom_substr(ctx, out, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+	if (map_afrom_substr(ctx, out, NULL, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
 			    lhs_rules, rhs_rules, NULL) < 0) {
 		return -1;
 	}
@@ -763,7 +786,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 
 	map_t *map;
 
-	map = map_alloc(ctx);
+	map = map_alloc(ctx, NULL);
 	if (!map) {
 	oom:
 		fr_strerror_const("Out of memory");

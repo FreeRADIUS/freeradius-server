@@ -87,6 +87,14 @@ static const CONF_PARSER mod_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_idn_t);
+	return 0;
+}
+
+static xlat_arg_parser_t const xlat_idna_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
+
 /** Convert domain name to ASCII punycode
  *
 @verbatim
@@ -95,15 +103,22 @@ static const CONF_PARSER mod_config[] = {
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_idna(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 request_t *request, char const *fmt)
+static xlat_action_t xlat_idna(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_list_t *in)
 {
-	rlm_idn_t const *inst = mod_inst;
-	char *idna = NULL;
-	int res;
-	size_t len;
-	int flags = 0;
+	rlm_idn_t const	*inst;
+	void		*instance;
+	char		*idna = NULL;
+	int		res;
+	size_t		len;
+	int		flags = 0;
+	fr_value_box_t	*arg = fr_dlist_head(in);
+	fr_value_box_t	*vb;
+
+	memcpy(&instance, xlat_inst, sizeof(instance));
+
+	inst = talloc_get_type_abort(instance, rlm_idn_t);
 
 	if (inst->use_std3_ascii_rules) {
 		flags |= IDNA_USE_STD3_ASCII_RULES;
@@ -112,38 +127,40 @@ static ssize_t xlat_idna(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		flags |= IDNA_ALLOW_UNASSIGNED;
 	}
 
-	res = idna_to_ascii_8z(fmt, &idna, flags);
+	res = idna_to_ascii_8z(arg->vb_strvalue, &idna, flags);
 	if (res) {
 		if (idna) {
 			free (idna); /* Docs unclear, be safe. */
 		}
 
 		REDEBUG("%s", idna_strerror(res));
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	len = strlen(idna);
 
 	/* 253 is max DNS length */
-	if (!((len < (outlen - 1)) && (len <= 253))) {
+	if (len > 253) {
 		/* Never provide a truncated result, as it may be queried. */
 		REDEBUG("Conversion was truncated");
 
 		free(idna);
-		return -1;
-
+		return XLAT_ACTION_FAIL;
 	}
 
-	strlcpy(*out, idna, outlen);
+	vb = fr_value_box_alloc_null(ctx);
+	fr_value_box_strdup(ctx, vb, NULL, idna, false);
+	fr_dcursor_append(out, vb);
 	free(idna);
 
-	return len;
+	return XLAT_ACTION_DONE;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_idn_t *inst = instance;
-	char const *xlat_name;
+	rlm_idn_t	*inst = instance;
+	char const	*xlat_name;
+	xlat_t		*xlat;
 
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name) {
@@ -152,7 +169,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	inst->xlat_name = xlat_name;
 
-	xlat_register_legacy(inst, inst->xlat_name, xlat_idna, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(inst, inst->xlat_name, xlat_idna, false);
+	xlat_func_mono(xlat, &xlat_idna_arg);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_idn_t *, NULL, inst);
 
 	return 0;
 }
