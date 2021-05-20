@@ -756,19 +756,19 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 				memcpy(p, "GMT", 3);
 
 				p = strptime(my_str, "%b %e %Y %H:%M:%S %Z", tm);
+				if (p && (*p == '\0')) {
+					talloc_free(my_str);
+					t = mktime(tm);
+					*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+					return 0;
+				}
 				talloc_free(my_str);
-				goto parsed;
 			}
 		}
 	}
 #endif
 
 	p = strptime(date_str, "%b %e %Y %H:%M:%S %Z", tm);
-
-#ifdef __APPLE__
-parsed:
-#endif
-
 	if (p && (*p == '\0')) {
 		t = mktime(tm);
 		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
