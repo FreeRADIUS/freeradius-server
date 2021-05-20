@@ -1311,17 +1311,21 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
-			MEM(value = fr_value_box_alloc_null(ctx));
-			slen = node->call.func->func.sync(value, &str, node->call.func->buf_len, node->call.func->mod_inst,
+			if (node->call.func->type == XLAT_FUNC_NORMAL) {
+				node->call.func->func.async(ctx, out, request, node->call.func->uctx, NULL, NULL);
+			} else {
+				MEM(value = fr_value_box_alloc_null(ctx));
+				slen = node->call.func->func.sync(value, &str, node->call.func->buf_len, node->call.func->mod_inst,
 						     NULL, request, NULL);
-			if (slen < 0) {
-				talloc_free(value);
-				goto fail;
-			}
-			if (slen == 0) continue;
+				if (slen < 0) {
+					talloc_free(value);
+					goto fail;
+				}
+				if (slen == 0) continue;
 
-			fr_value_box_bstrdup_buffer_shallow(NULL, value, NULL, str, false);
-			fr_dcursor_append(out, value);
+				fr_value_box_bstrdup_buffer_shallow(NULL, value, NULL, str, false);
+				fr_dcursor_append(out, value);
+			}
 			fr_dcursor_next(out);
 
 			xlat_debug_log_result(request, fr_dcursor_current(out));
@@ -1506,6 +1510,37 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 
 	case XLAT_VIRTUAL:
 		XLAT_DEBUG("xlat_sync_eval VIRTUAL");
+
+		/*
+		 *	Temporary hack to use the new API
+		 */
+		if (node->call.func->type == XLAT_FUNC_NORMAL) {
+			fr_value_box_list_t	result;
+			xlat_action_t		action;
+			fr_dcursor_t		out;
+			TALLOC_CTX		*pool = talloc_new(NULL);
+
+			fr_value_box_list_init (&result);
+			fr_dcursor_init(&out, &result);
+
+			action = node->call.func->func.async(pool, &out, request, node->call.func->uctx, NULL, NULL);
+			if (action == XLAT_ACTION_FAIL) {
+				talloc_free(pool);
+				return NULL;
+			}
+			if (!fr_dlist_empty(&result)) {
+				str = fr_value_box_list_aprint(ctx, &result, NULL, &fr_value_escape_double);
+				if (!str) {
+					RPEDEBUG("Failed concatenating xlat result string");
+					talloc_free(pool);
+					return NULL;
+				}
+			} else {
+				str = talloc_strdup(ctx, "");
+			}
+			talloc_free(pool);	/* Memory should be in new ctx */
+			break;
+		}
 
 		if (node->call.func->buf_len > 0) {
 			str = talloc_array(ctx, char, node->call.func->buf_len);
