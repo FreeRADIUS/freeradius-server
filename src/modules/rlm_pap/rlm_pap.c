@@ -421,7 +421,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	int			digest_type;
 	size_t			digest_len;
 
-	uint32_t		iterations;
+	uint32_t		iterations = 0;
 
 	uint8_t			*salt = NULL;
 	size_t			salt_len;
