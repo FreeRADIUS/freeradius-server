@@ -12,6 +12,9 @@ update request {
 	# Mixture of safe and unsafe chars
 	&Tmp-String-6 := 'ŒČÿ'
 	&Tmp-String-7 := 'Œ=C4=8Cÿ'
+
+	# = not followed by hex and without 2 following chars
+	&Tmp-String-8 := 'a=Az=y'
 }
 
 if (<string>"%{escape:%{Tmp-String-0}}" != &Tmp-String-0) {
@@ -43,6 +46,10 @@ if (<string>"%{escape:%{Tmp-String-6}}" != &Tmp-String-7) {
 }
 
 if (<string>"%{unescape:%{Tmp-String-7}}" != &Tmp-String-6) {
+	test_fail
+}
+
+if (<string>"%{unescape:%{Tmp-String-8}}" != &Tmp-String-8) {
 	test_fail
 }
 
