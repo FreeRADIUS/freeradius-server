@@ -48,13 +48,50 @@ static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	struct tm	tminfo;
 	time_t		date = 0;
 	fr_value_box_t	*vb;
+	bool		utc = inst->utc;
+
+#ifdef __APPLE__
+	/*
+	 *	OSX "man strptime" says it only accepts the local time zone, and GMT.
+	 *
+	 *	However, when printing dates via strftime(), it prints
+	 *	"UTC" instead of "GMT".  So... we have to fix it up
+	 *	for stupid nonsense.
+	 */
+	char const *tz = strstr(str, "UTC");
+	if (tz) {
+		char *my_str;
+		char *p;
+
+		/*
+		 *	
+		 */
+		MEM(my_str = talloc_strdup(ctx, str));
+		p = my_str + (tz - str);
+		memcpy(p, "GMT", 3);
+
+		p = strptime(my_str, inst->fmt, &tminfo);
+		if (!p) {
+			REDEBUG("Failed to parse time string \"%s\" as format '%s'", my_str, inst->fmt);
+			talloc_free(my_str);
+			return XLAT_ACTION_FAIL;
+		}
+		talloc_free(my_str);		
+
+		/*
+		 *	The output is converted to the local time zone, so
+		 *	we can't use UTC.
+		 */
+		utc = false;
+	} else
+#endif
 
 	if (strptime(str, inst->fmt, &tminfo) == NULL) {
 		REDEBUG("Failed to parse time string \"%s\" as format '%s'", str, inst->fmt);
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (inst->utc) {
+	if (utc) {
 		date = timegm(&tminfo);
 	} else {
 		date = mktime(&tminfo);
@@ -150,13 +187,18 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out, reque
 
 	memset(&tminfo, 0, sizeof(tminfo));
 
-	if ((arg->type == FR_TYPE_STRING) && (strcmp(arg->vb_strvalue, "request") == 0)) {
-		return date_encode_strftime(ctx, out, inst, request,
-					    fr_time_to_sec(request->packet->timestamp));
-	}
+	/*
+	 *	Certain strings have magical meanings.
+	 */
+	if (arg->type == FR_TYPE_STRING) {
+		if (strcmp(arg->vb_strvalue, "request") == 0) {
+			return date_encode_strftime(ctx, out, inst, request,
+						    fr_time_to_sec(request->packet->timestamp));
+		}
 
-	if ((arg->type == FR_TYPE_STRING) && (strcmp(arg->vb_strvalue, "now") == 0)) {
-		return date_encode_strftime(ctx, out, inst, request, fr_time_to_sec(fr_time()));
+		if (strcmp(arg->vb_strvalue, "now") == 0) {
+			return date_encode_strftime(ctx, out, inst, request, fr_time_to_sec(fr_time()));
+		}
 	}
 
 	switch (arg->type) {
@@ -170,7 +212,6 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out, reque
 
 	case FR_TYPE_UINT32:
 		return date_encode_strftime(ctx, out, inst, request, (time_t) arg->vb_uint32);
-
 
 	case FR_TYPE_UINT64:
 		return date_encode_strftime(ctx, out, inst, request, (time_t) arg->vb_uint64);

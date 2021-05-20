@@ -736,7 +736,39 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	 *	If that fails, then we fall back to our parsing
 	 *	routine, which is much more forgiving.
 	 */
+
+#ifdef __APPLE__
+	/*
+	 *	OSX "man strptime" says it only accepts the local time zone, and GMT.
+	 *
+	 *	However, when printing dates via strftime(), it prints
+	 *	"UTC" instead of "GMT".  So... we have to fix it up
+	 *	for stupid nonsense.
+	 */
+	{
+		char const *tz = strstr(date_str, "UTC");
+		if (tz) {
+			char *my_str;
+
+			my_str = talloc_strdup(NULL, date_str);
+			if (my_str) {
+				p = my_str + (tz - date_str);
+				memcpy(p, "GMT", 3);
+
+				p = strptime(my_str, "%b %e %Y %H:%M:%S %Z", tm);
+				talloc_free(my_str);
+				goto parsed;
+			}
+		}
+	}
+#endif
+
 	p = strptime(date_str, "%b %e %Y %H:%M:%S %Z", tm);
+
+#ifdef __APPLE__
+parsed:
+#endif
+
 	if (p && (*p == '\0')) {
 		t = mktime(tm);
 		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
