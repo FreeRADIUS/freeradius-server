@@ -961,6 +961,68 @@ _fr_dbuff_set(\
  */
 #define FR_DBUFF_ADVANCE_RETURN(_dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_advance, _dbuff_or_marker, _len)
 
+/** Advance a dbuff or marker potentially extending it
+ * @private
+ *
+ * @param[in,out] pos_p		position pointer to modify.
+ * @param[out] dbuff		dbuff to use for constraints checks.
+ * @param[in] len		Number of bytes to advance by.
+ * @return
+ *	- 0	not advanced, specified length would take us
+ *		past the end of the buffer, and we couldn't extend
+ *		by enough bytes.
+ *	- >0	the number of bytes the dbuff advanced by.
+ *      - <0	the number of bytes we'd need to complete the advance.
+ *
+ */
+static inline ssize_t _fr_dbuff_advance_extend(uint8_t **pos_p, fr_dbuff_t *dbuff, size_t len)
+{
+	uint8_t *p = *pos_p + len;
+
+	if (p > dbuff->end) {
+		size_t rel = p - dbuff->start;				/* Get relative position to the start */
+
+		if (!dbuff->extend) {
+		oos:
+			return -((dbuff->start + rel) - dbuff->end);
+		}
+
+	 	dbuff->extend(dbuff, p - dbuff->end);			/* Try and extend by the number of bytes over */
+	 	if ((dbuff->start + rel) > dbuff->end) goto oos;
+
+	 	*pos_p = dbuff->start + rel;				/* Update pos_p */
+	} else {
+		*pos_p += len;
+	}
+
+	if (dbuff->adv_parent && dbuff->parent) _fr_dbuff_set_recurse(dbuff->parent, *pos_p);
+
+	return len;
+}
+
+/** Advance current'position in dbuff or marker by _len bytes (extending if necessary)
+ *
+ * @param[in] _dbuff_or_marker	to advance.
+ * @param[in] _len		How much to advance dbuff by.
+ *				Must be a positive integer.
+ * @return
+ *	- 0	not advanced.
+ *	- >0	the number of bytes the dbuff or marker was advanced by.
+ *      - <0	the number of bytes we'd need to complete the advance.
+ */
+#define fr_dbuff_advance_extend(_dbuff_or_marker, _len)  \
+	_fr_dbuff_advance(_fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), \
+			  (_Generic((_len), \
+			  	unsigned char : (size_t)(_len), \
+			 	unsigned short : (size_t)(_len), \
+			  	unsigned int : (size_t)(_len), \
+			 	unsigned long : (size_t)(_len), \
+			  	unsigned long long : (size_t)(_len), \
+			  	int : (size_t)(_len) \
+			  )))
+
+#define FR_DBUFF_ADVANCE_EXTEND_RETURN(_dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_advance_extend, _dbuff_or_marker, _len)
+
 /** Reset the 'current' position of the dbuff or marker to the 'start' of the buffer
  *
  */
