@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include "foreach_priv.h"
 #include "return_priv.h"
 #include "unlang_priv.h"
+#include "xlat_priv.h"
 
 static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 						  "Foreach-Variable-1",
@@ -59,9 +60,9 @@ typedef struct {
 #endif
 } unlang_frame_state_foreach_t;
 
-static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-				   void const *mod_inst, UNUSED void const *xlat_inst,
-				   request_t *request, UNUSED char const *fmt);
+static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					 UNUSED void const *xlat_inst, void *xlat_thread_inst,
+					 UNUSED fr_value_box_list_t *in);
 
 #define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat
 
@@ -196,16 +197,21 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
  *
  * @ingroup xlat_functions
  */
-static ssize_t unlang_foreach_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-				   void const *mod_inst, UNUSED void const *xlat_inst,
-				   request_t *request, UNUSED char const *fmt)
+static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					 void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 UNUSED fr_value_box_list_t *in)
 {
-	fr_pair_t	**pvp;
+	fr_pair_t			**pvp;
+	int const			*inst = xlat_inst;
+	fr_value_box_t			*vb;
 
-	pvp = (fr_pair_t **) request_data_reference(request, FOREACH_REQUEST_DATA, *(int const *) mod_inst);
-	if (!pvp || !*pvp) return 0;
+	pvp = (fr_pair_t **) request_data_reference(request, FOREACH_REQUEST_DATA, *inst);
+	if (!pvp || !*pvp) return XLAT_ACTION_FAIL;
 
-	return fr_value_box_aprint(ctx, out, &(*pvp)->data, NULL);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_copy(ctx, vb, &(*pvp)->data);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 void unlang_foreach_init(void)
@@ -215,8 +221,9 @@ void unlang_foreach_init(void)
 	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
 		xlat_t *x;
 
-		x = xlat_register_legacy(&xlat_foreach_inst[i], xlat_foreach_names[i],
-				     	 unlang_foreach_xlat, NULL, NULL, 0, 0);
+		x = xlat_register(NULL, xlat_foreach_names[i],
+				  unlang_foreach_xlat, true);
+		x->uctx = &xlat_foreach_inst[i];
 		fr_assert(x);
 		xlat_internal(x);
 	}
