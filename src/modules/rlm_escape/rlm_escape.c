@@ -126,6 +126,8 @@ static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const unescape_xlat_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
+
 /** Equivalent to the old safe_characters functionality in rlm_sql
  *
  * Example:
@@ -135,39 +137,50 @@ static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
  *
  * @ingroup xlat_functions
  */
-static ssize_t unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     UNUSED request_t *request, char const *fmt)
+static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   fr_value_box_list_t *in)
 {
-	char const *p;
-	char *out_p = *out;
-	char *c1, *c2, c3;
-	size_t	freespace = outlen;
+	fr_value_box_t	*arg = fr_dlist_head(in);
+	char const	*p, *end;
+	char		*out_p;
+	char		*c1, *c2, c3;
+	fr_sbuff_t	sbuff;
+	fr_value_box_t	*vb;
 
-	if (outlen <= 1) return 0;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (fr_value_box_bstr_alloc(ctx, &out_p, vb, NULL, arg->length, arg->tainted) < 0) {
+		talloc_free(vb);
+		RPEDEBUG("Failed allocating space for unescaped string");
+		return XLAT_ACTION_FAIL;
+	}
+	sbuff = FR_SBUFF_IN(out_p, arg->length);
 
-	p = fmt;
-	while (*p && (--freespace > 0)) {
+	p = arg->vb_strvalue;
+	end = p + arg->length;
+	while (*p) {
 		if (*p != '=') {
 		next:
 
-			*out_p++ = *p++;
+			fr_sbuff_in_char(&sbuff, *p++);
 			continue;
 		}
 
 		/* Is a = char */
 
-		if (!(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
+		if (((end - p) < 2) ||
+		    !(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
 		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
 
-		*out_p++ = c3;
+		fr_sbuff_in_char(&sbuff, c3);
 		p += 3;
 	}
 
-	*out_p = '\0';
+	fr_value_box_strtrim(ctx, vb);
+	fr_dcursor_append(out, vb);
 
-	return outlen - freespace;
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -195,7 +208,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat = xlat_register(NULL, inst->xlat_name, escape_xlat, false);
 	xlat_func_mono(xlat, &escape_xlat_arg);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_escape_t *, NULL, inst);
-	xlat_register_legacy(inst, unescape, unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+
+	xlat = xlat_register(NULL, unescape, unescape_xlat, false);
+	xlat_func_mono(xlat, &unescape_xlat_arg);
 	talloc_free(unescape);
 
 	return 0;
