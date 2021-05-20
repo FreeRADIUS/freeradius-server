@@ -44,8 +44,20 @@ extern "C" {
 extern char const fr_base64_str[];
 extern uint8_t const fr_base64_alphabet_decode[UINT8_MAX];
 
-#define		fr_is_base64(_c) fr_base64_nstd(_c, fr_base64_alphabet_decode)
-bool		fr_is_base64_nstd(char c, uint8_t const alphabet[static UINT8_MAX]);
+/** Check if char is in Base64 alphabet
+ *
+ * Note that '=' is padding and not considered to be part of the alphabet.
+ *
+ * @param c char to check.
+ *	- true if c is a character from the Base64 alphabet.
+ *	- false if character is not in the Base64 alphabet.
+ */
+static inline bool fr_is_base64_nstd(char c, uint8_t const alphabet[static UINT8_MAX])
+{
+	return (c == 'A') || (alphabet[(uint8_t)c] > 0);
+}
+
+#define fr_is_base64(_c) fr_is_base64_nstd(_c, fr_base64_alphabet_decode)
 
 size_t		fr_base64_encode(char * restrict out, size_t outlen, uint8_t const * restrict in, size_t inlen);
 
