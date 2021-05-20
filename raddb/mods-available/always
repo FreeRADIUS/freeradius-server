@@ -33,7 +33,7 @@
 #  mpp = <integer>
 #
 #  An xlat based on the instance name can be called to change the status
-#  returned by the instance.
+#  returned by the instance, in this example "always db_status { ... }"
 #
 #  Force the module status to be alive or dead:
 #
