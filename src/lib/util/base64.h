@@ -30,6 +30,8 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/dbuff.h>
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -41,14 +43,15 @@ extern "C" {
 #define FR_BASE64_ENC_LENGTH(_inlen) ((((_inlen) + 2) / 3) * 4)
 #define FR_BASE64_DEC_LENGTH(_inlen) ((3 * ((_inlen) / 4)) + 2)
 
-extern char const fr_base64_str[];
+extern char const fr_base64_alphabet_encode[UINT8_MAX];
 extern uint8_t const fr_base64_alphabet_decode[UINT8_MAX];
 
 /** Check if char is in Base64 alphabet
  *
  * Note that '=' is padding and not considered to be part of the alphabet.
  *
- * @param c char to check.
+ * @param[in] c char to check.
+ * @return
  *	- true if c is a character from the Base64 alphabet.
  *	- false if character is not in the Base64 alphabet.
  */
@@ -57,14 +60,23 @@ static inline bool fr_is_base64_nstd(char c, uint8_t const alphabet[static UINT8
 	return (c == 'A') || (alphabet[(uint8_t)c] > 0);
 }
 
-#define fr_is_base64(_c) fr_is_base64_nstd(_c, fr_base64_alphabet_decode)
-
 size_t		fr_base64_encode(char * restrict out, size_t outlen, uint8_t const * restrict in, size_t inlen);
-
-#define		fr_base64_decode(_out, _outlen, _in, _inlen) fr_base64_decode_nstd(_out, _outlen, _in, _inlen, fr_base64_alphabet_decode)
-ssize_t		fr_base64_decode_nstd(uint8_t * restrict out, size_t outlen, char const * restrict in, size_t inlen, uint8_t const alphabet[static UINT8_MAX]);
+#define		fr_is_base64(_c) fr_is_base64_nstd(_c, fr_base64_alphabet_decode)
 
 
+ssize_t		fr_base64_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
+			      	      bool add_padding, char const alphabet[static UINT8_MAX])
+			      	      CC_HINT(nonnull);
+
+#define		fr_base64_encode(_out, _in, _add_padding) \
+		fr_base64_encode_nstd(_out, _in, _add_padding, fr_base64_alphabet_encode);
+
+ssize_t		fr_base64_decode_nstd(fr_dbuff_t *out, fr_sbuff_t *in,
+				      bool expect_padding, bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
+				      CC_HINT(nonnull);
+
+#define		fr_base64_decode(_out, _in, _expect_padding, _no_trailing) \
+		fr_base64_decode_nstd(_out,  _in, _expect_padding, _no_trailing, fr_base64_alphabet_decode)
 
 #ifdef __cplusplus
 }

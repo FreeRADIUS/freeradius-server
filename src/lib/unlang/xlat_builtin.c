@@ -1558,13 +1558,13 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	elen = fr_base64_encode(buff, alen + 1, in->vb_octets, in->vb_length);
+	elen = fr_base64_encode(&FR_SBUFF_OUT(buff, talloc_array_length(buff)),
+				&FR_DBUFF_TMP(in->vb_octets, in->vb_length), true);
 	if (elen < 0) {
 		RPEDEBUG("Base64 encoding failed");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
-
 	fr_assert((size_t)elen <= alen);
 	vb->tainted = in->tainted;
 	fr_dcursor_append(out, vb);
@@ -1593,23 +1593,26 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     fr_value_box_list_t *args)
 {
 	size_t		alen;
-	ssize_t		declen;
+	ssize_t		declen = 0;
 	uint8_t		*decbuf;
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in = fr_dlist_head(args);
 
 	alen = FR_BASE64_DEC_LENGTH(in->vb_length);
-
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	MEM(fr_value_box_mem_alloc(vb, &decbuf, vb, NULL, alen, in->tainted) == 0);
-	declen = fr_base64_decode(decbuf, alen, in->vb_strvalue, in->vb_length);
-	if (declen < 0) {
-		REDEBUG("Base64 string invalid");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
+	if (alen > 0) {
+		MEM(fr_value_box_mem_alloc(vb, &decbuf, vb, NULL, alen, in->tainted) == 0);
+		declen = fr_base64_decode(&FR_DBUFF_TMP(decbuf, alen),
+					  &FR_SBUFF_IN(in->vb_strvalue, in->vb_length), true, true);
+		if (declen < 0) {
+			RPEDEBUG("Base64 string invalid");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		MEM(fr_value_box_mem_realloc(vb, NULL, vb, declen) == 0);
 	}
 
-	MEM(fr_value_box_mem_realloc(vb, NULL, vb, declen) == 0);
 	vb->tainted = in->tainted;
 	fr_dcursor_append(out, vb);
 

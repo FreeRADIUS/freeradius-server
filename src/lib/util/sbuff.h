@@ -1183,11 +1183,12 @@ size_t _fr_sbuff_move_sbuff_to_marker(fr_sbuff_marker_t *out, fr_sbuff_t *in, si
 #define	FR_SBUFF_IN_CHAR_RETURN(_sbuff, ...) FR_SBUFF_RETURN(fr_sbuff_in_bstrncpy, _sbuff, ((char []){ __VA_ARGS__ }), sizeof((char []){ __VA_ARGS__ }))
 
 ssize_t	fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str);
-#define fr_sbuff_in_strcpy_literal(_sbuff, _str) fr_sbuff_in_bstrncpy(_sbuff, _str, sizeof(_str) - 1)
 #define	FR_SBUFF_IN_STRCPY_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_strcpy, ##__VA_ARGS__)
 
 ssize_t	fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len);
 #define	FR_SBUFF_IN_BSTRNCPY_RETURN(...) FR_SBUFF_RETURN(fr_sbuff_in_bstrncpy, ##__VA_ARGS__)
+
+#define fr_sbuff_in_strcpy_literal(_sbuff, _str) fr_sbuff_in_bstrncpy(_sbuff, _str, sizeof(_str) - 1)
 #define	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(_sbuff, _str) FR_SBUFF_RETURN(fr_sbuff_in_bstrncpy, _sbuff, _str, sizeof(_str) - 1)
 
 ssize_t	fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str);

@@ -2241,7 +2241,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	/*
 	 *	Check for char sequence
 	 *
-	 *	xxx.xxxx.xxx.xxx
+	 *	xxx.xxx.xxx.xxx
 	 */
 	if (!(fr_sbuff_out(NULL, &octet, &our_in) && fr_sbuff_next_if_char(&our_in, '.') &&
 	      fr_sbuff_out(NULL, &octet, &our_in) && fr_sbuff_next_if_char(&our_in, '.') &&

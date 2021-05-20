@@ -434,8 +434,8 @@ static ssize_t normify(normalise_t *action, uint8_t *buffer, size_t bufflen,
 	if ((len * 3) >= ((min_len * 4))) {
 		ssize_t decoded;
 
-		decoded = fr_base64_decode(buffer, bufflen, known_good, len);
-		if (decoded < 0) return 0;
+		decoded = fr_base64_decode(&FR_DBUFF_TMP(buffer, bufflen), &FR_SBUFF_IN(known_good, len), true, true);
+		if (decoded <= 0) return 0;
 		if (decoded >= (ssize_t) min_len) {
 			if (action) *action = NORMALISED_B64;
 			return decoded;

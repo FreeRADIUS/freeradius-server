@@ -514,19 +514,19 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 	/*
 	 *	Consume tag (6 bits) + key_ind (4 bits) + encr[0] (8 bits) = 18 bits (or 3 bytes of b64)
 	 */
-	*out_p++ = fr_base64_str[tag & 0x3f];							/* 6 bits tag */
-	*out_p++ = fr_base64_str[((key_ind & 0x0f) << 2) | ((u_p[0] & 0xc0) >> 6)];		/* 4 bits key_ind + 2 high bits encr[0] */
-	*out_p++ = fr_base64_str[u_p[0] & 0x3f];						/* 6 low bits of encr[0] */
+	*out_p++ = fr_base64_alphabet_encode[tag & 0x3f];							/* 6 bits tag */
+	*out_p++ = fr_base64_alphabet_encode[((key_ind & 0x0f) << 2) | ((u_p[0] & 0xc0) >> 6)];		/* 4 bits key_ind + 2 high bits encr[0] */
+	*out_p++ = fr_base64_alphabet_encode[u_p[0] & 0x3f];						/* 6 low bits of encr[0] */
 	u_p++;
 
 	/*
 	 *	Consume 3 bytes of input for 4 bytes of b64 (5 iterations)
 	 */
 	while (u_p < u_end) {
-		*out_p++ = fr_base64_str[(u_p[0] & 0xfc) >> 2];					/* 6 high bits of p[0] */
-		*out_p++ = fr_base64_str[((u_p[0] & 0x03) << 4) | ((u_p[1] & 0xf0) >> 4)];	/* 2 low bits of p[0] + 4 high bits of p[1] */
-		*out_p++ = fr_base64_str[((u_p[1] & 0x0f) << 2) | ((u_p[2] & 0xc0) >> 6)];	/* 4 low bits of p[1] + 2 high bits of p[2] */
-		*out_p++ = fr_base64_str[u_p[2] & 0x3f];					/* 6 low bits of p[2] */
+		*out_p++ = fr_base64_alphabet_encode[(u_p[0] & 0xfc) >> 2];					/* 6 high bits of p[0] */
+		*out_p++ = fr_base64_alphabet_encode[((u_p[0] & 0x03) << 4) | ((u_p[1] & 0xf0) >> 4)];	/* 2 low bits of p[0] + 4 high bits of p[1] */
+		*out_p++ = fr_base64_alphabet_encode[((u_p[1] & 0x0f) << 2) | ((u_p[2] & 0xc0) >> 6)];	/* 4 low bits of p[1] + 2 high bits of p[2] */
+		*out_p++ = fr_base64_alphabet_encode[u_p[2] & 0x3f];					/* 6 low bits of p[2] */
 		u_p += 3;
 	}
 	if ((out_p - out) != AKA_SIM_3GPP_PSEUDONYM_LEN) {

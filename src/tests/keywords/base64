@@ -107,4 +107,20 @@ if (&Tmp-Octets-1 != 0x008000000000000000000000000039383739) {
 	test_fail
 }
 
+# Regression tests
+update request {
+	&Tmp-Octets-0 := %{base64decode:5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK}
+}
+
+if (&Tmp-Octets-0 != 0xe5136a365f2260b6e409cec9851f1ab384ed0c3097ea8b6eb96b5c8daf2b213532c7dceb9c749ef6d4c71a628a) {
+	test_fail
+}
+
+update request {
+	&Tmp-Octets-0 := "%{base64decode:eHfXPKZ+2iv9cnMV1MOmE/moYYA1Uk5xTmw4aVlMYmtDYzdKaFI4YXM0VHRERENYNm90dXVXdGNqYThySVRVeXg5enJuSFNlOXRUSEdtS0s=}"
+}
+
+if (&Tmp-Octets-0 != 0x7877d73ca67eda2bfd727315d4c3a613f9a8618035524e714e6c3869594c626b4363374a685238617334547444444358366f7475755774636a6138724954557978397a726e48536539745448476d4b4b) {
+	test_fail
+}
 success
