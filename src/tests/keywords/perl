@@ -1,0 +1,34 @@
+#
+#  PRE: update
+#
+
+update request {
+	&Tmp-String-0 := "hello,goodbye,welcome,farewell"
+	&Tmp-String-1 := "foo,bar"
+}
+update request{
+	&Tmp-String-2 := "%(perl:xlat %{Tmp-String-0})"
+}
+
+if (&Tmp-String-2 != "hello|goodbye|welcome|farewell") {
+	test_fail
+}
+
+# Check for multiple arguments to perl function
+update request {
+	&Tmp-String-3 := "%(perl:xlat %{Tmp-String-0} %{Tmp-String-1})"
+}
+
+if (&Tmp-String-3 != "hello|goodbye|welcome|farewell#foo|bar") {
+	test_fail
+}
+
+update request {
+	&Tmp-Integer-0 := "%(perl:add 1 2 3)"
+}
+
+if (&Tmp-Integer-0 != 6) {
+	test_fail
+}
+
+success
