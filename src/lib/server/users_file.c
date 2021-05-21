@@ -244,7 +244,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	char			*q;
 	int			order = 0;
 	int			lineno		= 1;
-	map_t			*new_map;
+	map_t			*new_map, *relative_map;
 	FILE			*fp;
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_file_t	fctx;
@@ -266,6 +266,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	}
 
 	fr_sbuff_init_file(&sbuff, &fctx, buffer, sizeof(buffer), fp, SIZE_MAX);
+	relative_map = NULL;
 
 	lhs_rules = (tmpl_rules_t) {
 		.dict_def = dict,
@@ -468,6 +469,7 @@ check_item:
 		}
 
 	do_insert:
+		fr_assert(!new_map->parent);
 		fr_dlist_insert_tail(&t->check, new_map);
 
 		/*
@@ -588,7 +590,7 @@ next_reply_item:
 		 *	lead to here have already checked for those
 		 *	cases.
 		 */
-		slen = map_afrom_substr(t, &new_map, NULL, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
+		slen = map_afrom_substr(t, &new_map, &relative_map, &sbuff, map_assignment_op_table, map_assignment_op_table_len,
 				       &lhs_rules, &rhs_rules, &rhs_term);
 		if (!new_map) {
 			ERROR_MARKER_ADJ(&sbuff, slen, fr_strerror());
@@ -623,7 +625,6 @@ next_reply_item:
 			goto add_entry;
 		}
 		fr_assert(new_map->lhs != NULL);
-		fr_assert(new_map->rhs != NULL);
 
 		if (!tmpl_is_attr(new_map->lhs)) {
 			ERROR("%s[%d]: Unknown attribute '%s'",
@@ -631,16 +632,21 @@ next_reply_item:
 			goto fail_entry;
 		}
 
-		if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
-		    !tmpl_contains_xlat(new_map->rhs)) {
-			ERROR("%s[%d]: Invalid RHS '%s' for reply item",
-			      file, lineno, new_map->rhs->name);
-			goto fail_entry;
+		/*
+		 *	RHS can be NULL if it's a structural type.
+		 */
+		if (new_map->rhs) {
+			if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
+			    !tmpl_contains_xlat(new_map->rhs)) {
+				ERROR("%s[%d]: Invalid RHS '%s' for reply item",
+				      file, lineno, new_map->rhs->name);
+				goto fail_entry;
+			}
 		}
 
 		fr_assert(tmpl_list(new_map->lhs) == PAIR_LIST_REPLY);
 
-		fr_dlist_insert_tail(&t->reply, new_map);
+		if (!new_map->parent) fr_dlist_insert_tail(&t->reply, new_map);
 
 		(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 

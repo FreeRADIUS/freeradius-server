@@ -290,7 +290,7 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  *
  * @param[in] ctx		for talloc.
  * @param[in] out		Where to write the pointer to the new #map_t.
- * @param[in] parent		the parent map
+ * @param[in,out] parent_p	the parent map, updated for relative maps
  * @param[in] in		the data to parse for creating the map.
  * @param[in] op_table		for lhs OP rhs
  * @param[in] op_table_len	length of op_table
@@ -302,7 +302,7 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
  *	- >0 on success.
  *	- <=0 on error.
  */
-ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t *in,
+ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuff_t *in,
 			 fr_table_num_sorted_t const *op_table, size_t op_table_len,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 fr_sbuff_parse_rules_t const *p_rules)
@@ -310,14 +310,24 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t
 	ssize_t			slen;
 	fr_token_t		token;
 	map_t			*map;
+	bool			is_child;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
-	fr_sbuff_marker_t	m_lhs, m_rhs;
+	fr_sbuff_marker_t	m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
+	map_t			*parent, *new_parent;
+
+	if (parent_p) {
+		new_parent = parent = *parent_p;
+	} else {
+		new_parent = parent = NULL;
+	}
 
 	*out = NULL;
 	MEM(map = map_alloc(ctx, parent));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
+
+	is_child = false;
 
 	fr_sbuff_marker(&m_lhs, &our_in);
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
@@ -331,6 +341,59 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t
 		break;
 
 	default:
+		/*
+		 *	Allow for ".foo" to refer to the current
+		 *	parents list.  Allow for "..foo" to refer to
+		 *	the grandparent list.
+		 */
+		if (lhs_rules->prefix == TMPL_ATTR_REF_PREFIX_NO) {
+			tmpl_rules_t our_lhs_rules;
+
+			/*
+			 *	One '.' means "the current parent".
+			 */
+			if (fr_sbuff_next_if_char(&our_in, '.')) {
+				if (!parent) {
+					fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
+					goto error;
+				}
+
+				is_child = true;
+			}
+
+			/*
+			 *	Multiple '.' means "go to our parents parent".
+			 */
+			while (fr_sbuff_next_if_char(&our_in, '.')) {
+				new_parent = parent = parent->parent;
+			}
+
+			/*
+			 *	Allow this as a "WTF, why not".
+			 */
+			if (!parent) is_child = false;
+
+			/*
+			 *	Start looking in the correct parent, not in whatever we were handed.
+			 */
+			if (is_child) {
+				our_lhs_rules = *lhs_rules;
+				fr_assert(tmpl_is_attr(parent->lhs));
+				our_lhs_rules.attr_parent = tmpl_da(parent->lhs);
+
+				slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
+							      &map_parse_rules_bareword_quoted, &our_lhs_rules);
+				break;
+			}
+
+			/*
+			 *	There's no '.', so this
+			 *	attribute MUST come from the
+			 *	root of the dictionary tree.
+			 */
+			new_parent = parent = NULL;
+		}
+
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 					      &map_parse_rules_bareword_quoted, lhs_rules);
 		break;
@@ -368,6 +431,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t
 	}
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
+	fr_sbuff_marker(&m_op, &our_in);
 
 	/*
 	 *	Parse operator.
@@ -385,6 +449,65 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t
 	 *	minor modifications.
 	 */
 	fr_sbuff_marker(&m_rhs, &our_in);
+
+	/*
+	 *	If the LHS is a structural attribute, then (for now),
+	 *	the RHS can only be {}.  This limitation should only
+	 *	be temporary, as we should really recurse to create
+	 *	child maps.  And then the child maps should not have
+	 *	'.' as prefixes, and should require that the LHS can
+	 *	only be an attribute, etc.  Not trivial, so we'll just
+	 *	skip all that for now.
+	 */
+	if (tmpl_is_attr(map->lhs)) switch (tmpl_da(map->lhs)->type) {
+		case FR_TYPE_STRUCTURAL:
+			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
+				fr_sbuff_set(&our_in, &m_op);
+				fr_strerror_const("Regular expressions cannot be used for structural attributes");
+				goto error;
+			}
+
+			/*
+			 *	To match Vendor-Specific =* ANY
+			 *
+			 *	Which is a damned hack.
+			 */
+			if (map->op == T_OP_CMP_TRUE) goto parse_rhs;
+
+			/*
+			 *	@todo - check for, and allow '&'
+			 *	attribute references.  If found, then
+			 *	we're copying an attribute on the RHS.
+			 */
+			if (!fr_sbuff_next_if_char(&our_in, '{')) {
+				fr_sbuff_set(&our_in, &m_rhs);
+				fr_strerror_const("Expected '{' after structural attribute");
+				goto error;
+			}
+
+			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
+			if (!fr_sbuff_next_if_char(&our_in, '}')) {
+				fr_sbuff_set(&our_in, &m_rhs);
+				fr_strerror_const("No matching '}'");
+				goto error;
+			}
+
+			/*
+			 *	We are the new parent
+			 */
+			new_parent = map;
+
+			/*
+			 *	We've parsed the RHS, so skip the rest
+			 *	of the RHS parsing.
+			 */
+			goto check_for_child;
+
+		default:
+			break;
+	}
+
+parse_rhs:
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
 	switch (token) {
 	case T_SOLIDUS_QUOTED_STRING:
@@ -466,6 +589,17 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t *parent, fr_sbuff_t
 			goto error;
 		}
 	}
+
+check_for_child:
+	/*
+	 *	Add this map to to the parents list.  Note that the
+	 *	caller will have to check for this!
+	 */
+	if (is_child && parent) {
+		fr_dlist_insert_tail(&parent->child, map);
+	}
+
+	if (parent_p) *parent_p = new_parent;
 
 	MAP_VERIFY(map);
 	*out = map;
@@ -955,7 +1089,6 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 	MAP_VERIFY(map);
 	if (!fr_cond_assert(map->lhs != NULL)) return -1;
-	if (!fr_cond_assert(map->rhs != NULL)) return -1;
 
 	fr_assert(tmpl_is_list(map->lhs) || tmpl_is_attr(map->lhs));
 
@@ -970,6 +1103,54 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	if (map->op == T_OP_CMP_TRUE) {
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		n->op = map->op;
+		fr_pair_append(out, n);
+		return 0;
+	}
+
+	/*
+	 *	If there's no RHS, then it MUST be an attribute, and
+	 *	it MUST be structural.  And it MAY have children.
+	 */
+	if (!map->rhs) {
+		map_t *child;
+
+		if (!tmpl_is_attr(map->lhs)) return -1;
+
+		switch (tmpl_da(map->lhs)->type) {
+		case FR_TYPE_STRUCTURAL:
+			break;
+
+		default:
+			return -1;
+		}
+
+		/*
+		 *	Create the parent attribute, and
+		 *	recurse to generate the children into
+		 *	vp->vp_group
+		 */
+		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		n->op = map->op;
+
+		for (child = fr_dlist_next(&map->child, NULL);
+		     child != NULL;
+		     child = fr_dlist_next(&map->child, child)) {
+			fr_pair_list_t list;
+
+			/*
+			 *	map_to_vp() frees "out", so we need to
+			 *	work around that by creating a
+			 *	temporary list.
+			 */
+			fr_pair_list_init(&list);
+			if (map_to_vp(n, &list, request, child, NULL) < 0) {
+				talloc_free(n);
+				return -1;
+			}
+
+			fr_pair_list_append(&n->vp_group, &list);
+		}
+
 		fr_pair_append(out, n);
 		return 0;
 	}
