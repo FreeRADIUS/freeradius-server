@@ -38,5 +38,5 @@ exec ntlm_auth {
 	#  You will need to edit the path and domain to match your
 	#  local system.  The other fields can be left alone.
 	#
-	program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%{mschap:User-Name} --password=%{User-Password}"
+	program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%(mschap:User-Name) --password=%{User-Password}"
 }
