@@ -279,6 +279,10 @@ static ssize_t xlat_home_server(UNUSED void *instance, REQUEST *request,
 			state = "fail";
 			break;
 
+		case HOME_STATE_ADMIN_DOWN:
+			state = "down";
+			break;
+
 		default:
 			state = "unknown";
 			break;

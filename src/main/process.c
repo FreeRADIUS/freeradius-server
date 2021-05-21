@@ -690,7 +690,7 @@ static void request_done(REQUEST *request, int action)
 				home_server_t *home = request->home_pool->servers[i];
 
 				if (home->state == HOME_STATE_CONNECTION_FAIL) {
-					mark_home_server_dead(home, &now);
+					mark_home_server_dead(home, &now, false);
 				}
 			}
 		}
@@ -3691,7 +3691,7 @@ static void ping_home_server(void *ctx)
 
 		if (timercmp(&when, &now, <)) {
 			DEBUG("PING: Zombie period is over for home server %s", home->log_name);
-			mark_home_server_dead(home, &now);
+			mark_home_server_dead(home, &now, false);
 		}
 	}
 
@@ -3921,7 +3921,7 @@ void revive_home_server(void *ctx)
 	       home->port);
 }
 
-void mark_home_server_dead(home_server_t *home, struct timeval *when)
+void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 {
 	int previous_state = home->state;
 	char buffer[128];
@@ -3933,6 +3933,15 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 
 	home->state = HOME_STATE_IS_DEAD;
 	home_trigger(home, "home_server.dead");
+
+	/*
+	 *	Administratively down - don't do anything to bring it
+	 *	up.
+	 */
+	if (down) {
+		home->state = HOME_STATE_ADMIN_DOWN;
+		return;
+	}
 
 	/*
 	 *	Ping it if configured, AND we can ping it.
@@ -4013,7 +4022,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	as dead.
 		 */
 		if (home->state == HOME_STATE_CONNECTION_FAIL) {
-			mark_home_server_dead(home, &now);
+			mark_home_server_dead(home, &now, false);
 		}
 
 		/*
@@ -4104,7 +4113,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	as dead.
 		 */
 		if (home->state == HOME_STATE_CONNECTION_FAIL) {
-			mark_home_server_dead(home, &now);
+			mark_home_server_dead(home, &now, false);
 		}
 
 		response_window = request_response_window(request);

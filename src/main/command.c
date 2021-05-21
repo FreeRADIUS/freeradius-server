@@ -1187,6 +1187,9 @@ static int command_show_home_servers(rad_listen_t *listener, int argc, char *arg
 		} else if (home->state == HOME_STATE_IS_DEAD) {
 			state = "dead";
 
+		} else if (home->state == HOME_STATE_ADMIN_DOWN) {
+			state = "down";
+
 		} else if (home->state == HOME_STATE_UNKNOWN) {
 			time_t now = time(NULL);
 
@@ -1732,8 +1735,14 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 	} else if (strcmp(argv[last], "dead") == 0) {
 		struct timeval now;
 
-		gettimeofday(&now, NULL); /* we do this WAY too ofetn */
-		mark_home_server_dead(home, &now);
+		gettimeofday(&now, NULL); /* we do this WAY too often */
+		mark_home_server_dead(home, &now, false);
+
+	} else if (strcmp(argv[last], "down") == 0) {
+		struct timeval now;
+
+		gettimeofday(&now, NULL); /* we do this WAY too often */
+		mark_home_server_dead(home, &now, true);
 
 	} else {
 		cprintf_error(listener, "Unknown state \"%s\"\n", argv[last]);
@@ -2773,7 +2782,7 @@ static fr_command_table_t command_table_add[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_set_home[] = {
 	{ "state", FR_WRITE,
-	  "set home_server state <ipaddr> <port> [udp|tcp] [src <ipaddr>] [alive|dead] - set state for given home server",
+	  "set home_server state <ipaddr> <port> [udp|tcp] [src <ipaddr>] [alive|dead|down] - set state for given home server",
 	  command_set_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
