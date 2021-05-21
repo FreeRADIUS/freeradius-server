@@ -60,7 +60,11 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
 {
 	map_t *map;
 
-	map = talloc_zero(ctx, map_t);
+	if (parent) {
+		map = talloc_zero(parent, map_t);
+	} else {
+		map = talloc_zero(ctx, map_t);
+	}
 	map->parent = parent;
 
 	fr_map_list_init(&map->child);
