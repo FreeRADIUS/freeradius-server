@@ -63,7 +63,6 @@ typedef struct {
 	char const	*func_stop_accounting;
 	char const	*func_preacct;
 	char const	*func_detach;
-	char const	*func_xlat;
 	char const	*func_post_auth;
 	char const	*xlat_name;
 	char const	*perl_flags;
@@ -78,6 +77,10 @@ typedef struct {
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
 
 } rlm_perl_t;
+
+typedef struct {
+	rlm_perl_t	*inst;		//!< Module instance
+} rlm_perl_xlat_t;
 
 static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
 
@@ -96,7 +99,6 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(accounting),
 	RLM_PERL_CONF(preacct),
 	RLM_PERL_CONF(detach),
-	RLM_PERL_CONF(xlat),
 
 	{ FR_CONF_OFFSET("perl_flags", FR_TYPE_STRING, rlm_perl_t, perl_flags) },
 
@@ -520,23 +522,44 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	return 0;
 }
 
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_perl_t	*inst = talloc_get_type_abort(uctx, rlm_perl_t);
+	rlm_perl_xlat_t	*xi = talloc_get_type_abort(xlat_inst, rlm_perl_xlat_t);
+
+	xi->inst = inst;
+
+	return 0;
+}
+
+static xlat_arg_parser_t const perl_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Call perl code using an xlat
  *
  * @ingroup xlat_functions
  */
-static ssize_t perl_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 request_t *request, char const *fmt)
+static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_list_t *in)
 {
+	rlm_perl_xlat_t const	*xi = talloc_get_type_abort(UNCONST(void *, xlat_inst), rlm_perl_xlat_t);
+	rlm_perl_t		*inst = xi->inst;
+	int			count, i;
+	xlat_action_t		ret = XLAT_ACTION_FAIL;
+	STRLEN			n_a;
+	fr_value_box_t		*func = fr_dlist_pop_head(in);
+	fr_value_box_t		*arg = NULL, *child;
+	SV			*sv;
+	AV			*av;
+	fr_value_box_list_t	list, sub_list;
+	fr_value_box_t		*vb = NULL;
 
-	rlm_perl_t	*inst;
-	char		*tmp;
-	char const	*p, *q;
-	int		count;
-	size_t		ret = 0;
-	STRLEN		n_a;
-
-	memcpy(&inst, &mod_inst, sizeof(inst));
+	fr_value_box_list_init(&list);
+	fr_value_box_list_init(&sub_list);
 
 #ifdef USE_ITHREADS
 	PerlInterpreter *interp;
@@ -557,48 +580,64 @@ static ssize_t perl_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 		PUSHMARK(SP);
 
-		p = q = fmt;
-		while (*p == ' ') {
-			p++;
-			q++;
-		}
-		while (*q) {
-			if (*q == ' ') {
-				XPUSHs(sv_2mortal(newSVpvn(p, q - p)));
-				p = q + 1;
+		while ((arg = fr_dlist_next(in, arg))) {
+			fr_assert(arg->type == FR_TYPE_GROUP);
+			if (fr_dlist_empty(&arg->vb_group)) continue;
 
+			if (fr_dlist_num_elements(&arg->vb_group) == 1) {
+				child = fr_dlist_head(&arg->vb_group);
 				/*
-				 *	Don't use an empty string
+				 *	Single child value - add as scalar
 				 */
-				while (*p == ' ') p++;
-				q = p;
+				if (child->length == 0) continue;
+				DEBUG3("Passing single value %pV", child);
+				sv = newSVpvn(child->vb_strvalue, child->length);
+				if (child->tainted) SvTAINT(sv);
+				XPUSHs(sv_2mortal(sv));
+				continue;
 			}
-			q++;
-		}
 
-		/*
-		 *	And the last bit.
-		 */
-		if (*p) {
-			XPUSHs(sv_2mortal(newSVpvn(p, strlen(p))));
+			/*
+			 *	Multiple child values - create array and pass reference
+			 */
+			av = newAV();
+			perl_vblist_to_av(av, &arg->vb_group);
+			DEBUG3("Passing list as array %pM", &arg->vb_group);
+			sv = newRV_inc((SV *)av);
+			XPUSHs(sv_2mortal(sv));
 		}
 
 		PUTBACK;
 
-		count = call_pv(inst->func_xlat, G_SCALAR | G_EVAL);
+		count = call_pv(func->vb_strvalue, G_ARRAY | G_EVAL);
 
 		SPAGAIN;
 		if (SvTRUE(ERRSV)) {
 			REDEBUG("Exit %s", SvPV(ERRSV,n_a));
 			(void)POPs;
-		} else if (count > 0) {
-			tmp = POPp;
-			strlcpy(*out, tmp, outlen);
-			ret = strlen(*out);
-
-			RDEBUG2("Len is %zu , out is %s freespace is %zu", ret, *out, outlen);
+			goto cleanup;
 		}
 
+		/*
+		 *	As results are popped from a stack, they are in reverse
+		 *	sequence.  Add to a temporary list and then prepend to
+		 *	main list.
+		 */
+		for (i = 0; i < count; i++) {
+			sv = POPs;
+			if (perl_sv_to_vblist(ctx, &sub_list, request, sv) < 0) goto cleanup;
+			fr_dlist_move_head(&list, &sub_list);
+		}
+		ret = XLAT_ACTION_DONE;
+
+		/*
+		 *	Move the assembled list of boxes to the output
+		 */
+		while ((vb = fr_dlist_pop_head(&list))) {
+			fr_dcursor_append(out, vb);
+		}
+
+	cleanup:
 		PUTBACK ;
 		FREETMPS ;
 		LEAVE ;
@@ -676,13 +715,15 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_perl_t	*inst = instance;
-
+	xlat_t		*xlat;
 	char const	*xlat_name;
 
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name) xlat_name = cf_section_name1(conf);
 
-	xlat_register_legacy(inst, xlat_name, perl_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(NULL, xlat_name, perl_xlat, false);
+	xlat_func_args(xlat, perl_xlat_args);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_perl_xlat_t, NULL, inst);
 
 	return 0;
 }

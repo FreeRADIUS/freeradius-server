@@ -88,7 +88,6 @@ perl {
 #	func_pre_proxy = pre_proxy
 #	func_post_proxy = post_proxy
 #	func_post_auth = post_auth
-#	func_xlat = xlat
 #	func_detach = detach
 
 	#
@@ -114,7 +113,7 @@ perl {
 	#  [source,perl]
 	#  ----
 	#  $RAD_PERLCONF{'name'}
-	#  $RAD_PERLCONF{'sub-config'}->{'name'}`
+	#  $RAD_PERLCONF{'sub-config'}->{'name'}
 	#  ----
 	#
 #	config {
