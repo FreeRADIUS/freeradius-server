@@ -196,7 +196,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		while ((map = fr_dlist_next(&entry->reply, map))) {
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of reply item %s is not an attribute",
-				      entry->filename, entry->lineno, map->rhs->name);
+				      entry->filename, entry->lineno, map->lhs->name);
 				return -1;
 			}
 			da = tmpl_da(map->lhs);
@@ -543,7 +543,7 @@ redo:
 				if (map->op == T_OP_CMP_FALSE) continue;
 
 				if (map_to_vp(request->reply_ctx, &tmp_list, request, map, NULL) < 0) {
-					RPWARN("Failed parsing map for reply item %s, skipping it", map->rhs->name);
+					RPWARN("Failed parsing map for reply item %s, skipping it", map->lhs->name);
 					break;
 				}
 
