@@ -1,0 +1,36 @@
+#  Initial user will be rejected by the perl script.
+perl.authenticate
+
+#  fail has been used as the return code so the test doesn't exit.
+if (!notfound) {
+    test_fail
+}
+
+if (&reply.Reply-Message != "Denied access by rlm_perl function") {
+    test_fail
+}
+
+update reply {
+    &Reply-Message !* ANY
+}
+
+#  User will not be rejected - an xlat will be called setting a reply attribute
+update request {
+    &User-Name := 'bob'
+}
+
+perl.authenticate
+
+if (!ok) {
+    test_fail
+}
+
+if (&reply.Vendor-Specific.Cisco.h323-credit-amount != 100) {
+    test_fail
+}
+
+update reply {
+    &Vendor-Specific.Cisco.h323-credit-amount !* ANY
+}
+
+test_pass
