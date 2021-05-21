@@ -159,24 +159,41 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
  *
  * @param[in] log	to output to.
  * @param[in] lvl	depth in structural attribute.
+ * @param[in] parent	parent attribute
  * @param[in] list	to print.
  * @param[in] file	where the message originated
  * @param[in] line	where the message originated
  */
-void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_list_t const *list, char const *file, int line)
+void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line)
 {
 	fr_pair_t *vp;
+	fr_dict_attr_t const *parent_da = NULL;
 
-	for (vp = fr_pair_list_head(list); vp; vp = fr_pair_list_next(list, vp)) { \
+	for (vp = fr_pair_list_head(list); vp; vp = fr_pair_list_next(list, vp)) {
+		fr_sbuff_t oid_buff;
+		char buffer[512];
+
+		VP_VERIFY(vp);
+
+		fr_sbuff_init(&oid_buff, buffer, sizeof(buffer));
+
+		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+		if (fr_dict_attr_oid_print(&oid_buff, parent_da, vp->da, false) <= 0) return;
+
+		/*
+		 *	Recursively print grouped attributes.
+		 */
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
-			fr_log(log, L_DBG, file, line, "%*s%s {", lvl * 2, "", vp->da->name);
-			_fr_pair_list_log(log, lvl + 1, &vp->vp_group, file, line);
+			fr_log(log, L_DBG, file, line, "%*s%*s {", lvl * 2, "",
+			       (int) fr_sbuff_used(&oid_buff), buffer);
+			_fr_pair_list_log(log, lvl + 1, vp, &vp->vp_group, file, line);
 			fr_log(log, L_DBG, file, line, "%*s}", lvl * 2, "");
 			break;
 
 		default:
-			fr_log(log, L_DBG, file, line, "%*s%pP", lvl * 2, "", vp);
+			fr_log(log, L_DBG, file, line, "%*s%*s = %pV", lvl * 2, "",
+			       (int) fr_sbuff_used(&oid_buff), buffer, &vp->data);
 		}
 	}
 }
@@ -186,5 +203,5 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_list_t const *list,
  */
 void fr_pair_list_debug(fr_pair_list_t const *list)
 {
-	_fr_pair_list_log(&default_log, 0, list, "<internal>", 0);
+	_fr_pair_list_log(&default_log, 0, NULL, list, "<internal>", 0);
 }
