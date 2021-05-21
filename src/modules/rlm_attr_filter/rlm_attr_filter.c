@@ -145,6 +145,15 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 				WARN("%s[%d] Check item \"%s\" was found in filter list for entry \"%s\".\n",
 				     filename, entry->lineno, da->name, entry->name);
 			}
+
+			/*
+			 *	Make sure that bad things don't happen.
+			 */
+			if (!map->rhs) {
+				ERROR("%s[%d] Right side of filter %s is a nested attribute - this is not (yet) supported",
+				      filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
 		}
 	}
 
