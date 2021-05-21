@@ -186,8 +186,8 @@ sub xlat {
 
 	# Loads some external perl and evaluate it
 	my ($filename,$a,$b,$c,$d) = @_;
-	radiusd::radlog(L_DBG, "From xlat $filename");
-	radiusd::radlog(L_DBG,"From xlat $a $b $c $d");
+	radiusd::log(L_DBG, "From xlat $filename");
+	radiusd::log(L_DBG,"From xlat $a $b $c $d");
 	open(my $FH, '<', $filename) or die "open '$filename' $!";
 	local($/) = undef;
 	my $sub = <$FH>;
@@ -215,7 +215,7 @@ sub log_request_attributes {
 	# This shouldn't be done in production environments!
 	# This is only meant for debugging!
 	for (keys %RAD_REQUEST) {
-		radiusd::radlog(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
+		radiusd::log(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
 	}
 }
 
