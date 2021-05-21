@@ -180,10 +180,23 @@ sub post_auth {
 }
 
 # Function to handle xlat
+# Receives arguments presented to the xlat as discrete
+# arguments to the function.
+# If any of the arguments are lists with multiple values e.g.
+# %{User-Name[*]} where there are multiple instances of User-Name
+# then these will be passed as references to arrays.
+#
+# Any return value is presented as the result of the xlat
+#
+# The function is called in array context so all returned values
+# are received, though currently are concatenated before being
+# presented as the expansion of the xlat.  This is due to change
+# in the future.
+#
+# Note: Hashes for the attribute lists are not available in
+#       xlat evaluation and neither will setting them result
+#       in attributes being created.
 sub xlat {
-	# For debugging purposes only
-#	log_request_attributes();
-
 	# Loads some external perl and evaluate it
 	my ($filename,$a,$b,$c,$d) = @_;
 	radiusd::log(L_DBG, "From xlat $filename");
