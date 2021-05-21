@@ -961,6 +961,16 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	if (map->op == T_OP_CMP_FALSE) return 0;
 
 	/*
+	 *	Hoist this early, too.
+	 */
+	if (map->op == T_OP_CMP_TRUE) {
+		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
+		n->op = map->op;
+		fr_pair_append(out, n);
+		return 0;
+	}
+
+	/*
 	 *	List to list found, this is a special case because we don't need
 	 *	to allocate any attributes, just finding the current list, and change
 	 *	the op.
@@ -1112,13 +1122,12 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 				talloc_free(n);
 				goto error;
 			}
-		} else if (map->op != T_OP_CMP_TRUE) {
-			if (fr_value_box_cast(n, &n->data, n->vp_type, n->da, tmpl_value(map->rhs)) < 0) {
-				RPEDEBUG("Implicit cast failed");
-				rcode = -1;
-				talloc_free(n);
-				goto error;
-			}
+
+		} else if (fr_value_box_cast(n, &n->data, n->vp_type, n->da, tmpl_value(map->rhs)) < 0) {
+			RPEDEBUG("Implicit cast failed");
+			rcode = -1;
+			talloc_free(n);
+			goto error;
 		}
 		n->op = map->op;
 		fr_pair_append(out, n);
