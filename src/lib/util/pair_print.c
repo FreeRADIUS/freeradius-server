@@ -155,6 +155,43 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 }
 
 
+static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line, fr_sbuff_t *sbuff)
+{
+	fr_pair_t *vp;
+	fr_dict_attr_t const *parent_da = NULL;
+
+	for (vp = fr_pair_list_head(list); vp; vp = fr_pair_list_next(list, vp)) {
+		VP_VERIFY(vp);
+
+		fr_sbuff_set_to_start(sbuff);
+
+		if (vp->da->flags.is_raw) fr_sbuff_in_strcpy(sbuff, "raw.");
+
+		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+		if (fr_dict_attr_oid_print(sbuff, parent_da, vp->da, false) <= 0) return;
+
+		/*
+		 *	Recursively print grouped attributes.
+		 */
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			fr_log(log, L_DBG, file, line, "%*s%*s {", lvl * 2, "",
+			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
+			_fr_pair_list_log(log, lvl + 1, vp, &vp->vp_group, file, line);
+			fr_log(log, L_DBG, file, line, "%*s}", lvl * 2, "");
+			break;
+
+		default:
+			fr_sbuff_in_strcpy(sbuff, " = ");
+			fr_value_box_print_quoted(sbuff, &vp->data, T_DOUBLE_QUOTED_STRING);
+
+			fr_log(log, L_DBG, file, line, "%*s%*s", lvl * 2, "",
+			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
+		}
+	}
+}
+
+
 /** Print a list of attributes and enumv
  *
  * @param[in] log	to output to.
@@ -166,36 +203,12 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
  */
 void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line)
 {
-	fr_pair_t *vp;
-	fr_dict_attr_t const *parent_da = NULL;
+	fr_sbuff_t sbuff;
+	char buffer[1024];
 
-	for (vp = fr_pair_list_head(list); vp; vp = fr_pair_list_next(list, vp)) {
-		fr_sbuff_t oid_buff;
-		char buffer[512];
+	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
 
-		VP_VERIFY(vp);
-
-		fr_sbuff_init(&oid_buff, buffer, sizeof(buffer));
-
-		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
-		if (fr_dict_attr_oid_print(&oid_buff, parent_da, vp->da, false) <= 0) return;
-
-		/*
-		 *	Recursively print grouped attributes.
-		 */
-		switch (vp->da->type) {
-		case FR_TYPE_STRUCTURAL:
-			fr_log(log, L_DBG, file, line, "%*s%*s {", lvl * 2, "",
-			       (int) fr_sbuff_used(&oid_buff), buffer);
-			_fr_pair_list_log(log, lvl + 1, vp, &vp->vp_group, file, line);
-			fr_log(log, L_DBG, file, line, "%*s}", lvl * 2, "");
-			break;
-
-		default:
-			fr_log(log, L_DBG, file, line, "%*s%*s = %pV", lvl * 2, "",
-			       (int) fr_sbuff_used(&oid_buff), buffer, &vp->data);
-		}
-	}
+	return fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
 }
 
 /** Useful for calling from debuggers
