@@ -145,39 +145,38 @@ static int rrlabels_tostr(char *out, char *rr, size_t left)
 	return offset;
 }
 
-static int ub_common_wait(rlm_unbound_t const *inst, request_t *request,
+static int ub_common_wait(unbound_xlat_thread_inst_t const *xt, request_t *request,
 			  char const *name, struct ub_result **ub, int async_id)
 {
 	useconds_t iv, waited;
 
-	iv = inst->timeout > 64 ? 64000 : inst->timeout * 1000;
-	ub_process(inst->ub);
+	iv = xt->inst->timeout > 64 ? 64000 : xt->inst->timeout * 1000;
+	ub_process(xt->ub);
+	for (waited = 0; (void const *)*ub == (void const *)xt; waited += iv, iv *= 2) {
 
-	for (waited = 0; (void const *)*ub == (void const *)inst; waited += iv, iv *= 2) {
-
-		if (waited + iv > (useconds_t)inst->timeout * 1000) {
-			usleep(inst->timeout * 1000 - waited);
-			ub_process(inst->ub);
+		if (waited + iv > (useconds_t)xt->inst->timeout * 1000) {
+			usleep(xt->inst->timeout * 1000 - waited);
+			ub_process(xt->ub);
 			break;
 		}
 
 		usleep(iv);
 
 		/* Check if already handled by event loop */
-		if ((void const *)*ub != (void const *)inst) {
+		if ((void const *)*ub != (void const *)xt) {
 			break;
 		}
 
 		/* In case we are running single threaded */
-		ub_process(inst->ub);
+		ub_process(xt->ub);
 	}
 
-	if ((void const *)*ub == (void const *)inst) {
+	if ((void const *)*ub == (void const *)xt) {
 		int res;
 
 		REDEBUG2("%s - DNS took too long", name);
 
-		res = ub_cancel(inst->ub, async_id);
+		res = ub_cancel(xt->ub, async_id);
 		if (res) {
 			REDEBUG("%s - ub_cancel: %s", name, ub_strerror(res));
 		}
