@@ -208,7 +208,7 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_
 
 	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
 
-	return fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
+	fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
 }
 
 /** Useful for calling from debuggers
