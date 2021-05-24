@@ -385,6 +385,49 @@ error0:
 	return -1;
 }
 
+static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
+				       UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_unbound_t			*inst = talloc_get_type_abort(uctx, rlm_unbound_t);
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
+	int				res;
+
+	xt->inst = inst;
+
+	xt->ub = ub_ctx_create();
+	if (!xt->ub) {
+		ERROR("ub_ctx_create failed");
+		return -1;
+	}
+
+	/*
+	 *	Note unbound threads WILL happen with -s option, if it matters.
+	 *	We cannot tell from here whether that option is in effect.
+	 */
+	res = ub_ctx_async(xt->ub, 1);
+	if (res) {
+	error:
+		ERROR("%s", ub_strerror(res));
+		return -1;
+	}
+
+	/* Now load the config file, which can override gleaned settings. */
+	res = ub_ctx_config(xt->ub, UNCONST(char *, inst->filename));
+	if (res) goto error;
+	if (unbound_log_init(xt, &xt->u_log, xt->ub) < 0) goto error;
+
+	/*
+	 *  Now we need to finalize the context.
+	 *
+	 *  There's no clean API to just finalize the context made public
+	 *  in libunbound.  But we can trick it by trying to delete data
+	 *  which as it happens fails quickly and quietly even though the
+	 *  data did not exist.
+	 */
+	ub_ctx_data_remove(xt->ub, "notar33lsite.foo123.nottld A 127.0.0.1");
+	return 0;
+}
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_unbound_t	*inst = instance;
