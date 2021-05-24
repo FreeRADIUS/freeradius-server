@@ -354,6 +354,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			if (fr_sbuff_next_if_char(&our_in, '.')) {
 				if (!parent) {
+				no_parent:
 					fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
 					goto error;
 				}
@@ -365,6 +366,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 *	Multiple '.' means "go to our parents parent".
 			 */
 			while (fr_sbuff_next_if_char(&our_in, '.')) {
+				if (!parent) goto no_parent;
 				new_parent = parent = parent->parent;
 			}
 
