@@ -1174,10 +1174,14 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 					return NULL;
 				}
 
+				/*
+				 *	Might as well make
+				 *	non-existent string be the
+				 *	empty string.
+				 */
 				if (!cp->value) {
-					ERROR("%s[%d]: Reference \"%s\" has no value",
-					       cf, *lineno, input);
-					return NULL;
+					*p = '\0';
+					goto skip_value;
 				}
 
 				if (p + strlen(cp->value) >= output + outsize) {
@@ -1188,6 +1192,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 
 				strcpy(p, cp->value);
 				p += strlen(p);
+			skip_value:
 				ptr = end + 1;
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
@@ -2796,6 +2801,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_SET:
 		case T_OP_PREPEND:
 			while (isspace((int) *ptr)) ptr++;
+
+			/*
+			 *	Be a little more forgiving.
+			 */
+			if (*ptr == '#') {
+				t3 = T_HASH;
+			} else
 
 			/*
 			 *	New parser: non-quoted strings are
