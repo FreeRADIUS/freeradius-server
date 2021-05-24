@@ -385,6 +385,98 @@ error0:
 	return -1;
 }
 
+static xlat_arg_parser_t const xlat_unbound_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Perform a DNS lookup using libunbound
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			      UNUSED void const *xlat_inst, void *xlat_thread_inst,
+			      fr_value_box_list_t *in)
+{
+	fr_value_box_t			*host_vb = fr_dlist_head(in);
+	fr_value_box_t			*query_vb = fr_dlist_next(in, host_vb);
+	struct ub_result		**ubres;
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
+	int				async_id;
+	fr_type_t			return_type;
+	fr_value_box_t			*vb;
+
+	if (host_vb->length == 0) {
+		REDEBUG("Can't resolve zero length host");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/* This has to be on the heap, because of threads */
+	ubres = talloc(xt, struct ub_result *);
+
+	/*
+	 *	When a result is parsed, ubres points at the new result
+	 *	This is used to mark that the processing is incomplete
+	 *	- see ub_common_wait
+	 */
+	memcpy(ubres, &xt, sizeof(*ubres));
+
+	if (strcmp(query_vb->vb_strvalue, "A") == 0) {
+		ub_resolve_async(xt->ub, host_vb->vb_strvalue, 1, 1, ubres, link_ubres, &async_id);
+		return_type = FR_TYPE_IPV4_ADDR;
+	} else if (strcmp(query_vb->vb_strvalue, "AAAA") == 0) {
+		ub_resolve_async(xt->ub, host_vb->vb_strvalue, 28, 1, ubres, link_ubres, &async_id);
+		return_type = FR_TYPE_IPV6_ADDR;
+	} else if (strcmp(query_vb->vb_strvalue, "PTR") == 0) {
+		ub_resolve_async(xt->ub, host_vb->vb_strvalue, 12, 1, ubres, link_ubres, &async_id);
+		return_type = FR_TYPE_STRING;
+	} else {
+		REDEBUG("Invalid DNS query type");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (ub_common_wait(xt, request, xt->inst->name, ubres, async_id)) {
+	error0:
+		talloc_free(ubres);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!(*ubres)) {
+		RWDEBUG("%s - No result", xt->inst->name);
+		goto error0;
+	}
+
+	if (ub_common_fail(request, xt->inst->name, *ubres)) {
+	error1:
+		ub_resolve_free(*ubres);
+		goto error0;
+	}
+
+	vb = fr_value_box_alloc_null(ctx);
+	switch (return_type) {
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		if (fr_value_box_from_network(ctx, vb, return_type, NULL, (uint8_t *)(*ubres)->data[0], (*ubres)->len[0], true) < 0) {
+		error2:
+			talloc_free(vb);
+			goto error1;
+		}
+		break;
+	case FR_TYPE_STRING:
+		if (rrlabels_tovb(vb, (*ubres)->data[0]) == XLAT_ACTION_FAIL) goto error2;
+		break;
+	default:
+		goto error2;
+	}
+
+	ub_resolve_free(*ubres);
+	talloc_free(ubres);
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
+
 static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
 				       UNUSED xlat_exp_t const *exp, void *uctx)
 {
@@ -486,7 +578,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_unbound_t *inst = instance;
+	rlm_unbound_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -506,6 +599,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		cf_log_err(conf, "Failed registering xlats");
 		return -1;
 	}
+
+	if(!(xlat = xlat_register(NULL, inst->name, xlat_unbound, false))) return -1;
+	xlat_func_args(xlat, xlat_unbound_args);
+	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, unbound_xlat_thread_inst_t, mod_xlat_thread_detach, inst);
 
 	return 0;
 }
