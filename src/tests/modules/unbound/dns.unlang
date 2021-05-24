@@ -1,0 +1,100 @@
+#  Use builtin "local" zone
+update request {
+	&Tmp-IP-Address-0 := "%(dns:localhost A)"
+}
+
+if (&Tmp-IP-Address-0 != 127.0.0.1) {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "%(dns:localhost AAAA)"
+}
+
+if (&Tmp-String-0 != "::1") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-1 := "%(dns:1.0.0.127.in-addr.arpa PTR)"
+}
+
+if (&Tmp-String-1 != "localhost") {
+	test_fail
+}
+
+#  Use local data in module config to allow for dotted names
+update request {
+	&Tmp-IP-Address-0 := "%(dns:www.example.com A)"
+}
+
+if (&Tmp-IP-Address-0 != 192.168.1.1) {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "%(dns:1.1.168.192.in-addr.arpa PTR)"
+}
+
+if (&Tmp-String-0 != "www.example.com") {
+	test_fail
+}
+
+# Try a real, known, network response
+update request {
+	&Tmp-String-0 := "%(dns:8.8.8.8.in-addr.arpa PTR)"
+}
+
+if (&Tmp-String-0 != "dns.google") {
+	test_fail
+}
+
+# Invalid query
+update request {
+	&Tmp-String-0 := "%(dns:www.example.com ABC)"
+}
+
+if (&Tmp-String-0 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Invalid / unsupported DNS query type") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := ""
+}
+
+update request {
+	&Tmp-String-1 := "%(dns:%{Tmp-String-0} A)"
+}
+
+if (&Tmp-String-1 != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message != "Can't resolve zero length host") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-1 := "%(dns:example.com MX)"
+}
+
+# Until we can handle multiple boxes in xlat expansion, the results
+# are concatenated into a single string
+if (&Tmp-String-1 != '10mail.example.com20mail2.example.com') {
+	test_fail
+}
+
+# Just return a single record
+update request {
+	&Tmp-String-1 := "%(dns:example.com MX 1)"
+}
+
+if (&Tmp-String-1 != '10mail.example.com') {
+	test_fail
+}
+
+test_pass
