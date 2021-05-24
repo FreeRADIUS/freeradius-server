@@ -109,67 +109,41 @@ static void link_ubres(void *my_arg, int err, struct ub_result *result)
 /*
  *	Convert labels as found in a DNS result to a NULL terminated string.
  *
- *	Result is written to memory pointed to by "out" but no result will
- *	be written unless it and its terminating NULL character fit in "left"
- *	bytes.  Returns the number of bytes written excluding the terminating
- *	NULL, or -1 if nothing was written because it would not fit or due
- *	to a violation in the labels format.
+ *	Result is written to string buffer allocated against vb.
+ *	Returns XLAT_ACTION_DONE on success or XLAT_ACTION_FAIL on failure.
  */
-static int rrlabels_tostr(char *out, char *rr, size_t left)
+static int rrlabels_tovb(fr_value_box_t *vb, char *rr)
 {
-	int offset = 0;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+	size_t			count;
 
 	/*
-	 * TODO: verify that unbound results (will) always use this label
-	 * format, and review the specs on this label format for nuances.
+	 *	Allocate a buffer up to the "maximum" dns length
 	 */
-
-	if (!left) {
-		return -1;
-	}
-	if (left > 253) {
-		left = 253; /* DNS length limit */
-	}
-	/* As a whole this should be "NULL terminated" by the 0-length label */
-	if (strnlen(rr, left) > left - 1) {
-		return -1;
+	if(!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, strlen(rr), FR_MAX_STRING_LEN)) {
+		ERROR("Failed to allocate buffer for DNS label parsing");
+		return XLAT_ACTION_FAIL;
 	}
 
-	/* It will fit, but does it it look well formed? */
+	/* 	Copy data to the buffer, checking format as we go */
 	while (1) {
-		size_t count;
-
-		count = *((unsigned char *)(rr + offset));
-		if (!count) break;
-
-		offset++;
-		if (count > 63 || strlen(rr + offset) < count) {
-			return -1;
-		}
-		offset += count;
-	}
-
-	/* Data is valid and fits.  Copy it. */
-	offset = 0;
-	while (1) {
-		int count;
-
 		count = *((unsigned char *)(rr));
 		if (!count) break;
 
-		if (offset) {
-			*(out + offset) = '.';
-			offset++;
+		if (fr_sbuff_used(&sbuff)) {
+			fr_sbuff_in_char(&sbuff, '.');
 		}
 
 		rr++;
-		memcpy(out + offset, rr, count);
+		if (count > 63 || strlen(rr) < count) return XLAT_ACTION_FAIL;
+		fr_sbuff_in_bstrncpy(&sbuff, rr, count);
 		rr += count;
-		offset += count;
 	}
 
-	*(out + offset) = '\0';
-	return offset;
+	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
+	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), true);
+	return XLAT_ACTION_DONE;
 }
 
 /*
