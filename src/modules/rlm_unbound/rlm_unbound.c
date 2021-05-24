@@ -398,6 +398,18 @@ error0:
 	return -1;
 }
 
+static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
+				       UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_unbound_t			*inst = talloc_get_type_abort(uctx, rlm_unbound_t);
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
+
+	xt->inst = inst;
+	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_unbound_thread_t);
+
+	return 0;
+}
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_unbound_t	*inst = instance;
