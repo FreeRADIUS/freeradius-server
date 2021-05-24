@@ -699,6 +699,13 @@ do_header:
 		return new;
 	}
 
+#ifdef __clang_analyzer__
+	/*
+	 *	clang isn't smart enough to notice that "normify" clears out n1.
+	 */
+	memset(n1, 0, sizeof(n1));
+#endif
+
 	/*
 	 *	Doesn't have a header {...} prefix
 	 *
