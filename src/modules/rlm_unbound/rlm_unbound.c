@@ -214,106 +214,6 @@ static int ub_common_fail(request_t *request, char const *name, struct ub_result
 	return 0;
 }
 
-/** Perform a DNS lookup for an A record
- *
- * @ingroup xlat_functions
- */
-static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
-		      void const *mod_inst, UNUSED void const *xlat_inst,
-		      request_t *request, char const *fmt)
-{
-	rlm_unbound_t const *inst = mod_inst;
-	struct ub_result **ubres;
-	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
-
-	/* This has to be on the heap, because threads. */
-	ubres = talloc(inst, struct ub_result *);
-
-	/* Used and thus impossible value from heap to designate incomplete */
-	memcpy(ubres, &mod_inst, sizeof(*ubres));
-
-	fmt2 = talloc_typed_strdup(ctx, fmt);
-	ub_resolve_async(inst->ub, fmt2, 1, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
-
-	if (ub_common_wait(inst, request, inst->xlat_a_name, ubres, async_id)) {
-		goto error0;
-	}
-
-	if (*ubres) {
-		if (ub_common_fail(request, inst->xlat_a_name, *ubres)) {
-			goto error1;
-		}
-
-		if (!inet_ntop(AF_INET, (*ubres)->data[0], *out, outlen)) {
-			goto error1;
-		};
-
-		ub_resolve_free(*ubres);
-		talloc_free(ubres);
-		return strlen(*out);
-	}
-
-	RWDEBUG("%s - No result", inst->xlat_a_name);
-
- error1:
-	ub_resolve_free(*ubres); /* Handles NULL gracefully */
-
- error0:
-	talloc_free(ubres);
-	return -1;
-}
-
-/** Perform a DNS lookup for an AAAA record
- *
- * @ingroup xlat_functions
- */
-static ssize_t xlat_aaaa(TALLOC_CTX *ctx, char **out, size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 request_t *request, char const *fmt)
-{
-	rlm_unbound_t const *inst = mod_inst;
-	struct ub_result **ubres;
-	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
-
-	/* This has to be on the heap, because threads. */
-	ubres = talloc(inst, struct ub_result *);
-
-	/* Used and thus impossible value from heap to designate incomplete */
-	memcpy(ubres, &mod_inst, sizeof(*ubres));
-
-	fmt2 = talloc_typed_strdup(ctx, fmt);
-	ub_resolve_async(inst->ub, fmt2, 28, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
-
-	if (ub_common_wait(inst, request, inst->xlat_aaaa_name, ubres, async_id)) {
-		goto error0;
-	}
-
-	if (*ubres) {
-		if (ub_common_fail(request, inst->xlat_aaaa_name, *ubres)) {
-			goto error1;
-		}
-		if (!inet_ntop(AF_INET6, (*ubres)->data[0], *out, outlen)) {
-			goto error1;
-		};
-		ub_resolve_free(*ubres);
-		talloc_free(ubres);
-		return strlen(*out);
-	}
-
-	RWDEBUG("%s - No result", inst->xlat_aaaa_name);
-
-error1:
-	ub_resolve_free(*ubres); /* Handles NULL gracefully */
-
-error0:
-	talloc_free(ubres);
-	return -1;
-}
-
 typedef struct {
 	struct ub_result	*result;	//!< The result from the previous operation.
 } dns_resume_ctx_t;
@@ -335,55 +235,6 @@ static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 */
 
-/** Perform a DNS lookup for a PTR record
- *
- * @ingroup xlat_functions
- */
-static ssize_t xlat_ptr(TALLOC_CTX *ctx, char **out, size_t outlen,
-			void const *mod_inst, UNUSED void const *xlat_inst,
-			request_t *request, char const *fmt)
-{
-	rlm_unbound_t const *inst = mod_inst;
-	struct ub_result **ubres;
-	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
-
-	/* This has to be on the heap, because threads. */
-	ubres = talloc(inst, struct ub_result *);
-
-	/* Used and thus impossible value from heap to designate incomplete */
-	memcpy(ubres, &mod_inst, sizeof(*ubres));
-
-	fmt2 = talloc_typed_strdup(ctx, fmt);
-	ub_resolve_async(inst->ub, fmt2, 12, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
-
-	if (ub_common_wait(inst, request, inst->xlat_ptr_name,
-			   ubres, async_id)) {
-		goto error0;
-	}
-
-	if (*ubres) {
-		if (ub_common_fail(request, inst->xlat_ptr_name, *ubres)) {
-			goto error1;
-		}
-		if (rrlabels_tostr(*out, (*ubres)->data[0], outlen) < 0) {
-			goto error1;
-		}
-		ub_resolve_free(*ubres);
-		talloc_free(ubres);
-		return strlen(*out);
-	}
-
-	RWDEBUG("%s - No result", inst->xlat_ptr_name);
-
-error1:
-	ub_resolve_free(*ubres);  /* Handles NULL gracefully */
-
-error0:
-	talloc_free(ubres);
-	return -1;
-}
 
 static xlat_arg_parser_t const xlat_unbound_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
@@ -586,17 +437,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	if (inst->timeout > 10000) {
 		cf_log_err(conf, "timeout must be 0 to 10000");
-		return -1;
-	}
-
-	MEM(inst->xlat_a_name = talloc_typed_asprintf(inst, "%s-a", inst->name));
-	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
-	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
-
-	if (xlat_register_legacy(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
-	    xlat_register_legacy(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
-	    xlat_register_legacy(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN)) {
-		cf_log_err(conf, "Failed registering xlats");
 		return -1;
 	}
 
