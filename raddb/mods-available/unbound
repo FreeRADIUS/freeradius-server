@@ -18,3 +18,27 @@ unbound dns {
 	#  filename = "${raddbdir}/mods-config/unbound/default.conf"
 	#  timeout = 3000
 }
+
+#
+#  ## xlat for DNS resolution
+#
+#  An xlat based on the instance name can be used to perform DNS lookups.
+#
+#  .Example
+#
+#  ```
+#  %(dns:www.example.com A)
+#  %(dns:www.example.com AAAA)
+#  ```
+#
+#  Given an instance `dns` the above xlats will perform A record and
+#  AAAA record lookups on www.example.com.
+#
+#  .Example
+#
+#  ```
+#  %(dns:1.1.168.192.in-addr.arpa PTR)
+#  ```
+#
+#  The above example will perform reverse DNS lookup on 192.168.1.1
+#  

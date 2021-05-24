@@ -36,13 +36,13 @@ any libunbound configuration values.
 .PP
 An instance named, for example, "dns" will provide the following xlat
 functionalities:
-.IP %{dns-a:<owner>}
+.IP %(dns:<owner> A)
 Performs an A lookup for the owner name, returning a stringified IPv4
 address.  Only the first A record in the RRSET will be returned.
-.IP %{dns-aaaa:<owner>}
+.IP %(dns:<owner> AAAA)
 Performs an AAAA lookup for the owner name, returning a stringified IPv6
 address.  Only the first AAAA record in the RRSET will be returned.
-.IP %{dns-ptr:<owner>}
+.IP %(dns:<owner> PTR)
 Performs a PTR lookup for the owner.
 .PP
 .SH CAVEATS
