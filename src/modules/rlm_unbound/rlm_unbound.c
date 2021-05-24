@@ -88,24 +88,18 @@ static void link_ubres(void *my_arg, int err, struct ub_result *result)
  *	NULL, or -1 if nothing was written because it would not fit or due
  *	to a violation in the labels format.
  */
-static int rrlabels_tostr(char *out, char *rr, size_t left)
+static int rrlabels_tovb(fr_value_box_t *vb, char *rr)
 {
-	int offset = 0;
+	int			offset = 0;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 
 	/*
-	 * TODO: verify that unbound results (will) always use this label
-	 * format, and review the specs on this label format for nuances.
+	 *	Allocate a buffer at the "maximum" dns length
 	 */
-
-	if (!left) {
-		return -1;
-	}
-	if (left > 253) {
-		left = 253; /* DNS length limit */
-	}
-	/* As a whole this should be "NULL terminated" by the 0-length label */
-	if (strnlen(rr, left) > left - 1) {
-		return -1;
+	if(!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, 253, FR_MAX_STRING_LEN)) {
+		ERROR("Failed to allocate buffer for DNS label parsing");
+		return XLAT_ACTION_FAIL;
 	}
 
 	/* It will fit, but does it it look well formed? */
@@ -117,32 +111,30 @@ static int rrlabels_tostr(char *out, char *rr, size_t left)
 
 		offset++;
 		if (count > 63 || strlen(rr + offset) < count) {
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 		offset += count;
 	}
 
 	/* Data is valid and fits.  Copy it. */
-	offset = 0;
 	while (1) {
-		int count;
+		size_t count;
 
 		count = *((unsigned char *)(rr));
 		if (!count) break;
 
-		if (offset) {
-			*(out + offset) = '.';
-			offset++;
+		if (fr_sbuff_used(&sbuff)) {
+			fr_sbuff_in_char(&sbuff, '.');
 		}
 
 		rr++;
-		memcpy(out + offset, rr, count);
+		fr_sbuff_in_bstrncpy(&sbuff, rr, count);
 		rr += count;
-		offset += count;
 	}
 
-	*(out + offset) = '\0';
-	return offset;
+	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
+	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), true);
+	return XLAT_ACTION_DONE;
 }
 
 static int ub_common_wait(unbound_xlat_thread_inst_t const *xt, request_t *request,
