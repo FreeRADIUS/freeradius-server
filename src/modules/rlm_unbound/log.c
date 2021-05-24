@@ -128,7 +128,6 @@ static int _unbound_log_free(unbound_log_t *u_log)
  */
 int unbound_log_init(TALLOC_CTX *ctx, unbound_log_t **u_log_out, struct ub_ctx *ub)
 {
-	char		opt[64]; /* To silence const warns until newer unbound in distros */
 	char		*val;
 	unbound_log_t	*u_log;
 	int		ret;
@@ -138,22 +137,16 @@ int unbound_log_init(TALLOC_CTX *ctx, unbound_log_t **u_log_out, struct ub_ctx *
 	 *	a log destination, and disable it
 	 *	if they did.
 	 */
-	strcpy(opt, "use-syslog");
-	ret = ub_ctx_get_option(ub, opt, &val);
+	ret = ub_ctx_get_option(ub, "use-syslog", &val);
 	if ((ret != 0) || !val) {
 		ERROR("Failed retrieving unbound syslog settings: %s", ub_strerror(ret));
 		return -1;
 	}
 
 	if (strcmp(val, "yes") == 0) {
-		char vbuff[3];
+		WARN("Disabling unbound syslog output (use-syslog: %s) > (use-syslog: no)", val);
 
-		strcpy(opt, "use-syslog:");
-		strcpy(vbuff, "no");
-
-		WARN("Disabling unbound syslog output (%s %s) > (%s %s)", opt, val, opt, vbuff);
-
-		ret = ub_ctx_set_option(ub, opt, vbuff);
+		ret = ub_ctx_set_option(ub, "use-syslog:", "no");
 		if (ret != 0) {
 			ERROR("Failed disabling unbound syslog output: %s", ub_strerror(ret));
 			free(val);
@@ -162,21 +155,16 @@ int unbound_log_init(TALLOC_CTX *ctx, unbound_log_t **u_log_out, struct ub_ctx *
 	}
 	free(val);
 
-	strcpy(opt, "logfile");
-	ret = ub_ctx_get_option(ub, opt, &val);
+	ret = ub_ctx_get_option(ub, "logfile", &val);
 	if ((ret != 0) || !val) {
 		ERROR("Failed retrieving unbound logfile settings: %s", ub_strerror(ret));
 		return -1;
 	}
 
 	if (strcmp(val, "yes") == 0) {
-		char vbuff[3];
+		WARN("Disabling unbound logfile output (logfile: %s) > (logfile: no)", val);
 
-		WARN("Disabling unbound logfile output (%s %s) > (%s %s)", opt, val, opt, vbuff);
-		strcpy(opt, "logfile:");
-		strcpy(vbuff, "no");
-
-		ret = ub_ctx_set_option(ub, opt, vbuff);
+		ret = ub_ctx_set_option(ub, "logfile:", "no");
 		if (ret != 0) {
 			ERROR("Failed disabling unbound logfile output: %s", ub_strerror(ret));
 			free(val);
