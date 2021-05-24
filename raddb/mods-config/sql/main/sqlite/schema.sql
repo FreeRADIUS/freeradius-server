@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS radacct (
 	class varchar(64) default NULL
 );
 
+--
+--  You might not need all of these indexes.  It should be safe to
+--  delete indexes you do not use.  For example, if you're not using
+--  IPv6, you can delete the indexes on IPv6 attributes.
+--
+--  You MUST however leave the indexes needed by the server, which
+--  include username, acctstoptime, nasipaddress, acctstarttime, and
+--  acctuniqueid.
+--
 CREATE UNIQUE INDEX acctuniqueid ON radacct(acctuniqueid);
 CREATE INDEX username ON radacct(username);
 CREATE INDEX framedipaddress ON radacct (framedipaddress);
@@ -55,6 +64,7 @@ CREATE INDEX acctstarttime ON radacct(acctstarttime);
 CREATE INDEX acctinterval ON radacct(acctinterval);
 CREATE INDEX acctstoptime ON radacct(acctstoptime);
 CREATE INDEX nasipaddress ON radacct(nasipaddress);
+CREATE INDEX class ON radacct(class);
 
 --
 -- Table structure for table 'radcheck'
@@ -123,8 +133,11 @@ CREATE TABLE IF NOT EXISTS radpostauth (
 	username varchar(64) NOT NULL default '',
 	pass varchar(64) NOT NULL default '',
 	reply varchar(32) NOT NULL default '',
-	authdate timestamp NOT NULL
+	authdate timestamp NOT NULL,
+	class varchar(64) default NULL
 );
+CREATE INDEX username ON radpostauth(username);
+CREATE INDEX class ON radpostauth(class);
 
 --
 -- Table structure for table 'nas'
