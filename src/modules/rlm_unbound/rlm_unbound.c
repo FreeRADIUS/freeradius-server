@@ -35,18 +35,11 @@ RCSID("$Id$")
 #include "log.h"
 
 typedef struct {
-	struct ub_ctx	*ub;   /* This must come first.  Do not move */
-
 	char const	*name;
-	char const	*xlat_a_name;
-	char const	*xlat_aaaa_name;
-	char const	*xlat_ptr_name;
 
 	uint32_t	timeout;
 
 	char const	*filename;
-
-	unbound_log_t	*u_log;
 } rlm_unbound_t;
 
 typedef struct {
@@ -557,52 +550,6 @@ static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread
 	return 0;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
-{
-	rlm_unbound_t	*inst = instance;
-	int		res;
-	char		k[64]; /* To silence const warns until newer unbound in distros */
-
-	/*
-	 *	@todo - move this to the thread-instantiate function
-	 */
-	inst->ub = ub_ctx_create();
-	if (!inst->ub) {
-		cf_log_err(conf, "ub_ctx_create failed");
-		return -1;
-	}
-
-	/*
-	 *	Note unbound threads WILL happen with -s option, if it matters.
-	 *	We cannot tell from here whether that option is in effect.
-	 */
-	res = ub_ctx_async(inst->ub, 1);
-	if (res) goto error;
-
-	/* Now load the config file, which can override gleaned settings. */
-	res = ub_ctx_config(inst->ub, UNCONST(char *, inst->filename));
-	if (res) goto error;
-
-	if (unbound_log_init(inst, &inst->u_log, inst->ub) < 0) goto error;
-
-	/*
-	 *  Now we need to finalize the context.
-	 *
-	 *  There's no clean API to just finalize the context made public
-	 *  in libunbound.  But we can trick it by trying to delete data
-	 *  which as it happens fails quickly and quietly even though the
-	 *  data did not exist.
-	 */
-	strcpy(k, "notar33lsite.foo123.nottld A 127.0.0.1");
-	ub_ctx_data_remove(inst->ub, k);
-	return 0;
-
- error:
-	cf_log_err(conf, "%s", ub_strerror(res));
-
-	return -1;
-}
-
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
 {
 	rlm_unbound_t		*inst = talloc_get_type_abort(instance, rlm_unbound_t);
@@ -676,24 +623,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mod_detach(void *instance)
-{
-	rlm_unbound_t *inst = instance;
-
-	ub_process(inst->ub);
-
-	/*
-	 *	This can hang/leave zombies currently
-	 *	see upstream bug #519
-	 *	...so expect valgrind to complain with -m
-	 */
-	talloc_free(inst->u_log);	/* Free logging first */
-
-	ub_ctx_delete(inst->ub);
-
-	return 0;
-}
-
 extern module_t rlm_unbound;
 module_t rlm_unbound = {
 	.magic			= RLM_MODULE_INIT,
@@ -702,8 +631,6 @@ module_t rlm_unbound = {
 	.inst_size		= sizeof(rlm_unbound_t),
 	.config			= module_config,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
-	.detach			= mod_detach
 
 	.thread_inst_size	= sizeof(rlm_unbound_thread_t),
 	.thread_inst_type	= "rlm_unbound_thread_t",
