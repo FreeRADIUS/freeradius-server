@@ -55,6 +55,19 @@ typedef struct {
 	fr_event_list_t		*el;		//!< Current thread event list
 } rlm_unbound_thread_t;
 
+typedef struct {
+	rlm_unbound_t		*inst;		//!< Instance data
+	rlm_unbound_thread_t	*t;		//!< Thread structure
+	request_t		*request;	//!< Current request being processed
+	fr_event_timer_t const	*ev;		//!< For timing out the query
+	int			async_id;	//!< Id of async query for stopping due to timeout
+	struct ub_result	*result;	//!< Result of current query
+	int			done;		//!< Indicator that the unbound callback has been called
+	fr_type_t		return_type;	//!< Data type to parse result into
+	bool			has_priority;	//!< Does the returned data start with a priority field
+	uint16_t		count;		//!< Number of results to return
+} unbound_xlat_thread_inst_t;
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
