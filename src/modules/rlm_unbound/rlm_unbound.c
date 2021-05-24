@@ -428,6 +428,16 @@ static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread
 	return 0;
 }
 
+static int mod_xlat_thread_detach(void *xlat_thread_inst, UNUSED void *uctx)
+{
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
+
+	ub_process(xt->ub);
+	talloc_free(xt->u_log);
+	ub_ctx_delete(xt->ub);
+	return 0;
+}
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_unbound_t	*inst = instance;
