@@ -55,6 +55,11 @@ typedef struct {
 	unbound_log_t		*u_log;		//!< Unbound log structure
 } rlm_unbound_thread_t;
 
+typedef struct {
+	rlm_unbound_t		*inst;		//!< Instance data
+	rlm_unbound_thread_t	*t;		//!< Thread structure
+} unbound_xlat_thread_inst_t;
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
