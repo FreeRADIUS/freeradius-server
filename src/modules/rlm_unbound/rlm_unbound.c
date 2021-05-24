@@ -49,6 +49,12 @@ typedef struct {
 	unbound_log_t	*u_log;
 } rlm_unbound_t;
 
+typedef struct {
+	struct ub_ctx		*ub;		/* this must come first.  Do not move */
+	rlm_unbound_t		*inst;		/* Instance data */
+	unbound_log_t		*u_log;
+} unbound_xlat_thread_inst_t;
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
