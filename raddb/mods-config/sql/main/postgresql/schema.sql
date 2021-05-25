@@ -65,25 +65,8 @@ CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
 -- and, optionally
 -- CREATE INDEX radacct_stop_user_idx ON radacct (acctStopTime, UserName);
 
-/*
- * There was WAAAY too many indexes previously. This combo index
- * should take care of the most common searches.
- * I have commented out all the old indexes, but left them in case
- * someone wants them. I don't recomend anywone use them all at once
- * as they will slow down your DB too much.
- *  - pnixon 2003-07-13
- */
-
-/*
- * create index radacct_UserName on radacct (UserName);
- * create index radacct_AcctSessionId on radacct (AcctSessionId);
- * create index radacct_AcctUniqueId on radacct (AcctUniqueId);
- * create index radacct_FramedIPAddress on radacct (FramedIPAddress);
- * create index radacct_NASIPAddress on radacct (NASIPAddress);
- * create index radacct_AcctStartTime on radacct (AcctStartTime);
- * create index radacct_AcctStopTime on radacct (AcctStopTime);
-*/
-
+-- and for Class
+CREATE INDEX radacct_calss_idx ON radacct (Class);
 
 
 /*
@@ -168,8 +151,11 @@ CREATE TABLE IF NOT EXISTS radpostauth (
 	reply			text,
 	CalledStationId		text,
 	CallingStationId	text,
-	authdate		timestamp with time zone NOT NULL default now()
+	authdate		timestamp with time zone NOT NULL default now(),
+	Class			text
 );
+CREATE INDEX radpostauth_username_idx ON radpostauth (username);
+CREATE INDEX radpostauth_class_idx ON radpostauth (Class);
 
 /*
  * Table structure for table 'nas'
