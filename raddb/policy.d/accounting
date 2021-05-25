@@ -61,7 +61,7 @@ acct_unique {
 #
 insert_acct_class {
 	update reply {
-		&Class = "${policy.class_value_prefix}%{md5:%t,%I,%{Packet-Src-Port},%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}},%{NAS-IP-Address},%{Calling-Station-ID},%{User-Name},%{session-state:User-Name} }"
+		&Class = "${policy.class_value_prefix}%{md5:%t,%{Packet-Src-Port},%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}},%{NAS-IP-Address},%{Calling-Station-ID},%{User-Name},%{session-state:User-Name} }"
 	}
 }
 
