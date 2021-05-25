@@ -276,8 +276,15 @@ CREATE TABLE [radpostauth] (
 	[userName] [varchar] (64) NOT NULL ,
 	[pass] [varchar] (64) NOT NULL ,
 	[reply] [varchar] (32) NOT NULL ,
-	[authdate] [datetime] NOT NULL
+	[authdate] [datetime] NOT NULL,
+	[Class] [varchar] (64) NULL
 )
+GO
+
+CREATE INDEX [userName] ON [radpostauth]([userName]) ON [PRIMARY]
+GO
+
+CREATE INDEX [Class] ON [radpostauth]([Class]) ON [PRIMARY]
 GO
 
 ALTER TABLE [radpostauth] WITH NOCHECK ADD
