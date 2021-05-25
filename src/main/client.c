@@ -158,10 +158,6 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 		client_list_free(clients);
 		return false;
 	}
-	if (!cs) {
-		rad_assert(root_clients == NULL);
-		root_clients = clients;
-	}
 
 	return clients;
 }
@@ -700,6 +696,13 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		}
 
 	}
+
+	/*
+	 *	Replace the global list of clients with the new one.
+	 *	The old one is still referenced from the original
+	 *	configuration, and will be freed when that is freed.
+	 */
+	if (global) root_clients = clients;
 
 	return clients;
 }
