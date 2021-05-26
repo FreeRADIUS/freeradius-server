@@ -64,8 +64,6 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 {
 	fr_heap_t *fh;
 
-	if (!cmp) return NULL;
-
 	fh = talloc_zero(ctx, fr_heap_t);
 	if (!fh) return NULL;
 
