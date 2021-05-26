@@ -407,9 +407,8 @@ static int8_t fr_event_timer_cmp(void const *a, void const *b)
 static int8_t fr_event_fd_cmp(void const *one, void const *two)
 {
 	fr_event_fd_t const	*a = one, *b = two;
-	int			ret;
 
-	CMP_RETURN(fd);
+	CMP_RETURN(a, b, fd);
 
 	return CMP(a->filter, b->filter);
 }
@@ -2371,9 +2370,8 @@ static int event_timer_location_cmp(void const *one, void const *two)
 {
 	fr_event_counter_t const	*a = one;
 	fr_event_counter_t const	*b = two;
-	int				ret;
 
-	CMP_RETURN(file);
+	CMP_RETURN(a, b, file);
 
 	return CMP(line);
 }

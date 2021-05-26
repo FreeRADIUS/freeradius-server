@@ -1977,8 +1977,8 @@ static int8_t rs_rtx_cmp(void const *one, void const *two)
 	RS_ASSERT(!fr_pair_list_empty(&a->link_vps));
 	RS_ASSERT(!fr_pair_list_empty(&b->link_vps));
 
-	CMP_RETURN(expect->code);
-	CMP_RETURN(expect->socket.fd);
+	CMP_RETURN(a, b, expect->code);
+	CMP_RETURN(a, b, expect->socket.fd);
 
 	ret = fr_ipaddr_cmp(&a->expect->socket.inet.src_ipaddr, &b->expect->socket.inet.src_ipaddr);
 	if (ret != 0) return ret;

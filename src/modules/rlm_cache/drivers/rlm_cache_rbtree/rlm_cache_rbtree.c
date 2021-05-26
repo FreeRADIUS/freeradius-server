@@ -47,12 +47,9 @@ typedef struct {
 static int8_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
-	int ret;
 
-	CMP_RETURN(key_len);
-
-	ret = memcmp(a->key, b->key, a->key_len);
-	return CMP(ret, 0);
+	MEMCMP_RETURN(a, b, key, key_len);
+	return 0;
 }
 
 /** Compare two entries by expiry time

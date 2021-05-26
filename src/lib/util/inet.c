@@ -1282,12 +1282,12 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
 /** Compare two ip addresses
  *
  */
-int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
+int8_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 {
 	int ret;
 
-	CMP_RETURN(af);
-	CMP_RETURN(prefix);
+	CMP_RETURN(a, b, af);
+	CMP_RETURN(a, b, prefix);
 
 	switch (a->af) {
 	case AF_INET:
@@ -1298,7 +1298,7 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
-		CMP_RETURN(scope_id);
+		CMP_RETURN(a, b, scope_id);
 		ret = memcmp(&a->addr.v6, &b->addr.v6, sizeof(a->addr.v6));
 		return CMP(ret, 0);
 #endif

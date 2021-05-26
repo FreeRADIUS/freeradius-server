@@ -44,7 +44,7 @@ RCSID("$Id$")
 int8_t fr_packet_cmp(void const *a_v, void const *b_v)
 {
 	fr_radius_packet_t const *a = a_v, *b = b_v;
-	int ret;
+	int8_t ret;
 
 	/*
 	 *	256-way fanout for RADIUS IDs, then by FD.  And then
@@ -53,10 +53,10 @@ int8_t fr_packet_cmp(void const *a_v, void const *b_v)
 	 *	redundant with the comparison on FD, but it's not
 	 *	_completely_ redundant.
 	 */
-	CMP_RETURN(id);
-	CMP_RETURN(socket.fd);
-	CMP_RETURN(socket.inet.src_port);
-	CMP_RETURN(socket.inet.dst_port);
+	CMP_RETURN(a, b, id);
+	CMP_RETURN(a, b, socket.fd);
+	CMP_RETURN(a, b, socket.inet.src_port);
+	CMP_RETURN(a, b, socket.inet.dst_port);
 
 	/*
 	 *	Usually many client IPs, and few server IPs

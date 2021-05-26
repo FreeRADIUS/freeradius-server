@@ -151,7 +151,7 @@ int	fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet);
 /*
  *	Comparison
  */
-int	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
+int8_t	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
 /*
  *	Sockaddr conversion functions

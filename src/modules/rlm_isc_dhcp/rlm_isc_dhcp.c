@@ -796,12 +796,9 @@ static int8_t host_uid_cmp(void const *one, void const *two)
 {
 	isc_host_uid_t const *a = one;
 	isc_host_uid_t const *b = two;
-	int ret;
 
-	CMP_RETURN(client->vb_length);
-
-	ret = memcmp(a->client->vb_octets, b->client->vb_octets, a->client->vb_length);
-	return CMP(ret, 0);
+	MEMCMP_RETURN(a, b, client->vb_octets, client->vb_length);
+	return 0;
 }
 
 

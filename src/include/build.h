@@ -64,14 +64,14 @@ extern "C" {
  */
 #undef unix
 
-/*
- *	The ubiquitous stringify macros
+/** The ubiquitous stringify macros
+ *
  */
 #define XSTRINGIFY(x) #x
 #define STRINGIFY(x) XSTRINGIFY(x)
 #define JOINSTR(x,y) XSTRINGIFY(x ## y)
 
-/** Helper for initialising arrays of string literals.
+/** Helper for initialising arrays of string literals
  */
 #define L(_str)		{ _str, sizeof(_str) - 1 }
 
@@ -87,14 +87,36 @@ extern "C" {
  */
 #define CMP(_a, _b)			CMP_PREFER_SMALLER(_a, _b)
 
-/*
- *	Callbacks which make comparisons easier.
+/** Return if the comparison is not 0 (is unequal)
+ *
+ * @param[in] _a	pointer to first structure.
+ * @param[in] _b	pointer to second structure.
+ * @param[in] _filed	within the structs to compare.
+ * @return The result of the comparison.
  */
-#define CMP_RETURN(_field) do { \
-		ret = CMP(a->_field, b->_field); \
-		if (ret != 0) return ret; \
-	} while (0)
+#define CMP_RETURN(_a, _b, _field) \
+do { \
+	int8_t _ret = CMP((_a)->_field, (_b)->_field); \
+	if (_ret != 0) return _ret; \
+} while (0)
 
+/** Return if the contents of the specified field is not identical between the specified structures
+ *
+ * @param[in] _a		pointer to first structure.
+ * @param[in] _b		pointer to second structure.
+ * @param[in] _field		within the structs to compare.
+ * @param[in] _len_field	within the structs, specifying the length of the data.
+ * @return The result of the comparison.
+ */
+#define MEMCMP_RETURN(_a, _b, _field, _len_field) \
+do { \
+	int8_t _ret = CMP((_a)->_len_field, (_b)->_len_field); \
+	int _mret; \
+	if (_ret != 0) return _ret; \
+	_mret = memcmp((_a)->_field, (_b)->_field, (_a)->_len_field); \
+	_ret = CMP(_mret, 0); \
+	if (_ret != 0) return _ret; \
+} while (0)
 /** Remove const qualification from a pointer
  *
  * @param[in] _type	The non-const version of the type.
@@ -119,8 +141,8 @@ extern "C" {
 #  define HEXIFY(b1)		XHEXIFY(b1)
 #endif
 
-/*
- *	Pass caller information to the function
+/** Pass caller information to the function
+ *
  */
 #ifndef NDEBUG
 #  define NDEBUG_LOCATION_ARGS			char const *file, int line,
@@ -151,7 +173,6 @@ extern "C" {
 #define UNUSED			CC_HINT(unused)
 
 /** clang 10 doesn't recognised the FALL-THROUGH comment anymore
- *
  */
 #if (defined(__clang__) && (__clang_major__ >= 10)) || (defined(__GNUC__) && __GNUC__ >= 7)
 #  define FALL_THROUGH		CC_HINT(fallthrough)

@@ -701,12 +701,12 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	UDP vs TCP
 	 */
-	CMP_RETURN(app_io_addr->proto);
+	CMP_RETURN(a, b, app_io_addr->proto);
 
 	/*
 	 *	Check ports.
 	 */
-	CMP_RETURN(app_io_addr->inet.src_port);
+	CMP_RETURN(a, b, app_io_addr->inet.src_port);
 
 	/*
 	 *	Don't call fr_ipaddr_cmp(), as we need to do our own
@@ -717,14 +717,14 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	Different address families.
 	 */
-	CMP_RETURN(app_io_addr->inet.src_ipaddr.af);
+	CMP_RETURN(a, b, app_io_addr->inet.src_ipaddr.af);
 
 	/*
 	 *	If both are bound to interfaces, AND the interfaces
 	 *	are different, then there is no conflict.
 	 */
 	if (a->app_io_addr->inet.src_ipaddr.scope_id && b->app_io_addr->inet.src_ipaddr.scope_id) {
-		CMP_RETURN(app_io_addr->inet.src_ipaddr.scope_id);
+		CMP_RETURN(a, b, app_io_addr->inet.src_ipaddr.scope_id);
 	}
 
 	ret = a->app_io_addr->inet.src_ipaddr.prefix - b->app_io_addr->inet.src_ipaddr.prefix;

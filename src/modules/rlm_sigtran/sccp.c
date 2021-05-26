@@ -62,9 +62,8 @@ static int sigtran_txn_cmp(void const *one, void const *two)
 {
 	sigtran_transaction_t const *a = one;	/* May be stack allocated */
 	sigtran_transaction_t const *b = two;	/* May be stack allocated */
-	int ret;
 
-	CMP_RETURN(ctx.otid);
+	CMP_RETURN(a, b, ctx.otid);
 
 	return CMP(a->ctx.invoke_id, b->ctx.invoke_id);
 }

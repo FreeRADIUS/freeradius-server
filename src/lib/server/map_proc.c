@@ -41,12 +41,9 @@ static fr_rb_tree_t *map_proc_root = NULL;
 static int8_t map_proc_cmp(void const *one, void const *two)
 {
 	map_proc_t const *a = one, *b = two;
-	int ret;
 
-	CMP_RETURN(length);
-
-	ret = memcmp(a->name, b->name, a->length);
-	return CMP(ret, 0);
+	MEMCMP_RETURN(a, b, name, length);
+	return 0;
 }
 
 /** Unregister a map processor

@@ -504,9 +504,8 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 static int8_t _inode_cmp(void const *one, void const *two)
 {
 	cf_file_t const *a = one, *b = two;
-	int ret;
 
-	CMP_RETURN(buf.st_dev);
+	CMP_RETURN(a, b, buf.st_dev);
 
 	return CMP(a->buf.st_ino, b->buf.st_ino);
 }

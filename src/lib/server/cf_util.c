@@ -249,7 +249,7 @@ static inline int8_t _cf_ident1_cmp(void const *one, void const *two)
 		CONF_ITEM const *a = one;
 		CONF_ITEM const *b = two;
 
-		CMP_RETURN(type);
+		CMP_RETURN(a, b, type);
 		type = a->type;
 	}
 

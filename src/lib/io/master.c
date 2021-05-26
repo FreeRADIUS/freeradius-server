@@ -221,18 +221,13 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 
 static int8_t address_cmp(void const *one, void const *two)
 {
-	int ret;
 	fr_io_address_t const *a = talloc_get_type_abort_const(one, fr_io_address_t);
 	fr_io_address_t const *b = talloc_get_type_abort_const(two, fr_io_address_t);;
+	int8_t ret;
 
-	ret = CMP(a->socket.inet.src_port, b->socket.inet.src_port);
-	if (ret != 0) return ret;
-
-	ret = CMP(a->socket.inet.dst_port, b->socket.inet.dst_port);
-	if (ret != 0) return ret;
-
-	ret = CMP(a->socket.inet.ifindex, b->socket.inet.ifindex);
-	if (ret != 0) return ret;
+	CMP_RETURN(a, b, socket.inet.src_port);
+	CMP_RETURN(a, b, socket.inet.dst_port);
+	CMP_RETURN(a, b, socket.inet.ifindex);
 
 	ret = fr_ipaddr_cmp(&a->socket.inet.src_ipaddr, &b->socket.inet.src_ipaddr);
 	if (ret != 0) return ret;

@@ -520,12 +520,9 @@ static inline int8_t terminal_cmp(void const *one, void const *two)
 {
 	fr_sbuff_term_elem_t const	*a = one;
 	fr_sbuff_term_elem_t const	*b = two;
-	int ret;
 
-	CMP_RETURN(len);
-
-	ret = memcmp(a->str, b->str, a->len);
-	return CMP(ret, 0);
+	MEMCMP_RETURN(a, b, str, len);
+	return 0;
 }
 
 /** Merge two sets of terminal strings
