@@ -15,7 +15,6 @@ included in your module. If the module is called for a section which
 does not have a function defined, it will return `noop`.
 
 
-
 ## Configuration Settings
 
 The following hashes are given to the module and
@@ -97,7 +96,7 @@ For instance:
 [source,perl]
 ----
 $RAD_PERLCONF{'name'}
-$RAD_PERLCONF{'sub-config'}->{'name'}`
+$RAD_PERLCONF{'sub-config'}->{'name'}
 ----
 
 
@@ -114,7 +113,6 @@ perl {
 #	func_pre_proxy = pre_proxy
 #	func_post_proxy = post_proxy
 #	func_post_auth = post_auth
-#	func_xlat = xlat
 #	func_detach = detach
 #	func_start_accounting = accounting_start
 #	func_stop_accounting = accounting_stop
@@ -124,5 +122,31 @@ perl {
 #			name = "value of name from config.sub-config"
 #		}
 #	}
+}
+```
+
+## xlat for calling arbitrary Perl subroutines
+
+An xlat based on the instance name can be called to run arbitrary subroutines
+declared in the perl file configured in the instance.  The xlat takes the
+subroutine name as its first argument and then any subsequent arguments are
+passed as string scalars to the subroutine.  If any of the arguments are
+lists with multiple values e.g. `%{User-Name[*]}` where there are multiple
+instances of `User-Name` then those arguments will be passed as references
+to arrays containing all the values from the list.
+
+The return value of the subroutine is passed back as the expanded value of
+the xlat.  Since the subroutine is called in array context, all returned values
+are received, though currently they are concatenated to form a single value.
+This is due to change in the future.
+
+NOTE: The Perl xlat does not have access to the attribute lists, nor will
+setting the hashes update the attribute lists.
+
+.Example
+
+```
+update control {
+        &Tmp-String-0 := "%(perl:myfunc arg1 arg2)"
 }
 ```
