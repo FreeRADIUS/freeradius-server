@@ -31,13 +31,13 @@ export OPENSSL_CONF
 all: index.txt serial dh ca server client ocsp
 
 .PHONY: client
-client: rsa/client.pem ecc/client.pem
+client: rsa/client.pem ecc/client.pem rsa/client.crt ecc/client.crt
 
 .PHONY: ca
-ca: rsa/ca.der ecc/ca.der rsa/ca.crl
+ca: rsa/ca.der ecc/ca.der rsa/ca.crl rsa/ca.crt ecc/ca.crt
 
 .PHONY: server
-server: rsa/server.pem rsa/server.vrfy ecc/server.pem ecc/server.vrfy
+server: rsa/server.pem rsa/server.crt rsa/server.vrfy ecc/server.pem ecc/server.crt ecc/server.vrfy
 
 .PHONY: ocsp
 ocsp: rsa/ocsp.pem rsa/ocsp.vrfy ecc/ocsp.pem ecc/ocsp.vrfy
