@@ -3720,6 +3720,7 @@ static void ping_home_server(void *ctx)
 	NO_CHILD_THREAD;
 
 	request->proxy = rad_alloc(request, true);
+	request->root = &main_config;
 	rad_assert(request->proxy != NULL);
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
