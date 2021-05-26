@@ -6,6 +6,8 @@ FreeRADIUS 3.0.23 Mon 17 May 2021 12:00:00 EDT urgency=low
 	  it back to life.
 
 	Bug fixes
+	* Fix crash in some cases when home server is down.
+	* Fix (again) "read clients from SQL" functionality.
 
 FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	Feature improvements
