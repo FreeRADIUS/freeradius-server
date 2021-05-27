@@ -575,12 +575,9 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	}
 
 	if (cf_top_section(section) == section) {
-		if (clients->parsed) return clients;
-
 		global = true;
 		clients->name = "global";
 		clients->server = NULL;
-		clients->parsed = true;
 	}
 
 	if (strcmp("server", cf_section_name1(section)) == 0) {
