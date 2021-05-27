@@ -1772,6 +1772,10 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 		cprintf(listener, "zombie\n");
 		break;
 
+	case HOME_STATE_ADMIN_DOWN:
+		cprintf(listener, "down\n");
+		break;
+
 	case HOME_STATE_UNKNOWN:
 		cprintf(listener, "unknown\n");
 		break;
