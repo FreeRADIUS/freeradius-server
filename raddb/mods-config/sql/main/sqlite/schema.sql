@@ -136,8 +136,8 @@ CREATE TABLE IF NOT EXISTS radpostauth (
 	authdate timestamp NOT NULL,
 	class varchar(64) default NULL
 );
-CREATE INDEX username ON radpostauth(username);
-CREATE INDEX class ON radpostauth(class);
+CREATE INDEX radpostauth_username ON radpostauth(username);
+CREATE INDEX radpostauth_class ON radpostauth(class);
 
 --
 -- Table structure for table 'nas'
