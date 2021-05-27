@@ -8,6 +8,12 @@
 TEST  := test.sql_nas_table
 FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 
+SQLITE3 := $(shell which sqlite3)
+ifneq "$(SQLITE3)" ""
+
+#
+#  Run the full tests
+#
 $(eval $(call TEST_BOOTSTRAP))
 
 #
@@ -58,3 +64,9 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill sql_nas_table_bootstrap $(TEST).rad
 $(TEST):
 	$(Q)$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@
+else
+#
+#  No sqlite3 command, don't do anything.
+#
+$(TEST):
+endif
