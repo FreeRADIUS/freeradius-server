@@ -65,27 +65,44 @@ static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
 /*
  *	Escape special characters
  */
-static size_t rlm_exec_shell_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in,
-				    UNUSED void *inst)
+static int rlm_exec_shell_escape(request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
 {
-	char *q, *end;
-	char const *p;
+	/*
+	 *	Escaping is done before casting so only escape valid types
+	 */
+	switch (vb->type) {
+	case FR_TYPE_NON_LEAF:
+	case FR_TYPE_OCTETS:
+		REDEBUG("Invalid data type for exec command arguments");
+		return -1;
 
-	q = out;
-	end = out + outlen;
-	p = in;
-
-	while (*p) {
-		if ((q + 3) >= end) break;
-
-		if (strchr(special, *p) != NULL) {
-			*(q++) = '\\';
+	case FR_TYPE_STRING:
+	{
+		char const		*p;
+		fr_sbuff_t		sbuff;
+		fr_sbuff_uctx_talloc_t	sbuff_ctx;
+		/*
+		 *	The maximum length of the escaped version is twice the length of the original
+	 	*	if every character needed escaping
+	 	*/
+		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->length, vb->length * 2)) {
+			REDEBUG("Failed to allocate buffer for escaped string");
+			return -1;
 		}
-		*(q++) = *(p++);
-	}
 
-	*q = '\0';
-	return q - out;
+		p = vb->vb_strvalue;
+
+		while (*p) {
+			if (strchr(special, *p) != NULL) fr_sbuff_in_char(&sbuff, '\\');
+			fr_sbuff_in_char(&sbuff, *(p++));
+		}
+		fr_value_box_clear_value(vb);
+		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), false);
+		return 0;
+	}
+	default:
+		return 0;
+	}
 }
 
 static xlat_arg_parser_t const exec_xlat_arg = {
