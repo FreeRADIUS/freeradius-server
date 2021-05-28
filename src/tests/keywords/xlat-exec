@@ -18,4 +18,17 @@ if (&control.Tmp-String-1 != "hello foo:1234 world") {
 	test_fail
 }
 
+# User-Password contains characters that need escaping
+update control {
+	&Tmp-String-2 := `/bin/echo %{User-Password}`
+}
+
+if (&control.Tmp-String-2 != &User-Password) {
+	test_fail
+} else {
+	update request {
+		&User-Password := "hello"
+	}
+}
+
 success
