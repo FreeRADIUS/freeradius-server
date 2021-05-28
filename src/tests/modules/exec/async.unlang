@@ -3,25 +3,22 @@
 #  because we don't wait for the response.
 #
 update request {
-	&Tmp-String-0 := "%{exec_async:/bin/sh -c 'echo hello'}"
+	&Tmp-String-0 := "%(exec_async:/bin/sh -c 'echo -n hello')"
 }
 if (&Tmp-String-0 != '') {
 	test_fail
 }
 
-#
-#  Async calls should not have their output added to the request
-#
-update request {
-	&Tmp-String-0 := "%{exec_async:/bin/sh -c \"echo 'reply.Reply-Message = \'hello\''\"}"
-}
-
-if (&reply.Reply-Message == 'hello') {
-	test_fail
-}
-
-exec_async_inline
+exec_async_mod
 
 if (ok) {
 	test_pass
+}
+
+#
+#  Async calls should not have their output added to the request
+#
+
+if (&reply.Reply-Message == 'hello') {
+	test_fail
 }

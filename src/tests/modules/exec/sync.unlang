@@ -1,28 +1,34 @@
 #
-#  Sync calls should always return a zero length string
-#  because we don't wait for the response.
+#  Sync calls return the response
 #
 update request {
-	&Tmp-String-0 := "%{exec_sync:/bin/sh -c 'echo hello'}"
+	&Tmp-String-0 := "%(exec_sync:/bin/sh -c 'echo hello')"
 }
 if (&Tmp-String-0 != 'hello') {
 	test_fail
 }
 
 #
-#  Sync calls should have their output added to the request
+#  Call something which will take longer than the timeout
 #
 update request {
-	&Tmp-String-0 := "%{exec_sync:/bin/sh -c 'echo \"reply.Reply-Message = \'hello\'\"'}"
+	&Tmp-String-0 := "%(exec_sync:/bin/sleep 10)"
 }
 
-if (&reply.Reply-Message != 'hello') {
+if (&Module-Failure-Message[*] != "Timeout running program - killing it and failing the request") {
 	test_fail
 }
 
-exec_sync_inline
+if (&Tmp-String-0 != "") {
+	test_fail
+}
 
-if (&control.Tmp-String-0 != 'welcome') {
+#
+#  Sync calls as modules should have their output added to the request
+#
+exec_sync_mod
+
+if ((!&control.Tmp-String-0) || (&control.Tmp-String-0 != 'welcome')) {
 	test_fail
 }
 
