@@ -60,79 +60,99 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
 
-/*
- *	Escape special characters
- */
-static size_t rlm_exec_shell_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in,
-				    UNUSED void *inst)
+static xlat_action_t exec_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				      UNUSED fr_value_box_list_t *in, void *rctx)
 {
-	char *q, *end;
-	char const *p;
+	fr_exec_state_t	*exec = talloc_get_type_abort(rctx, fr_exec_state_t);
+	fr_value_box_t	*vb;
 
-	q = out;
-	end = out + outlen;
-	p = in;
-
-	while (*p) {
-		if ((q + 3) >= end) break;
-
-		if (strchr(special, *p) != NULL) {
-			*(q++) = '\\';
-		}
-		*(q++) = *(p++);
+	/*
+	 *	Allow a return code of 3 as success to match the behaviour of
+	 *	inline module calls.
+	 */
+	if ((exec->status != 0) && (exec->status != 3)) {
+		RPEDEBUG("Execution of external program returned %d", exec->status);
+ 		return XLAT_ACTION_FAIL;
 	}
 
-	*q = '\0';
-	return q - out;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	/*
+	 *	Remove any trailing line endings and trim buffer
+	 */
+	fr_sbuff_trim(&exec->stdout_buff, sbuff_char_line_endings);
+	fr_sbuff_trim_talloc(&exec->stdout_buff, SIZE_MAX);
+
+	/*
+	 *	Use the buffer for the output vb
+	 */
+	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&exec->stdout_buff), true);
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const exec_xlat_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	{ .variadic = true, .type = FR_TYPE_VOID},
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Exec programs from an xlat
  *
  * Example:
 @verbatim
-"%{exec:/bin/echo hello}" == "hello"
+"%(exec:/bin/echo hello)" == "hello"
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 request_t *request, char const *fmt)
+static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, request_t *request,
+			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_list_t *in)
 {
-	int			result;
-	rlm_exec_t const	*inst = mod_inst;
+	rlm_exec_t const	*inst;
+	void			*instance;
 	fr_pair_list_t		*input_pairs = NULL;
-	char *p;
+	fr_exec_state_t		*exec;
 
-	if (!inst->wait) {
-		REDEBUG("'wait' must be enabled to use exec xlat");
-		return -1;
-	}
+	memcpy(&instance, xlat_inst, sizeof(instance));
+
+	inst = talloc_get_type_abort(instance, rlm_exec_t);
 
 	if (inst->input_list) {
 		input_pairs = tmpl_list_head(request, inst->input_list);
 		if (!input_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 	}
 
-	/*
-	 *	This function does it's own xlat of the input program
-	 *	to execute.
-	 */
-	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? input_pairs : NULL,
-				     inst->wait, inst->shell_escape, inst->timeout);
-	if (result != 0) return -1;
-
-	for (p = *out; *p != '\0'; p++) {
-		if (*p < ' ') *p = ' ';
+	if (!inst->wait) {
+		/* Not waiting for the response */
+		fr_exec_nowait(request, in, input_pairs);
+		return XLAT_ACTION_DONE;
 	}
 
-	return strlen(*out);
+	exec = talloc_zero(request, fr_exec_state_t);
+	exec->stdout_used = inst->wait;
+	exec->outctx = ctx;
+
+	if(fr_exec_wait_start_io(exec, exec, request, in, input_pairs, inst->timeout) < 0) {
+		talloc_free(exec);
+		return XLAT_ACTION_FAIL;
+	}
+
+	return unlang_xlat_yield(request, exec_xlat_resume, NULL, exec);
+}
+
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_exec_t);
+	return 0;
 }
 
 /*
@@ -147,15 +167,18 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	char const *p;
+	char const	*p;
 	rlm_exec_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
 	}
 
-	xlat_register_legacy(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(NULL, inst->name, exec_xlat, true);
+	xlat_func_args(xlat, exec_xlat_args);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_exec_t *, NULL, inst);
 
 	if (inst->input) {
 		p = inst->input;
@@ -184,7 +207,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (inst->timeout_is_set || !inst->timeout) {
+	if (!inst->timeout_is_set || !inst->timeout) {
 		/*
 		 *	Pick the shorter one
 		 */
