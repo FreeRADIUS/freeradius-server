@@ -1,14 +1,11 @@
 #
-#  Sync calls should always return a zero length string
-#  because we don't wait for the response.
+#  Sync calls return the response
 #
 update request {
 	&Tmp-String-0 := "%{exec_sync:/bin/sh -c 'echo hello'}"
 }
 if (&Tmp-String-0 != 'hello') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -20,6 +17,6 @@ update request {
 
 if (&reply.Reply-Message != 'hello') {
 	test_fail
-} else {
-	test_pass
 }
+
+test_pass
