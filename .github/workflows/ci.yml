@@ -396,7 +396,7 @@ jobs:
       - name: "Report whether PERSONAL_ACCESS_TOKEN secret exists"
         id: merge-preflight
         run: |
-          [ -n "$PERSONAL_ACCESS_TOKEN" ] && echo "::set-output name=PERSONAL_ACCESS_TOKEN_EXISTS::1"
+          if [ -n "$PERSONAL_ACCESS_TOKEN" ]; then echo "::set-output name=PERSONAL_ACCESS_TOKEN_EXISTS::1"; fi
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     outputs:
