@@ -88,6 +88,9 @@ static size_t rlm_exec_shell_escape(UNUSED request_t *request, char *out, size_t
 	return q - out;
 }
 
+static xlat_arg_parser_t const exec_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING, .func = rlm_exec_shell_escape
+};
 
 /** Exec programs from an xlat
  *
@@ -98,25 +101,28 @@ static size_t rlm_exec_shell_escape(UNUSED request_t *request, char *out, size_t
  *
  * @ingroup xlat_functions
  */
-static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 request_t *request, char const *fmt)
+static xlat_action_t exec_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       fr_value_box_list_t *in)
 {
 	int			result;
-	rlm_exec_t const	*inst = mod_inst;
+	rlm_exec_t const	*inst;
+	void			*instance;
 	fr_pair_list_t		*input_pairs = NULL;
-	char *p;
+	char			*p;
+	char			buffer[XLAT_DEFAULT_BUF_LEN];
+	fr_value_box_t		*cmd = fr_dlist_head(in);
+	fr_value_box_t		*vb;
 
-	if (!inst->wait) {
-		REDEBUG("'wait' must be enabled to use exec xlat");
-		return -1;
-	}
+	memcpy(&instance, xlat_inst, sizeof(instance));
+
+	inst = talloc_get_type_abort(instance, rlm_exec_t);
 
 	if (inst->input_list) {
 		input_pairs = tmpl_list_head(request, inst->input_list);
 		if (!input_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
-			return -1;
+			return XLAT_ACTION_FAIL;
 		}
 	}
 
@@ -124,15 +130,35 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	result = radius_exec_program(request, *out, outlen, NULL, request, fmt, input_pairs ? input_pairs : NULL,
+	result = radius_exec_program(request, buffer, XLAT_DEFAULT_BUF_LEN, NULL, request, cmd->vb_strvalue,
+				     input_pairs ? input_pairs : NULL,
 				     inst->wait, inst->shell_escape, inst->timeout);
-	if (result != 0) return -1;
+	if (result != 0) return XLAT_ACTION_FAIL;
 
-	for (p = *out; *p != '\0'; p++) {
+	/*
+	 *	This is being called in "fire and forget" mode
+	 */
+	if (!inst->wait) return XLAT_ACTION_DONE;
+
+	for (p = buffer; *p != '\0'; p++) {
 		if (*p < ' ') *p = ' ';
 	}
 
-	return strlen(*out);
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (fr_value_box_strdup(ctx, vb, NULL, buffer, false) < 0) {
+		REDEBUG("Failed to allocate space for output");
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
+
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_exec_t);
+	return 0;
 }
 
 /*
@@ -147,15 +173,18 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	char const *p;
+	char const	*p;
 	rlm_exec_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
 	}
 
-	xlat_register_legacy(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(NULL, inst->name, exec_xlat, false);
+	xlat_func_mono(xlat, &exec_xlat_arg);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_exec_t *, NULL, inst);
 
 	if (inst->input) {
 		p = inst->input;
