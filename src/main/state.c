@@ -43,6 +43,8 @@ typedef struct state_entry_t {
 	TALLOC_CTX		*ctx;
 	VALUE_PAIR		*vps;
 
+	char		*server;
+
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
 } state_entry_t;
@@ -319,7 +321,17 @@ static state_entry_t *fr_state_create(fr_state_t *state, REQUEST *request, RADIU
 
 	/*	Make unique for different virtual servers handling same request
 	 */
-	if (request->server) *((uint32_t *)(&entry->state[4])) ^= fr_hash_string(request->server);
+	if (request->server) {
+		/*
+		 *	Make unique for different virtual servers handling same request
+		 */
+		*((uint32_t *)(&entry->state[4])) ^= fr_hash_string(request->server);
+
+		/*
+		 *	Copy server to state in case it's needed for cleanup
+		 */
+		entry->server = talloc_strdup(entry, request->server);
+	}
 
 	if (!rbtree_insert(state->tree, entry)) {
 		talloc_free(entry);
