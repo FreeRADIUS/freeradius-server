@@ -1009,6 +1009,11 @@ static char const *method_names[MOD_COUNT] = {
 	"pre-proxy",
 	"post-proxy",
 	"post-auth"
+#ifdef WITH_COA
+	,
+	"recv-coa",
+	"send-coa"
+#endif
 };
 
 
