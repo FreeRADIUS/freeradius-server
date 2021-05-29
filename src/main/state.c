@@ -438,8 +438,6 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	fr_state_t *state = &global_state;
 	TALLOC_CTX *old_ctx = NULL;
 
-	rad_assert(request->state == NULL);
-
 	/*
 	 *	No State, don't do anything.
 	 */
@@ -447,6 +445,8 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 		RDEBUG3("session-state: No State attribute");
 		return;
 	}
+
+	rad_assert(request->state == NULL);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	entry = fr_state_find(state, request->server, packet);
