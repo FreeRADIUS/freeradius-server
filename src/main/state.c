@@ -185,7 +185,7 @@ void fr_state_delete(fr_state_t *state)
 /*
  *	Create a new entry.  Called with the mutex held.
  */
-static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RADIUS_PACKET *packet, state_entry_t *old)
+static state_entry_t *fr_state_create(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet, state_entry_t *old)
 {
 	size_t i;
 	uint32_t x;
@@ -319,7 +319,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 
 	/*	Make unique for different virtual servers handling same request
 	 */
-	if (server) *((uint32_t *)(&entry->state[4])) ^= fr_hash_string(server);
+	if (request->server) *((uint32_t *)(&entry->state[4])) ^= fr_hash_string(request->server);
 
 	if (!rbtree_insert(state->tree, entry)) {
 		talloc_free(entry);
@@ -521,7 +521,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 		old = NULL;
 	}
 
-	entry = fr_state_create(state, request->server, packet, old);
+	entry = fr_state_create(state, request, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return false;
@@ -610,7 +610,7 @@ bool fr_state_put_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *origi
 		old = NULL;
 	}
 
-	entry = fr_state_create(state, request->server, packet, old);
+	entry = fr_state_create(state, request, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return false;
