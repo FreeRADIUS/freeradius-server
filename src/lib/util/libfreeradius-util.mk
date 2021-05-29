@@ -41,6 +41,7 @@ SOURCES		:= \
 		   inet.c \
 		   isaac.c \
 		   log.c \
+		   lst.c \
 		   md4.c \
 		   md5.c \
 		   misc.c \

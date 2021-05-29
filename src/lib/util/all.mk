@@ -6,6 +6,8 @@ SUBMAKEFILES := \
 	dlist_tests.mk \
 	heap_tests.mk \
 	libfreeradius-util.mk \
+	lst_tests.mk \
+	flst_tests.mk \
 	pair_legacy_tests.mk \
 	pair_list_perf_test.mk \
 	pair_tests.mk \
