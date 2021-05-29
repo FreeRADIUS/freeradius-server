@@ -963,6 +963,30 @@ post-auth {
 	}
 
 	#
+	#  The Client-Lost section will be run for a request when
+	#  FreeRADIUS has given up waiting for a client to
+	#  respond. This is most useful for logging EAP sessions
+	#  where the client stopped responding (likely because the
+	#  certificate was not acceptable.)
+	#
+	#  This will only be triggered by new packets arriving,
+	#  and will be run at some point in the future *after* the
+	#  original request has been discarded.
+	#
+	#  Therefore the *ONLY* attributes that are available here
+	#  are those in the session-state list. If you want data
+	#  to log, make sure it is copied to &session-state:
+	#  before the client stops responding. NONE of the other
+	#  original attributes (request, reply, etc) will be
+	#  available.
+	#
+	#  This section will only be run if `postauth_client_lost`
+	#  is enabled in the main configuration in `radiusd.conf`.
+	#
+#	Post-Auth-Type Client-Lost {
+#	}
+
+	#
 	#  If the client sends EAP-Key-Name in the request,
 	#  then echo the real value back in the reply.
 	#

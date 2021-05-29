@@ -298,7 +298,6 @@ static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
  */
 static void fr_state_cleanup(state_entry_t *head)
 {
-	REQUEST *request;
 	state_entry_t *entry, *next;
 
 	if (!head) return;
@@ -306,14 +305,28 @@ static void fr_state_cleanup(state_entry_t *head)
 	for (entry = head; entry != NULL; entry = next) {
 		next = entry->next;
 
-		request = fr_state_cleanup_request(entry);
-		if (request) {
-			RDEBUG2("No response from client, cleaning up expired state");
-			RDEBUG2("Restoring &session-state");
+		if (main_config.postauth_client_lost) {
+			REQUEST *request;
 
-			rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+			request = fr_state_cleanup_request(entry);
+			if (request) {
+				RDEBUG2("No response from client, cleaning up expired state");
+				RDEBUG2("Restoring &session-state");
 
-			request_inject(request);
+				/*
+				 *	@todo - print out message
+				 *	saying where the handler was
+				 *	in the process?  i.e. "sent
+				 *	server cert", etc.  This will
+				 *	require updating the EAP code
+				 *	to put a new attribute into
+				 *	the session state list.
+				 */
+
+				rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+
+				request_inject(request);
+			}
 		}
 
 		talloc_free(entry);

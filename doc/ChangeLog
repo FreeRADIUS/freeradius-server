@@ -4,6 +4,8 @@ FreeRADIUS 3.0.23 Mon 17 May 2021 12:00:00 EDT urgency=low
 	* Add "set home_server state ... down" in order to mark the
 	  home server as administratively down.  Use "alive" to bring
 	  it back to life.
+	* Add Post-Auth-Type "Client-Lost" which should make it easier
+	  to log when clients stop responding.
 
 	Bug fixes
 	* Fix crash in some cases when home server is down, in debug mode.
