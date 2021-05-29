@@ -1115,6 +1115,11 @@ static void request_queue_or_run(REQUEST *request,
 #endif
 }
 
+void request_inject(REQUEST *request)
+{
+	request_queue_or_run(request, request_running);
+}
+
 
 static void request_dup(REQUEST *request)
 {
