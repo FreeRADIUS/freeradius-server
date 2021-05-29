@@ -684,6 +684,7 @@ VALUE	Session-Type			Local			1
 VALUE	Post-Auth-Type			Local			1
 VALUE	Post-Auth-Type			Reject			2
 VALUE	Post-Auth-Type			Challenge		3
+VALUE	Post-Auth-Type			Client-Lost		4
 
 #
 #	And Post-Proxy
