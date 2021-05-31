@@ -64,11 +64,6 @@ struct fr_state_t {
 #endif
 };
 
-typedef struct fr_cleanup_list_t {
-	REQUEST *request;
-	struct fr_cleanup_list_t *next;
-} fr_cleanup_list_t;
-
 static fr_state_t global_state;
 
 #ifdef HAVE_PTHREAD_H
@@ -96,21 +91,9 @@ static int state_entry_cmp(void const *one, void const *two)
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
 
-/*
- *	When an entry is free'd, it's removed from the linked list of
- *	cleanup times.
- *
- *	Note that
- */
-static void state_entry_free(fr_state_t *state, state_entry_t *entry)
+static void state_entry_unlink(fr_state_t *state, state_entry_t *entry)
 {
 	state_entry_t *prev, *next;
-
-	/*
-	 *	If we're deleting the whole tree, don't bother doing
-	 *	all of the fixups.
-	 */
-	if (!state || !state->tree) return;
 
 	prev = entry->prev;
 	next = entry->next;
@@ -130,6 +113,23 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 		rad_assert(state->tail == entry);
 		state->tail = prev;
 	}
+}
+
+/*
+ *	When an entry is free'd, it's removed from the linked list of
+ *	cleanup times.
+ *
+ *	Note that
+ */
+static void state_entry_free(fr_state_t *state, state_entry_t *entry)
+{
+	/*
+	 *	If we're deleting the whole tree, don't bother doing
+	 *	all of the fixups.
+	 */
+	if (!state || !state->tree) return;
+
+	state_entry_unlink(state, entry);
 
 	if (entry->opaque) {
 		entry->free_opaque(entry->opaque);
@@ -270,77 +270,52 @@ static REQUEST *fr_state_cleanup_request(state_entry_t *entry)
  *	return a list of fake requests for each one.
  *	Called with the mutex held.
  */
-static fr_cleanup_list_t *fr_state_cleanup_find(void *ctx, fr_state_t *state)
+static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
 {
 	time_t now = time(NULL);
 	state_entry_t *entry, *next;
-	fr_cleanup_list_t *rl_head = NULL, *rl_tail = NULL, *rl_entry;
-	REQUEST *request;
+	state_entry_t *head = NULL, **tail = &head;
 
 	for (entry = state->head; entry != NULL; entry = next) {
 		next = entry->next;
 
 		/*
 		 *	Old enough that the request has been
-		 *	removed, so we can clean up.
+		 *	removed.  We can add it to the cleanup list.
 		 */
-		if ((entry->expired < now) && entry->server) {
-			/*
-			 *	Create a new fake request from the state entry
-			 *	If there was an error then return with what
-			 *	we've found so far.
-			 */
-			request = fr_state_cleanup_request(entry);
-			if (unlikely(!request)) return rl_head;
-
-			/*
-			 *	Create a new list entry
-			 */
-			rl_entry = talloc_zero(ctx, fr_cleanup_list_t);
-			if (unlikely(!rl_entry)) {
-				/* We'll lose this entry, but we ran out of memory so meh */
-				talloc_free(request);
-				return rl_head;
-			}
-
-			rl_entry->request = request;
-
-			/*
-			 *	Push new entry on the end of the list
-			 */
-			if (!rl_head) {
-				rl_head = rl_entry;
-			} else {
-				rl_tail->next = rl_entry;
-			}
-			rl_tail = rl_entry;
+		if ((entry->expired < now) && entry->server) {       		
+			(*tail) = entry;
+			state_entry_unlink(state, entry);
+			tail = &entry->next;
 		}
 	}
 
-	return rl_head;
+	return head;
 }
 
 /*
- *	Inject all requests in list for cleanup post-auth
+ *	Inject all requests in cleanup list for cleanup post-auth
  */
-static void fr_state_cleanup(fr_cleanup_list_t *list)
+static void fr_state_cleanup(state_entry_t *head)
 {
 	REQUEST *request;
-	fr_cleanup_list_t *entry, *next;
+	state_entry_t *entry, *next;
 
-	if (!list) return;
+	if (!head) return;
 
-	for (entry = list; entry != NULL; entry = next) {
+	for (entry = head; entry != NULL; entry = next) {
 		next = entry->next;
 
-		request = entry->request;
+		request = fr_state_cleanup_request(entry);
+		if (request) {
+			RDEBUG2("No response from client, cleaning up expired state");
+			RDEBUG2("Restoring &session-state");
 
-		RDEBUG2("No response from client, cleaning up expired state");
-		RDEBUG2("Restoring &session-state");
+			rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 
-		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+			request_inject(request);
+		}
 
-		request_inject(request);
 		talloc_free(entry);
 	}
 }
@@ -665,7 +640,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 {
 	state_entry_t *entry, *old;
 	fr_state_t *state = &global_state;
-	fr_cleanup_list_t *request_list;
+	state_entry_t *cleanup_list;
 
 	if (!request->state) {
 		size_t i;
@@ -700,7 +675,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	request_list = fr_state_cleanup_find(request, state);
+	cleanup_list = fr_state_cleanup_find(state);
 
 	if (original) {
 		old = fr_state_find(state, request->server, original);
@@ -711,7 +686,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	entry = fr_state_create(state, request, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		fr_state_cleanup(request_list);
+		fr_state_cleanup(cleanup_list);
 		return false;
 	}
 
@@ -723,7 +698,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	request->state = NULL;
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-	fr_state_cleanup(request_list);
+	fr_state_cleanup(cleanup_list);
 
 	VERIFY_REQUEST(request);
 	return true;
