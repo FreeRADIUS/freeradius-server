@@ -280,6 +280,17 @@ max_requests = 16384
 hostname_lookups = no
 
 #
+#  Run a "Post-Auth-Type Client-Lost" section.  This ONLY happens when
+#  the server sends an Access-Challenge, and then client does not
+#  respond to it.  The goal is to allow administrators to log
+#  something when the client does not respond.
+#
+#  See sites-available/default, "Post-Auth-Type Client-Lost" for more
+#  information.
+#
+#postauth_client_lost = no
+
+#
 #  Logging section.  The various "log_*" configuration items
 #  will eventually be moved here.
 #

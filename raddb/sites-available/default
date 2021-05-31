@@ -964,10 +964,11 @@ post-auth {
 
 	#
 	#  The Client-Lost section will be run for a request when
-	#  FreeRADIUS has given up waiting for a client to
-	#  respond. This is most useful for logging EAP sessions
-	#  where the client stopped responding (likely because the
-	#  certificate was not acceptable.)
+	#  FreeRADIUS has given up waiting for an end-users client to
+	#  respond. This is most useful for logging EAP sessions where
+	#  the client stopped responding (likely because the
+	#  certificate was not acceptable.)  i.e. this is not for
+	#  RADIUS clients, but for end-user systems.
 	#
 	#  This will only be triggered by new packets arriving,
 	#  and will be run at some point in the future *after* the
@@ -983,8 +984,30 @@ post-auth {
 	#  This section will only be run if `postauth_client_lost`
 	#  is enabled in the main configuration in `radiusd.conf`.
 	#
-#	Post-Auth-Type Client-Lost {
-#	}
+	#  Note that there are MANY reasons why an end users system
+	#  might not respond:
+	#
+	#    * it could not get the packet due to firewall issues
+	#    * it could not get the packet due to a lossy network
+	#    * the users system might not like the servers cert
+	#    * the users system might not like something else...
+	#
+	#  In some cases, the client is helpful enough to send us a
+	#  TLS Alert message, saying what it doesn't like about the
+	#  certificate.  In other cases, no such message is available.
+	#
+	#  All that we can know on the FreeRADIUS side is that we sent
+	#  an Access-Challenge, and the client never sent anything
+	#  else.  The reasons WHY this happens are buried inside of
+	#  the logs on the client system.  No amount of looking at the
+	#  FreeRADIUS logs, or poking the FreeRADIUS configuration
+	#  will tell you why the client gave up.  The answers are in
+	#  the logs on the client side.  And no, the FreeRADIUS team
+	#  didn't write the client, so we don't know where those logs
+	#  are, or how to get at them.
+	#
+	Post-Auth-Type Client-Lost {
+	}
 
 	#
 	#  If the client sends EAP-Key-Name in the request,
