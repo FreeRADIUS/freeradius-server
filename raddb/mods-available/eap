@@ -430,6 +430,24 @@ eap {
 		#
 		#  The values must be in quotes.
 		#
+		#  We also STRONGLY RECOMMEND to set
+		#
+		#	tls_max_version = "1.2"
+		#
+		#  While the server will accept "1.3" as a value,
+		#  most EAP supplicants WILL NOT DO TLS 1.3 PROPERLY.
+		#
+		#  i.e. they WILL NOT WORK, SO DO NOT ASK QUESTIONS ON
+		#  THE LIST ABOUT WHY IT DOES NOT WORK.
+		#
+		#  The TLS 1.3 support is here for future
+		#  compatibility, as clients get upgraded, and people
+		#  don't upgrade their copies of FreeRADIUS.
+		#
+		#  Also note that we only support TLS 1.3 for EAP-TLS.
+		#  Other versions of EAP (PEAP, TTLS, FAST) DO NOT
+		#  SUPPORT TLS 1.3.
+		#
 		tls_min_version = "1.2"
 		tls_max_version = "1.2"
 
