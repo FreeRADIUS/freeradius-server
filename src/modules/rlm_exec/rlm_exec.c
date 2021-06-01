@@ -411,8 +411,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 		fr_value_box_list_t *box = talloc_zero(ctx, fr_value_box_list_t);
 
 		fr_value_box_list_init(box);
-
-		return unlang_module_yield_to_xlat(request, box, request, tmpl_xlat(inst->tmpl), mod_exec_nowait_resume, NULL, &box);
+		return unlang_module_yield_to_xlat(request, box, request, tmpl_xlat(inst->tmpl), mod_exec_nowait_resume, NULL, box);
 	}
 
 	/*
@@ -431,8 +430,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 
 	m = talloc_zero(ctx, rlm_exec_ctx_t);
 	fr_value_box_list_init(&m->box);
-
-	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, env_pairs, mod_exec_wait_resume, NULL, m);
+	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, env_pairs, mod_exec_wait_resume, NULL, &m->box);
 }
 
 
