@@ -379,7 +379,7 @@ ssize_t fr_base64_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
 
 	fr_strerror_clear();
 
-	fr_sbuff_terminate(out);	/* Ensure this is terminated, even on zero length input */
+	fr_sbuff_terminate(&our_out);	/* Ensure this is terminated, even on zero length input */
 	fr_dbuff_set(in, &our_in);
 	return fr_sbuff_set(out, &our_out);
 }
