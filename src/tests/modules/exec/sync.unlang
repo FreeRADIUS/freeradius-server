@@ -7,8 +7,6 @@ update request {
 }
 if (&Tmp-String-0 != 'hello') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
@@ -20,6 +18,12 @@ update request {
 
 if (&reply.Reply-Message != 'hello') {
 	test_fail
-} else {
-	test_pass
 }
+
+exec_sync_inline
+
+if (&control.Tmp-String-0 != 'welcome') {
+	test_fail
+}
+
+test_pass
