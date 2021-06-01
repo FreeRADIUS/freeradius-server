@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 
 #include <ctype.h>
 
@@ -92,7 +92,7 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 			fr_sbuff_parse_error_t err;
 
 			input = blob;
-			input_len = fr_hex2bin(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
+			input_len = fr_base16_decode(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
 					       &FR_SBUFF_IN(data_vb->vb_strvalue + 2, len), true);
 			if (err) {
 				REDEBUG("Invalid hex string in '%s'", data_vb->vb_strvalue);

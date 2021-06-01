@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 
 #include <freeradius-devel/util/sbuff.h>
@@ -2211,7 +2211,7 @@ static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in));
 
-	(void)fr_hex2bin(NULL, &FR_DBUFF_TMP(bin, binlen), &FR_SBUFF_IN(hex, len), false);
+	(void)fr_base16_decode(NULL, &FR_DBUFF_TMP(bin, binlen), &FR_SBUFF_IN(hex, len), false);
 	MEM(bin = talloc_realloc_size(vpt, bin, binlen));	/* Realloc to the correct length */
 	(void)fr_value_box_memdup_shallow(&vpt->data.literal, NULL, bin, binlen, false);
 
@@ -2426,32 +2426,32 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 
 	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
-	fr_hex2bin(&err, &dbuff, &our_in, true);
+	fr_base16_decode(&err, &dbuff, &our_in, true);
 	if (err != FR_SBUFF_PARSE_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
-	fr_hex2bin(&err, &dbuff, &our_in, true);
+	fr_base16_decode(&err, &dbuff, &our_in, true);
 	if (err != FR_SBUFF_PARSE_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
-	fr_hex2bin(&err, &dbuff, &our_in, true);
+	fr_base16_decode(&err, &dbuff, &our_in, true);
 	if (err != FR_SBUFF_PARSE_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
-	fr_hex2bin(&err, &dbuff, &our_in, true);
+	fr_base16_decode(&err, &dbuff, &our_in, true);
 	if (err != FR_SBUFF_PARSE_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
-	fr_hex2bin(&err, &dbuff, &our_in, true);
+	fr_base16_decode(&err, &dbuff, &our_in, true);
 	if (err != FR_SBUFF_PARSE_OK) return 0;
 
 	if (!fr_sbuff_next_if_char(&our_in, ':')) return 0;
 
-	fr_hex2bin(&err, &dbuff, &our_in, true);
+	fr_base16_decode(&err, &dbuff, &our_in, true);
 	if (err != FR_SBUFF_PARSE_OK) return 0;
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {

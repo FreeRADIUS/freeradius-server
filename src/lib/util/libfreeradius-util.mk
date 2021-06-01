@@ -7,6 +7,8 @@ TARGET		:= libfreeradius-util.a
 
 SOURCES		:= \
 		   atexit.c \
+		   base16.c \
+		   base32.c \
 		   base64.c \
 		   cap.c \
 		   cursor.c \
@@ -32,7 +34,6 @@ SOURCES		:= \
 		   getaddrinfo.c \
 		   hash.c \
 		   heap.c \
-		   hex.c \
 		   hmac_md5.c \
 		   hmac_sha1.c \
 		   htrie.c \

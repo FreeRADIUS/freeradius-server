@@ -31,7 +31,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "tls - "
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -404,7 +404,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *	Check the password now, so that we don't have
 		 *	errors at run-time.
 		 */
-		hex_len = fr_hex2bin(NULL,
+		hex_len = fr_base16_decode(NULL,
 				     &FR_DBUFF_TMP(buffer, sizeof(buffer)),
 				     &FR_SBUFF_IN(conf->psk_password, psk_len), false);
 		if (psk_len != (2 * hex_len)) {

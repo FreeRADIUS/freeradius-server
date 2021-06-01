@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/md5.h>
 
 typedef struct {
@@ -204,7 +204,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		 *	Set A1 to Digest-Attributes.HA1 if no User-Password found
 		 */
 		if (passwd->da == attr_digest_ha1) {
-			if (fr_hex2bin(NULL, &FR_DBUFF_TMP(&a1[0], sizeof(a1)),
+			if (fr_base16_decode(NULL, &FR_DBUFF_TMP(&a1[0], sizeof(a1)),
 				       &FR_SBUFF_IN(passwd->vp_strvalue, passwd->vp_length), false) != 16) {
 				RDEBUG2("Invalid text in Digest-Attributes.HA1");
 				RETURN_MODULE_INVALID;
@@ -220,7 +220,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		 */
 		if (passwd->da == attr_cleartext_password) {
 			fr_md5_calc(hash, &a1[0], a1_len);
-			fr_bin2hex(&FR_SBUFF_OUT((char *) &a1[0], 32 + 1), &FR_DBUFF_TMP(hash, 16), SIZE_MAX);
+			fr_base16_encode(&FR_SBUFF_OUT((char *) &a1[0], 32 + 1), &FR_DBUFF_TMP(hash, 16));
 		} else {	/* MUST be Digest-Attributes.HA1 */
 			memcpy(&a1[0], passwd->vp_strvalue, 32);
 		}
@@ -341,7 +341,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} else {
 		memcpy(&hash[0], &a1[0], a1_len);
 	}
-	fr_bin2hex(&FR_SBUFF_OUT((char *) kd, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)), SIZE_MAX);
+	fr_base16_encode(&FR_SBUFF_OUT((char *) kd, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)));
 
 	RHEXDUMP_INLINE3(hash, sizeof(hash), "H(A1)");
 
@@ -403,7 +403,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	fr_md5_calc(&hash[0], &a2[0], a2_len);
 
-	fr_bin2hex(&FR_SBUFF_OUT((char *) kd + kd_len, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)), SIZE_MAX);
+	fr_base16_encode(&FR_SBUFF_OUT((char *) kd + kd_len, (sizeof(hash) * 2) + 1), &FR_DBUFF_TMP(hash, sizeof(hash)));
 
 	RHEXDUMP_INLINE3(hash, sizeof(hash), "H(A2)");
 
@@ -429,7 +429,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RETURN_MODULE_INVALID;
 	}
 
-	if (fr_hex2bin(NULL, &FR_DBUFF_TMP(&hash[0], sizeof(hash)),
+	if (fr_base16_decode(NULL, &FR_DBUFF_TMP(&hash[0], sizeof(hash)),
 		       &FR_SBUFF_IN(vp->vp_strvalue, vp->vp_length), false) != (ssize_t)(vp->vp_length >> 1)) {
 		RDEBUG2("Invalid text in Digest-Response");
 		RETURN_MODULE_INVALID;

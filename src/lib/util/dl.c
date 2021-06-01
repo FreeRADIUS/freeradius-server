@@ -480,8 +480,9 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 */
 #if defined(RTLD_DEEPBIND) && !defined(__SANITIZE_ADDRESS__)
 	flags |= RTLD_DEEPBIND;
-	fr_strerror_clear();	/* clear error buffer */
 #endif
+
+	fr_strerror_clear();	/* clear error buffer */
 
 	/*
 	 *	Bind all the symbols *NOW* so we don't hit errors later

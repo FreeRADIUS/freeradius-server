@@ -24,7 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 
 #include "eap_mschapv2.h"
 
@@ -394,7 +394,7 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 			if (n == 3) {
 				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
 					err, retry, buf);
-				fr_hex2bin(NULL, &FR_DBUFF_TMP(data->auth_challenge, 16),
+				fr_base16_decode(NULL, &FR_DBUFF_TMP(data->auth_challenge, 16),
 					   &FR_SBUFF_IN(buf, strlen(buf)), false);
 			} else {
 				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);

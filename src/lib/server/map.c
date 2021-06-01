@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cond.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/misc.h>
 

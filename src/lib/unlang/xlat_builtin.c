@@ -37,7 +37,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
@@ -1667,7 +1667,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(result = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(in)) == 0);
-	fr_hex2bin(&err, &FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p), true);
+	fr_base16_decode(&err, &FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p), true);
 	if (err) {
 		REDEBUG2("Invalid hex string");
 		talloc_free(result);
@@ -1758,8 +1758,8 @@ static xlat_action_t xlat_func_hex(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 	 */
 	MEM(new_buff = talloc_zero_array(bin, char, (bin->vb_length * 2) + 1));
 	if (bin->vb_length) {
-		fr_bin2hex(&FR_SBUFF_OUT(new_buff, (bin->vb_length * 2) + 1),
-					 &FR_DBUFF_TMP(bin->vb_octets, bin->vb_length), SIZE_MAX);
+		fr_base16_encode(&FR_SBUFF_OUT(new_buff, (bin->vb_length * 2) + 1),
+					       &FR_DBUFF_TMP(bin->vb_octets, bin->vb_length));
 		fr_value_box_clear_value(bin);
 		fr_value_box_strdup_shallow(bin, NULL, new_buff, bin->tainted);
 	/*

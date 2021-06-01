@@ -64,17 +64,6 @@ extern "C" {
  */
 #undef unix
 
-/** The ubiquitous stringify macros
- *
- */
-#define XSTRINGIFY(x) #x
-#define STRINGIFY(x) XSTRINGIFY(x)
-#define JOINSTR(x,y) XSTRINGIFY(x ## y)
-
-/** Helper for initialising arrays of string literals
- */
-#define L(_str)		{ _str, sizeof(_str) - 1 }
-
 /** Evaluates to +1 for a > b, and -1 for a < b
  */
 #define CMP_PREFER_SMALLER(_a,_b)	(((_a) > (_b)) - ((_a) < (_b)))
@@ -117,6 +106,7 @@ do { \
 	_ret = CMP(_mret, 0); \
 	if (_ret != 0) return _ret; \
 } while (0)
+
 /** Remove const qualification from a pointer
  *
  * @param[in] _type	The non-const version of the type.
@@ -124,8 +114,8 @@ do { \
  */
 #define UNCONST(_type, _ptr)		((_type)((uintptr_t)(_ptr)))
 
-/*
- *	HEX concatenation macros
+/** HEX concatenation macros
+ *
  */
 #ifndef HEXIFY
 #  define XHEXIFY4(b1,b2,b3,b4)	(0x ## b1 ## b2 ## b3 ## b4)
@@ -140,6 +130,29 @@ do { \
 #  define XHEXIFY(b1)		(0x ## b1)
 #  define HEXIFY(b1)		XHEXIFY(b1)
 #endif
+
+/** The ubiquitous stringify macros
+ *
+ */
+#define XSTRINGIFY(x) #x
+#define STRINGIFY(x) XSTRINGIFY(x)
+#define JOINSTR(x,y) XSTRINGIFY(x ## y)
+
+/** Helper for initialising arrays of string literals
+ */
+#define L(_str)		{ _str, sizeof(_str) - 1 }
+
+/** Fill macros for array initialisation
+ */
+#define F1(_idx, _val)		[_idx] = _val
+#define F2(_idx, _val)		F1(_idx, _val), F1(_idx + 1, _val)
+#define F4(_idx, _val)		F2(_idx, _val), F2(_idx + 2, _val)
+#define F8(_idx, _val)		F4(_idx, _val), F4(_idx + 4, _val)
+#define F16(_idx, _val)		F8(_idx, _val), F8(_idx + 8, _val)
+#define F32(_idx, _val)		F16(_idx, _val), F16(_idx + 16, _val)
+#define F64(_idx, _val)		F32(_idx, _val), F32(_idx + 32, _val)
+#define F128(_idx, _val)	F64(_idx, _val), F64(_idx + 64, _val)
+#define F256(_idx, _val)	F128(_idx, _val), F128(_idx + 128, _val)
 
 /** Pass caller information to the function
  *

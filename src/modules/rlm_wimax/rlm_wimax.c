@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/missing.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 
 /*
  *	FIXME: Add check for this header to configure.ac
@@ -139,7 +139,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 		 *	so we fix it here.
 		 */
 		for (i = 0; i < 6; i++) {
-			fr_bin2hex(&FR_SBUFF_OUT(&p[i * 3], 2 + 1), &FR_DBUFF_TMP(&buffer[i], 1), SIZE_MAX);
+			fr_base16_encode(&FR_SBUFF_OUT(&p[i * 3], 2 + 1), &FR_DBUFF_TMP(&buffer[i], 1));
 			p[(i * 3) + 2] = '-';
 		}
 

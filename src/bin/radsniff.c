@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/util/timeval.h>
 
@@ -463,8 +463,8 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			fr_pair_list_sort(list, fr_pair_cmp_by_da);
 			fr_pair_list_log(&default_log, list);
 
-			fr_bin2hex(&FR_SBUFF_OUT(vector, sizeof(vector)),
-						 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH), SIZE_MAX);
+			fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
+					 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}

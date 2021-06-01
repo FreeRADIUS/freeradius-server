@@ -211,8 +211,10 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_NOT_FOUND		= -1,		//!< String does not contain a token
 								///< matching the output type.
 	FR_SBUFF_PARSE_ERROR_TRAILING		= -2,		//!< Trailing characters found.
-	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW	= -3,		//!< Integer type would overflow.
-	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -4		//!< Integer type would underflow.
+	FR_SBUFF_PARSE_ERROR_FORMAT		= -3,		//!< Format of data was invalid.
+	FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE	= -4,		//!< No space available in output buffer.
+	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW	= -5,		//!< Integer type would overflow.
+	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6		//!< Integer type would underflow.
 } fr_sbuff_parse_error_t;
 
 #define FR_SBUFF_FLAG_EXTENDABLE		0x01

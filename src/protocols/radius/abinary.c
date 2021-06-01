@@ -22,7 +22,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
@@ -437,7 +437,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	/*
 	 *	Node must be 6 octets long.
 	 */
-	token = fr_hex2bin(NULL,
+	token = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(net->node, IPX_NODE_ADDR_LEN),
 			   &FR_SBUFF_IN(p, strlen(p)), false);
 	if (token != IPX_NODE_ADDR_LEN) {
@@ -1121,7 +1121,7 @@ static int ascend_parse_generic(int argc, char **argv,
 	filter->offset = slen;
 	filter->offset = htons(filter->offset);
 
-	slen = fr_hex2bin(NULL,
+	slen = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(filter->mask, sizeof(filter->mask)),
 			   &FR_SBUFF_IN(argv[1], strlen(argv[1])), false);
 	if (slen != sizeof(filter->mask)) {
@@ -1129,7 +1129,7 @@ static int ascend_parse_generic(int argc, char **argv,
 		return -1;
 	}
 
-	token = fr_hex2bin(NULL,
+	token = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(filter->value, sizeof(filter->value)),
 			   &FR_SBUFF_IN(argv[2], strlen(argv[2])), false);
 	if (token != sizeof(filter->value)) {

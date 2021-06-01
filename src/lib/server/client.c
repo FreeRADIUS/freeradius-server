@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/trie.h>
 
@@ -738,7 +738,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			hex_len = talloc_array_length(value) - 3;
 			bin_len = (hex_len / 2) + 1;
 			MEM(bin = talloc_array(c, uint8_t, bin_len));
-			converted = fr_hex2bin(NULL,
+			converted = fr_base16_decode(NULL,
 					       &FR_DBUFF_TMP(bin, bin_len),
 					       &FR_SBUFF_IN(value + 2, hex_len), false);
 			if (converted < (bin_len - 1)) {

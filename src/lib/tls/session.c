@@ -31,7 +31,7 @@
 #include <freeradius-devel/server/pair.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
@@ -392,7 +392,7 @@ unsigned int fr_tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 
 	strlcpy(identity, conf->psk_identity, max_identity_len);
 
-	return fr_hex2bin(NULL,
+	return fr_base16_decode(NULL,
 			  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
 			  &FR_SBUFF_IN(conf->psk_password, (size_t)psk_len), false);
 }
@@ -459,7 +459,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		 *	convert the expansion from printable string
 		 *	back to hex.
 		 */
-		return fr_hex2bin(NULL,
+		return fr_base16_decode(NULL,
 				  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
 				  &FR_SBUFF_IN(buffer, hex_len), false);
 	}
@@ -482,7 +482,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 	psk_len = strlen(conf->psk_password);
 	if (psk_len > (2 * max_psk_len)) return 0;
 
-	return fr_hex2bin(NULL,
+	return fr_base16_decode(NULL,
 			  &FR_DBUFF_TMP((uint8_t *)psk, (size_t)max_psk_len),
 			  &FR_SBUFF_IN(conf->psk_password, psk_len), false);
 }

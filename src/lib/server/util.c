@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/util.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
 
@@ -253,7 +253,7 @@ size_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, 
 		 */
 		*out++ = '-';
 		in++;
-		fr_bin2hex(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1), SIZE_MAX);
+		fr_base16_encode(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1));
 		out += 2;
 		freespace -= 3;
 	}
@@ -311,7 +311,7 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 			/*
 			 *	If hex2bin returns 0 the next two chars weren't hexits.
 			 */
-			if (fr_hex2bin(NULL,
+			if (fr_base16_decode(NULL,
 				       &FR_DBUFF_TMP((uint8_t *) out, 1),
 				       &FR_SBUFF_IN(in, 1), false) == 0) return in - (p + 1);
 			in += 2;

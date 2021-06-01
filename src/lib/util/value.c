@@ -52,7 +52,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
@@ -4475,7 +4475,7 @@ parse:
 
 		ret = len >> 1;
 		p = talloc_array(ctx, uint8_t, ret);
-		if (fr_hex2bin(NULL, &FR_DBUFF_TMP(p, ret), &FR_SBUFF_IN(in + 2, len), false) != (ssize_t)ret) {
+		if (fr_base16_decode(NULL, &FR_DBUFF_TMP(p, ret), &FR_SBUFF_IN(in + 2, len), false) != (ssize_t)ret) {
 			talloc_free(p);
 			fr_strerror_const("Invalid hex data");
 			return -1;
@@ -4799,8 +4799,8 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	case FR_TYPE_OCTETS:
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '0', 'x');
-		if (data->vb_length) FR_SBUFF_RETURN(fr_bin2hex, &our_out,
-							&FR_DBUFF_TMP(data->vb_octets, data->vb_length), SIZE_MAX);
+		if (data->vb_length) FR_SBUFF_RETURN(fr_base16_encode, &our_out,
+						     &FR_DBUFF_TMP(data->vb_octets, data->vb_length));
 		break;
 
 	/*

@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/defs.h>
 
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/md4.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/misc.h>
@@ -814,7 +814,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 
 		/* now the password blobs */
 		len = sprintf(buf, "new-nt-password-blob: ");
-		fr_bin2hex(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(new_nt_password, 516), SIZE_MAX);
+		fr_base16_encode(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(new_nt_password, 516));
 		buf[len+1032] = '\n';
 		buf[len+1033] = '\0';
 		len = strlen(buf);
@@ -824,7 +824,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		}
 
 		len = sprintf(buf, "old-nt-hash-blob: ");
-		fr_bin2hex(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(old_nt_hash, NT_DIGEST_LENGTH), SIZE_MAX);
+		fr_base16_encode(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(old_nt_hash, NT_DIGEST_LENGTH));
 		buf[len+32] = '\n';
 		buf[len+33] = '\0';
 		len = strlen(buf);
@@ -1240,7 +1240,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (fr_hex2bin(NULL, &FR_DBUFF_TMP(nthashhash, NT_DIGEST_LENGTH),
+		if (fr_base16_decode(NULL, &FR_DBUFF_TMP(nthashhash, NT_DIGEST_LENGTH),
 			       &FR_SBUFF_IN(buffer + 8, len), false) != NT_DIGEST_LENGTH) {
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;

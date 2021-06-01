@@ -23,7 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/hex.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/print.h>
@@ -744,14 +744,14 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				switch (in->type) {
 				case FR_TYPE_OCTETS:
 					if (in->vb_octets) {
-						fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
+						fr_base16_aencode(NULL, &subst, &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
 					} else {
 						subst = talloc_strdup(NULL, "");
 					}
 					break;
 
 				case FR_TYPE_STRING:
-					fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)in->vb_strvalue, in->vb_length));
+					fr_base16_aencode(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)in->vb_strvalue, in->vb_length));
 					break;
 
 				default:
@@ -766,7 +766,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 						if (!subst) goto oom;
 					}
 
-					fr_abin2hex(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)dst.vb_octets, dst.vb_length));
+					fr_base16_aencode(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)dst.vb_octets, dst.vb_length));
 					fr_value_box_clear(&dst);
 					break;
 				}
