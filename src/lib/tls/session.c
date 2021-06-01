@@ -545,20 +545,26 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 				server_ciphers = SSL_get_ciphers(ssl);
 				RDEBUG3("Our preferred ciphers (by priority)");
-				num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
-				for (i = 0; i < num_ciphers; i++) {
-					this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
-					RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+				if (RDEBUG_ENABLED3) {
+					RINDENT();
+					num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
+					for (i = 0; i < num_ciphers; i++) {
+						this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
+						RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+					}
+					REXDENT();
 				}
 
 				RDEBUG3("Client's preferred ciphers (by priority)");
-				RINDENT();
-				num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
-				for (i = 0; i < num_ciphers; i++) {
-					this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
-					RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+				if (RDEBUG_ENABLED3) {
+					RINDENT();
+					num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
+					for (i = 0; i < num_ciphers; i++) {
+						this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
+						RDEBUG3("[%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+					}
+					REXDENT();
 				}
-				REXDENT();
 			}
 #endif
 		} else {
@@ -581,7 +587,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_UNKNOWN_CA:
-				REDEBUG("Verify client has copy of CA certificate, and trusts CA");
+				REDEBUG("Verify client has copy of CA certificate (and trusts CA)");
 				break;
 
 			default:
