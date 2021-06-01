@@ -40,11 +40,6 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original);
 void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet);
 bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet);
 
-void *fr_state_find_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet);
-void *fr_state_get_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet);
-bool fr_state_put_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet,
-		       void *data, void (*free_data)(void *));
-
 #ifdef __cplusplus
 }
 #endif
