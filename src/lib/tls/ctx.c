@@ -267,6 +267,147 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 	return 0;
 }
 
+static inline CC_HINT(always_inline)
+int tls_ctx_version_set(
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			UNUSED
+#endif
+			int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t const *conf)
+{
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	/*
+	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
+	 *
+	 *	This version already defines macros for TLS1_2_VERSION and
+	 *	below, so we don't need to check for them explicitly.
+	 *
+	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
+	 *
+	 *	TLS1_4_VERSION does not exist yet.  But we allow it
+	 *	only if it is explictly permitted by the
+	 *	administrator.
+	 */
+	if (conf->tls_max_version > (float) 0.0) {
+		int max_version = 0;
+
+		if (conf->tls_min_version > conf->tls_max_version) {
+			/*
+			 *	%f is actually %lg now (double).  Compile complains about
+			 *      implicit promotion unless we cast args to double.
+			 */
+			ERROR("tls_min_version (%f) must be <= tls_max_version (%f)",
+			      (double)conf->tls_min_version, (double)conf->tls_max_version);
+		error:
+			return -1;
+		}
+
+		if (conf->tls_max_version < (float) 1.0) {
+			ERROR("tls_max_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
+			goto error;
+		}
+
+#  ifdef TLS1_4_VERSION
+		else if (conf->tls_max_version >= (float) 1.4) max_version = TLS1_4_VERSION;
+#  endif
+#  ifdef TLS1_3_VERSION
+		else if (conf->tls_max_version >= (float) 1.3) max_version = TLS1_3_VERSION;
+#  endif
+		else if (conf->tls_max_version >= (float) 1.2) max_version = TLS1_2_VERSION;
+		else if (conf->tls_max_version >= (float) 1.1) max_version = TLS1_1_VERSION;
+		else max_version = TLS1_VERSION;
+
+		/*
+		 *	Complain about insecure TLS versions.
+		 */
+		if (max_version < TLS1_2_VERSION) {
+			WARN("TLS 1.0 and 1.1 are insecure and SHOULD NOT be used");
+			WARN("tls_max_version SHOULD be 1.2 or greater");
+		}
+
+		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
+			fr_tls_log_error(NULL, "Failed setting TLS maximum version");
+			goto error;
+		}
+	}
+
+	{
+		int min_version = TLS1_2_VERSION;
+
+		if (conf->tls_min_version < (float) 1.0) {
+			ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
+			goto error;
+		}
+#  ifdef TLS1_4_VERSION
+		else if (conf->tls_min_version >= (float) 1.4) min_version = TLS1_4_VERSION;
+#  endif
+#  ifdef TLS1_3_VERSION
+		else if (conf->tls_min_version >= (float) 1.3) min_version = TLS1_3_VERSION;
+#  endif
+		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
+		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
+
+		/*
+		 *	Complain about insecure TLS versions.
+		 */
+		if (min_version < TLS1_2_VERSION) {
+			WARN("TLS 1.0 and 1.1 are insecure and SHOULD NOT be used");
+			WARN("tls_min_version SHOULD be 1.2 or greater");
+		}
+
+		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
+			fr_tls_log_error(NULL, "Failed setting TLS minimum version");
+			goto error;
+		}
+	}
+#else
+	/*
+	 *	OpenSSL < 1.1.0 - This doesn't need to change when new TLS versions are issued
+	 *	as new TLS versions will never be added to older OpenSSL versions.
+	 */
+	{
+		int ctx_tls_versions = 0;
+
+		/*
+		 *	We never want SSLv2 or SSLv3.
+		 */
+		*ctx_options |= SSL_OP_NO_SSLv2;
+		*ctx_options |= SSL_OP_NO_SSLv3;
+
+		if (conf->tls_min_version < (float) 1.0) {
+			ERROR("SSLv2 and SSLv3 are permanently disabled due to critical security issues");
+			goto error;
+		}
+
+#  ifdef SSL_OP_NO_TLSv1
+		if (conf->tls_min_version > (float) 1.0) *ctx_options |= SSL_OP_NO_TLSv1;
+		ctx_tls_versions |= SSL_OP_NO_TLSv1;
+#  endif
+#  ifdef SSL_OP_NO_TLSv1_1
+		if (conf->tls_min_version > (float) 1.1) *ctx_options |= SSL_OP_NO_TLSv1_1;
+		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.1)) {
+			*ctx_options |= SSL_OP_NO_TLSv1_1;
+		}
+		ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
+#  endif
+#  ifdef SSL_OP_NO_TLSv1_2
+		if (conf->tls_min_version > (float) 1.2) *ctx_options |= SSL_OP_NO_TLSv1_2;
+		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.2)) {
+			*ctx_options |= SSL_OP_NO_TLSv1_2;
+		}
+		ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
+#  endif
+
+		if ((*ctx_options & ctx_tls_versions) == ctx_tls_versions) {
+			ERROR("You have disabled all available TLS versions.  EAP will not work");
+			goto error;
+		}
+	}
+#endif
+
+	return 0;
+}
+
 /** Create SSL context
  *
  * - Load the trusted CAs
@@ -562,135 +703,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 #ifdef PSK_MAX_IDENTITY_LEN
 post_ca:
 #endif
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	/*
-	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
-	 *
-	 *	This version already defines macros for TLS1_2_VERSION and
-	 *	below, so we don't need to check for them explicitly.
-	 *
-	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
-	 *
-	 *	TLS1_4_VERSION does not exist yet.  But we allow it
-	 *	only if it is explictly permitted by the
-	 *	administrator.
-	 */
-	if (conf->tls_max_version > (float) 0.0) {
-		int max_version = 0;
-
-		if (conf->tls_min_version > conf->tls_max_version) {
-			/*
-			 *	%f is actually %lg now (double).  Compile complains about
-			 *      implicit promotion unless we cast args to double.
-			 */
-			ERROR("tls_min_version (%f) must be <= tls_max_version (%f)",
-			      (double)conf->tls_min_version, (double)conf->tls_max_version);
-			goto error;
-		}
-
-		if (conf->tls_max_version < (float) 1.0) {
-			ERROR("tls_max_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
-			goto error;
-		}
-
-#  ifdef TLS1_4_VERSION
-		else if (conf->tls_max_version >= (float) 1.4) max_version = TLS1_4_VERSION;
-#  endif
-#  ifdef TLS1_3_VERSION
-		else if (conf->tls_max_version >= (float) 1.3) max_version = TLS1_3_VERSION;
-#  endif
-		else if (conf->tls_max_version >= (float) 1.2) max_version = TLS1_2_VERSION;
-		else if (conf->tls_max_version >= (float) 1.1) max_version = TLS1_1_VERSION;
-		else max_version = TLS1_VERSION;
-
-		/*
-		 *	Complain about insecure TLS versions.
-		 */
-		if (max_version < TLS1_2_VERSION) {
-			WARN("TLS 1.0 and 1.1 are insecure and SHOULD NOT be used");
-			WARN("tls_max_version SHOULD be 1.2 or greater");
-		}
-
-		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
-			fr_tls_log_error(NULL, "Failed setting TLS maximum version");
-			goto error;
-		}
-	}
-
-	{
-		int min_version = TLS1_2_VERSION;
-
-		if (conf->tls_min_version < (float) 1.0) {
-			ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
-			goto error;
-		}
-#  ifdef TLS1_4_VERSION
-		else if (conf->tls_min_version >= (float) 1.4) min_version = TLS1_4_VERSION;
-#  endif
-#  ifdef TLS1_3_VERSION
-		else if (conf->tls_min_version >= (float) 1.3) min_version = TLS1_3_VERSION;
-#  endif
-		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
-		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
-
-		/*
-		 *	Complain about insecure TLS versions.
-		 */
-		if (min_version < TLS1_2_VERSION) {
-			WARN("TLS 1.0 and 1.1 are insecure and SHOULD NOT be used");
-			WARN("tls_min_version SHOULD be 1.2 or greater");
-		}
-
-		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
-			fr_tls_log_error(NULL, "Failed setting TLS minimum version");
-			goto error;
-		}
-	}
-#else
-	/*
-	 *	OpenSSL < 1.1.0 - This doesn't need to change when new TLS versions are issued
-	 *	as new TLS versions will never be added to older OpenSSL versions.
-	 */
-	{
-		int ctx_tls_versions = 0;
-
-		/*
-		 *	We never want SSLv2 or SSLv3.
-		 */
-		ctx_options |= SSL_OP_NO_SSLv2;
-		ctx_options |= SSL_OP_NO_SSLv3;
-
-		if (conf->tls_min_version < (float) 1.0) {
-			ERROR("SSLv2 and SSLv3 are permanently disabled due to critical security issues");
-			goto error;
-		}
-
-#  ifdef SSL_OP_NO_TLSv1
-		if (conf->tls_min_version > (float) 1.0) ctx_options |= SSL_OP_NO_TLSv1;
-		ctx_tls_versions |= SSL_OP_NO_TLSv1;
-#  endif
-#  ifdef SSL_OP_NO_TLSv1_1
-		if (conf->tls_min_version > (float) 1.1) ctx_options |= SSL_OP_NO_TLSv1_1;
-		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.1)) {
-			ctx_options |= SSL_OP_NO_TLSv1_1;
-		}
-		ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
-#  endif
-#  ifdef SSL_OP_NO_TLSv1_2
-		if (conf->tls_min_version > (float) 1.2) ctx_options |= SSL_OP_NO_TLSv1_2;
-		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.2)) {
-			ctx_options |= SSL_OP_NO_TLSv1_2;
-		}
-		ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
-#  endif
-
-		if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
-			ERROR("You have disabled all available TLS versions.  EAP will not work");
-			goto error;
-		}
-	}
-#endif
+	if (tls_ctx_version_set(&ctx_options, ctx, conf) < 0) goto error;
 
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET;
@@ -729,9 +742,7 @@ post_ca:
 	 *	of nowday's TLS: do not allow poorly-selected ciphers from
 	 *	client to take preference
 	 */
-	if (conf->cipher_server_preference) {
-		ctx_options |= SSL_OP_CIPHER_SERVER_PREFERENCE;
-	}
+	if (conf->cipher_server_preference) ctx_options |= SSL_OP_CIPHER_SERVER_PREFERENCE;
 
 	SSL_CTX_set_options(ctx, ctx_options);
 
@@ -754,9 +765,7 @@ post_ca:
 	 *	Set the block size for record padding.  This is only
 	 *	used in TLS 1.3.
 	 */
-	if (conf->padding_block_size) {
-		SSL_CTX_set_block_padding(ctx, conf->padding_block_size);
-	}
+	if (conf->padding_block_size) SSL_CTX_set_block_padding(ctx, conf->padding_block_size);
 #endif
 
 
@@ -765,9 +774,7 @@ post_ca:
 	 *	Set eliptical curve crypto configuration.
 	 */
 #ifndef OPENSSL_NO_ECDH
-	if (ctx_ecdh_curve_set(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) {
-		goto error;
-	}
+	if (ctx_ecdh_curve_set(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) goto error;
 #endif
 
 	/* Set Info callback */
@@ -815,15 +822,7 @@ post_ca:
 	 */
 	if (conf->staple.enable) {
 		SSL_CTX_set_tlsext_status_cb(ctx, fr_tls_ocsp_staple_cb);
-
-		{
-			fr_tls_ocsp_conf_t const *staple_conf = &(conf->staple);	/* Need to assign offset first */
-			fr_tls_ocsp_conf_t *tmp;
-
-			memcpy(&tmp, &staple_conf, sizeof(tmp));
-
-			SSL_CTX_set_tlsext_status_arg(ctx, tmp);
-		}
+		SSL_CTX_set_tlsext_status_arg(ctx, UNCONST(fr_tls_ocsp_conf_t *, &(conf->staple)));
 	}
 
 	/*
@@ -863,12 +862,7 @@ post_ca:
 	/*
 	 *	Load dh params
 	 */
-	if (conf->dh_file) {
-		char *dh_file;
-
-		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
-		if (ctx_dh_params_load(ctx, dh_file) < 0) goto error;
-	}
+	if (conf->dh_file && (ctx_dh_params_load(ctx, UNCONST(char *, conf->dh_file)) < 0)) goto error;
 
 	/*
 	 *	We're done configuring the ctx.
