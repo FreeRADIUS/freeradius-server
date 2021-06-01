@@ -831,7 +831,7 @@ ignore_length:
 static eap_tls_status_t eap_tls_handshake(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	Continue the TLS handshake
@@ -904,7 +904,7 @@ static eap_tls_status_t eap_tls_handshake(request_t *request, eap_session_t *eap
 eap_tls_status_t eap_tls_process(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	eap_round_t		*this_round = eap_session->this_round;
 	eap_tls_status_t	status;
