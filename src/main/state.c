@@ -220,8 +220,7 @@ void fr_state_delete(fr_state_t *state)
 /*
  *	Create a fake request, based on what we know about the
  *	session that has expired, and inject it into the server to
- *	allow final logging or cleaning up. Called with the mutex
- *	held.
+ *	allow final logging or cleaning up.
  */
 static REQUEST *fr_state_cleanup_request(state_entry_t *entry)
 {
@@ -289,8 +288,9 @@ static REQUEST *fr_state_cleanup_request(state_entry_t *entry)
 }
 
 /*
- *	Check state for old entries that need to be cleaned up and
- *	return a list of fake requests for each one.
+ *	Check state for old entries that need to be cleaned up. If
+ *	they are old enough then move them from the global state
+ *	list to a list of entries to clean up (outside the mutex).
  *	Called with the mutex held.
  */
 static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
@@ -546,8 +546,8 @@ static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIU
 }
 
 /*
- *	Called when sending Access-Reject, so that all State is
- *	discarded.
+ *	Called when sending Access-Accept or Access-Reject, so
+ *	that all State is discarded.
  */
 void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 {
