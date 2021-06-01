@@ -752,14 +752,6 @@ post_ca:
 	 *	SSL_CTX_set_tmp_dh_callback(ctx, cbtls_dh);
 	 */
 
-	/*
-	 *	set the message callback to identify the type of
-	 *	message.  For every new session, there can be a
-	 *	different callback argument.
-	 *
-	 *	SSL_CTX_set_msg_callback(ctx, fr_tls_session_msg_cb);
-	 */
-
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	/*
 	 *	Set the block size for record padding.  This is only
@@ -768,8 +760,6 @@ post_ca:
 	if (conf->padding_block_size) SSL_CTX_set_block_padding(ctx, conf->padding_block_size);
 #endif
 
-
-
 	/*
 	 *	Set eliptical curve crypto configuration.
 	 */
@@ -777,6 +767,13 @@ post_ca:
 	if (ctx_ecdh_curve_set(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) goto error;
 #endif
 
+
+	/*
+	 *	set the message callback to identify the type of
+	 *	message.  For every new session, there can be a
+	 *	different callback argument.
+	 */
+	 SSL_CTX_set_msg_callback(ctx, fr_tls_session_msg_cb);
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, fr_tls_session_info_cb);
 
