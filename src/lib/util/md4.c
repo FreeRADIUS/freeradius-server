@@ -211,9 +211,9 @@ static void fr_md4_openssl_final(uint8_t out[static MD4_DIGEST_LENGTH], fr_md4_c
 #define MD4_BLOCK_LENGTH 64
 
 /* The three core functions - F1 is optimized somewhat */
-#define F1(x, y, z) (z ^ (x & (y ^ z)))
-#define F2(x, y, z) ((x & y) | (x & z) | (y & z))
-#define F3(x, y, z) (x ^ y ^ z)
+#define MD4_F1(x, y, z) (z ^ (x & (y ^ z)))
+#define MD4_F2(x, y, z) ((x & y) | (x & z) | (y & z))
+#define MD4_F3(x, y, z) (x ^ y ^ z)
 
 /* This is the central step in the MD4 algorithm. */
 #define MD4STEP(f, w, x, y, z, data, s) (w += f(x, y, z) + data, w = w << s | w >> (32 - s))
@@ -237,56 +237,56 @@ static void fr_md4_local_transform(uint32_t state[static 4], uint8_t const block
 	c = state[2];
 	d = state[3];
 
-	MD4STEP(F1, a, b, c, d, in[ 0],  3);
-	MD4STEP(F1, d, a, b, c, in[ 1],  7);
-	MD4STEP(F1, c, d, a, b, in[ 2], 11);
-	MD4STEP(F1, b, c, d, a, in[ 3], 19);
-	MD4STEP(F1, a, b, c, d, in[ 4],  3);
-	MD4STEP(F1, d, a, b, c, in[ 5],  7);
-	MD4STEP(F1, c, d, a, b, in[ 6], 11);
-	MD4STEP(F1, b, c, d, a, in[ 7], 19);
-	MD4STEP(F1, a, b, c, d, in[ 8],  3);
-	MD4STEP(F1, d, a, b, c, in[ 9],  7);
-	MD4STEP(F1, c, d, a, b, in[10], 11);
-	MD4STEP(F1, b, c, d, a, in[11], 19);
-	MD4STEP(F1, a, b, c, d, in[12],  3);
-	MD4STEP(F1, d, a, b, c, in[13],  7);
-	MD4STEP(F1, c, d, a, b, in[14], 11);
-	MD4STEP(F1, b, c, d, a, in[15], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[ 0],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[ 1],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[ 2], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[ 3], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[ 4],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[ 5],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[ 6], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[ 7], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[ 8],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[ 9],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[10], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[11], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[12],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[13],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[14], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[15], 19);
 
-	MD4STEP(F2, a, b, c, d, in[ 0] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 4] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[ 8] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[12] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 1] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 5] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[ 9] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[13] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 2] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 6] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[10] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[14] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 3] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 7] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[11] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[15] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 0] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 4] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[ 8] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[12] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 1] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 5] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[ 9] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[13] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 2] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 6] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[10] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[14] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 3] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 7] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[11] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[15] + 0x5a827999, 13);
 
-	MD4STEP(F3, a, b, c, d, in[ 0] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[ 8] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 4] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[12] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 2] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[10] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 6] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[14] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 1] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[ 9] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 5] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[13] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 3] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[11] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 0] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[ 8] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 4] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[12] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 2] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[10] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 6] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[14] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 1] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[ 9] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 5] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[13] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 3] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[11] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
 
 	state[0] += a;
 	state[1] += b;
