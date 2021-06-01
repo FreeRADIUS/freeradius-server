@@ -113,6 +113,8 @@ static void state_entry_unlink(fr_state_t *state, state_entry_t *entry)
 		rad_assert(state->tail == entry);
 		state->tail = prev;
 	}
+
+	rbtree_deletebydata(state->tree, entry);
 }
 
 /*
@@ -138,8 +140,6 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 #ifdef WITH_VERIFY_PTR
 	(void) talloc_get_type_abort(entry, state_entry_t);
 #endif
-	rbtree_deletebydata(state->tree, entry);
-
 	if (entry->ctx) talloc_free(entry->ctx);
 
 	talloc_free(entry);
