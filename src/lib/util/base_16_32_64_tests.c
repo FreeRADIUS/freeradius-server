@@ -95,7 +95,7 @@ static void test_base16_decode(void)
 				(ssize_t)base16_vectors[i].cleartext.len);
 		TEST_MSG("%s", fr_strerror());
 
-		buffer[6] = 0x00;
+		fr_dbuff_in_bytes(&out, 0x00);	/* Terminate */
 
 		fr_dbuff_set_to_start(&out);
 		TEST_CHECK_STRCMP((char *)fr_dbuff_current(&out), base16_vectors[i].cleartext.str);
@@ -141,7 +141,7 @@ static void test_base32_decode(void)
 				(ssize_t)base32_vectors[i].cleartext.len);
 		TEST_MSG("%s", fr_strerror());
 
-		buffer[6] = 0x00;
+		fr_dbuff_in_bytes(&out, 0x00);	/* Terminate */
 
 		fr_dbuff_set_to_start(&out);
 		TEST_CHECK_STRCMP((char *)fr_dbuff_current(&out), base32_vectors[i].cleartext.str);
@@ -188,7 +188,7 @@ static void test_base32_hex_decode(void)
 				(ssize_t)base32_hex_vectors[i].cleartext.len);
 		TEST_MSG("%s", fr_strerror());
 
-		buffer[6] = 0x00;
+		fr_dbuff_in_bytes(&out, 0x00);	/* Terminate */
 
 		fr_dbuff_set_to_start(&out);
 		TEST_CHECK_STRCMP((char *)fr_dbuff_current(&out), base32_hex_vectors[i].cleartext.str);
@@ -235,7 +235,7 @@ static void test_base64_decode(void)
 				(ssize_t)base64_vectors[i].cleartext.len);
 		TEST_MSG("%s", fr_strerror());
 
-		buffer[6] = 0x00;
+		fr_dbuff_in_bytes(&out, 0x00);	/* Terminate */
 
 		fr_dbuff_set_to_start(&out);
 		TEST_CHECK_STRCMP((char *)fr_dbuff_current(&out), base64_vectors[i].cleartext.str);
