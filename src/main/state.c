@@ -36,7 +36,6 @@ typedef struct state_entry_t {
 	uint8_t		state[AUTH_VECTOR_LEN];
 
 	time_t		cleanup;
-	time_t		expired;
 	struct state_entry_t *prev;
 	struct state_entry_t *next;
 
@@ -91,6 +90,32 @@ static int state_entry_cmp(void const *one, void const *two)
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
 
+static bool state_entry_link(fr_state_t *state, state_entry_t *entry)
+{
+	if (!rbtree_insert(state->tree, entry)) {
+		return false;
+	}
+
+	/*
+	 *	Link it to the end of the list, which is implicitely
+	 *	ordered by cleanup time.
+	 */
+	if (!state->head) {
+		entry->prev = entry->next = NULL;
+		state->head = state->tail = entry;
+	} else {
+		rad_assert(state->tail != NULL);
+
+		entry->prev = state->tail;
+		state->tail->next = entry;
+
+		entry->next = NULL;
+		state->tail = entry;
+	}
+
+	return true;
+}
+
 static void state_entry_unlink(fr_state_t *state, state_entry_t *entry)
 {
 	state_entry_t *prev, *next;
@@ -119,9 +144,7 @@ static void state_entry_unlink(fr_state_t *state, state_entry_t *entry)
 
 /*
  *	When an entry is free'd, it's removed from the linked list of
- *	cleanup times.
- *
- *	Note that
+ *	cleanup timers.
  */
 static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 {
@@ -280,10 +303,19 @@ static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
 		next = entry->next;
 
 		/*
-		 *	Old enough that the request has been
-		 *	removed.  We can add it to the cleanup list.
+		 *	Unused.  We can delete it, even if now isn't
+		 *	the time to clean it up.
 		 */
-		if ((entry->expired < now) && entry->server) {       		
+		if (!entry->ctx && !entry->opaque) {
+			state_entry_free(state, entry);
+			continue;
+		}
+
+		/*
+		 *	Old enough that the request has been removed.
+		 *	We can add it to the cleanup list.
+		 */
+		if (entry->cleanup < now) {
 			(*tail) = entry;
 			state_entry_unlink(state, entry);
 			tail = &entry->next;
@@ -337,41 +369,13 @@ static void fr_state_cleanup(state_entry_t *head)
 /*
  *	Create a new entry.  Called with the mutex held.
  */
-static state_entry_t *fr_state_create(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet, state_entry_t *old)
+static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet, state_entry_t *old)
 {
 	size_t i;
 	uint32_t x;
 	time_t now = time(NULL);
 	VALUE_PAIR *vp;
-	state_entry_t *entry, *next;
-
-	/*
-	 *	Clean up old entries.
-	 */
-	for (entry = state->head; entry != NULL; entry = next) {
-		next = entry->next;
-
-		if (entry == old) continue;
-
-		/*
-		 *	Too old, we can delete it.
-		 */
-		if (entry->cleanup < now) {
-			state_entry_free(state, entry);
-			continue;
-		}
-
-		/*
-		 *	Unused.  We can delete it, even if now isn't
-		 *	the time to clean it up.
-		 */
-		if (!entry->ctx && !entry->opaque) {
-			state_entry_free(state, entry);
-			continue;
-		}
-
-		break;
-	}
+	state_entry_t *entry;
 
 	/*
 	 *	Limit the size of the cache based on how many requests
@@ -393,14 +397,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, REQUEST *request, RADIU
 	 *	isn't perfect, but it's reasonable, and it's one less
 	 *	thing for an administrator to configure.
 	 */
-	entry->cleanup = now + main_config.max_request_time * 10;
-
-	/*
-	 *	If the entry is still around after this, then the
-	 *	client has given up, so run a fake request to do
-	 *	any tidy ups.
-	 */
-	entry->expired = now + main_config.max_request_time + 2;
+	entry->cleanup = now + main_config.max_request_time * 2;
 
 	/*
 	 *	Hacks for EAP, until we convert EAP to using the state API.
@@ -493,26 +490,9 @@ static state_entry_t *fr_state_create(fr_state_t *state, REQUEST *request, RADIU
 		entry->request_root = request->root;
 	}
 
-	if (!rbtree_insert(state->tree, entry)) {
+	if (!state_entry_link(state, entry)) {
 		talloc_free(entry);
 		return NULL;
-	}
-
-	/*
-	 *	Link it to the end of the list, which is implicitely
-	 *	ordered by cleanup time.
-	 */
-	if (!state->head) {
-		entry->prev = entry->next = NULL;
-		state->head = state->tail = entry;
-	} else {
-		rad_assert(state->tail != NULL);
-
-		entry->prev = state->tail;
-		state->tail->next = entry;
-
-		entry->next = NULL;
-		state->tail = entry;
 	}
 
 	return entry;
@@ -696,7 +676,10 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 		old = NULL;
 	}
 
-	entry = fr_state_create(state, request, packet, old);
+	/*
+	 *	Create a new entry and add it to the list.
+	 */
+	entry = fr_state_entry_create(state, request, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		fr_state_cleanup(cleanup_list);
@@ -787,7 +770,10 @@ bool fr_state_put_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *origi
 		old = NULL;
 	}
 
-	entry = fr_state_create(state, request, packet, old);
+	/*
+	 *	Create a new entry and add it to the list.
+	 */
+	entry = fr_state_entry_create(state, request, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return false;
