@@ -759,10 +759,10 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
  * @param[in] arg		The #fr_tls_session_t holding the SSL session.
  */
 void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
-			void const *inbuf, size_t len,
-			SSL *ssl, void *arg)
+			   void const *inbuf, size_t len,
+			   SSL *ssl, void *arg)
 {
-	uint8_t const	*buf = inbuf;
+	uint8_t const		*buf = inbuf;
 	fr_tls_session_t	*session = talloc_get_type_abort(arg, fr_tls_session_t);
 	request_t		*request = SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
 
@@ -858,8 +858,9 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session_msg_log(request, session, (uint8_t const *)inbuf, len);
 }
 
-static inline fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *pair_list,
-					    	    int attr, int attr_index, char const *value)
+static inline CC_HINT(always_inline)
+fr_pair_t *fr_tls_session_cert_attr_add(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *pair_list,
+					int attr, int attr_index, char const *value)
 {
 	fr_pair_t *vp;
 	fr_dict_attr_t const *da = *(cert_attr_names[attr][attr_index]);

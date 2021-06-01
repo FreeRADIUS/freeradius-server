@@ -287,7 +287,6 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	X509_STORE 	*verify_store;
 	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
-	void		*app_data_index;
 
 	/*
 	 *	This addresses memory leaks in OpenSSL 1.0.2
@@ -314,10 +313,9 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 
 	/*
 	 *	Save the config on the context so that callbacks which
-	 *	only get SSL_CTX* e.g. session persistence, can get it
+	 *	only get SSL_CTX* e.g. session persistence, can get at it.
 	 */
-	memcpy(&app_data_index, &conf, sizeof(app_data_index));
-	SSL_CTX_set_app_data(ctx, app_data_index);
+	SSL_CTX_set_app_data(ctx, UNCONST(void *, conf));
 
 	/*
 	 *	Identify the type of certificates that needs to be loaded
