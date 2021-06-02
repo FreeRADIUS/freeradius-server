@@ -402,6 +402,124 @@ static int perl_vblist_to_av(AV *av, fr_value_box_list_t *head) {
 	return 0;
 }
 
+/** Parse a Perl SV and create value boxes, appending to a list
+ *
+ * For parsing values passed back from a Perl subroutine
+ *
+ * When hashes are returned, first the key is added as a value box then the value
+ *
+ * @param[in] ctx	to allocate boxes in.
+ * @param[out] list	to append value boxes to.
+ * @param[in] request	being handled - only used for debug messages
+ * @param[in] sv	to parse
+ * @return
+ * 	- 0 on success
+ * 	- -1 on failure
+ */
+static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request, SV *sv) {
+	fr_value_box_t	*vb = NULL;
+	char		*tmp;
+	STRLEN		len;
+	AV		*av;
+	HV		*hv;
+	I32		sv_len, i;
+	int		type;
+
+	type = SvTYPE(sv);
+
+	switch (type) {
+	case SVt_IV:
+	/*	Integer or Reference */
+		if (SvROK(sv)) {
+			DEBUG3("Reference returned");
+			if (perl_sv_to_vblist(ctx, list, request, SvRV(sv)) < 0) return -1;
+			break;
+		}
+		DEBUG3("Integer returned");
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT32, NULL, SvTAINTED(sv)));
+		vb->vb_int32 = SvIV(sv);
+		break;
+
+	case SVt_NV:
+	/*	Float */
+		DEBUG3("Float returned");
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_FLOAT64, NULL, SvTAINTED(sv)));
+		vb->vb_float64 = SvNV(sv);
+		break;
+
+	case SVt_PV:
+	/*	String */
+		DEBUG3("String returned");
+		tmp = SvPVutf8(sv, len);
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_bstrndup(ctx, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
+			talloc_free(vb);
+			RPEDEBUG("Failed to allocate %ld for output", len);
+			return -1;
+		}
+		break;
+
+	case SVt_PVAV:
+	/*	Array */
+	{
+		SV	**av_sv;
+		DEBUG3("Array returned");
+		av = (AV*)sv;
+		sv_len = av_len(av);
+		for (i = 0; i <= sv_len; i++) {
+			av_sv = av_fetch(av, i, 0);
+			if (SvOK(*av_sv)) {
+				if (perl_sv_to_vblist(ctx, list, request, *av_sv) < 0) return -1;
+			}
+		}
+	}
+		break;
+
+	case SVt_PVHV:
+	/*	Hash */
+	{
+		SV	*hv_sv;
+		DEBUG3("Hash returned");
+		hv = (HV*)sv;
+		for (i = hv_iterinit(hv); i > 0; i--) {
+			hv_sv = hv_iternextsv(hv, &tmp, &sv_len);
+			/*
+			 *	Add key first
+			 */
+			MEM(vb = fr_value_box_alloc_null(ctx));
+			if (fr_value_box_bstrndup(ctx, vb, NULL, tmp, sv_len, SvTAINTED(hv_sv)) < 0) {
+				talloc_free(vb);
+				RPEDEBUG("Failed to allocate %d for output", sv_len);
+				return -1;
+			}
+			fr_dlist_insert_tail(list, vb);
+
+			/*
+			 *	Now process value
+			 */
+			if (perl_sv_to_vblist(ctx, list, request, hv_sv) < 0) return -1;
+
+		}
+		/*
+		 *	Box has already been added to list - return
+		 */
+		return 0;
+	}
+
+	case SVt_NULL:
+		break;
+
+	default:
+		RPEDEBUG("Perl returned unsupported data type %d", type);
+		return -1;
+
+	}
+
+	if (vb) fr_dlist_insert_tail(list, vb);
+
+	return 0;
+}
+
 /** Call perl code using an xlat
  *
  * @ingroup xlat_functions
