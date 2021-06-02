@@ -659,7 +659,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
 		if (SSL_set_max_proto_version(new_tls, TLS1_2_VERSION) == 0) {
-			tls_error_log(request, "Failed limiting maximum version to TLS 1.3");
+			tls_error_log(request, "Failed limiting maximum version to TLS 1.2");
 			return NULL;
 		}
 	}
