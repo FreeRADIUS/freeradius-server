@@ -351,6 +351,57 @@ static void xs_init(pTHX)
 	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
 }
 
+/** Convert a list of value boxes to a Perl array for passing to subroutines
+ *
+ * The Perl array object should be created before calling this
+ * to populate it.
+ *
+ * @param[in,out] av	Perl array object to append values to.
+ * @param[in] head	of VB list.
+ * @return
+ * 	- 0 on success
+ * 	- -1 on failure
+ */
+static int perl_vblist_to_av(AV *av, fr_value_box_list_t *head) {
+	fr_value_box_t	*vb = NULL;
+	SV		*sv;
+
+	while ((vb = fr_dlist_next(head, vb))) {
+		switch (vb->type) {
+		case FR_TYPE_STRING:
+			sv = newSVpvn(vb->vb_strvalue, vb->length);
+			break;
+
+		case FR_TYPE_OCTETS:
+			sv = newSVpvn((char const *)vb->vb_octets, vb->vb_length);
+			break;
+
+		case FR_TYPE_GROUP:
+		{
+			AV 	*sub_av;
+			sub_av = newAV();
+			perl_vblist_to_av(sub_av, &vb->vb_group);
+			sv = newRV_inc((SV *)sub_av);
+		}
+			break;
+		default:
+		{
+			char	buffer[1024];
+			ssize_t	slen;
+
+			slen = fr_value_box_print_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vb, T_BARE_WORD);
+			if (slen < 0) return -1;
+			sv = newSVpvn(buffer, (size_t)slen);
+		}
+			break;
+		}
+		if (!sv) return -1;
+		if (vb->tainted) SvTAINT(sv);
+		av_push(av, sv);
+	}
+	return 0;
+}
+
 /** Call perl code using an xlat
  *
  * @ingroup xlat_functions
