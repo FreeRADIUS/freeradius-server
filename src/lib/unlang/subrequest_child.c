@@ -264,6 +264,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED
 	 *	Don't run this function again on resumption
 	 */
 	if (frame->process == unlang_subrequest_child_run) frame->process = unlang_subrequest_calculate_result;
+	repeatable_set(frame);
 
 	return UNLANG_ACTION_YIELD;
 }

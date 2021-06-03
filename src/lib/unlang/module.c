@@ -54,6 +54,8 @@ typedef struct {
 	fr_event_timer_t const		*ev;		//!< Event in this worker's event heap.
 } unlang_module_event_t;
 
+static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
+
 /** Call the callback registered for a read I/O event
  *
  * @param[in] el	containing the event (not passed to the callback).
@@ -549,6 +551,47 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** Yield a request back to the interpreter from within a module
+ *
+ * This passes control of the request back to the unlang interpreter, setting
+ * callbacks to execute when the request is 'signalled' asynchronously, or whatever
+ * timer or I/O event the module was waiting for occurs.
+ *
+ * @note The module function which calls #unlang_module_yield should return control
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield.
+ *	A common pattern is to use ``return unlang_module_yield(...)``.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume		Called on unlang_interpret_mark_runnable().
+ * @param[in] signal		Called on unlang_action().
+ * @param[in] rctx		to pass to the callbacks.
+ * @return
+ *	- UNLANG_ACTION_YIELD.
+ */
+unlang_action_t unlang_module_yield(request_t *request,
+				    unlang_module_resume_t resume, unlang_module_signal_t signal, void *rctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	REQUEST_VERIFY(request);	/* Check the yielded request is sane */
+
+	state->rctx = rctx;
+	state->resume = resume;
+	state->signal = signal;
+
+	/*
+	 *	We set the repeatable flag here,
+	 *	so that the resume function is always
+	 *	called going back up the stack.
+	 */
+	frame->process = unlang_module_resume;
+	repeatable_set(frame);
+
+	return UNLANG_ACTION_YIELD;
+}
+
 /*
  *	Lock the mutex for the module
  */
@@ -606,17 +649,65 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	}
 }
 
+/** Cleanup after a module completes
+ *
+ */
+static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+	rlm_rcode_t			rcode = state-> set_rcode ? state->rcode : *p_result;
+
+#ifndef NDEBUG
+	fr_assert(state->unlang_indent == request->log.unlang_indent);
+#endif
+
+	fr_assert(rcode >= RLM_MODULE_REJECT);
+	fr_assert(rcode < RLM_MODULE_UNKNOWN);
+
+	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
+	       fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
+
+	request->rcode = rcode;
+	if (state->p_result) *state->p_result = rcode;	/* Inform our caller if we have one */
+	*p_result = rcode;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Cleanup after a yielded module completes
+ *
+ */
+static unlang_action_t unlang_module_resume_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	state->thread->active_callers--;
+
+	return unlang_module_done(p_result, request, frame);
+}
+
 /** Wrapper to call a module's resumption function
  *
+ * This is called _after_ the module first yields, and again after any
+ * other yields.
  */
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
+	unlang_module_resume_t		resume;
 	char const 			*caller;
-	rlm_rcode_t			rcode = *p_result;
-
 	unlang_action_t			ua;
+
+	/*
+	 *	Update the rcode from any child calls that
+	 *	may have been performed. The module still
+	 *	has a chance to override this rcode if it
+	 *	wants, but process modules in particular
+	 *	expect to see the result of child
+	 *	evaluations available to them in p_result.
+	 */
+	state->rcode = *p_result < RLM_MODULE_NUMCODES ? *p_result : RLM_MODULE_NOOP;
 
 	fr_assert(state->resume != NULL);
 
@@ -626,15 +717,23 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	caller = request->module;
 	request->module = mc->instance->name;
 
+	resume = state->resume;
+	/*
+	 *	The module *MUST* explicitly set the resume
+	 *	function when yielding or pushing children
+	 *	if it wants to be called again later.
+	 */
+	state->resume = NULL;
+
 	safe_lock(mc->instance);
-	ua = state->resume(&rcode,
-			   &(module_ctx_t){
-				.instance = mc->instance->dl_inst->data,
-				.thread = state->thread->data
-			   }, request, state->rctx);
+	ua = resume(&state->rcode,
+		    &(module_ctx_t){
+			.instance = mc->instance->dl_inst->data,
+			.thread = state->thread->data
+		    }, request, state->rctx);
 	safe_unlock(mc->instance);
 
-	request->rcode = rcode;
+	request->rcode = state->rcode;
 	request->module = caller;
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
@@ -642,22 +741,45 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	switch (ua) {
 	case UNLANG_ACTION_STOP_PROCESSING:
 		RWARN("Module %s or worker signalled to stop processing request", mc->instance->module->name);
-		if (state->p_result) *state->p_result = rcode;
-		if (state->signal) state->thread->active_callers--;
-
-		*p_result = rcode;
+		if (state->p_result) *state->p_result = state->rcode;
+		state->thread->active_callers--;
+		*p_result = state->rcode;
 		return UNLANG_ACTION_STOP_PROCESSING;
 
 	case UNLANG_ACTION_YIELD:
+		/*
+		 *	The module yielded but didn't set a
+		 *	resume function, this means it's done
+		 *	and when the I/O operation completes
+		 *	it shouldn't be called again.
+		 */
+		if (!state->resume) {
+			frame->process = unlang_module_resume_done;
+		} else {
+			frame->process = unlang_module_resume;
+		}
+		repeatable_set(frame);
 		return UNLANG_ACTION_YIELD;
 
 	/*
-	 *	The module is done (for now).  But, running it pushed one or
-	 *	more asynchronous calls onto the stack.  These need to
-	 *	be run before the next module runs.
+	 *	The module is done (for now).
+	 *	But, running it pushed one or more asynchronous
+	 *	calls onto the stack for evaluation.
+	 *	These need to be run before the module resumes
+	 *	or the next unlang instruction is processed.
 	 */
 	case UNLANG_ACTION_PUSHED_CHILD:
-		state->rcode = rcode;
+		/*
+		 *	The module pushed a child and didn't
+		 *	set a resume function, this means
+		 *	it's done, and we won't call it again
+		 *	but we still need to do some cleanup
+		 *	after the child returns.
+		 */
+		if (!state->resume) {
+			frame->process = unlang_module_resume_done;
+			state->set_rcode = false;	/* Preserve the child rcode */
+		}
 		repeatable_set(frame);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -665,68 +787,15 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	case UNLANG_ACTION_UNWIND:
 		break;
 
-	case UNLANG_ACTION_EXECUTE_NEXT:
+	case UNLANG_ACTION_EXECUTE_NEXT:	/* Not valid */
 		fr_assert(0);
 		*p_result = RLM_MODULE_FAIL;
 		break;
 	}
 
-	RDEBUG2("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
-		fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
-
-	state->thread->active_callers--;
-
-	request->rcode = rcode;
-	if (state->p_result) *state->p_result = rcode;
-
-	*p_result = rcode;
+	unlang_module_resume_done(p_result, request, frame);
 
 	return ua;
-}
-
-/** Yield a request back to the interpreter from within a module
- *
- * This passes control of the request back to the unlang interpreter, setting
- * callbacks to execute when the request is 'signalled' asynchronously, or whatever
- * timer or I/O event the module was waiting for occurs.
- *
- * @note The module function which calls #unlang_module_yield should return control
- *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield.
- *	A common pattern is to use ``return unlang_module_yield(...)``.
- *
- * @param[in] request		The current request.
- * @param[in] resume		Called on unlang_interpret_mark_runnable().
- * @param[in] signal		Called on unlang_action().
- * @param[in] rctx		to pass to the callbacks.
- * @return
- *	- UNLANG_ACTION_YIELD.
- */
-unlang_action_t unlang_module_yield(request_t *request,
-				    unlang_module_resume_t resume, unlang_module_signal_t signal, void *rctx)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-
-	REQUEST_VERIFY(request);	/* Check the yielded request is sane */
-
-	state->rctx = rctx;
-	state->resume = resume;
-	state->signal = signal;
-
-	/*
-	 *	We set the repeatable flag here, so that the resume
-	 *	function is always called going back up the stack.
-	 *	This setting is normally done in the intepreter.
-	 *	However, the caller of this function may call us, and
-	 *	then push *other* things onto the stack.  Which means
-	 *	that the interpreter never gets a chance to set this
-	 *	flag.
-	 */
-	frame->process = unlang_module_resume;
-	repeatable_set(frame);
-
-	return UNLANG_ACTION_YIELD;
 }
 
 static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -734,13 +803,14 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	unlang_module_t			*mc;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	char const 			*caller;
-	rlm_rcode_t			rcode = RLM_MODULE_NOOP;
 	unlang_action_t			ua;
 
-#ifndef NDEBUG
-	int unlang_indent		= request->log.unlang_indent;
-#endif
+	state->rcode = RLM_MODULE_NOOP;
+	state->set_rcode = true;
 
+#ifndef NDEBUG
+	state->unlang_indent = request->log.unlang_indent;
+#endif
 	/*
 	 *	Process a stand-alone child, and fall through
 	 *	to dealing with it's parent.
@@ -762,7 +832,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	Return administratively configured return code
 	 */
 	if (mc->instance->force) {
-		rcode = mc->instance->code;
+		state->rcode = mc->instance->code;
 		ua = UNLANG_ACTION_CALCULATE_RESULT;
 		goto done;
 	}
@@ -780,7 +850,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	caller = request->module;
 	request->module = mc->instance->name;
 	safe_lock(mc->instance);	/* Noop unless instance->mutex set */
-	ua = mc->method(&rcode,
+	ua = mc->method(&state->rcode,
 			&(module_ctx_t){
 				.instance = mc->instance->dl_inst->data,
 				.thread = state->thread->data
@@ -798,15 +868,25 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	case UNLANG_ACTION_STOP_PROCESSING:
 		RWARN("Module %s became unblocked", mc->instance->module->name);
-		if (state->p_result) *state->p_result = rcode;
-
-		*p_result = rcode;
+		if (state->p_result) *state->p_result = state->rcode;
+		*p_result = state->rcode;
 		return UNLANG_ACTION_STOP_PROCESSING;
 
 	case UNLANG_ACTION_YIELD:
 		state->thread->active_callers++;
+
+		/*
+		 *	The module yielded but didn't set a
+		 *	resume function, this means it's done
+		 *	and when the I/O operation completes
+		 *	it shouldn't be called again.
+		 */
+		if (!state->resume) {
+			frame->process = unlang_module_resume_done;
+		} else {
+			frame->process = unlang_module_resume;
+		}
 		repeatable_set(frame);
-		frame->process = unlang_module_resume;
 		return UNLANG_ACTION_YIELD;
 
 	/*
@@ -815,7 +895,17 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	be run before the next module runs.
 	 */
 	case UNLANG_ACTION_PUSHED_CHILD:
-		state->rcode = rcode;
+		/*
+		 *	The module pushed a child and didn't
+		 *	set a resume function, this means
+		 *	it's done, and we won't call it again
+		 *	but we still need to do some cleanup
+		 *	after the child returns.
+		 */
+		if (!state->resume) {
+			frame->process = unlang_module_done;
+			state->set_rcode = false;	/* Preserve the child rcode */
+		}
 		repeatable_set(frame);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -829,21 +919,8 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		break;
 	}
 
-	/*
-	 *	Must be left at RDEBUG() level otherwise RDEBUG becomes pointless
-	 */
-	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
-	       fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
-
 done:
-	fr_assert(unlang_indent == request->log.unlang_indent);
-	fr_assert(rcode >= RLM_MODULE_REJECT);
-	fr_assert(rcode < RLM_MODULE_NUMCODES);
-
-	request->rcode = rcode;
-	if (state->p_result) *state->p_result = rcode;
-
-	*p_result = rcode;
+	unlang_module_done(p_result, request, frame);
 	return ua;
 }
 

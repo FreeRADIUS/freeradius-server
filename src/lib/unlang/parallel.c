@@ -405,6 +405,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 	 *	of the children.
 	 */
 	frame->process = unlang_parallel_resume;
+	repeatable_set(frame);
 
 	/*
 	 *	Yield to the children

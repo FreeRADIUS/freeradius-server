@@ -49,11 +49,17 @@ typedef struct {
 								///< shared between all threads, so we can't
 								///< cache thread-specific data in the #unlang_t.
 
+#ifndef NDEBUG
+	int				unlang_indent;		//!< Record what this was when we entered the module.
+#endif
+
 	/** @name rcode output
 	 * @{
  	 */
 	rlm_rcode_t			*p_result;		//!< Where to store the result.
 	rlm_rcode_t			rcode;			//!< the result, only for unlang_module_resume_final.
+	bool				set_rcode;		//!< Overwrite the current rcode for the section with
+								///< the module rcode.
 	/** @} */
 
 	/** @name Resumption and signalling

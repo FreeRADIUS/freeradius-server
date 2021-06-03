@@ -520,6 +520,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	}
 
 	frame->process = unlang_tmpl_exec_wait_final;
+	repeatable_set(frame);
 
 	return UNLANG_ACTION_YIELD;
 }

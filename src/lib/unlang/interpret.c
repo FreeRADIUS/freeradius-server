@@ -374,6 +374,17 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			unlang_ops[instruction->type].name);
 
 		fr_assert(frame->process != NULL);
+
+		/*
+		 *	Clear the repeatable flag so this frame
+		 *	won't get executed again unless it specifically
+		 *	requests it.
+		 *
+		 *	The flag may still be set again during the
+		 *	process function to indicate that the frame
+		 *	should be evaluated again.
+		 */
+		repeatable_clear(frame);
 		action = frame->process(result, request, frame);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
@@ -417,7 +428,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	called the interpret.
 		 */
 		case UNLANG_ACTION_YIELD:
-			repeatable_set(frame);
 			yielded_set(frame);
 			RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
@@ -432,8 +442,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			fr_assert(*result != RLM_MODULE_UNKNOWN);
-
-			repeatable_clear(frame);
 
 			if (unlang_ops[instruction->type].debug_braces) {
 				REXDENT();

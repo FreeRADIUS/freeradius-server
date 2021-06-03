@@ -253,6 +253,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 			RWDEBUG("Missing call to unlang_xlat_yield()");
 			goto fail;
 		}
+		repeatable_set(frame);
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
@@ -306,6 +307,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 			RWDEBUG("Missing call to unlang_xlat_yield()");
 			goto fail;
 		}
+		repeatable_set(frame);
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
@@ -379,6 +381,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 				    request, &state->rhead, state->rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
+		repeatable_set(frame);
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:

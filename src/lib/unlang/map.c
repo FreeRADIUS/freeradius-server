@@ -131,6 +131,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 	for (map = fr_dcursor_current(&update_state->maps);
 	     map;
 	     map = fr_dcursor_next(&update_state->maps)) {
+	     	repeatable_set(frame);	/* Call us again when done */
+
 		switch (update_state->state) {
 		case UNLANG_UPDATE_MAP_INIT:
 			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
@@ -166,7 +168,7 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 				fr_assert(0);
 			error:
 				TALLOC_FREE(frame->state);
-
+				repeatable_clear(frame);
 				*p_result = RLM_MODULE_FAIL;
 
 				return UNLANG_ACTION_CALCULATE_RESULT;
