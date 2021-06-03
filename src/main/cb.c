@@ -58,7 +58,8 @@ void cbtls_info(SSL const *s, int where, int ret)
 			len = strlen(abbrv);
 			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
 
-			RDEBUG3("(TLS) Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
+			RDEBUG3("(TLS) Handshake state [%.*s] - %s%s (%d)",
+				(int)len, abbrv, role, state, SSL_get_state(s));
 
 			/*
 			 *	After a ClientHello, list all the proposed ciphers from the client
@@ -91,9 +92,8 @@ void cbtls_info(SSL const *s, int where, int ret)
 			}
 #endif
 		} else {
-			RDEBUG2("(TLS) Handshake state - %s%s (%i)", role, state, SSL_get_state(s));
+			RDEBUG2("(TLS) Handshake state - %s%s", role, state);
 		}
-		RDEBUG3("(TLS) %s: %s", role, state);
 		return;
 	}
 
