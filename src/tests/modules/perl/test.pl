@@ -67,14 +67,15 @@ sub authenticate {
 	if ($RAD_REQUEST{'User-Name'} =~ /^baduser/i) {
 		# Reject user and tell him why
 		$RAD_REPLY{'Reply-Message'} = "Denied access by rlm_perl function";
-		return RLM_MODULE_REJECT;
+		# For testing return NOTFOUND - returning REJECT immediatly rejects the packet so fails the test
+		return RLM_MODULE_NOTFOUND;
 	} else {
 		# Accept user and set some attribute
 		if (&radiusd::xlat("%(client:group)") eq 'UltraAllInclusive') {
 			# User called from NAS with unlim plan set, set higher limits
-			$RAD_REPLY{'h323-credit-amount'} = "1000000";
+			$RAD_REPLY{'Vendor-Specific.Cisco.h323-credit-amount'} = "1000000";
 		} else {
-			$RAD_REPLY{'h323-credit-amount'} = "100";
+			$RAD_REPLY{'Vendor-Specific.Cisco.h323-credit-amount'} = "100";
 		}
 		return RLM_MODULE_OK;
 	}
@@ -130,8 +131,8 @@ sub xlat {
 
 	# Loads some external perl and evaluate it
 	my ($filename,$a,$b,$c,$d) = @_;
-	radiusd::radlog(L_DBG, "From xlat $filename");
-	radiusd::radlog(L_DBG,"From xlat $a $b $c $d");
+	radiusd::log(L_DBG, "From xlat $filename");
+	radiusd::log(L_DBG,"From xlat $a $b $c $d");
 	open(my $FH, '<', $filename) or die "open '$filename' $!";
 	local($/) = undef;
 	my $sub = <$FH>;
@@ -159,6 +160,6 @@ sub log_request_attributes {
 	# This shouldn't be done in production environments!
 	# This is only meant for debugging!
 	for (keys %RAD_REQUEST) {
-		radiusd::radlog(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
+		radiusd::log(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
 	}
 }

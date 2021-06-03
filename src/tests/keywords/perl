@@ -1,0 +1,97 @@
+#
+#  PRE: update
+#
+#  TODO
+#  A number of these tests return multiple values - either arrays, or hashes.
+#  Currently xlats have all returned values concatenated into a single value box -
+#  once multiple retuned boxes are handled to produce multiple attributes the tests
+#  will need amending.
+
+update request {
+	&Tmp-String-0 := "hello,goodbye,welcome,farewell"
+	&Tmp-String-1 := "foo,bar"
+}
+update request{
+	&Tmp-String-2 := "%(perl:xlat %{Tmp-String-0})"
+}
+
+if (&Tmp-String-2 != "hello|goodbye|welcome|farewell") {
+	test_fail
+}
+
+# Check for multiple arguments to perl function
+update request {
+	&Tmp-String-3 := "%(perl:xlat %{Tmp-String-0} %{Tmp-String-1})"
+}
+
+if (&Tmp-String-3 != "hello|goodbye|welcome|farewell#foo|bar") {
+	test_fail
+}
+
+update request {
+	&Tmp-Integer-0 := "%(perl:add 1 2 3)"
+}
+
+if (&Tmp-Integer-0 != 6) {
+	test_fail
+}
+
+
+update request {
+	&Tmp-String-0 := "hello"
+	&Tmp-String-0 += "goodbye"
+	&Tmp-String-0 += "welcome"
+}
+
+# Pass a list as an array
+update request {
+	&Tmp-String-2 := "%(perl:xlatarray %{Tmp-String-0[*]})"
+}
+
+if (&Tmp-String-2 != "hello|goodbye|welcome") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "aa bb cc dd ee"
+}
+
+# Expect an array of returned values
+update request {
+	&Tmp-String-2 := "%(perl:xlatscalar2array %{Tmp-String-0})"
+}
+
+if (&Tmp-String-2 != "aabbccddee") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-1 := "ff gg hh ii"
+}
+
+# Expect an array of array ref returned values
+update request {
+	&Tmp-String-2 := "%(perl:xlatscalar2arrayref %{Tmp-String-0} %{Tmp-String-1})"
+}
+
+if (&Tmp-String-2 != "aabbccddeeffgghhii") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "a"
+	&Tmp-String-0 += "b"
+	&Tmp-String-0 += "c"
+}
+
+# Returns a hash with each element in the provided array converted to Vn->value
+update request {
+	&Tmp-String-2 := "%(perl:xlatarray2hash %{Tmp-String-0[*]})"
+}
+
+# Note: hashes don't have a defined sequence so these are all the possible return values
+if (&Tmp-String-2 != "V1aV2bV3c") && (&Tmp-String-2 != "V1aV3cV2b") && (&Tmp-String-2 != "V2bV1aV3c") && (&Tmp-String-2 != "V2bV3cV1a") && (&Tmp-String-2 != "V3cV1aV2b") && (&Tmp-String-2 != "V3cV2bV1a") {
+	test_fail
+}
+
+success
