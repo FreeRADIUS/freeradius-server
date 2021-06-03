@@ -552,7 +552,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 /*
  *	Lock the mutex for the module
  */
-static inline void safe_lock(module_instance_t *instance)
+static inline CC_HINT(always_inline) void safe_lock(module_instance_t *instance)
 {
 	if (instance->mutex) pthread_mutex_lock(instance->mutex);
 }
@@ -560,7 +560,7 @@ static inline void safe_lock(module_instance_t *instance)
 /*
  *	Unlock the mutex for the module
  */
-static inline void safe_unlock(module_instance_t *instance)
+static inline CC_HINT(always_inline) void safe_unlock(module_instance_t *instance)
 {
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
@@ -586,11 +586,13 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 
 	caller = request->module;
 	request->module = mc->instance->name;
+	safe_lock(mc->instance);
 	state->signal(&(module_ctx_t){
 			.instance = mc->instance->dl_inst->data,
 			.thread = state->thread->data
 		      },
 		      request, state->rctx, action);
+	safe_unlock(mc->instance);
 	request->module = caller;
 
 	/*
