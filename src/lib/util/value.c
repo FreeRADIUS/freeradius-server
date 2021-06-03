@@ -1059,6 +1059,8 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
