@@ -32,7 +32,6 @@ RCSID("$Id$")
  *	Some functions differ mainly in their parsing
  */
 typedef struct {
-	bool				done_func;		//!< Set to true after func has been executed.
 	unlang_function_t		func;			//!< To call when going down the stack.
 	unlang_function_t		repeat;			//!< To call when going back up the stack.
 	unlang_function_signal_t	signal;			//!< Signal function to call.
@@ -75,6 +74,27 @@ static void unlang_function_signal(request_t *request,
 	state->signal(request, action, state->uctx);
 }
 
+static unlang_action_t unlang_function_call_repeat(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_action_t			ua;
+	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+	char const 			*caller;
+
+	*p_result = RLM_MODULE_NOOP;	/* Avoid asserts */
+
+	/*
+	 *	Don't let the callback mess with the current
+	 *	module permanently.
+	 */
+	caller = request->module;
+	request->module = NULL;
+	RDEBUG4("Calling repeat function %p", state->repeat);
+	ua = state->repeat(p_result, &frame->priority, request, state->uctx);
+	request->module = caller;
+
+	return ua;
+}
+
 /** Call a generic function
  *
  * @param[out] p_result		The frame result.
@@ -83,9 +103,11 @@ static void unlang_function_signal(request_t *request,
  */
 static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 	unlang_action_t			ua;
+	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 	char const 			*caller;
+
+	*p_result = RLM_MODULE_NOOP;	/* Avoid asserts */
 
 	/*
 	 *	Don't let the callback mess with the current
@@ -93,11 +115,14 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	 */
 	caller = request->module;
 	request->module = NULL;
-	if (!state->done_func && state->func) {
-		ua = state->func(p_result, &frame->priority, request, state->uctx);
-		state->done_func = true;
-	} else {
-		ua = state->repeat(p_result, &frame->priority, request, state->uctx);
+
+	RDEBUG4("Calling function %p", state->func);
+	ua = state->func(p_result, &frame->priority, request, state->uctx);
+	if (ua != UNLANG_ACTION_STOP_PROCESSING) {
+		if (state->repeat) {
+			frame->process = unlang_function_call_repeat;
+			repeatable_set(frame);
+		}
 	}
 	request->module = caller;
 
@@ -148,6 +173,11 @@ int unlang_interpret_push_function(request_t *request, unlang_function_t func, u
 	state->repeat = repeat;
 	state->signal = signal;
 	state->uctx = uctx;
+
+	/*
+	 *	Just skip to the repeat state directly
+	 */
+	if (!func && repeat) frame->process = unlang_function_call_repeat;
 
 	return 0;
 }
