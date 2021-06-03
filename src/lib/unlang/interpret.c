@@ -417,36 +417,13 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	called the interpret.
 		 */
 		case UNLANG_ACTION_YIELD:
-			/*
-			 *	Detach is magic.  The parent "subrequest" function
-			 *	takes care of bumping the instruction
-			 *	pointer...
-			 */
-			switch (frame->instruction->type) {
-				/*
-				 *	For sanity, we ensure that
-				 *	only known keywords can yield.
-				 */
-			case UNLANG_TYPE_MODULE:
-			case UNLANG_TYPE_PARALLEL:
-			case UNLANG_TYPE_SUBREQUEST:
-			case UNLANG_TYPE_XLAT:
-			case UNLANG_TYPE_CALL:
-			case UNLANG_TYPE_DETACH:
-			case UNLANG_TYPE_FUNCTION:
-			case UNLANG_TYPE_TMPL:
-				repeatable_set(frame);
-				yielded_set(frame);
-				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
-					fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
-					frame->priority);
-				DUMP_STACK;
-				return UNLANG_FRAME_ACTION_YIELD;
-
-			default:
-				fr_assert(0);
-				return UNLANG_FRAME_ACTION_YIELD;
-			}
+			repeatable_set(frame);
+			yielded_set(frame);
+			RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
+				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
+				frame->priority);
+			DUMP_STACK;
+			return UNLANG_FRAME_ACTION_YIELD;
 
 		/*
 		 *	Instruction finished execution,
