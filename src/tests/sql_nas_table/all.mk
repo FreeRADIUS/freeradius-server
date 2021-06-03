@@ -8,10 +8,14 @@
 TEST  := test.sql_nas_table
 FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 
+#
+#  If we have rlm_sql_sqlite and sqlite3
+#
+ifneq "$(findstring rlm_sql_sqlite,$(ALL_TGTS))" ""
 SQLITE3 := $(shell which sqlite3)
-HAVE_RLM_SQLITE := $(shell grep -q 'define HAVE_SQLITE' $(top_srcdir)/src/modules/rlm_sql/drivers/rlm_sql_sqlite/config.h && echo yes)
+endif
 
-ifeq "$(findstring sqlite,$(SQLITE3)):$(HAVE_RLM_SQLITE)" "sqlite:yes"
+ifneq "$(SQLITE3)" ""
 
 #
 #  Run the full tests
