@@ -551,7 +551,7 @@ ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Dns		1916	string
 ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn		1917	string
 ATTRIBUTE	TLS-Cert-Valid-Since			1918	string
-# 1919: reserved for future cert attribute
+ATTRIBUTE	TLS-Session-Information			1919	string
 ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
 ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
 ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string

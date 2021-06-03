@@ -1006,7 +1006,30 @@ post-auth {
 	#  didn't write the client, so we don't know where those logs
 	#  are, or how to get at them.
 	#
+	#  Information about the TLS state changes is in the
+	#  &session-state:TLS-Session-Information attribute.
+	#
 	Post-Auth-Type Client-Lost {
+		#
+		#  Debug ALL of the TLS state changes done during the
+		#  EAP negotiation.
+		#
+#		%{debug_attr:&session-state:TLS-Session-Information[*]}
+
+		#
+		#  Debug the LAST TLS state change done during the EAP
+		#  negotiation.  For errors, this is usually a TLS
+		#  alert from the client saying something like
+		#  "unknown CA".
+		#
+#		%{debug_attr:&session-state:TLS-Session-Information[n]}
+
+		#
+		#  Debug the last module failure message.  This may be
+		#  useful, or it may refer to a server-side failure
+		#  which did not cause the client to stop talking to the server.
+		#
+#		%{debug_attr:&session-state:Module-Failure-Message}
 	}
 
 	#

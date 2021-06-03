@@ -1074,6 +1074,7 @@ void tls_session_information(tls_session_t *tls_session)
 	char const *str_write_p, *str_version, *str_content_type = "";
 	char const *str_details1 = "", *str_details2= "";
 	REQUEST *request;
+	VALUE_PAIR *vp;
 	char content_type[16], alert_buf[16];
 	char buffer[32];
 
@@ -1405,6 +1406,17 @@ void tls_session_information(tls_session_t *tls_session)
 		 "%s %s%s%s%s\n",
 		 str_write_p, str_version, str_content_type,
 		 str_details1, str_details2);
+
+	/*
+	 *	Cache the TLS session information in the session-state
+	 *	list, so it can be accessed by Post-Auth-Type
+	 *	Client-Lost { ... }
+	 */
+	vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_SESSION_INFORMATION, 0);
+	if (vp) {
+		fr_pair_value_strcpy(vp, tls_session->info.info_description);
+		fr_pair_add(&request->state, vp);
+	}
 
 	RDEBUG2("%s", tls_session->info.info_description);
 }
