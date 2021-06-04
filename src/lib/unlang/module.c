@@ -784,6 +784,17 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case UNLANG_ACTION_CALCULATE_RESULT:
+		/*
+		 *	Module set a resume function but
+		 *	didn't yield or push additional
+		 *	children.
+		 *
+		 *	Evaluate the function now and
+		 *	use the result as the final result.
+		 */
+		if (state->resume) return unlang_module_resume(p_result, request, frame);
+		break;
+
 	case UNLANG_ACTION_UNWIND:
 		break;
 
@@ -805,7 +816,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	char const 			*caller;
 	unlang_action_t			ua;
 
-	state->rcode = RLM_MODULE_NOOP;
+	*p_result = state->rcode = RLM_MODULE_NOOP;
 	state->set_rcode = true;
 
 #ifndef NDEBUG
@@ -890,9 +901,11 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		return UNLANG_ACTION_YIELD;
 
 	/*
-	 *	The module is done (for now).  But, running it pushed one or
-	 *	more asynchronous calls onto the stack.  These need to
-	 *	be run before the next module runs.
+	 *	The module is done (for now).
+	 *	But, running it pushed one or more asynchronous
+	 *	calls onto the stack for evaluation.
+	 *	These need to be run before the module resumes
+	 *	or the next unlang instruction is processed.
 	 */
 	case UNLANG_ACTION_PUSHED_CHILD:
 		/*
@@ -910,6 +923,20 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case UNLANG_ACTION_CALCULATE_RESULT:
+		/*
+		 *	Module set a resume function but
+		 *	didn't yield or push additional
+		 *	children.
+		 *
+		 *	Evaluate the function now and
+		 *	use the result as the final result.
+		 */
+		if (state->resume) {
+			frame->process = unlang_module_resume;	/* unlang_module_resume will assume this is set */
+			return unlang_module_resume(p_result, request, frame);
+		}
+		break;
+
 	case UNLANG_ACTION_UNWIND:
 		break;
 
