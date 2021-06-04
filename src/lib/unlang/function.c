@@ -118,11 +118,31 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 
 	RDEBUG4("Calling function %p", state->func);
 	ua = state->func(p_result, &frame->priority, request, state->uctx);
-	if (ua != UNLANG_ACTION_STOP_PROCESSING) {
+	switch (ua) {
+	case UNLANG_ACTION_STOP_PROCESSING:
+		break;
+
+	/*
+	 *	Similar functionality to the modcall code.
+	 *	If we have a repeat function set and the
+	 *	initial function is done, call the repeat
+	 *	function using the C stack.
+	 */
+	case UNLANG_ACTION_CALCULATE_RESULT:
+		if (state->repeat) unlang_function_call_repeat(p_result, request, frame);
+		break;
+
+	/*
+	 *	Function pushed more children or yielded
+	 *	setup out repeat function for when we
+	 *	eventually start heading back up the stack.
+	 */
+	default:
 		if (state->repeat) {
 			frame->process = unlang_function_call_repeat;
 			repeatable_set(frame);
 		}
+
 	}
 	request->module = caller;
 
