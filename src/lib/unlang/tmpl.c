@@ -177,35 +177,6 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	return 0;
 }
 
-/*
- *	Run the callback which gets the PID and status
- */
-static void unlang_tmpl_exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
-{
-	request_t				*request = uctx;
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_tmpl_t);
-
-	state->exec.status = status;
-	state->exec.pid = 0;
-
-	/*
-	 *	We may receive the "child exited" signal before the
-	 *	"pipe has been closed" signal.
-	 */
-	if (state->exec.stdout_fd >= 0) {
-		(void) fr_event_fd_delete(request->el, state->exec.stdout_fd, FR_EVENT_FILTER_IO);
-		close(state->exec.stdout_fd);
-		state->exec.stdout_fd = -1;
-	}
-
-	if (state->exec.ev) fr_event_timer_delete(&state->exec.ev);
-
-	unlang_interpret_mark_runnable(request);
-}
-
 /** Wrapper to call a resumption function after a tmpl has been expanded
  *
  *  If the resumption function returns YIELD, then this function is
