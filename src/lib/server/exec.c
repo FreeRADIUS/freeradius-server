@@ -889,3 +889,102 @@ int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 
 	return 0;
 }
+/** Call an child program, optionally reading it's output
+ *
+ * @param[in] ctx	to allocate events in.
+ * @param[in,out] exec	structure holding the state of the external call.
+ * @param[in] request	currently being processed.
+ * @param[in] cmd	to call as a fr_value_boc_list_t.  Program will be the first box
+ * 			and arguments in the subsequent boxes.
+ * @param[in] env_pairs	list of pairs to be presented as evironment variables to the child.
+ * @param[in] timeout	to wait for child to complete.
+ * @return
+ *	- 0 on success
+ *	- -1 on failure
+ */
+int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request, fr_value_box_list_t *cmd, fr_pair_list_t *env_pairs, fr_time_delta_t timeout)
+{
+	int	*stdout_fd = (exec->stdout_used || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
+
+	exec->request = request;
+	exec->vps = env_pairs;
+	exec->stdout_fd = -1;
+	exec->stderr_fd = -1;
+	exec->stdin_fd = -1;
+
+	if (fr_exec_wait_start(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
+			       stdout_fd, &exec->stderr_fd, request, cmd, exec->vps) < 0) {
+		RPEDEBUG("Failed executing program");
+	fail:
+		exec_cleanup(exec);
+		return -1;
+	}
+	exec->status = -1;	/* default to program didn't work */
+
+	/*
+	 *	Tell the event loop that it needs to wait for this PID
+	 */
+	if (fr_event_pid_wait(ctx, request->el, &exec->ev_pid, exec->pid, exec_waitpid, exec) < 0) {
+		exec->pid = 0;
+		RPEDEBUG("Failed adding watcher for child process");
+		goto fail;
+	}
+
+	/*
+	 *	Setup event to kill the child process after a period of time.
+	 */
+	if (fr_event_timer_in(ctx, request->el, &exec->ev, timeout, exec_timeout, exec) < 0) {
+		goto fail;
+	}
+
+	/*
+	 *	If we need to parse stdout, insert a special IO handler that
+	 *	aggregates all stdout data into an expandable buffer.
+	 */
+	if (exec->stdout_used) {
+		/*
+		 *	Accept a maximum of 32k of data from the process.
+		 */
+		fr_sbuff_init_talloc(exec->outctx, &exec->stdout_buff, &exec->stdout_tctx, 128, 32 * 1024);
+		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
+			RPEDEBUG("Failed adding event listening to stdout");
+			goto fail;
+		}
+
+	/*
+	 *	If the caller doesn't want the output box, we still want to copy stdout
+	 *	into the request log if we're logging at a high enough level of verbosity.
+	 */
+	} else if (RDEBUG_ENABLED2) {
+		exec->stdout_uctx = (log_fd_event_ctx_t) {
+			.type = L_DBG,
+			.lvl = L_DBG_LVL_2,
+			.request = request,
+			.prefix = fr_asprintf(exec->outctx, "pid %u (stdout)", exec->pid)
+		};
+
+		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, log_request_fd_event,
+				       NULL, NULL, &exec->stdout_uctx) < 0){
+			RPEDEBUG("Failed adding event listening to stdout");
+			goto fail;
+		}
+	}
+
+	/*
+	 *	Send stderr to the request log as error messages with a custom prefix
+	 */
+	exec->stderr_uctx = (log_fd_event_ctx_t) {
+		.type = L_DBG_ERR,
+		.lvl = L_DBG_LVL_1,
+		.request = request,
+		.prefix = fr_asprintf(exec->outctx, "pid %u (stderr)", exec->pid)
+	};
+
+	if (fr_event_fd_insert(ctx, request->el, exec->stderr_fd, log_request_fd_event,
+			       NULL, NULL, &exec->stderr_uctx) < 0) {
+		RPEDEBUG("Failed adding event listening to stderr");
+		goto fail;
+	}
+
+	return 0;
+}

@@ -90,6 +90,8 @@ int	fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_lis
 int	fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
 			   request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
 
+int	fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
+			      fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs, fr_time_delta_t timeout);
 #ifdef __cplusplus
 }
 #endif
