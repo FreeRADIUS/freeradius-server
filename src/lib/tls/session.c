@@ -1291,7 +1291,7 @@ finish:
 	return ret;
 }
 
-/** Instruct fr_tls_session_handshake to create a synthesised TLS alert record and send it to the peer
+/** Instruct fr_tls_session_async_handshake to create a synthesised TLS alert record and send it to the peer
  *
  */
 int fr_tls_session_alert(UNUSED request_t *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
@@ -1338,91 +1338,11 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 	session_msg_log(request, session, session->dirty_out.data, session->dirty_out.used);
 }
 
-/** Continue a TLS handshake
- *
- * Advance the TLS handshake by feeding OpenSSL data from dirty_in,
- * and reading data from OpenSSL into dirty_out.
- *
- * @param request The current request.
- * @param session The current TLS session.
- * @return
- *	- -1 on error.
- *	- 0 on success.
- */
-int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
+static unlang_action_t fr_tls_session_handshake_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						       request_t *request, void *uctx)
 {
-	int ret;
-
-	fr_tls_session_request_bind(request, session->ssl);
-
-	/*
-	 *	This is a logic error.  fr_tls_session_handshake
-	 *	must not be called if the handshake is
-	 *	complete fr_tls_session_recv must be
-	 *	called instead.
-	 */
-	if (SSL_is_init_finished(session->ssl)) {
-		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
-	error:
-		ret = -1;
-		goto finish;
-	}
-
-	if (session->invalid) {
-		REDEBUG("Preventing invalid session from continuing");
-		goto error;
-	}
-
-	/*
-	 *	Feed dirty data into OpenSSL, so that is can either
-	 *	process it as Application data (decrypting it)
-	 *	or continue the TLS handshake.
-	 */
-	if (session->dirty_in.used) {
-		ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
-		if (ret != (int)session->dirty_in.used) {
-			REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, ret);
-			record_init(&session->dirty_in);
-			goto error;
-		}
-		record_init(&session->dirty_in);
-	}
-
-	/*
-	 *	Magic/More magic? Although SSL_read is normally
-	 *	used to read application data, it will also
-	 *	continue the TLS handshake.  Removing this call will
-	 *	cause the handshake to fail.
-	 *
-	 *	We don't ever expect to actually *receive* application
-	 *	data here.
-	 *
-	 *	The reason why we call SSL_read instead of SSL_accept,
-	 *	or SSL_connect, as it allows this function
-	 *	to be used, irrespective or whether we're acting
-	 *	as a client or a server.
-	 *
-	 *	If acting as a client SSL_set_connect_state must have
-	 *	been called before this function.
-	 *
-	 *	If acting as a server SSL_set_accept_state must have
-	 *	been called before this function.
-	 */
-	ret = SSL_read(session->ssl, session->clean_out.data + session->clean_out.used,
-		       sizeof(session->clean_out.data) - session->clean_out.used);
-	if (ret > 0) {
-		session->clean_out.used += ret;
-	success:
-		ret = 1;
-		goto finish;
-	}
-
-	/*
-	 *	Returns 0 if we can continue processing the handshake
-	 *	Returns -1 if we encountered a fatal error.
-	 */
-	if (fr_tls_log_io_error(request, session, ret, "Failed in SSL_read") < 0) goto error;
-
+	fr_tls_session_t	*session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	int			ret;
 	/*
 	 *	This only occurs once per session, where calling
 	 *	SSL_read updates the state of the SSL session, setting
@@ -1494,7 +1414,10 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 			session->session = SSL_get_session(session->ssl);
 			if (!session->session) {
 				REDEBUG("Failed getting TLS session");
-				goto error;
+			error:
+				session->result = FR_TLS_RESULT_ERROR;
+				fr_tls_session_request_unbind(session->ssl);
+				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 		}
 
@@ -1535,7 +1458,6 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 		} else if (BIO_should_retry(session->from_ssl)) {
 			record_init(&session->dirty_in);
 			RDEBUG2("Asking for more data in tunnel");
-			goto success;
 
 		} else {
 			fr_tls_log_error(NULL, NULL);
@@ -1560,10 +1482,113 @@ int fr_tls_session_handshake(request_t *request, fr_tls_session_t *session)
 	/* We are done with dirty_in, reinitialize it */
 	record_init(&session->dirty_in);
 
-finish:
+	session->result = FR_TLS_RESULT_SUCCESS;
 	fr_tls_session_request_unbind(session->ssl);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
 
-	return ret;
+/** Continue a TLS handshake
+ *
+ * Advance the TLS handshake by feeding OpenSSL data from dirty_in,
+ * and reading data from OpenSSL into dirty_out.
+ *
+ * @param[in,out] p_result	UNUSED.
+ * @param[out] priority		UNUSED
+ * @param[in] request		The current request.
+ * @param[in] uctx		An fr_tls_session_t to continue.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT
+ *	- 0 on success.
+ */
+unlang_action_t fr_tls_session_async_handshake(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+					       request_t *request, void *uctx)
+{
+	fr_tls_session_t *session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	int ret;
+
+	session->result = FR_TLS_RESULT_IN_PROGRESS;
+
+	fr_tls_session_request_bind(request, session->ssl);
+
+	/*
+	 *	This is a logic error.  fr_tls_session_async_handshake
+	 *	must not be called if the handshake is
+	 *	complete fr_tls_session_recv must be
+	 *	called instead.
+	 */
+	if (SSL_is_init_finished(session->ssl)) {
+		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
+	error:
+		session->result = FR_TLS_RESULT_ERROR;
+		fr_tls_session_request_unbind(session->ssl);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	if (session->invalid) {
+		REDEBUG("Preventing invalid session from continuing");
+		goto error;
+	}
+
+	/*
+	 *	Feed dirty data into OpenSSL, so that is can either
+	 *	process it as Application data (decrypting it)
+	 *	or continue the TLS handshake.
+	 */
+	if (session->dirty_in.used) {
+		ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+		if (ret != (int)session->dirty_in.used) {
+			REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, ret);
+			record_init(&session->dirty_in);
+			goto error;
+		}
+		record_init(&session->dirty_in);
+	}
+
+	/*
+	 *	Magic/More magic? Although SSL_read is normally
+	 *	used to read application data, it will also
+	 *	continue the TLS handshake.  Removing this call will
+	 *	cause the handshake to fail.
+	 *
+	 *	We don't ever expect to actually *receive* application
+	 *	data here.
+	 *
+	 *	The reason why we call SSL_read instead of SSL_accept,
+	 *	or SSL_connect, as it allows this function
+	 *	to be used, irrespective or whether we're acting
+	 *	as a client or a server.
+	 *
+	 *	If acting as a client SSL_set_connect_state must have
+	 *	been called before this function.
+	 *
+	 *	If acting as a server SSL_set_accept_state must have
+	 *	been called before this function.
+	 */
+	ret = SSL_read(session->ssl, session->clean_out.data + session->clean_out.used,
+		       sizeof(session->clean_out.data) - session->clean_out.used);
+	if (ret > 0) {
+		session->clean_out.used += ret;
+
+		/*
+		 *	Round successful, and we don't need to do any
+		 *	further processing.
+		 */
+		session->result = FR_TLS_RESULT_SUCCESS;
+	finish:
+		fr_tls_session_request_unbind(session->ssl);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Returns 0 if we can continue processing the handshake
+	 *	Returns -1 if we encountered a fatal error.
+	 */
+	if (fr_tls_log_io_error(request, session, ret, "Failed in SSL_read") < 0) {
+		session->result = FR_TLS_RESULT_ERROR;
+		goto finish;
+	}
+
+	return fr_tls_session_handshake_resume(NULL, NULL, request, session);
 }
 
 /** Free a TLS session and any associated OpenSSL data

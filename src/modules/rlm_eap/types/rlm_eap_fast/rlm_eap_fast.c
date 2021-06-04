@@ -443,36 +443,20 @@ error:
 	return 1;
 }
 
-
-/*
- *	Do authentication, by letting EAP-TLS do most of the work.
- */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
 {
-	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
-	eap_tls_status_t	status;
-
-	eap_session_t		*eap_session = eap_session_get(request->parent);
+	eap_session_t		*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
-	/*
-	 *	We need FAST data associated with the session, so
-	 *	allocate it here, if it wasn't already alloacted.
-	 */
-	if (!tls_session->opaque) tls_session->opaque = eap_fast_alloc(tls_session, inst);
-
-	/*
-	 *	Process TLS layer until done.
-	 */
-	status = eap_tls_process(request, eap_session);
-	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
-		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
+	if ((eap_tls_session->state == EAP_TLS_INVALID) || (eap_tls_session->state == EAP_TLS_FAIL)) {
+		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
 	} else {
-		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
 	}
 
-	switch (status) {
+	switch (eap_tls_session->state) {
 	/*
 	 *	EAP-TLS handshake was successful, tell the
 	 *	client to keep talking.
@@ -557,6 +541,25 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 }
 
 /*
+ *	Do authentication, by letting EAP-TLS do most of the work.
+ */
+static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					     request_t *request)
+{
+	eap_session_t		*eap_session = eap_session_get(request->parent);
+
+	/*
+	 *	Setup the resumption frame to process the result
+	 */
+	(void)unlang_module_yield(request, mod_handshake_resume, NULL, eap_session);
+
+	/*
+	 *	Process TLS layer until done.
+	 */
+	return eap_tls_process(request, eap_session);
+}
+
+/*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -625,7 +628,8 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	}
 
 	tls_session->record_init(&tls_session->clean_in);
-	eap_session->process = mod_process;
+	tls_session->opaque = eap_fast_alloc(tls_session, inst);
+	eap_session->process = mod_handshake_process;
 
 	if (!SSL_set_session_ticket_ext_cb(tls_session->ssl, _session_ticket, tls_session)) {
 		RERROR("Failed setting SSL session ticket callback");

@@ -122,39 +122,25 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	return t;
 }
 
-/*
- *	Do authentication, by letting EAP-TLS do most of the work.
- */
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type(mctx->instance, rlm_eap_peap_t);
 
 	rlm_rcode_t		rcode;
-	eap_tls_status_t	status;
 
-	eap_session_t		*eap_session = eap_session_get(request->parent);
+	eap_session_t		*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
-	peap_tunnel_t		*peap = NULL;
+	peap_tunnel_t		*peap = talloc_get_type_abort(tls_session->opaque, peap_tunnel_t);
 
-	if (tls_session->opaque) {
-		peap = talloc_get_type_abort(tls_session->opaque, peap_tunnel_t);
-	/*
-	 *	Session resumption requires the storage of data, so
-	 *	allocate it if it doesn't already exist.
-	 */
+	if ((eap_tls_session->state == EAP_TLS_INVALID) || (eap_tls_session->state == EAP_TLS_FAIL)) {
+		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
 	} else {
-		peap = tls_session->opaque = peap_alloc(tls_session, inst);
+		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
 	}
 
-	status = eap_tls_process(request, eap_session);
-	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
-		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
-	} else {
-		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
-	}
-
-	switch (status) {
+	switch (eap_tls_session->state) {
 	/*
 	 *	EAP-TLS handshake was successful, tell the
 	 *	client to keep talking.
@@ -254,6 +240,25 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 }
 
 /*
+ *	Do authentication, by letting EAP-TLS do most of the work.
+ */
+static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					     request_t *request)
+{
+	eap_session_t		*eap_session = eap_session_get(request->parent);
+
+	/*
+	 *	Setup the resumption frame to process the result
+	 */
+	(void)unlang_module_yield(request, mod_handshake_resume, NULL, eap_session);
+
+	/*
+	 *	Process TLS layer until done.
+	 */
+	return eap_tls_process(request, eap_session);
+}
+
+/*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -261,6 +266,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_peap_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session;
+	fr_tls_session_t	*tls_session;
 
 	fr_pair_t		*vp;
 	bool			client_cert;
@@ -280,6 +286,8 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
 	if (!eap_tls_session) RETURN_MODULE_FAIL;
+
+ 	tls_session = eap_tls_session->tls_session;
 
 	/*
 	 *	As it is a poorly designed protocol, PEAP uses
@@ -308,7 +316,13 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 		RETURN_MODULE_FAIL;
 	}
 
-	eap_session->process = mod_process;
+	/*
+	 *	Session resumption requires the storage of data, so
+	 *	allocate it if it doesn't already exist.
+	 */
+	tls_session->opaque = peap_alloc(tls_session, inst);
+
+	eap_session->process = mod_handshake_process;
 
 	RETURN_MODULE_HANDLED;
 }

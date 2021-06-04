@@ -126,36 +126,23 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 	return t;
 }
 
-/*
- *	Do authentication, by letting EAP-TLS do most of the work.
- */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
 {
-	rlm_eap_ttls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_ttls_t);
-
-	eap_tls_status_t	status;
-	eap_session_t		*eap_session = eap_session_get(request->parent);
+	eap_session_t		*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
-	ttls_tunnel_t		*tunnel = NULL;
+	ttls_tunnel_t		*tunnel = talloc_get_type_abort(tls_session->opaque, ttls_tunnel_t);
 	static char 		keying_prf_label[] = "ttls keying material";
 
-	if (tls_session->opaque) tunnel = talloc_get_type_abort(tls_session->opaque, ttls_tunnel_t);
-
-	eap_tls_session->include_length = inst->include_length;
-
-	/*
-	 *	Process TLS layer until done.
-	 */
-	status = eap_tls_process(request, eap_session);
-	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
-		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
+	if ((eap_tls_session->state == EAP_TLS_INVALID) || (eap_tls_session->state == EAP_TLS_FAIL)) {
+		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
 	} else {
-		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
 	}
 
-	switch (status) {
+	switch (eap_tls_session->state) {
 	/*
 	 *	EAP-TLS handshake was successful, tell the
 	 *	client to keep talking.
@@ -213,12 +200,6 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	RDEBUG2("Session established.  Decoding Diameter attributes");
 
 	/*
-	 *	We may need TTLS data associated with the session, so
-	 *	allocate it here, if it wasn't already alloacted.
-	 */
-	if (!tls_session->opaque) tls_session->opaque = ttls_alloc(tls_session, inst);
-
-	/*
 	 *	Process the TTLS portion of the request.
 	 */
 	switch (eap_ttls_process(request, eap_session, tls_session)) {
@@ -260,6 +241,25 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 }
 
 /*
+ *	Do authentication, by letting EAP-TLS do most of the work.
+ */
+static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					     request_t *request)
+{
+	eap_session_t		*eap_session = eap_session_get(request->parent);
+
+	/*
+	 *	Setup the resumption frame to process the result
+	 */
+	(void)unlang_module_yield(request, mod_handshake_resume, NULL, eap_session);
+
+	/*
+	 *	Process TLS layer until done.
+	 */
+	return eap_tls_process(request, eap_session);
+}
+
+/*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -268,6 +268,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 
 	eap_tls_session_t	*eap_tls_session;
+	fr_tls_session_t	*tls_session;
 	fr_pair_t		*vp;
 	bool			client_cert;
 
@@ -286,6 +287,9 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
 	if (!eap_tls_session) RETURN_MODULE_FAIL;
+	tls_session = eap_tls_session->tls_session;
+
+	eap_tls_session->include_length = inst->include_length;
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
@@ -296,7 +300,8 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 		RETURN_MODULE_FAIL;
 	}
 
-	eap_session->process = mod_process;
+	tls_session->opaque = ttls_alloc(tls_session, inst);
+	eap_session->process = mod_handshake_process;
 
 	RETURN_MODULE_OK;
 }

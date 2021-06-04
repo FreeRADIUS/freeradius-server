@@ -154,7 +154,7 @@ extern size_t eap_tls_status_table_len;
 /*
  *	Externally exported TLS functions.
  */
-eap_tls_status_t	eap_tls_process(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
+unlang_action_t		eap_tls_process(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
 int			eap_tls_start(request_t *request, eap_session_t *eap_session) CC_HINT(nonnull);
 
