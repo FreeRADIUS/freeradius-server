@@ -134,7 +134,7 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 
 	/*
 	 *	Function pushed more children or yielded
-	 *	setup out repeat function for when we
+	 *	setup our repeat function for when we
 	 *	eventually start heading back up the stack.
 	 */
 	default:
