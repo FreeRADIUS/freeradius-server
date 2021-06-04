@@ -271,47 +271,6 @@ static void unlang_tmpl_exec_stdout_read(UNUSED fr_event_list_t *el, int fd, UNU
 	fr_sbuff_marker_release(&start_m);
 }
 
-static void unlang_tmpl_exec_timeout(
-#ifndef __linux__
-				     UNUSED
-#endif
-				     fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
-{
-	request_t			*request = uctx;
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_tmpl_t);
-
-	fr_assert(state->exec.pid > 0);
-
-#ifdef __linux__
-	int status;
-
-	/*
-	 *	libkqueue on Linux isn't quite there yet.  Maybe the
-	 *	program has exited, and we haven't noticed.  In which
-	 *	case, do a graceful cleanup.
-	 */
-	if (waitpid(state->exec.pid, &status, WNOHANG) == state->exec.pid) {
-		unlang_tmpl_exec_waitpid(el, state->exec.pid, status, request);
-		return;
-	}
-#endif
-
-	if (state->exec.stdout_fd < 0) {
-		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
-	} else {
-		REDEBUG("Timeout running program - killing it and failing the request");
-	}
-	kill(state->exec.pid, SIGKILL);
-	state->exec.failed = true;
-
-	unlang_tmpl_exec_cleanup(request);
-	unlang_interpret_mark_runnable(request);
-}
-
-
 /** Wrapper to call a resumption function after a tmpl has been expanded
  *
  *  If the resumption function returns YIELD, then this function is
