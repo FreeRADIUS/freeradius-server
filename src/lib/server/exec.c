@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/util.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/misc.h>
@@ -889,6 +890,174 @@ int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 
 	return 0;
 }
+
+/*
+ *	Cleanup an exec after failures
+ */
+static void exec_cleanup(fr_exec_state_t *exec) {
+	request_t	*request = exec->request;
+
+	if (exec->pid) DEBUG3("Cleaning up exec state for pid %u", exec->pid);
+
+	if (exec->stdout_fd >= 0) {
+		if (fr_event_fd_delete(request->el, exec->stdout_fd, FR_EVENT_FILTER_IO) < 0){
+			RPERROR("Failed removing stdout handler");
+		}
+		close(exec->stdout_fd);
+		exec->stdout_fd = -1;
+	}
+
+	if (exec->stderr_fd >= 0) {
+		if (fr_event_fd_delete(request->el, exec->stderr_fd, FR_EVENT_FILTER_IO) < 0) {
+			RPERROR("Failed removing stderr handler");
+		}
+		close(exec->stderr_fd);
+		exec->stderr_fd = -1;
+	}
+
+	if (exec->pid) {
+		(void) fr_event_pid_wait(request->el, request->el, NULL, exec->pid, NULL, NULL);
+		exec->pid = 0;
+	}
+
+	if (exec->ev) fr_event_timer_delete(&exec->ev);
+}
+
+/*
+ *	Callback when exec has completed.  Record the status and tidy up.
+ */
+static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
+{
+	fr_exec_state_t	*exec = uctx;
+	request_t	*request = exec->request;
+
+	if (WIFEXITED(status)) {
+		RDEBUG("Program failed with status code %d", WEXITSTATUS(status));
+		exec->status = WEXITSTATUS(status);
+	} else if (WIFSIGNALED(status)) {
+		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(status));
+		exec->status = -WTERMSIG(status);
+	} else {
+		RDEBUG("Program exited due to unknown status %d", exec->status);
+		exec->status = -status;
+	}
+	exec->pid = 0;
+
+	/*
+	 *	We may receive the "child exited" signal before the
+	 *	"pipe has been closed" signal
+	 */
+	if (exec->stdout_fd >= 0) {
+		(void) fr_event_fd_delete(exec->request->el, exec->stdout_fd, FR_EVENT_FILTER_IO);
+		close(exec->stdout_fd);
+		exec->stdout_fd = -1;
+	}
+
+	if (exec->ev) fr_event_timer_delete(&exec->ev);
+
+	unlang_interpret_mark_runnable(exec->request);
+}
+
+/*
+ *	Callback when an exec times out.
+ */
+static void exec_timeout(
+#ifndef __linux__
+			 UNUSED
+#endif
+			 fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_exec_state_t *exec = talloc_get_type_abort(uctx, fr_exec_state_t);
+	request_t	*request = exec->request;
+
+	fr_assert(exec->pid > 0);
+
+#ifdef __linux__
+	int	status;
+
+	/*
+	 *	libkqueue on Linux isn't quite there yet.  Maybe the
+	 *	program has exited, and we haven't noticed.  In which
+	 *	case, do a graceful cleanup.
+	 */
+	if (waitpid(exec->pid, &status, WNOHANG) == exec->pid) {
+		exec_waitpid(el, exec->pid, status, exec);
+		return;
+	}
+#endif
+
+	if (exec->stdout_fd < 0) {
+		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
+	} else {
+		REDEBUG("Timeout running program - killing it and failing the request");
+	}
+	kill(exec->pid, SIGKILL);
+	exec->failed = true;
+
+	exec_cleanup(exec);
+	unlang_interpret_mark_runnable(exec->request);
+}
+
+/*
+ *	Callback to read stdout from an exec into the pre-prepared extensible sbuff
+ */
+static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx) {
+	fr_exec_state_t		*exec = uctx;
+	request_t		*request = exec->request;
+	ssize_t			data_len, remaining;
+	fr_sbuff_marker_t	start_m;
+
+	fr_sbuff_marker(&start_m, &exec->stdout_buff);
+
+	do {
+		/*
+		 *	Read in 128 byte chunks
+		 */
+		remaining = fr_sbuff_extend_lowat(NULL, &exec->stdout_buff, 128);
+
+		/*
+		 *	Ran out of buffer space.
+		 */
+		if (unlikely(!remaining)) {
+			REDEBUG("Too much output from program - killing it and failing the request");
+
+			if (exec->pid > 0) kill(exec->pid, SIGKILL);
+
+		error:
+			exec->failed = true;
+			exec_cleanup(exec);
+			break;
+		}
+
+		data_len = read(fd, fr_sbuff_current(&exec->stdout_buff), remaining);
+		if (data_len < 0) {
+			if (errno == EINTR) continue;
+
+			REDEBUG("Error reading from child program - %s", fr_syserror(errno));
+			goto error;
+		}
+
+		/*
+		 *	Even if we get 0 now the process may write more data later
+		 *	before it completes, so we leave the fd handlers in place.
+		 */
+		if (data_len == 0) break;
+
+		fr_sbuff_advance(&exec->stdout_buff, data_len);
+	} while (remaining == data_len);	/* If process returned maximum output, loop again */
+
+	/*
+	 *	Only print if we got additional data
+	 */
+	if (RDEBUG_ENABLED2 && fr_sbuff_behind(&start_m)) {
+		RDEBUG2("pid %u (stdout) - %pV", exec->pid,
+			fr_box_strvalue_len(fr_sbuff_current(&start_m),
+					    fr_sbuff_behind(&start_m)));
+	}
+
+	fr_sbuff_marker_release(&start_m);
+}
+
 /** Call an child program, optionally reading it's output
  *
  * @param[in] ctx	to allocate events in.
