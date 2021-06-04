@@ -851,6 +851,48 @@ static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UN
 		break;
 	}
 
+#if 0
+#ifdef TLS1_3_VERSION
+	/*
+	 *	https://tools.ietf.org/html/draft-ietf-emu-eap-tls13#section-2.5
+	 *
+	 *	We need to signal the other end that TLS negotiation
+	 *	is done.  We can't send a zero-length application data
+	 *	message, so we send application data which is one byte
+	 *	of zero.
+	 *
+	 *	Note this is only done for when there is no application
+	 *	data to be sent. So this is done always for EAP-TLS but
+	 *	notibly not for PEAP even on resumption.
+	 *
+	 *	We only want to send this application data IF:
+	 *
+	 *      * EAP-TLS / TTLS / PEAP - session was resumed
+	 *	* EAP-TLS
+	 *		* SSL init is finished (presumed to be checked elsewhere)
+	 *		* we saw the client cert
+	 *		* OR we're using unauthenticated EAP-TLS where
+	 *		  the administrator has decided to not ask for
+	 *		  the client cert
+	 */
+	if ((tls_session->info.version == TLS1_3_VERSION) &&
+	    (tls_session->client_cert_ok || tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
+		if ((handler->type == PW_EAP_TLS) || SSL_session_reused(tls_session->ssl)) {
+			tls_session->authentication_success = true;
+
+			RDEBUG("(TLS) EAP Sending final Commitment Message.");
+			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
+		}
+
+		if (fr_tls_session_handshake(request, tls_session) < 0) {
+			REDEBUG("TLS receive handshake failed during operation");
+			fr_tls_cache_deny(tls_session);
+			return EAP_TLS_FAIL;
+		}
+	}
+#endif
+#endif
+
 	/*
 	 *	FIXME: return success/fail.
 	 *
