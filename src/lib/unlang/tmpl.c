@@ -419,105 +419,20 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 						    unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
-	pid_t				pid;
-	int				*stdout_fd = NULL;
 
-	state->exec.stdout_fd = -1;
-	state->exec.stderr_fd = -1;
-	if (state->out || RDEBUG_ENABLED2) stdout_fd = &state->exec.stdout_fd;
+	state->exec.stdout_used = (state->out) ? true : false;
+	state->exec.outctx = state;
 
-	if (fr_exec_wait_start(&pid, NULL, stdout_fd, &state->exec.stderr_fd,
-			       request, &state->box, state->exec.vps) < 0) {
-		RPEDEBUG("Failed executing program");
-	fail:
-		unlang_tmpl_exec_cleanup(request);
+	/*
+	 *	@todo - make the timeout configurable
+	 */
+	if (fr_exec_wait_start_io(state->ctx, &state->exec, request, &state->box, state->exec.vps,
+				  fr_time_delta_from_sec(EXEC_TIMEOUT)) < 0) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	fr_dlist_talloc_free(&state->box); /* this is the xlat expansion, and not the output string we want */
-
-	state->exec.pid = pid;
-	state->exec.status = -1;	/* default to program didn't work */
-
-	/*
-	 *	Tell the event loop that it needs to wait for this PID.
-	 */
-	if (fr_event_pid_wait(state, request->el, &state->exec.ev_pid, pid,
-			      unlang_tmpl_exec_waitpid, request) < 0) {
-		state->exec.pid = 0;
-		RPEDEBUG("Failed adding watcher for child process");
-		unlang_tmpl_exec_cleanup(request);
-		goto fail;
-	}
-
-	/*
-	 *	Kill the child process after a period of time.
-	 *
-	 *	@todo - make the timeout configurable
-	 */
-	if (fr_event_timer_in(state->ctx, request->el, &state->exec.ev,
-			      fr_time_delta_from_sec(EXEC_TIMEOUT), unlang_tmpl_exec_timeout, request) < 0) {
-		unlang_tmpl_exec_cleanup(request);
-		goto fail;
-	}
-
-	/*
-	 *	If we need to parse stdout, insert a
-	 *	special IO handler that aggregates all
-	 *	stdout data into an expandable buffer.
-	 */
-	if (state->out) {
-		if (fr_event_fd_insert(state->ctx, request->el, state->exec.stdout_fd,
-				       unlang_tmpl_exec_stdout_read, NULL, NULL, request) < 0) {
-			RPEDEBUG("Failed adding event");
-			goto fail;
-		}
-
-		/*
-		 *	Accept a maximum of 32k of
-		 *	data from the process.
-		 */
-		fr_sbuff_init_talloc(state, &state->exec.stdout_buff, &state->exec.stdout_tctx, 128, 32 * 1024);
-		fr_value_box_list_init(&state->box);
-
-	/*
-	 *	If the caller doesn't want the output box,
-	 *	we still want to copy stdout into the
-	 *	request log if we're logging at a high
-	 *	enough level of verbosity.
-	 */
-	} else if (RDEBUG_ENABLED2) {
-		state->exec.stdout_uctx = (log_fd_event_ctx_t){
-			.type = L_DBG,
-			.lvl = L_DBG_LVL_2,
-			.request = request,
-			.prefix = fr_asprintf(state, "pid %u (stdout)", state->exec.pid)
-		};
-
-		if (fr_event_fd_insert(state->ctx, request->el, state->exec.stdout_fd,
-				       log_request_fd_event, NULL, NULL, &state->exec.stdout_uctx) < 0) {
-			RPEDEBUG("Failed adding event");
-			goto fail;
-		}
-	}
-
-	/*
-	 *	Send stderr to the request log as
-	 *	error messages with a custom prefix
-	 */
-	state->exec.stderr_uctx = (log_fd_event_ctx_t){
-		.type = L_DBG_ERR,
-		.lvl = L_DBG_LVL_1,
-		.request = request,
-		.prefix = fr_asprintf(state, "pid %u (stderr)", state->exec.pid)
-	};
-
-	if (fr_event_fd_insert(state->ctx, request->el, state->exec.stderr_fd,
-			       log_request_fd_event, NULL, NULL, &state->exec.stderr_uctx) < 0) {
-		RPEDEBUG("Failed adding event");
-		goto fail;
-	}
 
 	frame->process = unlang_tmpl_exec_wait_final;
 	repeatable_set(frame);
