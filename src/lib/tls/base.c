@@ -46,6 +46,8 @@ static uint32_t instance_count = 0;
  */
 _Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
 
+ENGINE *pkcs11_engine;
+
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
 
@@ -557,6 +559,20 @@ int fr_openssl_init(void)
 	 *	running any engine controls.
 	 */
 	fr_tls_engine_load_builtin();
+
+	pkcs11_engine = ENGINE_by_id("pkcs11");
+	if (pkcs11_engine) {
+		if (!ENGINE_init(pkcs11_engine)) {
+			fr_tls_log_error(NULL, "Failed to initialize PKCS#11 engine");
+			ENGINE_free(pkcs11_engine);
+			pkcs11_engine = NULL;
+		} else {
+			/*
+			 *	Free the structural reference from ENGINE_by_id()
+			 */
+			ENGINE_free(pkcs11_engine);
+		}
+	}
 
 	instance_count++;
 
