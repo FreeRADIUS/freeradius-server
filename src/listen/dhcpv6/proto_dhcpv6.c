@@ -35,22 +35,22 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, C
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("Solicit", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_SOLICIT]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Request", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_REQUEST]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Renew", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_RENEW]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Rebind", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_REBIND]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Release", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_RELEASE]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Decline", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_DECLINE]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Information-Request", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_INFORMATION_REQUEST]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Relay-Forward", FR_TYPE_UINT32, proto_dhcpv6_t, priorities[FR_DHCPV6_RELAY_FORWARD]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Solicit", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_SOLICIT]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Request", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_REQUEST]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Renew", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_RENEW]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Rebind", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_REBIND]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Release", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_RELEASE]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Decline", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_DECLINE]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Information-Request", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_INFORMATION_REQUEST]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Relay-Forward", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_RELAY_FORWARD]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	CONF_PARSER_TERMINATOR
 };
 

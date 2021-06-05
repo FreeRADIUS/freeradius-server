@@ -54,16 +54,16 @@ static CONF_PARSER const limit_config[] = {
 };
 
 static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_ACCESS_REQUEST]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_ACCOUNTING_REQUEST]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
-	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_COA_REQUEST]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_DISCONNECT_REQUEST]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
-	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_t, priorities[FR_RADIUS_CODE_STATUS_SERVER]),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "now" },
+	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_VOID, proto_radius_t, priorities[FR_RADIUS_CODE_ACCESS_REQUEST]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
+	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_VOID, proto_radius_t, priorities[FR_RADIUS_CODE_ACCOUNTING_REQUEST]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
+	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_VOID, proto_radius_t, priorities[FR_RADIUS_CODE_COA_REQUEST]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
+	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_VOID, proto_radius_t, priorities[FR_RADIUS_CODE_DISCONNECT_REQUEST]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
+	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_VOID, proto_radius_t, priorities[FR_RADIUS_CODE_STATUS_SERVER]),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "now" },
 
 	CONF_PARSER_TERMINATOR
 };

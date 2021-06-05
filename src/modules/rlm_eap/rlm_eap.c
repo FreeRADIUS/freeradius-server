@@ -63,7 +63,7 @@ static size_t require_identity_realm_table_len = NUM_ELEMENTS(require_identity_r
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("require_identity_realm", FR_TYPE_VOID, rlm_eap_t, require_realm),
-			 .func = cf_table_parse_uint32,
+			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){ .table = require_identity_realm_table, .len = &require_identity_realm_table_len },
 			 .dflt = "nai" },
 

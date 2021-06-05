@@ -35,8 +35,8 @@
 #include <freeradius-devel/server/process.h>
 
 static CONF_PARSER submodule_config[] = {
-	{ FR_CONF_OFFSET("request_identity", FR_TYPE_UINT32, eap_aka_sim_process_conf_t, request_identity ),
-	  .func = cf_table_parse_uint32, .uctx = &(cf_table_parse_ctx_t){ .table = fr_aka_sim_id_request_table, .len = &fr_aka_sim_id_request_table_len }},
+	{ FR_CONF_OFFSET("request_identity", FR_TYPE_VOID, eap_aka_sim_process_conf_t, request_identity ),
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_aka_sim_id_request_table, .len = &fr_aka_sim_id_request_table_len }},
 	{ FR_CONF_OFFSET("strip_permanent_identity_hint", FR_TYPE_BOOL, eap_aka_sim_process_conf_t,
 			 strip_permanent_identity_hint ), .dflt = "yes" },
 	{ FR_CONF_OFFSET("ephemeral_id_length", FR_TYPE_SIZE, eap_aka_sim_process_conf_t, ephemeral_id_length ), .dflt = "14" },	/* 14 for compatibility */
