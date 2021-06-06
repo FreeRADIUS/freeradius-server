@@ -80,8 +80,6 @@ static unlang_action_t unlang_function_call_repeat(rlm_rcode_t *p_result, reques
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 	char const 			*caller;
 
-	*p_result = RLM_MODULE_NOOP;	/* Avoid asserts */
-
 	/*
 	 *	Don't let the callback mess with the current
 	 *	module permanently.
@@ -106,8 +104,6 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	unlang_action_t			ua;
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 	char const 			*caller;
-
-	*p_result = RLM_MODULE_NOOP;	/* Avoid asserts */
 
 	/*
 	 *	Don't let the callback mess with the current
@@ -149,6 +145,68 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	return ua;
 }
 
+/** Clear pending repeat function calls, and remove the signal handler.
+ *
+ * The function frame being modified must be at the top of the stack.
+ *
+ * @param[in] request	The current request.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int unlang_function_clear(request_t *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_func_t	*state;
+
+	if (frame->instruction->type != UNLANG_TYPE_FUNCTION) {
+		RERROR("Can't clear function on non-function frame");
+		return -1;
+	}
+
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+	state->repeat = NULL;
+	state->signal = NULL;
+
+	repeatable_clear(frame);
+
+	return 0;
+}
+
+/** Set a new repeat function for an existing function frame
+ *
+ * The function frame being modified must be at the top of the stack.
+ *
+ * @param[in] request	The current request.
+ * @param[in] repeat	the repeat function to set.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int unlang_function_repeat(request_t *request, unlang_function_t repeat)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_func_t	*state;
+
+	if (frame->instruction->type != UNLANG_TYPE_FUNCTION) {
+		RERROR("Can't set repeat function on non-function frame");
+		return -1;
+	}
+
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+
+	/*
+	 *	If we're inside unlang_function_call,
+	 *	it'll pickup state->repeat and do the right thing
+	 *	once the current function returns.
+	 */
+	state->repeat = repeat;
+
+	return 0;
+}
+
 /** Push a generic function onto the unlang stack
  *
  * These can be pushed by any other type of unlang op to allow a submodule or function
@@ -164,8 +222,8 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_interpret_push_function(request_t *request, unlang_function_t func, unlang_function_t repeat,
-				   unlang_function_signal_t signal, bool top_frame, void *uctx)
+unlang_action_t unlang_function_push(request_t *request, unlang_function_t func, unlang_function_t repeat,
+				     unlang_function_signal_t signal, bool top_frame, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -175,7 +233,7 @@ int unlang_interpret_push_function(request_t *request, unlang_function_t func, u
 	 *	Push module's function
 	 */
 	if (unlang_interpret_push(request, &function_instruction,
-				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
+				  RLM_MODULE_NOOP, UNLANG_NEXT_STOP, top_frame) < 0) return UNLANG_ACTION_FAIL;
 
 	frame = &stack->frame[stack->depth];
 
@@ -199,7 +257,7 @@ int unlang_interpret_push_function(request_t *request, unlang_function_t func, u
 	 */
 	if (!func && repeat) frame->process = unlang_function_call_repeat;
 
-	return 0;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 void unlang_function_init(void)

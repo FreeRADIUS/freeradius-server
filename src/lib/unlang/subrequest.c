@@ -80,7 +80,7 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 	 *	If there's a no destination tmpl, we're done.
 	 */
 	if (!child->reply) {
-		unlang_subrequest_free(&child);
+		unlang_subrequest_detach_and_free(&child);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -114,7 +114,7 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 		}
 	}
 
-	unlang_subrequest_free(&child);
+	unlang_subrequest_detach_and_free(&child);
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -254,11 +254,24 @@ static unlang_action_t unlang_subrequest_parent_init(rlm_rcode_t *p_result, requ
  *
  * @param[in] child to free.
  */
-void unlang_subrequest_free(request_t **child)
+void unlang_subrequest_detach_and_free(request_t **child)
 {
 	request_detach(*child);
 	talloc_free(*child);
 	*child = NULL;
+}
+
+/** Allocate a subrequest to run through a virtual server at some point in the future
+ *
+ * @param[in] parent		to hang sub request off of.
+ * @param[in] namespace		the child will operate in.
+ * @return
+ *	- A new child request.
+ *	- NULL on failure.
+ */
+request_t *unlang_subrequest_alloc(request_t *parent, fr_dict_t const *namespace)
+{
+	return unlang_io_subrequest_alloc(parent, namespace, UNLANG_NORMAL_CHILD);
 }
 
 /** Initialise subrequest ops

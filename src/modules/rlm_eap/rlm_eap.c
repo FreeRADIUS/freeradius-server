@@ -733,7 +733,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	/*
 	 *	Allocate a new subrequest
 	 */
-	MEM(eap_session->subrequest = unlang_module_subrequest_alloc(request,
+	MEM(eap_session->subrequest = unlang_subrequest_alloc(request,
 								     method->submodule->namespace ?
 								     *(method->submodule->namespace) :
 								     request->dict));

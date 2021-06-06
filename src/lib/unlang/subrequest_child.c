@@ -205,7 +205,7 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 	/*
 	 *	Push a resume frame into the child
 	 */
-	if (unlang_interpret_push_function(child, NULL,
+	if (unlang_function_push(child, NULL,
 					   unlang_subrequest_child_done,
 					   unlang_subrequest_child_signal, UNLANG_TOP_FRAME, state) < 0) return -1;
 
@@ -274,7 +274,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED
  * The child *MUST* have been allocated with unlang_io_subrequest_alloc, or something
  * that calls it.
  *
- * After the child is no longer required it *MUST* be freed with #unlang_subrequest_free.
+ * After the child is no longer required it *MUST* be freed with #unlang_subrequest_detach_and_free.
  * It's not enough to free it with talloc_free.
  *
  * This function should be called _before_ pushing any additional frames onto the child's

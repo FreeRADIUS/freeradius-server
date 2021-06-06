@@ -407,19 +407,6 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	return 0;
 }
 
-/** Allocate a subrequest to run through a virtual server at some point in the future
- *
- * @param[in] parent		to hang sub request off of.
- * @param[in] namespace		the child will operate in.
- * @return
- *	- A new child request.
- *	- NULL on failure.
- */
-request_t *unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *namespace)
-{
-	return unlang_io_subrequest_alloc(parent, namespace, UNLANG_NORMAL_CHILD);
-}
-
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation
  *
  * In order to use the async unlang processor the calling module needs to establish
@@ -798,6 +785,10 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	case UNLANG_ACTION_UNWIND:
 		break;
 
+	case UNLANG_ACTION_FAIL:
+		*p_result = RLM_MODULE_FAIL;
+		break;
+
 	case UNLANG_ACTION_EXECUTE_NEXT:	/* Not valid */
 		fr_assert(0);
 		*p_result = RLM_MODULE_FAIL;
@@ -938,6 +929,10 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		break;
 
 	case UNLANG_ACTION_UNWIND:
+		break;
+
+	case UNLANG_ACTION_FAIL:
+		*p_result = RLM_MODULE_FAIL;
 		break;
 
 	case UNLANG_ACTION_EXECUTE_NEXT:

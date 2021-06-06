@@ -957,10 +957,10 @@ static unlang_action_t eap_tls_handshake(rlm_rcode_t *p_result, int *priority,
  */
 static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(request_t *request, eap_session_t *eap_session)
 {
-	if (unlang_interpret_push_function(request,
-					   eap_tls_handshake,
-					   eap_tls_handshake_resume,
-					   NULL, UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_function_push(request,
+				 eap_tls_handshake,
+				 eap_tls_handshake_resume,
+				 NULL, UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

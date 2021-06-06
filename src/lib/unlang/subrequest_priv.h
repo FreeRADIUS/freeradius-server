@@ -73,8 +73,6 @@ static inline unlang_group_t *unlang_subrequest_to_group(unlang_subrequest_t *su
 	return (unlang_group_t *)subrequest;
 }
 
-void	unlang_subrequest_free(request_t **child);
-
 int unlang_subrequest_detach_child(request_t *request);
 
 #ifdef __cplusplus

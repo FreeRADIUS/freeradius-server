@@ -21,6 +21,10 @@
  * @file unlang/function.h
  * @brief Declarations for generic unlang functions.
  *
+ * These are a useful alternative to module methods for library code.
+ * They're more light weight, and don't require instance data lookups
+ * to function.
+ *
  * @copyright 2021 The FreeRADIUS server project
  */
 
@@ -52,10 +56,14 @@ typedef unlang_action_t (*unlang_function_t)(rlm_rcode_t *p_result, int *priorit
  */
 typedef void (*unlang_function_signal_t)(request_t *request, fr_state_signal_t action, void *uctx);
 
-int		unlang_interpret_push_function(request_t *request,
-					       unlang_function_t func, unlang_function_t repeat,
-					       unlang_function_signal_t signal, bool top_frame, void *uctx)
-					       CC_HINT(warn_unused_result);
+int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
+
+int		unlang_function_repeat(request_t *request, unlang_function_t repeat) CC_HINT(warn_unused_result);
+
+unlang_action_t	unlang_function_push(request_t *request,
+				     unlang_function_t func, unlang_function_t repeat,
+				     unlang_function_signal_t signal, bool top_frame, void *uctx)
+				     CC_HINT(warn_unused_result);
 
 #ifdef __cplusplus
 }

@@ -112,8 +112,6 @@ int		unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 				   module_instance_t *module_instance, module_method_t method, bool top_frame)
 				   CC_HINT(warn_unused_result);
 
-request_t	*unlang_module_subrequest_alloc(request_t *parent, fr_dict_t const *namespace);
-
 unlang_action_t	unlang_module_yield_to_subrequest(rlm_rcode_t *p_result, request_t *child,
 						  unlang_module_resume_t resume,
 						  unlang_module_signal_t signal,

@@ -327,7 +327,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 	 */
 	while (frame->instruction) {
 		unlang_t const		*instruction = frame->instruction;
-		unlang_action_t		action = UNLANG_ACTION_UNWIND;
+		unlang_action_t		ua = UNLANG_ACTION_UNWIND;
 
 		DUMP_STACK;
 
@@ -385,15 +385,15 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	should be evaluated again.
 		 */
 		repeatable_clear(frame);
-		action = frame->process(result, request, frame);
+		ua = frame->process(result, request, frame);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
-			fr_table_str_by_value(unlang_action_table, action, "<INVALID>"), *priority);
+			fr_table_str_by_value(unlang_action_table, ua, "<INVALID>"), *priority);
 
 		fr_assert(*priority >= -1);
 		fr_assert(*priority <= MOD_PRIORITY_MAX);
 
-		switch (action) {
+		switch (ua) {
 		/*
 		 *	The request is now defunct, and we should not
 		 *	continue processing it.
@@ -436,6 +436,14 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			return UNLANG_FRAME_ACTION_YIELD;
 
 		/*
+		 *	This action is intended to be returned by library
+		 *	functions.  It reduces the boilerplate.
+		 */
+		case UNLANG_ACTION_FAIL:
+			*result = RLM_MODULE_FAIL;
+			FALL_THROUGH;
+
+		/*
 		 *	Instruction finished execution,
 		 *	check to see what we need to do next, and update
 		 *	the section rcode and priority.
@@ -470,7 +478,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	Execute the next instruction in this frame
 		 */
 		case UNLANG_ACTION_EXECUTE_NEXT:
-			if ((action == UNLANG_ACTION_EXECUTE_NEXT) && unlang_ops[instruction->type].debug_braces) {
+			if ((ua == UNLANG_ACTION_EXECUTE_NEXT) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
 			}

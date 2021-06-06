@@ -434,7 +434,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 		}
 	}
 
-	if (unlang_interpret_push_function(child, trigger_run, trigger_resume,
+	if (unlang_function_push(child, trigger_run, trigger_resume,
 					   NULL, UNLANG_TOP_FRAME, trigger) < 0) goto error;
 
 	if (!intp) {

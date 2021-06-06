@@ -365,12 +365,12 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		} else {
 			unlang_stack_frame_t *child_frame;
 
-			if (unlang_interpret_push_function(child,
-		    					   NULL,
-		    					   unlang_parallel_child_done,
-		    					   unlang_parallel_child_signal,
-		    					   UNLANG_TOP_FRAME,
-		    					   &state->children[i]) < 0) goto error;
+			if (unlang_function_push(child,
+		    				 NULL,
+		    				 unlang_parallel_child_done,
+		    				 unlang_parallel_child_signal,
+		    				 UNLANG_TOP_FRAME,
+		    				 &state->children[i]) < 0) goto error;
 			child_frame = frame_current(child);
 			return_point_set(child_frame);		/* Don't unwind this frame */
 
