@@ -76,6 +76,11 @@
 #  include <sys/resource.h>
 #endif
 
+#ifdef __APPLE__
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #ifdef HAVE_EXECINFO
 #  ifndef MAX_BT_FRAMES
 #    define MAX_BT_FRAMES 128
@@ -125,14 +130,15 @@ static TALLOC_CTX *talloc_autofree_ctx;
 #  ifdef __linux__
 #    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, NULL)
 #    define _PTRACE_DETACH(_x) ptrace(PT_DETACH, _x, NULL, NULL)
-#  else
+#  elif !defined(__APPLE__) && !defined(HAVE_SYS_PROCCTL_H)
 #    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, 0)
 #    define _PTRACE_DETACH(_x) ptrace(PT_DETACH, _x, (void *)1, 0)
-#  endif
+#endif
 
 #  ifdef HAVE_CAPABILITY_H
 #    include <sys/capability.h>
 #  endif
+#endif
 
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 #  include <sanitizer/lsan_interface.h>
@@ -267,6 +273,71 @@ int fr_get_lsan_state(void)
 }
 #endif
 
+#if defined(HAVE_SYS_PROCCTL_H)
+static int fr_get_debug_state(void)
+{
+	int status;
+
+	if (procctl(P_PID, getpid(), PROC_TRACE_STATUS, &status) == -1) {
+		fr_strerror_printf("Cannot get dumpable flag: procctl(PROC_TRACE_STATUS) failed: %s", fr_syserror(errno));
+		return DEBUG_STATE_UNKNOWN;
+	}
+
+	/*
+	 *	As FreeBSD docs say about "PROC_TRACE_STATUS":
+	 *
+	 *	Returns the current tracing status for the specified process in the
+	 *	integer variable pointed to by data.  If tracing is disabled, data
+	 *	is set to -1.  If tracing is enabled, but no debugger is attached by
+	 *	the ptrace(2) syscall, data is set to 0.  If a debugger is attached,
+	 *	data is set to the pid of the debugger process.
+	 */
+	if (status <= 0) return DEBUG_STATE_NOT_ATTACHED;
+
+	return DEBUG_STATE_ATTACHED;
+}
+#elif defined(__APPLE__)
+/** The ptrace_attach() method no longer works as of macOS 11.4 (we always get eperm)
+ *
+ * Apple published this helpful article here which provides the
+ * magical invocation: https://developer.apple.com/library/archive/qa/qa1361/_index.html
+ *
+ * @return
+ *	- 0 if we're not.
+ *	- 1 if we are.
+ *      - -1
+ */
+int fr_get_debug_state(void)
+{
+	int                 ret;
+	int                 mib[4];
+	struct kinfo_proc   info;
+	size_t              size;
+
+	/*
+	 *	Initialize the flags so that, if sysctl fails for some
+	 *	reason, we get a predictable result.
+	 */
+	info.kp_proc.p_flag = 0;
+
+	/*
+	 *	Initialize mib, which tells sysctl the info we want, in this case
+	 *	we're looking for information about a specific process ID.
+	 */
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC;
+	mib[2] = KERN_PROC_PID;
+	mib[3] = getpid();
+
+	/* Call sysctl */
+	size = sizeof(info);
+	ret = sysctl(mib, NUM_ELEMENTS(mib), &info, &size, NULL, 0);
+	if (ret != 0) return -1;
+
+	/* We're being debugged if the P_TRACED flag is set */
+	return ((info.kp_proc.p_flag & P_TRACED) != 0);
+}
+#elif defined(HAVE_SYS_PTRACE_H)
 /** Determine if we're running under a debugger by attempting to attach using pattach
  *
  * @return
@@ -362,12 +433,9 @@ DIAG_ON(deprecated-declarations)
 		 *	If we don't do it in that order the read in the parent triggers
 		 *	a SIGKILL.
 		 */
-
-		if ((_PTRACE(flags, ppid) == 0)
-#ifdef __APPLE__
-		    || (errno == EPERM)
-#endif
-		    ) {
+		errno = 0;
+		_PTRACE(flags, ppid);
+		if (errno == 0) {
 			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
 
@@ -377,6 +445,20 @@ DIAG_ON(deprecated-declarations)
 			}
 
 			/* Detach */
+			_PTRACE_DETACH(ppid);
+			exit(0);
+		/*
+		 *	We could attach because of a permissions issue, we don't know
+		 *      whether we're being traced or not.
+		 */
+		} else if (errno == EPERM) {
+			ret = DEBUGGER_STATE_UNKNOWN;
+
+			/* Tell the parent what happened */
+			if (write(from_child[1], &ret, sizeof(ret)) < 0) {
+				fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
+			}
+
 			_PTRACE_DETACH(ppid);
 			exit(0);
 		}
@@ -409,29 +491,6 @@ DIAG_ON(deprecated-declarations)
 
 		return ret;
 	}
-}
-#elif defined(HAVE_SYS_PROCCTL_H)
-static int fr_get_debug_state(void)
-{
-	int status;
-
-	if (procctl(P_PID, getpid(), PROC_TRACE_STATUS, &status) == -1) {
-		fr_strerror_printf("Cannot get dumpable flag: procctl(PROC_TRACE_STATUS) failed: %s", fr_syserror(errno));
-		return DEBUG_STATE_UNKNOWN;
-	}
-
-	/*
-	 *	As FreeBSD docs say about "PROC_TRACE_STATUS":
-	 *
-	 *	Returns the current tracing status for the specified process in the
-	 *	integer variable pointed to by data.  If tracing is disabled, data
-	 *	is set to -1.  If tracing is enabled, but no debugger is attached by
-	 *	the ptrace(2) syscall, data is set to 0.  If a debugger is attached,
-	 *	data is set to the pid of the debugger process.
-	 */
-	if (status <= 0) return DEBUG_STATE_NOT_ATTACHED;
-
-	return DEBUG_STATE_ATTACHED;
 }
 #else
 static int fr_get_debug_state(void)
