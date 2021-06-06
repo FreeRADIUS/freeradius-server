@@ -108,8 +108,8 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	} else {
 		int rcode;
 
-		rcode = fr_table_value_by_str(rcode_table, status, RLM_MODULE_UNKNOWN);
-		if (rcode == RLM_MODULE_UNKNOWN) {
+		rcode = fr_table_value_by_str(rcode_table, status, RLM_MODULE_NOT_SET);
+		if (rcode == RLM_MODULE_NOT_SET) {
 			RWARN("Unknown status \"%s\"", status);
 			return XLAT_ACTION_FAIL;
 		}
@@ -153,8 +153,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Convert the rcode string to an int
 	 */
-	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
-	if (inst->rcode == RLM_MODULE_UNKNOWN) {
+	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
+	if (inst->rcode == RLM_MODULE_NOT_SET) {
 		cf_log_err(conf, "rcode value \"%s\" is invalid", inst->rcode_str);
 		return -1;
 	}

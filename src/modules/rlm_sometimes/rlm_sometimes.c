@@ -53,8 +53,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
-	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
-	if (inst->rcode == RLM_MODULE_UNKNOWN) {
+	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
+	if (inst->rcode == RLM_MODULE_NOT_SET) {
 		cf_log_err(conf, "Unknown module return code '%s'", inst->rcode_str);
 		return -1;
 	}

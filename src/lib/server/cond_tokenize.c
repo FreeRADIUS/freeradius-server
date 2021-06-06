@@ -93,7 +93,7 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 			break;
 
 		case COND_TYPE_RCODE:
-			fr_assert(c->data.rcode != RLM_MODULE_UNKNOWN);
+			fr_assert(c->data.rcode != RLM_MODULE_NOT_SET);
 			FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(rcode_table, c->data.rcode, ""));
 			break;
 
@@ -1283,8 +1283,8 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		if (tmpl_is_unresolved(lhs) && (lhs->quote == T_BARE_WORD)) {
 			rlm_rcode_t rcode;
 
-			rcode = fr_table_value_by_str(rcode_table, lhs->data.unescaped, RLM_MODULE_UNKNOWN);
-			if (rcode == RLM_MODULE_UNKNOWN) {
+			rcode = fr_table_value_by_str(rcode_table, lhs->data.unescaped, RLM_MODULE_NOT_SET);
+			if (rcode == RLM_MODULE_NOT_SET) {
 				fr_strerror_const("Expected a module return code");
 				fr_sbuff_set(&our_in, &m_lhs);
 				goto error;

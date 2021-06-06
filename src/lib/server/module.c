@@ -153,8 +153,8 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 		return 0;
 	}
 
-	rcode = fr_table_value_by_str(rcode_table, info->argv[0], RLM_MODULE_UNKNOWN);
-	if (rcode == RLM_MODULE_UNKNOWN) {
+	rcode = fr_table_value_by_str(rcode_table, info->argv[0], RLM_MODULE_NOT_SET);
+	if (rcode == RLM_MODULE_NOT_SET) {
 		fprintf(fp_err, "Unknown status '%s'\n", info->argv[0]);
 		return -1;
 	}

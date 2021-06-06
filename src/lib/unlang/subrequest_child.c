@@ -306,7 +306,7 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	 *	which we fill in below.
 	 */
 	if (unlang_interpret_push(child->parent, &subrequest_instruction->group.self,
-				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
 		return -1;
 	}
 

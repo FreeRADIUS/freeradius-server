@@ -382,7 +382,7 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	 *	Push a new module frame onto the stack
 	 */
 	if (unlang_interpret_push(request, unlang_module_to_generic(mc),
-				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
 		return -1;
 	}
 
@@ -649,7 +649,7 @@ static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *requ
 #endif
 
 	fr_assert(rcode >= RLM_MODULE_REJECT);
-	fr_assert(rcode < RLM_MODULE_UNKNOWN);
+	fr_assert(rcode < RLM_MODULE_NOT_SET);
 
 	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
 	       fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));

@@ -203,7 +203,7 @@ int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	/*
 	 *	Push a new xlat eval frame onto the stack
 	 */
-	if (unlang_interpret_push(request, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+	if (unlang_interpret_push(request, &xlat_instruction, RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
 		return -1;
 	}
 	frame = &stack->frame[stack->depth];

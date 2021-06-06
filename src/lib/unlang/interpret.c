@@ -206,7 +206,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	/*
 	 *	Don't set action or priority if we don't have one.
 	 */
-	if (*result == RLM_MODULE_UNKNOWN) return UNLANG_FRAME_ACTION_NEXT;
+	if (*result == RLM_MODULE_NOT_SET) return UNLANG_FRAME_ACTION_NEXT;
 
 	/*
 	 *	The child's action says return.  Do so.
@@ -425,7 +425,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 
 		/*
 		 *	Yield control back to the scheduler, or whatever
-		 *	called the interpret.
+		 *	called the interpreter.
 		 */
 		case UNLANG_ACTION_YIELD:
 			yielded_set(frame);
@@ -449,8 +449,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	the section rcode and priority.
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			fr_assert(*result != RLM_MODULE_UNKNOWN);
-
 			if (unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 
@@ -467,7 +465,11 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 				}
 			}
 
-			*priority = instruction->actions[*result];
+			/*
+			 *	RLM_MODULE_NOT_SET means the instruction
+			 *	doesn't want to modify the result.
+			 */
+			if (*result != RLM_MODULE_NOT_SET) *priority = instruction->actions[*result];
 
 			if (result_calculate(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
 				return UNLANG_FRAME_ACTION_POP;
@@ -641,7 +643,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	/*
 	 *	Nothing in this section, use the top frame stack->result.
 	 */
-	if ((stack->priority < 0) || (stack->result == RLM_MODULE_UNKNOWN)) {
+	if ((stack->priority < 0) || (stack->result == RLM_MODULE_NOT_SET)) {
 			RDEBUG4("** [%i] %s - empty section, using stack result (%s %d)", stack->depth, __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"), stack->priority);
 		stack->result = frame->result;
@@ -779,7 +781,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 *	like too low level to make into a tuneable.
 	 */
 	stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128);	/* 128 bytes per state */
-	stack->result = RLM_MODULE_UNKNOWN;
+	stack->result = RLM_MODULE_NOT_SET;
 
 	return stack;
 }

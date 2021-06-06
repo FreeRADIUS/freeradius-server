@@ -145,7 +145,7 @@ int unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame
 	 *	Push a new call frame onto the stack
 	 */
 	if (unlang_interpret_push(request, unlang_call_to_generic(c),
-				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame) < 0) {
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
 		talloc_free(c);
 		return -1;
 	}

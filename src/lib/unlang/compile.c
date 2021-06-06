@@ -59,7 +59,7 @@ RCSID("$Id$")
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
 fr_table_num_sorted_t const mod_rcode_table[] = {
-	{ L("..."),        RLM_MODULE_UNKNOWN	},
+	{ L("..."),        RLM_MODULE_NOT_SET	},
 	{ L("disallow"),   RLM_MODULE_DISALLOW	},
 	{ L("fail"),       RLM_MODULE_FAIL	},
 	{ L("handled"),    RLM_MODULE_HANDLED	},

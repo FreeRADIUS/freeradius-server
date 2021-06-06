@@ -159,7 +159,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	 *	Push a new tmpl frame onto the stack
 	 */
 	if (unlang_interpret_push(request, unlang_tmpl_to_generic(ut),
-				  RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false) < 0) return -1;
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, false) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
