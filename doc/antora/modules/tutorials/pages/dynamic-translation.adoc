@@ -22,7 +22,7 @@ top:
 
 -------------------------------------------------------------------------------
 bob Password.Cleartext := "hello"
-    Callback-Id = "%{exec:/bin/echo Hello, there}"
+    Callback-Id = "%(exec:/bin/echo Hello, there)"
 -------------------------------------------------------------------------------
 
 The `echo` program may be in `/usr/bin/echo`, depending on your local system. On
@@ -43,7 +43,7 @@ the server should print messages similar to the following.
 (0)  files : users: Matched entry bob at line 1
 Executing: /bin/echo Hello, there:
 Program returned code (0) and output 'Hello, there'
-(0)  files : EXPAND %{exec:/bin/echo Hello, there}
+(0)  files : EXPAND %(exec:/bin/echo Hello, there)
 (0)  files :    --> Hello, there
 (0)   [files] = ok
 -------------------------------------------------------------------------------
@@ -81,11 +81,11 @@ You should use the `bob-login-one.sh` script to send a request to match the
 first entry and should send another request with a different NAS-Port.
 
 -------------------------------------------------------------------------------
-bob	Password.Cleartext := "hello", NAS-Port == "%{exec:/usr/bin/id -u}"
+bob	Password.Cleartext := "hello", NAS-Port == "%(exec:/usr/bin/id -u)"
 	Reply-Message = "Your port is very nice.",
 	Session-Timeout = "%{expr: 60 * 60}"
 
-bob	Password.Cleartext := "hello", NAS-Port != "%{exec:/usr/bin/id -u}"
+bob	Password.Cleartext := "hello", NAS-Port != "%(exec:/usr/bin/id -u)"
         Reply-Message = "Your port is less nice.",
         Session-Timeout = "%{expr: 60 * 2}"
 -------------------------------------------------------------------------------
@@ -95,7 +95,7 @@ demonstrates this nesting.
 
 -------------------------------------------------------------------------------
 bob	Password.Cleartext := "hello"
-	Session-Timeout = "%{expr: 60 * %{exec:/usr/bin/id -u}}"
+	Session-Timeout = "%{expr: 60 * %(exec:/usr/bin/id -u})"
 -------------------------------------------------------------------------------
 
 In this case, the user "bob" is given one minute of access time,

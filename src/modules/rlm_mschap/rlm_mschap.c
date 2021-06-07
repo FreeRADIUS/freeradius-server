@@ -911,7 +911,7 @@ ntlm_auth_err:
 		 *
 		 *  ...or...
 		 *
-		 *  %{exec:/path/to %(mschap:User-Name) %{MS-CHAP-New-Password}}"
+		 *  %(exec:/path/to %(mschap:User-Name) %{MS-CHAP-New-Password})"
 		 *
 		 */
 		fr_pair_t *new_pass, *new_hash;
