@@ -60,7 +60,7 @@ fr_table_num_sorted_t const syslog_facility_table[] = {
 #endif
 
 #ifdef LOG_AUTHPRIV
-	{ L("authpriv"),		LOG_AUTHPRIV	},
+	{ L("authpriv"),	LOG_AUTHPRIV	},
 #endif
 
 #ifdef LOG_CRON

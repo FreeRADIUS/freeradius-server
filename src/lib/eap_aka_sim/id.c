@@ -469,7 +469,7 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 	 */
 	evp_ctx = aka_sim_crypto_cipher_ctx();
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
-		tls_strerror_printf("Failed initialising AES-128-ECB context");
+		fr_tls_log_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
 		return -1;
 	}
@@ -486,13 +486,13 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, padded, sizeof(padded)) != 1)) {
-		tls_strerror_printf("Failed encrypting padded IMSI");
+		fr_tls_log_strerror_printf("Failed encrypting padded IMSI");
 		goto error;
 	}
 	encr_len = len;
 
 	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + len, (int *)&len) != 1)) {
-		tls_strerror_printf("Failed finalising encrypted IMSI");
+		fr_tls_log_strerror_printf("Failed finalising encrypted IMSI");
 		goto error;
 	}
 	encr_len += len;
@@ -612,7 +612,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 
 	evp_ctx = aka_sim_crypto_cipher_ctx();
 	if (unlikely(EVP_DecryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
-		tls_strerror_printf("Failed initialising AES-128-ECB context");
+		fr_tls_log_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
 		return -1;
 	}
@@ -628,13 +628,13 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (unlikely(EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, dec, sizeof(dec)) != 1)) {
-		tls_strerror_printf("Failed decypting IMSI");
+		fr_tls_log_strerror_printf("Failed decypting IMSI");
 		goto error;
 	}
 	decr_len = len;
 
 	if (unlikely(EVP_DecryptFinal_ex(evp_ctx, decr + len, (int *)&len) != 1)) {
-		tls_strerror_printf("Failed finalising decypted IMSI");
+		fr_tls_log_strerror_printf("Failed finalising decypted IMSI");
 		goto error;
 	}
 	decr_len += len;

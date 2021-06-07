@@ -27,12 +27,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/sha1.h>
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/tls/base.h>
-#include <freeradius-devel/io/test_point.h>
+#include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/sha1.h>
 
 #include <freeradius-devel/eap/types.h>
 #include "attrs.h"
@@ -181,7 +182,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 
 	evp_ctx = aka_sim_crypto_cipher_ctx();
 	if (!EVP_DecryptInit_ex(evp_ctx, evp_cipher, NULL, packet_ctx->k_encr, packet_ctx->iv)) {
-		tls_strerror_printf("%s: Failed setting decryption parameters", __FUNCTION__);
+		fr_tls_log_strerror_printf("%s: Failed setting decryption parameters", __FUNCTION__);
 	error:
 		talloc_free(decr);
 		return -1;
@@ -200,13 +201,13 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (!EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, data, attr_len)) {
-		tls_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
+		fr_tls_log_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	decr_len = len;
 
 	if (!EVP_DecryptFinal_ex(evp_ctx, decr + decr_len, (int *)&len)) {
-		tls_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
+		fr_tls_log_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	decr_len += len;

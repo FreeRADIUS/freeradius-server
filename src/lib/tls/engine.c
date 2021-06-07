@@ -335,13 +335,13 @@ int fr_tls_engine_init(ENGINE **e_out,
 		 *	success or 0 on error.
 		 */
 		if (ret != 1) {
-			tls_strerror_printf("control %s failed (%i)", ctrl->name, ret);
+			fr_tls_log_strerror_printf("control %s failed (%i)", ctrl->name, ret);
 			goto error;
 		}
 	}
 
 	if (unlikely(ENGINE_init(e) != 1)) {
-		tls_strerror_printf("failed initialising engine %s", id);
+		fr_tls_log_strerror_printf("failed initialising engine %s", id);
 		goto error;
 	}
 

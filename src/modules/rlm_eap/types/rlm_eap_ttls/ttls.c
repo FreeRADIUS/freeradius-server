@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/eap/chbind.h>
+#include <freeradius-devel/tls/log.h>
 #include "eap_ttls.h"
 
 #define FR_DIAMETER_AVP_FLAG_VENDOR	0x80
@@ -282,7 +283,7 @@ do_value:
 
 			if (SSL_export_keying_material(ssl, challenge, sizeof(challenge),
 						       label, sizeof(label) - 1, NULL, 0, 0) != 1) {
-				tls_strerror_printf("Failed generating phase2 challenge");
+				fr_tls_log_strerror_printf("Failed generating phase2 challenge");
 				goto error;
 			}
 

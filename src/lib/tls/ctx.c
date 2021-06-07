@@ -30,8 +30,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -40,6 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "base.h"
 #include "missing.h"
+#include "log.h"
 
 #ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
@@ -247,14 +249,14 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 		 */
 		case FR_TLS_CHAIN_VERIFY_SOFT:
 			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
-				tls_strerror_printf(NULL);
+				fr_tls_log_strerror_printf(NULL);
 				PWARN("Failed verifying chain");
 			}
 			break;
 
 		case FR_TLS_CHAIN_VERIFY_HARD:
 			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
-				tls_strerror_printf(NULL);
+				fr_tls_log_strerror_printf(NULL);
 				PERROR("Failed verifying chain");
 				return -1;
 			}

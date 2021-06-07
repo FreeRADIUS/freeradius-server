@@ -51,8 +51,6 @@ RCSIDH(tls_h, "$Id$")
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include "log.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

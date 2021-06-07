@@ -29,8 +29,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <openssl/crypto.h>
 #include <openssl/pem.h>
@@ -364,7 +365,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	fclose(fp);
 
 	if (!pkey) {
-		tls_strerror_printf(NULL);
+		fr_tls_log_strerror_printf(NULL);
 		cf_log_perr(ci, "Error loading private certificate file \"%s\"", filename);
 
 		return -1;
@@ -427,7 +428,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	fclose(fp);
 
 	if (!cert) {
-		tls_strerror_printf(NULL);
+		fr_tls_log_strerror_printf(NULL);
 		cf_log_perr(ci, "Error loading certificate file \"%s\"", filename);
 
 		return -1;
@@ -447,7 +448,7 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	 */
 	pkey = X509_get_pubkey(cert);
 	if (!pkey) {
-		tls_strerror_printf(NULL);
+		fr_tls_log_strerror_printf(NULL);
 		cf_log_perr(ci, "Failed extracting public key from certificate");
 
 		return -1;
@@ -948,7 +949,7 @@ static int cipher_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp
 static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_t const *rsa_inst)
 {
 	if (unlikely(EVP_PKEY_CTX_set_rsa_padding(evp_pkey_ctx, rsa_inst->padding)) <= 0) {
-		tls_strerror_printf(NULL);
+		fr_tls_log_strerror_printf(NULL);
 		PERROR("%s: Failed setting RSA padding type", __FUNCTION__);
 		return -1;
 	}
@@ -965,13 +966,13 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 	 */
 	case RSA_PKCS1_OAEP_PADDING:
 		if (unlikely(EVP_PKEY_CTX_set_rsa_oaep_md(evp_pkey_ctx, rsa_inst->oaep->oaep_digest) <= 0)) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed setting OAEP digest", __FUNCTION__);
 			return -1;
 		}
 
 		if (unlikely(EVP_PKEY_CTX_set_rsa_mgf1_md(evp_pkey_ctx, rsa_inst->oaep->mgf1_digest) <= 0)) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed setting MGF1 digest", __FUNCTION__);
 			return -1;
 		}
@@ -989,7 +990,7 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 			 */
 			MEM(label = talloc_bstrndup(evp_pkey_ctx, rsa_inst->oaep->label, label_len));
 		    	if (unlikely(EVP_PKEY_CTX_set0_rsa_oaep_label(evp_pkey_ctx, label, label_len) <= 0)) {
-	   			tls_strerror_printf(NULL);
+	   			fr_tls_log_strerror_printf(NULL);
 				PERROR("%s: Failed setting OAEP padding label", __FUNCTION__);
 				OPENSSL_free(label);
 				return -1;
@@ -1030,7 +1031,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 */
 		ti->evp_encrypt_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
 		if (!ti->evp_encrypt_ctx) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed allocating encrypt EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1042,7 +1043,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 *	Configure encrypt
 		 */
 		if (unlikely(EVP_PKEY_encrypt_init(ti->evp_encrypt_ctx) <= 0)) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed initialising encrypt EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1056,7 +1057,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 */
 		ti->evp_verify_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
 		if (!ti->evp_verify_ctx) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed allocating verify EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1068,7 +1069,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 *	Configure verify
 		 */
 		if (unlikely(EVP_PKEY_verify_init(ti->evp_verify_ctx) <= 0)) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed initialising verify EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1084,7 +1085,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		}
 
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_verify_ctx, inst->rsa->sig_digest)) <= 0) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1096,7 +1097,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 */
 		ti->evp_decrypt_ctx = EVP_PKEY_CTX_new(inst->rsa->private_key_file, NULL);
 		if (!ti->evp_decrypt_ctx) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed allocating decrypt EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1108,7 +1109,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 *	Configure decrypt
 		 */
 		if (unlikely(EVP_PKEY_decrypt_init(ti->evp_decrypt_ctx) <= 0)) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed initialising decrypt EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1122,7 +1123,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 */
 		ti->evp_sign_ctx = EVP_PKEY_CTX_new(inst->rsa->private_key_file, NULL);
 		if (!ti->evp_sign_ctx) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed allocating sign EVP_PKEY_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1134,7 +1135,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 *	Configure sign
 		 */
 		if (unlikely(EVP_PKEY_sign_init(ti->evp_sign_ctx) <= 0)) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed initialising sign EVP_PKEY_CTX", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1150,7 +1151,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		}
 
 		if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_sign_ctx, inst->rsa->sig_digest)) <= 0) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed setting signature digest type", __FUNCTION__);
 			return XLAT_ACTION_FAIL;
 		}
@@ -1160,7 +1161,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		 */
 		ti->evp_md_ctx = EVP_MD_CTX_create();
 		if (!ti->evp_md_ctx) {
-			tls_strerror_printf(NULL);
+			fr_tls_log_strerror_printf(NULL);
 			PERROR("%s: Failed allocating EVP_MD_CTX", __FUNCTION__);
 			return -1;
 		}
@@ -1269,7 +1270,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			if (inst->rsa->private_key_file && inst->rsa->x509_certificate_file) {
 				if (X509_check_private_key(inst->rsa->x509_certificate_file,
 							   inst->rsa->private_key_file) == 0) {
-					tls_strerror_printf(NULL);
+					fr_tls_log_strerror_printf(NULL);
 					cf_log_perr(conf, "Private key does not match the certificate public key");
 					return -1;
 				}
