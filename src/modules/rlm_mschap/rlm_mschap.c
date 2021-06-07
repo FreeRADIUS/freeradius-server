@@ -327,7 +327,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 	 *
 	 *	This is the full domain name, not just the name after host/
 	 */
-	} else if (strncasecmp(fmt, "Domain-Name", 9) == 0) {
+	} else if (strncasecmp(fmt, "Domain-Name", 11) == 0) {
 		char *p;
 
 		user_name = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
