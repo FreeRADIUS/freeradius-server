@@ -224,11 +224,6 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	}
 
 	/*
-	 *	Save the *mangled* exit status, not the raw one.
-	 */
-	if (state->exec.status_p) *state->exec.status_p = state->exec.status;
-
-	/*
 	 *	We might want to just get the status of the program,
 	 *	and not care about the output.
 	 *
@@ -255,10 +250,15 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		fr_dlist_insert_head(&state->box, box);
 	}
 
+resume:
+	/*
+	 *	Save the *mangled* exit status, not the raw one.
+	 */
+	if (state->exec.status_p) *state->exec.status_p = state->exec.status;
+
 	/*
 	 *	Ensure that the callers resume function is called.
 	 */
-resume:
 	frame->process = unlang_tmpl_resume;
 	return unlang_tmpl_resume(p_result, request, frame);
 }
