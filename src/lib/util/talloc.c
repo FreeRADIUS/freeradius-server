@@ -297,6 +297,28 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, 
 	return pool;
 }
 
+/** Call talloc_memdup, setting the type on the new chunk correctly
+ *
+ * @param[in] ctx	The talloc context to hang the result off.
+ * @param[in] in	The data you want to duplicate.
+ * @param[in] inlen	the length of the data to be duplicated.
+ * @return
+ *	- Duplicated data.
+ *	- NULL on error.
+ *
+ * @hidecallergraph
+ */
+uint8_t	*talloc_typed_memdup(TALLOC_CTX *ctx, uint8_t const *in, size_t inlen)
+{
+	uint8_t *n;
+
+	n = talloc_memdup(ctx, in, inlen);
+	if (unlikely(!n)) return NULL;
+	talloc_set_type(n, uint8_t);
+
+	return n;
+}
+
 /** Call talloc_strdup, setting the type on the new chunk correctly
  *
  * For some bizarre reason the talloc string functions don't set the
@@ -316,7 +338,7 @@ char *talloc_typed_strdup(TALLOC_CTX *ctx, char const *p)
 	char *n;
 
 	n = talloc_strdup(ctx, p);
-	if (!n) return NULL;
+	if (unlikely(!n)) return NULL;
 	talloc_set_type(n, char);
 
 	return n;
@@ -342,7 +364,7 @@ char *talloc_typed_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
 	va_start(ap, fmt);
 	n = talloc_vasprintf(ctx, fmt, ap);
 	va_end(ap);
-	if (!n) return NULL;
+	if (unlikely(!n)) return NULL;
 	talloc_set_type(n, char);
 
 	return n;
@@ -366,7 +388,7 @@ char *talloc_typed_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	char *n;
 
 	n = talloc_vasprintf(ctx, fmt, ap);
-	if (!n) return NULL;
+	if (unlikely(!n)) return NULL;
 	talloc_set_type(n, char);
 
 	return n;
@@ -386,7 +408,7 @@ char *talloc_bstrdup(TALLOC_CTX *ctx, char const *in)
 	if (inlen == 0) inlen = 1;
 
 	p = talloc_array(ctx, char, inlen);
-	if (!p) return NULL;
+	if (unlikely(!p)) return NULL;
 
 	/*
 	 * C99 (7.21.1/2) - Length zero results in noop
@@ -411,7 +433,7 @@ char *talloc_bstrndup(TALLOC_CTX *ctx, char const *in, size_t inlen)
 	char *p;
 
 	p = talloc_array(ctx, char, inlen + 1);
-	if (!p) return NULL;
+	if (unlikely(!p)) return NULL;
 
 	/*
 	 * C99 (7.21.1/2) - Length zero results in noop
@@ -481,7 +503,7 @@ char *talloc_bstr_realloc(TALLOC_CTX *ctx, char *in, size_t inlen)
 	}
 
 	n = talloc_realloc_size(ctx, in, inlen + 1);
-	if (!n) return NULL;
+	if (unlikely(!n)) return NULL;
 
 	n[inlen] = '\0';
 	talloc_set_type(n, char);
