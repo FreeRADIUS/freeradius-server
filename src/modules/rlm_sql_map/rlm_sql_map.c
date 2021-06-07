@@ -63,7 +63,7 @@ typedef struct rlm_sql_map_t {
 static const CONF_PARSER module_config[] = {
 	{ "sql_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sql_map_t, sql_instance_name), NULL },
 	{ "multiple_rows", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_map_t, multiple_rows), "no" },
-	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sql_map_t, query), NULL },
+	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_sql_map_t, query), NULL },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -302,9 +302,29 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	return 0;
+}
+
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_sql_map_t *inst = instance;
+	char const *p = inst->query;
+
+	if (!p || !*p) {
+		cf_log_err_cs(conf, "'query' cannot be empty");
+		return -1;
+	}
+
+	while (isspace((int) *p)) p++;
+
+	if (strncasecmp(p, "select", 6) != 0) {
+		cf_log_err_cs(conf, "'query' MUST be 'SELECT ...', not 'INSERT' or 'UPDATE'");
+		return -1;
+	}
 
 	return 0;
 }
+
 
 /** Detach from the SQL server and cleanup internal state.
  *
@@ -384,6 +404,7 @@ module_t rlm_sql_map = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sql_map_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {
