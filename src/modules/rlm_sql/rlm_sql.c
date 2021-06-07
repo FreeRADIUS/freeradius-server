@@ -303,7 +303,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 
 		num_rows = (inst->module->sql_num_fields)(handle, inst->config);
 		if (num_rows < 5) {
-			WARN("SELECT returned too few rows.  Please do not edit 'client_query'");
+			WARN("SELECT returned too few fields.  Please do not edit 'client_query'");
 			continue;
 		}
 
