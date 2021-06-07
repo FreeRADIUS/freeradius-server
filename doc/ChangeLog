@@ -7,10 +7,12 @@ FreeRADIUS 3.0.23 Mon 17 May 2021 12:00:00 EDT urgency=low
 	* Add Post-Auth-Type "Client-Lost" which should make it easier
 	  to log when clients stop responding.
 	* Add sites-available/totp as an example of how to use TOTP.
+	* Add %{mschap:Domain-Name}, fixes #3944.
 
 	Bug fixes
 	* Fix crash in some cases when home server is down, in debug mode.
 	* Fix (again) "read clients from SQL" functionality.
+	* Fix sql_map to return values in more situations.
 
 FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	Feature improvements
