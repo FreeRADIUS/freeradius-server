@@ -219,19 +219,6 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	fr_assert(state->exec.pid == 0);
 
 	if (state->exec.status != 0) {
-		if (WIFEXITED(state->exec.status)) {
-			RDEBUG("Program failed with status code %d", WEXITSTATUS(state->exec.status));
-			state->exec.status = WEXITSTATUS(state->exec.status);
-
-		} else if (WIFSIGNALED(state->exec.status)) {
-			RDEBUG("Program exited due to signal with status code %d", WTERMSIG(state->exec.status));
-			state->exec.status = -WTERMSIG(state->exec.status);
-
-		} else {
-			RDEBUG("Program exited due to unknown status %d", state->exec.status);
-			state->exec.status = -state->exec.status;
-		}
-
 		fr_assert(fr_dlist_empty(&state->box));
 		goto resume;
 	}
