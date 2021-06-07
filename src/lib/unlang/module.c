@@ -740,11 +740,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		 *	and when the I/O operation completes
 		 *	it shouldn't be called again.
 		 */
-		if (!state->resume) {
-			frame->process = unlang_module_resume_done;
-		} else {
-			frame->process = unlang_module_resume;
-		}
+		if (!state->resume) frame->process = unlang_module_resume_done;
 		repeatable_set(frame);
 		return UNLANG_ACTION_YIELD;
 
