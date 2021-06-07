@@ -29,7 +29,7 @@ extern "C" {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/cf_util.h>
 
-int unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame);
+unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull);
 
 CONF_SECTION *unlang_call_current(request_t *request);
 

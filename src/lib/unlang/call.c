@@ -88,7 +88,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
  *
  * This should be used instead of virtual_server_push in the majority of the code
  */
-int unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_call_t			*c;
@@ -101,14 +101,14 @@ int unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame
 	 */
 	dict = virtual_server_dict(server_cs);
 	if (!dict) {
-		REDEBUG("No dictionary associated with virtual server");
-		return -1;
+		REDEBUG("Virtual server \"%s\" not compiled", cf_section_name2(server_cs));
+		return UNLANG_ACTION_FAIL;
 	}
 
 	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
 	if (!attr_packet_type) {
 		REDEBUG("No Packet-Type attribute available");
-		return -1;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	/*
@@ -147,10 +147,10 @@ int unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame
 	if (unlang_interpret_push(request, unlang_call_to_generic(c),
 				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
 		talloc_free(c);
-		return -1;
+		return UNLANG_ACTION_FAIL;
 	}
 
-	return 0;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Return the last virtual server that was called
