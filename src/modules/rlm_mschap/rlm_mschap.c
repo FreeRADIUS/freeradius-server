@@ -323,6 +323,56 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		data_len = 24;
 
 	/*
+	 *	Pull the domain name out of the User-Name, if it exists.
+	 *
+	 *	This is the full domain name, not just the name after host/
+	 */
+	} else if (strncasecmp(fmt, "Domain-Name", 9) == 0) {
+		char *p;
+
+		user_name = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		if (!user_name) {
+			REDEBUG("No User-Name was found in the request");
+			return -1;
+		}
+
+		/*
+		 *	First check to see if this is a host/ style User-Name
+		 *	(a la Kerberos host principal)
+		 */
+		if (strncmp(user_name->vp_strvalue, "host/", 5) == 0) {
+			/*
+			 *	If we're getting a User-Name formatted in this way,
+			 *	it's likely due to PEAP.  The Windows Domain will be
+			 *	the first domain component following the hostname,
+			 *	or the machine name itself if only a hostname is supplied
+			 */
+			p = strchr(user_name->vp_strvalue, '.');
+			if (!p) {
+				RDEBUG2("setting NT-Domain to same as machine name");
+				strlcpy(out, user_name->vp_strvalue + 5, outlen);
+			} else {
+				p++;	/* skip the period */
+				strlcpy(out, p, outlen);
+			}
+		} else {
+			p = strchr(user_name->vp_strvalue, '\\');
+			if (!p) {
+				REDEBUG("No NT-Domain was found in the User-Name");
+				return -1;
+			}
+
+			/*
+			 *	Hack.  This is simpler than the alternatives.
+			 */
+			*p = '\0';
+			strlcpy(out, user_name->vp_strvalue, outlen);
+			*p = '\\';
+		}
+
+		return strlen(out);
+
+	/*
 	 *	Pull the NT-Domain out of the User-Name, if it exists.
 	 */
 	} else if (strncasecmp(fmt, "NT-Domain", 9) == 0) {
