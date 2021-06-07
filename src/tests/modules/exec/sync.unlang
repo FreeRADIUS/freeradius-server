@@ -23,6 +23,18 @@ if (&Tmp-String-0 != "") {
 	test_fail
 }
 
+update request {
+	&Tmp-String-0 := "%(exec_sync:/bin/sh $ENV{MODULE_TEST_DIR}/fail.sh)"
+}
+
+if (&Tmp-String-0 != "") {
+	test_fail
+}
+
+if (&request.Module-Failure-Message != "Execution of external program returned 7") {
+	test_fail
+}
+
 #
 #  Sync calls as modules should have their output added to the request
 #
@@ -44,6 +56,22 @@ if ((!&control.Tmp-String-1) || (&control.Tmp-String-1 != 'tony')) {
 }
 
 if ((!&control.Tmp-String-2) || (&control.Tmp-String-2 != 'aabbccddeeff')) {
+	test_fail
+}
+
+#
+#  Call a module which returns status code 7 - mapped to module exit
+#  code "notfound".  Attributes in its output should be ignored.
+#
+exec_sync_fail
+
+if (notfound) {
+	ok
+} else {
+	test_fail
+}
+
+if (&control.Tmp-String-3 == "Failure") {
 	test_fail
 }
 
