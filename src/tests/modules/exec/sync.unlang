@@ -32,4 +32,19 @@ if ((!&control.Tmp-String-0) || (&control.Tmp-String-0 != 'welcome')) {
 	test_fail
 }
 
+#
+#  The script called by this test reads input from both an expanded
+#  attribute on the command line and from the environment variables set.
+#  It then sets two attributes as two lines of output.
+#
+exec_sync_attrs
+
+if ((!&control.Tmp-String-1) || (&control.Tmp-String-1 != 'tony')) {
+	test_fail
+}
+
+if ((!&control.Tmp-String-2) || (&control.Tmp-String-2 != 'aabbccddeeff')) {
+	test_fail
+}
+
 test_pass
