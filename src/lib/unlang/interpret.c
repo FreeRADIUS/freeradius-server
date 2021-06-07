@@ -134,7 +134,7 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 	fr_assert(instruction || top_frame);
 
 #ifndef NDEBUG
-	if (DEBUG_ENABLED5) RDEBUG3("unlang_interpret_push called with instruction %s - args %s %s",
+	if (DEBUG_ENABLED5) RDEBUG3("unlang_interpret_push called with instruction type \"%s\" - args %s %s",
 				    instruction ? instruction->debug_name : "<none>",
 				    do_next_sibling ? "UNLANG_NEXT_SIBLING" : "UNLANG_NEXT_STOP",
 				    top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
