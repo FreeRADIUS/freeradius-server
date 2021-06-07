@@ -225,14 +225,7 @@ static int sql_map_do(const rlm_sql_map_t *inst, REQUEST *request, rlm_sql_handl
 {
 	vp_map_t const		*map;
 	int			applied = 0;	/* How many maps have been applied to the current request */
-	int			num_rows;
 	sql_map_row_t		ctx;
-
-	num_rows = (inst->sql_inst->module->sql_affected_rows)(*handle, inst->sql_inst->config);
-	if (num_rows == 0) {
-		RWDEBUG("No affected rows");
-		return 0;
-	}
 
 	/*
 	 *	Cache all of the rows in a simple array.
