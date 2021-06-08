@@ -285,6 +285,79 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
+			       fr_da_stack_t *da_stack, unsigned int depth,
+			       fr_dcursor_t *cursor, void *encode_ctx);
+
+static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
+			      fr_da_stack_t *da_stack, unsigned int depth,
+			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+
+static ssize_t encode_option_data(fr_dbuff_t *dbuff,
+				  fr_da_stack_t *da_stack, unsigned int depth,
+				  fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
+{
+	ssize_t len;
+	fr_pair_t *vp = fr_dcursor_current(cursor);
+	fr_dcursor_t child_cursor;
+	fr_dbuff_t work_dbuff;
+
+	if (da_stack->da[depth + 1]) {
+	encode_normal:
+		/*
+		 *	Determine the nested type and call the appropriate encoder
+		 */
+		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
+			return encode_tlv_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		}
+
+		return encode_rfc_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
+	}
+
+	if (!da_stack->da[depth + 1]) {
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			break;
+
+		default:	
+			goto encode_normal;
+		}
+	}
+
+	fr_dcursor_init(&child_cursor, &vp->vp_group);
+	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+
+	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
+		fr_proto_da_stack_build(da_stack, vp->da);
+
+		switch (da_stack->da[depth + 1]->type) {
+		case FR_TYPE_VSA:
+			len = encode_vsio_hdr(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
+			break;
+
+		case FR_TYPE_TLV:
+			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
+			break;
+
+		default:
+			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
+			break;
+		}
+
+		if (len <= 0) return len;
+	}
+
+	/*
+	 *	Skip over the attribute we just encoded.
+	 */
+	vp = fr_dcursor_next(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+
+
 /** Write out a TLV header (and any sub TLVs or values)
  *
  * @param[out] dbuff		buffer to write the TLV to.
@@ -330,14 +403,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	Encode any sub TLVs or values
 	 */
 	while (fr_dbuff_extend_lowat(NULL, &work_dbuff, 3) >= 3) {
-		/*
-		 *	Determine the nested type and call the appropriate encoder
-		 */
-		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		} else {
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		}
+		len = encode_option_data(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
 
@@ -479,19 +545,8 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	da = da_stack->da[depth + 1];
 
 	while (true) {
-		/*
-		 *	Encode the different data types
-		 *
-		 *	@todo - encode all options which have the same parent vendor.
-		 */
-		if (da->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		} else {
-			/*
-			 *	Normal vendor option
-			 */
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		}
+		len = encode_option_data(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		if (len == 0) break; /* insufficient space */
 		if (len < 0) return len;
 
 		vp = fr_dcursor_current(cursor);
@@ -549,45 +604,6 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 
 	FR_PROTO_STACK_PRINT(&da_stack, depth);
 
-	if (!da_stack.da[depth + 1]) {
-		fr_dcursor_t child_cursor;
-
-		switch (vp->da->type) {
-		case FR_TYPE_STRUCTURAL:
-			break;
-
-		default:
-			goto encode_normal;
-		}
-
-		fr_dcursor_init(&child_cursor, &vp->vp_group);
-		vp = fr_dcursor_current(&child_cursor);
-		fr_proto_da_stack_build(&da_stack, vp->da);
-
-		switch (da_stack.da[depth]->type) {
-		case FR_TYPE_VSA:
-			len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, &child_cursor, encode_ctx);
-			break;
-
-		case FR_TYPE_TLV:
-			len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, &child_cursor, encode_ctx);
-			break;
-
-		default:
-			len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, &child_cursor, encode_ctx);
-			break;
-		}
-
-		if (len <= 0) return len;
-		
-		/*
-		 *	skip this VP, and re-build the da stack.
-		 */
-		vp = fr_dcursor_next(cursor);
-		fr_proto_da_stack_build(&da_stack, vp ? vp->da : NULL);
-		goto done;
-	}
-
 	/*
 	 *	We only have two types of options in DHCPv4
 	 */
@@ -601,14 +617,12 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 		break;
 
 	default:
-	encode_normal:
 		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 	}
 
 	if (len <= 0) return len;
 
-done:
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), NULL);
 
