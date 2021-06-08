@@ -549,6 +549,47 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 
 	FR_PROTO_STACK_PRINT(&da_stack, depth);
 
+	if (!da_stack.da[depth + 1]) {
+		fr_dcursor_t child_cursor;
+
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			break;
+
+		default:
+			fr_strerror_printf("Failed encoding attribute '%s' due to da_stack issue", vp->da->name);
+			(void)fr_dcursor_next(cursor);
+			return 0;
+		}
+
+		fr_dcursor_init(&child_cursor, &vp->vp_group);
+		vp = fr_dcursor_current(&child_cursor);
+		fr_proto_da_stack_build(&da_stack, vp->da);
+
+		switch (da_stack.da[depth]->type) {
+		case FR_TYPE_VSA:
+			len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, &child_cursor, encode_ctx);
+			break;
+
+		case FR_TYPE_TLV:
+			len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, &child_cursor, encode_ctx);
+			break;
+
+		default:
+			len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, &child_cursor, encode_ctx);
+			break;
+		}
+
+		if (len <= 0) return len;
+		
+		/*
+		 *	skip this VP, and re-build the da stack.
+		 */
+		vp = fr_dcursor_next(cursor);
+		fr_proto_da_stack_build(&da_stack, vp ? vp->da : NULL);
+		goto done;
+	}
+
 	/*
 	 *	We only have two types of options in DHCPv4
 	 */
@@ -568,6 +609,7 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 
 	if (len <= 0) return len;
 
+done:
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), NULL);
 

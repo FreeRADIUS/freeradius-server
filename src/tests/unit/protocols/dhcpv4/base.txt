@@ -13,6 +13,13 @@ match 52 0d 01 03 ab cd ef 02 06 01 02 03 04 05 06
 decode-pair -
 match Relay-Agent-Information.Circuit-Id = 0xabcdef, Relay-Agent-Information.Remote-Id = 0x010203040506
 
+#
+#  And then again as nested pairs
+#
+encode-pair Relay-Agent-Information = { Circuit-Id = 0xabcdef, Remote-Id = 0x010203040506 }
+match 52 0d 01 03 ab cd ef 02 06 01 02 03 04 05 06
+
+
 encode-pair Subnet-Mask = 255.255.0.0
 match 01 04 ff ff 00 00
 
