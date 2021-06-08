@@ -1869,7 +1869,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uin
 extern fr_test_point_pair_decode_t radius_tp_decode_pair;
 fr_test_point_pair_decode_t radius_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
-	.func		= (fr_pair_decode_t) fr_radius_decode_pair
+	.func		= (fr_tp_pair_decode_t) fr_radius_decode_pair
 };
 
 extern fr_test_point_proto_decode_t radius_tp_decode_proto;
