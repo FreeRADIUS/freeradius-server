@@ -310,7 +310,6 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 			return encode_tlv_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 
-	encode_normal:
 		return encode_rfc_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	}
 
@@ -320,7 +319,8 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 			break;
 
 		default:	
-			goto encode_normal;
+			fr_strerror_printf("Internal sanity check failed");
+			return -1;
 		}
 	}
 
