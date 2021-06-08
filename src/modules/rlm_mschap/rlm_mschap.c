@@ -496,14 +496,13 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 	 *
 	 *	This is the full domain name, not just the name after host/
 	 */
-	} else if (strncasecmp(fmt, "Domain-Name", 11) == 0) {
+	} else if (strncasecmp(arg->vb_strvalue, "Domain-Name", 11) == 0) {
 		char *p;
 
-		user_name = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-		if (!user_name) {
-			REDEBUG("No User-Name was found in the request");
-			return -1;
-		}
+		vb = fr_value_box_alloc_null(ctx);
+
+		user_name = mschap_identity_find(request);
+		if (!user_name) return XLAT_ACTION_FAIL;
 
 		/*
 		 *	First check to see if this is a host/ style User-Name
@@ -519,27 +518,30 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 			p = strchr(user_name->vp_strvalue, '.');
 			if (!p) {
 				RDEBUG2("setting NT-Domain to same as machine name");
-				strlcpy(out, user_name->vp_strvalue + 5, outlen);
+				fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue + 5, user_name->vp_tainted);
 			} else {
 				p++;	/* skip the period */
-				strlcpy(out, p, outlen);
+
+				fr_value_box_strdup(ctx, vb, NULL, p, user_name->vp_tainted);
 			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
 			if (!p) {
 				REDEBUG("No NT-Domain was found in the User-Name");
-				return -1;
+				talloc_free(vb);
+				return XLAT_ACTION_FAIL;
 			}
 
 			/*
 			 *	Hack.  This is simpler than the alternatives.
 			 */
 			*p = '\0';
-			strlcpy(out, user_name->vp_strvalue, outlen);
+			fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue, user_name->vp_tainted);
 			*p = '\\';
 		}
 
-		return strlen(out);
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
 
 	/*
 	 *	Pull the NT-Domain out of the User-Name, if it exists.
