@@ -517,7 +517,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 			 */
 			p = strchr(user_name->vp_strvalue, '.');
 			if (!p) {
-				RDEBUG2("setting NT-Domain to same as machine name");
+				RDEBUG2("setting Domain-Name to same as machine name");
 				fr_value_box_strdup(ctx, vb, NULL, user_name->vp_strvalue + 5, user_name->vp_tainted);
 			} else {
 				p++;	/* skip the period */
@@ -527,7 +527,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
 			if (!p) {
-				REDEBUG("No NT-Domain was found in the User-Name");
+				REDEBUG("No domain name was found in the User-Name");
 				talloc_free(vb);
 				return XLAT_ACTION_FAIL;
 			}
