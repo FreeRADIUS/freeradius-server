@@ -557,9 +557,7 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 			break;
 
 		default:
-			fr_strerror_printf("Failed encoding attribute '%s' due to da_stack issue", vp->da->name);
-			(void)fr_dcursor_next(cursor);
-			return 0;
+			goto encode_normal;
 		}
 
 		fr_dcursor_init(&child_cursor, &vp->vp_group);
@@ -603,6 +601,7 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 		break;
 
 	default:
+	encode_normal:
 		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 	}
