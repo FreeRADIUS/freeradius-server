@@ -10,7 +10,7 @@
 #  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 #
 #  MS-CHAP authentication requires access to either the
-#  Password.Cleartext or NT-Password attribute for the user.  Due to
+#  Password.Cleartext or Password.NT attribute for the user.  Due to
 #  the limitations of MS-CHAP, no other password "encryption" methods
 #  are possible.
 #
@@ -23,7 +23,20 @@
 #  Samba documentation for the meaning of SMB account control. The
 #  module does not read Samba password files. Instead, the rlm_passwd
 #  module can be used to read a Samba password file, and then supply
-#  an `NT-Password` attribute which this module can use.
+#  an `Password.NT` attribute which this module can use.
+#
+#  The `mschap` module registers a few `xlat` functions.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Function          | Description
+#  | `Challenge`       | The MS-CHAP challenge.
+#  | `Domain-Name`     | The full domain name, taken from the `User-Name` attribute
+#  | `NT-Domain`       | The NT domain portion of the domain name, taken from the `User-Name` attribute
+#  | `NT-Hash`         | Take the NT-Hash of the string passed into the xlat
+#  | `NT-Response`     | The MS-CHAP response.
+#  | `User-Name`       | The MS-CHAP username portion of the `User-Name` attribute.
+#  |===
 #
 #  [NOTE]
 #  ====
