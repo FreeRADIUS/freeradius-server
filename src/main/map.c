@@ -290,8 +290,8 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	 *	be done in an xlat.
 	 */
 	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
-	    (map->rhs->tmpl_num == NUM_COUNT)) {
-		cf_log_err_cp(cp, "Cannot assign from a count");
+	    ((map->rhs->tmpl_num == NUM_COUNT) || (map->rhs->tmpl_num == NUM_ALL))) {
+		cf_log_err_cp(cp, "Cannot assign from a count / wildcard");
 		goto error;
 	}
 
