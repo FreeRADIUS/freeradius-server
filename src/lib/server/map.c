@@ -488,6 +488,18 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			}
 
 			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
+
+			/*
+			 *	Peek at the next character.  If it's
+			 *	'}', stop.  Otherwise, call ourselves
+			 *	recursively, with a special flag
+			 *	saying '.' is no longer necessary.
+			 *
+			 *	We could put the flag into
+			 *	tmpl_rules_t, but it's likely the
+			 *	wrong place, as tmpl_rules_t doesn't
+			 *	contain the parent map.
+			 */
 			if (!fr_sbuff_next_if_char(&our_in, '}')) {
 				fr_sbuff_set(&our_in, &m_rhs);
 				fr_strerror_const("No matching '}'");
