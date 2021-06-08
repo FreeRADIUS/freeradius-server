@@ -741,6 +741,25 @@ endif
 
 scan: ${ALL_PLISTS}
 
+scan.protocols: $(filter build/plist/src/protocols/%,$(ALL_PLISTS))
+
+scan.modules: $(filter build/plist/src/modules/%,$(ALL_PLISTS))
+
+scan.unlang: $(filter build/plist/src/lib/unlang/%,$(ALL_PLISTS))
+
+scan.server: $(filter build/plist/src/lib/server/%,$(ALL_PLISTS))
+
+.PHONY: scan.help
+scan.help:
+	@echo ""
+	@echo "Make targets:"
+	@echo "    scan                - scan all source"
+	@echo "    scan.protocols      - scan src/protocols"
+	@echo "    scan.modules        - scan src/modules"
+	@echo "    scan.server         - scan src/lib/server"
+	@echo "    scan.unlang         - scan src/lib/unlang"
+
+
 .PHONY: clean.scan
 clean.scan:
 	$(Q)rm -rf ${ALL_PLISTS}
