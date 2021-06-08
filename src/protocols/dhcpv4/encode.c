@@ -303,7 +303,6 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 	fr_dbuff_t work_dbuff;
 
 	if (da_stack->da[depth + 1]) {
-	encode_normal:
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
@@ -311,6 +310,7 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 			return encode_tlv_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
 
+	encode_normal:
 		return encode_rfc_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	}
 
