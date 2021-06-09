@@ -3787,7 +3787,7 @@ post_ca:
 		 *	time.
 		 */
 #if defined(TLS1_3_VERSION)
-		max_version = TLS1_3_VERSION;
+		max_version = TLS1_2_VERSION; /* yes, we only use TLS 1.3 if it's EXPLICITELY ENABLED */
 #elif defined(TLS1_2_VERSION)
 		max_version = TLS1_2_VERSION;
 #elif defined(TLS1_1_VERSION)
