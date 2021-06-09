@@ -8,11 +8,17 @@ FreeRADIUS 3.0.23 Mon 17 May 2021 12:00:00 EDT urgency=low
 	  to log when clients stop responding.
 	* Add sites-available/totp as an example of how to use TOTP.
 	* Add %{mschap:Domain-Name}, fixes #3944.
+	* Cache TLS messages in &session-state, for more debugging.
+	* Notes in eap configuration about TLS 1.0 / TLS 1.1, and setting
+	  cipher_list = "DEFAULT@SECLEVEL=1"
+	* Added MANY warning messages about using TLS 1.3 with EAP.
+	  In short, don't use it.  Microsoft will support it in fall 2021.
 
 	Bug fixes
 	* Fix crash in some cases when home server is down, in debug mode.
 	* Fix (again) "read clients from SQL" functionality.
 	* Fix sql_map to return values in more situations.
+	* Silently ignore LEAP configuration instead of erroring out.
 
 FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	Feature improvements
