@@ -302,18 +302,29 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 	fr_dcursor_t child_cursor;
 	fr_dbuff_t work_dbuff;
 
-	if (da_stack->da[depth + 1]) {
+	if (da_stack->da[depth]) {
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
-		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			return encode_tlv_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		switch (da_stack->da[depth]->type) {
+		case FR_TYPE_TLV:
+			if (!da_stack->da[depth + 1]) goto do_child;
+
+			return encode_tlv_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+
+		case FR_TYPE_VSA:
+			if (!da_stack->da[depth + 1]) goto do_child;
+
+			return encode_vsio_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+
+		default:
+			break;
 		}
 
-		return encode_rfc_hdr(dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		return encode_rfc_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
-	if (!da_stack->da[depth + 1]) {
+	if (!da_stack->da[depth]) {
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
 			break;
@@ -324,23 +335,24 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 		}
 	}
 
+do_child:
 	fr_dcursor_init(&child_cursor, &vp->vp_group);
 	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
-		switch (da_stack->da[depth + 1]->type) {
+		switch (da_stack->da[depth]->type) {
 		case FR_TYPE_VSA:
-			len = encode_vsio_hdr(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
+			len = encode_vsio_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			break;
 
 		case FR_TYPE_TLV:
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
+			len = encode_tlv_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			break;
 
 		default:
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
+			len = encode_rfc_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			break;
 		}
 
@@ -403,7 +415,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	 *	Encode any sub TLVs or values
 	 */
 	while (fr_dbuff_extend_lowat(NULL, &work_dbuff, 3) >= 3) {
-		len = encode_option_data(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len < 0) return len;
 		if (len == 0) break;		/* Insufficient space */
 
@@ -545,7 +557,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	da = da_stack->da[depth + 1];
 
 	while (true) {
-		len = encode_option_data(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len == 0) break; /* insufficient space */
 		if (len < 0) return len;
 
