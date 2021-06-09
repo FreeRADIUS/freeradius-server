@@ -3929,14 +3929,15 @@ post_ca:
 	if (max_version < TLS1_3_VERSION) ctx_options |= SSL_OP_NO_TLSv1_3;
 #endif
 
-	if (min_version == TLS1_VERSION) {
-		if (!strstr(conf->cipher_list, "DEFAULT@SECLEVEL=0")) {
-			WARN(LOG_PREFIX ": In order to use TLS 1.0, you likely need to set: cipher_list = \"DEFAULT@SECLEVEL=0\"");
-		}
-	} else if (min_version == TLS1_1_VERSION) {
-		if (!strstr(conf->cipher_list, "DEFAULT@SECLEVEL=1")) {
-			WARN(LOG_PREFIX ": In order to use TLS 1.1, you likely need to set: cipher_list = \"DEFAULT@SECLEVEL=1\"");
-		}
+	/*
+	 *	Tell OpenSSL PRETTY PLEASE MAY WE USE TLS 1.1.
+	 *
+	 *	Because saying "use TLS 1.1" isn't enough.  We have to
+	 *	send it flowers and cake.
+	 */
+	if ((min_version <= TLS1_1_VERSION) &&
+	    !strstr(conf->cipher_list, "DEFAULT@SECLEVEL=1")) {
+		WARN(LOG_PREFIX ": In order to use TLS 1.0 and/or TLS 1.1, you likely need to set: cipher_list = \"DEFAULT@SECLEVEL=1\"");
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
