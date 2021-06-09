@@ -461,6 +461,89 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
+			       fr_da_stack_t *da_stack, unsigned int depth,
+			       fr_dcursor_t *cursor, void *encode_ctx);
+
+static ssize_t encode_option_data(fr_dbuff_t *dbuff,
+				  fr_da_stack_t *da_stack, unsigned int depth,
+				  fr_dcursor_t *cursor, void *encode_ctx)
+{
+	ssize_t len;
+	fr_pair_t *vp = fr_dcursor_current(cursor);
+	fr_dcursor_t child_cursor;
+	fr_dbuff_t work_dbuff;
+
+	if (da_stack->da[depth]) {
+		/*
+		 *	Determine the nested type and call the appropriate encoder
+		 */
+		switch (da_stack->da[depth]->type) {
+		case FR_TYPE_TLV:
+			if (!da_stack->da[depth + 1]) goto do_child;
+
+			return encode_tlv_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+
+		case FR_TYPE_VSA:
+			if (!da_stack->da[depth + 1]) goto do_child;
+
+			return encode_vsio_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+
+		case FR_TYPE_GROUP:
+			if (!da_stack->da[depth + 1]) goto do_child;
+			FALL_THROUGH;
+
+		default:
+			break;
+		}
+
+		return encode_rfc_hdr(dbuff, da_stack, depth, cursor, encode_ctx);
+	}
+
+	if (!da_stack->da[depth]) {
+		switch (vp->da->type) {
+		case FR_TYPE_STRUCTURAL:
+			break;
+
+		default:
+			fr_strerror_printf("Internal sanity check failed");
+			return -1;
+		}
+	}
+
+do_child:
+	fr_dcursor_init(&child_cursor, &vp->vp_group);
+	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+
+	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
+		fr_proto_da_stack_build(da_stack, vp->da);
+
+		switch (da_stack->da[depth]->type) {
+		case FR_TYPE_VSA:
+			len = encode_vsio_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			break;
+
+		case FR_TYPE_TLV:
+			len = encode_tlv_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			break;
+
+		default:
+			len = encode_rfc_hdr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
+			break;
+		}
+
+		if (len <= 0) return len;
+	}
+
+	/*
+	 *	Skip over the attribute we just encoded.
+	 */
+	vp = fr_dcursor_next(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
 static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
 			  fr_dcursor_t *cursor, void *encode_ctx)
@@ -474,14 +557,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	while (fr_dbuff_extend_lowat(&status, &work_dbuff, DHCPV6_OPT_HDR_LEN) > DHCPV6_OPT_HDR_LEN) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 
-		/*
-		 *	Determine the nested type and call the appropriate encoder
-		 */
-		if (da_stack->da[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		} else {
-			len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		}
+		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		if (len < 0) return len;
 
 		/*
@@ -567,6 +643,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	}
 
 	if (!da_stack->da[depth + 1]) {
+		fr_assert(0);
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -664,14 +741,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	/*
 	 *	Encode the different data types
 	 */
-	if (da->type == FR_TYPE_TLV) {
-		len = encode_tlv_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-	} else {
-		/*
-		 *	Normal vendor option
-		 */
-		len = encode_rfc_hdr(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-	}
+	len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	if (len < 0) return len;
 
 	(void) encode_option_hdr(&hdr, da->attr, fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN);
@@ -771,23 +841,20 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 	 *	Deal with nested options
 	 */
 	switch (da_stack.da[depth]->type) {
-	case FR_TYPE_TLV:
-		len = encode_tlv_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
-		break;
-
-	case FR_TYPE_VSA:
-		len = encode_vsio_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
-		break;
-
 	case FR_TYPE_GROUP:
+		/*
+		 *	Relay-Message has a special format, it's an entire packet. :(
+		 */
 		if (da_stack.da[depth] == attr_relay_message) {
 			len = encode_relay_message(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 			break;
 		}
-		FALL_THROUGH;
+
+		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
+		break;
 
 	default:
-		len = encode_rfc_hdr(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
+		len = encode_option_data(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 	}
 	if (len < 0) return len;
