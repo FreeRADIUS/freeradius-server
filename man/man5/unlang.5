@@ -346,7 +346,7 @@ from each "case" statement.  The first "case" statement which matches
 is executed.  All other "case" statements are ignored.  A default
 "case" statement can be defined, by omitting its argument.
 
-If the argument is a double quoted string (e.g. "%{exec:1 + 2}", it is
+If the argument is a double quoted string (e.g. "%(exec:1 + 2)", it is
 expanded as described in the DATA TYPES section, below.  The match is
 then performed on the string returned from the expansion.  If the
 argument is an attribute reference (e.g. &User-Name), then the match
@@ -370,7 +370,7 @@ Provides a place-holder which matches the argument of a parent
 
 A "case" statement cannot appear outside of a "switch" block.
 
-If the argument is a double quoted string (e.g. "%{exec:1 + 2}", it is
+If the argument is a double quoted string (e.g. "%(exec:1 + 2)", it is
 expanded as described in the DATA TYPES section, below.  The match is
 then performed on the string returned from the expansion.  If the
 argument is an attribute reference (e.g. &User-Name), then the match

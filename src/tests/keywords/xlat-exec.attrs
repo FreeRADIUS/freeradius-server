@@ -2,11 +2,11 @@
 #  Input packet
 #
 Packet-Type = Access-Request
-User-Name = "tony"
-User-Password = "taponi"
-Called-Station-Id = "aabbccddeeff"
+User-Name = "bob"
+User-Password = "hel|o'"
 
 #
 #  Expected answer
 #
 Packet-Type == Access-Accept
+Result-Status == "success"

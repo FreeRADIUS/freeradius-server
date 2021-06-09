@@ -45,6 +45,35 @@ extern "C" {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct {
+	fr_sbuff_t			stdout_buff;	//!< Expandable buffer to store process output.
+	fr_sbuff_uctx_talloc_t		stdout_tctx;	//!< sbuff talloc ctx data.
+
+	log_fd_event_ctx_t		stdout_uctx;	//!< Config for the stdout logger.
+	log_fd_event_ctx_t		stderr_uctx;	//!< Config for the stderr logger.
+
+	pid_t				pid;		//!< child PID
+	int				stdin_fd;	//!< for writing to the child.
+	bool				stdin_used;	//!< use stdin fd?
+	int				stdout_fd;	//!< for reading from the child.
+	bool				stdout_used;	//!< use stdout fd?
+	int				stderr_fd;	//!< for producing error messages.
+
+	fr_event_timer_t const		*ev;		//!< for timing out the child
+	fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
+	bool				failed;		//!< due to exec timeout or buffer overflow
+
+	int				status;		//!< return code of the program
+	int				*status_p;	//!< where we write the return status of the program
+
+	fr_pair_list_t			*vps;		//!< input VPs
+
+	request_t			*request;	//!< request this exec is related to
+	TALLOC_CTX			*outctx;	//!< ctx to allocate output buffers
+} fr_exec_state_t;
+
+
 pid_t	radius_start_program(int *stdin_fd, int *stdout_fd, int *stderr_fd,
 			     char const *cmd, request_t *request, bool exec_wait,
 			     fr_pair_list_t *input_pairs, bool shell_escape);
@@ -61,6 +90,8 @@ int	fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_lis
 int	fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
 			   request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
 
+int	fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
+			      fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs, fr_time_delta_t timeout);
 #ifdef __cplusplus
 }
 #endif

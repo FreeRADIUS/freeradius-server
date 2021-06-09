@@ -4,13 +4,19 @@
 
 = Echo Module
 
-The `echo` module is used for execute an external program in more than
-one section (e.g. `recv`, `pre_proxy`, etc), then it is probably best
-to define a different instance of the `exec` module for every section.
+The `echo` module is an example of the `exec` module, configured with
+its `program` configuration item set so it can be called as any other
+module i.e.
 
-NOTE: This is a more specific example of the `exec` module.
+    echo
 
-  Attribute-Name = `%{echo:/path/to/program args}`
+The sample `program` in the default configuration is a trivial example
+and should be replaced with something more meaningful.
+
+Arguments can be supplied to the program on the command line, with the
+value of `program` being dynamically expanded.  In addition, setting
+`input_pairs` causes the corresponding list of attributes to be placed
+in environment variables.
 
 The return value of the program run determines the result of the exec
 instance call as follows:
@@ -111,7 +117,7 @@ thereby saving resources.
 ```
 exec echo {
 	wait = yes
-	program = "/bin/echo %{User-Name}"
+	program = "/bin/echo Tmp-String-0 := %{User-Name}"
 	input_pairs = request
 	output_pairs = reply
 	shell_escape = yes

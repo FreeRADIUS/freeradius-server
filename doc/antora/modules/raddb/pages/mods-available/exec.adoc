@@ -6,19 +6,28 @@
 
 The module `exec` is used for executing external programs.
 
-This module is useful only for `xlat`.  To use it, put `exec` into
+This module provides an `xlat`.  To use it, put `exec` into
 the `instantiate` section.  You can then do dynamic translation of
 attributes like:
 
-  Attribute-Name = "%{exec:/path/to/program args}"
+  Attribute-Name = "%(exec:/path/to/program args)"
 
 The value of the attribute will be replaced with the output of the
 program which is executed.  Due to RADIUS protocol limitations,
 any output over `253` bytes will be ignored.
 
-The RADIUS attributes from the user request will be placed
+The RADIUS attributes from the attribute list specified in the
+configuration item `input_list` will be placed
 into environment variables of the executed program, as
 described in `man unlang` and in `doc/unlang/xlat.adoc`
+
+Alternatively to using the `xlat`, by setting the `program` configuration,
+item, the module can be called as a module.
+
+In this scenario, the output of executing the program will be parsed for
+attribute pairs which will be added to the list referenced in the
+`output_pairs` configuration item, if the `wait` configuration item
+is set to "yes".
 
 The return value of the program run determines the result of the exec
 instance call as follows:
@@ -48,20 +57,18 @@ instance call as follows:
 wait:: Wait for the program to finish.
 
 If we do NOT wait, then the program is "fire and
-forget", and any output attributes from it are ignored.
+forget", and any output from it is ignored.
 
 
 
-program:: The name of the program to execute, and it's
+program:: The name of the program to execute, and its
 arguments.
 
 Dynamic translation is done on this field, so things like
-the following example will work.
 
-If 'program' is set to a value, then the module *cannot* be
-used in an `xlat`.  See the `echo` module for examples of
-how to use the module "in line".
+    program = "/bin/true %{User-Name}"
 
+will work.
 
 
 input_pairs:: The attributes which are placed into the

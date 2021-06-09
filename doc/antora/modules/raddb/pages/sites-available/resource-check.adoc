@@ -100,7 +100,7 @@ db_online control module.
 
 Other modules could be used here.
 
-You can even invoke synchronous checks using the %{exec:...} xlat in
+You can even invoke synchronous checks using the %(exec:...) xlat in
 which case timeout should be set to less than the check trigger
 interval to avoid buildup of checks when resources do not respond.
 See rlm_exec for details.
