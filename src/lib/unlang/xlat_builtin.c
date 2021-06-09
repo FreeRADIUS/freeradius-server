@@ -1338,6 +1338,58 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	return XLAT_ACTION_DONE;
 }
 
+static fr_sbuff_escape_rules_t const xlat_func_xlat_escape_rules = {
+	.name = "xlat",
+	.chr = '\\',
+	.subs = {
+		['%'] = '%'
+	},
+	.do_hex = false,
+	.do_oct = false
+
+};
+
+static int xlat_func_xlat_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_uctx;
+	fr_dlist_t		entry;
+
+	switch(vb->type) {
+	default:
+		return 0;
+
+	case FR_TYPE_OCTETS:
+		fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL);
+		FALL_THROUGH;
+
+	case FR_TYPE_STRING:
+		/* % is not in the string - nothing to do */
+		if (!strchr(vb->vb_strvalue, '%')) return 0;
+
+		/*
+		 *	Allocate a buffer for the escaped string.  We know we have at
+		 *	least 1 character to escape and it could be up to twice the initial
+		 *	length.
+		 */
+		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_uctx, vb->length + 1, vb->length * 2)) return -1;
+		if (fr_sbuff_in_escape(&sbuff, vb->vb_strvalue, vb->length, &xlat_func_xlat_escape_rules) < 0) {
+			talloc_free(fr_sbuff_buff(&sbuff));
+			return -1;
+		}
+
+		/*
+		 *	fr_value_box_strdup_shallow resets the dlist entries - take a copy
+		 */
+		entry = vb->entry;
+		fr_value_box_clear_value(vb);
+		fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
+		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+		vb->entry = entry;
+		return 0;
+	}
+}
+
 /** xlat expand string attribute value
  *
  * @ingroup xlat_functions
