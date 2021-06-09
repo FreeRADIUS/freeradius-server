@@ -36,4 +36,15 @@ if ("%{xlat:Tmp-String-1[%{Tmp-Integer-0[2]}]}" != 'bar') {
 	test_fail
 }
 
+#
+#  Use a string in the request list for xlat expansion
+#
+update request {
+	&Tmp-String-3 := "%{xlat:%{Tmp-String-9}}"
+}
+
+if (&Tmp-String-3 != '%{Tmp-String-1}%{Tmp-String-2}') {
+	test_fail
+}
+
 success

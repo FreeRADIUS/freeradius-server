@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "bob"
+User-Password = "hello"
+Tmp-String-9 = '%{Tmp-String-1}%{Tmp-String-2}'
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Result-Status == "success"
