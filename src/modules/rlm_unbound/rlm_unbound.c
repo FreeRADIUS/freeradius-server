@@ -49,6 +49,12 @@ typedef struct {
 	unbound_log_t	*u_log;
 } rlm_unbound_t;
 
+typedef struct {
+	unbound_io_event_base_t	*ev_b;		//!< Unbound event base
+	rlm_unbound_t		*inst;		//!< Instance data
+	unbound_log_t		*u_log;		//!< Unbound log structure
+} rlm_unbound_thread_t;
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -425,6 +431,59 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return -1;
 }
 
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+{
+	rlm_unbound_t		*inst = talloc_get_type_abort(instance, rlm_unbound_t);
+	rlm_unbound_thread_t	*t = talloc_get_type_abort(thread, rlm_unbound_thread_t);
+	int			res;
+
+	t->inst = inst;
+	if (unbound_io_init(t, &t->ev_b, el) < 0) {
+		PERROR("Unable to create unbound event base");
+		return -1;
+	}
+
+	/*
+	 *	Ensure unbound uses threads
+	 */
+	res = ub_ctx_async(t->ev_b->ub, 1);
+	if (res) {
+	error:
+		PERROR("%s", ub_strerror(res));
+		return -1;
+	}
+
+	/*
+	 *	Load settings from the unbound config file
+	 */
+	res = ub_ctx_config(t->ev_b->ub, UNCONST(char *, inst->filename));
+	if (res) goto error;
+
+	if (unbound_log_init(t, &t->u_log, t->ev_b->ub) < 0) {
+		PERROR("Failed to initialise unbound log");
+		return -1;
+	}
+
+	/*
+	 *	The unbound context needs to be "finalised" to fix its settings.
+	 *	The API does not expose a method to do this, rather it happens on first
+	 *	use.  A quick workround is to delete data which won't be present
+	 */
+	ub_ctx_data_remove(t->ev_b->ub, "notar33lsite.foo123.nottld A 127.0.0.1");
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_unbound_thread_t	*t = talloc_get_type_abort(thread, rlm_unbound_thread_t);
+
+	talloc_free(t->u_log);
+	talloc_free(t->ev_b);
+
+	return 0;
+}
+
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_unbound_t *inst = instance;
@@ -479,4 +538,9 @@ module_t rlm_unbound = {
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 	.detach			= mod_detach
+
+	.thread_inst_size	= sizeof(rlm_unbound_thread_t),
+	.thread_inst_type	= "rlm_unbound_thread_t",
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
 };
