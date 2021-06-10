@@ -362,6 +362,95 @@ static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 */
 
+/*
+ *	Xlat resume callback after unbound has either returned or timed out
+ *	Parse the results and add to the output
+ */
+static xlat_action_t xlat_unbound_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					 UNUSED void const *xlat_inst, void *xlat_thread_inst,
+					 UNUSED fr_value_box_list_t *in, UNUSED void *rctx)
+{
+	fr_value_box_t			*vb;
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
+	uint16_t			i = 0;
+
+	if ((xt->done == 0) || (!(xt->result))) {
+		RWDEBUG("%s - No result", xt->inst->name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*	Check for unbound errors */
+	if (xt->result->bogus) {
+		RWDEBUG("%s - Bogus DNS response", xt->inst->name);
+	error:
+		ub_resolve_free(xt->result);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (xt->result->nxdomain) {
+		RDEBUG2("%s - NXDOMAIN", xt->inst->name);
+		goto error;
+	}
+
+	if (!xt->result->havedata) {
+		RDEBUG2("%s - Empty result", xt->inst->name);
+		goto error;
+	}
+
+	/*
+	 *	unbound results are in an array of char[].
+	 *	The last entry is a NULL pointer.
+	 *	Process up to xt->count results, adding each as a separate box.
+	 */
+	do {
+		vb = fr_value_box_alloc_null(ctx);
+		switch (xt->return_type) {
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_OCTETS:
+			if (fr_value_box_from_network(ctx, vb, xt->return_type, NULL, (uint8_t *)xt->result->data[i], xt->result->len[i], true) < 0) {
+			error2:
+				talloc_free(vb);
+				goto error;
+			}
+			break;
+		case FR_TYPE_STRING:
+		{
+			size_t offset = 0;
+			if (xt->has_priority) {
+				/*
+				 *	This result type has a priority before the label
+				 *	add the priority first as a separate box
+				 */
+				fr_value_box_t	*priority_vb;
+				if (xt->result->len[i] < 3) {
+					REDEBUG("%s - Invalid data returned", xt->inst->name);
+					goto error2;
+				}
+				priority_vb = fr_value_box_alloc_null(ctx);
+				if (fr_value_box_from_network(ctx, priority_vb, FR_TYPE_UINT16, NULL, (uint8_t *)xt->result->data[i], 2, true) < 0) {
+					talloc_free(priority_vb);
+					goto error2;
+				}
+				fr_dcursor_append(out, priority_vb);
+				offset = 2;
+			}
+			/*	String types require decoding of dns format labels */
+			if (rrlabels_tovb(vb, xt->result->data[i] + offset) == XLAT_ACTION_FAIL) goto error2;
+		}
+			break;
+		default:
+			goto error2;
+		}
+
+		fr_dcursor_append(out, vb);
+	} while  ((++i < xt->count) && (xt->result->data[i]));
+
+	ub_resolve_free(xt->result);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Perform a DNS lookup for a PTR record
  *
  * @ingroup xlat_functions
