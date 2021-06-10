@@ -31,7 +31,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <fcntl.h>
 
-#include "io.h"
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(documentation)
+#include <unbound.h>
+DIAG_ON(documentation)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 #include "log.h"
 
 typedef struct {
