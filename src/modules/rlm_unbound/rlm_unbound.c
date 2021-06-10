@@ -88,12 +88,13 @@ static void unbound_event_cleanup(unbound_xlat_thread_inst_t *xt)
 
 /*
  *	Callback sent to libunbound for xlat functions.  Simply links the
- *	new ub_result via a pointer that has been allocated from the heap.
- *	This pointer has been pre-initialized to a magic value.
+ *	new ub_result via a pointer that has been allocated from the heap,
+ *	and marks the request as runnable
  */
 static void link_ubres(void *my_arg, int err, struct ub_result *result)
 {
-	struct ub_result **ubres = (struct ub_result **)my_arg;
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(my_arg, unbound_xlat_thread_inst_t);
+	xt->done = 1;
 
 	/*
 	 *	Note that while result will be NULL on error, we are explicit
@@ -102,10 +103,14 @@ static void link_ubres(void *my_arg, int err, struct ub_result *result)
 	 */
 	if (err) {
 		ERROR("%s", ub_strerror(err));
-		*ubres = NULL;
+		xt->result = NULL;
 	} else {
-		*ubres = result;
+		xt->result = result;
 	}
+
+	unbound_event_cleanup(xt);
+
+	unlang_interpret_mark_runnable(xt->request);
 }
 
 /*
