@@ -78,6 +78,15 @@ static const CONF_PARSER module_config[] = {
 };
 
 /*
+ *	Cleanup events after unbound has either completed or timed out
+ */
+static void unbound_event_cleanup(unbound_xlat_thread_inst_t *xt)
+{
+	fr_event_fd_delete(xt->t->el, ub_fd(xt->t->ub), FR_EVENT_FILTER_IO);
+	if(xt->ev) fr_event_timer_delete(&xt->ev);
+}
+
+/*
  *	Callback sent to libunbound for xlat functions.  Simply links the
  *	new ub_result via a pointer that has been allocated from the heap.
  *	This pointer has been pre-initialized to a magic value.
