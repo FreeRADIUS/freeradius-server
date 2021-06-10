@@ -459,6 +459,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	 */
 	while (ptr < end) {
 		char *p;
+		DICT_ATTR const *da;
 
 		if ((end - ptr) < 6) break;
 
@@ -472,7 +473,14 @@ int vqp_decode(RADIUS_PACKET *packet)
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attribute |= 0x2000;
-		vp = fr_pair_afrom_num(packet, attribute, 0);
+
+		/*
+		 *	We don't care about unknown attributes in VQP.
+		 */
+		da = dict_attrbyvalue(attribute, 0);
+		if (!da) continue;
+
+		vp = fr_pair_afrom_da(packet, da);
 		if (!vp) {
 			fr_pair_list_free(&packet->vps);
 
