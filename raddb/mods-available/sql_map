@@ -29,19 +29,19 @@ sql_map {
 	#  	<radius attr>:	Is the destination RADIUS attribute
 	# 			with any valid list and request qualifiers.
 	#  	<op>: 		Is any assignment attribute (=, :=, +=, -=).
-	#  	<column num>:	The column number (not name)
+	#  	<column num>:	The column number (not name), starting from 0
 	#
 	#  Request and list qualifiers may also be placed after the 'update'
 	#  section name to set defaults destination requests/lists
 	#  for unqualified RADIUS attributes.
 	#
 	update {
-		control:Password-With-Header	+= 1
-#		control:NT-Password		:= 2
-#		reply:Reply-Message		:= 3
-#		reply:Tunnel-Type		:= 4
-#		reply:Tunnel-Medium-Type	:= 5
-#		reply:Tunnel-Private-Group-ID	:= 6
+		control:Password-With-Header	+= 0
+#		control:NT-Password		:= 1
+#		reply:Reply-Message		:= 2
+#		reply:Tunnel-Type		:= 3
+#		reply:Tunnel-Medium-Type	:= 4
+#		reply:Tunnel-Private-Group-ID	:= 5
 	}
 
 	# If the 'query' results in multiple rows, it creates the <radius attr>[*] array entry.
