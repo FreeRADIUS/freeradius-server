@@ -494,6 +494,8 @@ size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extenison);
 
 int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len);
 
+int	fr_sbuff_reset_talloc(fr_sbuff_t *sbuff);
+
 static inline void fr_sbuff_terminate(fr_sbuff_t *sbuff)
 {
 	*sbuff->p = '\0';

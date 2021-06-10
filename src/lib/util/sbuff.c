@@ -114,6 +114,11 @@ static inline CC_HINT(always_inline) ssize_t safecpy(char *o_start, char *o_end,
 	return (i_len);
 }
 
+static inline CC_HINT(always_inline) size_t min(size_t x, size_t y)
+{
+	return x < y ? x : y;
+}
+
 /** Update all markers and pointers in the set of sbuffs to point to new_buff
  *
  * This function should be used if the underlying buffer is realloced.
@@ -127,30 +132,26 @@ void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
 	fr_sbuff_t		*sbuff_i;
 	char			*old_buff;	/* Current buff */
 
-#define update_ptr(_old_buff, _new_buff, _new_len, _field) \
-	_field = (size_t)((_field) - (_old_buff)) < _new_len ? \
-		(_new_buff) + ((_field) - (_old_buff)) : \
-		(_new_buff) + (_new_len)
-
 	old_buff = sbuff->buff;
 
 	/*
 	 *	Update pointers to point to positions
 	 *	in new buffer based on their relative
-	 *	offsets in the old buffer.
+	 *	offsets in the old buffer... but not
+	 *	past the end of the new buffer.
 	 */
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
 		fr_sbuff_marker_t	*m_i;
 
 		sbuff_i->buff = new_buff;
-		update_ptr(old_buff, new_buff, new_len, sbuff_i->start);
+		sbuff_i->start = new_buff + min(new_len, sbuff_i->start - old_buff);
 		sbuff_i->end = sbuff_i->buff + new_len;
 		*(sbuff_i->end) = '\0';	/* Re-terminate */
-		update_ptr(old_buff, new_buff, new_len, sbuff_i->p);
 
-		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(old_buff, new_buff, new_len, m_i->p);
+		sbuff_i->p = new_buff + min(new_len, sbuff_i->p - old_buff);
+
+		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) m_i->p = new_buff + min(new_len, m_i->p - old_buff);
 	}
-#undef update_ptr
 }
 
 /** Shift the contents of the sbuff, returning the number of bytes we managed to shift
@@ -168,16 +169,14 @@ void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
 size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 {
 	fr_sbuff_t		*sbuff_i;
-	char			*buff;		/* Current start */
+	char			*buff, *end;		/* Current start */
 	size_t			max_shift = shift;
 	bool			reterminate = false;
 
 	CHECK_SBUFF_INIT(sbuff);
 
-#define update_ptr(_buff, _shift, _field) _field = (size_t)((_field) - (_buff)) < (_shift) ? (_buff) : ((_field) - (_shift))
-#define update_max_shift(_buff, _max_shift, _field) if (((_buff) + (_max_shift)) > (_field)) _max_shift -= (((_buff) + (_max_shift)) - (_field))
-
 	buff = sbuff->buff;
+	end = sbuff->end;
 
 	/*
 	 *	If the sbuff is already \0 terminated
@@ -188,44 +187,48 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 	reterminate = (sbuff->p < sbuff->end) && (*sbuff->p == '\0') && !sbuff->is_const;
 
 	/*
-	 *	Determine the maximum shift amount.
-	 *	Shifts are constrained by the position
-	 *	of pointers into the buffer.
+	 *	First pass: find the maximum shift, which is the minimum
+	 *	of the distances from buff to any of the current pointers
+	 *	or current pointers of markers of dbuff and its ancestors.
+	 *	(We're also constrained by the requested shift count.)
 	 */
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
-		fr_sbuff_marker_t	*m_i;
+		fr_sbuff_marker_t *m_i;
 
-		update_max_shift(buff, max_shift, sbuff_i->p);
+		max_shift = min(max_shift, sbuff_i->p - buff);
 		if (!max_shift) return 0;
 
 		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) {
-			update_max_shift(buff, max_shift, m_i->p);
+			max_shift = min(max_shift, m_i->p - buff);
 			if (!max_shift) return 0;
 		}
 	}
 
+	/*
+	 *	Second pass: adjust pointers.
+	 *	The first pass means we need only subtract shift from
+	 *	current pointers.  Start pointers can't constrain shift,
+	 *	or we'd never free any space, so they require the added
+	 *	check.
+	 */
 	for (sbuff_i = sbuff; sbuff_i; sbuff_i = sbuff_i->parent) {
 		fr_sbuff_marker_t	*m_i;
 		char			*start = sbuff_i->start;
 
-		/*
-		 *	Current position shifts, but stays the same
-		 *	relative to content.
-		 */
-		update_ptr(buff, max_shift, sbuff_i->start);
-		update_ptr(buff, max_shift, sbuff_i->p);
-		update_ptr(buff, max_shift, sbuff_i->end);
+		sbuff_i->start -= min(max_shift, sbuff_i->start - buff);
+		sbuff_i->p -= max_shift;
+		sbuff_i->end -= max_shift;
 		sbuff_i->shifted += (max_shift - (start - sbuff_i->start));
-
-		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) update_ptr(buff, max_shift, m_i->p);
+		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) m_i->p -= max_shift;
 	}
 
-//	memmove(sbuff->buff, sbuff->buff + max_shift, max_shift);
+	/*
+	 *	Only memmove if the shift wasn't the
+	 *      entire contents of the buffer.
+	 */
+	if ((buff + max_shift) < end) memmove(buff, buff + max_shift, end - (buff + max_shift));
 
 	if (reterminate) *sbuff->p = '\0';
-
-#undef update_ptr
-#undef update_max_shift
 
 	return max_shift;
 }
@@ -380,6 +383,37 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
 			return -1;
 		}
 		fr_sbuff_update(sbuff, new_buff, nlen - 1);
+	}
+
+	return 0;
+}
+
+/** Reset a talloced buffer to its initial length, clearing any data stored
+ *
+ * @param[in] sbuff to reset.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure - markers present pointing past the end of string data.
+ */
+int fr_sbuff_reset_talloc(fr_sbuff_t *sbuff)
+{
+	fr_sbuff_uctx_talloc_t	*tctx = sbuff->uctx;
+
+	CHECK_SBUFF_INIT(sbuff);
+
+	fr_sbuff_set_to_start(sbuff);	/* Clear data */
+
+	if (fr_sbuff_used(sbuff) != tctx->init) {
+		char *new_buff;
+
+		new_buff = talloc_realloc(tctx->ctx, sbuff->buff, char, tctx->init);
+		if (!new_buff) {
+			fr_strerror_printf("Failed reallocing from %zu to %zu",
+					   talloc_array_length(sbuff->buff), tctx->init);
+			return -1;
+		}
+		sbuff->buff = new_buff;
+		fr_sbuff_update(sbuff, new_buff, tctx->init - 1);
 	}
 
 	return 0;

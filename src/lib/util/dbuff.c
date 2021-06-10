@@ -115,11 +115,14 @@ void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
  */
 size_t fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift)
 {
-	uint8_t	*buff;		/* Current start */
+	uint8_t		*buff, *end;		/* Current start */
+	fr_dbuff_t	*dbuff_i;
+	size_t		max_shift = shift;
 
 	CHECK_DBUFF_INIT(dbuff);
 
 	buff = dbuff->buff;
+	end = dbuff->end;
 
 	/*
 	 *	First pass: find the maximum shift, which is the minimum
@@ -127,12 +130,17 @@ size_t fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift)
 	 *	or current pointers of markers of dbuff and its ancestors.
 	 *	(We're also constrained by the requested shift count.)
 	 */
-	for (fr_dbuff_t *d = dbuff; d && shift; d = d->parent) {
-		shift = min(shift, d->p - buff);
-		for (fr_dbuff_marker_t *m = d->m; m; m = m->next) shift = min(shift, m->p - buff);
-	}
+	for (dbuff_i = dbuff; dbuff_i; dbuff_i = dbuff_i->parent) {
+		fr_dbuff_marker_t *m_i;
 
-	if (!shift) return 0;
+		max_shift = min(max_shift, dbuff_i->p - buff);
+		if (!max_shift) return 0;
+
+		for (m_i = dbuff_i->m; m_i; m_i = m_i->next) {
+			max_shift = min(max_shift, m_i->p - buff);
+			if (!max_shift) return 0;
+		}
+	}
 
 	/*
 	 *	Second pass: adjust pointers.
@@ -142,22 +150,23 @@ size_t fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift)
 	 *	For d->end, d->buff <= d->p - shift, and d->p shouldn't exceed d->end,
 	 *	so d->p - shift <= d->end - shift, hence d->buff <= d->end - shift.
 	 */
-	for (fr_dbuff_t *d = dbuff; d; d = d->parent) {
-		uint8_t	*start = d->start;
+	for (dbuff_i = dbuff; dbuff_i; dbuff_i = dbuff_i->parent) {
+		fr_dbuff_marker_t	*m_i;
+		uint8_t			*start = dbuff_i->start;
 
-		d->start -= min(shift, d->start - buff);
-		d->p -= shift;
-		d->end -= shift;
-		d->shifted += (shift - (start - d->start));
-		for (fr_dbuff_marker_t *m = d->m; m; m = m->next) m->p -= shift;
+		dbuff_i->start -= min(max_shift, dbuff_i->start - buff);
+		dbuff_i->p -= max_shift;
+		dbuff_i->end -= max_shift;
+		dbuff_i->shifted += (max_shift - (start - dbuff_i->start));
+		for (m_i = dbuff_i->m; m_i; m_i = m_i->next) m_i->p -= max_shift;
 	}
 
 	/*
 	 *	Move data to track moved pointers.
 	 */
-	memmove(buff, buff + shift, ((fr_dbuff_uctx_fd_t *)(dbuff->uctx))->buff_end - (buff + shift));
+	if ((buff + max_shift) < end) memmove(buff, buff + max_shift, end - (buff + max_shift));
 
-	return shift;
+	return max_shift;
 }
 
 /** Refresh the buffer with more data from the file
