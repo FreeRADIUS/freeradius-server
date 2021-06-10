@@ -513,6 +513,53 @@ static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
 }
 */
 
+/*
+ *	Xlat resume callback after unbound has either returned or timed out
+ *	Move the parsed results to the xlat output cursor
+ */
+static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 UNUSED fr_value_box_list_t *in, void *rctx)
+{
+	fr_value_box_t		*vb;
+	unbound_request_t	*ur = talloc_get_type_abort(rctx, unbound_request_t);
+
+#define RCODEERROR(_code, _message) case _code: \
+	REDEBUG(_message, ur->t->inst->name); \
+	goto error
+
+	/*	Check for unbound errors */
+	switch (ur->done) {
+	case 1:
+		break;
+
+	default:
+		REDEBUG("%s - Unknown DNS error", ur->t->inst->name);
+	error:
+		talloc_free(ur);
+		return XLAT_ACTION_FAIL;
+
+	RCODEERROR(0, "%s - No result");
+	RCODEERROR(-1, "%s - Query format error");
+	RCODEERROR(-2, "%s - DNS server failure");
+	RCODEERROR(-3, "%s - Nonexistent domain name");
+	RCODEERROR(-4, "%s - DNS server does not support query type");
+	RCODEERROR(-5, "%s - DNS server refused query");
+	RCODEERROR(-16, "%s - Bogus DNS response");
+	RCODEERROR(-32, "%s - Error parsing DNS response");
+	}
+
+	/*
+	 *	Move parsed results into xlat cursor
+	 */
+	while ((vb = fr_dlist_pop_head(&ur->list))) {
+		fr_dcursor_append(out, vb);
+	}
+
+	talloc_free(ur);
+	return XLAT_ACTION_DONE;
+}
+
 /** Perform a DNS lookup for a PTR record
  *
  * @ingroup xlat_functions
