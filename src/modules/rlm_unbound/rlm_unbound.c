@@ -175,26 +175,6 @@ static void ub_data_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int f
 	ub_process(xt->t->ub);
 }
 
-typedef struct {
-	struct ub_result	*result;	//!< The result from the previous operation.
-} dns_resume_ctx_t;
-
-/*
-static xlat_action_t xlat_ptr(TALLOC_CTX *ctx, fr_cursor_t *out,
-			      request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-			      fr_value_box_t **in)
-{
-	if (!*in) return XLAT_ACTION_DONE;
-
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input string for attribute reference");
-		return XLAT_ACTION_FAIL;
-	}
-
-	yield_to
-
-}
-*/
 
 /*
  *	Xlat resume callback after unbound has either returned or timed out
