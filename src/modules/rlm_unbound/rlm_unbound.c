@@ -213,26 +213,6 @@ static int ub_common_wait(rlm_unbound_t const *inst, request_t *request,
 	return 0;
 }
 
-static int ub_common_fail(request_t *request, char const *name, struct ub_result *ub)
-{
-	if (ub->bogus) {
-		RWDEBUG("%s - Bogus DNS response", name);
-		return -1;
-	}
-
-	if (ub->nxdomain) {
-		RDEBUG2("%s - NXDOMAIN", name);
-		return -1;
-	}
-
-	if (!ub->havedata) {
-		RDEBUG2("%s - Empty result", name);
-		return -1;
-	}
-
-	return 0;
-}
-
 typedef struct {
 	struct ub_result	*result;	//!< The result from the previous operation.
 } dns_resume_ctx_t;
