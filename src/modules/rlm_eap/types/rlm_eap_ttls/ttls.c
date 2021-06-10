@@ -148,6 +148,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	VALUE_PAIR	*vp;
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
 	vp_cursor_t	out;
+	DICT_ATTR const *da;
 
 	fr_cursor_init(&out, &first);
 
@@ -258,13 +259,13 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			if (decoded < 0) {
 				REDEBUG2("diameter2vp failed decoding attr: %s",
 					fr_strerror());
-				goto do_octets;
+				goto raw;
 			}
 
 			if ((size_t) decoded != size + 2) {
 				REDEBUG2("diameter2vp failed to entirely decode VSA");
 				fr_pair_list_free(&vp);
-				goto do_octets;
+				goto raw;
 			}
 
 			fr_cursor_merge(&out, vp);
@@ -275,8 +276,10 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		/*
 		 *	Create it.  If this fails, it's because we're OOM.
 		 */
-	do_octets:
-		vp = fr_pair_afrom_num(packet, attr, vendor);
+		da = dict_attrbyvalue(attr, vendor);
+		if (!da) goto raw;
+
+		vp = fr_pair_afrom_da(packet, da);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			fr_pair_list_free(&first);
@@ -293,8 +296,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			if (size != vp->vp_length) {
-				DICT_ATTR const *da;
-
 				/*
 				 *	Bad format.  Create a "raw"
 				 *	attribute.
