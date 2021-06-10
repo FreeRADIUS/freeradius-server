@@ -171,48 +171,6 @@ static void ub_data_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int f
 	ub_process(xt->t->ub);
 }
 
-static int ub_common_wait(rlm_unbound_t const *inst, request_t *request,
-			  char const *name, struct ub_result **ub, int async_id)
-{
-	useconds_t iv, waited;
-
-	iv = inst->timeout > 64 ? 64000 : inst->timeout * 1000;
-	ub_process(inst->ub);
-
-	for (waited = 0; (void const *)*ub == (void const *)inst; waited += iv, iv *= 2) {
-
-		if (waited + iv > (useconds_t)inst->timeout * 1000) {
-			usleep(inst->timeout * 1000 - waited);
-			ub_process(inst->ub);
-			break;
-		}
-
-		usleep(iv);
-
-		/* Check if already handled by event loop */
-		if ((void const *)*ub != (void const *)inst) {
-			break;
-		}
-
-		/* In case we are running single threaded */
-		ub_process(inst->ub);
-	}
-
-	if ((void const *)*ub == (void const *)inst) {
-		int res;
-
-		REDEBUG2("%s - DNS took too long", name);
-
-		res = ub_cancel(inst->ub, async_id);
-		if (res) {
-			REDEBUG("%s - ub_cancel: %s", name, ub_strerror(res));
-		}
-		return -1;
-	}
-
-	return 0;
-}
-
 typedef struct {
 	struct ub_result	*result;	//!< The result from the previous operation.
 } dns_resume_ctx_t;
