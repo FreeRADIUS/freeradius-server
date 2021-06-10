@@ -145,7 +145,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	size_t		size;
 	size_t		data_left = data_len;
 	VALUE_PAIR	*first = NULL;
-	VALUE_PAIR	*vp;
+	VALUE_PAIR	*vp = NULL;
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
 	vp_cursor_t	out;
 	DICT_ATTR const *da;
