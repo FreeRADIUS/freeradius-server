@@ -86,7 +86,7 @@ fr_dict_t const *virtual_server_namespace_by_ci(CONF_ITEM *ci) CC_HINT(nonnull);
 
 int		virtual_server_has_namespace(CONF_SECTION **out,
 					     char const *virtual_server, fr_dict_t const *namespace,
-					     CONF_ITEM *ci) CC_HINT(nonnull);
+					     CONF_ITEM *ci) CC_HINT(nonnull(2,3));
 /** @} */
 unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type,
 				     request_t *request, CONF_SECTION *server_cs) CC_HINT(nonnull);
