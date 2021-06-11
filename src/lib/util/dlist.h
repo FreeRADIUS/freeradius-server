@@ -56,6 +56,17 @@ typedef struct {
 	size_t		num_elements;
 } fr_dlist_head_t;
 
+
+/** Iterate over the contents of a list
+ *
+ * @param[in] _list_head	to iterate over.
+ * @param[in] _type		of item the list contains.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define fr_dlist_foreach(_list_head, _type, _iter) \
+	for (_type *_iter = fr_dlist_head(_list_head); _iter; _iter = fr_dlist_next(_list_head, _iter))
+
 /** Find the dlist pointers within a list item
  *
  */
@@ -918,7 +929,7 @@ static inline void fr_dlist_recursive_sort(fr_dlist_head_t *head, void **ptr, fr
  * @param[in,out] list	to sort
  * @param[in] cmp	comparison function to sort with
  */
-static inline void fr_dlist_sort (fr_dlist_head_t *list, fr_cmp_t cmp)
+static inline void fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
 {
 	void *head;
 	fr_dlist_t *entry;
@@ -957,9 +968,7 @@ static inline void fr_dlist_sort (fr_dlist_head_t *list, fr_cmp_t cmp)
 		}
 		head = fr_dlist_next(list, head);
 	}
-
 }
-
 
 #ifdef __cplusplus
 }
