@@ -39,6 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/log.h>
 
 #include <freeradius-devel/unlang/base.h>
 

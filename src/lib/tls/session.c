@@ -42,6 +42,7 @@
 
 #include "attrs.h"
 #include "base.h"
+#include "log.h"
 #include "missing.h"
 
 /*
