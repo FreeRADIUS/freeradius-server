@@ -86,3 +86,49 @@ static inline bool fr_pair_encode_is_error(ssize_t slen)
 #define FR_PAIR_ENCODE_HAVE_SPACE(_p, _end, _num) if (((_p) + (_num)) > (_end)) return (_end) - ((_p) + (_num));
 
 /** @} */
+
+/** Generic interface for encoding one or more fr_pair_ts
+ *
+ * An encoding function should consume at most, one top level fr_pair_t and encode
+ * it in the appropriate wire format for the protocol, writing the encoded data to
+ * out, and returning the encoded length.
+ *
+ * The exception to processing one fr_pair_t is if multiple fr_pair_ts can be aggregated
+ * into a single TLV, in which case the encoder may consume as many fr_pair_ts as will
+ * fit into that TLV.
+ *
+ * Outlen provides the length of the buffer to write the encoded data to.  The return
+ * value must not be greater than outlen.
+ *
+ * The cursor is used to track how many pairs there are remaining.
+ *
+ * @param[out] out		Where to write the encoded data.
+ * @param[in] cursor		Cursor containing the list of attributes to process.
+ * @param[in] encode_ctx	Any encoder specific data such as secrets or configurables.
+ * @return
+ *	- PAIR_ENCODE_SKIPPED - The current pair is not valid for encoding and should be skipped.
+ *	- PAIR_ENCODE_FATAL_ERROR - Encoding failed in a fatal way. Encoding the packet should be
+ *	  aborted in its entirety.
+ *	- <0 - The encoder ran out of space and returned the number of bytes as a negative
+ *	  integer that would be required to encode the attribute.
+ *	- >0 - The number of bytes written to out.
+ */
+typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void *encode_ctx);
+
+/** A generic interface for decoding fr_pair_ts
+ *
+ * A decoding function should decode a single top level fr_pair_t from wire format.
+ * If this top level fr_pair_t is a TLV, multiple child attributes may also be decoded.
+ *
+ * @param[in] ctx		to allocate new pairs in.
+ * @param[in] cursor		to insert new pairs into.
+ * @param[in] dict		to use to lookup attributes.
+ * @param[in] data		to decode.
+ * @param[in] data_len		The length of the incoming data.
+ * @param[in] decode_ctx	Any decode specific data such as secrets or configurable.
+ * @return
+ *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
+ *	- > 0 on success.  How many bytes were decoded.
+ */
+typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+				    uint8_t const *data, size_t data_len, void *decode_ctx);
