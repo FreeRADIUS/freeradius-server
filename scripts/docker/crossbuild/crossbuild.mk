@@ -25,6 +25,11 @@ CB_IMAGES:=$(sort $(patsubst $(DT)/build-%,%,$(wildcard $(DT)/build-*)))
 # Location of the .git dir (may be different for e.g. submodules)
 GITDIR:=$(shell perl -MCwd -e 'print Cwd::abs_path shift' $$(git rev-parse --git-dir))
 
+# Don't use the Docker cache if asked
+ifneq "$(NOCACHE)" ""
+    NO_CACHE=--no-cache
+endif
+
 CB_CPREFIX:=fr-crossbuild-
 CB_IPREFIX:=freeradius-build
 
@@ -77,6 +82,8 @@ crossbuild.help: crossbuild.info
 	@echo "    crossbuild.IMAGE.reset   - remove cache of docker state"
 	@echo "    crossbuild.IMAGE.clean   - stop container and tidy up"
 	@echo "    crossbuild.IMAGE.wipe    - remove Docker image"
+	@echo ""
+	@echo "Use 'make NOCACHE=1 ...' to disregard the Docker cache on build"
 
 #
 #  Remove stamp files, so that we try and create images again
@@ -117,7 +124,7 @@ crossbuild.${1}.status:
 #
 $(DD)/stamp-image.${1}:
 	${Q}echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
-	${Q}docker build $(DT)/build-${1} -f $(DT)/build-${1}/Dockerfile.deps -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
+	${Q}docker build $(NO_CACHE) $(DT)/build-${1} -f $(DT)/build-${1}/Dockerfile.deps -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
 	${Q}touch $(DD)/stamp-image.${1}
 
 #
