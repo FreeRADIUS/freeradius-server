@@ -124,6 +124,8 @@ int			dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT
 void			*dl_loader_uctx(dl_loader_t *dl_loader) CC_HINT(nonnull);
 
 dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool defer_symbol_init);
+
+void			dl_loader_debug(dl_loader_t *dl);
 #ifdef __cplusplus
 }
 #endif

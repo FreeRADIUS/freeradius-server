@@ -60,7 +60,7 @@ struct dl_symbol_init_s {
 	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_onload_t		func;		//!< to call when symbol is found in a dl's symbol table.
-	void			*ctx;		//!< User data to pass to func.
+	void			*uctx;		//!< User data to pass to func.
 };
 
 /** Symbol dependent free callback
@@ -74,7 +74,7 @@ struct dl_symbol_free_s {
 	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_unload_t		func;		//!< to call when symbol is found in a dl's symbol table.
-	void			*ctx;		//!< User data to pass to func.
+	void			*uctx;		//!< User data to pass to func.
 };
 
 /** A dynamic loader
@@ -249,7 +249,7 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 			}
 		}
 
-		if (init->func(dl, sym, init->ctx) < 0) return -1;
+		if (init->func(dl, sym, init->uctx) < 0) return -1;
 	}
 
 	return 0;
@@ -283,7 +283,7 @@ static int dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 			if (!sym) continue;
 		}
 
-		free->func(dl, sym, free->ctx);
+		free->func(dl, sym, free->uctx);
 	}
 
 	return 0;
@@ -302,13 +302,13 @@ static int dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
  *			space, so the symbols they export must be unique.
  *			May be NULL to always call the function.
  * @param[in] func	to register.  Called when dl is loaded.
- * @param[in] ctx	to pass to func.
+ * @param[in] uctx	to pass to func.
  * @return
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
 int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
-			       char const *symbol, dl_onload_t func, void *ctx)
+			       char const *symbol, dl_onload_t func, void *uctx)
 {
 	dl_symbol_init_t	*n, *p = NULL;
 
@@ -320,7 +320,7 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 		.priority = priority,
 		.symbol = symbol,
 		.func = func,
-		.ctx = ctx
+		.uctx = uctx
 	};
 
 	while ((p = fr_dlist_next(&dl_loader->sym_init, p)) && (p->priority >= priority));
@@ -363,13 +363,13 @@ void dl_symbol_init_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl
  *			space, so the symbols they export must be unique.
  *			May be NULL to always call the function.
  * @param[in] func	to register.  Called then dl is unloaded.
- * @param[in] ctx	to pass to func.
+ * @param[in] uctx	to pass to func.
  * @return
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
 int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
-			       char const *symbol, dl_unload_t func, void *ctx)
+			       char const *symbol, dl_unload_t func, void *uctx)
 {
 	dl_symbol_free_t	*n, *p = NULL;
 
@@ -382,7 +382,7 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 		.priority = priority,
 		.symbol = symbol,
 		.func = func,
-		.ctx = ctx
+		.uctx = uctx
 	};
 
 	while ((p = fr_dlist_next(&dl_loader->sym_free, p)) && (p->priority >= priority));
@@ -827,4 +827,31 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool de
 	fr_dlist_init(&dl_loader->sym_free, dl_symbol_free_t, entry);
 
 	return dl_loader;
+}
+
+/** Called from a debugger to print information about a dl_loader
+ *
+ */
+void dl_loader_debug(dl_loader_t *dl)
+{
+	FR_FAULT_LOG("dl_loader %p", dl);
+	FR_FAULT_LOG("lib_dir           : %s", dl->lib_dir);
+	FR_FAULT_LOG("do_dlclose        : %s", dl->do_dlclose ? "yes" : "no");
+	FR_FAULT_LOG("uctx              : %p", dl->uctx);
+	FR_FAULT_LOG("uctx_free         : %s", dl->do_dlclose ? "yes" : "no");
+	FR_FAULT_LOG("defer_symbol_init : %s", dl->defer_symbol_init ? "yes" : "no");
+
+	fr_dlist_foreach(&dl->sym_init, dl_symbol_init_t, sym) {
+		FR_FAULT_LOG("symbol_init %s", sym->symbol ? sym->symbol : "<base>");
+		FR_FAULT_LOG("\tpriority : %u", sym->priority);
+		FR_FAULT_LOG("\tfunc     : %p", sym->func);
+		FR_FAULT_LOG("\tuctx     : %p", sym->uctx);
+	}
+
+	fr_dlist_foreach(&dl->sym_free, dl_symbol_free_t, sym) {
+		FR_FAULT_LOG("symbol_free %s", sym->symbol ? sym->symbol : "<base>");
+		FR_FAULT_LOG("\tpriority : %u", sym->priority);
+		FR_FAULT_LOG("\tfunc     : %p", sym->func);
+		FR_FAULT_LOG("\tuctx     : %p", sym->uctx);
+	}
 }
