@@ -30,10 +30,7 @@ properties([
 		),
 		text(
 			name: 'platforms',
-			defaultValue: '''ubuntu14
-ubuntu16
-ubuntu18
-debian8
+			defaultValue: '''ubuntu18
 debian9
 debian10
 centos7
