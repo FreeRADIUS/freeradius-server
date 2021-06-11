@@ -65,7 +65,8 @@ typedef enum {
  * The higher the priority, the earlier in callback gets called.
  */
 #define DL_PRIORITY_DICT	30		//!< Callback priority for dictionary autoloading
-#define DL_PRIORITY_DICT_ATTR	20		//!< Callback priority for attribute resolution
+#define DL_PRIORITY_DICT_ATTR	29		//!< Callback priority for attribute resolution
+#define DL_PRIORITY_DICT_ENUM	28		//!< Callback priority for enum resolution
 #define DL_PRIORITY_BOOTSTRAP	10		//!< Callback priority for bootstrap callback
 
 typedef struct dl_module_loader_s dl_module_loader_t;
@@ -153,14 +154,6 @@ struct dl_module_instance_s {
 
 extern fr_table_num_sorted_t const dl_module_type_prefix[];
 extern size_t dl_module_type_prefix_len;
-
-/** Callback priorities
- *
- * The higher the priority, the earlier in callback gets called.
- */
-#define DL_PRIORITY_DICT	30			//!< Callback priority for dictionary autoloading
-#define DL_PRIORITY_DICT_ATTR	20			//!< Callback priority for attribute resolution
-#define DL_PRIORITY_BOOTSTRAP	10			//!< Callback priority for bootstrap callback
 
 dl_module_t const	*dl_module(CONF_SECTION *conf, dl_module_t const *parent,
 				   char const *name, dl_module_type_t type);

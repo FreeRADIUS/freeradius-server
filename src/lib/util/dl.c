@@ -310,7 +310,7 @@ static int dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 			       char const *symbol, dl_onload_t func, void *uctx)
 {
-	dl_symbol_init_t	*n, *p = NULL;
+	dl_symbol_init_t	*n;
 
 	dl_symbol_init_cb_unregister(dl_loader, symbol, func);
 
@@ -323,12 +323,14 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 		.uctx = uctx
 	};
 
-	while ((p = fr_dlist_next(&dl_loader->sym_init, p)) && (p->priority >= priority));
-	if (p) {
-		fr_dlist_insert_after(&dl_loader->sym_init, p, n);
-	} else {
-		fr_dlist_insert_tail(&dl_loader->sym_init, n);
+	fr_dlist_foreach(&dl_loader->sym_init, dl_symbol_init_t, p) {
+		if (p->priority < priority) {
+			fr_dlist_insert_before(&dl_loader->sym_init, p, n);
+			n = NULL;
+			break;
+		}
 	}
+	if (n) fr_dlist_insert_tail(&dl_loader->sym_init, n);
 
 	return 0;
 }
@@ -371,7 +373,7 @@ void dl_symbol_init_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl
 int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 			       char const *symbol, dl_unload_t func, void *uctx)
 {
-	dl_symbol_free_t	*n, *p = NULL;
+	dl_symbol_free_t	*n;
 
 	dl_symbol_free_cb_unregister(dl_loader, symbol, func);
 
@@ -385,12 +387,14 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
 		.uctx = uctx
 	};
 
-	while ((p = fr_dlist_next(&dl_loader->sym_free, p)) && (p->priority >= priority));
-	if (p) {
-		fr_dlist_insert_after(&dl_loader->sym_free, p, n);
-	} else {
-		fr_dlist_insert_tail(&dl_loader->sym_free, n);
+	fr_dlist_foreach(&dl_loader->sym_free, dl_symbol_free_t, p) {
+		if (p->priority < priority) {
+			fr_dlist_insert_before(&dl_loader->sym_free, p, n);
+			n = NULL;
+			break;
+		}
 	}
+	if (n) fr_dlist_insert_tail(&dl_loader->sym_free, n);
 
 	return 0;
 }
