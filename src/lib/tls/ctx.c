@@ -816,6 +816,7 @@ post_ca:
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
 	}
 
+#ifdef HAVE_OPENSSL_OCSP_H
 	/*
 	 *	Configure OCSP stapling for the server cert
 	 */
@@ -823,6 +824,7 @@ post_ca:
 		SSL_CTX_set_tlsext_status_cb(ctx, fr_tls_ocsp_staple_cb);
 		SSL_CTX_set_tlsext_status_arg(ctx, UNCONST(fr_tls_ocsp_conf_t *, &(conf->staple)));
 	}
+#endif
 
 	/*
 	 *	Set the cipher list if we were told to
