@@ -1,10 +1,8 @@
-ARG from=ubuntu:20.04
-FROM ${from}
-
-ARG osname=focal
+FROM ubuntu:20.04
 
 SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
 
+ARG osname=focal
 ONBUILD ARG osname=${osname}
 
 ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recommends"
@@ -17,21 +15,22 @@ RUN apt-get update && \
         devscripts \
         equivs \
         git \
+        gnupg2 \
+        lsb-release \
+        procps \
         quilt \
         rsync \
         software-properties-common \
-        wget && \
-#  Compilers
-    apt-get install $APT_OPTS \
-        g++ && \
-    bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" && \
+        wget \
 #  eapol_test dependencies
-    apt-get install $APT_OPTS \
         libnl-3-dev \
-        libnl-genl-3-dev && \
-#  cmake to build libkqueue
-    apt-get install $APT_OPTS \
-        cmake
+        libnl-genl-3-dev \
+#  Compilers
+        clang \
+        g++ \
+        lldb \
+        llvm
+
 
 #
 #  Documentation build dependecies
@@ -43,7 +42,7 @@ RUN apt-get install $APT_OPTS \
         graphviz \
         libjson-perl
 #  - antora (npm needed)
-RUN bash -c "$(wget -O - https://deb.nodesource.com/setup_10.x)" && \
+RUN bash -c "$(wget -O - https://deb.nodesource.com/setup_14.x)" && \
     apt-get install $APT_OPTS \
         nodejs
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
@@ -54,7 +53,7 @@ RUN wget $(wget -qO - https://api.github.com/repos/jgm/pandoc/releases/latest | 
     find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -delete
 #  - asciidoctor
 RUN apt-get install $APT_OPTS \
-        ruby-dev
+    ruby
 RUN gem install asciidoctor
 
 
@@ -66,15 +65,11 @@ WORKDIR /usr/local/src/repositories
 
 
 #
-#  Grab libkqueue and build
+#  Set up NetworkRADIUS repositories for libkqueue
 #
-RUN git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git
-
-WORKDIR libkqueue
-RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
-    make && \
-    cpack -G DEB && \
-    dpkg -i --force-all ./libkqueue*.deb
+RUN wget -O - "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add && \
+    echo "deb http://packages.networkradius.com/libkqueue/ubuntu/bionic bionic main" > /etc/apt/sources.list.d/networkradius.list && \
+    apt-get update
 
 
 #

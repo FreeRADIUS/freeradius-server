@@ -5,13 +5,29 @@ FROM centos:centos7
 #  repository for freetds and hiredis
 #
 RUN yum update -y
-RUN yum install -y rpmdevtools openssl epel-release git yum-utils rsync
+RUN yum install -y \
+    epel-release \
+    git \
+    openssl \
+    rpmdevtools \
+    rsync \
+    wget \
+    yum-utils \
+#  which is required by fixture setup utilities
+    which \
+#  libnl3-devel is required for the EAP tests
+    libnl3-devel
+
 
 #
 #  Install GCC that has the requisite support for C11 keywords and atomics
 #
-RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
+RUN yum install -y \
+    centos-release-scl
+RUN yum install -y \
+    devtoolset-8-gcc \
+    devtoolset-8-gcc-c++ \
+    devtoolset-8-make
 ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 
 #
@@ -21,22 +37,39 @@ ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 RUN rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
 RUN rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
+
 #
 #  Documentation build dependecies
 #
 
 #  - doxygen & JSON.pm
-RUN yum install -y doxygen graphviz perl-JSON
+RUN yum install -y \
+        doxygen \
+        graphviz \
+        perl-JSON
 #  - antora (npm needed)
-RUN curl -sL https://rpm.nodesource.com/setup_8.x | bash -
-RUN yum install -y nodejs
+RUN bash -c "$(wget -O - https://rpm.nodesource.com/setup_14.x)" && \
+    yum install -y \
+        nodejs
 RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
 #  - pandoc
 RUN curl -o - -L $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*amd64.tar.gz" | cut -d '"' -f 4) | tar xzvf - -C /tmp/
 RUN mv /tmp/pandoc-*/bin/* /usr/local/bin
 #  - asciidoctor
-RUN yum install -y rubygems-devel
+RUN yum install -y \
+    rubygems-devel
 RUN gem install asciidoctor
+
+
+#
+#  Completely remove the defunct nodesource-source repo
+#  as it breaks yum-builddep
+#  https://github.com/nodesource/distributions/issues/998
+#  https://github.com/nodesource/distributions/issues/576
+#
+RUN awk '/nodesource-source/{T=1}//{if (!T){print}}' /etc/yum.repos.d/nodesource-el7.repo > \
+        /etc/yum.repos.d/nodesource-el7.repo.new && \
+    mv /etc/yum.repos.d/nodesource-el7.repo.new /etc/yum.repos.d/nodesource-el7.repo
 
 #
 #  Setup a src dir in /usr/local
@@ -44,24 +77,26 @@ RUN gem install asciidoctor
 RUN mkdir -p /usr/local/src/repositories
 WORKDIR /usr/local/src/repositories
 
-#
-#  Get a modern version of cmake.  We need 3.8.2 or later to build libkqueue rpms
-#
-RUN curl -f -o cmake.sh https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
-RUN [ "$(cat cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
-RUN sh cmake.sh --skip-license --prefix=/usr/local
 
 #
-#  Grab libkqueue and build
+#  Set up NetworkRADIUS repositories for libkqueue and json-c
 #
-WORKDIR /usr/local/src/repositories
-RUN git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git
+RUN echo $'[nr-libkqueue]\n\
+name=NetworkRADIUS-libkqueue-$releasever\n\
+baseurl=http://packages.networkradius.com/libkqueue/centos/$releasever/\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com\n\
+\n\
+[nr-json-c]\n\
+name=NetworkRADIUS-json-c-$releasever\n\
+baseurl=http://packages.networkradius.com/json-c/centos/$releasever/\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'\
+> /etc/yum.repos.d/networkradius.repo
+RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
 
-WORKDIR libkqueue
-RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
-    make && \
-    cpack -G RPM && \
-    yum localinstall -y *.rpm
 
 #
 #  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
@@ -80,27 +115,21 @@ RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 #
 WORKDIR /usr/local/src/repositories
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
-RUN git clone --depth 1 --no-single-branch ${source}
+ARG branch=master
+RUN git clone --depth 1 --no-single-branch -b ${branch} ${source}
+
 
 #
 #  Install build dependencies for all branches from v3 onwards
 #
 WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
-	do \
-		git checkout $i; \
-		[ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec; \
-	done
+    do \
+        echo "BRANCH $i"; \
+        git checkout $i; \
+        [ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec; \
+    done
 
-#
-#  Which is required by fixture setup utilities
-#
-RUN yum install -y which
-
-#
-#  Explicitly install libnl3-devel which is required for the EAP tests
-#
-RUN yum install -y libnl3-devel
 
 #
 #  Create the RPM build tree
