@@ -56,7 +56,7 @@ typedef struct {
 	fr_log_type_t		type;		//!< The type of log messages the bio will produce.
 	fr_log_lvl_t		lvl;		//!< Level to log message at.
 	char const		*file;		//!< File this log bio was bound on.
-	int			*line;		//!< Line this log bio was bound on.
+	int			line;		//!< Line this log bio was bound on.
 } fr_tls_log_bio_t;
 
 /** Template for the thread local request log BIOs
