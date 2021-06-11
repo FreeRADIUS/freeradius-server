@@ -3,6 +3,9 @@ AC_INIT(rlm_yubikey.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_yubikey])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
     dnl ############################################################
     dnl # Check for command line options

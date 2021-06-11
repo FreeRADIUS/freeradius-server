@@ -16,6 +16,10 @@ m4_include([ax_ruby_devel.m4])
 targetname=modname
 mod_cflags=
 mod_ldflags=
+
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP

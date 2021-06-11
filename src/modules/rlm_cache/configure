@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_cache
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1248,6 +1249,11 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_cache              build rlm_cache. (default=yes)
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -1732,6 +1738,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
+
+# Check whether --with-rlm_cache was given.
+if test "${with_rlm_cache+set}" = set; then :
+  withval=$with_rlm_cache;
+fi
+
+
 if test x$with_rlm_cache != xno; then
 
 	ac_ext=c

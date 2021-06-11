@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_oracle
 with_oracle_include_dir
 with_oracle_lib_dir
 with_oracle_dir
@@ -1254,6 +1255,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_sql_oracle              build rlm_sql_oracle. (default=yes)
   --with-oracle-include-dir=DIR
                           Directory where the oracle includes may be found
   --with-oracle-lib-dir=DIR
@@ -1791,6 +1793,14 @@ oracle_supported_versions="19 18 12 11 10 9"
 fail=
 mod_ldflags=
 mod_cflags=
+
+
+# Check whether --with-rlm_sql_oracle was given.
+if test "${with_rlm_sql_oracle+set}" = set; then :
+  withval=$with_rlm_sql_oracle;
+fi
+
+
 if test x$with_rlm_sql_oracle != xno; then
 
 

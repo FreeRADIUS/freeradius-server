@@ -637,6 +637,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_mysql
 with_mysql_include_dir
 with_mysql_lib_dir
 with_mysql_dir
@@ -1256,6 +1257,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_sql_mysql              build rlm_sql_mysql. (default=yes)
   --with-mysql-include-dir=DIR
                           Directory where the mysql includes may be found
   --with-mysql-lib-dir=DIR
@@ -1795,6 +1797,14 @@ ac_config_headers="$ac_config_headers config.h"
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
+
+# Check whether --with-rlm_sql_mysql was given.
+if test "${with_rlm_sql_mysql+set}" = set; then :
+  withval=$with_rlm_sql_mysql;
+fi
+
+
 if test x$with_rlm_sql_mysql != xno; then
 
 		mysql_include_dir=

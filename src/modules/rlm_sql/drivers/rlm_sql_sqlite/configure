@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_sqlite
 with_sqlite_include_dir
 with_sqlite_lib_dir
 with_sqlite_dir
@@ -1254,6 +1255,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_sql_sqlite              build rlm_sql_sqlite. (default=yes)
   --with-sqlite-include-dir=DIR
                           Directory where the sqlite includes may be found
   --with-sqlite-lib-dir=DIR
@@ -1911,6 +1913,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
+
+# Check whether --with-rlm_sql_sqlite was given.
+if test "${with_rlm_sql_sqlite+set}" = set; then :
+  withval=$with_rlm_sql_sqlite;
+fi
+
+
 if test x$with_rlm_sql_sqlite != xno; then
 
 

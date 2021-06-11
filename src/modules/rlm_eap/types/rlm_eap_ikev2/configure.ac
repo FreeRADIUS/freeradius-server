@@ -2,6 +2,9 @@ AC_INIT(rlm_eap_ikev2.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_ikev2])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 	dnl extra argument: --with-eap-ikev2-include-dir=DIR
 	eap_ikev2_include_dir=

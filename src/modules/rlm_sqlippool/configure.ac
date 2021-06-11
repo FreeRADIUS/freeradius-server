@@ -9,6 +9,9 @@ AC_INIT(rlm_sqlippool.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sqlippool])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	dnl  This module doesn't need any autoconf test which is not already

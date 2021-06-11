@@ -7,6 +7,10 @@ AC_CONFIG_HEADER(config.h)
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 	dnl ############################################################
 	dnl # Check for command line options

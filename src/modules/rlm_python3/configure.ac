@@ -3,6 +3,9 @@ AC_INIT(rlm_python3.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_python3])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC

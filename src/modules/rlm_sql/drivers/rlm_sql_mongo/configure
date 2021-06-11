@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_mongo
 with_mongoc_lib_dir
 with_mongoc_include_dir
 with_bson_lib_dir
@@ -1255,6 +1256,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_sql_mongo              build rlm_sql_mongo. (default=yes)
   --with-mongoc-lib-dir   Path of libmongoc libraries
   --with-mongoc-include-dir
                           Path of libmongoc includes
@@ -1822,6 +1824,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 fail=
 mongoc_ldflags=
 mongoc_cflags=
+
+
+# Check whether --with-rlm_sql_mongo was given.
+if test "${with_rlm_sql_mongo+set}" = set; then :
+  withval=$with_rlm_sql_mongo;
+fi
+
 
 if test x$with_rlm_sql_mongo != xno; then
 

@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_firebird
 with_firebird_include_dir
 with_firebird_lib_dir
 with_firebird_dir
@@ -1254,6 +1255,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_sql_firebird              build rlm_sql_firebird. (default=yes)
   --with-firebird-include-dir=DIR
                           Directory where the firebird includes may be found
   --with-firebird-lib-dir=DIR
@@ -1790,6 +1792,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+
+
+# Check whether --with-rlm_sql_firebird was given.
+if test "${with_rlm_sql_firebird+set}" = set; then :
+  withval=$with_rlm_sql_firebird;
+fi
+
+
 if test x$with_rlm_sql_firebird != xno; then
 		firebird_include_dir=
 
