@@ -530,7 +530,7 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  *
  *	Short-term hack
  */
-int virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
 	fr_virtual_server_t *server;
 	fr_process_module_t const *process;
@@ -540,7 +540,7 @@ int virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_fr
 	server = cf_data_value(cf_data_find(server_cs, fr_virtual_server_t, "vs"));
 	if (!server) {
 		REDEBUG("server_cs does not contain virtual server data");
-		return -1;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	mi->name = server->process_module->name;
@@ -567,9 +567,9 @@ int virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_fr
 	 *	src/lib/server/module.c, that reserves 0 for "nothing
 	 *	is initialized".
 	 */
-	if (unlang_module_push(&request->rcode, request, mi, process->process, top_frame) < 0) return -1;
+	if (unlang_module_push(&request->rcode, request, mi, process->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
 
-	return 0;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Allow dynamic clients in this virtual server.

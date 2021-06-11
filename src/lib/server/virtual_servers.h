@@ -40,16 +40,16 @@ extern const CONF_PARSER virtual_servers_on_read_config[];
  *
  * @{
  */
-void		virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free);
+void		virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free) CC_HINT(nonnull);
 
-fr_dict_t const *virtual_server_dict(CONF_SECTION *server_cs);
+fr_dict_t const *virtual_server_dict(CONF_SECTION *server_cs) CC_HINT(nonnull);
 
 int		virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name,
-							fr_dict_attr_t const *da);
+							fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 int		virtual_servers_instantiate(void);
 
-int		virtual_servers_bootstrap(CONF_SECTION *config);
+int		virtual_servers_bootstrap(CONF_SECTION *config) CC_HINT(nonnull);
 
 int		virtual_servers_init(CONF_SECTION *config) CC_HINT(nonnull);
 
@@ -70,31 +70,31 @@ int		virtual_servers_open(fr_schedule_t *sc);
  */
 typedef int (*fr_virtual_server_compile_t)(CONF_SECTION *server);
 
-CONF_SECTION	*virtual_server_find(char const *name);
+CONF_SECTION	*virtual_server_find(char const *name) CC_HINT(nonnull);
 
-CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section);
+CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section) CC_HINT(nonnull);
 
-int		virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-					CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+int		virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
+					CONF_ITEM *ci, CONF_PARSER const *rule) CC_HINT(nonnull(2,4));
 
 int		virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
-					   fr_virtual_server_compile_t func);
+					   fr_virtual_server_compile_t func) CC_HINT(nonnull);
 
-fr_dict_t const	*virtual_server_namespace(char const *virtual_server);
+fr_dict_t const	*virtual_server_namespace(char const *virtual_server) CC_HINT(nonnull);
 
-fr_dict_t const *virtual_server_namespace_by_ci(CONF_ITEM *ci);
+fr_dict_t const *virtual_server_namespace_by_ci(CONF_ITEM *ci) CC_HINT(nonnull);
 
 int		virtual_server_has_namespace(CONF_SECTION **out,
 					     char const *virtual_server, fr_dict_t const *namespace,
-					     CONF_ITEM *ci);
+					     CONF_ITEM *ci) CC_HINT(nonnull);
 /** @} */
-
-unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request, CONF_SECTION *server_cs);
+unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type,
+				     request_t *request, CONF_SECTION *server_cs) CC_HINT(nonnull);
 
 rlm_rcode_t	virtual_server_process_auth(request_t *request, CONF_SECTION *virtual_server,
 					    rlm_rcode_t default_rcode,
 					    unlang_module_resume_t resume,
-					    unlang_module_signal_t signal, void *rctx);
+					    unlang_module_signal_t signal, void *rctx) CC_HINT(nonnull);
 
 fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
 bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
@@ -122,14 +122,16 @@ typedef struct {
 
 #define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }
 
-int		virtual_server_section_register(virtual_server_compile_t const *entry);
-int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *uctx) CC_HINT(nonnull(1,2,3));
+int		virtual_server_section_register(virtual_server_compile_t const *entry) CC_HINT(nonnull);
+
+int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list,
+						tmpl_rules_t const *rules, void *uctx) CC_HINT(nonnull(1,2,3));
 
 virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));
 
-int		virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame);
+unlang_action_t	virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull);
 
-int		virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs);
+int		virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
