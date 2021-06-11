@@ -507,7 +507,7 @@ static int tls_log_global_bio_write_cb(BIO *bio, char const *in, int len)
 		 *	Skip empty lines
 		 */
 		if ((le - fr_sbuff_current(&lb->logged_m)) > 0) {
-			if (fr_debug_lvl >= lb->lvl) fr_log(lb->type, lb->lvl, __FILE__, __LINE__,
+			if (fr_debug_lvl >= lb->lvl) fr_log(&default_log, lb->type, __FILE__, __LINE__,
 							    "%pV",
 							    fr_box_strvalue_len(fr_sbuff_current(&lb->logged_m),
 										le - fr_sbuff_current(&lb->logged_m)));
