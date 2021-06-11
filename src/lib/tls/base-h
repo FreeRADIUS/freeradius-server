@@ -441,18 +441,6 @@ void		fr_openssl_free(void);
 int		fr_tls_dict_init(void);
 
 /*
- *	tls/log.c
- */
-int		fr_tls_log_error(request_t *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
-
-int		fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, char const *msg, ...)
-				    CC_HINT(format (printf, 4, 5));
-
-#define		fr_tls_log_certificate_chain(_request, _chain, _cert) \
-		_fr_tls_log_certificate_chain( __FILE__, __LINE__, _request, _chain, _cert)
-void		_fr_tls_log_certificate_chain(char const *file, int line,
-					      request_t *request, STACK_OF(X509) *chain, X509 *cert);
-/*
  *	tls/ocsp.c
  */
 int		fr_tls_ocsp_staple_cb(SSL *ssl, void *data);
