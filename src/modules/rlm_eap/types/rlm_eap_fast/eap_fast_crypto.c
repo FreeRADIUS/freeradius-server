@@ -33,12 +33,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_fast_crypto.h"
 
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
+
 static void debug_errors(void)
 {
 	unsigned long errCode;
 
-	while((errCode = ERR_get_error()))
-	{
+	while((errCode = ERR_get_error())) {
 		char *err = ERR_error_string(errCode, NULL);
 		DEBUG("EAP-FAST error in OpenSSL - %s", err);
 	}
@@ -64,15 +65,13 @@ int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 	};
 
 	/* Initialise the encryption operation. */
-	if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL))
-	{
+	if (1 != EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL)) {
 		debug_errors();
 		return -1;
 	};
 
 	/* Set IV length if default 12 bytes (96 bits) is not appropriate */
-	if (1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL))
-	{
+	if (1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL)) {
 		debug_errors();
 		return -1;
 	};
@@ -86,8 +85,7 @@ int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 	/* Provide any AAD data. This can be called zero or more times as
 	 * required
 	 */
-	if (1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len))
-	{
+	if (1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len)) {
 		debug_errors();
 		return -1;
 	};
@@ -95,8 +93,7 @@ int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 	/* Provide the message to be encrypted, and obtain the encrypted output.
 	 * EVP_EncryptUpdate can be called multiple times if necessary
 	 */
-	if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
-	{
+	if (1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len)) {
 		debug_errors();
 		return -1;
 	};
@@ -112,8 +109,7 @@ int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 	ciphertext_len += len;
 
 	/* Get the tag */
-	if (1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag))
-	{
+	if (1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag)) {
 		debug_errors();
 		return -1;
 	};
@@ -140,15 +136,13 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 	};
 
 	/* Initialise the decryption operation. */
-	if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL))
-	{
+	if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL)) {
 		debug_errors();
 		return -1;
 	};
 
 	/* Set IV length. Not necessary if this is 12 bytes (96 bits) */
-	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL))
-	{
+	if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL)) {
 		debug_errors();
 		return -1;
 	};
@@ -162,8 +156,7 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 	/* Provide any AAD data. This can be called zero or more times as
 	 * required
 	 */
-	if (!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len))
-	{
+	if (!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len)) {
 		debug_errors();
 		return -1;
 	};
@@ -171,8 +164,7 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 	/* Provide the message to be decrypted, and obtain the plaintext output.
 	 * EVP_DecryptUpdate can be called multiple times if necessary
 	 */
-	if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
-	{
+	if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
 		debug_errors();
 		return -1;
 	};
@@ -198,15 +190,9 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 	/* Clean up */
 	EVP_CIPHER_CTX_free(ctx);
 
-	if (ret > 0)
-	{
-		/* Success */
-		plaintext_len += len;
-		return plaintext_len;
-	}
-	else
-	{
-		/* Verify failed */
-		return -1;
-	}
+	if (ret < 0) return -1;
+
+	/* Success */
+	plaintext_len += len;
+	return plaintext_len;
 }
