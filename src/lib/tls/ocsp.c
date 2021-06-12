@@ -26,6 +26,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
+#undef HAVE_OPENSSL_OCSP_H
 #ifdef HAVE_OPENSSL_OCSP_H
 #define LOG_PREFIX "tls - ocsp - "
 
@@ -184,7 +185,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 {
 	fr_tls_ocsp_conf_t	*conf = data;	/* Alloced as part of fr_tls_conf_t (not talloced) */
-	request_t			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	request_t		*request = fr_tls_session_request(tls_session);
 
 	X509			*cert;
 	X509			*issuer_cert;

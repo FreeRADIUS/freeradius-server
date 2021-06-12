@@ -285,7 +285,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 {
 	// FIXME enforce non-anon cipher
 
-	request_t		*request = (request_t *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
+	request_t		*request = fr_tls_session_request(s);
 	fr_tls_session_t	*tls_session = arg;
 	eap_fast_tunnel_t	*t;
 
@@ -315,8 +315,8 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
  */
 static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 {
-	fr_tls_session_t		*tls_session = talloc_get_type_abort(arg, fr_tls_session_t);
-	request_t			*request = talloc_get_type_abort(SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST), request_t);
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(arg, fr_tls_session_t);
+	request_t		*request = fr_tls_session_request(s);
 	eap_fast_tunnel_t	*t;
 	fr_pair_list_t		fast_vps;
 	fr_pair_t		*vp;
@@ -513,19 +513,32 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 		eap_tls_request(request, eap_session);
 		RETURN_MODULE_HANDLED;
 
-		/*
-		 *	Success: Automatically return MPPE keys.
-		 */
+	/*
+	 *	Success: Automatically return MPPE keys.
+	 */
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) RETURN_MODULE_FAIL;
-		RETURN_MODULE_OK;
 
 		/*
-		 *	No response packet, MUST be proxying it.
-		 *	The main EAP module will take care of discovering
-		 *	that the request now has a "proxy" packet, and
-		 *	will proxy it, rather than returning an EAP packet.
+		 *	Write the session to the session cache
+		 *
+		 *	We do this here (instead of relying on OpenSSL to call the
+		 *	session caching callback), because we only want to write
+		 *	session data to the cache if all phases were successful.
+		 *
+		 *	If we wrote out the cache data earlier, and the server
+		 *	exited whilst the session was in progress, the supplicant
+		 *	could resume the session (and get access) even if phase2
+		 *	never completed.
 		 */
+		return fr_tls_cache_pending_push(request, tls_session);
+
+	/*
+	 *	No response packet, MUST be proxying it.
+	 *	The main EAP module will take care of discovering
+	 *	that the request now has a "proxy" packet, and
+	 *	will proxy it, rather than returning an EAP packet.
+	 */
 	case FR_RADIUS_CODE_STATUS_CLIENT:
 		RETURN_MODULE_OK;
 

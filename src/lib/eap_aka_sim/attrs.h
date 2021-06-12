@@ -42,6 +42,8 @@ extern fr_dict_attr_t const *attr_eap_aka_sim_counter;
 extern fr_dict_attr_t const *attr_eap_aka_sim_counter_too_small;
 extern fr_dict_attr_t const *attr_eap_aka_sim_encr_data;
 extern fr_dict_attr_t const *attr_eap_aka_sim_fullauth_id_req;
+extern fr_dict_attr_t const *attr_eap_aka_sim_hmac_extra_request;
+extern fr_dict_attr_t const *attr_eap_aka_sim_hmac_extra_response;
 extern fr_dict_attr_t const *attr_eap_aka_sim_identity;
 extern fr_dict_attr_t const *attr_eap_aka_sim_identity_type;
 extern fr_dict_attr_t const *attr_eap_aka_sim_ik;
@@ -65,24 +67,21 @@ extern fr_dict_attr_t const *attr_eap_aka_sim_padding;
 extern fr_dict_attr_t const *attr_eap_aka_sim_permanent_id_req;
 extern fr_dict_attr_t const *attr_eap_aka_sim_permanent_identity;
 extern fr_dict_attr_t const *attr_eap_aka_sim_rand;
-extern fr_dict_attr_t const *attr_eap_aka_sim_hmac_extra_request;
 extern fr_dict_attr_t const *attr_eap_aka_sim_res;
-extern fr_dict_attr_t const *attr_eap_aka_sim_hmac_extra_response;
 extern fr_dict_attr_t const *attr_eap_aka_sim_result_ind;
 extern fr_dict_attr_t const *attr_eap_aka_sim_selected_version;
 extern fr_dict_attr_t const *attr_eap_aka_sim_sres;
 extern fr_dict_attr_t const *attr_eap_aka_sim_subtype;
 extern fr_dict_attr_t const *attr_eap_aka_sim_version_list;
 extern fr_dict_attr_t const *attr_eap_aka_sim_xres;
-
+extern fr_dict_attr_t const *attr_session_data;
+extern fr_dict_attr_t const *attr_session_id;
 
 extern fr_dict_attr_t const *attr_ms_mppe_recv_key;
 extern fr_dict_attr_t const *attr_ms_mppe_send_key;
 
 extern fr_dict_attr_t const *attr_eap_identity;
 extern fr_dict_attr_t const *attr_eap_type;
-extern fr_dict_attr_t const *attr_session_data;
-extern fr_dict_attr_t const *attr_session_id;
 extern fr_dict_attr_t const *attr_sim_algo_version;
 extern fr_dict_attr_t const *attr_sim_amf;
 extern fr_dict_attr_t const *attr_sim_ki;

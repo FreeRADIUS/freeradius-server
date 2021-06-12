@@ -174,7 +174,9 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
                  *     TLSv1.3 makes application data immediately
                  *     avaliable when the handshake is finished.
                  */
-		if (SSL_is_init_finished(tls_session->ssl) && (peap->status == PEAP_STATUS_INVALID)) peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;
+		if (SSL_is_init_finished(tls_session->ssl) && (peap->status == PEAP_STATUS_INVALID)) {
+			peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;
+		}
 		break;
 
 	/*
@@ -218,16 +220,30 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 		 */
 		if (eap_tls_success(request, eap_session,
 				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    NULL, 0) < 0) RETURN_MODULE_RCODE(rcode);
-	}
-		break;
+				    NULL, 0) < 0) RETURN_MODULE_FAIL;
+		*p_result = rcode;
 
 		/*
-		 *	No response packet, MUST be proxying it.
-		 *	The main EAP module will take care of discovering
-		 *	that the request now has a "proxy" packet, and
-		 *	will proxy it, rather than returning an EAP packet.
+		 *	Write the session to the session cache
+		 *
+		 *	We do this here (instead of relying on OpenSSL to call the
+		 *	session caching callback), because we only want to write
+		 *	session data to the cache if all phases were successful.
+		 *
+		 *	If we wrote out the cache data earlier, and the server
+		 *	exited whilst the session was in progress, the supplicant
+		 *	could resume the session (and get access) even if phase2
+		 *	never completed.
 		 */
+		return fr_tls_cache_pending_push(request, tls_session);
+	}
+
+	/*
+	 *	No response packet, MUST be proxying it.
+	 *	The main EAP module will take care of discovering
+	 *	that the request now has a "proxy" packet, and
+	 *	will proxy it, rather than returning an EAP packet.
+	 */
 	case RLM_MODULE_UPDATED:
 		break;
 

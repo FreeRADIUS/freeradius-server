@@ -48,39 +48,51 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  */
 static fr_table_num_sorted_t const certificate_format_table[] = {
-	{ L("ASN1"),	SSL_FILETYPE_ASN1	},
-	{ L("DER"),	SSL_FILETYPE_ASN1	},	/* Alternate name for ASN1 */
-	{ L("PEM"),	SSL_FILETYPE_PEM	}
+	{ L("ASN1"),		SSL_FILETYPE_ASN1		},
+	{ L("DER"),		SSL_FILETYPE_ASN1		},	/* Alternate name for ASN1 */
+	{ L("PEM"),		SSL_FILETYPE_PEM		}
 };
 static size_t certificate_format_table_len = NUM_ELEMENTS(certificate_format_table);
 
 static fr_table_num_sorted_t const chain_verify_mode_table[] = {
-	{ L("hard"),	FR_TLS_CHAIN_VERIFY_HARD },
-	{ L("none"),	FR_TLS_CHAIN_VERIFY_NONE },
-	{ L("soft"),	FR_TLS_CHAIN_VERIFY_SOFT }
+	{ L("hard"),		FR_TLS_CHAIN_VERIFY_HARD	},
+	{ L("none"),		FR_TLS_CHAIN_VERIFY_NONE	},
+	{ L("soft"),		FR_TLS_CHAIN_VERIFY_SOFT	}
 };
 static size_t chain_verify_mode_table_len = NUM_ELEMENTS(chain_verify_mode_table);
 
-static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-				   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
-static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static fr_table_num_sorted_t const cache_mode_table[] = {
+	{ L("auto"),		FR_TLS_CACHE_AUTO		},
+	{ L("disabled"),	FR_TLS_CACHE_DISABLED		},
+	{ L("stateful"),	FR_TLS_CACHE_STATEFUL		},
+	{ L("stateless"),	FR_TLS_CACHE_STATELESS		}
+};
+static size_t cache_mode_table_len = NUM_ELEMENTS(cache_mode_table);
 
 static CONF_PARSER cache_config[] = {
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_conf_t, session_cache_server) },
-	{ FR_CONF_OFFSET("name", FR_TYPE_TMPL, fr_tls_conf_t, session_id_name),
+	{ FR_CONF_OFFSET("mode", FR_TYPE_UINT32, fr_tls_cache_conf_t, mode),
+			 .func = cf_table_parse_int,
+			 .uctx = &(cf_table_parse_ctx_t){
+			 	.table = cache_mode_table,
+			 	.len = &cache_mode_table_len
+			 },
+			 .dflt = "auto" },
+	{ FR_CONF_OFFSET("name", FR_TYPE_TMPL, fr_tls_cache_conf_t, id_name),
 			 .dflt = "%{EAP-Type}%{Virtual-Server}", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_tls_conf_t, session_cache_lifetime), .dflt = "86400" },
-	{ FR_CONF_OFFSET("verify", FR_TYPE_BOOL, fr_tls_conf_t, session_cache_verify), .dflt = "no" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_tls_cache_conf_t, lifetime), .dflt = "86400" },
+	{ FR_CONF_OFFSET("verify", FR_TYPE_BOOL, fr_tls_cache_conf_t, verify), .dflt = "no" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	{ FR_CONF_OFFSET("require_extended_master_secret", FR_TYPE_BOOL, fr_tls_conf_t, session_cache_require_extms), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", FR_TYPE_BOOL, fr_tls_conf_t, session_cache_require_pfs), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_extended_master_secret", FR_TYPE_BOOL, fr_tls_cache_conf_t, require_extms), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", FR_TYPE_BOOL, fr_tls_cache_conf_t, require_pfs), .dflt = "no" },
 #endif
 
-	{ FR_CONF_DEPRECATED("enable", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("max_entries", FR_TYPE_UINT32, fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("persist_dir", FR_TYPE_STRING, fr_tls_conf_t, NULL) },
+	/*
+	 *	Deprecated
+	 */
+	{ FR_CONF_DEPRECATED("enable", FR_TYPE_BOOL, fr_tls_cache_conf_t, NULL) },
+	{ FR_CONF_DEPRECATED("max_entries", FR_TYPE_UINT32, fr_tls_cache_conf_t, NULL) },
+	{ FR_CONF_DEPRECATED("persist_dir", FR_TYPE_STRING, fr_tls_cache_conf_t, NULL) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -108,19 +120,33 @@ static CONF_PARSER ocsp_config[] = {
 #endif
 
 static CONF_PARSER tls_chain_config[] = {
-	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_chain_conf_t, file_format), .dflt = "pem", .func = certificate_format_type_parse },
+	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_chain_conf_t, file_format),
+			 .func = cf_table_parse_int,
+			 .uctx = &(cf_table_parse_ctx_t){
+			 	.table = certificate_format_table,
+			 	.len = &certificate_format_table_len
+			 },
+			 .dflt = "pem" },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT | FR_TYPE_FILE_EXISTS | FR_TYPE_REQUIRED , fr_tls_chain_conf_t, certificate_file) },
 	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_chain_conf_t, password) },
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT | FR_TYPE_FILE_EXISTS | FR_TYPE_REQUIRED, fr_tls_chain_conf_t, private_key_file) },
 
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT | FR_TYPE_MULTI, fr_tls_chain_conf_t, ca_files) },
 
-	{ FR_CONF_OFFSET("verify_mode", FR_TYPE_VOID, fr_tls_chain_conf_t, verify_mode), .dflt = "hard", .func = chain_verify_mode_parse },
+	{ FR_CONF_OFFSET("verify_mode", FR_TYPE_VOID, fr_tls_chain_conf_t, verify_mode),
+			 .func = cf_table_parse_int,
+			 .uctx = &(cf_table_parse_ctx_t){
+			 	.table = chain_verify_mode_table,
+			 	.len = &chain_verify_mode_table_len
+			 },
+			 .dflt = "hard" },
 	{ FR_CONF_OFFSET("include_root_ca", FR_TYPE_BOOL, fr_tls_chain_conf_t, include_root_ca), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 CONF_PARSER fr_tls_server_config[] = {
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_VOID, fr_tls_conf_t, virtual_server), .func = virtual_server_cf_parse },
+
 	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "yes" },
 
 	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
@@ -166,7 +192,7 @@ CONF_PARSER fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
-	{ FR_CONF_POINTER("cache", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) cache_config },
+	{ FR_CONF_OFFSET("cache", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) cache_config },
 
 	{ FR_CONF_POINTER("verify", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) verify_config },
 
@@ -210,62 +236,6 @@ CONF_PARSER fr_tls_client_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
-
-/** Calls to convert verify_mode strings into macros
- *
- * @param[in] ctx	to allocate data in.
- * @param[out] out	the verify_mode macro representing the mode.
- * @param[in] ci	#CONF_PAIR specifying the name of the mode.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-				   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	fr_tls_chain_verify_mode_t	type;
-	char const			*type_str;
-
-	type_str = cf_pair_value(cf_item_to_pair(ci));
-	type = fr_table_value_by_str(chain_verify_mode_table, type_str, 0);
-	if (type == 0) {
-		cf_log_err(ci, "Invalid mode \"%s\", expected 'hard', 'soft' or 'none'", type_str);
-		return -1;
-	}
-
-	*((int *)out) = type;
-
-	return 0;
-}
-
-/** Calls to convert format strings to OpenSSL macros
- *
- * @param[in] ctx	to allocate data in.
- * @param[out] out	the OpenSSL macro representing the format.
- * @param[in] ci	#CONF_PAIR specifying the name of the format.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	int		type;
-	char const	*type_str;
-
-	type_str = cf_pair_value(cf_item_to_pair(ci));
-	type = fr_table_value_by_str(certificate_format_table, type_str, -1);
-	if (type == -1) {
-		cf_log_err(ci, "Invalid format \"%s\", expected either 'PEM' or 'ASN1'", type_str);
-		return -1;
-	}
-
-	*((int *)out) = type;
-
-	return 0;
-}
 
 #ifdef __APPLE__
 /*
@@ -483,18 +453,82 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (conf->session_cache_server) {
-		CONF_SECTION *server_cs;
+	/*
+	 *	Ensure our virtual server contains the
+	 *      correct sections for the specified
+	 *      cache mode.
+	 */
+	switch (conf->cache.mode) {
+	case FR_TLS_CACHE_DISABLED:
+	case FR_TLS_CACHE_STATELESS:
+		break;
 
-		server_cs = virtual_server_find(conf->session_cache_server);
-		if (!server_cs) {
-			ERROR("No such virtual server '%s'", conf->session_cache_server);
+	case FR_TLS_CACHE_STATEFUL:
+		if (!conf->virtual_server) {
+			ERROR("A virtual_server must be set when cache.mode = \"stateful\"");
 			goto error;
 		}
 
-		if (fr_tls_cache_compile(&conf->session_cache, server_cs) < 0) goto error;
+		if (!cf_section_find(conf->virtual_server, "load", "cache")) {
+			ERROR("Specified virtual_server must contain a \"load cache { ... }\" section "
+			      "when cache.mode = \"stateful\"");
+			goto error;
+		}
+
+		if (!cf_section_find(conf->virtual_server, "store", "cache")) {
+			ERROR("Specified virtual_server must contain a \"store cache { ... }\" section "
+			      "when cache.mode = \"stateful\"");
+			goto error;
+		}
+
+		if (!cf_section_find(conf->virtual_server, "clear", "cache")) {
+			ERROR("Specified virtual_server must contain a \"clear cache { ... }\" section "
+			      "when cache.mode = \"stateful\"");
+			goto error;
+		}
+
+		if (conf->tls_min_version >= (float)1.3) {
+			ERROR("cache.mode = \"stateful\" is not supported with tls_min_version >= 1.3");
+			goto error;
+		}
+		break;
+
+	case FR_TLS_CACHE_AUTO:
+		if (!conf->virtual_server) {
+			WARN("A virtual_server must be provided for stateful caching. "
+			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+		cache_stateless:
+			conf->cache.mode = FR_TLS_CACHE_STATELESS;
+			break;
+		}
+
+		if (!cf_section_find(conf->virtual_server, "load", "cache")) {
+			WARN("Specified virtual_server missing \"load cache { ... }\" section. "
+			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			goto cache_stateless;
+		}
+
+		if (!cf_section_find(conf->virtual_server, "store", "cache")) {
+			WARN("Specified virtual_server missing \"store cache { ... }\" section. "
+			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			goto cache_stateless;
+		}
+
+		if (!cf_section_find(conf->virtual_server, "clear", "cache")) {
+			WARN("Specified virtual_server missing \"clear cache { ... }\" section. "
+			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			goto cache_stateless;
+		}
+
+		if (conf->tls_min_version >= (float)1.3) {
+			ERROR("stateful session-resumption is not supported with tls_min_version >= 1.3. "
+			      "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
+			goto error;
+		}
+		break;
 	}
 
+#ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp.cache_server) {
 		CONF_SECTION *server_cs;
 
@@ -518,6 +552,7 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 
 		if (fr_tls_ocsp_staple_cache_compile(&conf->staple.cache, server_cs) < 0) goto error;
 	}
+#endif
 
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.

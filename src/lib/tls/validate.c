@@ -98,9 +98,9 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-	conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
+	conf = fr_tls_session_conf(ssl);
 	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
-	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
+	request = fr_tls_session_request(tls_session->ssl);
 
 	identity_p = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 	if (identity_p && *identity_p) identity = talloc_get_type_abort_const(*identity_p, char);
@@ -374,9 +374,7 @@ int fr_tls_validate_client_cert_chain(SSL *ssl)
 	X509_STORE	*store;
 	X509_STORE_CTX	*store_ctx;
 
-	request_t	*request;
-
-	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
+	request_t	*request = fr_tls_session_request(ssl);
 
 	/*
 	 *	If there's no client certificate, we just return OK.

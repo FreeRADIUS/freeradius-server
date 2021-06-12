@@ -50,16 +50,18 @@ _Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
+fr_dict_t const *dict_tls;
 
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_tls, .proto = "tls" },
 	{ NULL }
 };
 
 fr_dict_attr_t const *attr_allow_session_resumption;
-fr_dict_attr_t const *attr_eap_session_resumed;
+fr_dict_attr_t const *attr_session_resumed;
 
 fr_dict_attr_t const *attr_tls_cert_common_name;
 fr_dict_attr_t const *attr_tls_cert_expiration;
@@ -88,17 +90,18 @@ fr_dict_attr_t const *attr_tls_psk_identity;
 
 fr_dict_attr_t const *attr_tls_session_cert_file;
 fr_dict_attr_t const *attr_tls_session_cipher_suite;
-fr_dict_attr_t const *attr_tls_session_data;
-fr_dict_attr_t const *attr_tls_session_id;
 fr_dict_attr_t const *attr_tls_session_version;
 
-
 fr_dict_attr_t const *attr_framed_mtu;
+
+fr_dict_attr_t const *attr_tls_packet_type;
+fr_dict_attr_t const *attr_tls_session_data;
+fr_dict_attr_t const *attr_tls_session_id;
 
 extern fr_dict_attr_autoload_t tls_dict_attr[];
 fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_allow_session_resumption, .name = "Allow-Session-Resumption", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_eap_session_resumed, .name = "EAP-Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_session_resumed, .name = "EAP-Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ .out = &attr_tls_cert_common_name, .name = "TLS-Cert-Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_cert_expiration, .name = "TLS-Cert-Expiration", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
@@ -127,11 +130,30 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 
 	{ .out = &attr_tls_session_cert_file, .name = "TLS-Session-Cert-File", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_cipher_suite, .name = "TLS-Session-Cipher-Suite", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_session_data, .name = "Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_tls_session_id, .name = "Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_version, .name = "TLS-Session-Version", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	/*
+	 *	Eventually all TLS attributes will be in the TLS dictionary
+	 */
+	{ .out = &attr_tls_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tls },
+	{ .out = &attr_tls_session_data, .name = "Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tls },
+	{ .out = &attr_tls_session_id, .name = "Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_tls },
+	{ NULL }
+};
+
+fr_value_box_t const	*enum_tls_packet_type_cache_load;
+fr_value_box_t const	*enum_tls_packet_type_cache_store;
+fr_value_box_t const	*enum_tls_packet_type_cache_clear;
+fr_value_box_t const	*enum_tls_packet_type_certificate;
+
+extern fr_dict_enum_autoload_t tls_dict_enum[];
+fr_dict_enum_autoload_t tls_dict_enum[] = {
+	{ .out = &enum_tls_packet_type_cache_load, .name = "Cache-Load", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_cache_store, .name = "Cache-Store", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_cache_clear, .name = "Cache-Clear", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_certificate, .name = "Certificate", .attr = &attr_tls_packet_type },
 	{ NULL }
 };
 
@@ -590,6 +612,12 @@ int fr_tls_dict_init(void)
 
 	if (fr_dict_attr_autoload(tls_dict_attr) < 0) {
 		PERROR("Failed resolving attributes");
+		fr_openssl_free();
+		return -1;
+	}
+
+	if (fr_dict_enum_autoload(tls_dict_enum) < 0) {
+		PERROR("Failed resolving enums");
 		fr_openssl_free();
 		return -1;
 	}

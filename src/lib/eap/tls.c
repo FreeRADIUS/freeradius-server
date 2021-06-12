@@ -280,24 +280,10 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session,
 	 *	Check session resumption is allowed, disabling it
 	 *	if it's not.
 	 */
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
+	fr_tls_session_request_bind(tls_session->ssl, request);
 	fr_tls_cache_disable_cb(tls_session->ssl, -1);
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);	//-V575
+	fr_tls_session_request_unbind(tls_session->ssl);
 #endif
-
-	/*
-	 *	Write the session to the session cache
-	 *
-	 *	We do this here (instead of relying on OpenSSL to call the
-	 *	session caching callback), because we only want to write
-	 *	session data to the cache if all phases were successful.
-	 *
-	 *	If we wrote out the cache data earlier, and the server
-	 *	exited whilst the session was in progress, the supplicant
-	 *	could resume the session (and get access) even if phase2
-	 *	never completed.
-	 */
-	fr_tls_cache_write(request, tls_session);
 
 	/*
 	 *	Build the success packet
@@ -351,7 +337,7 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session,
 int eap_tls_fail(request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t		*tls_session = eap_tls_session->tls_session;
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	fr_assert(request->parent);	/* must be a subrequest */
 
@@ -934,20 +920,6 @@ finish:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Wrap the main tls async handshake function
- *
- * This is needed to pull fields out of the uctx.
- */
-static unlang_action_t eap_tls_handshake(rlm_rcode_t *p_result, int *priority,
-					 request_t *request, void *uctx)
-{
-	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
-	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t	*tls_session = talloc_get_type_abort(eap_tls_session->tls_session, fr_tls_session_t);
-
-	return fr_tls_session_async_handshake(p_result, priority, request, tls_session);
-}
-
 /** Push functions to continue the handshake asynchronously
  *
  * @param[in] request		the current subrequest.
@@ -957,10 +929,18 @@ static unlang_action_t eap_tls_handshake(rlm_rcode_t *p_result, int *priority,
  */
 static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(request_t *request, eap_session_t *eap_session)
 {
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(eap_tls_session->tls_session, fr_tls_session_t);
+
+	/*
+	 *	Will run after the handshake round completes
+	 */
 	if (unlang_function_push(request,
-				 eap_tls_handshake,
+				 NULL,
 				 eap_tls_handshake_resume,
-				 NULL, UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+				 NULL, UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_FAIL;
+
+	if (fr_tls_session_async_handshake_push(request, tls_session) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -1190,7 +1170,7 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 *	in the SSL session's opaque data so that we can use
 	 *	these data structures when we get the response.
 	 */
-	eap_tls_session->tls_session = tls_session = fr_tls_session_init_server(eap_tls_session, tls_conf,
+	eap_tls_session->tls_session = tls_session = fr_tls_session_alloc_server(eap_tls_session, tls_conf,
 									     request, client_cert);
 	if (!tls_session) return NULL;
 

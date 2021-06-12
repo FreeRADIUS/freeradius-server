@@ -114,81 +114,9 @@ static unlang_action_t eap_tls_success_with_prf(rlm_rcode_t *p_result, request_t
 	RETURN_MODULE_OK;
 }
 
-static unlang_action_t eap_tls_virtual_server_result(rlm_rcode_t *p_result, UNUSED int *priority,
-						     request_t *request, void *uctx)
-{
-	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
-
-	switch (*p_result) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-		return eap_tls_success_with_prf(p_result, request, eap_session);
-
-	default:
-		REDEBUG2("Certificate rejected by the virtual server");
-		eap_tls_fail(request, eap_session);
-		RETURN_MODULE_REJECT;
-	}
-}
-
-static unlang_action_t eap_tls_virtual_server(rlm_rcode_t *p_result, rlm_eap_tls_t *inst, request_t *request,
-					      eap_session_t *eap_session)
-{
-	CONF_SECTION	*server_cs;
-	CONF_SECTION	*section;
-	fr_pair_t	*vp;
-
-	/* set the virtual server to use */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_virtual_server, 0);
-	if (vp) {
-		server_cs = virtual_server_find(vp->vp_strvalue);
-		if (!server_cs) {
-			REDEBUG2("Virtual server \"%pV\" not found", &vp->data);
-		error:
-			eap_tls_fail(request, eap_session);
-			RETURN_MODULE_INVALID;
-		}
-	} else {
-		server_cs = virtual_server_find(inst->virtual_server);
-		fr_assert(server_cs);
-	}
-
-	section = cf_section_find(server_cs, "recv", "Access-Request");
-	if (!section) {
-		REDEBUG2("Failed finding 'recv Access-Request { ... }' section of virtual server %s",
-			 cf_section_name2(server_cs));
-		goto error;
-	}
-
-	if (!unlang_section(section)) {
-		REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
-			cf_section_name1(server_cs), cf_section_name2(server_cs));
-		goto error;
-	}
-
-	RDEBUG2("Validating certificate");
-
-	/*
-	 *	Catch the interpreter on the way back up the stack
-	 */
-	if (unlang_function_push(request, NULL, eap_tls_virtual_server_result, NULL,
-				 UNLANG_SUB_FRAME, eap_session) < 0) RETURN_MODULE_FAIL;
-
-	/*
-	 *	Push unlang instructions for the virtual server section
-	 */
-	if (unlang_interpret_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	return UNLANG_ACTION_YIELD;
-}
-
-static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
 					    request_t *request, void *rctx)
 {
-	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
-
 	eap_session_t		*eap_session = talloc_get_type_abort(rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
@@ -208,8 +136,21 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	it accepts the certificates, too.
 	 */
 	case EAP_TLS_ESTABLISHED:
-		if (inst->virtual_server) return eap_tls_virtual_server(p_result, inst, request, eap_session);
-		return eap_tls_success_with_prf(p_result, request, eap_session);
+		if (eap_tls_success_with_prf(p_result, request, eap_session) < 0) RETURN_MODULE_FAIL;
+
+		/*
+		 *	Write the session to the session cache
+		 *
+		 *	We do this here (instead of relying on OpenSSL to call the
+		 *	session caching callback), because we only want to write
+		 *	session data to the cache if all phases were successful.
+		 *
+		 *	If we wrote out the cache data earlier, and the server
+		 *	exited whilst the session was in progress, the supplicant
+		 *	could resume the session (and get access) even if phase2
+		 *	never completed.
+		 */
+		return fr_tls_cache_pending_push(request, tls_session);
 
 
 	/*
@@ -330,64 +271,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-#undef EAP_SECTION_DEFINE
-#define EAP_SECTION_DEFINE(_field, _verb, _name) \
-	{ \
-		.name = _verb, \
-		.name2 = _name, \
-		.component = MOD_AUTHORIZE, \
-		.offset = offsetof(eap_tls_actions_t, _field), \
-	}
-
-static virtual_server_compile_t compile_list[] = {
-	EAP_SECTION_DEFINE(recv_access_request, "recv", "Access-Request"),
-
-	COMPILE_TERMINATOR
-};
-
-
-/** Compile virtual server sections
- *
- */
-static int mod_section_compile(eap_tls_actions_t *actions, CONF_SECTION *server_cs)
-{
-	int found;
-	tmpl_rules_t parse_rules;
-
-	if (!fr_cond_assert(server_cs)) return -1;
-
-	memset(&parse_rules, 0, sizeof(parse_rules));
-	parse_rules.dict_def = dict_freeradius;
-
-	found = virtual_server_compile_sections(server_cs, compile_list, &parse_rules, actions);
-	if (found < 0) return -1;
-
-	/*
-	 *	Warn if we couldn't find any actions.
-	 */
-	if (!found) {
-		cf_log_warn(server_cs, "No \"eap-tls\" actions found in virtual server \"%s\"",
-			    cf_section_name2(server_cs));
-	}
-
-	return 0;
-}
-
-/** Compile any virtual servers with the "eap-tls" namespace
- *
- */
-static int mod_namespace_load(CONF_SECTION *server_cs)
-{
-	return mod_section_compile(NULL, server_cs);
-}
-
-static int mod_load(void)
-{
-	if (virtual_namespace_register("eap-tls", dict_freeradius, mod_namespace_load) < 0) return -1;
-
-	return 0;
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -402,6 +285,5 @@ rlm_eap_submodule_t rlm_eap_tls = {
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 
-	.onload		= mod_load,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 };

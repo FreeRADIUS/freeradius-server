@@ -563,7 +563,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	Set mode before processing any certifictes
 	 */
 	{
-		int mode = 0;
+		int mode = SSL_MODE_ASYNC;
 
 		/*
 		 *	OpenSSL will automatically create certificate chains,
@@ -706,10 +706,6 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 post_ca:
 #endif
 	if (tls_ctx_version_set(&ctx_options, ctx, conf) < 0) goto error;
-
-#ifdef SSL_OP_NO_TICKET
-	ctx_options |= SSL_OP_NO_TICKET;
-#endif
 
 	/*
 	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
@@ -875,7 +871,7 @@ post_ca:
 	/*
 	 *	Setup session caching
 	 */
-	fr_tls_cache_init(ctx, conf->session_cache_server ? true : false, conf->session_cache_lifetime);
+	fr_tls_cache_ctx_init(ctx, &conf->cache);
 
 	return ctx;
 }

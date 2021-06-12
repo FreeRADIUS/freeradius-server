@@ -71,3 +71,5 @@ VALUE	Identity-Type			fastauth		2
 ATTRIBUTE	Permanent-Identity			311	string
 ATTRIBUTE	KDF-Identity				312	string	# Allow override of KDF Identity input
 
+ATTRIBUTE	Session-Id				313	octets
+ATTRIBUTE	Session-Data				314	octets

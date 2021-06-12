@@ -1,0 +1,19 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS Vendor-Specific dictionary for TLS operations.
+#
+# Version:	$Id$
+#
+
+ATTRIBUTE	Packet-Type				1	uint32
+
+VALUE	Packet-Type			Cache-Load		1
+VALUE	Packet-Type			Cache-Store		2
+VALUE	Packet-Type			Cache-Clear		3
+VALUE	Packet-Type			Certificate		4
+
+ATTRIBUTE	Session-Id				10	octets
+ATTRIBUTE	Session-Data				11	octets

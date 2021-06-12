@@ -431,12 +431,6 @@ ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
 ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Session-Cert-File			1934	string
 
-# 1936 - 1939: reserved for future cert attributes
-
-# 1940 - 1949: reserved for session caching
-ATTRIBUTE	Session-Id				1940	octets
-ATTRIBUTE	Session-Data				1942	octets
-
 # Set and retrieved by EAP-TLS code
 ATTRIBUTE	TLS-OCSP-Cert-Valid			1943	integer
 VALUE	TLS-OCSP-Cert-Valid		unknown			3

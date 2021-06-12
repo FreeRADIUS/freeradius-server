@@ -165,7 +165,21 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 			if (eap_tls_success(request, eap_session,
 					    keying_prf_label, sizeof(keying_prf_label) - 1,
 					    NULL, 0) < 0) RETURN_MODULE_FAIL;
-			RETURN_MODULE_OK;
+			*p_result = RLM_MODULE_OK;
+
+			/*
+			 *	Write the session to the session cache
+			 *
+			 *	We do this here (instead of relying on OpenSSL to call the
+			 *	session caching callback), because we only want to write
+			 *	session data to the cache if all phases were successful.
+			 *
+			 *	If we wrote out the cache data earlier, and the server
+			 *	exited whilst the session was in progress, the supplicant
+			 *	could resume the session (and get access) even if phase2
+			 *	never completed.
+			 */
+			return fr_tls_cache_pending_push(request, tls_session);
 		} else {
 			eap_tls_request(request, eap_session);
 		}

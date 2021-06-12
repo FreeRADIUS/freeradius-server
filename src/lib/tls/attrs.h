@@ -28,9 +28,10 @@ RCSIDH(tls_attrs_h, "$Id$")
 
 extern fr_dict_t const *dict_freeradius;
 extern fr_dict_t const *dict_radius;
+extern fr_dict_t const *dict_tls;
 
 extern fr_dict_attr_t const *attr_allow_session_resumption;
-extern fr_dict_attr_t const *attr_eap_session_resumed;
+extern fr_dict_attr_t const *attr_session_resumed;
 
 extern fr_dict_attr_t const *attr_tls_cert_common_name;
 extern fr_dict_attr_t const *attr_tls_cert_expiration;
@@ -59,8 +60,15 @@ extern fr_dict_attr_t const *attr_tls_psk_identity;
 
 extern fr_dict_attr_t const *attr_tls_session_cert_file;
 extern fr_dict_attr_t const *attr_tls_session_cipher_suite;
-extern fr_dict_attr_t const *attr_tls_session_data;
-extern fr_dict_attr_t const *attr_tls_session_id;
 extern fr_dict_attr_t const *attr_tls_session_version;
 
+extern fr_dict_attr_t const *attr_tls_packet_type;
+extern fr_dict_attr_t const *attr_tls_session_data;
+extern fr_dict_attr_t const *attr_tls_session_id;
+
 extern fr_dict_attr_t const *attr_framed_mtu;
+
+extern fr_value_box_t const *enum_tls_packet_type_cache_load;
+extern fr_value_box_t const *enum_tls_packet_type_cache_store;
+extern fr_value_box_t const *enum_tls_packet_type_cache_clear;
+extern fr_value_box_t const *enum_tls_packet_type_certificate;
