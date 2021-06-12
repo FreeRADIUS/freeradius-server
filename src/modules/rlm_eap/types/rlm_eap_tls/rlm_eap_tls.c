@@ -41,6 +41,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "rlm_eap_tls.h"
 
+typedef struct {
+	SSL_CTX		*ssl_ctx;		//!< Thread local SSL_CTX.
+} rlm_eap_tls_thread_t;
+
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },
 
@@ -209,6 +213,7 @@ static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSE
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->instance, rlm_eap_tls_t);
+	rlm_eap_tls_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_tls_thread_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session;
 
@@ -231,7 +236,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	/*
 	 *	EAP-TLS always requires a client certificate.
 	 */
-	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, t->ssl_ctx, client_cert);
 	if (!eap_tls_session) RETURN_MODULE_FAIL;
 
 	eap_tls_session->include_length = inst->include_length;
@@ -248,6 +253,28 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	eap_session->process = mod_handshake_process;
 
 	RETURN_MODULE_HANDLED;
+}
+
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
+				  UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
+	rlm_eap_tls_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_tls_thread_t);
+
+	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false);
+	if (!t->ssl_ctx) return -1;
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_eap_tls_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_tls_thread_t);
+
+	if (likely(t->ssl_ctx)) SSL_CTX_free(t->ssl_ctx);
+	t->ssl_ctx = NULL;
+
+	return 0;
 }
 
 /*
@@ -277,13 +304,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
  */
 extern rlm_eap_submodule_t rlm_eap_tls;
 rlm_eap_submodule_t rlm_eap_tls = {
-	.name		= "eap_tls",
-	.magic		= RLM_MODULE_INIT,
+	.name			= "eap_tls",
+	.magic			= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_METHOD_TLS },
-	.inst_size	= sizeof(rlm_eap_tls_t),
-	.config		= submodule_config,
-	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.provides		= { FR_EAP_METHOD_TLS },
+	.inst_size		= sizeof(rlm_eap_tls_t),
+	.config			= submodule_config,
+	.instantiate		= mod_instantiate,	/* Create new submodule instance */
 
-	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.thread_inst_size	= sizeof(rlm_eap_tls_thread_t),
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
+
+	.session_init		= mod_session_init,	/* Initialise a new EAP session */
 };

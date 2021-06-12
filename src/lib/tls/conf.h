@@ -124,12 +124,6 @@ struct fr_tls_conf_s {
 	CONF_SECTION	*virtual_server;		//!< The virtual server containing certificate validation
 							///< policies, and cache control sections.
 
-	SSL_CTX		**ctx;				//!< We use an array of contexts to reduce contention.
-							//!< Each context may only be used by a single thread
-							//!< concurrently.
-	uint32_t	ctx_count;			//!< Number of contexts we created.
-	uint32_t	ctx_next;			//!< Next context to use.
-
 	CONF_SECTION	*cs;				//!< configuration section this tls config is based on.
 
 	fr_tls_chain_conf_t	**chains;		//!< One or more certificates

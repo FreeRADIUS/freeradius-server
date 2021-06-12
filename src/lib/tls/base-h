@@ -153,6 +153,17 @@ do { \
 /*
  *	tls/ctx.c
  */
+
+/** Return the tls config associated with a SSL_CTX
+ *
+ * @param[in] ssl_ctx	to retrieve the configuration from.
+ * @return #fr_tls_conf_t associated with the ctx.
+ */
+static inline fr_tls_conf_t *fr_tls_ctx_conf(SSL_CTX *ssl_ctx)
+{
+	return talloc_get_type_abort(SSL_CTX_get_ex_data(ssl_ctx, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
+}
+
 SSL_CTX		*fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
 
 /*

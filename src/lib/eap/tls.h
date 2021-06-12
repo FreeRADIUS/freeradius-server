@@ -179,7 +179,7 @@ int			eap_crypto_tls_session_id(TALLOC_CTX *ctx, request_t *request, SSL *ssl, u
 
 /* EAP-TLS framework */
 eap_tls_session_t	*eap_tls_session_init(request_t *request, eap_session_t *eap_session,
-					      fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);
+					      SSL_CTX *ssl_ctx, bool client_cert) CC_HINT(nonnull);
 
 
 fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key) CC_HINT(nonnull);

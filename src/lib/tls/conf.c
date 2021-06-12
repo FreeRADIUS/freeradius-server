@@ -337,10 +337,6 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
  */
 static int _conf_server_free(fr_tls_conf_t *conf)
 {
-	uint32_t i;
-
-	for (i = 0; i < conf->ctx_count; i++) SSL_CTX_free(conf->ctx[i]);
-
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp.store) X509_STORE_free(conf->ocsp.store);
 	conf->ocsp.store = NULL;
@@ -372,7 +368,6 @@ fr_tls_conf_t *fr_tls_conf_alloc(TALLOC_CTX *ctx)
 fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 {
 	fr_tls_conf_t *conf;
-	uint32_t i;
 
 	/*
 	 *	If cs has already been parsed there should be a cached copy
@@ -405,18 +400,6 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 #ifdef __APPLE__
 	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
-
-	conf->ctx_count = fr_tls_max_threads * 2; /* Reduce contention */
-	if (!conf->ctx_count) conf->ctx_count = 1;
-
-	/*
-	 *	Initialize TLS
-	 */
-	conf->ctx = talloc_zero_array(conf, SSL_CTX *, conf->ctx_count);
-	for (i = 0; i < conf->ctx_count; i++) {
-		conf->ctx[i] = fr_tls_ctx_alloc(conf, false);
-		if (conf->ctx[i] == NULL) goto error;
-	}
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*
@@ -565,7 +548,6 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 {
 	fr_tls_conf_t *conf;
-	uint32_t i;
 
 	conf = cf_data_value(cf_data_find(cs, fr_tls_conf_t, NULL));
 	if (conf) {
@@ -592,18 +574,9 @@ fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx_count = fr_tls_max_threads * 2; /* Even one context per thread will lead to contention */
-	if (!conf->ctx_count) conf->ctx_count = 1;
-
 #ifdef __APPLE__
 	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
-
-	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
-	for (i = 0; i < conf->ctx_count; i++) {
-		conf->ctx[i] = fr_tls_ctx_alloc(conf, true);
-		if (conf->ctx[i] == NULL) goto error;
-	}
 
 	cf_data_add(cs, conf, NULL, false);
 

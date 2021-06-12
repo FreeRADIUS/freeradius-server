@@ -1691,29 +1691,27 @@ static void session_init(fr_tls_session_t *session)
  *
  * Configures a new client TLS session, configuring options, setting callbacks etc...
  *
- * @param ctx 	to alloc session data in. Should usually be NULL unless the lifetime of the
- *		session is tied to another talloc'd object.
- * @param conf	values for this TLS session.
+ * @param[in] ctx 	to alloc session data in. Should usually be NULL unless the lifetime of the
+ *			session is tied to another talloc'd object.
+ * @param[in] ssl_ctx	containing the base configuration for this session.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
+fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 {
 	int			ret;
 	int			verify_mode;
 	fr_tls_session_t	*tls_session = NULL;
 	request_t		*request;
+	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
 
 	tls_session = talloc_zero(ctx, fr_tls_session_t);
 	if (!tls_session) return NULL;
 
 	talloc_set_destructor(tls_session, _fr_tls_session_free);
 
-	tls_session->ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
-	fr_assert(tls_session->ctx);
-
-	tls_session->ssl = SSL_new(tls_session->ctx);
+	tls_session->ssl = SSL_new(ssl_ctx);
 	if (!tls_session->ssl) {
 		talloc_free(tls_session);
 		return NULL;
@@ -1765,28 +1763,22 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, fr_tls_conf_t *co
  * @param[in] ctx		to alloc session data in. Should usually be NULL
  *				unless the lifetime of the session is tied to another
  *				talloc'd object.
- * @param[in] conf		values for this TLS session.
+ * @param[in] ssl_ctx		containing the base configuration for this session.
  * @param[in] request		The current #request_t.
  * @param[in] client_cert	Whether to require a client_cert.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, request_t *request, bool client_cert)
+fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, bool client_cert)
 {
 	fr_tls_session_t	*tls_session = NULL;
 	SSL			*new_tls = NULL;
 	int			verify_mode = 0;
 	fr_pair_t		*vp;
-	SSL_CTX			*ssl_ctx;
-
-	fr_assert(request != NULL);
-	fr_assert(conf->ctx_count > 0);
+	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
 
 	RDEBUG2("Initiating new TLS session");
-
-	ssl_ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
-	fr_assert(ssl_ctx);
 
 	new_tls = SSL_new(ssl_ctx);
 	if (new_tls == NULL) {

@@ -1130,17 +1130,18 @@ unlang_action_t eap_tls_process(request_t *request, eap_session_t *eap_session)
  *
  * @param[in] request		The current subrequest.
  * @param[in] eap_session	to use as a context for the eap_tls_session_t
- * @param[in] tls_conf		to use to configure the fr_tls_session_t.
+ * @param[in] ssl_ctx		to use to configure the fr_tls_session_t.
  * @param[in] client_cert	Whether we require the peer to prevent a certificate.
  * @return
  *	- A new eap_tls_session on success.
  *	- NULL on error.
  */
 eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_session,
-					fr_tls_conf_t *tls_conf, bool client_cert)
+					SSL_CTX *ssl_ctx, bool client_cert)
 {
 	eap_tls_session_t	*eap_tls_session;
-	fr_tls_session_t		*tls_session;
+	fr_tls_session_t	*tls_session;
+	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
 
 	fr_assert(request->parent);	/* must be a subrequest */
 
@@ -1148,7 +1149,7 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 *	This EAP session is associated with a TLS session
 	 */
 	eap_session->tls = true;
-	eap_tls_session = talloc_zero(eap_session, eap_tls_session_t);
+	MEM(eap_tls_session = talloc_zero(eap_session, eap_tls_session_t));
 
 	/*
 	 *	Initial state.
@@ -1170,8 +1171,8 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 *	in the SSL session's opaque data so that we can use
 	 *	these data structures when we get the response.
 	 */
-	eap_tls_session->tls_session = tls_session = fr_tls_session_alloc_server(eap_tls_session, tls_conf,
-									     request, client_cert);
+	eap_tls_session->tls_session = tls_session = fr_tls_session_alloc_server(eap_tls_session, ssl_ctx,
+										 request, client_cert);
 	if (!tls_session) return NULL;
 
 	/*
@@ -1179,7 +1180,7 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 */
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_EAP_SESSION, (void *)eap_session);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(eap_session->identity));
 #ifdef HAVE_OPENSSL_OCSP_H
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp.store);

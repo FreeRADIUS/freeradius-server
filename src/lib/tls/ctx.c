@@ -458,7 +458,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	Save the config on the context so that callbacks which
 	 *	only get SSL_CTX* e.g. session persistence, can get at it.
 	 */
-	SSL_CTX_set_app_data(ctx, UNCONST(void *, conf));
+	SSL_CTX_set_ex_data(ctx, FR_TLS_EX_INDEX_CONF, UNCONST(void *, conf));
 
 	/*
 	 *	Identify the type of certificates that needs to be loaded

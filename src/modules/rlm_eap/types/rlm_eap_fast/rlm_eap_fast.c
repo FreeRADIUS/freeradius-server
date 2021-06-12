@@ -32,6 +32,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "eap_fast.h"
 #include "eap_fast_crypto.h"
 
+typedef struct {
+	SSL_CTX		*ssl_ctx;		//!< Thread local SSL_CTX.
+} rlm_eap_fast_thread_t;
+
 /*
  *	An instance of EAP-FAST
  */
@@ -176,63 +180,6 @@ fr_dict_attr_autoload_t rlm_eap_fast_dict_attr[] = {
 
 	{ NULL }
 };
-
-/*
- *	Attach the module.
- */
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
-{
-	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
-
-	if (!virtual_server_find(inst->virtual_server)) {
-		cf_log_err_by_child(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
-		return -1;
-	}
-
-	inst->default_provisioning_method = eap_name2type(inst->default_provisioning_method_name);
-	if (!inst->default_provisioning_method) {
-		cf_log_err_by_child(cs, "default_provisioning_eap_type", "Unknown EAP type %s",
-				   inst->default_provisioning_method_name);
-		return -1;
-	}
-
-	/*
-	 *	Read tls configuration, either from group given by 'tls'
-	 *	option, or from the eap-tls configuration.
-	 */
-	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
-
-	if (!inst->tls_conf) {
-		cf_log_err_by_child(cs, "tls", "Failed initializing SSL context");
-		return -1;
-	}
-
-	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
-		cf_log_err_by_child(cs, "pac_opaque_key", "Must be 32 bytes long");
-		return -1;
-	}
-
-	/*
-	 *	Allow anything for the TLS version, we try to forcibly
-	 *	disable TLSv1.2 later.
-	 */
-	if (inst->tls_conf->tls_min_version > (float) 1.1) {
-		cf_log_err_by_child(cs, "tls_min_version", "require tls_min_version <= 1.1");
-		return -1;
-	}
-
-	if (!inst->pac_lifetime) {
-		cf_log_err_by_child(cs, "pac_lifetime", "must be non-zero");
-		return -1;
-	}
-
-	fr_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
-
-	fr_md5_calc(inst->a_id, (uint8_t const *)inst->authority_identity,
-		    talloc_array_length(inst->authority_identity) - 1);
-
-	return 0;
-}
 
 /** Allocate the FAST per-session data
  *
@@ -578,6 +525,7 @@ static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSE
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_fast_t);
+	rlm_eap_fast_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_eap_fast_thread_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t 	*eap_tls_session;
 	fr_tls_session_t	*tls_session;
@@ -598,7 +546,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 		client_cert = inst->req_client_cert;
 	}
 
-	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, inst->tls_conf, client_cert);
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, thread->ssl_ctx, client_cert);
 	if (!eap_tls_session) RETURN_MODULE_FAIL;
 
 	tls_session = eap_tls_session->tls_session;
@@ -652,6 +600,84 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	RETURN_MODULE_HANDLED;
 }
 
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
+				  UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
+	rlm_eap_fast_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_fast_thread_t);
+
+	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false);
+	if (!t->ssl_ctx) return -1;
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_eap_fast_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_fast_thread_t);
+
+	if (likely(t->ssl_ctx)) SSL_CTX_free(t->ssl_ctx);
+	t->ssl_ctx = NULL;
+
+	return 0;
+}
+
+/*
+ *	Attach the module.
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *cs)
+{
+	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
+
+	if (!virtual_server_find(inst->virtual_server)) {
+		cf_log_err_by_child(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		return -1;
+	}
+
+	inst->default_provisioning_method = eap_name2type(inst->default_provisioning_method_name);
+	if (!inst->default_provisioning_method) {
+		cf_log_err_by_child(cs, "default_provisioning_eap_type", "Unknown EAP type %s",
+				   inst->default_provisioning_method_name);
+		return -1;
+	}
+
+	/*
+	 *	Read tls configuration, either from group given by 'tls'
+	 *	option, or from the eap-tls configuration.
+	 */
+	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
+
+	if (!inst->tls_conf) {
+		cf_log_err_by_child(cs, "tls", "Failed initializing SSL context");
+		return -1;
+	}
+
+	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
+		cf_log_err_by_child(cs, "pac_opaque_key", "Must be 32 bytes long");
+		return -1;
+	}
+
+	/*
+	 *	Allow anything for the TLS version, we try to forcibly
+	 *	disable TLSv1.2 later.
+	 */
+	if (inst->tls_conf->tls_min_version > (float) 1.1) {
+		cf_log_err_by_child(cs, "tls_min_version", "require tls_min_version <= 1.1");
+		return -1;
+	}
+
+	if (!inst->pac_lifetime) {
+		cf_log_err_by_child(cs, "pac_lifetime", "must be non-zero");
+		return -1;
+	}
+
+	fr_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
+
+	fr_md5_calc(inst->a_id, (uint8_t const *)inst->authority_identity,
+		    talloc_array_length(inst->authority_identity) - 1);
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -659,13 +685,17 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
  */
 extern rlm_eap_submodule_t rlm_eap_fast;
 rlm_eap_submodule_t rlm_eap_fast = {
-	.name		= "eap_fast",
-	.magic		= RLM_MODULE_INIT,
+	.name			= "eap_fast",
+	.magic			= RLM_MODULE_INIT,
 
-	.provides	= { FR_EAP_METHOD_FAST },
-	.inst_size	= sizeof(rlm_eap_fast_t),
-	.config		= submodule_config,
-	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.provides		= { FR_EAP_METHOD_FAST },
+	.inst_size		= sizeof(rlm_eap_fast_t),
+	.config			= submodule_config,
+	.instantiate		= mod_instantiate,	/* Create new submodule instance */
 
-	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.thread_inst_size	= sizeof(rlm_eap_fast_thread_t),
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
+
+	.session_init		= mod_session_init,	/* Initialise a new EAP session */
 };
