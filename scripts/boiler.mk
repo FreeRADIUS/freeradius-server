@@ -70,6 +70,13 @@ define FIND_FILES_SUFFIX
 $(foreach d,$(wildcard $(1:=/*)),$(call FIND_FILES_SUFFIX,$d,$2) $(filter $(subst *,%,$2),$d))
 endef
 
+# remove duplicates without sorting.
+define uniq
+  $(eval seen :=)
+  $(foreach _,$1,$(if $(filter $_,${seen}),,$(eval seen += $_)))
+  ${seen}
+endef
+
 # ADD_CLEAN_RULE - Parameterized "function" that adds a new rule and phony
 #   target for cleaning the specified target (removing its build-generated
 #   files).
@@ -421,7 +428,6 @@ define INCLUDE_SUBMAKEFILE
         $${TGT}_POSTMAKE := $${TGT_POSTMAKE}
         $${TGT}_POSTCLEAN := $${TGT_POSTCLEAN}
         $${TGT}_POSTINSTALL := $${TGT_POSTINSTALL}
-        $${TGT}_PREREQS := $${TGT_PREREQS}
         $${TGT}_PRBIN := $$(addprefix $${BUILD_DIR}/bin/,$$(filter-out %.a %.so %.la,$${TGT_PREREQS}))
         $${TGT}_PRLIBS := $$(addprefix $${BUILD_DIR}/lib/,$$(filter %.a %.so %.la,$${TGT_PREREQS}))
         $${TGT}_DEPS :=
@@ -429,6 +435,11 @@ define INCLUDE_SUBMAKEFILE
         $${TGT}_SOURCES :=
         $${TGT}_MAN := $${MAN}
         $${TGT}_SUFFIX := $$(if $$(suffix $${TGT}),$$(suffix $${TGT}),.exe)
+
+        #  If we link to FOO, and FOO itself links to things, then we also link to the things
+        #  which FOO needs.  That way we don't have to manually specify the recursive library
+        #  references.
+	$${TGT}_PREREQS := $${strip $$(call uniq,$$(foreach x,$${TGT_PREREQS},$$(or $${$${x}_PREREQS},) $${x}))}
 
         # If it's an EXE, ensure that transitive library linking works.
         # i.e. we build libfoo.a which in turn requires -lbar.  So, the executable
