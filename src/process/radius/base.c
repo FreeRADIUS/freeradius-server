@@ -1133,7 +1133,11 @@ static virtual_server_compile_t const compile_list[] = {
 		.name2 = CF_IDENT_ANY,
 		.component = MOD_AUTHENTICATE
 	},
-
+	{
+		.name = "accounting",
+		.name2 = CF_IDENT_ANY,
+		.component = MOD_AUTHENTICATE
+	},
 	COMPILE_TERMINATOR
 };
 
