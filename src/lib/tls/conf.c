@@ -561,7 +561,6 @@ fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
-	error:
 		talloc_free(conf);
 		return NULL;
 	}
