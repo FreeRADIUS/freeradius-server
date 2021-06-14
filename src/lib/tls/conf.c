@@ -346,6 +346,8 @@ static int _conf_server_free(fr_tls_conf_t *conf)
 
 #ifndef NDEBUG
 	memset(conf, 0, sizeof(*conf));
+#else
+	(void)conf; /* -Wunused */
 #endif
 	return 0;
 }
@@ -561,7 +563,9 @@ fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
+#ifdef __APPLE__
 	error:
+#endif
 		talloc_free(conf);
 		return NULL;
 	}
