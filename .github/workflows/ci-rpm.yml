@@ -28,7 +28,6 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "centos-7", "OS": "centos:7"             },
               { "NAME": "centos-8", "OS": "centos:8"             },
               { "NAME": "fedora-rawhide", "OS": "fedora:rawhide" }
             ]
