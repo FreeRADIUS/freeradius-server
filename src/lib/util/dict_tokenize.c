@@ -2363,6 +2363,8 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 		    talloc_asprintf(NULL, "%s%c%s", fr_dict_global_ctx_dir(), FR_DIR_SEP, dict_subdir) :
 		    talloc_strdup(NULL, fr_dict_global_ctx_dir());
 
+	fr_strerror_clear();	/* Ensure we don't report spurious errors */
+
 	dict = dict_alloc(dict_gctx);
 	if (!dict) {
 	error:
@@ -2475,6 +2477,8 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	} else {
 		dict_dir = talloc_asprintf(NULL, "%s%c%s", fr_dict_global_ctx_dir(), FR_DIR_SEP, proto_dir);
 	}
+
+	fr_strerror_clear();	/* Ensure we don't report spurious errors */
 
 	/*
 	 *	Start in the context of the internal dictionary,
