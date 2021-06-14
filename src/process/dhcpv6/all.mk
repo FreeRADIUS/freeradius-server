@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-dhcpv6.a
+TGT_PREREQS	:= libfreeradius-dhcpv6.a

@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-tacacs.a
+TGT_PREREQS	:= libfreeradius-tacacs.a
