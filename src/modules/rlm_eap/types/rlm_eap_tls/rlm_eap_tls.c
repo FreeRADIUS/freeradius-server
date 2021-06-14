@@ -271,7 +271,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_eap_tls_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_tls_thread_t);
 
-	if (likely(t->ssl_ctx)) SSL_CTX_free(t->ssl_ctx);
+	if (likely(t->ssl_ctx != NULL)) SSL_CTX_free(t->ssl_ctx);
 	t->ssl_ctx = NULL;
 
 	return 0;
