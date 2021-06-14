@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-vmps.a
+TGT_PREREQS	:= libfreeradius-vmps.a
