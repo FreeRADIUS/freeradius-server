@@ -3,4 +3,4 @@ SOURCES := pair_list_perf_test.c
 
 TGT_INSTALLDIR	:=
 TGT_LDLIBS	:= $(LIBS)
-TGT_PREREQS	:= $(LIBFREERADIUS_SERVER)
+TGT_PREREQS	:= libfreeradius-util.la $(LIBFREERADIUS_SERVER)

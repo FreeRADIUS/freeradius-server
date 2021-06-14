@@ -14,4 +14,4 @@ SOURCES	:= \
 	vector.c \
 	xlat.c
 
-TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-eap.a libfreeradius-sim.a
+TGT_PREREQS	:= libfreeradius-util.la $(LIBFREERADIUS_SERVER) libfreeradius-eap.a libfreeradius-sim.a
