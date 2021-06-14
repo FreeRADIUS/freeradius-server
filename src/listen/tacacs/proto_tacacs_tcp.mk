@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= proto_tacacs_tcp.c
 
-TGT_PREREQS	:= libfreeradius-tacacs.a
+TGT_PREREQS	:= libfreeradius-util.a libfreeradius-tacacs.a

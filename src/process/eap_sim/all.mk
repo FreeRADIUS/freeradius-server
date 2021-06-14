@@ -6,5 +6,5 @@ endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-eap-aka-sim.a
+TGT_PREREQS	:= libfreeradius-util.a libfreeradius-eap-aka-sim.a
 

@@ -14,7 +14,7 @@ SOURCES	:= \
 	schedule.c \
 	worker.c
 
-TGT_PREREQS	:= $(LIBFREERADIUS_SERVER)
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-util.la
 TGT_LDLIBS	:= $(LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS)
 

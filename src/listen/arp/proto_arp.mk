@@ -8,5 +8,5 @@ TARGET		:= $(TARGETNAME).a
 endif
 
 SOURCES		:= proto_arp.c
-TGT_PREREQS	:= libfreeradius-arp.a
+TGT_PREREQS	:= libfreeradius-util.a libfreeradius-arp.a
 TGT_LDLIBS	:= $(PCAP_LIBS)
