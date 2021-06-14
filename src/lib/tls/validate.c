@@ -345,6 +345,12 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	}
 #endif
 
+	/*
+	 *	If we have a client certificate, cache whether or not
+	 *	we validated it.
+	 */
+	tls_session->client_cert_ok = (my_ok > 0);
+
 	RDEBUG2("[verify client] = %s", my_ok ? "ok" : "invalid");
 	return my_ok;
 }

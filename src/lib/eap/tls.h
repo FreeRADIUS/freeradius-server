@@ -129,13 +129,16 @@ typedef struct {
 	fr_tls_session_t	*tls_session;		//!< TLS session used to authenticate peer
 							//!< or tunnel sensitive data.
 
+	int			base_flags;		//!< Some protocols use the reserved bits of the EAP-TLS
+							//!< flags (such as PEAP).  This allows the base flags to
+							//!< be set.
+
 	bool			phase2;			//!< Whether we're in phase 2
 
 	bool			include_length;		//!< A flag to include length in every TLS Data/Alert packet.
 							//!< If set to no then only the first fragment contains length.
-	int			base_flags;		//!< Some protocols use the reserved bits of the EAP-TLS
-							//!< flags (such as PEAP).  This allows the base flags to
-							//!< be set.
+
+	bool			authentication_success;	//! for methods with inner auth, if the inner auth succeeded.
 
 	bool			record_out_started;	//!< Whether a record transfer to the peer is currently
 							//!< in progress.

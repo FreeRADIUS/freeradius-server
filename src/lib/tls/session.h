@@ -127,6 +127,8 @@ typedef struct {
 
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
+	bool			client_cert_ok;			//!< whether or not the client certificate was validated
+
 	uint8_t			alerts_sent;
 	bool			pending_alert;
 	uint8_t			pending_alert_level;

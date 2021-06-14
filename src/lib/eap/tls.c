@@ -837,7 +837,6 @@ static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UN
 		break;
 	}
 
-#if 0
 #ifdef TLS1_3_VERSION
 	/*
 	 *	https://tools.ietf.org/html/draft-ietf-emu-eap-tls13#section-2.5
@@ -862,21 +861,25 @@ static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UN
 	 *		  the client cert
 	 */
 	if ((tls_session->info.version == TLS1_3_VERSION) &&
-	    (tls_session->client_cert_ok || tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
-		if ((handler->type == PW_EAP_TLS) || SSL_session_reused(tls_session->ssl)) {
-			tls_session->authentication_success = true;
+	    (tls_session->client_cert_ok || eap_tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
+		if ((eap_session->type == FR_EAP_METHOD_TLS) || SSL_session_reused(tls_session->ssl)) {
+			eap_tls_session->authentication_success = true;
 
 			RDEBUG("(TLS) EAP Sending final Commitment Message.");
-			tls_session->record_plus(&tls_session->clean_in, "\0", 1);
+			tls_session->record_from_buff(&tls_session->clean_in, "\0", 1);
 		}
 
-		if (fr_tls_session_handshake(request, tls_session) < 0) {
+		/*
+		 *	Always returns UNLANG_ACTION_CALCULATE_RESULT
+		 */
+		(void) fr_tls_session_async_handshake_push(request, tls_session);
+		if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
 			REDEBUG("TLS receive handshake failed during operation");
 			fr_tls_cache_deny(tls_session);
-			return EAP_TLS_FAIL;
+			eap_tls_session->state = EAP_TLS_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
-#endif
 #endif
 
 	/*
