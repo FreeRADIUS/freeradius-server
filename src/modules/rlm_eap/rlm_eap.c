@@ -144,7 +144,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		 */
 		if (!strcmp(name, "leap")) {
 			WARN("rlm_eap (%s): Ignoring EAP method 'leap', because it is no longer supported",
-			     inst->xlat_name, name);
+			     inst->xlat_name);
 			continue;
 		}
 
@@ -185,7 +185,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		case PW_EAP_PEAP:
 		case PW_EAP_PWD:
 			WARN("rlm_eap (%s): Ignoring EAP method %s because we don't have OpenSSL support",
-			     inst->xlat_name, name);
+			     inst->xlat_name);
 			continue;
 
 		default:
