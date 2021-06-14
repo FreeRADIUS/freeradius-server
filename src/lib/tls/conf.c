@@ -335,7 +335,11 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
  *	added to automatically free the data when the CONF_SECTION
  *	is freed.
  */
-static int _conf_server_free(fr_tls_conf_t *conf)
+static int _conf_server_free(
+#if !defined(HAVE_OPENSSL_OCSP_H) && defined(NDEBUG)
+			     UNUSED
+#endif
+			     fr_tls_conf_t *conf)
 {
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp.store) X509_STORE_free(conf->ocsp.store);
@@ -561,6 +565,9 @@ fr_tls_conf_t *fr_tls_conf_parse_client(CONF_SECTION *cs)
 
 	if ((cf_section_parse(conf, conf, cs) < 0) ||
 	    (cf_section_parse_pass2(conf, cs) < 0)) {
+#ifdef __APPLE__
+	error:
+#endif
 		talloc_free(conf);
 		return NULL;
 	}
