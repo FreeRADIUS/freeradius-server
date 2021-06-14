@@ -78,7 +78,8 @@ PROTOCOLS    := \
 	snmp \
 	tacacs \
 	vmps \
-	tftp
+	tftp \
+	tls
 
 #
 #  If we're building packages or crossbuilding, just do that.
