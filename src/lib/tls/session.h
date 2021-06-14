@@ -114,17 +114,18 @@ typedef struct {
 	unsigned int 		(*record_from_buff)(fr_tls_record_t *buf, void const *ptr, unsigned int size);
 	unsigned int 		(*record_to_buff)(fr_tls_record_t *buf, void *ptr, unsigned int size);
 
-	bool			invalid;			//!< Whether heartbleed attack was detected.
 	size_t 			mtu;				//!< Maximum record fragment size.
 
 	char const		*prf_label;			//!< Input to the TLS pseudo random function.
 								//!< Usually set to a well known string describing
 								//!< what the key being generated will be used for.
 
-	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
-	fr_tls_cache_t		*cache;				//!< Current session resumption state.
-
 	void			*opaque;			//!< Used to store module specific data.
+
+	fr_tls_cache_t		*cache;				//!< Current session resumption state.
+	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
+
+	bool			invalid;			//!< Whether heartbleed attack was detected.
 
 	uint8_t			alerts_sent;
 	bool			pending_alert;
