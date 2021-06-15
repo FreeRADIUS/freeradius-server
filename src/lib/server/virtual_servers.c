@@ -230,9 +230,6 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	char const		*namespace = cf_pair_value(cp);
-	char const		*file;
-	char const		*dir = NULL;
-	fr_dict_t		*dict;
 	dl_module_t const      	*module;
 	char			*module_name, *p, *end;
 
@@ -240,38 +237,6 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 		cf_log_err(ci, "Missing value for 'namespace'");
 		return -1;
 	}
-
-	/*
-	 *	The "control" socket does not have a dictionary.
-	 */
-	if (strcmp(namespace, "control") == 0) {
-		dict = fr_dict_unconst(fr_dict_internal());
-		goto set;
-	}
-
-	file = namespace;	/* the default */
-
-	/*
-	 *	These are all equivalent.  Rewrite the names to be our
-	 *	canonical version.
-	 */
-	if ((strcmp(namespace, "eap-aka-prime") == 0) ||
-	    (strcmp(namespace, "eap-aka") == 0) ||
-	    (strcmp(namespace, "eap-sim") == 0)) {
-		dir = "eap/aka-sim";
-		file = "eap-aka-sim";
-	}
-
-	/*
-	 *	@todo - print out the entire error stack?
-	 */
-	if (fr_dict_protocol_afrom_file(&dict, file, dir, cf_section_name2(server_cs)) < 0) {
-		cf_log_perr(ci, "Failed loading namespace '%s'", namespace);
-		return -1;
-	}
-
-set:
-	virtual_server_dict_set(server_cs, dict, false);
 
 	module_name = talloc_strdup(ctx, namespace);
 
@@ -289,23 +254,14 @@ set:
 	 */
 	module = dl_module(server_cs, NULL, module_name, DL_MODULE_TYPE_PROCESS);
 	talloc_free(module_name);
-#ifndef NDEBUG
 	if (module) {
 		fr_process_module_t const *process = (fr_process_module_t const *) module->common;
 
-		/*
-		 *	It MUST have the same dictionary as the
-		 *	namespace.
-		 *
-		 *	@todo - once we have process functions for all
-		 *	state machines, remove the code just above
-		 *	which manually loads the dictionary.  And
-		 *	instead set the dictionary from *process->dict.
-		 */
-		fr_assert(process->dict);
-		fr_assert(*process->dict == dict);
+		if (*process->dict) {
+			virtual_server_dict_set(server_cs, *process->dict, false);
+		}
 	}
-#endif
+
 	if (!module) {
 		cf_log_perr(ci, "Failed loading process module");
 		return -1;
