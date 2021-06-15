@@ -948,6 +948,10 @@ static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int statu
 	 *	"pipe has been closed" signal
 	 */
 	if (exec->stdout_fd >= 0) {
+		if (exec->stdout_used) {
+			RDEBUG("Program exited without EOF being read");
+			return;
+		}
 		(void) fr_event_fd_delete(exec->request->el, exec->stdout_fd, FR_EVENT_FILTER_IO);
 		close(exec->stdout_fd);
 		exec->stdout_fd = -1;
@@ -1001,7 +1005,7 @@ static void exec_timeout(
 /*
  *	Callback to read stdout from an exec into the pre-prepared extensible sbuff
  */
-static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx) {
+static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void *uctx) {
 	fr_exec_state_t		*exec = uctx;
 	request_t		*request = exec->request;
 	ssize_t			data_len, remaining;
@@ -1045,6 +1049,24 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flag
 
 		fr_sbuff_advance(&exec->stdout_buff, data_len);
 	} while (remaining == data_len);	/* If process returned maximum output, loop again */
+
+	if (flags & EV_EOF) {
+		/*
+		 *	We've received EOF - so the process has finished writing
+		 *	Remove event and tidy up
+		 */
+		(void) fr_event_fd_delete(exec->request->el, fd, FR_EVENT_FILTER_IO);
+		close(fd);
+		exec->stdout_fd = -1;
+
+		if (exec->pid == 0) {
+			/*
+			 *	Child has already exited - unlang can resume
+			 */
+			if (exec->ev) fr_event_timer_delete(&exec->ev);
+			unlang_interpret_mark_runnable(exec->request);
+		}
+	}
 
 	/*
 	 *	Only print if we got additional data
