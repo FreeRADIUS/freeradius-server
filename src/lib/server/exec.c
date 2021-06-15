@@ -932,7 +932,7 @@ static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int statu
 	request_t	*request = exec->request;
 
 	if (WIFEXITED(status)) {
-		RDEBUG("Program failed with status code %d", WEXITSTATUS(status));
+		RDEBUG("Program exited with status code %d", WEXITSTATUS(status));
 		exec->status = WEXITSTATUS(status);
 	} else if (WIFSIGNALED(status)) {
 		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(status));
