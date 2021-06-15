@@ -37,7 +37,11 @@ endef
 #
 #  All lib go into subdirectories of the "lib" directory.
 #
-SUBMAKEFILES := $(wildcard ${top_srcdir}/src/lib/*/all.mk)
+#  Manually order the basic ones, because Make is order dependent.
+#  And then get the rest by wildcard, and ensure unsure that they're
+#  all unique.
+#
+SUBMAKEFILES := $(strip $(call uniq,$(patsubst %,${top_srcdir}/src/lib/%/all.mk,util tls eap eap_aka_sim server unlang io) $(wildcard ${top_srcdir}/src/lib/*/all.mk)))
 
 #
 #  Add library-specific rules to link include files, etc.
