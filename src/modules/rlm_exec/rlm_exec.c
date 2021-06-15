@@ -379,7 +379,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 		fr_pair_list_t vps, *output_pairs;
 		fr_value_box_t *box = fr_dlist_head(&m->box);
 
-		RDEBUG("EXEC GOT -- %pV", box);
+		RDEBUG("EXEC GOT -- %pM", &m->box);
 
 		fr_pair_list_init(&vps);
 		output_pairs = tmpl_list_head(request, inst->output_list);
