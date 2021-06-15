@@ -438,7 +438,7 @@ define INCLUDE_SUBMAKEFILE
         #  If we link to FOO, and FOO itself links to things, then we also link to the things
         #  which FOO needs.  That way we don't have to manually specify the recursive library
         #  references.
-	$${TGT}_PREREQS := $${strip $$(call uniq,$$(foreach x,$${TGT_PREREQS},$$(or $${$${x}_PREREQS},) $${x}))}
+	$${TGT}_PREREQS := $$(strip $$(call uniq,$$(foreach x,$${TGT_PREREQS},$$(or $${$${x}_PREREQS},) $${x})))
         $${TGT}_PRLIBS := $$(addprefix $${BUILD_DIR}/lib/,$$(filter %.a %.so %.la,$${$${TGT}_PREREQS}))
 
         # If it's an EXE, ensure that transitive library linking works.
