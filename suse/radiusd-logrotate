@@ -1,49 +1,68 @@
-# You can use this to rotate the /var/log/radius/* files, simply copy
-# it to /etc/logrotate.d/radiusd
-
 #
-#    Global options for all files
+#  You can use this to rotate the /var/log/radius/* files, simply copy
+#  it to /etc/logrotate.d/radiusd
 #
-dateext
-maxage 365
-rotate 99
-missingok
-compress
-delaycompress
-notifempty
-su radiusd radiusd
 
 #
 #  The main server log
 #
 /var/log/radius/radius.log {
+	# Common options
+	dateext
+	maxage 365
+	rotate 99
+	missingok
+	compress
+	delaycompress
+	notifempty
+	su radiusd radiusd
+
 	copytruncate
 }
 
-#
-#  Session monitoring utilities
-#
-/var/log/radius/checkrad.log /var/log/radius/radwatch.log {
-	nocreate
-	size=+1024k
-}
 
 #
-#  SQL log files
+#  Session monitoring utilities and SQL log files (in order)
 #
-/var/log/radius/sqllog.sql {
+/var/log/radius/checkrad.log /var/log/radius/radwatch.log
+/var/log/radius/sqllog.sql
+{
+	# Common options
+	dateext
+	maxage 365
+	rotate 99
+	missingok
+	compress
+	delaycompress
+	notifempty
+	su radiusd radiusd
+
 	nocreate
 	size=+2048k
 }
 
-# There are different detail-rotating strategies you can use.  One is
-# to write to a single detail file per IP and use the rotate config
-# below.  Another is to write to a daily detail file per IP with:
+
+#
+#  There are different detail-rotating strategies you can use.  One is
+#  to write to a single detail file per IP and use the rotate config
+#  below.  Another is to write to a daily detail file per IP with:
+#
 #     detailfile = ${radacctdir}/%{Client-IP-Address}/%Y%m%d-detail
-# (or similar) in radiusd.conf, without rotation.  If you go with the
-# second technique, you will need another cron job that removes old
-# detail files.  You do not need to comment out the below for method #2.
+#
+#  (or similar) in radiusd.conf, without rotation.  If you go with the
+#  second technique, you will need another cron job that removes old
+#  detail files.  You do not need to comment out the below for method #2.
+#
 /var/log/radius/radacct/*/detail {
+	# Common options
+	dateext
+	maxage 365
+	rotate 99
+	missingok
+	compress
+	delaycompress
+	notifempty
+	su radiusd radiusd
+
 	nocreate
 }
-
