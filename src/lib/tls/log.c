@@ -103,7 +103,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
  * @param[in] cert	The leaf certificate.
  */
 void _fr_tls_log_certificate_chain(char const *file, int line,
-				request_t *request, STACK_OF(X509) *chain, X509 *cert)
+				   request_t *request, STACK_OF(X509) *chain, X509 *cert)
 {
 	int i;
 

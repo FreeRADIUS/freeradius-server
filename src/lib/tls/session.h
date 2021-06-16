@@ -145,6 +145,16 @@ static inline fr_tls_conf_t *fr_tls_session_conf(SSL *ssl)
 	return talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
 }
 
+/** Return the tls_session associated with a SSL *
+ *
+ * @param[in] ssl	to retrieve the configuration from.
+ * @return #fr_tls_conf_t associated with the session.
+ */
+static inline fr_tls_session_t *fr_tls_session(SSL *ssl)
+{
+	return talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
+}
+
 /** Place a request pointer in the SSL * for retrieval by callbacks
  *
  * @note A request must not already be bound to the SSL *
@@ -189,6 +199,18 @@ static inline CC_HINT(nonnull) void fr_tls_session_request_unbind(SSL *ssl)
 		fr_assert(0);
 		return;
 	}
+}
+
+/** Check to see if a request is bound to a session
+ *
+ * @param[in] ssl	session to check for requests.
+ * @return
+ *      - true if a request is bound to this session.
+ *	- false if a request is not bound to this session.
+ */
+static inline CC_HINT(nonnull) bool fr_tls_session_request_bound(SSL *ssl)
+{
+	return (SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST) != NULL);
 }
 
 /** Return the request associated with a ssl session

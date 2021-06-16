@@ -28,10 +28,11 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
+#include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "attrs.h"
 #include "base.h"
@@ -358,7 +359,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 
 	sess = d2i_SSL_SESSION(NULL, p, vp->vp_length);
 	if (!sess) {
-		REDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+		fr_tls_log_error(request, "Failed loading persisted session");
 		goto error;
 	}
 	RDEBUG3("Read %zu bytes of session data.  Session deserialized successfully", vp->vp_length);
@@ -761,21 +762,215 @@ void tls_cache_disable_stateless_resumption(SSL_CTX *ctx)
 static inline CC_HINT(always_inline)
 void tls_cache_disable_statefull_resumption(SSL_CTX *ctx)
 {
+	/*
+	 *	Only disables stateful session-resumption.
+	 *
+	 *	As per Matt Caswell:
+	 *
+	 *	SSL_SESS_CACHE_OFF, when called on the server,
+	 *	disables caching of server side sessions.
+	 *	It does not switch off resumption. Resumption can
+	 *	still occur if a stateless session ticket is used
+	 *	(even in TLSv1.2).
+	 */
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+}
+
+/** Called when new tickets are being generated
+ *
+ * This adds additional application data to the session ticket to
+ * allow us to perform validation checks when the session is
+ * resumed.
+ */
+static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
+{
+	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
+	fr_tls_cache_conf_t	*tls_cache_conf = arg;	/* Not talloced */
+	SSL_SESSION		*sess;
+	request_t		*request;
+	ssize_t			slen;
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_talloc_t	tctx;
+	fr_dcursor_t		dcursor;
+	fr_pair_t		*vp;
+	int			ret;
+
+	/*
+	 *	Check to see if we have a request bound
+	 *	to the session.  If we don't have a
+	 *	request there's no application data to
+	 *	add.
+	 */
+	if (!fr_tls_session_request_bound(ssl)) return 1;
+
+	/*
+	 *	Encode the complete session state list
+	 *	as app data.  Then, when the session is
+	 *	resumed, the session-state list is
+	 *	repopulated.
+	 */
+	request = fr_tls_session_request(ssl);
+
+	/*
+	 *	Fatal error - We definitely should be
+	 *      attempting to generate session tickets
+	 *      if it's not permitted.
+	 */
+	if (!tls_session->allow_session_resumption ||
+	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) {
+		REDEBUG("Generating session-tickets is not allowed");
+		return 0;
+	}
+
+	sess = SSL_get_session(ssl);
+	if (!sess) {
+		REDEBUG("Failed retrieving session in session generation callback");
+		return 0;
+	}
+
+	RDEBUG2("Adding &session-state[*] to session-ticket");
+	RINDENT();
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, NULL);
+	REXDENT();
+
+	/*
+	 *	Absolute maximum is `0..2^16-1`.
+	 *
+	 *	We leave OpenSSL 2k to add anything else
+	 */
+	fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, 1024 * 62);
+
+	/*
+	 *	Encode the session-state contents and
+	 *      add it to the ticket.
+	 */
+	for (vp = fr_dcursor_init(&dcursor, &request->session_state_pairs);
+	     vp;
+	     vp = fr_dcursor_current(&dcursor)) {
+		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);
+		if (slen < 0) {
+			RPERROR("Failed serialising session-state list");
+			fr_dbuff_free_talloc(&dbuff);
+			return 0;
+		}
+	}
+
+	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
+
+	/*
+	 *	Pass the serialized session-state list
+	 *	over to OpenSSL.
+	 */
+	ret = SSL_SESSION_set1_ticket_appdata(sess, fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff));
+	fr_dbuff_free_talloc(&dbuff);	/* OpenSSL memdups the data */
+	if (ret != 1) {
+		fr_tls_log_error(request, "Failed setting application data for session-ticket");
+		return 0;
+	}
+
+	return 1;
+}
+
+/** Called when new tickets are being decoded
+ *
+ * This adds the session-state attributes back to the current request.
+ */
+static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SESSION *sess,
+							       UNUSED unsigned char const *keyname,
+							       UNUSED size_t keyname_len,
+							       SSL_TICKET_STATUS status,
+							       void *arg)
+{
+	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
+	fr_tls_cache_conf_t	*tls_cache_conf = arg;	/* Not talloced */
+	request_t		*request;
+	uint8_t			*data;
+	size_t			data_len;
+	fr_dbuff_t		dbuff;
+	fr_pair_list_t		tmp;
+	fr_dcursor_t		cursor;
+
+	if (!tls_session->allow_session_resumption ||
+	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) return SSL_TICKET_RETURN_IGNORE;
+
+	switch (status) {
+	case SSL_TICKET_EMPTY:
+	case SSL_TICKET_NO_DECRYPT:
+		return SSL_TICKET_RETURN_IGNORE_RENEW;	/* Send a new ticket */
+
+	case SSL_TICKET_SUCCESS:
+		if (!fr_tls_session_request_bound(ssl)) return SSL_TICKET_RETURN_USE;
+		break;
+
+	case SSL_TICKET_SUCCESS_RENEW:
+		if (!fr_tls_session_request_bound(ssl)) return SSL_TICKET_RETURN_USE_RENEW;
+		break;
+	}
+
+	request = fr_tls_session_request(ssl);
+
+	/*
+	 *	Extract the session-state list
+	 *	from the ticket.
+	 */
+	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
+		fr_tls_log_error(request, "Failed retrieving application data from session-ticket, "
+				 "disallowing resumption");
+		return SSL_TICKET_RETURN_IGNORE_RENEW;
+	}
+
+	fr_pair_list_init(&tmp);
+	fr_dcursor_init(&cursor, &tmp);
+	fr_dbuff_init(&dbuff, data, data_len);
+
+	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_len(&dbuff), "session-ticket application data");
+
+	/*
+	 *	Decode the session-state data
+	 *	into a temporary list.
+	 *
+	 *	It's very important that we
+	 *	decode _all_ attributes, or
+	 *	disallow session resumption.
+	 */
+	while (fr_dbuff_remaining(&dbuff) > 0) {
+		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &cursor,
+					    	  request->dict, &dbuff, NULL) < 0) {
+			fr_pair_list_free(&tmp);
+			RPEDEBUG("Failed decoding session-state, disallowing resumption");
+			return SSL_TICKET_RETURN_IGNORE_RENEW;
+		}
+	}
+
+	RDEBUG2("Restoring &session-state[*] from session-ticket");
+	RINDENT();
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "&session-state.");
+	REXDENT();
+
+	fr_pair_list_append(&request->session_state_pairs, &tmp);
+
+	/*
+	 *	TODO - Run TLS certificate recv { ... } section
+	 */
+
+	return (status == SSL_TICKET_SUCCESS_RENEW) ? SSL_TICKET_RETURN_USE_RENEW : SSL_TICKET_RETURN_USE;
 }
 
 /** Sets callbacks and flags on a SSL_CTX to enable/disable session resumption
  *
  * @param[in] ctx			to modify.
  * @param[in] cache_conf		Session caching configuration.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
+int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 {
 	switch (cache_conf->mode) {
 	case FR_TLS_CACHE_DISABLED:
 		tls_cache_disable_stateless_resumption(ctx);
 		tls_cache_disable_statefull_resumption(ctx);
-		return;
+		return 0;
 
 	case FR_TLS_CACHE_AUTO:
 	case FR_TLS_CACHE_STATEFUL:
@@ -819,7 +1014,20 @@ void fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 						   UNCONST(uint8_t *, cache_conf->session_ticket_key_rand),
 						   sizeof(cache_conf->session_ticket_key_rand)) != 1) {
 			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed setting session ticket keys");
 			return -1;
+		}
+
+		/*
+		 *	These callbacks embed and extract the
+		 *	session-state list from the session-ticket.
+		 */
+		if (SSL_CTX_set_session_ticket_cb(ctx,
+						  tls_cache_session_ticket_app_data_set,
+						  tls_cache_session_ticket_app_data_get,
+						  UNCONST(fr_tls_cache_conf_t *, cache_conf)) != 1) {
+			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed setting session ticket callbacks");
 		}
 
 		/*
@@ -838,5 +1046,7 @@ void fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 	SSL_CTX_set_not_resumable_session_callback(ctx, fr_tls_cache_disable_cb);
 #endif
 	SSL_CTX_set_quiet_shutdown(ctx, 1);
+
+	return 0;
 }
 #endif /* WITH_TLS */

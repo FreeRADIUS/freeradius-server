@@ -114,7 +114,7 @@ int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
 void		fr_tls_cache_session_alloc(fr_tls_session_t *tls_session);
 
-void		fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf);
+int		fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf);
 
 #ifdef __cplusplus
 }

@@ -871,7 +871,7 @@ post_ca:
 	/*
 	 *	Setup session caching
 	 */
-	fr_tls_cache_ctx_init(ctx, &conf->cache);
+	if (fr_tls_cache_ctx_init(ctx, &conf->cache) < 0) goto error;
 
 	return ctx;
 }
