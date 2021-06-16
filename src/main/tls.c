@@ -3288,6 +3288,8 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 		SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
 	}
 
+	if (!ecdh_curve || !*ecdh_curve) return 0;
+
 #if OPENSSL_VERSION_NUMBER >= 0x0100200fL
 	if (strchr(ecdh_curve, ':') != 0) {
 		char *list = strdup(ecdh_curve);
@@ -3310,8 +3312,6 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 		(void) SSL_CTX_set_ecdh_auto(ctx, 1);
 	}
 #endif
-
-	if (!ecdh_curve || !*ecdh_curve) return 0;
 
 	nid = OBJ_sn2nid(ecdh_curve);
 	if (!nid) {
