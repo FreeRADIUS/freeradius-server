@@ -793,6 +793,11 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 			RDEBUGX(lvl, "%s}", prefix ? prefix : "");	/* don't add extra space between closing brace and prefix */
 			continue;
 
+		case FR_TYPE_QUOTED:
+			RDEBUGX(lvl, "%s%pV = \"%pV\"", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
+				&vp->data);
+			break;
 		default:
 			RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
 				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
