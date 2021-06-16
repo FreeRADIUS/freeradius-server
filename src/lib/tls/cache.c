@@ -890,6 +890,8 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	fr_pair_list_t		tmp;
 	fr_dcursor_t		cursor;
 
+	request = fr_tls_session_request(ssl);
+
 	if (!tls_session->allow_session_resumption ||
 	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) {
 		RDEBUG2("Session resumption not enabled for this TLS session, denying session resumption");
@@ -909,8 +911,6 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		if (!fr_tls_session_request_bound(ssl)) return SSL_TICKET_RETURN_USE_RENEW;
 		break;
 	}
-
-	request = fr_tls_session_request(ssl);
 
 	/*
 	 *	Extract the session-state list
