@@ -130,10 +130,6 @@ void		talloc_destructor_disarm(fr_talloc_destructor_t *d);
 
 int		talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 
-fr_talloc_destructor_t *talloc_add_destructor(TALLOC_CTX *chunk, fr_talloc_free_func_t func, void const *uctx);
-
-void		talloc_disarm_destructor(fr_talloc_destructor_t *d);
-
 TALLOC_CTX	*talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size);
 TALLOC_CTX	*talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment, size_t size);
 
