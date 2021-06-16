@@ -145,7 +145,7 @@ CPPFLAGS		:= $(OPENSSL_CPPFLAGS) $(CPPFLAGS)
 #
 #  Add optional dependency for libfreeradius-server if we're building with OpenSSL
 #
-LIBFREERADIUS_SERVER	:= libfreeradius-tls.a
+LIBFREERADIUS_SERVER	:= libfreeradius-internal.a libfreeradius-tls.a
 endif
 LIBFREERADIUS_SERVER	+= libfreeradius-server.a libfreeradius-unlang.a
 
