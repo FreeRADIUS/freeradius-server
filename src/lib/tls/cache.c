@@ -883,16 +883,19 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 {
 	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
 	fr_tls_cache_conf_t	*tls_cache_conf = arg;	/* Not talloced */
-	request_t		*request;
+	request_t		*request = NULL;
 	uint8_t			*data;
 	size_t			data_len;
 	fr_dbuff_t		dbuff;
 	fr_pair_list_t		tmp;
 	fr_dcursor_t		cursor;
 
+	if (fr_tls_session_request_bound(ssl)) request = fr_tls_session_request(ssl);
+
 	if (!tls_session->allow_session_resumption ||
 	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) {
-		RDEBUG2("Session resumption not enabled for this TLS session, denying session resumption");
+		ROPTIONAL(RDEBUG2, DEBUG2, "Session resumption not enabled for this TLS session, "
+			  "denying session resumption");
 	    	return SSL_TICKET_RETURN_IGNORE;
 	}
 
@@ -902,19 +905,16 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		return SSL_TICKET_RETURN_IGNORE_RENEW;	/* Send a new ticket */
 
 	case SSL_TICKET_SUCCESS:
-		if (!fr_tls_session_request_bound(ssl)) return SSL_TICKET_RETURN_USE;
+		if (!request) return SSL_TICKET_RETURN_USE;
 		break;
 
 	case SSL_TICKET_SUCCESS_RENEW:
-		if (!fr_tls_session_request_bound(ssl)) return SSL_TICKET_RETURN_USE_RENEW;
+		if (!request) return SSL_TICKET_RETURN_USE_RENEW;
 		break;
 	}
 
-	request = fr_tls_session_request(ssl);
-
 	/*
-	 *	Extract the session-state list
-	 *	from the ticket.
+	 *	Extract the session-state list from the ticket.
 	 */
 	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
 		fr_tls_log_error(request, "Failed retrieving application data from session-ticket, "
@@ -929,12 +929,10 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_len(&dbuff), "session-ticket application data");
 
 	/*
-	 *	Decode the session-state data
-	 *	into a temporary list.
+	 *	Decode the session-state data into a temporary list.
 	 *
-	 *	It's very important that we
-	 *	decode _all_ attributes, or
-	 *	disallow session resumption.
+	 *	It's very important that we decode _all_ attributes,
+	 *	or disallow session resumption.
 	 */
 	while (fr_dbuff_remaining(&dbuff) > 0) {
 		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &cursor,
