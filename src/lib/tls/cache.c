@@ -891,7 +891,10 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	fr_dcursor_t		cursor;
 
 	if (!tls_session->allow_session_resumption ||
-	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) return SSL_TICKET_RETURN_IGNORE;
+	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) {
+		RDEBUG2("Session resumption not enabled for this TLS session, denying session resumption");
+	    	return SSL_TICKET_RETURN_IGNORE;
+	}
 
 	switch (status) {
 	case SSL_TICKET_EMPTY:
@@ -915,7 +918,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	 */
 	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
 		fr_tls_log_error(request, "Failed retrieving application data from session-ticket, "
-				 "disallowing resumption");
+				 "denying session resumption");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
 
@@ -937,7 +940,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &cursor,
 					    	  request->dict, &dbuff, NULL) < 0) {
 			fr_pair_list_free(&tmp);
-			RPEDEBUG("Failed decoding session-state, disallowing resumption");
+			RPEDEBUG("Failed decoding session-state, denying session resumption");
 			return SSL_TICKET_RETURN_IGNORE_RENEW;
 		}
 	}
