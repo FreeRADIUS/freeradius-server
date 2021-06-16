@@ -838,7 +838,7 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 	 *
 	 *	We leave OpenSSL 2k to add anything else
 	 */
-	fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, 1024 * 62);
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, 1024 * 62));
 
 	/*
 	 *	Encode the session-state contents and
@@ -902,6 +902,9 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	switch (status) {
 	case SSL_TICKET_EMPTY:
 	case SSL_TICKET_NO_DECRYPT:
+#ifdef __clang_analyzer__
+	default:
+#endif
 		return SSL_TICKET_RETURN_IGNORE_RENEW;	/* Send a new ticket */
 
 	case SSL_TICKET_SUCCESS:
