@@ -9,5 +9,5 @@ ifneq ($(OPENSSL_LIBS),)
 TGT_PREREQS	:= libfreeradius-tls.a
 endif
 
-TGT_PREREQS	+= libfreeradius-util.la $(LIBFREERADIUS_SERVER) libfreeradius-unlang.a
+TGT_PREREQS	+= libfreeradius-util.la libfreeradius-server.a libfreeradius-unlang.a
 SRC_CFLAGS	+= -DTESTING_TRUNK
