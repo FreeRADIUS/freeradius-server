@@ -1403,7 +1403,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 	snprintf(tls_session->info.info_description,
 		 sizeof(tls_session->info.info_description),
-		 "%s %s%s%s%s\n",
+		 "%s %s%s%s%s",
 		 str_write_p, str_version, str_content_type,
 		 str_details1, str_details2);
 
