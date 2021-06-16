@@ -677,7 +677,7 @@ int fr_tls_cache_disable_cb(SSL *ssl,
 		return 1;
 	}
 
-	RDEBUG2("Allowing session-resumption");
+	RDEBUG2("Session-resumption enabled");
 
 	return 0;
 }
