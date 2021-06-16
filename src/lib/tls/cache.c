@@ -855,7 +855,9 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 		}
 	}
 
-	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
+	if (fr_cond_assert(fr_dbuff_start(&dbuff) != NULL)) {	/* check to quiet clang scan */
+		RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
+	}
 
 	/*
 	 *	Pass the serialized session-state list
