@@ -515,6 +515,13 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 		break;
 	}
 
+	/*
+	 *	Generate random, ephemeral, session-ticket keys.
+	 */
+	if (conf->cache.mode & FR_TLS_CACHE_STATELESS) {
+		fr_rand_buffer(conf->cache.session_ticket_key_rand, sizeof(conf->cache.session_ticket_key_rand));
+	}
+
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp.cache_server) {
 		CONF_SECTION *server_cs;

@@ -810,18 +810,17 @@ void fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		FALL_THROUGH;
 
 	case FR_TLS_CACHE_STATELESS:
-		/*
-		 *	Only disables stateful session-resumption.
-		 *
-		 *	As per Matt Caswell:
-		 *
-		 *	SSL_SESS_CACHE_OFF, when called on the server,
-		 *	disables caching of server side sessions.
-		 *	It does not switch off resumption. Resumption can
-		 *	still occur if a stateless session ticket is used
-		 *	(even in TLSv1.2).
-		 */
 		if (!(cache_conf->mode & FR_TLS_CACHE_STATEFUL)) tls_cache_disable_statefull_resumption(ctx);
+
+		/*
+		 *	Ensure the same keys are used across all threads
+		 */
+		if (SSL_CTX_set_tlsext_ticket_keys(ctx,
+						   UNCONST(uint8_t *, cache_conf->session_ticket_key_rand),
+						   sizeof(cache_conf->session_ticket_key_rand)) != 1) {
+			fr_tls_log_strerror_printf(NULL);
+			return -1;
+		}
 
 		/*
 		 *	Stateless resumption is enabled by default when

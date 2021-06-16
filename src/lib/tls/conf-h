@@ -117,6 +117,8 @@ typedef struct {
 
 	bool		require_pfs;			//!< Only allow session resumption if a cipher suite that
 							//!< supports perfect forward secrecy.
+
+	uint8_t		session_ticket_key_rand[16 + 32 + 32];	//!< OpenSSL really needs to export this length.
 } fr_tls_cache_conf_t;
 
 /* configured values goes right here */
