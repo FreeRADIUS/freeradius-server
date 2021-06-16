@@ -57,6 +57,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	fr_dbuff_t		value_dbuff;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_pair_t		*vp = fr_dcursor_current(cursor);
+	bool			unknown = false, internal = false;
 
 	ssize_t			slen;
 	size_t			flen, vlen, mlen;
@@ -87,10 +88,19 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 
 	/*
 	 *	Need to use the second encoding byte
+	 *
+	 *	0                   1
+	 *	0 1 2 3 4 5 6 7 8 9 0
+	 * 	+-+-+-+-+-+-+-+-+-+-+
+	 * 	|u|i|-|-|-|-|-|e|
+	 * 	+-+-+-+-+-+-+-+-+-+-+
 	 */
-	if (da->flags.is_unknown) {
+	if ((unknown = da->flags.is_unknown) ||
+	    (internal = (da->parent == fr_dict_root(fr_dict_internal())))) {
 		enc_byte |= FR_INTERNAL_FLAG_EXTENDED;
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_INTERNAL_FLAG_INTERNAL);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff,
+					 (unknown * FR_INTERNAL_FLAG_UNKNOWN) |
+					 (internal * FR_INTERNAL_FLAG_INTERNAL));
 	}
 
 	/*
@@ -120,8 +130,6 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	case FR_TYPE_LEAF:
 		slen = fr_value_box_to_network(&value_dbuff, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
-		FR_PROTO_HEX_DUMP(fr_dbuff_start(&value_dbuff), slen, "value %s",
-				  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
 		fr_dcursor_next(cursor);
 		break;
 
@@ -238,12 +246,13 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff) - vlen, "header");
 
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&value_dbuff), vlen, "value %s",
+			  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
+
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a data structure into an internal attribute
- *
- * This will become the main entry point when we switch fully to dbuff.
  *
  * @param[in,out] dbuff		Where to write encoded data and how much one can write.
  * @param[in] cursor		Specifying attribute to encode.

@@ -41,9 +41,9 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 /** Decodes the value of an attribute, potentially producing a pair (added to the cursor)
  *
  */
-static ssize_t internal_decode_pair_value_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-						fr_dbuff_t *dbuff,
-						bool tainted, UNUSED void *decode_ctx)
+static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
+					  fr_dbuff_t *dbuff,
+					  bool tainted, UNUSED void *decode_ctx)
 {
 	fr_pair_t	*vp;
 	ssize_t		slen;
@@ -160,7 +160,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	fr_dbuff_marker_t	len_field, enc_field, ext_field;
 	uint64_t		len = 0, type = 0;
 	size_t			remaining, needed;
-	bool			tainted, extended, unknown = false;
+	bool			tainted, extended, unknown = false, internal = false;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
 
 	/*
@@ -215,21 +215,23 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	 *			     match an existing dictionary definition.
 	 *			     A new unknown DA should be allocated for this attribute
 	 *			     and it should be treated as raw octets.
+	 * i (internal attribute)  - Resolve this attribute in the internal dictionary.
 	 * - (currently unused)    - Unused flag.
 	 * e (extended)		   - Encoding definitions continue to a third byte.
 	 *
 	 * 0                   1
 	 * 0 1 2 3 4 5 6 7 8 9 0
 	 * +-+-+-+-+-+-+-+-+-+-+
-	 * |u|-|-|-|-|-|-|e|
+	 * |u|i|-|-|-|-|-|e|
 	 * +-+-+-+-+-+-+-+-+-+-+
 	 *
 	 */
 	if (extended) {
 		fr_dbuff_set(&ext_field, &work_dbuff);
 		FR_DBUFF_OUT_RETURN(&ext_byte, &work_dbuff);
-		unknown = (ext_byte & 0x80) != 0;
-		if (ext_byte & 0x01) {
+		unknown = (ext_byte & FR_INTERNAL_FLAG_UNKNOWN) != 0;
+		internal = (ext_byte & FR_INTERNAL_FLAG_INTERNAL) != 0;
+		if (ext_byte & FR_INTERNAL_FLAG_EXTENDED) {
 			fr_strerror_printf("%s: Third extension byte not in use", __FUNCTION__);
 			return PAIR_DECODE_FATAL_ERROR;
 		}
@@ -252,6 +254,18 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 		return -(fr_dbuff_current(&len_field) - fr_dbuff_start(&work_dbuff));
 	}
 
+	/*
+	 *	Internal flag is only set on the outer attribute
+	 *	so it's fine to swap the parent_da.
+	 */
+	if (internal) {
+		if (!parent_da->flags.is_root) {
+			fr_strerror_printf("%s: Internal flag can only be set on top level attribute", __FUNCTION__);
+			return PAIR_DECODE_FATAL_ERROR;
+		}
+		parent_da = fr_dict_root(fr_dict_internal());
+	}
+
 	if (unknown || parent_da->flags.is_unknown) {
 	unknown:
 		FR_PROTO_TRACE("Unknown attribute %" PRIu64, type);
@@ -264,8 +278,13 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 		}
 	}
 
-
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
+
+	/*
+	 *	Set the end of our dbuff to match the length
+	 *	of the attribute.
+	 */
+	fr_dbuff_set_end(&work_dbuff, fr_dbuff_current(&work_dbuff) + len);
 
 	switch (da->type) {
 	/*
@@ -319,7 +338,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 		 *	It's ok for this function to return 0
 		 *	we can have zero length strings.
 		 */
-		slen = internal_decode_pair_value_dbuff(ctx, head, da, &work_dbuff, tainted, decode_ctx);
+		slen = internal_decode_pair_value(ctx, head, da, &work_dbuff, tainted, decode_ctx);
 		if (slen < 0) goto error;
 	}
 

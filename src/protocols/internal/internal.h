@@ -29,7 +29,8 @@
 /*
  *	Encoding byte 1
  */
-#define FR_INTERNAL_FLAG_INTERNAL	0x80
+#define FR_INTERNAL_FLAG_UNKNOWN	0x80
+#define FR_INTERNAL_FLAG_INTERNAL	0x40
 
 /*
  * $Id$

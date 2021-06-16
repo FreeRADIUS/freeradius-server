@@ -402,6 +402,14 @@ static inline fr_dbuff_t *fr_dbuff_init_talloc(TALLOC_CTX *ctx,
 	return dbuff;
 }
 
+/** Free the talloc buffer associated with a dbuff
+ *
+ */
+static inline void fr_dbuff_free_talloc(fr_dbuff_t *dbuff)
+{
+	TALLOC_FREE(dbuff->buff);
+}
+
 size_t	_fr_dbuff_extend_fd(fr_dbuff_t *dbuff, size_t extension);
 
 /** File sbuff extension structure use by #fr_dbuff_init_fd
@@ -932,6 +940,44 @@ _fr_dbuff_set(\
  * @copydetails fr_dbuff_set
  */
 #define FR_DBUFF_SET_RETURN(_dst, _src) FR_DBUFF_RETURN(fr_dbuff_set, _dst, _src)
+
+/** Set a new 'end' position in a dbuff or marker
+ * @private
+ *
+ * @param[out] dbuff		dbuff to use for constraints checks.
+ * @param[in] p			Position to set.
+ * @return
+ *	- 0	not advanced (p before dbuff start) or after dbuff end.
+ *	- >0	the number of bytes the dbuff was trimmed by.
+ */
+static inline ssize_t _fr_dbuff_set_end(fr_dbuff_t *dbuff, uint8_t const *p)
+{
+	if (unlikely(p > dbuff->end)) return -(p - dbuff->end);
+	if (unlikely(p < dbuff->start)) return 0;
+
+	dbuff->end = UNCONST(uint8_t *, p);
+
+	return dbuff->end - p;
+}
+
+/** Set a new 'end' position in a dbuff or marker
+ *
+ * @param[out] _dst		dbuff to use for constraints checks.
+ * @param[in] _end		Position to set.
+ * @return
+ *	- 0	not advanced (p before dbuff start) or after dbuff end.
+ *	- >0	the number of bytes the dbuff was trimmed by.
+ */
+#define fr_dbuff_set_end(_dst, _end) \
+_fr_dbuff_set_end(\
+	fr_dbuff_ptr(_dst), \
+	_Generic((_end), \
+		fr_dbuff_t *			: fr_dbuff_current((fr_dbuff_t const *)(_end)), \
+		fr_dbuff_marker_t *		: fr_dbuff_current((fr_dbuff_marker_t const *)(_end)), \
+		uint8_t const *			: (uint8_t const *)(_end), \
+		uint8_t *			: (uint8_t const *)(_end) \
+	) \
+)
 
 /** Advance 'current' position in dbuff or marker by _len bytes
  *
