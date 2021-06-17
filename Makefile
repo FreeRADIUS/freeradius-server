@@ -43,12 +43,10 @@ endif
 #  the debian packages.
 #
 ifneq "$(MAKECMDGOALS)" "deb"
-ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
-endif
 endif
 endif
 
