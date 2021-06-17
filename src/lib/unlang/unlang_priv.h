@@ -418,6 +418,15 @@ static inline void frame_pop(unlang_stack_t *stack)
 	}
 }
 
+/** Mark the current stack frame up for repeat, and set a new process function
+ *
+ */
+static inline void frame_repeat(unlang_stack_frame_t *frame, unlang_process_t process)
+{
+	repeatable_set(frame);
+	frame->process = process;
+}
+
 /** @name Conversion functions for converting #unlang_t to its specialisations
  *
  * Simple conversions: #unlang_module_t and #unlang_group_t are subclasses of #unlang_t,
