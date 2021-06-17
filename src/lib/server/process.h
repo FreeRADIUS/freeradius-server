@@ -213,7 +213,7 @@ SEND(generic)
 #ifndef NDEBUG
 	if (
 #  ifdef PROCESS_CODE_DO_NOT_RESPOND
-	    (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) &&
+	    (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) ||
 #  endif
 	    !PROCESS_PACKET_CODE_VALID(request->reply->code)) fr_assert(0);
 #endif
