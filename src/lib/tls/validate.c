@@ -30,8 +30,9 @@
 
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/util/debug.h>
-
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -410,5 +411,110 @@ int fr_tls_validate_client_cert_chain(SSL *ssl)
 	X509_STORE_CTX_free(store_ctx);
 
 	return ret;
+}
+
+/** Process the result of `validate certificate { ... }`
+ *
+ */
+static unlang_action_t tls_validate_client_cert_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						       request_t *request, void *uctx)
+{
+	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	fr_pair_t		*vp;
+
+	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_REQUESTED);
+
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_tls_packet_type, 0);
+	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
+		REDEBUG("Failed (re-)validating certificates");
+		tls_session->validate.state = FR_TLS_VALIDATION_FAILED;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	tls_session->validate.state = FR_TLS_VALIDATION_SUCCESS;
+
+	RDEBUG2("Certificates (re-)validated");
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Push a `validate certificate { ... }` call into the current request, using a subrequest
+ *
+ * @param[in] request		The current request.
+ * @Param[in] tls_session	The current TLS session.
+ * @return
+ *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *      - UNLANG_ACTION_FAIL on failure.
+ */
+static unlang_action_t tls_validate_client_cert_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
+	request_t		*child;
+	fr_pair_t		*vp;
+	unlang_action_t		ua;
+
+	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;
+
+	/*
+	 *	Add extra pairs to the subrequest
+	 */
+	fr_tls_session_extra_pairs_copy_to_child(child, tls_session);
+
+	/*
+	 *	Setup the child request for loading
+	 *	session resumption data.
+	 */
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = enum_tls_packet_type_certificate_validate->vb_uint32;
+
+	/*
+	 *	Allocate a child, and set it up to call
+	 *      the TLS virtual server.
+	 */
+	ua = fr_tls_call_push(child, tls_validate_client_cert_result, conf, tls_session);
+	if (ua < 0) {
+	        PERROR("Failed calling TLS virtual server");
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
+}
+
+/** Check we validated the client cert successfully
+ *
+ */
+bool fr_tls_validate_client_cert_success(fr_tls_session_t *tls_session)
+{
+	return tls_session->validate.state == FR_TLS_VALIDATION_SUCCESS;
+}
+
+/** Setup a validation request
+ *
+ */
+void fr_tls_validate_client_cert_request(fr_tls_session_t *tls_session)
+{
+	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_INIT);
+
+	tls_session->validate.state = FR_TLS_VALIDATION_REQUESTED;
+}
+
+/** Push a `validate certificate { ... }` section
+ *
+ * @param[in] request		The current request.
+ * @Param[in] tls_session	The current TLS session.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT	- No pending actions
+ *	- UNLANG_ACTION_PUSHED_CHILD		- Pending operations to evaluate.
+ */
+unlang_action_t fr_tls_validate_client_cert_pending_push(request_t *request, fr_tls_session_t *tls_session)
+{
+	if (tls_session->validate.state == FR_TLS_VALIDATION_REQUESTED) {
+		return tls_validate_client_cert_push(request, tls_session);
+	}
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 #endif /* WITH_TLS */

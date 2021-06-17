@@ -75,20 +75,17 @@ typedef struct {
 	struct {
 		fr_tls_cache_store_state_t	state;		//!< Tracks store state.
 		SSL_SESSION			*sess;		//!< Session to store.
-		rlm_rcode_t			rcode;		//!< Result of calling `cache store { ... }`.
 	} store;
 
 	struct {
 		fr_tls_cache_load_state_t	state;		//!< Tracks load requests from OpenSSL.
 		uint8_t				*id;		//!< Session ID to load.
 		SSL_SESSION			*sess;		//!< Deserialized session.
-		rlm_rcode_t			rcode;		//!< Result of calling `cache load { ... }`.
 	} load;
 
 	struct {
 		fr_tls_cache_clear_state_t	state;		//!< Tracks delete requests from OpenSSL.
 		uint8_t				*id;		//!< Session ID to be deleted.
-		rlm_rcode_t			rcode;		//!< Result of calling `cache clear { ... }`.
 	} clear;
 } fr_tls_cache_t;
 
@@ -105,8 +102,6 @@ extern "C" {
 uint8_t		*fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess);
 
 unlang_action_t	fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *tls_session);
-
-unlang_action_t	fr_tls_cache_load_push(request_t *request, fr_tls_session_t *tls_session);
 
 void		fr_tls_cache_deny(fr_tls_session_t *tls_session);
 

@@ -28,8 +28,12 @@ RCSIDH(session_h, "$Id$")
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+typedef struct fr_tls_session_s fr_tls_session_t;
+
+#include "cache.h"
 #include "conf.h"
 #include "index.h"
+#include "validate.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,7 +99,7 @@ typedef enum {
  * In the case of EAP-TLS + dependents a #eap_tls_session_t struct is used to track
  * the transfer of TLS records.
  */
-typedef struct {
+struct fr_tls_session_s {
 	SSL_CTX			*ctx;				//!< TLS configuration context.
 	SSL 			*ssl;				//!< This SSL session.
 	SSL_SESSION		*session;			//!< Session resumption data.
@@ -124,6 +128,9 @@ typedef struct {
 
 	fr_tls_cache_t		*cache;				//!< Current session resumption state.
 	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
+	bool			verify_client_cert;		//!< Whether client cert verification has been requested.
+
+	fr_tls_validate_t	validate;			//!< Current session certificate validation state.
 
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
@@ -133,7 +140,10 @@ typedef struct {
 	bool			pending_alert;
 	uint8_t			pending_alert_level;
 	uint8_t			pending_alert_description;
-} fr_tls_session_t;
+
+	fr_pair_list_t		extra_pairs;			//!< Pairs to add to cache and certificate validation
+								///< calls.  These will be duplicated for every call.
+};
 
 /** Return the tls config associated with a tls_session
  *
@@ -222,6 +232,46 @@ static inline request_t *fr_tls_session_request(SSL const *ssl)
 {
 	return talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 }
+
+/** Add extra pairs to the temporary subrequests
+ *
+ * @param[in] child		to add extra pairs to.
+ * @param[in] tls_session	to add extra pairs from.
+ */
+static inline CC_HINT(nonnull)
+void fr_tls_session_extra_pairs_copy_to_child(request_t *child, fr_tls_session_t *tls_session)
+{
+	if (!fr_pair_list_empty(&tls_session->extra_pairs)) {
+		MEM(fr_pair_list_copy(child->request_ctx, &child->request_pairs, &tls_session->extra_pairs) >= 0);
+	}
+}
+
+/** Add an additional pair (copying it) to the list of extra pairs
+ *
+ * @param[in] tls_session	to add extra pairs to.
+ * @param[in] vp		to add to tls_session.
+ */
+static inline CC_HINT(nonnull)
+void fr_tls_session_extra_pair_add(fr_tls_session_t *tls_session, fr_pair_t *vp)
+{
+	fr_pair_t	*copy;
+
+	MEM(copy = fr_pair_copy(tls_session, vp));
+	fr_pair_append(&tls_session->extra_pairs, copy);
+}
+
+/** Add an additional pair to the list of extra pairs
+ *
+ * @param[in] tls_session	to add extra pairs to.
+ * @param[in] vp		to add to tls_session.
+ */
+static inline CC_HINT(nonnull)
+void fr_tls_session_extra_pair_add_shallow(fr_tls_session_t *tls_session, fr_pair_t *vp)
+{
+	fr_assert(talloc_parent(vp) == tls_session);
+	fr_pair_append(&tls_session->extra_pairs, vp);
+}
+
 
 int 		fr_tls_session_password_cb(char *buf, int num, int rwflag, void *userdata);
 

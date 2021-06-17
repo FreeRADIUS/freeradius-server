@@ -10,10 +10,18 @@
 
 ATTRIBUTE	Packet-Type				1	uint32
 
-VALUE	Packet-Type			Cache-Load		1
-VALUE	Packet-Type			Cache-Store		2
-VALUE	Packet-Type			Cache-Clear		3
-VALUE	Packet-Type			Certificate		4
+VALUE	Packet-Type			Session-Load		1
+VALUE	Packet-Type			Session-Store		2
+VALUE	Packet-Type			Session-Clear		3
+VALUE	Packet-Type			Certificate-Validate	4
+
+#
+#  We use response packet types instead of rcodes so that
+#  the virtual server can be tested in isolation.
+#
+VALUE	Packet-Type			success			10
+VALUE	Packet-Type			failure			11
+VALUE	Packet-Type			notfound		12
 
 ATTRIBUTE	Session-Id				10	octets
 ATTRIBUTE	Session-Data				11	octets

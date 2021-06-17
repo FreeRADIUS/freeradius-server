@@ -12,6 +12,7 @@ SOURCES	:= \
 	engine.c \
 	log.c \
 	ocsp.c \
+	pairs.c \
 	session.c \
 	utils.c \
 	validate.c \

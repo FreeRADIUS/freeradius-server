@@ -80,7 +80,6 @@ static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("name", FR_TYPE_TMPL, fr_tls_cache_conf_t, id_name),
 			 .dflt = "%{EAP-Type}%{Virtual-Server}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_tls_cache_conf_t, lifetime), .dflt = "86400" },
-	{ FR_CONF_OFFSET("verify", FR_TYPE_BOOL, fr_tls_cache_conf_t, verify), .dflt = "no" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	{ FR_CONF_OFFSET("require_extended_master_secret", FR_TYPE_BOOL, fr_tls_cache_conf_t, require_extms), .dflt = "no" },

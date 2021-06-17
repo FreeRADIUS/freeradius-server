@@ -17,13 +17,14 @@
 /**
  * $Id$
  * @file src/process/tls/base.c
- * @brief ARP processing.
+ * @brief TLS processing.
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/protocol/tls/freeradius.h>
 
 static fr_dict_t const *dict_tls;
 
@@ -42,139 +43,94 @@ fr_dict_attr_autoload_t process_tls_dict_attr[] = {
 };
 
 typedef struct {
-	uint64_t	nothing;		// so that the next field isn't at offset 0
-
-	CONF_SECTION	*request;
-	CONF_SECTION	*reply;
-	CONF_SECTION	*recv_reply;
-	CONF_SECTION	*reverse_request;
-	CONF_SECTION	*reverse_reply;
-	CONF_SECTION	*do_not_respond;
+	CONF_SECTION	*session_load;
+	CONF_SECTION	*session_store;
+	CONF_SECTION	*session_clear;
+	CONF_SECTION	*certificate_validate;
 } process_tls_sections_t;
 
 typedef struct {
-	bool		test;
-
 	process_tls_sections_t	sections;
 } process_tls_t;
 
-#define PROCESS_PACKET_TYPE		fr_tls_packet_code_t
-#define PROCESS_CODE_MAX		FR_ARP_CODE_MAX
-#define PROCESS_CODE_DO_NOT_RESPOND	FR_ARP_DO_NOT_RESPOND
-#define PROCESS_PACKET_CODE_VALID	FR_ARP_PACKET_CODE_VALID
+#define FR_TLS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) <= FR_PACKET_TYPE_VALUE_NOTFOUND))
+
 #define PROCESS_INST			process_tls_t
+#define PROCESS_PACKET_TYPE		uint32_t
+#define PROCESS_PACKET_CODE_VALID	FR_TLS_PACKET_CODE_VALID
+
 #include <freeradius-devel/server/process.h>
 
 static fr_process_state_t const process_state[] = {
-	[ FR_ARP_REQUEST ] = {
+	[FR_PACKET_TYPE_VALUE_SESSION_LOAD] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] = 	FR_ARP_REPLY,
-			[RLM_MODULE_OK] = 	FR_ARP_REPLY,
-			[RLM_MODULE_UPDATED] =	FR_ARP_REPLY,
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 
-			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
-		.resume = resume_recv_generic,
-		.section_offset = PROCESS_CONF_OFFSET(request),
+		.resume = resume_recv_no_send,
+		.section_offset = PROCESS_CONF_OFFSET(session_load),
 	},
-	[ FR_ARP_REPLY ] = {
+	[FR_PACKET_TYPE_VALUE_SESSION_STORE] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] = 	FR_ARP_REPLY,
-			[RLM_MODULE_OK] = 	FR_ARP_REPLY,
-			[RLM_MODULE_UPDATED] =	FR_ARP_REPLY,
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 
-			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
-		},
-		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic,
-		.resume = resume_send_generic,
-		.section_offset = PROCESS_CONF_OFFSET(reply),
-	},
-
-	[ FR_ARP_REVERSE_REQUEST ] = {
-		.packet_type = {
-			[RLM_MODULE_NOOP] = 	FR_ARP_REVERSE_REPLY,
-			[RLM_MODULE_OK] = 	FR_ARP_REVERSE_REPLY,
-			[RLM_MODULE_UPDATED] =	FR_ARP_REVERSE_REPLY,
-
-			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
-		.resume = resume_recv_generic,
-		.section_offset = PROCESS_CONF_OFFSET(reverse_request),
+		.resume = resume_recv_no_send,
+		.section_offset = PROCESS_CONF_OFFSET(session_store),
 	},
-	[ FR_ARP_REVERSE_REPLY ] = {
+	[FR_PACKET_TYPE_VALUE_SESSION_CLEAR] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] = 	FR_ARP_REVERSE_REPLY,
-			[RLM_MODULE_OK] = 	FR_ARP_REVERSE_REPLY,
-			[RLM_MODULE_UPDATED] =	FR_ARP_REVERSE_REPLY,
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 
-			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic,
-		.resume = resume_send_generic,
-		.section_offset = PROCESS_CONF_OFFSET(reverse_reply),
+		.recv = recv_generic,
+		.resume = resume_recv_no_send,
+		.section_offset = PROCESS_CONF_OFFSET(session_clear),
 	},
-
-	// @todo - recv reply, to look at other replies.
-
-	[ FR_ARP_DO_NOT_RESPOND ] = {
+	[FR_PACKET_TYPE_VALUE_CERTIFICATE_VALIDATE] = {
 		.packet_type = {
-			[RLM_MODULE_NOOP] = 	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_OK] = 	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_UPDATED] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 
-			[RLM_MODULE_REJECT] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_FAIL] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_INVALID] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_DISALLOW] =	FR_ARP_DO_NOT_RESPOND,
-			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic,
-		.resume = resume_send_generic,
-		.section_offset = PROCESS_CONF_OFFSET(do_not_respond),
+		.recv = recv_generic,
+		.resume = resume_recv_no_send,
+		.section_offset = PROCESS_CONF_OFFSET(certificate_validate),
 	},
 };
-
-/*
- *	Debug the packet if requested.
- */
-static void tls_packet_debug(request_t *request, fr_radius_packet_t const *packet, fr_pair_list_t const *list, bool received)
-{
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
-		    received ? "Received" : "Sending",
-		    fr_tls_packet_codes[packet->code]);
-
-	if (received || request->parent) {
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
-	}
-}
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
@@ -183,7 +139,6 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	PROCESS_TRACE;
 
 	(void)talloc_get_type_abort_const(mctx->instance, process_tls_t);
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "tls";
 	request->module = NULL;
@@ -191,49 +146,36 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	UPDATE_STATE(packet);
 
-	tls_packet_debug(request, request->packet, &request->request_pairs, true);
+	log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
 
 	return state->recv(p_result, mctx, request);
 }
-
 
 static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "store",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
-		.offset = offsetof(eap_aka_sim_process_conf_t, actions.store_session)
+		.offset = PROCESS_CONF_OFFSET(session_store)
 	},
 	{
 		.name = "load",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
-		.offset = offsetof(eap_aka_sim_process_conf_t, actions.load_session)
+		.offset = PROCESS_CONF_OFFSET(session_load)
 	},
 	{
 		.name = "clear",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
-		.offset = offsetof(eap_aka_sim_process_conf_t, actions.clear_session)
+		.offset = PROCESS_CONF_OFFSET(session_clear)
 	},
 	{
-		.name = "recv",
+		.name = "validate",
 		.name2 = "certificate",
 		.component = MOD_AUTHORIZE,
-		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_certificate)
+		.offset = PROCESS_CONF_OFFSET(certificate_validate)
 	},
-	{
-		.name = "send",
-		.name2 = "success",
-		.component = MOD_POST_AUTH,
-		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_success)
-	},
-	{
-		.name = "send",
-		.name2 = "failure",
-		.component = MOD_POST_AUTH,
-		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_failure)
-	}
 	COMPILE_TERMINATOR
 };
 

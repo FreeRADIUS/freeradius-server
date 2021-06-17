@@ -194,13 +194,6 @@ int		fr_tls_ocsp_state_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *ser
 int		fr_tls_ocsp_staple_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
 /*
- *	tls/validate.c
- */
-int		fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *ctx);
-
-int		fr_tls_validate_client_cert_chain(SSL *ssl);
-
-/*
  *	tls/utils.c
  */
 char const	*fr_tls_utils_x509_pkey_type(X509 *cert);
@@ -212,8 +205,8 @@ int		fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
 /*
  *	tls/virtual_server.c
  */
-unlang_action_t fr_tls_call_push(rlm_rcode_t *p_rcode, request_t *child, unlang_function_t resume,
-			       		   request_t *request, fr_tls_conf_t *conf, fr_tls_session_t *tls_session);
+unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
+			       	 fr_tls_conf_t *conf, fr_tls_session_t *tls_session);
 
 #ifdef __cplusplus
 }

@@ -109,8 +109,6 @@ typedef struct {
 
 	uint32_t	lifetime;			//!< The maximum period a session can be resumed after.
 
-	bool		verify;				//!< Revalidate any sessions read in from the cache.
-
 	bool		require_extms;			//!< Only allow session resumption if the client/server
 							//!< supports the extended master session key.  This protects
 							//!< against the triple handshake attack.

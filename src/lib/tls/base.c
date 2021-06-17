@@ -143,17 +143,31 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ NULL }
 };
 
-fr_value_box_t const	*enum_tls_packet_type_cache_load;
-fr_value_box_t const	*enum_tls_packet_type_cache_store;
-fr_value_box_t const	*enum_tls_packet_type_cache_clear;
-fr_value_box_t const	*enum_tls_packet_type_certificate;
+/*
+ *	request types
+ */
+fr_value_box_t const	*enum_tls_packet_type_session_load;
+fr_value_box_t const	*enum_tls_packet_type_session_store;
+fr_value_box_t const	*enum_tls_packet_type_session_clear;
+fr_value_box_t const	*enum_tls_packet_type_certificate_validate;
+
+/*
+ *	response types
+ */
+fr_value_box_t const	*enum_tls_packet_type_success;
+fr_value_box_t const	*enum_tls_packet_type_failure;
+fr_value_box_t const	*enum_tls_packet_type_notfound;
 
 extern fr_dict_enum_autoload_t tls_dict_enum[];
 fr_dict_enum_autoload_t tls_dict_enum[] = {
-	{ .out = &enum_tls_packet_type_cache_load, .name = "Cache-Load", .attr = &attr_tls_packet_type },
-	{ .out = &enum_tls_packet_type_cache_store, .name = "Cache-Store", .attr = &attr_tls_packet_type },
-	{ .out = &enum_tls_packet_type_cache_clear, .name = "Cache-Clear", .attr = &attr_tls_packet_type },
-	{ .out = &enum_tls_packet_type_certificate, .name = "Certificate", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_session_load, .name = "Session-Load", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_session_store, .name = "Session-Store", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_session_clear, .name = "Session-Clear", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_certificate_validate, .name = "Certificate-Validate", .attr = &attr_tls_packet_type },
+
+	{ .out = &enum_tls_packet_type_success, .name = "Success", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_failure, .name = "Failure", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_notfound, .name = "Notfound", .attr = &attr_tls_packet_type },
 	{ NULL }
 };
 

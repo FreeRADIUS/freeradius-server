@@ -68,7 +68,11 @@ extern fr_dict_attr_t const *attr_tls_session_id;
 
 extern fr_dict_attr_t const *attr_framed_mtu;
 
-extern fr_value_box_t const *enum_tls_packet_type_cache_load;
-extern fr_value_box_t const *enum_tls_packet_type_cache_store;
-extern fr_value_box_t const *enum_tls_packet_type_cache_clear;
-extern fr_value_box_t const *enum_tls_packet_type_certificate;
+extern fr_value_box_t const *enum_tls_packet_type_session_load;
+extern fr_value_box_t const *enum_tls_packet_type_session_store;
+extern fr_value_box_t const *enum_tls_packet_type_session_clear;
+extern fr_value_box_t const *enum_tls_packet_type_certificate_validate;
+
+extern fr_value_box_t const *enum_tls_packet_type_success;
+extern fr_value_box_t const *enum_tls_packet_type_failure;
+extern fr_value_box_t const *enum_tls_packet_type_notfound;

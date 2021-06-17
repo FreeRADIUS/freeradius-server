@@ -1176,7 +1176,30 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 */
 	eap_tls_session->tls_session = tls_session = fr_tls_session_alloc_server(eap_tls_session, ssl_ctx,
 										 request, client_cert);
-	if (!tls_session) return NULL;
+	if (unlikely(!tls_session)) return NULL;
+
+	/*
+	 *	Add the EAP-Identity value to the TLS session so
+	 *	it's available in all the TLS callbacks.
+	 */
+	{
+		fr_pair_t	*identity;
+
+		MEM(identity = fr_pair_afrom_da(tls_session, attr_eap_identity));
+		fr_pair_value_bstrdup_buffer(identity, eap_session->identity, true);
+		fr_tls_session_extra_pair_add_shallow(tls_session, identity);
+	}
+
+	/*
+	 *	Add the EAP-Type we're running to the subrequest.
+	 */
+	{
+		fr_pair_t	*type_vp;
+
+		MEM(type_vp = fr_pair_afrom_da(tls_session, attr_eap_type));
+		type_vp->vp_uint32 = eap_session->type;
+		fr_tls_session_extra_pair_add_shallow(tls_session, type_vp);
+	}
 
 	/*
 	 *	Associate various bits of opaque data with the session.
