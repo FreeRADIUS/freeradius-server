@@ -183,8 +183,67 @@ eap {
 	#  authenticate via EAP-TLS!  This is likely not what you
 	#  want.
 	#
+	#
+	#  [NOTE]
+	#  ====
+	#  As of 4.0 the following TLS config items/config sections have been
+	#  removed.  Equivalent functionality is available.
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Config item | Replacement
+	#
+	#  | `verify_client_cert_cmd`
+	#  | Unlang policy in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#
+	#  | `check_cert_issuer`
+	#  | Unlang policy in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#
+	#  | `check_cert_cn`
+	#  | Unlang policy in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#
+	#  | `ocsp`
+	#  | rlm_ocsp call in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#
+	#  | `staple`
+	#  | rlm_ocsp call in the `staple certificate { ... }` section of the specified `virtual_server`.
+	#  |===
+	#
 	tls-config tls-common {
 		#
+		#  virtual_server::
+		#
+		#  All certificate checks and stateful session resumption calls will be
+		#  made to the virtual server specified here.
+		#
+		#  The virtual server must specify `namespace = tls`, and may contain
+		#  the following sections:
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Section | Purpose
+		#
+		#  | `load session { ... }`
+		#  | Load stateful session information from a cache.
+		#
+		#  | `store session { ... }`
+		#  | Store stateful session information in a cache.
+		#
+		#  | `clear session { ... }`
+		#  | Clear stateful session information from a cache.
+		#
+		#  | `validate certificate { ... }` |
+		#  | Apply policies based on the client certificate presented.
+		#
+		#  | `staple certificate { ... }`
+		#  | Gather stapling information for one or more of our certificates.
+		#  |===
+		#
+		#  More information about the various sections can be found in
+		#  `sites-available/tls`.
+		#
+#		virtual_server = tls
+
 		#  auto_chain::
 		#
 		#  OpenSSL will automatically create certificate chains, unless
@@ -462,37 +521,6 @@ eap {
 #		allow_expired_crl = no
 
 		#
-		#  check_cert_issuer::
-		#
-		#  If `check_cert_issuer` is set, the value will be checked
-		#  against the DN of the issuer in the client certificate.  If
-		#  the values do not match, the certificate verification will
-		#  fail, rejecting the user.
-		#
-		#  This check can be done more generally by checking the value
-		#  of the `TLS-Client-Cert-Issuer` attribute.  This check can be
-		#  done via any mechanism you choose.
-		#
-#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
-
-		#
-		#  check_cert_cn::
-		#
-		#  If `check_cert_cn` is set, the value will be xlat'ed and
-		#  checked against the CN in the client certificate.  If the
-		#  values do not match, the certificate verification will fail
-		#  rejecting the user.
-		#
-		#  This check is done only if the previous `check_cert_issuer`
-		#  is not set, or if the check succeeds.
-		#
-		#  This check can be done more generally by checking the value
-		#  of the `TLS-Client-Cert-Common-Name` attribute.  This check can be done
-		#  via any mechanism you choose.
-		#
-#		check_cert_cn = %{User-Name}
-
-		#
 		#  cipher_list::
 		#
 		#  Set this option to specify the allowed TLS cipher suites.
@@ -584,7 +612,7 @@ eap {
 		#
 		#  NOTE: You must ensure any attributes required for policy
 		#  decisions are cached at the same time as the TLS session
-		#  data. See `sites-available/tls-cache` for documentation on
+		#  data. See `sites-available/tls` for documentation on
 		#  how TLS cache now works.
 		#
 		#  If using the default `tls-cache` virtual server and
@@ -593,25 +621,44 @@ eap {
 		#
 		cache {
 			#
-			#  virtual_server::
+			#  mode:: What type of session caching should be allowed.
 			#
-			#  To enable session resumption, uncomment the virtual
-			#  server entry below, and link
-			#  `sites-available/tls-cache` to `sites-enabled/tls-cache`.
+			#  [options="header,autowidth"]
+			#  |===
+			#  | Value | Description
 			#
-			#  You can disallow resumption for a particular user by
-			#  adding the following attribute to the control item
-			#  list:
+			#  | `disabled`
+			#  | Don't allow any kind of session resumption.
 			#
-			#    Allow-Session-Resumption = No
+			#  | `stateful`
+			#  | Use <= TLS 1.2 style stateful session resumption.
+			#    A unique session-identifier is provided to the client.
+			#    The client provides this identifier during the next
+			#    authentication attempt, and we lookup session information
+			#    based on this identifier.
+			#    A `virtual_server` with `load session { ... }`,
+			#    `store session { ... }` and `clear session { ... }`
+			#    sections must be configured.
 			#
-			#  NOTE: If no virtual_server is specified you *CANNOT* enable
-			#  resumption for just one user by setting the above
-			#  attribute to `yes`.
+			#  | `stateless`
+			#  | Allow session-ticket based resumption.  This requires no
+			#    external support.  All information required for resumption
+			#    is sent to the TLS client in an encrypted session-ticket.
+			#    The client returns this ticket during the next
+			#    authentication attempt.
 			#
-#			virtual_server = 'tls-cache'
+			#  | `auto`
+			#  | Choose an appropriate session resumption type based on
+			#    the TLS version used and whether a `virtual_server` is
+			#    configured and has the required `session` sections.
+			#  |===
+			#
+			# It is recommended to set `mode = auto` *and* provide a
+			# correctly configured `virtual_server`.  wpa_supplicant
+			# does not request/allow session tickets by default for TLS <= 1.2.
+			#
+#			mode = auto
 
-			#
 			#  name:: Name of the context TLS sessions are created under.
 			#
 			#  Qualifies TLS sessions so that they can't be used for
@@ -632,27 +679,10 @@ eap {
 			#  lifetime::
 			#
 			#  The period for which a resumable session remains valid.
-			#  The actual period is the lower of this value, and the
-			#  ttl set in `rlm_cache`.
 			#
 			#  Default is 24hrs inline with RFC 4346.
 			#
 #			lifetime = 86400
-
-			#
-			#  verify:: Revalidate client's certificate chain each time
-			#  a session is resumed.
-			#
-			#  Intermediaries provided by the client are not cached,
-			#  or copied to the server's certificate store, so
-			#  rebuilding the certificate chain will fail if we don't
-			#  have the intermediaries loaded from `ca_file` or `ca_path`.
-			#
-			#  This is useful with long cache lifetimes, where a
-			#  certificate may be revoked in the interim between the
-			#  session being created and re-used.
-			#
-#			verify = no
 
 			#
 			#  require_extended_master_secret::
@@ -686,9 +716,10 @@ eap {
 			#  scoping/threading issues.
 			#
 			#  The following configuration options are deprecated.  TLS
-			#  session caching is now handled by the `cache` module.
-			#  That module is more configurable, and has more back-ends
-			#  than the simple configurations below.
+			#  session caching is now handled by FreeRADIUS
+			#  either using session-tickets (stateless), or using TLS
+			#  `virtual_server` and storing/retrieving sessions to/from
+			#  an external datastore (stateful).
 			#
 			#  * `enable`
 			#  * `persist_dir`
@@ -737,16 +768,6 @@ eap {
 		#  included ONLY in the First packet of a fragment series.
 		#
 #		include_length = yes
-
-		#
-		#  virtual_server::
-		#
-		#  As part of checking a client certificate, the `EAP-TLS` sets
-		#  some attributes such as `TLS-Client-Cert-Common-Name`. This virtual
-		#  server has access to these attributes, and can be used to
-		#  accept or reject the request.
-		#
-#		virtual_server = check-eap-tls
 	}
 
 	#
