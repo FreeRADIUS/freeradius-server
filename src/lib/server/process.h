@@ -211,11 +211,11 @@ SEND(generic)
 	PROCESS_TRACE;
 
 #ifndef NDEBUG
-	if (
+	if (!(
 #  ifdef PROCESS_CODE_DO_NOT_RESPOND
 	    (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) ||
 #  endif
-	    !PROCESS_PACKET_CODE_VALID(request->reply->code)) fr_assert(0);
+	    PROCESS_PACKET_CODE_VALID(request->reply->code))) fr_assert(0);
 #endif
 
 	UPDATE_STATE_CS(reply);
@@ -274,11 +274,11 @@ RESUME(send_generic)
 	PROCESS_TRACE;
 
 #ifndef NDEBUG
-	if (
+	if (!(
 #  ifdef PROCESS_CODE_DO_NOT_RESPOND
-	    (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) &&
+	    (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) ||
 #  endif
-	    !PROCESS_PACKET_CODE_VALID(request->reply->code)) fr_assert(0);
+	    PROCESS_PACKET_CODE_VALID(request->reply->code))) fr_assert(0);
 #endif
 	/*
 	 *	If they delete &reply.Packet-Type, tough for them.
