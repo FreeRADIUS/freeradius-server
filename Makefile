@@ -114,7 +114,7 @@ ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 _:=$(shell $(MAKE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)
 
 ifeq "${LIBRARY_EXT}" ""
-ifneq "$(findstring Darwin,$(shell hostinfo))" ""
+ifneq "$(findstring Darwin,$(shell hostinfo 2>/dev/null))" ""
 LIBRARY_EXT := dylib
 else
 LIBRARY_EXT := so
