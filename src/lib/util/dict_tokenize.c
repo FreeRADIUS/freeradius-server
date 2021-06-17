@@ -1696,7 +1696,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	memset(&base_flags, 0, sizeof(base_flags));
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
-		ctx->stack[ctx->stack_depth].line = line++;
+		ctx->stack[ctx->stack_depth].line = ++line;
 
 		switch (buf[0]) {
 		case '#':
