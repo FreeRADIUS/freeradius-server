@@ -249,6 +249,14 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 
 		if (p) *p = '\0';
 
+		/*
+		 *	Can't load the dictionary we're loading.
+		 */
+		if (dict == *dict_def) {
+			fr_strerror_printf("Cannot reference parent dictionary %s from within the same dictionary", fr_dict_root(dict)->name);
+			return NULL;
+		}
+
 		if (fr_dict_protocol_afrom_file(&other, ref, NULL, filename) < 0) {
 			return NULL;
 		}
