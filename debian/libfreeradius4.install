@@ -9,3 +9,4 @@ usr/lib/freeradius/libfreeradius-util.so
 usr/lib/freeradius/libfreeradius-io.so
 usr/lib/freeradius/libfreeradius-soh.so
 usr/lib/freeradius/libfreeradius-sim.so
+usr/lib/freeradius/libfreeradius-internal.so
