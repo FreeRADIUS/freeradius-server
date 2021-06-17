@@ -21,6 +21,23 @@
  * @file src/lib/server/process.h
  * @brief Declarations for functions which process packet state machines
  *
+ * This is a convenience header to simplify defining packet processing state machines.
+ *
+ * The following macros should be defined before this header is included:
+ *
+ * - PROCESS_INST			the structure that holds instance data for the process module.
+ * - PROCESS_PACKET_TYPE		an enum, or generic type (uint32) that can hold
+ *					all valid packet types.
+ * - PROCESS_PACKET_CODE_VALID		the name of a macro which accepts one argument
+ *      				and evaluates to true if the packet code is valid.
+ *
+ * The following macros may (optionally) be defined before this header is included:
+ *
+ * - PROCESS_CODE_MAX			the highest valid protocol packet code + 1.
+ * - PROCESS_DO_NOT_RESPOND		The packet code that's used to indicate that no response
+ *					should be sent.
+ * - PROCESS_STATE_EXTRA_FIELDS		extra fields to add to the fr_process_state_t structure.
+ *
  * @copyright 2021 The FreeRADIUS server project
  * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
  */
@@ -31,8 +48,7 @@ extern "C" {
 
 #include <freeradius-devel/server/virtual_servers.h>
 
-/*
- *	Define a processing module.
+/** Common public symbol definition for all process modules
  */
 typedef struct fr_process_module_s {
 	DL_MODULE_COMMON;				//!< Common fields for all loadable modules.
@@ -43,21 +59,27 @@ typedef struct fr_process_module_s {
 	fr_dict_t const			**dict;		//!< pointer to local fr_dict_t *
 } fr_process_module_t;
 
+/** Trace each state function as it's entered
+ */
 #ifndef NDEBUG
 #  define PROCESS_TRACE	RDEBUG3("Entered state %s", __FUNCTION__)
 #else
 #  define PROCESS_TRACE
 #endif
 
-#ifdef PROCESS_CODE_MAX
+/** Convenience macro for providing CONF_SECTION offsets in section compilation arrays
+ *
+ */
+#ifdef PROCESS_INST
+#  define PROCESS_CONF_OFFSET(_x)	offsetof(PROCESS_INST, sections._x)
+#endif
 
+#if defined(PROCESS_INST) && defined(PROCESS_PACKET_TYPE) && defined(PROCESS_PACKET_CODE_VALID)
 typedef PROCESS_PACKET_TYPE fr_process_rcode_t[RLM_MODULE_NUMCODES];
 
 #ifndef PROCESS_STATE_EXTRA_FIELDS
 #  define PROCESS_STATE_EXTRA_FIELDS
 #endif
-
-#define PROCESS_CONF_OFFSET(_x)	offsetof(PROCESS_INST, sections._x)
 
 /*
  *	Process state machine tables for rcode to packet.
@@ -77,10 +99,11 @@ typedef struct {
 /*
  *	Process state machine functions
  */
-#define UPDATE_STATE_CS(_x) do { \
-			state = &process_state[request->_x->code]; \
-			memcpy(&cs, (CONF_SECTION * const *) (((uint8_t const *) &inst->sections) + state->section_offset), sizeof(cs)); \
-		} while (0)
+#define UPDATE_STATE_CS(_x) \
+do { \
+	state = &process_state[request->_x->code]; \
+	memcpy(&cs, (CONF_SECTION * const *) (((uint8_t const *) &inst->sections) + state->section_offset), sizeof(cs)); \
+} while (0)
 
 #define UPDATE_STATE(_x) state = &process_state[request->_x->code]
 
@@ -91,6 +114,7 @@ static fr_process_state_t const process_state[];
 #define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
 #define SEND_NO_RCTX(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 #define RESUME_NO_RCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+#define RESUME_NO_MCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
 
 #define CALL_RECV(_x) recv_ ## _x(p_result, mctx, request);
@@ -120,10 +144,7 @@ RECV(generic)
 	}
 
 
-	if (cs) {
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-		fr_assert(strcmp(cf_section_name1(cs), "recv") == 0);
-	}
+	if (cs) RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
 					      NULL, NULL);
@@ -144,7 +165,10 @@ RESUME(recv_generic)
 
 	request->reply->code = state->packet_type[rcode];
 	if (!request->reply->code) request->reply->code = state->default_reply;
+#ifdef PROCESS_CODE_DO_NOT_RESPOND
 	if (!request->reply->code) request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
+
+#endif
 	fr_assert(request->reply->code != 0);
 
 	UPDATE_STATE_CS(reply);
@@ -153,6 +177,28 @@ RESUME(recv_generic)
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->send,
 					      NULL, rctx);
+}
+
+RESUME_NO_MCTX(recv_no_send)
+{
+	rlm_rcode_t			rcode = *p_result;
+	fr_process_state_t const	*state;
+
+	PROCESS_TRACE;
+
+	fr_assert(rcode < RLM_MODULE_NUMCODES);
+
+	UPDATE_STATE(packet);
+
+	request->reply->code = state->packet_type[rcode];
+	if (!request->reply->code) request->reply->code = state->default_reply;
+#ifdef PROCESS_CODE_DO_NOT_RESPOND
+	if (!request->reply->code) request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
+
+#endif
+	fr_assert(request->reply->code != 0);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 SEND(generic)
@@ -164,8 +210,13 @@ SEND(generic)
 
 	PROCESS_TRACE;
 
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code) ||
-	          (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND));
+#ifndef NDEBUG
+	if (
+#  ifdef PROCESS_CODE_DO_NOT_RESPOND
+	    (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) &&
+#  endif
+	    !PROCESS_PACKET_CODE_VALID(request->reply->code)) fr_assert(0);
+#endif
 
 	UPDATE_STATE_CS(reply);
 
@@ -188,7 +239,11 @@ SEND(generic)
 		break;
 
 	case 1:	/* Exists */
-		if ((vp->vp_uint32 != PROCESS_CODE_MAX) && PROCESS_PACKET_CODE_VALID(vp->vp_uint32) &&
+		if (
+#ifdef PROCESS_CODE_MAX
+		    (vp->vp_uint32 != PROCESS_CODE_MAX) &&
+#endif
+		    PROCESS_PACKET_CODE_VALID(vp->vp_uint32) &&
 		    process_state[vp->vp_uint32].send) {
 			request->reply->code = vp->vp_uint32;
 			UPDATE_STATE_CS(reply);
@@ -202,10 +257,7 @@ SEND(generic)
 		MEM(0);
 	}
 
-	if (cs) {
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-		fr_assert(strcmp(cf_section_name1(cs), "send") == 0);
-	}
+	if (cs) RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
@@ -221,9 +273,13 @@ RESUME(send_generic)
 
 	PROCESS_TRACE;
 
-	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code) ||
-		  (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND));
-
+#ifndef NDEBUG
+	if (
+#  ifdef PROCESS_CODE_DO_NOT_RESPOND
+	    (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) &&
+#  endif
+	    !PROCESS_PACKET_CODE_VALID(request->reply->code)) fr_assert(0);
+#endif
 	/*
 	 *	If they delete &reply.Packet-Type, tough for them.
 	 */
@@ -246,7 +302,10 @@ RESUME(send_generic)
 		 *	that there isn't a loop in the state machine
 		 *	definitions.
 		 */
-		if ((request->reply->code != PROCESS_CODE_DO_NOT_RESPOND) &&
+		if (
+#ifdef PROCESS_CODE_DO_NOT_RESPOND
+		    (request->reply->code != PROCESS_CODE_DO_NOT_RESPOND) &&
+#endif
 		    (state->packet_type[rcode] != request->reply->code)) {
 			char const *old = cf_section_name2(cs);
 
@@ -263,6 +322,7 @@ RESUME(send_generic)
 		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
 		break;
 
+#ifdef PROCESS_CODE_DO_NOT_RESPOND
 	case PROCESS_CODE_DO_NOT_RESPOND:
 		/*
 		 *	There might not be send section defined
@@ -274,10 +334,12 @@ RESUME(send_generic)
 		}
 		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 		break;
+#endif
 	}
 
 	request->reply->timestamp = fr_time();
 
+#ifdef PROCESS_CODE_DO_NOT_RESPOND
 	/*
 	 *	Check for "do not respond".
 	 */
@@ -285,11 +347,12 @@ RESUME(send_generic)
 		RDEBUG("Not sending reply to client");
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+#endif
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-#endif	/* PROCESS_CODE_MAX */
+#endif	/* defined(PROCESS_INST) && defined(PROCESS_PACKET_TYPE) && defined(PROCESS_PACKET_CODE_VALID) */
 
 #ifdef __cplusplus
 }
