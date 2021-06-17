@@ -221,8 +221,8 @@ static void strerror_const_benchmark(void)
 	rate = (uint64_t)((float)NSEC / ((stop - start) / 100000));
 	printf("const pop rate %" PRIu64 "\n", rate);
 
-	/* Normally well above 10M, but 8M observed in CI */
-	TEST_CHECK(rate > 8000000);
+	/* Normally well above 10M, but 6M observed in CI */
+	TEST_CHECK(rate > 6000000);
 }
 
 
