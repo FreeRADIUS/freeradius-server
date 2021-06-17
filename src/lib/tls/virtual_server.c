@@ -37,43 +37,40 @@
  *
  * This function will setup a TLS subrequest to run a virtual server section.
  *
- * @param[out] p_rcode		Where to store the result of the virtual server
- *      			called.
  * @param[out] child		to run as a subrequest of the parent.
  * @param[in] resume		Function to call after the virtual server
  *      			finishes processing the request. uctx will
  *				be a pointer to the provided tls_session.
- * @param[in] request		The current request.
  * @param[in] conf		the tls configuration.
  * @param[in] tls_session	The current tls_session.
  * @return
  *      - 0 on success.
  *	- -1 on failure.
  */
-unlang_action_t fr_tls_call_push(UNUSED rlm_rcode_t *p_rcode, request_t *child, unlang_function_t resume,
-				 request_t *request, fr_tls_conf_t *conf, fr_tls_session_t *tls_session)
+unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
+				 fr_tls_conf_t *conf, fr_tls_session_t *tls_session)
 {
 	fr_assert(tls_session->cache);
-
-	/*
-	 *	Setup a function to execute after the
-	 *	subrequest completes.  This function performs
-	 *	the session deserialisation.
-	 */
-	if (unlang_function_push(request, NULL, resume,
-				 NULL, UNLANG_SUB_FRAME, tls_session) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Sets up a dispatch frame in the parent
 	 *	and a result processing frame in the child.
 	 */
-	if (unlang_subrequest_child_push(&tls_session->cache->load.rcode, child,
+	if (unlang_subrequest_child_push(NULL, child,
 					 &(unlang_subrequest_session_t){
 						.enable = true,
 						.unique_ptr = tls_session
-					 }, UNLANG_SUB_FRAME) < 0) {
+					 },
+					 true, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
+
+	/*
+	 *	Setup a function to execute after the
+	 *	subrequest completes.
+	 */
+	if (unlang_function_push(child, NULL, resume,
+				 NULL, UNLANG_SUB_FRAME, tls_session) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Now the child and parent stacks are both

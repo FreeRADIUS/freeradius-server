@@ -206,20 +206,24 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 	 *	Push a resume frame into the child
 	 */
 	if (unlang_function_push(child, NULL,
-					   unlang_subrequest_child_done,
-					   unlang_subrequest_child_signal, UNLANG_TOP_FRAME, state) < 0) return -1;
+				 unlang_subrequest_child_done,
+				 unlang_subrequest_child_signal, UNLANG_TOP_FRAME, state) < 0) return -1;
 
 	return_point_set(frame_current(child));	/* Stop return going through the resumption frame */
 
 	return 0;
 }
 
-/** Dummy function to run on resumption
+/** Function to run in the context of the parent on resumption
  *
  */
 static unlang_action_t unlang_subrequest_calculate_result(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
-							  UNUSED unlang_stack_frame_t *frame)
+							  unlang_stack_frame_t *frame)
 {
+	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
+
+	if (state->free_child) unlang_subrequest_detach_and_free(&state->child);
+
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -286,6 +290,10 @@ unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED
  * @param[in] out		Where to write the result of the subrequest.
  * @param[in] child		to push.
  * @param[in] session		control values.  Whether we restore/store session info.
+ * @param[in] free_child	automatically free the child when it's finished executing.
+ *				This is useful if extracting the result from the child is
+ *				done using the child's stack, and so the parent never needs
+ *				to access it.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  * @return
@@ -294,7 +302,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED
  */
 int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 				 unlang_subrequest_session_t const *session,
-				 bool top_frame)
+				 bool free_child, bool top_frame)
 {
 	unlang_frame_state_subrequest_t	*state;
 	unlang_stack_frame_t		*frame;
@@ -320,6 +328,11 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	state->p_result = out;
 	state->child = child;
 	state->session = *session;
+	state->free_child = free_child;
+
+	if (!fr_cond_assert_msg(stack_depth_current(child) == 0,
+				"Child stack depth must be 0 (not %u), when subrequest_child_push is called",
+				stack_depth_current(child))) return -1;
 
 	/*
 	 *	Push a resumption frame onto the stack

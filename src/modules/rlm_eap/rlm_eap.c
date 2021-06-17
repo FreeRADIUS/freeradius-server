@@ -770,7 +770,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 */
 	if (unlang_subrequest_child_push(&eap_session->submodule_rcode, eap_session->subrequest,
 					 &(unlang_subrequest_session_t){ .enable = true, .unique_ptr = eap_session },
-					 UNLANG_SUB_FRAME) < 0) {
+					 false, UNLANG_SUB_FRAME) < 0) {
 	child_fail:
 		unlang_interpet_frame_discard(request);	/* Ensure the yield frame doesn't stick around */
 		goto fail;

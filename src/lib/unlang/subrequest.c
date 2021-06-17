@@ -234,7 +234,6 @@ static unlang_action_t unlang_subrequest_parent_init(rlm_rcode_t *p_result, requ
 				  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) goto fail;
 
 	state->p_result = p_result;
-	state->free_child = true;
 	state->detachable = true;
 
 	/*
@@ -245,7 +244,7 @@ static unlang_action_t unlang_subrequest_parent_init(rlm_rcode_t *p_result, requ
 	state->session.unique_ptr = frame->instruction;
 	state->session.unique_int = 0;
 
-	frame->process = unlang_subrequest_parent_resume;
+	frame_repeat(frame, unlang_subrequest_parent_resume);
 
 	return unlang_subrequest_child_run(p_result, request, frame);	/* returns UNLANG_ACTION_YIELD */
 }
