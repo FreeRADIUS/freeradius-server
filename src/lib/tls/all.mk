@@ -11,7 +11,6 @@ SOURCES	:= \
 	ctx.c \
 	engine.c \
 	log.c \
-	ocsp.c \
 	pairs.c \
 	session.c \
 	utils.c \

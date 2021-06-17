@@ -1,0 +1,227 @@
+
+
+		#
+		#  ### OCSP Configuration
+		#
+		#  Certificates can be verified against an OCSP Responder.
+		#  This makes it possible to immediately revoke certificates without
+		#  the distribution of new Certificate Revocation Lists (CRLs).
+		#
+		#  In addition to the configuration items below, the behaviour of
+		#  OCSP can be altered by runtime attributes.
+		#
+		#  If OCSP is enabled, the `&reply.TLS-OCSP-Cert-Valid` attribute will
+		#  be added after OCSP completes.  One of the following values will
+		#  be set:
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Value   | Description
+		#  | no      | OCSP responder indicated the certificate is not valid.
+		#  | yes     | OCSP responder indicated the certificate is valid.
+		#  | skipped | OCSP checks were skipped.
+		#  |===
+		#
+		#  If an OCSP check is performed, the `&reply.TLS-OCSP-Next-Update`
+		#  attribute will also be added.  The value of this will attribute
+		#  be the number of seconds until the certificate state need be refreshed.
+		#  This can be used as a `Cache-TTL` value if you wish to use the cache
+		#  module to store OCSP certificate validation status.
+		#
+		#  If when the OCSP check is performed, a `&control.TLS-OCSP-Cert-Valid`
+		#  attribute is present, its value will force the outcome of the OCSP
+		#  check, and the OCSP responder will not be contacted.
+		#  Values map to the following OCSP responses:
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Value   | Description
+		#  | no      | Invalid.
+		#  | yes     | Valid.
+		#  | skipped | If `softfail = yes` value else invalid.
+		#  |===
+		#
+		ocsp {
+			#
+			#  enable::
+			#
+			#  Deleting the entire `ocsp` subsection also disables ocsp checking.
+			#
+			#  Default is `no`.
+			#
+#			enable = no
+
+			#
+			#  virtual_server::
+			#
+			#  OCSP checks are performed immediately after the
+			#  complete certificate is received from the supplicant,
+			#  and directly after the attributes from that
+			#  certificate are inserted into the request.
+			#
+			#  In order to retrieve cached OCSP states, a virtual
+			#  server must be defined here.
+			#
+			#  See `raddb/sites-available/tls-cache` for details.
+			#
+#			virtual_server = 'tls-cache'
+
+			#
+			#  override_cert_url::
+			#
+			#  The OCSP Responder URL can be automatically extracted
+			#  from the certificate in question. To override the
+			#  OCSP Responder URL set `override_cert_url = yes`.
+			#
+			override_cert_url = yes
+
+			#
+			#  url::
+			#
+			#  If the OCSP Responder address is not extracted from
+			#  the certificate, the URL can be defined here.
+			#
+			url = "http://127.0.0.1/ocsp/"
+
+			#
+			#  use_nonce::
+			#
+			#  If the OCSP Responder can not cope with nonce in the
+			#  request, then it can be disabled here.
+			#
+			#  [WARNING]
+			#  ====
+			#  * For security reasons, disabling this option is not
+			#  recommended as nonce protects against replay attacks.
+			#
+			#  * Microsoft AD Certificate Services OCSP
+			#  Responder does not enable nonce by default. It is more
+			#  secure to enable nonce on the responder than to
+			#  disable it in the query here.
+			#
+			#  See http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
+			#  ====
+			#
+#			use_nonce = yes
+
+			#
+			#  timeout::
+			#
+			#  Number of seconds before giving up waiting for OCSP
+			#  response.
+			#
+			#  Default is `0`.
+			#
+#			timeout = 0
+
+			#
+			#  softfail::
+			#
+			#  Normally an error in querying the OCSP responder (no
+			#  response from server, server did not understand the
+			#  request, etc) will result in a validation failure.
+			#
+			#  To treat these errors as `soft` failures and still
+			#  accept the certificate, enable this option.
+			#
+			#  WARNING: this may enable clients with revoked
+			#  certificates to connect if the OCSP responder is not
+			#  available. *Use with caution*.
+			#
+#			softfail = no
+		}
+
+		#
+		#  ### OCSP stapling for server certificates
+		#
+		#  If requested, we query either the server listed below (as url),
+		#  or the one specified in our server certificate, to retrieve an
+		#  OCSP response to pass back to the TLS client.
+		#
+		#  staple { ... }::
+		#
+		#  This allows TLS clients to check for certificate revocation before
+		#  divulging credentials to a (possibly rogue) server, that may be
+		#  presenting a compromised certificate.
+		#
+		staple {
+			#
+			#  enable::
+			#
+			#  Enable it. Deleting the entire `ocsp` subsection also disables ocsp checking.
+			#
+			#  Default is `no`.
+			#
+#			enable = no
+
+			#
+			#  virtual_server::
+			#
+			#  OCSP checks are performed whenever a TLS client includes
+			#  an OCSP stapling extension.
+			#
+			#  In order to retrieve cached OCSP staples, a virtual
+			#  server must be defined here.
+			#
+			#  The same virtual server can be used for caching
+			#  client OCSP response states, and stapling information.
+			#
+			#  See `raddb/sites-available/tls-cache` for details.
+			#
+#			virtual_server = 'tls-cache'
+
+			#
+			#  override_cert_url::
+			#
+			#  The OCSP Responder URL can be automatically extracted
+			#  from the certificate in question. To override the
+			#  OCSP Responder URL set `override_cert_url = yes`.
+			#
+			override_cert_url = yes
+
+			#
+			#  url::
+			#
+			#  If the OCSP Responder address is not extracted from
+			#  the certificate, the URL can be defined here.
+			#
+			url = "http://127.0.0.1/ocsp/"
+
+			#
+			#  use_nonce::
+			#
+			#  If the OCSP Responder can not cope with nonce in the
+			#  request, then it can be disabled here.
+			#
+			#  [WARNING]
+			#  ====
+			#  * For security reasons, disabling this option is not
+			#  recommended as nonce protects against replay attacks.
+			#
+			#  * Microsoft AD Certificate Services OCSP
+			#  Responder does not enable nonce by default. It is more
+			#  secure to enable nonce on the responder than to
+			#  disable it in the query here. See
+			#  http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
+			#  ====
+			#
+#			use_nonce = yes
+
+			#
+			#  Number of seconds before giving up waiting for OCSP
+			#  response.
+			#
+			#  Default is `0`.
+			#
+#			timeout = 0
+
+			#
+			#  softfail::
+			#
+			#  Normally if we can't query the OCSP Responder
+			#  we issue a fatal alert, and abort.  Set this to `true`
+			#  to allow the session to continue without an OCSP
+			#  stapling response being sent to the TLS client.
+			#
+#			softfail = no
+		}

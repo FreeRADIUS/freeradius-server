@@ -187,11 +187,7 @@ CONF_PARSER fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("cache", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) cache_config },
 
-#ifdef HAVE_OPENSSL_OCSP_H
-	{ FR_CONF_OFFSET("ocsp", FR_TYPE_SUBSECTION, fr_tls_conf_t, ocsp), .subcs = (void const *) ocsp_config },
-
-	{ FR_CONF_OFFSET("staple", FR_TYPE_SUBSECTION, fr_tls_conf_t, staple), .subcs = (void const *) ocsp_config },
-#endif
+	{ FR_CONF_DEPRECATED("verify", FR_TYPE_SUBSECTION, fr_tls_conf_t, NULL) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -327,22 +323,9 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
  *	added to automatically free the data when the CONF_SECTION
  *	is freed.
  */
-static int _conf_server_free(
-#if !defined(HAVE_OPENSSL_OCSP_H) && defined(NDEBUG)
-			     UNUSED
-#endif
-			     fr_tls_conf_t *conf)
+static int _conf_server_free(fr_tls_conf_t *conf)
 {
-#ifdef HAVE_OPENSSL_OCSP_H
-	if (conf->ocsp.store) X509_STORE_free(conf->ocsp.store);
-	conf->ocsp.store = NULL;
-	if (conf->staple.store) X509_STORE_free(conf->staple.store);
-	conf->staple.store = NULL;
-#endif
-
-#ifndef NDEBUG
 	memset(conf, 0, sizeof(*conf));
-#endif
 	return 0;
 }
 
@@ -396,28 +379,6 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 #ifdef __APPLE__
 	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
-
-#ifdef HAVE_OPENSSL_OCSP_H
-	/*
-	 *	@fixme:  This is all pretty terrible.
-	 *	The stores initialized here are for validating
-	 *	OCSP responses.  They have nothing to do with
-	 *	verifying other certificates.
-	 */
-
-	/*
-	 * 	Initialize OCSP Revocation Store
-	 */
-	if (conf->ocsp.enable) {
-		conf->ocsp.store = conf_ocsp_revocation_store(conf);
-		if (conf->ocsp.store == NULL) goto error;
-	}
-
-	if (conf->staple.enable) {
-		conf->staple.store = conf_ocsp_revocation_store(conf);
-		if (conf->staple.store == NULL) goto error;
-	}
-#endif /*HAVE_OPENSSL_OCSP_H*/
 
 	/*
 	 *	Ensure our virtual server contains the
@@ -500,32 +461,6 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 	if (conf->cache.mode & FR_TLS_CACHE_STATELESS) {
 		fr_rand_buffer(conf->cache.session_ticket_key_rand, sizeof(conf->cache.session_ticket_key_rand));
 	}
-
-#ifdef HAVE_OPENSSL_OCSP_H
-	if (conf->ocsp.cache_server) {
-		CONF_SECTION *server_cs;
-
-		server_cs = virtual_server_find(conf->ocsp.cache_server);
-		if (!server_cs) {
-			ERROR("No such virtual server '%s'", conf->ocsp.cache_server);
-			goto error;
-		}
-
-		if (fr_tls_ocsp_state_cache_compile(&conf->ocsp.cache, server_cs) < 0) goto error;
-	}
-
-	if (conf->staple.cache_server) {
-		CONF_SECTION *server_cs;
-
-		server_cs = virtual_server_find(conf->staple.cache_server);
-		if (!server_cs) {
-			ERROR("No such virtual server '%s'", conf->staple.cache_server);
-			goto error;
-		}
-
-		if (fr_tls_ocsp_staple_cache_compile(&conf->staple.cache, server_cs) < 0) goto error;
-	}
-#endif
 
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
