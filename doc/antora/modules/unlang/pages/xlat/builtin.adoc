@@ -901,29 +901,5 @@ if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
 The user@example.com { login=user, domain=example.com }
 ```
 
-### %{sub:/<regex>/[flags] <replace> <subject>}
-
-Substitute text just as easily as it can match it, even using regex patterns.
-
-.Return: _string_.
-
-.Example
-
-[source,unlang]
-----
-update control {
-    &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
-}
-update reply {
-    &Reply-Message := "%{sub:/ / , %{control.Tmp-String-0}}"
-}
-----
-
-.Output
-
-```
-Caipirinha,is,a,light,and,refreshing,drink!
-```
-
 // Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
