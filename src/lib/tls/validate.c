@@ -237,38 +237,6 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	}
 
 	/*
-	 *	If the conf tells us to, check cert issuer
-	 *	against the specified value and fail
-	 *	verification if they don't match.
-	 */
-	if (conf->check_cert_issuer && (strcmp(issuer, conf->check_cert_issuer) != 0)) {
-		REDEBUG("Certificate issuer (%s) does not match specified value (%s)!",
-			issuer, conf->check_cert_issuer);
-		my_ok = 0;
-	}
-
-	/*
-	 *	If the conf tells us to, check the CN in the
-	 *	cert against xlat'ed value, but only if the
-	 *	previous checks passed.
-	 */
-	if (my_ok && conf->check_cert_cn) {
-		char cn_str[1024];
-
-		if (xlat_eval(cn_str, sizeof(cn_str), request, conf->check_cert_cn, NULL, NULL) < 0) {
-			/* if this fails, fail the verification */
-			my_ok = 0;
-		} else {
-			RDEBUG2("checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
-			if (strcmp(cn_str, common_name) != 0) {
-				REDEBUG("Certificate CN (%s) does not match specified value (%s)!",
-					common_name, cn_str);
-				my_ok = 0;
-			}
-		}
-	} /* check_cert_cn */
-
-	/*
 	 *	If we have a client certificate, cache whether or not
 	 *	we validated it.
 	 */

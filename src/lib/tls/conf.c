@@ -169,14 +169,11 @@ CONF_PARSER fr_tls_server_config[] = {
 	{ FR_CONF_DEPRECATED("check_all_crl", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
 #endif
 	{ FR_CONF_OFFSET("allow_expired_crl", FR_TYPE_BOOL, fr_tls_conf_t, allow_expired_crl) },
-	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
 	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, fr_tls_conf_t, cipher_list) },
 	{ FR_CONF_OFFSET("cipher_server_preference", FR_TYPE_BOOL, fr_tls_conf_t, cipher_server_preference), .dflt = "yes" },
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 	{ FR_CONF_OFFSET("allow_renegotiation", FR_TYPE_BOOL, fr_tls_conf_t, allow_renegotiation), .dflt = "no" },
 #endif
-	{ FR_CONF_OFFSET("check_cert_issuer", FR_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
-	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, fr_tls_conf_t, require_client_cert) },
 
 #ifndef OPENSSL_NO_ECDH
 	{ FR_CONF_OFFSET("ecdh_curve", FR_TYPE_STRING, fr_tls_conf_t, ecdh_curve), .dflt = "prime256v1" },
@@ -188,6 +185,8 @@ CONF_PARSER fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("cache", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) cache_config },
 
 	{ FR_CONF_DEPRECATED("verify", FR_TYPE_SUBSECTION, fr_tls_conf_t, NULL) },
+	{ FR_CONF_DEPRECATED("check_cert_issuer", FR_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
+	{ FR_CONF_DEPRECATED("check_cert_cn", FR_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -209,9 +208,8 @@ CONF_PARSER fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, fr_tls_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, fr_tls_conf_t, fragment_size), .dflt = "1024" },
 	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
-	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
+
 	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, fr_tls_conf_t, cipher_list) },
-	{ FR_CONF_OFFSET("check_cert_issuer", FR_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
 
 #ifndef OPENSSL_NO_ECDH
 	{ FR_CONF_OFFSET("ecdh_curve", FR_TYPE_STRING, fr_tls_conf_t, ecdh_curve), .dflt = "prime256v1" },
@@ -221,6 +219,8 @@ CONF_PARSER fr_tls_client_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
+	{ FR_CONF_DEPRECATED("check_cert_issuer", FR_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
+	{ FR_CONF_DEPRECATED("check_cert_cn", FR_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
 };
 

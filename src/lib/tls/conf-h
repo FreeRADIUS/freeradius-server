@@ -131,14 +131,12 @@ struct fr_tls_conf_s {
 
 	bool		check_crl;			//!< Check certificate revocation lists.
 	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
-	char const	*check_cert_cn;			//!< Verify cert CN matches the expansion of this string.
 
 	char const	*cipher_list;			//!< Acceptable ciphers.
 	bool		cipher_server_preference;	//!< use server preferences for cipher selection
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 	bool		allow_renegotiation;		//!< Whether or not to allow cipher renegotiation.
 #endif
-	char const	*check_cert_issuer;		//!< Verify cert issuer matches the expansion of this string.
 
 	bool		require_client_cert;
 
