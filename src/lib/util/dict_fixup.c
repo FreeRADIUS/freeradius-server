@@ -412,23 +412,8 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	fr_dict_attr_t		*cloned;
 	fr_dict_t		*dict = fr_dict_unconst(fr_dict_by_da(fixup->da));
 
-	/*
-	 *	We can't clone our parents.
-	 */
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), fixup->ref);
-	if (da) {
-		fr_dict_attr_t const *old;
-
-		old = fr_dict_attr_common_parent(da, fixup->da, false);
-		if (old) {
-			fr_strerror_printf("Clone references MUST NOT refer to a parent attribute %s at %s[%d]",
-					   old->name, fr_cwd_strip(fixup->common.filename), fixup->common.line);
-			return -1;
-		}
-	} else {
-		da = dict_find_or_load_reference(&dict, fixup->ref, fixup->common.filename, fixup->common.line);
-		if (!da) return -1;
-	}
+	da = dict_find_or_load_reference(&dict, fixup->ref, fixup->common.filename, fixup->common.line);
+	if (!da) return -1;
 
 	/*
 	 *	We can only clone attributes of the same data type.
