@@ -260,6 +260,8 @@ static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb
 		case FR_TYPE_IPV6_PREFIX:
 		case FR_TYPE_IFID:
 		case FR_TYPE_ETHERNET:
+		case FR_TYPE_COMBO_IP_ADDR:
+		case FR_TYPE_COMBO_IP_PREFIX:
 			val = to_cast;		/* No conversions required */
 			break;
 
