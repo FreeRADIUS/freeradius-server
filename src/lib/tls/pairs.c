@@ -100,7 +100,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx,
 					fr_tls_session_t *tls_session, X509 *cert, int depth)
 {
-	char		buffer[2048];
+	char		buffer[1024];
 	char		attribute[256];
 	char		**identity;
 	int		attr_index, loc;
