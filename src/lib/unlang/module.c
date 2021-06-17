@@ -573,8 +573,7 @@ unlang_action_t unlang_module_yield(request_t *request,
 	 *	so that the resume function is always
 	 *	called going back up the stack.
 	 */
-	frame->process = unlang_module_resume;
-	repeatable_set(frame);
+	frame_repeat(frame, unlang_module_resume);
 
 	return UNLANG_ACTION_YIELD;
 }
@@ -740,8 +739,11 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		 *	and when the I/O operation completes
 		 *	it shouldn't be called again.
 		 */
-		if (!state->resume) frame->process = unlang_module_resume_done;
-		repeatable_set(frame);
+		if (!state->resume) {
+			frame_repeat(frame, unlang_module_resume_done);
+		} else {
+			repeatable_set(frame);
+		}
 		return UNLANG_ACTION_YIELD;
 
 	/*
@@ -760,10 +762,11 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		 *	after the child returns.
 		 */
 		if (!state->resume) {
-			frame->process = unlang_module_resume_done;
+			frame_repeat(frame, unlang_module_resume_done);
 			state->set_rcode = false;	/* Preserve the child rcode */
+		} else {
+			repeatable_set(frame);
 		}
-		repeatable_set(frame);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case UNLANG_ACTION_CALCULATE_RESULT:
@@ -880,11 +883,10 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		 *	it shouldn't be called again.
 		 */
 		if (!state->resume) {
-			frame->process = unlang_module_resume_done;
+			frame_repeat(frame, unlang_module_resume_done);
 		} else {
-			frame->process = unlang_module_resume;
+			frame_repeat(frame, unlang_module_resume);
 		}
-		repeatable_set(frame);
 		return UNLANG_ACTION_YIELD;
 
 	/*
@@ -903,10 +905,11 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		 *	after the child returns.
 		 */
 		if (!state->resume) {
-			frame->process = unlang_module_done;
+			frame_repeat(frame, unlang_module_done);
 			state->set_rcode = false;	/* Preserve the child rcode */
+		} else {
+			repeatable_set(frame);
 		}
-		repeatable_set(frame);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case UNLANG_ACTION_CALCULATE_RESULT:

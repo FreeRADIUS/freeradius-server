@@ -276,12 +276,11 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 	fr_value_box_list_init(&update_state->lhs_result);
 	fr_value_box_list_init(&update_state->rhs_result);
 	fr_dlist_init(&update_state->vlm_head, vp_list_mod_t, entry);
-	repeatable_set(frame);
 
 	/*
 	 *	Call list_mod_create
 	 */
-	frame->process = list_mod_create;
+	frame_repeat(frame, list_mod_create);
 	return list_mod_create(p_result, request, frame);
 }
 

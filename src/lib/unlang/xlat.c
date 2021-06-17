@@ -287,8 +287,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 	case XLAT_ACTION_PUSH_CHILD:
 		fr_assert(child);
 
-		repeatable_set(frame);
-		frame->process = unlang_xlat_repeat;
+		frame_repeat(frame, unlang_xlat_repeat);
 
 		/*
 		 *	Clear out the results of any previous expansions

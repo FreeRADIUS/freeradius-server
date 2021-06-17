@@ -404,8 +404,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 	 *	a function to process the results
 	 *	of the children.
 	 */
-	frame->process = unlang_parallel_resume;
-	repeatable_set(frame);
+	frame_repeat(frame, unlang_parallel_resume);
 
 	/*
 	 *	Yield to the children

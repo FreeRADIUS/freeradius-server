@@ -134,11 +134,7 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	 *	eventually start heading back up the stack.
 	 */
 	default:
-		if (state->repeat) {
-			frame->process = unlang_function_call_repeat;
-			repeatable_set(frame);
-		}
-
+		if (state->repeat) frame_repeat(frame, unlang_function_call_repeat);
 	}
 	request->module = caller;
 

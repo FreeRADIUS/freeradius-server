@@ -285,9 +285,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	}
 
 	fr_dlist_talloc_free(&state->box); /* this is the xlat expansion, and not the output string we want */
-
-	frame->process = unlang_tmpl_exec_wait_final;
-	repeatable_set(frame);
+	frame_repeat(frame, unlang_tmpl_exec_wait_final);
 
 	return UNLANG_ACTION_YIELD;
 }
@@ -348,9 +346,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 		 *	Inline exec's are only called from in-line
 		 *	text in the configuration files.
 		 */
-		frame->process = unlang_tmpl_exec_nowait_resume;
-
-		repeatable_set(frame);
+		frame_repeat(frame, unlang_tmpl_exec_nowait_resume);
 		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
@@ -362,8 +358,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	 *	XLAT structs are allowed.
 	 */
 	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
-		frame->process = unlang_tmpl_resume;
-		repeatable_set(frame);
+		frame_repeat(frame, unlang_tmpl_resume);
 		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
@@ -392,8 +387,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	/*
 	 *	Expand the arguments to the program we're executing.
 	 */
-	frame->process = unlang_tmpl_exec_wait_resume;
-	repeatable_set(frame);
+	frame_repeat(frame, unlang_tmpl_exec_wait_resume);
 	if (unlang_xlat_push(state->ctx, &state->box, request, xlat, false) < 0) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
