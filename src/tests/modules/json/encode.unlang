@@ -1,7 +1,9 @@
 #
 #	json_encode tests
 #
-
+update {
+        &request.Packet-Type !* ANY
+}
 
 # 0. Check basic xlat parsing
 

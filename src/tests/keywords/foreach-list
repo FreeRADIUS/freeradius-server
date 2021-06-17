@@ -1,3 +1,7 @@
+update {
+        &request.Packet-Type !* ANY
+}
+
 foreach &request {
 	update reply {
 		&Called-Station-Id += "%{Foreach-Variable-0}"

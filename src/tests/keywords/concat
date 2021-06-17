@@ -2,6 +2,10 @@
 # PRE: update if
 #
 update {
+	&request.Packet-Type !* ANY
+}
+
+update {
 	&request.Tmp-String-0 := "ab c"
 	&request.Tmp-String-0 += "de fg"
 	&request.Tmp-Integer-0 := 123

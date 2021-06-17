@@ -1,6 +1,9 @@
 #
 # PRE: update if concat
 #
+update {
+        &request.Packet-Type !* ANY
+}
 
 update {
         &request.Tmp-String-0 := "ab c"

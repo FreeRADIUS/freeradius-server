@@ -2,6 +2,10 @@
 # PRE: update if
 #
 update {
+        &request.Packet-Type !* ANY
+}
+
+update {
 	&request.Tmp-String-0 := "This is a string"
 	&request.Tmp-String-0 += "This is another one"
 	&request.Tmp-Octets-0 := 0x000504030201
@@ -28,7 +32,7 @@ if (&request.Tmp-String-3 != "Tmp-String-0 = \"This is a string\", Tmp-String-0 
 	test_fail
 }
 
-if (&request.Tmp-String-4 != "Packet-Type = Access-Request, Password.Cleartext = \"hello\"") {
+if (&request.Tmp-String-4 != "Password.Cleartext = \"hello\"") {
 	test_fail
 }
 
