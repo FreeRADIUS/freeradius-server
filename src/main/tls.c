@@ -3263,6 +3263,7 @@ X509_STORE *fr_init_x509_store(fr_tls_server_conf_t *conf)
 	if (conf->ca_file || conf->ca_path)
 		if (!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
 			tls_error_log(NULL, "Error reading Trusted root CA list \"%s\"", conf->ca_file);
+			X509_STORE_free(store);
 			return NULL;
 		}
 
