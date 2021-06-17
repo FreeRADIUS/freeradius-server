@@ -318,6 +318,7 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
 	if (conf->ca_file || conf->ca_path)
 		if (!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
 			fr_tls_log_error(NULL, "Error reading Trusted root CA list \"%s\"", conf->ca_file);
+			X509_STORE_free(store);
 			return NULL;
 		}
 
