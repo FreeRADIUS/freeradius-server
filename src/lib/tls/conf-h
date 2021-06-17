@@ -161,8 +161,6 @@ struct fr_tls_conf_s {
 #endif
 	char const	*check_cert_issuer;		//!< Verify cert issuer matches the expansion of this string.
 
-	char const	*verify_tmp_dir;
-	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
 
 #ifdef HAVE_OPENSSL_OCSP_H

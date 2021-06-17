@@ -96,12 +96,6 @@ static CONF_PARSER cache_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER verify_config[] = {
-	{ FR_CONF_OFFSET("tmpdir", FR_TYPE_STRING, fr_tls_conf_t, verify_tmp_dir) },
-	{ FR_CONF_OFFSET("client", FR_TYPE_STRING, fr_tls_conf_t, verify_client_cert_cmd) },
-	CONF_PARSER_TERMINATOR
-};
-
 #ifdef HAVE_OPENSSL_OCSP_H
 static CONF_PARSER ocsp_config[] = {
 	{ FR_CONF_OFFSET("enable", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, enable), .dflt = "no" },
@@ -192,8 +186,6 @@ CONF_PARSER fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
 	{ FR_CONF_OFFSET("cache", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) cache_config },
-
-	{ FR_CONF_POINTER("verify", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) verify_config },
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	{ FR_CONF_OFFSET("ocsp", FR_TYPE_SUBSECTION, fr_tls_conf_t, ocsp), .subcs = (void const *) ocsp_config },
@@ -426,19 +418,6 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 		if (conf->staple.store == NULL) goto error;
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
-
-	if (conf->verify_tmp_dir) {
-		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
-			ERROR("Failed changing permissions on %s: %s",
-			      conf->verify_tmp_dir, fr_syserror(errno));
-			goto error;
-		}
-	}
-
-	if (conf->verify_client_cert_cmd && !conf->verify_tmp_dir) {
-		ERROR("You MUST set the verify directory in order to use verify_client_cmd");
-		goto error;
-	}
 
 	/*
 	 *	Ensure our virtual server contains the

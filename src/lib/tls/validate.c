@@ -268,61 +268,6 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		}
 	} /* check_cert_cn */
 
-	while (conf->verify_client_cert_cmd) {
-		char		filename[256];
-		int		fd;
-		FILE		*fp;
-		fr_pair_t	*vp;
-
-		snprintf(filename, sizeof(filename), "%s/client.XXXXXXXX", conf->verify_tmp_dir);
-
-#ifdef __COVERITY__
-		/*
-		 *	POSIX-2008 requires that mkstemp creates the file
-		 *	with 0600 permissions.  So setting umask is pointless
-		 *	and although it won't cause crashes, will cause
-		 *	race conditions in threaded environments.
-		 */
-		umask(0600);
-#endif
-		fd = mkstemp(filename);
-		if (fd < 0) {
-			RDEBUG2("Failed creating file in %s: %s",
-			        conf->verify_tmp_dir, fr_syserror(errno));
-			break;
-		}
-
-		fp = fdopen(fd, "w");
-		if (!fp) {
-			close(fd);
-			REDEBUG("Failed opening file \"%s\": %s", filename, fr_syserror(errno));
-			break;
-		}
-
-		if (!PEM_write_X509(fp, cert)) {
-			fclose(fp);
-			REDEBUG("Failed writing certificate to file");
-			goto do_unlink;
-		}
-		fclose(fp);
-
-		MEM(pair_update_request(&vp, attr_tls_client_cert_filename) >= 0);
-		fr_pair_value_strdup(vp, filename);
-
-		RDEBUG2("Verifying client certificate with cmd");
-		if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,
-					&request->request_pairs, true, true, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
-			REDEBUG("Client certificate CN \"%s\" failed external verification", common_name);
-			my_ok = 0;
-		} else {
-			RDEBUG2("Client certificate CN \"%s\" passed external validation", common_name);
-		}
-
-	do_unlink:
-		unlink(filename);
-		break;
-	}
-
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*
 	 *	Do OCSP last, so we have the complete set of attributes

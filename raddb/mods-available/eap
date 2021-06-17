@@ -698,51 +698,6 @@ eap {
 		}
 
 		#
-		#  ### Dynamic CRLs or OCSP
-		#
-		#  As of version 2.1.10, client certificates can be validated
-		#  via an external command.  This allows dynamic CRLs or OCSP to
-		#  be used.
-		#
-		#  This configuration is commented out in the default
-		#  configuration.  Uncomment it, and configure the correct paths
-		#  below to enable it.
-		#
-		verify {
-			#
-			#  tmpdir::
-			#
-			#  A temporary directory where the client certificates
-			#  are stored.  This directory MUST be owned by the UID
-			#  of the server, and MUST not be accessible by any
-			#  other users.  When the server starts, it will do
-			#  `chmod go-rwx` on the directory, for security
-			#  reasons.  The directory MUST exist when the server
-			#  starts.
-			#
-			#  You should also delete all of the files in the
-			#  directory when the server starts.
-			#
-#			tmpdir = /tmp/radiusd
-
-			#
-			#  client::
-			#
-			#  The command used to verify the client cert. We
-			#  recommend using the OpenSSL command-line tool.
-			#
-			#  The `${..ca_path}` text is a reference to the ca_path
-			#  variable defined above.
-			#
-			#  The `%{TLS-Client-Cert-Filename}` is the name of the
-			#  temporary file containing the cert in PEM format.
-			#  This file is automatically deleted by the server when
-			#  the command returns.
-			#
-#			client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
-		}
-
-		#
 		#  ### OCSP Configuration
 		#
 		#  Certificates can be verified against an OCSP Responder.
