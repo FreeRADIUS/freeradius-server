@@ -174,6 +174,8 @@ SSL_CTX		*fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
 int		fr_openssl_version_check(char const *acknowledged);
 #endif
 
+int		fr_openssl_thread_init(size_t async_pool_size_init, size_t async_pool_size_max);
+
 int		fr_openssl_init(void);
 
 void		fr_openssl_free(void);

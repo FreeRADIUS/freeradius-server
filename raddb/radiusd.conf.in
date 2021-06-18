@@ -528,6 +528,28 @@ thread pool {
 	#  as in v3.
 	#
 	num_workers = 4
+
+	#
+	#  openssl_async_pool_init:: Controls the initial number of async
+	#  contexts that are allocated when a worker thread is created.
+	#  One async context is required for every TLS session (every
+	#  RADSEC connection, every TLS based method still in progress).
+	#
+#	openssl_async_pool_init = 64
+
+	#
+	#  openssl_async_pool_max:: Controls the maximum number of async
+	#  contexts which are allocated to a worker thread.
+	#  If the maximum is reached, then no more TLS sessions can be
+	#  created.
+	#
+	#  Note: Setting this to 0 will mean unlimited async contexts
+	#  will be created.  But as of 3.0.0, OpenSSL has no mechanism
+	#  to shrink the async pool.  This means if there's a
+	#  significant traffic spike the process will continue to use
+	#  large amounts of memory until it's restarted.
+	#
+#	openssl_async_pool_max = 1024
 }
 
 #

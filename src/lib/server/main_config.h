@@ -114,6 +114,12 @@ struct main_config_s {
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	bool		openssl_fips_mode;		//!< Whether OpenSSL fips mode is enabled or disabled.
 	bool		openssl_fips_mode_is_set;	//!< Whether the user specified a value.
+
+	size_t		openssl_async_pool_init;		//!< Tuning option to set the minimum number of requests
+							///< in the async ctx pool.
+
+	size_t		openssl_async_pool_max;		//!< Tuning option to set the maximum number of requests
+							///< in the async ctx pool.
 #endif
 
 	fr_dict_t	*dict;				//!< Main dictionary.
@@ -133,8 +139,10 @@ struct main_config_s {
 	bool		talloc_memory_report;		//!< Print a memory report on what's left unfreed.
 							//!< Can only be used when the server is running in single
 							//!< threaded mode.
+
 	bool		allow_multiple_procs;		//!< Allow multiple instances of radiusd to run with the
 							///< same config file.
+
 	int		multi_proc_sem_id;		//!< Semaphore we use to prevent multiple processes running.
 	char		*multi_proc_sem_path;		//!< Semaphore path.
 

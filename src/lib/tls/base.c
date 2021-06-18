@@ -36,6 +36,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/tls/attrs.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/engine.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 
 #include "log.h"
@@ -47,6 +48,11 @@ static uint32_t instance_count = 0;
  * This should be used to work around memory leaks in the OpenSSL.
  */
 _Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
+
+/** Used to control freeing of thread local OpenSSL resources
+ *
+ */
+static _Thread_local bool	*async_pool_init;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
@@ -273,9 +279,15 @@ int fr_openssl_version_check(char const *acknowledged)
  * @param len to alloc.
  * @return realloc.
  */
-static void *fr_openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line)
+static void *fr_openssl_talloc(size_t len, NDEBUG_UNUSED char const *file, NDEBUG_UNUSED int line)
 {
-	return talloc_array(ssl_talloc_ctx, uint8_t, len);
+	void *chunk;
+
+	chunk = talloc_array(ssl_talloc_ctx, uint8_t, len);
+#ifndef NDEBUG
+	talloc_set_name(chunk, "%s:%u", file, line);
+#endif
+	return chunk;
 }
 
 /** Reallocate memory for OpenSSL in the NULL context
@@ -284,9 +296,15 @@ static void *fr_openssl_talloc(size_t len, UNUSED char const *file, UNUSED int l
  * @param len to extend to.
  * @return realloced memory.
  */
-static void *fr_openssl_talloc_realloc(void *old, size_t len, UNUSED char const *file, UNUSED int line)
+static void *fr_openssl_talloc_realloc(void *old, size_t len, NDEBUG_UNUSED char const *file, NDEBUG_UNUSED int line)
 {
-	return talloc_realloc_size(ssl_talloc_ctx, old, len);
+	void *chunk;
+
+	chunk = talloc_realloc_size(ssl_talloc_ctx, old, len);
+#ifndef NDEBUG
+	talloc_set_name(chunk, "%s:%u", file, line);
+#endif
+	return chunk;
 }
 
 /** Free memory allocated by OpenSSL
@@ -311,6 +329,46 @@ static void fr_openssl_talloc_free(void *to_free, char const *file, int line)
 	(void)_talloc_free(to_free, buffer);
 }
 #endif
+
+/** Cleanup async pools if the thread exits
+ *
+ */
+static void _openssl_thread_free(void *init)
+{
+	ASYNC_cleanup_thread();
+	talloc_free(init);
+}
+
+/** Perform thread-specific initialisation for OpenSSL
+ *
+ * Async contexts are what OpenSSL uses to track
+ *
+ * @param[in] async_pool_size_init	The initial number of async contexts
+ *					we keep in the pool.
+ * @param[in] async_pool_size_max	The maximum number of async contexts
+ *					we keep in the thread-local pool.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int fr_openssl_thread_init(size_t async_pool_size_init, size_t async_pool_size_max)
+{
+	/*
+	 *	Hack to use thread local destructor code
+	 */
+	if (!async_pool_init) {
+		bool *init = talloc_zero(NULL, bool);
+
+		if (ASYNC_init_thread(async_pool_size_max, async_pool_size_init) != 1) {
+			fr_tls_log_error(NULL, "Failed initialising OpenSSL async context pool");
+			return -1;
+		}
+
+		fr_atexit_thread_local(async_pool_init, _openssl_thread_free, init);
+	}
+
+	return 0;
+}
 
 /** Free any memory alloced by libssl
  *

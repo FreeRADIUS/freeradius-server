@@ -167,7 +167,12 @@ static const CONF_PARSER thread_config[] = {
 	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, max_workers), .dflt = STRINGIFY(4),
 	  .func = num_workers_parse },
 
-	{ FR_CONF_OFFSET("stats_interval | FR_TYPE_HIDDEN", FR_TYPE_TIME_DELTA, main_config_t, stats_interval), },
+	{ FR_CONF_OFFSET("stats_interval", FR_TYPE_TIME_DELTA | FR_TYPE_HIDDEN, main_config_t, stats_interval), },
+
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	{ FR_CONF_OFFSET("openssl_async_pool_init", FR_TYPE_SIZE, main_config_t, openssl_async_pool_init), .dflt = "64" },
+	{ FR_CONF_OFFSET("openssl_async_pool_max", FR_TYPE_SIZE, main_config_t, openssl_async_pool_max), .dflt = "1024" },
+#endif
 
 	CONF_PARSER_TERMINATOR
 };
