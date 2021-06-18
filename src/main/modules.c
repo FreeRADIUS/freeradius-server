@@ -160,7 +160,7 @@ fr_dlhandle fr_dlopenext(char const *name)
 	} else
 #endif
 		flags |= RTLD_LOCAL;
-#ifdef RTLD_DEEPBIND
+#if defined(RTLD_DEEPBIND) && !defined(__SANITIZE_ADDRESS__)
 		flags |= RTLD_DEEPBIND;
 #endif
 
