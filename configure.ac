@@ -66,6 +66,13 @@ dnl #
 dnl #############################################################
 
 dnl #
+dnl #  Unset ASAN_OPTIONS and LSAN_OPTIONS so they don't interfere
+dnl #  with the build process.
+dnl #
+unset ASAN_OPTIONS
+unset LSAN_OPTIONS
+
+dnl #
 dnl # check for JSON.pm, ASCIIDOCTOR and pandoc
 dnl #
 AC_PATH_PROG(ASCIIDOCTOR, asciidoctor)
@@ -704,6 +711,85 @@ AC_ARG_ENABLE(reproducible-builds,
   esac ]
 )
 
+dnl #
+dnl #  Enable the -fsanitize=fuzzer and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(fuzzer,
+[AS_HELP_STRING([--enable-fuzzer],
+                [build with support for a fuzzer])],
+[ case "$enableval" in
+  no)
+    fuzzer=no
+    ;;
+  *)
+    fuzzer=yes
+  esac ]
+)
+
+dnl #
+dnl #  Enable the -fsanitize=address and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(address-sanitizer,
+[AS_HELP_STRING([--enable-address-sanitizer],
+                [build with support for address sanitizer.])],
+[ case "$enableval" in
+  no)
+    address_sanitizer=no
+    ;;
+  *)
+    address_sanitizer=yes
+  esac ]
+)
+
+dnl #
+dnl #  Enable -fsanitize=leak and link in the leak sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(leak-sanitizer,
+[AS_HELP_STRING([--enable-leak-sanitizer],
+                [build with support for leak sanitizer.])],
+[ case "$enableval" in
+  no)
+    leak_sanitizer=no
+    ;;
+  *)
+    leak_sanitizer=yes
+  esac ]
+)
+
+dnl #
+dnl #  Enable -fsanitize=thread and link in the thread sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(thread-sanitizer,
+[AS_HELP_STRING([--enable-thread-sanitizer],
+                [build with support for thread sanitizer.])],
+[ case "$enableval" in
+  no)
+    thread_sanitizer=no
+    ;;
+  *)
+    thread_sanitizer=yes
+  esac ]
+)
+
+dnl #
+dnl #  Enable the -fsanitize=undefined and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(undefined-behaviour-sanitizer,
+[AS_HELP_STRING([--enable-undefined-behaviour-sanitizer],
+                [build with support for undefined behaviour sanitizer.])],
+[ case "$enableval" in
+  no)
+    undefined_behaviour_sanitizer=no
+    ;;
+  *)
+    undefined_behaviour_sanitizer=yes
+  esac ]
+)
 
 dnl #############################################################
 dnl #
@@ -1800,7 +1886,7 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WDOCUMENTATION_FLAG
   if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
-    devflags="-Wdocumentation"
+    devcflags="-Wdocumentation"
     AC_DEFINE([HAVE_WDOCUMENTATION],1,[Define if the compiler supports -Wdocumentation])
   fi
 
@@ -1810,17 +1896,98 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devflags="$devflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr"
+    devcflags="$devcflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
-      devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr"
+      devcflags="$devcflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr"
       INSTALLSTRIP=""
     fi
   fi
 
-  AC_MSG_NOTICE([Developer CFLAGS are "$devflags"])
+  dnl #
+  dnl #  Can't use mutliple -fsanitize flags, so we need to combine
+  dnl #  the values into one.
+  dnl #
+  fsanitizeflags=
 
-  CFLAGS="$CFLAGS $devflags"
+  dnl #
+  dnl #  If running with clang, add in FUZZER
+  dnl #
+  if test "x$fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=fuzzer  - Build with fuzzer support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,fuzzer"
+  fi
+
+  dnl #
+  dnl #  Add in ASAN
+  dnl #
+  if test "x$address_sanitizer" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=address		- Build with address sanitizer support
+    dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
+    dnl #  -fno-optimize-sibling-calls	- Don't optimize away tail recursion.
+    dnl #
+    devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+
+    AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
+    if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
+      devcflags="$devcflags -fsanitize-address-use-after-scope"
+    fi
+
+    AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
+    fsanitizeflags="$fsanitizeflags,address"
+  fi
+
+  dnl #
+  dnl #  Add in LSAN
+  dnl #
+  if test "x$leak_sanitizer" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=leak	- Build with lsan support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,leak"
+  fi
+
+  dnl #
+  dnl #  Add in TSAN
+  dnl #
+  if test "x$thread_sanitizer" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=thread	- Build with tsan support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,thread"
+  fi
+
+  dnl #
+  dnl #  Add in UBSAN
+  dnl #
+  if test "x$undefined_behaviour_sanitizer" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=undefined		- Build with ubsan support
+    dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
+    dnl #
+    devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
+    devldflags="$devldflags -fno-sanitize-recover=undefined"
+    fsanitizeflags="$fsanitizeflags,undefined"
+  fi
+
+  if test "x$fsanitizeflags" != "x"; then
+    fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
+    devcflags="-fsanitize=$fsanitizeflags $devcflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
+  fi
+
+  dnl #
+  dnl # Clean the flags up
+  dnl #
+  devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
+  devldflags="$(echo $devldflags | sed -e 's/\\t//g;s/  //g')"
+
+  AC_MSG_NOTICE([Developer CFLAGS are "$devcflags"])
+  AC_MSG_NOTICE([Developer LDFLAGS are "$devldflags"])
+
   dnl #
   dnl #  Enable experimental modules (we want to know if code changes breaks one of them)
   dnl #
@@ -1829,7 +1996,8 @@ if test "x$developer" = "xyes"; then
     EXPERIMENTAL=yes
   fi
 else
-  devflags=""
+  devcflags=""
+  devldflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
 fi
@@ -2432,10 +2600,13 @@ fi
 
 dnl #############################################################
 dnl #
-dnl #  Add -Werror last, so it doesn't interfere with autoconf's
-dnl #  test programs.
+dnl #  Add $devcflags, $devldflags and -Werror last, so they don't
+dnl #  interfere with autoconf's test programs.
 dnl #
 dnl #############################################################
+CFLAGS="$CFLAGS $devcflags"
+LDFLAGS="$LDFLAGS $devldflags"
+
 if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi

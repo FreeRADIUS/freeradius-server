@@ -768,6 +768,11 @@ with_openssl_lib_dir
 with_openssl_include_dir
 enable_openssl_version_check
 enable_reproducible_builds
+enable_fuzzer
+enable_address_sanitizer
+enable_leak_sanitizer
+enable_thread_sanitizer
+enable_undefined_behaviour_sanitizer
 with_talloc_lib_dir
 with_talloc_include_dir
 with_pcap_lib_dir
@@ -1422,6 +1427,15 @@ Optional Features:
 
   --enable-reproducible-builds
                           ensure the build does not change each time
+  --enable-fuzzer         build with support for a fuzzer
+  --enable-address-sanitizer
+                          build with support for address sanitizer.
+  --enable-leak-sanitizer build with support for leak sanitizer.
+  --enable-thread-sanitizer
+                          build with support for thread sanitizer.
+  --enable-undefined-behaviour-sanitizer
+                          build with support for undefined behaviour
+                          sanitizer.
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2524,6 +2538,9 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+
+unset ASAN_OPTIONS
+unset LSAN_OPTIONS
 
 # Extract the first word of "asciidoctor", so it can be a program name with args.
 set dummy asciidoctor; ac_word=$2
@@ -6001,6 +6018,70 @@ $as_echo "#define ENABLE_REPRODUCIBLE_BUILDS 1" >>confdefs.h
 
 fi
 
+
+# Check whether --enable-fuzzer was given.
+if test "${enable_fuzzer+set}" = set; then :
+  enableval=$enable_fuzzer;  case "$enableval" in
+  no)
+    fuzzer=no
+    ;;
+  *)
+    fuzzer=yes
+  esac
+
+fi
+
+
+# Check whether --enable-address-sanitizer was given.
+if test "${enable_address_sanitizer+set}" = set; then :
+  enableval=$enable_address_sanitizer;  case "$enableval" in
+  no)
+    address_sanitizer=no
+    ;;
+  *)
+    address_sanitizer=yes
+  esac
+
+fi
+
+
+# Check whether --enable-leak-sanitizer was given.
+if test "${enable_leak_sanitizer+set}" = set; then :
+  enableval=$enable_leak_sanitizer;  case "$enableval" in
+  no)
+    leak_sanitizer=no
+    ;;
+  *)
+    leak_sanitizer=yes
+  esac
+
+fi
+
+
+# Check whether --enable-thread-sanitizer was given.
+if test "${enable_thread_sanitizer+set}" = set; then :
+  enableval=$enable_thread_sanitizer;  case "$enableval" in
+  no)
+    thread_sanitizer=no
+    ;;
+  *)
+    thread_sanitizer=yes
+  esac
+
+fi
+
+
+# Check whether --enable-undefined-behaviour-sanitizer was given.
+if test "${enable_undefined_behaviour_sanitizer+set}" = set; then :
+  enableval=$enable_undefined_behaviour_sanitizer;  case "$enableval" in
+  no)
+    undefined_behaviour_sanitizer=no
+    ;;
+  *)
+    undefined_behaviour_sanitizer=yes
+  esac
+
+fi
 
 
 
@@ -11604,7 +11685,7 @@ fi
 $as_echo "$ax_cv_cc_wdocumentation_flag" >&6; }
 
   if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
-    devflags="-Wdocumentation"
+    devcflags="-Wdocumentation"
 
 $as_echo "#define HAVE_WDOCUMENTATION 1" >>confdefs.h
 
@@ -11658,25 +11739,79 @@ fi
 $as_echo "$ax_cv_cc_weverything_flag" >&6; }
 
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devflags="$devflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr"
+    devcflags="$devcflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
-      devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr"
+      devcflags="$devcflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr"
       INSTALLSTRIP=""
     fi
   fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devflags\"" >&5
-$as_echo "$as_me: Developer CFLAGS are \"$devflags\"" >&6;}
+          fsanitizeflags=
 
-  CFLAGS="$CFLAGS $devflags"
+        if test "x$fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+                fsanitizeflags="$fsanitizeflags,fuzzer"
+  fi
+
+        if test "x$address_sanitizer" = "xyes"; then
+                        devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+
+    AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
+    if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
+      devcflags="$devcflags -fsanitize-address-use-after-scope"
+    fi
+
+    for ac_header in sanitizer/lsan_interface.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "sanitizer/lsan_interface.h" "ac_cv_header_sanitizer_lsan_interface_h" "$ac_includes_default"
+if test "x$ac_cv_header_sanitizer_lsan_interface_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SANITIZER_LSAN_INTERFACE_H 1
+_ACEOF
+
+fi
+
+done
+
+    fsanitizeflags="$fsanitizeflags,address"
+  fi
+
+        if test "x$leak_sanitizer" = "xyes"; then
+                fsanitizeflags="$fsanitizeflags,leak"
+  fi
+
+        if test "x$thread_sanitizer" = "xyes"; then
+                fsanitizeflags="$fsanitizeflags,thread"
+  fi
+
+        if test "x$undefined_behaviour_sanitizer" = "xyes"; then
+                    devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
+    devldflags="$devldflags -fno-sanitize-recover=undefined"
+    fsanitizeflags="$fsanitizeflags,undefined"
+  fi
+
+  if test "x$fsanitizeflags" != "x"; then
+    fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
+    devcflags="-fsanitize=$fsanitizeflags $devcflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
+  fi
+
+        devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
+  devldflags="$(echo $devldflags | sed -e 's/\\t//g;s/  //g')"
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devcflags\"" >&5
+$as_echo "$as_me: Developer CFLAGS are \"$devcflags\"" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Developer LDFLAGS are \"$devldflags\"" >&5
+$as_echo "$as_me: Developer LDFLAGS are \"$devldflags\"" >&6;}
+
         if test "x$EXPERIMENTAL" != "xno"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&5
 $as_echo "$as_me: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&6;}
     EXPERIMENTAL=yes
   fi
 else
-  devflags=""
+  devcflags=""
+  devldflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
 fi
@@ -13961,6 +14096,9 @@ subdirs="$subdirs $mysubdirs"
 if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
   CFLAGS="-Wno-date-time $CFLAGS"
 fi
+
+CFLAGS="$CFLAGS $devcflags"
+LDFLAGS="$LDFLAGS $devldflags"
 
 if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
