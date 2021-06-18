@@ -361,7 +361,7 @@ static void fr_state_cleanup(state_entry_t *head)
 			}
 		}
 
-		talloc_free(entry);
+		state_entry_free(entry);
 	}
 }
 
