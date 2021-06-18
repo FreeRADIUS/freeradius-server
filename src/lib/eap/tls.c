@@ -275,16 +275,6 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session,
 
 	eap_session->finished = true;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	/*
-	 *	Check session resumption is allowed, disabling it
-	 *	if it's not.
-	 */
-	fr_tls_session_request_bind(tls_session->ssl, request);
-	fr_tls_cache_disable_cb(tls_session->ssl, -1);
-	fr_tls_session_request_unbind(tls_session->ssl);
-#endif
-
 	/*
 	 *	Build the success packet
 	 */

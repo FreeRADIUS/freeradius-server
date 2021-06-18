@@ -43,7 +43,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "attrs.h"
 #include "base.h"
 #include "log.h"
-#include "missing.h"
 
 /** Rcodes returned by the OCSP check function
  */
@@ -212,9 +211,8 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10102000L
 	if (SSL_get0_chain_certs(ssl, &our_chain) == 0) {
-#else
+
 	/*
 	 *	Ignore the return code for older versions of
 	 *	OpenSSL.

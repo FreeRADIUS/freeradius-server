@@ -38,7 +38,6 @@
 
 #include "attrs.h"
 #include "base.h"
-#include "missing.h"
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
@@ -55,10 +54,6 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
  *
  *   3. Verify that the certificate has not been revoked by its issuing Certificate
  *      Authority, by checking with respect to a Certificate Revocation List (CRL).
- *
- *   4. Verify that the credentials presented by the certificate fulfill additional
- *      requirements specific to the application, such as with respect to access control
- *      lists or with respect to OCSP (Online Certificate Status Processing).
  *
  * @note This callback will be called multiple times based on the depth of the root
  *	certificate chain.
@@ -110,12 +105,7 @@ int fr_tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		STACK_OF(X509)	*our_chain = X509_STORE_CTX_get_chain(x509_ctx);
 		int		i;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		RDEBUG3("Certificate chain - %i cert(s) untrusted", X509_STORE_CTX_get_num_untrusted(x509_ctx));
-#else
-		RDEBUG3("Certificate chain");
-#endif
-
 		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
 			X509 *this_cert = sk_X509_value(our_chain, i - 1);
 

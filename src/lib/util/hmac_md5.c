@@ -35,7 +35,6 @@ RCSID("$Id$")
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/hmac.h>
-#  include <freeradius-devel/tls/missing.h>
 
 static _Thread_local HMAC_CTX *md5_hmac_ctx;
 

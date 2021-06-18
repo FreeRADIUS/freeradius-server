@@ -36,7 +36,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/tls/base.h>
-#include <freeradius-devel/tls/missing.h>
 #include <freeradius-devel/tls/log.h>
 
 #include "tls.h"
@@ -94,7 +93,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 #endif
 			      request_t *request, SSL *ssl,
 			      uint8_t **out, uint8_t eap_type,
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
 			      UNUSED
 #endif
 			      char const *prf_label,
@@ -107,7 +106,6 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 
 	*out = NULL;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	if (!prf_label) goto random_based_session_id;
 
 	switch (SSL_SESSION_get_protocol_version(SSL_get_session(ssl))) {
@@ -119,7 +117,6 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 	case TLS1_1_VERSION:	/* No Method ID */
 	case TLS1_2_VERSION:	/* No Method ID */
 	random_based_session_id:
-#endif
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + (2 * SSL3_RANDOM_SIZE)));
 		*p++ = eap_type;
 
@@ -145,9 +142,7 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 	}
 		break;
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	}
-#endif
 	*out = buff;
 
 	return 0;

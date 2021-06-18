@@ -105,12 +105,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	char		**identity;
 	int		attr_index, loc;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	STACK_OF(X509_EXTENSION) const *ext_list = NULL;
-#else
-	STACK_OF(X509_EXTENSION) *ext_list = NULL;
-#endif
-
 	ASN1_INTEGER	*sn = NULL;
 	ASN1_TIME	*asn_time = NULL;
 
@@ -212,23 +207,15 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 				switch (name->type) {
 #ifdef GEN_EMAIL
 				case GEN_EMAIL: {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 					char const *rfc822Name = (char const *)ASN1_STRING_get0_data(name->d.rfc822Name);
-#else
-					char *rfc822Name = (char *)ASN1_STRING_data(name->d.rfc822Name);
-#endif
-
 					CERT_ATTR_ADD(IDX_SUBJECT_ALT_NAME_EMAIL, attr_index, rfc822Name);
 					break;
 				}
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
-				case GEN_DNS: {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+				case GEN_DNS:
+				{
 					char const *dNSName = (char const *)ASN1_STRING_get0_data(name->d.dNSName);
-#else
-					char *dNSName = (char *)ASN1_STRING_data(name->d.dNSName);
-#endif
 					CERT_ATTR_ADD(IDX_SUBJECT_ALT_NAME_DNS, attr_index, dNSName);
 					break;
 				}
@@ -261,11 +248,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 *	Only add extensions for the actual client certificate
 	 */
 	if (attr_index == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		ext_list = X509_get0_extensions(cert);
-#else
-		ext_list = cert->cert_info->extensions;
-#endif
 
 		/*
 		 *	Grab the X509 extensions, and create attributes out of them.

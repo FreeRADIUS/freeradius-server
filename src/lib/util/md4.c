@@ -29,12 +29,6 @@ static _Thread_local fr_md4_ctx_t *md4_ctx;
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-#  define EVP_MD_CTX_new EVP_MD_CTX_create
-#  define EVP_MD_CTX_free EVP_MD_CTX_destroy
-#  define EVP_MD_CTX_reset EVP_MD_CTX_cleanup
-#endif
-
 static int have_openssl_md4 = -1;
 
 static void _md4_ctx_openssl_free_on_exit(void *arg)

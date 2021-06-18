@@ -33,7 +33,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/debug.h>
 
 #include "log.h"
-#include "missing.h"
 
 /** Holds the state of a log BIO
  *

@@ -40,7 +40,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/dh.h>
 
 #include "base.h"
-#include "missing.h"
 #include "log.h"
 
 #ifndef OPENSSL_NO_ECDH
@@ -436,23 +435,11 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	at the cost of the server occasionally
 	 *	crashing on exit.
 	 */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	FR_OPENSSL_BIND_OBJ_MEMORY(ctx = SSL_CTX_new(SSLv23_method())); /* which is really "all known SSL / TLS methods".  Idiots. */
-#else
 	ctx = SSL_CTX_new(SSLv23_method());
-#endif
 	if (!ctx) {
 		fr_tls_log_error(NULL, "Failed creating TLS context");
 		return NULL;
 	}
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	/*
-	 *	Bind any other memory to the ctx to fix
-	 *	leaks on exit.
-	 */
-	FR_OPENSSL_BIND_MEMORY_BEGIN(ctx);
-#endif
 
 	/*
 	 *	Save the config on the context so that callbacks which
@@ -472,9 +459,6 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		if (!*conf->psk_query) {
 			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
 		error:
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-			FR_OPENSSL_BIND_MEMORY_END;
-#endif
 			SSL_CTX_free(ctx);
 			return NULL;
 		}
@@ -860,13 +844,6 @@ post_ca:
 	 *	Load dh params
 	 */
 	if (conf->dh_file && (ctx_dh_params_load(ctx, UNCONST(char *, conf->dh_file)) < 0)) goto error;
-
-	/*
-	 *	We're done configuring the ctx.
-	 */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	FR_OPENSSL_BIND_MEMORY_END;
-#endif
 
 	/*
 	 *	Setup session caching

@@ -27,7 +27,6 @@
 #include <freeradius-devel/server/base.h>
 
 #include "base.h"
-#include "missing.h"
 
 /** PKEY types (friendly names)
  *
@@ -84,28 +83,6 @@ int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	int md_size;
-
-	if (ssl->enc_read_ctx == NULL || ssl->enc_read_ctx->cipher == NULL || ssl->read_hash == NULL)
-		return -1;
-
-	c = ssl->enc_read_ctx->cipher;
-	h = EVP_MD_CTX_md(ssl->read_hash);
-	if (h)
-		md_size = EVP_MD_size(h);
-	else if (ssl->s3)
-		md_size = ssl->s3->tmp.new_mac_secret_size;
-	else
-		return -1;
-
-	RDEBUG2("OpenSSL: keyblock size: key_len=%d MD_size=%d "
-		   "IV_len=%d", EVP_CIPHER_key_length(c), md_size,
-		   EVP_CIPHER_iv_length(c));
-	return 2 * (EVP_CIPHER_key_length(c) +
-		    md_size +
-		    EVP_CIPHER_iv_length(c));
-#else
 	const SSL_CIPHER *ssl_cipher;
 	int cipher, digest;
 
@@ -127,7 +104,6 @@ int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
 		   EVP_CIPHER_iv_length(c));
 	return 2 * (EVP_CIPHER_key_length(c) + EVP_MD_size(h) +
 		    EVP_CIPHER_iv_length(c));
-#endif
 }
 
 /** Convert OpenSSL's ASN1_TIME to an epoch time

@@ -39,7 +39,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "cache.h"
 #include "log.h"
-#include "missing.h"
 #include "validate.h"
 
 /** Retrieve session ID (in binary form) from the session
@@ -501,11 +500,7 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
  *	- NULL on error.
  */
 static SSL_SESSION *tls_cache_load_cb(SSL *ssl,
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 				      unsigned char const *key,
-#else
-				      unsigned char *key,
-#endif
 				      int key_len, int *copy)
 {
 	fr_tls_session_t	*tls_session;
@@ -619,11 +614,7 @@ static void tls_cache_delete_cb(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
  *	- 0 if session-resumption is allowed.
  *	- 1 if enabling session-resumption was disabled for this session.
  */
-int fr_tls_cache_disable_cb(SSL *ssl,
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-			    UNUSED
-#endif
-			    int is_forward_secure)
+int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 {
 	request_t		*request;
 
@@ -633,7 +624,6 @@ int fr_tls_cache_disable_cb(SSL *ssl,
 	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
 	request = fr_tls_session_request(tls_session->ssl);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	{
 		fr_tls_conf_t *conf;
 
@@ -649,7 +639,6 @@ int fr_tls_cache_disable_cb(SSL *ssl,
 			goto disable;
 		}
 	}
-#endif
 
 	/*
 	 *	If there's no session resumption, delete the entry
@@ -1065,9 +1054,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		break;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	SSL_CTX_set_not_resumable_session_callback(ctx, fr_tls_cache_disable_cb);
-#endif
 	SSL_CTX_set_quiet_shutdown(ctx, 1);
 
 	return 0;

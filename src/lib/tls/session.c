@@ -46,7 +46,6 @@
 #include "attrs.h"
 #include "base.h"
 #include "log.h"
-#include "missing.h"
 
 static char const *tls_version_str[] = {
 	[SSL2_VERSION]				= "SSL 2.0",
@@ -464,7 +463,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 			RDEBUG3("Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
 
-#if defined(OPENSSL_NO_SSL_TRACE) && (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#ifdef OPENSSL_NO_SSL_TRACE
 	        	{
 				STACK_OF(SSL_CIPHER) *server_ciphers;
 				STACK_OF(SSL_CIPHER) *client_ciphers;
