@@ -23,12 +23,12 @@
  *
  * This is a convenience header to simplify defining packet processing state machines.
  *
- * The following macros should be defined before this header is included:
+ * The following macros must be defined before this header is included:
  *
- * - PROCESS_INST			the structure that holds instance data for the process module.
+ * - PROCESS_INST			the type fo structure that holds instance data for the process module.
  * - PROCESS_PACKET_TYPE		an enum, or generic type (uint32) that can hold
  *					all valid packet types.
- * - PROCESS_PACKET_CODE_VALID		the name of a macro which accepts one argument
+ * - PROCESS_PACKET_CODE_VALID		the name of a macro or function which accepts one argument
  *      				and evaluates to true if the packet code is valid.
  *
  * The following macros may (optionally) be defined before this header is included:
@@ -47,6 +47,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/pair.h>
 
 /** Common public symbol definition for all process modules
  */
@@ -231,8 +232,7 @@ SEND(generic)
 	 *	@todo - enforce that this is an allowed reply for the
 	 *	request.
 	 */
-	switch (fr_pair_update_by_da(request->reply_ctx, &vp,
-				     &request->reply_pairs, attr_packet_type)) {
+	switch (pair_update_reply(&vp, attr_packet_type)) {
 	case 0:	/* Does not exist */
 	update_packet_type:
 		vp->vp_uint32 = request->reply->code;
