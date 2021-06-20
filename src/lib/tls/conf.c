@@ -95,22 +95,6 @@ static CONF_PARSER cache_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-#ifdef HAVE_OPENSSL_OCSP_H
-static CONF_PARSER ocsp_config[] = {
-	{ FR_CONF_OFFSET("enable", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, enable), .dflt = "no" },
-
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_ocsp_conf_t, cache_server) },
-
-	{ FR_CONF_OFFSET("override_cert_url", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, override_url), .dflt = "no" },
-	{ FR_CONF_OFFSET("url", FR_TYPE_STRING, fr_tls_ocsp_conf_t, url) },
-	{ FR_CONF_OFFSET("use_nonce", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, use_nonce), .dflt = "yes" },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, fr_tls_ocsp_conf_t, timeout), .dflt = "yes" },
-	{ FR_CONF_OFFSET("softfail", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, softfail), .dflt = "no" },
-
-	CONF_PARSER_TERMINATOR
-};
-#endif
-
 static CONF_PARSER tls_chain_config[] = {
 	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_chain_conf_t, file_format),
 			 .func = cf_table_parse_int,
