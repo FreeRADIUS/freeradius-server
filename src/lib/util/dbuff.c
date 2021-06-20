@@ -283,3 +283,41 @@ size_t _fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension)
 
 	return elen;
 }
+
+/** Trim a talloced dbuff to the minimum length required to represent the contained string
+ *
+ * @param[in] dbuff	to trim.
+ * @param[in] len	Length to trim to.  Passing SIZE_MAX will
+ *			result in the buffer being trimmed to the
+ *			length of the content.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure - markers present pointing past the end of string data.
+ */
+int fr_dbuff_trim_talloc(fr_dbuff_t *dbuff, size_t len)
+{
+	size_t			clen = 0, nlen = 0;
+	uint8_t			*new_buff;
+	fr_dbuff_uctx_talloc_t	*tctx = dbuff->uctx;
+
+	CHECK_DBUFF_INIT(dbuff);
+
+	if (dbuff->buff) clen = talloc_array_length(dbuff->buff);
+
+	if (len != SIZE_MAX) {
+		nlen += len;
+	} else if (dbuff->buff){
+		nlen += (dbuff->p - dbuff->start);
+	}
+
+	if (nlen != clen) {
+		new_buff = talloc_realloc(tctx->ctx, dbuff->buff, uint8_t, nlen);
+		if (!new_buff) {
+			fr_strerror_printf("Failed trimming buffer from %zu to %zu", clen, nlen);
+			return -1;
+		}
+		fr_dbuff_update(dbuff, new_buff, nlen);
+	}
+
+	return 0;
+}

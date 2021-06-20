@@ -340,6 +340,8 @@ _fr_dbuff_init(_out, \
 
 size_t	_fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 
+int	fr_dbuff_trim_talloc(fr_dbuff_t *dbuff, size_t len);
+
 /** Talloc extension structure use by #fr_dbuff_init_talloc
  * @private
  *
@@ -1325,12 +1327,9 @@ static inline size_t _fr_dbuff_in_memcpy_partial(uint8_t **pos_p, fr_dbuff_t *ou
 static inline size_t _fr_dbuff_in_memcpy_partial_dbuff(uint8_t **pos_p, fr_dbuff_t *out,
 						       uint8_t * const *in_p, fr_dbuff_t const *in, size_t inlen)
 {
-	fr_dbuff_t	*our_in;
-	uint8_t		**our_in_p;
+	fr_dbuff_t	*our_in = UNCONST(fr_dbuff_t *, in);	/* Stupid const issues caused by generics */
+	uint8_t		**our_in_p = UNCONST(uint8_t **, in_p);	/* Stupid const issues caused by generics */
 	size_t		ext_len;
-
-	memcpy(&our_in, &in, sizeof(our_in));		/* Stupid const issues caused by generics */
-	memcpy(&our_in_p, &in_p, sizeof(our_in_p));	/* Stupid const issues caused by generics */
 
 	ext_len = _fr_dbuff_extend_lowat(NULL, our_in, fr_dbuff_end(our_in) - (*our_in_p), inlen);
 	if (ext_len < inlen) inlen = ext_len;
