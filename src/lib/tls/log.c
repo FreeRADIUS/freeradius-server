@@ -429,7 +429,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 	fr_sbuff_in_bstrncpy(&lb->sbuff, in, len);
 
 	/*
-	 *	Split incoming data on new lines or nul bytes.
+	 *	Split incoming data on new lines
 	 */
 	while (fr_sbuff_behind(&lb->logged_m)) {
 		le = memchr(fr_sbuff_current(&lb->logged_m), '\n',
@@ -492,7 +492,7 @@ static int tls_log_global_bio_write_cb(BIO *bio, char const *in, int len)
 	fr_sbuff_in_bstrncpy(&lb->sbuff, in, len);
 
 	/*
-	 *	Split incoming data on new lines or nul bytes.
+	 *	Split incoming data on new lines
 	 */
 	while (fr_sbuff_behind(&lb->logged_m)) {
 		le = memchr(fr_sbuff_current(&lb->logged_m), '\n',
