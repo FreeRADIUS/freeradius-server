@@ -115,7 +115,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-#define pair_update_request(_attr, _da) fr_pair_update_by_da(request->request_ctx, _attr, &request->request_pairs, _da)
+#define pair_update_request(_attr, _da) fr_pair_update_by_da(request->request_ctx, _attr, &request->request_pairs, _da, 0)
 
 /** Return or allocate a fr_pair_t in the reply list
  *
@@ -126,7 +126,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-#define pair_update_reply(_attr, _da) fr_pair_update_by_da(request->reply_ctx, _attr, &request->reply_pairs, _da)
+#define pair_update_reply(_attr, _da) fr_pair_update_by_da(request->reply_ctx, _attr, &request->reply_pairs, _da, 0)
 
 /** Return or allocate a fr_pair_t in the control list
  *
@@ -137,7 +137,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-#define pair_update_control(_attr, _da) fr_pair_update_by_da(request->control_ctx, _attr, &request->control_pairs, _da)
+#define pair_update_control(_attr, _da) fr_pair_update_by_da(request->control_ctx, _attr, &request->control_pairs, _da, 0)
 
 /** Return or allocate a fr_pair_t in the session_state list
  *
@@ -148,7 +148,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 if we allocated a new attribute.
  *	- -1 on failure.
  */
-#define pair_update_session_state(_attr, _da) fr_pair_update_by_da(request->session_state_ctx, _attr, &request->session_state_pairs, _da)
+#define pair_update_session_state(_attr, _da) fr_pair_update_by_da(request->session_state_ctx, _attr, &request->session_state_pairs, _da, 0)
 
 /** Delete one or move fr_pair_t in a list
  *

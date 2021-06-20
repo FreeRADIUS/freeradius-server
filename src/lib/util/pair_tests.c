@@ -320,7 +320,7 @@ static void test_fr_pair_update_by_da(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Update Add using fr_pair_prepend_by_da()");
-	TEST_CHECK(fr_pair_update_by_da(autofree, &vp, &test_pairs, fr_dict_attr_test_uint32) == 1); /* attribute already exist */
+	TEST_CHECK(fr_pair_update_by_da(autofree, &vp, &test_pairs, fr_dict_attr_test_uint32, 0) == 1); /* attribute already exist */
 	vp->vp_uint32 = 54321;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 54321)");

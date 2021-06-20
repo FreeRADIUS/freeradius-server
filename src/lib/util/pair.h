@@ -229,6 +229,8 @@ static inline fr_pair_t *fr_dcursor_iter_by_ancestor_init(fr_dcursor_t *cursor,
 }
 
 /** @hidecallergraph */
+unsigned int	fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da);
+
 fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da, unsigned int n);
 
 fr_pair_t	*fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_dict_attr_t const *ancestor);
@@ -247,7 +249,8 @@ int		fr_pair_append_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list
 
 int		fr_pair_prepend_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 
-int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da);
+int		fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
+				     fr_dict_attr_t const *da, unsigned int n);
 
 int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da);
 

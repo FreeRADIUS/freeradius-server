@@ -750,7 +750,56 @@ static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
 	return sbuff;
 }
 
-/** Print a list of fr_pair_ts.
+/** Print a #fr_pair_t.
+ *
+ * @param[in] lvl	Debug lvl (1-4).
+ * @param[in] request	to read logging params from.
+ * @param[in] parent	of pair to print, may be NULL.
+ * @param[in] vp	to print.
+ * @param[in] prefix	(optional).
+ */
+void log_request_pair(fr_log_lvl_t lvl, request_t *request,
+		      fr_pair_t const *parent, fr_pair_t const *vp, char const *prefix)
+{
+	fr_dict_attr_t const	*parent_da = NULL;
+	fr_sbuff_t		*oid_buff;
+
+	if (!request->log.dst) return;
+
+	if (!log_rdebug_enabled(lvl, request)) return;
+
+	VP_VERIFY(vp);
+
+	oid_buff = log_request_oid_buff();
+
+	if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
+	if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da, false) <= 0) return;
+
+	/*
+	 *	Recursively print grouped attributes.
+	 */
+	switch (vp->da->type) {
+	case FR_TYPE_STRUCTURAL:
+		RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
+			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
+		log_request_pair_list(lvl, request, vp, &vp->vp_group, NULL);
+		RDEBUGX(lvl, "}");
+		break;
+
+	case FR_TYPE_QUOTED:
+		RDEBUGX(lvl, "%s%pV = \"%pV\"", prefix ? prefix : "",
+			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
+			&vp->data);
+		break;
+	default:
+		RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
+			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
+			&vp->data);
+		break;
+	}
+}
+
+/** Print a #fr_pair_list_t
  *
  * @param[in] lvl	Debug lvl (1-4).
  * @param[in] request	to read logging params from.
@@ -761,49 +810,20 @@ static inline CC_HINT(always_inline) fr_sbuff_t *log_request_oid_buff(void)
 void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 			   fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 {
-	fr_pair_list_t		*m_vp;
+	fr_pair_list_t		*m_vp = UNCONST(fr_pair_list_t *, vps);
 	fr_pair_t		*vp;
-	fr_dict_attr_t const	*parent_da = NULL;
 
 	if (fr_pair_list_empty(vps) || !request->log.dst) return;
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
-	memcpy(&m_vp, &vps, sizeof(m_vp));
-
 	RINDENT();
 	for (vp = fr_pair_list_head(m_vp);
 	     vp;
 	     vp = fr_pair_list_next(m_vp, vp)) {
-		fr_sbuff_t *oid_buff = log_request_oid_buff();
-
 		VP_VERIFY(vp);
 
-		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
-		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da, false) <= 0) return;
-
-		/*
-		 *	Recursively print grouped attributes.
-		 */
-		switch (vp->da->type) {
-		case FR_TYPE_STRUCTURAL:
-			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
-				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
-			log_request_pair_list(lvl, request, vp, &vp->vp_group, prefix);
-			RDEBUGX(lvl, "%s}", prefix ? prefix : "");	/* don't add extra space between closing brace and prefix */
-			continue;
-
-		case FR_TYPE_QUOTED:
-			RDEBUGX(lvl, "%s%pV = \"%pV\"", prefix ? prefix : "",
-				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
-				&vp->data);
-			break;
-		default:
-			RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
-				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
-				&vp->data);
-			break;
-		}
+		log_request_pair(lvl, request, parent, vp, prefix);
 	}
 	REXDENT();
 }
@@ -819,7 +839,6 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 				 fr_pair_t const *parent, fr_pair_list_t const *vps, char const *prefix)
 {
-	fr_dict_attr_t const	*parent_da = NULL;
 	fr_pair_t		*vp;
 
 	if (fr_pair_list_empty(vps) || !request->log.dst) return;
@@ -830,32 +849,11 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		fr_sbuff_t *oid_buff = log_request_oid_buff();
-
 		VP_VERIFY(vp);
 
 		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
 
-		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
-		if (fr_dict_attr_oid_print(oid_buff, parent_da, vp->da, false) <= 0) return;
-
-		/*
-		 *	Recursively print grouped attributes.
-		 */
-		switch (vp->da->type) {
-		case FR_TYPE_STRUCTURAL:
-			RDEBUGX(lvl, "%s%pV {", prefix ? prefix : "",
-				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)));
-			log_request_proto_pair_list(lvl, request, vp, &vp->vp_group, prefix);
-			RDEBUGX(lvl, "%s}", prefix ? prefix : "");
-			continue;
-
-		default:
-			RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
-				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
-				&vp->data);
-			break;
-		}
+		log_request_pair(lvl, request, parent, vp, prefix);
 	}
 	REXDENT();
 }
