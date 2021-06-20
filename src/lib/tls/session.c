@@ -1267,7 +1267,7 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		 *	Next service any pending certificate
 		 *	validation actions.
 		 */
-		ua = fr_tls_validate_client_cert_pending_push(request, tls_session);
+		ua = fr_tls_verify_client_cert_pending_push(request, tls_session);
 		switch (ua) {
 		case UNLANG_ACTION_FAIL:
 			if (unlang_function_clear(request) < 0) goto error;
@@ -1466,7 +1466,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	DEBUG2("Requiring Server certificate");
 	verify_mode = SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_validate_cert_cb);
+	SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_verify_cert_cb);
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
@@ -1661,7 +1661,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	}
 	tls_session->verify_client_cert = client_cert;
 
-	SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_validate_cert_cb);
+	SSL_set_verify(tls_session->ssl, verify_mode, fr_tls_verify_cert_cb);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 

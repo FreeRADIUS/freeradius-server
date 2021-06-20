@@ -39,7 +39,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "cache.h"
 #include "log.h"
-#include "validate.h"
+#include "verify.h"
 
 /** Retrieve session ID (in binary form) from the session
  *
@@ -164,7 +164,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 	 */
 	SSL_set_session(ssl, sess);		/* Increases ref count */
 
-	if (fr_tls_validate_client_cert_chain(ssl) != 1) {
+	if (fr_tls_verify_client_cert_chain(ssl) != 1) {
 		RWDEBUG("Validation failed, forcefully expiring resumed session");
 		SSL_SESSION_set_timeout(sess, 0);
 	}
@@ -950,7 +950,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	the code there knows what job it needs to push onto
 		 *	the unlang stack.
 		 */
-		fr_tls_validate_client_cert_request(tls_session);
+		fr_tls_verify_client_cert_request(tls_session);
 
 		ASYNC_pause_job();
 
@@ -959,7 +959,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	give the client the opportunity to send a new
 		 *	one, but _don't_ allow session resumption.
 		 */
-		if (!fr_tls_validate_client_cert_success(tls_session)) {
+		if (!fr_tls_verify_client_cert_successful(tls_session)) {
 			RDEBUG2("Certificate re-validation failed, denying session resumption via session-ticket");
 			return SSL_TICKET_RETURN_IGNORE_RENEW;
 		}

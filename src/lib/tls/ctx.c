@@ -763,7 +763,7 @@ post_ca:
 	 *	Check the certificates for revocation.
 	 */
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
-	if (conf->check_crl) {
+	if (conf->verify.check_crl) {
 		cert_vpstore = SSL_CTX_get_cert_store(ctx);
 		if (cert_vpstore == NULL) {
 			fr_tls_log_error(NULL, "Error reading Certificate Store");
@@ -790,7 +790,7 @@ post_ca:
 	verify_mode |= SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 	verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	SSL_CTX_set_verify(ctx, verify_mode, fr_tls_validate_cert_cb);
+	SSL_CTX_set_verify(ctx, verify_mode, fr_tls_verify_cert_cb);
 
 	if (conf->verify_depth) {
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);

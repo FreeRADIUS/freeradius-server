@@ -15,7 +15,7 @@ SOURCES	:= \
 	pairs.c \
 	session.c \
 	utils.c \
-	validate.c \
+	verify.c \
 	virtual_server.c
 
 TGT_PREREQS := libfreeradius-internal.a libfreeradius-util.a

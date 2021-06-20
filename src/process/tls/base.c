@@ -171,7 +171,7 @@ static const virtual_server_compile_t compile_list[] = {
 		.offset = PROCESS_CONF_OFFSET(session_clear)
 	},
 	{
-		.name = "validate",
+		.name = "verify",
 		.name2 = "certificate",
 		.component = MOD_AUTHORIZE,
 		.offset = PROCESS_CONF_OFFSET(certificate_validate)

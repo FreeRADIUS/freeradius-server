@@ -33,7 +33,7 @@ typedef struct fr_tls_session_s fr_tls_session_t;
 #include "cache.h"
 #include "conf.h"
 #include "index.h"
-#include "validate.h"
+#include "verify.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,7 +130,7 @@ struct fr_tls_session_s {
 	bool			allow_session_resumption;	//!< Whether session resumption is allowed.
 	bool			verify_client_cert;		//!< Whether client cert verification has been requested.
 
-	fr_tls_validate_t	validate;			//!< Current session certificate validation state.
+	fr_tls_verify_t		validate;			//!< Current session certificate validation state.
 
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
@@ -288,7 +288,7 @@ void 		fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 				      void const *buf, size_t len, SSL *ssl, void *arg);
 
 int		fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx,
-				     		    fr_tls_session_t *session, X509 *cert, int depth);
+				     		    request_t *request, X509 *cert) CC_HINT(nonnull);
 
 int		fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session);
 

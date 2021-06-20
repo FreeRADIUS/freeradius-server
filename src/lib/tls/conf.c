@@ -68,7 +68,16 @@ static fr_table_num_sorted_t const cache_mode_table[] = {
 };
 static size_t cache_mode_table_len = NUM_ELEMENTS(cache_mode_table);
 
-static CONF_PARSER cache_config[] = {
+static fr_table_num_sorted_t const verify_mode_table[] = {
+	{ L("all"),			FR_TLS_VERIFY_MODE_ALL		},
+	{ L("client"),			FR_TLS_VERIFY_MODE_LEAF		},
+	{ L("client-and-issuer"),	FR_TLS_VERIFY_MODE_LEAF | FR_TLS_VERIFY_MODE_ISSUER },
+	{ L("disabled"),		FR_TLS_VERIFY_MODE_DISABLED	},
+	{ L("untrusted"),		FR_TLS_VERIFY_MODE_UNTRUSTED	}
+};
+static size_t verify_mode_table_len = NUM_ELEMENTS(verify_mode_table);
+
+static CONF_PARSER tls_cache_config[] = {
 	{ FR_CONF_OFFSET("mode", FR_TYPE_UINT32, fr_tls_cache_conf_t, mode),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){
@@ -120,6 +129,26 @@ static CONF_PARSER tls_chain_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static CONF_PARSER tls_verify_config[] = {
+	{ FR_CONF_OFFSET("mode", FR_TYPE_VOID, fr_tls_verify_conf_t, mode),
+			 .func = cf_table_parse_int,
+			 .uctx = &(cf_table_parse_ctx_t){
+			 	.table = verify_mode_table,
+			 	.len = &verify_mode_table_len
+			 },
+			 .dflt = "all" },
+	{ FR_CONF_OFFSET("pair_mode", FR_TYPE_VOID, fr_tls_verify_conf_t, pair_mode),
+			 .func = cf_table_parse_int,
+			 .uctx = &(cf_table_parse_ctx_t){
+			 	.table = verify_mode_table,
+			 	.len = &verify_mode_table_len
+			 },
+			 .dflt = "client-and-issuer" },
+	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_verify_conf_t, check_crl), .dflt = "no" },
+	{ FR_CONF_OFFSET("allow_expired_crl", FR_TYPE_BOOL, fr_tls_verify_conf_t, allow_expired_crl) },
+	CONF_PARSER_TERMINATOR
+};
+
 CONF_PARSER fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_VOID, fr_tls_conf_t, virtual_server), .func = virtual_server_cf_parse },
 
@@ -147,11 +176,7 @@ CONF_PARSER fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("padding", FR_TYPE_UINT32, fr_tls_conf_t, padding_block_size), },
 
 	{ FR_CONF_OFFSET("disable_single_dh_use", FR_TYPE_BOOL, fr_tls_conf_t, disable_single_dh_use) },
-	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
-#ifdef X509_V_FLAG_CRL_CHECK_ALL
-	{ FR_CONF_DEPRECATED("check_all_crl", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
-#endif
-	{ FR_CONF_OFFSET("allow_expired_crl", FR_TYPE_BOOL, fr_tls_conf_t, allow_expired_crl) },
+
 	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, fr_tls_conf_t, cipher_list) },
 	{ FR_CONF_OFFSET("cipher_server_preference", FR_TYPE_BOOL, fr_tls_conf_t, cipher_server_preference), .dflt = "yes" },
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
@@ -165,9 +190,10 @@ CONF_PARSER fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
-	{ FR_CONF_OFFSET("cache", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) cache_config },
+	{ FR_CONF_OFFSET("cache", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) tls_cache_config },
 
-	{ FR_CONF_DEPRECATED("verify", FR_TYPE_SUBSECTION, fr_tls_conf_t, NULL) },
+	{ FR_CONF_OFFSET("verify", FR_TYPE_SUBSECTION, fr_tls_conf_t, verify), .subcs = (void const *) tls_verify_config },
+
 	{ FR_CONF_DEPRECATED("check_cert_issuer", FR_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_DEPRECATED("check_cert_cn", FR_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
 	CONF_PARSER_TERMINATOR
@@ -190,7 +216,6 @@ CONF_PARSER fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("dh_file", FR_TYPE_STRING, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, fr_tls_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, fr_tls_conf_t, fragment_size), .dflt = "1024" },
-	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, fr_tls_conf_t, cipher_list) },
 
@@ -293,7 +318,7 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
 		}
 
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
-	if (conf->check_crl) X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+	if (conf->verify.check_crl) X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 #endif
 
 	return store;

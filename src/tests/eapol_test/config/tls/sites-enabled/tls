@@ -1,7 +1,7 @@
 server eap-tls-test {
 	namespace = tls
 
-	validate certificate {
+	verify certificate {
 		ok
 	}
 }

@@ -194,16 +194,16 @@ eap {
 	#  | Config item | Replacement
 	#
 	#  | `verify_client_cert_cmd`
-	#  | Unlang policy in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#  | Unlang policy in the `verify certificate { ... }` section of the specified `virtual_server`.
 	#
 	#  | `check_cert_issuer`
-	#  | Unlang policy in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#  | Unlang policy in the `verify certificate { ... }` section of the specified `virtual_server`.
 	#
 	#  | `check_cert_cn`
-	#  | Unlang policy in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#  | Unlang policy in the `verify certificate { ... }` section of the specified `virtual_server`.
 	#
 	#  | `ocsp`
-	#  | rlm_ocsp call in the `validate certificate { ... }` section of the specified `virtual_server`.
+	#  | rlm_ocsp call in the `verify certificate { ... }` section of the specified `virtual_server`.
 	#
 	#  | `staple`
 	#  | rlm_ocsp call in the `staple certificate { ... }` section of the specified `virtual_server`.
@@ -232,7 +232,7 @@ eap {
 		#  | `clear session { ... }`
 		#  | Clear stateful session information from a cache.
 		#
-		#  | `validate certificate { ... }` |
+		#  | `verify certificate { ... }` |
 		#  | Apply policies based on the client certificate presented.
 		#
 		#  | `staple certificate { ... }`
@@ -498,27 +498,9 @@ eap {
 #		fragment_size = 1024
 
 		#
-		#  check_crl:: Check the Certificate Revocation List.
-		#
-		#  Will check CRLs for all certificates in the certificate chain.
-		#
-		#  1. Copy CA certificates and CRLs to same directory.
-		#  2. Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
-		#     OpenSSL's command.
-		#  3. uncomment the lines below.
-		#  4. Restart radiusd.
-		#
-#		check_crl = yes
-
-		#
 		#  ca_path:: Full path to the CA file.
 		#
 		ca_path = ${cadir}
-
-		#
-		#  allow_expired_crl:: Accept an expired Certificate Revocation List.
-		#
-#		allow_expired_crl = no
 
 		#
 		#  cipher_list::
@@ -587,23 +569,128 @@ eap {
 		#
 		ecdh_curve = prime256v1
 
+		verify {
+			#
+			#  mode:: Which client certificates should be verified
+			#
+			#  [options="header,autowidth"]
+			#  |===
+			#  | Value | Description
+			#
+			#  | `disabled`
+			#  | Don't verify any certificates.
+			#
+			#  | `all`
+			#  | Verify all certificates.  Check none have been
+			#    revoked via CRL, and that all are trusted.
+			#
+			#  | `untrusted`
+			#  | Verify all untrusted certificates,
+			#    i.e. those which were presented by the client
+			#    and not loaded on startup.
+			#
+			#  | `client-and-issuer`
+			#  | Verify the client certificate and its issuer.
+			#
+			#  | `client`
+			#  | Only verify the client certificate.
+			#  |===
+			#
+			# It is recommended to leave mode as `all` except
+			# when debugging, or in an emergency situation.
+			#
+			#  [NOTE]
+			#  ====
+			#  This verification is only applied during a full
+			#  handshake, and with stateful session resumption.
+			#  Verification for stateless session resumption
+			#  should be performed using the `verify [*] { ... }`
+			#  section(s) of the specified `virtual_server`.
+			#  ====
+			#
+#			mode = all
+
+			#
+			#  attribute_mode:: Which client certificates should
+			#  be converted to attributes for use in the
+			#  `verify * { ... }` sections of the specified
+			#  `virtual_server`.
+			#
+			#  Attributes created during certificate processing
+			#  will be placed in the `&session-state` list.
+			#  This is to simplify session-resumption, as the
+			#  contents of this list also contains session data
+			#  for stateful resumption, and this list is encoded
+			#  in the session-ticket for stateless resumption.
+			#
+			#  [options="header,autowidth"]
+			#  |===
+			#  | Value | Description
+			#
+			#  | `disabled`
+			#  | Don't produce any attributes.
+			#
+			#  | `all`
+			#  | Create attributes for all certificates from
+			#    the root, to the presented client certificate.
+			#
+			#  | `untrusted`
+			#  | Create attributes for untrusted certificates,
+			#    i.e. those which were presented by the client
+			#    and not loaded on startup.
+			#
+			#  | `client-and-issuer`
+			#  | Create attributes for the client certificate
+			#    and its issuer.
+			#  | `client`
+			#
+			#  | Only create attributes for the client
+			#    certificate.
+			#  |===
+			#
+			#  [NOTE]
+			#  ====
+			#  Attribute generation is only performed on full
+			#  handshake, or where we detect that attributes
+			#  are missing from the &session-state list during
+			#  stateful session-resumption.
+			#
+			#  Certificate attributes will usually be retrieved
+			#  from the the session-ticket in the case of
+			#  stateless session-resumption.
+			#  ====
+			#
+#			attribute_mode = client-and-issuer
+
+			#
+			#  check_crl:: Check the Certificate Revocation List.
+			#
+			#  Will check CRLs for all certificates in the certificate chain.
+			#
+			#  1. Copy CA certificates and CRLs to same directory.
+			#  2. Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
+			#     OpenSSL's command.
+			#  3. uncomment the lines below.
+			#  4. Restart radiusd.
+			#
+#			check_crl = yes
+
+			#
+			#  allow_expired_crl:: Accept an expired Certificate Revocation List.
+			#
+#			allow_expired_crl = no
+		}
 		#
 		#  ### TLS Session resumption
 		#
-		#  We currently support RFC 5246 style TLS session resumption
-		#  only.
+		#  Once authentication has completed the TLS client may be
+		#  provided with a unique session identifier (stateful resumption)
+		#  or a session-ticket (stateless resumption) that it may present
+		#  during its next authentication attempt.
 		#
-		#  Once authentication has completed the TLS client is provided
-		#  with a unique session identifier (or cookie) that it may
-		#  present during its next authentication attempt.
-		#
-		#  Presenting this identifier allows the client to skip the
-		#  majority of TLS tunnel setup during its next authentication
-		#  session.
-		#
-		#  Resuming a TLS session avoids the certificate exchange and in
-		#  the case `PEAP` and `TTLS`, allows the client to skip the inner
-		#  `EAP` method.
+		#  Presenting a session identifier or session-ticket allows the
+		#  client to skip the majority of TLS tunnel setup during its next
+		#  authentication session.
 		#
 		#  Enabling `Session-Resumption` is highly recommended for sites
 		#  using slow authentication backends such as winbindd/Active
@@ -612,12 +699,12 @@ eap {
 		#
 		#  NOTE: You must ensure any attributes required for policy
 		#  decisions are cached at the same time as the TLS session
-		#  data. See `sites-available/tls` for documentation on
-		#  how TLS cache now works.
-		#
-		#  If using the default `tls-cache` virtual server and
-		#  cache module config, policy attributes may be stored in the
-		#  `&session-state.` list.
+		#  data. This is usually done by placing policy attributes in the
+		#  `&session-state` list, or in the case of EAP-PEAP, EAP-TTLS and
+		#  EAP-FAST, the `&parent.session-state` list (i.e. in the request
+		#  that represents the TLS part of the authentication attempt),
+		#  so that they are cached at the same time as the session resumption
+		#  data.
 		#
 		cache {
 			#
@@ -655,7 +742,8 @@ eap {
 			#
 			# It is recommended to set `mode = auto` *and* provide a
 			# correctly configured `virtual_server`.  wpa_supplicant
-			# does not request/allow session tickets by default for TLS <= 1.2.
+			# does not request/allow session tickets by default for
+			# TLS < 1.3.
 			#
 #			mode = auto
 

@@ -31,6 +31,16 @@ RCSIDH(conf_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
+typedef struct fr_tls_conf_s fr_tls_conf_t;
+#ifdef __cplusplus
+}
+#endif
+
+#include "verify.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Different chain building modes
  *
@@ -98,6 +108,20 @@ typedef struct {
 	uint8_t		session_ticket_key_rand[16 + 32 + 32];	//!< OpenSSL really needs to export this length.
 } fr_tls_cache_conf_t;
 
+/** Certificate verification configuration
+ *
+ */
+typedef struct {
+	fr_tls_verify_mode_t mode;			//!< What certificates we apply OpenSSL's pre-validation
+							///< mode to.
+
+	fr_tls_verify_mode_t pair_mode;			//!< What set of certificates we're going to convert to
+							///< pairs for verification.
+
+	bool		check_crl;			//!< Check certificate revocation lists.
+	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
+} fr_tls_verify_conf_t;
+
 /* configured values goes right here */
 struct fr_tls_conf_s {
 	CONF_SECTION	*virtual_server;		//!< The virtual server containing certificate validation
@@ -129,9 +153,6 @@ struct fr_tls_conf_s {
 	uint32_t	fragment_size;			//!< Maximum record fragment, or record size.
 	uint32_t	padding_block_size;		//!< for TLS 1.3, pad blocks to multiple of this size.
 
-	bool		check_crl;			//!< Check certificate revocation lists.
-	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
-
 	char const	*cipher_list;			//!< Acceptable ciphers.
 	bool		cipher_server_preference;	//!< use server preferences for cipher selection
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
@@ -151,9 +172,8 @@ struct fr_tls_conf_s {
 #endif
 
 	fr_tls_cache_conf_t	cache;			//!< Session cache configuration.
+	fr_tls_verify_conf_t	verify;
 };
-
-typedef struct fr_tls_conf_s fr_tls_conf_t;
 
 fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);
 
