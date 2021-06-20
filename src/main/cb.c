@@ -153,6 +153,25 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 */
 	if (!state) return;
 
+	if (rad_debug_lvl > 3) {
+		size_t i, j, data_len = len;
+		char buffer[3*16 + 1];
+		uint8_t const *in = inbuf;
+
+		DEBUG("(TLS) Received %zu bytes of TLS data", len);
+		if (data_len > 256) data_len = 256;
+
+		for (i = 0; i < data_len; i += 16) {
+			for (j = 0; j < 16; j++) {
+				if ((i + j) >= data_len) break;
+
+				sprintf(buffer + 3 * j, "%02x ", in[i + j]);
+			}
+
+			DEBUG("(TLS)        %s", buffer);
+		}
+	}
+
 	/*
 	 *	0 - received (from peer)
 	 *	1 - sending (to peer)
@@ -162,7 +181,6 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	state->info.record_len = len;
 	state->info.version = msg_version;
 	state->info.initialized = true;
-
 
 	if (content_type == SSL3_RT_ALERT) {
 		state->info.alert_level = buf[0];
@@ -197,6 +215,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		}
 #endif
 	}
+
 	tls_session_information(state);
 }
 
