@@ -229,7 +229,7 @@ static inline fr_pair_t *fr_dcursor_iter_by_ancestor_init(fr_dcursor_t *cursor,
 }
 
 /** @hidecallergraph */
-unsigned int	fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da);
+unsigned int	fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da, unsigned int n);
 
