@@ -6,6 +6,7 @@ endif
 
 SOURCES	:= \
 	base.c \
+	bio.c \
 	cache.c \
 	conf.c \
 	ctx.c \

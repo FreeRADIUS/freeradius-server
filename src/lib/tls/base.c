@@ -40,6 +40,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/debug.h>
 
 #include "log.h"
+#include "bio.h"
 
 static uint32_t instance_count = 0;
 
@@ -388,6 +389,8 @@ void fr_openssl_free(void)
 	fr_dict_autofree(tls_dict);
 
 	fr_tls_log_free();
+
+	fr_tls_bio_free();
 }
 
 /** Add all the default ciphers and message digests to our context.
@@ -427,6 +430,8 @@ int fr_openssl_init(void)
 	fr_tls_engine_load_builtin();
 
 	fr_tls_log_init();
+
+	fr_tls_bio_init();
 
 	instance_count++;
 
