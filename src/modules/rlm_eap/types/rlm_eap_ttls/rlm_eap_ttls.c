@@ -161,7 +161,6 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 		}
 
 		if (tunnel && tunnel->authenticated) {
-
 		do_keys:
 			/*
 			 *	Success: Automatically return MPPE keys.
@@ -184,9 +183,9 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 			 *	never completed.
 			 */
 			return fr_tls_cache_pending_push(request, tls_session);
-		} else {
-			eap_tls_request(request, eap_session);
 		}
+
+		eap_tls_request(request, eap_session);
 		RETURN_MODULE_OK;
 
 	/*
