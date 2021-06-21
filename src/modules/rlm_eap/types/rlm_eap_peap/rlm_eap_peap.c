@@ -217,14 +217,16 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 
 	case RLM_MODULE_OK:
 	{
-		static char keying_prf_label[] = "client EAP encryption";
+		eap_tls_prf_label_t prf_label;
+
+		eap_crypto_prf_label_init(&prf_label, eap_session,
+					  "client EAP encryption",
+					  sizeof("client EAP encryption") - 1);
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		if (eap_tls_success(request, eap_session,
-				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    NULL, 0) < 0) RETURN_MODULE_FAIL;
+		if (eap_tls_success(request, eap_session, &prf_label) > 0) RETURN_MODULE_FAIL;
 		*p_result = rcode;
 
 		/*

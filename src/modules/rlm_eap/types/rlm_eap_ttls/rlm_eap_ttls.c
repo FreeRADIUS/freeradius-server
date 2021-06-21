@@ -138,7 +138,6 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
 	ttls_tunnel_t		*tunnel = talloc_get_type_abort(tls_session->opaque, ttls_tunnel_t);
-	static char 		keying_prf_label[] = "ttls keying material";
 
 	if ((eap_tls_session->state == EAP_TLS_INVALID) || (eap_tls_session->state == EAP_TLS_FAIL)) {
 		REDEBUG("[eap-tls process] = %s", fr_table_str_by_value(eap_tls_status_table, eap_tls_session->state, "<INVALID>"));
@@ -161,13 +160,16 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 		}
 
 		if (tunnel && tunnel->authenticated) {
+			eap_tls_prf_label_t prf_label;
+
 		do_keys:
+			eap_crypto_prf_label_init(&prf_label, eap_session,
+						  "ttls keying material",
+						  sizeof("ttls keying material") - 1);
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */
-			if (eap_tls_success(request, eap_session,
-					    keying_prf_label, sizeof(keying_prf_label) - 1,
-					    NULL, 0) < 0) RETURN_MODULE_FAIL;
+			if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
 			*p_result = RLM_MODULE_OK;
 
 			/*
@@ -319,6 +321,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	}
 
 	tls_session->opaque = ttls_alloc(tls_session, inst);
+
 	eap_session->process = mod_handshake_process;
 
 	RETURN_MODULE_OK;

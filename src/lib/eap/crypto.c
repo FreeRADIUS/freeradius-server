@@ -42,17 +42,59 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "attrs.h"
 
-#define EAP_TLS_MPPE_KEY_LEN     32
-
-/** Generate keys according to RFC 2716 and add to the reply
+/** Initialize the PRF label fields
  *
  */
-int eap_crypto_mppe_keys(request_t *request, SSL *ssl, char const *prf_label, size_t prf_label_len)
+void eap_crypto_prf_label_init(eap_tls_prf_label_t *prf_label, eap_session_t *eap_session,
+			      char const *keying_prf_label, size_t keying_prf_label_len)
+{
+#ifdef TLS1_3_VERSION
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+
+	if (eap_tls_session->tls_session->info.version == TLS1_3_VERSION) {
+		prf_label->keying_prf_label = "EXPORTER_EAP_TLS_Key_Material";
+		prf_label->keying_prf_label_len = sizeof("EXPORTER_EAP_TLS_Key_Material") -1;
+
+		prf_label->sessid_prf_label = "EXPORTER_EAP_TLS_Method-Id";
+		prf_label->sessid_prf_label_len = sizeof("EXPORTER_EAP_TLS_Method-Id") - 1;
+
+		prf_label->context[0] = eap_session->type;
+		prf_label->context_len = 1;
+		prf_label->use_context = 1;
+		return;
+	}
+#endif
+
+	prf_label->keying_prf_label = keying_prf_label;
+	prf_label->keying_prf_label_len = keying_prf_label_len;
+
+	prf_label->sessid_prf_label = NULL;
+	prf_label->sessid_prf_label_len = 0;
+
+	prf_label->context[0] = 0;
+	prf_label->context_len = 0;
+	prf_label->use_context = 0;
+}
+
+
+#define EAP_TLS_MPPE_KEY_LEN     32
+
+/** Generate keys according to RFC 5216 and add to the reply
+ *
+ */
+int eap_crypto_mppe_keys(request_t *request, SSL *ssl, eap_tls_prf_label_t *prf_label)
 {
 	uint8_t		out[4 * EAP_TLS_MPPE_KEY_LEN];
 	uint8_t		*p;
 
-	if (SSL_export_keying_material(ssl, out, sizeof(out), prf_label, prf_label_len, NULL, 0, 0) != 1) {
+	if (!prf_label->keying_prf_label) return 0;
+
+	if (SSL_export_keying_material(ssl, out, sizeof(out),
+				       prf_label->keying_prf_label,
+				       prf_label->keying_prf_label_len,
+				       prf_label->context,
+				       prf_label->context_len,
+				       prf_label->use_context) != 1) {
 		fr_tls_log_error(request, "Failed generating MPPE keys");
 		return -1;
 	}
@@ -65,7 +107,7 @@ int eap_crypto_mppe_keys(request_t *request, SSL *ssl, char const *prf_label, si
 
 		RDEBUG3("Key Derivation Function input");
 		RINDENT();
-		RDEBUG3("prf label          : %pV", fr_box_strvalue_len(prf_label, prf_label_len));
+		RDEBUG3("prf label          : %s", prf_label->keying_prf_label);
 		master_key_len = SSL_SESSION_get_master_key(SSL_get_session(ssl), master_key, sizeof(master_key));
 		RDEBUG3("master session key : %pH", fr_box_octets(master_key, master_key_len));
 		random_len = SSL_get_client_random(ssl, random, SSL3_RANDOM_SIZE);
@@ -91,22 +133,14 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 #if OPENSSL_VERSION_NUMBER < 0x10101000L
 			      UNUSED
 #endif
-			      request_t *request, SSL *ssl,
-			      uint8_t **out, uint8_t eap_type,
-#if OPENSSL_VERSION_NUMBER < 0x10101000L
-			      UNUSED
-#endif
-			      char const *prf_label,
-#if OPENSSL_VERSION_NUMBER < 0x10101000L
-			      UNUSED
-#endif
-			      size_t prf_label_len)
+			      request_t *request, SSL *ssl, eap_tls_prf_label_t *prf_label,
+			      uint8_t **out, uint8_t eap_type)
 {
 	uint8_t		*buff = NULL, *p;
 
 	*out = NULL;
 
-	if (!prf_label) goto random_based_session_id;
+	if (!prf_label->sessid_prf_label) goto random_based_session_id;
 
 	switch (SSL_SESSION_get_protocol_version(SSL_get_session(ssl))) {
 	case SSL2_VERSION:	/* Should never happen */
@@ -127,15 +161,20 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 		break;
 
 	/*
-	 *	Session-Id = <EAP-Type> || Method-Id
 	 *	Method-Id = TLS-Exporter("EXPORTER_EAP_TLS_Method-Id", "", 64)
+	 *	Session-Id = <EAP-Type> || Method-Id
 	 */
 	case TLS1_3_VERSION:
 	default:
 	{
 		MEM(buff = p = talloc_array(ctx, uint8_t, sizeof(eap_type) + 64));
 		*p++ = eap_type;
-		if (SSL_export_keying_material(ssl, p, 64, prf_label, prf_label_len, NULL, 0, 0) != 1) {
+		if (SSL_export_keying_material(ssl, p, 64,
+					       prf_label->sessid_prf_label,
+					       prf_label->sessid_prf_label_len,
+					       prf_label->context,
+					       prf_label->context_len,
+					       prf_label->use_context) != 1) {
 			fr_tls_log_error(request, "Failed generating TLS session ID");
 			return -1;
 		}

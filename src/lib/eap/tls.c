@@ -254,19 +254,12 @@ int eap_tls_start(request_t *request, eap_session_t *eap_session)
  *
  * @param[in] request			The current subrequest.
  * @param[in] eap_session		that completed successfully.
- * @param[in] keying_prf_label		PRF label to use for generating keying material.
- *					If NULL, no MPPE keys will be generated.
- * @param[in] keying_prf_label_len	Length of the keying PRF label.
- * @param[in] sessid_prf_label		PRF label to use when generating the session ID.
- *					If NULL, session ID will be based on client/server randoms.
- * @param[in] sessid_prf_label_len	Length of the session ID PRF label.
+ * @param[in] prf_label			PRF label struct
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_success(request_t *request, eap_session_t *eap_session,
-		    char const *keying_prf_label, size_t keying_prf_label_len,
-		    char const *sessid_prf_label, size_t sessid_prf_label_len)
+int eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_label_t *prf_label)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
@@ -281,11 +274,12 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session,
 	if (eap_tls_compose(request, eap_session, EAP_TLS_ESTABLISHED,
 			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
 
+	if (!prf_label) return 0;
+
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
-	if (keying_prf_label) if (eap_crypto_mppe_keys(request->parent, tls_session->ssl,
-						       keying_prf_label, keying_prf_label_len) < 0) return -1;
+	if (eap_crypto_mppe_keys(request->parent, tls_session->ssl, prf_label) < 0) return -1;
 
 	/*
 	 *	Add the EAP session ID to the request
@@ -295,9 +289,8 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session,
 		fr_pair_t	*vp;
 
 		MEM(pair_append_reply(&vp, attr_eap_session_id) >= 0);
-		if (eap_crypto_tls_session_id(vp, request, tls_session->ssl,
-					      &session_id, eap_session->type,
-					      sessid_prf_label, sessid_prf_label_len) < 0) {
+		if (eap_crypto_tls_session_id(vp, request, tls_session->ssl, prf_label,
+					      &session_id, eap_session->type) < 0) {
 			pair_delete_reply(vp);
 			return -1;
 		}

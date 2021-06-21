@@ -72,52 +72,6 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 	{ NULL }
 };
 
-static unlang_action_t eap_tls_success_with_prf(rlm_rcode_t *p_result, request_t *request, eap_session_t *eap_session)
-{
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
-	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
-
-	/*
-	 *	Set the PRF label based on the TLS version negotiated
-	 *	in the handshake.
-	 */
-	switch (SSL_SESSION_get_protocol_version(SSL_get_session(tls_session->ssl))) {
-	case SSL2_VERSION:			/* Should never happen */
-	case SSL3_VERSION:			/* Should never happen */
-		fr_assert(0);
-		RETURN_MODULE_INVALID;
-
-	case TLS1_VERSION:
-	case TLS1_1_VERSION:
-	case TLS1_2_VERSION:
-#endif
-	{
-		static char const keying_prf_label[] = "client EAP encryption";
-
-		if (eap_tls_success(request, eap_session,
-				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    NULL, 0) < 0) RETURN_MODULE_FAIL;
-	}
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-		break;
-
-	case TLS1_3_VERSION:
-	default:
-	{
-		static char const keying_prf_label[] = "EXPORTER_EAP_TLS_Key_Material";
-		static char const sessid_prf_label[] = "EXPORTER_EAP_TLS_Method-Id";
-
-		if (eap_tls_success(request, eap_session,
-				    keying_prf_label, sizeof(keying_prf_label) - 1,
-				    sessid_prf_label, sizeof(sessid_prf_label) - 1) < 0) RETURN_MODULE_FAIL;
-	}
-		break;
-	}
-#endif
-	RETURN_MODULE_OK;
-}
-
 static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
 					    request_t *request, void *rctx)
 {
@@ -140,7 +94,14 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 	 *	it accepts the certificates, too.
 	 */
 	case EAP_TLS_ESTABLISHED:
-		if (eap_tls_success_with_prf(p_result, request, eap_session) < 0) RETURN_MODULE_FAIL;
+	{
+		eap_tls_prf_label_t prf_label;
+
+		eap_crypto_prf_label_init(&prf_label, eap_session,
+					  "client EAP encryption",
+					  sizeof("client EAP encryption") - 1);
+
+		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
 
 		/*
 		 *	Write the session to the session cache
@@ -155,7 +116,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 		 *	never completed.
 		 */
 		return fr_tls_cache_pending_push(request, tls_session);
-
+	}
 
 	/*
 	 *	The TLS code is still working on the TLS

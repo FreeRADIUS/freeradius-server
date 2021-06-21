@@ -454,10 +454,14 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 		RETURN_MODULE_HANDLED;
 
 	/*
-	 *	Success: Automatically return MPPE keys.
+	 *	Success.
 	 */
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		if (eap_tls_success(request, eap_session, NULL, 0, NULL, 0) < 0) RETURN_MODULE_FAIL;
+		if (eap_tls_success(request, eap_session, NULL) < 0) RETURN_MODULE_FAIL;
+
+		/*
+		 *	@todo - generate MPPE keys, which have their own magical deriviation.
+		 */
 
 		/*
 		 *	Write the session to the session cache
