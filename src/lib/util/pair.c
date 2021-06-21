@@ -514,8 +514,6 @@ unsigned int fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
 
 	if (fr_dlist_empty(&list->head)) return 0;
 
-	LIST_VERIFY(list);
-
 	while ((vp = fr_pair_list_next(list, vp))) if (da == vp->da) count++;
 
 	return count;
