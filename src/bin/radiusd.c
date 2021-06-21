@@ -123,9 +123,10 @@ static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void 
 {
 	if (modules_thread_instantiate(ctx, el) < 0) return -1;
 	if (xlat_thread_instantiate(ctx) < 0) return -1;
+#ifdef WITH_TLS
 	if (fr_openssl_thread_init(main_config->openssl_async_pool_init,
 				   main_config->openssl_async_pool_max) < 0) return -1;
-
+#endif
 	return 0;
 }
 
