@@ -61,13 +61,13 @@ static _Thread_local	fr_tls_bio_talloc_agg_t		*tls_bio_talloc_agg;
  * @param[in] in	data being written to BIO.
  * @param[in] len	Length of data being written.
  */
-static int tls_log_bio_talloc_agg_write_cb(BIO *bio, char const *in, int len)
+static int tls_bio_talloc_agg_write_cb(BIO *bio, char const *in, int len)
 {
 	fr_tls_bio_talloc_agg_t	*ab = talloc_get_type_abort(BIO_get_data(bio), fr_tls_bio_talloc_agg_t);
 
 	fr_assert_msg(ab->dbuff.buff, "BIO not initialised");
 
-	return fr_dbuff_in_memcpy_partial(&ab->dbuff, (uint8_t const *)in, len);
+	return fr_dbuff_in_memcpy_partial(&ab->dbuff, (uint8_t const *)in, (size_t)len);
 }
 
 /** Aggregates BIO_puts() calls into a talloc'd buffer
@@ -75,9 +75,9 @@ static int tls_log_bio_talloc_agg_write_cb(BIO *bio, char const *in, int len)
  * @param[in] bio	that was written to.
  * @param[in] in	data being written to BIO.
  */
-static int tls_log_bio_talloc_agg_puts_cb(BIO *bio, char const *in)
+static int tls_bio_talloc_agg_puts_cb(BIO *bio, char const *in)
 {
-	return tls_log_bio_talloc_agg_write_cb(bio, in, strlen(in));
+	return tls_bio_talloc_agg_write_cb(bio, in, strlen(in));
 }
 
 /** Frees a logging bio and its underlying OpenSSL BIO *
@@ -201,8 +201,8 @@ int fr_tls_bio_init(void)
 	tls_bio_talloc_agg_meth = BIO_meth_new(BIO_get_new_index() | BIO_TYPE_SOURCE_SINK, "fr_tls_bio_talloc_agg");
 	if (unlikely(!tls_bio_talloc_agg_meth)) return -1;
 
-	BIO_meth_set_write(tls_bio_talloc_agg_meth, tls_log_bio_talloc_agg_write_cb);
-	BIO_meth_set_puts(tls_bio_talloc_agg_meth, tls_log_bio_talloc_agg_puts_cb);
+	BIO_meth_set_write(tls_bio_talloc_agg_meth, tls_bio_talloc_agg_write_cb);
+	BIO_meth_set_puts(tls_bio_talloc_agg_meth, tls_bio_talloc_agg_puts_cb);
 
 	return 0;
 }
