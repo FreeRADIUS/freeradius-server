@@ -1176,19 +1176,12 @@ send Access-Accept {
 	#  available).
 	#
 #	update reply {
-#		&Reply-Message += "%{session-state.TLS-Cert-Serial}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Expiration}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Subject}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Issuer}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Subject-Alt-Name-Email}"
-#
-#		&Reply-Message += "%{session-state.TLS-Client-Cert-Serial}"
-#		&Reply-Message += "%{session-state.TLS-Client-Cert-Expiration}"
-#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject}"
-#		&Reply-Message += "%{session-state.TLS-Client-Cert-Issuer}"
-#		&Reply-Message += "%{session-state.TLS-Client-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state.TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Cert.Serial}"
+#		&Reply-Message += "%{session-state.TLS-Cert.Not-After}"
+#		&Reply-Message += "%{session-state.TLS-Cert.Subject}"
+#		&Reply-Message += "%{session-state.TLS-Cert.Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Cert.Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Cert.Subject-Alt-Name-Email}"
 #	}
 
 	#
