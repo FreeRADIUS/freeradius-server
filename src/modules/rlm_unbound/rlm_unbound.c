@@ -75,29 +75,6 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Callback sent to libunbound for xlat functions.  Simply links the
- *	new ub_result via a pointer that has been allocated from the heap.
- *	This pointer has been pre-initialized to a magic value.
- */
-static void link_ubres(void *my_arg, int err, struct ub_result *result)
-{
-	struct ub_result **ubres = (struct ub_result **)my_arg;
-
-	/*
-	 *	Note that while result will be NULL on error, we are explicit
-	 *	here because that is actually a behavior that is suboptimal
-	 *	and only documented in the examples.  It could change.
-	 */
-	if (err) {
-		ERROR("%s", ub_strerror(err));
-		*ubres = NULL;
-	} else {
-		*ubres = result;
-	}
-
-}
-
 /**	Callback called by unbound when resolution started with ub_resolve_event() completes
  *
  * @param mydata	the request tracking structure set up before ub_resolve_event() was called
