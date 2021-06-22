@@ -775,134 +775,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	return from_cast.vb_length;
 }
 
-/** Traverse a TLV attribute
- *
- * @param[in] list_head The head of the pair_list being evaluated.
- * @param[in] current	The pair to evaluate.
- * @param[in] ns	Tracks tree position between cursor calls.
- * @return
- *	- the next matching vp
- *	- NULL if none found
- */
-static fr_pair_t *_tmpl_cursor_tlv_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
-{
-	fr_dcursor_stack_t	*cs;
-	fr_dcursor_t		*cursor;
-	fr_pair_t		*vp;
-
-	cs = ns->tlv.cursor_stack;
-	cursor = &cs->cursor[cs->depth - 1];
-
-	/*
-	 *	Our final stopping condition is when the shallowest
-	 *      cursor returns NULL.  That means we've evaluated
-	 *	the entire subtree.
-	 */
-	while (cs->depth > 0) {
-		for (vp = fr_dcursor_current(cursor);
-		     vp;
-		     vp = fr_dcursor_next(cursor)) {
-			/*
-			 *	Exact match, we're done.
-			 */
-			if (fr_dict_attr_cmp(vp->da, ns->ar->ar_da) == 0) {
-				fr_dcursor_next(cursor);	/* Advance to correct position for next call */
-				return vp;
-			}
-
-			/*
-			 *	Traverse the intermediary VP
-			 */
-			if ((vp->da->depth < ns->ar->ar_da->depth) &&
-			    (fr_dict_attr_cmp(ns->tlv.da_stack.da[vp->da->depth], vp->da) == 0)) {
-				cursor = &cs->cursor[cs->depth++];
-				fr_dcursor_init(cursor, &vp->vp_group);
-				continue;
-			}
-		}
-
-		/*
-		 *	We're done processing children at this level.
-		 *
-		 *	Jump up one in the cursor stack and continue.
-		 */
-		cursor = &cs->cursor[--cs->depth];
-	}
-
-	return NULL;
-}
-
 static inline CC_HINT(always_inline)
 void _tmpl_cursor_pool_init(tmpl_pair_cursor_ctx_t *cc)
 {
 	if (!cc->pool) MEM(cc->pool = talloc_pool(cc->ctx, sizeof(tmpl_cursor_nested_t) * 5));
-}
-
-/** Initialise an evaluation ctx for traversing a TLV attribute
- *
- */
-static inline CC_HINT(always_inline)
-void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
-{
-	tmpl_attr_t		*prev = fr_dlist_prev(&cc->vpt->data.attribute.ar, ar);
-
-	int			span;		/* Max number of nested VPs we'll need to deal with */
-	bool			partial;
-
-	tmpl_cursor_nested_t	*ns;
-
-	/*
-	 *	We may only need to re-build part of the
-	 *	da stack.
-	 */
-	if (prev && prev->ar_da) switch (prev->ar_da->type) {
-	case FR_TYPE_TLV:
-	case FR_TYPE_VSA:
-	case FR_TYPE_STRUCT:
-	case FR_TYPE_VENDOR:
-		span = ar->ar_da->depth - prev->ar_da->depth;
-		partial = true;
-		break;
-
-	default:
-	no_prev:
-		span = ar->ar_da->depth;
-		partial = false;
-		break;
-	} else goto no_prev;
-
-	_tmpl_cursor_pool_init(cc);
-	MEM(ns = talloc_pooled_object(cc->pool, tmpl_cursor_nested_t,
-				      1, sizeof(fr_dcursor_stack_t) + (sizeof(fr_dcursor_t) * span)));
-	*ns = (tmpl_cursor_nested_t){
-		.ar = ar,
-		.func = _tmpl_cursor_tlv_eval,
-		.list_ctx = list_ctx,
-		.tlv = {
-			.cursor_stack = fr_dcursor_stack_alloc(ns, span)
-		}
-	};
-
-	/*
-	 *	Initialise the first level cursor
-	 *	to point to the list or children of
-	 *	a tlv or group.
-	 */
-	fr_dcursor_init(&ns->tlv.cursor_stack->cursor[0], list);
-	ns->tlv.cursor_stack->depth = 1;
-
-	/*
-	 *	We're either looking for VPs in the path
-	 *	from the dictionary root to the ref,
-	 *	or between two TLVs.
-	 */
-	if (partial) {
-		fr_proto_da_stack_build_partial(&ns->tlv.da_stack, prev->ar_da, ar->ar_da);
-	} else {
-		fr_proto_da_stack_build(&ns->tlv.da_stack, ar->ar_da);
-	}
-
-	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
 /** Traverse a group attribute
@@ -916,7 +792,7 @@ void _tmpl_cursor_tlv_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr
  *	- the next matching attribute
  *	- NULL if none found
  */
-static fr_pair_t *_tmpl_cursor_group_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
+static fr_pair_t *_tmpl_cursor_child_eval(UNUSED fr_dlist_head_t *list_head, UNUSED fr_pair_t *current, tmpl_cursor_nested_t *ns)
 {
 	fr_pair_t *vp;
 
@@ -936,7 +812,7 @@ static fr_pair_t *_tmpl_cursor_group_eval(UNUSED fr_dlist_head_t *list_head, UNU
  *
  */
 static inline CC_HINT(always_inline)
-void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
+void _tmpl_cursor_child_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
 {
 	tmpl_cursor_nested_t *ns;
 
@@ -944,7 +820,7 @@ void _tmpl_cursor_group_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_at
 	MEM(ns = talloc(cc->pool, tmpl_cursor_nested_t));
 	*ns = (tmpl_cursor_nested_t){
 		.ar = ar,
-		.func = _tmpl_cursor_group_eval,
+		.func = _tmpl_cursor_child_eval,
 		.list_ctx = list_ctx
 	};
 	fr_dcursor_init(&ns->group.cursor, list);
@@ -1100,15 +976,8 @@ static inline CC_HINT(always_inline)
 void _tmpl_pair_cursor_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_pair_cursor_ctx_t *cc)
 {
 	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
-	case FR_TYPE_TLV:
-	case FR_TYPE_VSA:
-	case FR_TYPE_STRUCT:
-	case FR_TYPE_VENDOR:
-		_tmpl_cursor_tlv_init(list_ctx, list, ar, cc);
-		break;
-
-	case FR_TYPE_GROUP:
-		_tmpl_cursor_group_init(list_ctx, list, ar, cc);
+	case FR_TYPE_STRUCTURAL:
+		_tmpl_cursor_child_init(list_ctx, list, ar, cc);
 		break;
 
 	default:

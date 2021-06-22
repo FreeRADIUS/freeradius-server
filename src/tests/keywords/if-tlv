@@ -1,0 +1,11 @@
+#
+# PRE: update if
+#
+
+"%{map:&TLS-Cert.Issuer = 'foo'}"
+
+if (!&TLS-Cert.Issuer) {
+	test_fail
+}
+
+success
