@@ -60,6 +60,19 @@ typedef struct {
 	rlm_unbound_thread_t	*t;		//!< Thread structure
 } unbound_xlat_thread_inst_t;
 
+typedef struct {
+	int			async_id;	//!< Id of async query
+	request_t		*request;	//!< Current request being processed
+	rlm_unbound_thread_t	*t;		//!< Thread running this request
+	int			done;		//!< Indicator that the callback has been called
+						///< Negative values indicate errors.
+	fr_type_t		return_type;	//!< Data type to parse results into
+	bool			has_priority;	//!< Does the returned data start with a priority field
+	uint16_t		count;		//!< Number of results to return
+	fr_value_box_list_t	list;		//!< Where to put the parsed results
+	TALLOC_CTX		*out_ctx;	//!< CTX to allocate parsed results in
+} unbound_request_t;
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
