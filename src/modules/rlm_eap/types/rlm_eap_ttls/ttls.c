@@ -273,7 +273,7 @@ do_value:
 		 *	we're not too worried about the Id.
 		 */
 		if ((vp->da == attr_chap_challenge) || (vp->da == attr_ms_chap_challenge)) {
-			uint8_t	challenge[16];
+			uint8_t	challenge[17];
 			char	label[] = "ttls challenge";
 
 			if ((vp->vp_length < 8) || (vp->vp_length > 16)) {
@@ -281,7 +281,11 @@ do_value:
 				goto error;
 			}
 
-			if (SSL_export_keying_material(ssl, challenge, sizeof(challenge),
+			/*
+			 *	TLSv1.3 exports a different key depending on the length
+			 *	requested so ask for *exactly* what the spec requires
+			 */
+			if (SSL_export_keying_material(ssl, challenge, vp->vp_length + 1,
 						       label, sizeof(label) - 1, NULL, 0, 0) != 1) {
 				fr_tls_log_strerror_printf("Failed generating phase2 challenge");
 				goto error;
