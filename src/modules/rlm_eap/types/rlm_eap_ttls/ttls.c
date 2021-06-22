@@ -274,7 +274,7 @@ do_value:
 		 */
 		if ((vp->da == attr_chap_challenge) || (vp->da == attr_ms_chap_challenge)) {
 			uint8_t	challenge[17];
-			char	label[] = "ttls challenge";
+			static const char label[] = "ttls challenge";
 
 			if ((vp->vp_length < 8) || (vp->vp_length > 16)) {
 				fr_strerror_const("Tunneled challenge has invalid length");
