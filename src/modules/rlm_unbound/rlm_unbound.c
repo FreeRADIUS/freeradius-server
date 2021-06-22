@@ -102,7 +102,167 @@ static void link_ubres(void *my_arg, int err, struct ub_result *result)
 	} else {
 		*ubres = result;
 	}
+
 }
+
+/**	Callback called by unbound when resolution started with ub_resolve_event() completes
+ *
+ * @param mydata	the request tracking structure set up before ub_resolve_event() was called
+ * @param rcode		should be the rcode from the reply packet, but appears not to be
+ * @param packet	wire format reply packet
+ * @param packet_len	length of wire format packet
+ * @param sec		DNSSEC status code
+ * @param why_bogus	String describing DNSSEC issue if sec = 1
+ * @param rate_limited	Was the request rate limited due to unbound workload
+ */
+static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int packet_len, int sec,
+				  char* why_bogus, UNUSED int rate_limited)
+{
+	unbound_request_t	*ur = talloc_get_type_abort(mydata, unbound_request_t);
+	request_t		*request = ur->request;
+	fr_dbuff_t		dbuff;
+	uint16_t		qdcount = 0, ancount = 0, i, rdlength = 0;
+	uint8_t			pktrcode = 0, skip = 0;
+	ssize_t			used;
+	fr_value_box_t		*vb;
+
+	/*
+	 *	Bogus responses have the "sec" flag set to 1
+	 */
+	if (sec == 1) {
+		RERROR("%s", why_bogus);
+		ur->done = -16;
+		goto resume;
+	}
+
+	RHEXDUMP4((uint8_t const *)packet, packet_len, "Unbound callback called with packet [length %d]", packet_len);
+
+	fr_dbuff_init(&dbuff, (uint8_t const *)packet, (size_t)packet_len);
+
+	/*	Skip initial header entries */
+	fr_dbuff_advance(&dbuff, 3);
+
+	/*
+	 *	Extract rcode - it doesn't appear to be passed in as a
+	 *	parameter, contrary to the documentation...
+	 */
+	fr_dbuff_out(&pktrcode, &dbuff);
+	rcode = pktrcode & 0x0f;
+	if (rcode != 0) {
+		ur->done = 0 - rcode;
+		REDEBUG("DNS rcode is %d", rcode);
+		goto resume;
+	}
+
+	fr_dbuff_out(&qdcount, &dbuff);
+	if (qdcount > 1) {
+		RERROR("DNS results packet with multiple questions");
+		ur->done = -32;
+		goto resume;
+	}
+
+	/*	How many answer records do we have? */
+	fr_dbuff_out(&ancount, &dbuff);
+	RDEBUG4("Unbound returned %d answers", ancount);
+
+	/*	Skip remaining header entries */
+	fr_dbuff_advance(&dbuff, 4);
+
+	/*	Skip the QNAME */
+	fr_dbuff_out(&skip, &dbuff);
+	while (skip > 0) {
+		if (skip > 63) {
+			/*
+			 *	This is a pointer to somewhere else in the the packet
+			 *	Pointers use two octets
+			 *	Just move past the pointer to the next label in the question
+			 */
+			fr_dbuff_advance(&dbuff, 1);
+		} else {
+			if (fr_dbuff_remaining(&dbuff) < skip) break;
+			fr_dbuff_advance(&dbuff, skip);
+		}
+		fr_dbuff_out(&skip, &dbuff);
+	}
+
+	/*	Skip QTYPE and QCLASS */
+	fr_dbuff_advance(&dbuff, 4);
+
+	/*	We only want a limited number of replies */
+	if (ancount > ur->count) ancount = ur->count;
+
+	fr_value_box_list_init(&ur->list);
+
+	/*	Read the answer RRs */
+	for (i = 0; i < ancount; i++) {
+		fr_dbuff_out(&skip, &dbuff);
+		if (skip > 63) fr_dbuff_advance(&dbuff, 1);
+
+		/*	Skip TYPE, CLASS and TTL */
+		fr_dbuff_advance(&dbuff, 8);
+
+		fr_dbuff_out(&rdlength, &dbuff);
+		RDEBUG4("RDLENGTH is %d", rdlength);
+
+		vb = fr_value_box_alloc_null(ur->out_ctx);
+		switch (ur->return_type) {
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_OCTETS:
+			if (fr_value_box_from_network(ur->out_ctx, vb, ur->return_type, NULL,
+						      (uint8_t *)fr_dbuff_current(&dbuff), rdlength, true) < 0) {
+			error:
+				talloc_free(vb);
+				fr_dlist_talloc_free(&ur->list);
+				ur->done = -32;
+				goto resume;
+			}
+			fr_dbuff_advance(&dbuff, rdlength);
+			break;
+
+		case FR_TYPE_STRING:
+			if (ur->has_priority) {
+				/*
+				 *	This record type has a priority before the label
+				 *	add the priority first as a separate box
+				 */
+				fr_value_box_t	*priority_vb;
+				if (rdlength < 3) {
+					REDEBUG("%s - Invalid data returned", ur->t->inst->name);
+					goto error;
+				}
+				priority_vb = fr_value_box_alloc_null(ur->out_ctx);
+				if (fr_value_box_from_network(ur->out_ctx, priority_vb, FR_TYPE_UINT16, NULL,
+							      (uint8_t *)fr_dbuff_current(&dbuff), 2, true) < 0) {
+					talloc_free(priority_vb);
+					goto error;
+				}
+				fr_dlist_insert_tail(&ur->list, priority_vb);
+				fr_dbuff_advance(&dbuff, 2);
+			}
+
+			/*	String types require decoding of dns format labels */
+			used = fr_dns_label_to_value_box(ur->out_ctx, vb, (uint8_t const *)packet, packet_len,
+							 (uint8_t const *)fr_dbuff_current(&dbuff), true);
+			if (used < 0) goto error;
+			fr_dbuff_advance(&dbuff, (size_t)used);
+			break;
+
+		default:
+			RERROR("No meaningful output type set");
+			goto error;
+		}
+
+		fr_dlist_insert_tail(&ur->list, vb);
+
+	}
+
+	ur->done = 1;
+
+resume:
+	unlang_interpret_mark_runnable(ur->request);
+}
+
 
 /*
  *	Convert labels as found in a DNS result to a NULL terminated string.
