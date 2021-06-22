@@ -120,10 +120,6 @@ struct fr_tls_session_s {
 
 	size_t 			mtu;				//!< Maximum record fragment size.
 
-	char const		*prf_label;			//!< Input to the TLS pseudo random function.
-								//!< Usually set to a well known string describing
-								//!< what the key being generated will be used for.
-
 	void			*opaque;			//!< Used to store module specific data.
 
 	fr_tls_cache_t		*cache;				//!< Current session resumption state.
