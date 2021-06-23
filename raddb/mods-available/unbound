@@ -15,8 +15,28 @@
 #  ## Configuration Settings
 #
 unbound dns {
+	#
+	#  File to read unbound configuration details from.
+	#
 	#  filename = "${raddbdir}/mods-config/unbound/default.conf"
+
+	#
+	#  Timeout for unbound queries.
+	#
 	#  timeout = 3000
+
+	#
+	#  resolv.conf file to instruct unbound to load resolvers from.
+	#  Defaults to not set.
+	#  Without this set, unbound queries root DNS servers.  If a local
+	#  caching DNS server is available that will improve performance.
+	#
+	#  resolvconf = "/etc/resolv.conf"
+
+	#
+	#  hosts file to load data from.  Defaults to not set.
+	#
+	#  hosts = "/etc/hosts"
 }
 
 #

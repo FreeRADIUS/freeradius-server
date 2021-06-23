@@ -39,7 +39,9 @@ typedef struct {
 
 	uint32_t	timeout;
 
-	char const	*filename;
+	char const	*filename;		//!< Unbound configuration file
+	char const	*resolvconf;		//!< resolv.conf file to use
+	char const	*hosts;			//!< hosts file to load
 } rlm_unbound_t;
 
 typedef struct {
@@ -73,6 +75,8 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_unbound_t, filename), .dflt = "${modconfdir}/unbound/default.conf" },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_unbound_t, timeout), .dflt = "3000" },
+	{ FR_CONF_OFFSET("resolvconf", FR_TYPE_FILE_INPUT, rlm_unbound_t, resolvconf) },
+	{ FR_CONF_OFFSET("hosts", FR_TYPE_FILE_INPUT, rlm_unbound_t, hosts) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -434,6 +438,16 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 		PERROR("Failed to initialise unbound log");
 		return -1;
 	}
+
+	/*
+	 *	Load resolv.conf if specified
+	 */
+	if (inst->resolvconf) ub_ctx_resolvconf(t->ev_b->ub, inst->resolvconf);
+
+	/*
+	 *	Load hosts file if specified
+	 */
+	if (inst->hosts) ub_ctx_hosts(t->ev_b->ub, inst->hosts);
 
 	/*
 	 *	The unbound context needs to be "finalised" to fix its settings.

@@ -11,8 +11,19 @@ FQDNs to be resolved during request processing.
 
 ## Configuration Settings
 
-filename = "${raddbdir}/mods-config/unbound/default.conf"
-timeout = 3000
+filename:: libunbound configuration file.  See `man unbound.conf` for
+details of options which can be set in this file.
+
+Defaults to `"${raddbdir}/mods-config/unbound/default.conf"`
+
+timeout:: maximum time to wait for a DNS resolution.
+
+Defaults to 3000
+
+resolvconf:: resolv.conf file to load.  Without this set unbound will
+query root servers.
+
+hosts:: hosts file to load.
 
 ## xlat for DNS resolution
 
