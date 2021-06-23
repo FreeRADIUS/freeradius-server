@@ -116,6 +116,8 @@ typedef struct {
 	char const		*name2;		//!< Second name, such as "Access-Request"
 	rlm_components_t	component;	//!< Sets the default list of actions for this section
 	size_t			offset;		//!< where the CONF_SECTION pointer is written
+	bool			dont_cache;	//!< If true, the CONF_SECTION pointer won't be written
+						///< and the offset will be ignored.
 	size_t			instruction;	//!< where the instruction pointer is written
 	virtual_server_method_t const *methods;	//!< list of module methods which are allowed in this section
 } virtual_server_compile_t;
@@ -125,7 +127,7 @@ typedef struct {
 int		virtual_server_section_register(virtual_server_compile_t const *entry) CC_HINT(nonnull);
 
 int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list,
-						tmpl_rules_t const *rules, void *uctx) CC_HINT(nonnull(1,2,3));
+						tmpl_rules_t const *rules, void *instance) CC_HINT(nonnull(1,2,3));
 
 virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));
 

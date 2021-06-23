@@ -1427,8 +1427,16 @@ rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtua
  *
  *  This function walks down the registration table, compiling each
  *  named section.
+ *
+ * @parma[in] server	to search for sections in.
+ * @param[in] list	of sections to compiler.
+ * @param[in] rules	to apply for pass1.
+ * @param[in] instance	module instance data.  The offset value in
+ *			the rules array will be added to this to
+ *			determine where to write pointers to the
+ *			various CONF_SECTIONs.
  */
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *uctx)
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *instance)
 {
 	int i, found;
 	CONF_SECTION *subcs = NULL;
@@ -1459,8 +1467,8 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				/*
 				 *	Initialise CONF_SECTION pointer for missing section
 				 */
-				if ((uctx) && (list[i].offset > 0)) {
-					*(CONF_SECTION **) (((uint8_t *) uctx) + list[i].offset) = NULL;
+				if ((instance) && !list[i].dont_cache) {
+					*(CONF_SECTION **) (((uint8_t *) instance) + list[i].offset) = NULL;
 				}
 				continue;
 			}
@@ -1482,12 +1490,12 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			/*
 			 *	Cache the CONF_SECTION which was found.
 			 */
-			if (uctx) {
-				if (list[i].offset > 0) {
-					*(CONF_SECTION **) (((uint8_t *) uctx) + list[i].offset) = subcs;
+			if (instance) {
+				if (!list[i].dont_cache) {
+					*(CONF_SECTION **) (((uint8_t *) instance) + list[i].offset) = subcs;
 				}
 				if (list[i].instruction > 0) {
-					*(void **) (((uint8_t *) uctx) + list[i].instruction) = instruction;
+					*(void **) (((uint8_t *) instance) + list[i].instruction) = instruction;
 				}
 			}
 
