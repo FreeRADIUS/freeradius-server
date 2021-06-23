@@ -34,7 +34,7 @@ RCSIDH(server_pair_h, "$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-#define pair_append_request(_attr, _da) fr_pair_prepend_by_da(request->request_ctx, _attr, &request->request_pairs, _da)
+#define pair_append_request(_attr, _da) fr_pair_append_by_da(request->request_ctx, _attr, &request->request_pairs, _da)
 
 /** Allocate and append a fr_pair_t to reply list
  *
