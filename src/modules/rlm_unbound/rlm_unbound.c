@@ -64,6 +64,7 @@ typedef struct {
 	uint16_t		count;		//!< Number of results to return
 	fr_value_box_list_t	list;		//!< Where to put the parsed results
 	TALLOC_CTX		*out_ctx;	//!< CTX to allocate parsed results in
+	fr_event_timer_t const	*ev;		//!< Event for timeout
 } unbound_request_t;
 
 /*
@@ -95,6 +96,8 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 	uint8_t			pktrcode = 0, skip = 0;
 	ssize_t			used;
 	fr_value_box_t		*vb;
+
+	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
 
 	/*
 	 *	Bogus responses have the "sec" flag set to 1
@@ -233,6 +236,18 @@ resume:
 	unlang_interpret_mark_runnable(ur->request);
 }
 
+/**	Callback from our timeout event to cancel a request
+ *
+ */
+static void xlat_unbound_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	unbound_request_t	*ur = talloc_get_type_abort(uctx, unbound_request_t);
+	request_t		*request = ur->request;
+
+	REDEBUG("Timeout waiting for DNS resolution");
+	talloc_free(ur);
+	unlang_interpret_mark_runnable(request);
+}
 
 /*
  *	Xlat signal callback if an unbound request needs cancelling
@@ -243,6 +258,8 @@ static void xlat_unbound_signal(request_t *request, UNUSED void *instance, UNUSE
 	unbound_request_t	*ur = talloc_get_type_abort(rctx, unbound_request_t);
 
 	if (action != FR_SIGNAL_CANCEL) return;
+
+	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
 
 	RDEBUG2("Forcefully cancelling pending unbound request");
 	talloc_free(ur);
@@ -357,13 +374,20 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t 
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (!ur->done) return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, ur);
-
 	/*
 	 *	unbound returned before we yielded - run the callback
 	 *	This is when serving results from local data
 	 */
-	return xlat_unbound_resume(NULL, out, request, NULL, NULL, NULL, ur);
+	if (ur->async_id == 0) return xlat_unbound_resume(NULL, out, request, NULL, NULL, NULL, ur);
+
+	if (fr_event_timer_in(ur, ur->t->ev_b->el, &ur->ev, fr_time_delta_from_msec(xt->inst->timeout),
+			      xlat_unbound_timeout, ur) < 0) {
+		REDEBUG("Unable to attach unbound timeout_envent");
+		ub_cancel(xt->t->ev_b->ub, ur->async_id);
+		return XLAT_ACTION_FAIL;
+	}
+
+	return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, ur);
 }
 
 static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
