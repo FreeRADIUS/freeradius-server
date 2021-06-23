@@ -58,12 +58,49 @@ typedef void (*unlang_function_signal_t)(request_t *request, fr_state_signal_t a
 
 int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
 
-int		unlang_function_repeat(request_t *request, unlang_function_t repeat) CC_HINT(warn_unused_result);
+int		_unlang_function_repeat(request_t *request, unlang_function_t repeat, char const *name) CC_HINT(warn_unused_result);
 
-unlang_action_t	unlang_function_push(request_t *request,
-				     unlang_function_t func, unlang_function_t repeat,
-				     unlang_function_signal_t signal, bool top_frame, void *uctx)
-				     CC_HINT(warn_unused_result);
+/** Set a new repeat function for an existing function frame
+ *
+ * The function frame being modified must be at the top of the stack.
+ *
+ * @param[in] _request		The current request.
+ * @param[in] _repeat		the repeat function to set.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+#define		unlang_function_repeat(_request, _repeat) \
+		_unlang_function_repeat(_request, _repeat, STRINGIFY(_repeat))
+
+unlang_action_t	_unlang_function_push(request_t *request,
+				      unlang_function_t func, char const *func_name,
+				      unlang_function_t repeat, char const *repeat_name,
+				      unlang_function_signal_t signal, char const *signal_name,
+				      bool top_frame, void *uctx)
+				      CC_HINT(warn_unused_result);
+
+/** Push a generic function onto the unlang stack
+ *
+ * These can be pushed by any other type of unlang op to allow a submodule or function
+ * deeper in the C call stack to establish a new resumption point.
+ *
+ * @param[in] _request		The current request.
+ * @param[in] _func		to call going up the stack.
+ * @param[in] _repeat		function to call going back down the stack (may be NULL).
+ *				This may be the same as func.
+ * @param[in] _signal		function to call if the request is signalled.
+ * @param[in] _uctx		to pass to func(s).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+#define		unlang_function_push(_request, _func, _repeat, _signal, _top_frame, _uctx) \
+		_unlang_function_push(_request, \
+				      _func, STRINGIFY(_func), \
+				      _repeat, STRINGIFY(_repeat), \
+				      _signal, STRINGIFY(_signal), \
+				      _top_frame, _uctx)
 
 #ifdef __cplusplus
 }

@@ -39,19 +39,19 @@ RCSID("$Id$")
 static _Thread_local unlang_interpret_t *intp_thread_default;
 
 static fr_table_num_ordered_t const unlang_action_table[] = {
-	{ L("unwind"), 		UNLANG_ACTION_UNWIND },
+	{ L("unwind"), 			UNLANG_ACTION_UNWIND },
 	{ L("calculate-result"),	UNLANG_ACTION_CALCULATE_RESULT },
-	{ L("next"),		UNLANG_ACTION_EXECUTE_NEXT },
-	{ L("pushed-child"),	UNLANG_ACTION_PUSHED_CHILD },
-	{ L("stop"),		UNLANG_ACTION_STOP_PROCESSING },
-	{ L("yield"),		UNLANG_ACTION_YIELD }
+	{ L("next"),			UNLANG_ACTION_EXECUTE_NEXT },
+	{ L("pushed-child"),		UNLANG_ACTION_PUSHED_CHILD },
+	{ L("stop"),			UNLANG_ACTION_STOP_PROCESSING },
+	{ L("yield"),			UNLANG_ACTION_YIELD }
 };
 static size_t unlang_action_table_len = NUM_ELEMENTS(unlang_action_table);
 
 static fr_table_num_ordered_t const unlang_frame_action_table[] = {
-	{ L("pop"), 		UNLANG_FRAME_ACTION_POP		},
-	{ L("next"),		UNLANG_FRAME_ACTION_NEXT	},
-	{ L("yield"),		UNLANG_FRAME_ACTION_YIELD	}
+	{ L("pop"), 			UNLANG_FRAME_ACTION_POP		},
+	{ L("next"),			UNLANG_FRAME_ACTION_NEXT	},
+	{ L("yield"),			UNLANG_FRAME_ACTION_YIELD	}
 };
 static size_t unlang_frame_action_table_len = NUM_ELEMENTS(unlang_frame_action_table);
 
@@ -73,6 +73,10 @@ static void instruction_dump(request_t *request, unlang_t const *instruction)
 
 static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 {
+	unlang_op_t	*op = NULL;
+
+	if (frame->instruction) op = &unlang_ops[frame->instruction->type];
+
 	instruction_dump(request, frame->instruction);
 
 	RINDENT();
@@ -89,6 +93,12 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 	RDEBUG2("break_point    %s", is_break_point(frame) ? "yes" : "no");
 	RDEBUG2("return_point   %s", is_return_point(frame) ? "yes" : "no");
 	RDEBUG2("resumable      %s", is_yielded(frame) ? "yes" : "no");
+
+	/*
+	 *	Call the custom frame dump function
+	 */
+	if (op && op->dump) op->dump(request, frame);
+
 	REXDENT();
 }
 
