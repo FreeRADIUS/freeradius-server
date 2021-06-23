@@ -317,8 +317,10 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	while (isspace((int) *p)) p++;
 
-	if (strncasecmp(p, "select", 6) != 0) {
-		cf_log_err_cs(conf, "'query' MUST be 'SELECT ...', not 'INSERT' or 'UPDATE'");
+	if ((strncasecmp(p, "insert", 6) == 0) ||
+	    (strncasecmp(p, "update", 6) == 0) ||
+	    (strncasecmp(p, "delete", 6) == 0)) {
+		cf_log_err_cs(conf, "'query' MUST be 'SELECT ...', not 'INSERT', 'UPDATE', or 'DELETE'");
 		return -1;
 	}
 
