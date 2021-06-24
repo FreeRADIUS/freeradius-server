@@ -1176,6 +1176,45 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+/** Try very hard to get the SSL * into a consistent state where it's not yielded
+ *
+ * ...because if it's yielded, we'll probably leak thread contexts and all kinds of memory.
+ *
+ * @param[in] request	being cancelled.
+ * @param[in] action	we're being signalled with.
+ * @param[in] uctx	the SSL * to cancell.
+ */
+static void tls_session_async_handshake_signal(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
+{
+	SSL			*ssl = uctx;
+	fr_tls_session_t	*tls_session = fr_tls_session(ssl);
+	int			ret;
+
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	/*
+	 *	If SSL_get_error returns SSL_ERROR_WANT_ASYNC
+	 *	it means we're yielded in the middle of a
+	 *      callback.
+	 *
+	 *	Keep calling SSL_read() in a loop until we
+	 *	no longer get SSL_ERROR_WANT_ASYNC, then
+	 *	shut it down so it's in a consistent state.
+	 *
+	 *	It'll get freed later when the request is
+	 *	freed.
+	 */
+	for (ret = tls_session->last_ret;
+	     SSL_get_error(tls_session->ssl, ret) == SSL_ERROR_WANT_ASYNC;
+	     ret = SSL_read(tls_session->ssl, tls_session->clean_out.data + tls_session->clean_out.used,
+        		    sizeof(tls_session->clean_out.data) - tls_session->clean_out.used));
+
+	/*
+	 *	Unbind the cancelled request from the SSL *
+	 */
+	fr_tls_session_request_unbind(tls_session->ssl);
+}
+
 /** Call SSL_read() to continue the TLS state machine
  *
  * This function may be called multiple times, once after every asynchronous request.
@@ -1192,7 +1231,6 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 							request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
-	int			ret;
 
 	RDEBUG3("(re-)entered state %s", __FUNCTION__);
 
@@ -1216,10 +1254,10 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	 *	If acting as a server SSL_set_accept_state must have
 	 *	been called before this function.
 	 */
-	ret = SSL_read(tls_session->ssl, tls_session->clean_out.data + tls_session->clean_out.used,
-		       sizeof(tls_session->clean_out.data) - tls_session->clean_out.used);
-	if (ret > 0) {
-		tls_session->clean_out.used += ret;
+	tls_session->last_ret = SSL_read(tls_session->ssl, tls_session->clean_out.data + tls_session->clean_out.used,
+					 sizeof(tls_session->clean_out.data) - tls_session->clean_out.used);
+	if (tls_session->last_ret > 0) {
+		tls_session->clean_out.used += tls_session->last_ret;
 
 		/*
 		 *	Round successful, and we don't need to do any
@@ -1238,7 +1276,7 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	 *	it'd like to perform the operation
 	 *	asynchronously.
 	 */
-	switch (SSL_get_error(tls_session->ssl, ret)) {
+	switch (SSL_get_error(tls_session->ssl, tls_session->last_ret)) {
 	case SSL_ERROR_WANT_ASYNC:	/* Certification validation or cache loads */
 	{
 		unlang_action_t ua;
@@ -1249,7 +1287,7 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		 *	Call this function again once we're done
 		 *	asynchronously satisfying the load request.
 		 */
-		if (unlikely(unlang_function_repeat(request, tls_session_async_handshake_cont) < 0)) {
+		if (unlikely(unlang_function_repeat_set(request, tls_session_async_handshake_cont) < 0)) {
 		error:
 			tls_session->result = FR_TLS_RESULT_ERROR;
 			goto finish;
@@ -1291,7 +1329,8 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		 *	Returns 0 if we can continue processing the handshake
 		 *	Returns -1 if we encountered a fatal error.
 		 */
-		if (fr_tls_log_io_error(request, tls_session, ret, "Failed in SSL_read") < 0) goto error;
+		if (fr_tls_log_io_error(request, tls_session,
+					tls_session->last_ret, "Failed in SSL_read") < 0) goto error;
 		return tls_session_async_handshake_done_round(p_result, priority, request, uctx);
 	}
 }
@@ -1360,16 +1399,6 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 	}
 
 	return tls_session_async_handshake_cont(p_result, priority, request, uctx);
-}
-
-/** Unbind the request from the SSL session if the request is cancelled
- *
- */
-static void tls_session_async_handshake_signal(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
-{
-	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
-
-	if (action == FR_SIGNAL_CANCEL) fr_tls_session_request_unbind(tls_session->ssl);
 }
 
 /** Push a handshake call onto the stack

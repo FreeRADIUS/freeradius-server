@@ -35,6 +35,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 
 #include "attrs.h"
@@ -226,6 +227,11 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
 
+	/*
+	 *	Request was cancelled just return without doing any work.
+	 */
+	if (unlang_request_is_cancelled(request)) return;
+
 	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_INIT);
 
 	/*
@@ -241,7 +247,11 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 
 	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
 
-	ASYNC_pause_job();	/* Go do the delete _now_ */
+	/*
+	 *	Go and do the delete now, instead of at some
+	 *	indeterminate point in the future.
+	 */
+	ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
 }
 
 /** Process the result of `session load { ... }`
@@ -616,6 +626,12 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	uint8_t const		*id;
 
 	/*
+	 *	Request was cancelled, just get OpenSSL to
+	 *	free the session data, and don't do any work.
+	 */
+	if (unlang_request_is_cancelled(request)) return 0;
+
+	/*
 	 *	This functions should only be called once during the lifetime
 	 *	of the tls_session, as the fields aren't re-populated on
 	 *	resumption.
@@ -661,6 +677,12 @@ static SSL_SESSION *tls_cache_load_cb(SSL *ssl,
 	tls_cache = tls_session->cache;
 
 	/*
+	 *	Request was cancelled, don't return any session and hopefully
+	 *      OpenSSL will return back to SSL_read() soon.
+	 */
+	if (unlang_request_is_cancelled(request)) return NULL;
+
+	/*
 	 *	Ensure if session resumption is disallowed this callback
 	 *	will never return session data.
 	 */
@@ -687,7 +709,19 @@ again:
 		MEM(tls_cache->load.id = talloc_typed_memdup(tls_cache, (uint8_t const *)key, key_len));
 
 		RDEBUG3("Requested session load - ID %pV", fr_box_octets_buffer(tls_cache->load.id));
-		ASYNC_pause_job();
+		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+
+		/*
+		 *	load cache { ... } returned, but the parent
+		 *      request was cancelled, try and get everything
+		 *	back into a consistent state and tell OpenSSL
+		 *	we failed to load the session.
+		 */
+		if (unlang_request_is_cancelled(request)) {
+			tls_cache_load_state_reset(tls_cache);	/* Clears any loaded session data */
+			return NULL;
+
+		}
 		goto again;
 
 	case FR_TLS_CACHE_LOAD_REQUESTED:
@@ -733,7 +767,20 @@ again:
 		 */
 		fr_tls_verify_client_cert_request(tls_session, true);
 
-		ASYNC_pause_job();
+		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+
+		/*
+		 *	Certificate validation returned but the request
+		 *	was cancelled.  Free any data we have so far
+		 *	and reset the states, then let OpenSSL know
+		 *	we failed to load the session.
+		 */
+		if (unlang_request_is_cancelled(request)) {
+			tls_cache_load_state_reset(tls_cache);	/* Clears any loaded session data */
+			fr_tls_verify_client_cert_reset(tls_session);
+			return NULL;
+
+		}
 
 		/*
 		 *	If we couldn't validate the client certificate
@@ -766,6 +813,8 @@ again:
  */
 static void tls_cache_delete_cb(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
+
+
 	/*
 	 *	Not sure why this happens, but sometimes SSL_SESSION *s
 	 *	make it here without the correct ex data.
@@ -796,6 +845,12 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 
 	tls_session = fr_tls_session(ssl);
 	request = fr_tls_session_request(tls_session->ssl);
+
+	/*
+	 *	Request was cancelled, try and get OpenSSL to
+	 *	do as little work as possible.
+	 */
+	if (unlang_request_is_cancelled(request)) return 1;
 
 	{
 		fr_tls_conf_t *conf;
@@ -965,6 +1020,11 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 	request = fr_tls_session_request(ssl);
 
 	/*
+	 *	Request was cancelled, don't do anything.
+	 */
+	if (unlang_request_is_cancelled(request)) return 0;
+
+	/*
 	 *	Fatal error - We definitely should be
 	 *      attempting to generate session tickets
 	 *      if it's not permitted.
@@ -1001,7 +1061,10 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	fr_tls_cache_conf_t	*tls_cache_conf = arg;	/* Not talloced */
 	request_t		*request = NULL;
 
-	if (fr_tls_session_request_bound(ssl)) request = fr_tls_session_request(ssl);
+	if (fr_tls_session_request_bound(ssl)) {
+		request = fr_tls_session_request(ssl);
+		if (unlang_request_is_cancelled(request)) return SSL_TICKET_RETURN_ABORT;
+	}
 
 	if (!tls_session->allow_session_resumption ||
 	    (!(tls_cache_conf->mode & FR_TLS_CACHE_STATELESS))) {
@@ -1054,7 +1117,16 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 */
 		fr_tls_verify_client_cert_request(tls_session, true);
 
-		ASYNC_pause_job();
+		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+
+		/*
+		 *	If the request was cancelled get everything back into
+		 *	a known state.
+		 */
+		if (unlang_request_is_cancelled(request)) {
+			fr_tls_verify_client_cert_reset(tls_session);
+			return SSL_TICKET_RETURN_ABORT;
+		}
 
 		/*
 		 *	If we couldn't validate the client certificate

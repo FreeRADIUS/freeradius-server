@@ -80,6 +80,8 @@ int		fr_tls_verify_client_cert_chain(request_t *request, SSL *ssl);
 
 bool		fr_tls_verify_client_cert_result(fr_tls_session_t *tls_session);
 
+void		fr_tls_verify_client_cert_reset(fr_tls_session_t *tls_session);
+
 void		fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session, bool resumed);
 
 unlang_action_t fr_tls_verify_client_cert_pending_push(request_t *request, fr_tls_session_t *tls_session);

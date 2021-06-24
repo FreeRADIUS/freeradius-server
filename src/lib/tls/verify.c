@@ -31,6 +31,7 @@
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
@@ -116,6 +117,15 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	conf = fr_tls_session_conf(ssl);
 	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
 	request = fr_tls_session_request(tls_session->ssl);
+
+	/*
+	 *	Bail out as quickly as possible, producing
+	 *	as few errors as possible.
+	 */
+	if (unlang_request_is_cancelled(request)) {
+		X509_STORE_CTX_set_error(x509_ctx, 0);
+		return 1;
+	}
 
 	if (RDEBUG_ENABLED3) {
 		char		subject[2048];
@@ -216,7 +226,17 @@ done:
 			 */
 			fr_tls_verify_client_cert_request(tls_session, SSL_session_reused(tls_session->ssl));
 
-			ASYNC_pause_job();
+			ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+
+			/*
+			 *	Just try and bail out as quickly as possible.
+			 */
+			if (unlang_request_is_cancelled(request)) {
+				X509_STORE_CTX_set_error(x509_ctx, 0);
+				fr_tls_verify_client_cert_reset(tls_session);
+				return 1;
+			}
+
 
 			/*
 			 *	If we couldn't validate the client certificate
@@ -387,7 +407,16 @@ bool fr_tls_verify_client_cert_result(fr_tls_session_t *tls_session)
 	return result;
 }
 
-/** Setup a validation request
+/** Reset the verification state
+ *
+ */
+void fr_tls_verify_client_cert_reset(fr_tls_session_t *tls_session)
+{
+	tls_session->validate.state = FR_TLS_VALIDATION_INIT;
+	tls_session->validate.resumed  = false;
+}
+
+/** Setup a verification request
  *
  */
 void fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session, bool session_resumed)

@@ -112,6 +112,7 @@ struct fr_tls_session_s {
 	fr_tls_record_t 	clean_out;			//!< Cleartext data that's been encrypted.
 	fr_tls_record_t 	dirty_in;			//!< Encrypted data to decrypt.
 	fr_tls_record_t 	dirty_out;			//!< Encrypted data that's been decrypted.
+	int			last_ret;			//!< Last result returned by SSL_read().
 
 	void 			(*record_init)(fr_tls_record_t *buf);
 	void 			(*record_close)(fr_tls_record_t *buf);

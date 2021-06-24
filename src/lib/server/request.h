@@ -63,7 +63,7 @@ typedef enum {
 	REQUEST_ACTIVE = 1,
 	REQUEST_STOP_PROCESSING,
 	REQUEST_COUNTED
-} rad_master_state_t;
+} request_master_state_t;
 #define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
 
 typedef enum request_state_t {
@@ -215,7 +215,7 @@ struct request_s {
 
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
-	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
+	request_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module

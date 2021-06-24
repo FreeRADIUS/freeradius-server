@@ -1004,6 +1004,13 @@ bool unlang_request_is_scheduled(request_t const *request)
 	return intp->funcs.scheduled(request, intp->uctx);
 }
 
+/** Return whether a request has been cancelled
+ */
+bool unlang_request_is_cancelled(request_t const *request)
+{
+	return (request->master_state == REQUEST_STOP_PROCESSING);
+}
+
 /** Check if a request as resumable.
  *
  * @param[in] request		The current request.
