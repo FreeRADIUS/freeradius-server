@@ -943,6 +943,8 @@ static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int statu
 	}
 	exec->pid = 0;
 
+	if (exec->ev) fr_event_timer_delete(&exec->ev);
+
 	/*
 	 *	We may receive the "child exited" signal before the
 	 *	"pipe has been closed" signal
@@ -956,8 +958,6 @@ static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int statu
 		close(exec->stdout_fd);
 		exec->stdout_fd = -1;
 	}
-
-	if (exec->ev) fr_event_timer_delete(&exec->ev);
 
 	unlang_interpret_mark_runnable(exec->request);
 }
