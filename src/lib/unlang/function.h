@@ -58,7 +58,21 @@ typedef void (*unlang_function_signal_t)(request_t *request, fr_state_signal_t a
 
 int		unlang_function_clear(request_t *request) CC_HINT(warn_unused_result);
 
-int		_unlang_function_repeat(request_t *request, unlang_function_t repeat, char const *name) CC_HINT(warn_unused_result);
+/** Set a new signal function for an existing function frame
+ *
+ * The function frame being modified must be at the top of the stack.
+ *
+ * @param[in] request		The current request.
+ * @param[in] signal		The signal function to set.
+ * @param[in] signal_name	Name of the signal function call (for debugging).
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+#define		unlang_function_signal_set(_request, _signal) \
+		_unlang_function_signal_set(_request, _signal, STRINGIFY(_signal))
+int		_unlang_function_signal_set(request_t *request, unlang_function_signal_t signal, char const *name)
+		CC_HINT(warn_unused_result);
 
 /** Set a new repeat function for an existing function frame
  *
@@ -70,15 +84,10 @@ int		_unlang_function_repeat(request_t *request, unlang_function_t repeat, char 
  *	- 0 on success.
  *      - -1 on failure.
  */
-#define		unlang_function_repeat(_request, _repeat) \
-		_unlang_function_repeat(_request, _repeat, STRINGIFY(_repeat))
-
-unlang_action_t	_unlang_function_push(request_t *request,
-				      unlang_function_t func, char const *func_name,
-				      unlang_function_t repeat, char const *repeat_name,
-				      unlang_function_signal_t signal, char const *signal_name,
-				      bool top_frame, void *uctx)
-				      CC_HINT(warn_unused_result);
+#define		unlang_function_repeat_set(_request, _repeat) \
+		_unlang_function_repeat_set(_request, _repeat, STRINGIFY(_repeat))
+int		_unlang_function_repeat_set(request_t *request, unlang_function_t repeat, char const *name)
+		CC_HINT(warn_unused_result);
 
 /** Push a generic function onto the unlang stack
  *
@@ -101,6 +110,12 @@ unlang_action_t	_unlang_function_push(request_t *request,
 				      _repeat, STRINGIFY(_repeat), \
 				      _signal, STRINGIFY(_signal), \
 				      _top_frame, _uctx)
+unlang_action_t	_unlang_function_push(request_t *request,
+				      unlang_function_t func, char const *func_name,
+				      unlang_function_t repeat, char const *repeat_name,
+				      unlang_function_signal_t signal, char const *signal_name,
+				      bool top_frame, void *uctx)
+				      CC_HINT(warn_unused_result);
 
 #ifdef __cplusplus
 }

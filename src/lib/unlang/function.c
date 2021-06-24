@@ -173,7 +173,46 @@ int unlang_function_clear(request_t *request)
 	return 0;
 }
 
+/** Set a new signal function for an existing function frame
+ *
+ * @private
+ *
+ * The function frame being modified must be at the top of the stack.
+ *
+ * @param[in] request		The current request.
+ * @param[in] signal		The signal function to set.
+ * @param[in] signal_name	Name of the signal function call (for debugging).
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int _unlang_function_signal_set(request_t *request, unlang_function_signal_t signal, char const *signal_name)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_func_t	*state;
+
+	if (frame->instruction->type != UNLANG_TYPE_FUNCTION) {
+		RERROR("Can't set repeat function on non-function frame");
+		return -1;
+	}
+
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+
+	/*
+	 *	If we're inside unlang_function_call,
+	 *	it'll pickup state->repeat and do the right thing
+	 *	once the current function returns.
+	 */
+	state->signal = signal;
+	state->signal_name = signal_name;
+
+	return 0;
+}
+
 /** Set a new repeat function for an existing function frame
+ *
+ * @private
  *
  * The function frame being modified must be at the top of the stack.
  *
@@ -184,7 +223,7 @@ int unlang_function_clear(request_t *request)
  *	- 0 on success.
  *      - -1 on failure.
  */
-int _unlang_function_repeat(request_t *request, unlang_function_t repeat, char const *repeat_name)
+int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, char const *repeat_name)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -210,6 +249,8 @@ int _unlang_function_repeat(request_t *request, unlang_function_t repeat, char c
 }
 
 /** Push a generic function onto the unlang stack
+ *
+ * @private
  *
  * These can be pushed by any other type of unlang op to allow a submodule or function
  * deeper in the C call stack to establish a new resumption point.
