@@ -25,6 +25,10 @@ RUN apt-get update && \
 #  eapol_test dependencies
         libnl-3-dev \
         libnl-genl-3-dev \
+#  For debugging (e.g. in crossbuild)
+        gdb \
+        less \
+        vim \
 #  Compilers
         clang \
         g++ \

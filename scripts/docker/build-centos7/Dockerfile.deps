@@ -16,7 +16,11 @@ RUN yum install -y \
 #  which is required by fixture setup utilities
     which \
 #  libnl3-devel is required for the EAP tests
-    libnl3-devel
+    libnl3-devel \
+#  For debugging (e.g. in crossbuild)
+    gdb \
+    less \
+    vim
 
 
 #
