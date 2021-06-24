@@ -1324,6 +1324,10 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		}
 	}
 
+	case SSL_ERROR_WANT_ASYNC_JOB:
+		RERROR("No async jobs available in pool, increase thread.openssl_async_pool_max");
+		goto error;
+
 	default:
 		/*
 		 *	Returns 0 if we can continue processing the handshake
