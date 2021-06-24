@@ -526,7 +526,7 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 	if (tmpl_is_attr(map->lhs) && fr_type_is_null(map->lhs->cast)) da = tmpl_da(map->lhs);
 
 	rhs = NULL;		/* shut up clang scan */
-	fr_value_box_clear(&rhs_cast);
+	fr_value_box_init_null(&rhs_cast);
 
 	for (vp = tmpl_pair_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 	     vp;
