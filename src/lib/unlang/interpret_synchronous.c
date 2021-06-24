@@ -251,7 +251,7 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 		 */
 		sub_request = fr_heap_pop(intps->runnable);
 		if (!sub_request) {
-			DEBUG3("No pending requests");
+			DEBUG3("No pending requests (%u yielded)", intps->yielded);
 			continue;
 		}
 
