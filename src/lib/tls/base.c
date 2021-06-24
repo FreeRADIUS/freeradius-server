@@ -105,6 +105,8 @@ fr_dict_attr_t const *attr_framed_mtu;
 fr_dict_attr_t const *attr_tls_packet_type;
 fr_dict_attr_t const *attr_tls_session_data;
 fr_dict_attr_t const *attr_tls_session_id;
+fr_dict_attr_t const *attr_tls_session_resumed;
+fr_dict_attr_t const *attr_tls_session_ttl;
 
 extern fr_dict_attr_autoload_t tls_dict_attr[];
 fr_dict_attr_autoload_t tls_dict_attr[] = {
@@ -149,16 +151,18 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tls },
 	{ .out = &attr_tls_session_data, .name = "Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tls },
 	{ .out = &attr_tls_session_id, .name = "Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_tls },
+	{ .out = &attr_tls_session_resumed, .name = "Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_tls },
+	{ .out = &attr_tls_session_ttl, .name = "Session-TTL", .type = FR_TYPE_TIME_DELTA, .dict = &dict_tls },
 	{ NULL }
 };
 
 /*
  *	request types
  */
-fr_value_box_t const	*enum_tls_packet_type_session_load;
-fr_value_box_t const	*enum_tls_packet_type_session_store;
-fr_value_box_t const	*enum_tls_packet_type_session_clear;
-fr_value_box_t const	*enum_tls_packet_type_certificate_validate;
+fr_value_box_t const	*enum_tls_packet_type_load_session;
+fr_value_box_t const	*enum_tls_packet_type_store_session;
+fr_value_box_t const	*enum_tls_packet_type_clear_session;
+fr_value_box_t const	*enum_tls_packet_type_verify_certificate;
 
 /*
  *	response types
@@ -169,10 +173,10 @@ fr_value_box_t const	*enum_tls_packet_type_notfound;
 
 extern fr_dict_enum_autoload_t tls_dict_enum[];
 fr_dict_enum_autoload_t tls_dict_enum[] = {
-	{ .out = &enum_tls_packet_type_session_load, .name = "Session-Load", .attr = &attr_tls_packet_type },
-	{ .out = &enum_tls_packet_type_session_store, .name = "Session-Store", .attr = &attr_tls_packet_type },
-	{ .out = &enum_tls_packet_type_session_clear, .name = "Session-Clear", .attr = &attr_tls_packet_type },
-	{ .out = &enum_tls_packet_type_certificate_validate, .name = "Certificate-Validate", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_load_session, .name = "Load-Session", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_store_session, .name = "Store-Session", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_clear_session, .name = "Clear-Session", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_verify_certificate, .name = "Verify-Certificate", .attr = &attr_tls_packet_type },
 
 	{ .out = &enum_tls_packet_type_success, .name = "Success", .attr = &attr_tls_packet_type },
 	{ .out = &enum_tls_packet_type_failure, .name = "Failure", .attr = &attr_tls_packet_type },

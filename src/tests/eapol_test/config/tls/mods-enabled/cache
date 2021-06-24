@@ -1,0 +1,23 @@
+cache cache_tls_session {
+	#
+	#  driver:: `cache` driver.
+	#
+	driver = "rlm_cache_rbtree"
+
+	#
+	#  key:: The `cache` key.
+	#
+	key = &Session-Id
+
+	#
+	#  ttl:: TTL for `cache` entries.
+	#
+	ttl = 3600
+
+	#
+	#  update <section> { ... }::
+	#
+	update {
+		&reply.Session-Data := &Session-Data
+	}
+}

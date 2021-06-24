@@ -72,6 +72,12 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 	{ NULL }
 };
 
+static unlang_action_t mod_handshake_done(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+					  UNUSED request_t *request, UNUSED void *rctx)
+{
+	RETURN_MODULE_OK;
+}
+
 static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
 					    request_t *request, void *rctx)
 {
@@ -103,6 +109,11 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 
 		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
 
+		/*
+		 *	Result is always OK, even if we fail to persist the
+		 *	session data.
+		 */
+		unlang_module_yield(request, mod_handshake_done, NULL, NULL);
 		/*
 		 *	Write the session to the session cache
 		 *

@@ -1034,6 +1034,9 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int			ret;
+
+	RDEBUG3("entered state %s", __FUNCTION__);
+
 	/*
 	 *	This only occurs once per session, where calling
 	 *	SSL_read updates the state of the SSL session, setting
@@ -1191,6 +1194,8 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int			ret;
 
+	RDEBUG3("(re-)entered state %s", __FUNCTION__);
+
 	/*
 	 *	Magic/More magic? Although SSL_read is normally
 	 *	used to read application data, it will also
@@ -1237,6 +1242,9 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	case SSL_ERROR_WANT_ASYNC:	/* Certification validation or cache loads */
 	{
 		unlang_action_t ua;
+
+		RDEBUG3("Performing async action for OpenSSL");
+
 		/*
 		 *	Call this function again once we're done
 		 *	asynchronously satisfying the load request.
@@ -1310,6 +1318,8 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 {
 	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	int ret;
+
+	RDEBUG3("entered state %s", __FUNCTION__);
 
 	tls_session->result = FR_TLS_RESULT_IN_PROGRESS;
 

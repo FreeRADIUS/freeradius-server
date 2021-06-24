@@ -170,6 +170,11 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 			 *	Success: Automatically return MPPE keys.
 			 */
 			if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
+
+			/*
+			 *	Result is always OK, even if we fail to persist the
+			 *	session data.
+			 */
 			*p_result = RLM_MODULE_OK;
 
 			/*

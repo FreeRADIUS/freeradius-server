@@ -137,6 +137,7 @@ typedef struct {
 #define vp_float64		data.vb_float64
 
 #define vp_date			data.vb_date
+#define vp_time_delta		data.vb_time_delta
 
 #define vp_group		children
 

@@ -199,11 +199,39 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	}
 done:
 	/*
-	 *	This is a client cert
+	 *	This is a client cert, call our
+	 *	virtual server here.
 	 */
-	if (depth == 0) tls_session->client_cert_ok = (my_ok > 0);
+	if (depth == 0) {
+		if (conf->virtual_server && tls_session->verify_client_cert) {
+			RDEBUG2("Requesting certificate validation");
 
-	RDEBUG2("[verify] = %s", my_ok ? "ok" : "invalid");
+			/*
+			 *	This sets the validation state of the tls_session
+			 *	so that when we call ASYNC_pause_job(), and execution
+			 *	jumps back to tls_session_async_handshake_cont
+			 *	(just under SSL_read())
+			 *	the code there knows what job it needs to push onto
+			 *	the unlang stack.
+			 */
+			fr_tls_verify_client_cert_request(tls_session, SSL_session_reused(tls_session->ssl));
+
+			ASYNC_pause_job();
+
+			/*
+			 *	If we couldn't validate the client certificate
+			 *	then validation overall fails.
+			 */
+			if (!fr_tls_verify_client_cert_result(tls_session)) {
+				REDEBUG("Certificate validation failed");
+				my_ok = 0;
+				X509_STORE_CTX_set_error(x509_ctx, X509_V_ERR_APPLICATION_VERIFICATION);
+			}
+		}
+
+		tls_session->client_cert_ok = (my_ok > 0);
+		RDEBUG2("[verify] = %s", my_ok ? "ok" : "invalid");
+	}
 
 	return my_ok;
 }
@@ -222,7 +250,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
  *	- 1 if the chain could be validated.
  *	- 0 if the chain failed validation.
  */
-int fr_tls_verify_client_cert_chain(SSL *ssl)
+int fr_tls_verify_client_cert_chain(request_t *request, SSL *ssl)
 {
 	int		err;
 	int		verify;
@@ -232,8 +260,6 @@ int fr_tls_verify_client_cert_chain(SSL *ssl)
 	X509		*cert;
 	X509_STORE	*store;
 	X509_STORE_CTX	*store_ctx;
-
-	request_t	*request = fr_tls_session_request(ssl);
 
 	/*
 	 *	If there's no client certificate, we just return OK.
@@ -319,7 +345,10 @@ static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_se
 	 *	session resumption data.
 	 */
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_certificate_validate->vb_uint32;
+	vp->vp_uint32 = enum_tls_packet_type_verify_certificate->vb_uint32;
+
+	MEM(pair_append_request(&vp, attr_tls_session_resumed) >= 0);
+	vp->vp_bool = tls_session->validate.resumed;
 
 	/*
 	 *	Allocate a child, and set it up to call
@@ -335,22 +364,38 @@ static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_se
 	return ua;
 }
 
-/** Check we validated the client cert successfully
+/** Clear any previous validation result
  *
+ * Should be called by the validation requestor to get the result and reset
+ * the validation state.
+ *
+ * @return
+ *	- true if the certificate chain was validated.
+ *	- false if the certificate chain failed validation.
  */
-bool fr_tls_verify_client_cert_successful(fr_tls_session_t *tls_session)
+bool fr_tls_verify_client_cert_result(fr_tls_session_t *tls_session)
 {
-	return tls_session->validate.state == FR_TLS_VALIDATION_SUCCESS;
+	bool result;
+
+	fr_assert(tls_session->validate.state != FR_TLS_VALIDATION_INIT);
+
+	result = tls_session->validate.state == FR_TLS_VALIDATION_SUCCESS;
+
+	tls_session->validate.state = FR_TLS_VALIDATION_INIT;
+	tls_session->validate.resumed = false;
+
+	return result;
 }
 
 /** Setup a validation request
  *
  */
-void fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session)
+void fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session, bool session_resumed)
 {
 	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_INIT);
 
 	tls_session->validate.state = FR_TLS_VALIDATION_REQUESTED;
+	tls_session->validate.resumed = session_resumed;
 }
 
 /** Push a `verify certificate { ... }` section

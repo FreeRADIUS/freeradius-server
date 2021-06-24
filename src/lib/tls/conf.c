@@ -90,7 +90,7 @@ static CONF_PARSER tls_cache_config[] = {
 	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_tls_cache_conf_t, lifetime), .dflt = "86400" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	{ FR_CONF_OFFSET("require_extended_master_secret", FR_TYPE_BOOL, fr_tls_cache_conf_t, require_extms), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_extended_master_secret", FR_TYPE_BOOL, fr_tls_cache_conf_t, require_extms), .dflt = "yes" },
 	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", FR_TYPE_BOOL, fr_tls_cache_conf_t, require_pfs), .dflt = "no" },
 #endif
 
@@ -190,7 +190,7 @@ CONF_PARSER fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
-	{ FR_CONF_OFFSET("cache", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) tls_cache_config },
+	{ FR_CONF_OFFSET("session", FR_TYPE_SUBSECTION, fr_tls_conf_t, cache), .subcs = (void const *) tls_cache_config },
 
 	{ FR_CONF_OFFSET("verify", FR_TYPE_SUBSECTION, fr_tls_conf_t, verify), .subcs = (void const *) tls_verify_config },
 
@@ -404,20 +404,20 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 			goto error;
 		}
 
-		if (!cf_section_find(conf->virtual_server, "load", "cache")) {
-			ERROR("Specified virtual_server must contain a \"load cache { ... }\" section "
+		if (!cf_section_find(conf->virtual_server, "load", "session")) {
+			ERROR("Specified virtual_server must contain a \"load session { ... }\" section "
 			      "when cache.mode = \"stateful\"");
 			goto error;
 		}
 
-		if (!cf_section_find(conf->virtual_server, "store", "cache")) {
-			ERROR("Specified virtual_server must contain a \"store cache { ... }\" section "
+		if (!cf_section_find(conf->virtual_server, "store", "session")) {
+			ERROR("Specified virtual_server must contain a \"store session { ... }\" section "
 			      "when cache.mode = \"stateful\"");
 			goto error;
 		}
 
-		if (!cf_section_find(conf->virtual_server, "clear", "cache")) {
-			ERROR("Specified virtual_server must contain a \"clear cache { ... }\" section "
+		if (!cf_section_find(conf->virtual_server, "clear", "session")) {
+			ERROR("Specified virtual_server must contain a \"clear session { ... }\" section "
 			      "when cache.mode = \"stateful\"");
 			goto error;
 		}
@@ -437,19 +437,19 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 			break;
 		}
 
-		if (!cf_section_find(conf->virtual_server, "load", "cache")) {
-			WARN("Specified virtual_server missing \"load cache { ... }\" section. "
+		if (!cf_section_find(conf->virtual_server, "load", "session")) {
+			WARN("Specified virtual_server missing \"load session { ... }\" section. "
 			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
 			goto cache_stateless;
 		}
 
-		if (!cf_section_find(conf->virtual_server, "store", "cache")) {
-			WARN("Specified virtual_server missing \"store cache { ... }\" section. "
+		if (!cf_section_find(conf->virtual_server, "store", "session")) {
+			WARN("Specified virtual_server missing \"store session { ... }\" section. "
 			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
 			goto cache_stateless;
 		}
 
-		if (!cf_section_find(conf->virtual_server, "clear", "cache")) {
+		if (!cf_section_find(conf->virtual_server, "clear", "session")) {
 			WARN("Specified virtual_server missing \"clear cache { ... }\" section. "
 			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
 			goto cache_stateless;

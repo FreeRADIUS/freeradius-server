@@ -61,11 +61,7 @@ typedef struct {
 	fr_tls_validation_state_t	state;		//!< Whether OpenSSL has requested
 							///< certificate validation.
 
-	bool				first_call;	//!< Is this the first call into the validation
-							///< routine.
-	bool				have_pairs;	//!< When we entered the validation call we found
-							///< pre-existing pairs in the session-state list
-							///< so we will not regenerate the c
+	bool				resumed;	//!< Whether we're validating a resumed session.
 } fr_tls_verify_t;
 
 #ifdef __cplusplus
@@ -80,11 +76,11 @@ extern "C" {
 
 int		fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *ctx);
 
-int		fr_tls_verify_client_cert_chain(SSL *ssl);
+int		fr_tls_verify_client_cert_chain(request_t *request, SSL *ssl);
 
-bool		fr_tls_verify_client_cert_successful(fr_tls_session_t *tls_session);
+bool		fr_tls_verify_client_cert_result(fr_tls_session_t *tls_session);
 
-void		fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session);
+void		fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session, bool resumed);
 
 unlang_action_t fr_tls_verify_client_cert_pending_push(request_t *request, fr_tls_session_t *tls_session);
 

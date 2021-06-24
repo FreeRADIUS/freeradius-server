@@ -29,6 +29,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls - "
 
+#include <openssl/ssl.h>
+
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -105,6 +107,143 @@ void tls_cache_clear_state_reset(fr_tls_cache_t *cache)
 	cache->clear.state = FR_TLS_CACHE_CLEAR_INIT;
 }
 
+/** Serialize the session-state list and store it in the SSL_SESSION *
+ *
+ */
+static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess)
+{
+	fr_dbuff_t		dbuff;
+	fr_dbuff_uctx_talloc_t	tctx;
+	fr_dcursor_t		dcursor;
+	fr_pair_t		*vp;
+	ssize_t			slen;
+	int			ret;
+
+	RDEBUG2("Adding &session-state[*] to session-ticket");
+	RINDENT();
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, NULL);
+	REXDENT();
+
+	/*
+	 *	Absolute maximum is `0..2^16-1`.
+	 *
+	 *	We leave OpenSSL 2k to add anything else
+	 */
+	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, 1024 * 62));
+
+	/*
+	 *	Encode the session-state contents and
+	 *	add it to the ticket.
+	 */
+	for (vp = fr_dcursor_init(&dcursor, &request->session_state_pairs);
+	     vp;
+	     vp = fr_dcursor_current(&dcursor)) {
+		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);
+		if (slen < 0) {
+			RPERROR("Failed serialising session-state list");
+			fr_dbuff_free_talloc(&dbuff);
+			return 0;
+		}
+	}
+
+	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
+
+	/*
+	 *	Pass the serialized session-state list
+	 *	over to OpenSSL.
+	 */
+	ret = SSL_SESSION_set1_ticket_appdata(sess, fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff));
+	fr_dbuff_free_talloc(&dbuff);	/* OpenSSL memdups the data */
+	if (ret != 1) {
+		fr_tls_log_error(request, "Failed setting application data for session-ticket");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
+{
+	uint8_t			*data;
+	size_t			data_len;
+	fr_dbuff_t		dbuff;
+	fr_pair_list_t		tmp;
+	fr_dcursor_t		cursor;
+
+	/*
+	 *	Extract the session-state list from the ticket.
+	 */
+	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
+		fr_tls_log_error(request, "Failed retrieving application data from session");
+		return -1;
+	}
+
+	fr_pair_list_init(&tmp);
+	fr_dcursor_init(&cursor, &tmp);
+	fr_dbuff_init(&dbuff, data, data_len);
+
+	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_len(&dbuff), "session application data");
+
+	/*
+	 *	Decode the session-state data into a temporary list.
+	 *
+	 *	It's very important that we decode _all_ attributes,
+	 *	or disallow session resumption.
+	 */
+	while (fr_dbuff_remaining(&dbuff) > 0) {
+		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &cursor,
+					    	  request->dict, &dbuff, NULL) < 0) {
+			fr_pair_list_free(&tmp);
+			RPEDEBUG("Failed decoding session-state");
+			return -1;
+		}
+	}
+
+	RDEBUG2("Restoring &session-state[*] from session");
+	RINDENT();
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "&session-state.");
+	REXDENT();
+
+	fr_pair_list_append(&request->session_state_pairs, &tmp);
+
+	return 0;
+}
+
+/** Delete session data be deleted from the cache
+ *
+ * @param[in] sess to be deleted.
+ */
+static void tls_cache_delete_request(SSL_SESSION *sess)
+{
+	fr_tls_session_t	*tls_session;
+	fr_tls_cache_t		*tls_cache;
+	request_t		*request;
+
+	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
+
+	if (!tls_session->cache) return;
+
+	request = fr_tls_session_request(tls_session->ssl);
+	tls_cache = tls_session->cache;
+
+	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_INIT);
+
+	/*
+	 *	Record the session to delete
+	 */
+	tls_cache->clear.id = fr_tls_cache_id(tls_cache, sess);
+	if (!tls_cache->clear.id) {
+		RWDEBUG("Error retrieving Session ID");
+		return;
+	}
+
+	RDEBUG3("Requested session delete - ID %pV", fr_box_octets_buffer(tls_cache->clear.id));
+
+	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
+
+	ASYNC_pause_job();	/* Go do the delete _now_ */
+}
+
 /** Process the result of `session load { ... }`
  */
 static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
@@ -124,7 +263,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	vp = fr_pair_find_by_da(&request->session_state_pairs, attr_tls_session_data, 0);
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_tls_session_data, 0);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		goto error;
@@ -139,6 +278,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 		goto error;
 	}
 	RDEBUG3("Read %zu bytes of session data.  Session deserialized successfully", vp->vp_length);
+	if (RDEBUG_ENABLED3) SSL_SESSION_print(fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3), sess);
 
 	/*
 	 *	OpenSSL's API is very inconsistent.
@@ -149,28 +289,10 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 	 *	ex_data is not serialised in i2d_SSL_SESSION
 	 *	so we don't have to bother unsetting it.
 	 */
-	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION,
-				SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION));
+	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION, fr_tls_session(tls_session->ssl));
 
 	tls_cache->load.state = FR_TLS_CACHE_LOAD_RETRIEVED;
 	tls_cache->load.sess = sess;	/* This is consumed in tls_cache_load_cb */
-
-#if 0
-	/*
-	 *	We set the session here temporarily so that
-	 *	the certificate validation can run.
-	 *
-	 *      FIXME - Do ASYNC session cert validation.
-	 */
-	SSL_set_session(ssl, sess);		/* Increases ref count */
-
-	if (fr_tls_verify_client_cert_chain(ssl) != 1) {
-		RWDEBUG("Validation failed, forcefully expiring resumed session");
-		SSL_SESSION_set_timeout(sess, 0);
-	}
-
-	SSL_remove_session(ssl, sess);		/* Decreases ref count */
-#endif
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -190,6 +312,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
 	request_t		*child;
 	fr_pair_t		*vp;
+	unlang_action_t		ua;
 
 	if (tls_cache->load.state != FR_TLS_CACHE_LOAD_REQUESTED) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -203,7 +326,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 *	session resumption data.
 	 */
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_session_load->vb_uint32;
+	vp->vp_uint32 = enum_tls_packet_type_load_session->vb_uint32;
 
 	/*
 	 *	Add the session identifier we're
@@ -215,13 +338,14 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	if (fr_tls_call_push(child, tls_cache_load_result, conf, tls_session) < 0) {
+	ua = fr_tls_call_push(child, tls_cache_load_result, conf, tls_session);
+	if (ua < 0) {
 		talloc_free(child);
 		tls_cache_load_state_reset(tls_cache);
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return ua;
 }
 
 /** Process the result of `session store { ... }`
@@ -267,9 +391,23 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	request_t		*child;
 	fr_pair_t		*vp;
 	SSL_SESSION		*sess = tls_session->cache->store.sess;
+	unlang_action_t		ua;
+	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + SSL_get_timeout(sess)));
+	fr_time_t		now = fr_time();
 
 	fr_assert(tls_cache->store.sess);
 	fr_assert(tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
+
+	if (expires <= now) {
+		RWDEBUG("Session has already expired, not storing");
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Add the current session-state list
+	 *	contents to the ssl-data
+	 */
+	if (tls_cache_app_data_set(request, sess) < 0) return UNLANG_ACTION_FAIL;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -279,7 +417,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	session resumption data.
 	 */
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_session_store->vb_uint32;
+	vp->vp_uint32 = enum_tls_packet_type_store_session->vb_uint32;
 
 	/*
 	 *	Add the session identifier we're trying
@@ -287,6 +425,12 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 */
 	MEM(pair_update_request(&vp, attr_tls_session_id) >= 0);
 	fr_pair_value_memdup_buffer_shallow(vp, fr_tls_cache_id(vp, sess), true);
+
+	/*
+	 *	How long the session has to live
+	 */
+	MEM(pair_update_request(&vp, attr_tls_session_ttl) >= 0);
+	vp->vp_time_delta = fr_time_delta_from_nsec(expires - now);
 
 	/*
 	 *	Serialize the session
@@ -304,6 +448,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 
 	MEM(pair_update_request(&vp, attr_tls_session_data) >= 0);
 	MEM(data = talloc_array(vp, uint8_t, len));
+
 	/* openssl mutates &p */
 	p = data;
 	ret = i2d_SSL_SESSION(sess, &p);	/* Serialize as ASN.1 */
@@ -319,9 +464,10 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	if (fr_tls_call_push(child, tls_cache_store_result, conf, tls_session) < 0) goto error;
+	ua = fr_tls_call_push(child, tls_cache_store_result, conf, tls_session);
+	if (ua < 0) goto error;
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return ua;
 }
 
 /** Process the result of `session clear { ... }`
@@ -362,6 +508,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	request_t	*child;
 	fr_pair_t	*vp;
 	fr_tls_cache_t	*tls_cache = tls_session->cache;
+	unlang_action_t	ua;
 
 	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED);
 	fr_assert(tls_cache->clear.id);
@@ -370,20 +517,11 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	request = child;
 
 	/*
-	 *	We never managed to store the session
-	 *	so don't bother trying to clear it.
-	 */
-	if (tls_cache->store.state != FR_TLS_CACHE_STORE_PERSISTED) {
-		tls_cache_clear_state_reset(tls_cache);
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	/*
 	 *	Setup the child request for loading
 	 *	session resumption data.
 	 */
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
-	vp->vp_uint32 = enum_tls_packet_type_session_clear->vb_uint32;
+	vp->vp_uint32 = enum_tls_packet_type_clear_session->vb_uint32;
 
 	/*
 	 *	Add the session identifier we're
@@ -395,13 +533,14 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	if (fr_tls_call_push(child, tls_cache_clear_result, conf, tls_session) < 0) {
+	ua = fr_tls_call_push(child, tls_cache_clear_result, conf, tls_session);
+	if (ua < 0) {
 		talloc_free(child);
 		tls_cache_clear_state_reset(tls_cache);
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return ua;
 }
 
 /** Push a `session store { ... }` or session clear { ... }` or `session load { ... }` depending on what operations are pending
@@ -433,8 +572,18 @@ unlang_action_t fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *
 	if (tls_cache->clear.state == FR_TLS_CACHE_CLEAR_REQUESTED) {
 		/*
 		 *	Abort any pending store operations
+		 *	if they were for the same ID as
+		 *	we're now trying to clear.
 		 */
-		if (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED) tls_cache_store_state_reset(tls_cache);
+		if (tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED) {
+			unsigned int	len;
+			uint8_t const	*id;
+
+			id = SSL_SESSION_get_id(tls_cache->store.sess, &len);
+			if ((len == talloc_array_length(tls_cache->clear.id)) &&
+			    (memcmp(tls_cache->clear.id, id, len) == 0)) tls_cache_store_state_reset(tls_cache);
+		}
+
 		return tls_cache_clear_push(request, conf, tls_session);
 	}
 
@@ -471,7 +620,7 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	of the tls_session, as the fields aren't re-populated on
 	 *	resumption.
 	 */
-	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
+	tls_session = fr_tls_session(ssl);
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
 
@@ -506,9 +655,8 @@ static SSL_SESSION *tls_cache_load_cb(SSL *ssl,
 	fr_tls_session_t	*tls_session;
 	fr_tls_cache_t		*tls_cache;
 	request_t		*request;
-	SSL_SESSION		*sess;
 
-	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
+	tls_session = fr_tls_session(ssl);
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
 
@@ -536,7 +684,7 @@ again:
 		fr_assert(!tls_cache->load.id);
 
 		tls_cache->load.state = FR_TLS_CACHE_LOAD_REQUESTED;
-		MEM(tls_cache->load.id = talloc_memdup(tls_cache, (uint8_t const *)key, key_len));
+		MEM(tls_cache->load.id = talloc_typed_memdup(tls_cache, (uint8_t const *)key, key_len));
 
 		RDEBUG3("Requested session load - ID %pV", fr_box_octets_buffer(tls_cache->load.id));
 		ASYNC_pause_job();
@@ -548,15 +696,57 @@ again:
 		break;
 
 	case FR_TLS_CACHE_LOAD_RETRIEVED:
+	{
 		TALLOC_FREE(tls_cache->load.id);
 
 		RDEBUG3("Setting session data");
 
+		/*
+		 *	This restores the contents of &session-state[*]
+		 *	which hopefully still contains all the certificate
+		 *	pairs.
+		 *
+		 *	Although the SSL_SESSION does contain a copy of
+		 *	the peer's certificate, it does not contain the
+		 *	peer's certificate chain, and so isn't reliable
+		 *	for performing re-validation.
+		 */
+		if (tls_cache_app_data_get(request, tls_cache->load.sess) < 0) {
+			REDEBUG("Denying session resumption via session-id");
+		verify_error:
+			/*
+			 *	Request the session be deleted the next
+			 *	time something calls cache action pending.
+			 */
+			tls_cache_delete_request(tls_cache->load.sess);
+			tls_cache_load_state_reset(tls_session->cache);	/* Free the session */
+			return NULL;
+		}
+
+		/*
+		 *	This sets the validation state of the tls_session
+		 *	so that when we call ASYNC_pause_job(), and execution
+		 *	jumps back to tls_session_async_handshake_cont
+		 *	(just under SSL_read())
+		 *	the code there knows what job it needs to push onto
+		 *	the unlang stack.
+		 */
+		fr_tls_verify_client_cert_request(tls_session, true);
+
+		ASYNC_pause_job();
+
+		/*
+		 *	If we couldn't validate the client certificate
+		 *	then validation overall fails.
+		 */
+		if (!fr_tls_verify_client_cert_result(tls_session)) {
+			RDEBUG2("Certificate re-validation failed, denying session resumption via session-id");
+			goto verify_error;
+		}
+
 		*copy = 0;
-		tls_cache->load.state = FR_TLS_CACHE_LOAD_INIT;	/* Reset state */
-		sess = tls_cache->load.sess;
-		tls_cache->load.sess = NULL;
-		return sess;
+	}
+		return tls_cache->load.sess;
 
 	case FR_TLS_CACHE_LOAD_FAILED:
 		RDEBUG3("Session data load failed");
@@ -576,31 +766,14 @@ again:
  */
 static void tls_cache_delete_cb(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
-	fr_tls_session_t	*tls_session;
-	fr_tls_cache_t		*tls_cache;
-	request_t		*request;
-
-	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
-
-	if (!tls_session->cache) return;
-
-	request = fr_tls_session_request(tls_session->ssl);
-	tls_cache = tls_session->cache;
-
-	fr_assert(tls_cache->clear.state == FR_TLS_CACHE_CLEAR_INIT);
-
-	RDEBUG3("Requested session delete - ID %pV", fr_box_octets_buffer(tls_cache->clear.id));
-
 	/*
-	 *	Record the session to delete
+	 *	Not sure why this happens, but sometimes SSL_SESSION *s
+	 *	make it here without the correct ex data.
+	 *
+	 *	Maybe it's one OpenSSL created internally?
 	 */
-	tls_cache->clear.id = fr_tls_cache_id(tls_cache, sess);
-	if (!tls_cache->clear.id) {
-		RWDEBUG("Error retrieving Session ID");
-		return;
-	}
-
-	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
+	if (!SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION)) return;
+	tls_cache_delete_request(sess);
 }
 
 /** Prevent a TLS session from being resumed in future
@@ -621,14 +794,14 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 	fr_tls_session_t	*tls_session;
 	fr_pair_t		*vp;
 
-	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
+	tls_session = fr_tls_session(ssl);
 	request = fr_tls_session_request(tls_session->ssl);
 
 	{
 		fr_tls_conf_t *conf;
 
 		conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
-		if (conf->cache.require_extms && (SSL_get_extms_support(tls_session->ssl) != 1)) {
+		if (conf->cache.require_extms && (SSL_get_extms_support(tls_session->ssl) == 0)) {
 			RDEBUG2("Client does not support the Extended Master Secret extension, "
 				"denying session resumption");
 			goto disable;
@@ -774,12 +947,6 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 	fr_tls_cache_conf_t	*tls_cache_conf = arg;	/* Not talloced */
 	SSL_SESSION		*sess;
 	request_t		*request;
-	ssize_t			slen;
-	fr_dbuff_t		dbuff;
-	fr_dbuff_uctx_talloc_t	tctx;
-	fr_dcursor_t		dcursor;
-	fr_pair_t		*vp;
-	int			ret;
 
 	/*
 	 *	Check to see if we have a request bound
@@ -814,45 +981,7 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 		return 0;
 	}
 
-	RDEBUG2("Adding &session-state[*] to session-ticket");
-	RINDENT();
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, NULL);
-	REXDENT();
-
-	/*
-	 *	Absolute maximum is `0..2^16-1`.
-	 *
-	 *	We leave OpenSSL 2k to add anything else
-	 */
-	MEM(fr_dbuff_init_talloc(NULL, &dbuff, &tctx, 1024, 1024 * 62));
-
-	/*
-	 *	Encode the session-state contents and
-	 *      add it to the ticket.
-	 */
-	for (vp = fr_dcursor_init(&dcursor, &request->session_state_pairs);
-	     vp;
-	     vp = fr_dcursor_current(&dcursor)) {
-		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);
-		if (slen < 0) {
-			RPERROR("Failed serialising session-state list");
-			fr_dbuff_free_talloc(&dbuff);
-			return 0;
-		}
-	}
-
-	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
-
-	/*
-	 *	Pass the serialized session-state list
-	 *	over to OpenSSL.
-	 */
-	ret = SSL_SESSION_set1_ticket_appdata(sess, fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff));
-	fr_dbuff_free_talloc(&dbuff);	/* OpenSSL memdups the data */
-	if (ret != 1) {
-		fr_tls_log_error(request, "Failed setting application data for session-ticket");
-		return 0;
-	}
+	if (tls_cache_app_data_set(request, sess) < 0) return 0;
 
 	return 1;
 }
@@ -871,11 +1000,6 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	fr_tls_conf_t		*conf = fr_tls_session_conf(tls_session->ssl);
 	fr_tls_cache_conf_t	*tls_cache_conf = arg;	/* Not talloced */
 	request_t		*request = NULL;
-	uint8_t			*data;
-	size_t			data_len;
-	fr_dbuff_t		dbuff;
-	fr_pair_list_t		tmp;
-	fr_dcursor_t		cursor;
 
 	if (fr_tls_session_request_bound(ssl)) request = fr_tls_session_request(ssl);
 
@@ -904,41 +1028,19 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	}
 
 	/*
-	 *	Extract the session-state list from the ticket.
+	 *	This restores the contents of &session-state[*]
+	 *	which hopefully still contains all the certificate
+	 *	pairs.
+	 *
+	 *	Although the SSL_SESSION does contain a copy of
+	 *	the peer's certificate, it does not contain the
+	 *	peer's certificate chain, and so isn't reliable
+	 *	for performing re-validation.
 	 */
-	if (SSL_SESSION_get0_ticket_appdata(sess, (void **)&data, &data_len) != 1) {
-		fr_tls_log_error(request, "Failed retrieving application data from session-ticket, "
-				 "denying session resumption via session-ticket");
+	if (tls_cache_app_data_get(request, sess) < 0) {
+		REDEBUG("Denying session resumption via session-ticket");
 		return SSL_TICKET_RETURN_IGNORE_RENEW;
 	}
-
-	fr_pair_list_init(&tmp);
-	fr_dcursor_init(&cursor, &tmp);
-	fr_dbuff_init(&dbuff, data, data_len);
-
-	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_len(&dbuff), "session-ticket application data");
-
-	/*
-	 *	Decode the session-state data into a temporary list.
-	 *
-	 *	It's very important that we decode _all_ attributes,
-	 *	or disallow session resumption.
-	 */
-	while (fr_dbuff_remaining(&dbuff) > 0) {
-		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &cursor,
-					    	  request->dict, &dbuff, NULL) < 0) {
-			fr_pair_list_free(&tmp);
-			RPEDEBUG("Failed decoding session-state, denying session resumption via session-ticket");
-			return SSL_TICKET_RETURN_IGNORE_RENEW;
-		}
-	}
-
-	RDEBUG2("Restoring &session-state[*] from session-ticket");
-	RINDENT();
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "&session-state.");
-	REXDENT();
-
-	fr_pair_list_append(&request->session_state_pairs, &tmp);
 
 	if (conf->virtual_server && tls_session->verify_client_cert) {
 		RDEBUG2("Requesting certificate re-validation for session-ticket");
@@ -946,11 +1048,11 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	This sets the validation state of the tls_session
 		 *	so that when we call ASYNC_pause_job(), and execution
 		 *	jumps back to tls_session_async_handshake_cont
-		 *      (just under SSL_read())
+		 *	(just under SSL_read())
 		 *	the code there knows what job it needs to push onto
 		 *	the unlang stack.
 		 */
-		fr_tls_verify_client_cert_request(tls_session);
+		fr_tls_verify_client_cert_request(tls_session, true);
 
 		ASYNC_pause_job();
 
@@ -959,7 +1061,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	give the client the opportunity to send a new
 		 *	one, but _don't_ allow session resumption.
 		 */
-		if (!fr_tls_verify_client_cert_successful(tls_session)) {
+		if (!fr_tls_verify_client_cert_result(tls_session)) {
 			RDEBUG2("Certificate re-validation failed, denying session resumption via session-ticket");
 			return SSL_TICKET_RETURN_IGNORE_RENEW;
 		}

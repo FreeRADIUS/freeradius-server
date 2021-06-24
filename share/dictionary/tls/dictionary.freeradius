@@ -10,10 +10,10 @@
 
 ATTRIBUTE	Packet-Type				1	uint32
 
-VALUE	Packet-Type			Session-Load		1
-VALUE	Packet-Type			Session-Store		2
-VALUE	Packet-Type			Session-Clear		3
-VALUE	Packet-Type			Certificate-Validate	4
+VALUE	Packet-Type			Load-Session		1
+VALUE	Packet-Type			Store-Session		2
+VALUE	Packet-Type			Clear-Session		3
+VALUE	Packet-Type			Verify-Certificate	4
 
 #
 #  We use response packet types instead of rcodes so that
@@ -25,3 +25,5 @@ VALUE	Packet-Type			notfound		12
 
 ATTRIBUTE	Session-Id				10	octets
 ATTRIBUTE	Session-Data				11	octets
+ATTRIBUTE	Session-Resumed				12	bool
+ATTRIBUTE	Session-TTL				13	time_delta

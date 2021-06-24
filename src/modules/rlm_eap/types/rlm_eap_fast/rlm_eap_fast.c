@@ -464,6 +464,12 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 		 */
 
 		/*
+		 *	Result is always OK, even if we fail to persist the
+		 *	session data.
+		 */
+		*p_result = RLM_MODULE_OK;
+
+		/*
 		 *	Write the session to the session cache
 		 *
 		 *	We do this here (instead of relying on OpenSSL to call the

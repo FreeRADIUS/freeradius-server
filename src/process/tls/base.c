@@ -43,10 +43,10 @@ fr_dict_attr_autoload_t process_tls_dict_attr[] = {
 };
 
 typedef struct {
-	CONF_SECTION	*session_load;
-	CONF_SECTION	*session_store;
-	CONF_SECTION	*session_clear;
-	CONF_SECTION	*certificate_validate;
+	CONF_SECTION	*load_session;
+	CONF_SECTION	*store_session;
+	CONF_SECTION	*clear_session;
+	CONF_SECTION	*verify_certificate;
 } process_tls_sections_t;
 
 typedef struct {
@@ -62,7 +62,7 @@ typedef struct {
 #include <freeradius-devel/server/process.h>
 
 static fr_process_state_t const process_state[] = {
-	[FR_PACKET_TYPE_VALUE_SESSION_LOAD] = {
+	[FR_PACKET_TYPE_VALUE_LOAD_SESSION] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
@@ -77,9 +77,9 @@ static fr_process_state_t const process_state[] = {
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
-		.section_offset = PROCESS_CONF_OFFSET(session_load),
+		.section_offset = PROCESS_CONF_OFFSET(load_session),
 	},
-	[FR_PACKET_TYPE_VALUE_SESSION_STORE] = {
+	[FR_PACKET_TYPE_VALUE_STORE_SESSION] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
@@ -94,9 +94,9 @@ static fr_process_state_t const process_state[] = {
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
-		.section_offset = PROCESS_CONF_OFFSET(session_store),
+		.section_offset = PROCESS_CONF_OFFSET(store_session),
 	},
-	[FR_PACKET_TYPE_VALUE_SESSION_CLEAR] = {
+	[FR_PACKET_TYPE_VALUE_CLEAR_SESSION] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
@@ -111,14 +111,14 @@ static fr_process_state_t const process_state[] = {
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
-		.section_offset = PROCESS_CONF_OFFSET(session_clear),
+		.section_offset = PROCESS_CONF_OFFSET(clear_session),
 	},
-	[FR_PACKET_TYPE_VALUE_CERTIFICATE_VALIDATE] = {
+	[FR_PACKET_TYPE_VALUE_VERIFY_CERTIFICATE] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_SUCCESS,
 
-			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_FAILURE,
-			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
 			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
@@ -128,7 +128,7 @@ static fr_process_state_t const process_state[] = {
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_no_send,
-		.section_offset = PROCESS_CONF_OFFSET(certificate_validate),
+		.section_offset = PROCESS_CONF_OFFSET(verify_certificate),
 	},
 };
 
@@ -156,25 +156,25 @@ static const virtual_server_compile_t compile_list[] = {
 		.name = "store",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
-		.offset = PROCESS_CONF_OFFSET(session_store)
+		.offset = PROCESS_CONF_OFFSET(store_session)
 	},
 	{
 		.name = "load",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
-		.offset = PROCESS_CONF_OFFSET(session_load)
+		.offset = PROCESS_CONF_OFFSET(load_session)
 	},
 	{
 		.name = "clear",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
-		.offset = PROCESS_CONF_OFFSET(session_clear)
+		.offset = PROCESS_CONF_OFFSET(clear_session)
 	},
 	{
 		.name = "verify",
 		.name2 = "certificate",
 		.component = MOD_AUTHORIZE,
-		.offset = PROCESS_CONF_OFFSET(certificate_validate)
+		.offset = PROCESS_CONF_OFFSET(verify_certificate)
 	},
 	COMPILE_TERMINATOR
 };
