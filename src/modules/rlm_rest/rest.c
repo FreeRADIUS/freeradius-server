@@ -1616,7 +1616,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
 {
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 
-	fr_assert(ctx->response.buffer || !ctx->response.used);
+	if (!ctx->response.buffer) return 0;
 
 	*out = ctx->response.buffer;
 	return ctx->response.used;
