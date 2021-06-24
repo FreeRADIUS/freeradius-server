@@ -628,10 +628,10 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
  * @param[in] state	tree to lookup state in.
  * @param[in] request	to restore state for.
  * @return
- *	- 0 on success (state restored)
+ *	- 2 if the state attribute didn't match any known states.
  *	- 1 if no state attribute existed.
- *	- -1 if a state entry matching the value couldn't be found.
- *	- -2 if a state entry has already been thawed by a another request.
+ *	- 0 on success (state restored)
+ *	- -1 if a state entry has already been thawed by a another request.
  */
 int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 {
@@ -671,8 +671,8 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 	} else {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		REDEBUG("No state entry matching &request.%pP found", vp);
-		return -1;
+		RDEBUG2("No state entry matching &request.%pP found", vp);
+		return 2;
 	}
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {

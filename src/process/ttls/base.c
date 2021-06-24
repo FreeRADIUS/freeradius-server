@@ -356,23 +356,6 @@ RECV(access_request)
 {
 	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
 
-	/*
-	 *	Requests with invalid state values
-	 *	are extremely unlikely to result
-	 *	in success, so reject them as quickly
-	 *	as we possible.
-	 */
-	if (fr_state_to_request(inst->auth.state_tree, request) < 0) {
-		fr_process_state_t const	*state;
-		CONF_SECTION			*cs;
-
-		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
-		UPDATE_STATE_CS(reply);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, NULL);
-	}
-
 	return CALL_RECV(generic);
 }
 

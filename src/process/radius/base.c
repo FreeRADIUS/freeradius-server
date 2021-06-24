@@ -359,10 +359,9 @@ RECV(access_request)
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	/*
-	 *	Requests with invalid state values
-	 *	are extremely unlikely to result
-	 *	in success, so reject them as quickly
-	 *	as we possible.
+	 *	Only reject if the state has already been thawed.
+	 *	It could be that the state value wasn't intended
+	 *	for us, and we're just proxying upstream.
 	 */
 	if (fr_state_to_request(inst->auth.state_tree, request) < 0) {
 		fr_process_state_t const	*state;
