@@ -239,8 +239,13 @@ Provides protocol encoders and decoders for the RADIUS protocol.
 Summary: Internal support library for FreeRADIUS modules using json-c
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
+%if 0%{?rhel} < 8
+Requires: nwkrad-json-c >= 0.13
+BuildRequires: nwkrad-json-c-devel >= 0.13
+%else
 Requires: json-c >= 0.13
 BuildRequires: json-c-devel >= 0.13
+%endif
 
 %description libfreeradius-json
 Internal support library for FreeRADIUS modules using json-c, required by all modules that use json-c.
