@@ -626,12 +626,6 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	uint8_t const		*id;
 
 	/*
-	 *	Request was cancelled, just get OpenSSL to
-	 *	free the session data, and don't do any work.
-	 */
-	if (unlang_request_is_cancelled(request)) return 0;
-
-	/*
 	 *	This functions should only be called once during the lifetime
 	 *	of the tls_session, as the fields aren't re-populated on
 	 *	resumption.
@@ -639,6 +633,12 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	tls_session = fr_tls_session(ssl);
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
+
+	/*
+	 *	Request was cancelled, just get OpenSSL to
+	 *	free the session data, and don't do any work.
+	 */
+	if (unlang_request_is_cancelled(request)) return 0;
 
 	id = SSL_SESSION_get_id(sess, &id_len);
 	RDEBUG3("Requested session store - ID %pV", fr_box_octets(id, id_len));
