@@ -352,13 +352,6 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_ttls_auth_t cons
 	talloc_free(msg);
 }
 
-RECV(access_request)
-{
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
-
-	return CALL_RECV(generic);
-}
-
 RESUME(auth_type);
 
 RESUME(access_request)
@@ -708,7 +701,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.recv = recv_access_request,
+		.recv = recv_generic,
 		.resume = resume_access_request,
 		.section_offset = offsetof(process_ttls_sections_t, access_request),
 	},
