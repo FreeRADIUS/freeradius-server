@@ -152,18 +152,18 @@ crossbuild.${1}.up: $(DD)/stamp-up.${1}
 .PHONY: $(DD)/docker.refresh.${1}
 $(DD)/docker.refresh.${1}: $(DD)/stamp-up.${1}
 	${Q}echo "REFRESH ${1}"
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'rsync -a /srv/src/ /srv/local-src/'
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config core.bare true'
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config --unset core.worktree || true'
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && git pull --rebase)'
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || echo CONFIGURE ${1}'
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DD)/configure.${1} 2>&1
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc 'rsync -a /srv/src/ /srv/local-src/'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc 'git config -f /srv/local-src/config core.bare true'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc 'git config -f /srv/local-src/config --unset core.worktree || true'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '(cd /srv/build && git pull --rebase)'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '[ -e /srv/build/config.log ] || echo CONFIGURE ${1}'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '[ -e /srv/build/config.log ] || (cd /srv/build && ./configure -C)' > $(DD)/configure.${1} 2>&1
 
 .PHONY: $(DD)/docker.run.${1}
 $(DD)/docker.run.${1}: $(DD)/docker.refresh.${1}
 	${Q}echo "TEST ${1} > $(DD)/log.${1}"
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '(cd /srv/build && make && make test)' > $(DD)/log.${1} 2>&1 || echo FAIL ${1}
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '(cd /srv/build && make && make test)' > $(DD)/log.${1} 2>&1 || echo FAIL ${1}
 
 #
 #  Stop the docker container

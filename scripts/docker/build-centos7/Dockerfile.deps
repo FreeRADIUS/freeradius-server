@@ -140,3 +140,5 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 #
 ENV BUILDDIR=/root/rpmbuild
 RUN rpmdev-setuptree
+
+RUN printf 'PATH=/opt/rh/$(scl -l)/root/usr/bin:$PATH\nexport PATH\n' > /etc/profile.d/devtoolset.sh
