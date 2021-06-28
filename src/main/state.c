@@ -332,6 +332,7 @@ static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
 		 *	We can add it to the cleanup list.
 		 */
 		state_entry_unlink(state, entry);
+		entry->next = NULL;
 		(*tail) = entry;
 		tail = &entry->next;
 	}
