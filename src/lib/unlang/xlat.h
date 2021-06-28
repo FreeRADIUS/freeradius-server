@@ -126,6 +126,21 @@ typedef struct {
 #define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = false, \
 					.type = FR_TYPE_NULL, .func = NULL, .uctx = NULL }
 
+/** Definition for a single part of a URI
+ *
+ */
+typedef struct {
+	char const		*name;				//!< Name of this part of the URI
+	fr_sbuff_term_t const	*terminals;			//!< Characters that mark the end of this part.
+	uint8_t const		part_adv[UINT8_MAX + 1];	//!< How many parts to advance for a specific terminal
+	size_t			extra_skip;			//!< How many additional characters to skip after
+								///< the terminal
+	bool			tainted_allowed;		//!< Do we accept tainted values for this part
+	xlat_escape_func_t	func;				//!< Function to use to escape tainted values
+} xlat_uri_part_t;
+
+#define XLAT_URI_PART_TERMINATOR { .name = NULL, .terminals = NULL, .tainted_allowed = false, .func = NULL }
+
 /** A callback when the the timeout occurs
  *
  * Used when a xlat needs wait for an event.
