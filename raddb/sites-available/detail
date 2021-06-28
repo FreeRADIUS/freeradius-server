@@ -22,7 +22,12 @@ server detail {
 	#
 	directory = ${radacctdir}/detail
 
-	listen {
+	#
+	#  The "listen" section MUST have a second name here, which
+	#  says "load the detail file processor, and not the typical
+	#  RADIUS UDP / TCP socket IO.
+	#
+	listen detail {
 		#
 		#  Types of packets we are reading.
 		#
