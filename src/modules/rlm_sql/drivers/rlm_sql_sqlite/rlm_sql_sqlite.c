@@ -700,7 +700,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	}
 
 	if (cf_pair_find(cs, "bootstrap") && !exists) {
-#  ifdef HAVE_SQLITE3_OPEN_V2
+#ifdef HAVE_SQLITE3_OPEN_V2
 		int		status;
 		int		ret;
 		char const	*p;
@@ -730,13 +730,13 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 
 		status = sqlite3_open_v2(inst->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-#    ifdef HAVE_SQLITE3_ERRSTR
+#  ifdef HAVE_SQLITE3_ERRSTR
 			ERROR("Failed creating opening/creating SQLite database: %s",
 			      sqlite3_errstr(status));
-#    else
+#  else
 			ERROR("Failed creating opening/creating SQLite database, got code (%i)",
 			      status);
-#    endif
+#  endif
 
 			goto unlink;
 		}
