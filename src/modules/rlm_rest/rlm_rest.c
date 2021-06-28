@@ -292,6 +292,50 @@ finish:
 	return xa;
 }
 
+/** URL escape a single box forming part of a URL
+ *
+ * @param request	being processed
+ * @param vb		to escape
+ * @param uctx		context containing CURL handle
+ * @return
+ * 	- 0 on success
+ * 	- -1 on failure
+ */
+static int uri_part_escape(request_t *request, fr_value_box_t *vb, void *uctx)
+{
+	char			*escaped;
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(uctx, fr_curl_io_request_t);
+	fr_dlist_t		entry;
+
+	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->length);
+	if (!escaped) return -1;
+
+	/*
+	 *	Returned string the same length - nothing changed
+	 */
+	if (strlen(escaped) == vb->length) {
+		RDEBUG4("Tainted value %pV needed no escaping", vb);
+		curl_free(escaped);
+		return 0;
+	}
+
+	RDEBUG4("Tainted value %pV escaped to %s", vb, escaped);
+	/*
+	 *	Store list pointers to restore later - fr_value_box_clear() clears them
+	 */
+	entry = vb->entry;
+
+	fr_value_box_clear(vb);
+
+	fr_value_box_strdup(vb, vb, NULL, escaped, vb->tainted);
+	vb->entry.next = entry.next;
+	vb->entry.prev = entry.prev;
+
+	curl_free(escaped);
+
+	return 0;
+}
+
 static xlat_arg_parser_t const rest_xlat_args[] = {
 	{ .required = true, .variadic = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
