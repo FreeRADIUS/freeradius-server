@@ -716,7 +716,7 @@ static int mod_open(fr_listen_t *li)
 
 	fr_assert(thread->name == NULL);
 	fr_assert(thread->filename_work != NULL);
-	thread->name = talloc_typed_asprintf(thread, "detail_work from filename %s", thread->filename_work);
+	thread->name = talloc_typed_asprintf(thread, "detail_work reading file %s", thread->filename_work);
 
 	return 0;
 }

@@ -386,7 +386,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	Open the file.
 	 */
 	if (inst->app_io->open(li) < 0) {
-		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+		cf_log_err(conf, "Failed opening %s file", inst->app_io->name);
 		talloc_free(li);
 		return -1;
 	}
@@ -415,6 +415,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		talloc_free(li);
 		return -1;
 	}
+
+	DEBUG("Listening on %s bound to virtual server %s",
+	      li->name, cf_section_name2(li->server_cs));
 
 	inst->listen = li;	/* Probably won't need it, but doesn't hurt */
 	inst->sc = sc;
