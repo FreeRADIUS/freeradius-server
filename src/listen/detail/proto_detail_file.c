@@ -651,6 +651,56 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+static fr_rb_tree_t *detail_file_tree = NULL;
+static pthread_mutex_t detail_file_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/** Compare two thread instances based on node pointer
+ *
+ * @param[in] one	First thread specific xlat expansion instance.
+ * @param[in] two	Second thread specific xlat expansion instance.
+ * @return CMP(one, two)
+ */
+static int8_t _detail_file_cmp(void const *one, void const *two)
+{
+	proto_detail_file_t const *a = one, *b = two;
+
+	return strcmp(a->filename, b->filename);
+}
+
+/*
+ *	Check for multiple readers on the same set of files.
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *cs)
+{
+	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+
+	pthread_mutex_lock(&detail_file_mutex);
+	if (!detail_file_tree) {
+		detail_file_tree = fr_rb_inline_talloc_alloc(cs, proto_detail_file_t, filename_node, _detail_file_cmp, NULL);
+		if (!detail_file_tree) {
+			pthread_mutex_unlock(&detail_file_mutex);
+			cf_log_err(cs, "Failed initializing detail_file");
+			return -1;
+		}
+	}
+
+	if (!fr_rb_insert(detail_file_tree, inst)) {
+		proto_detail_file_t const *old;
+
+		old = fr_rb_find(detail_file_tree, inst);
+		fr_assert(old);
+
+		pthread_mutex_unlock(&detail_file_mutex);
+		cf_log_err(cs, "Duplicate detail listener %s", inst->filename);
+		cf_log_err(cs, "Original detail listener is in virtual server %s", cf_section_name2(old->parent->server_cs));
+		return -1;
+	}
+	pthread_mutex_unlock(&detail_file_mutex);
+
+	return 0;
+}
+
+
 static int mod_close(fr_listen_t *li)
 {
 	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
@@ -694,6 +744,7 @@ fr_app_io_t proto_detail_file = {
 	.inst_size		= sizeof(proto_detail_file_t),
 	.thread_inst_size	= sizeof(proto_detail_file_thread_t),
 	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 65536,
 	.default_reply_size	= 32,

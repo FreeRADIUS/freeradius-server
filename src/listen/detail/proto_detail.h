@@ -92,6 +92,8 @@ struct proto_detail_work_s {
 
 	int				mode;			//!< O_RDWR or O_RDONLY
 
+	fr_rb_node_t			filename_node;		//!< for dedup
+
 	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
 };
 
