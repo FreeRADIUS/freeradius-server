@@ -359,7 +359,7 @@ static xlat_arg_parser_t const rest_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_list_t *in)
 {
@@ -368,27 +368,15 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	rlm_rest_thread_t		*t = xti->t;
 
 	fr_curl_io_request_t		*randle = NULL;
-	ssize_t				len;
 	int				ret;
-	char				*uri = NULL;
-	char const			*p = NULL, *q;
+	char const			*p = NULL, *end, *q;
 	http_method_t			method;
-	fr_value_box_t			*in_head = fr_dlist_head(in);
+	fr_value_box_t			*in_vb = fr_dlist_pop_head(in), *uri_vb = NULL;
+	xlat_uri_part_t const		*uri_part, *next_part;
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
-
-	if (!in_head) {
-		REDEBUG("Got empty URL string");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		REDEBUG("Failed concatenating arguments into URL string");
-		return XLAT_ACTION_FAIL;
-	}
-	p = in_head->vb_strvalue;
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
 	section = &rctx->section;
@@ -398,48 +386,114 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 */
 	memcpy(&rctx->section, &mod_inst->xlat, sizeof(*section));
 
-	RDEBUG2("Expanding URI components");
+	fr_assert(in_vb->type == FR_TYPE_GROUP);
 
 	/*
-	 *  Extract the method from the start of the format string (if there is one)
+	 *	If we have more than 1 argument, then the first is the method
 	 */
-	method = fr_table_value_by_substr(http_method_table, p, -1, REST_HTTP_METHOD_UNKNOWN);
-	if (method != REST_HTTP_METHOD_UNKNOWN) {
-		section->method = method;
-		p += http_method_table[method].name.len;
-	/*
-	 *  If the method is unknown, it's either a URL or a verb
-	 */
-	} else {
-		for (q = p; (*q != ' ') && (*q != '\0') && isalpha(*q); q++);
-
-		/*
-		 *	If the first non-alpha char was a space,
-		 *	then assume this is a verb.
-		 */
-		if ((*q == ' ') && (q != p)) {
-			section->method = REST_HTTP_METHOD_CUSTOM;
-			MEM(section->method_str = talloc_bstrndup(rctx, p, q - p));
-			p = q;
-		} else {
-			section->method = REST_HTTP_METHOD_GET;
+	if  ((fr_dlist_head(in))) {
+		uri_vb = fr_dlist_head(&in_vb->vb_group);
+		if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
+			REDEBUG("Failed concatenating argument");
+			return XLAT_ACTION_FAIL;
 		}
+		method = fr_table_value_by_substr(http_method_table, uri_vb->vb_strvalue, -1, REST_HTTP_METHOD_UNKNOWN);
+
+		if (method != REST_HTTP_METHOD_UNKNOWN) {
+			section->method = method;
+		/*
+	 	 *  If the method is unknown, it's a custom verb
+	 	 */
+		} else {
+			section->method = REST_HTTP_METHOD_CUSTOM;
+			MEM(section->method_str = talloc_bstrndup(rctx, in_vb->vb_strvalue, in_vb->vb_length));
+		}
+		/*
+		 *	Move to next argument
+		 */
+		in_vb = fr_dlist_pop_head(in);
+		uri_vb = NULL;
+	} else {
+		section->method = REST_HTTP_METHOD_GET;
 	}
 
 	/*
-	 *  Trim whitespace
+	 *	We get a connection from the pool here as the CURL object
+	 *	is needed to use curl_easy_escape() for escaping
 	 */
-	fr_skip_whitespace(p);
-
 	randle = rctx->handle = fr_pool_connection_get(t->pool, request);
 	if (!randle) return XLAT_ACTION_FAIL;
 
+	next_part = uri_part = rest_uri_parts;
+
 	/*
-	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
-	 *  request attributes.
+	 *	Walk the incomming boxes, assessing where each is in the URI,
+	 *	escaping tainted ones where needed.  Following each space in the
+	 *	input a new VB group is started.
 	 */
-	len = rest_uri_host_unescape(&uri, mod_inst, request, randle, p);
-	if (len <= 0) {
+
+	fr_assert(in_vb->type == FR_TYPE_GROUP);
+
+	while ((uri_vb = fr_dlist_next(&in_vb->vb_group, uri_vb))) {
+		if (uri_vb->tainted && !uri_part->tainted_allowed) {
+			REDEBUG("Tainted value not allowed for %s", uri_part->name);
+			return XLAT_ACTION_FAIL;
+		}
+
+		/*
+		 *	Tainted boxes can only belong to a single part of the URI
+		 */
+		if (uri_vb->tainted) {
+			if ((uri_part->func) && (uri_part->func(request, uri_vb, randle) < 0)) {
+				REDEBUG("Unable to escape tainted input %pV", uri_vb);
+				return XLAT_ACTION_FAIL;
+			}
+			continue;
+		}
+
+		/*
+		 *	This URI part has no term_chars - so no need to look for them
+		 */
+		if (!uri_part->term_chars) continue;
+
+		/*
+		 *	Look for URI part terminator
+		 */
+		p = uri_vb->vb_strvalue;
+		end = p + uri_vb->vb_length;
+
+		while (p < end) {
+			if ((q = strchr(uri_part->term_chars, *p))) {
+
+				/*
+				 *	Identify the next part - based on which terminator was found
+				 */
+				next_part += ((q - uri_part->term_chars) + 1);
+
+				/*
+				 *	Terminator at the end of the box
+				 */
+				if ((end - p) < (ssize_t)uri_part->extra_skip + 2) {
+					uri_part = next_part;
+					break;
+				}
+
+				/*
+				 *	This terminator has training characters to skip
+				 */
+				if (uri_part->extra_skip) p += uri_part->extra_skip;
+
+				uri_part = next_part;
+			}
+			if (!uri_part->term_chars) break;
+			p++;
+		}
+	}
+
+	uri_vb = fr_dlist_head(&in_vb->vb_group);
+
+	if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed to concatenate URI");
 	error:
 		rest_request_cleanup(mod_inst, randle);
 		fr_pool_connection_release(t->pool, request, randle);
@@ -449,18 +503,21 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	}
 
 	/*
-	 *  Extract freeform body data (url can't contain spaces)
+	 *	Any additional arguments are freeform data
 	 */
-	q = strchr(p, ' ');
-	if (q && (*++q != '\0')) {
+	if ((in_vb = fr_dlist_head(in))) {
+		if (fr_value_box_list_concat(in_vb, in_vb, in, FR_TYPE_STRING, true) < 0) {
+			REDEBUG("Failed to concatenate freeform data");
+			goto error;
+		}
 		section->body = REST_HTTP_BODY_CUSTOM_LITERAL;
-		section->data = q;
+		section->data = in_vb->vb_strvalue;
 	}
 
-	RDEBUG2("Sending HTTP %s to \"%s\"",
+	RDEBUG2("Sending HTTP %s to \"%pV\"",
 	       (section->method == REST_HTTP_METHOD_CUSTOM) ?
 	       	section->method_str : fr_table_str_by_value(http_method_table, section->method, NULL),
-	       uri);
+	       uri_vb);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -468,9 +525,8 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(mod_inst, t, section, request,
-				  randle, section->method, section->body, uri, NULL, NULL);
-	talloc_free(uri);
+	ret = rest_request_config(mod_inst, t, section, request, randle, section->method,
+				  section->body, uri_vb->vb_strvalue, NULL, NULL);
 	if (ret < 0) goto error;
 
 	/*
