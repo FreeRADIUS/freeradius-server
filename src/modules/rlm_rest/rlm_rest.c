@@ -336,6 +336,19 @@ static int uri_part_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 	return 0;
 }
 
+static xlat_uri_part_t const rest_uri_parts[] = {
+	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
+	  .tainted_allowed = false, .extra_skip = 2 },
+	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
+	  .tainted_allowed = false },
+	{ .name = "method", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "param", .tainted_allowed = true, .func = uri_part_escape },
+	XLAT_URI_PART_TERMINATOR
+};
+
 static xlat_arg_parser_t const rest_xlat_args[] = {
 	{ .required = true, .variadic = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
