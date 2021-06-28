@@ -71,15 +71,15 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 *	Subject
 	 */
 	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_subject) == 0);
-	if (unlikely(X509_NAME_print_ex(fr_tls_bio_talloc_agg(vp, 256, 0),
+	if (unlikely(X509_NAME_print_ex(fr_tls_bio_dbuff_thread_local(vp, 256, 0),
 					X509_get_subject_name(cert), 0, XN_FLAG_ONELINE) < 0)) {
-		fr_tls_bio_talloc_agg_clear();
+		fr_tls_bio_dbuff_thread_local_clear();
 		fr_tls_log_error(request, "Failed retrieving certificate subject");
 	error:
 		fr_pair_list_free(pair_list);
 		return -1;
 	}
-	fr_pair_value_bstrdup_buffer_shallow(vp, fr_tls_bio_talloc_agg_finalise_bstr(), true);
+	fr_pair_value_bstrdup_buffer_shallow(vp, fr_tls_bio_dbuff_thread_local_finalise_bstr(), true);
 
 	RDEBUG3("Creating attributes for \"%pV\":", fr_box_strvalue_buffer(vp->vp_strvalue));
 
@@ -124,13 +124,13 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 *	Issuer
 	 */
 	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_issuer) == 0);
-	if (unlikely(X509_NAME_print_ex(fr_tls_bio_talloc_agg(vp, 256, 0),
+	if (unlikely(X509_NAME_print_ex(fr_tls_bio_dbuff_thread_local(vp, 256, 0),
 					X509_get_issuer_name(cert), 0, XN_FLAG_ONELINE) < 0)) {
-		fr_tls_bio_talloc_agg_clear();
+		fr_tls_bio_dbuff_thread_local_clear();
 		fr_tls_log_error(request, "Failed retrieving certificate issuer");
 		goto error;
 	}
-	fr_pair_value_bstrdup_buffer_shallow(vp, fr_tls_bio_talloc_agg_finalise_bstr(), true);
+	fr_pair_value_bstrdup_buffer_shallow(vp, fr_tls_bio_dbuff_thread_local_finalise_bstr(), true);
 
 	/*
 	 *	Serial number
@@ -250,56 +250,76 @@ skip_alt:
 	 *	For laziness, we re-use the OpenSSL names
 	 */
 	if (sk_X509_EXTENSION_num(ext_list) > 0) {
-		int	i, len;
-		char	*p;
-		BIO	*out;
+		int			i;
+		BIO			*bio;
+		fr_tls_bio_dbuff_t	*bd;
+		fr_dbuff_t		*in, *out;
 
-		MEM(out = BIO_new(BIO_s_mem()));
+		bio = fr_tls_bio_dbuff_alloc(&bd, NULL, NULL, 257, 4097, true);
+		in = fr_tls_bio_dbuff_in(bd);
+		out = fr_tls_bio_dbuff_out(bd);
 
 		for (i = 0; i < sk_X509_EXTENSION_num(ext_list); i++) {
 			ASN1_OBJECT		*obj;
 			X509_EXTENSION		*ext;
 			fr_dict_attr_t const	*da;
+			char			*p;
 
 			ext = sk_X509_EXTENSION_value(ext_list, i);
 
 			obj = X509_EXTENSION_get_object(ext);
-			if (i2a_ASN1_OBJECT(out, obj) <= 0) {
+			if (i2a_ASN1_OBJECT(bio, obj) <= 0) {
 				RPWDEBUG("Skipping X509 Extension (%i) conversion to attribute. "
 					 "Conversion from ASN1 failed...", i);
+			again:
+				fr_tls_bio_dbuff_reset(bd);
 				continue;
 			}
 
-			len = BIO_read(out, buff, sizeof(buff) - 1);
-			if (len <= 0) continue;
+			if (fr_dbuff_remaining(out) == 0) goto again;	/* Nothing written ? */
 
-			buff[len] = '\0';
+			/*
+			 *	All disallowed chars get mashed to '-'
+			 */
+			for (p = (char *)fr_dbuff_current(out);
+			     p < (char *)fr_dbuff_end(out);
+			     p++) if (!fr_dict_attr_allowed_chars[(uint8_t)*p]) *p = '-';
 
-			for (p = buff; *p != '\0'; p++) if (*p == ' ') *p = '-';
+			/*
+			 *	Terminate the buffer (after char replacement,
+			 *	so we do don't replace the \0)
+			 */
+			if (unlikely(fr_dbuff_in_bytes(in, (uint8_t)'\0') <= 0)) {
+				RWDEBUG("Attribute name too long");
+				goto again;
+			}
 
-			da = fr_dict_attr_by_name(NULL, attr_tls_cert, buff);
+			da = fr_dict_attr_by_name(NULL, attr_tls_cert, (char *)fr_dbuff_current(out));
 			if (!da) {
-				RWDEBUG3("Skipping attribute %s: "
-					 "Add a dictionary definition if you want to access it", buff);
-				continue;
+				RWDEBUG3("Skipping attribute %pV: "
+					 "Add a dictionary definition if you want to access it",
+					 fr_box_strvalue_len((char *)fr_dbuff_current(out),
+					  		     fr_dbuff_remaining(out)));
+				goto again;
 			}
 
-			X509V3_EXT_print(out, ext, 0, 0);
-			len = BIO_read(out, buff, sizeof(buff) - 1);
-			if (len <= 0) continue;
+			fr_tls_bio_dbuff_reset(bd);	/* 'free' any data used */
 
-			buff[len] = '\0';
+			X509V3_EXT_print(bio, ext, 0, 0);
 
 			MEM(vp = fr_pair_afrom_da(ctx, da));
-			if (fr_pair_value_from_str(vp, buff, len, '\0', true) < 0) {
-				RPWDEBUG3("Skipping: %s += '%s'", da->name, buff);
+			if (fr_pair_value_from_str(vp, (char *)fr_dbuff_current(out), fr_dbuff_remaining(out),
+						   '\0', true) < 0) {
+				RPWDEBUG3("Skipping: %s += '%pV'",
+					  da->name, fr_box_strvalue_len((char *)fr_dbuff_current(out),
+					  				fr_dbuff_remaining(out)));
 				talloc_free(vp);
-				continue;
+				goto again;
 			}
 
 			fr_pair_append(pair_list, vp);
 		}
-		BIO_free_all(out);
+		talloc_free(bd);
 	}
 
 done:

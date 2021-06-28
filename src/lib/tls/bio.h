@@ -28,12 +28,28 @@ RCSIDH(bio_h, "$Id$")
 #include <openssl/bio.h>
 #include <freeradius-devel/util/dbuff.h>
 
-BIO		*fr_tls_bio_talloc_agg(TALLOC_CTX *ctx, size_t init, size_t max);
+typedef struct fr_tls_bio_dbuff_s fr_tls_bio_dbuff_t;
 
-uint8_t		*fr_tls_bio_talloc_agg_finalise(void);
-char		*fr_tls_bio_talloc_agg_finalise_bstr(void);
+uint8_t		*fr_tls_bio_dbuff_finalise(fr_tls_bio_dbuff_t *bd);
 
-void		fr_tls_bio_talloc_agg_clear(void);
+char		*fr_tls_bio_dbuff_finalise_bstr(fr_tls_bio_dbuff_t *bd);
+
+fr_dbuff_t	*fr_tls_bio_dbuff_out(fr_tls_bio_dbuff_t *bd);
+
+fr_dbuff_t	*fr_tls_bio_dbuff_in(fr_tls_bio_dbuff_t *bd);
+
+void		fr_tls_bio_dbuff_reset(fr_tls_bio_dbuff_t *bd);
+
+BIO		*fr_tls_bio_dbuff_alloc(fr_tls_bio_dbuff_t **out, TALLOC_CTX *bio_ctx, TALLOC_CTX *buff_ctx,
+					 size_t init, size_t max, bool free_buff);
+
+uint8_t		*fr_tls_bio_dbuff_thread_local_finalise(void);
+
+char		*fr_tls_bio_dbuff_thread_local_finalise_bstr(void);
+
+void		fr_tls_bio_dbuff_thread_local_clear(void);
+
+BIO		*fr_tls_bio_dbuff_thread_local(TALLOC_CTX *ctx, size_t init, size_t max);
 
 int		fr_tls_bio_init(void);
 
