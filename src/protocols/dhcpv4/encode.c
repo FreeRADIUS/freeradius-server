@@ -54,7 +54,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_dcursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encode_ctx)
 {
 	fr_pair_t	*vp = fr_dcursor_current(cursor);
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 	ssize_t		slen;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -212,7 +212,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	fr_dbuff_marker_t	hdr, hdr_io;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_pair_t		*vp = fr_dcursor_current(cursor);
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -337,7 +337,7 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 
 do_child:
 	fr_dcursor_init(&child_cursor, &vp->vp_group);
-	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	work_dbuff = FR_DBUFF(dbuff);
 
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
@@ -387,7 +387,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
 {
 	ssize_t			len;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr, next_hdr, dest, hdr_io;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
@@ -489,7 +489,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 255 - 4 - 1 - 2);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, 255 - 4 - 1 - 2);
 	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dict_attr_t const	*dv;
@@ -599,7 +599,7 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	unsigned int		depth = 0;
 	fr_da_stack_t		da_stack;
 	ssize_t			len;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	vp = fr_dcursor_current(cursor);
 	if (!vp) return -1;

@@ -52,7 +52,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	enc_field, len_field, value_field;
 	fr_dbuff_t		value_dbuff;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
@@ -123,7 +123,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	if the length field needs more than one byte will guard
 	 *	against insufficient space.
 	 */
-	value_dbuff = FR_DBUFF_COPY(&work_dbuff);
+	value_dbuff = FR_DBUFF_BIND_CURRENT(&work_dbuff);
 	fr_dbuff_marker(&value_field, &value_dbuff);
 
 	switch (da->type) {

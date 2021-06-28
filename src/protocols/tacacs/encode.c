@@ -44,7 +44,7 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_list_t *v
 {
 	uint8_t     arg_cnt = 0;
 	fr_pair_t   *vp;
-	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t  work_dbuff = FR_DBUFF(dbuff);
 
 	for (vp = fr_pair_list_head(vps);
 	     vp;
@@ -68,7 +68,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_list_t *vps, 
 {
 	fr_pair_t   *vp;
 	uint8_t     arg_cnt = 0;
-	fr_dbuff_t  work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t  work_dbuff = FR_DBUFF(dbuff);
 
 	for (vp = fr_pair_list_head(vps);
 	     vp;
@@ -90,7 +90,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_list_t *vps, 
 static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dict_attr_t const *da, size_t max_len)
 {
 	fr_pair_t  *vp;
-	fr_dbuff_t work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 
 	vp = fr_pair_find_by_da(vps, da, 0);
 	if (!vp || !vp->vp_length || (vp->vp_length > max_len)) return 0;
@@ -129,7 +129,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	fr_da_stack_t 		da_stack;
 	ssize_t			len = 0;
 	size_t 			body_len, packet_len;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr, body, hdr_io;
 	uint8_t			version_byte = 0;
 

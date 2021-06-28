@@ -299,7 +299,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	fr_dcursor_t	cursor;
 	fr_pair_t	*vp;
 	ssize_t	len;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	/*
 	 *	@todo: Make this work again.

@@ -113,21 +113,21 @@ will allow reading or writing outside of the buffer.
 A child dbuff operates on a portion of the buffer, starting where the
 parent left off. The creator can control two things about the child:
 
-* The space available to the child (`FR_DBUFF_MAX()` gives a child
+* The space available to the child (`FR_DBUFF_MAX_BIND_CURRENT()` gives a child
   dbuff with no more than a specified number of bytes available).
 * Whether the child's advances propagate up to its parents
-  (`FR_DBUFF_NO_ADVANCE()` gives a child dbuff whose advances don't
+  (`FR_DBUFF()` gives a child dbuff whose advances don't
   propagate).
 
 [IMPORTANT]
 ====
-`FR_DBUFF_MAX()` cannot fail.  It is like an ad promising "up to one
+`FR_DBUFF_MAX_BIND_CURRENT()` cannot fail.  It is like an ad promising "up to one
 million dollars!" where "up to" includes zero, so the child may have
 less space than the specified maximum.
 ====
 
-`FR_DBUFF_MAX()` typically shows up when a caller limits a callee to
-what will fit in a TLV in some context. `FR_DBUFF_NO_ADVANCE()` came
+`FR_DBUFF_MAX_BIND_CURRENT()` typically shows up when a caller limits a callee to
+what will fit in a TLV in some context. `FR_DBUFF()` came
 into existence to let an encoding function write a header and then
 take it back if it proved useless, but it can also be used to let one
 fill in a header when a length is finally known, and this schema has
@@ -137,7 +137,7 @@ become a convention:
 ----
 ssize_t encode_foo(fr_dbuff_t *dbuff, ...)
 {
-	fr_dbuff_t work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 
 	/* encode, operating on work_dbuff, returning on error */
 

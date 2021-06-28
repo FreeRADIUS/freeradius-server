@@ -237,7 +237,7 @@ ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inl
 	fr_md5_ctx_t		*md5_ctx;
 	size_t			i;
 	uint8_t			digest[MD5_DIGEST_LENGTH];
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, sizeof(digest));
 
@@ -921,10 +921,10 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	The RADIUS header can't do more than 64K of data.
 	 */
-	work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, 65535);
+	work_dbuff = FR_DBUFF_MAX(dbuff, 65535);
 
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, code, id);
-	length_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
+	length_dbuff = FR_DBUFF(&work_dbuff);
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) RADIUS_HEADER_LENGTH);
 
 	switch (code) {

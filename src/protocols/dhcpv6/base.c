@@ -776,7 +776,7 @@ void *fr_dhcpv6_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
  */
 ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t length, int msg_type, fr_pair_list_t *vps)
 {
-	fr_dbuff_t		frame_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		frame_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*root;
 	ssize_t			slen;

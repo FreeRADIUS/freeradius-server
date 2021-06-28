@@ -273,7 +273,7 @@ done:
 
 ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 {
-	fr_dbuff_t 	work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, FR_TFTP_BLOCK_MAX_SIZE);
+	fr_dbuff_t 	work_dbuff = FR_DBUFF_MAX(dbuff, FR_TFTP_BLOCK_MAX_SIZE);
 	fr_pair_t 	*vp;
 	uint16_t 	opcode;
 	char const 	*buf;

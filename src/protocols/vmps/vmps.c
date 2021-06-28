@@ -266,7 +266,7 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		       int code, uint32_t seq_no, fr_dcursor_t *cursor)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t 		*vp;
 	fr_dbuff_marker_t	hdr, io;
 	uint8_t			data_count = 0;

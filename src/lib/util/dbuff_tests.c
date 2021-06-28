@@ -82,10 +82,10 @@ static void test_dbuff_max(void)
 	TEST_CASE("Confirm max constrains available space");
 	fr_dbuff_init(&dbuff, in, sizeof(in));
 
-	max_dbuff = FR_DBUFF_MAX(&dbuff, 4);
+	max_dbuff = FR_DBUFF_MAX_BIND_CURRENT(&dbuff, 4);
 	TEST_CHECK(fr_dbuff_remaining(&max_dbuff) == 4);
 
-	max_dbuff = FR_DBUFF_MAX(&dbuff, 2 * sizeof(in));
+	max_dbuff = FR_DBUFF_MAX_BIND_CURRENT(&dbuff, 2 * sizeof(in));
 	TEST_CHECK(fr_dbuff_remaining(&max_dbuff) == sizeof(in));
 }
 
@@ -235,7 +235,7 @@ static void test_dbuff_no_advance(void)
 	TEST_CASE("Confirm no-advance dbuff operations don't affect ancestors' position");
 	fr_dbuff_init(&dbuff, in, sizeof(in));
 
-	no_advance_dbuff = FR_DBUFF_NO_ADVANCE(&dbuff);
+	no_advance_dbuff = FR_DBUFF(&dbuff);
 	init_remaining = fr_dbuff_remaining(&dbuff);
 	fr_dbuff_in_bytes(&no_advance_dbuff, 0x11, 0x12, 0x13);
 	TEST_CHECK(init_remaining == fr_dbuff_remaining(&dbuff));
@@ -334,15 +334,15 @@ static void test_dbuff_talloc_extend_multi_level(void)
 	TEST_CHECK(fr_dbuff_used(&dbuff1) == 0);
 	TEST_CHECK(fr_dbuff_remaining(&dbuff1) == 0);
 
-	dbuff2 = FR_DBUFF_NO_ADVANCE(&dbuff1);
+	dbuff2 = FR_DBUFF(&dbuff1);
 	TEST_CASE("Check that dbuff2 inherits extend fields");
 	TEST_CHECK(dbuff2.extend == dbuff1.extend);
 	TEST_CHECK(dbuff2.uctx == dbuff1.uctx);
 	TEST_CHECK(fr_dbuff_used(&dbuff2) == 0);
 	TEST_CHECK(fr_dbuff_remaining(&dbuff2) == 0);
 
-	dbuff2 = FR_DBUFF_MAX(&dbuff1, 8);
-	TEST_CASE("Check that FR_DBUFF_MAX() is not extensible");
+	dbuff2 = FR_DBUFF_MAX_BIND_CURRENT(&dbuff1, 8);
+	TEST_CASE("Check that FR_DBUFF_MAX_BIND_CURRENT() is not extensible");
 	TEST_CHECK(dbuff2.extend == NULL);
 	TEST_CHECK(dbuff2.uctx == NULL);
 	TEST_CHECK(fr_dbuff_used(&dbuff2) == 0);

@@ -1189,7 +1189,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
 ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 {
 	size_t		min, max;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	/*
 	 *	Variable length types
@@ -1519,7 +1519,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 					bool tainted)
 {
 	size_t		min, max;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	min = network_min_size(type);
 	max = network_max_size(type);

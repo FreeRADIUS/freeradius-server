@@ -139,7 +139,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	uint32_t	r;
 	size_t		len;
 	ssize_t		slen;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, RADIUS_MAX_STRING_LENGTH);
+	fr_dbuff_t	work_dbuff = FR_DBUFF_MAX(dbuff, RADIUS_MAX_STRING_LENGTH);
 
 	/*
 	 *	Limit the maximum size of the in password.  2 bytes
@@ -242,7 +242,7 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 	ssize_t		slen;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, RADIUS_MAX_STRING_LENGTH);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, RADIUS_MAX_STRING_LENGTH);
 
 	for (;;) {
 		FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -350,7 +350,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_radius_ctx_t		*packet_ctx = encode_ctx;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_t		value_dbuff;
 	fr_dbuff_marker_t	value_start, src, dest;
 	bool			encrypted = false;
@@ -430,7 +430,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 * Starting here is a value that may require encryption.
 	 */
-	value_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
+	value_dbuff = FR_DBUFF(&work_dbuff);
 	fr_dbuff_marker(&value_start, &value_dbuff);
 	fr_dbuff_marker(&src, &value_dbuff);
 	fr_dbuff_marker(&dest, &value_dbuff);
@@ -654,7 +654,7 @@ static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_
 {
 	unsigned int		num_fragments, i = 0;
 	size_t			max_frag_data = UINT8_MAX - hdr_len;
-	fr_dbuff_t		frag_data = FR_DBUFF_NO_ADVANCE_ABS(hdr);
+	fr_dbuff_t		frag_data = FR_DBUFF_ABS(hdr);
 	fr_dbuff_marker_t	frag_hdr, frag_hdr_p;
 
 	if (unlikely(!data_len)) return 0;	/* Shouldn't have been called */
@@ -734,8 +734,8 @@ static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_
 		/*
 		 *	Shift remaining data by hdr_len.
 		 */
-		FR_DBUFF_IN_MEMCPY_RETURN(&FR_DBUFF_NO_ADVANCE(&frag_data), &frag_hdr, data_len - (i * max_frag_data));
-		fr_dbuff_in_memcpy(&FR_DBUFF_NO_ADVANCE(&frag_hdr), hdr, hdr_len);	/* Copy the old header over */
+		FR_DBUFF_IN_MEMCPY_RETURN(&FR_DBUFF(&frag_data), &frag_hdr, data_len - (i * max_frag_data));
+		fr_dbuff_in_memcpy(&FR_DBUFF(&frag_hdr), hdr, hdr_len);	/* Copy the old header over */
 	}
 
 	return fr_dbuff_set(data, &frag_data);
@@ -766,9 +766,9 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	 *	"long" extended type.
 	 */
 	if (extra) {
-		work_dbuff = FR_DBUFF_COPY(dbuff);
+		work_dbuff = FR_DBUFF_BIND_CURRENT(dbuff);
 	} else {
-		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
+		work_dbuff = FR_DBUFF_MAX_BIND_CURRENT(dbuff, UINT8_MAX);
 	}
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
@@ -849,7 +849,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 	uint8_t const		*p;
 	size_t			data_len;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -899,7 +899,7 @@ static ssize_t encode_attribute(fr_dbuff_t *dbuff,
 	ssize_t 		slen;
 	uint8_t			hlen;
 	fr_dbuff_marker_t	hdr;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, UINT8_MAX);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 	fr_dbuff_marker(&hdr, &work_dbuff);
@@ -929,7 +929,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	size_t			hdr_len;
 	fr_dbuff_marker_t	hdr, length_field, vsa_length_field;
 	fr_dict_attr_t const	*da, *dv;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, UINT8_MAX);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1029,7 +1029,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 				fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr, length_field, vsa_length_field;
 	fr_dict_attr_t const	*dv;
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
@@ -1139,7 +1139,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	 */
 	vp = fr_dcursor_current(cursor);
 	fr_assert(vp->da == da);
-	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	work_dbuff = FR_DBUFF(dbuff);
 
 	fr_dcursor_init(&child_cursor, &vp->vp_group);
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
@@ -1191,7 +1191,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 		return encode_vendor(dbuff, da_stack, depth + 1, cursor, encode_ctx);
 	}
 
-	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	work_dbuff = FR_DBUFF(dbuff);
 
 	vp = fr_dcursor_current(cursor);
 	if (vp->da != da_stack->da[depth]) {
@@ -1235,7 +1235,7 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 				      fr_da_stack_t *da_stack, NDEBUG_UNUSED unsigned int depth,
 				      fr_dcursor_t *cursor, UNUSED void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr, frag_hdr;
 	fr_pair_t		*vp = fr_dcursor_current(cursor);
 	size_t			attr_len = 2;
@@ -1342,7 +1342,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	start;
 
 	fr_dbuff_marker(&start, &work_dbuff);
@@ -1437,7 +1437,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 {
 	fr_pair_t const		*vp;
 	ssize_t			slen;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	fr_da_stack_t		da_stack;
 	fr_dict_attr_t const	*da = NULL;

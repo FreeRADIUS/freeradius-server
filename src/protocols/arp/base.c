@@ -150,7 +150,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 	fr_arp_packet_t		*arp;
 	fr_dcursor_t		cursor;
 	fr_da_stack_t		da_stack;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	if (fr_pair_list_empty(vps)) {
 		fr_strerror_const("Cannot encode empty packet");

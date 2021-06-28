@@ -84,7 +84,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const		*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
@@ -379,7 +379,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 {
 	ssize_t			slen;
 	size_t			element_len;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 
@@ -413,7 +413,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 
 	while (fr_dbuff_extend(&work_dbuff)) {
 		bool		len_field = false;
-		fr_dbuff_t	element_dbuff = FR_DBUFF_NO_ADVANCE(&work_dbuff);
+		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
 
 		element_len = fr_dhcpv6_option_len(fr_dcursor_current(cursor));
 
@@ -513,7 +513,7 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 
 do_child:
 	fr_dcursor_init(&child_cursor, &vp->vp_group);
-	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	work_dbuff = FR_DBUFF(dbuff);
 
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
@@ -548,7 +548,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
 			  fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
@@ -589,7 +589,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
@@ -627,7 +627,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
 			      fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
@@ -684,7 +684,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dict_attr_t const	*dv;
@@ -819,7 +819,7 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 	fr_pair_t		*vp;
 	unsigned int		depth = 0;
 	fr_da_stack_t		da_stack;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX_NO_ADVANCE(dbuff, DHCPV6_OPT_HDR_LEN + UINT16_MAX);
+	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, DHCPV6_OPT_HDR_LEN + UINT16_MAX);
 	ssize_t			len;
 
 	vp = fr_dcursor_current(cursor);

@@ -408,8 +408,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_dcursor_t *parent_cursor, void *encode_ctx,
 			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
-	fr_dbuff_t		hdr_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_t		hdr_dbuff = FR_DBUFF(dbuff);
 	int			offset = 0;
 	unsigned int		child_num = 1;
 	bool			do_length = false;

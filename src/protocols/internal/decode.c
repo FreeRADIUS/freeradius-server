@@ -47,7 +47,7 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 {
 	fr_pair_t	*vp;
 	ssize_t		slen;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	vp = fr_pair_afrom_da(ctx, parent_da);
 	if (!vp) return PAIR_DECODE_OOM;
@@ -76,7 +76,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	ssize_t		slen;
 	fr_pair_list_t	children;
 	fr_dcursor_t	cursor;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	FR_PROTO_TRACE("Decoding TLV - %s (%zu bytes)", parent_da->name, fr_dbuff_len(&work_dbuff));
 
@@ -126,7 +126,7 @@ static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_d
 {
 	fr_pair_t	*vp;
 	ssize_t		slen;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	FR_PROTO_TRACE("Decoding group - %s", parent_da->name);
 
@@ -161,7 +161,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_di
 	uint64_t		len = 0, type = 0;
 	size_t			remaining, needed;
 	bool			tainted, extended, unknown = false, internal = false;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	/*
 	 * The first byte of each attribute describes the encoding format.
@@ -360,7 +360,7 @@ ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_
 	fr_pair_list_t	list;
 	fr_dcursor_t	tmp_cursor;
 	ssize_t		slen;
-	fr_dbuff_t	work_dbuff = FR_DBUFF_NO_ADVANCE(dbuff);
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	fr_pair_list_init(&list);
 
