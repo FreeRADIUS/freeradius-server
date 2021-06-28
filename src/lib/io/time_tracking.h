@@ -148,7 +148,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_init(fr_time_tracking_t *tt
 static inline CC_HINT(nonnull) void fr_time_tracking_start(fr_time_tracking_t *parent,
 							   fr_time_tracking_t *tt, fr_time_t now)
 {
-	fr_assert(tt->state == FR_TIME_TRACKING_STOPPED);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_STOPPED, "Unexpected time tracking state state %i", tt->state);
 	fr_assert(!tt->parent);
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
@@ -175,7 +175,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_push(fr_time_tracking_t *pa
 
 	fr_assert(parent->parent = tt->parent);
 
-	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
 	run_time = now - tt->last_changed;
 	tt->last_changed = parent->started = now;
 
@@ -195,7 +195,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_pop(fr_time_tracking_t *tt,
 {
 	fr_time_delta_t		run_time;
 
-	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
 	run_time = now - tt->last_changed;
 	tt->last_changed = tt->parent->ended = now;
 
@@ -216,7 +216,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_yield(fr_time_tracking_t *t
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
-	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
 	tt->state = FR_TIME_TRACKING_YIELDED;
 	tt->last_yielded = tt->last_changed = now;
 
@@ -236,7 +236,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_resume(fr_time_tracking_t *
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
-	fr_assert(tt->state == FR_TIME_TRACKING_YIELDED);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_YIELDED, "Unexpected time tracking state state %i", tt->state);
 	tt->state = FR_TIME_TRACKING_RUNNING;
 	tt->last_resumed = tt->last_changed = now;
 
@@ -259,7 +259,7 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 {
 	fr_time_delta_t		run_time;
 
-	fr_assert(tt->state == FR_TIME_TRACKING_RUNNING);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
 	tt->state = FR_TIME_TRACKING_STOPPED;
