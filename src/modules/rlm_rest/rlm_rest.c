@@ -292,6 +292,11 @@ finish:
 	return xa;
 }
 
+static xlat_arg_parser_t const rest_xlat_args[] = {
+	{ .required = true, .variadic = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Simple xlat to read text data from a URL
  *
  * Example:
@@ -1116,13 +1121,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_rest_t *inst = instance;
-	xlat_t const *xlat;
+	rlm_rest_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	xlat = xlat_register(inst, inst->xlat_name, rest_xlat, true);
+	xlat_func_args(xlat, rest_xlat_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
