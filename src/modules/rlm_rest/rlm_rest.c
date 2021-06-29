@@ -354,7 +354,7 @@ static xlat_arg_parser_t const rest_xlat_args[] = {
  *
  * Example:
 @verbatim
-%{rest:http://example.com/}
+%(rest:http://example.com/)
 @endverbatim
  *
  * @ingroup xlat_functions

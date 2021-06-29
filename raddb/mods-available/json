@@ -67,7 +67,7 @@
 #
 #  [source, unlang]
 #  ----
-#  map json "%{rest:GET http://example.org/api/user/%{User-Name}" {
+#  map json "%(rest:GET http://example.org/api/user/%{User-Name})" {
 #    &Tmp-Integer-0  := '$.account number'
 #    &Group          += '$.groups.*'
 #  }

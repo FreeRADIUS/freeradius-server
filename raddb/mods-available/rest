@@ -225,7 +225,7 @@ rest {
 	#    <attribute>: <value>
 	#
 	#  `control.REST-HTTP-Header` attributes will be consumed after each call
-	#  to the rest module, and each `%{rest:}` expansion.
+	#  to the rest module, and each `%(rest:)` expansion.
 	#
 
 	#
