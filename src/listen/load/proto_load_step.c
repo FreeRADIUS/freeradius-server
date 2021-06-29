@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file proto_radius_load.c
+ * @file proto_load_step.c
  * @brief RADIUS load generator
  *
  * @copyright 2019 The FreeRADIUS server project.
@@ -34,27 +34,9 @@
 #include <freeradius-devel/io/load.h>
 #include <freeradius-devel/util/debug.h>
 
-#include "proto_radius.h"
+extern fr_app_io_t proto_load_step;
 
-static fr_dict_t const *dict_radius;
-
-extern fr_dict_autoload_t proto_radius_load_dict[];
-fr_dict_autoload_t proto_radius_load_dict[] = {
-	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_packet_type;
-
-extern fr_dict_attr_autoload_t proto_radius_load_dict_attr[];
-fr_dict_attr_autoload_t proto_radius_load_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
-};
-
-extern fr_app_io_t proto_radius_load;
-
-typedef struct proto_radius_load_s proto_radius_load_t;
+typedef struct proto_load_step_s proto_load_step_t;
 
 typedef struct {
 	fr_event_list_t			*el;			//!< event list
@@ -65,7 +47,7 @@ typedef struct {
 
 	fr_time_t			recv_time;		//!< recv time of the last packet
 
-	proto_radius_load_t const      	*inst;
+	proto_load_step_t const      	*inst;
 	fr_load_t			*l;			//!< load generation handler
 	fr_load_config_t		load;			//!< load configuration
 	fr_stats_t			stats;			//!< statistics for this socket
@@ -75,10 +57,13 @@ typedef struct {
 
 	int				sockets[2];
 	fr_listen_t			*parent;		//!< master IO handler
-} proto_radius_load_thread_t;
+} proto_load_step_thread_t;
 
-struct proto_radius_load_s {
+struct proto_load_step_s {
 	CONF_SECTION			*cs;			//!< our configuration
+
+	fr_dict_t const			*dict;			//!< dictionary to use
+	fr_dict_attr_t const		*attr_packet_type;	//!< packet type in the dictionary
 
 	char const     			*filename;		//!< where to read input packets from
 	uint8_t				*packet;		//!< encoded packet read from the file
@@ -96,19 +81,19 @@ struct proto_radius_load_s {
 
 
 static const CONF_PARSER load_listen_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, proto_radius_load_t, filename) },
-	{ FR_CONF_OFFSET("csv", FR_TYPE_STRING, proto_radius_load_t, csv) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, proto_load_step_t, filename) },
+	{ FR_CONF_OFFSET("csv", FR_TYPE_STRING, proto_load_step_t, csv) },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_load_t, max_packet_size), .dflt = "4096" } ,
-	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_radius_load_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_load_step_t, max_packet_size), .dflt = "4096" } ,
+	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_load_step_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
 
-	{ FR_CONF_OFFSET("start_pps", FR_TYPE_UINT32, proto_radius_load_t, load.start_pps) },
-	{ FR_CONF_OFFSET("max_pps", FR_TYPE_UINT32, proto_radius_load_t, load.max_pps) },
-	{ FR_CONF_OFFSET("duration", FR_TYPE_UINT32, proto_radius_load_t, load.duration) },
-	{ FR_CONF_OFFSET("step", FR_TYPE_UINT32, proto_radius_load_t, load.step) },
-	{ FR_CONF_OFFSET("max_backlog", FR_TYPE_UINT32, proto_radius_load_t, load.milliseconds) },
-	{ FR_CONF_OFFSET("parallel", FR_TYPE_UINT32, proto_radius_load_t, load.parallel) },
-	{ FR_CONF_OFFSET("repeat", FR_TYPE_BOOL, proto_radius_load_t, repeat) },
+	{ FR_CONF_OFFSET("start_pps", FR_TYPE_UINT32, proto_load_step_t, load.start_pps) },
+	{ FR_CONF_OFFSET("max_pps", FR_TYPE_UINT32, proto_load_step_t, load.max_pps) },
+	{ FR_CONF_OFFSET("duration", FR_TYPE_UINT32, proto_load_step_t, load.duration) },
+	{ FR_CONF_OFFSET("step", FR_TYPE_UINT32, proto_load_step_t, load.step) },
+	{ FR_CONF_OFFSET("max_backlog", FR_TYPE_UINT32, proto_load_step_t, load.milliseconds) },
+	{ FR_CONF_OFFSET("parallel", FR_TYPE_UINT32, proto_load_step_t, load.parallel) },
+	{ FR_CONF_OFFSET("repeat", FR_TYPE_BOOL, proto_load_step_t, repeat) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -116,8 +101,8 @@ static const CONF_PARSER load_listen_config[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_radius_load_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_load_t);
-	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	fr_io_address_t			*address, **address_p;
 
 	size_t				packet_len;
@@ -141,7 +126,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	*recv_time_p = thread->recv_time;
 
 	if (buffer_len < inst->packet_len) {
-		DEBUG2("proto_radius_load read buffer is too small for input packet");
+		DEBUG2("proto_load_step read buffer is too small for input packet");
 		return 0;
 	}
 
@@ -161,7 +146,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_radius_load - Received %s ID %d length %d %s",
+	DEBUG2("proto_load_step - Received %s ID %d length %d %s",
 	       fr_packet_codes[buffer[0]], buffer[1],
 	       (int) packet_len, thread->name);
 
@@ -172,7 +157,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t request_time,
 			 UNUSED uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
-	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	fr_load_reply_t state;
 
 	/*
@@ -206,8 +191,8 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_radius_load_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_load_t);
-	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	fr_ipaddr_t			ipaddr;
 
@@ -224,7 +209,7 @@ static int mod_open(fr_listen_t *li)
 
 	fr_assert((cf_parent(inst->cs) != NULL) && (cf_parent(cf_parent(inst->cs)) != NULL));	/* listen { ... } */
 
-	thread->name = talloc_typed_asprintf(thread, "radius_load from filename %s", inst->filename ? inst->filename : "none");
+	thread->name = talloc_typed_asprintf(thread, "load_step from filename %s", inst->filename ? inst->filename : "none");
 	thread->parent = talloc_parent(li);
 
 	return 0;
@@ -236,7 +221,7 @@ static int mod_open(fr_listen_t *li)
  */
 static int mod_close(fr_listen_t *li)
 {
-	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	/*
 	 *	Close the socket pair.
@@ -252,7 +237,7 @@ static int mod_close(fr_listen_t *li)
 static int mod_generate(fr_time_t now, void *uctx)
 {
 	fr_listen_t			*li = uctx;
-	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	thread->recv_time = now;
 
@@ -267,7 +252,7 @@ static int mod_generate(fr_time_t now, void *uctx)
 
 static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	proto_radius_load_thread_t	*thread = uctx;
+	proto_load_step_thread_t	*thread = uctx;
 	size_t len;
 	char buffer[1024];
 
@@ -288,8 +273,8 @@ static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
  */
 static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 {
-	proto_radius_load_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_load_t);
-	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	size_t len;
 	char buffer[256];
 
@@ -321,7 +306,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 
 static char const *mod_name(fr_listen_t *li)
 {
-	proto_radius_load_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_load_thread_t);
+	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	return thread->name;
 }
@@ -329,7 +314,7 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
-	proto_radius_load_t	*inst = talloc_get_type_abort(instance, proto_radius_load_t);
+	proto_load_step_t	*inst = talloc_get_type_abort(instance, proto_load_step_t);
 
 	inst->cs = cs;
 
@@ -360,7 +345,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
-	proto_radius_load_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_radius_load_t);
+	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
 
 	return inst->client;
 }
@@ -368,14 +353,14 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipa
 
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
-	proto_radius_load_t	*inst = talloc_get_type_abort(instance, proto_radius_load_t);
+	proto_load_step_t	*inst = talloc_get_type_abort(instance, proto_load_step_t);
 	RADCLIENT		*client;
 
 	bool			done;
 	fr_pair_t		*vp;
 	fr_pair_list_t		vps;
-	ssize_t			packet_len;
-	int			code = FR_RADIUS_CODE_ACCESS_REQUEST;
+//	ssize_t			packet_len;
+	int			code = -1;
 
 	fr_pair_list_init(&vps);
 	inst->client = client = talloc_zero(inst, RADCLIENT);
@@ -399,7 +384,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 			return -1;
 		}
 
-		if (fr_pair_list_afrom_file(inst, dict_radius, &vps, fp, &done) < 0) {
+		if (fr_pair_list_afrom_file(inst, inst->dict, &vps, fp, &done) < 0) {
 			cf_log_perr(cs, "Failed reading %s", inst->filename);
 			fclose(fp);
 			return -1;
@@ -410,9 +395,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	MEM(inst->packet = talloc_zero_array(inst, uint8_t, inst->max_packet_size));
 
-	vp = fr_pair_find_by_da(&vps, attr_packet_type, 0);
+	vp = fr_pair_find_by_da(&vps, inst->attr_packet_type, 0);
 	if (vp) code = vp->vp_uint32;
 
+	return -1;		/* not done yet! */
+
+#if 0
 	/*
 	 *	Encode the packet.
 	 */
@@ -426,16 +414,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	inst->packet_len = packet_len;
+#endif
 
 	return 0;
 }
 
-fr_app_io_t proto_radius_load = {
+fr_app_io_t proto_load_step = {
 	.magic			= RLM_MODULE_INIT,
-	.name			= "radius_load",
+	.name			= "load_step",
 	.config			= load_listen_config,
-	.inst_size		= sizeof(proto_radius_load_t),
-	.thread_inst_size	= sizeof(proto_radius_load_thread_t),
+	.inst_size		= sizeof(proto_load_step_t),
+	.thread_inst_size	= sizeof(proto_load_step_thread_t),
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 
