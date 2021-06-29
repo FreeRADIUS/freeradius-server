@@ -74,12 +74,12 @@ Configures basic settings required for all functions of the LDAP module.
 Covers Authorization by group, enabling/disabling accounts using attributes,
 LDAP attribute to FreeRADIUS attribute mappings, and LDAP profiles.
 
-=== xref:modules/ldap/authentication/index.adoc[Authentication]
+=== xref:modules/ldap/authentication.adoc[Authentication]
 
 Examples of configuring different methods of LDAP based authentication
 (search, bind, edir).
 
-=== xref:modules/ldap/accounting/index.adoc[Accounting]
+=== xref:modules/ldap/accounting.adoc[Accounting]
 
 Examples of updating objects in LDAP after authentication completes, or when
 accounting data is received.
