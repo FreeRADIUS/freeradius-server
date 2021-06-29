@@ -22,6 +22,24 @@ if (&control.Tmp-String-1 != "Sample text response\n") {
 	test_fail
 }
 
+# Take host from incomming packet
+update control {
+	&Tmp-String-1 := "%(rest:http://%{Login-IP-Host}:%{Tmp-Integer-0}/test.txt)"
+}
+
+if ((&REST-HTTP-Status-Code != 200) || (&control.Tmp-String-1 != "Sample text response\n")) {
+	test_fail
+}
+
+# Port is not allowed from incomming packet
+update control {
+	&Tmp-String-1 := "%(rest:http://%{Tmp-String-0}:%{NAS-Port}/test.txt)"
+}
+
+if ((&Module-Failure-Message != "Tainted value not allowed for port") || (&control.Tmp-String-1 != "")) {
+	test_fail
+}
+
 # Check a "not found" gives a 404 status code
 update control {
 	&Tmp-String-1 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1})"
