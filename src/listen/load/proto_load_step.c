@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_load_step.c
- * @brief RADIUS load generator
+ * @brief Generic protocol load generator
  *
  * @copyright 2019 The FreeRADIUS server project.
  * @copyright 2019 Network RADIUS SARL (legal@networkradius.com)
@@ -33,6 +33,8 @@
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/load.h>
 #include <freeradius-devel/util/debug.h>
+
+#include "proto_load.h"
 
 extern fr_app_io_t proto_load_step;
 
@@ -60,16 +62,14 @@ typedef struct {
 } proto_load_step_thread_t;
 
 struct proto_load_step_s {
+	proto_load_t			*parent;
+
 	CONF_SECTION			*cs;			//!< our configuration
 
-	fr_dict_t const			*dict;			//!< dictionary to use
-	fr_dict_attr_t const		*attr_packet_type;	//!< packet type in the dictionary
+	char const     			*filename;		//!< where to read input packet from
+	fr_pair_list_t			pair_list;		//!< for input packet
 
-	char const     			*filename;		//!< where to read input packets from
-	uint8_t				*packet;		//!< encoded packet read from the file
-	size_t				packet_len;		//!< length of packet
-
-	uint32_t			max_packet_size;	//!< for message ring buffer.
+	int				code;
 	uint32_t			max_attributes;		//!< Limit maximum decodable attributes
 
 	RADCLIENT			*client;		//!< static client
@@ -81,10 +81,9 @@ struct proto_load_step_s {
 
 
 static const CONF_PARSER load_listen_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, proto_load_step_t, filename) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, proto_load_step_t, filename) },
 	{ FR_CONF_OFFSET("csv", FR_TYPE_STRING, proto_load_step_t, csv) },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_load_step_t, max_packet_size), .dflt = "4096" } ,
 	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_load_step_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
 
 	{ FR_CONF_OFFSET("start_pps", FR_TYPE_UINT32, proto_load_step_t, load.start_pps) },
@@ -101,11 +100,9 @@ static const CONF_PARSER load_listen_config[] = {
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
-	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_t const		*inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 	fr_io_address_t			*address, **address_p;
-
-	size_t				packet_len;
 
 	if (thread->done) return -1;
 
@@ -125,32 +122,20 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 	*recv_time_p = thread->recv_time;
 
-	if (buffer_len < inst->packet_len) {
+	if (buffer_len < 1) {
 		DEBUG2("proto_load_step read buffer is too small for input packet");
 		return 0;
 	}
 
-	memcpy(buffer, inst->packet, inst->packet_len);
-	packet_len = inst->packet_len;
-
-	// @todo - try for some variation in the packet
-
-	/*
-	 *	The packet is always OK for RADIUS.
-	 */
-
-	/*
-	 *	proto_radius sets the priority
-	 */
+	buffer[0] = 0;
 
 	/*
 	 *	Print out what we received.
 	 */
-	DEBUG2("proto_load_step - Received %s ID %d length %d %s",
-	       fr_packet_codes[buffer[0]], buffer[1],
-	       (int) packet_len, thread->name);
+	DEBUG2("proto_load_step - reading packet for %s",
+	       thread->name);
 
-	return packet_len;
+	return 1;
 }
 
 
@@ -186,12 +171,12 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, fr_time_t req
 }
 
 
-/** Open a load listener for RADIUS
+/** Open a load listener
  *
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_load_step_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
+	proto_load_step_t const		*inst = talloc_get_type_abort_const(li->app_io_instance, proto_load_step_t);
 	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
 
 	fr_ipaddr_t			ipaddr;
@@ -216,7 +201,7 @@ static int mod_open(fr_listen_t *li)
 }
 
 
-/** Open a load listener for RADIUS
+/** Open a load listener
  *
  */
 static int mod_close(fr_listen_t *li)
@@ -264,6 +249,53 @@ static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 }
 
+
+/** Decode the packet
+ *
+ */
+static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+{
+	proto_load_step_t const	*inst = talloc_get_type_abort_const(instance, proto_load_step_t);
+	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const  	*address = track->address;
+
+	/*
+	 *	Set the request dictionary so that we can do
+	 *	generic->protocol attribute conversions as
+	 *	the request runs through the server.
+	 */
+	request->dict = inst->parent->dict;
+
+	/*
+	 *	Hacks for now until we have a lower-level decode routine.
+	 */
+	if (inst->code) request->packet->code = inst->code;
+	request->packet->id = fr_rand() & 0xff;
+	request->reply->id = request->packet->id;
+	memset(request->packet->vector, 0, sizeof(request->packet->vector));
+
+	request->packet->data = talloc_zero_array(request->packet, uint8_t, 1);
+	request->packet->data_len = 1;
+
+	/*
+	 *	Note that we don't set a limit on max_attributes here.
+	 *	That MUST be set and checked in the underlying
+	 *	transport, via a call to fr_radius_ok().
+	 */
+	(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &inst->pair_list);
+
+	/*
+	 *	Set the rest of the fields.
+	 */
+	request->client = UNCONST(RADCLIENT *, address->radclient);
+
+	request->packet->socket = address->socket;
+	fr_socket_addr_swap(&request->reply->socket, &address->socket);
+
+	REQUEST_VERIFY(request);
+
+	return 0;
+}
 
 /** Set the event list for a new socket
  *
@@ -315,11 +347,19 @@ static char const *mod_name(fr_listen_t *li)
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_load_step_t	*inst = talloc_get_type_abort(instance, proto_load_step_t);
+	dl_module_inst_t const	*dl_inst;
+
+	/*
+	 *	Find the dl_module_inst_t holding our instance data
+	 *	so we can find out what the parent of our instance
+	 *	was.
+	 */
+	dl_inst = dl_module_instance_by_data(instance);
+	fr_assert(dl_inst);
+
+	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_load_t);
 
 	inst->cs = cs;
-
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 20);
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
 	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, >=, 10);
 	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, <, 400000);
@@ -355,14 +395,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	proto_load_step_t	*inst = talloc_get_type_abort(instance, proto_load_step_t);
 	RADCLIENT		*client;
-
-	bool			done;
 	fr_pair_t		*vp;
-	fr_pair_list_t		vps;
-//	ssize_t			packet_len;
-	int			code = -1;
 
-	fr_pair_list_init(&vps);
+	fr_pair_list_init(&inst->pair_list);
 	inst->client = client = talloc_zero(inst, RADCLIENT);
 	if (!inst->client) return 0;
 
@@ -376,6 +411,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	if (inst->filename) {
 		FILE *fp;
+		bool done = false;
 
 		fp = fopen(inst->filename, "r");
 		if (!fp) {
@@ -384,7 +420,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 			return -1;
 		}
 
-		if (fr_pair_list_afrom_file(inst, inst->dict, &vps, fp, &done) < 0) {
+		if (fr_pair_list_afrom_file(inst, inst->parent->dict, &inst->pair_list, fp, &done) < 0) {
 			cf_log_perr(cs, "Failed reading %s", inst->filename);
 			fclose(fp);
 			return -1;
@@ -393,28 +429,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		fclose(fp);
 	}
 
-	MEM(inst->packet = talloc_zero_array(inst, uint8_t, inst->max_packet_size));
-
-	vp = fr_pair_find_by_da(&vps, inst->attr_packet_type, 0);
-	if (vp) code = vp->vp_uint32;
-
-	return -1;		/* not done yet! */
-
-#if 0
-	/*
-	 *	Encode the packet.
-	 */
-	packet_len = fr_radius_encode(inst->packet, inst->max_packet_size, NULL,
-				      client->secret, talloc_array_length(client->secret),
-				      code, 0, &vps);
-	if (packet_len <= 0) {
-		cf_log_perr(cs, "Failed encoding packet from %s",
-			    inst->filename);
-		return -1;
-	}
-
-	inst->packet_len = packet_len;
-#endif
+	vp = fr_pair_find_by_da(&inst->pair_list, inst->parent->attr_packet_type, 0);
+	if (vp) inst->code = vp->vp_uint32;
 
 	return 0;
 }
@@ -438,4 +454,6 @@ fr_app_io_t proto_load_step = {
 	.event_list_set		= mod_event_list_set,
 	.client_find		= mod_client_find,
 	.get_name      		= mod_name,
+
+	.decode			= mod_decode,
 };
