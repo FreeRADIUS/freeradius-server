@@ -204,7 +204,7 @@ The values of those attributes should be in the format:
   <attribute>: <value>
 
 `control.REST-HTTP-Header` attributes will be consumed after each call
-to the rest module, and each `%{rest:}` expansion.
+to the rest module, and each `%(rest:)` expansion.
 
 
 
@@ -424,6 +424,30 @@ message.
 The solution is to either lower the "min" connections,
 or increase lifetime/idle_timeout.
 ====
+
+
+## xlat for REST calls
+
+An xlat based on the instance name can be used to perform REST calls.
+
+.Example
+
+```
+%(rest:http://www.example.com/)
+%(rest:GET https://www.example.com/user/%{User-Name})
+%(rest:POST https://www.example.com/auth/%{User-Name} %{Called-Station-Id})
+```
+
+The xlat takes up to 3 arguments:
+
+  * Method
+  * URI
+  * Body data
+
+If only one argument is presented, that will be taken as the URI and the
+method will default to GET.
+
+Any attributes in the xlat read from the request packet will be escaped.
 
 
 == Default Configuration
