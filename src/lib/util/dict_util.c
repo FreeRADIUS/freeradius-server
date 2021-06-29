@@ -2621,6 +2621,8 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 	fr_hash_table_t		*namespace;
 	fr_dict_attr_t		*da;
 
+	DA_VERIFY(parent);
+
 	namespace = dict_attr_namespace(parent);
 	if (!namespace) {
 		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
@@ -2653,6 +2655,8 @@ fr_dict_attr_t *dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const 
 fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name)
 {
 	fr_dict_attr_t const *da;
+
+	DA_VERIFY(parent);
 
 	da = dict_attr_by_name(err, parent, name);
 	if (!da) return NULL;
@@ -3230,6 +3234,8 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 			return -1;
 		}
 
+		DA_VERIFY(da);
+
 		if (p->out) *(p->out) = da;
 	}
 
@@ -3676,65 +3682,6 @@ ssize_t fr_dict_valid_oid_str(char const *name, ssize_t len)
 	return len;
 }
 
-void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
-{
-	int i;
-	fr_dict_attr_t const *da_p;
-
-	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
-
-	(void) talloc_get_type_abort_const(da, fr_dict_attr_t);
-
-	if ((!da->flags.is_root) && (da->depth == 0)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-				     "Is not root, but depth is 0",
-				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
-	}
-
-	if (da->depth > FR_DICT_MAX_TLV_STACK) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-				     "Indicated depth (%u) greater than TLV stack depth (%u)",
-				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
-				     da->depth, FR_DICT_MAX_TLV_STACK);
-	}
-
-	for (da_p = da; da_p; da_p = da_p->next) {
-		(void) talloc_get_type_abort_const(da_p, fr_dict_attr_t);
-	}
-
-	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
-		if (i != (int)da_p->depth) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-					     "Depth out of sequence, expected %i, got %u",
-					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
-		}
-
-	}
-
-	if ((i + 1) < 0) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
-				     file, line);
-	}
-
-	if (da->parent && (da->parent->type == FR_TYPE_VENDOR) && !fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_VENDOR)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing 'vendor' extension", file, line);
-	}
-
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		if (da->type != FR_TYPE_GROUP) {
-			fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
-				      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'children' extension",
-				      file, line,
-				      fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
-		}
-		break;
-
-	default:
-		break;
-	}
-}
-
 /** Iterate over children of a DA.
  *
  *  @param[in] parent	the parent da to iterate over
@@ -3827,4 +3774,76 @@ static int dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uc
 int fr_dict_walk(fr_dict_attr_t const *da, fr_dict_walk_t callback, void *uctx)
 {
 	return dict_walk(da, callback, uctx);
+}
+
+
+void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
+{
+	int i;
+	fr_dict_attr_t const *da_p;
+
+	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
+
+	(void) talloc_get_type_abort_const(da, fr_dict_attr_t);
+
+	if ((!da->flags.is_root) && (da->depth == 0)) {
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+				     "Is not root, but depth is 0",
+				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
+	}
+
+	if (da->depth > FR_DICT_MAX_TLV_STACK) {
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+				     "Indicated depth (%u) greater than TLV stack depth (%u)",
+				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
+				     da->depth, FR_DICT_MAX_TLV_STACK);
+	}
+
+	for (da_p = da; da_p; da_p = da_p->next) {
+		(void) talloc_get_type_abort_const(da_p, fr_dict_attr_t);
+	}
+
+	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
+		if (i != (int)da_p->depth) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+					     "Depth out of sequence, expected %i, got %u",
+					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
+		}
+
+	}
+
+	if ((i + 1) < 0) {
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
+				     file, line);
+	}
+
+	if (da->parent && (da->parent->type == FR_TYPE_VENDOR) && !fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_VENDOR)) {
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing 'vendor' extension", file, line);
+	}
+
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+	{
+		if (da->type == FR_TYPE_GROUP) break;
+
+		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
+			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'children' extension",
+			      file, line,
+			      fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+
+		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_NAMESPACE),
+			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'namespace' extension",
+			      file, line,
+			      fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+
+		/*
+		 *	Check the namespace hash table is ok
+		 */
+		(void)talloc_get_type_abort(dict_attr_namespace(da), fr_hash_table_t);
+	}
+		break;
+
+	default:
+		break;
+	}
 }
