@@ -11,7 +11,7 @@ update request {
 
 # Retrieve a plain text file
 update control {
-	&Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/test.txt}"
+	&Tmp-String-1 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/test.txt)"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
@@ -24,7 +24,7 @@ if (&control.Tmp-String-1 != "Sample text response\n") {
 
 # Check a "not found" gives a 404 status code
 update control {
-	&Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1}}"
+	&Tmp-String-1 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1})"
 }
 
 if (&REST-HTTP-Status-Code != 404) {
@@ -33,7 +33,7 @@ if (&REST-HTTP-Status-Code != 404) {
 
 # GET with URL parameters
 update request {
-	&Tmp-String-2 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id}}"
+	&Tmp-String-2 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id})"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
@@ -58,7 +58,7 @@ update control {
 }
 
 # Directly use json map and prepend the returned value
-map json "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id}}" {
+map json "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id})" {
 	&control.Tmp-String-3 ^= '$.control\.User-Name.value'
 }
 
@@ -72,7 +72,7 @@ update control {
 
 # POST to https with JSON body data
 update request {
-	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control.Tmp-String-2}}"
+	&Tmp-String-2 := "%(rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control.Tmp-String-2})"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
@@ -103,7 +103,7 @@ update control {
 
 # POST to https with POST body data
 update request {
-	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/post/test?section=dummy %{control.Tmp-String-2}}"
+	&Tmp-String-2 := "%(rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/post/test?section=dummy %{control.Tmp-String-2})"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
