@@ -1141,10 +1141,15 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 		return;
 	}
 
-	if (app_io->event_list_set) app_io->event_list_set(s->listen, nr->el, nr);
-
+	/*
+	 *	Add the listener before calling the app_io, so that
+	 *	the app_io can find the listener which we're adding
+	 *	here.
+	 */
 	(void) fr_rb_insert(nr->sockets, s);
 	(void) fr_rb_insert(nr->sockets_by_num, s);
+
+	if (app_io->event_list_set) app_io->event_list_set(s->listen, nr->el, nr);
 
 	/*
 	 *	We use fr_log() here to avoid the "Network - " prefix.
