@@ -32,7 +32,7 @@ function run-tests() {
         export LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=50"
         export KQUEUE_DEBUG="yes"
         export M_PERTURB=0x42
-        export PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+        export PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p"
         export SQL_MYSQL_TEST_SERVER="127.0.0.1"
         export SQL_POSTGRESQL_TEST_SERVER="127.0.0.1"
         export LDAP_TEST_SERVER="127.0.0.1"
