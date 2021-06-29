@@ -1,0 +1,38 @@
+#
+#  Test the "ldap" module xlat escape functions
+#
+
+update request {
+        &Tmp-String-0 := "safe string"
+        &Tmp-String-1 := 'non safe,+"\<>;*=() string'
+        &Tmp-String-2 := ',+"\<>;*=()'
+}
+
+# String with no escaping
+update control {
+        &Tmp-String-0 := "%{ldap_escape:%{Tmp-String-0}}"
+}
+
+if (&control.Tmp-String-0 != "safe string") {
+        test_fail
+}
+
+# String with some characters to escape
+update control {
+        &Tmp-String-1 := "%{ldap_escape:%{Tmp-String-1}}"
+}
+
+if (&control.Tmp-String-1 != 'non safe\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29 string') {
+        test_fail
+}
+
+# String where all characters require escaping
+update control {
+        &Tmp-String-2 := "%{ldap_escape:%{Tmp-String-2}}"
+}
+
+if (&control.Tmp-String-2 != '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29') {
+        test_fail
+}
+
+test_pass
