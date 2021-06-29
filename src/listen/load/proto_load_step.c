@@ -46,6 +46,7 @@ typedef struct {
 
 	char const			*name;			//!< socket name
 	bool				done;
+	bool				suspended;
 
 	fr_time_t			recv_time;		//!< recv time of the last packet
 
@@ -57,7 +58,6 @@ typedef struct {
 	int				fd;			//!< for CSV files
 	fr_event_timer_t const		*ev;			//!< for writing statistics
 
-	int				sockets[2];
 	fr_listen_t			*parent;		//!< master IO handler
 } proto_load_step_thread_t;
 
@@ -105,6 +105,23 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_address_t			*address, **address_p;
 
 	if (thread->done) return -1;
+
+	/*
+	 *	Suspend reading on the FD, because we let the timers
+	 *	take over the load generation.
+	 */
+	if (!thread->suspended) {
+		static fr_event_update_t pause_read[] = {
+			FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+			{ 0 }
+		};
+
+		if (fr_event_filter_update(thread->el, li->fd, FR_EVENT_FILTER_IO, pause_read) < 0) {
+			fr_assert(0);
+		}
+
+		thread->suspended = true;
+	}
 
 	*leftover = 0;		/* always for load generation */
 
@@ -181,12 +198,11 @@ static int mod_open(fr_listen_t *li)
 
 	fr_ipaddr_t			ipaddr;
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, 0, (int *) &thread->sockets) < 0) {
-		PERROR("Failed opening /dev/null: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	li->fd = thread->sockets[0];
+	/*
+	 *	We never read or write to this file, but we need a
+	 *	readable FD in order to bootstrap the process.
+	 */
+	li->fd = open(inst->filename, O_RDONLY);
 
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;
@@ -200,21 +216,6 @@ static int mod_open(fr_listen_t *li)
 	return 0;
 }
 
-
-/** Open a load listener
- *
- */
-static int mod_close(fr_listen_t *li)
-{
-	proto_load_step_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_load_step_thread_t);
-
-	/*
-	 *	Close the socket pair.
-	 */
-	close(thread->sockets[0]);
-	close(thread->sockets[1]);
-	return 0;
-}
 
 /** Generate traffic.
  *
@@ -448,7 +449,6 @@ fr_app_io_t proto_load_step = {
 	.track_duplicates	= false,
 
 	.open			= mod_open,
-	.close			= mod_close,
 	.read			= mod_read,
 	.write			= mod_write,
 	.event_list_set		= mod_event_list_set,
