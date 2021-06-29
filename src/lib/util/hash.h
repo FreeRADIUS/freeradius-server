@@ -55,10 +55,17 @@ uint32_t fr_hash_case_string(char const *p);
 typedef struct fr_hash_table_s fr_hash_table_t;
 typedef int (*fr_hash_table_walk_t)(void *data, void *uctx);
 
-fr_hash_table_t *fr_hash_table_alloc(TALLOC_CTX *ctx,
-				     fr_hash_t hash_node,
-				     fr_cmp_t cmp_node,
-				     fr_free_t free_node) CC_HINT(nonnull(2,3));
+#define		fr_hash_table_alloc(_ctx, _hash_node, _cmp_node, _free_node) \
+		_fr_hash_table_alloc(_ctx, NULL, _hash_node, _cmp_node, _free_node)
+
+#define		fr_hash_table_talloc_alloc(_ctx, _type, _hash_node, _cmp_node, _free_node) \
+		_fr_hash_table_alloc(_ctx, #_type, _hash_node, _cmp_node, _free_node)
+
+fr_hash_table_t *_fr_hash_table_alloc(TALLOC_CTX *ctx,
+				      char const *type,
+				      fr_hash_t hash_node,
+				      fr_cmp_t cmp_node,
+				      fr_free_t free_node) CC_HINT(nonnull(3,4));
 
 void		*fr_hash_table_find(fr_hash_table_t *ht, void const *data) CC_HINT(nonnull);
 
@@ -81,6 +88,8 @@ void		*fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter) CC_HIN
 int		fr_hash_table_flatten(TALLOC_CTX *ctx, void **out[], fr_hash_table_t *ht) CC_HINT(nonnull(2,3));
 
 void		fr_hash_table_fill(fr_hash_table_t *ht) CC_HINT(nonnull);
+
+void		fr_hash_table_verify(fr_hash_table_t *ht);
 
 #ifdef __cplusplus
 }

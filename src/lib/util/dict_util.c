@@ -484,7 +484,8 @@ static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t
 	 *	namespace hash table.
 	 */
 	if (!ext->namespace) {
-		ext->namespace = fr_hash_table_alloc(*da_p, dict_attr_name_hash, dict_attr_name_cmp, NULL);
+		ext->namespace = fr_hash_table_talloc_alloc(*da_p, fr_dict_attr_t,
+							    dict_attr_name_hash, dict_attr_name_cmp, NULL);
 		if (!ext->namespace) {
 			fr_strerror_printf("Failed allocating \"namespace\" table");
 			return -1;
@@ -1261,13 +1262,15 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Initialise enumv hash tables
 	 */
 	if (!ext->value_by_name || !ext->name_by_value) {
-		ext->value_by_name = fr_hash_table_alloc(da, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
+		ext->value_by_name = fr_hash_table_talloc_alloc(da, fr_dict_enum_t, dict_enum_name_hash,
+								dict_enum_name_cmp, hash_pool_free);
 		if (!ext->value_by_name) {
 			fr_strerror_printf("Failed allocating \"value_by_name\" table");
 			return -1;
 		}
 
-		ext->name_by_value = fr_hash_table_alloc(da, dict_enum_value_hash, dict_enum_value_cmp, NULL);
+		ext->name_by_value = fr_hash_table_talloc_alloc(da, fr_dict_enum_t, dict_enum_value_hash,
+								dict_enum_value_cmp, NULL);
 		if (!ext->name_by_value) {
 			fr_strerror_printf("Failed allocating \"name_by_value\" table");
 			return -1;
@@ -3839,7 +3842,7 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		/*
 		 *	Check the namespace hash table is ok
 		 */
-		(void)talloc_get_type_abort(dict_attr_namespace(da), fr_hash_table_t);
+		fr_hash_table_verify(dict_attr_namespace(da));
 	}
 		break;
 

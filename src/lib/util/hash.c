@@ -49,18 +49,19 @@ struct fr_hash_entry_s {
 };
 
 struct fr_hash_table_s {
-	uint32_t		num_elements;
-	uint32_t		num_buckets; /* power of 2 */
+	uint32_t		num_elements;	//!< Number of elements in the hash table.
+	uint32_t		num_buckets;	//!< Number of buckets (how long the array is) - power of 2 */
 	uint32_t		next_grow;
 	uint32_t		mask;
 
-	fr_free_t		free;
-	fr_hash_t		hash;
-	fr_cmp_t		cmp;
+	fr_free_t		free;		//!< Data free function.
+	fr_hash_t		hash;		//!< Hashing function.
+	fr_cmp_t		cmp;		//!< Comparison function.
+
+	char const		*type;		//!< Talloc type to check elements against.
 
 	fr_hash_entry_t		null;
-
-	fr_hash_entry_t		**buckets;
+	fr_hash_entry_t		**buckets;	//!< Array of hash buckets.
 };
 
 #ifdef TESTING
@@ -277,32 +278,35 @@ static int _fr_hash_table_free(fr_hash_table_t *ht)
  *
  *	Memory usage in bytes is (20/3) * number of entries.
  */
-fr_hash_table_t *fr_hash_table_alloc(TALLOC_CTX *ctx,
-				     fr_hash_t hash_func,
-				     fr_cmp_t cmp_func,
-				     fr_free_t free_func)
+fr_hash_table_t *_fr_hash_table_alloc(TALLOC_CTX *ctx,
+				      char const *type,
+				      fr_hash_t hash_func,
+				      fr_cmp_t cmp_func,
+				      fr_free_t free_func)
 {
 	fr_hash_table_t *ht;
 
-	ht = talloc_zero(ctx, fr_hash_table_t);
+	ht = talloc(ctx, fr_hash_table_t);
 	if (!ht) return NULL;
 	talloc_set_destructor(ht, _fr_hash_table_free);
 
-	ht->free = free_func;
-	ht->hash = hash_func;
-	ht->cmp = cmp_func;
-	ht->num_buckets = FR_HASH_NUM_BUCKETS;
-	ht->mask = ht->num_buckets - 1;
+	*ht = (fr_hash_table_t){
+		.type = type,
+		.free = free_func,
+		.hash = hash_func,
+		.cmp = cmp_func,
+		.num_buckets = FR_HASH_NUM_BUCKETS,
+		.mask = FR_HASH_NUM_BUCKETS - 1,
 
-	/*
-	 *	Have a default load factor of 2.5.  In practice this
-	 *	means that the average load will hit 3 before the
-	 *	table grows.
-	 */
-	ht->next_grow = (ht->num_buckets << 1) + (ht->num_buckets >> 1);
-
-	ht->buckets = talloc_zero_array(ht, fr_hash_entry_t *, ht->num_buckets);
-	if (!ht->buckets) {
+		/*
+		 *	Have a default load factor of 2.5.  In practice this
+		 *	means that the average load will hit 3 before the
+		 *	table grows.
+		 */
+		.next_grow = (FR_HASH_NUM_BUCKETS << 1) + (FR_HASH_NUM_BUCKETS >> 1),
+		.buckets = talloc_zero_array(ht, fr_hash_entry_t *, FR_HASH_NUM_BUCKETS)
+	};
+	if (unlikely(!ht->buckets)) {
 		talloc_free(ht);
 		return NULL;
 	}
@@ -466,6 +470,10 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	uint32_t		entry;
 	uint32_t		reversed;
 	fr_hash_entry_t		*node;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (ht->type) (void)_talloc_get_type_abort(data, ht->type, __location__);
+#endif
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
@@ -874,6 +882,31 @@ uint32_t fr_hash_case_string(char const *p)
 	}
 
 	return hash;
+}
+
+/** Check hash table is sane
+ *
+ */
+void fr_hash_table_verify(fr_hash_table_t *ht)
+{
+	fr_hash_iter_t	iter;
+	void		*ptr;
+
+	(void)talloc_get_type_abort(ht, fr_hash_table_t);
+	(void)talloc_get_type_abort(ht->buckets, fr_hash_entry_t *);
+
+	fr_assert(talloc_array_length(ht->buckets) == ht->num_buckets);
+
+	/*
+	 *	Check talloc headers on all data
+	 */
+	if (ht->type) {
+		for (ptr = fr_hash_table_iter_init(ht, &iter);
+		     ptr;
+		     ptr = fr_hash_table_iter_next(ht, &iter)) {
+			(void)_talloc_get_type_abort(ptr, ht->type, __location__);
+		}
+	}
 }
 
 #ifdef TESTING
