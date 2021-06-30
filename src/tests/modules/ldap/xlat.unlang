@@ -35,4 +35,28 @@ if (&control.Tmp-String-2 != '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29') {
         test_fail
 }
 
+update request {
+        &Tmp-String-3 := "%{ldap_unescape:%{control.Tmp-String-0}}"
+}
+
+if (&Tmp-String-3 != 'safe string') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-4 := "%{ldap_unescape:%{control.Tmp-String-1}}"
+}
+
+if (&Tmp-String-4 != 'non safe,+"\<>;*=() string') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-5 := "%{ldap_unescape:%{control.Tmp-String-2}}"
+}
+
+if (&Tmp-String-5 != ',+"\<>;*=()') {
+        test_fail
+}
+
 test_pass
