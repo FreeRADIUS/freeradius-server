@@ -308,11 +308,37 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reques
  *
  * @ingroup xlat_functions
  */
-static ssize_t ldap_unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 	  request_t *request, char const *fmt)
+static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					fr_value_box_list_t *in)
 {
-	return fr_ldap_unescape_func(request, *out, outlen, fmt, NULL);
+	fr_value_box_t		*vb, *in_vb = fr_dlist_head(in);
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+	size_t			len;
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	/*
+	 *	Maximum space needed for output will be the same as the input
+	 */
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->length, in_vb->length)) {
+		REDEBUG("Failed to allocate buffer for unescaped string");
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Call the unescape function, including the space for the trailing NULL
+	 */
+	len = fr_ldap_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->length + 1, in_vb->vb_strvalue, NULL);
+
+	/*
+	 *	Trim buffer to fit used space and assign to box
+	 */
+	fr_sbuff_trim_talloc(&sbuff, len);
+	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
@@ -1585,7 +1611,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat_register_legacy(inst, inst->name, ldap_xlat, fr_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat = xlat_register(NULL, "ldap_escape", ldap_escape_xlat, false);
 	xlat_func_mono(xlat, &ldap_escape_xlat_arg);
-	xlat_register_legacy(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(NULL, "ldap_unescape", ldap_unescape_xlat, false);
+	xlat_func_mono(xlat, &ldap_escape_xlat_arg);
 	map_proc_register(inst, inst->name, mod_map_proc, ldap_map_verify, 0);
 
 	return 0;
