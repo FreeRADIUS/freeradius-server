@@ -486,110 +486,86 @@ static fr_uri_part_t const ldap_uri_parts[] = {
 	XLAT_URI_PART_TERMINATOR
 };
 
+static xlat_arg_parser_t const ldap_xlat_arg = { .required = true, .type = FR_TYPE_STRING };
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  * @ingroup xlat_functions
  */
-static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 request_t *request, char const *fmt)
+static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, request_t *request,
+			       UNUSED void const *xlat_inst, void *xlat_thread_inst,
+			       fr_value_box_list_t *in)
 {
-	fr_ldap_rcode_t		status;
-	size_t			len = 0;
-	rlm_ldap_t const	*inst = mod_inst;
+	fr_value_box_t		*in_vb = NULL;
+	ldap_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, ldap_xlat_thread_inst_t);
+	char			*host_url;
+	fr_ldap_config_t const	*handle_config = &xt->t->inst->handle_config;
+
+	fr_ldap_query_t		*query = NULL;
 
 	LDAPURLDesc		*ldap_url;
-	LDAPMessage		*result = NULL;
-	LDAPMessage		*entry = NULL;
 
-	struct berval		**values;
+	if (fr_uri_escape(in, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
 
-	fr_ldap_connection_t	*conn;
-	int			ldap_errno;
+	in_vb = fr_dlist_head(in);
+	if(fr_value_box_list_concat_in_place(in_vb, in_vb, in, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE,
+					     true, SIZE_MAX) < 0) {
+		REDEBUG("Failed concattenating input");
+		return XLAT_ACTION_FAIL;
+	}
 
-	char const		*url;
-	char const		**attrs;
-
-	LDAPControl		*server_ctrls[] = { NULL, NULL };
-
-	url = fmt;
-
-	if (!ldap_is_ldap_url(url)) {
+	if (!ldap_is_ldap_url(in_vb->vb_strvalue)) {
 		REDEBUG("String passed does not look like an LDAP URL");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
-	if (ldap_url_parse(url, &ldap_url)){
+	query = fr_ldap_query_alloc(unlang_interpret_frame_talloc_ctx(request));
+
+	if (ldap_url_parse(in_vb->vb_strvalue, &query->ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
-		return -1;
+	free_query:
+		talloc_free(query);
+		return XLAT_ACTION_FAIL;
 	}
+
+	ldap_url = query->ldap_url;
 
 	/*
 	 *	Nothing, empty string, "*" string, or got 2 things, die.
 	 */
-	if (!ldap_url->lud_attrs || !ldap_url->lud_attrs[0] ||
-	    !*ldap_url->lud_attrs[0] ||
-	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) ||
-	    ldap_url->lud_attrs[1]) {
+	if (!ldap_url->lud_attrs || !ldap_url->lud_attrs[0] || !*ldap_url->lud_attrs[0] ||
+	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) || ldap_url->lud_attrs[1]) {
 		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
 
-		goto free_urldesc;
+		goto free_query;
 	}
 
-	conn = mod_conn_get(inst, request);
-	if (!conn) goto free_urldesc;
-
-	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
-
-	if (fr_ldap_parse_url_extensions(&server_ctrls[0], request, conn, ldap_url->lud_exts) < 0) goto free_socket;
-
-	status = fr_ldap_search(&result, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
-				ldap_url->lud_filter, attrs, server_ctrls, NULL);
-
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
-	if (server_ctrls[0]) ldap_control_free(server_ctrls[0]);
-#endif
-
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
-		break;
-
-	default:
-		goto free_socket;
+	/*
+	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
+	 */
+	if (!ldap_url->lud_host) {
+		host_url = handle_config->server;
+	} else {
+		host_url = talloc_asprintf(query, "%s://%s:%d", ldap_url->lud_scheme,
+	                        	   ldap_url->lud_host, ldap_url->lud_port);
 	}
 
-	fr_assert(conn);
-	fr_assert(result);
-
-	entry = ldap_first_entry(conn->handle, result);
-	if (!entry) {
-		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-		len = -1;
-		goto free_result;
+	query->ttrunk = fr_thread_ldap_trunk_get(xt->t, host_url, handle_config->admin_identity,
+						 handle_config->admin_password, request, handle_config);
+	if (!query->ttrunk) {
+		REDEBUG("Unable to get LDAP query for xlat");
+		goto free_query;
 	}
 
-	values = ldap_get_values_len(conn->handle, entry, ldap_url->lud_attrs[0]);
-	if (!values) {
-		RDEBUG2("No \"%s\" attributes found in specified object", ldap_url->lud_attrs[0]);
-		goto free_result;
-	}
+	query->type = LDAP_REQUEST_SEARCH;
+	query->request = request;
 
-	if (values[0]->bv_len >= outlen) goto free_values;
+	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, request, query, NULL);
 
-	memcpy(*out, values[0]->bv_val, values[0]->bv_len + 1);	/* +1 as strlcpy expects buffer size */
-	len = values[0]->bv_len;
+	fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
+			  ldap_query_timeout, query);
 
-free_values:
-	ldap_value_free_len(values);
-free_result:
-	ldap_msgfree(result);
-free_socket:
-	ldap_mod_conn_release(inst, request, conn);
-free_urldesc:
-	ldap_free_urldesc(ldap_url);
-
-	return len;
+	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, query);
 }
 
 /*
@@ -1807,7 +1783,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
-	xlat_register_legacy(inst, inst->name, ldap_xlat, fr_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat = xlat_register(NULL, inst->name, ldap_xlat, false);
+	xlat_func_mono(xlat, &ldap_xlat_arg);
+	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, ldap_xlat_thread_inst_t, NULL, inst);
 	xlat = xlat_register(NULL, "ldap_escape", ldap_escape_xlat, false);
 	xlat_func_mono(xlat, &ldap_escape_xlat_arg);
 	xlat = xlat_register(NULL, "ldap_unescape", ldap_unescape_xlat, false);
