@@ -169,6 +169,7 @@ static int rlm_rest_status_update(request_t *request, void *handle)
 	if (!code) {
 		pair_delete_request(attr_rest_http_status_code);
 		RDEBUG2("&request.REST-HTTP-Status-Code !* ANY");
+		REXDENT();
 		return -1;
 	}
 
