@@ -32,6 +32,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/uri.h>
 
 #include "rlm_ldap.h"
 
@@ -464,6 +465,26 @@ static void ldap_xlat_signal(request_t *request, UNUSED void *instance, UNUSED v
 
 	fr_trunk_request_signal_cancel(query->treq);
 }
+
+
+static fr_uri_part_t const ldap_uri_parts[] = {
+	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
+	  .tainted_allowed = false, .extra_skip = 2 },
+	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
+	  .tainted_allowed = false },
+	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
+	  .tainted_allowed = false },
+	{ .name = "dn", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "attrs", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
+	  .tainted_allowed = false },
+	{ .name = "scope", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "filter", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1},
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "exts", .tainted_allowed = true, .func = uri_part_escape },
+	XLAT_URI_PART_TERMINATOR
+};
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
