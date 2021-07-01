@@ -343,6 +343,8 @@ int		xlat_eval_pair(request_t *request, fr_pair_t *vp);
 
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
+int		xlat_parse_uri(request_t *request, fr_value_box_list_t *uri, xlat_uri_part_t const *uri_parts, void *uctx);
+
 ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 					fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
