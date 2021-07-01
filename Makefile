@@ -43,10 +43,12 @@ endif
 #  the debian packages.
 #
 ifneq "$(MAKECMDGOALS)" "deb"
+ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 endif
 endif
 
@@ -84,6 +86,7 @@ PROTOCOLS    := \
 #  Don't try to do a local build.
 #
 ifneq "$(MAKECMDGOALS)" "deb"
+ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 #
 #  Include all of the autoconf definitions into the Make variable space
@@ -139,6 +142,7 @@ endif
 #  Load the huge boilermake framework.
 #
 include scripts/boiler.mk
+endif
 endif
 endif
 
