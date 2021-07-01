@@ -59,4 +59,30 @@ if (&Tmp-String-5 != ',+"\<>;*=()') {
         test_fail
 }
 
+update request {
+        &Tmp-String-6 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=john)}"
+}
+
+if (&Tmp-String-6 != "John Doe") {
+        test_fail
+}
+
+# Return multiple values - could be in any sequence
+update request {
+        &Tmp-String-7 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=clients,dc=example,dc=com?radiusClientIdentifier?sub?(objectClass=radiusClient)}"
+}
+
+if ((&Tmp-String-7 != "1.1.1.12.2.2.2") && (&Tmp-String-7 != "2.2.2.21.1.1.1")) {
+        test_fail
+}
+
+# Use tainted string in filter - with special characters
+update request {
+        &Tmp-String-8 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?cn?sub?(displayName=*%{Tmp-String-9}*)}"
+}
+
+if (&Tmp-String-8 != "Bob Smith") {
+        test_fail
+}
+
 test_pass
