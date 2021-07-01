@@ -28,9 +28,9 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "centos-7", "OS": "centos:7"             },
-              { "NAME": "centos-8", "OS": "centos:8"             },
-              { "NAME": "fedora-rawhide", "OS": "fedora:rawhide" }
+              { "NAME": "centos-7", "OS": "centos:7", "DIST": "centos"             },
+              { "NAME": "centos-8", "OS": "centos:8", "DIST": "centos"             },
+              { "NAME": "fedora-rawhide", "OS": "fedora:rawhide", "DIST": "fedora" }
             ]
           }
         EOF
@@ -65,10 +65,6 @@ jobs:
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
       HOSTAPD_GIT_TAG: hostap_2_8
-      CMAKE_SH_PATH: /tmp/cmake
-      CMAKE_SH_FILE: cmake-3.8.2-Linux-x86_64.sh
-      CMAKE_SH_URL: "https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh"
-      CMAKE_SH_SHA: bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73
 
     name: "RPM build"
 
@@ -86,11 +82,15 @@ jobs:
       run: |
         yum install -y git-core
 
-    - name: Checkout kqueue
-      uses: actions/checkout@v2
-      with:
-        repository: mheily/libkqueue
-        path: libkqueue
+    - name: Set up NetworkRADIUS extras repository
+      run: |
+        echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
+        echo 'name=NetworkRADIUS-extras-$releasever'                                                >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'baseurl=http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/$releasever/' >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'enabled=1'                                                                            >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'gpgcheck=1'                                                                           >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
+        rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
 
     - name: Install common tools
       run: |
@@ -101,31 +101,8 @@ jobs:
       run: |
         yum install -y centos-release-scl
         yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
-        rm /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
-        rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
-
-    - name: Restore cmake download from cache
-      uses: actions/cache@v2
-      id: cmake-cache
-      with:
-        path: ${{ env.CMAKE_SH_PATH }}
-        key: ${{ env.CMAKE_SH_FILE }}-v1
-
-    - name: Download and install cmake
-      run: |
-        mkdir -p "$CMAKE_SH_PATH"
-        [ -e "$CMAKE_SH_PATH/$CMAKE_SH_FILE" ] || curl -f -o "$CMAKE_SH_PATH/$CMAKE_SH_FILE" "$CMAKE_SH_URL"
-        [ "$(cat $CMAKE_SH_PATH/$CMAKE_SH_FILE | openssl sha256 | sed 's/^.* //')" = "$CMAKE_SH_SHA" ]
-        sh "$CMAKE_SH_PATH/$CMAKE_SH_FILE" --skip-license --prefix=/usr/local
-
-    - name: Build libkqueue
-      run: |
-        [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
-        cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./
-        make
-        cpack -G RPM
-        yum localinstall -y *.rpm
-      working-directory: libkqueue
+        rm -f /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+        rm -f /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
     - uses: actions/checkout@v2
       with:
@@ -134,12 +111,12 @@ jobs:
     - name: Extra repos for CentOS
       if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
       run: |
-        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
@@ -172,7 +149,6 @@ jobs:
     - name: Collect RPMs
       run: |
         mkdir rpms
-        mv libkqueue/*.rpm rpms
         mv freeradius/rpmbuild/RPMS/x86_64/*.rpm rpms
 
     - name: Restore eapol_test build directory from cache
@@ -242,15 +218,26 @@ jobs:
 
     steps:
 
+    - name: Set up NetworkRADIUS extras repository
+      run: |
+        echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
+        echo 'name=NetworkRADIUS-extras-$releasever'                                                >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'baseurl=http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/$releasever/' >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'enabled=1'                                                                            >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'gpgcheck=1'                                                                           >> /etc/yum.repos.d/networkradius-extras.repo
+        echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
+        rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
+
+
     - name: Extra repos for CentOS
       if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
       run: |
-        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
