@@ -70,7 +70,11 @@ BuildRequires: gdbm-devel
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
 BuildRequires: freeradius-openssl, freeradius-openssl-devel
 %else
+%if 0%{?rhel}%{?fedora} < 8
+BuildRequires: nwkrad-openssl-devel >= 1.1.1
+%else
 BuildRequires: openssl, openssl-devel
+%endif
 %endif
 
 BuildRequires: libcap-devel
@@ -97,6 +101,10 @@ Requires: freeradius-config = %{version}-%{release}
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
 Requires: freeradius-openssl
 %else
+%if 0%{?rhel}%{?fedora} < 8
+# (We also need the system openssl on CentOS7 for the utilities)
+Requires: nwkrad-openssl >= 1.1.1, nwkrad-openssl-perl
+%endif
 # Need openssl-perl for c_rehash, which is used when
 # generating certificates
 Requires: openssl, openssl-perl
@@ -239,7 +247,7 @@ Provides protocol encoders and decoders for the RADIUS protocol.
 Summary: Internal support library for FreeRADIUS modules using json-c
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
-%if 0%{?rhel} < 8
+%if 0%{?rhel}%{?fedora} < 8
 Requires: nwkrad-json-c >= 0.13
 BuildRequires: nwkrad-json-c-devel >= 0.13
 %else
@@ -500,13 +508,23 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --without-rlm_eap_ikev2 \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
+%if 0%{?rhel}%{?fedora} < 8
+        --with-jsonc-lib-dir=/opt/nwkrad/lib64 \
+        --with-jsonc-include-dir=/opt/nwkrad/include \
+%else
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
+%endif
         --with-winbind-include-dir=/usr/include/samba-4.0 \
         --with-winbind-lib-dir=/usr/lib64/samba \
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
         --with-openssl-lib-dir=/opt/openssl/lib \
         --with-openssl-include-dir=/opt/openssl/include \
+%else
+%if 0%{?rhel}%{?fedora} < 8
+        --with-openssl-lib-dir=/opt/nwkrad/lib64 \
+        --with-openssl-include-dir=/opt/nwkrad/include \
+%endif
 %endif
 %if %{?_with_developer:1}%{!?_with_developer:0}
         --enable-developer=yes \
