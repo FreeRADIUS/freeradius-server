@@ -132,4 +132,36 @@ if (&Tmp-String-2 != "Section: dummy, User: Bob\n") {
 	test_fail
 }
 
+# URI with tainted values in the arguments - input argument includes URI argument
+# separator - make sure this doesn't end up generating extra arguments, but gets escaped.
+update request {
+	&Tmp-String-2 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/?station=%{Calling-Station-Id})"
+}
+
+if (&Tmp-String-2 != "{\"station\":\"dummy&unsafe=escaped\"}\n" ) {
+	test_fail
+}
+
+# Zero length untainted value - check parsing doesn't break on zero length string
+update request {
+	&Tmp-String-8 := ""
+}
+
+update request {
+	&Tmp-String-2 := "%(rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-8}?station=%{User-Name})"
+}
+
+if (&Tmp-String-2 != "{\"station\":\"Bob\"}\n" ) {
+	test_fail
+}
+
+# Zero length tainted value - check escaping doesn't break on zero length string
+update request {
+	&Tmp-String-2 := "%(rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-9}?station=%{Called-Station-Id})"
+}
+
+if (&Tmp-String-2 != "{\"station\":\"aa:bb:cc:dd:ee:ff\"}\n" ) {
+	test_fail
+}
+
 test_pass

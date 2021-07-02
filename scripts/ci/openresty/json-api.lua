@@ -131,3 +131,11 @@ Api.endpoint('GET', '/user/<username>/mac/<client>',
     end
 )
 
+-- Simple reflection of a URI argument
+Api.endpoint('GET', '/user/<username>/reflect/',
+    function(body, keyData)
+        local returnData = {}
+        returnData["station"] = uriArgs.station
+        return ngx.say(cjson.encode(returnData))
+    end
+)
