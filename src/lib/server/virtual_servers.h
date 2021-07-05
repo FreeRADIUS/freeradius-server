@@ -68,17 +68,12 @@ int		virtual_servers_open(fr_schedule_t *sc);
  *
  * @{
  */
-typedef int (*fr_virtual_server_compile_t)(CONF_SECTION *server);
-
 CONF_SECTION	*virtual_server_find(char const *name) CC_HINT(nonnull);
 
 CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section) CC_HINT(nonnull);
 
 int		virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 					CONF_ITEM *ci, CONF_PARSER const *rule) CC_HINT(nonnull(2,4));
-
-int		virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
-					   fr_virtual_server_compile_t func) CC_HINT(nonnull);
 
 fr_dict_t const	*virtual_server_namespace(char const *virtual_server) CC_HINT(nonnull);
 

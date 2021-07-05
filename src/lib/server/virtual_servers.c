@@ -47,7 +47,6 @@ typedef struct {
 	fr_rb_node_t		node;			//!< Entry in the namespace tree.
 	char const		*namespace;		//!< Namespace function is registered to.
 	fr_dict_t const		*dict;			//!< dictionary to use
-	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
 } fr_virtual_namespace_t;
 
 typedef struct {
@@ -766,7 +765,6 @@ static int process_instantiate(CONF_SECTION *server_cs, dl_module_inst_t *dl_ins
 int virtual_servers_instantiate(void)
 {
 	size_t		i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
-	fr_rb_tree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, fr_rb_tree_t, "vns_tree"));
 
 	fr_assert(virtual_servers);
 
@@ -797,23 +795,6 @@ int virtual_servers_instantiate(void)
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
 		fr_assert(virtual_servers[i]->namespace != NULL);
-
-		/*
-		 *	Compile EAP-AKA, SIM, etc.  This code is a
-		 *	place-holder until such time as the
-		 *	process_foo() modules are done.
-		 */
-		if (vns_tree) {
-			fr_virtual_namespace_t	find = { .namespace = virtual_servers[i]->namespace };
-			fr_virtual_namespace_t	*found;
-
-			found = fr_rb_find(vns_tree, &find);
-			if (found) {
-				fr_assert(dict && (dict->dict == found->dict));
-
-				if (found->func(server_cs) < 0) return -1;
-			}
-		}
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
@@ -1128,77 +1109,6 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	return 0;
 }
 
-/** Free a virtual namespace callback
- *
- */
-static void _virtual_namespace_free(void *data)
-{
-	talloc_free(data);
-}
-
-/** Compare two virtual namespace callbacks
- *
- */
-static int8_t _virtual_namespace_cmp(void const *one, void const *two)
-{
-	fr_virtual_namespace_t const *a = one;
-	fr_virtual_namespace_t const *b = two;
-	int ret;
-
-	ret = strcmp(a->namespace, b->namespace);
-	return CMP(ret, 0);
-}
-
-/** Add a callback for a specific namespace
- *
- *  This allows modules to register unlang compilation functions for specific namespaces
- *
- * @param[in] namespace		to register.
- * @param[in] dict		Dictionary name to use for this namespace
- * @param[in] func		to call to compile sections in the virtual server.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int virtual_namespace_register(char const *namespace, fr_dict_t const *dict,
-			       fr_virtual_server_compile_t func)
-{
-	fr_rb_tree_t		*vns_tree;
-	fr_virtual_namespace_t	*vns;
-
-	fr_assert(virtual_server_root);	/* Virtual server bootstrap must be called first */
-
-	MEM(vns = talloc_zero(NULL, fr_virtual_namespace_t));
-	vns->namespace = talloc_strdup(vns, namespace);
-	vns->dict = dict;
-	vns->func = func;
-
-	vns_tree = cf_data_value(cf_data_find(virtual_server_root, fr_rb_tree_t, "vns_tree"));
-	if (!vns_tree) {
-		/*
-		 *	Tree will be freed when the cf_data is freed
-		 *	so it shouldn't be parented from
-		 *	virtual_server_root.
-		 */
-		MEM(vns_tree = fr_rb_inline_talloc_alloc(NULL,
-							 fr_virtual_namespace_t, node,
-							 _virtual_namespace_cmp,
-							 _virtual_namespace_free));
-
-		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
-			ERROR("Failed adding namespace tree data to config");
-			talloc_free(vns_tree);
-			return -1;
-		}
-	}
-
-	if (fr_rb_replace(NULL, vns_tree, vns) < 0) {
-		ERROR("Failed inserting namespace into tree");
-		return -1;
-	}
-
-	return 0;
-}
 
 /** Return the namespace for a given virtual server
  *
