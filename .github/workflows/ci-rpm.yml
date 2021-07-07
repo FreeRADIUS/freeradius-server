@@ -162,10 +162,7 @@ jobs:
       run: |
         yum install -y libnl3-devel which
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
-        echo "top_srcdir:=$(pwd)" > Make.inc
-        echo "BUILD_DIR:=build" >> Make.inc
-        ./configure --without-openssl
-        make -j `nproc` eapol_test
+        scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../rpms
       working-directory: freeradius
 
