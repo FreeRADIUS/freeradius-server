@@ -31,10 +31,10 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04",   "DIST": "ubuntu", "CODENAME": "bionic",  "NR_KQ": "1", "NR_JSONC": "1" },
-              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04",   "DIST": "ubuntu", "CODENAME": "focal",   "NR_KQ": "1", "NR_JSONC": ""  },
-              { "NAME": "debian-10",    "OS": "debian:buster",  "DIST": "debian", "CODENAME": "buster",  "NR_KQ": "1", "NR_JSONC": "1" },
-              { "NAME": "debian-sid",   "OS": "debian:sid",     "DIST": "debian", "CODENAME": "sid",     "NR_KQ": "",  "NR_JSONC": ""  }
+              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04",   "DIST": "ubuntu", "CODENAME": "bionic",  "NR_EXTRAS": "1" },
+              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04",   "DIST": "ubuntu", "CODENAME": "focal",   "NR_EXTRAS": "1" },
+              { "NAME": "debian-10",    "OS": "debian:buster",  "DIST": "debian", "CODENAME": "buster",  "NR_EXTRAS": "1" },
+              { "NAME": "debian-sid",   "OS": "debian:sid",     "DIST": "debian", "CODENAME": "sid",     "NR_EXTRAS": ""  }
             ]
           }
         EOF
@@ -43,7 +43,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-sid",   "OS": "debian:sid",     "DIST": "debian", "CODENAME": "sid",     "NR_KQ": "",  "NR_JSONC": ""  }
+              { "NAME": "debian-sid",   "OS": "debian:sid",     "DIST": "debian", "CODENAME": "sid",     "NR_EXTRAS": ""  }
             ]
           }
         EOF
@@ -97,17 +97,11 @@ jobs:
     - name: NetworkRADIUS signing key
       run: curl -sS "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add
 
-    - name: NetworkRADIUS libkqueue repository
-      if: ${{ matrix.env.NR_KQ == '1' }}
+    - name: Set up NetworkRADIUS extras repository
+      if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
-        echo "deb http://packages.networkradius.com/libkqueue/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
-          >> /etc/apt/sources.list.d/networkradius.list
-
-    - name: NetworkRADIUS libkqueue repository
-      if: ${{ matrix.env.NR_JSONC == '1' }}
-      run: |
-        echo "deb http://packages.networkradius.com/json-c/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
-          >> /etc/apt/sources.list.d/networkradius.list
+        echo "deb http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
+          > /etc/apt/sources.list.d/networkradius-extras.list
 
     - name: Update apt repository lists
       run: apt-get update
@@ -220,17 +214,11 @@ jobs:
       run: |
         curl -sS "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add
 
-    - name: NetworkRADIUS libkqueue repository
-      if: ${{ matrix.env.NR_KQ == '1' }}
+    - name: Set up NetworkRADIUS extras repository
+      if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
-        echo "deb http://packages.networkradius.com/libkqueue/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
-          >> /etc/apt/sources.list.d/networkradius.list
-
-    - name: NetworkRADIUS libkqueue repository
-      if: ${{ matrix.env.NR_JSONC == '1' }}
-      run: |
-        echo "deb http://packages.networkradius.com/json-c/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
-          >> /etc/apt/sources.list.d/networkradius.list
+        echo "deb http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
+          > /etc/apt/sources.list.d/networkradius-extras.list
 
     - name: Update apt repository lists
       run: apt-get update
