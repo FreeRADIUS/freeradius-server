@@ -39,7 +39,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "fedora-rawhide", "OS": "fedora:rawhide" }
+              { "NAME": "fedora-rawhide", "OS": "fedora:rawhide", "DIST": "fedora" }
             ]
           }
         EOF
