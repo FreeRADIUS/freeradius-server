@@ -34,5 +34,6 @@ VALUE	APC-Service-Type		Device			2
 VALUE	APC-Service-Type		ReadOnly		3
 VALUE	APC-Service-Type		Outlet			4
 VALUE	APC-Service-Type		Card			5
+VALUE	APC-Service-Type		NetworkOnly		6
 
 END-VENDOR APC
