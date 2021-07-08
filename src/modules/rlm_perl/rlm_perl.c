@@ -44,6 +44,10 @@ RCSID("$Id$")
 extern char **environ;
 #endif
 
+#ifndef USE_ITHREADS
+#  error perl must be compiled with USE_ITHREADS
+#endif
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -68,19 +72,21 @@ typedef struct {
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
-	pthread_key_t	*thread_key;
-
-#ifdef USE_ITHREADS
-	pthread_mutex_t	clone_mutex;
-#endif
-
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
 
 } rlm_perl_t;
 
 typedef struct {
-	rlm_perl_t	*inst;		//!< Module instance
+	PerlInterpreter		*perl;	//!< Thread specific perl interpreter.
+} rlm_perl_thread_t;
+
+typedef struct {
+	rlm_perl_t		*inst;	//!< Module global instance
 } rlm_perl_xlat_t;
+
+typedef struct {
+	rlm_perl_thread_t	*t;	//!< Module thread instance
+} rlm_perl_xlat_thread_t;
 
 static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
 
@@ -138,7 +144,6 @@ EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 static int perl_sys_init3_called = 0;
 static _Thread_local request_t *rlm_perl_request;
 
-#ifdef USE_ITHREADS
 #  define dl_librefs "DynaLoader::dl_librefs"
 #  define dl_modules "DynaLoader::dl_modules"
 static void rlm_perl_clear_handles(pTHX)
@@ -198,91 +203,6 @@ static void rlm_perl_close_handles(void **handles)
 
 	talloc_free(handles);
 }
-
-DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
-DIAG_OFF(shadow)
-static void rlm_perl_destruct(PerlInterpreter *perl)
-{
-	dTHXa(perl);
-
-	PERL_SET_CONTEXT(perl);
-
-	PL_perl_destruct_level = 2;
-
-	PL_origenviron = environ;
-
-
-	{
-		dTHXa(perl);
-	}
-	/*
-	 * FIXME: This shouldn't happen
-	 *
-	 */
-	while (PL_scopestack_ix > 1) {
-		LEAVE;
-	}
-
-	perl_destruct(perl);
-	perl_free(perl);
-}
-DIAG_ON(shadow)
-DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
-
-static void rlm_destroy_perl(PerlInterpreter *perl)
-{
-	void	**handles;
-
-	dTHXa(perl);
-	PERL_SET_CONTEXT(perl);
-
-	handles = rlm_perl_get_handles(aTHX);
-	if (handles) rlm_perl_close_handles(handles);
-	rlm_perl_destruct(perl);
-}
-
-/* Create Key */
-static void rlm_perl_make_key(pthread_key_t *key)
-{
-	pthread_key_create(key, (void (*)(void *))rlm_destroy_perl);
-}
-
-static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key)
-{
-	int ret;
-
-	PerlInterpreter *interp;
-	UV clone_flags = 0;
-
-	PERL_SET_CONTEXT(perl);
-
-	interp = pthread_getspecific(*key);
-	if (interp) return interp;
-
-	interp = perl_clone(perl, clone_flags);
-	{
-		dTHXa(interp);
-	}
-#  if PERL_REVISION >= 5 && PERL_VERSION <8
-	call_pv("CLONE",0);
-#  endif
-	ptr_table_free(PL_ptr_table);
-	PL_ptr_table = NULL;
-
-	PERL_SET_CONTEXT(aTHX);
-	rlm_perl_clear_handles(aTHX);
-
-	ret = pthread_setspecific(*key, interp);
-	if (ret != 0) {
-		DEBUG("Failed associating interpretor with thread %s", fr_syserror(ret));
-
-		rlm_perl_destruct(interp);
-		return NULL;
-	}
-
-	return interp;
-}
-#endif
 
 /*
  *	This is wrapper for fr_log
@@ -532,6 +452,17 @@ static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, v
 	return 0;
 }
 
+static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
+				       UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_perl_t		*inst = talloc_get_type_abort(uctx, rlm_perl_t);
+	rlm_perl_xlat_thread_t	*xt = xlat_thread_inst;
+
+	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_perl_thread_t);
+
+	return 0;
+}
+
 static xlat_arg_parser_t const perl_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	{ .variadic = true, .type = FR_TYPE_VOID },
@@ -543,37 +474,28 @@ static xlat_arg_parser_t const perl_xlat_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			       UNUSED void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_list_t *in)
 {
-	rlm_perl_xlat_t const	*xi = talloc_get_type_abort(UNCONST(void *, xlat_inst), rlm_perl_xlat_t);
-	rlm_perl_t		*inst = xi->inst;
-	int			count, i;
-	xlat_action_t		ret = XLAT_ACTION_FAIL;
-	STRLEN			n_a;
-	fr_value_box_t		*func = fr_dlist_pop_head(in);
-	fr_value_box_t		*arg = NULL, *child;
-	SV			*sv;
-	AV			*av;
-	fr_value_box_list_t	list, sub_list;
-	fr_value_box_t		*vb = NULL;
+	rlm_perl_xlat_thread_t const	*xt = talloc_get_type_abort_const(xlat_thread_inst, rlm_perl_xlat_thread_t);
+	int				count, i;
+	xlat_action_t			ret = XLAT_ACTION_FAIL;
+	STRLEN				n_a;
+	fr_value_box_t			*func = fr_dlist_pop_head(in);
+	fr_value_box_t			*arg = NULL, *child;
+	SV				*sv;
+	AV				*av;
+	fr_value_box_list_t		list, sub_list;
+	fr_value_box_t			*vb = NULL;
 
 	fr_value_box_list_init(&list);
 	fr_value_box_list_init(&sub_list);
 
-#ifdef USE_ITHREADS
-	PerlInterpreter *interp;
-
-	pthread_mutex_lock(&inst->clone_mutex);
-	interp = rlm_perl_clone(inst->perl, inst->thread_key);
 	{
-		dTHXa(interp);
-		PERL_SET_CONTEXT(interp);
+		dTHXa(xt->t->perl);
+		PERL_SET_CONTEXT(xt->t->perl);
 	}
-	pthread_mutex_unlock(&inst->clone_mutex);
-#else
-	PERL_SET_CONTEXT(inst->perl);
-#endif
+
 	{
 		dSP;
 		ENTER;SAVETMPS;
@@ -633,14 +555,12 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *re
 		/*
 		 *	Move the assembled list of boxes to the output
 		 */
-		while ((vb = fr_dlist_pop_head(&list))) {
-			fr_dcursor_append(out, vb);
-		}
+		while ((vb = fr_dlist_pop_head(&list))) fr_dcursor_append(out, vb);
 
 	cleanup:
-		PUTBACK ;
-		FREETMPS ;
-		LEAVE ;
+		PUTBACK;
+		FREETMPS;
+		LEAVE;
 
 	}
 
@@ -723,117 +643,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	xlat = xlat_register(NULL, xlat_name, perl_xlat, false);
 	xlat_func_args(xlat, perl_xlat_args);
+
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_perl_xlat_t, NULL, inst);
-
-	return 0;
-}
-
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- *
- *	Setup a hashes wich we will use later
- *	parse a module and give it a chance to live
- *
- */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
-{
-	rlm_perl_t	*inst = instance;
-	AV		*end_AV;
-
-	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
-	char		**embed;
-	char		**envp = NULL;
-	int		exitstatus = 0, argc=0;
-	char		arg[] = "0";
-
-	CONF_SECTION	*cs;
-
-#ifdef USE_ITHREADS
-	/*
-	 *	Create pthread key. This key will be stored in instance
-	 */
-	pthread_mutex_init(&inst->clone_mutex, NULL);
-
-	MEM(inst->thread_key = talloc_zero(inst, pthread_key_t));
-	rlm_perl_make_key(inst->thread_key);
-#endif
-
-	/*
-	 *	Setup the argument array we pass to the perl interpreter
-	 */
-	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
-	memcpy(&embed, &embed_c, sizeof(embed));
-	embed_c[0] = NULL;
-	if (inst->perl_flags) {
-		embed_c[1] = inst->perl_flags;
-		embed_c[2] = inst->module;
-		embed_c[3] = arg;
-		argc = 4;
-	} else {
-		embed_c[1] = inst->module;
-		embed_c[2] = arg;
-		argc = 3;
-	}
-
-	/*
-	 *	Create tweak the server's environment to support
-	 *	perl. Docs say only call this once... Oops.
-	 */
-	if (!perl_sys_init3_called) {
-		PERL_SYS_INIT3(&argc, &embed, &envp);
-		perl_sys_init3_called = 1;
-	}
-
-	/*
-	 *	Allocate a new perl interpreter to do the parsing
-	 */
-	if ((inst->perl = perl_alloc()) == NULL) {
-		ERROR("No memory for allocating new perl interpretor!");
-		return -1;
-	}
-	perl_construct(inst->perl);	/* ...and initialise it */
-
-#ifdef USE_ITHREADS
-	PL_perl_destruct_level = 2;
-
-	{
-		dTHXa(inst->perl);
-	}
-	PERL_SET_CONTEXT(inst->perl);
-#endif
-
-#if PERL_REVISION >= 5 && PERL_VERSION >=8
-	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-#endif
-
-	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
-
-	end_AV = PL_endav;
-	PL_endav = (AV *)NULL;
-
-	if (exitstatus) {
-		ERROR("Perl_parse failed: %s not found or has syntax errors", inst->module);
-		return -1;
-	}
-
-	/* parse perl configuration sub-section */
-	cs = cf_section_find(conf, "config", NULL);
-	if (cs) {
-		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF", 1);
-		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
-	}
-
-	inst->perl_parsed = true;
-	perl_run(inst->perl);
-
-	PL_endav = end_AV;
+	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rlm_perl_xlat_thread_t, NULL, inst);
 
 	return 0;
 }
@@ -1033,12 +845,13 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t *request, char const *function_name)
+static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t *request,
+			       PerlInterpreter *interp, char const *function_name)
 {
 
 	rlm_perl_t		*inst = instance;
 	fr_pair_list_t		vps;
-	int			exitstatus=0, count;
+	int			ret=0, count;
 	STRLEN			n_a;
 
 	HV			*rad_reply_hv;
@@ -1052,21 +865,10 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 	 */
 	if (!function_name) RETURN_MODULE_FAIL;
 
-#ifdef USE_ITHREADS
-	pthread_mutex_lock(&inst->clone_mutex);
-
-	PerlInterpreter *interp;
-
-	interp = rlm_perl_clone(inst->perl,inst->thread_key);
 	{
 		dTHXa(interp);
 		PERL_SET_CONTEXT(interp);
 	}
-
-	pthread_mutex_unlock(&inst->clone_mutex);
-#else
-	PERL_SET_CONTEXT(inst->perl);
-#endif
 
 	{
 		dSP;
@@ -1108,11 +910,11 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 			REDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
 			        inst->module, function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
-			exitstatus = RLM_MODULE_FAIL;
+			ret = RLM_MODULE_FAIL;
 		} else if (count == 1) {
-			exitstatus = POPi;
-			if (exitstatus >= 100 || exitstatus < 0) {
-				exitstatus = RLM_MODULE_FAIL;
+			ret = POPi;
+			if (ret >= 100 || ret < 0) {
+				ret = RLM_MODULE_FAIL;
 			}
 		}
 
@@ -1146,14 +948,16 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 			fr_pair_list_init(&vps);
 		}
 	}
-	RETURN_MODULE_RCODE(exitstatus);
+	RETURN_MODULE_RCODE(ret);
 }
 
 #define RLM_PERL_FUNC(_x) \
 static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
 	rlm_perl_t *inst = talloc_get_type_abort(mctx->instance, rlm_perl_t); \
-	return do_perl(p_result, inst, request, inst->func_##_x); \
+	return do_perl(p_result, inst, request, \
+		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, \
+		       inst->func_##_x); \
 }
 
 RLM_PERL_FUNC(authorize)
@@ -1169,6 +973,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	rlm_perl_t	 	*inst = talloc_get_type_abort(mctx->instance, rlm_perl_t);
 	fr_pair_t		*pair;
 	int 			acct_status_type = 0;
+	char const		*func;
 
 	pair = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type, 0);
 	if (pair != NULL) {
@@ -1181,23 +986,192 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	switch (acct_status_type) {
 	case FR_STATUS_START:
 		if (inst->func_start_accounting) {
-			return do_perl(p_result, inst, request, inst->func_start_accounting);
+			func = inst->func_start_accounting;
 		} else {
-			return do_perl(p_result, inst, request, inst->func_accounting);
+			func = inst->func_accounting;
 		}
+		break;
 
 	case FR_STATUS_STOP:
 		if (inst->func_stop_accounting) {
-			return do_perl(p_result, inst, request, inst->func_stop_accounting);
+			func = inst->func_stop_accounting;
 		} else {
-			return do_perl(p_result, inst, request, inst->func_accounting);
+			func = inst->func_accounting;
 		}
+		break;
 
 	default:
-		return do_perl(p_result, inst, request, inst->func_accounting);
+		func = inst->func_accounting;
+		break;
 	}
+
+	return do_perl(p_result, inst, request,
+		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, func);
 }
 
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
+DIAG_OFF(shadow)
+static void rlm_perl_interp_free(PerlInterpreter *perl)
+{
+	void	**handles;
+
+	{
+		dTHXa(perl);
+		PERL_SET_CONTEXT(perl);
+	}
+
+	handles = rlm_perl_get_handles(aTHX);
+	if (handles) rlm_perl_close_handles(handles);
+
+	PL_perl_destruct_level = 2;
+
+	PL_origenviron = environ;
+
+	/*
+	 * FIXME: This shouldn't happen
+	 *
+	 */
+	while (PL_scopestack_ix > 1) LEAVE;
+
+	perl_destruct(perl);
+	perl_free(perl);
+}
+DIAG_ON(shadow)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
+				  UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_perl_t		*inst = talloc_get_type_abort(instance, rlm_perl_t);
+	rlm_perl_thread_t	*t = talloc_get_type_abort(thread, rlm_perl_thread_t);
+	PerlInterpreter		*interp;
+	UV			clone_flags = 0;
+
+	PERL_SET_CONTEXT(inst->perl);
+
+	interp = perl_clone(inst->perl, clone_flags);
+	{
+		dTHXa(interp);			/* Sets the current thread's interpreter */
+	}
+#  if PERL_REVISION >= 5 && PERL_VERSION <8
+	call_pv("CLONE", 0);
+#  endif
+	ptr_table_free(PL_ptr_table);
+	PL_ptr_table = NULL;
+
+	PERL_SET_CONTEXT(aTHX);
+	rlm_perl_clear_handles(aTHX);
+
+	t->perl = interp;			/* Store perl interp for easy freeing later */
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_perl_thread_t	*t = talloc_get_type_abort(thread, rlm_perl_thread_t);
+
+	rlm_perl_interp_free(t->perl);
+
+	return 0;
+}
+
+/*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ *
+ *	Setup a hashes wich we will use later
+ *	parse a module and give it a chance to live
+ *
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	rlm_perl_t	*inst = instance;
+	AV		*end_AV;
+
+	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
+	char		**embed;
+	char		**envp = NULL;
+	int		ret = 0, argc = 0;
+	char		arg[] = "0";
+
+	CONF_SECTION	*cs;
+
+	/*
+	 *	Setup the argument array we pass to the perl interpreter
+	 */
+	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
+	memcpy(&embed, &embed_c, sizeof(embed));
+	embed_c[0] = NULL;
+	if (inst->perl_flags) {
+		embed_c[1] = inst->perl_flags;
+		embed_c[2] = inst->module;
+		embed_c[3] = arg;
+		argc = 4;
+	} else {
+		embed_c[1] = inst->module;
+		embed_c[2] = arg;
+		argc = 3;
+	}
+
+	/*
+	 *	Create tweak the server's environment to support
+	 *	perl. Docs say only call this once... Oops.
+	 */
+	if (!perl_sys_init3_called) {
+		PERL_SYS_INIT3(&argc, &embed, &envp);
+		perl_sys_init3_called = 1;
+	}
+
+	/*
+	 *	Allocate a new perl interpreter to do the parsing
+	 */
+	if ((inst->perl = perl_alloc()) == NULL) {
+		ERROR("No memory for allocating new perl interpretor!");
+		return -1;
+	}
+	perl_construct(inst->perl);	/* ...and initialise it */
+
+	PL_perl_destruct_level = 2;
+	{
+		dTHXa(inst->perl);
+	}
+	PERL_SET_CONTEXT(inst->perl);
+
+#if PERL_REVISION >= 5 && PERL_VERSION >=8
+	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
+#endif
+
+	ret = perl_parse(inst->perl, xs_init, argc, embed, NULL);
+
+	end_AV = PL_endav;
+	PL_endav = (AV *)NULL;
+
+	if (ret) {
+		ERROR("Perl_parse failed: %s not found or has syntax errors", inst->module);
+		return -1;
+	}
+
+	/* parse perl configuration sub-section */
+	cs = cf_section_find(conf, "config", NULL);
+	if (cs) {
+		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF", 1);
+		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
+	}
+
+	inst->perl_parsed = true;
+	perl_run(inst->perl);
+
+	PL_endav = end_AV;
+
+	return 0;
+}
 
 /*
  * Detach a instance give a chance to a module to make some internal setup ...
@@ -1206,7 +1180,7 @@ DIAG_OFF(nested-externs)
 static int mod_detach(void *instance)
 {
 	rlm_perl_t	*inst = (rlm_perl_t *) instance;
-	int 		exitstatus = 0, count = 0;
+	int 		ret = 0, count = 0;
 
 
 	if (inst->perl_parsed) {
@@ -1222,9 +1196,9 @@ static int mod_detach(void *instance)
 			SPAGAIN;
 
 			if (count == 1) {
-				exitstatus = POPi;
-				if (exitstatus >= 100 || exitstatus < 0) {
-					exitstatus = RLM_MODULE_FAIL;
+				ret = POPi;
+				if (ret >= 100 || ret < 0) {
+					ret = RLM_MODULE_FAIL;
 				}
 			}
 			PUTBACK;
@@ -1233,24 +1207,11 @@ static int mod_detach(void *instance)
 		}
 	}
 
-#ifdef USE_ITHREADS
-	rlm_perl_destruct(inst->perl);
-	pthread_mutex_destroy(&inst->clone_mutex);
-#else
-	perl_destruct(inst->perl);
-	perl_free(inst->perl);
-#endif
+	rlm_perl_interp_free(inst->perl);
 
-	/*
-	 *	Hope this is not really needed.
-	 *	Is only allowed to be called once just before exit().
-	 *
-	 PERL_SYS_TERM();
-	*/
-	return exitstatus;
+	return ret;
 }
 DIAG_ON(nested-externs)
-
 
 static int mod_load(void)
 {
@@ -1279,6 +1240,7 @@ static int mod_load(void)
 static void mod_unload(void)
 {
 	if (perl_dlhandle) dlclose(perl_dlhandle);
+	PERL_SYS_TERM();
 }
 
 
@@ -1293,20 +1255,22 @@ static void mod_unload(void)
  */
 extern module_t rlm_perl;
 module_t rlm_perl = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "perl",
-#ifdef USE_ITHREADS
-	.type		= RLM_TYPE_THREAD_SAFE,
-#else
-	.type		= RLM_TYPE_THREAD_UNSAFE,
-#endif
-	.inst_size	= sizeof(rlm_perl_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "perl",
+	.type			= RLM_TYPE_THREAD_SAFE,
+	.inst_size		= sizeof(rlm_perl_t),
+
+	.config			= module_config,
+	.onload			= mod_load,
+	.unload			= mod_unload,
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.detach			= mod_detach,
+
+	.thread_inst_size	= sizeof(rlm_perl_thread_t),
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
+
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
