@@ -90,6 +90,11 @@ rest {
 	#    password     - Password to use for authentication, will be expanded.
 	#    require_auth - Require HTTP authentication.
 	#    timeout      - HTTP request timeout in seconds, defaults to 4.0.
+	#    chunk        - Chunk size to use. If set, HTTP chunked encoding is used to
+	#                   send data to the REST server. Make sure that this is large
+	#                   enough to fit your largest attribute value's text
+	#                   representation.
+	#                   A number like 8192 is good.
 	#
 	#  Additional HTTP headers may be specified with control:REST-HTTP-Header.
 	#  The values of those attributes should be in the format:

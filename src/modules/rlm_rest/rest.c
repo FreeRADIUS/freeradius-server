@@ -504,12 +504,10 @@ int mod_conn_alive(void *instance, void *handle)
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
- * @param[in] section configuration data.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *userdata,
-		UNUSED rlm_rest_section_t *section)
+static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t *ctx = userdata;
 	rest_custom_data_t *data = ctx->encoder;
@@ -552,12 +550,10 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
- * @param[in] section configuration data.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata,
-		UNUSED rlm_rest_section_t *section)
+static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
 	REQUEST			*request = ctx->request; /* Used by RDEBUG */
@@ -656,7 +652,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 			ctx->state = READ_STATE_END;
 			break;
 		}
-		
+
 		if (freespace < 1) goto no_space;
 		*p++ = '&';
 		freespace--;
@@ -743,12 +739,10 @@ no_space:
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
- * @param[in] section configuration data.
  * @return length of data (including NULL) written to ptr, or 0 if no more
  *	data to write.
  */
-static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata,
-		rlm_rest_section_t *section)
+static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
 	REQUEST			*request = ctx->request; /* Used by RDEBUG */
@@ -807,7 +801,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
-			if (section->attr_num) {
+			if (ctx->section->attr_num) {
 				len = snprintf(p, freespace + 1, "\"%s\":{\"attr_num\":%d,\"type\":\"%s\",\"value\":[",
 						vp->da->name, vp->da->attr, type);
 			} else {
@@ -849,7 +843,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				 *  write that out.
 				 */
 				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
-				len = vp_prints_value_json(p, attr_space + 1, vp, section->raw_value);
+				len = vp_prints_value_json(p, attr_space + 1, vp, ctx->section->raw_value);
 				if (is_truncated(len, attr_space + 1)) goto no_space;
 
 				/*
@@ -959,12 +953,10 @@ no_space:
  * @param[in] limit Maximum buffer size to alloc.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls to
  *	stream function.
- * @param[in] section configuration data.
  * @return the length of the data written to the buffer (excluding NULL) or -1
  *	if alloc >= limit.
  */
-static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata,
-		rlm_rest_section_t *section)
+static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata)
 {
 	char *previous = NULL;
 	char *current = NULL;
@@ -981,7 +973,7 @@ static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size
 			free(previous);
 		}
 
-		len = func(current + used, alloc - used, 1, userdata, section);
+		len = func(current + used, alloc - used, 1, userdata);
 		used += len;
 		if (!len) {
 			*buffer = current;
@@ -1995,7 +1987,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
-	len = rest_request_encode_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->request, section);
+	len = rest_request_encode_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->request);
 	if (len <= 0) {
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
@@ -2081,6 +2073,9 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
+
+	// Pass configuration to the request
+	ctx->request.section = section;
 
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, instance->connect_timeout);
 	SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
