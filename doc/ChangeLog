@@ -4,7 +4,7 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Add sanitizer options to configure script.
 	* Log information needed by Wireshark to decode TLS sessions.
 	* Allow more liberal SQL commands in rlm_sql_map.
-	* Update dictionary.apc
+	* Update dictionary.apc, dictionary.h3c
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
