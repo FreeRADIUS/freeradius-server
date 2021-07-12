@@ -40,3 +40,6 @@ VALUE	NAS-Port-Type			xPON			35
 VALUE	NAS-Port-Type			Wireless-XGP		36
 
 VALUE	Framed-Protocol			PPTP			9
+
+VALUE	Acct-Status-Type		Subsystem-On		18
+VALUE	Acct-Status-Type		Subsystem-Off		19
