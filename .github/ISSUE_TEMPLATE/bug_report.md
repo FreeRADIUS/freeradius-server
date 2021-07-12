@@ -4,7 +4,7 @@ about: Used to report a defect in server source code, default configuration file
 ---
 
 # Issue type
-- **Questions about the server or its usage MUST be posted to the [users mailing list](http://freeradius.org/list/users.html).  If you post those issues here, they will be closed and locked. Repeat offenders will be BANNED**.
+- **Questions about the server or its usage MUST be posted to the [users mailing list](https://freeradius.org/support/).  If you post those issues here, they will be closed and locked. Repeat offenders will be BANNED**.
 - **Remote security exploits MUST be sent to security@freeradius.org.**
 
 ***
