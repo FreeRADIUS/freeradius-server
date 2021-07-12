@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: FreeRADIUS Users Mailing list
+    url: https://freeradius.org/support/
+    about: 'Please ask non-bug related questions on the "users" mailing list.'
+  - name: Development questions
+    url: https://freeradius.org/support/
+    about: 'Please ask development related questions on the "development" mailing list.'
