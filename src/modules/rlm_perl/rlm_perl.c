@@ -141,7 +141,6 @@ fr_dict_attr_autoload_t rlm_perl_dict_attr[] = {
  */
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
-static int perl_sys_init3_called = 0;
 static _Thread_local request_t *rlm_perl_request;
 
 #  define dl_librefs "DynaLoader::dl_librefs"
@@ -1097,7 +1096,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
 	char		**embed;
-	char		**envp = NULL;
 	int		ret = 0, argc = 0;
 	char		arg[] = "0";
 
@@ -1118,15 +1116,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		embed_c[1] = inst->module;
 		embed_c[2] = arg;
 		argc = 3;
-	}
-
-	/*
-	 *	Create tweak the server's environment to support
-	 *	perl. Docs say only call this once... Oops.
-	 */
-	if (!perl_sys_init3_called) {
-		PERL_SYS_INIT3(&argc, &embed, &envp);
-		perl_sys_init3_called = 1;
 	}
 
 	/*
@@ -1215,6 +1204,11 @@ DIAG_ON(nested-externs)
 
 static int mod_load(void)
 {
+	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
+	char		**embed;
+	char		**envp = NULL;
+	int		argc = 0;
+
 #define LOAD_INFO(_fmt, ...) fr_log(LOG_DST, L_INFO, __FILE__, __LINE__, "rlm_perl - " _fmt,  ## __VA_ARGS__)
 #define LOAD_WARN(_fmt, ...) fr_log_perror(LOG_DST, L_WARN, __FILE__, __LINE__, \
 					   &(fr_log_perror_format_t){ \
@@ -1233,6 +1227,18 @@ static int mod_load(void)
 	 */
 	perl_dlhandle = dl_open_by_sym("perl_construct", RTLD_NOW | RTLD_GLOBAL);
 	if (!perl_dlhandle) LOAD_WARN("Failed loading libperl symbols into global symbol table");
+
+	/*
+	 *	Setup the argument array we pass to the perl interpreter
+	 */
+	MEM(embed_c = talloc_zero_array(NULL, char const *, 1));
+	memcpy(&embed, &embed_c, sizeof(embed));
+	embed_c[0] = NULL;
+	argc = 1;
+
+	PERL_SYS_INIT3(&argc, &embed, &envp);
+
+	talloc_free(embed_c);
 
 	return 0;
 }
