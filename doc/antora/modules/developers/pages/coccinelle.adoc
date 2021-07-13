@@ -1,0 +1,83 @@
+= Semantic Patches
+
+Coccinelle is an open source tool that can analyze and transform C code according to specified rules creating SmPL (Semantic Patch Language) patches_. Semantic patches are much more powerful than patches or regular expressions. so, that's why we use it.
+
+About Coccinelle
+
+* Official site http://coccinelle.lip6.fr/
+* Howto http://coccinelle.lip6.fr/papers/tutorial.pdf
+* The SmPL Grammar http://coccinelle.lip6.fr/docs/main_grammar.html
+* An Introduction to Coccinelle (video) https://www.youtube.com/watch?v=buZrNd6XkEw
+
+== Maintainer work
+
+All cocci files can be found in `scripts/coccinelle/`.
+
+== Run tests
+
+We have two different modes:
+
+=== 1. Only print the diff output.
+
+[source,shell]
+----
+$ make coccinelle.diff
+----
+
+=== 2. Do the modification on the file directly and print out the diff.
+
+[source,shell]
+----
+$ make coccinelle.patch
+----
+
+== Proposing new semantic patches
+
+New semantic patches can be proposed and submitted. they should be organized by name in `scripts/coccinelle/` with good description inside the script or follow the below tutorial.
+
+=== 1. Create your file in `scripts/coccinelle/foo.cocci`
+
+e.g:
+
+```
+@@
+expression E;
+constant C;
+@@
+- !E && C
++ (!E && C)
+```
+
+=== 2. Apply the patch calling `spatch`
+
+```
+$ spatch --tmp-dir build --very-quiet --in-place --cocci-file scripts/coccinelle/foo.cocci --dir src
+$ git diff src/
+diff --git a/src/lib/eap/session.c b/src/lib/eap/session.c
+index 038157be7c..4982bcf4e9 100644
+--- a/src/lib/eap/session.c
++++ b/src/lib/eap/session.c
+@@ -49,7 +49,7 @@ static int _eap_session_free(eap_session_t *eap_session)
+         *      and which aren't deleted early due to a likely RADIUS
+         *      retransmit which nukes our ID, and therefore our state.
+         */
+-       if (((request && RDEBUG_ENABLED) || (!request && DEBUG_ENABLED)) &&
++       if (((request && RDEBUG_ENABLED) || ((!request && DEBUG_ENABLED))) &&
+            (eap_session->tls && !eap_session->finished && ((fr_time() - eap_session->updated) > (((fr_time_t) 3) * NSEC)))) {
+                ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                ROPTIONAL(RWDEBUG, WARN, "!! EAP session %016" PRIxPTR " did not finish!                   !!",
+diff --git a/src/lib/eap_aka_sim/module.c b/src/lib/eap_aka_sim/module.c
+index 6fff875fb3..d172db865a 100644
+--- a/src/lib/eap_aka_sim/module.c
++++ b/src/lib/eap_aka_sim/module.c
+@@ -340,7 +340,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
+                        goto done;
+                }
+
+-               if (!fr_pair_list_empty(&request->request_pairs) && RDEBUG_ENABLED2) {
++               if ((!fr_pair_list_empty(&request->request_pairs) && RDEBUG_ENABLED2)) {
+                        RDEBUG2("Decoded attributes");
+                        log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
+                }
+$
+```
