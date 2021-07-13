@@ -357,6 +357,36 @@ static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, requ
 	return XLAT_ACTION_DONE;
 }
 
+/** Escape function for a part of an LDAP URI
+ *
+ */
+static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+	size_t			len;
+
+	/*
+	 *	Maximum space needed for output would be 3 times the input if every
+	 *	char needed escaping
+	 */
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->length * 3, vb->length * 3)) {
+		fr_strerror_printf_push("Failed to allocate buffer for escaped argument");
+		return -1;
+	}
+
+	/*
+	 *	Call the escape function, including the space for the trailing NULL
+	 */
+	len = fr_ldap_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->length * 3 + 1, vb->vb_strvalue, NULL);
+
+	fr_sbuff_trim_talloc(&sbuff, len);
+	fr_value_box_clear_value(vb);
+	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+
+	return 0;
+}
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  * @ingroup xlat_functions
