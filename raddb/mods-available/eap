@@ -366,7 +366,6 @@ eap {
 		#
 	#	check_cert_cn = %{User-Name}
 
-
 		#
 		#  This configuration item only applies when there is
 		#  an intermediate CA between the "root" CA, and the
