@@ -79,6 +79,22 @@ radiusAttribute: reply.Session-Timeout := 7200
 radiusAttribute: control.NAS-IP-Address := 1.2.3.4
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
 
+dn: uid=bob,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: bob
+sn: Smith
+givenName: Bob
+cn: Bob Smith
+displayName: Bob Smith (manager)
+userPassword: testing
+uidNumber: 101
+gidNumber: 101
+homeDirectory: /home/bob
+radiusIdleTimeout: 7200
+
 dn: ou=clients,dc=example,dc=com
 objectClass: organizationalUnit
 ou: clients
