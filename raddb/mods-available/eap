@@ -366,6 +366,34 @@ eap {
 		#
 	#	check_cert_cn = %{User-Name}
 
+
+		#
+		#  This configuration item only applies when there is
+		#  an intermediate CA between the "root" CA, and the
+		#  client certificate.  If we trust the root CA, then
+		#  by definition we also trust ANY intermediate CA
+		#  which is signed by that root.  This means ANOTHER
+		#  intermediate CA can issue client certificates, and
+		#  have them accepted by the EAP module.
+		#
+		#  The solution is to list ONLY the trusted CAs in the
+		#  FreeRADIUS configuration, and then set this
+		#  configuration item to "yes".
+		#
+		#  Then, when the server receives a client certificate
+		#  from an untrusted CA, that authentication request
+		#  can be rejected.
+		#
+		#  It is possible to do these checks in "unlang", by
+		#  checking for unknown names in the
+		#  TLS-Client-Cert-Common-Name attribute, but that is
+		#  more complex.  So we add a configuration option
+		#  which can be set once, and which works for all
+		#  possible intermediate CAs, no matter what their
+		#  value.
+		#
+	#	reject_unknown_intermediate_ca = no
+
 		#  Set this option to specify the allowed
 		#  TLS cipher suites.  The format is listed
 		#  in "man 1 ciphers".

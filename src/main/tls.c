@@ -1485,6 +1485,8 @@ static CONF_PARSER tls_server_config[] = {
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, require_client_cert), NULL },
 
+	{ "reject_unknown_intermediate_ca", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disallow_untrusted), .dflt = "no", },
+
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
 	{ "ecdh_curve", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, ecdh_curve), "prime256v1" },
@@ -3094,14 +3096,45 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	if (depth == 0) {
 		tls_session_t *ssn = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+		STACK_OF(X509)* untrusted = NULL;
+
 		rad_assert(ssn != NULL);
+
+		/*
+		 *	See if there are any untrusted certificates.
+		 *	If so, complain about them.
+		 */
+		untrusted = X509_STORE_CTX_get0_untrusted(ctx);
+		if (untrusted) {
+			if (conf->disallow_untrusted || RDEBUG_ENABLED2) {
+				int  i;
+
+				WARN("Certificate chain - %i cert(s) untrusted",
+				     X509_STORE_CTX_get_num_untrusted(ctx));
+				for (i = sk_X509_num(untrusted); i > 0 ; i--) {
+					X509 *this_cert = sk_X509_value(untrusted, i - 1);
+
+					X509_NAME_oneline(X509_get_subject_name(this_cert), subject, sizeof(subject));
+					subject[sizeof(subject) - 1] = '\0';
+
+					WARN("(TLS) untrusted certificate with depth [%i] subject name %s",
+					     i - 1, subject);
+				}
+			}
+
+			if (conf->disallow_untrusted) {
+				AUTH(LOG_PREFIX ": There are untrusted certificates in the certificate chain.  Rejecting.",
+				     issuer, conf->check_cert_issuer);
+				my_ok = 0;
+			}
+		}
 
 		/*
 		 *	If the conf tells us to, check cert issuer
 		 *	against the specified value and fail
 		 *	verification if they don't match.
 		 */
-		if (conf->check_cert_issuer &&
+		if (my_ok && conf->check_cert_issuer &&
 		    (strcmp(issuer, conf->check_cert_issuer) != 0)) {
 			AUTH(LOG_PREFIX ": Certificate issuer (%s) does not match specified value (%s)!",
 			     issuer, conf->check_cert_issuer);
