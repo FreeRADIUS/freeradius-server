@@ -80,6 +80,16 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static int _unbound_request_free(unbound_request_t *ur)
+{
+	/*
+	 *	Cancel an outstanding async unbound call if the request is being freed
+	 */
+	if ((ur->async_id != 0) && (ur->done == 0)) ub_cancel(ur->t->ev_b->ub, ur->async_id);
+
+	return 0;
+}
+
 /**	Callback called by unbound when resolution started with ub_resolve_event() completes
  *
  * @param mydata	the request tracking structure set up before ub_resolve_event() was called
@@ -344,6 +354,7 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t 
 	}
 
 	MEM(ur = talloc_zero(unlang_interpret_frame_talloc_ctx(request), unbound_request_t));
+	talloc_set_destructor(ur, _unbound_request_free);
 
 	/*
 	 *	Set the maximum number of records we want to return
