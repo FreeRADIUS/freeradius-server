@@ -385,7 +385,7 @@ eap {
 		#
 		#  It is possible to do these checks in "unlang", by
 		#  checking for unknown names in the
-		#  TLS-Client-Cert-Common-Name attribute, but that is
+		#  TLS-Cert-Common-Name attribute, but that is
 		#  more complex.  So we add a configuration option
 		#  which can be set once, and which works for all
 		#  possible intermediate CAs, no matter what their
