@@ -106,7 +106,7 @@ static void heap_test(int skip)
 		TEST_CHECK((t = fr_heap_peek(hp)) != NULL);
 		TEST_MSG("expected %i elements remaining in the heap", left - i);
 
-		TEST_CHECK(fr_heap_extract(hp, NULL) >= 0);
+		TEST_CHECK(fr_heap_extract(hp, t) >= 0);
 		TEST_MSG("failed extracting %i", i);
 	}
 
@@ -180,7 +180,7 @@ static void heap_cycle(void)
 		TEST_CHECK((t = fr_heap_peek(hp)) != NULL);
 		TEST_MSG("expected %i elements remaining in the heap", to_remove - i);
 
-		TEST_CHECK(fr_heap_extract(hp, NULL) >= 0);
+		TEST_CHECK(fr_heap_extract(hp, t) >= 0);
 		TEST_MSG("failed extracting %i", i);
 	}
 
