@@ -5,12 +5,11 @@ jobs:
   titlePrefixCheck:
     runs-on: ubuntu-latest
     steps:
-      - if: contains(github.event.issue.title, 'DO NOT SUBMIT') != 'true'
+      - if: contains(github.event.issue.labels.*.name, 'other') != 'true'
         name: Close Issue
         uses: peter-evans/close-issue@v1
         with:
           comment: |
-            Issue should not have been opened.  Direct questions about
-            server operation to the FreeRADIUS users mailing list
-            https://freeradius.org/support/.
+            Direct questions about server operation or development to the 
+            FreeRADIUS mailing lists https://freeradius.org/support/.
             
