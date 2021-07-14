@@ -1,7 +1,7 @@
-name: Bug Report
+name: Defect Report
 description: Used to report a defect in server source code, default configuration files, documentation, scripts etc...
-title: "[Bug]: "
-labels: [bug, triage]
+title: "[defect]: "
+labels: [defect]
 body:
   - type: markdown
     attributes:
@@ -11,7 +11,6 @@ body:
     id: defect_type
     attributes:
       label: What type of defect/bug is this?
-      multiple: true
       options:
         - Crash or memory corruption (segv, abort, etc...)
         - Non compliance with a standards document
