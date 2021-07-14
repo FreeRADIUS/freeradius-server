@@ -17,6 +17,7 @@ body:
         - Non compliance with a standards document
         - incorrect 3rd party API usage
         - Unexpected behaviour (obvious or verified by project member)
+    validations:
       required: true
   - type: textarea
     id: how_to_reproduce
@@ -24,6 +25,7 @@ body:
       label: How can the issue be reproduced?
       description: A clear and concise list of steps describing how to describe the issue.
       placeholder: Set configuration X to Y, start the server, send 1000 conflicting packets...
+    validations:
       required: true
   - type: textarea
     id: log_output
@@ -32,6 +34,7 @@ body:
       description: Output of ``[radiusd|freeradius] -X`` showing issue occurring
       placeholder: $ radiusd -X
       render: shell
+    validations:
       required: true
   - type: textarea
     id: backtrace
