@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: FreeRADIUS Users Mailing list
+  - name: Questions about server configuration
     url: https://freeradius.org/support/
-    about: 'Please ask non-bug related questions on the "users" mailing list.'
-  - name: Development questions
+    about: 'Ask questions about configuring FreeRADIUS on the "users" mailing list.'
+  - name: Questions about developing custom modules and extending functionality
     url: https://freeradius.org/support/
-    about: 'Please ask development related questions on the "development" mailing list.'
+    about: 'Ask questions about developing code for FreeRADIUS on the "development" mailing list.'
