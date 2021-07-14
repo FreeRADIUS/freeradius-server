@@ -2,7 +2,7 @@
 name: Any other questions about FreeRADIUS
 about: Questions not relating to server configuration or development.
 title: "READ THE MESSAGE BELOW, DO NOT SUBMIT A GITHUB ISSUE"
-labels: [other]
+labels: [close]
 ---
 
 # STOP!
@@ -21,7 +21,7 @@ It is **NOT** a bug report if your configuration simply does not work. Ask for h
 
 If you post those issues here that fall into the above categories, they will be closed and locked. Repeat offenders will be BANNED.
 
-If you are _sure_ that the question you have does not fall into any of the above categories, and would not be better answered by posting to the [mailing lists](https://freeradius.org/support/) remove this template, and remove the "other" tag.  If you do not, your issue will be automatically closed.
+If you are _sure_ that the question you have does not fall into any of the above categories, and would not be better answered by posting to the [mailing lists](https://freeradius.org/support/) remove this template, and remove the "close" tag.  If you do not, your issue will be automatically closed.
 
 # PLEASE READ THE ABOVE NOTICE - DO NOT SUBMIT THIS ISSUE HERE
 
