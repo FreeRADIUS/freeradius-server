@@ -12,7 +12,7 @@ body:
         - Are you _sure_ this isn't a question regarding protocol operation? **Questions on how protocols should operate should be answered by reading the relevant standards documents**.
         - Are you _sure_ this isn't a security exploit? **Remote security exploits MUST be sent to security@freeradius.org as part of [responsible disclosure](https://en.wikipedia.org/wiki/Responsible_disclosure)**.
         
-        GitHub Issues are for **confirmed BUG REPORTS only** (e.g. software crashes). Use the "[BUG REPORT](https://github.com/FreeRADIUS/freeradius-server/issues/new?assignees=&labels=&template=bug_report.md)" template. Do not submit **any** other general questions such as "how do I configure this" here.
+        GitHub Issues are for **confirmed BUG REPORTS only** (e.g. software crashes). Use the [BUG REPORT](https://github.com/FreeRADIUS/freeradius-server/issues/new?assignees=&labels=&template=bug.yml) template. Do not submit **any** other general questions such as "how do I configure this" here.
         
         It is **NOT** a bug report if your configuration simply does not work. Ask for help on the [users mailing list](https://freeradius.org/support/).
         
