@@ -5,7 +5,7 @@ jobs:
   titlePrefixCheck:
     runs-on: ubuntu-latest
     steps:
-      - if: contains(github.event.issue.labels.*.name, 'other') != 'true'
+      - if: contains(github.event.issue.labels.*.name, 'close') != 'true'
         name: Close Issue
         uses: peter-evans/close-issue@v1
         with:
