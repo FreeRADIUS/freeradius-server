@@ -19,7 +19,9 @@ GitHub Issues are for **confirmed BUG REPORTS only** (e.g. software crashes). Us
 
 It is **NOT** a bug report if your configuration simply does not work. Ask for help on the [users mailing list](https://freeradius.org/support/).
 
-If you post those issues here that fall into the above categories, they will be closed and locked. Repeat offenders will be BANNED. 
+If you post those issues here that fall into the above categories, they will be closed and locked. Repeat offenders will be BANNED.
+
+If you are _sure_ that the question you have does not fall into any of the above categories, and would not be better answered by posting to the [mailing lists](https://freeradius.org/support/) remove this template, and remove the "other" tag.  If you do not, your issue will be automatically closed.
 
 # PLEASE READ THE ABOVE NOTICE - DO NOT SUBMIT THIS ISSUE HERE
 
