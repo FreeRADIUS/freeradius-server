@@ -34,5 +34,8 @@ body:
     id: backtrace
     attributes:
       label: Backtrace from LLDB or GDB
-      description: Provide a full backtrace from LLDB or GDB (if relevant). See here](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/source/bugs.md) for debugging instructions and how to obtain backtraces.
-      render:shell
+      description: |
+      Provide a full backtrace from LLDB or GDB (if relevant). 
+      [See here](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/source/bugs.md) for 
+      debugging instructions and how to obtain backtraces.
+      render: shell
