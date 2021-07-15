@@ -5,7 +5,7 @@ jobs:
   titlePrefixCheck:
     runs-on: ubuntu-latest
     steps:
-      - if: github.event.label.name == 'close'
+      - if: contains(github.event.pull_request.labels.*.name, 'close')
         name: Close Issue
         uses: peter-evans/close-issue@v1
         with:
