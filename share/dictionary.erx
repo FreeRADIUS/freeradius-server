@@ -63,7 +63,7 @@ ATTRIBUTE	ERX-Secondary-Dns			5	ipaddr
 ATTRIBUTE	ERX-Primary-Wins			6	ipaddr
 ATTRIBUTE	ERX-Secondary-Wins			7	ipaddr
 ATTRIBUTE	ERX-Tunnel-Virtual-Router		8	string	has_tag
-ATTRIBUTE	ERX-Tunnel-Password			9	string	has_tag
+ATTRIBUTE	ERX-Tunnel-Password			9	string has_tag # sent in cleartext!
 ATTRIBUTE	ERX-Ingress-Policy-Name			10	string
 ATTRIBUTE	ERX-Egress-Policy-Name			11	string
 ATTRIBUTE	ERX-Ingress-Statistics			12	integer
@@ -225,14 +225,14 @@ ATTRIBUTE	ERX-Tx-Connect-Speed			162	integer
 ATTRIBUTE	ERX-Rx-Connect-Speed			163	integer
 
 # ATTRIBUTE 164 - 173 RESERVED
-ATTRIBUTE	ERX-Service-Activate-Type		173	integer
+ATTRIBUTE	ERX-Service-Activate-Type		173	integer has_tag
 ATTRIBUTE	ERX-Client-Profile-Name			174	string
 ATTRIBUTE	ERX-Redirect-GW-Address			175	ipaddr
 ATTRIBUTE	ERX-APN-Name				176	string
 ATTRIBUTE	ERX-Cos-Shaping-Rate			177	string
 
-ATTRIBUTE	ERX-Service-Volume-Gigawords		179	integer
-ATTRIBUTE	ERX-Update-Service			180	string
+ATTRIBUTE	ERX-Service-Volume-Gigawords		179	integer has_tag
+ATTRIBUTE	ERX-Update-Service			180	string has_tag
 ATTRIBUTE	ERX-DHCPv6-Guided-Relay-Server		181	ipv6addr
 ATTRIBUTE	ERX-Acc-Loop-Remote-Id			182	string
 ATTRIBUTE	ERX-Acc-Loop-Encap			183	octets
