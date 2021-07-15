@@ -22,7 +22,7 @@ body:
     id: how_to_reproduce
     attributes:
       label: How can the issue be reproduced?
-      description: A clear and concise list of steps describing how to describe the issue.
+      description: A clear and concise list of steps describing how to reproduce the issue.
       placeholder: Set configuration X to Y, start the server, send 1000 conflicting packets...
     validations:
       required: true
@@ -35,6 +35,11 @@ body:
       render: shell
     validations:
       required: true
+  - type: textarea
+    id: log_output_client
+    attributes:
+      label: Relevant log output from client utilities
+      description: Output of `radclient`, `dhclient`, `eapol_test`, `wpa_supplicant` etc... Only include if relevent.
   - type: textarea
     id: backtrace
     attributes:
