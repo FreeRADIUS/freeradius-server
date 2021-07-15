@@ -29,7 +29,7 @@ body:
   - type: textarea
     id: log_output
     attributes:
-      label: Relevant log output
+      label: Log output from the FreeRADIUS daemon
       description: Output of ``[radiusd|freeradius] -X`` showing issue occurring
       placeholder: $ radiusd -X
       render: shell
