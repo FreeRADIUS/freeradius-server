@@ -11,7 +11,7 @@ update request {
 
 # Retrieve a plain text file
 update control {
-	&Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/test.txt}"
+	&Tmp-String-1 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/test.txt)"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
@@ -22,9 +22,27 @@ if (&control.Tmp-String-1 != "Sample text response\n") {
 	test_fail
 }
 
+# Take host from incomming packet
+update control {
+	&Tmp-String-1 := "%(rest:http://%{Login-IP-Host}:%{Tmp-Integer-0}/test.txt)"
+}
+
+if ((&REST-HTTP-Status-Code != 200) || (&control.Tmp-String-1 != "Sample text response\n")) {
+	test_fail
+}
+
+# Port is not allowed from incomming packet
+update control {
+	&Tmp-String-1 := "%(rest:http://%{Tmp-String-0}:%{NAS-Port}/test.txt)"
+}
+
+if ((&Module-Failure-Message != "Tainted value not allowed for port") || (&control.Tmp-String-1 != "")) {
+	test_fail
+}
+
 # Check a "not found" gives a 404 status code
 update control {
-	&Tmp-String-1 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1}}"
+	&Tmp-String-1 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/%{Tmp-String-1})"
 }
 
 if (&REST-HTTP-Status-Code != 404) {
@@ -33,7 +51,7 @@ if (&REST-HTTP-Status-Code != 404) {
 
 # GET with URL parameters
 update request {
-	&Tmp-String-2 := "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id}}"
+	&Tmp-String-2 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id})"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
@@ -58,7 +76,7 @@ update control {
 }
 
 # Directly use json map and prepend the returned value
-map json "%{rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id}}" {
+map json "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/mac/%{Called-Station-Id})" {
 	&control.Tmp-String-3 ^= '$.control\.User-Name.value'
 }
 
@@ -72,7 +90,7 @@ update control {
 
 # POST to https with JSON body data
 update request {
-	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control.Tmp-String-2}}"
+	&Tmp-String-2 := "%(rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting %{control.Tmp-String-2})"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
@@ -103,7 +121,7 @@ update control {
 
 # POST to https with POST body data
 update request {
-	&Tmp-String-2 := "%{rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/post/test?section=dummy %{control.Tmp-String-2}}"
+	&Tmp-String-2 := "%(rest:POST https://%{Tmp-String-0}:%{Tmp-Integer-1}/post/test?section=dummy %{control.Tmp-String-2})"
 }
 
 if (&REST-HTTP-Status-Code != 200) {
@@ -111,6 +129,38 @@ if (&REST-HTTP-Status-Code != 200) {
 }
 
 if (&Tmp-String-2 != "Section: dummy, User: Bob\n") {
+	test_fail
+}
+
+# URI with tainted values in the arguments - input argument includes URI argument
+# separator - make sure this doesn't end up generating extra arguments, but gets escaped.
+update request {
+	&Tmp-String-2 := "%(rest:GET http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/?station=%{Calling-Station-Id})"
+}
+
+if (&Tmp-String-2 != "{\"station\":\"dummy&unsafe=escaped\"}\n" ) {
+	test_fail
+}
+
+# Zero length untainted value - check parsing doesn't break on zero length string
+update request {
+	&Tmp-String-8 := ""
+}
+
+update request {
+	&Tmp-String-2 := "%(rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-8}?station=%{User-Name})"
+}
+
+if (&Tmp-String-2 != "{\"station\":\"Bob\"}\n" ) {
+	test_fail
+}
+
+# Zero length tainted value - check escaping doesn't break on zero length string
+update request {
+	&Tmp-String-2 := "%(rest:http://%{Tmp-String-0}:%{Tmp-Integer-0}/user/%{User-Name}/reflect/%{Tmp-String-9}?station=%{Called-Station-Id})"
+}
+
+if (&Tmp-String-2 != "{\"station\":\"aa:bb:cc:dd:ee:ff\"}\n" ) {
 	test_fail
 }
 

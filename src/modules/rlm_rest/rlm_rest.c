@@ -169,6 +169,7 @@ static int rlm_rest_status_update(request_t *request, void *handle)
 	if (!code) {
 		pair_delete_request(attr_rest_http_status_code);
 		RDEBUG2("&request.REST-HTTP-Status-Code !* ANY");
+		REXDENT();
 		return -1;
 	}
 
@@ -292,16 +293,78 @@ finish:
 	return xa;
 }
 
+/** URL escape a single box forming part of a URL
+ *
+ * @param request	being processed
+ * @param vb		to escape
+ * @param uctx		context containing CURL handle
+ * @return
+ * 	- 0 on success
+ * 	- -1 on failure
+ */
+static int uri_part_escape(request_t *request, fr_value_box_t *vb, void *uctx)
+{
+	char			*escaped;
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(uctx, fr_curl_io_request_t);
+	fr_dlist_t		entry;
+
+	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->length);
+	if (!escaped) return -1;
+
+	/*
+	 *	Returned string the same length - nothing changed
+	 */
+	if (strlen(escaped) == vb->length) {
+		RDEBUG4("Tainted value %pV needed no escaping", vb);
+		curl_free(escaped);
+		return 0;
+	}
+
+	RDEBUG4("Tainted value %pV escaped to %s", vb, escaped);
+	/*
+	 *	Store list pointers to restore later - fr_value_box_clear() clears them
+	 */
+	entry = vb->entry;
+
+	fr_value_box_clear(vb);
+
+	fr_value_box_strdup(vb, vb, NULL, escaped, vb->tainted);
+	vb->entry.next = entry.next;
+	vb->entry.prev = entry.prev;
+
+	curl_free(escaped);
+
+	return 0;
+}
+
+static xlat_uri_part_t const rest_uri_parts[] = {
+	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
+	  .tainted_allowed = false, .extra_skip = 2 },
+	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
+	  .tainted_allowed = false },
+	{ .name = "method", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "param", .tainted_allowed = true, .func = uri_part_escape },
+	XLAT_URI_PART_TERMINATOR
+};
+
+static xlat_arg_parser_t const rest_xlat_args[] = {
+	{ .required = true, .variadic = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Simple xlat to read text data from a URL
  *
  * Example:
 @verbatim
-%{rest:http://example.com/}
+%(rest:http://example.com/)
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 			       fr_value_box_list_t *in)
 {
@@ -310,27 +373,13 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	rlm_rest_thread_t		*t = xti->t;
 
 	fr_curl_io_request_t		*randle = NULL;
-	ssize_t				len;
 	int				ret;
-	char				*uri = NULL;
-	char const			*p = NULL, *q;
 	http_method_t			method;
-	fr_value_box_t			*in_head = fr_dlist_head(in);
+	fr_value_box_t			*in_vb = fr_dlist_pop_head(in), *uri_vb = NULL;
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
-
-	if (!in_head) {
-		REDEBUG("Got empty URL string");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
-		REDEBUG("Failed concatenating arguments into URL string");
-		return XLAT_ACTION_FAIL;
-	}
-	p = in_head->vb_strvalue;
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
 	section = &rctx->section;
@@ -340,48 +389,58 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 */
 	memcpy(&rctx->section, &mod_inst->xlat, sizeof(*section));
 
-	RDEBUG2("Expanding URI components");
+	fr_assert(in_vb->type == FR_TYPE_GROUP);
 
 	/*
-	 *  Extract the method from the start of the format string (if there is one)
+	 *	If we have more than 1 argument, then the first is the method
 	 */
-	method = fr_table_value_by_substr(http_method_table, p, -1, REST_HTTP_METHOD_UNKNOWN);
-	if (method != REST_HTTP_METHOD_UNKNOWN) {
-		section->method = method;
-		p += http_method_table[method].name.len;
-	/*
-	 *  If the method is unknown, it's either a URL or a verb
-	 */
-	} else {
-		for (q = p; (*q != ' ') && (*q != '\0') && isalpha(*q); q++);
-
-		/*
-		 *	If the first non-alpha char was a space,
-		 *	then assume this is a verb.
-		 */
-		if ((*q == ' ') && (q != p)) {
-			section->method = REST_HTTP_METHOD_CUSTOM;
-			MEM(section->method_str = talloc_bstrndup(rctx, p, q - p));
-			p = q;
-		} else {
-			section->method = REST_HTTP_METHOD_GET;
+	if  ((fr_dlist_head(in))) {
+		uri_vb = fr_dlist_head(&in_vb->vb_group);
+		if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
+			REDEBUG("Failed concatenating argument");
+			return XLAT_ACTION_FAIL;
 		}
+		method = fr_table_value_by_substr(http_method_table, uri_vb->vb_strvalue, -1, REST_HTTP_METHOD_UNKNOWN);
+
+		if (method != REST_HTTP_METHOD_UNKNOWN) {
+			section->method = method;
+		/*
+	 	 *  If the method is unknown, it's a custom verb
+	 	 */
+		} else {
+			section->method = REST_HTTP_METHOD_CUSTOM;
+			MEM(section->method_str = talloc_bstrndup(rctx, in_vb->vb_strvalue, in_vb->vb_length));
+		}
+		/*
+		 *	Move to next argument
+		 */
+		in_vb = fr_dlist_pop_head(in);
+		uri_vb = NULL;
+	} else {
+		section->method = REST_HTTP_METHOD_GET;
 	}
 
 	/*
-	 *  Trim whitespace
+	 *	We get a connection from the pool here as the CURL object
+	 *	is needed to use curl_easy_escape() for escaping
 	 */
-	fr_skip_whitespace(p);
-
 	randle = rctx->handle = fr_pool_connection_get(t->pool, request);
 	if (!randle) return XLAT_ACTION_FAIL;
 
 	/*
-	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
-	 *  request attributes.
+	 *	Walk the incomming boxes, assessing where each is in the URI,
+	 *	escaping tainted ones where needed.  Following each space in the
+	 *	input a new VB group is started.
 	 */
-	len = rest_uri_host_unescape(&uri, mod_inst, request, randle, p);
-	if (len <= 0) {
+
+	fr_assert(in_vb->type == FR_TYPE_GROUP);
+
+	if (xlat_parse_uri(request, &in_vb->vb_group, rest_uri_parts, randle) < 0) return XLAT_ACTION_FAIL;
+
+	uri_vb = fr_dlist_head(&in_vb->vb_group);
+
+	if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed to concatenate URI");
 	error:
 		rest_request_cleanup(mod_inst, randle);
 		fr_pool_connection_release(t->pool, request, randle);
@@ -391,18 +450,21 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	}
 
 	/*
-	 *  Extract freeform body data (url can't contain spaces)
+	 *	Any additional arguments are freeform data
 	 */
-	q = strchr(p, ' ');
-	if (q && (*++q != '\0')) {
+	if ((in_vb = fr_dlist_head(in))) {
+		if (fr_value_box_list_concat(in_vb, in_vb, in, FR_TYPE_STRING, true) < 0) {
+			REDEBUG("Failed to concatenate freeform data");
+			goto error;
+		}
 		section->body = REST_HTTP_BODY_CUSTOM_LITERAL;
-		section->data = q;
+		section->data = in_vb->vb_strvalue;
 	}
 
-	RDEBUG2("Sending HTTP %s to \"%s\"",
+	RDEBUG2("Sending HTTP %s to \"%pV\"",
 	       (section->method == REST_HTTP_METHOD_CUSTOM) ?
 	       	section->method_str : fr_table_str_by_value(http_method_table, section->method, NULL),
-	       uri);
+	       uri_vb);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -410,9 +472,8 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(mod_inst, t, section, request,
-				  randle, section->method, section->body, uri, NULL, NULL);
-	talloc_free(uri);
+	ret = rest_request_config(mod_inst, t, section, request, randle, section->method,
+				  section->body, uri_vb->vb_strvalue, NULL, NULL);
 	if (ret < 0) goto error;
 
 	/*
@@ -1116,13 +1177,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_rest_t *inst = instance;
-	xlat_t const *xlat;
+	rlm_rest_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	xlat = xlat_register(inst, inst->xlat_name, rest_xlat, true);
+	xlat_func_args(xlat, rest_xlat_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 
 	return 0;

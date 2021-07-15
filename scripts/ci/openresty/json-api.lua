@@ -64,6 +64,10 @@ function Api.endpoint(method, path, callback)
             -- If chunk contains <something>
             if string.find(k, "<(.-)>")
             then
+                if not splitReqPath[i] then
+                    reqPath = origPath
+                    return false
+                end
                 -- Add to keyData
                 keyData[string.match(k, "%<(%a+)%>")] = splitReqPath[i]
                 -- Replace matches with default for validation
@@ -131,3 +135,11 @@ Api.endpoint('GET', '/user/<username>/mac/<client>',
     end
 )
 
+-- Simple reflection of a URI argument
+Api.endpoint('GET', '/user/<username>/reflect/',
+    function(body, keyData)
+        local returnData = {}
+        returnData["station"] = uriArgs.station
+        return ngx.say(cjson.encode(returnData))
+    end
+)
