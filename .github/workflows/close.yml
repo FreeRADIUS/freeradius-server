@@ -9,7 +9,5 @@ jobs:
         name: Close Issue
         uses: peter-evans/close-issue@v1
         with:
-          comment: |
-            Direct questions about server operation or development to the 
-            FreeRADIUS mailing lists https://freeradius.org/support/.
+          comment: Direct questions about server operation or development to the FreeRADIUS mailing lists https://freeradius.org/support/.
             
