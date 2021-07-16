@@ -389,6 +389,56 @@ typedef struct fr_ldap_thread_trunk_s {
 	fr_event_timer_t const	*ev;		//!< Event to close the thread when it has been idle.
 } fr_ldap_thread_trunk_t;
 
+/** LDAP query structure
+ *
+ * Used to hold the elements of an LDAP query and track its progress.
+ * libldap structures will be freed by the talloc destructor.
+ * The same structure is used both for search queries and modifications
+ */
+typedef struct fr_ldap_query_s {
+	fr_rb_node_t		node;		//!< Entry in the tree of outstanding queries.
+
+	LDAPURLDesc		*ldap_url;	//!< parsed URL for current query if the source
+						///< of the query was a URL.
+
+	char const		*dn;		//!< Base DN for searches, DN for modifications.
+
+	union {
+		struct {
+			char const	**attrs;	//!< Attributes being requested in a search.
+			int		scope;		//!< Search scope.
+			char const	*filter;	//!< Filter for search.
+		} search;
+		LDAPMod			**mods;		//!< Changes to be applied if this query is a modification.
+	};
+
+	fr_ldap_request_type_t	type;			//!< What type of query this is.
+
+	fr_ldap_control_t	serverctrls[LDAP_MAX_CONTROLS];	//!< Server controls specific to this query.
+	fr_ldap_control_t	clientctrls[LDAP_MAX_CONTROLS];	//!< Client controls specific to this query.
+
+
+	int			msgid;		//!< The unique identifier for this query.
+						///< Uniqueness is only per connection.
+
+	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this query is running on
+	fr_trunk_request_t	*treq;		//!< Trunk request this query is associated with
+	fr_ldap_connection_t	*ldap_conn;	//!< LDAP connection this query is running on.
+
+	request_t		*request;	//!< The request this query relates to
+
+	fr_event_timer_t const	*ev;		//!< Event for timing out the query
+
+	char			**referral_urls;	//!< Referral results to follow
+	fr_dlist_head_t		referrals;	//!< List of parsed referrals
+	uint16_t		referral_depth;	//!< How many referrals we have followed
+	fr_ldap_referral_t	*referral;	//!< Referral actually being followed
+
+	LDAPMessage		*result;	//!< Head of LDAP results list.
+
+	fr_ldap_result_code_t	ret;		//!< Result code
+} fr_ldap_query_t;
+
 /** Codes returned by fr_ldap internal functions
  *
  */
