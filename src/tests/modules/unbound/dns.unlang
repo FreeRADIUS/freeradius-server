@@ -41,13 +41,14 @@ if (&Tmp-String-0 != "www.example.com") {
 }
 
 # Try a real, known, network response
-update request {
-	&Tmp-String-0 := "%(dns:8.8.8.8.in-addr.arpa PTR)"
-}
+# Temporarily disabled while there is a bug in unbound
+#update request {
+#	&Tmp-String-0 := "%(dns:8.8.8.8.in-addr.arpa PTR)"
+#}
 
-if (&Tmp-String-0 != "dns.google") {
-	test_fail
-}
+#if (&Tmp-String-0 != "dns.google") {
+#	test_fail
+#}
 
 # Invalid query
 update request {
