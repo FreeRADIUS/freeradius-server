@@ -1559,6 +1559,45 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 	return 0;
 }
 
+/** Initialise thread specific data structure
+ *
+ */
+static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance,
+				 fr_event_list_t *el, void *thread)
+{
+	rlm_ldap_t		*inst = instance;
+	fr_ldap_thread_t	*this_thread = thread;
+
+	/*
+	 *	Initialise tree for connection trunks used by this thread
+	 */
+	MEM(this_thread->trunks = fr_rb_inline_talloc_alloc(this_thread, fr_ldap_thread_trunk_t, node, fr_ldap_trunk_cmp, NULL));
+
+	this_thread->inst = inst;
+	this_thread->config = &inst->handle_config;
+	this_thread->el = el;
+
+	return 0;
+}
+
+/** Clean up thread specific data structure
+ *
+ */
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	fr_ldap_thread_t	*this_thread = thread;
+	fr_ldap_thread_trunk_t	*ttrunk;
+	fr_rb_iter_preorder_t	iter;
+
+	for (ttrunk = fr_rb_iter_init_preorder(&iter, this_thread->trunks);
+	     ttrunk;
+	     ttrunk = fr_rb_iter_next_preorder(&iter)) {
+		talloc_free(ttrunk->trunk);
+	     }
+	talloc_free(this_thread->trunks);
+	return 0;
+}
+
 /** Bootstrap the module
  *
  * Define attributes.
@@ -2139,6 +2178,10 @@ module_t rlm_ldap = {
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
+	.thread_inst_size	= sizeof(fr_ldap_thread_t),
+	.thread_inst_type	= "fr_ldap_thread_t",
+	.thread_instantiate	= mod_thread_instatiate,
+	.thread_detach		= mod_thread_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
