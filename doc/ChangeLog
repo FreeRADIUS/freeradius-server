@@ -1,15 +1,24 @@
 FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
-	* EAP-FAST will print errors and continue, rather than exiting.
 	* Add sanitizer options to configure script.
 	* Log information needed by Wireshark to decode TLS sessions.
 	* Allow more liberal SQL commands in rlm_sql_map.
 	* Update dictionary.apc, dictionary.h3c
+	* Add new Acct-Status-Type Subsystem-On and Subsystem-Off.
+	  See dictionary.iana and
+	  https://freeradius.org/rfc/acct_status_type_subsystem.html
+	* add reject_unknown_intermediate_ca.  See mods-available/eap
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
 	* Fix crash in state handling.
 	* Don't alter global options in redhat logrotate scripts.
+	* EAP-FAST will print errors and continue, rather than exiting
+	  when OpenSSL fails various internal sanity checks.
+	* Allow admin to manually change core limits, even when core limits
+	  are disabled.
+	* Fix chunked rlm_rest HTTP body.  Closes #4131.
+	  Patch from Nathan Ward.
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
