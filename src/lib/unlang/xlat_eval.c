@@ -2191,7 +2191,6 @@ void xlat_eval_free(void)
 	done_init = false;
 }
 
-
 /** Return whether or not async is required for this xlat.
  *
  *	If the xlat is needs_async, then it MAY yield
@@ -2215,85 +2214,4 @@ bool xlat_async_required(xlat_exp_t const *xlat)
 	}
 
 	return false;
-}
-
-
-/** Parse a list of value boxes representing a URI
- *
- * Reads a URI from a list of value boxes and parses it according to the
- * definition in uri_parts.  Tainted values, where allowed, are escaped
- * using the function specified for the uri part.
- *
- * @param request	currently being processed
- * @param uri		to parse
- * @param uri_parts	definition of URI structure
- * @param uctx		to pass to escaping function
- * @return
- * 	- 0 on success
- * 	- -1 on failure
- */
-int xlat_parse_uri(request_t *request, fr_value_box_list_t *uri, xlat_uri_part_t const *uri_parts, void *uctx)
-{
-	fr_value_box_t		*uri_vb = NULL;
-	xlat_uri_part_t const	*uri_part;
-	fr_sbuff_t		sbuff;
-	char const		*p;
-
-	uri_part = uri_parts;
-
-	while ((uri_vb = fr_dlist_next(uri, uri_vb))){
-		if (uri_vb->tainted && !uri_part->tainted_allowed) {
-			REDEBUG("Tainted value not allowed for %s", uri_part->name);
-			return -1;
-		}
-
-		/*
-		 *	Tainted boxes can only belong to a single part of the URI
-		 */
-		if (uri_vb->tainted) {
-			if ((uri_part->func) && (uri_part->func(request, uri_vb, uctx) < 0)) {
-				REDEBUG("Unable to escape tainted input %pV", uri_vb);
-				return -1;
-			}
-			continue;
-		}
-
-		/*
-		 *	This URI part has no term chars - so no need to look for them
-		 */
-		if (!uri_part->terminals) continue;
-
-		/*
-		 *	Zero length box - no terminators here
-		 */
-		if (uri_vb->length == 0) continue;
-
-		/*
-		 *	Look for URI part terminator
-		 */
-		fr_sbuff_init(&sbuff, uri_vb->vb_strvalue, uri_vb->length);
-
-		do {
-			fr_sbuff_adv_until(&sbuff, SIZE_MAX, uri_part->terminals, '\0');
-			p = fr_sbuff_current(&sbuff);
-
-			/*
-			 *	We've not found a terminal in the current box
-			 */
-			if (uri_part->part_adv[(uint8_t)*p] == 0) continue;
-
-			/*
-			 *	This terminator has trailing characters to skip
-			 */
-			if (uri_part->extra_skip) fr_sbuff_advance(&sbuff, uri_part->extra_skip);
-
-			/*
-			 *	Move to the next part
-			 */
-			uri_part += uri_part->part_adv[(uint8_t)*p];
-			if (!uri_part->terminals) break;
-		} while (fr_sbuff_advance(&sbuff, 1) > 0);
-	}
-
-	return 0;
 }

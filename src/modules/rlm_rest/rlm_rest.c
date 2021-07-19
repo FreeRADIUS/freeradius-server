@@ -27,10 +27,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/uri.h>
 
 #include <ctype.h>
 #include "rest.h"
@@ -295,18 +296,18 @@ finish:
 
 /** URL escape a single box forming part of a URL
  *
- * @param request	being processed
- * @param vb		to escape
- * @param uctx		context containing CURL handle
+ * @param[in] vb		to escape
+ * @param[in] uctx		context containing CURL handle
  * @return
  * 	- 0 on success
  * 	- -1 on failure
  */
-static int uri_part_escape(request_t *request, fr_value_box_t *vb, void *uctx)
+static int uri_part_escape(fr_value_box_t *vb, void *uctx)
 {
 	char			*escaped;
 	fr_curl_io_request_t	*randle = talloc_get_type_abort(uctx, fr_curl_io_request_t);
 	fr_dlist_t		entry;
+	request_t		*request = randle->request;
 
 	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->length);
 	if (!escaped) return -1;
@@ -337,7 +338,7 @@ static int uri_part_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 	return 0;
 }
 
-static xlat_uri_part_t const rest_uri_parts[] = {
+static fr_uri_part_t const rest_uri_parts[] = {
 	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
 	  .tainted_allowed = false, .extra_skip = 2 },
 	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
@@ -435,18 +436,21 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	fr_assert(in_vb->type == FR_TYPE_GROUP);
 
-	if (xlat_parse_uri(request, &in_vb->vb_group, rest_uri_parts, randle) < 0) return XLAT_ACTION_FAIL;
+	if (fr_uri_escape(&in_vb->vb_group, rest_uri_parts, randle) < 0) {
+		RPEDEBUG("Failed escaping URI");
 
-	uri_vb = fr_dlist_head(&in_vb->vb_group);
-
-	if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
-		REDEBUG("Failed to concatenate URI");
 	error:
 		rest_request_cleanup(mod_inst, randle);
 		fr_pool_connection_release(t->pool, request, randle);
 		talloc_free(section);
 
 		return XLAT_ACTION_FAIL;
+	}
+
+	uri_vb = fr_dlist_head(&in_vb->vb_group);
+	if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Concatenating URI");
+		goto error;
 	}
 
 	/*

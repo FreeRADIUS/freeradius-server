@@ -79,6 +79,7 @@ SOURCES		:= \
 		   types.c \
 		   udp.c \
 		   udpfromto.c \
+		   uri.c \
 		   value.c \
 		   version.c
 

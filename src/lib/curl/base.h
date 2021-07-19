@@ -98,7 +98,7 @@ typedef struct {
 typedef struct {
 	CURL			*candle;		//!< Request specific handle.
 	CURLcode		result;			//!< Result of executing the request.
-	request_t		        *request;		//!< Current request.
+	request_t		*request;		//!< Current request.
 	void			*uctx;			//!< Private data for the module using the API.
 } fr_curl_io_request_t;
 
