@@ -124,10 +124,10 @@ typedef struct {
 typedef struct {
 	bool		log_stripped_names;
 	bool		log_auth;		//!< Log authentication attempts.
-	bool		log_auth_badpass;	//!< Log successful authentications.
-	bool		log_auth_goodpass;	//!< Log failed authentications.
-	char const	*auth_badpass_msg;	//!< Additional text to append to successful auth messages.
-	char const	*auth_goodpass_msg;	//!< Additional text to append to failed auth messages.
+	bool		log_auth_badpass;	//!< Log failed authentications.
+	bool		log_auth_goodpass;	//!< Log successful authentications.
+	char const	*auth_badpass_msg;	//!< Additional text to append to failed auth messages.
+	char const	*auth_goodpass_msg;	//!< Additional text to append to successful auth messages.
 
 	char const	*denied_msg;		//!< Additional text to append if the user is already logged
 						//!< in (simultaneous use check failed).
