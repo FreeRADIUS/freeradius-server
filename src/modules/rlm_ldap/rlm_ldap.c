@@ -387,6 +387,53 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	return 0;
 }
 
+/** Callback when resuming after async ldap query is completed
+ *
+ */
+static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				      UNUSED fr_value_box_list_t *in, void *rctx)
+{
+	fr_ldap_query_t		*query = talloc_get_type_abort(rctx, fr_ldap_query_t);
+	fr_ldap_connection_t	*ldap_conn = query->ldap_conn;
+	fr_value_box_t		*vb = NULL;
+	LDAPMessage		*msg;
+	struct berval		**values;
+	int			count, i;
+
+	if (query->ret != LDAP_RESULT_SUCCESS) return XLAT_ACTION_FAIL;
+
+	/*
+	 *	We only parse "entries"
+	 */
+	for (msg = ldap_first_entry(ldap_conn->handle, query->result); msg; msg = ldap_next_entry(ldap_conn->handle, msg)) {
+
+		values = ldap_get_values_len(ldap_conn->handle, msg, query->ldap_url->lud_attrs[0]);
+
+		if (!values) {
+			RDEBUG2("No \"%s\" attributes found in specified object", query->ldap_url->lud_attrs[0]);
+			continue;
+		}
+
+		count = ldap_count_values_len(values);
+		for (i = 0; i < count; i++) {
+			MEM(vb = fr_value_box_alloc_null(ctx));
+			if (fr_value_box_bstrndup(ctx, vb, NULL, values[i]->bv_val, values[i]->bv_len, true) < 0) {
+				talloc_free(vb);
+				RPERROR("Failed creating value from LDAP response");
+				break;
+			}
+			fr_dcursor_append(out, vb);
+		}
+
+		ldap_value_free_len(values);
+	}
+
+	talloc_free(query);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  * @ingroup xlat_functions
