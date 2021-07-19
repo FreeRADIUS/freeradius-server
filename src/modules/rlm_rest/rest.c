@@ -2136,6 +2136,8 @@ void rest_request_cleanup(UNUSED rlm_rest_t const *instance, fr_curl_io_request_
 	TALLOC_FREE(ctx->response.buffer);
 	TALLOC_FREE(ctx->request.encoder);
 	TALLOC_FREE(ctx->response.decoder);
+
+	randle->request = NULL;
 }
 
 /** URL encodes a string.
