@@ -111,7 +111,12 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 	ssize_t			used;
 	fr_value_box_t		*vb;
 
+	/*
+	 *	Request has completed remove timeout event and set
+	 *	async_id to 0 so ub_cancel() is not called when ur is freed
+	 */
 	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
+	ur->async_id = 0;
 
 	/*
 	 *	Bogus responses have the "sec" flag set to 1
