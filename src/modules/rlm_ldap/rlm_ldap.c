@@ -37,6 +37,14 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/map_proc.h>
 
+
+/*
+ *	Xlat pointer to thread handling the query
+ */
+typedef struct {
+	fr_ldap_thread_t	*t;
+} ldap_xlat_thread_inst_t;
+
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, proxy) },
