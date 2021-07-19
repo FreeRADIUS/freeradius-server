@@ -36,7 +36,7 @@ update control {
 	&Tmp-String-1 := "%(rest:http://%{Tmp-String-0}:%{NAS-Port}/test.txt)"
 }
 
-if ((&Module-Failure-Message != "Tainted value not allowed for port") || (&control.Tmp-String-1 != "")) {
+if ((&Module-Failure-Message != "Failed escaping URI: Tainted value not allowed for port") || (&control.Tmp-String-1 != "")) {
 	test_fail
 }
 
