@@ -139,7 +139,6 @@ static void heap_cycle(void)
 	fr_heap_t	*hp;
 	int		i;
 	heap_thing	*array;
-	heap_thing	*remaining;
 	int		to_remove;
 	int		ret;
 
@@ -154,7 +153,6 @@ static void heap_cycle(void)
 	TEST_CHECK(hp != NULL);
 
 	array = malloc(sizeof(heap_thing) * HEAP_CYCLE_SIZE);
-	remaining = calloc(sizeof(heap_thing) * HEAP_CYCLE_SIZE, 1);
 
 	/*
 	 *	Initialise random values
@@ -213,7 +211,6 @@ static void heap_cycle(void)
 
 	talloc_free(hp);
 	free(array);
-	free(remaining);
 }
 
 TEST_LIST = {
