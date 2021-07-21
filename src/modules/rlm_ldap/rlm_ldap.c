@@ -434,6 +434,20 @@ static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, reques
 	return XLAT_ACTION_DONE;
 }
 
+/** Callback for signalling async ldap query
+ *
+ */
+static void ldap_xlat_signal(request_t *request, UNUSED void *instance, UNUSED void *thread, void *rctx, fr_state_signal_t action)
+{
+	fr_ldap_query_t		*query = talloc_get_type_abort(rctx, fr_ldap_query_t);
+
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	RDEBUG2("Forcefully cancelling pending LDAP query");
+
+	fr_trunk_request_signal_cancel(query->treq);
+}
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  * @ingroup xlat_functions
