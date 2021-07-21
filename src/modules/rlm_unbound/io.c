@@ -145,12 +145,14 @@ static void _unbound_io_event_free(struct ub_event *ub_ev)
 
 /** Timeout fired
  *
+ * Unbound uses these timeouts as part of its mechanism to measure rtt from
+ * candidate DNS servers, working out which is the fastest to use for any
+ * given query.  The timeout happening causes the timeout against the server
+ * to be increased for any subsequent queries sent to it.
  */
 static void _unbound_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	unbound_io_event_t	*ev = talloc_get_type_abort(uctx, unbound_io_event_t);
-
-	fr_assert(ev->active);			/* must be active */
 
 	DEBUG4("unbound event %p - Timeout", ev);
 
