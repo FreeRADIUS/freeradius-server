@@ -387,6 +387,23 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	return 0;
 }
 
+/** Callback when LDAP query times out
+ *
+ */
+static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+	request_t		*request = query->request;
+
+	RERROR("Timeout waiting for LDAP query");
+	if (query->msgid) {
+		fr_trunk_request_signal_cancel(query->treq);
+	}
+
+	query->ret = LDAP_RESULT_TIMEOUT;
+	unlang_interpret_mark_runnable(request);
+}
+
 /** Callback when resuming after async ldap query is completed
  *
  */
