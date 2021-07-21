@@ -2386,7 +2386,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 					     fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
 					     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, "<INVALID>"));
 		}
-	} else if (vp->da->type != vp->data.type) {
+	} else if (!fr_type_is_structural(vp->da->type) && (vp->da->type != vp->data.type)) {
 		char data_type_int[10], da_type_int[10];
 
 		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
